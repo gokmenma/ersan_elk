@@ -65,7 +65,7 @@ $donemToken = $selectedDonem ? Security::encrypt((int) $selectedDonem->id) : '';
 $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
 ?>
 
-<div class="pb-8">
+<div class="pb-48">
     <main class="space-y-4 px-4 pt-4">
         <section class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
             <div class="mb-2 flex items-center justify-between gap-3">
@@ -108,17 +108,6 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
                 <div class="rounded-2xl border border-amber-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
                     <span class="text-[9px] font-black uppercase tracking-wider text-amber-500">Elden / Sodexo</span>
                     <p class="mt-1 truncate text-sm font-black text-amber-600"><?= $money($summary['elden'] + $summary['sodexo']) ?></p>
-                </div>
-            </section>
-
-            <section class="rounded-2xl border border-slate-100 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-card-dark">
-                <div class="flex gap-2">
-                    <button type="button" onclick="calculatePayroll()" <?= $closed || !$rows ? 'disabled' : '' ?> class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40">
-                        <span class="material-symbols-outlined text-lg">calculate</span>Maaşları Hesapla
-                    </button>
-                    <button type="button" onclick="togglePeriod()" class="flex h-10 items-center justify-center gap-1 rounded-xl border px-3 text-xs font-black <?= $closed ? 'border-emerald-200 text-emerald-600' : 'border-rose-200 text-rose-600' ?>">
-                        <span class="material-symbols-outlined text-lg"><?= $closed ? 'lock_open' : 'lock' ?></span><?= $closed ? 'Aç' : 'Kapat' ?>
-                    </button>
                 </div>
             </section>
 
@@ -176,6 +165,19 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
     </main>
 </div>
 
+<?php if ($selectedDonem): ?>
+    <div class="fixed bottom-24 right-4 z-[70] flex w-14 flex-col items-center gap-2">
+        <button type="button" onclick="openOtherPayrollActions()" class="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-900/15 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" aria-label="Diğer bordro işlemleri" title="Diğer İşlemler">
+            <span class="material-symbols-outlined block text-xl leading-none" aria-hidden="true">more_horiz</span>
+            <span class="sr-only">Diğer İşlemler</span>
+        </button>
+        <button type="button" onclick="calculatePayroll()" <?= $closed || !$rows ? 'disabled' : '' ?> class="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xl shadow-indigo-600/30 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none" aria-label="Maaşları hesapla" title="Maaşları Hesapla">
+            <span class="material-symbols-outlined block text-2xl leading-none" aria-hidden="true">calculate</span>
+            <span class="sr-only">Maaşları Hesapla</span>
+        </button>
+    </div>
+<?php endif; ?>
+
 <div id="bordroSheet" class="fixed inset-0 z-[200] hidden bg-slate-900/60 p-3 backdrop-blur-sm">
     <div class="mx-auto mt-8 flex max-h-[85vh] max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-card-dark">
         <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800"><h2 id="bordroSheetTitle" class="text-sm font-black dark:text-white">Bordro Detayı</h2><button type="button" onclick="closeBordroSheet()" class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"><span class="material-symbols-outlined text-lg">close</span></button></div>
@@ -198,10 +200,17 @@ document.getElementById('bordroSearch')?.addEventListener('input', function () {
 function togglePayrollCard(button) { const detail = button.parentElement.nextElementSibling; const opening = detail.classList.contains('hidden'); detail.classList.toggle('hidden'); button.setAttribute('aria-expanded', opening ? 'true' : 'false'); button.querySelector('.card-chevron')?.classList.toggle('rotate-180', opening); }
 function closeBordroSheet() { document.getElementById('bordroSheet').classList.add('hidden'); }
 function showBordroSheet(title, html) { document.getElementById('bordroSheetTitle').textContent = title; document.getElementById('bordroSheetBody').innerHTML = html; document.getElementById('bordroSheet').classList.remove('hidden'); }
+function openOtherPayrollActions() { showBordroSheet('Diğer Bordro İşlemleri', `<div class="space-y-2">
+    <button type="button" onclick="closeBordroSheet(); togglePeriod()" class="flex h-12 w-full items-center gap-3 rounded-xl <?= $closed ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' ?> px-4 text-left text-xs font-black"><span class="material-symbols-outlined"><?= $closed ? 'lock_open' : 'lock' ?></span><span><?= $closed ? 'Dönemi Yeniden Aç' : 'Dönemi Kapat' ?></span><span class="material-symbols-outlined ml-auto text-base">chevron_right</span></button>
+    <button type="button" <?= $closed ? 'disabled' : '' ?> onclick="resetAllPayments()" class="flex h-12 w-full items-center gap-3 rounded-xl bg-amber-50 px-4 text-left text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"><span class="material-symbols-outlined">restart_alt</span><span>Ödeme Dağılımlarını Sıfırla</span><span class="material-symbols-outlined ml-auto text-base">chevron_right</span></button>
+    <button type="button" onclick="location.reload()" class="flex h-12 w-full items-center gap-3 rounded-xl bg-blue-50 px-4 text-left text-xs font-black text-blue-700"><span class="material-symbols-outlined">refresh</span><span>Listeyi Yenile</span><span class="material-symbols-outlined ml-auto text-base">chevron_right</span></button>
+    <a href="?force_desktop=1&p=bordro/list" class="flex h-12 w-full items-center gap-3 rounded-xl bg-slate-100 px-4 text-left text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200"><span class="material-symbols-outlined">desktop_windows</span><span>Tüm Bordro Araçları</span><span class="material-symbols-outlined ml-auto text-base">open_in_new</span></a>
+</div>`); }
 async function bordroPost(data) { const body = new URLSearchParams(); Object.entries(data).forEach(([key, value]) => Array.isArray(value) ? value.forEach(item => body.append(key + '[]', item)) : body.append(key, value)); const response = await fetch(bordroApiUrl, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body}); const result = await response.json(); if (!response.ok || result.status === 'error') throw new Error(result.message || 'İşlem tamamlanamadı.'); return result; }
 function notifyBordro(message, error = false) { if (window.Swal) Swal.fire({icon:error?'error':'success', title:error?'İşlem başarısız':'İşlem tamamlandı', text:message}); else alert(message); }
 async function calculatePayroll() { if (!confirm('Bu dönemdeki tüm personellerin maaşı yeniden hesaplansın mı?')) return; try { const result = await bordroPost({action:'maas-hesapla', donem_token:bordroPeriodToken, personel_tokens:bordroTokens}); notifyBordro(result.message); setTimeout(()=>location.reload(), 600); } catch(e) { notifyBordro(e.message, true); } }
 async function togglePeriod(force = false) { if (!confirm(bordroIsClosed ? 'Dönem yeniden açılsın mı?' : 'Dönem kapatılsın mı?')) return; try { const data = {action:bordroIsClosed?'donem-ac':'donem-kapat', donem_token:bordroPeriodToken}; if(force) data.force_close='1'; const result = await bordroPost(data); if(result.status === 'warning') { if(confirm((result.warnings || []).join('\n') + '\n\nYine de kapatılsın mı?')) return togglePeriod(true); return; } notifyBordro(result.message); setTimeout(()=>location.reload(), 500); } catch(e) { notifyBordro(e.message, true); } }
+async function resetAllPayments() { if (!confirm('Bu dönemdeki tüm manuel ödeme dağılımları varsayılana döndürülsün mü?')) return; try { const result = await bordroPost({action:'odeme-reset-all', donem_token:bordroPeriodToken}); notifyBordro(result.message); setTimeout(()=>location.reload(), 600); } catch(e) { notifyBordro(e.message, true); } }
 async function openPayrollDetail(token) { showBordroSheet('Bordro Detayı', '<div class="py-12 text-center text-slate-400">Detay yükleniyor…</div>'); try { const result = await bordroPost({action:'get-detail', bordro_token:token}); document.getElementById('bordroSheetBody').innerHTML = result.html || result.data || '<p>Detay bulunamadı.</p>'; } catch(e) { document.getElementById('bordroSheetBody').innerHTML = '<p class="rounded-xl bg-rose-50 p-3 font-bold text-rose-600">'+e.message+'</p>'; } }
 function openPaymentModal(button) { const d=button.dataset; showBordroSheet('Ödeme Dağıt · '+d.name, `<form onsubmit="savePayment(event)" data-token="${d.token}" class="space-y-3"><label class="block text-xs font-bold">Banka<input name="banka" inputmode="decimal" value="${d.banka}" class="mt-1 w-full rounded-xl border-slate-200 dark:bg-slate-900"></label><label class="block text-xs font-bold">Sodexo<input name="sodexo" inputmode="decimal" value="${d.sodexo}" class="mt-1 w-full rounded-xl border-slate-200 dark:bg-slate-900"></label><label class="block text-xs font-bold">Diğer ödeme<input name="diger" inputmode="decimal" value="${d.diger}" class="mt-1 w-full rounded-xl border-slate-200 dark:bg-slate-900"></label><button class="h-11 w-full rounded-xl bg-indigo-600 text-xs font-black text-white">Dağılımı Kaydet</button></form>`); }
 async function savePayment(event) { event.preventDefault(); const form=event.currentTarget; try { const result=await bordroPost({action:'odeme-dagit', bordro_token:form.dataset.token, banka_odemesi:form.banka.value.replace(',','.'), sodexo_odemesi:form.sodexo.value.replace(',','.'), diger_odeme:form.diger.value.replace(',','.')}); notifyBordro(result.message); setTimeout(()=>location.reload(),500); } catch(e) { notifyBordro(e.message,true); } }

@@ -556,6 +556,35 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    /**
+     * Liste ekranında N+1 sorgu oluşturmadan aktif evrak eklerini getirir.
+     *
+     * @return array<int, array<int, object>> Evrak ID'sine göre gruplanmış ekler
+     */
+    public function getAttachmentMap(): array
+    {
+        $sql = $this->db->prepare("
+            SELECT ee.evrak_id, ee.id, ee.dosya_adi, ee.dosya_yolu,
+                   ee.mime_tipi, ee.dosya_boyutu, ee.sira
+            FROM evrak_takip_ekleri ee
+            INNER JOIN {$this->table} et
+                    ON et.id = ee.evrak_id
+                   AND et.firma_id = ee.firma_id
+                   AND et.silinme_tarihi IS NULL
+            WHERE ee.firma_id = :firma_id
+              AND ee.silinme_tarihi IS NULL
+            ORDER BY ee.evrak_id ASC, ee.sira ASC, ee.id ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+
+        $attachmentMap = [];
+        foreach ($sql->fetchAll(PDO::FETCH_OBJ) as $attachment) {
+            $attachmentMap[(int) $attachment->evrak_id][] = $attachment;
+        }
+
+        return $attachmentMap;
+    }
+
     public function saveAttachment(int $evrakId, array $attachment): int
     {
         if (!$this->getById($evrakId)) {

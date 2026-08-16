@@ -24,7 +24,7 @@ if ($userId <= 0 || $firmaId <= 0 || !$menuModel->userCanAccessMenuLink($userId,
 }
 
 $action = (string) ($_POST['action'] ?? '');
-$allowedActions = ['get-detail', 'maas-hesapla', 'donem-kapat', 'donem-ac', 'odeme-dagit', 'odeme-reset', 'personel-gelir-ekle', 'personel-kesinti-ekle'];
+$allowedActions = ['get-detail', 'maas-hesapla', 'donem-kapat', 'donem-ac', 'odeme-dagit', 'odeme-reset', 'odeme-reset-all', 'personel-gelir-ekle', 'personel-kesinti-ekle'];
 if (!in_array($action, $allowedActions, true)) {
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Mobil bordro için geçersiz işlem.']);

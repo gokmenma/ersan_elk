@@ -10,6 +10,7 @@ $Evrak = new EvrakTakipModel();
 $Personel = new PersonelModel();
 
 $evraklar = $Evrak->all();
+$evrakEkleriMap = $Evrak->getAttachmentMap();
 $personeller = $Personel->all(false, 'all_with_external');
 $stats = $Evrak->getStats();
 $gelen_evraklar = $Evrak->getGelenEvraklar();
@@ -244,7 +245,7 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
                                         <th>İlgili Personel</th>
                                         <th class="text-center" style="width: 90px;">Cevap</th>
                                         <th class="text-center" style="width: 110px;">E-İmza</th>
-                                        <th class="text-center" style="width: 90px;">Dosya</th>
+                                        <th class="text-center" style="width: 110px;">Dosya</th>
                                         <th class="text-center" style="min-width: 180px; width: 180px;">İşlem</th>
                                     </tr>
                                 </thead>
@@ -279,14 +280,29 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
                                                     <span class="text-muted" style="font-size: 10px;"><?php echo date('H:i', strtotime($evrak->olusturulma_tarihi ?? 'now')); ?></span>
                                                 </div>
                                             </td>
-                                            <td>
-                                                <div class="fw-bold text-dark mb-1" style="font-size: 13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                    <?php echo $evrak->konu ?? '-'; ?>
-                                                </div>
-                                                <div class="d-flex align-items-center text-muted fw-medium" style="font-size: 10px;">
-                                                    <i data-feather="hash" class="icon-xs me-1"></i>
-                                                    <?php echo $evrak->evrak_no ?? '-'; ?>
-                                                </div>
+                                            <td class="p-0">
+                                                <?php if ($evrak->evrak_tipi === 'gelen'): ?>
+                                                    <button type="button"
+                                                        class="evrak-konu-link evrak-duzenle"
+                                                        data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>"
+                                                        title="Evrak detayını aç">
+                                                <?php else: ?>
+                                                    <a class="evrak-konu-link"
+                                                        href="index?p=evrak-takip/giden-evrak&amp;id=<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>"
+                                                        title="Evrak detayını aç">
+                                                <?php endif; ?>
+                                                    <span class="fw-bold text-dark mb-1 evrak-konu-metni">
+                                                        <?php echo htmlspecialchars((string) ($evrak->konu ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
+                                                    </span>
+                                                    <span class="d-flex align-items-center text-muted fw-medium" style="font-size: 10px;">
+                                                        <i data-feather="hash" class="icon-xs me-1"></i>
+                                                        <?php echo htmlspecialchars((string) ($evrak->evrak_no ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
+                                                    </span>
+                                                <?php if ($evrak->evrak_tipi === 'gelen'): ?>
+                                                    </button>
+                                                <?php else: ?>
+                                                    </a>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <span class="fw-bold text-dark small pb-1 d-block"><?php echo $evrak->kurum_adi ?? '-'; ?></span>
@@ -375,15 +391,43 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center">
-                                                 <?php if ($evrak->dosya_yolu): ?>
-                                                     <a href="<?php echo htmlspecialchars($evrak->dosya_yolu, ENT_QUOTES, 'UTF-8'); ?>" target="_blank"
-                                                         class="btn btn-sm btn-info btn-soft text-uppercase fw-bold d-inline-flex align-items-center gap-1"
-                                                         style="font-size: 10px;" title="Dosyayı İndir / Aç">
-                                                         <i data-feather="paperclip" class="icon-xs"></i> DOSYA
-                                                     </a>
-                                                 <?php else: ?>
-                                                     <span class="text-muted small">-</span>
-                                                 <?php endif; ?>
+                                                <?php
+                                                $evrakEkleri = $evrakEkleriMap[(int) $evrak->id] ?? [];
+                                                if ($evrakEkleri === [] && !empty($evrak->dosya_yolu)) {
+                                                    $evrakEkleri[] = (object) [
+                                                        'dosya_adi' => basename((string) $evrak->dosya_yolu),
+                                                        'dosya_yolu' => $evrak->dosya_yolu,
+                                                    ];
+                                                }
+                                                ?>
+                                                <?php if ($evrakEkleri !== []): ?>
+                                                    <div class="dropdown d-inline-block">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-info btn-soft fw-bold d-inline-flex align-items-center gap-1 dropdown-toggle"
+                                                            data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false"
+                                                            title="Evraka ait dosyaları görüntüle">
+                                                            <i data-feather="paperclip" class="icon-xs"></i>
+                                                            <?php echo count($evrakEkleri); ?> DOSYA
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end evrak-dosya-menu shadow">
+                                                            <?php foreach ($evrakEkleri as $ekIndex => $ek): ?>
+                                                                <li>
+                                                                    <a class="dropdown-item d-flex align-items-center gap-2"
+                                                                        href="<?php echo htmlspecialchars((string) $ek->dosya_yolu, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                        target="_blank" rel="noopener">
+                                                                        <i data-feather="file-text" class="icon-sm text-info flex-shrink-0"></i>
+                                                                        <span class="text-truncate" title="<?php echo htmlspecialchars((string) $ek->dosya_adi, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                            <?php echo ($ekIndex + 1) . '. ' . htmlspecialchars((string) $ek->dosya_adi, ENT_QUOTES, 'UTF-8'); ?>
+                                                                        </span>
+                                                                        <i data-feather="external-link" class="icon-xs text-muted ms-auto flex-shrink-0"></i>
+                                                                    </a>
+                                                                </li>
+                                                            <?php endforeach; ?>
+                                                        </ul>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">-</span>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="text-center">
                                                 <div class="d-flex justify-content-center align-items-center gap-1 flex-nowrap">
@@ -534,6 +578,57 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
     .icon-xs {
         width: 12px;
         height: 12px;
+    }
+
+    .evrak-dosya-menu {
+        min-width: 260px;
+        max-width: min(360px, calc(100vw - 2rem));
+        max-height: 280px;
+        overflow-y: auto;
+    }
+
+    .evrak-dosya-menu .dropdown-item {
+        min-width: 0;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.78rem;
+    }
+
+    .evrak-dosya-menu .dropdown-item .text-truncate {
+        max-width: 260px;
+    }
+
+    .evrak-konu-link {
+        display: block;
+        width: 100%;
+        min-width: 220px;
+        padding: 1rem 0.75rem;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .evrak-konu-link:hover,
+    .evrak-konu-link:focus-visible {
+        background-color: rgba(var(--bs-primary-rgb), 0.06);
+        outline: none;
+    }
+
+    .evrak-konu-link:hover .evrak-konu-metni,
+    .evrak-konu-link:focus-visible .evrak-konu-metni {
+        color: var(--bs-primary) !important;
+        text-decoration: underline;
+    }
+
+    .evrak-konu-metni {
+        display: block;
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
     }
 
     .btn-delete-konu:hover {
