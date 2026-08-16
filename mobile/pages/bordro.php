@@ -80,7 +80,7 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
                 <?php if (!$donemler): ?><option value="">Dönem bulunamadı</option><?php endif; ?>
                 <?php foreach ($donemler as $donem): ?>
                     <option value="<?= htmlspecialchars(Security::encrypt((int) $donem->id), ENT_QUOTES, 'UTF-8') ?>" <?= $selectedDonem && (int) $selectedDonem->id === (int) $donem->id ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($donem->donem_adi . ' · ' . date('Y', strtotime($donem->baslangic_tarihi)), ENT_QUOTES, 'UTF-8') ?>
+                        <?= htmlspecialchars($donem->donem_adi, ENT_QUOTES, 'UTF-8') ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -93,21 +93,25 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
             </div>
         <?php else: ?>
             <section class="grid grid-cols-2 gap-2">
-                <div class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                <div class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                    <span class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800"><span class="material-symbols-outlined text-lg">groups</span></span>
                     <span class="text-[9px] font-black uppercase tracking-wider text-slate-400">Personel</span>
                     <p class="mt-1 text-lg font-black text-slate-800 dark:text-white"><?= $summary['personel'] ?></p>
                 </div>
-                <div class="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                <div class="relative overflow-hidden rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                    <span class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20"><span class="material-symbols-outlined text-lg">payments</span></span>
                     <span class="text-[9px] font-black uppercase tracking-wider text-emerald-500">Net Ödenecek</span>
-                    <p class="mt-1 truncate text-base font-black text-emerald-600"><?= $money($summary['net']) ?></p>
+                    <p class="mt-1 truncate pr-8 text-base font-black text-emerald-600"><?= $money($summary['net']) ?></p>
                 </div>
-                <div class="rounded-2xl border border-blue-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                <div class="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                    <span class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20"><span class="material-symbols-outlined text-lg">account_balance</span></span>
                     <span class="text-[9px] font-black uppercase tracking-wider text-blue-500">Banka</span>
-                    <p class="mt-1 truncate text-sm font-black text-blue-600"><?= $money($summary['banka']) ?></p>
+                    <p class="mt-1 truncate pr-8 text-sm font-black text-blue-600"><?= $money($summary['banka']) ?></p>
                 </div>
-                <div class="rounded-2xl border border-amber-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                <div class="relative overflow-hidden rounded-2xl border border-amber-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+                    <span class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-900/20"><span class="material-symbols-outlined text-lg">wallet</span></span>
                     <span class="text-[9px] font-black uppercase tracking-wider text-amber-500">Elden / Sodexo</span>
-                    <p class="mt-1 truncate text-sm font-black text-amber-600"><?= $money($summary['elden'] + $summary['sodexo']) ?></p>
+                    <p class="mt-1 truncate pr-8 text-sm font-black text-amber-600"><?= $money($summary['elden'] + $summary['sodexo']) ?></p>
                 </div>
             </section>
 
