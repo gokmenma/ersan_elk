@@ -36,4 +36,5 @@
 - Hesap sırası zorunludur: (1) sözleşme net tavanı belirlenir, (2) asgari net, eş yardımı ve banka üzerinden ödenecek RTÇ/HTÇ kalemleri düşülür, (3) kalan tutar yemek yardımı üst limiti olarak alınır, (4) bu tutar fiilî güne bölünür, (5) günlük tutar yukarı yuvarlanır ve günlük limit ile sınırlandırılır, (6) yuvarlanmış günlük tutar fiilî gün ile çarpılır.
 - Günlük yuvarlama sonucu oluşan fark ayrı `yuvarlama_farki` olarak kaydedilir ve gösterilir; günlük hesap doğrudan toplam tutara çevrilerek bu kural atlanamaz.
 - Yemek yardımı yüksek hesaplanıp banka ödemesinden sonradan “fark kesintisi” düşülemez. Banka limit matrahı, sözleşme neti ve yalnızca kayıtlı yuvarlama farkı dışında aşamaz.
+- Net ücretli personelde puantajdan oluşan hakediş, sözleşme netinin **üzerine ayrıca eklenir**; maaşa dahil yemek yardımı hesabında kaybolamaz veya sözleşme tavanına mahsup edilemez. Ödeme kanalı ilgili puantaj parametresinden alınır.
 - Bu kuralları değiştiren her çalışma, önce `docs/BORDRO_HESAPLAMA_KURALLARI.md` dosyasını güncellemek ve liste–detay–kayıt hesaplarının aynı çıktıyı verdiğini doğrulamak zorundadır.

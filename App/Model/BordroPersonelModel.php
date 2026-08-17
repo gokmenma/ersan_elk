@@ -4276,6 +4276,9 @@ class BordroPersonelModel extends Model
         $kesintiDetaylari = [];
         $mealAllowanceDeduction = 0; // USER REQ: Maaşa dahil yemek yardımını ana hakedişten düşmek için
         $primUsuluPuantajHedefToplami = 0.0;
+        // Net ücretli maaşa-dahil personelde puantaj, sözleşme maaşının üstüne
+        // eklenen bağımsız hakediştir.
+        $netMaasPuantajHakedisi = 0.0;
         $includedAllowanceDeduction = 0.0;
         $mealAllowanceDeduction = 0.0;
         $spouseAllowanceDeduction = 0.0;
@@ -4375,6 +4378,9 @@ class BordroPersonelModel extends Model
                     $ekOdemeDetaylari[] = $detay;
                 } else {
                     $netEkOdemeler += $tutar;
+                    if ($isNetMaas && $this->hasMaasaDahilSosyalYardim($kayit)) {
+                        $netMaasPuantajHakedisi += $tutar;
+                    }
                     $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
                     $yontem = ($parametre && isset($parametre->odeme_yontemi)) ? $parametre->odeme_yontemi : $defaultYontem;
                     $rTutar = floatval($odeme->resmi_tutar ?? 0);
@@ -5143,7 +5149,10 @@ class BordroPersonelModel extends Model
             
             // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ayrıca hak edilir.
             // HTÇ'nin ham karşılığı bu değişkende bulunmaz; sözleşme tavanını yükseltmez.
-            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $bankayaTasinabilirEkOdeme + $yuvarlamaFarki;
+            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis)
+                + $bankayaTasinabilirEkOdeme
+                + $netMaasPuantajHakedisi
+                + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
             
             $netMaas = $baseHakedis;
