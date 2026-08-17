@@ -1030,8 +1030,11 @@ class BordroPersonelModel extends Model
             // sözleşme netini aşamaz. RTÇ/HTÇ oluştuğunda yemek yardımı bakiye
             // kadar azaltılır; aksi halde detay ekranında banka limiti sözleşme
             // maaşını aşar.
+            // Prim usulünde sözleşme maaşı sıfır olabilir; bu durumda yemek tavanının
+            // kaynağı puantajdan oluşan dönem hedefidir.
+            $yemekTavanHedefi = $isPrimUsulu ? $primUsuluPuantajHedefToplami : $sozlesmeHakedisi;
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $sozlesmeHakedisi - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
+                $yemekTavanHedefi - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
                 2
             ));
             $yemekHamToplam = min($mealAllowanceDeduction, $yemekIcinKalanSozlesmeLimiti);
@@ -5091,8 +5094,11 @@ class BordroPersonelModel extends Model
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
             $asgariSozlesmePayi = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
+            // Prim usulü maaşa dahil personelde tavan, sıfır olan sözleşme maaşı değil
+            // puantajdan oluşan dönem hedefidir.
+            $yemekTavanHedefi = $isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis;
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $targetNetHakedis - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
+                $yemekTavanHedefi - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
                 2
             ));
             $yemekHamToplam = min($hesaplananYemekToplam, $yemekIcinKalanSozlesmeLimiti);
