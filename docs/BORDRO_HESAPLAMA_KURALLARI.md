@@ -80,22 +80,27 @@ Bu modda maas hesaplamasinin tabani asgari net ucrettir, hedef ise personelin so
 ```text
 asgariHakedis = (asgari_ucret_net / 30) * maasHesapGunu
 hedefHakedis = (hedef_net_maas_tutari / 30) * maasHesapGunu
-yardimFarki = max(0, hedefHakedis - asgariHakedis)
+yemekUstLimiti = max(0, hedefHakedis - asgariHakedis - esYardimi - bankaUzerindenOdenecekRtcHtc)
 ```
 
-Yemek yardimi bu farktan hesaplanir. Sistem gunluk tutari yukari yuvarlar, sonra gunluk limitle sinirlar.
+Yemek yardimi bu üst limitten hesaplanir. RTÇ/HTÇ gibi banka üzerinden ödenecek kalemler sözleşme netinin bileşenidir; yemek yardımını veya toplam hakedişi sözleşme netinin üzerine çıkaramaz.
+
+Sistem günlük tutarı yukarı yuvarlar, sonra günlük limitle sınırlar. Bu sıra değiştirilemez:
 
 ```text
 fiiliGunSayisi = puantajdaki X gunleri
 fiiliGunSayisi yoksa maasHesapGunu kullanilir
 
-yemekGunlukHam = yardimFarki / fiiliGunSayisi
+yemekGunlukHam = yemekUstLimiti / fiiliGunSayisi
 yemekGunluk = ceil(yemekGunlukHam)
 yemekGunluk = min(yemekGunluk, yemekYardimiGunlukLimit)
 yemekYardimiToplam = yemekGunluk * fiiliGunSayisi
+yuvarlamaFarki = yemekYardimiToplam - yemekUstLimiti
 ```
 
 Kural: Yemek yardiminin gunluk tutari, personel veya parametre uzerinden bulunan gunluk yemek limitini asamaz.
+
+Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşamaz. Yemek yardımı yüksek hesaplanıp sonradan banka ödemesinden fark kesintisi düşülemez.
 
 Gunluk limit secimi:
 

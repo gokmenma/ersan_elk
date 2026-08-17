@@ -486,10 +486,13 @@ class BordroPersonelModel extends Model
         
         $targetHakedis = round($sozlesmeHakedisi + $puantajToplami + max(0, $bankayaTasinabilirEkOdeme), 2);
 
-        // USER REQ: Maksimum banka ödemesi için kesintiler düşülmeden önceki matrahı baz al (Kesinti mahsup etme)
-        // Böylece yemek yardımı tavanı artar ve banka ödemesi maksimize edilir.
-        // HTÇ net fazla (brüt/30 - asgari/30) × gün — yemek havuzuna dahil, kapasiteyi aşarsa elden gider
-        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'] + $htcNetFazla, 2));
+        // Maaşa dahil yardım, sözleşme netini tamamlayan bakiye olmalıdır. Puantajdan gelen
+        // gelir için ayrıca kesinti varsa, önce bu kesinti hedef hakedişten mahsup edilir.
+        // Aksi halde yemek yardımı günlük tavana kadar şişer ve aynı fark banka ödemesinden
+        // sonradan kesinti gibi düşülür.
+        // HTÇ net fazla (brüt/30 - asgari/30) × gün yemek havuzuna dahildir.
+        $kesintiSonrasiHedefHakedis = max(0, round($targetHakedis - $toplamKesinti, 2));
+        $yemekHesapMatrahi = max(0, round($kesintiSonrasiHedefHakedis - $sonuc['asgari_hakedis'] + $htcNetFazla, 2));
         
         $calcFiiliGun = max(1, $fiiliGunSayisi);
         $sonuc['yemek_gunluk_ham'] = $yemekHesapMatrahi / $calcFiiliGun;
@@ -504,11 +507,12 @@ class BordroPersonelModel extends Model
             $gunlukYemekLimit = $this->getYemekYardimiGunlukLimitForDate($kayit, $parametreTarihi);
             $yemekKapasitesi = $gunlukYemekLimit > 0 ? ($gunlukYemekLimit * $calcFiiliGun) : $yemekHesapMatrahi;
             $yemekHamTutari = min($yemekHesapMatrahi, $yemekKapasitesi);
-            // Günlük bazlı yuvarlama: ham günlüğü yukarı yuvarla, günle çarp
+            // Maaşa dahil yemek yardımı günlük hesaplanır: kalan tutar fiilî güne bölünür,
+            // günlük değer yukarı yuvarlanır ve tekrar fiilî günle çarpılır.
             $gunlukHam = $yemekHamTutari / max(1, $calcFiiliGun);
             $gunlukYuvarlanan = ceil($gunlukHam);
             $yemekTutari = $gunlukYuvarlanan * $calcFiiliGun;
-            $sonuc['yemek_toplam'] = round($yemekTutari, 2);
+            $sonuc['yemek_toplam'] = $yemekTutari;
             $sonuc['yemek_gunluk'] = $gunlukYuvarlanan;
             $sonuc['yuvarlama_farki'] = max(0, round($yemekTutari - $yemekHamTutari, 2));
             $kalanFark = max(0, round($yemekHesapMatrahi - $yemekTutari, 2));
@@ -1022,8 +1026,20 @@ class BordroPersonelModel extends Model
             
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
-            $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);
-            $yuvarlamaFarki = floatval($dahilDagilim['yuvarlama_farki'] ?? 0);
+            // Maaşa dahil yardımlar ve banka üzerinden ödenen RTÇ/HTÇ toplamı,
+            // sözleşme netini aşamaz. RTÇ/HTÇ oluştuğunda yemek yardımı bakiye
+            // kadar azaltılır; aksi halde detay ekranında banka limiti sözleşme
+            // maaşını aşar.
+            $yemekIcinKalanSozlesmeLimiti = max(0, round(
+                $sozlesmeHakedisi - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
+                2
+            ));
+            $yemekHamToplam = min($mealAllowanceDeduction, $yemekIcinKalanSozlesmeLimiti);
+            $yemekFiiliGun = max(1, intval($dahilDagilim['fiili_gun'] ?? $fiiliGunSayisi));
+            $yemekGunlukYuvarlanan = ceil($yemekHamToplam / $yemekFiiliGun);
+            $mealAllowanceDeduction = $yemekGunlukYuvarlanan * $yemekFiiliGun;
+            $includedAllowanceDeduction = round($mealAllowanceDeduction + $spouseAllowanceDeduction, 2);
+            $yuvarlamaFarki = max(0, round($mealAllowanceDeduction - $yemekHamToplam, 2));
 
             // Yemek yardımının günlük vergi istisna limitini aşan kısmı ücret sayılır ve gelir vergisine tabidir.
             // Marjinal dilim payı, RTÇ/HTÇ'den sonraki sırada (varsa onun matrah katkısı da dahil edilerek) izole edilir.
@@ -1048,7 +1064,9 @@ class BordroPersonelModel extends Model
             if ($isPrimUsulu) {
                 $toplamAlacagi = max($primUsuluPuantajHedefToplami + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
             } else {
-                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
+                // Maaşa dahil net personelde RTÇ/HTÇ ve diğer banka kalemleri,
+                // sözleşme netinin bileşenidir; üstüne ek bir hakediş değildir.
+                $toplamAlacagi = $sozlesmeHakedisi + $yuvarlamaFarki;
             }
         } else {
             $sozlesmeHakedisi = $karisikMaasOzeti !== null
@@ -5072,8 +5090,18 @@ class BordroPersonelModel extends Model
             );
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
-            $toplamDahilYardim = floatval($dahilDagilim['toplam'] ?? 0);
-            $yuvarlamaFarki = floatval($dahilDagilim['yuvarlama_farki'] ?? 0);
+            $asgariSozlesmePayi = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
+            $yemekIcinKalanSozlesmeLimiti = max(0, round(
+                $targetNetHakedis - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
+                2
+            ));
+            $yemekHamToplam = min($hesaplananYemekToplam, $yemekIcinKalanSozlesmeLimiti);
+            $yemekFiiliGun = max(1, intval($dahilDagilim['fiili_gun'] ?? $fiiliCalismaGunu));
+            $yemekGunlukYuvarlanan = ceil($yemekHamToplam / $yemekFiiliGun);
+            $hesaplananYemekToplam = $yemekGunlukYuvarlanan * $yemekFiiliGun;
+            $dahilDagilim['yemek_gunluk'] = $yemekGunlukYuvarlanan;
+            $toplamDahilYardim = round($hesaplananYemekToplam + $hesaplananEsToplam, 2);
+            $yuvarlamaFarki = max(0, round($hesaplananYemekToplam - $yemekHamToplam, 2));
 
             // Yemek yardımının günlük vergi istisna limitini aşan kısmı ücret sayılır ve gelir vergisine tabidir.
             // (Maaşa Dahil personelde yemek havuzu standart ek_ödeme kısmi-muaf akışından geçmediği için ayrıca
@@ -5099,11 +5127,9 @@ class BordroPersonelModel extends Model
             $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
             
-            // USER REQ: Net Maaş (Hakediş) = Asgari + Dahil Yardımlar + Diğer Ek Ödemeler
-            // HTÇ'nin ham/brüt karşılığı (htcEkOdeme) yemek havuzunu şişirmesin diye $bankayaTasinabilirEkOdeme'den
-            // hariç tutulmuştu (yukarıdaki hesaplaMaasaDahilYardimDagilimi çağrısı); kişi bu tutarı yine de hak
-            // ettiğinden toplam hakedişe burada eklenir (hesaplaOrtakGosterimDegerleri ile aynı mantık).
-            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $bankayaTasinabilirEkOdeme + $htcEkOdeme + $yuvarlamaFarki;
+            // Maaşa dahil net personelde RTÇ/HTÇ ve banka kalemleri sözleşme netinin
+            // bileşenidir; ayrıca hakedişe eklenmeleri sözleşme tavanını aşırır.
+            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
             
             $netMaas = $baseHakedis;
