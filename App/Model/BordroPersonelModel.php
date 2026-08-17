@@ -709,6 +709,10 @@ class BordroPersonelModel extends Model
         $toplamKesinti = floatval($p->guncel_toplam_kesinti ?? $p->kesinti_tutar ?? 0);
         
         $eldenKesintisiToplam = 0.0;
+        // Yalnızca puantaj gelirini mahsup etmek için oluşturulan özel kesinti,
+        // maaşa dahil yemek tavanını azaltır. Malzeme zararı, ceza vb. normal
+        // personel kesintileri yemek yardımını sıfırlamamalıdır.
+        $puantajMahsupKesintisi = 0.0;
         $kesintiSatirlari = $this->getDonemKesintileriListe($p->personel_id, $p->donem_id);
         if (!empty($kesintiSatirlari)) {
             if ($this->parametrelerCache === null) {
@@ -723,6 +727,9 @@ class BordroPersonelModel extends Model
                 $hTipi = $kesintiSatiri->hesaplama_tipi ?? 'sabit';
                 if (($param && $param->hesaplama_tipi === 'elden_tutardan') || $hTipi === 'elden_tutardan') {
                     $eldenKesintisiToplam += floatval($kesintiSatiri->tutar);
+                }
+                if (mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8') === 'diger_kesinti') {
+                    $puantajMahsupKesintisi += floatval($kesintiSatiri->tutar);
                 }
             }
         }
@@ -1016,7 +1023,7 @@ class BordroPersonelModel extends Model
 
             $hariciEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
-            $totalDeductionsForDahil = $kesintiHaricIcra + $sodexoLocal + floatval($p->diger_odeme ?? 0);
+            $totalDeductionsForDahil = $puantajMahsupKesintisi + $sodexoLocal + floatval($p->diger_odeme ?? 0);
             // HTÇ sözleşme dışı ek ödeme — yemek matrahını etkilememeli
             $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretBrut / 30, 4) * $htcGun : 0.0;
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
@@ -1067,9 +1074,10 @@ class BordroPersonelModel extends Model
             if ($isPrimUsulu) {
                 $toplamAlacagi = max($primUsuluPuantajHedefToplami + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
             } else {
-                // Maaşa dahil net personelde RTÇ/HTÇ ve diğer banka kalemleri,
-                // sözleşme netinin bileşenidir; üstüne ek bir hakediş değildir.
-                $toplamAlacagi = $sozlesmeHakedisi + $yuvarlamaFarki;
+                // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) sözleşme
+                // hakedişinin üstüne eklenir. HTÇ'nin ham karşılığı bu tutardan zaten
+                // ayrıştırıldığı için sözleşme tavanını ayrıca yükseltmez.
+                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdemeForDahil + $yuvarlamaFarki;
             }
         } else {
             $sozlesmeHakedisi = $karisikMaasOzeti !== null
@@ -5133,9 +5141,9 @@ class BordroPersonelModel extends Model
             $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
             
-            // Maaşa dahil net personelde RTÇ/HTÇ ve banka kalemleri sözleşme netinin
-            // bileşenidir; ayrıca hakedişe eklenmeleri sözleşme tavanını aşırır.
-            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $yuvarlamaFarki;
+            // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ayrıca hak edilir.
+            // HTÇ'nin ham karşılığı bu değişkende bulunmaz; sözleşme tavanını yükseltmez.
+            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $bankayaTasinabilirEkOdeme + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
             
             $netMaas = $baseHakedis;
