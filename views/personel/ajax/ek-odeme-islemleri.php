@@ -49,6 +49,7 @@ try {
                 'tarih' => Date::dttoeng($_POST['tarih'] ?? date('d.m.Y')),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
+                'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1,
                 'kayit_yapan' => $_SESSION['id'] ?? null,
                 'aktif' => 1
             ];
@@ -94,6 +95,7 @@ try {
                 'tarih' => Date::dttoeng($_POST['tarih'] ?? date('d.m.Y')),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
+                'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1,
                 'kayit_yapan' => $_SESSION['id'] ?? null
             ];
 

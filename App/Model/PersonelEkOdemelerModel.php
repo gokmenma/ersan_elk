@@ -186,11 +186,12 @@ class PersonelEkOdemelerModel extends Model
                 aciklama = ?,
                 hesaplama_tipi = ?,
                 tur = ?,
+                banka_matrahina_ekle = ?,
                 updated_at = NOW() 
                 WHERE id = ?";
 
             $updateStmt = $this->db->prepare($updateSql);
-            $updateStmt->execute([$tutar, $surekliOdeme->aciklama . ' (Otomatik)', $surekliOdeme->hesaplama_tipi, $surekliOdeme->tur, $mevcut->id]);
+            $updateStmt->execute([$tutar, $surekliOdeme->aciklama . ' (Otomatik)', $surekliOdeme->hesaplama_tipi, $surekliOdeme->tur, intval($surekliOdeme->banka_matrahina_ekle ?? 1), $mevcut->id]);
 
             return true;
         }
@@ -206,6 +207,7 @@ class PersonelEkOdemelerModel extends Model
             'aciklama' => $surekliOdeme->aciklama . ' (Otomatik)',
             'parametre_id' => $surekliOdeme->parametre_id,
             'tarih' => $surekliOdeme->tarih,
+            'banka_matrahina_ekle' => intval($surekliOdeme->banka_matrahina_ekle ?? 1),
             'ana_odeme_id' => $surekliOdeme->id,
             'durum' => 'onaylandi', // Ana kayıt referansı
             'aktif' => 1

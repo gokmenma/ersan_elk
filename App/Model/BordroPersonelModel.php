@@ -824,7 +824,7 @@ class BordroPersonelModel extends Model
         if ($this->ekOdemelerCache !== null) {
             $ekOdemelerList = $this->ekOdemelerCache[$p->personel_id] ?? [];
         } else {
-            $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar, resmi_tutar, aciklama FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL");
+            $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar, resmi_tutar, aciklama, banka_matrahina_ekle FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL");
             $ekOdemelerQuery->execute([$p->personel_id, $p->donem_id]);
             $ekOdemelerList = $ekOdemelerQuery->fetchAll(PDO::FETCH_OBJ);
         }
@@ -867,27 +867,33 @@ class BordroPersonelModel extends Model
             $resmiDahilEkToplam += floatval($eo->resmi_tutar ?? 0);
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
             if ($param) {
-                $yontem = $param->odeme_yontemi ?? ($isPrimUsulu ? 'elden' : 'banka');
+                if (isset($eo->banka_matrahina_ekle)) {
+                    $yontem = intval($eo->banka_matrahina_ekle) === 1 ? 'banka' : 'elden';
+                } else {
+                    $yontem = $param->odeme_yontemi ?? ($isPrimUsulu ? 'elden' : 'banka');
+                }
                 // Net maaş + puantaj, resmî banka tavanına taşınmaz.
                 if ($isNet && $isPuantajOdeme) {
                     $yontem = 'elden';
                 }
                 if ($yontem === 'banka') {
-                    $yontemliBankaEki += $tutar;
-                    if ($tutar > 0) {
-                        $label = $param->etiket ?? $eo->tur;
-                        if ($eo->aciklama && strpos($eo->aciklama, '[Nöbet]') === 0) {
-                            if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
-                                $parts = explode('x', $matches[1]);
-                                if (count($parts) >= 2) {
-                                    $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ')';
+                    if (!$isInclusive) {
+                        $yontemliBankaEki += $tutar;
+                        if ($tutar > 0) {
+                            $label = $param->etiket ?? $eo->tur;
+                            if ($eo->aciklama && strpos($eo->aciklama, '[Nöbet]') === 0) {
+                                if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
+                                    $parts = explode('x', $matches[1]);
+                                    if (count($parts) >= 2) {
+                                        $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ')';
+                                    }
                                 }
                             }
+                            $bankaEkOdemeDetaylari[] = [
+                                'etiket' => $label,
+                                'tutar' => $tutar
+                            ];
                         }
-                        $bankaEkOdemeDetaylari[] = [
-                            'etiket' => $label,
-                            'tutar' => $tutar
-                        ];
                     }
                 } else {
                     $rTutar = floatval($eo->resmi_tutar ?? 0);
@@ -1079,11 +1085,12 @@ class BordroPersonelModel extends Model
             // maaşını aşar.
             // Prim usulünde sözleşme maaşı sıfır olabilir; bu durumda yemek tavanının
             // kaynağı puantajdan oluşan dönem hedefidir.
+            // Banka matrahına eklenen ek ödemeler ve puantaj, öncelikle yemek tavanını doldurur.
             $yemekTavanHedefi = $isPrimUsulu
                 ? $primUsuluPuantajHedefToplami
-                : round($sozlesmeHakedisi + $netMaasPuantajHedefToplami, 2);
+                : round($sozlesmeHakedisi + $netMaasPuantajHedefToplami + max(0, $bankaKarsilanabilirEkOdemeGosterim ?? 0), 2);
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
+                $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $spouseAllowanceDeduction - $rtcHtcBankaNetiGosterim,
                 2
             ));
             $yemekHamToplam = min($mealAllowanceDeduction, $yemekIcinKalanSozlesmeLimiti);
@@ -1191,7 +1198,7 @@ class BordroPersonelModel extends Model
                     ];
                 }
             }
-            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + $yontemliBankaEki);
+            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + floatval($rtcHtcBankaNetiGosterim ?? 0));
             $eldenBrut = max(0.0, $toplamAlacagiNet - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
             $kesintiSatirlari = $this->getDonemKesintileriListe($p->personel_id, $p->donem_id);
@@ -1299,7 +1306,7 @@ class BordroPersonelModel extends Model
 
         if ($this->ekOdemelerCache === null) {
             $this->ekOdemelerCache = [];
-            $eoQuery = $this->db->prepare("SELECT personel_id, tur, tutar, resmi_tutar, aciklama FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL");
+            $eoQuery = $this->db->prepare("SELECT personel_id, tur, tutar, resmi_tutar, aciklama, banka_matrahina_ekle FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL");
             $eoQuery->execute([$donem_id]);
             $eoRows = $eoQuery->fetchAll(PDO::FETCH_OBJ);
             foreach ($eoRows as $row) $this->ekOdemelerCache[$row->personel_id][] = $row;
@@ -4459,7 +4466,8 @@ class BordroPersonelModel extends Model
                 'id' => $odeme->id ?? 0,
                 'kod' => $odeme->tur,
                 'tutar' => $tutar,
-                'aciklama' => $odeme->aciklama ?? null
+                'aciklama' => $odeme->aciklama ?? null,
+                'banka_matrahina_ekle' => $odeme->banka_matrahina_ekle ?? 1
             ];
 
             if ($odeme->tur === 'mesai') {
@@ -4775,9 +4783,13 @@ class BordroPersonelModel extends Model
             // dağılımda direkt bu tutar baz alınır.
             $ekOdemeTutari = isset($toplamTutar) ? $toplamTutar : $tutar;
 
-            // USER REQ: Prim usulü personelde ek ödemeler varsayılan olarak Elden (Cash) kabul edilmelidir.
-            $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
-            $yontem = $parametre->odeme_yontemi ?? $defaultYontem;
+            // Ek ödemenin banka matrahına eklenip eklenmeyeceği kullanıcı seçimine göre belirlenir
+            if (isset($odeme->banka_matrahina_ekle)) {
+                $yontem = intval($odeme->banka_matrahina_ekle) === 1 ? 'banka' : 'elden';
+            } else {
+                $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
+                $yontem = $parametre->odeme_yontemi ?? $defaultYontem;
+            }
             $rTutar = floatval($odeme->resmi_tutar ?? 0);
             $rNet = 0.0;
             if ($rTutar > 0) {
@@ -5227,7 +5239,8 @@ class BordroPersonelModel extends Model
                 $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
                 $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
                 $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
-                if (!$isPuantajEk && !$isDahilYardimEk) {
+                $isBankaMatrahi = !isset($ek['banka_matrahina_ekle']) || intval($ek['banka_matrahina_ekle']) === 1;
+                if (!$isPuantajEk && !$isDahilYardimEk && $isBankaMatrahi) {
                     $bankayaTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
                 }
             }
@@ -5258,12 +5271,12 @@ class BordroPersonelModel extends Model
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
             $asgariSozlesmePayi = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
-            // Prim usulü veya net maaşlı personelde yemek tavanı hedefi (puantaj yemek limitine absorbe edilir)
+            // Prim usulü veya net maaşlı personelde yemek tavanı hedefi (puantaj ve banka ek ödemeleri yemek limitine absorbe edilir)
             $yemekTavanHedefi = $isPrimUsuluDahilYardim
                 ? $primUsuluPuantajHedefToplami
-                : round($targetNetHakedis + $netMaasPuantajHakedisi, 2);
+                : round($targetNetHakedis + $netMaasPuantajHakedisi + max(0, $bankayaTasinabilirEkOdeme), 2);
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
+                $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($rtcHtcBankaNetiHesap ?? 0),
                 2
             ));
             $yemekHamToplam = min($hesaplananYemekToplam, $yemekIcinKalanSozlesmeLimiti);
@@ -5332,7 +5345,7 @@ class BordroPersonelModel extends Model
                     $yontemliOdemeler['banka'] += $puantajBankaKalaniHesap;
                 }
             }
-            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($yontemliOdemeler['banka'] ?? 0));
+            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0));
             $eldenBrut = max(0.0, $netMaasIcinDagitim - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
             foreach ($kesintiDetaylari as $kd) {

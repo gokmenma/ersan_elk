@@ -69,6 +69,7 @@ $(document).ready(function () {
     $("#param_info_bar").addClass("d-none").hide();
     $("#ek_tekrar_tek_sefer").prop("checked", true);
     $("#ek_hesaplama_sabit").prop("checked", true);
+    $("#ek_banka_matrah_evet").prop("checked", true);
     updateEkTekrarTipiUI();
     updateEkHesaplamaTipiUI();
 
@@ -213,6 +214,13 @@ $(document).ready(function () {
           // Açıklama
           $("#formPersonelEkOdemeEkle input[name='aciklama']").val(response.aciklama);
           
+          // Banka Matrahı Seçeneği
+          if (response.banka_matrahina_ekle !== undefined && parseInt(response.banka_matrahina_ekle) === 0) {
+            $("#ek_banka_matrah_hayir").prop("checked", true);
+          } else {
+            $("#ek_banka_matrah_evet").prop("checked", true);
+          }
+
           // Modalı göster
           $("#modalPersonelEkOdemeEkle").modal("show");
         } else {
@@ -408,6 +416,7 @@ $(document).ready(function () {
           : 0,
       tarih: $("#ek_odeme_tarih").val(),
       aciklama: $("#formPersonelEkOdemeEkle input[name='aciklama']").val(),
+      banka_matrahina_ekle: $('input[name="banka_matrahina_ekle"]:checked').val() !== undefined ? $('input[name="banka_matrahina_ekle"]:checked').val() : 1,
     };
 
     // Update ise ID ekle

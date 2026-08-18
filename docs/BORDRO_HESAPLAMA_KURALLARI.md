@@ -74,16 +74,12 @@ netMaas = brutMaas + toplamEkOdeme - (toplamKesinti - icraKesintisi)
 `personel.puantaj_hakedis_dahil = 1` ise puantaj/sayac/kacak kontrol calismalari sozlesme netinin
 uzerine eklenir ve **tamami resmi kanaldan bildirilir**:
 
-```text
-toplamHakedis = sozlesmeHakedisi + puantajHakedisi (+ HTÇ + diger ek odemeler)
-```
-
-Net maasli ve maasa dahil yemek yardimi alan personelde puantaj/sayac kazanclari:
-
-1. Toplam hedef hakedise eklenir (`hedefHakedis = sozlesmeHakedisi + puantajToplami`).
-2. Yemek havuzu bu toplam hedefe gore genisletilir; gunluk yemek limiti yetiyorsa puantaj
-   kazanci yemek yardimina absorbe edilir ve bankadan odenir.
-3. Yemek limitini asan bakiye elden degil, ayri bir resmi banka kalemi olarak bildirilir.
+### Puantaj ve Ek Ödeme Kazançlarının Maaşa Dahil Yemek Yardımı Entegrasyonu
+Net maaşlı ve maaşa dahil yemek yardımı alan personelde üretilen puantaj kazançları ve "Banka Matrahına Ekle" seçilen ek ödemeler:
+1. Personelin toplam hedef hakedişine eklenir (`hedefHakedis = sozlesmeHakedisi + puantajToplami + bankaEkOdemeleri`).
+2. Yemek havuzu bu toplam hedef hakedişe göre genişletilir ve **öncelikle personelin günlük yemek tavanını (ör. 300 TL / gün) doldurur**.
+3. Günlük yemek tavanına kadar olan kısım yemek yardımı olarak **bankadan ödenir**.
+4. Yemek tavanını aşan bakiye tutar ise **elden ödeme** olarak personele yansıtılır.
 
 Muhasebelestirme sirasi sabittir — once yemek, kalan puantaj kalemi olarak:
 
