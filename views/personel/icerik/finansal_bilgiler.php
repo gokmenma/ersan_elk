@@ -362,10 +362,23 @@ use App\Helper\Helper;
                                         </td>
                                         <td><span class="badge bg-soft-primary text-primary fs-6 px-2 py-1"><?= Helper::formattedMoney($ou->ucret ?? 0) ?></span></td>
                                         <td><?= floatval($ou->aracli_ucret ?? 0) > 0 ? '<span class="badge bg-soft-info text-info fs-6 px-2 py-1">' . Helper::formattedMoney($ou->aracli_ucret) . '</span>' : '-' ?></td>
-                                        <td><?= $ou->gecerlilik_baslangic ? date('d.m.Y', strtotime($ou->gecerlilik_baslangic)) : '<span class="text-muted">-</span>' ?></td>
-                                        <td><?= $ou->gecerlilik_bitis ? date('d.m.Y', strtotime($ou->gecerlilik_bitis)) : '<span class="badge bg-soft-success text-success">Süresiz</span>' ?></td>
+                                        <td><?= (!empty($ou->gecerlilik_baslangic) && $ou->gecerlilik_baslangic !== '0000-00-00') ? date('d.m.Y', strtotime($ou->gecerlilik_baslangic)) : '<span class="text-muted">-</span>' ?></td>
+                                        <td><?= (!empty($ou->gecerlilik_bitis) && $ou->gecerlilik_bitis !== '0000-00-00') ? date('d.m.Y', strtotime($ou->gecerlilik_bitis)) : '<span class="badge bg-soft-success text-success">Süresiz</span>' ?></td>
                                         <td>
-                                            <?= intval($ou->aktif ?? 1) === 1 ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>' ?>
+                                            <?php
+                                            $bugun = date('Y-m-d');
+                                            $ouBitis = $ou->gecerlilik_bitis;
+                                            $isAktif = intval($ou->aktif ?? 1) === 1;
+                                            $bitisBitti = (!empty($ouBitis) && $ouBitis !== '0000-00-00' && $ouBitis < $bugun);
+                                            
+                                            if (!$isAktif) {
+                                                echo '<span class="badge bg-secondary">Pasif</span>';
+                                            } elseif ($bitisBitti) {
+                                                echo '<span class="badge bg-warning">Süresi Doldu</span>';
+                                            } else {
+                                                echo '<span class="badge bg-success">Aktif</span>';
+                                            }
+                                            ?>
                                         </td>
                                         <td class="text-center text-nowrap">
                                             <button type="button" class="btn btn-sm btn-soft-primary btn-ozel-ucret-duzenle me-1" data-id="<?= $ou->id ?>" title="Düzenle">

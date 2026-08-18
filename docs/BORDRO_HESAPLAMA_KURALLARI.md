@@ -121,9 +121,25 @@ htcResmiNet = (asgari_ucret_net / 30) * htcGun     (bankaya yatan, gross-up edil
 toplamHakedis = sozlesmeHakedisi + hariciEkOdeme + yuvarlamaFarki    (hariciEkOdeme HTÇ'yi icerir)
 ```
 
-Yemek havuzu HTÇ'den etkilenmez: `hesaplaMaasaDahilYardimDagilimi()` cagrisina HTÇ'nin ham
-karsiligi ayristirilmis `hariciEkOdemeForDahil` gonderilir. HTÇ'nin resmi neti banka matrahinda,
-resmi neti asan bakiyesi elden odenir.
+HTÇ **banka matrahini da yukseltir**. Iki kanaldan girer:
+
+- Resmi neti (`asgari_ucret_net / 30 * htcGun`) dogrudan banka kalemi olarak `yontemliBankaEki`'ne,
+- Resmi neti asan fazlasi (`htcNetFazla`) yemek havuzuna eklenir ve yine bankadan odenir.
+
+Bunun calisabilmesi icin yemek/banka tavani HTÇ'nin ham tutari kadar buyutulur:
+
+```text
+yemekIcinKalanSozlesmeLimiti = max(0,
+    yemekTavanHedefi + htcHamTutar - asgariHakedis - esYardimi - bankaUzerindenOdenecekRtcHtc)
+```
+
+`+ htcHamTutar` terimi olmazsa HTÇ'nin resmi neti yemek yardimindan dusulur; banka toplami
+degismez ve HTÇ fiilen elden odenmis olur. Bu terim toplam hakedis formulundeki
+`+ htcHamTutar` ile birlikte durur, biri olmadan digeri anlamsizdir.
+
+Ayrica `resmiDahilEkToplam` asgari **net** uzerinden biriktigi icin, ondan dusulen
+`htcResmiTutarDagilim` de asgari **net** olmalidir (brut kullanilirsa RTÇ + HTÇ birlikteyken
+yemek matrahi gun basina ~165 ₺ sapar).
 
 Uyari: Bu davranis `e93a20bd` commit'inde kaybolmus (`+ $htcEkOdeme` ve `$hariciEkOdeme` terimleri
 toplamdan cikarilmisti), sonradan geri alinmistir. Toplam hakedis formullerinden HTÇ terimi
@@ -131,15 +147,17 @@ cikarilmamalidir.
 
 Ornek (sozlesme neti 33.000 ₺, tam ay, HTÇ = 1 gun):
 
-| Kalem | Tutar |
-| --- | --- |
-| Sozlesme hakedisi | 33.000,00 |
-| HTÇ ham (33.000/30 x 1) | +1.100,00 |
-| HTÇ resmi neti (bankada) | 935,85 |
-| Yemek yardimi (935,85 kadar azalir) | 3.990,00 |
-| Banka odemesi | 33.001,35 |
-| Elden odeme | 1.100,00 |
-| **Toplam hakedis** | **34.101,35** |
+| Kalem | HTÇ yok | HTÇ = 1 gun |
+| --- | --- | --- |
+| Sozlesme hakedisi | 33.000,00 | 33.000,00 |
+| HTÇ ham (33.000/30 x 1) | – | +1.100,00 |
+| HTÇ resmi neti (banka kalemi) | – | 935,85 |
+| Yemek yardimi | 4.950,00 | 5.100,00 |
+| **Banka odemesi** | **33.025,50** | **34.111,35** |
+| Elden odeme | 0,00 | 0,00 |
+| **Toplam hakedis** | **33.025,50** | **34.111,35** |
+
+HTÇ'nin tamami bankadan odenir; yemek yardimi azalmaz, aksine `htcNetFazla` kadar artar.
 
 ### RTÇ/HTÇ Taban Yukseltme Kurali
 

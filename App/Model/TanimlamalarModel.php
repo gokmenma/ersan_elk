@@ -357,18 +357,25 @@ class TanimlamalarModel extends Model
         // 1. Öncelik: Personele özel tanımlanmış iş türü birim fiyatı var mı?
         if ($personelId > 0) {
             $persSql = $this->db->prepare("
-                SELECT ucret, aracli_ucret
-                FROM personel_is_turu_ucretleri
-                WHERE personel_id = ?
-                AND is_turu_id = ?
-                AND aktif = 1
-                AND silinme_tarihi IS NULL
-                AND (gecerlilik_baslangic IS NULL OR gecerlilik_baslangic <= ?)
-                AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
-                ORDER BY (gecerlilik_baslangic IS NOT NULL) DESC, gecerlilik_baslangic DESC, id DESC
+                SELECT piu.ucret, piu.aracli_ucret
+                FROM personel_is_turu_ucretleri piu
+                WHERE piu.personel_id = ?
+                AND (
+                    piu.is_turu_id = ? 
+                    OR piu.is_turu_id IN (
+                        SELECT t2.id FROM tanimlamalar t2 
+                        WHERE t2.is_emri_sonucu = (SELECT t1.is_emri_sonucu FROM tanimlamalar t1 WHERE t1.id = ?)
+                        AND t2.silinme_tarihi IS NULL
+                    )
+                )
+                AND piu.aktif = 1
+                AND piu.silinme_tarihi IS NULL
+                AND (piu.gecerlilik_baslangic IS NULL OR piu.gecerlilik_baslangic = '' OR piu.gecerlilik_baslangic = '0000-00-00' OR piu.gecerlilik_baslangic <= ?)
+                AND (piu.gecerlilik_bitis IS NULL OR piu.gecerlilik_bitis = '' OR piu.gecerlilik_bitis = '0000-00-00' OR piu.gecerlilik_bitis >= ?)
+                ORDER BY (piu.gecerlilik_baslangic IS NOT NULL AND piu.gecerlilik_baslangic != '0000-00-00') DESC, piu.gecerlilik_baslangic DESC, piu.id DESC
                 LIMIT 1
             ");
-            $persSql->execute([$personelId, $isTuruId, $tarih, $tarih]);
+            $persSql->execute([$personelId, $isTuruId, $isTuruId, $tarih, $tarih]);
             $persKayit = $persSql->fetch(PDO::FETCH_OBJ);
             if ($persKayit) {
                 $normalUcret = floatval(Helper::formattedMoneyToNumber($persKayit->ucret ?? 0));

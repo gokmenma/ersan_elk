@@ -31,7 +31,7 @@ use App\Helper\Helper;
                                     }
                                     $isTuruOptions[$it->id] = $etiket;
                                 }
-                                echo Form::FormSelect2("is_turu_id", $isTuruOptions, "", "İş Türü", "tag", "form-control select2", ["id" => "modal_is_turu_id", "required" => "required"]);
+                                echo Form::FormSelect2("is_turu_id", $isTuruOptions, "", "İş Türü", "tag", "key", "", "form-select select2", true, "width:100%", "", "modal_is_turu_id");
                                 ?>
                             </div>
                             <div class="col-md-6">
@@ -47,7 +47,7 @@ use App\Helper\Helper;
                                 <?php echo Form::FormFloatInput("text", "gecerlilik_bitis", "", "Geçerlilik Bitiş (Opsiyonel)", "Bitiş Tarihi", "calendar", "form-control flatpickr", ["id" => "modal_gecerlilik_bitis"]); ?>
                             </div>
                             <div class="col-12">
-                                <?php echo Form::FormSelect2("aktif", ["1" => "Aktif", "0" => "Pasif"], "1", "Durum", "check-circle", "form-control select2", ["id" => "modal_aktif"]); ?>
+                                <?php echo Form::FormSelect2("aktif", ["1" => "Aktif", "0" => "Pasif"], "1", "Durum", "check-circle", "key", "", "form-select select2", false, "width:100%", "", "modal_aktif"); ?>
                             </div>
                         </div>
                     </div>

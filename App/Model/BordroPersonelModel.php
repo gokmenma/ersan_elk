@@ -946,7 +946,6 @@ class BordroPersonelModel extends Model
         if ($this->cachedParametreModel === null) {
             $this->cachedParametreModel = new \App\Model\BordroParametreModel();
         }
-        $asgariUcretBrut = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_brut', $donemBaslangic) ?? 33030.00);
         if ($rtcGun > 0 || $htcGun > 0) {
             $gunlukAsgari = round($asgariUcretNet / 30, 4);
             $resmiDahilEkToplam += $gunlukAsgari * ($rtcGun + $htcGun);
@@ -1059,7 +1058,7 @@ class BordroPersonelModel extends Model
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $totalDeductionsForDahil = $puantajMahsupKesintisi + $sodexoLocal + floatval($p->diger_odeme ?? 0);
             // HTÇ sözleşme dışı ek ödeme — yemek matrahını etkilememeli
-            $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretBrut / 30, 4) * $htcGun : 0.0;
+            $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretNet / 30, 4) * $htcGun : 0.0;
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
             $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
             $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim);
@@ -1081,7 +1080,7 @@ class BordroPersonelModel extends Model
                 ? $primUsuluPuantajHedefToplami
                 : $sozlesmeHakedisi;
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
+                $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
                 2
             ));
             $yemekHamToplam = min($mealAllowanceDeduction, $yemekIcinKalanSozlesmeLimiti);
@@ -5113,7 +5112,7 @@ class BordroPersonelModel extends Model
                 }
 
                 // HTÇ resmi yemek matrahını etkilememeli — yalnızca RTÇ yemek kapasitesini azaltır
-                $htcResmiTutarHesapDagilim = $htcGunHesap > 0 ? round(($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4) * $htcGunHesap : 0.0;
+                $htcResmiTutarHesapDagilim = $htcGunHesap > 0 ? round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30, 4) * $htcGunHesap : 0.0;
                 $resmiDahilForDagilimHesap = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim);
                 $dahilDagilimPreIcra = $this->hesaplaMaasaDahilYardimDagilimi(
                     $kayit,
@@ -5204,7 +5203,7 @@ class BordroPersonelModel extends Model
                 $sozlesmeHakedisiCalc = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisiCalc, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
                 $targetNetHakedis = $this->rtcHtcIleYukseltilmisHakedis($targetNetHakedis, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
             }
-            $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round(($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4) * $htcGunHesap : 0.0;
+            $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30, 4) * $htcGunHesap : 0.0;
             $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
                 $kayit,
@@ -5227,7 +5226,7 @@ class BordroPersonelModel extends Model
                 ? $primUsuluPuantajHedefToplami
                 : $targetNetHakedis;
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
+                $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
                 2
             ));
             $yemekHamToplam = min($hesaplananYemekToplam, $yemekIcinKalanSozlesmeLimiti);

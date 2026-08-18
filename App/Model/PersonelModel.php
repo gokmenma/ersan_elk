@@ -2322,8 +2322,8 @@ class PersonelModel extends Model
         $isTuruId = intval($data['is_turu_id']);
         $ucret = floatval($data['ucret'] ?? 0);
         $aracliUcret = floatval($data['aracli_ucret'] ?? 0);
-        $baslangic = !empty($data['gecerlilik_baslangic']) ? $data['gecerlilik_baslangic'] : null;
-        $bitis = !empty($data['gecerlilik_bitis']) ? $data['gecerlilik_bitis'] : null;
+        $baslangic = (!empty($data['gecerlilik_baslangic']) && $data['gecerlilik_baslangic'] !== '0000-00-00') ? $data['gecerlilik_baslangic'] : null;
+        $bitis = (!empty($data['gecerlilik_bitis']) && $data['gecerlilik_bitis'] !== '0000-00-00') ? $data['gecerlilik_bitis'] : null;
         $aktif = isset($data['aktif']) ? intval($data['aktif']) : 1;
 
         $sql = $this->db->prepare("
@@ -2343,8 +2343,8 @@ class PersonelModel extends Model
         $isTuruId = intval($data['is_turu_id']);
         $ucret = floatval($data['ucret'] ?? 0);
         $aracliUcret = floatval($data['aracli_ucret'] ?? 0);
-        $baslangic = !empty($data['gecerlilik_baslangic']) ? $data['gecerlilik_baslangic'] : null;
-        $bitis = !empty($data['gecerlilik_bitis']) ? $data['gecerlilik_bitis'] : null;
+        $baslangic = (!empty($data['gecerlilik_baslangic']) && $data['gecerlilik_baslangic'] !== '0000-00-00') ? $data['gecerlilik_baslangic'] : null;
+        $bitis = (!empty($data['gecerlilik_bitis']) && $data['gecerlilik_bitis'] !== '0000-00-00') ? $data['gecerlilik_bitis'] : null;
         $aktif = isset($data['aktif']) ? intval($data['aktif']) : 1;
 
         $sql = $this->db->prepare("
