@@ -92,6 +92,12 @@ use App\Helper\Helper;
                         <div class="col-md-3 mb-2">
                             <?php echo Form::FormFloatInput("text", "sodexo_kart_no", $personel->sodexo_kart_no ?? "", "Sodexo Kart No", "Sodexo Kart Numarası", "credit-card"); ?>
                         </div>
+                        <div class="col-md-3 mb-2">
+                            <?php echo Form::FormSelect2("puantaj_hakedis_dahil", ["1" => "Evet", "0" => "Hayır"], $personel->puantaj_hakedis_dahil ?? 1, "Puantaj Çalışmaları", "check-circle"); ?>
+                            <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                                <i class="bx bx-info-circle me-1 text-primary"></i>Puantaj çalışmaları resmi alacağa eklenir
+                            </small>
+                        </div>
                     </div>
                 </div>
 
@@ -304,6 +310,87 @@ use App\Helper\Helper;
                     <div class="p-4 text-center text-muted">
                         <i class="bx bx-info-circle fs-2 mb-2 d-block"></i>
                         Yeni personel eklerken önce personeli kaydedin, ardından maaş tipi tanımlaması yapabilirsiniz.
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personele Özel İş Türü Ücretleri Tablosu -->
+    <div class="col-md-12 mt-3">
+        <div class="card border h-100 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <div>
+                    <h5 class="card-title mb-0 text-primary fw-bold"><i class="bx bx-purchase-tag me-2"></i>Personele Özel İş Türü Birim Fiyatları</h5>
+                    <small class="text-muted">Bu personele özel tanımlanan birim fiyatlar, sistemdeki genel iş türü fiyatlarının üzerine yazar.</small>
+                </div>
+                <div>
+                    <?php if ($id > 0): ?>
+                        <button type="button" class="btn btn-sm btn-primary" id="btnOpenOzelUcretModal">
+                            <i class="bx bx-plus me-1"></i> Yeni Özel Fiyat Tanımla
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <?php if ($id > 0): ?>
+                    <div class="table-responsive">
+                        <table id="tblOzelIsTuruUcretleri" class="table table-hover align-middle mb-0 w-100">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>İş Türü</th>
+                                    <th>Özel Birim Ücret</th>
+                                    <th>Özel Araçlı Ücret</th>
+                                    <th>Geçerlilik Başlangıç</th>
+                                    <th>Geçerlilik Bitiş</th>
+                                    <th>Durum</th>
+                                    <th class="text-center">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $ozelUcretler = $PersonelModel->getOzelIsTuruUcretleri($id);
+                                if (!empty($ozelUcretler)):
+                                    foreach ($ozelUcretler as $ou):
+                                ?>
+                                    <tr>
+                                        <td>
+                                            <span class="fw-bold text-dark"><?= htmlspecialchars($ou->is_turu_adi ?? 'Belirtilmemiş') ?></span>
+                                            <?php if (!empty($ou->tur_adi)): ?>
+                                                <br><small class="text-muted"><?= htmlspecialchars($ou->tur_adi) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><span class="badge bg-soft-primary text-primary fs-6 px-2 py-1"><?= Helper::formattedMoney($ou->ucret ?? 0) ?></span></td>
+                                        <td><?= floatval($ou->aracli_ucret ?? 0) > 0 ? '<span class="badge bg-soft-info text-info fs-6 px-2 py-1">' . Helper::formattedMoney($ou->aracli_ucret) . '</span>' : '-' ?></td>
+                                        <td><?= $ou->gecerlilik_baslangic ? date('d.m.Y', strtotime($ou->gecerlilik_baslangic)) : '<span class="text-muted">-</span>' ?></td>
+                                        <td><?= $ou->gecerlilik_bitis ? date('d.m.Y', strtotime($ou->gecerlilik_bitis)) : '<span class="badge bg-soft-success text-success">Süresiz</span>' ?></td>
+                                        <td>
+                                            <?= intval($ou->aktif ?? 1) === 1 ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>' ?>
+                                        </td>
+                                        <td class="text-center text-nowrap">
+                                            <button type="button" class="btn btn-sm btn-soft-primary btn-ozel-ucret-duzenle me-1" data-id="<?= $ou->id ?>" title="Düzenle">
+                                                <i class="bx bx-edit-alt"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-soft-danger btn-ozel-ucret-sil" data-id="<?= $ou->id ?>" title="Sil">
+                                                <i class="bx bx-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; else: ?>
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted">
+                                            <i class="bx bx-info-circle fs-4 d-block mb-1"></i>
+                                            Bu personele ait özel birim fiyat tanımı bulunmuyor. Sistem genel iş türü fiyatlarını baz almaktadır.
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="p-4 text-center text-muted">
+                        <i class="bx bx-info-circle fs-2 mb-2 d-block"></i>
+                        Personeli kaydettikten sonra özel birim fiyat tanımlaması yapabilirsiniz.
                     </div>
                 <?php endif; ?>
             </div>

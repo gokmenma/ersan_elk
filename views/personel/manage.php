@@ -450,6 +450,7 @@ if ($id > 0) {
                     <?php include_once "icerik/modals/ekip_gecmisi.php"; ?>
                     <?php include_once "icerik/modals/gorev_gecmisi.php"; ?>
                     <?php include_once "icerik/modals/calisma_gecmisi.php"; ?>
+                    <?php include_once "icerik/modals/ozel_is_turu_ucreti.php"; ?>
                     <!-- Dinamik yüklenen tab'lar (izinler, zimmetler vb.) form dışında kalmalı, iç içe form sorunu yaşanmaması için -->
                     <?php if ($id > 0): ?>
                         <div class="tab-pane <?php echo $activeTab === 'izinler' ? 'active show' : ''; ?>" id="izinler"

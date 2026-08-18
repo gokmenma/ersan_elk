@@ -88,7 +88,9 @@ hedefHakedis = (hedef_net_maas_tutari / 30) * maasHesapGunu
 yemekUstLimiti = max(0, hedefHakedis - asgariHakedis - esYardimi - bankaUzerindenOdenecekRtcHtc)
 ```
 
-Yemek yardimi bu üst limitten hesaplanir. RTÇ/HTÇ gibi banka üzerinden ödenecek kalemler sözleşme netinin bileşenidir; yemek yardımını veya toplam hakedişi sözleşme netinin üzerine çıkaramaz (istisna: asagidaki RTÇ/HTÇ taban yukseltme kurali).
+Yemek yardimi bu üst limitten hesaplanir. RTÇ'nin banka üzerinden ödenen resmî neti sözleşme netinin
+bileşenidir; yemek yardımını veya toplam hakedişi sözleşme netinin üzerine çıkaramaz
+(istisna: asagidaki RTÇ/HTÇ taban yukseltme kurali). HTÇ bu kuralin disindadir — bkz. HTÇ Kurali.
 
 Sistem günlük tutarı yukarı yuvarlar, sonra günlük limitle sınırlar. Bu sıra değiştirilemez:
 
@@ -107,6 +109,38 @@ Kural: Yemek yardiminin gunluk tutari, personel veya parametre uzerinden bulunan
 
 Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşamaz. Yemek yardımı yüksek hesaplanıp sonradan banka ödemesinden fark kesintisi düşülemez.
 
+### HTÇ (Hafta Tatili Calismasi) Kurali
+
+HTÇ, personelin kendi gunluk ucretinden hesaplanir ve **sozlesme netinin uzerine eklenir**.
+Bu kural hem maasa dahil hem de maasa dahil olmayan personelde gecerlidir.
+
+```text
+htcHamTutar = (maas_tutari / 30) * htcGun          (personelin kendi gunlugu)
+htcResmiNet = (asgari_ucret_net / 30) * htcGun     (bankaya yatan, gross-up edilen kisim)
+
+toplamHakedis = sozlesmeHakedisi + hariciEkOdeme + yuvarlamaFarki    (hariciEkOdeme HTÇ'yi icerir)
+```
+
+Yemek havuzu HTÇ'den etkilenmez: `hesaplaMaasaDahilYardimDagilimi()` cagrisina HTÇ'nin ham
+karsiligi ayristirilmis `hariciEkOdemeForDahil` gonderilir. HTÇ'nin resmi neti banka matrahinda,
+resmi neti asan bakiyesi elden odenir.
+
+Uyari: Bu davranis `e93a20bd` commit'inde kaybolmus (`+ $htcEkOdeme` ve `$hariciEkOdeme` terimleri
+toplamdan cikarilmisti), sonradan geri alinmistir. Toplam hakedis formullerinden HTÇ terimi
+cikarilmamalidir.
+
+Ornek (sozlesme neti 33.000 ₺, tam ay, HTÇ = 1 gun):
+
+| Kalem | Tutar |
+| --- | --- |
+| Sozlesme hakedisi | 33.000,00 |
+| HTÇ ham (33.000/30 x 1) | +1.100,00 |
+| HTÇ resmi neti (bankada) | 935,85 |
+| Yemek yardimi (935,85 kadar azalir) | 3.990,00 |
+| Banka odemesi | 33.001,35 |
+| Elden odeme | 1.100,00 |
+| **Toplam hakedis** | **34.101,35** |
+
 ### RTÇ/HTÇ Taban Yukseltme Kurali
 
 Az calisilan donemlerde `asgariHakedis + rtcHtcBankaNeti` toplami sozlesme hakedisini asabilir.
@@ -114,9 +148,18 @@ Bu durumda banka matrahi sozlesme netine kirpilir ve RTÇ/HTÇ fiilen odenmemis 
 Net ucretli ve maasa dahil sosyal yardim modundaki personelde sozlesme hakedisi bu tabana yukseltilir:
 
 ```text
-rtcHtcBankaNeti  = rtcNet + htcNet          (gross-up sonrasi bankaya yatan NET)
-sozlesmeHakedisi = max(sozlesmeHakedisi, (asgari_ucret_net / 30) * maasHesapGunu + rtcHtcBankaNeti)
+rtcHtcBankaNeti           = rtcNet + htcNet     (gross-up sonrasi bankaya yatan NET)
+bankaKarsilanabilirEkOdeme = elden zorunlu olmayan ek odemeler (HTÇ ham tutari dahil, puantaj haric)
+
+sozlesmeHakedisi = max(
+    sozlesmeHakedisi,
+    (asgari_ucret_net / 30) * maasHesapGunu + rtcHtcBankaNeti - bankaKarsilanabilirEkOdeme
+)
 ```
+
+`bankaKarsilanabilirEkOdeme` mahsubu zorunludur: HTÇ zaten sozlesme netinin uzerine eklendigi icin
+banka tabanini kendi basina karsilar. Mahsup yapilmazsa ayni gun hem HTÇ olarak hem de taban
+yukseltmesi olarak iki kez odenir. Puantaj hakedisi elden odendigi icin bu mahsuba girmez.
 
 Yukseltme, yemek/es dagilimi ve banka matrahi hesaplanmadan once uygulanir; yukseltilmis deger
 `hesaplaMaasaDahilYardimDagilimi()` cagrisina, `yemekTavanHedefi` degerine ve banka hakedis tavanina
@@ -131,6 +174,13 @@ Kapsam ve sinirlar:
 - Tam ay calisan personelde `asgariHakedis + rtcHtcBankaNeti` sozlesme netinin altinda kaldigi
   icin kural devreye girmez; mevcut sonuclar degismez.
 - RTÇ/HTÇ tutari degismez; kural sadece hakedis tabanini yukseltir.
+- HTÇ tek basinayken kural genelde devreye girmez; HTÇ ham tutari tabani zaten karsilar.
+
+Banka hakedis tavani da ayni mantikla kurulur (net + puantaj hâlinde):
+
+```text
+bankaHakedisTavani = sozlesmeHakedisi + yuvarlamaFarki + bankaKarsilanabilirEkOdeme
+```
 
 Ornek (sozlesme neti 33.000 ₺, maasHesapGunu = 2, RTÇ = 1 gun, puantaj = 430 ₺):
 

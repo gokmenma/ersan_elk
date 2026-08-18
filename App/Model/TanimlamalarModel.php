@@ -344,7 +344,7 @@ class TanimlamalarModel extends Model
      * İş türü ücretini belirtilen tarih için getirir.
      * Öncelik yeni ücret geçmişi tablosudur, kayıt yoksa tanimlamalar tablosuna fallback yapılır.
      */
-    public function getIsTuruUcretiByTarih($isTuruId, $tarih, $isAracli = false, $firmaId = null, $isOkuma = false)
+    public function getIsTuruUcretiByTarih($isTuruId, $tarih, $isAracli = false, $firmaId = null, $isOkuma = false, $personelId = null)
     {
         $isTuruId = intval($isTuruId);
         if ($isTuruId <= 0 || empty($tarih)) {
@@ -352,6 +352,33 @@ class TanimlamalarModel extends Model
         }
 
         $firmaId = intval($firmaId ?: ($_SESSION['firma_id'] ?? 0));
+        $personelId = intval($personelId);
+
+        // 1. Öncelik: Personele özel tanımlanmış iş türü birim fiyatı var mı?
+        if ($personelId > 0) {
+            $persSql = $this->db->prepare("
+                SELECT ucret, aracli_ucret
+                FROM personel_is_turu_ucretleri
+                WHERE personel_id = ?
+                AND is_turu_id = ?
+                AND aktif = 1
+                AND silinme_tarihi IS NULL
+                AND (gecerlilik_baslangic IS NULL OR gecerlilik_baslangic <= ?)
+                AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
+                ORDER BY (gecerlilik_baslangic IS NOT NULL) DESC, gecerlilik_baslangic DESC, id DESC
+                LIMIT 1
+            ");
+            $persSql->execute([$personelId, $isTuruId, $tarih, $tarih]);
+            $persKayit = $persSql->fetch(PDO::FETCH_OBJ);
+            if ($persKayit) {
+                $normalUcret = floatval(Helper::formattedMoneyToNumber($persKayit->ucret ?? 0));
+                $aracliUcret = floatval(Helper::formattedMoneyToNumber($persKayit->aracli_ucret ?? 0));
+                if ($isAracli && $aracliUcret > 0) {
+                    return $aracliUcret;
+                }
+                return $normalUcret;
+            }
+        }
 
         $sql = $this->db->prepare("
             SELECT ucret, aracli_ucret, okuma_ucret
@@ -623,18 +650,27 @@ class TanimlamalarModel extends Model
 
     public function getUcretliIsTurleri()
     {
-        // Aynı isimli iş türlerini tekilleştir (Trimleyerek)
-        $sql = "SELECT id, tur_adi, TRIM(is_emri_sonucu) as is_emri_sonucu, is_turu_ucret, rapor_sekmesi 
-            FROM $this->table 
-            WHERE id IN (
-                SELECT MAX(id) 
-                FROM $this->table 
-                WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND firma_id = ? AND silinme_tarihi IS NULL 
-                GROUP BY TRIM(is_emri_sonucu)
-            )
-            ORDER BY id ASC";
+        $firmaId = intval($_SESSION['firma_id'] ?? 1);
+        $sql = "SELECT t.id, t.tur_adi, TRIM(t.is_emri_sonucu) as is_emri_sonucu, t.is_turu_ucret, t.aracli_personel_is_turu_ucret, t.okuma_is_turu_ucret, t.rapor_sekmesi 
+            FROM {$this->table} t 
+            WHERE t.grup = 'is_turu' 
+              AND t.firma_id = ? 
+              AND t.silinme_tarihi IS NULL
+              AND (
+                  t.is_turu_ucret > 0 
+                  OR t.aracli_personel_is_turu_ucret > 0 
+                  OR t.okuma_is_turu_ucret > 0
+                  OR EXISTS (
+                      SELECT 1 FROM is_turu_ucret_gecmisi ug 
+                      WHERE ug.is_turu_id = t.id 
+                        AND ug.firma_id = t.firma_id 
+                        AND (ug.ucret > 0 OR ug.aracli_ucret > 0 OR ug.okuma_ucret > 0)
+                        AND ug.silinme_tarihi IS NULL
+                  )
+              )
+            ORDER BY t.tur_adi ASC, t.is_emri_sonucu ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$_SESSION['firma_id']]);
+        $stmt->execute([$firmaId]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 

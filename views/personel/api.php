@@ -311,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Evet/Hayır -> 1/0 dönüşümü (tinyint alanlar için)
-                if (in_array($key, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali', 'yemek_yardimi_aliyor', 'es_yardimi_aliyor', 'yemek_yardimi_dahil', 'es_yardimi_dahil'])) {
+                if (in_array($key, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali', 'yemek_yardimi_aliyor', 'es_yardimi_aliyor', 'yemek_yardimi_dahil', 'es_yardimi_dahil', 'puantaj_hakedis_dahil'])) {
                     if (mb_strtolower($value, 'UTF-8') == 'evet' || $value === '1' || $value === 1) {
                         $data[$key] = 1;
                     } elseif (mb_strtolower($value, 'UTF-8') == 'hayır' || mb_strtolower($value, 'UTF-8') == 'hayir' || $value === '0' || $value === 0) {
@@ -1652,7 +1652,82 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
-    } elseif ($action == 'gorev-gecmisi-sil') {
+        } elseif ($action == 'get-ozel-is-turu-ucretleri') {
+        try {
+            $personel_id = intval($_POST['personel_id'] ?? 0);
+            $ucretler = $Personel->getOzelIsTuruUcretleri($personel_id);
+            foreach ($ucretler as $u) {
+                $u->ucret_formatted = Helper::formattedMoney($u->ucret ?? 0);
+                $u->aracli_ucret_formatted = Helper::formattedMoney($u->aracli_ucret ?? 0);
+                $u->baslangic_formatted = $u->gecerlilik_baslangic ? Date::dmY($u->gecerlilik_baslangic) : '-';
+                $u->bitis_formatted = $u->gecerlilik_bitis ? Date::dmY($u->gecerlilik_bitis) : 'Süresiz';
+            }
+            echo json_encode(['status' => 'success', 'data' => $ucretler]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ozel-is-turu-ucreti-ekle') {
+        try {
+            $data = $_POST;
+            $data['ucret'] = Helper::formattedMoneyToNumber($data['ucret'] ?? 0);
+            $data['aracli_ucret'] = Helper::formattedMoneyToNumber($data['aracli_ucret'] ?? 0);
+            if (!empty($data['gecerlilik_baslangic'])) {
+                $data['gecerlilik_baslangic'] = Date::Ymd($data['gecerlilik_baslangic']);
+            }
+            if (!empty($data['gecerlilik_bitis'])) {
+                $data['gecerlilik_bitis'] = Date::Ymd($data['gecerlilik_bitis']);
+            }
+            $Personel->addOzelIsTuruUcreti($data);
+            echo json_encode(['status' => 'success', 'message' => 'Özel iş türü ücreti başarıyla kaydedildi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ozel-is-turu-ucreti-getir') {
+        try {
+            $id = intval($_POST['id'] ?? 0);
+            $kayit = $Personel->getOzelIsTuruUcretiById($id);
+            if (!$kayit) {
+                throw new Exception('Kayıt bulunamadı.');
+            }
+            $kayit->ucret = Helper::formattedMoney($kayit->ucret ?? 0);
+            $kayit->aracli_ucret = Helper::formattedMoney($kayit->aracli_ucret ?? 0);
+            $kayit->gecerlilik_baslangic = $kayit->gecerlilik_baslangic ? Date::dmY($kayit->gecerlilik_baslangic) : '';
+            $kayit->gecerlilik_bitis = $kayit->gecerlilik_bitis ? Date::dmY($kayit->gecerlilik_bitis) : '';
+            echo json_encode(['status' => 'success', 'data' => $kayit]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ozel-is-turu-ucreti-guncelle') {
+        try {
+            $id = intval($_POST['id'] ?? 0);
+            $data = $_POST;
+            $data['ucret'] = Helper::formattedMoneyToNumber($data['ucret'] ?? 0);
+            $data['aracli_ucret'] = Helper::formattedMoneyToNumber($data['aracli_ucret'] ?? 0);
+            if (!empty($data['gecerlilik_baslangic'])) {
+                $data['gecerlilik_baslangic'] = Date::Ymd($data['gecerlilik_baslangic']);
+            } else {
+                $data['gecerlilik_baslangic'] = null;
+            }
+            if (!empty($data['gecerlilik_bitis'])) {
+                $data['gecerlilik_bitis'] = Date::Ymd($data['gecerlilik_bitis']);
+            } else {
+                $data['gecerlilik_bitis'] = null;
+            }
+            $Personel->updateOzelIsTuruUcreti($id, $data);
+            echo json_encode(['status' => 'success', 'message' => 'Özel iş türü ücreti güncellendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ozel-is-turu-ucreti-sil') {
+        try {
+            $id = intval($_POST['id'] ?? 0);
+            $Personel->deleteOzelIsTuruUcreti($id);
+            echo json_encode(['status' => 'success', 'message' => 'Özel iş türü ücreti silindi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+
+} elseif ($action == 'gorev-gecmisi-sil') {
         try {
             $id = $_POST['id'];
             // Silinmeden önce personel_id'yi al

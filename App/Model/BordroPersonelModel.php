@@ -453,12 +453,13 @@ class BordroPersonelModel extends Model
         return $hakedis;
     }
 
-    private function rtcHtcIleYukseltilmisHakedis(float $sozlesmeHakedisi, float $asgariUcretNet, int $maasHesapGunu, float $rtcHtcBankaNeti): float
+    private function rtcHtcIleYukseltilmisHakedis(float $sozlesmeHakedisi, float $asgariUcretNet, int $maasHesapGunu, float $rtcHtcBankaNeti, float $bankaKarsilanabilirEkOdeme = 0.0): float
     {
         if ($rtcHtcBankaNeti <= 0 || $maasHesapGunu <= 0) {
             return $sozlesmeHakedisi;
         }
-        return max($sozlesmeHakedisi, round(($asgariUcretNet / 30) * $maasHesapGunu + $rtcHtcBankaNeti, 2));
+        $taban = round(($asgariUcretNet / 30) * $maasHesapGunu + $rtcHtcBankaNeti - max(0.0, $bankaKarsilanabilirEkOdeme), 2);
+        return max($sozlesmeHakedisi, $taban);
     }
 
     private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0, float $sozlesmeHakedisi = 0.0, float $resmiDahilEkToplam = 0.0, float $htcNetFazla = 0.0): array
@@ -840,6 +841,7 @@ class BordroPersonelModel extends Model
         // resmî banka tavanının parçası değildir ve kalan olarak elden ödenir.
         $netMaasPuantajHedefToplami = 0.0;
         $yuvarlamaFarki = 0.0;
+        $hariciEkOdeme = 0.0;
         $sozlesmeHakedisi = 0.0;
         $sozlesmeHakedisiOverride = false;
         $resmiDahilEkToplam = 0.0;
@@ -1052,9 +1054,6 @@ class BordroPersonelModel extends Model
             }
 
             $sozlesmeHakedisi = $this->getSozlesmeHakedisi($p->personel_id, $maasTutari, $calismaGunu, $donemBaslangic);
-            if ($isNet && !$isPrimUsulu) {
-                $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim);
-            }
 
             $hariciEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
@@ -1064,6 +1063,10 @@ class BordroPersonelModel extends Model
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
             $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
             $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim);
+            if ($isNet && !$isPrimUsulu) {
+                $bankaKarsilanabilirEkOdemeGosterim = max(0.0, $hariciEkOdeme - $netMaasPuantajHedefToplami);
+                $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaKarsilanabilirEkOdemeGosterim);
+            }
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdemeForDahil, $sozlesmeHakedisi, $resmiDahilForDahil, $htcNetFazlaGosterim);
             
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
@@ -1111,10 +1114,10 @@ class BordroPersonelModel extends Model
             if ($isPrimUsulu) {
                 $toplamAlacagi = max($primUsuluPuantajHedefToplami + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
             } else {
-                // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) sözleşme
-                // hakedişinin üstüne eklenir. HTÇ'nin ham karşılığı bu tutardan zaten
-                // ayrıştırıldığı için sözleşme tavanını ayrıca yükseltmez.
-                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdemeForDahil + $yuvarlamaFarki;
+                // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ve HTÇ'nin
+                // ham karşılığı sözleşme hakedişinin üstüne eklenir. Yemek havuzunu
+                // şişirmemesi için helper'a $hariciEkOdemeForDahil gider.
+                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
             }
         } else {
             $sozlesmeHakedisi = $karisikMaasOzeti !== null
@@ -1173,7 +1176,7 @@ class BordroPersonelModel extends Model
             // sözleşme neti ile sınırlıdır. Böylece resmî tavan sözleşme netini
             // aşarsa bile puantajın tamamı elden bakiye olarak kalır.
             $bankaHakedisTavani = ($isNet && $netMaasPuantajHedefToplami > 0)
-                ? ($sozlesmeHakedisi + $yuvarlamaFarki)
+                ? round($sozlesmeHakedisi + $yuvarlamaFarki + max(0.0, $hariciEkOdeme - $netMaasPuantajHedefToplami), 2)
                 : $toplamAlacagiNet;
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + $yontemliBankaEki);
             $eldenBrut = max(0.0, $toplamAlacagiNet - $bankaMatrahi);
@@ -2104,7 +2107,7 @@ class BordroPersonelModel extends Model
     /**
      * Verilen satır için tarih bazlı birim ücreti çözer.
      */
-    private function resolveIsTuruBirimUcret($TanimlamalarModel, $isTuruId, $isEmriSonucu, $tarih, $isAracli, $firmaId, &$ucretCache, $isTuruIdMap, $isOkuma = false)
+    private function resolveIsTuruBirimUcret($TanimlamalarModel, $isTuruId, $isEmriSonucu, $tarih, $isAracli, $firmaId, &$ucretCache, $isTuruIdMap, $isOkuma = false, $personelId = null)
     {
         $resolvedIsTuruId = intval($isTuruId);
         $sonucKey = trim((string) $isEmriSonucu);
@@ -2117,7 +2120,8 @@ class BordroPersonelModel extends Model
             return 0.0;
         }
 
-        $cacheKey = $resolvedIsTuruId . '|' . $tarih . '|' . ($isAracli ? '1' : '0') . '|' . ($isOkuma ? '1' : '0');
+        $personelIdInt = intval($personelId);
+        $cacheKey = $resolvedIsTuruId . '|' . $tarih . '|' . ($isAracli ? '1' : '0') . '|' . ($isOkuma ? '1' : '0') . '|' . $personelIdInt;
         if (!array_key_exists($cacheKey, $this->isTuruUcretCache)) {
 
             $this->isTuruUcretCache[$cacheKey] = floatval($TanimlamalarModel->getIsTuruUcretiByTarih(
@@ -2125,7 +2129,8 @@ class BordroPersonelModel extends Model
                 $tarih,
                 $isAracli,
                 $firmaId,
-                $isOkuma
+                $isOkuma,
+                $personelIdInt
             ));
         }
 
@@ -2161,6 +2166,11 @@ class BordroPersonelModel extends Model
             WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Puantaj]%'
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
+
+        // Puantaj hakedişi kapalı ise ek ödeme oluşturma
+        if (isset($personel->puantaj_hakedis_dahil) && intval($personel->puantaj_hakedis_dahil) === 0) {
+            return;
+        }
 
         // 3. Araç kullanım durumunu ve departmanı belirle
         if ($this->tanimlamalarModelCache === null) {
@@ -2210,7 +2220,8 @@ class BordroPersonelModel extends Model
                 $firmaId,
                 $ucretCache,
                 $isTuruIdMap,
-                $isOkuma
+                $isOkuma,
+                $personel_id
             );
         }
 
@@ -2346,6 +2357,11 @@ class BordroPersonelModel extends Model
             AND aciklama LIKE '[Sayaç]%'
         ")->execute([$personel_id, $donem_id]);
 
+        // Puantaj hakedişi kapalı ise sayaç ek ödemesi oluşturma
+        if (isset($personel->puantaj_hakedis_dahil) && intval($personel->puantaj_hakedis_dahil) === 0) {
+            return;
+        }
+
         // 3. Tanımlamalar tablosundan ücretli iş türlerini al
         $TanimlamalarModel = new \App\Model\TanimlamalarModel();
         $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
@@ -2402,7 +2418,8 @@ class BordroPersonelModel extends Model
                 $firmaId,
                 $ucretCache,
                 $isTuruIdMap,
-                $isOkuma
+                $isOkuma,
+                $personel_id
             );
 
             if ($birimUcret <= 0) {
@@ -5092,7 +5109,7 @@ class BordroPersonelModel extends Model
 
                 $sozlesmeHakedisi = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? $donemTarihi ?? date('Y-m-01'));
                 if ($isNetMaas && !$isPrimUsulu) {
-                    $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap);
+                    $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, max(0.0, $bankayaTasinabilirEkOdeme + $htcEkOdeme));
                 }
 
                 // HTÇ resmi yemek matrahını etkilememeli — yalnızca RTÇ yemek kapasitesini azaltır
@@ -5152,9 +5169,6 @@ class BordroPersonelModel extends Model
 
         $hedefNetMaasTutari = floatval(($kayit->hedef_net_maas_tutari ?? 0) > 0 ? $kayit->hedef_net_maas_tutari : ($nominalBrutMaas ?? 0));
         $targetNetHakedis = round(($hedefNetMaasTutari / 30) * $maasHesapGunu, 2);
-        if ($isNetMaas && !$isPrimUsulu && $karisikMaasOzeti === null && $this->hasMaasaDahilSosyalYardim($kayit)) {
-            $targetNetHakedis = $this->rtcHtcIleYukseltilmisHakedis($targetNetHakedis, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap);
-        }
         $dahilDagilim = [
             'yemek_toplam' => 0,
             'es_toplam' => 0,
@@ -5186,7 +5200,9 @@ class BordroPersonelModel extends Model
 
             $sozlesmeHakedisiCalc = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? date('Y-m-01'));
             if ($isNetMaas && !$isPrimUsulu) {
-                $sozlesmeHakedisiCalc = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisiCalc, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap);
+                $bankaKarsilanabilirEkOdemeHesap = max(0.0, $bankayaTasinabilirEkOdeme + $htcEkOdeme);
+                $sozlesmeHakedisiCalc = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisiCalc, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
+                $targetNetHakedis = $this->rtcHtcIleYukseltilmisHakedis($targetNetHakedis, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
             }
             $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round(($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4) * $htcGunHesap : 0.0;
             $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2);
@@ -5246,10 +5262,11 @@ class BordroPersonelModel extends Model
             $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
             
-            // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ayrıca hak edilir.
-            // HTÇ'nin ham karşılığı bu değişkende bulunmaz; sözleşme tavanını yükseltmez.
+            // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ve HTÇ'nin ham
+            // karşılığı ($htcEkOdeme) sözleşme netinin üstüne ayrıca hak edilir.
             $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis)
                 + $bankayaTasinabilirEkOdeme
+                + $htcEkOdeme
                 + $netMaasPuantajHakedisi
                 + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
@@ -5274,7 +5291,7 @@ class BordroPersonelModel extends Model
             // Puantaj toplam hakedişe eklenir, fakat resmî banka kapasitesine
             // eklenmez. Banka matrahı sözleşme netini aşamaz.
             $bankaHakedisTavani = ($isNetMaas && $netMaasPuantajHakedisi > 0)
-                ? ($targetNetHakedis + $yuvarlamaFarki)
+                ? round($targetNetHakedis + $yuvarlamaFarki + $bankayaTasinabilirEkOdeme + $htcEkOdeme, 2)
                 : $netMaasIcinDagitim;
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($yontemliOdemeler['banka'] ?? 0));
             $eldenBrut = max(0.0, $netMaasIcinDagitim - $bankaMatrahi);

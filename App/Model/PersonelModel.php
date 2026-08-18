@@ -2020,6 +2020,201 @@ class PersonelModel extends Model
         }
 
         return array_unique($cleanResults);
+        $is_restricted = isset($restricted_users[$current_user_id]);
+        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
+
+        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
+            $is_restricted = false;
+        }
+
+        $params = ['firma_id' => $_SESSION['firma_id']];
+        $params['firma_id_sub'] = $_SESSION['firma_id'];
+        
+        $extra_where_p = "";
+        if ($is_restricted) {
+            $extra_where_p = " AND p.departman = :restricted_dept";
+            $params['restricted_dept'] = $restricted_dept;
+        }
+
+        $colMap = [
+            2 => 'p.tc_kimlik_no',
+            3 => 'p.adi_soyadi',
+            4 => 'p.ise_giris_tarihi',
+            5 => 'p.isten_cikis_tarihi',
+            6 => 'p.cep_telefonu',
+            7 => 'p.email_adresi',
+            8 => 'p.gorev',
+            9 => 'p.departman',
+            10 => 't_all.tur_adi',
+            11 => 'bildirim_abonesi',
+            12 => 'p.isten_cikis_tarihi',
+            23 => 'p.sgk_yapilan_firma'
+        ];
+
+        $targetField = '';
+        $skipIdx = -1;
+
+        if ($column === 'ekip_adi' || $column === 'tur_adi' || $column === 't_all.tur_adi') {
+            $targetField = 't_all.tur_adi';
+            $skipIdx = 10;
+        } elseif ($column === 'bildirim_abonesi') {
+            return ['Açık', 'Kapalı'];
+        } elseif ($column === 'aktif_mi' || $column === 'p.aktif_mi' || $column === 'Durum') {
+            return ['Aktif', 'Pasif'];
+        } else {
+            $targetField = strpos($column, 'p.') === false ? "p." . $column : $column;
+            foreach ($colMap as $idx => $f) {
+                if ($f === $targetField || $f === $column) {
+                    $skipIdx = $idx;
+                    break;
+                }
+            }
+        }
+
+        // Temel Sorgu (DataTables filtrelemesiyle aynı JOIN yapısı)
+        $sql = "SELECT DISTINCT $targetField as val
+                FROM {$this->table} p 
+                LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                LEFT JOIN (
+                    SELECT pg.personel_id, t.tur_adi, t.ekip_bolge
+                    FROM personel_ekip_gecmisi pg
+                    JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                    WHERE pg.baslangic_tarihi <= CURDATE() 
+                    AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+                    AND pg.firma_id = :firma_id_sub
+                ) t_all ON p.id = t_all.personel_id
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $extra_where_p AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
+
+        // Diğer sütunlardaki aktif filtreleri uygula (Cascading)
+        $filterSql = "";
+        if (isset($request['columns']) && is_array($request['columns'])) {
+            foreach ($request['columns'] as $i => $columnData) {
+                if ($i == $skipIdx)
+                    continue; // Mevcut sütun filtresini dahil etme
+
+                if (!empty($columnData['search']['value']) && isset($colMap[$i])) {
+                    $field = $colMap[$i];
+                    $searchValue = $columnData['search']['value'];
+                    $paramName = "u_col_" . $i;
+
+                    if ($i == 2) { // TC Kimlik (şifreli - hash ile ara)
+                        $filterSql .= " AND p.tc_hash = SHA2(:$paramName, 256)";
+                        $params[$paramName] = preg_replace('/[^0-9]/', '', $searchValue);
+                        continue;
+                    }
+
+                    if (strpos($searchValue, ':') !== false) {
+                        list($mode, $val) = explode(':', $searchValue, 2);
+                        $vals = explode('|', $val);
+                        $val = $vals[0];
+                        $val2 = isset($vals[1]) ? $vals[1] : null;
+
+                        if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
+                            switch ($mode) {
+                                case 'multi':
+                                    if (!empty($vals)) {
+                                        $orConditions = [];
+                                        foreach ($vals as $vIdx => $v) {
+                                            $vParam = $paramName . "_" . $vIdx;
+                                            if ($v === '(Boş)') {
+                                                $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                            } elseif ($field == 'p.isten_cikis_tarihi' && $i == 12) {
+                                                if (stripos($v, 'Aktif') !== false) {
+                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
+                                                } else {
+                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
+                                                }
+                                            } elseif ($field == 'bildirim_abonesi') {
+                                                $mappedVal = (stripos($v, 'Açık') !== false) ? 1 : 0;
+                                                $orConditions[] = "(CASE WHEN EXISTS (SELECT 1 FROM push_subscriptions WHERE personel_id = p.id) THEN 1 ELSE 0 END) = :$vParam";
+                                                $params[$vParam] = $mappedVal;
+                                            } else {
+                                                $orConditions[] = "$field LIKE :$vParam";
+                                                $params[$vParam] = "%$v%";
+                                            }
+                                        }
+                                        $filterSql .= " AND (" . implode(" OR ", $orConditions) . ")";
+                                    }
+                                    break;
+                                case 'contains':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'not_contains':
+                                    $filterSql .= " AND $field NOT LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'starts_with':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "$val%";
+                                    break;
+                                case 'ends_with':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val";
+                                    break;
+                                case 'equals':
+                                    $filterSql .= " AND $field = :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'gt':
+                                case 'greater_than':
+                                    $filterSql .= " AND $field > :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'lt':
+                                case 'less_than':
+                                    $filterSql .= " AND $field < :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'null':
+                                    $filterSql .= " AND ($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                    break;
+                                case 'not_null':
+                                    $filterSql .= " AND $field IS NOT NULL AND $field != '' AND $field != '0000-00-00'";
+                                    break;
+                            }
+                        }
+                    } else {
+                        if ($i == 12) {
+                            if (stripos('Aktif', $searchValue) !== false)
+                                $filterSql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
+                            elseif (stripos('Pasif', $searchValue) !== false)
+                                $filterSql .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
+                        } elseif ($i == 10) {
+                            $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                            $params[$paramName] = "%$searchValue%";
+                        } else {
+                            $filterSql .= " AND $field LIKE :$paramName";
+                            $params[$paramName] = "%$searchValue%";
+                        }
+                    }
+                }
+            }
+        }
+
+        $sql .= $filterSql;
+        $sql .= " ORDER BY $targetField ASC";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        $results = $query->fetchAll(PDO::FETCH_COLUMN);
+
+        // Boş/Null olanları temizle ve (Boş) olarak ekle (eğer varsa)
+        $cleanResults = [];
+        $hasEmpty = false;
+        foreach ($results as $r) {
+            if ($r === null || $r === '' || $r === '0000-00-00') {
+                $hasEmpty = true;
+            } else {
+                $cleanResults[] = $r;
+            }
+        }
+
+        if ($hasEmpty) {
+            $cleanResults[] = "(Boş)";
+        }
+
+        return array_unique($cleanResults);
     }
 
     /**
@@ -2084,5 +2279,88 @@ class PersonelModel extends Model
         $stmt = $this->db->prepare("UPDATE {$this->table} SET pwa_hizli_islemler = ? WHERE id = ?");
         return $stmt->execute([$json, $personelId]);
     }
-}
 
+    /**
+     * Personelin özel iş türü birim ücretlerini listeler
+     */
+    public function getOzelIsTuruUcretleri(int $personelId): array
+    {
+        $sql = $this->db->prepare("
+            SELECT piu.*, t.is_emri_sonucu as is_turu_adi, t.tur_adi
+            FROM personel_is_turu_ucretleri piu
+            LEFT JOIN tanimlamalar t ON piu.is_turu_id = t.id
+            WHERE piu.personel_id = ? AND piu.silinme_tarihi IS NULL
+            ORDER BY piu.id DESC
+        ");
+        $sql->execute([$personelId]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Tekil özel iş türü ücret kaydını getirir
+     */
+    public function getOzelIsTuruUcretiById(int $id): ?object
+    {
+        $sql = $this->db->prepare("
+            SELECT piu.*, t.is_emri_sonucu as is_turu_adi
+            FROM personel_is_turu_ucretleri piu
+            LEFT JOIN tanimlamalar t ON piu.is_turu_id = t.id
+            WHERE piu.id = ? AND piu.silinme_tarihi IS NULL
+        ");
+        $sql->execute([$id]);
+        $res = $sql->fetch(PDO::FETCH_OBJ);
+        return $res ?: null;
+    }
+
+    /**
+     * Personele özel iş türü birim ücreti ekler
+     */
+    public function addOzelIsTuruUcreti(array $data): int
+    {
+        $firmaId = intval($data['firma_id'] ?? ($_SESSION['firma_id'] ?? 1));
+        $personelId = intval($data['personel_id']);
+        $isTuruId = intval($data['is_turu_id']);
+        $ucret = floatval($data['ucret'] ?? 0);
+        $aracliUcret = floatval($data['aracli_ucret'] ?? 0);
+        $baslangic = !empty($data['gecerlilik_baslangic']) ? $data['gecerlilik_baslangic'] : null;
+        $bitis = !empty($data['gecerlilik_bitis']) ? $data['gecerlilik_bitis'] : null;
+        $aktif = isset($data['aktif']) ? intval($data['aktif']) : 1;
+
+        $sql = $this->db->prepare("
+            INSERT INTO personel_is_turu_ucretleri 
+            (firma_id, personel_id, is_turu_id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis, aktif, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $sql->execute([$firmaId, $personelId, $isTuruId, $ucret, $aracliUcret, $baslangic, $bitis, $aktif]);
+        return intval($this->db->lastInsertId());
+    }
+
+    /**
+     * Personele özel iş türü birim ücretini günceller
+     */
+    public function updateOzelIsTuruUcreti(int $id, array $data): bool
+    {
+        $isTuruId = intval($data['is_turu_id']);
+        $ucret = floatval($data['ucret'] ?? 0);
+        $aracliUcret = floatval($data['aracli_ucret'] ?? 0);
+        $baslangic = !empty($data['gecerlilik_baslangic']) ? $data['gecerlilik_baslangic'] : null;
+        $bitis = !empty($data['gecerlilik_bitis']) ? $data['gecerlilik_bitis'] : null;
+        $aktif = isset($data['aktif']) ? intval($data['aktif']) : 1;
+
+        $sql = $this->db->prepare("
+            UPDATE personel_is_turu_ucretleri 
+            SET is_turu_id = ?, ucret = ?, aracli_ucret = ?, gecerlilik_baslangic = ?, gecerlilik_bitis = ?, aktif = ?, updated_at = NOW()
+            WHERE id = ? AND silinme_tarihi IS NULL
+        ");
+        return $sql->execute([$isTuruId, $ucret, $aracliUcret, $baslangic, $bitis, $aktif, $id]);
+    }
+
+    /**
+     * Personele özel iş türü birim ücretini siler (soft-delete)
+     */
+    public function deleteOzelIsTuruUcreti(int $id): bool
+    {
+        $sql = $this->db->prepare("UPDATE personel_is_turu_ucretleri SET silinme_tarihi = NOW(), aktif = 0 WHERE id = ?");
+        return $sql->execute([$id]);
+    }
+}
