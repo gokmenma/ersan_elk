@@ -2821,7 +2821,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             }
                         }
                         
-                        $bankaMatrahiToplam = $hesap['asgariYatacak'] + $hesap['mealAllowanceDeduction'] + $hesap['spouseAllowanceDeduction'] + $hesap['yontemliBankaEki'];
+                        $bankaMatrahiHam = round($hesap['asgariYatacak'] + $hesap['mealAllowanceDeduction'] + $hesap['spouseAllowanceDeduction'] + $hesap['yontemliBankaEki'], 2);
+                        $bankaMatrahiToplam = round(floatval($hesap['bankaMatrahi'] ?? 0), 2);
+                        $sozlesmeSiniriFarki = round($bankaMatrahiHam - $bankaMatrahiToplam, 2);
+                        if ($sozlesmeSiniriFarki > 0.005) {
+                            $bankaDetayHtml .= '<div class="d-flex justify-content-between text-danger"><span>Sözleşme Neti Sınırı:</span><span class="fw-bold">-' . number_format($sozlesmeSiniriFarki, 2, ',', '.') . ' ₺</span></div>';
+                        }
                         $bankaDetayHtml .= '<div class="d-flex justify-content-between border-top pt-1 mt-1"><span>Banka Limit Matrahı:</span><span class="fw-bold text-primary">' . number_format($bankaMatrahiToplam, 2, ',', '.') . ' ₺</span></div>';
                         
                         $toplamKesintiBanka = $hesap['bankaOncelikliKesinti'] + $hesap['bankaAktarilanKesinti'];

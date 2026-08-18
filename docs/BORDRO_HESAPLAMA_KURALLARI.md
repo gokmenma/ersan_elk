@@ -47,6 +47,7 @@ maasHesapGunu = aktifTakvimGun - ucretsizIzinGunu - raporGunu
 ### Brut Maas
 
 Brut maasta SGK, issizlik, gelir vergisi ve damga vergisi hesaplanir.
+Eger personelin brut maas tutari tanimsiz veya 0 ise (`maas_tutari <= 0`), calisilan gun varsa ilgili donemin `asgari_ucret_brut` degeri nominal maas olarak baz alinir.
 
 ```text
 netMaas = brutMaas
@@ -62,16 +63,18 @@ netMaas = brutMaas
 ### Net Maas
 
 Net maasta vergi/SGK kesintileri hesaplamaya dahil edilmez.
+Eger personelin net maas tutari tanimsiz veya 0 ise (`maas_tutari <= 0`), calisilan gun varsa ilgili donemin `asgari_ucret_net` degeri sozlesme maasi olarak baz alinir.
 
 ```text
 netMaas = brutMaas + toplamEkOdeme - (toplamKesinti - icraKesintisi)
 ```
 
-Net ücretli personelde puantajdan oluşan hakediş, sözleşme netinin üzerine ayrıca eklenir. Ancak bu tutar resmî maaş/banka tavanını veya maaşa dahil yemek yardımı tavanını artırmaz. Ödeme kanalı puantaj parametresindeki `odeme_yontemi` ile belirlenir; resmî banka ödemesi için parametre banka yöntemiyle tanımlanmalıdır.
+Net ücretli ve puantaj üreten personelde puantajdan oluşan hakediş, sözleşme netinin üzerine ayrıca eklenir. Ancak bu tutar resmî maaş/banka tavanını veya maaşa dahil yemek yardımı tavanını artırmaz; puantaj bakiyesi elden ödenir. Kesintiler önce resmî banka tavanından düşülür; banka tavanını aşan kesinti kalırsa yalnızca bu bakiye elden tutardan mahsup edilir.
 
 ### Prim Usulu
 
 Prim usulu net gibi islenir. Varsayilan ek odeme kanali `elden` kabul edilir; parametrede odeme yontemi varsa o yontem kullanilir.
+Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maasHesapGunu > 0`), puantaj veya ek odeme uretilmemis ya da asgari tabandan dusuk kalmis olsa dahi personelin hakedisi en az calisilan gune tekabul eden `asgariHakedis` (`asgari_ucret_net / 30 * maasHesapGunu`) tutarindan az olamaz.
 
 ## Maasa Dahil Sosyal Yardim Kurali
 
@@ -85,7 +88,7 @@ hedefHakedis = (hedef_net_maas_tutari / 30) * maasHesapGunu
 yemekUstLimiti = max(0, hedefHakedis - asgariHakedis - esYardimi - bankaUzerindenOdenecekRtcHtc)
 ```
 
-Yemek yardimi bu üst limitten hesaplanir. RTÇ/HTÇ gibi banka üzerinden ödenecek kalemler sözleşme netinin bileşenidir; yemek yardımını veya toplam hakedişi sözleşme netinin üzerine çıkaramaz.
+Yemek yardimi bu üst limitten hesaplanir. RTÇ/HTÇ gibi banka üzerinden ödenecek kalemler sözleşme netinin bileşenidir; yemek yardımını veya toplam hakedişi sözleşme netinin üzerine çıkaramaz (istisna: asagidaki RTÇ/HTÇ taban yukseltme kurali).
 
 Sistem günlük tutarı yukarı yuvarlar, sonra günlük limitle sınırlar. Bu sıra değiştirilemez:
 
@@ -103,6 +106,46 @@ yuvarlamaFarki = yemekYardimiToplam - yemekUstLimiti
 Kural: Yemek yardiminin gunluk tutari, personel veya parametre uzerinden bulunan gunluk yemek limitini asamaz.
 
 Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşamaz. Yemek yardımı yüksek hesaplanıp sonradan banka ödemesinden fark kesintisi düşülemez.
+
+### RTÇ/HTÇ Taban Yukseltme Kurali
+
+Az calisilan donemlerde `asgariHakedis + rtcHtcBankaNeti` toplami sozlesme hakedisini asabilir.
+Bu durumda banka matrahi sozlesme netine kirpilir ve RTÇ/HTÇ fiilen odenmemis olur.
+Net ucretli ve maasa dahil sosyal yardim modundaki personelde sozlesme hakedisi bu tabana yukseltilir:
+
+```text
+rtcHtcBankaNeti  = rtcNet + htcNet          (gross-up sonrasi bankaya yatan NET)
+sozlesmeHakedisi = max(sozlesmeHakedisi, (asgari_ucret_net / 30) * maasHesapGunu + rtcHtcBankaNeti)
+```
+
+Yukseltme, yemek/es dagilimi ve banka matrahi hesaplanmadan once uygulanir; yukseltilmis deger
+`hesaplaMaasaDahilYardimDagilimi()` cagrisina, `yemekTavanHedefi` degerine ve banka hakedis tavanina
+birlikte gider. Bu sayede `yuvarlamaFarki` disinda banka limit matrahi sozlesme netini asamaz kurali
+bozulmadan gecerli kalir.
+
+Kapsam ve sinirlar:
+
+- Yalnizca net ucretli (`isNet`) ve maasa dahil sosyal yardim modundaki personelde uygulanir.
+- Brut, prim usulu ve karisik maas (`karisikMaasOzeti`) hesaplarinda sozlesme hakedisi degismez.
+- RTÇ/HTÇ gun sayisi yoksa (`rtcHtcBankaNeti = 0`) kural devreye girmez.
+- Tam ay calisan personelde `asgariHakedis + rtcHtcBankaNeti` sozlesme netinin altinda kaldigi
+  icin kural devreye girmez; mevcut sonuclar degismez.
+- RTÇ/HTÇ tutari degismez; kural sadece hakedis tabanini yukseltir.
+
+Ornek (sozlesme neti 33.000 ₺, maasHesapGunu = 2, RTÇ = 1 gun, puantaj = 430 ₺):
+
+| Kalem | Once | Sonra |
+| --- | --- | --- |
+| Sozlesme hakedisi | 2.200,00 | 2.807,55 |
+| Asgari taban (2 gun) | 1.871,70 | 1.871,70 |
+| RTÇ resmi neti (1 gun) | 935,85 | 935,85 |
+| Banka limit matrahi (ham) | 2.807,55 | 2.807,55 |
+| Banka odemesi | 2.200,00 (kirpildi) | 2.807,55 |
+| Elden odeme (puantaj) | 430,00 | 430,00 |
+| Toplam hakedis | 2.630,00 | 3.237,55 |
+
+Detay modalindaki "Banka Limit Matrahi" satiri, kirpma sonrasi gercek banka matrahini gosterir.
+Kirpma varsa ayrica "Sozlesme Neti Siniri" satiri ile dusulen fark yazilir.
 
 Gunluk limit secimi:
 
