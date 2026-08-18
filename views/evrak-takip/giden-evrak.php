@@ -244,7 +244,7 @@ if ($record) {
                             <div class="tab-pane fade" id="gidenEklerTab">
                                 <div class="border rounded-3 p-3">
                                     <div class="d-flex align-items-center justify-content-between mb-3"><span class="fw-bold">Seç ve Ekle</span><i data-feather="plus" class="icon-sm"></i></div>
-                                    <input type="file" id="ek_dosyalari" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.odt">
+                                    <input type="file" id="ek_dosyalari" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt,.ods">
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between mt-3 mb-2">
                                     <span class="small fw-bold text-muted">Eklenen Belgeler:</span>

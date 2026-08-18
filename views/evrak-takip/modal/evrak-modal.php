@@ -203,7 +203,7 @@ $araclar_list = $Evrak->getActiveVehicles();
                                 <input type="hidden" name="ek_duzen_json" id="gelen_ek_duzen_json" value="[]">
                                 <input type="hidden" name="silinen_ek_ids_json" id="gelen_silinen_ek_ids_json" value="[]">
                                 <label for="gelenEkDosyalari" class="form-label small fw-bold text-muted">Evrak Dosyaları</label>
-                                <input type="file" id="gelenEkDosyalari" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.odt">
+                                <input type="file" id="gelenEkDosyalari" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt,.ods">
                                 <div class="form-text">Birden fazla dosya seçebilirsiniz. Her dosya en fazla 10 MB olabilir.</div>
                                 <div id="mevcutDosya" class="mt-2" style="display:none;">
                                     <a href="#" target="_blank" class="btn btn-sm btn-soft-info w-100 fw-bold border-dashed rounded-3">

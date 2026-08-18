@@ -122,21 +122,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($_FILES['dosya']['size'] > 10 * 1024 * 1024) {
                         throw new Exception('Evrak dosyası en fazla 10 MB olabilir.');
                     }
-                    $allowedMimeTypes = [
-                        'application/pdf' => 'pdf',
-                        'image/jpeg' => 'jpg',
-                        'image/png' => 'png',
-                    ];
                     $detectedMime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['dosya']['tmp_name']);
-                    if (!isset($allowedMimeTypes[$detectedMime])) {
-                        throw new Exception('Yalnızca PDF, JPG ve PNG dosyaları yüklenebilir.');
+                    $origExt = strtolower(pathinfo((string) ($_FILES['dosya']['name'] ?? ''), PATHINFO_EXTENSION));
+                    $allowedMimeMap = [
+                        'application/pdf' => 'pdf',
+                        'application/x-pdf' => 'pdf',
+                        'application/acrobat' => 'pdf',
+                        'applications/vnd.pdf' => 'pdf',
+                        'text/pdf' => 'pdf',
+                        'text/x-pdf' => 'pdf',
+                        'image/jpeg' => 'jpg',
+                        'image/pjpeg' => 'jpg',
+                        'image/jpg' => 'jpg',
+                        'image/png' => 'png',
+                        'image/x-png' => 'png',
+                        'image/webp' => 'webp',
+                    ];
+                    $isAllowedMime = isset($allowedMimeMap[$detectedMime]);
+                    $isOctetStreamWithValidExt = in_array($detectedMime, ['application/octet-stream', 'application/x-download', 'binary/octet-stream'], true) 
+                        && in_array($origExt, ['pdf', 'jpg', 'jpeg', 'png', 'webp'], true);
+
+                    if (!$isAllowedMime && !$isOctetStreamWithValidExt) {
+                        throw new Exception('Yalnızca PDF, JPG, PNG ve WEBP dosyaları yüklenebilir.');
                     }
                     $upload_dir = dirname(__DIR__, 2) . '/uploads/evrak-takip/';
                     if (!is_dir($upload_dir)) {
                         mkdir($upload_dir, 0777, true);
                     }
 
-                    $file_ext = $allowedMimeTypes[$detectedMime];
+                    $file_ext = $allowedMimeMap[$detectedMime] ?? ($origExt === 'jpeg' ? 'jpg' : $origExt);
                     $file_name = time() . '_' . uniqid() . '.' . $file_ext;
                     $upload_path = $upload_dir . $file_name;
 
@@ -248,11 +262,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (!is_dir($attachmentDir)) {
                         throw new Exception('Evrak eki klasörü oluşturulamadı.');
                     }
-                    $allowedAttachmentExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'odt'];
+                    $allowedAttachmentExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'odt', 'ods'];
                     $allowedAttachmentMimes = [
-                        'application/pdf', 'image/jpeg', 'image/png', 'application/msword',
+                        'application/pdf',
+                        'application/x-pdf',
+                        'application/acrobat',
+                        'applications/vnd.pdf',
+                        'text/pdf',
+                        'text/x-pdf',
+                        'image/jpeg',
+                        'image/pjpeg',
+                        'image/jpg',
+                        'image/png',
+                        'image/x-png',
+                        'image/webp',
+                        'image/gif',
+                        'image/bmp',
+                        'image/x-ms-bmp',
+                        'application/msword',
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'application/vnd.oasis.opendocument.text', 'application/zip'
+                        'application/vnd.oasis.opendocument.text',
+                        'application/vnd.oasis.opendocument.spreadsheet',
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'application/zip',
+                        'application/x-zip',
+                        'application/x-zip-compressed',
+                        'application/octet-stream',
+                        'application/x-download',
+                        'application/download',
+                        'binary/octet-stream'
                     ];
                     foreach ($_FILES['ek_dosyalari']['name'] as $fileKey => $originalName) {
                         $error = (int) ($_FILES['ek_dosyalari']['error'][$fileKey] ?? UPLOAD_ERR_NO_FILE);
@@ -266,7 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (!in_array($extension, $allowedAttachmentExtensions, true) || !in_array($mime, $allowedAttachmentMimes, true)) {
                             throw new Exception($originalName . ' desteklenmeyen bir dosya türünde.');
                         }
-                        if ($mime === 'application/zip' && !in_array($extension, ['docx', 'odt'], true)) {
+                        if (in_array($mime, ['application/zip', 'application/x-zip', 'application/x-zip-compressed'], true) && !in_array($extension, ['docx', 'odt', 'xlsx', 'ods'], true)) {
                             throw new Exception($originalName . ' geçersiz bir arşiv dosyasıdır.');
                         }
                         $storedName = 'ek_' . $real_id . '_' . bin2hex(random_bytes(8)) . '.' . ($extension === 'jpeg' ? 'jpg' : $extension);

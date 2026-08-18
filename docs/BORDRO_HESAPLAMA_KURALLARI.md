@@ -69,7 +69,46 @@ Eger personelin net maas tutari tanimsiz veya 0 ise (`maas_tutari <= 0`), calisi
 netMaas = brutMaas + toplamEkOdeme - (toplamKesinti - icraKesintisi)
 ```
 
-Net ücretli ve puantaj üreten personelde puantajdan oluşan hakediş, sözleşme netinin üzerine ayrıca eklenir. Ancak bu tutar resmî maaş/banka tavanını veya maaşa dahil yemek yardımı tavanını artırmaz; puantaj bakiyesi elden ödenir. Kesintiler önce resmî banka tavanından düşülür; banka tavanını aşan kesinti kalırsa yalnızca bu bakiye elden tutardan mahsup edilir.
+### Puantaj Hakedisi Kurali
+
+`personel.puantaj_hakedis_dahil = 1` ise puantaj/sayac/kacak kontrol calismalari sozlesme netinin
+uzerine eklenir ve **tamami resmi kanaldan bildirilir**:
+
+```text
+toplamHakedis = sozlesmeHakedisi + puantajHakedisi (+ HTÇ + diger ek odemeler)
+```
+
+Net maasli ve maasa dahil yemek yardimi alan personelde puantaj/sayac kazanclari:
+
+1. Toplam hedef hakedise eklenir (`hedefHakedis = sozlesmeHakedisi + puantajToplami`).
+2. Yemek havuzu bu toplam hedefe gore genisletilir; gunluk yemek limiti yetiyorsa puantaj
+   kazanci yemek yardimina absorbe edilir ve bankadan odenir.
+3. Yemek limitini asan bakiye elden degil, ayri bir resmi banka kalemi olarak bildirilir.
+
+Muhasebelestirme sirasi sabittir — once yemek, kalan puantaj kalemi olarak:
+
+```text
+1) asgariHakedis                                   -> banka
+2) yemek yardimi (gunluk limit dahilinde)          -> banka
+   yemekTavanHedefi = sozlesmeHakedisi + puantajHakedisi
+3) yemege sigmayan puantaj bakiyesi                -> banka ("Puantaj Çalışması" kalemi)
+
+yemekSozlesmePayi = max(0, sozlesmeHakedisi + htcHamTutar - asgariHakedis - esYardimi - rtcHtcBankaNeti)
+puantajYemekPayi  = max(0, yemekYardimiToplam - yemekSozlesmePayi)
+puantajBankaKalani = puantajHakedisi - puantajYemekPayi
+```
+
+Banka hakedis tavani `toplamHakedis`tir; puantaj hakedisi bu tavani yukseltir. Normal kosullarda
+elden odeme kalmaz. Kesintiler once resmi banka tavanindan dusulur; banka tavanini asan kesinti
+kalirsa yalnizca bu bakiye elden tutardan mahsup edilir.
+
+`puantaj_hakedis_dahil = 0` ise `[Puantaj]`, `[Sayaç]` ve `[Kaçak Kontrol]` ek odemeleri hic
+olusturulmaz (`olusturPuantajOdemeleri()`, `olusturSayacDegisimOdemeleri()`,
+`olusturKacakKontrolPrimleri()`).
+
+Kural: Puantaj hakedisi `hesaplaMaasaDahilYardimDagilimi()` cagrisina **yalnizca `$puantajToplami`
+parametresinden** girer. `$bankayaTasinabilirEkOdeme` icinden ayristirilmalidir; aksi halde yemek
+matrahinda iki kez sayilir.
 
 ### Prim Usulu
 
@@ -109,11 +148,7 @@ Kural: Yemek yardiminin gunluk tutari, personel veya parametre uzerinden bulunan
 
 Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşamaz. Yemek yardımı yüksek hesaplanıp sonradan banka ödemesinden fark kesintisi düşülemez.
 
-### Puantaj Hakedişi ve Maaşa Dahil Yemek Yardımı Entegrasyonu
-Net maaşlı ve maaşa dahil yemek yardımı alan personelde üretilen puantaj ve sayaç değişim kazançları:
-1. Personelin toplam hedef hakedişine eklenir (`hedefHakedis = sozlesmeHakedisi + puantajToplami`).
-2. Yemek havuzu bu toplam hedef hakedişe göre genişletilir. Günlük yemek limiti (örn. 300 TL) yetiyorsa puantaj kazancı yemek yardımına absorbe edilir ve bankadan ödenir.
-3. Böylece elden ödeme tutarı azaltılır/sıfırlanır. Yalnızca yemek limitini aşan bakiye puantaj hakedişi elden ödeme olarak dağıtılır.
+### HTÇ (Hafta Tatili Calismasi) Kurali
 
 HTÇ, personelin kendi gunluk ucretinden hesaplanir ve **sozlesme netinin uzerine eklenir**.
 Bu kural hem maasa dahil hem de maasa dahil olmayan personelde gecerlidir.

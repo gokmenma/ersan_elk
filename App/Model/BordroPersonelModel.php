@@ -1061,7 +1061,7 @@ class BordroPersonelModel extends Model
             $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretNet / 30, 4) * $htcGun : 0.0;
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
             $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
-            $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim);
+            $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim - $netMaasPuantajHedefToplami);
             if ($isNet && !$isPrimUsulu) {
                 $bankaKarsilanabilirEkOdemeGosterim = max(0.0, $hariciEkOdeme - $netMaasPuantajHedefToplami);
                 $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaKarsilanabilirEkOdemeGosterim);
@@ -1176,6 +1176,21 @@ class BordroPersonelModel extends Model
             // Banka: Asgari + Yemek + Eş + Banka ek ödemeler; yemek limitini aşan bakiye elden
             // Puantaj çalışmaları resmî alacağa eklendiğinde tıpkı HTÇ gibi banka matrahını yükseltir.
             $bankaHakedisTavani = $toplamAlacagiNet;
+            if ($isNet && $netMaasPuantajHedefToplami > 0) {
+                $yemekSozlesmePayiLimiti = max(0, round(
+                    $sozlesmeHakedisi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
+                    2
+                ));
+                $puantajYemekPayi = max(0.0, round($mealAllowanceDeduction - $yemekSozlesmePayiLimiti, 2));
+                $puantajBankaKalani = max(0.0, round($netMaasPuantajHedefToplami - $puantajYemekPayi, 2));
+                if ($puantajBankaKalani > 0) {
+                    $yontemliBankaEki += $puantajBankaKalani;
+                    $bankaEkOdemeDetaylari[] = [
+                        'etiket' => 'Puantaj Çalışması',
+                        'tutar' => $puantajBankaKalani
+                    ];
+                }
+            }
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + $yontemliBankaEki);
             $eldenBrut = max(0.0, $toplamAlacagiNet - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
@@ -2658,6 +2673,15 @@ class BordroPersonelModel extends Model
             WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Kaçak Kontrol]%'
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
+
+        // Kaçak kontrol primi de puantaj hakedişidir; puantaj hakedişi kapalıysa oluşturulmaz
+        if ($this->personelModelCache === null) {
+            $this->personelModelCache = new \App\Model\PersonelModel();
+        }
+        $personelKacak = $this->personelModelCache->find($personel_id);
+        if ($personelKacak && isset($personelKacak->puantaj_hakedis_dahil) && intval($personelKacak->puantaj_hakedis_dahil) === 0) {
+            return $sonuc;
+        }
 
         // 2. Dönem tarihini al (parametre çekimi için)
         $donemTarihi = $baslangic_tarihi;
@@ -5297,6 +5321,17 @@ class BordroPersonelModel extends Model
             $netMaas = floatval($netMaas ?? $hakedisNetBeforeKesinti ?? 0);
             $netMaasIcinDagitim = $netMaas;
             $bankaHakedisTavani = $netMaasIcinDagitim;
+            if ($isNetMaas && $netMaasPuantajHakedisi > 0) {
+                $yemekSozlesmePayiLimitiHesap = max(0, round(
+                    $targetNetHakedis + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
+                    2
+                ));
+                $puantajYemekPayiHesap = max(0.0, round($hesaplananYemekToplam - $yemekSozlesmePayiLimitiHesap, 2));
+                $puantajBankaKalaniHesap = max(0.0, round($netMaasPuantajHakedisi - $puantajYemekPayiHesap, 2));
+                if ($puantajBankaKalaniHesap > 0) {
+                    $yontemliOdemeler['banka'] += $puantajBankaKalaniHesap;
+                }
+            }
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($yontemliOdemeler['banka'] ?? 0));
             $eldenBrut = max(0.0, $netMaasIcinDagitim - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
