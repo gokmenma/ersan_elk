@@ -1173,13 +1173,9 @@ class BordroPersonelModel extends Model
             // banka+elden toplamı toplamAlacagi'dan az çıkar (çifte kesinti).
             $toplamAlacagiNet = $toplamAlacagi;
 
-            // Banka: Asgari + Yemek (istisna limiti) + Eş + Banka ek ödemeler; üstü elden
-            // Net + puantajda resmî ödeme kapasitesi, puantaj eklenmeden önceki
-            // sözleşme neti ile sınırlıdır. Böylece resmî tavan sözleşme netini
-            // aşarsa bile puantajın tamamı elden bakiye olarak kalır.
-            $bankaHakedisTavani = ($isNet && $netMaasPuantajHedefToplami > 0)
-                ? round($sozlesmeHakedisi + $yuvarlamaFarki + max(0.0, $hariciEkOdeme - $netMaasPuantajHedefToplami), 2)
-                : $toplamAlacagiNet;
+            // Banka: Asgari + Yemek + Eş + Banka ek ödemeler; yemek limitini aşan bakiye elden
+            // Puantaj çalışmaları resmî alacağa eklendiğinde tıpkı HTÇ gibi banka matrahını yükseltir.
+            $bankaHakedisTavani = $toplamAlacagiNet;
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + $yontemliBankaEki);
             $eldenBrut = max(0.0, $toplamAlacagiNet - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
@@ -2307,18 +2303,16 @@ class BordroPersonelModel extends Model
                 continue;
             }
 
-            // "Sayaç Değişimi" ve "Endeks Okuma" tipindeki işleri genel puantajdan hariç tut 
-            // (olusturSayacDegisimOdemeleri ve EndeksOkumaModel üzerinden ayrıca hesaplanıyor)
             $isEmriTipi = $is->is_emri_tipi ?? '';
             $isEmriSonucu = $is->is_emri_sonucu ?? '';
             $raporSekmesi = $is->rapor_sekmesi ?? '';
             
-            if ($raporSekmesi === 'sokme_takma' || 
-                $raporSekmesi === 'endeks_okuma' ||
-                stripos($isEmriTipi, 'Sayaç Değişimi') !== false || 
-                stripos($isEmriSonucu, 'Sayaç Değişimi') !== false ||
-                stripos($isEmriTipi, 'Endeks Okuma') !== false ||
-                stripos($isEmriSonucu, 'Endeks Okuma') !== false) {
+            // Eğer sayac_degisim tablosunda personelin o tarihte kaydı varsa çakışmayı önlemek için atla, yoksa hesapla
+            $hasSayacTablo = $this->hasSayacDegisimRecords($personel_id, $baslangic_tarihi, $bitis_tarihi);
+            if ($hasSayacTablo && ($raporSekmesi === 'sokme_takma' || stripos($isEmriTipi, 'Sayaç Değişimi') !== false)) {
+                continue;
+            }
+            if ($raporSekmesi === 'endeks_okuma' || stripos($isEmriTipi, 'Endeks Okuma') !== false || stripos($isEmriSonucu, 'Endeks Okuma') !== false) {
                 continue;
             }
 
@@ -2336,6 +2330,20 @@ class BordroPersonelModel extends Model
                 $insertSql->execute([$personel_id, $donem_id, $aciklama, $toplamTutar]);
             }
         }
+    }
+
+    /**
+     * Personelin sayac_degisim tablosunda kaydı olup olmadığını kontrol eder
+     */
+    private function hasSayacDegisimRecords($personel_id, $baslangic_tarihi, $bitis_tarihi): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT 1 FROM sayac_degisim 
+            WHERE personel_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL 
+            LIMIT 1
+        ");
+        $stmt->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        return (bool) $stmt->fetchColumn();
     }
 
     /**
