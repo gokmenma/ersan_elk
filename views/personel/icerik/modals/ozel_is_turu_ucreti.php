@@ -35,16 +35,16 @@ use App\Helper\Helper;
                                 ?>
                             </div>
                             <div class="col-md-6">
-                                <?php echo Form::FormFloatInput("text", "ucret", "0,00", "Özel Birim Ücret (Normal)", "Birim Ücret", "dollar-sign", "form-control money", ["id" => "modal_ucret", "required" => "required"]); ?>
+                                <?php echo Form::FormFloatInput("text", "ucret", "0,00", "Özel Birim Ücret", "Özel Birim Ücret (Normal)", "dollar-sign", "form-control money", true); ?>
                             </div>
                             <div class="col-md-6">
-                                <?php echo Form::FormFloatInput("text", "aracli_ucret", "0,00", "Özel Araçlı Ücret", "Araçlı Ücret", "car", "form-control money", ["id" => "modal_aracli_ucret"]); ?>
+                                <?php echo Form::FormFloatInput("text", "aracli_ucret", "0,00", "Özel Araçlı Ücret", "Özel Araçlı Ücret", "car", "form-control money", false); ?>
                             </div>
                             <div class="col-md-6">
-                                <?php echo Form::FormFloatInput("text", "gecerlilik_baslangic", \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()), "Geçerlilik Başlangıç", "Başlangıç Tarihi", "calendar", "form-control flatpickr", ["id" => "modal_gecerlilik_baslangic", "required" => "required"]); ?>
+                                <?php echo Form::FormFloatInput("text", "gecerlilik_baslangic", \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()), "Geçerlilik Başlangıç", "Geçerlilik Başlangıç", "calendar", "form-control flatpickr", true); ?>
                             </div>
                             <div class="col-md-6">
-                                <?php echo Form::FormFloatInput("text", "gecerlilik_bitis", "", "Geçerlilik Bitiş (Opsiyonel)", "Bitiş Tarihi", "calendar", "form-control flatpickr", ["id" => "modal_gecerlilik_bitis"]); ?>
+                                <?php echo Form::FormFloatInput("text", "gecerlilik_bitis", "", "Geçerlilik Bitiş (Opsiyonel)", "Geçerlilik Bitiş (Opsiyonel)", "calendar", "form-control flatpickr", false); ?>
                             </div>
                             <div class="col-12">
                                 <?php echo Form::FormSelect2("aktif", ["1" => "Aktif", "0" => "Pasif"], "1", "Durum", "check-circle", "key", "", "form-select select2", false, "width:100%", "", "modal_aktif"); ?>
@@ -84,24 +84,24 @@ use App\Helper\Helper;
             $('#formOzelIsTuruUcreti')[0].reset();
             $('#ozel_ucret_action').val('ozel-is-turu-ucreti-ekle');
             $('#ozel_ucret_id').val('');
-            $('#modal_is_turu_id').val('').trigger('change');
-            $('#modal_aktif').val('1').trigger('change');
-            $('#modal_ucret').val('0,00');
-            $('#modal_aracli_ucret').val('0,00');
+            $('#modal_is_turu_id').val('').trigger('change.select2');
+            $('#modal_aktif').val('1').trigger('change.select2');
+            $('#formOzelIsTuruUcreti input[name="ucret"]').val('0,00');
+            $('#formOzelIsTuruUcreti input[name="aracli_ucret"]').val('0,00');
             
             var defaultStart = '<?= \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()) ?>';
-            var bgEl = document.getElementById('modal_gecerlilik_baslangic');
-            if (bgEl && bgEl._flatpickr) {
-                bgEl._flatpickr.setDate(defaultStart);
+            var $baslangic = $('#formOzelIsTuruUcreti input[name="gecerlilik_baslangic"]');
+            if ($baslangic.length && $baslangic[0]._flatpickr) {
+                $baslangic[0]._flatpickr.setDate(defaultStart);
             } else {
-                $('#modal_gecerlilik_baslangic').val(defaultStart);
+                $baslangic.val(defaultStart);
             }
 
-            var btEl = document.getElementById('modal_gecerlilik_bitis');
-            if (btEl && btEl._flatpickr) {
-                btEl._flatpickr.clear();
+            var $bitis = $('#formOzelIsTuruUcreti input[name="gecerlilik_bitis"]');
+            if ($bitis.length && $bitis[0]._flatpickr) {
+                $bitis[0]._flatpickr.clear();
             } else {
-                $('#modal_gecerlilik_bitis').val('');
+                $bitis.val('');
             }
 
             $('#modalOzelIsTuruUcretiLabel').html('<i class="bx bx-purchase-tag me-2"></i>Yeni Özel İş Türü Fiyatı Tanımla');
@@ -165,37 +165,48 @@ use App\Helper\Helper;
         $(document).off('click', '.btn-ozel-ucret-duzenle').on('click', '.btn-ozel-ucret-duzenle', function(e) {
             e.preventDefault();
             var id = $(this).data('id');
+            var $btn = $(this);
+            var originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin"></i>');
+
             $.ajax({
                 url: 'views/personel/api.php',
                 type: 'POST',
                 data: { action: 'ozel-is-turu-ucreti-getir', id: id },
                 dataType: 'json',
                 success: function(response) {
+                    $btn.prop('disabled', false).html(originalHtml);
                     if (response.status === 'success' && response.data) {
                         var d = response.data;
                         $('#ozel_ucret_action').val('ozel-is-turu-ucreti-guncelle');
                         $('#ozel_ucret_id').val(d.id);
-                        $('#modal_is_turu_id').val(d.is_turu_id).trigger('change');
-                        $('#modal_ucret').val(d.ucret);
-                        $('#modal_aracli_ucret').val(d.aracli_ucret);
+                        $('#modal_is_turu_id').val(d.is_turu_id).trigger('change.select2');
+                        $('#formOzelIsTuruUcreti input[name="ucret"]').val(d.ucret);
+                        $('#formOzelIsTuruUcreti input[name="aracli_ucret"]').val(d.aracli_ucret);
                         
-                        var bgEl = document.getElementById('modal_gecerlilik_baslangic');
-                        if (bgEl && bgEl._flatpickr) {
-                            if (d.gecerlilik_baslangic) bgEl._flatpickr.setDate(d.gecerlilik_baslangic);
-                            else bgEl._flatpickr.clear();
+                        var $baslangic = $('#formOzelIsTuruUcreti input[name="gecerlilik_baslangic"]');
+                        if ($baslangic.length && $baslangic[0]._flatpickr) {
+                            if (d.gecerlilik_baslangic) {
+                                $baslangic[0]._flatpickr.setDate(d.gecerlilik_baslangic);
+                            } else {
+                                $baslangic[0]._flatpickr.clear();
+                            }
                         } else {
-                            $('#modal_gecerlilik_baslangic').val(d.gecerlilik_baslangic || '');
+                            $baslangic.val(d.gecerlilik_baslangic || '');
                         }
 
-                        var btEl = document.getElementById('modal_gecerlilik_bitis');
-                        if (btEl && btEl._flatpickr) {
-                            if (d.gecerlilik_bitis) btEl._flatpickr.setDate(d.gecerlilik_bitis);
-                            else btEl._flatpickr.clear();
+                        var $bitis = $('#formOzelIsTuruUcreti input[name="gecerlilik_bitis"]');
+                        if ($bitis.length && $bitis[0]._flatpickr) {
+                            if (d.gecerlilik_bitis) {
+                                $bitis[0]._flatpickr.setDate(d.gecerlilik_bitis);
+                            } else {
+                                $bitis[0]._flatpickr.clear();
+                            }
                         } else {
-                            $('#modal_gecerlilik_bitis').val(d.gecerlilik_bitis || '');
+                            $bitis.val(d.gecerlilik_bitis || '');
                         }
 
-                        $('#modal_aktif').val(d.aktif).trigger('change');
+                        $('#modal_aktif').val(d.aktif).trigger('change.select2');
                         $('#modalOzelIsTuruUcretiLabel').html('<i class="bx bx-edit-alt me-2"></i>Özel İş Türü Fiyatı Düzenle');
                         
                         var modal = new bootstrap.Modal(document.getElementById('modalOzelIsTuruUcreti'));
@@ -203,6 +214,10 @@ use App\Helper\Helper;
                     } else {
                         Swal.fire({ icon: 'error', title: 'Hata', text: response.message || 'Kayıt getirilemedi.' });
                     }
+                },
+                error: function() {
+                    $btn.prop('disabled', false).html(originalHtml);
+                    Swal.fire({ icon: 'error', title: 'Hata', text: 'Kayıt getirilirken hata oluştu.' });
                 }
             });
         });

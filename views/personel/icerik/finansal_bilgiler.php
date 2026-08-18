@@ -360,8 +360,8 @@ use App\Helper\Helper;
                                                 <br><small class="text-muted"><?= htmlspecialchars($ou->tur_adi) ?></small>
                                             <?php endif; ?>
                                         </td>
-                                        <td><span class="badge bg-soft-primary text-primary fs-6 px-2 py-1"><?= Helper::formattedMoney($ou->ucret ?? 0) ?></span></td>
-                                        <td><?= floatval($ou->aracli_ucret ?? 0) > 0 ? '<span class="badge bg-soft-info text-info fs-6 px-2 py-1">' . Helper::formattedMoney($ou->aracli_ucret) . '</span>' : '-' ?></td>
+                                        <td><?= floatval($ou->ucret ?? 0) > 0 ? '<span class="badge bg-soft-primary text-primary fs-6 px-2 py-1">' . Helper::formattedMoney($ou->ucret) . '</span>' : '<span class="badge bg-soft-secondary text-secondary fs-6 px-2 py-1">0,00 ₺ (Ücretsiz)</span>' ?></td>
+                                        <td><?= floatval($ou->aracli_ucret ?? 0) > 0 ? '<span class="badge bg-soft-info text-info fs-6 px-2 py-1">' . Helper::formattedMoney($ou->aracli_ucret) . '</span>' : '<span class="text-muted">-</span>' ?></td>
                                         <td><?= (!empty($ou->gecerlilik_baslangic) && $ou->gecerlilik_baslangic !== '0000-00-00') ? date('d.m.Y', strtotime($ou->gecerlilik_baslangic)) : '<span class="text-muted">-</span>' ?></td>
                                         <td><?= (!empty($ou->gecerlilik_bitis) && $ou->gecerlilik_bitis !== '0000-00-00') ? date('d.m.Y', strtotime($ou->gecerlilik_bitis)) : '<span class="badge bg-soft-success text-success">Süresiz</span>' ?></td>
                                         <td>
