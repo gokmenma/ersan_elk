@@ -109,7 +109,11 @@ Kural: Yemek yardiminin gunluk tutari, personel veya parametre uzerinden bulunan
 
 Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşamaz. Yemek yardımı yüksek hesaplanıp sonradan banka ödemesinden fark kesintisi düşülemez.
 
-### HTÇ (Hafta Tatili Calismasi) Kurali
+### Puantaj Hakedişi ve Maaşa Dahil Yemek Yardımı Entegrasyonu
+Net maaşlı ve maaşa dahil yemek yardımı alan personelde üretilen puantaj ve sayaç değişim kazançları:
+1. Personelin toplam hedef hakedişine eklenir (`hedefHakedis = sozlesmeHakedisi + puantajToplami`).
+2. Yemek havuzu bu toplam hedef hakedişe göre genişletilir. Günlük yemek limiti (örn. 300 TL) yetiyorsa puantaj kazancı yemek yardımına absorbe edilir ve bankadan ödenir.
+3. Böylece elden ödeme tutarı azaltılır/sıfırlanır. Yalnızca yemek limitini aşan bakiye puantaj hakedişi elden ödeme olarak dağıtılır.
 
 HTÇ, personelin kendi gunluk ucretinden hesaplanir ve **sozlesme netinin uzerine eklenir**.
 Bu kural hem maasa dahil hem de maasa dahil olmayan personelde gecerlidir.

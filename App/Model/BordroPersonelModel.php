@@ -1066,7 +1066,10 @@ class BordroPersonelModel extends Model
                 $bankaKarsilanabilirEkOdemeGosterim = max(0.0, $hariciEkOdeme - $netMaasPuantajHedefToplami);
                 $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaKarsilanabilirEkOdemeGosterim);
             }
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdemeForDahil, $sozlesmeHakedisi, $resmiDahilForDahil, $htcNetFazlaGosterim);
+            $puantajHedefToplamiDahil = $isPrimUsulu 
+                ? $primUsuluPuantajHedefToplami 
+                : ($netMaasPuantajHedefToplami > 0 ? $netMaasPuantajHedefToplami : 0.0);
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $puantajHedefToplamiDahil, $totalDeductionsForDahil, $hariciEkOdemeForDahil, $sozlesmeHakedisi, $resmiDahilForDahil, $htcNetFazlaGosterim);
             
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
@@ -1078,7 +1081,7 @@ class BordroPersonelModel extends Model
             // kaynağı puantajdan oluşan dönem hedefidir.
             $yemekTavanHedefi = $isPrimUsulu
                 ? $primUsuluPuantajHedefToplami
-                : $sozlesmeHakedisi;
+                : round($sozlesmeHakedisi + $netMaasPuantajHedefToplami, 2);
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
                 $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
                 2
@@ -5205,12 +5208,15 @@ class BordroPersonelModel extends Model
             }
             $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30, 4) * $htcGunHesap : 0.0;
             $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2);
+            $puantajHedefToplamiDahil = $isPrimUsuluDahilYardim
+                ? $primUsuluPuantajHedefToplami
+                : ($netMaasPuantajHakedisi > 0 ? $netMaasPuantajHakedisi : 0.0);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
                 $kayit,
                 $asgariNetNominal,
                 $maasHesapGunu,
                 $fiiliCalismaGunu,
-                $primUsuluPuantajHedefToplami,
+                $puantajHedefToplamiDahil,
                 0,
                 $bankayaTasinabilirEkOdeme,
                 $sozlesmeHakedisiCalc,
@@ -5220,11 +5226,10 @@ class BordroPersonelModel extends Model
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
             $asgariSozlesmePayi = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
-            // Prim usulü maaşa dahil personelde tavan, sıfır olan sözleşme maaşı değil
-            // puantajdan oluşan dönem hedefidir.
+            // Prim usulü veya net maaşlı personelde yemek tavanı hedefi (puantaj yemek limitine absorbe edilir)
             $yemekTavanHedefi = $isPrimUsuluDahilYardim
                 ? $primUsuluPuantajHedefToplami
-                : $targetNetHakedis;
+                : round($targetNetHakedis + $netMaasPuantajHakedisi, 2);
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
                 $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
                 2
@@ -5280,18 +5285,10 @@ class BordroPersonelModel extends Model
                 }
             }
             
-            // Banka: Asgari + Yemek (istisna limiti) + Eş + Banka ek ödemeler; üstü elden
+            // Banka: Asgari + Yemek + Eş + Banka ek ödemeler; yemek limitini aşan bakiye elden
             $netMaas = floatval($netMaas ?? $hakedisNetBeforeKesinti ?? 0);
-            // NOT: RTÇ/HTÇ'nin kendi SGK/Gelir Vergisi/Damga Vergisi kesintisi zaten brüte tamamlama
-            // (gross-up) ile kendi içinde absorbe edilip netEkOdemeler'e sadece NET tutar olarak
-            // eklenmişti (bkz. yukarıdaki RTÇ/HTÇ bloğu); $netMaas bu NET tutarı zaten içeriyor.
-            // Burada bir daha düşülürse banka+elden toplamı net_maas'tan az çıkar (çifte kesinti).
             $netMaasIcinDagitim = $netMaas;
-            // Puantaj toplam hakedişe eklenir, fakat resmî banka kapasitesine
-            // eklenmez. Banka matrahı sözleşme netini aşamaz.
-            $bankaHakedisTavani = ($isNetMaas && $netMaasPuantajHakedisi > 0)
-                ? round($targetNetHakedis + $yuvarlamaFarki + $bankayaTasinabilirEkOdeme + $htcEkOdeme, 2)
-                : $netMaasIcinDagitim;
+            $bankaHakedisTavani = $netMaasIcinDagitim;
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($yontemliOdemeler['banka'] ?? 0));
             $eldenBrut = max(0.0, $netMaasIcinDagitim - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
