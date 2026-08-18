@@ -1039,7 +1039,9 @@ class BordroPersonelModel extends Model
             // maaşını aşar.
             // Prim usulünde sözleşme maaşı sıfır olabilir; bu durumda yemek tavanının
             // kaynağı puantajdan oluşan dönem hedefidir.
-            $yemekTavanHedefi = $isPrimUsulu ? $primUsuluPuantajHedefToplami : $sozlesmeHakedisi;
+            $yemekTavanHedefi = $isPrimUsulu
+                ? $primUsuluPuantajHedefToplami
+                : $sozlesmeHakedisi;
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
                 $yemekTavanHedefi - $asgariTabanVal - $spouseAllowanceDeduction - $yontemliBankaEki,
                 2
@@ -5110,7 +5112,9 @@ class BordroPersonelModel extends Model
             $asgariSozlesmePayi = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             // Prim usulü maaşa dahil personelde tavan, sıfır olan sözleşme maaşı değil
             // puantajdan oluşan dönem hedefidir.
-            $yemekTavanHedefi = $isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis;
+            $yemekTavanHedefi = $isPrimUsuluDahilYardim
+                ? $primUsuluPuantajHedefToplami
+                : $targetNetHakedis;
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
                 $yemekTavanHedefi - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
                 2

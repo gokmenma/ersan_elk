@@ -67,7 +67,7 @@ Net maasta vergi/SGK kesintileri hesaplamaya dahil edilmez.
 netMaas = brutMaas + toplamEkOdeme - (toplamKesinti - icraKesintisi)
 ```
 
-Net ücretli personelde puantajdan oluşan hakediş, sözleşme netinin üzerine ayrıca eklenir. Bu tutar maaşa dahil yemek yardımı tavanına mahsup edilmez; ödeme kanalı puantaj parametresindeki `odeme_yontemi` ile belirlenir.
+Net ücretli personelde puantajdan oluşan hakediş, sözleşme netinin üzerine ayrıca eklenir. Ancak bu tutar resmî maaş/banka tavanını veya maaşa dahil yemek yardımı tavanını artırmaz. Ödeme kanalı puantaj parametresindeki `odeme_yontemi` ile belirlenir; resmî banka ödemesi için parametre banka yöntemiyle tanımlanmalıdır.
 
 ### Prim Usulu
 
