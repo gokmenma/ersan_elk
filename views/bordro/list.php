@@ -1400,9 +1400,8 @@ if (!empty($dbGelirler)) {
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="text-center fw-bold">
-                                                        <a href="javascript:void(0);" 
+                                                        <a href="javascript:void(0);"
                                                             class="text-primary text-decoration-none btn-open-takvim"
-                                                            onclick="openTakvimModalDirect(this)"
                                                             data-id="<?= $personel->personel_id ?>"
                                                             data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
                                                             data-ise-giris="<?= $personel->ise_giris_tarihi ?? '' ?>"
@@ -2312,39 +2311,78 @@ if (!empty($dbGelirler)) {
     window.gunIsimleriModal = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 
     window.openTakvimModalDirect = function(el) {
-        const id = $(el).attr('data-id');
-        const ad = $(el).attr('data-ad');
-        const iseGiris = $(el).attr('data-ise-giris');
-        const istenCikis = $(el).attr('data-isten-cikis');
-        const ay = $(el).attr('data-ay');
-        const yil = $(el).attr('data-yil');
+        try {
+            const id = $(el).attr('data-id');
+            const ad = $(el).attr('data-ad');
+            const iseGiris = $(el).attr('data-ise-giris');
+            const istenCikis = $(el).attr('data-isten-cikis');
+            const ay = $(el).attr('data-ay');
+            const yil = $(el).attr('data-yil');
 
-        $('#takvim_personel_ad').text(ad);
-        const ayAdi = window.ayIsimleriModal[parseInt(ay) - 1];
-        $('#takvim_yil_gosterge').text(ayAdi + ' ' + yil);
-
-        $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div></div>');
-        $('#modalIzinTakvim').modal('show');
-
-        $.post('views/personel/api/puantaj_izin.php', {
-            action: 'get-personel-month-data',
-            personel_id: id,
-            ay: ay,
-            yil: yil
-        }, function (res) {
-            if (res.status === 'success') {
-                renderYearlyModalCalendar(yil, parseInt(ay) - 1, res.data, iseGiris, istenCikis, res.calisma_donemleri || []);
-            } else {
-                $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger">' + (res.message || 'Veriler yüklenemedi.') + '</div></div>');
+            if (!id || !ay || !yil) {
+                console.error('Takvim modal açılamadı - eksik parametreler:', { id, ay, yil });
+                return;
             }
-        }, 'json').fail(function(xhr) {
-            $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger">Veriler yüklenirken bir sistem hatası oluştu: ' + xhr.responseText + '</div></div>');
-        });
+
+            $('#takvim_personel_ad').text(ad || 'Bilinmeyen');
+            const ayAdi = window.ayIsimleriModal && window.ayIsimleriModal[parseInt(ay) - 1];
+            $('#takvim_yil_gosterge').text((ayAdi || 'Ay') + ' ' + yil);
+
+            $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div></div>');
+
+            // Bootstrap modal'ı aç (v5+ ve eski versiyonlar için fallback)
+            const modalEl = document.getElementById('modalIzinTakvim');
+            if (bootstrap && bootstrap.Modal) {
+                new bootstrap.Modal(modalEl).show();
+            } else {
+                // Eski Bootstrap versiyonları için jQuery fallback
+                $('#modalIzinTakvim').modal('show');
+            }
+
+            $.ajax({
+                url: 'views/personel/api/puantaj_izin.php',
+                type: 'POST',
+                data: {
+                    action: 'get-personel-month-data',
+                    personel_id: id,
+                    ay: ay,
+                    yil: yil
+                },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.status === 'success') {
+                        renderYearlyModalCalendar(yil, parseInt(ay) - 1, res.data, iseGiris, istenCikis, res.calisma_donemleri || []);
+                    } else {
+                        $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger"><i class="bx bx-error me-2"></i>' + (res.message || 'Veriler yüklenemedi.') + '</div></div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    let errorMsg = 'Veriler yüklenirken bir hata oluştu.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    } else if (xhr.responseText) {
+                        errorMsg = xhr.responseText.substring(0, 200);
+                    }
+                    console.error('Takvim API hatası:', { status, error, xhr });
+                    $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger"><i class="bx bx-error me-2"></i>' + errorMsg + '</div></div>');
+                }
+            });
+        } catch (e) {
+            console.error('Takvim modal açma hatası:', e);
+            alert('Takvim açılırken bir hata oluştu: ' + e.message);
+        }
     };
 </script>
 
 <script>
     $(document).ready(function() {
+        // Takvim modalı açma - gün sütununa tıklama
+        $(document).on('click', '.btn-open-takvim', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openTakvimModalDirect(this);
+        });
+
         $('#btnHataliIslemler').on('click', function() {
             loadHataliIslemler();
             $('#modalHataliIslemler').modal('show');
