@@ -379,6 +379,13 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                         <span class="d-none d-sm-block">Mühürleme</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'kacakkontrol' ? 'active' : '' ?>" href="javascript:void(0);"
+                        data-tab="kacakkontrol">
+                        <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                        <span class="d-none d-sm-block">Kaçak İşlemleri</span>
+                    </a>
+                </li>
             </ul>
             <div class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
                 <button type="button"
@@ -426,17 +433,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
 
         <div class="row" id="reportCardRow">
             <div class="col-12">
-                <div id="kacakHelpInfo" class="alert alert-soft-primary alert-dismissible fade show mb-2 p-2"
-                    role="alert" style="display: none;">
-                    <div class="d-flex align-items-center">
-                        <i class="bx bxs-info-circle fs-5 me-2"></i>
-                        <div>
-                            <strong>İpucu:</strong> Kaçak Kontrol tablosunda gün kutucuklarına <strong>çift
-                                tıklayarak</strong> o tarih ve o ekip için hızlıca yeni kayıt oluşturabilirsiniz.
-                        </div>
-                    </div>
-                    <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
                 <div class="card">
                     <div class="card-body" id="reportContent">
                         <div class="text-center p-5">
@@ -519,6 +515,11 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 <li class="nav-item">
                     <a class="nav-link" href="javascript:void(0);" data-tab="muhurleme">
                         <span class="d-none d-sm-block">Mühürleme</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:void(0);" data-tab="kacakkontrol">
+                        <span class="d-none d-sm-block">Kaçak İşlemleri</span>
                     </a>
                 </li>
             </ul>
@@ -634,13 +635,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
 
                     // Trigger height adjustment after content is loaded
                     setTimeout(adjustTableHeight, 100);
-
-                    // Show help info if it's kacak tab
-                    if (currentTab === 'kacakkontrol') {
-                        $('#kacakHelpInfo').show();
-                    } else {
-                        $('#kacakHelpInfo').hide();
-                    }
                 },
                 error: function () {
                     $('#reportContent').html('<div class="alert alert-danger">Rapor yüklenirken bir hata oluştu.</div>');
@@ -759,13 +753,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             } else if (currentTab === 'kacakkontrol') {
                 $('.btn-kacak-action').addClass('d-flex').removeClass('d-none');
                 $('.vr-kacak-action').removeClass('d-none');
-            }
-
-            // Show/Hide Kacak Help Info
-            if (currentTab === 'kacakkontrol') {
-                $('#kacakHelpInfo').fadeIn();
-            } else {
-                $('#kacakHelpInfo').fadeOut();
             }
         };
 

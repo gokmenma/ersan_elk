@@ -675,7 +675,7 @@ $(document).ready(function () {
     });
   });
 
-  // Eski Detay Görüntüle
+  // Eski Detay Görüntüle (2 Sütunlu Görünüm)
   $(document).on("click", ".btn-detail-old", function () {
     const id = $(this).data("id");
     console.log("Bordro Eski Detay tıklandı, ID:", id);

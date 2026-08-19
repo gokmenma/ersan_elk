@@ -1008,7 +1008,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $aciklama = (string)($odeme->aciklama ?? '');
                     $odemeTurLower = mb_strtolower((string)($odeme->tur ?? ''), 'UTF-8');
                     
-                    if (!$isPrimUsulu && !empty($bp->yemek_yardimi_dahil) && ($odemeTurLower === 'yemek_yardimi_tum' || $odemeTurLower === 'yemek' || strpos($odemeTurLower, 'yemek') !== false) && $odemeTurLower !== 'yemek_yardimi_dengeleme') { continue; }
+                    if ((!empty($bp->yemek_yardimi_dahil) || $isPrimUsulu || $isInclusive) && ($odemeTurLower === 'yemek_yardimi_tum' || $odemeTurLower === 'yemek' || strpos($odemeTurLower, 'yemek') !== false) && $odemeTurLower !== 'yemek_yardimi_dengeleme') { continue; }
                     if (($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false)) { continue; }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
@@ -1070,7 +1070,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $bagimsizEkOdemeGosterim = max(0, $bagimsizEkOdemeGosterim - $toplamPuantajTutar);
                     }
                     $htcGosterimEkOdeme = $htcGunModal > 0 ? round($nominalMaas / 30 * $htcGunModal, 2) : 0.0;
-                    $gosterimYuvarlamaFarki = round($displayToplamAlacak - $anaHakedisGosterim - $bagimsizEkOdemeGosterim - $htcGosterimEkOdeme, 2);
+                    $gosterimYuvarlamaFarki = round($yuvarlamaFarki, 2);
                     if (abs($gosterimYuvarlamaFarki) >= 0.01) {
                         $toplamYuvarlamaFarki = $gosterimYuvarlamaFarki;
                     }
@@ -1633,6 +1633,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             // Kesinti ve ek ödeme türü etiketleri
+
             case 'get-detail':
                 $id = intval($_POST['id'] ?? 0);
 
