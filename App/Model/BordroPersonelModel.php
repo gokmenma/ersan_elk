@@ -880,7 +880,9 @@ class BordroPersonelModel extends Model
                     $yontem = 'elden';
                 }
                 if ($yontem === 'banka' && !$isPrimOdemeItem) {
-                    $bankaKatkisi = max($tutar, $this->ekOdemeResmiNetHedefi($eo, $param, $donemBaslangic));
+                    $bankaKatkisi = ($eoTurLower === 'hafta_sonu_nobet')
+                        ? 0.0
+                        : max($tutar, $this->ekOdemeResmiNetHedefi($eo, $param, $donemBaslangic));
                     if (!$isPuantajOdeme) {
                         $bankayaTasinabilirEkOdemeGosterim += $tutar;
                     }
@@ -4833,7 +4835,10 @@ class BordroPersonelModel extends Model
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
                 }
             } elseif ($yontem === 'banka') {
-                $yontemliOdemeler['banka'] += max($ekOdemeTutari, $this->ekOdemeResmiNetHedefi($odeme, $parametre, $kayit->baslangic_tarihi));
+                $bankaKatkisi = ($turLower === 'hafta_sonu_nobet')
+                    ? 0.0
+                    : max($ekOdemeTutari, $this->ekOdemeResmiNetHedefi($odeme, $parametre, $kayit->baslangic_tarihi));
+                $yontemliOdemeler['banka'] += $bankaKatkisi;
             } else {
                 $bankaPay = ($isPrimUsulu || $isNetMaas) ? $rNet : $rTutar;
                 $yontemliOdemeler['banka'] += $bankaPay;

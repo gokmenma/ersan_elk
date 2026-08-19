@@ -223,11 +223,40 @@ class PersonelEkOdemelerModel extends Model
     {
         $bitis = $bitis_donemi ?? date('Y-m');
         $sql = $this->db->prepare("
-            UPDATE {$this->table} 
+            UPDATE {$this->table}
             SET bitis_donemi = ?, aktif = 0, updated_at = NOW()
             WHERE id = ? AND tekrar_tipi = 'surekli'
         ");
         return $sql->execute([$bitis, $id]);
+    }
+
+    /**
+     * Sürekli ödemenin tarih aralığı dışında kalan dönem kayıtlarını pasifleştirir.
+     * $baslangic null ise ana kayıttan üretilmiş tüm dönem kayıtları temizlenir.
+     */
+    public function temizleKapsamDisiDonemKayitlari($ana_odeme_id, $baslangic = null, $bitis = null)
+    {
+        if (empty($baslangic)) {
+            $sql = $this->db->prepare("
+                UPDATE {$this->table}
+                SET silinme_tarihi = NOW()
+                WHERE ana_odeme_id = ? AND silinme_tarihi IS NULL
+            ");
+            return $sql->execute([$ana_odeme_id]);
+        }
+
+        $sql = $this->db->prepare("
+            UPDATE {$this->table} peo
+            JOIN bordro_donemi bd ON bd.id = peo.donem_id
+            SET peo.silinme_tarihi = NOW()
+            WHERE peo.ana_odeme_id = ?
+              AND peo.silinme_tarihi IS NULL
+              AND (
+                    bd.bitis_tarihi < ?
+                 OR (? IS NOT NULL AND bd.baslangic_tarihi > ?)
+              )
+        ");
+        return $sql->execute([$ana_odeme_id, $baslangic, $bitis, $bitis]);
     }
 
     /**

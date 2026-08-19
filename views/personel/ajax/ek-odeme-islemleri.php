@@ -101,12 +101,24 @@ try {
 
             if ($tekrarTipi === 'tek_sefer') {
                 $data['donem_id'] = $_POST['donem_id'] ?? null;
+                $data['baslangic_donemi'] = null;
+                $data['bitis_donemi'] = null;
             } else {
+                $data['donem_id'] = null;
                 $data['baslangic_donemi'] = Date::dttoeng($_POST['baslangic_donemi'] ?? date('d.m.Y'));
                 $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? Date::dttoeng($_POST['bitis_donemi']) : null;
             }
 
             $result = $ekOdemeModel->updateEkOdeme($id, $data);
+
+            if ($result) {
+                if ($tekrarTipi === 'tek_sefer') {
+                    $ekOdemeModel->temizleKapsamDisiDonemKayitlari($id);
+                } else {
+                    $ekOdemeModel->temizleKapsamDisiDonemKayitlari($id, $data['baslangic_donemi'], $data['bitis_donemi']);
+                }
+            }
+
             echo json_encode(['success' => $result]);
             break;
 
