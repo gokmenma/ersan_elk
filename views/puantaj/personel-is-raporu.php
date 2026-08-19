@@ -34,6 +34,7 @@ $categoryOptions = [
     'kesme_acma' => 'Kesme / Açma',
     'endeks_okuma' => 'Endeks Okuma',
     'sayac_degisim' => 'Sayaç Sökme Takma',
+    'muhurleme' => 'Mühürleme',
     'kacak_kontrol' => 'Kaçak İşlemleri'
 ];
 ?>
@@ -49,13 +50,13 @@ $categoryOptions = [
         box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     }
     .kpi-icon-box {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 22px;
     }
     .filter-type-switcher {
         display: inline-flex;
@@ -100,6 +101,7 @@ $categoryOptions = [
     .category-badge-kesme_acma { background-color: rgba(240, 101, 72, 0.15); color: #f06548; }
     .category-badge-endeks_okuma { background-color: rgba(10, 179, 156, 0.15); color: #0ab39c; }
     .category-badge-sayac_degisim { background-color: rgba(255, 190, 11, 0.18); color: #b8860b; }
+    .category-badge-muhurleme { background-color: rgba(6, 182, 212, 0.15); color: #0891b2; }
     .category-badge-kacak_kontrol { background-color: rgba(64, 81, 137, 0.15); color: #405189; }
 </style>
 
@@ -197,14 +199,14 @@ $categoryOptions = [
     <div id="reportMainContent" style="display: none;">
         
         <!-- KPI Özet Kartları -->
-        <div class="row g-3 mb-4">
+        <div class="row g-2 mb-4">
             <!-- Toplam İş -->
             <div class="col-xl-2 col-md-4 col-sm-6">
                 <div class="card kpi-card shadow-sm h-100 bg-primary text-white">
                     <div class="card-body p-3 d-flex align-items-center justify-content-between">
                         <div>
                             <span class="text-white-50 small fw-semibold">Toplam İşlem</span>
-                            <h3 class="mb-0 fw-bold mt-1 text-white" id="kpiToplamIs">0</h3>
+                            <h4 class="mb-0 fw-bold mt-1 text-white" id="kpiToplamIs">0</h4>
                             <small class="text-white-50" id="kpiOrtalamaGun">Ort. 0 iş/gün</small>
                         </div>
                         <div class="kpi-icon-box bg-white bg-opacity-25 text-white">
@@ -220,7 +222,7 @@ $categoryOptions = [
                     <div class="card-body p-3 d-flex align-items-center justify-content-between">
                         <div>
                             <span class="text-muted small fw-semibold">Kesme / Açma</span>
-                            <h3 class="mb-0 fw-bold mt-1 text-danger" id="kpiKesmeAcma">0</h3>
+                            <h4 class="mb-0 fw-bold mt-1 text-danger" id="kpiKesmeAcma">0</h4>
                             <small class="text-muted" id="kpiKesmeDetay">0 Kesme / 0 Açma</small>
                         </div>
                         <div class="kpi-icon-box bg-danger bg-opacity-10 text-danger">
@@ -236,7 +238,7 @@ $categoryOptions = [
                     <div class="card-body p-3 d-flex align-items-center justify-content-between">
                         <div>
                             <span class="text-muted small fw-semibold">Endeks Okuma</span>
-                            <h3 class="mb-0 fw-bold mt-1 text-success" id="kpiEndeksOkuma">0</h3>
+                            <h4 class="mb-0 fw-bold mt-1 text-success" id="kpiEndeksOkuma">0</h4>
                             <small class="text-muted">Okunan Abone</small>
                         </div>
                         <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
@@ -252,11 +254,27 @@ $categoryOptions = [
                     <div class="card-body p-3 d-flex align-items-center justify-content-between">
                         <div>
                             <span class="text-muted small fw-semibold">Sayaç Değişim</span>
-                            <h3 class="mb-0 fw-bold mt-1 text-warning" id="kpiSayacDegisim">0</h3>
+                            <h4 class="mb-0 fw-bold mt-1 text-warning" id="kpiSayacDegisim">0</h4>
                             <small class="text-muted">Sökme / Takma</small>
                         </div>
                         <div class="kpi-icon-box bg-warning bg-opacity-10 text-warning">
                             <i class="bx bx-reset"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mühürleme -->
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="card kpi-card shadow-sm h-100 bg-white">
+                    <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="text-muted small fw-semibold">Mühürleme</span>
+                            <h4 class="mb-0 fw-bold mt-1 text-info" id="kpiMuhurleme" style="color: #0891b2 !important;">0</h4>
+                            <small class="text-muted">Mühür İşlemi</small>
+                        </div>
+                        <div class="kpi-icon-box bg-info bg-opacity-10" style="color: #0891b2;">
+                            <i class="bx bx-lock-alt"></i>
                         </div>
                     </div>
                 </div>
@@ -268,27 +286,11 @@ $categoryOptions = [
                     <div class="card-body p-3 d-flex align-items-center justify-content-between">
                         <div>
                             <span class="text-muted small fw-semibold">Kaçak İşlemleri</span>
-                            <h3 class="mb-0 fw-bold mt-1 text-info" id="kpiKacakKontrol">0</h3>
-                            <small class="text-muted">Tutanak / Tespit</small>
+                            <h4 class="mb-0 fw-bold mt-1" style="color: #405189;" id="kpiKacakKontrol">0</h4>
+                            <small class="text-muted" id="kpiAktifGun">Aktif: 0 Gün</small>
                         </div>
-                        <div class="kpi-icon-box bg-info bg-opacity-10 text-info">
+                        <div class="kpi-icon-box bg-opacity-10" style="background-color: rgba(64, 81, 137, 0.1); color: #405189;">
                             <i class="bx bx-shield-quarter"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Aktif Çalışılan Gün -->
-            <div class="col-xl-2 col-md-4 col-sm-6">
-                <div class="card kpi-card shadow-sm h-100 bg-white">
-                    <div class="card-body p-3 d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted small fw-semibold">Aktif Gün</span>
-                            <h3 class="mb-0 fw-bold mt-1 text-dark" id="kpiAktifGun">0</h3>
-                            <small class="text-muted">Çalışılan Gün</small>
-                        </div>
-                        <div class="kpi-icon-box bg-secondary bg-opacity-10 text-secondary">
-                            <i class="bx bx-calendar-check"></i>
                         </div>
                     </div>
                 </div>
@@ -349,13 +351,14 @@ $categoryOptions = [
                                     <table class="table table-hover table-bordered align-middle mb-0" id="dailySummaryTable">
                                         <thead class="table-light">
                                             <tr>
-                                                <th class="text-center" style="width: 120px;">TARİH</th>
-                                                <th class="text-center" style="width: 90px;">GÜN</th>
-                                                <th class="text-end" style="width: 140px;">KESME / AÇMA</th>
-                                                <th class="text-end" style="width: 140px;">ENDEKS OKUMA</th>
-                                                <th class="text-end" style="width: 150px;">SAYAÇ DEĞİŞİM</th>
-                                                <th class="text-end" style="width: 150px;">KAÇAK İŞLEMLERİ</th>
-                                                <th class="text-end fw-bold" style="width: 150px;">GÜNLÜK TOPLAM</th>
+                                                <th class="text-center" style="width: 110px;">TARİH</th>
+                                                <th class="text-center" style="width: 70px;">GÜN</th>
+                                                <th class="text-end" style="width: 130px;">KESME / AÇMA</th>
+                                                <th class="text-end" style="width: 130px;">ENDEKS OKUMA</th>
+                                                <th class="text-end" style="width: 130px;">SAYAÇ DEĞİŞİM</th>
+                                                <th class="text-end" style="width: 130px;">MÜHÜRLEME</th>
+                                                <th class="text-end" style="width: 130px;">KAÇAK İŞLEMLERİ</th>
+                                                <th class="text-end fw-bold" style="width: 140px;">GÜNLÜK TOPLAM</th>
                                             </tr>
                                         </thead>
                                         <tbody id="dailySummaryTableBody"></tbody>
@@ -487,11 +490,14 @@ $(document).ready(function () {
         }).done(function (res) {
             $('#reportLoadingState').hide();
             if (res.status === 'success') {
-                $('#reportMainContent').fadeIn(200);
-                renderKpis(res.kpi);
-                renderCharts(res.trend, res.distribution, res.period);
-                renderDailyTable(res.trend.daily_list);
-                renderDetailedLogs(res.logs);
+                $('#reportMainContent').show();
+                try { renderKpis(res.kpi); } catch (e) { console.error('renderKpis error:', e); }
+                try { renderDailyTable(res.trend.daily_list); } catch (e) { console.error('renderDailyTable error:', e); }
+                try { renderDetailedLogs(res.logs); } catch (e) { console.error('renderDetailedLogs error:', e); }
+                
+                setTimeout(function() {
+                    try { renderCharts(res.trend, res.distribution, res.period); } catch (e) { console.error('renderCharts error:', e); }
+                }, 100);
             } else {
                 Swal.fire('Uyarı', res.message || 'Veriler alınamadı.', 'warning');
                 $('#reportEmptyState').show();
@@ -510,17 +516,25 @@ $(document).ready(function () {
         $('#kpiKesmeDetay').text((kpi.kesme_adet || 0) + ' Kesme / ' + (kpi.acma_adet || 0) + ' Açma');
         $('#kpiEndeksOkuma').text((kpi.endeks_okuma || 0).toLocaleString('tr-TR'));
         $('#kpiSayacDegisim').text((kpi.sayac_degisim || 0).toLocaleString('tr-TR'));
+        $('#kpiMuhurleme').text((kpi.muhurleme || 0).toLocaleString('tr-TR'));
         $('#kpiKacakKontrol').text((kpi.kacak_kontrol || 0).toLocaleString('tr-TR'));
-        $('#kpiAktifGun').text((kpi.aktif_gun_sayisi || 0) + ' Gün');
+        $('#kpiAktifGun').text('Aktif: ' + (kpi.aktif_gun_sayisi || 0) + ' Gün');
     }
 
     function renderCharts(trend, distribution, period) {
+        if (typeof ApexCharts === 'undefined') {
+            console.warn('ApexCharts is not defined yet.');
+            return;
+        }
+
         $('#trendDonemBadge').text(period.start_date_tr + ' - ' + period.end_date_tr);
 
         // 1. Günlük Trend Çizgi Grafiği
         if (trendChart) {
-            trendChart.destroy();
+            try { trendChart.destroy(); } catch (e) {}
+            trendChart = null;
         }
+        $('#chartDailyTrend').empty();
 
         const trendOptions = {
             series: trend.series || [],
@@ -567,20 +581,22 @@ $(document).ready(function () {
 
         // 2. Kategori Dağılım Donut Grafiği
         if (distChart) {
-            distChart.destroy();
+            try { distChart.destroy(); } catch (e) {}
+            distChart = null;
         }
+        $('#chartDistribution').empty();
 
         const hasDistData = (distribution.series && distribution.series.length > 0 && distribution.series.some(v => v > 0));
 
         if (!hasDistData) {
-            $('#chartDistribution').html('<div class="text-center text-muted p-4">Bu dönemde işlem kaydı bulunmuyor.</div>');
+            $('#chartDistribution').html('<div class="text-center text-muted p-4"><i class="bx bx-info-circle fs-3 d-block mb-1"></i>Bu dönemde işlem kaydı bulunmuyor.</div>');
             return;
         }
 
         const distOptions = {
             series: distribution.series || [],
             labels: distribution.labels || [],
-            colors: distribution.colors || ['#f06548', '#0ab39c', '#ffbe0b', '#405189'],
+            colors: distribution.colors || ['#f06548', '#0ab39c', '#ffbe0b', '#06b6d4', '#405189'],
             chart: {
                 type: 'donut',
                 height: 320
@@ -615,16 +631,17 @@ $(document).ready(function () {
 
     function renderDailyTable(dailyList) {
         let html = '';
-        let totKesme = 0, totOkuma = 0, totSayac = 0, totKacak = 0, totGenel = 0;
+        let totKesme = 0, totOkuma = 0, totSayac = 0, totMuhur = 0, totKacak = 0, totGenel = 0;
 
         (dailyList || []).forEach(function (row) {
-            totKesme += row.kesme_acma;
-            totOkuma += row.endeks_okuma;
-            totSayac += row.sayac_degisim;
-            totKacak += row.kacak_kontrol;
-            totGenel += row.toplam;
+            totKesme += (row.kesme_acma || 0);
+            totOkuma += (row.endeks_okuma || 0);
+            totSayac += (row.sayac_degisim || 0);
+            totMuhur += (row.muhurleme || 0);
+            totKacak += (row.kacak_kontrol || 0);
+            totGenel += (row.toplam || 0);
 
-            const isWeekend = (row.gun_adi === 'Paz' || row.gun_adi === 'Sun');
+            const isWeekend = (row.gun_adi === 'Paz' || row.gun_adi === 'Cmt' || row.is_weekend);
             const rowClass = isWeekend ? 'table-light' : '';
 
             html += `<tr class="${rowClass}">
@@ -633,7 +650,8 @@ $(document).ready(function () {
                 <td class="text-end ${row.kesme_acma > 0 ? 'fw-bold text-danger' : 'text-muted'}">${row.kesme_acma > 0 ? row.kesme_acma.toLocaleString('tr-TR') : '-'}</td>
                 <td class="text-end ${row.endeks_okuma > 0 ? 'fw-bold text-success' : 'text-muted'}">${row.endeks_okuma > 0 ? row.endeks_okuma.toLocaleString('tr-TR') : '-'}</td>
                 <td class="text-end ${row.sayac_degisim > 0 ? 'fw-bold text-warning' : 'text-muted'}">${row.sayac_degisim > 0 ? row.sayac_degisim.toLocaleString('tr-TR') : '-'}</td>
-                <td class="text-end ${row.kacak_kontrol > 0 ? 'fw-bold text-info' : 'text-muted'}">${row.kacak_kontrol > 0 ? row.kacak_kontrol.toLocaleString('tr-TR') : '-'}</td>
+                <td class="text-end ${row.muhurleme > 0 ? 'fw-bold text-info' : 'text-muted'}">${row.muhurleme > 0 ? row.muhurleme.toLocaleString('tr-TR') : '-'}</td>
+                <td class="text-end ${row.kacak_kontrol > 0 ? 'fw-bold text-info' : 'text-muted'}" style="${row.kacak_kontrol > 0 ? 'color: #405189 !important;' : ''}">${row.kacak_kontrol > 0 ? row.kacak_kontrol.toLocaleString('tr-TR') : '-'}</td>
                 <td class="text-end fw-bold ${row.toplam > 0 ? 'text-primary' : 'text-muted'}">${row.toplam > 0 ? row.toplam.toLocaleString('tr-TR') : '-'}</td>
             </tr>`;
         });
@@ -645,7 +663,8 @@ $(document).ready(function () {
             <td class="text-end text-danger">${totKesme.toLocaleString('tr-TR')}</td>
             <td class="text-end text-success">${totOkuma.toLocaleString('tr-TR')}</td>
             <td class="text-end text-warning">${totSayac.toLocaleString('tr-TR')}</td>
-            <td class="text-end text-info">${totKacak.toLocaleString('tr-TR')}</td>
+            <td class="text-end text-info">${totMuhur.toLocaleString('tr-TR')}</td>
+            <td class="text-end" style="color: #405189;">${totKacak.toLocaleString('tr-TR')}</td>
             <td class="text-end text-primary fs-6">${totGenel.toLocaleString('tr-TR')}</td>
         </tr>`;
         $('#dailySummaryTableFoot').html(footHtml);
@@ -676,22 +695,18 @@ $(document).ready(function () {
 
         $('#detailedLogsTable tbody').html(tbodyHtml);
 
-        if (typeof applyLengthStateSave === 'function' && typeof getDatatableOptions === 'function') {
+        const dtOpts = (typeof getDatatableOptions === 'function') ? getDatatableOptions() : {};
+        if (typeof applyLengthStateSave === 'function') {
             logsDataTable = $('#detailedLogsTable').DataTable(applyLengthStateSave({
-                ...getDatatableOptions(),
+                ...dtOpts,
                 pageLength: 25,
-                order: [[1, 'desc']],
-                language: {
-                    url: 'assets/libs/datatables.net/tr.json'
-                }
+                order: [[1, 'desc']]
             }));
         } else {
             logsDataTable = $('#detailedLogsTable').DataTable({
+                ...dtOpts,
                 pageLength: 25,
-                order: [[1, 'desc']],
-                language: {
-                    url: 'assets/libs/datatables.net/tr.json'
-                }
+                order: [[1, 'desc']]
             });
         }
     }

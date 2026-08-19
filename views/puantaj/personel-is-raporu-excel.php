@@ -116,17 +116,17 @@ $sheet2 = $spreadsheet->createSheet();
 $sheet2->setTitle('Günlük Özet');
 
 $sheet2->setCellValue('A1', 'GÜNLÜK İŞ DAĞILIMI - ' . $personelAdi);
-$sheet2->mergeCells('A1:G1');
+$sheet2->mergeCells('A1:H1');
 $sheet2->getStyle('A1')->getFont()->setBold(true)->setSize(13);
 
-$headers2 = ['TARİH', 'GÜN', 'KESME / AÇMA', 'ENDEKS OKUMA', 'SAYAÇ DEĞİŞİM', 'KAÇAK İŞLEMLERİ', 'GÜNLÜK TOPLAM'];
+$headers2 = ['TARİH', 'GÜN', 'KESME / AÇMA', 'ENDEKS OKUMA', 'SAYAÇ DEĞİŞİM', 'MÜHÜRLEME', 'KAÇAK İŞLEMLERİ', 'GÜNLÜK TOPLAM'];
 $cIdx = 'A';
 foreach ($headers2 as $h2) {
     $sheet2->setCellValue($cIdx . '3', $h2);
     $cIdx++;
 }
 
-$sheet2->getStyle('A3:G3')->applyFromArray([
+$sheet2->getStyle('A3:H3')->applyFromArray([
     'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '10b981']],
     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
@@ -139,11 +139,12 @@ foreach ($trend['daily_list'] ?? [] as $dRow) {
     $sheet2->setCellValue('C' . $rNum2, $dRow['kesme_acma']);
     $sheet2->setCellValue('D' . $rNum2, $dRow['endeks_okuma']);
     $sheet2->setCellValue('E' . $rNum2, $dRow['sayac_degisim']);
-    $sheet2->setCellValue('F' . $rNum2, $dRow['kacak_kontrol']);
-    $sheet2->setCellValue('G' . $rNum2, $dRow['toplam']);
+    $sheet2->setCellValue('F' . $rNum2, $dRow['muhurleme']);
+    $sheet2->setCellValue('G' . $rNum2, $dRow['kacak_kontrol']);
+    $sheet2->setCellValue('H' . $rNum2, $dRow['toplam']);
 
     $sheet2->getStyle('A' . $rNum2 . ':B' . $rNum2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet2->getStyle('C' . $rNum2 . ':G' . $rNum2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet2->getStyle('C' . $rNum2 . ':H' . $rNum2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
     $rNum2++;
 }
 
@@ -154,8 +155,9 @@ $sheet2->setCellValue('D' . $rNum2, '=SUM(D4:D' . ($rNum2 - 1) . ')');
 $sheet2->setCellValue('E' . $rNum2, '=SUM(E4:E' . ($rNum2 - 1) . ')');
 $sheet2->setCellValue('F' . $rNum2, '=SUM(F4:F' . ($rNum2 - 1) . ')');
 $sheet2->setCellValue('G' . $rNum2, '=SUM(G4:G' . ($rNum2 - 1) . ')');
+$sheet2->setCellValue('H' . $rNum2, '=SUM(H4:H' . ($rNum2 - 1) . ')');
 
-$sheet2->getStyle('A' . $rNum2 . ':G' . $rNum2)->applyFromArray([
+$sheet2->getStyle('A' . $rNum2 . ':H' . $rNum2)->applyFromArray([
     'font' => ['bold' => true],
     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'e2e8f0']]
 ]);

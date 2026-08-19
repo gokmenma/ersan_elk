@@ -21,6 +21,7 @@ class PersonelIsRaporuModel extends Model
             'kesme_acma' => 0,
             'kesme_adet' => 0,
             'acma_adet' => 0,
+            'muhurleme' => 0,
             'endeks_okuma' => 0,
             'sayac_degisim' => 0,
             'kacak_kontrol' => 0,
@@ -28,12 +29,13 @@ class PersonelIsRaporuModel extends Model
             'gunluk_ortalama' => 0
         ];
 
-        // 1. Kesme / Açma
+        // 1. Kesme / Açma ve Mühürleme (yapilan_isler tablosundan)
         $sqlKesme = "SELECT 
                         COUNT(*) as total_kayit,
                         SUM(COALESCE(sonuclanmis, 1)) as total_is,
-                        SUM(CASE WHEN is_emri_tipi LIKE '%Kesme%' THEN COALESCE(sonuclanmis, 1) ELSE 0 END) as kesme_adet,
-                        SUM(CASE WHEN is_emri_tipi LIKE '%Açma%' THEN COALESCE(sonuclanmis, 1) ELSE 0 END) as acma_adet
+                        SUM(CASE WHEN UPPER(is_emri_tipi) LIKE '%KESME%' THEN COALESCE(sonuclanmis, 1) ELSE 0 END) as kesme_adet,
+                        SUM(CASE WHEN UPPER(is_emri_tipi) LIKE '%AÇMA%' OR UPPER(is_emri_tipi) LIKE '%ACMA%' THEN COALESCE(sonuclanmis, 1) ELSE 0 END) as acma_adet,
+                        SUM(CASE WHEN UPPER(is_emri_tipi) LIKE '%MÜHÜR%' OR UPPER(is_emri_tipi) LIKE '%MUHUR%' THEN COALESCE(sonuclanmis, 1) ELSE 0 END) as muhurleme_adet
                      FROM yapilan_isler 
                      WHERE firma_id = :firma_id 
                        AND personel_id = :personel_id 
@@ -48,9 +50,11 @@ class PersonelIsRaporuModel extends Model
         ]);
         $rowKesme = $stmtKesme->fetch(PDO::FETCH_ASSOC);
         if ($rowKesme) {
-            $kpi['kesme_acma'] = (int) ($rowKesme['total_is'] ?? 0);
+            $kpi['muhurleme'] = (int) ($rowKesme['muhurleme_adet'] ?? 0);
             $kpi['kesme_adet'] = (int) ($rowKesme['kesme_adet'] ?? 0);
             $kpi['acma_adet'] = (int) ($rowKesme['acma_adet'] ?? 0);
+            $kpi['kesme_acma'] = (int) ($rowKesme['total_is'] ?? 0) - $kpi['muhurleme'];
+            if ($kpi['kesme_acma'] < 0) $kpi['kesme_acma'] = 0;
         }
 
         // 2. Endeks Okuma
@@ -121,7 +125,7 @@ class PersonelIsRaporuModel extends Model
             $kpi['kacak_kontrol'] = (int) ($rowKacak['total_kacak'] ?? 0);
         }
 
-        $kpi['toplam_is'] = $kpi['kesme_acma'] + $kpi['endeks_okuma'] + $kpi['sayac_degisim'] + $kpi['kacak_kontrol'];
+        $kpi['toplam_is'] = $kpi['kesme_acma'] + $kpi['muhurleme'] + $kpi['endeks_okuma'] + $kpi['sayac_degisim'] + $kpi['kacak_kontrol'];
 
         // Aktif gün sayısı tespiti (en az 1 işlem yapılan farklı günlerin sayısı)
         $sqlGun = "SELECT COUNT(DISTINCT tarih) as aktif_gun FROM (
@@ -162,15 +166,28 @@ class PersonelIsRaporuModel extends Model
         $interval = new \DateInterval('P1D');
         $period = new \DatePeriod($start, $interval, $end);
 
+        $trDays = [
+            'Mon' => 'Pzt',
+            'Tue' => 'Sal',
+            'Wed' => 'Çar',
+            'Thu' => 'Per',
+            'Fri' => 'Cum',
+            'Sat' => 'Cmt',
+            'Sun' => 'Paz'
+        ];
+
         $dailyData = [];
         foreach ($period as $dt) {
             $dStr = $dt->format('Y-m-d');
             $dates[] = $dStr;
+            $enDay = $dt->format('D');
             $dailyData[$dStr] = [
                 'tarih' => $dStr,
                 'tarih_tr' => $dt->format('d.m.Y'),
-                'gun_adi' => $dt->format('D'),
+                'gun_adi' => $trDays[$enDay] ?? $enDay,
+                'is_weekend' => ($enDay === 'Sun' || $enDay === 'Sat'),
                 'kesme_acma' => 0,
+                'muhurleme' => 0,
                 'endeks_okuma' => 0,
                 'sayac_degisim' => 0,
                 'kacak_kontrol' => 0,
@@ -178,8 +195,11 @@ class PersonelIsRaporuModel extends Model
             ];
         }
 
-        // 1. Kesme Açma Günlük
-        $sqlKesme = "SELECT tarih, SUM(COALESCE(sonuclanmis, 1)) as toplam 
+        // 1. Kesme Açma ve Mühürleme Günlük
+        $sqlKesme = "SELECT 
+                        tarih, 
+                        SUM(CASE WHEN UPPER(is_emri_tipi) LIKE '%MÜHÜR%' OR UPPER(is_emri_tipi) LIKE '%MUHUR%' THEN COALESCE(sonuclanmis, 1) ELSE 0 END) as muhur_toplam,
+                        SUM(CASE WHEN UPPER(is_emri_tipi) NOT LIKE '%MÜHÜR%' AND UPPER(is_emri_tipi) NOT LIKE '%MUHUR%' THEN COALESCE(sonuclanmis, 1) ELSE 0 END) as kesme_toplam
                      FROM yapilan_isler 
                      WHERE firma_id = :firma_id AND personel_id = :personel_id AND tarih BETWEEN :start_date AND :end_date AND silinme_tarihi IS NULL
                      GROUP BY tarih";
@@ -188,7 +208,8 @@ class PersonelIsRaporuModel extends Model
         while ($r = $stmtKesme->fetch(PDO::FETCH_ASSOC)) {
             $d = $r['tarih'];
             if (isset($dailyData[$d])) {
-                $dailyData[$d]['kesme_acma'] = (int) $r['toplam'];
+                $dailyData[$d]['kesme_acma'] = (int) $r['kesme_toplam'];
+                $dailyData[$d]['muhurleme'] = (int) $r['muhur_toplam'];
             }
         }
 
@@ -238,18 +259,18 @@ class PersonelIsRaporuModel extends Model
         $seriesKesme = [];
         $seriesOkuma = [];
         $seriesSayac = [];
+        $seriesMuhur = [];
         $seriesKacak = [];
-        $seriesToplam = [];
         $categories = [];
 
         foreach ($dailyData as $d => &$row) {
-            $row['toplam'] = $row['kesme_acma'] + $row['endeks_okuma'] + $row['sayac_degisim'] + $row['kacak_kontrol'];
+            $row['toplam'] = $row['kesme_acma'] + $row['muhurleme'] + $row['endeks_okuma'] + $row['sayac_degisim'] + $row['kacak_kontrol'];
             $categories[] = date('d.m', strtotime($d));
             $seriesKesme[] = $row['kesme_acma'];
             $seriesOkuma[] = $row['endeks_okuma'];
             $seriesSayac[] = $row['sayac_degisim'];
+            $seriesMuhur[] = $row['muhurleme'];
             $seriesKacak[] = $row['kacak_kontrol'];
-            $seriesToplam[] = $row['toplam'];
         }
         unset($row);
 
@@ -259,6 +280,7 @@ class PersonelIsRaporuModel extends Model
                 ['name' => 'Kesme / Açma', 'data' => $seriesKesme, 'color' => '#f06548'],
                 ['name' => 'Endeks Okuma', 'data' => $seriesOkuma, 'color' => '#0ab39c'],
                 ['name' => 'Sayaç Sökme Takma', 'data' => $seriesSayac, 'color' => '#ffbe0b'],
+                ['name' => 'Mühürleme', 'data' => $seriesMuhur, 'color' => '#06b6d4'],
                 ['name' => 'Kaçak İşlemleri', 'data' => $seriesKacak, 'color' => '#405189']
             ],
             'daily_list' => array_values($dailyData)
@@ -289,6 +311,11 @@ class PersonelIsRaporuModel extends Model
             $series[] = $kpi['sayac_degisim'];
             $colors[] = '#ffbe0b';
         }
+        if ($kpi['muhurleme'] > 0) {
+            $labels[] = 'Mühürleme';
+            $series[] = $kpi['muhurleme'];
+            $colors[] = '#06b6d4';
+        }
         if ($kpi['kacak_kontrol'] > 0) {
             $labels[] = 'Kaçak İşlemleri';
             $series[] = $kpi['kacak_kontrol'];
@@ -309,13 +336,26 @@ class PersonelIsRaporuModel extends Model
     {
         $logs = [];
 
-        // 1. Kesme / Açma
-        if (empty($category) || $category === 'kesme_acma') {
+        // 1. Kesme / Açma & Mühürleme
+        if (empty($category) || $category === 'kesme_acma' || $category === 'muhurleme') {
+            $muhurWhere = '';
+            if ($category === 'kesme_acma') {
+                $muhurWhere = " AND UPPER(is_emri_tipi) NOT LIKE '%MÜHÜR%' AND UPPER(is_emri_tipi) NOT LIKE '%MUHUR%' ";
+            } elseif ($category === 'muhurleme') {
+                $muhurWhere = " AND (UPPER(is_emri_tipi) LIKE '%MÜHÜR%' OR UPPER(is_emri_tipi) LIKE '%MUHUR%') ";
+            }
+
             $sql = "SELECT 
                         id,
                         tarih,
-                        'kesme_acma' as kategori,
-                        'Kesme / Açma' as kategori_adi,
+                        CASE 
+                            WHEN UPPER(is_emri_tipi) LIKE '%MÜHÜR%' OR UPPER(is_emri_tipi) LIKE '%MUHUR%' THEN 'muhurleme'
+                            ELSE 'kesme_acma'
+                        END as kategori,
+                        CASE 
+                            WHEN UPPER(is_emri_tipi) LIKE '%MÜHÜR%' OR UPPER(is_emri_tipi) LIKE '%MUHUR%' THEN 'Mühürleme'
+                            ELSE 'Kesme / Açma'
+                        END as kategori_adi,
                         is_emri_tipi,
                         is_emri_sonucu,
                         abone_no,
@@ -330,6 +370,7 @@ class PersonelIsRaporuModel extends Model
                       AND personel_id = :personel_id 
                       AND tarih BETWEEN :start_date AND :end_date
                       AND silinme_tarihi IS NULL
+                      {$muhurWhere}
                     ORDER BY tarih DESC, id DESC
                     LIMIT " . (int) $limit;
             $stmt = $this->db->prepare($sql);

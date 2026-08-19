@@ -20,7 +20,7 @@ $page = $_GET['p'] ?? 'home';
     <?php } ?>
 <?php } ?>
 
-<?php if ($page == 'ihbar/list' || $page == 'kacak/list') { ?>
+<?php if ($page == 'ihbar/list' || $page == 'kacak/list' || $page == 'puantaj/personel-is-raporu') { ?>
     <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <?php } ?>
 
