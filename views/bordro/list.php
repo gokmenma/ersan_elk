@@ -2312,26 +2312,26 @@ if (!empty($dbGelirler)) {
 
     window.openTakvimModalDirect = function(el) {
         try {
-            const id = $(el).attr('data-id');
-            const ad = $(el).attr('data-ad');
-            const iseGiris = $(el).attr('data-ise-giris');
-            const istenCikis = $(el).attr('data-isten-cikis');
-            const ay = $(el).attr('data-ay');
-            const yil = $(el).attr('data-yil');
+            var id = $(el).attr('data-id');
+            var ad = $(el).attr('data-ad');
+            var iseGiris = $(el).attr('data-ise-giris');
+            var istenCikis = $(el).attr('data-isten-cikis');
+            var ay = $(el).attr('data-ay');
+            var yil = $(el).attr('data-yil');
 
             if (!id || !ay || !yil) {
-                console.error('Takvim modal açılamadı - eksik parametreler:', { id, ay, yil });
+                console.error('Takvim modal açılamadı - eksik parametreler:', { id: id, ay: ay, yil: yil });
                 return;
             }
 
             $('#takvim_personel_ad').text(ad || 'Bilinmeyen');
-            const ayAdi = window.ayIsimleriModal && window.ayIsimleriModal[parseInt(ay) - 1];
+            var ayAdi = window.ayIsimleriModal && window.ayIsimleriModal[parseInt(ay) - 1];
             $('#takvim_yil_gosterge').text((ayAdi || 'Ay') + ' ' + yil);
 
             $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div></div>');
 
             // Bootstrap modal'ı aç (v5+ ve eski versiyonlar için fallback)
-            const modalEl = document.getElementById('modalIzinTakvim');
+            var modalEl = document.getElementById('modalIzinTakvim');
             if (bootstrap && bootstrap.Modal) {
                 new bootstrap.Modal(modalEl).show();
             } else {
@@ -2357,13 +2357,13 @@ if (!empty($dbGelirler)) {
                     }
                 },
                 error: function(xhr, status, error) {
-                    let errorMsg = 'Veriler yüklenirken bir hata oluştu.';
+                    var errorMsg = 'Veriler yüklenirken bir hata oluştu.';
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMsg = xhr.responseJSON.message;
                     } else if (xhr.responseText) {
                         errorMsg = xhr.responseText.substring(0, 200);
                     }
-                    console.error('Takvim API hatası:', { status, error, xhr });
+                    console.error('Takvim API hatası:', { status: status, error: error, xhr: xhr });
                     $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger"><i class="bx bx-error me-2"></i>' + errorMsg + '</div></div>');
                 }
             });
@@ -2436,9 +2436,9 @@ if (!empty($dbGelirler)) {
     });
 
     function renderYearlyModalCalendar(year, month, events, iseGiris, istenCikis, calismaDonemleri = []) {
-        const summary = collectTakvimSummary(events, calismaDonemleri);
+        var summary = collectTakvimSummary(events, calismaDonemleri);
 
-        let html = '';
+        var html = '';
         html += `<div class="col-12">`;
         
         // Özet Kartları
@@ -2510,44 +2510,44 @@ if (!empty($dbGelirler)) {
     }
 
     function getMonthRowsModal(year, month, events, iseGiris, istenCikis, calismaDonemleri = []) {
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
+        var firstDay = new Date(year, month, 1);
+        var lastDay = new Date(year, month + 1, 0);
 
-        let startingDay = firstDay.getDay(); // 0 (Paz) - 6 (Cmt)
+        var startingDay = firstDay.getDay(); // 0 (Paz) - 6 (Cmt)
         startingDay = (startingDay === 0) ? 7 : startingDay;
 
-        const totalDays = lastDay.getDate();
-        let rows = '';
-        let day = 1;
+        var totalDays = lastDay.getDate();
+        var rows = '';
+        var day = 1;
 
-        for (let i = 0; i < 6; i++) {
-            let cells = '';
-            for (let j = 1; j <= 7; j++) {
+        for (var i = 0; i < 6; i++) {
+            var cells = '';
+            for (var j = 1; j <= 7; j++) {
                 if (i === 0 && j < startingDay) {
                     cells += '<td></td>';
                 } else if (day > totalDays) {
                     cells += '<td></td>';
                 } else {
-                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    var dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     
-                    const aktifCalismaGunu = calismaDonemleri.length > 0
+                    var aktifCalismaGunu = calismaDonemleri.length > 0
                         ? calismaDonemleri.some(donem => dateStr >= donem.baslangic && (!donem.bitis || dateStr <= donem.bitis))
                         : !((iseGiris && iseGiris !== '0000-00-00' && dateStr < iseGiris)
                             || (istenCikis && istenCikis !== '0000-00-00' && dateStr > istenCikis));
-                    const isPassive = !aktifCalismaGunu;
+                    var isPassive = !aktifCalismaGunu;
 
-                    const dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
-                    let cellContent = `<div class="year-calendar-day">
+                    var dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
+                    var cellContent = `<div class="year-calendar-day">
                         <span class="year-calendar-day-number">${day}</span>
                     </div>`;
-                    let style = '';
-                    let titleAttr = '';
-                    let passiveClass = isPassive ? 'passive-date' : '';
-                    let filledClass = '';
+                    var style = '';
+                    var titleAttr = '';
+                    var passiveClass = isPassive ? 'passive-date' : '';
+                    var filledClass = '';
 
                     if (dayEvents.length > 0) {
-                        const event = dayEvents[0];
-                        const eventStyle = getStyleFromTailwindProxyModal(event.color);
+                        var event = dayEvents[0];
+                        var eventStyle = getStyleFromTailwindProxyModal(event.color);
                         style = `background-color: ${eventStyle.bg} !important; color: ${eventStyle.color} !important; border-radius: 16px; font-weight: bold;`;
                         cellContent = `<div class="year-calendar-day" data-bs-toggle="tooltip" title="${event.kisa_kod} : ${event.name}">
                             <span class="year-calendar-day-number">${day}</span>
@@ -2557,8 +2557,8 @@ if (!empty($dbGelirler)) {
                         filledClass = 'is-filled';
                     }
 
-                    const isToday = new Date().toISOString().split('T')[0] === dateStr;
-                    const todayClass = isToday ? 'today' : '';
+                    var isToday = new Date().toISOString().split('T')[0] === dateStr;
+                    var todayClass = isToday ? 'today' : '';
 
                     cells += `<td class="${todayClass} ${passiveClass} ${filledClass}" style="${style}" ${titleAttr}>${cellContent}</td>`;
                     day++;
@@ -2595,18 +2595,18 @@ if (!empty($dbGelirler)) {
             return { bg: "#dcfce7", color: "#16a34a" };
         if (tailwindClass.includes("purple"))
 
-                    const dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
-                    let cellContent = `<div class="year-calendar-day">
+                    var dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
+                    var cellContent = `<div class="year-calendar-day">
                         <span class="year-calendar-day-number">${day}</span>
                     </div>`;
-                    let style = '';
-                    let titleAttr = '';
-                    let passiveClass = isPassive ? 'passive-date' : '';
-                    let filledClass = '';
+                    var style = '';
+                    var titleAttr = '';
+                    var passiveClass = isPassive ? 'passive-date' : '';
+                    var filledClass = '';
 
                     if (dayEvents.length > 0) {
-                        const event = dayEvents[0];
-                        const eventStyle = getStyleFromTailwindProxyModal(event.color);
+                        var event = dayEvents[0];
+                        var eventStyle = getStyleFromTailwindProxyModal(event.color);
                         style = `background-color: ${eventStyle.bg} !important; color: ${eventStyle.color} !important; border-radius: 16px; font-weight: bold;`;
                         cellContent = `<div class="year-calendar-day" data-bs-toggle="tooltip" title="${event.kisa_kod} : ${event.name}">
                             <span class="year-calendar-day-number">${day}</span>
@@ -2616,8 +2616,8 @@ if (!empty($dbGelirler)) {
                         filledClass = 'is-filled';
                     }
 
-                    const isToday = new Date().toISOString().split('T')[0] === dateStr;
-                    const todayClass = isToday ? 'today' : '';
+                    var isToday = new Date().toISOString().split('T')[0] === dateStr;
+                    var todayClass = isToday ? 'today' : '';
 
                     cells += `<td class="${todayClass} ${passiveClass} ${filledClass}" style="${style}" ${titleAttr}>${cellContent}</td>`;
                     day++;
@@ -2659,17 +2659,17 @@ if (!empty($dbGelirler)) {
     }
 
     function collectTakvimSummary(events, calismaDonemleri = []) {
-        let ucretliList = [];
-        let ucretsizList = [];
-        const eventCounts = {};
+        var ucretliList = [];
+        var ucretsizList = [];
+        var eventCounts = {};
 
         Object.entries(events || {}).forEach(function([dateStr, dayEntries]) {
-            const aktifCalismaGunu = calismaDonemleri.length === 0
+            var aktifCalismaGunu = calismaDonemleri.length === 0
                 || calismaDonemleri.some(donem => dateStr >= donem.baslangic && (!donem.bitis || dateStr <= donem.bitis));
             if (!aktifCalismaGunu) return;
             (dayEntries || []).forEach(function(entry) {
             }
-        const ws = XLSX.utils.aoa_to_sheet(excelData);
+        var ws = XLSX.utils.aoa_to_sheet(excelData);
 
     }
     .popover.bordro-dark-popover.bs-popover-bottom .popover-arrow::after,
