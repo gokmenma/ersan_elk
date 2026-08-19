@@ -842,6 +842,7 @@ class BordroPersonelModel extends Model
         $netMaasPuantajHedefToplami = 0.0;
         $yuvarlamaFarki = 0.0;
         $hariciEkOdeme = 0.0;
+        $bankaMatrahiEkOdemeGosterim = 0.0;
         $sozlesmeHakedisi = 0.0;
         $sozlesmeHakedisiOverride = false;
         $resmiDahilEkToplam = 0.0;
@@ -862,6 +863,10 @@ class BordroPersonelModel extends Model
             }
             if ($isInclusive && $isNet && $isPuantajOdeme) {
                 $netMaasPuantajHedefToplami += $tutar;
+            }
+            $isBankaMatrahi = !isset($eo->banka_matrahina_ekle) || intval($eo->banka_matrahina_ekle) === 1;
+            if ($isBankaMatrahi && !$isPuantajOdeme) {
+                $bankaMatrahiEkOdemeGosterim += $tutar;
             }
             $rawEkOdeme += $tutar;
             $resmiDahilEkToplam += floatval($eo->resmi_tutar ?? 0);
@@ -1067,9 +1072,9 @@ class BordroPersonelModel extends Model
             $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretNet / 30, 4) * $htcGun : 0.0;
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
             $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
-            $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim - $netMaasPuantajHedefToplami);
+            $hariciEkOdemeForDahil = max(0.0, $bankaMatrahiEkOdemeGosterim - $htcEkOdemeTutarDagilim);
             if ($isNet && !$isPrimUsulu) {
-                $bankaKarsilanabilirEkOdemeGosterim = max(0.0, $hariciEkOdeme - $netMaasPuantajHedefToplami);
+                $bankaKarsilanabilirEkOdemeGosterim = max(0.0, $bankaMatrahiEkOdemeGosterim);
                 $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaKarsilanabilirEkOdemeGosterim);
             }
             $puantajHedefToplamiDahil = $isPrimUsulu 
@@ -5228,6 +5233,7 @@ class BordroPersonelModel extends Model
         $toplamDahilYardim = 0;
         $yuvarlamaFarki = 0;
         $bankayaTasinabilirEkOdeme = 0.0;
+        $eldenTasinabilirEkOdeme = 0.0;
 
         // Resolve SGK firm proration
         $dagilim = $this->getSgkFirmaDagilimi($kayit->personel_id, $donemTarihi, $donemBitis, $kayit->sgk_yapilan_firma ?? 'Yok');
@@ -5240,8 +5246,13 @@ class BordroPersonelModel extends Model
                 $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
                 $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
                 $isBankaMatrahi = !isset($ek['banka_matrahina_ekle']) || intval($ek['banka_matrahina_ekle']) === 1;
-                if (!$isPuantajEk && !$isDahilYardimEk && $isBankaMatrahi) {
-                    $bankayaTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                $ekTutar = floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                if (!$isPuantajEk && !$isDahilYardimEk) {
+                    if ($isBankaMatrahi) {
+                        $bankayaTasinabilirEkOdeme += $ekTutar;
+                    } else {
+                        $eldenTasinabilirEkOdeme += $ekTutar;
+                    }
                 }
             }
 
@@ -5315,6 +5326,7 @@ class BordroPersonelModel extends Model
             // karşılığı ($htcEkOdeme) sözleşme netinin üstüne ayrıca hak edilir.
             $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis)
                 + $bankayaTasinabilirEkOdeme
+                + $eldenTasinabilirEkOdeme
                 + $htcEkOdeme
                 + $netMaasPuantajHakedisi
                 + $yuvarlamaFarki;
