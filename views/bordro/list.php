@@ -2594,65 +2594,6 @@ if (!empty($dbGelirler)) {
         if (tailwindClass.includes("green") || tailwindClass.includes("success"))
             return { bg: "#dcfce7", color: "#16a34a" };
         if (tailwindClass.includes("purple"))
-
-                    var dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
-                    var cellContent = `<div class="year-calendar-day">
-                        <span class="year-calendar-day-number">${day}</span>
-                    </div>`;
-                    var style = '';
-                    var titleAttr = '';
-                    var passiveClass = isPassive ? 'passive-date' : '';
-                    var filledClass = '';
-
-                    if (dayEvents.length > 0) {
-                        var event = dayEvents[0];
-                        var eventStyle = getStyleFromTailwindProxyModal(event.color);
-                        style = `background-color: ${eventStyle.bg} !important; color: ${eventStyle.color} !important; border-radius: 16px; font-weight: bold;`;
-                        cellContent = `<div class="year-calendar-day" data-bs-toggle="tooltip" title="${event.kisa_kod} : ${event.name}">
-                            <span class="year-calendar-day-number">${day}</span>
-                            <span class="year-calendar-day-code" style="background-color:${eventStyle.color}; color:#fff;">${event.kisa_kod}</span>
-                            <span class="year-calendar-day-desc">${event.name}</span>
-                        </div>`;
-                        filledClass = 'is-filled';
-                    }
-
-                    var isToday = new Date().toISOString().split('T')[0] === dateStr;
-                    var todayClass = isToday ? 'today' : '';
-
-                    cells += `<td class="${todayClass} ${passiveClass} ${filledClass}" style="${style}" ${titleAttr}>${cellContent}</td>`;
-                    day++;
-                }
-            }
-            rows += `<tr>${cells}</tr>`;
-            if (day > totalDays) break;
-        }
-        return rows;
-    }
-
-    function getStyleFromTailwindProxyModal(tailwindClass) {
-        if (!tailwindClass)
-            return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
-
-        if (tailwindClass.startsWith("#")) {
-            return {
-                bg: tailwindClass + "26",
-                color: tailwindClass,
-            };
-        }
-
-        if (tailwindClass.includes("blue"))
-            return { bg: "#dbeafe", color: "#2563eb" };
-        if (tailwindClass.includes("amber") || tailwindClass.includes("warning"))
-            return { bg: "#fef3c7", color: "#d97706" };
-        if (tailwindClass.includes("red") || tailwindClass.includes("danger"))
-            return { bg: "#fee2e2", color: "#dc2626" };
-        if (tailwindClass.includes("pink"))
-            return { bg: "#fce7f3", color: "#db2777" };
-        if (tailwindClass.includes("gray"))
-            return { bg: "#f3f4f6", color: "#4b5563" };
-        if (tailwindClass.includes("green") || tailwindClass.includes("success"))
-            return { bg: "#dcfce7", color: "#16a34a" };
-        if (tailwindClass.includes("purple"))
             return { bg: "#f3e8ff", color: "#9333ea" };
 
         return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
@@ -2668,12 +2609,245 @@ if (!empty($dbGelirler)) {
                 || calismaDonemleri.some(donem => dateStr >= donem.baslangic && (!donem.bitis || dateStr <= donem.bitis));
             if (!aktifCalismaGunu) return;
             (dayEntries || []).forEach(function(entry) {
+                if (!entry || !entry.name || !entry.kisa_kod) {
+                    return;
+                }
+                var key = `${entry.kisa_kod}-${entry.name}`;
+                if (!eventCounts[key]) {
+                    var style = getStyleFromTailwindProxyModal(entry.color);
+                    eventCounts[key] = {
+                        kisa_kod: entry.kisa_kod,
+                        name: entry.name,
+                        color: style.color,
+                        count: 0
+                    };
+                }
+                eventCounts[key].count++;
+            });
+        });
+
+        var toplamGun = 0;
+        var ucretliToplam = 0;
+        var ucretsizToplam = 0;
+
+        Object.values(eventCounts).forEach(function(item) {
+            toplamGun += item.count;
+            var lowName = (item.name || '').toLowerCase();
+            var lowKod = (item.kisa_kod || '').toLowerCase();
+
+            var isUnpaid = lowName.includes('ücretsiz') || lowName.includes('mazeret') || lowKod.includes('üi') || lowKod.includes('mi');
+
+            if (isUnpaid) {
+                ucretsizToplam += item.count;
+                ucretsizList.push(item);
+            } else {
+                ucretliToplam += item.count;
+                ucretliList.push(item);
             }
+        });
+
+        return {
+            toplamGun: toplamGun,
+            ucretliToplam: ucretliToplam,
+            ucretsizToplam: ucretsizToplam,
+            ucretliList: ucretliList,
+            ucretsizList: ucretsizList
+        };
+    }
+
+    var hataliIslemlerRawData = [];
+
+    function loadHataliIslemler() {
+        var donemId = $('select[name="donemSelect"]').val() || '<?= $selectedDonemId ?>';
+        if (!donemId) {
+            Swal.fire('Hata', 'Lütfen önce bir dönem seçiniz.', 'error');
+            return;
+        }
+
+        $('#compareDonemName').text($('#displayDonemAdi').text());
+        var $tbody = $('#tableHataliIslemler tbody');
+        $tbody.html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Analiz ediliyor...</td></tr>');
+
+        $.post('views/bordro/api.php', {
+            action: 'get-hatali-islem-raporu',
+            donem_id: donemId
+        }, function(res) {
+            if (res.status === 'success') {
+                hataliIslemlerRawData = res.data;
+                renderHataliIslemlerTable();
+            } else {
+                $tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">' + (res.message || 'Veri alınamadı') + '</td></tr>');
+            }
+        }, 'json').fail(function() {
+            $tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">Sistem hatası oluştu.</td></tr>');
+        });
+    }
+
+    function renderHataliIslemlerTable() {
+        var $tbody = $('#tableHataliIslemler tbody');
+        var onlyErrors = $('#checkOnlyErrors').is(':checked');
+
+        var groups = {};
+
+        hataliIslemlerRawData.forEach(function(row) {
+            if (onlyErrors && row.fark === 0) return;
+
+            if (!groups[row.personel_id]) {
+                groups[row.personel_id] = {
+                    name: row.personel_adi,
+                    maas_durumu: row.maas_durumu,
+                    items: [],
+                    errorCount: 0,
+                    totalIsTakip: 0,
+                    totalBordro: 0,
+                    totalFark: 0
+                };
+            }
+            groups[row.personel_id].items.push(row);
+            groups[row.personel_id].totalIsTakip += row.is_takip_sayisi;
+            groups[row.personel_id].totalBordro += row.bordro_sayisi;
+            groups[row.personel_id].totalFark += row.fark;
+
+            if (row.fark != 0) groups[row.personel_id].errorCount++;
+        });
+
+        var html = '';
+        var personCount = 0;
+
+        Object.keys(groups).forEach(function(pId) {
+            var group = groups[pId];
+            var hasError = group.errorCount > 0;
+            var bgClass = hasError ? 'bg-danger bg-opacity-10' : 'bg-success bg-opacity-10';
+            var icon = hasError ? 'bx-error text-danger' : 'bx-check-circle text-success';
+
+            var isPrimUsulu = (group.maas_durumu && group.maas_durumu.toLowerCase().includes('prim'));
+            var maasDurumuHtml = group.maas_durumu ? `<span class="badge ${isPrimUsulu ? 'bg-info' : 'bg-light text-dark'} ms-2">${group.maas_durumu}</span>` : '';
+
+            var formatNum = function(num) { return Number.isInteger(num) ? num : num.toFixed(2).replace(/\.00$/, ''); };
+
+            html += `<tr class="personel-group-row cursor-pointer ${bgClass}" data-personel-id="${pId}">
+                <td colspan="2" class="fw-bold">
+                    <i class="bx bx-chevron-right me-1 transition-icon"></i>
+                    <i class="bx ${icon} me-1"></i>
+                    ${group.name}
+                    ${maasDurumuHtml}
+                    <span class="badge bg-secondary ms-2">${group.items.length} İşlem</span>
+                </td>
+                <td class="text-center fw-bold">${formatNum(group.totalIsTakip)}</td>
+                <td class="text-center fw-bold">${formatNum(group.totalBordro)}</td>
+                <td class="text-center fw-bold ${group.totalFark != 0 ? 'text-danger' : 'text-success'}">${formatNum(group.totalFark)}</td>
+                <td class="text-center">
+                    <span class="badge ${hasError ? 'bg-danger' : 'bg-success'}">${hasError ? group.errorCount + ' Hatalı' : 'Tamam'}</span>
+                </td>
+            </tr>`;
+
+            group.items.forEach(function(item) {
+                var diffClass = item.fark != 0 ? 'text-danger fw-bold' : 'text-success';
+                var statusHtml = item.fark != 0
+                    ? '<span class="badge bg-danger">Hatalı</span>'
+                    : '<span class="badge bg-success">Tamam</span>';
+
+                html += `<tr class="detail-row detail-p-${pId}" style="display: none; background-color: #fafafa;">
+                    <td class="ps-4 text-muted border-end-0" colspan="2"><i class="bx bx-subdirectory-right me-1"></i> ${item.is_turu}</td>
+                    <td class="text-center">${formatNum(item.is_takip_sayisi)}</td>
+                    <td class="text-center">${formatNum(item.bordro_sayisi)}</td>
+                    <td class="text-center ${diffClass}">${formatNum(item.fark)}</td>
+                    <td class="text-center">${statusHtml}</td>
+                </tr>`;
+            });
+            personCount++;
+        });
+
+        if (personCount === 0) {
+            html = '<tr><td colspan="6" class="text-center py-4 text-muted">' + (onlyErrors ? 'Fark bulunan kayıt yok.' : 'Kayıt bulunamadı.') + '</td></tr>';
+        }
+
+        $tbody.html(html);
+
+        $('.personel-group-row').off('click').on('click', function() {
+            var pId = $(this).data('personel-id');
+            var $icon = $(this).find('.transition-icon');
+            var $detailRows = $('.detail-p-' + pId);
+
+            $detailRows.toggle();
+            if ($detailRows.is(':visible')) {
+                $icon.css('transform', 'rotate(90deg)');
+            } else {
+                $icon.css('transform', 'rotate(0deg)');
+            }
+        });
+    }
+
+    function exportHataliIslemlerToExcel() {
+        if (!hataliIslemlerRawData || hataliIslemlerRawData.length === 0) {
+            Swal.fire('Hata', 'Aktarılacak veri bulunamadı.', 'error');
+            return;
+        }
+
+        var onlyErrors = $('#checkOnlyErrors').is(':checked');
+        var donemLabel = $('#compareDonemName').text().replace(/\s+/g, '_');
+
+        var excelData = [];
+
+        excelData.push([
+            "Personel",
+            "Maaş Durumu",
+            "İş Türü",
+            "İş Takip Sayısı",
+            "Bordro Sayısı",
+            "Fark",
+            "Durum"
+        ]);
+
+        hataliIslemlerRawData.forEach(function(row) {
+            if (onlyErrors && row.fark === 0) return;
+
+            excelData.push([
+                row.personel_adi,
+                row.maas_durumu,
+                row.is_turu,
+                row.is_takip_sayisi,
+                row.bordro_sayisi,
+                row.fark,
+                row.durum
+            ]);
+        });
+
+        if (excelData.length <= 1) {
+            Swal.fire('Bilgi', 'Filtreleme sonucunda aktarılacak kayıt bulunamadı.', 'info');
+            return;
+        }
+
+        var wb = XLSX.utils.book_new();
         var ws = XLSX.utils.aoa_to_sheet(excelData);
 
+        ws['!cols'] = [
+            { wch: 30 },
+            { wch: 15 },
+            { wch: 30 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 10 },
+            { wch: 15 }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Hatalı_İşlemler");
+
+        var filename = "Hatali_Islemler_Raporu_" + donemLabel + "_" + moment().format('YYYYMMDD_HHmm') + ".xlsx";
+
+        XLSX.writeFile(wb, filename);
     }
-    .popover.bordro-dark-popover.bs-popover-bottom .popover-arrow::after,
-    .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::after {
-        border-bottom-color: #1e293b !important;
+</script>
+
+<style>
+    .personel-group-row:hover {
+        filter: brightness(0.95);
+    }
+    .transition-icon {
+        transition: transform 0.2s ease;
+        display: inline-block;
+    }
+    .cursor-pointer {
+        cursor: pointer;
     }
 </style>
