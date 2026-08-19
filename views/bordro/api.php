@@ -2076,7 +2076,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $rtcResmiTutar = 0.0;
                 $htcResmiTutar = 0.0;
                 if ($rtcHedefNetModal > 0 || $htcHedefNetModal > 0) {
-                    $donemYilModal2 = (int) date('Y', strtotime($donemBaslangic));
+$donemYilModal2 = (int) date('Y', strtotime($donemBaslangic));
                     // RTÇ/HTÇ ayın ana vergi matrahından sonra vergilendirilir. Yalnızca önceki
                     // ay kümülatifini kullanmak, personel bu ay yeni dilime geçtiğinde ek ödemeyi
                     // eski dilimden gross-up eder ve detay tutarını ana bordro hesabından saptırır.
@@ -2104,7 +2104,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $damgaVergisiMatrah = floatval($matrahlar['damga_vergisi_matrahi'] ?? (floatval($bp->brut_maas ?? 0) + floatval($ozetDetay['damga_matrah_ekleri'] ?? $ozetDetay['sgk_matrah_ekleri'] ?? 0)));
                 $gelirVergisiMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
                 $oncekiAyMatrah = floatval($matrahlar['onceki_kumulatif'] ?? 0);
-                $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + $oncekiAyMatrah));
+$yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + $oncekiAyMatrah));
 
                 $sgkIsci = floatval($bp->sgk_isci ?? 0);
                 $sgkIsveren = floatval($bp->sgk_isveren ?? 0);
@@ -2125,7 +2125,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $gelirVergisiMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
                     $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? 0);
                 }
-
                 $istisnaGV = floatval($indirimler['asgari_ucret_istisna_gv'] ?? 0);
                 if ($istisnaGV <= 0) {
                     $asgariIstisnaHesabi = $BordroParametre->hesaplaAsgariUcretGelirVergisiIstisnasi($donemBaslangic, $sskGun);
@@ -2214,6 +2213,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $kacakTutar = $toplamKacakTutar;
                 $puantajTutar = $toplamPuantajTutar;
                 $digerKazancTutar = 0.0;
+                $primListesi = [];
+                $digerKazancListesi = [];
+                $digerSosyalYardimListesi = [];
 
                 foreach ($ekOdemelerListe as $ek) {
                     $aciklama = (string)($ek->aciklama ?? '');
@@ -2233,21 +2235,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     } elseif (strpos($eoTur, 'sosyal') !== false || strpos($eoTur, 'yardim') !== false) {
                         $digerSosyalYardim += floatval($ek->tutar);
+                        $digerSosyalYardimListesi[] = $ek;
                     } elseif ($eoTur === 'prim' || $eoTur === 'ikramiye') {
-                        // Exclude Puantaj, Sayaç, and Kaçak Kontrol payments from general Prim/İkramiye
                         if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0) {
                             $primTutar += floatval($ek->tutar);
+                            $primListesi[] = $ek;
                         }
                     } elseif (strpos($aciklama, '[Nöbet]') === 0 || strpos($eoTur, 'nobet') !== false) {
-                        // Already handled by nobetTutar
                     } elseif (strpos($aciklama, '[Kaçak Kontrol]') === 0 || strpos($eoTur, 'kacak') !== false) {
                         // Already handled by kacakTutar
                     } elseif (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0) {
                         // Already handled by puantajTutar
                     } else {
                         $digerKazancTutar += floatval($ek->tutar);
+                        $digerKazancListesi[] = $ek;
                     }
                 }
+
+
+
+
+
+
 
                 $normalCalismaTutar = $normalGun * $gunlukUcret;
                 $haftaTatiliTutar = $haftaTatili * $gunlukUcret;
@@ -2256,6 +2265,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($isKarisikMaasGecmisi) {
                     $normalCalismaTutar = floatval($hesap['sozlesmeHakedisi'] ?? 0);
                 }
+
+                // Adjust to ensure mathematical correctness
 
                 // Adjust to ensure mathematical correctness
                 $calcNormalSum = $normalCalismaTutar + $haftaTatiliTutar + $genelTatilTutar + $ucretliIzinTutar;
@@ -2282,6 +2293,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $popHtml .= '<span style="color:#10b981; font-weight:bold;">+' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</span>';
                             $popHtml .= '</div>';
                         }
+                    }
+                    $popHtml .= '</div>';
+                    return $popHtml;
+                };
+
+                // Diğer ek ödemeler / primler için detaylı popover oluşturucu
+                $buildEkOdemePopoverHtml = function($ekList, $baslik = 'Ek Ödeme Detayları') use ($ekOdemeTurEtiketleri) {
+                    if (empty($ekList)) return '';
+                    $popHtml = '<div class="ref-popover-content" style="min-width: 260px; max-width: 380px;">';
+                    if (!empty($baslik)) {
+                        $popHtml .= '<div style="color:#94a3b8; font-size:0.72rem; margin-bottom:6px; border-bottom:1px dashed rgba(255,255,255,0.15); padding-bottom:5px; font-weight:600; text-transform:uppercase;">' . htmlspecialchars($baslik) . '</div>';
+                    }
+                    $sayac = 0;
+                    $toplamSayi = count($ekList);
+                    foreach ($ekList as $ek) {
+                        $sayac++;
+                        $turAd = !empty($ek->parametre_adi) ? $ek->parametre_adi : ($ekOdemeTurEtiketleri[$ek->tur] ?? ucfirst(str_replace('_', ' ', $ek->tur ?? '')));
+                        $aciklama = trim((string)($ek->aciklama ?? ''));
+                        
+                        $detayMetin = '';
+                        if (!empty($aciklama)) {
+                            if (mb_strtolower($aciklama, 'UTF-8') !== mb_strtolower($turAd, 'UTF-8')) {
+                                $detayMetin = $aciklama;
+                            }
+                        }
+                        
+                        if (empty($detayMetin) && !empty($ek->hesaplama_tipi)) {
+                            if ($ek->hesaplama_tipi === 'oran_net') {
+                                $detayMetin = '%' . floatval($ek->oran) . ' Net Maaş Oranı';
+                            } elseif ($ek->hesaplama_tipi === 'oran_brut') {
+                                $detayMetin = '%' . floatval($ek->oran) . ' Brüt Maaş Oranı';
+                            } elseif ($ek->hesaplama_tipi === 'sabit') {
+                                $detayMetin = 'Sabit Tutar';
+                            }
+                        }
+                        
+                        $odemeKanal = '';
+                        if (isset($ek->banka_matrahina_ekle)) {
+                            $odemeKanal = intval($ek->banka_matrahina_ekle) === 1 
+                                ? ' <span style="color:#38bdf8; font-size:0.7rem; font-weight:normal;">[Banka]</span>' 
+                                : ' <span style="color:#fbbf24; font-size:0.7rem; font-weight:normal;">[Elden]</span>';
+                        }
+                        
+                        $borderBottom = ($sayac < $toplamSayi) ? 'border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 5px;' : '';
+                        
+                        $popHtml .= '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; ' . $borderBottom . '">';
+                        $popHtml .= '<div>';
+                        $popHtml .= '<div style="color:#f1f5f9; font-weight:600;">' . htmlspecialchars($turAd) . $odemeKanal . '</div>';
+                        if (!empty($detayMetin)) {
+                            $popHtml .= '<div style="color:#94a3b8; font-size:0.72rem; line-height:1.25; margin-top:2px;">' . htmlspecialchars($detayMetin) . '</div>';
+                        }
+                        $popHtml .= '</div>';
+                        $popHtml .= '<div style="color:#10b981; font-weight:bold; white-space:nowrap; text-align:right; margin-top:1px;">+' . number_format(floatval($ek->tutar), 2, ',', '.') . ' ₺</div>';
+                        $popHtml .= '</div>';
                     }
                     $popHtml .= '</div>';
                     return $popHtml;
@@ -2486,6 +2551,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // 3. Sosyal Yardımlar Card
                 $sosyalYardimToplam = $yolYardimi + $yemekYardimi + $esYardimi + $digerSosyalYardim;
+                $digerSosyalPop = $buildEkOdemePopoverHtml($digerSosyalYardimListesi, 'Diğer Sosyal Yardım Detayları');
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">3. SOSYAL YARDIMLAR</div>';
                 $html .= '<div class="ref-card-list">';
@@ -2508,7 +2574,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="ref-card-item"><span class="label">Yol Yardımı</span><span class="value">' . $fmt($yolYardimi) . '</span></div>';
                 $html .= '<div class="ref-card-item' . (!empty($yemekPop) ? ' hover-popover-trigger' : '') . '"><span class="label">' . $yemekLabelText . (!empty($yemekPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($yemekYardimi) . '</span>' . $yemekPop . '</div>';
                 $html .= '<div class="ref-card-item"><span class="label">Eş Yardımı</span><span class="value">' . $fmt($esYardimi) . '</span></div>';
-                $html .= '<div class="ref-card-item"><span class="label">Diger Sosyal Yardım</span><span class="value">' . $fmt($digerSosyalYardim) . '</span></div>';
+                $html .= '<div class="ref-card-item' . (!empty($digerSosyalPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Diger Sosyal Yardım' . (!empty($digerSosyalPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($digerSosyalYardim) . '</span>' . $digerSosyalPop . '</div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">' . $fmt($sosyalYardimToplam) . '</span></div>';
                 $html .= '</div></div>';
@@ -2518,6 +2584,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $nobetPop = $buildPopoverHtml($nobetGruplu);
                 $kacakPop = $buildPopoverHtml($kacakGruplu);
                 $puantajPop = $buildPopoverHtml($puantajGruplu);
+                $primPop = $buildEkOdemePopoverHtml($primListesi, 'Prim / İkramiye Detayları');
+                $digerKazancPop = $buildEkOdemePopoverHtml($digerKazancListesi, 'Diğer Ek Ödeme Detayları');
 
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">4. DİĞER KAZANÇLAR / İKRAMİYELER</div>';
@@ -2526,8 +2594,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="ref-card-item' . (!empty($kacakPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Kaçak Kontrol Primi' . (!empty($kacakPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($kacakTutar) . '</span>' . $kacakPop . '</div>';
                 $puantajBaslikDetay = $puantajToplamIslemSayisi > 0 ? ' <small class="text-muted fw-normal">( <strong>' . $puantajToplamIslemSayisi . ' Adet</strong> )</small>' : '';
                 $html .= '<div class="ref-card-item' . (!empty($puantajPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Puantaj Hakedişi' . $puantajBaslikDetay . (!empty($puantajPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($puantajTutar) . '</span>' . $puantajPop . '</div>';
-                $html .= '<div class="ref-card-item"><span class="label">Prim / İkramiye</span><span class="value">' . $fmt($primTutar) . '</span></div>';
-                $html .= '<div class="ref-card-item"><span class="label">Diğer Ek Ödemeler</span><span class="value">' . $fmt($digerKazancTutar) . '</span></div>';
+                $html .= '<div class="ref-card-item' . (!empty($primPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Prim / İkramiye' . (!empty($primPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($primTutar) . '</span>' . $primPop . '</div>';
+                $html .= '<div class="ref-card-item' . (!empty($digerKazancPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Diğer Ek Ödemeler' . (!empty($digerKazancPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($digerKazancTutar) . '</span>' . $digerKazancPop . '</div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">' . $fmt($digerKazancToplam) . '</span></div>';
                 $html .= '</div></div>';
@@ -2535,7 +2603,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</div>'; // End Row 1
 
                 // --- SECTION 2: YASAL KESİNTİLER VE İŞVEREN MALİYETİ (ALT SIRA) ---
-                $html .= '<div class="section-title deductions"><i class="bx bx-minus-circle me-1"></i>YASAL KESİNTİLER VE İŞVEREN MALİYETİ (ALT SIRA)</div>';
                 $html .= '<div class="row row-cols-1 row-cols-md-4 g-3">';
 
                 // 1. SGK İşçi Primi Card
