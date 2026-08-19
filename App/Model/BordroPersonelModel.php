@@ -458,7 +458,8 @@ class BordroPersonelModel extends Model
         if ($rtcHtcBankaNeti <= 0 || $maasHesapGunu <= 0) {
             return $sozlesmeHakedisi;
         }
-        return round($sozlesmeHakedisi + $rtcHtcBankaNeti, 2);
+        $taban = round(($asgariUcretNet / 30) * $maasHesapGunu + $rtcHtcBankaNeti - max(0.0, $bankaKarsilanabilirEkOdeme), 2);
+        return max($sozlesmeHakedisi, $taban);
     }
 
     private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0, float $sozlesmeHakedisi = 0.0, float $resmiDahilEkToplam = 0.0, float $htcNetFazla = 0.0): array
@@ -841,10 +842,10 @@ class BordroPersonelModel extends Model
         $netMaasPuantajHedefToplami = 0.0;
         $yuvarlamaFarki = 0.0;
         $hariciEkOdeme = 0.0;
-        $bankaMatrahiEkOdemeGosterim = 0.0;
         $sozlesmeHakedisi = 0.0;
         $sozlesmeHakedisiOverride = false;
         $resmiDahilEkToplam = 0.0;
+        $bankayaTasinabilirEkOdemeGosterim = 0.0;
 
         foreach ($ekOdemelerList as $eo) {
             if (stripos($eo->aciklama ?? '', 'Maaşa Dahil Dengeleme') !== false) continue;
@@ -863,10 +864,6 @@ class BordroPersonelModel extends Model
             if ($isInclusive && $isNet && $isPuantajOdeme) {
                 $netMaasPuantajHedefToplami += $tutar;
             }
-            $isBankaMatrahi = !isset($eo->banka_matrahina_ekle) || intval($eo->banka_matrahina_ekle) === 1;
-            if ($isBankaMatrahi && !$isPuantajOdeme) {
-                $bankaMatrahiEkOdemeGosterim += $tutar;
-            }
             $rawEkOdeme += $tutar;
             $resmiDahilEkToplam += floatval($eo->resmi_tutar ?? 0);
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
@@ -881,6 +878,9 @@ class BordroPersonelModel extends Model
                     $yontem = 'elden';
                 }
                 if ($yontem === 'banka') {
+                    if (!$isPuantajOdeme) {
+                        $bankayaTasinabilirEkOdemeGosterim += $tutar;
+                    }
                     if (!$isInclusive) {
                         $yontemliBankaEki += $tutar;
                         if ($tutar > 0) {
@@ -1071,9 +1071,9 @@ class BordroPersonelModel extends Model
             $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretNet / 30, 4) * $htcGun : 0.0;
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
             $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
-            $hariciEkOdemeForDahil = max(0.0, $bankaMatrahiEkOdemeGosterim - $htcEkOdemeTutarDagilim);
+            $hariciEkOdemeForDahil = max(0.0, $bankayaTasinabilirEkOdemeGosterim);
+            $bankaKarsilanabilirEkOdemeGosterim = $bankayaTasinabilirEkOdemeGosterim;
             if ($isNet && !$isPrimUsulu) {
-                $bankaKarsilanabilirEkOdemeGosterim = max(0.0, $bankaMatrahiEkOdemeGosterim);
                 $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaKarsilanabilirEkOdemeGosterim);
             }
             $puantajHedefToplamiDahil = $isPrimUsulu 
@@ -5245,12 +5245,11 @@ class BordroPersonelModel extends Model
                 $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
                 $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
                 $isBankaMatrahi = !isset($ek['banka_matrahina_ekle']) || intval($ek['banka_matrahina_ekle']) === 1;
-                $ekTutar = floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
                 if (!$isPuantajEk && !$isDahilYardimEk) {
                     if ($isBankaMatrahi) {
-                        $bankayaTasinabilirEkOdeme += $ekTutar;
+                        $bankayaTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
                     } else {
-                        $eldenTasinabilirEkOdeme += $ekTutar;
+                        $eldenTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
                     }
                 }
             }
