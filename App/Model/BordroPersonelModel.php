@@ -881,23 +881,21 @@ class BordroPersonelModel extends Model
                     if (!$isPuantajOdeme) {
                         $bankayaTasinabilirEkOdemeGosterim += $tutar;
                     }
-                    if (!$isInclusive) {
-                        $yontemliBankaEki += $tutar;
-                        if ($tutar > 0) {
-                            $label = $param->etiket ?? $eo->tur;
-                            if ($eo->aciklama && strpos($eo->aciklama, '[Nöbet]') === 0) {
-                                if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
-                                    $parts = explode('x', $matches[1]);
-                                    if (count($parts) >= 2) {
-                                        $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ')';
-                                    }
+                    $yontemliBankaEki += $tutar;
+                    if ($tutar > 0) {
+                        $label = $param->etiket ?? $eo->tur;
+                        if ($eo->aciklama && strpos($eo->aciklama, '[Nöbet]') === 0) {
+                            if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
+                                $parts = explode('x', $matches[1]);
+                                if (count($parts) >= 2) {
+                                    $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ')';
                                 }
                             }
-                            $bankaEkOdemeDetaylari[] = [
-                                'etiket' => $label,
-                                'tutar' => $tutar
-                            ];
                         }
+                        $bankaEkOdemeDetaylari[] = [
+                            'etiket' => $label,
+                            'tutar' => $tutar
+                        ];
                     }
                 } else {
                     $rTutar = floatval($eo->resmi_tutar ?? 0);
@@ -1195,7 +1193,8 @@ class BordroPersonelModel extends Model
                 $puantajYemekPayi = max(0.0, round($mealAllowanceDeduction - $yemekSozlesmePayiLimiti, 2));
                 $puantajBankaKalani = max(0.0, round($netMaasPuantajHedefToplami - $puantajYemekPayi, 2));
             }
-            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + floatval($rtcHtcBankaNetiGosterim ?? 0));
+            $ekOdemeBankaEki = max(0.0, floatval($yontemliBankaEki ?? 0) - floatval($rtcHtcBankaNetiGosterim ?? 0));
+            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + floatval($rtcHtcBankaNetiGosterim ?? 0) + $ekOdemeBankaEki);
             $eldenBrut = max(0.0, $toplamAlacagiNet - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
             $kesintiSatirlari = $this->getDonemKesintileriListe($p->personel_id, $p->donem_id);
@@ -5348,7 +5347,8 @@ class BordroPersonelModel extends Model
                     $yontemliOdemeler['banka'] += $puantajBankaKalaniHesap;
                 }
             }
-            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0));
+            $ekOdemeBankaNetiHesap = max(0.0, floatval($yontemliOdemeler['banka'] ?? 0) - floatval($rtcHtcBankaNetiHesap ?? 0));
+            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0) + $ekOdemeBankaNetiHesap);
             $eldenBrut = max(0.0, $netMaasIcinDagitim - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
             foreach ($kesintiDetaylari as $kd) {
