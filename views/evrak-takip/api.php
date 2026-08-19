@@ -209,8 +209,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['ceza_personel_id'] = null;
                 }
 
+                $evrak_tipi = $data['evrak_tipi'] ?? 'gelen';
                 $konu_kontrol = mb_strtolower($data['konu'] ?? '', 'UTF-8');
-                if (mb_strpos($konu_kontrol, 'trafik') !== false) {
+                if ($evrak_tipi === 'gelen' && mb_strpos($konu_kontrol, 'trafik') !== false) {
                     if ($data['ceza_hedef_tipi'] === 'personel' && empty($data['ceza_personel_id'])) {
                         throw new Exception('Lütfen cezanın yazıldığı personeli seçiniz.');
                     }
@@ -330,86 +331,147 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
                 $Model->resetApprovalWorkflow($real_id, array_map(fn($user) => (int) $user->id, $validSigners));
 
-                // Trafik Cezası Otomatik Kesinti Ekleme
+                // Trafik Cezası Otomatik Kesinti Ekleme (Yalnızca Gelen Evrak için)
+                $evrak_tipi = $data['evrak_tipi'] ?? 'gelen';
                 $isTrafficFine = false;
-                $subject = mb_strtolower($data['konu'] ?? '', 'UTF-8');
-                
-                // Türkçe karakter duyarsızlaştırma
-                $search_subject = str_replace(
-                    ['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'i'], 
-                    ['i', 'g', 'u', 's', 'o', 'c', 'i'], 
-                    $subject
-                );
 
-                if (
-                    strpos($search_subject, 'trafik') !== false || 
-                    strpos($search_subject, 'ceza') !== false || 
-                    !empty($data['plaka'])
-                ) {
-                    $isTrafficFine = true;
-                }
-
-                $tutar = !empty($data['tutar']) ? floatval($data['tutar']) : (!empty($data['ceza_tutari']) ? floatval($data['ceza_tutari']) : 0);
-                if (($data['ceza_hedef_tipi'] ?? 'arac') === 'personel') {
-                    $personel_id = !empty($data['ceza_personel_id']) ? intval($data['ceza_personel_id']) : 0;
-                } else {
-                    $personel_id = !empty($data['ilgili_personel_id']) ? intval($data['ilgili_personel_id']) : (!empty($data['personel_id']) ? intval($data['personel_id']) : 0);
-                }
-
-                $log_msg = date('Y-m-d H:i:s') . " - IS_TRAFFIC: " . ($isTrafficFine ? 'TRUE' : 'FALSE') . ", TUTAR: " . $tutar . ", PERSONEL_ID: " . $personel_id . ", DATA: " . json_encode($data) . "\n";
-                file_put_contents(dirname(__DIR__, 2) . '/log_debug.txt', $log_msg, FILE_APPEND);
-
-                if ($isTrafficFine && $tutar > 0 && $personel_id > 0) {
-                    $tarih_val = $data['tarih']; // Y-m-d
-
-                    // 1. Bordro Parametresi Bul (Trafik Cezası)
-                    $param_sql = $Model->getDb()->prepare("
-                        SELECT id FROM bordro_parametreleri 
-                        WHERE (etiket LIKE 'Trafik Cezası%' OR etiket LIKE 'Trafik Cezasi%') 
-                          AND aktif = 1 
-                        ORDER BY id DESC LIMIT 1
-                    ");
-                    $param_sql->execute();
-                    $param = $param_sql->fetch(PDO::FETCH_OBJ);
-                    $param_id = $param ? $param->id : 33; // varsayılan 33
-
-                    // 2. Dönem Bul
-                    $donem_sql = $Model->getDb()->prepare("
-                        SELECT id FROM bordro_donemi 
-                        WHERE baslangic_tarihi <= :tarih 
-                          AND bitis_tarihi >= :tarih 
-                          AND silinme_tarihi IS NULL 
-                          AND firma_id = :firma_id 
-                        LIMIT 1
-                    ");
-                    $donem_sql->execute([
-                        'tarih' => $tarih_val,
-                        'firma_id' => $_SESSION['firma_id']
-                    ]);
-                    $donem = $donem_sql->fetch(PDO::FETCH_OBJ);
+                if ($evrak_tipi === 'gelen') {
+                    $subject = mb_strtolower($data['konu'] ?? '', 'UTF-8');
                     
-                    if ($donem) {
-                        $donem_id = $donem->id;
-                    } else {
-                        // Eğer girilen tarihe ait dönem henüz oluşturulmadıysa, en son oluşturulmuş aktif dönemi seç!
-                        $latest_donem_sql = $Model->getDb()->prepare("
-                            SELECT id FROM bordro_donemi 
-                            WHERE silinme_tarihi IS NULL 
-                              AND firma_id = :firma_id 
-                            ORDER BY bitis_tarihi DESC 
-                            LIMIT 1
-                        ");
-                        $latest_donem_sql->execute([
-                            'firma_id' => $_SESSION['firma_id']
-                        ]);
-                        $latest_donem = $latest_donem_sql->fetch(PDO::FETCH_OBJ);
-                        $donem_id = $latest_donem ? $latest_donem->id : null;
+                    // Türkçe karakter duyarsızlaştırma
+                    $search_subject = str_replace(
+                        ['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'i'], 
+                        ['i', 'g', 'u', 's', 'o', 'c', 'i'], 
+                        $subject
+                    );
+
+                    if (
+                        strpos($search_subject, 'trafik') !== false || 
+                        strpos($search_subject, 'ceza') !== false || 
+                        !empty($data['plaka'])
+                    ) {
+                        $isTrafficFine = true;
                     }
 
-                    // 3. Evrak No Al
-                    $evrak_no_label = $data['evrak_no'] ?? $real_id;
+                    $tutar = !empty($data['tutar']) ? floatval($data['tutar']) : (!empty($data['ceza_tutari']) ? floatval($data['ceza_tutari']) : 0);
+                    if (($data['ceza_hedef_tipi'] ?? 'arac') === 'personel') {
+                        $personel_id = !empty($data['ceza_personel_id']) ? intval($data['ceza_personel_id']) : 0;
+                    } else {
+                        $personel_id = !empty($data['ilgili_personel_id']) ? intval($data['ilgili_personel_id']) : (!empty($data['personel_id']) ? intval($data['personel_id']) : 0);
+                    }
 
-                    // 4. Mükerrer Kontrolü (Aynı Evrak ID için daha önce kesinti girilmiş mi?)
+                    if ($isTrafficFine && $tutar > 0 && $personel_id > 0) {
+                        $tarih_val = $data['tarih']; // Y-m-d
+
+                        // 1. Bordro Parametresi Bul (Trafik Cezası)
+                        $param_sql = $Model->getDb()->prepare("
+                            SELECT id FROM bordro_parametreleri 
+                            WHERE (etiket LIKE 'Trafik Cezası%' OR etiket LIKE 'Trafik Cezasi%') 
+                              AND aktif = 1 
+                            ORDER BY id DESC LIMIT 1
+                        ");
+                        $param_sql->execute();
+                        $param = $param_sql->fetch(PDO::FETCH_OBJ);
+                        $param_id = $param ? $param->id : 33; // varsayılan 33
+
+                        // 2. Dönem Bul
+                        $donem_sql = $Model->getDb()->prepare("
+                            SELECT id FROM bordro_donemi 
+                            WHERE baslangic_tarihi <= :tarih 
+                              AND bitis_tarihi >= :tarih 
+                              AND silinme_tarihi IS NULL 
+                              AND firma_id = :firma_id 
+                            LIMIT 1
+                        ");
+                        $donem_sql->execute([
+                            'tarih' => $tarih_val,
+                            'firma_id' => $_SESSION['firma_id']
+                        ]);
+                        $donem = $donem_sql->fetch(PDO::FETCH_OBJ);
+                        
+                        if ($donem) {
+                            $donem_id = $donem->id;
+                        } else {
+                            // Eğer girilen tarihe ait dönem henüz oluşturulmadıysa, en son oluşturulmuş aktif dönemi seç!
+                            $latest_donem_sql = $Model->getDb()->prepare("
+                                SELECT id FROM bordro_donemi 
+                                WHERE silinme_tarihi IS NULL 
+                                  AND firma_id = :firma_id 
+                                ORDER BY bitis_tarihi DESC 
+                                LIMIT 1
+                            ");
+                            $latest_donem_sql->execute([
+                                'firma_id' => $_SESSION['firma_id']
+                            ]);
+                            $latest_donem = $latest_donem_sql->fetch(PDO::FETCH_OBJ);
+                            $donem_id = $latest_donem ? $latest_donem->id : null;
+                        }
+
+                        // 3. Evrak No Al
+                        $evrak_no_label = $data['evrak_no'] ?? $real_id;
+
+                        // 4. Mükerrer Kontrolü (Aynı Evrak ID için daha önce kesinti girilmiş mi?)
+                        $check_kesinti_sql = $Model->getDb()->prepare("
+                            SELECT id FROM personel_kesintileri 
+                            WHERE aciklama LIKE :desc 
+                              AND silinme_tarihi IS NULL 
+                            LIMIT 1
+                        ");
+                        $check_kesinti_sql->execute([
+                            'desc' => "%Evrak ID: {$real_id}%"
+                        ]);
+                        $existing_kesinti = $check_kesinti_sql->fetch(PDO::FETCH_OBJ);
+
+                        $kesinti_data = [
+                            'personel_id' => $personel_id,
+                            'donem_id' => $donem_id,
+                            'tur' => 'Trafik Cezası',
+                            'tekrar_tipi' => 'tek_sefer',
+                            'hesaplama_tipi' => 'sabit',
+                            'parametre_id' => $param_id,
+                            'aktif' => 1,
+                            'durum' => 'onaylandi',
+                            'tutar' => $tutar,
+                            'aciklama' => "Evrak Takip'ten otomatik kesinti (Evrak No: #{$evrak_no_label}, Evrak ID: {$real_id})",
+                            'tarih' => date('d.m.Y', strtotime($tarih_val)),
+                            'kayit_yapan' => $_SESSION['user_id'] ?? null
+                        ];
+
+                        if ($existing_kesinti) {
+                            // Güncelle
+                            $update_sql = $Model->getDb()->prepare("
+                                UPDATE personel_kesintileri 
+                                SET donem_id = :donem_id, 
+                                    tutar = :tutar, 
+                                    aciklama = :aciklama, 
+                                    tarih = :tarih, 
+                                    personel_id = :personel_id
+                                WHERE id = :id
+                            ");
+                            $update_sql->execute([
+                                'donem_id' => $kesinti_data['donem_id'],
+                                'tutar' => $kesinti_data['tutar'],
+                                'aciklama' => $kesinti_data['aciklama'],
+                                'tarih' => $kesinti_data['tarih'],
+                                'personel_id' => $kesinti_data['personel_id'],
+                                'id' => $existing_kesinti->id
+                            ]);
+                        } else {
+                            // Yeni Ekle
+                            $insert_sql = $Model->getDb()->prepare("
+                                INSERT INTO personel_kesintileri (
+                                    personel_id, donem_id, tur, tekrar_tipi, hesaplama_tipi, 
+                                    parametre_id, aktif, durum, tutar, aciklama, tarih, kayit_yapan, olusturma_tarihi
+                                ) VALUES (
+                                    :personel_id, :donem_id, :tur, :tekrar_tipi, :hesaplama_tipi, 
+                                    :parametre_id, :aktif, :durum, :tutar, :aciklama, :tarih, :kayit_yapan, NOW()
+                                )
+                            ");
+                            $insert_sql->execute($kesinti_data);
+                        }
+                    }
+                } else {
+                    // Evrak tipi gelen değilse (örneğin giden evrak ise) ilişkilendirilmiş eski bir kesinti varsa pasife al
                     $check_kesinti_sql = $Model->getDb()->prepare("
                         SELECT id FROM personel_kesintileri 
                         WHERE aciklama LIKE :desc 
@@ -420,53 +482,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'desc' => "%Evrak ID: {$real_id}%"
                     ]);
                     $existing_kesinti = $check_kesinti_sql->fetch(PDO::FETCH_OBJ);
-
-                    $kesinti_data = [
-                        'personel_id' => $personel_id,
-                        'donem_id' => $donem_id,
-                        'tur' => 'Trafik Cezası',
-                        'tekrar_tipi' => 'tek_sefer',
-                        'hesaplama_tipi' => 'sabit',
-                        'parametre_id' => $param_id,
-                        'aktif' => 1,
-                        'durum' => 'onaylandi',
-                        'tutar' => $tutar,
-                        'aciklama' => "Evrak Takip'ten otomatik kesinti (Evrak No: #{$evrak_no_label}, Evrak ID: {$real_id})",
-                        'tarih' => date('d.m.Y', strtotime($tarih_val)),
-                        'kayit_yapan' => $_SESSION['user_id'] ?? null
-                    ];
-
                     if ($existing_kesinti) {
-                        // Güncelle
-                        $update_sql = $Model->getDb()->prepare("
+                        $del_kesinti_sql = $Model->getDb()->prepare("
                             UPDATE personel_kesintileri 
-                            SET donem_id = :donem_id, 
-                                tutar = :tutar, 
-                                aciklama = :aciklama, 
-                                tarih = :tarih, 
-                                personel_id = :personel_id
+                            SET silinme_tarihi = NOW() 
                             WHERE id = :id
                         ");
-                        $update_sql->execute([
-                            'donem_id' => $kesinti_data['donem_id'],
-                            'tutar' => $kesinti_data['tutar'],
-                            'aciklama' => $kesinti_data['aciklama'],
-                            'tarih' => $kesinti_data['tarih'],
-                            'personel_id' => $kesinti_data['personel_id'],
-                            'id' => $existing_kesinti->id
-                        ]);
-                    } else {
-                        // Yeni Ekle
-                        $insert_sql = $Model->getDb()->prepare("
-                            INSERT INTO personel_kesintileri (
-                                personel_id, donem_id, tur, tekrar_tipi, hesaplama_tipi, 
-                                parametre_id, aktif, durum, tutar, aciklama, tarih, kayit_yapan, olusturma_tarihi
-                            ) VALUES (
-                                :personel_id, :donem_id, :tur, :tekrar_tipi, :hesaplama_tipi, 
-                                :parametre_id, :aktif, :durum, :tutar, :aciklama, :tarih, :kayit_yapan, NOW()
-                            )
-                        ");
-                        $insert_sql->execute($kesinti_data);
+                        $del_kesinti_sql->execute(['id' => $existing_kesinti->id]);
                     }
                 }
 

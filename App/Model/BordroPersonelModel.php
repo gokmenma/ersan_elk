@@ -868,21 +868,24 @@ class BordroPersonelModel extends Model
             $resmiDahilEkToplam += floatval($eo->resmi_tutar ?? 0);
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
             if ($param) {
+                $isPrimOdemeItem = ($eoTurLower === 'prim' || strpos($eoTurLower, 'prim') !== false || $isPuantajOdeme);
+
                 if (isset($eo->banka_matrahina_ekle)) {
                     $yontem = intval($eo->banka_matrahina_ekle) === 1 ? 'banka' : 'elden';
                 } else {
                     $yontem = $param->odeme_yontemi ?? ($isPrimUsulu ? 'elden' : 'banka');
                 }
-                // Net maaş + puantaj, resmî banka tavanına taşınmaz.
-                if ($isNet && $isPuantajOdeme) {
+                // Net maaş + puantaj veya primler, resmî banka tavanına taşınmaz.
+                if (($isNet && $isPuantajOdeme) || $isPrimOdemeItem) {
                     $yontem = 'elden';
                 }
-                if ($yontem === 'banka') {
+                if ($yontem === 'banka' && !$isPrimOdemeItem) {
+                    $bankaKatkisi = max($tutar, $this->ekOdemeResmiNetHedefi($eo, $param, $donemBaslangic));
                     if (!$isPuantajOdeme) {
                         $bankayaTasinabilirEkOdemeGosterim += $tutar;
                     }
-                    $yontemliBankaEki += $tutar;
-                    if ($tutar > 0) {
+                    $yontemliBankaEki += $bankaKatkisi;
+                    if ($bankaKatkisi > 0) {
                         $label = $param->etiket ?? $eo->tur;
                         if ($eo->aciklama && strpos($eo->aciklama, '[Nöbet]') === 0) {
                             if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
@@ -894,10 +897,10 @@ class BordroPersonelModel extends Model
                         }
                         $bankaEkOdemeDetaylari[] = [
                             'etiket' => $label,
-                            'tutar' => $tutar
+                            'tutar' => $bankaKatkisi
                         ];
                     }
-                } else {
+                } elseif (!$isPrimOdemeItem) {
                     $rTutar = floatval($eo->resmi_tutar ?? 0);
                     $rSgk = ($param && !empty($param->sgk_matrahi_dahil)) ? ($rTutar * 0.15) : 0.0;
                     $rGvMatrah = $rTutar - $rSgk;
@@ -2650,6 +2653,27 @@ class BordroPersonelModel extends Model
         $toplamSaat = intval($eslesme[1]) * intval($eslesme[2]);
         $asgariNet = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 0);
         return round(($asgariNet / 225) * 1.5 * $toplamSaat, 2);
+    }
+
+    private function ekOdemeResmiNetHedefi($ekOdeme, $param, string $donemTarihi): float
+    {
+        $rTutar = floatval($ekOdeme->resmi_tutar ?? 0);
+        if ($rTutar <= 0) {
+            return 0.0;
+        }
+
+        if (mb_strtolower((string) ($ekOdeme->tur ?? ''), 'UTF-8') === 'hafta_ici_nobet') {
+            $nobetHedef = $this->hesaplaHaftaIciNobetNetHedef((string) ($ekOdeme->aciklama ?? ''), $donemTarihi);
+            if ($nobetHedef > 0) {
+                return $nobetHedef;
+            }
+        }
+
+        $rSgk = ($param && !empty($param->sgk_matrahi_dahil)) ? ($rTutar * 0.15) : 0.0;
+        $rGv = ($param && !empty($param->gelir_vergisi_dahil)) ? (($rTutar - $rSgk) * 0.15) : 0.0;
+        $rDv = ($param && !empty($param->damga_vergisi_dahil)) ? ($rTutar * 0.00759) : 0.0;
+
+        return round($rTutar - $rSgk - $rGv - $rDv, 2);
     }
 
     /**
@@ -4800,8 +4824,16 @@ class BordroPersonelModel extends Model
                     }
                 }
             }
-            if ($yontem === 'banka') {
-                $yontemliOdemeler['banka'] += $ekOdemeTutari;
+            $turLower = mb_strtolower((string) ($odeme->tur ?? ''), 'UTF-8');
+            $aciklamaLower = mb_strtolower((string) ($odeme->aciklama ?? ''), 'UTF-8');
+            $isPrimOdemeItem = ($turLower === 'prim' || strpos($turLower, 'prim') !== false || strpos($aciklamaLower, '[puantaj]') === 0 || strpos($aciklamaLower, '[sayaç]') === 0 || strpos($aciklamaLower, '[kaçak') === 0);
+
+            if ($isPrimOdemeItem) {
+                if (isset($yontemliOdemeler['elden'])) {
+                    $yontemliOdemeler['elden'] += $ekOdemeTutari;
+                }
+            } elseif ($yontem === 'banka') {
+                $yontemliOdemeler['banka'] += max($ekOdemeTutari, $this->ekOdemeResmiNetHedefi($odeme, $parametre, $kayit->baslangic_tarihi));
             } else {
                 $bankaPay = ($isPrimUsulu || $isNetMaas) ? $rNet : $rTutar;
                 $yontemliOdemeler['banka'] += $bankaPay;
@@ -4811,7 +4843,8 @@ class BordroPersonelModel extends Model
                         $sodexoOdemesi += ($ekOdemeTutari - $bankaPay);
                     }
                 } else {
-                    $yontemliOdemeler['banka'] += ($ekOdemeTutari - $bankaPay);
+                    if (!isset($yontemliOdemeler['elden'])) { $yontemliOdemeler['elden'] = 0; }
+                    $yontemliOdemeler['elden'] += ($ekOdemeTutari - $bankaPay);
                 }
             }
             if ($rTutar > 0) {
