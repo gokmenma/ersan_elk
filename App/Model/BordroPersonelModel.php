@@ -458,8 +458,7 @@ class BordroPersonelModel extends Model
         if ($rtcHtcBankaNeti <= 0 || $maasHesapGunu <= 0) {
             return $sozlesmeHakedisi;
         }
-        $taban = round(($asgariUcretNet / 30) * $maasHesapGunu + $rtcHtcBankaNeti - max(0.0, $bankaKarsilanabilirEkOdeme), 2);
-        return max($sozlesmeHakedisi, $taban);
+        return round($sozlesmeHakedisi + $rtcHtcBankaNeti, 2);
     }
 
     private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0, float $sozlesmeHakedisi = 0.0, float $resmiDahilEkToplam = 0.0, float $htcNetFazla = 0.0): array
