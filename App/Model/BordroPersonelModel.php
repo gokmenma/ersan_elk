@@ -1194,13 +1194,6 @@ class BordroPersonelModel extends Model
                 ));
                 $puantajYemekPayi = max(0.0, round($mealAllowanceDeduction - $yemekSozlesmePayiLimiti, 2));
                 $puantajBankaKalani = max(0.0, round($netMaasPuantajHedefToplami - $puantajYemekPayi, 2));
-                if ($puantajBankaKalani > 0) {
-                    $yontemliBankaEki += $puantajBankaKalani;
-                    $bankaEkOdemeDetaylari[] = [
-                        'etiket' => 'Puantaj Çalışması',
-                        'tutar' => $puantajBankaKalani
-                    ];
-                }
             }
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + floatval($rtcHtcBankaNetiGosterim ?? 0));
             $eldenBrut = max(0.0, $toplamAlacagiNet - $bankaMatrahi);

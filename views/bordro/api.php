@@ -2484,6 +2484,88 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         display: block;
                     }
                     
+                    /* Dark Popover Theme (for Bootstrap Popovers like Banka Ödemesi Detayı) */
+                    .popover.bordro-dark-popover {
+                        background-color: #1e293b !important;
+                        border: 1px solid #334155 !important;
+                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3) !important;
+                        border-radius: 8px !important;
+                        color: #ffffff !important;
+                        z-index: 1065 !important;
+                        max-width: 360px !important;
+                        min-width: 290px !important;
+                    }
+                    .popover.bordro-dark-popover .popover-body {
+                        background-color: transparent !important;
+                        color: #ffffff !important;
+                        padding: 12px 16px !important;
+                        font-size: 0.75rem !important;
+                        line-height: 1.5 !important;
+                    }
+                    .popover.bordro-dark-popover .popover-header {
+                        background-color: #0f172a !important;
+                        border-bottom: 1px solid #334155 !important;
+                        color: #f1f5f9 !important;
+                    }
+                    .popover.bordro-dark-popover .pop-header {
+                        color: #94a3b8 !important;
+                        font-size: 0.72rem !important;
+                        margin-bottom: 8px !important;
+                        border-bottom: 1px dashed rgba(255,255,255,0.15) !important;
+                        padding-bottom: 5px !important;
+                        font-weight: 600 !important;
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.5px !important;
+                    }
+                    .popover.bordro-dark-popover .pop-row {
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: center !important;
+                        gap: 20px !important;
+                        margin-bottom: 5px !important;
+                    }
+                    .popover.bordro-dark-popover .pop-row-title {
+                        color: #cbd5e1 !important;
+                        font-size: 0.75rem !important;
+                        font-weight: 500 !important;
+                    }
+                    .popover.bordro-dark-popover .pop-row-val {
+                        font-weight: 700 !important;
+                        white-space: nowrap !important;
+                        text-align: right !important;
+                        font-size: 0.75rem !important;
+                    }
+                    .popover.bordro-dark-popover .pop-row-val.val-white { color: #ffffff !important; }
+                    .popover.bordro-dark-popover .pop-row-val.val-green { color: #10b981 !important; }
+                    .popover.bordro-dark-popover .pop-row-val.val-red { color: #f87171 !important; }
+                    .popover.bordro-dark-popover .pop-row-val.val-blue { color: #38bdf8 !important; }
+                    .popover.bordro-dark-popover .pop-footer {
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: center !important;
+                        gap: 20px !important;
+                        border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+                        padding-top: 6px !important;
+                        margin-top: 6px !important;
+                        font-weight: 700 !important;
+                    }
+                    .popover.bordro-dark-popover.bs-popover-top .popover-arrow::before,
+                    .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="top"] .popover-arrow::before {
+                        border-top-color: #334155 !important;
+                    }
+                    .popover.bordro-dark-popover.bs-popover-top .popover-arrow::after,
+                    .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="top"] .popover-arrow::after {
+                        border-top-color: #1e293b !important;
+                    }
+                    .popover.bordro-dark-popover.bs-popover-bottom .popover-arrow::before,
+                    .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::before {
+                        border-bottom-color: #334155 !important;
+                    }
+                    .popover.bordro-dark-popover.bs-popover-bottom .popover-arrow::after,
+                    .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::after {
+                        border-bottom-color: #1e293b !important;
+                    }
+                    
                     /* Lower Section Panels */
                     .bordro-ref-view .bottom-panels { margin-top: 25px; display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 15px; }
                     @media (max-width: 991px) {
@@ -2864,55 +2946,47 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                 $bankaDetayHtml = '';
                 if ($hesap['manualDagitimVar']) {
-                    $bankaDetayHtml = '<div class="small p-1"><strong>Manuel Dağıtım</strong><br>Bu tutar kullanıcı tarafından elle düzenlenmiştir.</div>';
+                    $bankaDetayHtml = '<div style="color:#e2e8f0; font-size:0.75rem; padding:4px;"><strong style="color:#f1f5f9;">Manuel Dağıtım</strong><br><span style="color:#94a3b8;">Bu tutar kullanıcı tarafından elle düzenlenmiştir.</span></div>';
                 } elseif ($hesap['nonKurRatio'] <= 0) {
-                    $bankaDetayHtml = '<div class="small p-1 text-danger"><i class="bx bx-error-circle"></i> Personel banka dışı / KUR kapsamında olduğu için banka ödemesi yapılmaz.</div>';
+                    $bankaDetayHtml = '<div style="color:#f87171; font-size:0.75rem; padding:4px;"><i class="bx bx-error-circle me-1"></i> Personel banka dışı / KUR kapsamında olduğu için banka ödemesi yapılmaz.</div>';
                 } else {
-                    $bankaDetayHtml = '<div class="p-2" style="min-width: 250px; font-size: 0.8rem;">';
-                    $bankaDetayHtml .= '<h6 class="fw-bold mb-2 pb-1 border-bottom" style="font-size: 0.85rem;"><i class="bx bxs-bank text-primary me-1"></i> Banka Ödemesi Detayı</h6>';
-                    $bankaDetayHtml .= '<div class="d-flex flex-column gap-1.5">';
+                    $bankaDetayHtml = '<div style="min-width: 260px;">';
+                    $bankaDetayHtml .= '<div class="pop-header"><i class="bx bxs-bank text-info me-1"></i> Banka Ödemesi Detayı</div>';
+
                     
                     if ($hesap['isInclusive']) {
-                        $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Asgari Ücret (Net):</span><span class="fw-bold">' . number_format($hesap['asgariYatacak'], 2, ',', '.') . ' ₺</span></div>';
+                        $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Asgari Ücret (Net)</span><span class="pop-row-val val-white">' . number_format($hesap['asgariYatacak'], 2, ',', '.') . ' ₺</span></div>';
                         if ($hesap['mealAllowanceDeduction'] > 0) {
-                            $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Yemek Yardımı:</span><span class="fw-bold text-success">+' . number_format($hesap['mealAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Yemek Yardımı</span><span class="pop-row-val val-green">+' . number_format($hesap['mealAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
                         }
                         if ($hesap['spouseAllowanceDeduction'] > 0) {
-                            $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Eş Yardımı:</span><span class="fw-bold text-success">+' . number_format($hesap['spouseAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Eş Yardımı</span><span class="pop-row-val val-green">+' . number_format($hesap['spouseAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
                         }
                         if (!empty($hesap['bankaEkOdemeDetaylari'])) {
                             foreach ($hesap['bankaEkOdemeDetaylari'] as $bed) {
                                 if ($bed['tutar'] > 0) {
-                                    $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>' . htmlspecialchars($bed['etiket']) . ':</span><span class="fw-bold text-success">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</span></div>';
+                                    $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($bed['etiket']) . '</span><span class="pop-row-val val-green">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</span></div>';
                                 }
                             }
                         }
                         
-                        $bankaMatrahiHam = round($hesap['asgariYatacak'] + $hesap['mealAllowanceDeduction'] + $hesap['spouseAllowanceDeduction'] + $hesap['yontemliBankaEki'], 2);
-                        $bankaMatrahiToplam = round(floatval($hesap['bankaMatrahi'] ?? 0), 2);
-                        $sozlesmeSiniriFarki = round($bankaMatrahiHam - $bankaMatrahiToplam, 2);
-                        if ($sozlesmeSiniriFarki > 0.005) {
-                            $bankaDetayHtml .= '<div class="d-flex justify-content-between text-danger"><span>Sözleşme Neti Sınırı:</span><span class="fw-bold">-' . number_format($sozlesmeSiniriFarki, 2, ',', '.') . ' ₺</span></div>';
-                        }
-                        $bankaDetayHtml .= '<div class="d-flex justify-content-between border-top pt-1 mt-1"><span>Banka Limit Matrahı:</span><span class="fw-bold text-primary">' . number_format($bankaMatrahiToplam, 2, ',', '.') . ' ₺</span></div>';
-                        
                         $toplamKesintiBanka = $hesap['bankaOncelikliKesinti'] + $hesap['bankaAktarilanKesinti'];
                         if ($toplamKesintiBanka > 0) {
-                            $bankaDetayHtml .= '<div class="d-flex justify-content-between text-danger"><span>Düşülen Kesintiler:</span><span class="fw-bold">-' . number_format($toplamKesintiBanka, 2, ',', '.') . ' ₺</span></div>';
+                            $bankaDetayHtml .= '<div class="pop-row" style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:4px; margin-top:2px;"><span class="pop-row-title">Düşülen Kesintiler</span><span class="pop-row-val val-red">-' . number_format($toplamKesintiBanka, 2, ',', '.') . ' ₺</span></div>';
                         }
                     } else {
-                        $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Net Hakediş (Net - Sodexo):</span><span class="fw-bold">' . number_format(max(0, $hesap['netAlacagi'] - $hesap['sodexoOdemesi'] - $hesap['digerOdeme']), 2, ',', '.') . ' ₺</span></div>';
+                        $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Net Hakediş (Net - Sodexo)</span><span class="pop-row-val val-white">' . number_format(max(0, $hesap['netAlacagi'] - $hesap['sodexoOdemesi'] - $hesap['digerOdeme']), 2, ',', '.') . ' ₺</span></div>';
                         if ($hesap['nonKurRatio'] < 1.0) {
-                            $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Banka Dağıtım Oranı:</span><span class="fw-bold text-info">%' . ($hesap['nonKurRatio'] * 100) . '</span></div>';
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Banka Dağıtım Oranı</span><span class="pop-row-val val-blue">%' . ($hesap['nonKurRatio'] * 100) . '</span></div>';
                         }
-                        $bankaDetayHtml .= '<div class="d-flex justify-content-between border-top pt-1 mt-1"><span>Banka Matrahı:</span><span class="fw-bold text-primary">' . number_format($hesap['bankaMatrahi'], 2, ',', '.') . ' ₺</span></div>';
                         if ($hesap['icraKesintisi'] > 0) {
-                            $bankaDetayHtml .= '<div class="d-flex justify-content-between text-danger"><span>Düşülen Kesinti (İcra vb.):</span><span class="fw-bold">-' . number_format($hesap['icraKesintisi'], 2, ',', '.') . ' ₺</span></div>';
+                            $bankaDetayHtml .= '<div class="pop-row" style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:4px; margin-top:2px;"><span class="pop-row-title">Banka Matrahı</span><span class="pop-row-val val-white">' . number_format($hesap['bankaMatrahi'], 2, ',', '.') . ' ₺</span></div>';
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Düşülen Kesinti (İcra vb.)</span><span class="pop-row-val val-red">-' . number_format($hesap['icraKesintisi'], 2, ',', '.') . ' ₺</span></div>';
                         }
                     }
                     
-                    $bankaDetayHtml .= '<div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1 fw-bold text-primary"><span>Net Banka Ödemesi:</span><span>' . number_format($hesap['bankaOdemesi'], 2, ',', '.') . ' ₺</span></div>';
-                    $bankaDetayHtml .= '</div></div>';
+                    $bankaDetayHtml .= '<div class="pop-footer"><span style="color:#ffffff;">Net Banka Ödemesi</span><span class="pop-row-val val-blue" style="font-size:0.85rem;">' . number_format($hesap['bankaOdemesi'], 2, ',', '.') . ' ₺</span></div>';
+                    $bankaDetayHtml .= '</div>';
                 }
 
                 echo json_encode([

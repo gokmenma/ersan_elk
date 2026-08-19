@@ -69,6 +69,7 @@ function renderBordroDetailFooterSummary(summary) {
              data-bs-trigger="hover" 
              data-bs-html="true" 
              data-bs-placement="top" 
+             data-bs-custom-class="bordro-dark-popover"
              data-bs-content="${(summary.banka_detay || '').replace(/"/g, '&quot;')}">
           <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Banka Ödemesi</div>
           <div class="fw-bold text-primary" style="font-size: 0.95rem; color:#3b82f6;">${summary.banka}</div>
@@ -653,7 +654,9 @@ $(document).ready(function () {
           var popoverTriggerList = [].slice.call(document.querySelectorAll('#bordroDetailFooterSummary [data-bs-toggle="popover"]'));
           popoverTriggerList.map(function (popoverTriggerEl) {
               return new bootstrap.Popover(popoverTriggerEl, {
-                  container: '#bordroDetailModal'
+                  container: '#bordroDetailModal',
+                  customClass: 'bordro-dark-popover',
+                  sanitize: false
               });
           });
 
