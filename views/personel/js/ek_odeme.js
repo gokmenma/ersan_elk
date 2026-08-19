@@ -21,11 +21,7 @@ $(document).ready(function () {
         var mm = String(today.getMonth() + 1).padStart(2, "0");
         var yyyy = today.getFullYear();
         var dateStr = dd + "." + mm + "." + yyyy;
-        var dateInput = $("#ek_odeme_tarih");
-        dateInput.val(dateStr);
-        if (dateInput[0] && dateInput[0]._flatpickr) {
-            dateInput[0]._flatpickr.setDate(dateStr);
-        }
+        ekOdemeSetTarih("#ek_odeme_tarih", dateStr);
     }, 100);
   });
 
@@ -36,14 +32,9 @@ $(document).ready(function () {
     var mm = String(today.getMonth() + 1).padStart(2, "0");
     var yyyy = today.getFullYear();
     var dateStr = dd + "." + mm + "." + yyyy;
-    var dateInput = $("#ek_odeme_tarih");
-    
     // Sadece eğer alan boşsa veya add modundaysak setle
-    if (!dateInput.val()) {
-        dateInput.val(dateStr);
-        if (dateInput[0] && dateInput[0]._flatpickr) {
-            dateInput[0]._flatpickr.setDate(dateStr);
-        }
+    if (!ekOdemeGetTarih("#ek_odeme_tarih")) {
+        ekOdemeSetTarih("#ek_odeme_tarih", dateStr);
     }
   });
 
@@ -51,6 +42,31 @@ $(document).ready(function () {
   $(document).on("hidden.bs.modal", "#modalPersonelEkOdemeEkle", function () {
     resetEkOdemeModal();
   });
+
+  // Flatpickr altInput kullandığı için asıl input gizlenir; tarih okuma/yazma
+  // daima flatpickr örneği üzerinden yapılmalı, aksi halde gösterilen değerle
+  // gönderilen değer birbirinden ayrışır.
+  function ekOdemeSetTarih(selector, deger) {
+    var el = $(selector)[0];
+    if (!el) return;
+    if (el._flatpickr) {
+      if (deger) {
+        el._flatpickr.setDate(deger, false);
+      } else {
+        el._flatpickr.clear();
+      }
+    }
+    $(selector).val(deger || "");
+  }
+
+  function ekOdemeGetTarih(selector) {
+    var el = $(selector)[0];
+    if (!el) return "";
+    if (el._flatpickr && el._flatpickr.selectedDates && el._flatpickr.selectedDates.length > 0) {
+      return el._flatpickr.formatDate(el._flatpickr.selectedDates[0], "d.m.Y");
+    }
+    return $(selector).val() || "";
+  }
 
   function resetEkOdemeModal() {
     var form = $("#formPersonelEkOdemeEkle");
@@ -80,27 +96,15 @@ $(document).ready(function () {
     var yyyy = today.getFullYear();
     var dateStr = dd + "." + mm + "." + yyyy;
 
-    var dateInput = $("#ek_odeme_tarih");
-    dateInput.val(dateStr);
-    if (dateInput[0] && dateInput[0]._flatpickr) {
-      dateInput[0]._flatpickr.setDate(dateStr);
-    }
+    ekOdemeSetTarih("#ek_odeme_tarih", dateStr);
 
     // Set default start date (1st of current month)
     var dMonth = String(today.getMonth() + 1).padStart(2, "0");
     var dYear = today.getFullYear();
     var defaultStartStr = "01." + dMonth + "." + dYear;
 
-    var startInput = $("#ek_odeme_baslangic_donemi");
-    startInput.val(defaultStartStr);
-    if (startInput[0] && startInput[0]._flatpickr) {
-      startInput[0]._flatpickr.setDate(defaultStartStr);
-    }
-    
-    $("#ek_odeme_bitis_donemi").val("");
-    if ($("#ek_odeme_bitis_donemi")[0] && $("#ek_odeme_bitis_donemi")[0]._flatpickr) {
-      $("#ek_odeme_bitis_donemi")[0]._flatpickr.clear();
-    }
+    ekOdemeSetTarih("#ek_odeme_baslangic_donemi", defaultStartStr);
+    ekOdemeSetTarih("#ek_odeme_bitis_donemi", "");
   }
 
   // Ek Ödeme Düzenle
@@ -156,10 +160,7 @@ $(document).ready(function () {
                 }
                 
                 if (bstr) {
-                    $("#ek_odeme_baslangic_donemi").val(bstr);
-                    if ($("#ek_odeme_baslangic_donemi")[0]._flatpickr) {
-                        $("#ek_odeme_baslangic_donemi")[0]._flatpickr.setDate(bstr);
-                    }
+                    ekOdemeSetTarih("#ek_odeme_baslangic_donemi", bstr);
                 }
             }
             if (response.bitis_donemi) {
@@ -172,10 +173,7 @@ $(document).ready(function () {
                 }
 
                 if (estr) {
-                    $("#ek_odeme_bitis_donemi").val(estr);
-                    if ($("#ek_odeme_bitis_donemi")[0]._flatpickr) {
-                        $("#ek_odeme_bitis_donemi")[0]._flatpickr.setDate(estr);
-                    }
+                    ekOdemeSetTarih("#ek_odeme_bitis_donemi", estr);
                 }
             }
           } else {
@@ -205,10 +203,7 @@ $(document).ready(function () {
           if (response.tarih) {
             var dateParts = response.tarih.split("-");
             var dateStr = dateParts[2] + "." + dateParts[1] + "." + dateParts[0];
-            $("#ek_odeme_tarih").val(dateStr);
-            if ($("#ek_odeme_tarih")[0]._flatpickr) {
-                $("#ek_odeme_tarih")[0]._flatpickr.setDate(dateStr);
-            }
+            ekOdemeSetTarih("#ek_odeme_tarih", dateStr);
           }
           
           // Açıklama
@@ -362,7 +357,7 @@ $(document).ready(function () {
       }
     } else {
       // Sürekli ise başlangıç dönemi zorunlu
-      var baslangicDonemi = $("#ek_odeme_baslangic_donemi").val();
+      var baslangicDonemi = ekOdemeGetTarih("#ek_odeme_baslangic_donemi");
       if (!baslangicDonemi) {
         Swal.fire("Hata", "Lütfen başlangıç dönemini giriniz.", "error");
         return;
@@ -414,7 +409,7 @@ $(document).ready(function () {
         hesaplamaTipi !== "sabit"
           ? $("#formPersonelEkOdemeEkle input[name='oran']").val()
           : 0,
-      tarih: $("#ek_odeme_tarih").val(),
+      tarih: ekOdemeGetTarih("#ek_odeme_tarih"),
       aciklama: $("#formPersonelEkOdemeEkle input[name='aciklama']").val(),
       banka_matrahina_ekle: $('input[name="banka_matrahina_ekle"]:checked').val() !== undefined ? $('input[name="banka_matrahina_ekle"]:checked').val() : 1,
     };
@@ -434,8 +429,8 @@ $(document).ready(function () {
     if (tekrarTipi === "tek_sefer") {
       data.donem_id = $("select[name='ek_odeme_donem']").val();
     } else {
-      data.baslangic_donemi = $("#ek_odeme_baslangic_donemi").val();
-      data.bitis_donemi = $("#ek_odeme_bitis_donemi").val() || null;
+      data.baslangic_donemi = ekOdemeGetTarih("#ek_odeme_baslangic_donemi");
+      data.bitis_donemi = ekOdemeGetTarih("#ek_odeme_bitis_donemi") || null;
     }
 
     $.ajax({
