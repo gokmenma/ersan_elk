@@ -846,6 +846,9 @@ class BordroPersonelModel extends Model
         $sozlesmeHakedisiOverride = false;
         $resmiDahilEkToplam = 0.0;
         $bankayaTasinabilirEkOdemeGosterim = 0.0;
+        // Primler yemek tavanını yükseltir ancak sözleşme hakedişi tabanından mahsup edilemez;
+        // mahsup için primsiz toplam ayrı tutulur.
+        $bankaMahsupEdilebilirEkOdemeGosterim = 0.0;
 
         foreach ($ekOdemelerList as $eo) {
             if (stripos($eo->aciklama ?? '', 'Maaşa Dahil Dengeleme') !== false) continue;
@@ -868,7 +871,11 @@ class BordroPersonelModel extends Model
             $resmiDahilEkToplam += floatval($eo->resmi_tutar ?? 0);
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
             if ($param) {
-                $isPrimOdemeItem = ($eoTurLower === 'prim' || strpos($eoTurLower, 'prim') !== false || $isPuantajOdeme);
+                // Yalnızca otomatik üretilen puantaj/sayaç/kaçak kalemleri resmî banka tavanına
+                // taşınmaz. Elle girilen primlerde kullanıcının Banka/Elden seçimi geçerlidir.
+                $isPrimOdemeItem = $isPuantajOdeme;
+                // Prim ek kazançtır; sözleşme hakedişi tabanından mahsup edilemez.
+                $isPrimTuru = ($eoTurLower === 'prim' || strpos($eoTurLower, 'prim') !== false);
 
                 if (isset($eo->banka_matrahina_ekle)) {
                     $yontem = intval($eo->banka_matrahina_ekle) === 1 ? 'banka' : 'elden';
@@ -879,12 +886,19 @@ class BordroPersonelModel extends Model
                 if (($isNet && $isPuantajOdeme) || $isPrimOdemeItem) {
                     $yontem = 'elden';
                 }
-                if ($yontem === 'banka' && !$isPrimOdemeItem) {
+                if ($isPrimTuru && !$isPuantajOdeme) {
+                    // Elle girilen prim "Banka" seçiliyse yemek tavanını yükseltir ve tutar
+                    // yemeğe absorbe olur; ayrıca banka kalemi olarak gösterilmez (çift sayım).
+                    if ($yontem === 'banka') {
+                        $bankayaTasinabilirEkOdemeGosterim += $tutar;
+                    }
+                } elseif ($yontem === 'banka' && !$isPrimOdemeItem) {
                     $bankaKatkisi = ($eoTurLower === 'hafta_sonu_nobet')
                         ? 0.0
                         : max($tutar, $this->ekOdemeResmiNetHedefi($eo, $param, $donemBaslangic));
                     if (!$isPuantajOdeme) {
                         $bankayaTasinabilirEkOdemeGosterim += $tutar;
+                        $bankaMahsupEdilebilirEkOdemeGosterim += $tutar;
                     }
                     $yontemliBankaEki += $bankaKatkisi;
                     if ($bankaKatkisi > 0) {
@@ -1077,7 +1091,7 @@ class BordroPersonelModel extends Model
             $hariciEkOdemeForDahil = max(0.0, $bankayaTasinabilirEkOdemeGosterim);
             $bankaKarsilanabilirEkOdemeGosterim = $bankayaTasinabilirEkOdemeGosterim;
             if ($isNet && !$isPrimUsulu) {
-                $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaKarsilanabilirEkOdemeGosterim);
+                $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaMahsupEdilebilirEkOdemeGosterim);
             }
             $puantajHedefToplamiDahil = $isPrimUsulu 
                 ? $primUsuluPuantajHedefToplami 
@@ -4828,9 +4842,17 @@ class BordroPersonelModel extends Model
             }
             $turLower = mb_strtolower((string) ($odeme->tur ?? ''), 'UTF-8');
             $aciklamaLower = mb_strtolower((string) ($odeme->aciklama ?? ''), 'UTF-8');
-            $isPrimOdemeItem = ($turLower === 'prim' || strpos($turLower, 'prim') !== false || strpos($aciklamaLower, '[puantaj]') === 0 || strpos($aciklamaLower, '[sayaç]') === 0 || strpos($aciklamaLower, '[kaçak') === 0);
+            // Yalnızca otomatik üretilen puantaj/sayaç/kaçak kalemleri resmî banka tavanına
+            // taşınmaz. Elle girilen primlerde kullanıcının Banka/Elden seçimi geçerlidir.
+            $isPrimOdemeItem = (strpos($aciklamaLower, '[puantaj]') === 0 || strpos($aciklamaLower, '[saya') === 0 || strpos($aciklamaLower, '[kaçak') === 0);
+            $isPrimTuru = (strpos($turLower, 'prim') !== false);
 
             if ($isPrimOdemeItem) {
+                if (isset($yontemliOdemeler['elden'])) {
+                    $yontemliOdemeler['elden'] += $ekOdemeTutari;
+                }
+            } elseif ($isPrimTuru) {
+                // Elle girilen prim yemek tavanına yansır; ayrı banka kalemi olarak eklenmez.
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
                 }
@@ -5177,19 +5199,24 @@ class BordroPersonelModel extends Model
             if ($this->hasMaasaDahilSosyalYardim($kayit)) {
                 // Bankaya taşınabilir ek ödemeleri (mesai vb.) hesapla
                 $bankayaTasinabilirEkOdeme = 0.0;
+                $bankaMahsupEdilebilirEkOdeme = 0.0;
                 foreach ($ekOdemeDetaylari as $ek) {
                     $aciklama = (string)($ek['aciklama'] ?? '');
                     $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
                     $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
                     $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
+                    $isPrimEk = strpos($kod, 'prim') !== false;
                     if (!$isPuantajEk && !$isDahilYardimEk) {
                         $bankayaTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                        if (!$isPrimEk) {
+                            $bankaMahsupEdilebilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                        }
                     }
                 }
 
                 $sozlesmeHakedisi = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? $donemTarihi ?? date('Y-m-01'));
                 if ($isNetMaas && !$isPrimUsulu) {
-                    $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, max(0.0, $bankayaTasinabilirEkOdeme + $htcEkOdeme));
+                    $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, max(0.0, $bankaMahsupEdilebilirEkOdeme + $htcEkOdeme));
                 }
 
                 // HTÇ resmi yemek matrahını etkilememeli — yalnızca RTÇ yemek kapasitesini azaltır
@@ -5263,6 +5290,8 @@ class BordroPersonelModel extends Model
         $yuvarlamaFarki = 0;
         $bankayaTasinabilirEkOdeme = 0.0;
         $eldenTasinabilirEkOdeme = 0.0;
+        // Primler yemek tavanını yükseltir ancak sözleşme hakedişi tabanından mahsup edilemez.
+        $bankaMahsupEdilebilirEkOdeme = 0.0;
 
         // Resolve SGK firm proration
         $dagilim = $this->getSgkFirmaDagilimi($kayit->personel_id, $donemTarihi, $donemBitis, $kayit->sgk_yapilan_firma ?? 'Yok');
@@ -5274,19 +5303,24 @@ class BordroPersonelModel extends Model
                 $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
                 $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
                 $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
+                $isPrimEk = strpos($kod, 'prim') !== false;
                 $isBankaMatrahi = !isset($ek['banka_matrahina_ekle']) || intval($ek['banka_matrahina_ekle']) === 1;
                 if (!$isPuantajEk && !$isDahilYardimEk) {
+                    $ekTutar = floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
                     if ($isBankaMatrahi) {
-                        $bankayaTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
-                    } else {
-                        $eldenTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                        $bankayaTasinabilirEkOdeme += $ekTutar;
+                        if (!$isPrimEk) {
+                            $bankaMahsupEdilebilirEkOdeme += $ekTutar;
+                        }
+                    } elseif (!$isPrimEk) {
+                        $eldenTasinabilirEkOdeme += $ekTutar;
                     }
                 }
             }
 
             $sozlesmeHakedisiCalc = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? date('Y-m-01'));
             if ($isNetMaas && !$isPrimUsulu) {
-                $bankaKarsilanabilirEkOdemeHesap = max(0.0, $bankayaTasinabilirEkOdeme + $htcEkOdeme);
+                $bankaKarsilanabilirEkOdemeHesap = max(0.0, $bankaMahsupEdilebilirEkOdeme + $htcEkOdeme);
                 $sozlesmeHakedisiCalc = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisiCalc, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
                 $targetNetHakedis = $this->rtcHtcIleYukseltilmisHakedis($targetNetHakedis, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
             }
