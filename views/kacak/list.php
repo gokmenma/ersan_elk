@@ -682,19 +682,36 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                 <i class="bx bx-refresh me-1"></i>Listele
                             </button>
                             <div class="vr mx-1 d-none d-md-block" style="height: 32px; opacity: 0.2;"></div>
-                            <button class="btn btn-info btn-sm text-white px-3" id="btnTeslimAlindi" disabled style="height: 48px;">
-                                <i class="bx bx-check-double me-1"></i>Teslim Alındı İşaretle
-                            </button>
                             <span class="badge bg-white text-secondary border py-2 px-2.5" id="teslimSecimBilgi">0 kayıt seçildi</span>
                         </div>
 
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-outline-success btn-sm px-3" id="btnTeslimExcel" disabled style="height: 48px;" title="Excel İndir">
-                                <i class="bx bx-download me-1"></i>Excel
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm px-3 dropdown-toggle fw-medium" type="button" id="btnTeslimIslemler" data-bs-toggle="dropdown" aria-expanded="false" disabled style="height: 48px;">
+                                <i class="bx bx-cog me-1"></i>İşlemler
                             </button>
-                            <button class="btn btn-outline-warning text-dark btn-sm px-3 fw-medium" id="btnTeslimZip" disabled style="height: 48px;" title="Toplu Evrak İndir (ZIP)">
-                                <i class="bx bxs-file-archive me-1"></i>ZIP İndir
-                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="btnTeslimIslemler">
+                                <li>
+                                    <a class="dropdown-item py-2" href="javascript:void(0)" id="btnTeslimAlindi">
+                                        <i class="bx bx-check-double text-info me-2 fs-5 align-middle"></i>Teslim Alındı İşaretle
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item py-2" href="javascript:void(0)" id="btnTeslimFotoPdf">
+                                        <i class="bx bxs-file-pdf text-danger me-2 fs-5 align-middle"></i>Fotoğraf Çıktısı (PDF)
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item py-2" href="javascript:void(0)" id="btnTeslimZip">
+                                        <i class="bx bxs-file-archive text-warning me-2 fs-5 align-middle"></i>Toplu Evrak İndir (ZIP)
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item py-2" href="javascript:void(0)" id="btnTeslimExcel">
+                                        <i class="bx bx-download text-success me-2 fs-5 align-middle"></i>Excel İndir
+                                    </a>
+                                </li>
+                            </ul>
                         </div>
                     </div>
 
@@ -2538,7 +2555,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
         function teslimSecimGuncelle() {
             $('#teslimSecimBilgi').text(teslimSecilenler.size + ' kayıt seçildi');
-            $('#btnTeslimAlindi, #btnTeslimExcel, #btnTeslimZip').prop('disabled', teslimSecilenler.size === 0);
+            $('#btnTeslimIslemler').prop('disabled', teslimSecilenler.size === 0);
         }
 
         $('#btnTeslimListesi').on('click', function () {
@@ -2562,7 +2579,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     esc(r.ekip_adi),
                     esc(r.sebep),
                     r.foto_cikti_gerekli == 1
-                        ? '<span class="badge bg-primary">GEREKLİ</span>'
+                        ? '<div class="d-inline-flex align-items-center gap-1"><span class="badge bg-primary">GEREKLİ</span> <button type="button" class="btn btn-xs btn-outline-danger btn-teslim-foto-tekil-pdf" data-token="' + esc(r.token) + '" title="Fotoğraf Çıktısı İndir (PDF)"><i class="bx bxs-file-pdf"></i></button></div>'
                         : '<span class="text-muted">-</span>',
                     r.teslim_alindi == 1
                         ? '<span class="badge bg-success">TESLİM ALINDI</span>'
@@ -2602,7 +2619,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             teslimSecimGuncelle();
         });
 
-        $('#btnTeslimAlindi').on('click', function () {
+        $('#btnTeslimAlindi').on('click', function (e) {
+            e.preventDefault();
+            if (teslimSecilenler.size === 0) return;
             Swal.fire({title: 'Teslim alındı işaretlensin mi?', text: teslimSecilenler.size + ' kayıt güncellenecek.', icon: 'question', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'Vazgeç'}).then(result => {
                 if (!result.isConfirmed) return;
                 $.post(API, {action: 'teslim-alindi-isaretle', tokens: Array.from(teslimSecilenler)}, null, 'json').done(res => {
@@ -2613,7 +2632,102 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             });
         });
 
-        $('#btnTeslimExcel').on('click', function () {
+        $('#btnTeslimFotoPdf').on('click', function (e) {
+            e.preventDefault();
+            if (teslimSecilenler.size === 0) return;
+            const $mainBtn = $('#btnTeslimIslemler');
+            const origHtml = $mainBtn.html();
+            $mainBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Hazırlanıyor...');
+
+            const formData = new FormData();
+            formData.append('tip', 'teslim_foto_pdf');
+            formData.append('start_date', toIsoDate($('#teslim_baslangic').val()));
+            formData.append('end_date', toIsoDate($('#teslim_bitis').val()));
+            teslimSecilenler.forEach(t => formData.append('tokens[]', t));
+
+            fetch('views/kacak/export-haftalik.php', {method: 'POST', body: formData})
+                .then(async response => {
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(errText || 'Fotoğraf çıktısı PDF dosyası indirilemedi.');
+                    }
+                    const disposition = response.headers.get('Content-Disposition');
+                    let filename = 'Kacak_Foto_Ciktilari.pdf';
+                    if (disposition) {
+                        const matches = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(disposition);
+                        if (matches) {
+                            filename = decodeURIComponent(matches[1] || matches[2]);
+                        }
+                    }
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(err => {
+                    Swal.fire('Bilgi', err.message || 'PDF oluşturulurken bir sorun oluştu.', 'warning');
+                })
+                .finally(() => {
+                    $mainBtn.prop('disabled', teslimSecilenler.size === 0).html(origHtml);
+                });
+        });
+
+        $('#teslimTable').on('click', '.btn-teslim-foto-tekil-pdf', function (e) {
+            e.stopPropagation();
+            const token = $(this).data('token');
+            if (!token) return;
+            const $btn = $(this);
+            const origHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:12px;height:12px;" role="status"></span>');
+
+            const formData = new FormData();
+            formData.append('tip', 'teslim_foto_pdf');
+            formData.append('start_date', toIsoDate($('#teslim_baslangic').val()));
+            formData.append('end_date', toIsoDate($('#teslim_bitis').val()));
+            formData.append('tokens[]', token);
+
+            fetch('views/kacak/export-haftalik.php', {method: 'POST', body: formData})
+                .then(async response => {
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(errText || 'Fotoğraf çıktısı PDF dosyası indirilemedi.');
+                    }
+                    const disposition = response.headers.get('Content-Disposition');
+                    let filename = 'Kacak_Foto_Ciktisi.pdf';
+                    if (disposition) {
+                        const matches = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(disposition);
+                        if (matches) {
+                            filename = decodeURIComponent(matches[1] || matches[2]);
+                        }
+                    }
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(err => {
+                    Swal.fire('Bilgi', err.message || 'PDF oluşturulamadı.', 'warning');
+                })
+                .finally(() => {
+                    $btn.prop('disabled', false).html(origHtml);
+                });
+        });
+
+        $('#btnTeslimExcel').on('click', function (e) {
+            e.preventDefault();
+            if (teslimSecilenler.size === 0) return;
             const form = $('<form>', {method: 'POST', action: 'views/kacak/export-haftalik.php'}).appendTo('body');
             $('<input>', {type:'hidden', name:'tip', value:'teslim'}).appendTo(form);
             $('<input>', {type:'hidden', name:'start_date', value:toIsoDate($('#teslim_baslangic').val())}).appendTo(form);
@@ -2622,10 +2736,12 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             form.trigger('submit').remove();
         });
 
-        $('#btnTeslimZip').on('click', function () {
-            const $btn = $(this);
-            const origHtml = $btn.html();
-            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Hazırlanıyor...');
+        $('#btnTeslimZip').on('click', function (e) {
+            e.preventDefault();
+            if (teslimSecilenler.size === 0) return;
+            const $mainBtn = $('#btnTeslimIslemler');
+            const origHtml = $mainBtn.html();
+            $mainBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Hazırlanıyor...');
 
             const formData = new FormData();
             formData.append('tip', 'teslim_zip');
@@ -2661,7 +2777,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     Swal.fire('Hata', err.message || 'İndirme sırasında bir sorun oluştu.', 'error');
                 })
                 .finally(() => {
-                    $btn.prop('disabled', false).html(origHtml);
+                    $mainBtn.prop('disabled', teslimSecilenler.size === 0).html(origHtml);
                 });
         });
 

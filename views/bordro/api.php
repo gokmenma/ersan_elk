@@ -4327,6 +4327,44 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 ]);
                 break;
 
+            // Tablo Gövdesi ve Özet Alanını Yeniden Render Et (sayfa yenilemesiz güncelleme)
+            case 'tablo-yenile':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                if ($donem_id <= 0) {
+                    throw new Exception('Dönem bilgisi bulunamadı.');
+                }
+
+                $selectedDonem = $BordroDonem->getDonemById($donem_id);
+                if (!$selectedDonem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+
+                $personeller = $BordroPersonel->getPersonellerByDonem($donem_id);
+                $donemKapali = $selectedDonem->kapali_mi ?? 0;
+                $selectedAy = date('m', strtotime($selectedDonem->baslangic_tarihi));
+                $selectedYil = date('Y', strtotime($selectedDonem->baslangic_tarihi));
+
+                include __DIR__ . '/partials/hesaplama.php';
+
+                ob_start();
+                include __DIR__ . '/partials/ozet-kartlar.php';
+                $ozetHtml = ob_get_clean();
+
+                ob_start();
+                include __DIR__ . '/partials/tablo-satirlari.php';
+                $tbodyHtml = ob_get_clean();
+
+                echo json_encode([
+                    'status' => 'success',
+                    'ozet_html' => $ozetHtml,
+                    'tbody_html' => $tbodyHtml,
+                    'donem_adi' => $selectedDonem->donem_adi,
+                    'donem_kapali' => (int) $donemKapali,
+                    'personel_gorsun' => (int) ($selectedDonem->personel_gorsun ?? 0),
+                    'personel_sayisi' => count($personeller)
+                ]);
+                break;
+
             default:
                 throw new Exception('Geçersiz işlem.');
 

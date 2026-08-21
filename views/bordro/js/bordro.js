@@ -142,6 +142,11 @@ $(document).ready(function () {
   };
   $("#bordroTable").DataTable(applyLengthStateSave(bordroOpts));
 
+  // Sayfalama/siralama sonrasi DOM'a yeni giren satirlarin ikon ve tooltip'lerini tazele
+  $("#bordroTable").on("draw.dt", function () {
+    bordroGorselleriYenile($("#bordroTable tbody"));
+  });
+
   // Yıl değiştiğinde sayfayı yenile
   $("#yilSelect").on("change", function () {
     const yil = $(this).val();
@@ -432,7 +437,7 @@ $(document).ready(function () {
         if (response.status === "success") {
           showToast(response.message, "success");
           setTimeout(() => {
-            location.reload();
+            bordroTabloYenile();
           }, 1000);
         } else {
           showToast(response.message, "error");
@@ -561,7 +566,7 @@ $(document).ready(function () {
                 }
               },
             }).then(() => {
-              location.reload();
+              bordroTabloYenile();
             });
           } else {
             Swal.fire({
@@ -570,7 +575,7 @@ $(document).ready(function () {
               text: response.message,
               confirmButtonText: "Tamam",
             }).then(() => {
-              location.reload();
+              bordroTabloYenile();
             });
           }
         } else {
@@ -826,7 +831,7 @@ $(document).ready(function () {
             text: response.message,
             confirmButtonText: "Tamam",
           }).then(() => {
-            location.reload();
+            bordroTabloYenile();
           });
         } else if (response.status === "warning") {
           // Bekleyen avans/izin uyarısı
@@ -934,7 +939,7 @@ $(document).ready(function () {
                 text: response.message,
                 confirmButtonText: "Tamam",
               }).then(() => {
-                location.reload();
+                bordroTabloYenile();
               });
             } else {
               Swal.fire({
@@ -1109,7 +1114,7 @@ $(document).ready(function () {
             text: response.message,
             confirmButtonText: "Tamam",
           }).then(() => {
-            location.reload();
+            bordroTabloYenile();
           });
         } else {
           Swal.fire({
@@ -1155,7 +1160,7 @@ $(document).ready(function () {
                 timer: 1500,
                 showConfirmButton: false,
               }).then(() => {
-                location.reload();
+                bordroTabloYenile();
               });
             } else {
               Swal.fire("Hata", response.message, "error");
@@ -1210,7 +1215,7 @@ $(document).ready(function () {
                 text: response.message,
                 confirmButtonText: "Tamam",
               }).then(() => {
-                location.reload();
+                bordroTabloYenile();
               });
             } else {
               Swal.fire("Hata", response.message, "error");
@@ -1703,7 +1708,7 @@ $(document).ready(function () {
             text: response.message,
             confirmButtonText: "Tamam",
           }).then(() => {
-            location.reload();
+            bordroTabloYenile();
           });
         } else {
           Swal.fire({
@@ -1752,7 +1757,7 @@ $(document).ready(function () {
             text: response.message,
             confirmButtonText: "Tamam",
           }).then(() => {
-            location.reload();
+            bordroTabloYenile();
           });
         } else {
           Swal.fire({
@@ -1874,7 +1879,7 @@ function uploadExcelFile(formData, title, modalId) {
           text: response.message,
           confirmButtonText: "Tamam",
         }).then(() => {
-          location.reload();
+          bordroTabloYenile();
         });
       } else {
         Swal.fire({
@@ -2383,3 +2388,151 @@ function hideModal(modalId) {
 }
 
 
+
+function bordroGorselleriYenile($kapsam) {
+  if (!$kapsam || !$kapsam.length) return;
+
+  if (typeof feather !== "undefined") {
+    try {
+      feather.replace();
+    } catch (e) {
+      console.warn("feather.replace error:", e);
+    }
+  }
+
+  if (window.bootstrap && bootstrap.Tooltip) {
+    $kapsam.find('[data-bs-toggle="tooltip"]').each(function () {
+      const mevcut = bootstrap.Tooltip.getInstance(this);
+      if (mevcut) mevcut.dispose();
+      new bootstrap.Tooltip(this);
+    });
+  }
+}
+
+function bordroSeciliDonemId() {
+  return (
+    $("#donemSelect").val() || $('select[name="donemSelect"]').val() || ""
+  );
+}
+
+function bordroDonemDurumUygula(donemKapali, personelGorsun) {
+  const kapali = parseInt(donemKapali, 10) === 1;
+  const gorsun = parseInt(personelGorsun, 10) === 1;
+
+  const $durumToggle = $("#btnDonemDurumToggle");
+  if ($durumToggle.length) {
+    $durumToggle.attr("data-status", kapali ? "kapali" : "acik");
+    $durumToggle.data("status", kapali ? "kapali" : "acik");
+    $durumToggle.html(
+      '<span><i class="mdi ' +
+        (kapali ? "mdi-lock-open text-success" : "mdi-lock text-warning") +
+        ' fs-5 me-2"></i>' +
+        (kapali ? "Dönemi Aç" : "Dönemi Kapat") +
+        '</span><span class="badge ' +
+        (kapali
+          ? "bg-danger-subtle text-danger"
+          : "bg-success-subtle text-success") +
+        ' ms-3" style="font-size: 10px;">' +
+        (kapali ? "KAPALI" : "AÇIK") +
+        "</span>"
+    );
+  }
+
+  const $gorsunToggle = $("#btnPersonelGorsunToggle");
+  if ($gorsunToggle.length) {
+    $gorsunToggle.attr("data-gorsun", gorsun ? "1" : "0");
+    $gorsunToggle.data("gorsun", gorsun ? 1 : 0);
+    $gorsunToggle.html(
+      '<span><i class="mdi ' +
+        (gorsun ? "mdi-eye text-info" : "mdi-eye-off text-secondary") +
+        ' fs-5 me-2"></i>Personel Bordroyu Görsün</span><span class="badge ' +
+        (gorsun
+          ? "bg-success-subtle text-success"
+          : "bg-secondary-subtle text-secondary") +
+        ' ms-3" style="font-size: 10px;">' +
+        (gorsun ? "GÖRÜYOR" : "GÖRMÜYOR") +
+        "</span>"
+    );
+  }
+
+  $("#btnRefreshPersonel, #btnHesapla").prop("disabled", kapali);
+  $(
+    "#donemSil, #btnBulkOdemeReset, " +
+      '[data-bs-target="#gelirEkleModal"], ' +
+      '[data-bs-target="#kesintiEkleModal"], ' +
+      '[data-bs-target="#odemeEkleModal"]'
+  )
+    .filter(".dropdown-item")
+    .toggleClass("disabled", kapali);
+
+  $("#switchDonemDurum").prop("checked", kapali);
+}
+
+function bordroTabloYenile(options) {
+  options = options || {};
+  const donemId = bordroSeciliDonemId();
+  const tabloHazir =
+    $("#bordroTable").length &&
+    $.fn.DataTable &&
+    $.fn.DataTable.isDataTable("#bordroTable");
+
+  if (!donemId || !tabloHazir) {
+    location.reload();
+    return;
+  }
+
+  $("#bordro-loader").stop(true, true).fadeIn(150);
+
+  $.ajax({
+    url: "views/bordro/api.php",
+    type: "POST",
+    data: { action: "tablo-yenile", donem_id: donemId },
+    dataType: "json",
+    success: function (response) {
+      if (!response || response.status !== "success") {
+        location.reload();
+        return;
+      }
+
+      $(".tooltip").remove();
+      $("#bordroOzetAlani").html(response.ozet_html);
+
+      const table = $("#bordroTable").DataTable();
+      const yeniSatirlar = $("<tbody></tbody>")
+        .html(response.tbody_html)
+        .children("tr");
+      const bosListe =
+        yeniSatirlar.length === 0 ||
+        (yeniSatirlar.length === 1 && yeniSatirlar.find("td[colspan]").length > 0);
+
+      table.clear();
+      if (!bosListe) {
+        table.rows.add(yeniSatirlar);
+      }
+      table.draw(false);
+
+      bordroDonemDurumUygula(response.donem_kapali, response.personel_gorsun);
+
+      if (response.donem_adi) {
+        $("#displayDonemAdi").text(response.donem_adi);
+      }
+
+      $("#selectAll").prop("checked", false);
+      if (typeof updateButtonStates === "function") {
+        updateButtonStates();
+      }
+
+      bordroGorselleriYenile($("#bordroOzetAlani"));
+
+      if (typeof options.done === "function") {
+        options.done(response);
+      }
+    },
+    error: function () {
+      location.reload();
+    },
+    complete: function () {
+      $("#bordro-loader").fadeOut(200);
+    },
+  });
+}
