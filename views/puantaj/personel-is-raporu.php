@@ -402,13 +402,20 @@ $(document).ready(function () {
     let trendChart = null;
     let distChart = null;
     let logsDataTable = null;
+    let activeReportAjax = null;
 
     // Flatpickr başlatma
     if (typeof flatpickr !== 'undefined') {
         $('.flatpickr').flatpickr({
             locale: 'tr',
             dateFormat: 'd.m.Y',
-            allowInput: true
+            allowInput: true,
+            onChange: function () {
+                const personelId = $('select[name="filter_personel_id"]').val();
+                if (personelId && $('input[name="filter_type"]:checked').val() === 'range') {
+                    loadPersonelReport();
+                }
+            }
         });
     }
 
@@ -422,15 +429,43 @@ $(document).ready(function () {
             $('.filter-group-period').hide();
             $('.filter-group-range').show();
         }
+        const personelId = $('select[name="filter_personel_id"]').val();
+        if (personelId) {
+            loadPersonelReport();
+        }
     });
 
-    // Form Gönderimi (Raporu Getir)
+    // Filtre Değişimlerinde Otomatik Sorgulama (Personel, Yıl, Ay, Kategori)
+    $('select[name="filter_personel_id"]').on('change', function () {
+        const pId = $(this).val();
+        if (pId && pId !== '') {
+            loadPersonelReport();
+        } else {
+            if (activeReportAjax) {
+                activeReportAjax.abort();
+                activeReportAjax = null;
+            }
+            $('#reportMainContent').hide();
+            $('#reportEmptyState').show();
+            $('#reportLoadingState').hide();
+            destroyCharts();
+        }
+    });
+
+    $('select[name="filter_year"], select[name="filter_month"], select[name="filter_category"]').on('change', function () {
+        const personelId = $('select[name="filter_personel_id"]').val();
+        if (personelId && personelId !== '') {
+            loadPersonelReport();
+        }
+    });
+
+    // Form Gönderimi (Raporu Getir Butonu)
     $('#personelRaporFilterForm').on('submit', function (e) {
         e.preventDefault();
         loadPersonelReport();
     });
 
-    // Otomatik ilk yükleme (Eğer personel ID varsa)
+    // Otomatik ilk yükleme (Eğer URL veya başlangıçta personel ID varsa)
     const initialPersonelId = $('select[name="filter_personel_id"]').val();
     if (initialPersonelId && initialPersonelId !== '') {
         loadPersonelReport();
@@ -457,19 +492,42 @@ $(document).ready(function () {
         window.location.href = 'views/puantaj/personel-is-raporu-excel.php?' + $.param(params);
     });
 
+    function destroyCharts() {
+        if (trendChart) {
+            try { trendChart.destroy(); } catch (e) {}
+            trendChart = null;
+        }
+        if (distChart) {
+            try { distChart.destroy(); } catch (e) {}
+            distChart = null;
+        }
+        $('#chartDailyTrend').empty();
+        $('#chartDistribution').empty();
+    }
+
     function loadPersonelReport() {
         const personelId = $('select[name="filter_personel_id"]').val();
         if (!personelId) {
+            if (activeReportAjax) {
+                activeReportAjax.abort();
+                activeReportAjax = null;
+            }
             $('#reportMainContent').hide();
             $('#reportEmptyState').show();
             $('#reportLoadingState').hide();
-            Swal.fire('Bilgi', 'Lütfen raporunu görmek istediğiniz personeli seçiniz.', 'info');
+            destroyCharts();
             return;
+        }
+
+        if (activeReportAjax) {
+            activeReportAjax.abort();
+            activeReportAjax = null;
         }
 
         $('#reportEmptyState').hide();
         $('#reportMainContent').hide();
         $('#reportLoadingState').show();
+        destroyCharts();
 
         const formData = {
             action: 'get-report-data',
@@ -482,27 +540,27 @@ $(document).ready(function () {
             category: $('select[name="filter_category"]').val()
         };
 
-        $.ajax({
+        activeReportAjax = $.ajax({
             url: 'views/puantaj/api/personel-is-raporu-api.php',
             type: 'GET',
             data: formData,
             dataType: 'json'
         }).done(function (res) {
+            activeReportAjax = null;
             $('#reportLoadingState').hide();
             if (res.status === 'success') {
                 $('#reportMainContent').show();
                 try { renderKpis(res.kpi); } catch (e) { console.error('renderKpis error:', e); }
                 try { renderDailyTable(res.trend.daily_list); } catch (e) { console.error('renderDailyTable error:', e); }
                 try { renderDetailedLogs(res.logs); } catch (e) { console.error('renderDetailedLogs error:', e); }
-                
-                setTimeout(function() {
-                    try { renderCharts(res.trend, res.distribution, res.period); } catch (e) { console.error('renderCharts error:', e); }
-                }, 100);
+                try { renderCharts(res.trend, res.distribution, res.period); } catch (e) { console.error('renderCharts error:', e); }
             } else {
                 Swal.fire('Uyarı', res.message || 'Veriler alınamadı.', 'warning');
                 $('#reportEmptyState').show();
             }
-        }).fail(function () {
+        }).fail(function (xhr, status) {
+            activeReportAjax = null;
+            if (status === 'abort') return;
             $('#reportLoadingState').hide();
             $('#reportEmptyState').show();
             Swal.fire('Hata', 'Rapor verileri yüklenirken sunucu hatası oluştu.', 'error');
