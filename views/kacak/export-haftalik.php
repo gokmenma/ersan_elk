@@ -56,6 +56,31 @@ function seciliTeslimKayitlari(KacakKontrolModel $model, string $baslangic, stri
     ));
 }
 
+ini_set('pcre.backtrack_limit', '10000000');
+ini_set('memory_limit', '512M');
+
+function getKacakFotoGorselYolu(string $kaynak, array &$geciciDosyalar): ?string
+{
+    if (!is_file($kaynak)) {
+        return null;
+    }
+    $ext = strtolower(pathinfo($kaynak, PATHINFO_EXTENSION));
+    // mPDF doğrudan jpg, jpeg, png, gif dosyalarını yerel disk yolundan okuyabilir
+    if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif'], true)) {
+        return $kaynak;
+    }
+    // WebP veya diğer formatlar için geçici JPEG dosyası oluştur
+    $jpegBinary = KacakKontrolModel::getAsJpegBinary($kaynak);
+    if ($jpegBinary !== null) {
+        $tmpFile = sys_get_temp_dir() . '/' . uniqid('kacak_pdf_img_', true) . '.jpg';
+        if (@file_put_contents($tmpFile, $jpegBinary) !== false) {
+            $geciciDosyalar[] = $tmpFile;
+            return $tmpFile;
+        }
+    }
+    return null;
+}
+
 function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
 {
     $esc = static fn($v): string => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
@@ -106,17 +131,19 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
         </div>';
     } elseif ($fotoAdet === 1) {
         $f = $sahaFotolari[0];
+        $gorselSrc = $esc($f['dosya_yolu_disk']);
         $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Saha Fotoğrafı 1';
         $html .= '<div style="text-align: center; height: 228mm; line-height: 228mm;">
-            <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 190mm; max-height: 220mm;" />
+            <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 190mm; max-height: 220mm;" />
             <div class="photo-caption">' . $esc($caption) . '</div>
         </div>';
     } elseif ($fotoAdet === 2) {
         $html .= '<table class="photo-grid-table" style="height: 228mm;"><tr>';
         foreach ($sahaFotolari as $idx => $f) {
+            $gorselSrc = $esc($f['dosya_yolu_disk']);
             $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($idx + 1);
             $html .= '<td class="photo-cell" style="width: 50%; height: 224mm;">
-                <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 92mm; max-height: 215mm;" />
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 92mm; max-height: 215mm;" />
                 <div class="photo-caption">' . $esc($caption) . '</div>
             </td>';
         }
@@ -125,17 +152,19 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
         $html .= '<table class="photo-grid-table"><tr>';
         for ($i = 0; $i < 2; $i++) {
             $f = $sahaFotolari[$i];
+            $gorselSrc = $esc($f['dosya_yolu_disk']);
             $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
             $html .= '<td class="photo-cell" style="width: 50%; height: 110mm;">
-                <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 92mm; max-height: 104mm;" />
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 92mm; max-height: 104mm;" />
                 <div class="photo-caption">' . $esc($caption) . '</div>
             </td>';
         }
         $html .= '</tr><tr>';
         $f = $sahaFotolari[2];
+        $gorselSrc = $esc($f['dosya_yolu_disk']);
         $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf 3';
         $html .= '<td colspan="2" class="photo-cell" style="width: 100%; height: 110mm;">
-            <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 92mm; max-height: 104mm;" />
+            <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 92mm; max-height: 104mm;" />
             <div class="photo-caption">' . $esc($caption) . '</div>
         </td>';
         $html .= '</tr></table>';
@@ -146,9 +175,10 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
                 $html .= '</tr><tr>';
             }
             $f = $sahaFotolari[$i];
+            $gorselSrc = $esc($f['dosya_yolu_disk']);
             $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
             $html .= '<td class="photo-cell" style="width: 50%; height: 110mm;">
-                <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 92mm; max-height: 104mm;" />
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 92mm; max-height: 104mm;" />
                 <div class="photo-caption">' . $esc($caption) . '</div>
             </td>';
         }
@@ -160,9 +190,10 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
                 $html .= '</tr><tr>';
             }
             $f = $sahaFotolari[$i];
+            $gorselSrc = $esc($f['dosya_yolu_disk']);
             $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
             $html .= '<td class="photo-cell" style="width: 33.33%; height: 110mm;">
-                <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 60mm; max-height: 104mm;" />
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 60mm; max-height: 104mm;" />
                 <div class="photo-caption">' . $esc($caption) . '</div>
             </td>';
         }
@@ -180,9 +211,10 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
                 $html .= '</tr><tr>';
             }
             $f = $sahaFotolari[$i];
+            $gorselSrc = $esc($f['dosya_yolu_disk']);
             $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
             $html .= '<td class="photo-cell" style="width: 25%; height: 110mm;">
-                <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 44mm; max-height: 104mm;" />
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 44mm; max-height: 104mm;" />
                 <div class="photo-caption">' . $esc($caption) . '</div>
             </td>';
         }
@@ -200,9 +232,10 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
                 $html .= '</tr><tr>';
             }
             $f = $sahaFotolari[$i];
+            $gorselSrc = $esc($f['dosya_yolu_disk']);
             $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
             $html .= '<td class="photo-cell" style="width: 33.33%; height: 72mm;">
-                <img src="' . $f['data_uri'] . '" class="photo-img" style="max-width: 60mm; max-height: 66mm;" />
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 60mm; max-height: 66mm;" />
                 <div class="photo-caption">' . $esc($caption) . '</div>
             </td>';
         }
@@ -219,31 +252,25 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
     return $html;
 }
 
-function uretKacakTekSayfaPdfBinary(array $detay, array $sahaFotolari): ?string
+function uretKacakTekSayfaPdfBinary(array $detay, array $sahaFotolari, array &$geciciDosyalar): ?string
 {
     if (empty($sahaFotolari)) {
         return null;
     }
-    $css = '<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<style>
-    body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
-    .page-container { width: 100%; }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
-    .header-table td { padding: 3px 6px; font-size: 8.5pt; border: 1px solid #cbd5e1; }
-    .header-title-box { background: #1e3a8a; color: #ffffff; text-align: center; font-weight: bold; font-size: 11pt; padding: 6px; letter-spacing: 0.5px; }
-    .info-label { font-weight: bold; color: #475569; width: 18%; background: #f8fafc; }
-    .info-value { color: #0f172a; width: 32%; font-weight: 600; }
-    .photo-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .photo-cell { text-align: center; vertical-align: middle; padding: 3px; border: 1px solid #e2e8f0; background: #ffffff; }
-    .photo-img { vertical-align: middle; border: 1px solid #cbd5e1; border-radius: 2px; }
-    .photo-caption { font-size: 7.5pt; color: #64748b; margin-top: 2px; text-align: center; }
-    .no-photo-box { text-align: center; padding: 40mm 10mm; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 11pt; border-radius: 4px; }
-</style>
-</head>
-<body>' . uretKacakFotoPdfHtml($detay, $sahaFotolari) . '</body></html>';
+    $css = '
+        body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
+        .page-container { width: 100%; }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+        .header-table td { padding: 3px 6px; font-size: 8.5pt; border: 1px solid #cbd5e1; }
+        .header-title-box { background: #1e3a8a; color: #ffffff; text-align: center; font-weight: bold; font-size: 11pt; padding: 6px; letter-spacing: 0.5px; }
+        .info-label { font-weight: bold; color: #475569; width: 18%; background: #f8fafc; }
+        .info-value { color: #0f172a; width: 32%; font-weight: 600; }
+        .photo-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .photo-cell { text-align: center; vertical-align: middle; padding: 3px; border: 1px solid #e2e8f0; background: #ffffff; }
+        .photo-img { vertical-align: middle; border: 1px solid #cbd5e1; border-radius: 2px; }
+        .photo-caption { font-size: 7.5pt; color: #64748b; margin-top: 2px; text-align: center; }
+        .no-photo-box { text-align: center; padding: 40mm 10mm; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 11pt; border-radius: 4px; }
+    ';
 
     try {
         $mpdf = new Mpdf([
@@ -256,7 +283,8 @@ function uretKacakTekSayfaPdfBinary(array $detay, array $sahaFotolari): ?string
             'tempDir' => sys_get_temp_dir(),
         ]);
         $mpdf->SetTitle('Fotoğraf Çıktısı - ' . ($detay['tutanak_no'] ?? ''));
-        $mpdf->WriteHTML($css);
+        $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+        $mpdf->WriteHTML(uretKacakFotoPdfHtml($detay, $sahaFotolari), \Mpdf\HTMLParserMode::HTML_BODY);
         return $mpdf->Output('', 'S');
     } catch (\Throwable $e) {
         error_log('Kacak tek sayfa PDF binary üretilemedi: ' . $e->getMessage());
@@ -275,72 +303,25 @@ if ($tip === 'teslim_foto_pdf') {
     }
 
     $rootDiskPath = KacakKontrolModel::rootPath();
+    $geciciDosyalar = [];
 
-    $html = '<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<style>
-    body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
-    .page-container { width: 100%; }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
-    .header-table td { padding: 3px 6px; font-size: 8.5pt; border: 1px solid #cbd5e1; }
-    .header-title-box { background: #1e3a8a; color: #ffffff; text-align: center; font-weight: bold; font-size: 11pt; padding: 6px; letter-spacing: 0.5px; }
-    .info-label { font-weight: bold; color: #475569; width: 18%; background: #f8fafc; }
-    .info-value { color: #0f172a; width: 32%; font-weight: 600; }
-    .photo-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .photo-cell { text-align: center; vertical-align: middle; padding: 3px; border: 1px solid #e2e8f0; background: #ffffff; }
-    .photo-img { vertical-align: middle; border: 1px solid #cbd5e1; border-radius: 2px; }
-    .photo-caption { font-size: 7.5pt; color: #64748b; margin-top: 2px; text-align: center; }
-    .no-photo-box { text-align: center; padding: 40mm 10mm; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 11pt; border-radius: 4px; }
-</style>
-</head>
-<body>';
+    $css = '
+        body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
+        .page-container { width: 100%; }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+        .header-table td { padding: 3px 6px; font-size: 8.5pt; border: 1px solid #cbd5e1; }
+        .header-title-box { background: #1e3a8a; color: #ffffff; text-align: center; font-weight: bold; font-size: 11pt; padding: 6px; letter-spacing: 0.5px; }
+        .info-label { font-weight: bold; color: #475569; width: 18%; background: #f8fafc; }
+        .info-value { color: #0f172a; width: 32%; font-weight: 600; }
+        .photo-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .photo-cell { text-align: center; vertical-align: middle; padding: 3px; border: 1px solid #e2e8f0; background: #ffffff; }
+        .photo-img { vertical-align: middle; border: 1px solid #cbd5e1; border-radius: 2px; }
+        .photo-caption { font-size: 7.5pt; color: #64748b; margin-top: 2px; text-align: center; }
+        .no-photo-box { text-align: center; padding: 40mm 10mm; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 11pt; border-radius: 4px; }
+    ';
 
     $toplamKayit = count($liste);
     $toplamFotoSayisi = 0;
-
-    foreach ($liste as $index => $kayit) {
-        $kacakId = (int) $kayit['id'];
-        $detay = $Kacak->getRecord($kacakId) ?? $kayit;
-
-        // Fotoğrafları al: Tutanak, İptal ve Video hariç, sadece saha tespit fotoğrafları
-        $tumFotolar = $Kacak->getPhotos($kacakId);
-        $sahaFotolari = [];
-
-        foreach ($tumFotolar as $foto) {
-            $fotoTur = strtolower($foto['tur'] ?? 'saha');
-            $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
-            $ext = strtolower(pathinfo($foto['dosya_yolu'] ?? '', PATHINFO_EXTENSION));
-
-            if ($fotoTur === 'tutanak' || $fotoTur === 'iptal') {
-                continue;
-            }
-            if ($medyaTipi === 'video' || in_array($ext, ['mp4', 'mov', 'webm', '3gp', 'avi', 'mkv', 'pdf'], true)) {
-                continue;
-            }
-
-            $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
-            if (!is_file($kaynak)) {
-                continue;
-            }
-
-            $jpegBinary = KacakKontrolModel::getAsJpegBinary($kaynak);
-            if ($jpegBinary !== null) {
-                $foto['data_uri'] = 'data:image/jpeg;base64,' . base64_encode($jpegBinary);
-                $sahaFotolari[] = $foto;
-                $toplamFotoSayisi++;
-            }
-        }
-
-        $html .= uretKacakFotoPdfHtml($detay, $sahaFotolari);
-
-        if ($index < ($toplamKayit - 1)) {
-            $html .= '<pagebreak />';
-        }
-    }
-
-    $html .= '</body></html>';
 
     try {
         $mpdf = new Mpdf([
@@ -354,7 +335,44 @@ if ($tip === 'teslim_foto_pdf') {
         ]);
 
         $mpdf->SetTitle('Kaçak Teslim Alma - Fotoğraf Çıktıları');
-        $mpdf->WriteHTML($html);
+        $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+
+        foreach ($liste as $index => $kayit) {
+            $kacakId = (int) $kayit['id'];
+            $detay = $Kacak->getRecord($kacakId) ?? $kayit;
+
+            // Fotoğrafları al: Tutanak, İptal ve Video hariç, sadece saha tespit fotoğrafları
+            $tumFotolar = $Kacak->getPhotos($kacakId);
+            $sahaFotolari = [];
+
+            foreach ($tumFotolar as $foto) {
+                $fotoTur = strtolower($foto['tur'] ?? 'saha');
+                $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
+                $ext = strtolower(pathinfo($foto['dosya_yolu'] ?? '', PATHINFO_EXTENSION));
+
+                if ($fotoTur === 'tutanak' || $fotoTur === 'iptal') {
+                    continue;
+                }
+                if ($medyaTipi === 'video' || in_array($ext, ['mp4', 'mov', 'webm', '3gp', 'avi', 'mkv', 'pdf'], true)) {
+                    continue;
+                }
+
+                $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
+                $gorselYolu = getKacakFotoGorselYolu($kaynak, $geciciDosyalar);
+                if ($gorselYolu !== null) {
+                    $foto['dosya_yolu_disk'] = $gorselYolu;
+                    $sahaFotolari[] = $foto;
+                    $toplamFotoSayisi++;
+                }
+            }
+
+            if ($index > 0) {
+                $mpdf->AddPage();
+            }
+
+            $sayfaHtml = uretKacakFotoPdfHtml($detay, $sahaFotolari);
+            $mpdf->WriteHTML($sayfaHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+        }
 
         $logModel = new SystemLogModel();
         $logModel->logAction(
@@ -373,8 +391,16 @@ if ($tip === 'teslim_foto_pdf') {
         }
 
         $mpdf->Output($dosyaAdi, 'D');
+
+        // Geçici dosyaları temizle
+        foreach ($geciciDosyalar as $tmpF) {
+            @unlink($tmpF);
+        }
         exit;
     } catch (\Throwable $e) {
+        foreach ($geciciDosyalar as $tmpF) {
+            @unlink($tmpF);
+        }
         error_log('Kaçak teslim foto PDF hatası: ' . $e->getMessage());
         http_response_code(500);
         exit('PDF oluşturulurken bir hata meydana geldi: ' . $e->getMessage());
@@ -414,6 +440,7 @@ if ($tip === 'teslim_zip') {
 
     $rootDiskPath = KacakKontrolModel::rootPath();
     $toplamDosyaSayisi = 0;
+    $geciciDosyalarZip = [];
 
     foreach ($liste as $kayit) {
         $kacakId = (int) $kayit['id'];
@@ -488,14 +515,18 @@ if ($tip === 'teslim_zip') {
                 $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
                 if ($jpegData !== null) {
                     $zip->addFromString($recordPathInZip . '/' . $dosyaAdi, $jpegData);
-                    // Saha fotoğrafı ise tek sayfa PDF için biriktir
-                    if ($fotoTur === 'saha' && $medyaTipi !== 'video') {
-                        $fotoCopy = $foto;
-                        $fotoCopy['data_uri'] = 'data:image/jpeg;base64,' . base64_encode($jpegData);
-                        $sahaFotolariZip[] = $fotoCopy;
-                    }
                 } else {
                     $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+                }
+
+                // Saha fotoğrafı ise tek sayfa PDF için biriktir
+                if ($fotoTur === 'saha' && $medyaTipi !== 'video') {
+                    $gorselDisk = getKacakFotoGorselYolu($kaynak, $geciciDosyalarZip);
+                    if ($gorselDisk !== null) {
+                        $fotoCopy = $foto;
+                        $fotoCopy['dosya_yolu_disk'] = $gorselDisk;
+                        $sahaFotolariZip[] = $fotoCopy;
+                    }
                 }
             }
             $toplamDosyaSayisi++;
@@ -503,13 +534,18 @@ if ($tip === 'teslim_zip') {
 
         // Tek sayfa A4 saha fotoğrafları PDF'ini de ZIP içerisindeki klasöre ekle
         if (!empty($sahaFotolariZip)) {
-            $pdfBinary = uretKacakTekSayfaPdfBinary($detay, $sahaFotolariZip);
+            $pdfBinary = uretKacakTekSayfaPdfBinary($detay, $sahaFotolariZip, $geciciDosyalarZip);
             if ($pdfBinary !== null) {
                 $pdfDosyaAdi = sprintf('foto_ciktisi_%s.pdf', $tutanakNo ?: ('kayit_' . $kacakId));
                 $zip->addFromString($recordPathInZip . '/' . $pdfDosyaAdi, $pdfBinary);
                 $toplamDosyaSayisi++;
             }
         }
+    }
+
+    // Geçici dosyaları temizle
+    foreach ($geciciDosyalarZip as $tmpF) {
+        @unlink($tmpF);
     }
 
     $zip->close();
