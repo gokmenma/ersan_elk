@@ -87,30 +87,25 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
 
     $html = '<div class="page-container">';
 
-    // Fotoğraf Grid Alanı (Tek A4 sayfasına tam sığdırılır, üst bilgi tablosu kaldırılmıştır)
+    // Fotoğraf Grid Alanı (Sadece resimler yer alır, metin ve başlıklar kaldırılmıştır)
     $fotoAdet = count($sahaFotolari);
 
     if ($fotoAdet === 0) {
         $html .= '<div class="no-photo-box">
             <p style="margin: 0; font-weight: bold; font-size: 12pt; color: #475569;">Saha Tespit Fotoğrafı Bulunamadı</p>
-            <p style="margin: 4px 0 0 0; font-size: 9pt;">Bu tutanağa ait sisteme yüklenmiş saha tespit fotoğrafı bulunmamaktadır.</p>
         </div>';
     } elseif ($fotoAdet === 1) {
         $f = $sahaFotolari[0];
         $gorselSrc = $esc($f['dosya_yolu_disk']);
-        $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Saha Fotoğrafı 1';
-        $html .= '<div style="text-align: center; height: 275mm; line-height: 275mm;">
-            <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 195mm; max-height: 268mm;" />
-            <div class="photo-caption">' . $esc($caption) . '</div>
+        $html .= '<div style="text-align: center; height: 280mm; line-height: 280mm;">
+            <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 196mm; max-height: 278mm;" />
         </div>';
     } elseif ($fotoAdet === 2) {
-        $html .= '<table class="photo-grid-table" style="height: 275mm;"><tr>';
+        $html .= '<table class="photo-grid-table" style="height: 280mm;"><tr>';
         foreach ($sahaFotolari as $idx => $f) {
             $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($idx + 1);
-            $html .= '<td class="photo-cell" style="width: 50%; height: 270mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 95mm; max-height: 260mm;" />
-                <div class="photo-caption">' . $esc($caption) . '</div>
+            $html .= '<td class="photo-cell" style="width: 50%; height: 278mm;">
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 96mm; max-height: 272mm;" />
             </td>';
         }
         $html .= '</tr></table>';
@@ -119,19 +114,15 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
         for ($i = 0; $i < 2; $i++) {
             $f = $sahaFotolari[$i];
             $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
-            $html .= '<td class="photo-cell" style="width: 50%; height: 135mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 95mm; max-height: 128mm;" />
-                <div class="photo-caption">' . $esc($caption) . '</div>
+            $html .= '<td class="photo-cell" style="width: 50%; height: 138mm;">
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 96mm; max-height: 134mm;" />
             </td>';
         }
         $html .= '</tr><tr>';
         $f = $sahaFotolari[2];
         $gorselSrc = $esc($f['dosya_yolu_disk']);
-        $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf 3';
-        $html .= '<td colspan="2" class="photo-cell" style="width: 100%; height: 135mm;">
-            <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 95mm; max-height: 128mm;" />
-            <div class="photo-caption">' . $esc($caption) . '</div>
+        $html .= '<td colspan="2" class="photo-cell" style="width: 100%; height: 138mm;">
+            <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 96mm; max-height: 134mm;" />
         </td>';
         $html .= '</tr></table>';
     } elseif ($fotoAdet === 4) {
@@ -142,10 +133,8 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
             }
             $f = $sahaFotolari[$i];
             $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
-            $html .= '<td class="photo-cell" style="width: 50%; height: 135mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 95mm; max-height: 128mm;" />
-                <div class="photo-caption">' . $esc($caption) . '</div>
+            $html .= '<td class="photo-cell" style="width: 50%; height: 138mm;">
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 96mm; max-height: 134mm;" />
             </td>';
         }
         $html .= '</tr></table>';
@@ -157,10 +146,8 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
             }
             $f = $sahaFotolari[$i];
             $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
-            $html .= '<td class="photo-cell" style="width: 33.33%; height: 135mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 62mm; max-height: 128mm;" />
-                <div class="photo-caption">' . $esc($caption) . '</div>
+            $html .= '<td class="photo-cell" style="width: 33.33%; height: 138mm;">
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 63mm; max-height: 134mm;" />
             </td>';
         }
         if ($fotoAdet % 3 !== 0) {
@@ -178,10 +165,8 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
             }
             $f = $sahaFotolari[$i];
             $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
-            $html .= '<td class="photo-cell" style="width: 25%; height: 135mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 46mm; max-height: 128mm;" />
-                <div class="photo-caption">' . $esc($caption) . '</div>
+            $html .= '<td class="photo-cell" style="width: 25%; height: 138mm;">
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 47mm; max-height: 134mm;" />
             </td>';
         }
         if ($fotoAdet % 4 !== 0) {
@@ -199,10 +184,8 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
             }
             $f = $sahaFotolari[$i];
             $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $caption = !empty($f['cekim_tarihi']) ? 'Çekim: ' . date('d.m.Y H:i', strtotime($f['cekim_tarihi'])) : 'Fotoğraf ' . ($i + 1);
-            $html .= '<td class="photo-cell" style="width: 33.33%; height: 88mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 62mm; max-height: 82mm;" />
-                <div class="photo-caption">' . $esc($caption) . '</div>
+            $html .= '<td class="photo-cell" style="width: 33.33%; height: 90mm;">
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 63mm; max-height: 86mm;" />
             </td>';
         }
         if ($fotoAdet % 3 !== 0) {
