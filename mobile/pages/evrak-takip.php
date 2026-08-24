@@ -7,6 +7,7 @@ $Personel = new PersonelModel();
 
 $stats = $Evrak->getStats();
 $evraklar = $Evrak->all();
+$evrakEkleriMap = $Evrak->getAttachmentMap();
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $Evrak->ensureApprovalRowsForDrafts();
@@ -105,6 +106,22 @@ if (!function_exists('formatDateEvrak')) {
             $onayaSunulabilir = !$isGelen && $onayDurumu === 'taslak' && ($onayBilgisi['toplam'] ?? 0) > 0;
             $geriAlinabilir = $kilitli && $Evrak->canRevokeApproval($evrak, $currentUserId);
 
+            $evrakEkleri = $evrakEkleriMap[(int) $evrak->id] ?? [];
+            if ($evrakEkleri === [] && !empty($evrak->dosya_yolu)) {
+                $evrakEkleri[] = (object) [
+                    'dosya_adi' => basename((string) $evrak->dosya_yolu),
+                    'dosya_yolu' => $evrak->dosya_yolu,
+                    'mime_tipi' => '',
+                    'dosya_boyutu' => 0,
+                ];
+            }
+            $evrakEkleriJson = json_encode(array_map(static fn($ek): array => [
+                'name' => (string) $ek->dosya_adi,
+                'path' => (string) $ek->dosya_yolu,
+                'mime' => (string) ($ek->mime_tipi ?? ''),
+                'size' => (int) ($ek->dosya_boyutu ?? 0),
+            ], $evrakEkleri), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
             $filterTags = $evrak->evrak_tipi . ($isBekleyen ? ' bekleyen' : '') . ($siraBende ? ' imzam' : '');
         ?>
         <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 relative overflow-hidden evrak-card" 
@@ -159,10 +176,14 @@ if (!function_exists('formatDateEvrak')) {
 
             <div class="mt-3 pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <?php if ($evrak->dosya_yolu): ?>
-                        <button onclick="event.stopPropagation(); previewFile('../<?= $evrak->dosya_yolu ?>')" class="flex items-center gap-1 text-[11px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-900/20 px-2 py-1 rounded-lg">
-                            <span class="material-symbols-outlined text-[16px]">visibility</span>
-                            Dosya
+                    <?php if ($evrakEkleri !== []): ?>
+                        <button type="button"
+                            data-files="<?= htmlspecialchars((string) $evrakEkleriJson, ENT_QUOTES, 'UTF-8') ?>"
+                            onclick="event.stopPropagation(); openEvrakFiles(this)"
+                            class="flex items-center gap-1 text-[11px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-900/20 px-2 py-1 rounded-lg"
+                            title="Evraka ait dosyaları görüntüle">
+                            <span class="material-symbols-outlined text-[16px]">attach_file</span>
+                            <?= count($evrakEkleri) ?> Dosya
                         </button>
                     <?php endif; ?>
                     <?php if ($evrak->evrak_tipi === 'giden'): ?>
@@ -252,6 +273,11 @@ if (!function_exists('formatDateEvrak')) {
         </div>
         <div id="bs-body" class="p-4 overflow-y-auto w-full grow flex flex-col space-y-4 pb-28 relative">
             <?php include 'sheets/evrak-sheet.php'; ?>
+            <!-- Evrak Ekleri -->
+            <div id="sheet-content-files" class="app-sheet-content hidden">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Görüntülemek istediğiniz dosyaya dokunun.</p>
+                <div id="evrak-files-list" class="space-y-2"></div>
+            </div>
             <!-- Dosya Önizleme İçeriği -->
             <div id="sheet-content-preview" class="app-sheet-content hidden">
                 <div id="preview-container" class="w-full flex flex-col items-center gap-4">
@@ -471,25 +497,119 @@ function editEvrak(id) {
     });
 }
 
-function previewFile(url) {
+function resolveEvrakFileUrl(path) {
+    const normalizedPath = String(path || '').replace(/\\/g, '/').trim();
+    if (!normalizedPath || /^(?:javascript|data):/i.test(normalizedPath)) {
+        return '';
+    }
+    if (normalizedPath.startsWith('../') || normalizedPath.startsWith('/') || normalizedPath.startsWith('blob:')) {
+        return normalizedPath;
+    }
+    return '../' + normalizedPath.replace(/^\.\//, '');
+}
+
+function formatEvrakFileSize(bytes) {
+    const size = Number(bytes || 0);
+    if (size <= 0) return '';
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function openEvrakFiles(button) {
+    let files = [];
+    try {
+        files = JSON.parse(button.dataset.files || '[]');
+    } catch (error) {
+        MobileSwal.fire('Hata', 'Evrak dosyaları okunamadı.', 'error');
+        return;
+    }
+
+    const list = document.getElementById('evrak-files-list');
+    list.replaceChildren();
+
+    files.forEach((file, index) => {
+        const url = resolveEvrakFileUrl(file.path);
+        if (!url) return;
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm';
+
+        const viewButton = document.createElement('button');
+        viewButton.type = 'button';
+        viewButton.className = 'flex min-w-0 flex-1 items-center gap-3 text-left';
+        viewButton.addEventListener('click', () => previewFile(url, file.name, file.mime));
+
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/20';
+        icon.textContent = String(file.mime || '').includes('pdf') ? 'picture_as_pdf' : 'draft';
+
+        const info = document.createElement('span');
+        info.className = 'min-w-0 flex-1';
+
+        const name = document.createElement('span');
+        name.className = 'block truncate text-sm font-bold text-slate-700 dark:text-slate-200';
+        name.textContent = `${index + 1}. ${file.name || 'Evrak dosyası'}`;
+
+        const size = document.createElement('span');
+        size.className = 'mt-0.5 block text-[11px] text-slate-400';
+        size.textContent = formatEvrakFileSize(file.size) || 'Görüntülemek için dokunun';
+
+        info.append(name, size);
+        viewButton.append(icon, info);
+
+        const download = document.createElement('a');
+        download.href = url;
+        download.download = file.name || '';
+        download.className = 'material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300';
+        download.title = 'İndir';
+        download.textContent = 'download';
+
+        row.append(viewButton, download);
+        list.appendChild(row);
+    });
+
+    document.getElementById('bs-title').innerHTML = `
+        <span class="material-symbols-outlined text-sky-500">attach_file</span>
+        <span>Evrak Dosyaları (${list.children.length})</span>
+    `;
+    openSheet('files');
+}
+
+function previewFile(url, fileName = '', mimeType = '') {
     const container = document.getElementById('preview-container');
     const downloadLink = document.getElementById('preview-download-link');
-    const ext = url.split('.').pop().toLowerCase();
+    const extensionSource = fileName || url.split('?')[0];
+    const ext = extensionSource.includes('.') ? extensionSource.split('.').pop().toLowerCase() : '';
+    const isImage = String(mimeType).startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    const isPdf = mimeType === 'application/pdf' || ext === 'pdf' || url.startsWith('blob:');
     
     downloadLink.href = url;
-    container.innerHTML = ''; // Temizle
+    downloadLink.download = fileName || '';
+    container.replaceChildren();
 
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-        container.innerHTML = `<img src="${url}" class="w-full rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 animate__animated animate__fadeIn">`;
-    } else if (ext === 'pdf') {
-        container.innerHTML = `
-            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 text-center border-2 border-dashed border-slate-300 dark:border-slate-700">
-                <span class="material-symbols-outlined text-5xl text-rose-500 mb-2">picture_as_pdf</span>
-                <p class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">PDF Belgesi</p>
-                <iframe src="${url}" class="w-full h-[60vh] rounded-xl shadow-sm border-0 mb-4"></iframe>
-                <div class="text-[10px] text-slate-500">Not: Bazı mobil cihazlar PDF'i doğrudan göstermeyebilir. Eğer görünmüyorsa "İndir" butonuna basarak görüntüleyebilirsiniz.</div>
-            </div>
+    if (isImage) {
+        const image = document.createElement('img');
+        image.src = url;
+        image.alt = fileName || 'Evrak dosyası';
+        image.className = 'w-full rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 animate__animated animate__fadeIn';
+        container.appendChild(image);
+    } else if (isPdf) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'w-full bg-slate-100 dark:bg-slate-800 rounded-2xl p-3 text-center border-2 border-dashed border-slate-300 dark:border-slate-700';
+        wrapper.innerHTML = `
+            <span class="material-symbols-outlined text-5xl text-rose-500 mb-2">picture_as_pdf</span>
+            <p class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">PDF Belgesi</p>
         `;
+        const frame = document.createElement('iframe');
+        frame.src = url;
+        frame.title = fileName || 'PDF Belgesi';
+        frame.className = 'w-full h-[60vh] rounded-xl shadow-sm border-0 mb-3 bg-white';
+        const note = document.createElement('div');
+        note.className = 'text-[10px] text-slate-500';
+        note.textContent = 'PDF cihazınızda açılmazsa İndir butonunu kullanabilirsiniz.';
+        wrapper.append(frame, note);
+        container.appendChild(wrapper);
     } else {
         container.innerHTML = `
             <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-2xl p-10 text-center border-2 border-dashed border-slate-300 dark:border-slate-700">

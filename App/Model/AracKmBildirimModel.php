@@ -83,47 +83,74 @@ class AracKmBildirimModel extends Model
      */
     public function getLastKm($aracId, $tarih, $tur, $excludeId = 0)
     {
-        // En son onaylanmış/düzeltilmiş resmi kayıtlardan (arac_km_kayitlari) en güncel KM'yi alalım
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+
+        // En son resmi kaydı ve kaydın gün içindeki sırasını birlikte tutuyoruz.
+        // Böylece yöneticinin onaylanan_km alanındaki düzeltmesi, aynı kayıttaki
+        // eski ham bitis_km değerine veya henüz senkronize olmamış KM kaydına yenilmez.
         $approvedKm = 0;
+        $approvedDate = null;
+        $approvedOrder = 0;
         
-        // Eğer akşam kaydı giriliyorsa, aynı günün sabahı (başlangıcı) onaylanmış olabilir:
+        // Akşam kaydı giriliyorsa aynı günün sabah (başlangıç) değeri önceliklidir.
         if ($tur === 'aksam') {
             $stmt = $this->db->prepare("
                 SELECT baslangic_km 
                 FROM arac_km_kayitlari 
-                WHERE arac_id = :aid AND tarih = :tarih AND silinme_tarihi IS NULL
+                WHERE arac_id = :aid
+                AND firma_id = :firma_id
+                AND tarih = :tarih
+                AND silinme_tarihi IS NULL
+                ORDER BY id DESC
+                LIMIT 1
             ");
-            $stmt->execute(['aid' => $aracId, 'tarih' => $tarih]);
+            $stmt->execute([
+                'aid' => $aracId,
+                'firma_id' => $firmaId,
+                'tarih' => $tarih
+            ]);
             $resApp = $stmt->fetch(PDO::FETCH_OBJ);
             if ($resApp && (int)$resApp->baslangic_km > 0) {
                 $approvedKm = (int)$resApp->baslangic_km;
+                $approvedDate = $tarih;
+                $approvedOrder = 1;
             }
         }
         
-        // Yoksa önceki günlerin en son bitiş (veya başlangıç) KM'sini al:
+        // Yoksa önceki günlerin kronolojik olarak en son resmi değerini al.
         if ($approvedKm === 0) {
             $stmt = $this->db->prepare("
-                SELECT bitis_km, baslangic_km 
+                SELECT tarih, bitis_km, baslangic_km
                 FROM arac_km_kayitlari 
                 WHERE arac_id = :aid 
+                AND firma_id = :firma_id
                 AND tarih < :tarih 
                 AND silinme_tarihi IS NULL 
                 ORDER BY tarih DESC, id DESC LIMIT 1
             ");
-            $stmt->execute(['aid' => $aracId, 'tarih' => $tarih]);
+            $stmt->execute([
+                'aid' => $aracId,
+                'firma_id' => $firmaId,
+                'tarih' => $tarih
+            ]);
             $resApp = $stmt->fetch(PDO::FETCH_OBJ);
             if ($resApp) {
-                $approvedKm = (int)$resApp->bitis_km > 0 ? (int)$resApp->bitis_km : (int)$resApp->baslangic_km;
+                $hasEndKm = (int)$resApp->bitis_km > 0;
+                $approvedKm = $hasEndKm ? (int)$resApp->bitis_km : (int)$resApp->baslangic_km;
+                $approvedDate = $resApp->tarih;
+                $approvedOrder = $hasEndKm ? 2 : 1;
             }
         }
 
-        // Beklemedeki (henüz onaylanmamış) bildirimlerden en güncel KM'yi alalım
-        $pendingKm = 0;
+        // En son bildirimi de oku. Onaylanmış kayıtta yöneticinin düzelttiği değer
+        // (onaylanan_km) ham personel bildiriminin (bitis_km) yerine geçer.
         $sqlStr = "
-            SELECT bitis_km 
+            SELECT tarih, tur, durum, COALESCE(onaylanan_km, bitis_km) AS effective_km
             FROM {$this->table} 
             WHERE arac_id = :aid 
-            AND durum = 'beklemede'
+            AND firma_id = :firma_id
+            AND silinme_tarihi IS NULL
+            AND durum != 'reddedildi'
             AND (
                 tarih < :tarih 
                 OR (tarih = :tarih AND :tur = 'aksam' AND tur = 'sabah')
@@ -134,11 +161,12 @@ class AracKmBildirimModel extends Model
             $sqlStr .= " AND id != :exid ";
         }
 
-        $sqlStr .= " ORDER BY tarih DESC, (CASE WHEN tur = 'aksam' THEN 2 ELSE 1 END) DESC, bitis_km DESC, id DESC LIMIT 1 ";
+        $sqlStr .= " ORDER BY tarih DESC, (CASE WHEN tur = 'aksam' THEN 2 ELSE 1 END) DESC, id DESC LIMIT 1 ";
         
         $stmtPend = $this->db->prepare($sqlStr);
         $params = [
             'aid' => $aracId,
+            'firma_id' => $firmaId,
             'tarih' => $tarih,
             'tur' => $tur
         ];
@@ -148,20 +176,37 @@ class AracKmBildirimModel extends Model
         }
         
         $stmtPend->execute($params);
-        $resPend = $stmtPend->fetch(PDO::FETCH_OBJ);
-        if ($resPend) {
-            $pendingKm = (int)$resPend->bitis_km;
+        $lastReport = $stmtPend->fetch(PDO::FETCH_OBJ);
+        if ($lastReport) {
+            $reportKm = (int) $lastReport->effective_km;
+            $reportOrder = $lastReport->tur === 'aksam' ? 2 : 1;
+            $isSameOrNewer = $approvedDate === null
+                || $lastReport->tarih > $approvedDate
+                || ($lastReport->tarih === $approvedDate && $reportOrder >= $approvedOrder);
+
+            if ($isSameOrNewer) {
+                // Onaylı bildirim yönetici kararını taşır ve aynı resmi kaydı geçersiz
+                // kılabilir. Bekleyen bildirimlerde ise mevcut resmi alt sınırı koru.
+                return $lastReport->durum === 'onaylandi'
+                    ? $reportKm
+                    : max($approvedKm, $reportKm);
+            }
         }
 
-        // Eğer resmi kayıt ve beklemede kayıt yoksa, araç ilk başlangıç KM'sini kullanalım
-        if ($approvedKm === 0 && $pendingKm === 0) {
-            $stmtArac = $this->db->prepare("SELECT baslangic_km FROM araclar WHERE id = :aid");
-            $stmtArac->execute(['aid' => $aracId]);
+        // Resmi kayıt ve bildirim yoksa aracın ilk başlangıç KM'sini kullan.
+        if ($approvedKm === 0) {
+            $stmtArac = $this->db->prepare("
+                SELECT baslangic_km
+                FROM araclar
+                WHERE id = :aid AND firma_id = :firma_id AND silinme_tarihi IS NULL
+                LIMIT 1
+            ");
+            $stmtArac->execute(['aid' => $aracId, 'firma_id' => $firmaId]);
             $resArac = $stmtArac->fetch(PDO::FETCH_OBJ);
             $approvedKm = $resArac ? (int)$resArac->baslangic_km : 0;
         }
         
-        return max($approvedKm, $pendingKm);
+        return $approvedKm;
     }
 
     /**
@@ -636,4 +681,3 @@ class AracKmBildirimModel extends Model
         ];
     }
 }
-
