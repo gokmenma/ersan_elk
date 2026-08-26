@@ -12,7 +12,7 @@ $firmaId = $_SESSION['firma_id'] ?? 0;
 $Puantaj = new \App\Model\PuantajModel();
 $Tanimlamalar = new \App\Model\TanimlamalarModel();
 $Personel = new \App\Model\PersonelModel();
-$allPersonnelRaw = $Personel->all(true, 'puantaj');
+$allPersonnelRaw = $Personel->getPersonnelWithActiveTeam('kesme', $endDate ?: null);
 $allPersonnel = array_merge([(object)['id' => '', 'adi_soyadi' => 'Tüm Personeller']], $allPersonnelRaw);
 
 use App\Helper\Form;

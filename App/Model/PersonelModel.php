@@ -337,6 +337,94 @@ class PersonelModel extends Model
         return $options;
     }
 
+    /**
+     * Belirli bir iş/ekip biriminde (kesme, okuma, sokme_takma, muhurleme, kacakkontrol)
+     * aktif ekip kodu olan personelleri getirir.
+     * Dışarıdan sigortalı olan veya ilgili birimde aktif ekip kodu bulunmayan personeller elenir.
+     * 
+     * @param string $birim 'kesme'|'okuma'|'sokme_takma'|'muhurleme'|'kacakkontrol'|'all'
+     * @param string|null $date Hedef tarih (varsayılan bugün)
+     * @param bool $activeOnly Yalnızca aktif personeller
+     * @return array
+     */
+    public function getPersonnelWithActiveTeam(string $birim = 'kesme', ?string $date = null, bool $activeOnly = true): array
+    {
+        $targetDate = $date ?: date('Y-m-d');
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+
+        $sql = "SELECT p.id, p.adi_soyadi,
+                    COALESCE((SELECT t2.tur_adi FROM personel_ekip_gecmisi pg2
+                        INNER JOIN tanimlamalar t2 ON t2.id = pg2.ekip_kodu_id
+                        WHERE pg2.firma_id = p.firma_id AND pg2.personel_id = p.id
+                          AND pg2.baslangic_tarihi <= :target_date1
+                          AND (pg2.bitis_tarihi IS NULL OR pg2.bitis_tarihi = '0000-00-00' OR pg2.bitis_tarihi >= :target_date2)
+                        ORDER BY pg2.baslangic_tarihi DESC, pg2.id DESC LIMIT 1), t.tur_adi) AS aktif_ekip_adi,
+                    COALESCE((SELECT pg2.ekip_kodu_id FROM personel_ekip_gecmisi pg2
+                        WHERE pg2.firma_id = p.firma_id AND pg2.personel_id = p.id
+                          AND pg2.baslangic_tarihi <= :target_date3
+                          AND (pg2.bitis_tarihi IS NULL OR pg2.bitis_tarihi = '0000-00-00' OR pg2.bitis_tarihi >= :target_date4)
+                        ORDER BY pg2.baslangic_tarihi DESC, pg2.id DESC LIMIT 1), p.ekip_no) AS aktif_ekip_id
+                FROM {$this->table} p
+                LEFT JOIN tanimlamalar t ON t.id = p.ekip_no
+                LEFT JOIN personel_calisma_gecmisi pcg ON p.id = pcg.personel_id 
+                    AND pcg.ise_giris_tarihi <= :target_date5
+                    AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi = '0000-00-00' OR pcg.isten_cikis_tarihi >= :target_date6)
+                WHERE p.firma_id = :firma_id 
+                  AND p.silinme_tarihi IS NULL
+                  AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
+
+        if ($activeOnly) {
+            $sql .= " AND (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NULL 
+                           OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) = '0000-00-00'
+                           OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) >= :target_date7)
+                      AND (p.isten_cikis_tarihi IS NULL 
+                           OR p.isten_cikis_tarihi = '0000-00-00' 
+                           OR p.isten_cikis_tarihi >= :target_date8)";
+        }
+
+        $sql .= " GROUP BY p.id ORDER BY p.adi_soyadi ASC";
+
+        $params = [
+            'firma_id' => $firmaId,
+            'target_date1' => $targetDate,
+            'target_date2' => $targetDate,
+            'target_date3' => $targetDate,
+            'target_date4' => $targetDate,
+            'target_date5' => $targetDate,
+            'target_date6' => $targetDate,
+        ];
+        if ($activeOnly) {
+            $params['target_date7'] = $targetDate;
+            $params['target_date8'] = $targetDate;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $filtered = [];
+        foreach ($rows as $row) {
+            if (empty($row->aktif_ekip_adi) || empty($row->aktif_ekip_id)) {
+                continue;
+            }
+
+            if ($birim !== 'all' && !empty($birim)) {
+                if (!\App\Helper\EkipHelper::isTeamInTabRange($row->aktif_ekip_adi, $birim)) {
+                    continue;
+                }
+            }
+
+            $filtered[] = (object)[
+                'id' => (int) $row->id,
+                'adi_soyadi' => $row->adi_soyadi,
+                'ekip_adi' => $row->aktif_ekip_adi,
+                'ekip_id' => (int) $row->aktif_ekip_id
+            ];
+        }
+
+        return $filtered;
+    }
+
     public function searchForZimmet($term, $type = 'all')
     {
         $term = "%$term%";

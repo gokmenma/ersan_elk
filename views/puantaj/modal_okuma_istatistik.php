@@ -9,7 +9,7 @@ $firmaId = $_SESSION['firma_id'] ?? 0;
 
 $EndeksOkuma = new \App\Model\EndeksOkumaModel();
 $Personel = new \App\Model\PersonelModel();
-$allPersonnelRaw = $Personel->all(true, 'puantaj');
+$allPersonnelRaw = $Personel->getPersonnelWithActiveTeam('okuma', $endDate ?: null);
 $allPersonnel = array_merge([(object)['id' => '', 'adi_soyadi' => 'Tüm Personeller']], $allPersonnelRaw);
 
 $Tanimlar = new \App\Model\TanimlamalarModel();
