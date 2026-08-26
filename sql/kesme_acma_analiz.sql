@@ -91,7 +91,7 @@ WHERE p.auth_name='kesme_analiz_yonetim'
 INSERT INTO `kesme_acma_kural_degeri` (`firma_id`,`kural_kodu`,`deger`)
 SELECT f.id,k.kod,k.deger FROM `firmalar` f
 CROSS JOIN (
-    SELECT 'nobet_havuz_kodlari' kod,'["AKY","MVC"]' deger
+    SELECT 'nobet_havuz_kodlari' kod,'["AKY"]' deger
     UNION ALL SELECT 'nobet_yeni_bekleme','14'
     UNION ALL SELECT 'nobet_ay_basi_min','9'
     UNION ALL SELECT 'nobet_telefon_personelleri','["MERYEM ETYEMEZ","EDA KÖSE","MERYEM BERFİN AKSOY"]'

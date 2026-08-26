@@ -153,20 +153,64 @@ class KesmeNobetModel extends Model
     public function sahaPersonelleri(string $tarih, array $ekipIds): array
     {
         if (!$ekipIds) return [];
-        $yerler = implode(',', array_fill(0, count($ekipIds), '?'));
-        $stmt = $this->db->prepare("SELECT p.id, p.adi_soyadi, pg.ekip_kodu_id AS ekip_id,
-                t.tur_adi AS ekip_adi
-            FROM personel_ekip_gecmisi pg
-            INNER JOIN personel p ON p.id = pg.personel_id
-            INNER JOIN tanimlamalar t ON t.id = pg.ekip_kodu_id
-            WHERE pg.firma_id = ? AND pg.baslangic_tarihi <= ?
-              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
-              AND pg.ekip_kodu_id IN ($yerler)
-              AND p.silinme_tarihi IS NULL
-              AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= ?)
-            ORDER BY t.tur_adi ASC, pg.ekip_sefi_mi DESC, p.adi_soyadi ASC");
-        $stmt->execute(array_merge([$this->firmaId(), $tarih, $tarih], $ekipIds, [$tarih]));
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $sonucHaritasi = [
+            'ÖY' => 'ÖDEME YAPTIRILDI',
+            'AKY' => 'APARATLA KESİM YAPILDI',
+            'MVC' => 'MÜHÜR VE CONTA',
+            'AKÜ' => 'APARAT KIRMA ÜCRETİ',
+            'SKA' => 'SAYAÇ KULLANIMA AÇILDI',
+        ];
+        $stmt = $this->db->prepare("SELECT kural_kodu, deger FROM kesme_acma_kural_degeri
+            WHERE firma_id = ? AND kural_kodu IN ('nobet_havuz_kodlari','nobet_yeni_bekleme','nobet_ay_basi_min')");
+        $stmt->execute([$this->firmaId()]);
+        $kurallar = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $satir) {
+            $kurallar[$satir['kural_kodu']] = json_decode($satir['deger'], true);
+        }
+        $kodlar = is_array($kurallar['nobet_havuz_kodlari'] ?? null) ? $kurallar['nobet_havuz_kodlari'] : ['AKY'];
+        $sonuclar = array_values(array_intersect_key($sonucHaritasi, array_flip($kodlar)));
+        if (!$sonuclar) return [];
+
+        $ayBasi = date('Y-m-01', strtotime($tarih));
+        $havuzBitis = min($tarih, date('Y-m-d'));
+        $minKisi = max(0, (int) ($kurallar['nobet_ay_basi_min'] ?? 0));
+        $beklemeGun = max(0, (int) ($kurallar['nobet_yeni_bekleme'] ?? 0));
+        $uygunlukSonu = date('Y-m-d', strtotime($tarih . " -$beklemeGun day"));
+
+        $bul = function (string $islemBasi, string $islemSonu) use ($ekipIds, $sonuclar, $tarih, $uygunlukSonu): array {
+            $ekipYerleri = implode(',', array_fill(0, count($ekipIds), '?'));
+            $sonucYerleri = implode(',', array_fill(0, count($sonuclar), '?'));
+            $sql = "SELECT p.id, p.adi_soyadi, pg.ekip_kodu_id AS ekip_id, t.tur_adi AS ekip_adi
+                FROM personel_ekip_gecmisi pg
+                INNER JOIN personel p ON p.id = pg.personel_id AND p.firma_id = pg.firma_id
+                INNER JOIN tanimlamalar t ON t.id = pg.ekip_kodu_id
+                WHERE pg.firma_id = ? AND pg.baslangic_tarihi <= ?
+                  AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
+                  AND pg.ekip_kodu_id IN ($ekipYerleri)
+                  AND p.silinme_tarihi IS NULL
+                  AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= ?)
+                  AND EXISTS (SELECT 1 FROM yapilan_isler y
+                      WHERE y.firma_id = pg.firma_id AND y.personel_id = p.id
+                        AND y.tarih BETWEEN ? AND ? AND y.silinme_tarihi IS NULL AND y.sonuclanmis > 0
+                        AND TRIM(TRAILING '.' FROM UPPER(TRIM(y.is_emri_sonucu))) IN ($sonucYerleri))
+                  AND (SELECT MIN(y0.tarih) FROM yapilan_isler y0
+                      WHERE y0.firma_id = pg.firma_id AND y0.personel_id = p.id AND y0.silinme_tarihi IS NULL) <= ?
+                ORDER BY t.tur_adi ASC, pg.ekip_sefi_mi DESC, p.adi_soyadi ASC";
+            $parametreler = array_merge(
+                [$this->firmaId(), $tarih, $tarih], $ekipIds, [$tarih, $islemBasi, $islemSonu], $sonuclar, [$uygunlukSonu]
+            );
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($parametreler);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        };
+
+        $liste = $havuzBitis >= $ayBasi ? $bul($ayBasi, $havuzBitis) : [];
+        if (count($liste) < $minKisi) {
+            $oncekiBasi = date('Y-m-01', strtotime($ayBasi . ' -1 month'));
+            $oncekiSonu = date('Y-m-t', strtotime($oncekiBasi));
+            $liste = $bul($oncekiBasi, $oncekiSonu);
+        }
+        return $liste;
     }
 
     public function ilcePlani(string $baslangic, string $bitis): array
@@ -215,12 +259,15 @@ class KesmeNobetModel extends Model
 
     public function telefonPlani(string $baslangic, string $bitis): array
     {
+        $telefonIds = array_map('intval', array_column($this->telefonHavuzu(), 'id'));
+        if (!$telefonIds) return [];
+        $yerTutucu = implode(',', array_fill(0, count($telefonIds), '?'));
         $stmt = $this->db->prepare("SELECT tn.tarih, tn.personel_id, tn.elle_degistirildi, p.adi_soyadi
             FROM telefon_nobet tn
             LEFT JOIN personel p ON p.id = tn.personel_id
-            WHERE tn.firma_id = ? AND tn.tarih BETWEEN ? AND ?
+            WHERE tn.firma_id = ? AND tn.tarih BETWEEN ? AND ? AND tn.personel_id IN ($yerTutucu)
             ORDER BY tn.tarih ASC");
-        $stmt->execute([$this->firmaId(), $baslangic, $bitis]);
+        $stmt->execute(array_merge([$this->firmaId(), $baslangic, $bitis], $telefonIds));
 
         $harita = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $satir) {
