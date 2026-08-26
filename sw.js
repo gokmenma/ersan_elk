@@ -3,13 +3,13 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "yonetici-pwa-v8";
-const OFFLINE_URL = "offline-admin.html";
+const CACHE_NAME = "yonetici-pwa-v9";
+const OFFLINE_URL = new URL("offline-admin.html", self.registration.scope).href;
 
 // Önbelleğe alınacak dosyalar
 const PRECACHE_ASSETS = [
   "./manifest.json",
-  "./offline-admin.html",
+  OFFLINE_URL,
   "./assets/icons/icon-72-new.png",
   "./assets/icons/icon-144-new.png",
   "./assets/icons/icon-192-new.png",

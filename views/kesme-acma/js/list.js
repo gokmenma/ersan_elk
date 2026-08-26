@@ -30,6 +30,7 @@
     let normalYuklendi = false;
     let kuralYuklendi = false;
     let gecmisYuklendi = false;
+    let ekipYuklendi = false;
     let analizPersonelGrup = 'saha';
     let analizPersonelSort = 'olumlu';
     let analizPersonelSortYon = -1;
@@ -439,6 +440,7 @@
     function ekipYukle() {
         istek({ action: 'ekip-listesi' }).done(function (c) {
             if (c.status !== 'success') return hata(c.message);
+            ekipYuklendi = true;
 
             const tumu = c.ekipler || [];
             const hareketli = tumu.filter(e => Number(e.hareketli) === 1);
@@ -1874,7 +1876,7 @@
 
         if (hedef === '#pane-ka-dashboard') analizYukle();
         else if (hedef === '#pane-ka-mahalle' && !mahalleVerisi.length) mahalleYukle();
-        else if (hedef === '#pane-ka-ekip' && !ekipListesi.length) ekipYukle();
+        else if (hedef === '#pane-ka-ekip' && !ekipYuklendi) ekipYukle();
         else if (hedef === '#pane-ka-gecmis' && !gecmisYuklendi) gecmisYukle();
         else if (hedef === '#pane-ka-nobet' && !nobetVerisi) nobetYukle();
         else if (hedef === '#pane-ka-ozet-rapor' && !ozetRaporYuklendi) {
