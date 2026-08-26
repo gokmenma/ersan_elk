@@ -29,6 +29,10 @@
     let analizVerisi = null;
     let normalYuklendi = false;
     let kuralYuklendi = false;
+    let gecmisYuklendi = false;
+    let analizPersonelGrup = 'saha';
+    let analizPersonelSort = 'olumlu';
+    let analizPersonelSortYon = -1;
 
     function kacir(deger) {
         return $('<div>').text(deger === null || deger === undefined ? '' : deger).html();
@@ -173,7 +177,7 @@
         ];
         $('#kaAnalizMetrikler').html(kart.map(x=>`<div class="col-6 col-lg-4 col-xl-2"><div class="card border-0 shadow-sm ka-analiz-metrik h-100"><div class="card-body"><div class="d-flex justify-content-between text-muted small"><span>${x[0]}</span><i class="${x[3]} fs-5 text-primary"></i></div><strong class="text-dark">${x[1]}</strong><div class="text-muted ka-metrik-alt">${x[2]}</div></div></div></div>`).join(''));
         analizGrafikCiz(a.gunluk||{});
-        $('#kaAnalizPersonel').html((a.personel||[]).map(p=>`<tr><td><b>${kacir(p.personel)}</b></td><td class="text-end">${p.gun}</td><td class="text-end">${sayi(p.toplam)}</td><td class="text-end">${sayi(p.olumlu)}</td><td class="text-end">${String(p.gunluk_ortalama).replace('.',',')}</td><td class="text-end">${p.delta_toplam===null?'—':(p.delta_toplam>0?'+':'')+String(p.delta_toplam).replace('.',',')+'%'}</td><td class="text-end">${p.delta_ortalama===null?'—':(p.delta_ortalama>0?'+':'')+String(p.delta_ortalama).replace('.',',')+'%'}</td><td class="text-end">${sayi(p.odeme)}</td><td class="text-end"><span class="badge ${p.odeme_sapma>1.25||p.odeme_sapma<.75?'bg-danger':'bg-light text-muted'}">${String(p.odeme_sapma).replace('.',',')}×</span></td><td class="text-end">${sayi(p.kapali)}</td><td class="text-end"><span class="badge ${p.kapali_sapma>1.4||p.kapali_sapma<.7?'bg-danger':'bg-light text-muted'}">${String(p.kapali_sapma).replace('.',',')}×</span></td><td class="text-end">%${String(p.sonuc_orani).replace('.',',')}</td></tr>`).join('')||'<tr><td colspan="12" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>');
+        analizPersonelCiz();
         dikkatCiz(a.uyarilar||[]); kontrolCiz(a.kontrol||[]);
         const toplam=(a.mahalleler||[]).reduce((t,x)=>t+Number(x.toplam||0),0),eslesen=(a.mahalleler||[]).filter(x=>Number(x.mahalle_id)>0).reduce((t,x)=>t+Number(x.toplam||0),0);
         $('#kaAnalizSaglik').html(`<div class="d-flex justify-content-between"><span>Mahalle eşleşmesi</span><b>%${toplam?Math.round(eslesen/toplam*100):0}</b></div><div class="progress mt-2" style="height:6px"><div class="progress-bar" style="width:${toplam?eslesen/toplam*100:0}%"></div></div><div class="text-muted mt-2">Eşleşmeyen işler mahalle karşılaştırmasında genel ortalamayla hesaplanır.</div>`);
@@ -183,12 +187,49 @@
         $('#kaAnalizSonuclar').html(sonuclar.map(x=>`<div class="mb-2"><div class="d-flex justify-content-between small mb-1"><span>${kacir(x[0]||'Tanımsız')}</span><b>${sayi(x[1])}</b></div><div class="progress" style="height:5px"><div class="progress-bar" style="width:${x[1]/en*100}%"></div></div></div>`).join('')||'<span class="text-muted small">Kayıt yok.</span>');
     }
 
+    function analizDegisim(deger){
+        if(deger===null||deger===undefined)return '<span class="text-muted">—</span>';
+        const n=Number(deger),sinif=n>0?'text-success':(n<0?'text-danger':'text-muted');
+        return `<span class="${sinif} fw-semibold">${n>0?'+':''}${String(n).replace('.',',')}%</span>`;
+    }
+
+    function analizPersonelCiz(){
+        if(!analizVerisi)return;
+        let liste=(analizVerisi.personel||[]).filter(function(p){
+            return analizPersonelGrup==='hepsi'||(analizPersonelGrup==='saha'&&Boolean(p.saha))||(analizPersonelGrup==='ofis'&&!Boolean(p.saha));
+        }).slice();
+        liste.sort(function(a,b){
+            const av=a[analizPersonelSort],bv=b[analizPersonelSort];
+            if(av===null||av===undefined)return 1;if(bv===null||bv===undefined)return -1;
+            if(analizPersonelSort==='personel')return String(av).localeCompare(String(bv),'tr')*analizPersonelSortYon;
+            const fark=Number(av)-Number(bv);return (fark===0?String(a.personel).localeCompare(String(b.personel),'tr'):fark)*analizPersonelSortYon;
+        });
+        $('#kaAnalizPersonel').html(liste.map(p=>`<tr><td><b>${kacir(p.personel)}</b><small class="d-block text-muted">${kacir(p.departman||'Birim belirtilmemiş')}</small></td><td class="text-end">${p.gun}</td><td class="text-end">${sayi(p.toplam)}</td><td class="text-end">${sayi(p.olumlu)}</td><td class="text-end">${String(p.gunluk_ortalama).replace('.',',')}</td><td class="text-end">${analizDegisim(p.delta_toplam)}</td><td class="text-end">${analizDegisim(p.delta_ortalama)}</td><td class="text-end">${sayi(p.odeme)}</td><td class="text-end"><span class="badge ${p.odeme_sapma>1.25||p.odeme_sapma<.75?'bg-danger':'bg-light text-muted'}">${String(p.odeme_sapma).replace('.',',')}×</span></td><td class="text-end">${sayi(p.kapali)}</td><td class="text-end"><span class="badge ${p.kapali_sapma>1.4||p.kapali_sapma<.7?'bg-danger':'bg-light text-muted'}">${String(p.kapali_sapma).replace('.',',')}×</span></td><td class="text-end">%${String(p.sonuc_orani).replace('.',',')}</td></tr>`).join('')||'<tr><td colspan="12" class="text-center text-muted py-4">Bu grupta kayıt bulunamadı.</td></tr>');
+        $('.ka-personel-karsilastirma th[data-sort]').removeClass('sirali artan azalan').filter(`[data-sort="${analizPersonelSort}"]`).addClass('sirali '+(analizPersonelSortYon===-1?'azalan':'artan'));
+    }
+
+    $(document).on('click','.ka-personel-karsilastirma th[data-sort]',function(){
+        const anahtar=$(this).data('sort');
+        if(analizPersonelSort===anahtar)analizPersonelSortYon*=-1;else{analizPersonelSort=anahtar;analizPersonelSortYon=-1;}
+        analizPersonelCiz();
+    });
+    $(document).on('click','#kaPersonelGrup [data-grup]',function(){
+        analizPersonelGrup=$(this).data('grup');$('#kaPersonelGrup .btn').removeClass('btn-primary').addClass('btn-outline-primary');$(this).removeClass('btn-outline-primary').addClass('btn-primary');analizPersonelCiz();
+    });
+
     function analizGrafikCiz(gunluk){
         const gunler=Object.keys(gunluk).sort();if(!gunler.length){$('#kaAnalizGrafik').html('<span class="text-muted small">Kayıt yok.</span>');return;}
         const vals=gunler.map(g=>Number(gunluk[g][analizBaz]||0)),max=Math.max(1,...vals),W=760,H=190,bw=W/gunler.length;
-        let svg='';gunler.forEach((g,i)=>{const v=vals[i],h=v/max*140,x=i*bw+bw*.15,y=155-h,pazar=new Date(g+'T12:00:00').getDay()===0;svg+=`<rect x="${x}" y="${y}" width="${bw*.7}" height="${h}" rx="3" fill="${pazar?'#f46a6a':'#556ee6'}"><title>${tarihTR(g)}: ${v}</title></rect><text x="${i*bw+bw/2}" y="174" text-anchor="middle" font-size="9" fill="#74788d">${Number(g.slice(8))}</text>`;});
+        let svg='';gunler.forEach((g,i)=>{const v=vals[i],h=v/max*140,x=i*bw+bw*.15,y=155-h,pazar=new Date(g+'T12:00:00').getDay()===0;svg+=`<rect class="ka-analiz-sutun" data-tarih="${kacir(tarihTR(g))}" data-toplam="${v}" x="${x}" y="${y}" width="${bw*.7}" height="${Math.max(h,2)}" rx="3" fill="${pazar?'#f46a6a':'#556ee6'}"><title>${tarihTR(g)} — ${v} işlem</title></rect><text x="${i*bw+bw/2}" y="174" text-anchor="middle" font-size="9" fill="#74788d">${Number(g.slice(8))}</text>`;});
         $('#kaAnalizGrafik').html(`<svg viewBox="0 0 ${W} ${H}" width="100%">${svg}</svg>`);
     }
+
+    $(document).on('mouseenter mousemove','.ka-analiz-sutun',function(e){
+        let ipucu=$('#kaGrafikIpucu');
+        if(!ipucu.length) ipucu=$('<div id="kaGrafikIpucu" class="ka-grafik-ipucu"></div>').appendTo('body');
+        ipucu.html(`<b>${kacir($(this).data('tarih'))}</b><span>${sayi($(this).data('toplam'))} işlem</span>`)
+            .css({left:(e.clientX+14)+'px',top:(e.clientY+14)+'px'}).addClass('goster');
+    }).on('mouseleave','.ka-analiz-sutun',function(){$('#kaGrafikIpucu').removeClass('goster');});
 
     function dikkatCiz(liste){
         const acik=[];(liste||[]).forEach(k=>{const bul=(k.bulgular||[]).filter(x=>x.durum==='acik');if(bul.length)acik.push({...k,bulgular:bul});});
@@ -471,6 +512,7 @@
 
         istek(veri).done(function (c) {
             if (c.status !== 'success') return hata(c.message);
+            gecmisYuklendi = true;
 
             $('#kaGecmisTamamlanan').text(sayi(c.tamamlanan));
             $('#kaGecmisSure').text(c.ortalama_gun ? c.ortalama_gun + ' gün' : '-');
@@ -1833,7 +1875,7 @@
         if (hedef === '#pane-ka-dashboard') analizYukle();
         else if (hedef === '#pane-ka-mahalle' && !mahalleVerisi.length) mahalleYukle();
         else if (hedef === '#pane-ka-ekip' && !ekipListesi.length) ekipYukle();
-        else if (hedef === '#pane-ka-gecmis' && !gecmisVerisi.length) gecmisYukle();
+        else if (hedef === '#pane-ka-gecmis' && !gecmisYuklendi) gecmisYukle();
         else if (hedef === '#pane-ka-nobet' && !nobetVerisi) nobetYukle();
         else if (hedef === '#pane-ka-ozet-rapor' && !ozetRaporYuklendi) {
             ['#kaRaporYil', '#kaRaporAy', '#kaRaporPersonel', '#kaRaporBolge', '#kaRaporDefter']

@@ -102,12 +102,13 @@ class KesmeAcmaAnalizModel extends Model
     private function hamGunluk(string $baslangic, string $bitis): array
     {
         $stmt = $this->db->prepare("SELECT y.personel_id, COALESCE(NULLIF(p.adi_soyadi,''),'Personel belirtilmemiş') personel,
+                COALESCE(p.departman,'') departman,
                 y.ekip_kodu_id, y.tarih, TRIM(y.is_emri_sonucu) sonuc,
                 SUM(y.sonuclanmis) adet, SUM(y.acik_olanlar) acik
             FROM yapilan_isler y
             LEFT JOIN personel p ON p.id=y.personel_id
             WHERE y.firma_id=? AND y.tarih BETWEEN ? AND ? AND y.silinme_tarihi IS NULL
-            GROUP BY y.personel_id,p.adi_soyadi,y.ekip_kodu_id,y.tarih,TRIM(y.is_emri_sonucu)
+            GROUP BY y.personel_id,p.adi_soyadi,p.departman,y.ekip_kodu_id,y.tarih,TRIM(y.is_emri_sonucu)
             ORDER BY y.tarih");
         $stmt->execute([$this->firmaId(), $baslangic, $bitis]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -149,7 +150,7 @@ class KesmeAcmaAnalizModel extends Model
             $kapali = str_contains($sonuc, 'KAPALI') ? $adet : 0;
 
             if (!isset($kisiler[$pid])) {
-                $kisiler[$pid] = ['personel_id'=>$pid,'personel'=>$satir['personel'],'toplam'=>0,'olumlu'=>0,
+                $kisiler[$pid] = ['personel_id'=>$pid,'personel'=>$satir['personel'],'departman'=>$satir['departman'],'toplam'=>0,'olumlu'=>0,
                     'odeme'=>0,'kesim'=>0,'kapali'=>0,'acik'=>0,'gunler'=>[],'olumlu_gunler'=>[],'odeme_gunler'=>[],
                     'gun_detay'=>[],'gun_mahalleler'=>[],
                     'sonuclar'=>[],'mahalleler'=>[]];
@@ -253,7 +254,9 @@ class KesmeAcmaAnalizModel extends Model
             }
             $evvelKisi=$onceki['kisiler'][$pid]??[];$evvelGun=count(array_filter($evvelKisi['gunler']??[]));
             $simdikiBaz=$baz==='olumlu'?$k['olumlu']:$k['toplam'];$evvelBaz=$baz==='olumlu'?($evvelKisi['olumlu']??0):($evvelKisi['toplam']??0);
-            $personel[]=['personel_id'=>$pid,'personel'=>$k['personel'],'gun'=>$calisilan,'toplam'=>$k['toplam'],'olumlu'=>$k['olumlu'],
+            $departman = trim((string) ($k['departman'] ?? ''));
+            $saha = str_contains(mb_strtoupper($departman, 'UTF-8'), 'KESME AÇMA');
+            $personel[]=['personel_id'=>$pid,'personel'=>$k['personel'],'departman'=>$departman,'saha'=>$saha,'gun'=>$calisilan,'toplam'=>$k['toplam'],'olumlu'=>$k['olumlu'],
                 'gunluk_ortalama'=>$calisilan?round(($baz==='olumlu'?$k['olumlu']:$k['toplam'])/$calisilan,1):0,
                 'delta_toplam'=>$evvelBaz?round(($simdikiBaz-$evvelBaz)/$evvelBaz*100,1):null,
                 'delta_ortalama'=>$evvelBaz&&$evvelGun?round((($simdikiBaz/max(1,$calisilan))-($evvelBaz/$evvelGun))/($evvelBaz/$evvelGun)*100,1):null,

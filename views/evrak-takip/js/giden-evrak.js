@@ -7,122 +7,298 @@ $(document).ready(function () {
 
   $(".giden-select2").select2({ width: "100%", placeholder: "Seçiniz..." });
   $(".giden-select2-tags").select2({ width: "100%", tags: true, placeholder: "Seçiniz veya Yazınız..." });
-  const signerSelect = $("#imza_kullanici_ids");
-  signerSelect.select2({ width: "100%", placeholder: "İmza atacak kişileri seçiniz...", maximumSelectionLength: 3 });
 
-  // --- İmza Sıralama Mantığı ---
-  let selectedSignerIds = [];
+  // --- İmza Yetkilileri Yönetimi (Modern & Kullanıcı Dostu) ---
+  const allSigningUsers = window.gidenSigningUsersList || [];
+  let selectedSigners = (window.gidenInitialSelectedSigners || []).slice(0, 3);
+  const signerAddSelect = $("#imza_kullanici_ekle_select");
 
-  function findOptionByValue(val) {
-    return signerSelect.find("option").filter(function () {
-      return $(this).val() === val;
-    });
+  function getSignerInitials(name) {
+    if (!name) return "İ";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
-  function getSelectedSignerIdsFromDOM() {
-    const ids = [];
-    signerSelect.find("option:selected").each(function () {
-      ids.push($(this).val());
-    });
-    return ids;
+  function escapeHtml(text) {
+    if (!text) return "";
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
-  selectedSignerIds = getSelectedSignerIdsFromDOM();
+  function syncSignerState() {
+    // 1. Gizli select'i senkronize et (Form submit ve PDF preview için)
+    const hiddenSelect = $("#imza_kullanici_ids").empty();
+    selectedSigners.forEach(s => {
+      hiddenSelect.append(new Option(s.name, s.id, true, true));
+    });
+    hiddenSelect.val(selectedSigners.map(s => s.id));
 
-  signerSelect.on("select2:select", function (e) {
-    const id = e.params.data.id;
-    if (id && !selectedSignerIds.includes(id)) {
-      selectedSignerIds.push(id);
+    // 2. Gizli kimin_adina_1, kimin_adina_2, kimin_adina_3 alanlarını güncelle
+    $("#kimin_adina_1").val(selectedSigners[0]?.kimin_adina || "");
+    $("#kimin_adina_2").val(selectedSigners[1]?.kimin_adina || "");
+    $("#kimin_adina_3").val(selectedSigners[2]?.kimin_adina || "");
+
+    // 3. Sayaç rozetini güncelle
+    const count = selectedSigners.length;
+    const badge = $("#imzaSecimSayac");
+    badge.text(count + "/3 Seçildi");
+    if (count === 3) {
+      badge.removeClass("bg-primary-subtle text-primary bg-secondary-subtle text-secondary").addClass("bg-success-subtle text-success");
+    } else if (count === 0) {
+      badge.removeClass("bg-success-subtle text-success bg-primary-subtle text-primary").addClass("bg-secondary-subtle text-secondary");
+    } else {
+      badge.removeClass("bg-success-subtle text-success bg-secondary-subtle text-secondary").addClass("bg-primary-subtle text-primary");
     }
-    syncSignerOptionsDOM();
-    renderSignerOrderList();
-  });
 
-  signerSelect.on("select2:unselect", function (e) {
-    const id = e.params.data.id;
-    selectedSignerIds = selectedSignerIds.filter(item => item !== id);
-    syncSignerOptionsDOM();
-    renderSignerOrderList();
-  });
+    // 4. Ekleme Dropdown'ını güncelle (seçilenleri seçeneklerden gizle)
+    signerAddSelect.empty();
+    signerAddSelect.append(new Option(count >= 3 ? "Maksimum 3 yetkili seçildi" : "+ İmza Yetkilisi Seç ve Ekle...", "", true, true));
 
-  function syncSignerOptionsDOM() {
-    selectedSignerIds.forEach(id => {
-      const opt = findOptionByValue(id);
-      if (opt.length) {
-        opt.prop("selected", true).detach().appendTo(signerSelect);
+    const selectedIds = selectedSigners.map(s => s.id);
+    allSigningUsers.forEach(user => {
+      if (!selectedIds.includes(user.id)) {
+        const titleText = user.title ? " — " + user.title : "";
+        signerAddSelect.append(new Option(user.name + titleText, user.id));
       }
     });
-    signerSelect.find("option").not(":selected").detach().appendTo(signerSelect);
-    signerSelect.val(selectedSignerIds).trigger("change.select2");
+
+    if (count >= 3 || window.gidenEvrakKilitli) {
+      signerAddSelect.prop("disabled", true);
+      $("#imzaSeciciContainer").addClass("opacity-50");
+    } else {
+      signerAddSelect.prop("disabled", false);
+      $("#imzaSeciciContainer").removeClass("opacity-50");
+    }
+
+    if (signerAddSelect.data("select2")) {
+      signerAddSelect.trigger("change.select2");
+    }
+
+    // 5. Kart listesini çiz
+    renderSignerOrderList();
   }
 
   function renderSignerOrderList() {
     const container = $("#imzaSiraListesi").empty();
-    if (!selectedSignerIds || selectedSignerIds.length === 0) {
-      container.html('<div class="p-2 text-muted small text-center bg-light">Henüz imza atacak kişi seçilmedi.</div>');
+    if (!selectedSigners || selectedSigners.length === 0) {
+      container.html(`
+        <div class="p-3 text-muted small text-center bg-light-subtle border border-dashed rounded-3">
+          <i class="bx bx-user-plus font-size-20 d-block mb-1 text-primary"></i>
+          Henüz imza yetkilisi seçilmedi.<br>
+          <span class="text-muted font-size-11">Yukarıdaki listeden en fazla 3 yetkili ekleyebilirsiniz.</span>
+        </div>
+      `);
       return;
     }
 
-    selectedSignerIds.forEach((id, index) => {
-      const opt = findOptionByValue(id);
-      const labelText = opt.length ? opt.text() : "Bilinmeyen Kullanıcı";
+    const total = selectedSigners.length;
 
-      const row = $("<div>").addClass("d-flex align-items-center justify-content-between p-2 border-bottom bg-white");
-      if (index === selectedSignerIds.length - 1) {
-        row.removeClass("border-bottom");
+    selectedSigners.forEach((signer, index) => {
+      let posText = "Sol";
+      if (total === 2) {
+        posText = index === 0 ? "Sol" : "Sağ";
+      } else if (total === 3) {
+        posText = index === 0 ? "Sol" : (index === 1 ? "Orta" : "Sağ");
       }
 
-      const left = $("<div>").addClass("d-flex align-items-center gap-2 min-w-0 me-2");
-      $("<span class='badge bg-primary-subtle text-primary fw-bold px-2 py-1'>")
-        .text((index + 1) + ". İmza")
-        .appendTo(left);
-      $("<span>").addClass("small text-dark fw-semibold text-truncate").text(labelText).appendTo(left);
+      const initials = getSignerInitials(signer.name);
+      const isLocked = window.gidenEvrakKilitli;
 
-      const right = $("<div>").addClass("btn-group btn-group-sm flex-shrink-0");
+      const card = $(`
+        <div class="card border shadow-none mb-0 signer-card" style="background:#fff; border-radius:8px; border-color:#e2e8f0!important;" data-id="${escapeHtml(signer.id)}">
+          <div class="card-body p-2.5">
+            <div class="d-flex align-items-center justify-content-between mb-1.5">
+              <div class="d-flex align-items-center gap-1.5">
+                <span class="badge bg-primary text-white fw-bold px-2 py-1" style="font-size:10px;">
+                  ${index + 1}. İmza (${posText})
+                </span>
+              </div>
+              ${!isLocked ? `
+                <div class="btn-group btn-group-sm">
+                  <button type="button" class="btn btn-outline-secondary btn-sm px-1.5 py-0 btn-signer-move" data-index="${index}" data-dir="-1" title="Yukarı / Sola Taşı" ${index === 0 ? 'disabled' : ''} style="font-size:11px">
+                    <i class="bx bx-chevron-up"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm px-1.5 py-0 btn-signer-move" data-index="${index}" data-dir="1" title="Aşağı / Sağa Taşı" ${index === total - 1 ? 'disabled' : ''} style="font-size:11px">
+                    <i class="bx bx-chevron-down"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-danger btn-sm px-1.5 py-0 btn-signer-remove" data-index="${index}" title="Kaldır" style="font-size:11px">
+                    <i class="bx bx-trash"></i>
+                  </button>
+                </div>
+              ` : ''}
+            </div>
 
-      const upBtn = $("<button type='button' class='btn btn-outline-secondary btn-sm px-2' title='Yukarı Taşı'><i class='bx bx-up-arrow-alt'></i></button>")
-        .prop("disabled", index === 0)
-        .on("click", function () {
-          moveSigner(index, -1);
-        });
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <div class="avatar-xs rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:30px;height:30px;font-size:11px;">
+                ${initials}
+              </div>
+              <div class="min-w-0 flex-grow-1">
+                <div class="fw-bold text-dark text-truncate" style="font-size:12.5px;">${escapeHtml(signer.name)}</div>
+                <div class="text-muted small text-truncate" style="font-size:11px;">${escapeHtml(signer.title || "Ünvan belirtilmedi")}</div>
+              </div>
+            </div>
 
-      const downBtn = $("<button type='button' class='btn btn-outline-secondary btn-sm px-2' title='Aşağı Taşı'><i class='bx bx-down-arrow-alt'></i></button>")
-        .prop("disabled", index === selectedSignerIds.length - 1)
-        .on("click", function () {
-          moveSigner(index, 1);
-        });
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-light text-muted px-2 py-0" style="font-size:10.5px;" title="İmza bloğunda adın üzerinde yer alacak temsil ibaresi">
+                <i class="bx bx-user-check me-1 text-primary"></i>Kimin Adına:
+              </span>
+              <input type="text" class="form-control form-control-sm signer-kimin-adina-input py-0" data-index="${index}" style="font-size:11px; height:28px;" placeholder="Örn: Firma Yetkilisi a." value="${escapeHtml(signer.kimin_adina || '')}" ${isLocked ? 'disabled' : ''}>
+              ${!isLocked ? `
+                <button type="button" class="btn btn-light btn-sm px-2 py-0 btn-quick-kimin-adina" data-index="${index}" data-text="Firma Yetkilisi a." title="'Firma Yetkilisi a.' olarak ayarla" style="font-size:10.5px;">
+                  Firma Yetkilisi a.
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `);
 
-      const removeBtn = $("<button type='button' class='btn btn-outline-danger btn-sm px-2' title='Kaldır'><i class='bx bx-x'></i></button>")
-        .on("click", function () {
-          removeSigner(index);
-        });
-
-      right.append(upBtn, downBtn, removeBtn);
-      row.append(left, right).appendTo(container);
+      container.append(card);
     });
   }
 
-  function moveSigner(index, direction) {
-    const target = index + direction;
-    if (target < 0 || target >= selectedSignerIds.length) return;
-    const temp = selectedSignerIds[index];
-    selectedSignerIds[index] = selectedSignerIds[target];
-    selectedSignerIds[target] = temp;
+  // İmza Yetkilisi Seçildiğinde Ekle
+  signerAddSelect.on("change", function () {
+    const selectedId = $(this).val();
+    if (!selectedId) return;
 
-    syncSignerOptionsDOM();
-    renderSignerOrderList();
-  }
+    if (selectedSigners.length >= 3) {
+      Swal.fire("Sınır Aşıldı", "En fazla 3 imza yetkilisi seçebilirsiniz.", "warning");
+      $(this).val("").trigger("change.select2");
+      return;
+    }
 
-  function removeSigner(index) {
-    const removedId = selectedSignerIds[index];
-    selectedSignerIds.splice(index, 1);
-    findOptionByValue(removedId).prop("selected", false);
-    syncSignerOptionsDOM();
-    renderSignerOrderList();
-  }
+    const foundUser = allSigningUsers.find(u => u.id === selectedId);
+    if (foundUser && !selectedSigners.some(s => s.id === selectedId)) {
+      selectedSigners.push({
+        id: foundUser.id,
+        raw_id: foundUser.raw_id,
+        name: foundUser.name,
+        title: foundUser.title,
+        kimin_adina: ""
+      });
+      syncSignerState();
+    }
+  });
 
-  syncSignerOptionsDOM();
-  renderSignerOrderList();
+  // İmza Sıralama / Taşıma Butonları
+  $(document).on("click", ".btn-signer-move", function () {
+    const index = parseInt($(this).data("index"), 10);
+    const dir = parseInt($(this).data("dir"), 10);
+    const target = index + dir;
+    if (target < 0 || target >= selectedSigners.length) return;
+
+    const temp = selectedSigners[index];
+    selectedSigners[index] = selectedSigners[target];
+    selectedSigners[target] = temp;
+
+    syncSignerState();
+  });
+
+  // İmza Yetkilisi Kaldırma
+  $(document).on("click", ".btn-signer-remove", function () {
+    const index = parseInt($(this).data("index"), 10);
+    selectedSigners.splice(index, 1);
+    syncSignerState();
+  });
+
+  // Kimin Adına Değiştiğinde Senkronize Et
+  $(document).on("input change", ".signer-kimin-adina-input", function () {
+    const index = parseInt($(this).data("index"), 10);
+    if (selectedSigners[index]) {
+      selectedSigners[index].kimin_adina = $(this).val().trim();
+      $("#kimin_adina_" + (index + 1)).val(selectedSigners[index].kimin_adina);
+    }
+  });
+
+  // Hızlı "Firma Yetkilisi a." Butonu
+  $(document).on("click", ".btn-quick-kimin-adina", function () {
+    const index = parseInt($(this).data("index"), 10);
+    const text = $(this).data("text") || "";
+    const input = $(this).closest(".input-group").find(".signer-kimin-adina-input");
+    const currentVal = input.val().trim();
+    const newVal = (currentVal === text) ? "" : text;
+    input.val(newVal).trigger("change");
+  });
+
+  // İlk Yükleme Senkronizasyonu
+  syncSignerState();
+
+  // --- Gelen Evraktan İlgi Ekleme Seçicisi ---
+  const ilgiGelenSelect = $("#ilgiGelenEvrakSelect");
+  const btnIlgiyeEkle = $("#btnIlgiyeEkle");
+
+  ilgiGelenSelect.on("change", function () {
+    const val = $(this).val();
+    btnIlgiyeEkle.prop("disabled", !val);
+  });
+
+  btnIlgiyeEkle.on("click", function () {
+    const selectedOpt = ilgiGelenSelect.find("option:selected");
+    const val = ilgiGelenSelect.val();
+    if (!val || !selectedOpt.length) return;
+
+    const evrakNo = (selectedOpt.data("no") || "").toString().trim();
+    const tarih = (selectedOpt.data("tarih") || "").toString().trim();
+    const kurum = (selectedOpt.data("kurum") || "").toString().trim();
+
+    let formattedText = "";
+    if (tarih && evrakNo) {
+      if (kurum) {
+        formattedText = `${tarih} tarihli ve ${kurum}'nın ${evrakNo} sayılı yazısı.`;
+      } else {
+        formattedText = `${tarih} tarihli ve ${evrakNo} sayılı yazınız.`;
+      }
+    } else if (tarih) {
+      formattedText = `${tarih} tarihli yazınız.`;
+    } else if (evrakNo) {
+      formattedText = `${evrakNo} sayılı yazınız.`;
+    } else {
+      formattedText = selectedOpt.text().trim();
+    }
+
+    const currentIlgiler = $("#ilgiler").val().trim();
+    let updatedIlgiler = "";
+
+    if (currentIlgiler === "") {
+      updatedIlgiler = formattedText;
+    } else {
+      const lines = currentIlgiler.split("\n").map(l => l.trim()).filter(l => l !== "");
+      if (!lines.includes(formattedText)) {
+        lines.push(formattedText);
+        updatedIlgiler = lines.join("\n");
+      } else {
+        updatedIlgiler = currentIlgiler;
+      }
+    }
+
+    $("#ilgiler").val(updatedIlgiler).trigger("input").trigger("change");
+
+    // Dropdown'ı kapat ve sıfırla
+    ilgiGelenSelect.val("").trigger("change");
+    const dropdownBtn = document.getElementById("btnIlgiGelenEvrakSec");
+    if (dropdownBtn && typeof bootstrap !== "undefined" && bootstrap.Dropdown) {
+      const bsDropdown = bootstrap.Dropdown.getInstance(dropdownBtn) || new bootstrap.Dropdown(dropdownBtn);
+      bsDropdown.hide();
+    }
+
+    // Toast bildirimi
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: "success",
+      title: "İlgi alanına eklendi",
+      text: formattedText,
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true
+    });
+  });
 
   // --- İlişkili Gelen Evrak Seçildiğinde İlgi Alanını Otomatik Doldur ---
   $("#ilgili_evrak_id").on("change select2:select", function () {
@@ -446,13 +622,13 @@ $(document).ready(function () {
     }).then((result) => {
       if (result.isConfirmed) {
         $("#evrak_no, #konu, #kurum_adi, #muhatap_alt_birim, #muhatap_adres, #ilgiler, #ekler").val("").trigger("input").trigger("change");
-        $("#imza_kullanici_ids, #ilgili_evrak_id, #personel_id, #ilgili_personel_id").val(null).trigger("change");
+        $("#ilgili_evrak_id, #personel_id, #ilgili_personel_id").val(null).trigger("change");
         $("#giden_evrak_icerik").summernote("code", "<p><br></p>");
         attachments = [];
         removedAttachmentIds = [];
         renderAttachments();
-        syncSignerOptionsDOM();
-        renderSignerOrderList();
+        selectedSigners = [];
+        syncSignerState();
         Swal.fire({ icon: "success", title: "Temizlendi", text: "Form başarıyla sıfırlandı.", timer: 1500, showConfirmButton: false });
       }
     });

@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "yonetici-pwa-v7";
+const CACHE_NAME = "yonetici-pwa-v8";
 const OFFLINE_URL = "offline-admin.html";
 
 // Önbelleğe alınacak dosyalar
@@ -84,8 +84,12 @@ self.addEventListener("fetch", (event) => {
   // Navigasyon istekleri
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match(OFFLINE_URL);
+      fetch(event.request).catch(async () => {
+        const offlinePage = await caches.match(OFFLINE_URL);
+        return offlinePage || new Response(
+          "<!doctype html><html lang='tr'><meta charset='utf-8'><meta name='viewport' content='width=device-width'><title>Bağlantı yok</title><body><h1>Bağlantı kurulamadı</h1><p>Lütfen internet bağlantınızı kontrol edip sayfayı yenileyin.</p></body></html>",
+          { status: 503, statusText: "Offline", headers: { "Content-Type": "text/html; charset=UTF-8" } },
+        );
       }),
     );
     return;
@@ -111,7 +115,11 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => {
           // Network hatası durumunda önbellekten dön
-          return cachedResponse;
+          return cachedResponse || new Response("Kaynak çevrimdışıyken kullanılamıyor.", {
+            status: 503,
+            statusText: "Offline",
+            headers: { "Content-Type": "text/plain; charset=UTF-8" },
+          });
         });
 
       // Önbellekte varsa hemen dön, yoksa fetch'i bekle
