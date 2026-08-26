@@ -744,10 +744,10 @@ function ihbarDurumBadge($durum)
                 <input type="hidden" name="id" id="ihbarFormId" value="">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <?= Form::FormSelect2('ilce', $kahramanmarasIlceleri, '', 'İlçe', 'bx bx-map', 'key', '', 'form-select select2', false, 'width:100%', '', 'ihbarIlce') ?>
+                        <?= Form::FormSelect2('ilce', $kahramanmarasIlceleri, '', 'İlçe *', 'bx bx-map', 'key', '', 'form-select select2', false, 'width:100%', '', 'ihbarIlce') ?>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatInput('text', 'mahalle', '', 'Mahalle', 'Mahalle', 'bx bx-map-pin', 'form-control', false, 150, 'off') ?>
+                        <?= Form::FormFloatInput('text', 'mahalle', '', 'Mahalle adı giriniz', 'Mahalle *', 'bx bx-map-pin', 'form-control', true, 150, 'off') ?>
                     </div>
                     <div class="mb-3">
                         <?= Form::FormFloatInput('tel', 'telefon', '', '05XX XXX XX XX', 'Komşu / Abone Telefonu', 'bx bx-phone', 'form-control', false, 20, 'tel') ?>
@@ -756,8 +756,9 @@ function ihbarDurumBadge($durum)
                         <?= Form::FormFloatInput('text', 'komsu_abone_no', '', 'Abone numarası', 'Komşu Abone No', 'bx bx-id-card', 'form-control', false, 50, 'off') ?>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label text-muted small mb-1">Konum Bilgisi <span class="text-danger">*</span></label>
                         <?= Form::FormFloatInput('url', 'konum_link', '', 'https://maps.google.com/...', 'Konum Linki', 'bx bx-link-alt', 'form-control', false, 1000, 'url') ?>
-                        <small class="text-muted">Google Maps veya başka bir harita uygulamasından alınan konum bağlantısını yapıştırabilirsiniz.</small>
+                        <small class="text-muted d-block mt-1">Google Maps veya harita linki yapıştırabilir veya aşağıdaki butonla cihaz konumunuzu ekleyebilirsiniz.</small>
                     </div>
                     <div class="mb-3">
                         <input type="hidden" name="konum_lat" id="konum_lat">
@@ -769,10 +770,10 @@ function ihbarDurumBadge($durum)
                         <small class="text-muted d-block mt-1" id="yoneticiKonumDurum"></small>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatTextarea('aciklama', '', 'İhbar detaylarını yazınız...', 'Açıklama', 'bx bx-align-left', 'form-control', true, '120px', 4) ?>
+                        <?= Form::FormFloatTextarea('aciklama', '', 'İhbar detaylarını yazınız...', 'Açıklama *', 'bx bx-align-left', 'form-control', true, '120px', 4) ?>
                     </div>
                     <div class="mb-3" id="ihbarFotoWrapper">
-                        <?= Form::FormFileInput('fotograflar[]', 'Fotoğraf (en fazla ' . IhbarModel::MAX_FOTO . ' adet)', 'bx bx-image-add', 'form-control', false, 'accept="image/*" multiple', 'ihbarFotoInput') ?>
+                        <?= Form::FormFileInput('fotograflar[]', 'Fotoğraf * (en fazla ' . IhbarModel::MAX_FOTO . ' adet)', 'bx bx-image-add', 'form-control', false, 'accept="image/*" multiple', 'ihbarFotoInput') ?>
                         <div id="ihbarFotoPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                     </div>
                     <div class="mb-3" id="ihbarVideoWrapper">
@@ -1418,8 +1419,41 @@ function ihbarDurumBadge($durum)
         document.getElementById('formYeniIhbar').addEventListener('submit', async function (e) {
             e.preventDefault();
             const form = e.target;
-            const formData = new FormData(form);
             const editId = document.getElementById('ihbarFormId').value;
+            const ilceVal = form.querySelector('[name=ilce]')?.value?.trim() || '';
+            const mahalleVal = form.querySelector('[name=mahalle]')?.value?.trim() || '';
+            const aciklamaVal = form.querySelector('[name=aciklama]')?.value?.trim() || '';
+            const konumLinkVal = form.querySelector('[name=konum_link]')?.value?.trim() || '';
+            const latVal = form.querySelector('[name=konum_lat]')?.value?.trim() || '';
+            const lngVal = form.querySelector('[name=konum_lng]')?.value?.trim() || '';
+            const fotoInput = document.getElementById('ihbarFotoInput');
+
+            if (!ilceVal) {
+                Swal.fire('Uyarı', 'Lütfen ilçe seçiniz.', 'warning');
+                return;
+            }
+
+            if (!mahalleVal) {
+                Swal.fire('Uyarı', 'Lütfen mahalle alanını doldurunuz.', 'warning');
+                return;
+            }
+
+            if (!aciklamaVal) {
+                Swal.fire('Uyarı', 'Lütfen açıklama alanını doldurunuz.', 'warning');
+                return;
+            }
+
+            if (!konumLinkVal && (!latVal || !lngVal)) {
+                Swal.fire('Uyarı', 'Konum bilgisi zorunludur. Lütfen harita bağlantısı yapıştırın veya "Konumumu Ekle" butonuna tıklayın.', 'warning');
+                return;
+            }
+
+            if (!editId && (!fotoInput || !fotoInput.files || fotoInput.files.length === 0)) {
+                Swal.fire('Uyarı', 'Lütfen en az 1 adet ihbar fotoğrafı yükleyiniz.', 'warning');
+                return;
+            }
+
+            const formData = new FormData(form);
             formData.append('action', editId ? 'update' : 'create');
 
             const btn = document.getElementById('btnIhbarKaydet');
@@ -1427,7 +1461,6 @@ function ihbarDurumBadge($durum)
 
             // Ham fotoğraflar sunucuya gitmeden önce küçültülür; sıkıştırıcı yüklenemezse
             // dosyalar olduğu gibi gider ve sunucu tarafındaki optimizasyon devreye girer.
-            const fotoInput = document.getElementById('ihbarFotoInput');
             if (window.ResimSikistir && fotoInput && fotoInput.files.length) {
                 try {
                     const kucukler = await window.ResimSikistir.listeyiKucult(fotoInput.files, 1600, 0.75);

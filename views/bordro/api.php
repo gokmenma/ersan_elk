@@ -3331,7 +3331,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     }
                 } else {
                     // Ekleme
-                    if ($BordroPersonel->addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur, $tarih)) {
+                    if ($BordroPersonel->addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur, $tarih, $userId)) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 
@@ -3402,7 +3402,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     }
                 } else {
                     // Ekleme
-                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur, 'onaylandi', null, $tarih)) {
+                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur, 'onaylandi', null, $tarih, $userId)) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 

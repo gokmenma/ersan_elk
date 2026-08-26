@@ -222,21 +222,44 @@ try {
         case 'create':
             ihbarYetkiKontrol('ihbar_duzenle');
 
+            $ilce = trim($_POST['ilce'] ?? '');
+            if ($ilce === '') {
+                throw new Exception('İlçe seçimi zorunludur.');
+            }
+
+            $mahalle = trim($_POST['mahalle'] ?? '');
+            if ($mahalle === '') {
+                throw new Exception('Mahalle alanı zorunludur.');
+            }
+
             $aciklama = trim($_POST['aciklama'] ?? '');
             if ($aciklama === '') {
                 throw new Exception('Açıklama zorunludur.');
             }
 
+            $konumLink = ihbarNormalizeKonumLink($_POST['konum_link'] ?? null);
+            $lat = is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null;
+            $lng = is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null;
+            $dogruluk = is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null;
+
+            if ($konumLink === null && ($lat === null || $lng === null)) {
+                throw new Exception('Konum bilgisi (harita linki veya cihaz konumu) zorunludur.');
+            }
+
+            if (empty($_FILES['fotograflar']) || empty($_FILES['fotograflar']['name'][0])) {
+                throw new Exception('En az 1 adet fotoğraf yüklenmelidir.');
+            }
+
             $ihbarId = $IhbarModel->create([
-                'ilce' => trim($_POST['ilce'] ?? '') ?: null,
-                'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
+                'ilce' => $ilce,
+                'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
                 'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
-                'konum_link' => ihbarNormalizeKonumLink($_POST['konum_link'] ?? null),
-                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
-                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
-                'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
+                'konum_link' => $konumLink,
+                'konum_lat' => $lat,
+                'konum_lng' => $lng,
+                'konum_dogruluk' => $dogruluk,
                 'olusturan_user_id' => $currentUserId,
             ]);
 
@@ -256,21 +279,40 @@ try {
             ihbarYetkiKontrol('ihbar_duzenle');
 
             $id = (int) ($_POST['id'] ?? 0);
+            $ilce = trim($_POST['ilce'] ?? '');
+            if ($ilce === '') {
+                throw new Exception('İlçe seçimi zorunludur.');
+            }
+
+            $mahalle = trim($_POST['mahalle'] ?? '');
+            if ($mahalle === '') {
+                throw new Exception('Mahalle alanı zorunludur.');
+            }
+
             $aciklama = trim($_POST['aciklama'] ?? '');
             if ($aciklama === '') {
                 throw new Exception('Açıklama zorunludur.');
             }
 
+            $konumLink = ihbarNormalizeKonumLink($_POST['konum_link'] ?? null);
+            $lat = is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null;
+            $lng = is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null;
+            $dogruluk = is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null;
+
+            if ($konumLink === null && ($lat === null || $lng === null)) {
+                throw new Exception('Konum bilgisi zorunludur.');
+            }
+
             $IhbarModel->updateByYonetici($id, [
-                'ilce' => trim($_POST['ilce'] ?? '') ?: null,
-                'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
+                'ilce' => $ilce,
+                'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
                 'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
-                'konum_link' => ihbarNormalizeKonumLink($_POST['konum_link'] ?? null),
-                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
-                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
-                'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
+                'konum_link' => $konumLink,
+                'konum_lat' => $lat,
+                'konum_lng' => $lng,
+                'konum_dogruluk' => $dogruluk,
             ], $currentUserId);
 
             ihbarResponse(true, 'İhbar bilgileri güncellendi.', ['id' => $id]);

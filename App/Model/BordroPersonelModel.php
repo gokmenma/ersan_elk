@@ -1856,27 +1856,29 @@ class BordroPersonelModel extends Model
      * @param string $tur Kesinti türü
      * @param string $durum Onay durumu (beklemede, onaylandi, reddedildi) - varsayılan: beklemede
      */
-    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $durum = 'beklemede', $icra_id = null, $tarih = null)
+    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $durum = 'beklemede', $icra_id = null, $tarih = null, $kayit_yapan = null)
     {
         $tarih = $tarih ?: date('Y-m-d');
+        $kayit_yapan = $kayit_yapan ?: ($_SESSION['user_id'] ?? $_SESSION['id'] ?? null);
         $sql = $this->db->prepare("
-            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, tarih, olusturma_tarihi)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, tarih, kayit_yapan, olusturma_tarihi)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $durum, $icra_id, $tarih]);
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $durum, $icra_id, $tarih, $kayit_yapan]);
     }
 
     /**
      * Personele ek ödeme ekler
      */
-    public function addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $tarih = null)
+    public function addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $tarih = null, $kayit_yapan = null)
     {
         $tarih = $tarih ?: date('Y-m-d');
+        $kayit_yapan = $kayit_yapan ?: ($_SESSION['user_id'] ?? $_SESSION['id'] ?? null);
         $sql = $this->db->prepare("
-            INSERT INTO personel_ek_odemeler (personel_id, donem_id, aciklama, tutar, tur, tarih, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO personel_ek_odemeler (personel_id, donem_id, aciklama, tutar, tur, tarih, kayit_yapan, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $tarih]);
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $tarih, $kayit_yapan]);
     }
 
     /**
@@ -5783,9 +5785,11 @@ class BordroPersonelModel extends Model
         // bu dönem için halihazırda oluşturulmuş olan (aligned) kayıtları çekmeliyiz.
         // Böylece master kayıtlar (rate) güncel kalır, period kayıtları (amount) hesaplanır.
         $sql = $this->db->prepare("
-            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.icra_pirim_dahil
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.icra_pirim_dahil,
+                   COALESCE(u.adi_soyadi, u.user_name) AS kayit_yapan_ad_soyad
             FROM personel_ek_odemeler peo
             LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
+            LEFT JOIN users u ON peo.kayit_yapan = u.id
             WHERE peo.personel_id = ? 
               AND peo.donem_id = ? 
               AND peo.silinme_tarihi IS NULL

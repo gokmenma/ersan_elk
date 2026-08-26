@@ -283,16 +283,16 @@
 
                     <form id="ihbar-form" class="space-y-4">
                         <div>
-                            <label class="form-label">İlçe</label>
-                            <select name="ilce" class="form-input">
+                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">İlçe <span class="text-rose-500">*</span></label>
+                            <select name="ilce" class="form-input" required>
                                 <option value="">İlçe seçin...</option>
                                 ${['Afşin', 'Andırın', 'Çağlayancerit', 'Dulkadiroğlu', 'Ekinözü', 'Elbistan', 'Göksun', 'Nurhak', 'Onikişubat', 'Pazarcık', 'Türkoğlu']
                                     .map(ilce => `<option value="${ilce}" ${editData?.ilce === ilce ? 'selected' : ''}>${ilce}</option>`).join('')}
                             </select>
                         </div>
                         <div>
-                            <label class="form-label">Mahalle</label>
-                            <input type="text" name="mahalle" class="form-input" placeholder="Mahalle" value="${editData?.mahalle ?? ''}">
+                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Mahalle <span class="text-rose-500">*</span></label>
+                            <input type="text" name="mahalle" class="form-input" placeholder="Mahalle" required value="${editData?.mahalle ?? ''}">
                         </div>
                         <div>
                             <label class="form-label">Komşu / Abone Telefonu</label>
@@ -303,7 +303,7 @@
                             <input type="text" name="komsu_abone_no" class="form-input" placeholder="Abone numarasını yazın" value="${editData?.komsu_abone_no ?? ''}">
                         </div>
                         <div>
-                            <label class="form-label">Konum Bilgisi</label>
+                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Konum Bilgisi <span class="text-rose-500">*</span></label>
                             <input type="hidden" name="konum_lat" id="ihbar-konum-lat" value="${editData?.konum_lat ?? ''}">
                             <input type="hidden" name="konum_lng" id="ihbar-konum-lng" value="${editData?.konum_lng ?? ''}">
                             <input type="hidden" name="konum_dogruluk" id="ihbar-konum-dogruluk" value="${editData?.konum_dogruluk ?? ''}">
@@ -313,16 +313,16 @@
                                 <span id="ihbar-konum-text">${editData?.konum_lat && editData?.konum_lng ? 'Konum eklendi · Yenilemek için dokunun' : 'Mevcut Konumumu Ekle'}</span>
                             </button>
                             <p id="ihbar-konum-durum" class="text-xs text-slate-500 mt-2">
-                                ${editData?.konum_lat && editData?.konum_lng ? `${Number(editData.konum_lat).toFixed(6)}, ${Number(editData.konum_lng).toFixed(6)}` : 'Konum izni yalnızca bu ihbar için kullanılacaktır.'}
+                                ${editData?.konum_lat && editData?.konum_lng ? `${Number(editData.konum_lat).toFixed(6)}, ${Number(editData.konum_lng).toFixed(6)}` : 'Konum izni zorunludur ve bu ihbar için kullanılacaktır.'}
                             </p>
                         </div>
                         <div>
-                            <label class="form-label">Açıklama</label>
+                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Açıklama <span class="text-rose-500">*</span></label>
                             <textarea name="aciklama" class="form-input min-h-[100px]"
                                 placeholder="İhbar detaylarını yazınız..." required>${editData?.aciklama ?? ''}</textarea>
                         </div>
                         <div>
-                            <label class="form-label">Fotoğraf Ekle (toplam en fazla ${IHBAR_MAX_FOTO} adet)</label>
+                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Fotoğraf Ekle <span class="text-rose-500">*</span> <span class="text-xs font-normal text-slate-500">(en fazla ${IHBAR_MAX_FOTO} adet)</span></label>
                             ${editData && ihbarMevcutFotograflar.length > 0 ? `
                             <div class="mb-2">
                                 <p class="text-xs text-slate-500 mb-1">Yüklü dosyalar</p>
@@ -623,8 +623,43 @@
     async function submitYeniIhbar(form) {
         const btn = document.getElementById('ihbar-submit-btn');
         const btnText = document.getElementById('ihbar-submit-text');
-
         const isEdit = !!ihbarEditId;
+
+        const ilceVal = form.querySelector('[name=ilce]')?.value?.trim() || '';
+        const mahalleVal = form.querySelector('[name=mahalle]')?.value?.trim() || '';
+        const aciklamaVal = form.querySelector('[name=aciklama]')?.value?.trim() || '';
+        const latVal = form.querySelector('[name=konum_lat]')?.value?.trim() || '';
+        const lngVal = form.querySelector('[name=konum_lng]')?.value?.trim() || '';
+
+        if (!ilceVal) {
+            Alert.warning('Eksik Bilgi', 'Lütfen ilçe seçiniz.');
+            form.querySelector('[name=ilce]')?.focus();
+            return;
+        }
+
+        if (!mahalleVal) {
+            Alert.warning('Eksik Bilgi', 'Lütfen mahalle alanını doldurunuz.');
+            form.querySelector('[name=mahalle]')?.focus();
+            return;
+        }
+
+        if (!aciklamaVal) {
+            Alert.warning('Eksik Bilgi', 'Lütfen açıklama alanını doldurunuz.');
+            form.querySelector('[name=aciklama]')?.focus();
+            return;
+        }
+
+        if (!latVal || !lngVal) {
+            Alert.warning('Konum Gerekli', 'Lütfen "Mevcut Konumumu Ekle" butonuna dokunarak konumunuzu ekleyiniz.');
+            return;
+        }
+
+        const mevcutFotoSayisi = ihbarMevcutFotograflar.filter(f => f.medya_tipi !== 'video').length;
+        if (ihbarSeciliFotolar.length === 0 && (!isEdit || mevcutFotoSayisi === 0)) {
+            Alert.warning('Fotoğraf Gerekli', 'Lütfen en az 1 adet ihbar fotoğrafı ekleyiniz.');
+            return;
+        }
+
         btn.disabled = true;
         btnText.innerText = isEdit ? 'GÜNCELLENİYOR...' : 'GÖNDERİLİYOR...';
 
@@ -634,14 +669,14 @@
             if (isEdit) {
                 formData.append('edit_token', ihbarEditToken);
             }
-            formData.append('ilce', form.querySelector('[name=ilce]').value);
-            formData.append('mahalle', form.querySelector('[name=mahalle]').value);
-            formData.append('telefon', form.querySelector('[name=telefon]').value);
-            formData.append('komsu_abone_no', form.querySelector('[name=komsu_abone_no]').value);
-            formData.append('aciklama', form.querySelector('[name=aciklama]').value);
-            formData.append('konum_lat', form.querySelector('[name=konum_lat]').value);
-            formData.append('konum_lng', form.querySelector('[name=konum_lng]').value);
-            formData.append('konum_dogruluk', form.querySelector('[name=konum_dogruluk]').value);
+            formData.append('ilce', ilceVal);
+            formData.append('mahalle', mahalleVal);
+            formData.append('telefon', form.querySelector('[name=telefon]')?.value?.trim() || '');
+            formData.append('komsu_abone_no', form.querySelector('[name=komsu_abone_no]')?.value?.trim() || '');
+            formData.append('aciklama', aciklamaVal);
+            formData.append('konum_lat', latVal);
+            formData.append('konum_lng', lngVal);
+            formData.append('konum_dogruluk', form.querySelector('[name=konum_dogruluk]')?.value || '');
 
             // Zayıf bağlantıda gönderilebilsin ve sunucuda az yer kaplasın diye küçültülür.
             const gonderilecekFotolar = [];

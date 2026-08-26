@@ -258,18 +258,30 @@ class KesmeNobetModel extends Model
      */
     public function sirketAracliEkipler(): array
     {
-        if (!$this->sirketAraciSutunuVar()) {
-            return [];
+        $ekipler = [];
+        if ($this->sirketAraciSutunuVar()) {
+            $stmt = $this->db->prepare("SELECT DISTINCT pg.ekip_kodu_id
+                FROM personel_ekip_gecmisi pg
+                INNER JOIN personel p ON p.id = pg.personel_id
+                WHERE pg.firma_id = ? AND p.sirket_araci = 1
+                  AND pg.baslangic_tarihi <= CURDATE()
+                  AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())");
+            $stmt->execute([$this->firmaId()]);
+            $ekipler = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
         }
 
-        $stmt = $this->db->prepare("SELECT DISTINCT pg.ekip_kodu_id
-            FROM personel_ekip_gecmisi pg
-            INNER JOIN personel p ON p.id = pg.personel_id
-            WHERE pg.firma_id = ? AND p.sirket_araci = 1
-              AND pg.baslangic_tarihi <= CURDATE()
-              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())");
+        $stmt = $this->db->prepare("SELECT deger FROM kesme_acma_kural_degeri
+            WHERE firma_id = ? AND kural_kodu = 'nobet_arac_kisitli_ekipler' LIMIT 1");
         $stmt->execute([$this->firmaId()]);
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        $adlar = json_decode((string) $stmt->fetchColumn(), true);
+        if (is_array($adlar) && $adlar) {
+            $yerTutucu = implode(',', array_fill(0, count($adlar), '?'));
+            $stmt = $this->db->prepare("SELECT id FROM tanimlamalar
+                WHERE firma_id = ? AND grup = 'ekip_kodu' AND silinme_tarihi IS NULL AND tur_adi IN ($yerTutucu)");
+            $stmt->execute(array_merge([$this->firmaId()], array_values($adlar)));
+            $ekipler = array_merge($ekipler, array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)));
+        }
+        return array_values(array_unique($ekipler));
     }
 
     private function sirketAraciSutunuVar(): bool
@@ -299,11 +311,43 @@ class KesmeNobetModel extends Model
      */
     public function telefonHavuzu(): array
     {
-        $kosul = self::sutunVar('personel', 'telefon_nobeti_tutar') ? ' AND telefon_nobeti_tutar = 1' : '';
+        $stmt = $this->db->prepare("SELECT deger FROM kesme_acma_kural_degeri
+            WHERE firma_id = ? AND kural_kodu = 'nobet_telefon_personelleri' LIMIT 1");
+        $stmt->execute([$this->firmaId()]);
+        $kuralPersonelleri = json_decode((string) $stmt->fetchColumn(), true);
+
+        $parametreler = [$this->firmaId()];
+        if (is_array($kuralPersonelleri) && $kuralPersonelleri) {
+            $yerTutucu = implode(',', array_fill(0, count($kuralPersonelleri), '?'));
+            $kosul = " AND adi_soyadi IN ($yerTutucu)";
+            $parametreler = array_merge($parametreler, array_values($kuralPersonelleri));
+        } else {
+            $kosul = self::sutunVar('personel', 'telefon_nobeti_tutar') ? ' AND telefon_nobeti_tutar = 1' : '';
+        }
 
         $stmt = $this->db->prepare("SELECT id, adi_soyadi FROM personel
             WHERE firma_id = ? AND (silinme_tarihi IS NULL)
               AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')" . $kosul . "
+            ORDER BY adi_soyadi ASC");
+        $stmt->execute($parametreler);
+        $liste = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$liste && is_array($kuralPersonelleri) && $kuralPersonelleri) {
+            $yedekKosul = self::sutunVar('personel', 'telefon_nobeti_tutar') ? ' AND telefon_nobeti_tutar = 1' : '';
+            $stmt = $this->db->prepare("SELECT id, adi_soyadi FROM personel
+                WHERE firma_id = ? AND silinme_tarihi IS NULL
+                  AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')" . $yedekKosul . "
+                ORDER BY adi_soyadi ASC");
+            $stmt->execute([$this->firmaId()]);
+            $liste = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        return $liste;
+    }
+
+    public function telefonKuralSecenekleri(): array
+    {
+        $stmt = $this->db->prepare("SELECT id, adi_soyadi FROM personel
+            WHERE firma_id = ? AND silinme_tarihi IS NULL
+              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')
             ORDER BY adi_soyadi ASC");
         $stmt->execute([$this->firmaId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

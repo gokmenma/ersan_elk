@@ -5580,22 +5580,41 @@ try {
                 'selected_file_count' => count($_FILES['fotograflar']['name'] ?? []),
             ]);
             $IhbarModel = new App\Model\IhbarModel();
-            $ihbarDb = $IhbarModel->getDb();
-            $ihbarDb->beginTransaction();
+
+            $ilce = trim($_POST['ilce'] ?? '');
+            if ($ilce === '') {
+                throw new Exception('İlçe seçimi zorunludur.');
+            }
+
+            $mahalle = trim($_POST['mahalle'] ?? '');
+            if ($mahalle === '') {
+                throw new Exception('Mahalle alanı zorunludur.');
+            }
 
             $aciklama = trim($_POST['aciklama'] ?? '');
             if ($aciklama === '') {
                 throw new Exception('Açıklama zorunludur.');
             }
 
+            if (!is_numeric($_POST['konum_lat'] ?? null) || !is_numeric($_POST['konum_lng'] ?? null)) {
+                throw new Exception('Konum bilgisi zorunludur. Lütfen konumunuzu ekleyin.');
+            }
+
+            if (empty($_FILES['fotograflar']) || empty($_FILES['fotograflar']['name'][0])) {
+                throw new Exception('En az 1 adet ihbar fotoğrafı yüklenmelidir.');
+            }
+
+            $ihbarDb = $IhbarModel->getDb();
+            $ihbarDb->beginTransaction();
+
             $ihbarId = $IhbarModel->create([
-                'ilce' => trim($_POST['ilce'] ?? '') ?: null,
-                'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
+                'ilce' => $ilce,
+                'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
                 'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
-                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
-                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
+                'konum_lat' => (float) $_POST['konum_lat'],
+                'konum_lng' => (float) $_POST['konum_lng'],
                 'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
                 'bildiren_personel_id' => $personel_id,
             ]);
@@ -5733,20 +5752,34 @@ try {
         case 'updateIhbar':
             $IhbarModel = new App\Model\IhbarModel();
             $id = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
-            $aciklama = trim($_POST['aciklama'] ?? '');
 
+            $ilce = trim($_POST['ilce'] ?? '');
+            if ($ilce === '') {
+                throw new Exception('İlçe seçimi zorunludur.');
+            }
+
+            $mahalle = trim($_POST['mahalle'] ?? '');
+            if ($mahalle === '') {
+                throw new Exception('Mahalle alanı zorunludur.');
+            }
+
+            $aciklama = trim($_POST['aciklama'] ?? '');
             if ($aciklama === '') {
                 throw new Exception('Açıklama zorunludur.');
             }
 
+            if (!is_numeric($_POST['konum_lat'] ?? null) || !is_numeric($_POST['konum_lng'] ?? null)) {
+                throw new Exception('Konum bilgisi zorunludur.');
+            }
+
             $IhbarModel->updateByBildiren($id, (int) $personel_id, [
-                'ilce' => trim($_POST['ilce'] ?? '') ?: null,
-                'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
+                'ilce' => $ilce,
+                'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
                 'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
-                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
-                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
+                'konum_lat' => (float) $_POST['konum_lat'],
+                'konum_lng' => (float) $_POST['konum_lng'],
                 'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
             ]);
 

@@ -476,11 +476,13 @@ class KacakKontrolModel extends Model
         $tur = in_array($data['tur'] ?? '', self::TURLER, true) ? $data['tur'] : 'Kaçak';
         $sayi = max(1, (int) ($data['sayi'] ?? 1));
 
-        $dup = $this->findDuplicateRecord([
-            'tutanak_no' => $data['tutanak_no'] ?? null,
-            'sayac_no' => $data['sayac_no'] ?? null,
-            'tarih' => $tarih,
-        ]);
+        $dup = ($data['mukerrer_kontrol'] ?? true)
+            ? $this->findDuplicateRecord([
+                'tutanak_no' => $data['tutanak_no'] ?? null,
+                'sayac_no' => $data['sayac_no'] ?? null,
+                'tarih' => $tarih,
+            ])
+            : null;
 
         if ($dup) {
             $rec = $dup['record'];
@@ -513,8 +515,9 @@ class KacakKontrolModel extends Model
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol
             (firma_id, personel_ids, bildiren_personel_id, kaynak, client_uuid, offline_olusturma, beklenen_foto_sayisi,
              onay_durumu, onaylayan_id, onay_tarihi,
-             durum, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, islem_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+             durum, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi,
+             tutar, kontrol_edildi, usulsuz_notu, aciklama, islem_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         $onayDurumu = $data['onay_durumu'] ?? 'onaylandi';
         $onaylayanId = $onayDurumu === 'onaylandi' ? ($data['onaylayan_id'] ?? ($_SESSION['user_id'] ?? null)) : null;
@@ -545,6 +548,9 @@ class KacakKontrolModel extends Model
             $data['sayac_no'] ?? null,
             $data['endeks'] ?? null,
             $sayi,
+            isset($data['tutar']) && $data['tutar'] !== '' && $data['tutar'] !== null ? (float) $data['tutar'] : null,
+            !empty($data['kontrol_edildi']) ? 1 : 0,
+            isset($data['usulsuz_notu']) && trim((string) $data['usulsuz_notu']) !== '' ? mb_substr(trim((string) $data['usulsuz_notu']), 0, 255, 'UTF-8') : null,
             $data['aciklama'] ?? null,
             $islemId,
         ]);
@@ -1627,5 +1633,95 @@ class KacakKontrolModel extends Model
         $aday = substr($dosyaYolu, 0, -strlen($ext) - 1) . '_k.' . $ext;
 
         return is_file(self::rootPath() . '/' . ltrim($aday, '/')) ? $aday : null;
+    }
+
+    /**
+     * Excel toplu yüklemede mükerrer kontrolü tek sorguda yapabilmek için
+     * firmadaki geçerli tutanak numaralarını normalize edilmiş anahtarla döndürür.
+     */
+    public function getTutanakNoHaritasi(): array
+    {
+        $stmt = $this->db->prepare("SELECT k.tutanak_no, k.tarih, k.ekip_adi
+                                    FROM kacak_kontrol k
+                                    WHERE k.firma_id = ?
+                                      AND k.silinme_tarihi IS NULL
+                                      AND k.durum != 'iptal'
+                                      AND k.onay_durumu != 'reddedildi'
+                                      AND k.tutanak_no IS NOT NULL
+                                      AND TRIM(k.tutanak_no) <> ''");
+        $stmt->execute([$this->firmaId()]);
+
+        $harita = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $anahtar = self::tutanakAnahtari($row['tutanak_no']);
+            if ($anahtar === '' || isset($harita[$anahtar])) {
+                continue;
+            }
+            $harita[$anahtar] = [
+                'tutanak_no' => $row['tutanak_no'],
+                'tarih' => $row['tarih'],
+                'ekip_adi' => $row['ekip_adi'],
+            ];
+        }
+
+        return $harita;
+    }
+
+    public static function tutanakAnahtari($tutanakNo): string
+    {
+        $deger = trim((string) $tutanakNo);
+        if ($deger === '') {
+            return '';
+        }
+        $deger = preg_replace('/\s+/u', '', $deger);
+
+        return mb_strtolower((string) $deger, 'UTF-8');
+    }
+
+    /**
+     * Excel'deki "işlem yapan memur" metnini personel kaydıyla eşleştirmek için
+     * normalize edilmiş ad => id haritası üretir.
+     */
+    public function getPersonelAdHaritasi(): array
+    {
+        $stmt = $this->db->prepare("SELECT id, adi_soyadi
+                                    FROM personel
+                                    WHERE firma_id = ?
+                                      AND silinme_tarihi IS NULL
+                                      AND adi_soyadi IS NOT NULL
+                                      AND TRIM(adi_soyadi) <> ''
+                                    ORDER BY (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00') DESC, id ASC");
+        $stmt->execute([$this->firmaId()]);
+
+        $harita = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $anahtar = self::adAnahtari($row['adi_soyadi']);
+            if ($anahtar === '' || isset($harita[$anahtar])) {
+                continue;
+            }
+            $harita[$anahtar] = (int) $row['id'];
+        }
+
+        return $harita;
+    }
+
+    /**
+     * Türkçe karakter ve boşluk farklarını yok sayan personel adı anahtarı.
+     */
+    public static function adAnahtari($ad): string
+    {
+        $ad = trim((string) $ad);
+        if ($ad === '') {
+            return '';
+        }
+
+        $ad = mb_strtolower($ad, 'UTF-8');
+        $ad = strtr($ad, [
+            'ı' => 'i', 'i̇' => 'i', 'ş' => 's', 'ğ' => 'g',
+            'ü' => 'u', 'ö' => 'o', 'ç' => 'c', 'â' => 'a', 'î' => 'i', 'û' => 'u',
+        ]);
+        $ad = preg_replace('/[^a-z0-9]+/u', ' ', $ad);
+
+        return trim(preg_replace('/\s+/u', ' ', (string) $ad));
     }
 }

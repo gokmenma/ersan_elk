@@ -434,6 +434,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             <button class="btn btn-outline-success" id="btnKayitlarExcel" title="Excel İndir"><i
                                     class="bx bx-download"></i></button>
                             <?php if ($yetkiDuzenle): ?>
+                                <button class="btn btn-outline-primary" id="btnKacakExcelYukle" title="Excel'den Yükle"
+                                        data-bs-toggle="modal" data-bs-target="#kacakExcelModal"><i
+                                        class="bx bx-upload"></i></button>
                                 <button class="btn btn-success" id="btnYeniKacak" title="Yeni Kayıt"><i
                                         class="bx bx-plus"></i></button>
                             <?php endif; ?>
@@ -1228,6 +1231,73 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             </div>
         </div>
     </div>
+<?php endif; ?>
+
+<?php if ($yetkiDuzenle): ?>
+<!-- ============ EXCEL'DEN YÜKLEME MODALI ============ -->
+<div class="modal fade" id="kacakExcelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0"><i class="bx bx-upload me-1"></i>Excel'den Kayıt Yükle</h5>
+                    <small class="text-muted">Tutanak numarasına göre mükerrer kontrolü yapılır</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="kacakExcelForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <?= Form::FormFileInput('excelFile', 'Excel Dosyası (.xlsx, .xls, .csv)', 'bx bx-spreadsheet', 'form-control', true, 'accept=".xlsx,.xls,.csv"', 'kacakExcelFile') ?>
+                    </div>
+                </form>
+
+                <div class="alert alert-info py-2 px-3 small mb-3">
+                    <i class="bx bx-info-circle me-1"></i>
+                    Sütunlar başlık adına göre eşlenir, sıralamanın önemi yoktur. Beklenen başlıklar:
+                    <div class="mt-2 d-flex flex-wrap gap-1">
+                        <?php foreach (['TARİH', 'TUTANAK NO', 'İSİM SOYİSİM', 'SAYAÇ NO', 'TÜR', 'ENDEKS', 'İŞLEM YAPAN MEMUR', 'İLÇE', 'TUTAR', 'KONTROL EDİLDİ', 'USULSÜZ', 'TESLİM DURUMU'] as $baslik): ?>
+                            <span class="badge bg-primary bg-opacity-75"><?= htmlspecialchars($baslik, ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="mt-2">
+                        <a href="views/kacak/excel-sablon.php" class="alert-link">
+                            <i class="bx bx-download me-1"></i>Örnek şablonu indir
+                        </a>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning py-2 px-3 small mb-3">
+                    <i class="bx bx-error-circle me-1"></i>
+                    <strong>Satır atlanma nedenleri:</strong> tutanak numarası boş ya da sistemde kayıtlı,
+                    tarih okunamıyor, ilçe geçersiz, <strong>işlem yapan memur</strong> personel kaydıyla eşleşmiyor.
+                    Atlanan satırlar yükleme sonunda tek tek listelenir.
+                    <div class="mt-1">İki personel için virgül kullanın: <code>BÜNYAMİN ATEŞ,SAMED ARSLAN</code></div>
+                </div>
+
+                <div class="card bg-light border-0 shadow-none mb-0">
+                    <div class="card-body py-2 px-3">
+                        <p class="mb-1 small fw-bold text-muted">
+                            <i class="bx bx-map-pin me-1"></i>Geçerli İlçeler
+                            <span class="badge bg-secondary ms-1"><?= count($ilceler) ?></span>
+                        </p>
+                        <div class="d-flex flex-wrap gap-1">
+                            <?php foreach ($ilceler as $ilce): ?>
+                                <span class="badge bg-secondary bg-opacity-50"><?= htmlspecialchars($ilce, ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary" id="btnKacakExcelGonder">
+                    <i class="bx bx-upload me-1"></i>Yükle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
 
 <!-- ============ FOTOĞRAF MODALI ============ -->
@@ -3593,6 +3663,179 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         // ---------- BAŞLANGIÇ ----------
         $('#btnOnaylaraGit').on('click', function () {
             $('#kacakTabs button[data-bs-target="#pane-onaylar"]').tab('show');
+        });
+
+        function tarihAlaniAyarla(alanId, isoTarih) {
+            const el = document.getElementById(alanId);
+            if (!el || !isoTarih) return;
+
+            if (el._flatpickr) {
+                el._flatpickr.setDate(isoTarih, false);
+                return;
+            }
+            const p = String(isoTarih).split('-');
+            if (p.length === 3) el.value = p[2] + '.' + p[1] + '.' + p[0];
+        }
+
+        // Excel ile eklenen kayıtlar mevcut tarih filtresinin dışında kalırsa
+        // liste boş görünmesin diye aralık genişletilir.
+        function kayitFiltresiniGenislet(ilkTarih, sonTarih) {
+            let degisti = false;
+
+            if (ilkTarih && (!$('#filtre_baslangic').val() || ilkTarih < toIsoDate($('#filtre_baslangic').val()))) {
+                tarihAlaniAyarla('filtre_baslangic', ilkTarih);
+                degisti = true;
+            }
+            if (sonTarih && (!$('#filtre_bitis').val() || sonTarih > toIsoDate($('#filtre_bitis').val()))) {
+                tarihAlaniAyarla('filtre_bitis', sonTarih);
+                degisti = true;
+            }
+
+            return degisti;
+        }
+
+        // Toplu yükleme sonrası açılmış tüm sekmelerin verisini tazeler.
+        function tumSekmeleriTazele() {
+            kayitlariYukle();
+            if (dashboardYuklendi) dashboardYukle();
+            if (onayTable) onaylariYukle();
+            if (iptalTable) iptalleriYukle();
+            if (ekipOzetYuklendi) ekipOzetiYukle();
+            if (sicilTable) siciliYukle();
+            if (teslimTable) $('#btnTeslimListesi').trigger('click');
+        }
+
+        function excelSonucHtml(res) {
+            const atlanan = res.atlanan || [];
+            let html = '<div class="text-start">'
+                + '<div class="d-flex gap-2 mb-3 justify-content-center flex-wrap">'
+                + '<span class="badge bg-success px-3 py-2 fs-6"><i class="bx bx-check-circle me-1"></i>'
+                + (res.basarili || 0) + ' Yüklendi</span>';
+
+            if (atlanan.length) {
+                html += '<span class="badge bg-warning text-dark px-3 py-2 fs-6"><i class="bx bx-skip-next-circle me-1"></i>'
+                    + atlanan.length + ' Atlandı</span>';
+            }
+            if (res.teslimIsaretlenen) {
+                html += '<span class="badge bg-info px-3 py-2 fs-6"><i class="bx bx-package me-1"></i>'
+                    + res.teslimIsaretlenen + ' Teslim Alındı</span>';
+            }
+            html += '</div>';
+
+            if (atlanan.length) {
+                html += '<div class="alert alert-warning py-2 px-3 mb-2 small">'
+                    + '<i class="bx bx-info-circle me-1"></i><strong>Yüklenmeyen satırlar</strong> — düzeltip tekrar yükleyebilirsiniz.'
+                    + '</div>'
+                    + '<div class="table-responsive" style="max-height:300px;overflow-y:auto;">'
+                    + '<table class="table table-sm table-bordered table-striped mb-0">'
+                    + '<thead class="table-light" style="position:sticky;top:0;">'
+                    + '<tr><th style="width:12%">Satır</th><th style="width:28%">Tutanak No</th><th>Neden</th></tr>'
+                    + '</thead><tbody>';
+
+                atlanan.forEach(function (a) {
+                    html += '<tr><td class="text-center fw-bold">' + esc(a.satir)
+                        + '</td><td>' + esc(a.tutanak_no)
+                        + '</td><td class="small">' + esc(a.neden) + '</td></tr>';
+                });
+
+                html += '</tbody></table></div>'
+                    + '<div class="text-end mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="btnAtlananIndir">'
+                    + '<i class="bx bx-download me-1"></i>Atlanan satırları CSV indir</button></div>';
+            }
+
+            return html + '</div>';
+        }
+
+        function atlananCsvIndir(atlanan) {
+            const satirlar = [['Satır', 'Tutanak No', 'Neden']].concat(atlanan.map(function (a) {
+                return [a.satir, a.tutanak_no, a.neden];
+            }));
+            const csv = satirlar.map(function (r) {
+                return r.map(function (h) {
+                    return '"' + String(h === null || h === undefined ? '' : h).replace(/"/g, '""') + '"';
+                }).join(';');
+            }).join('\r\n');
+
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const baglanti = document.createElement('a');
+            baglanti.href = URL.createObjectURL(blob);
+            baglanti.download = 'kacak_yuklenmeyen_satirlar.csv';
+            document.body.appendChild(baglanti);
+            baglanti.click();
+            document.body.removeChild(baglanti);
+            URL.revokeObjectURL(baglanti.href);
+        }
+
+        $('#btnKacakExcelGonder').on('click', function () {
+            const dosyaAlani = document.getElementById('kacakExcelFile');
+            if (!dosyaAlani || !dosyaAlani.files.length) {
+                Swal.fire('Uyarı', 'Lütfen bir Excel dosyası seçin.', 'warning');
+                return;
+            }
+
+            const veri = new FormData(document.getElementById('kacakExcelForm'));
+            veri.append('action', 'excel-yukle');
+
+            const $dugme = $(this).prop('disabled', true);
+            Swal.fire({
+                title: 'Yükleniyor...',
+                text: 'Excel dosyası işleniyor, lütfen bekleyin.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            $.ajax({
+                url: API,
+                type: 'POST',
+                data: veri,
+                contentType: false,
+                processData: false,
+                dataType: 'json'
+            }).done(function (res) {
+                const atlanan = (res && res.atlanan) || [];
+
+                if (res && res.status === 'success') {
+                    bootstrap.Modal.getInstance(document.getElementById('kacakExcelModal'))?.hide();
+                    document.getElementById('kacakExcelForm').reset();
+
+                    Swal.fire({
+                        icon: atlanan.length ? 'warning' : 'success',
+                        title: atlanan.length ? 'Yükleme kısmen tamamlandı' : 'Yükleme tamamlandı',
+                        html: excelSonucHtml(res),
+                        width: atlanan.length ? '46rem' : '32rem',
+                        confirmButtonText: 'Tamam',
+                        didOpen: () => {
+                            const $indir = $('#btnAtlananIndir');
+                            if ($indir.length) {
+                                $indir.on('click', () => atlananCsvIndir(atlanan));
+                            }
+                        }
+                    });
+
+                    kayitFiltresiniGenislet(res.ilkTarih, res.sonTarih);
+                    tumSekmeleriTazele();
+                    return;
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Yükleme yapılamadı',
+                    html: atlanan.length
+                        ? '<p class="mb-2">' + esc((res && res.message) || 'Bilinmeyen hata.') + '</p>' + excelSonucHtml(res)
+                        : esc((res && res.message) || 'Bilinmeyen hata.'),
+                    width: atlanan.length ? '46rem' : '32rem',
+                    didOpen: () => {
+                        const $indir = $('#btnAtlananIndir');
+                        if ($indir.length) {
+                            $indir.on('click', () => atlananCsvIndir(atlanan));
+                        }
+                    }
+                });
+            }).fail(function () {
+                Swal.fire('Hata', 'Sunucuya ulaşılamadı ya da dosya sunucu sınırlarını aşıyor.', 'error');
+            }).always(function () {
+                $dugme.prop('disabled', false);
+            });
         });
 
         $('#btnFiltrele').on('click', kayitlariYukle);

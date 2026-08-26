@@ -2,7 +2,7 @@
 require_once dirname(__DIR__, 3) . '/Autoloader.php';
 session_start();
 
-if (!isset($_SESSION['id'])) {
+if (empty($_SESSION['user_id']) && empty($_SESSION['id'])) {
     http_response_code(403);
     echo json_encode(['error' => 'Unauthorized']);
     exit;
@@ -50,7 +50,7 @@ try {
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1,
-                'kayit_yapan' => $_SESSION['id'] ?? null,
+                'kayit_yapan' => $_SESSION['user_id'] ?? $_SESSION['id'] ?? null,
                 'aktif' => 1
             ];
 
@@ -95,8 +95,7 @@ try {
                 'tarih' => Date::dttoeng($_POST['tarih'] ?? date('d.m.Y')),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
-                'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1,
-                'kayit_yapan' => $_SESSION['id'] ?? null
+                'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1
             ];
 
             if ($tekrarTipi === 'tek_sefer') {

@@ -319,7 +319,7 @@ foreach ($ek_odemeler as $k) {
                                                         <th>Tekrar</th>
                                                         <th>Hesaplama</th>
                                                         <th>Tutar / Oran</th>
-                                                        <th>Personel / Kayıt Tarihi</th>
+                                                        <th>Kayıt Yapan / Kayıt Tarihi</th>
                                                         <th>Tarih</th>
                                                         <th>Dönem</th>
                                                         <th>Açıklama</th>
@@ -387,7 +387,7 @@ foreach ($ek_odemeler as $k) {
                                                              </td>
                                                              <td>
                                                                  <div class="fw-bold text-dark">
-                                                                     <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
+                                                                     <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem', ENT_QUOTES, 'UTF-8') ?>
                                                                  </div>
                                                                  <div class="text-muted small">
                                                                      <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
@@ -469,7 +469,7 @@ foreach ($ek_odemeler as $k) {
                                 <th>Tekrar</th>
                                 <th>Hesaplama</th>
                                 <th>Tutar / Oran</th>
-                                <th>Personel / Kayıt Tarihi</th>
+                                <th>Kayıt Yapan / Kayıt Tarihi</th>
                                 <th>Tarih</th>
                                 <th>Dönem</th>
                                 <th>Açıklama</th>
@@ -521,7 +521,7 @@ foreach ($ek_odemeler as $k) {
                                     </td>
                                     <td>
                                         <div class="fw-bold text-dark">
-                                            <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
+                                            <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem', ENT_QUOTES, 'UTF-8') ?>
                                         </div>
                                         <div class="text-muted small">
                                             <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>

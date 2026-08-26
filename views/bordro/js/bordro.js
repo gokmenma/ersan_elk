@@ -1961,6 +1961,23 @@ function formatMoney(amount) {
   }).format(amount);
 }
 
+function escapeBordroHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatKayitTarihi(value) {
+  if (!value) return "-";
+  const [datePart, timePart = ""] = String(value).split(" ");
+  const parts = datePart.split("-");
+  if (parts.length !== 3) return escapeBordroHtml(value);
+  return `${parts[2]}.${parts[1]}.${parts[0]}${timePart ? ` ${timePart.slice(0, 5)}` : ""}`;
+}
+
 function loadGelirListesi(personelId, donemId) {
   $("#listPersonelGelirler").html(
     '<div class="text-center py-3"><div class="spinner-border text-success" role="status"></div></div>',
@@ -1993,6 +2010,7 @@ function loadGelirListesi(personelId, donemId) {
                     <th>Tür</th>
                     <th>Açıklama</th>
                     <th class="text-end">Tutar</th>
+                    <th>Kayıt Yapan / Kayıt Tarihi</th>
                     <th class="text-center">İşlem</th>
                   </tr>
                 </thead>
@@ -2010,9 +2028,13 @@ function loadGelirListesi(personelId, donemId) {
             html += `
                   <tr>
                     <td>${formattedDate}</td>
-                    <td><span class="badge bg-success bg-opacity-10 text-success">${item.etiket}</span></td>
-                    <td class="small">${item.aciklama || "-"}</td>
+                    <td><span class="badge bg-success bg-opacity-10 text-success">${escapeBordroHtml(item.etiket || item.parametre_adi || item.tur || "Diğer")}</span></td>
+                    <td class="small">${escapeBordroHtml(item.aciklama || "-")}</td>
                     <td class="text-end fw-bold text-success">+${formatMoney(item.tutar)} ₺</td>
+                    <td>
+                      <div class="fw-semibold">${escapeBordroHtml(item.kayit_yapan_ad_soyad || "Sistem")}</div>
+                      <div class="text-muted small">${formatKayitTarihi(item.created_at)}</div>
+                    </td>
                     <td class="text-center">
                       <div class="d-flex justify-content-center gap-1">
                         <button type="button" class="btn btn-sm btn-soft-success btn-edit-gelir" 
@@ -2084,6 +2106,7 @@ function loadKesintiListesi(personelId, donemId) {
                     <th>Tür</th>
                     <th>Açıklama</th>
                     <th class="text-end">Tutar</th>
+                    <th>Kayıt Yapan / Kayıt Tarihi</th>
                     <th class="text-center">İşlem</th>
                   </tr>
                 </thead>
@@ -2114,11 +2137,15 @@ function loadKesintiListesi(personelId, donemId) {
                   <tr>
                     <td>${formattedDate}</td>
                     <td>
-                        <span class="badge bg-danger bg-opacity-10 text-danger">${turLabel}</span>
+                        <span class="badge bg-danger bg-opacity-10 text-danger">${escapeBordroHtml(turLabel)}</span>
                         ${statusBadge}
                     </td>
-                    <td class="small">${item.aciklama || "-"}</td>
+                    <td class="small">${escapeBordroHtml(item.aciklama || "-")}</td>
                     <td class="text-end fw-bold text-danger">-${formatMoney(item.tutar)} ₺</td>
+                    <td>
+                      <div class="fw-semibold">${escapeBordroHtml(item.kayit_yapan_ad_soyad || "Sistem")}</div>
+                      <div class="text-muted small">${formatKayitTarihi(item.olusturma_tarihi)}</div>
+                    </td>
                     <td class="text-center">
                       <div class="d-flex justify-content-center gap-1">
                         <button type="button" class="btn btn-sm btn-soft-primary btn-edit-kesinti" 

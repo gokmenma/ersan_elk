@@ -2,7 +2,7 @@
 require_once dirname(__DIR__, 3) . '/Autoloader.php';
 session_start();
 
-if (!isset($_SESSION['id'])) {
+if (empty($_SESSION['user_id']) && empty($_SESSION['id'])) {
     http_response_code(403);
     echo json_encode(['error' => 'Unauthorized']);
     exit;
@@ -66,7 +66,7 @@ try {
                     'aciklama' => $_POST['aciklama'] ?? '',
                     'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                     'icra_id' => !empty($_POST['icra_id']) ? intval($_POST['icra_id']) : null,
-                    'kayit_yapan' => $_SESSION['id'] ?? null,
+                    'kayit_yapan' => $_SESSION['user_id'] ?? $_SESSION['id'] ?? null,
                     'donem_id' => $anaDonemId,
                     'aktif' => 1
                 ];
@@ -101,7 +101,7 @@ try {
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'icra_id' => !empty($_POST['icra_id']) ? intval($_POST['icra_id']) : null,
-                'kayit_yapan' => $_SESSION['id'] ?? null,
+                'kayit_yapan' => $_SESSION['user_id'] ?? $_SESSION['id'] ?? null,
                 'aktif' => 1
             ];
 
@@ -143,7 +143,6 @@ try {
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'icra_id' => !empty($_POST['icra_id']) ? intval($_POST['icra_id']) : null,
-                'kayit_yapan' => $_SESSION['id'] ?? null,
                 'taksit_sayisi' => ($tekrarTipi === 'taksitli') ? intval($_POST['taksit_sayisi'] ?? 1) : null
             ];
 

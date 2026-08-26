@@ -4,6 +4,7 @@
     const API = 'views/kesme-acma/api.php';
     const yetki = window.kaYetki || {};
     const BUGUN = window.kaBugun;
+    const MESAJ_BEKLEME_GUN = Number(window.kaMesajBeklemeGun || 0);
 
     const ILCE_ADI = { dulkadiroglu: 'Dulkadiroğlu', onikisubat: 'Onikişubat' };
     const DURUM_ADI = {
@@ -24,6 +25,10 @@
     let matrisSecim = null;
     let ozetRaporYuklendi = false;
     let detayRaporTablo = null;
+    let analizBaz = 'olumlu';
+    let analizVerisi = null;
+    let normalYuklendi = false;
+    let kuralYuklendi = false;
 
     function kacir(deger) {
         return $('<div>').text(deger === null || deger === undefined ? '' : deger).html();
@@ -112,6 +117,115 @@
         return '<span class="ka-rozet ka-ilce">İ</span>';
     }
 
+    // ---------- Analiz dashboard ----------
+
+    const KURAL_TANIMLARI = [
+        {grup:'Nöbet kuralları',kod:'nobet_havuz_kodlari',ad:'Saha havuzu ölçütü',tip:'coklu',secenek:['ÖY','AKY','MVC','AKÜ','SKA'],aciklama:'Bu işlemleri girmiş personel havuza otomatik girer'},
+        {grup:'Nöbet kuralları',kod:'nobet_yeni_bekleme',ad:'Yeni personel beklemesi',tip:'sayi',birim:'gün',aciklama:'İlk işleminden bu kadar sonra nöbete girebilir'},
+        {grup:'Nöbet kuralları',kod:'nobet_ay_basi_min',ad:'Ay başı emniyeti',tip:'sayi',birim:'kişi',aciklama:'Havuz bu sayının altındaysa önceki ay kullanılır'},
+        {grup:'Nöbet kuralları',kod:'nobet_telefon_personelleri',ad:'Telefon nöbetçileri',tip:'personel_coklu',aciklama:'Telefon nöbetini tutan kişiler'},
+        {grup:'Nöbet kuralları',kod:'nobet_telefon_sabit',ad:'Sabit telefon günleri',tip:'sabit',aciklama:'Haftanın değişmeyen günleri'},
+        {grup:'Nöbet kuralları',kod:'nobet_telefon_dongu',ad:'Telefon döngüsü',tip:'sayi',birim:'hafta',aciklama:'Perşembe ve hafta sonu bloğu kaç haftada bir döner'},
+        {grup:'Nöbet kuralları',kod:'nobet_ilce_secim',ad:'İlçe görevi sırası',tip:'secim',secenek:[['en_uzun','En uzun süredir gitmeyen ekip'],['sirali','Sıralı ekip']],aciklama:'İlçeye hangi ekibin gideceğini belirler'},
+        {grup:'Nöbet kuralları',kod:'nobet_arac_kisitli_ekipler',ad:'Araç kısıtlı ekipler',tip:'ekip_coklu',aciklama:'İlçe görevine seçilemeyen ekipler'},
+        {grup:'Nöbet kuralları',kod:'nobet_ilce_merkez',ad:'İlçe–merkez çakışması',tip:'secim',secenek:[['yazilmaz','Merkez nöbetine yazılmaz'],['yazilabilir','Merkez nöbetine yazılabilir']],aciklama:'İlçedeki ekibin merkez nöbeti davranışı'},
+        {grup:'Mahalle atama kuralları',kod:'mahalle_mesaj_bekleme',ad:'Mesaj sonrası bekleme',tip:'sayi',birim:'gün',aciklama:'Mahalle bu süre dolunca atanabilir olur'},
+        {grup:'Mahalle atama kuralları',kod:'mahalle_ilce_dongu',ad:'İlçe döngüsü',tip:'liste_secim',secenek:[['2_1','2 Dulkadiroğlu : 1 Onikişubat'],['1_1','1 Dulkadiroğlu : 1 Onikişubat'],['3_1','3 Dulkadiroğlu : 1 Onikişubat'],['yok','Döngü uygulanmaz']],aciklama:'Ekiplerin mahalle ilçe sırası'},
+        {grup:'Mahalle atama kuralları',kod:'mahalle_ust_uste',ad:'Üst üste aynı mahalle',tip:'secim',secenek:[['verilmez','Verilmez'],['verilebilir','Verilebilir']],aciklama:'Aynı ekibe art arda aynı mahalle atanması'},
+        {grup:'Ödeme kontrol kuralları',kod:'odeme_gecerlilik_gun',ad:'Ödeme geçerlilik süresi',tip:'sayi',birim:'gün',aciklama:'Ödeme kaydının ilişkilendirilebildiği süre'},
+        {grup:'Ödeme kontrol kuralları',kod:'odeme_agir_suphe_dk',ad:'Ağır şüphe zaman eşiği',tip:'sayi',birim:'dk',aciklama:'Bu sürenin altındaki kayıtlar ağır incelemeye alınır'},
+        {grup:'Ödeme kontrol kuralları',kod:'odeme_acan_ayrimi',ad:'Açan personel ayrımı',tip:'secim',secenek:[['uygulanir','Uygulanır'],['uygulanmaz','Uygulanmaz']],aciklama:'Kesme ve açma personeli ayrı değerlendirilir'},
+        {grup:'Analiz eşikleri',kod:'odeme_ust',ad:'Ödeme üst sapma',tip:'sayi'},{grup:'Analiz eşikleri',kod:'odeme_alt',ad:'Ödeme alt sapma',tip:'sayi'},
+        {grup:'Analiz eşikleri',kod:'odeme_min_temas',ad:'Ödeme için en az temas',tip:'sayi'},{grup:'Analiz eşikleri',kod:'kapali_ust',ad:'Kapalı üst sapma',tip:'sayi'},
+        {grup:'Analiz eşikleri',kod:'kapali_alt',ad:'Kapalı alt sapma',tip:'sayi'},{grup:'Analiz eşikleri',kod:'kapali_min_beklenen',ad:'Kapalı için en az beklenen',tip:'sayi'},
+        {grup:'Analiz eşikleri',kod:'toplu_kat',ad:'Toplu giriş katı',tip:'sayi'},{grup:'Analiz eşikleri',kod:'toplu_min',ad:'Toplu giriş alt sınırı',tip:'sayi'},
+        {grup:'Analiz eşikleri',kod:'pazar_esik',ad:'Pazar şirket toplamı',tip:'sayi'},{grup:'Analiz eşikleri',kod:'ani_yuzde',ad:'Ani değişim yüzdesi',tip:'sayi'},
+        {grup:'Analiz eşikleri',kod:'ani_min',ad:'Ani değişim alt sınırı',tip:'sayi'},{grup:'Analiz eşikleri',kod:'sonucsuz_yuzde',ad:'Sonuçsuz iş yüzdesi',tip:'sayi'},
+        {grup:'Analiz eşikleri',kod:'eksik_gun',ad:'Ardışık eksik iş günü',tip:'sayi'},{grup:'Analiz eşikleri',kod:'uyari_gun',ad:'Üst yönetime bildirim süresi',tip:'sayi'},
+        {grup:'Analiz eşikleri',kod:'mahalle_min_is',ad:'Mahalle normali için en az iş',tip:'sayi'},{grup:'Analiz eşikleri',kod:'mahalle_min_temas',ad:'Mahalle ödeme normali için en az temas',tip:'sayi'}
+    ];
+
+    function analizYukle() {
+        const ay=$('#kaAnalizAy').val() || BUGUN.substring(0,7);
+        $('#kaAnalizSaglik').html('<span class="spinner-border spinner-border-sm me-1"></span> Analiz hazırlanıyor…');
+        istek({action:'analiz-dashboard',ay:ay,baz:analizBaz}).done(function(c){
+            if(c.status!=='success') return hata(c.message);
+            analizVerisi=c.analiz; analizCiz();
+        }).fail(function(xhr){
+            $('#kaAnalizSaglik').html('<span class="text-danger">Analiz verisi alınamadı. SQL güncellemesinin uygulandığını kontrol edin.</span>');
+            hata((xhr.responseJSON||{}).message || 'Analiz verisi alınamadı.');
+        });
+    }
+
+    function analizCiz(){
+        const a=analizVerisi,m=a.metrikler;
+        $('#kaAnalizDonem').text(tarihTR(a.baslangic)+' – '+tarihTR(a.bitis));
+        const donemGun=Math.max(1,Math.round((new Date(a.bitis+'T12:00:00')-new Date(a.baslangic+'T12:00:00'))/86400000)+1);
+        const ayGun=new Date(Number(a.ay.slice(0,4)),Number(a.ay.slice(5,7)),0).getDate();
+        const tahmin=Math.round(Number(m.toplam||0)/donemGun*ayGun),kaliteM=a.veri_kalitesi||{};
+        const kart=[
+            ['Toplam iş',sayi(m.toplam),'Seçili dönem','bx bx-task'],
+            ['Günlük ortalama',String(m.gunluk_ortalama).replace('.',','),donemGun+' takvim günü','bx bx-trending-up'],
+            ['Ay sonu tahmini',sayi(tahmin),'Mevcut hız korunursa','bx bx-line-chart'],
+            ['Sonuç alınan iş oranı','%'+String(m.sonuc_orani).replace('.',','),'Olumlu ÷ toplam','bx bx-check-circle'],
+            ['Veri eşleşme sorunu',sayi(kaliteM.isimsiz_is||0),'Personeli belirtilmemiş','bx bx-error-circle'],
+            ['Saha havuzu',sayi(m.personel),'Aktif personel','bx bx-group']
+        ];
+        $('#kaAnalizMetrikler').html(kart.map(x=>`<div class="col-6 col-lg-4 col-xl-2"><div class="card border-0 shadow-sm ka-analiz-metrik h-100"><div class="card-body"><div class="d-flex justify-content-between text-muted small"><span>${x[0]}</span><i class="${x[3]} fs-5 text-primary"></i></div><strong class="text-dark">${x[1]}</strong><div class="text-muted ka-metrik-alt">${x[2]}</div></div></div></div>`).join(''));
+        analizGrafikCiz(a.gunluk||{});
+        $('#kaAnalizPersonel').html((a.personel||[]).map(p=>`<tr><td><b>${kacir(p.personel)}</b></td><td class="text-end">${p.gun}</td><td class="text-end">${sayi(p.toplam)}</td><td class="text-end">${sayi(p.olumlu)}</td><td class="text-end">${String(p.gunluk_ortalama).replace('.',',')}</td><td class="text-end">${p.delta_toplam===null?'—':(p.delta_toplam>0?'+':'')+String(p.delta_toplam).replace('.',',')+'%'}</td><td class="text-end">${p.delta_ortalama===null?'—':(p.delta_ortalama>0?'+':'')+String(p.delta_ortalama).replace('.',',')+'%'}</td><td class="text-end">${sayi(p.odeme)}</td><td class="text-end"><span class="badge ${p.odeme_sapma>1.25||p.odeme_sapma<.75?'bg-danger':'bg-light text-muted'}">${String(p.odeme_sapma).replace('.',',')}×</span></td><td class="text-end">${sayi(p.kapali)}</td><td class="text-end"><span class="badge ${p.kapali_sapma>1.4||p.kapali_sapma<.7?'bg-danger':'bg-light text-muted'}">${String(p.kapali_sapma).replace('.',',')}×</span></td><td class="text-end">%${String(p.sonuc_orani).replace('.',',')}</td></tr>`).join('')||'<tr><td colspan="12" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>');
+        dikkatCiz(a.uyarilar||[]); kontrolCiz(a.kontrol||[]);
+        const toplam=(a.mahalleler||[]).reduce((t,x)=>t+Number(x.toplam||0),0),eslesen=(a.mahalleler||[]).filter(x=>Number(x.mahalle_id)>0).reduce((t,x)=>t+Number(x.toplam||0),0);
+        $('#kaAnalizSaglik').html(`<div class="d-flex justify-content-between"><span>Mahalle eşleşmesi</span><b>%${toplam?Math.round(eslesen/toplam*100):0}</b></div><div class="progress mt-2" style="height:6px"><div class="progress-bar" style="width:${toplam?eslesen/toplam*100:0}%"></div></div><div class="text-muted mt-2">Eşleşmeyen işler mahalle karşılaştırmasında genel ortalamayla hesaplanır.</div>`);
+        const kalite=a.veri_kalitesi||{};$('#kaAnalizKalite').html(`<div class="d-flex justify-content-between mb-2"><span>Personeli belirtilmemiş iş</span><b class="${Number(kalite.isimsiz_is)?'text-danger':'text-success'}">${sayi(kalite.isimsiz_is)}</b></div><div class="d-flex justify-content-between"><span>Negatif sonuç grubu</span><b class="${Number(kalite.negatif_sonuc)?'text-danger':'text-success'}">${sayi(kalite.negatif_sonuc)}</b></div>`);
+        $('#kaAnalizMahalle').html((a.mahalleler||[]).sort((x,y)=>y.toplam-x.toplam).map(x=>`<tr><td>${kacir(x.mahalle)}</td><td class="text-end">${sayi(x.toplam)}</td><td class="text-end">%${(Number(x.kapali_oran||0)*100).toFixed(1).replace('.',',')}</td><td class="text-end">%${(Number(x.odeme_oran||0)*100).toFixed(1).replace('.',',')}</td></tr>`).join(''));
+        const sonuclar=Object.entries(a.sonuclar||{}),en=Math.max(1,...sonuclar.map(x=>x[1]));
+        $('#kaAnalizSonuclar').html(sonuclar.map(x=>`<div class="mb-2"><div class="d-flex justify-content-between small mb-1"><span>${kacir(x[0]||'Tanımsız')}</span><b>${sayi(x[1])}</b></div><div class="progress" style="height:5px"><div class="progress-bar" style="width:${x[1]/en*100}%"></div></div></div>`).join('')||'<span class="text-muted small">Kayıt yok.</span>');
+    }
+
+    function analizGrafikCiz(gunluk){
+        const gunler=Object.keys(gunluk).sort();if(!gunler.length){$('#kaAnalizGrafik').html('<span class="text-muted small">Kayıt yok.</span>');return;}
+        const vals=gunler.map(g=>Number(gunluk[g][analizBaz]||0)),max=Math.max(1,...vals),W=760,H=190,bw=W/gunler.length;
+        let svg='';gunler.forEach((g,i)=>{const v=vals[i],h=v/max*140,x=i*bw+bw*.15,y=155-h,pazar=new Date(g+'T12:00:00').getDay()===0;svg+=`<rect x="${x}" y="${y}" width="${bw*.7}" height="${h}" rx="3" fill="${pazar?'#f46a6a':'#556ee6'}"><title>${tarihTR(g)}: ${v}</title></rect><text x="${i*bw+bw/2}" y="174" text-anchor="middle" font-size="9" fill="#74788d">${Number(g.slice(8))}</text>`;});
+        $('#kaAnalizGrafik').html(`<svg viewBox="0 0 ${W} ${H}" width="100%">${svg}</svg>`);
+    }
+
+    function dikkatCiz(liste){
+        const acik=[];(liste||[]).forEach(k=>{const bul=(k.bulgular||[]).filter(x=>x.durum==='acik');if(bul.length)acik.push({...k,bulgular:bul});});
+        $('#kaUyariSayisi').text(acik.length);
+        $('#kaDikkatListesi').html(acik.map(k=>{const ilk=k.bulgular[0],yas=Math.max(...k.bulgular.map(x=>Number(x.acik_gun||0))),yukselmis=k.bulgular.some(x=>x.yukseltildi_ts);return `<div class="ka-uyari">${yukselmis?'<div class="alert alert-danger py-1 px-2 mb-2 small"><i class="bx bx-bell me-1"></i>Üst yönetime bildirildi</div>':''}<div class="d-flex gap-2 align-items-start"><span class="ka-uyari-puan">${k.puan}</span><div class="flex-grow-1"><div class="d-flex align-items-center"><b class="small">${kacir(k.personel)}</b><span class="text-muted ms-auto" style="font-size:.7rem">${yas} gündür açık</span></div>${k.bulgular.slice(0,3).map(x=>`<div class="ka-uyari-bulgu"><b>${kacir(x.tur)}:</b> ${kacir(x.ozet.replace(k.personel+' — ',''))}</div>`).join('')}${(k.arsiv||[]).length?`<div class="bg-light rounded p-2 mt-2" style="font-size:.7rem"><b>Geçmiş gerekçeler</b>${k.arsiv.map(x=>`<div class="text-muted mt-1">${kacir(x.ay)} · ${kacir(x.gerekce)} — ${kacir(x.yazan)}</div>`).join('')}</div>`:''}${yetki.analiz?`<button type="button" class="btn btn-outline-primary btn-sm mt-2 ka-uyari-kapat" data-key="${kacir(ilk.key)}" data-ozet="${kacir(ilk.ozet)}">Kontrol ettim</button>`:''}</div></div></div>`;}).join('')||'<div class="p-3 text-muted small">Açık uyarı bulunmuyor.</div>');
+    }
+
+    function kontrolCiz(liste){
+        $('#kaKontrolListesi').html(liste.map(x=>`<label class="ka-kontrol-satir"><input type="checkbox" class="form-check-input ka-kontrol" data-key="${kacir(x.key)}" ${Number(x.isaretli)?'checked':''} ${yetki.analiz?'':'disabled'}><span class="flex-grow-1 ${Number(x.isaretli)?'text-decoration-line-through text-muted':''}">${kacir(x.ad)}</span>${yetki.analiz?`<button type="button" class="btn btn-link text-danger p-0 ka-kontrol-sil" data-key="${kacir(x.key)}" title="Kaldır"><i class="bx bx-x"></i></button>`:''}</label>`).join('')||'<div class="p-3 text-muted small">Kontrol maddesi tanımlı değil.</div>');
+    }
+
+    function normalYukle(){istek({action:'analiz-normal',ay:$('#kaAnalizAy').val()||BUGUN.substring(0,7)}).done(c=>{if(c.status!=='success')return hata(c.message);normalYuklendi=true;$('#kaNormalDegerler').html((c.normal_degerler||[]).map(x=>`<tr><td><b>${kacir(x.personel)}</b></td><td class="text-end fw-bold">${x.olumlu_med} <small class="text-muted">(${x.secili_olumlu})</small></td><td class="text-end">${x.olumlu_q1}–${x.olumlu_q3}</td><td class="text-end fw-bold">${x.odeme_med} <small class="text-muted">(${x.secili_odeme})</small></td><td class="text-end">${x.odeme_q1}–${x.odeme_q3}</td><td class="text-end fw-bold">%${x.oran_med} <small class="text-muted">(%${x.secili_oran})</small></td><td class="text-end">%${x.oran_q1}–%${x.oran_q3}</td></tr>`).join(''));});}
+    function kuralYukle(){istek({action:'analiz-kurallar'}).done(function(c){
+        if(c.status!=='success')return hata(c.message);kuralYuklendi=true;
+        const kurallar=c.kurallar||{},personeller=(c.personeller||[]).map(x=>x.adi_soyadi),ekipler=(c.ekipler||[]).map(x=>[x.tur_adi,ekipKisa(x.tur_adi)]);
+        let grup='',html='';
+        const chipler=(liste,secili,tek)=>`<div class="ka-kural-secimler" data-tek="${tek?1:0}">${liste.map(function(o){const d=Array.isArray(o)?o[0]:o,e=Array.isArray(o)?o[1]:o;return `<button type="button" class="ka-kural-chip ${(tek?String(secili)===String(d):(secili||[]).map(String).includes(String(d)))?'aktif':''}" data-value="${kacir(String(d))}" ${c.duzenleyebilir?'':'disabled'}>${kacir(String(e))}</button>`;}).join('')}</div>`;
+        KURAL_TANIMLARI.forEach(function(t){
+            if(!(t.kod in kurallar))return;if(grup!==t.grup){grup=t.grup;html+=`<div class="ka-kural-grup"><b>${kacir(grup)}</b></div>`;}
+            const deger=kurallar[t.kod];let alan='';
+            if(t.tip==='sayi') alan=`<div class="input-group input-group-sm"><input type="number" min="0" step="0.01" class="form-control ka-kural-deger" value="${Number(deger)}" ${c.duzenleyebilir?'':'disabled'}>${t.birim?`<span class="input-group-text">${kacir(t.birim)}</span>`:''}</div>`;
+            else if(t.tip==='coklu') alan=chipler(t.secenek,deger,false);
+            else if(t.tip==='personel_coklu') {
+                const secili=(deger||[]).map(String);
+                alan=`<div class="ka-kural-secimler ka-personel-secimler" data-tek="0">${secili.map(p=>`<button type="button" class="ka-kural-chip ka-personel-chip aktif" data-value="${kacir(p)}" ${c.duzenleyebilir?'':'disabled'}>${kacir(p)} <span aria-hidden="true">×</span></button>`).join('')}${c.duzenleyebilir?`<button type="button" class="ka-personel-ekle-btn">+ personel ekle</button><div class="ka-personel-ekle-alan d-none"><select class="form-select form-select-sm ka-kural-personel-ekle"><option value="">Personel seçiniz</option>${personeller.filter(p=>!secili.includes(String(p))).map(p=>`<option value="${kacir(p)}">${kacir(p)}</option>`).join('')}</select></div>`:''}</div>`;
+            }
+            else if(t.tip==='ekip_coklu') alan=chipler(ekipler,deger,false);
+            else if(t.tip==='secim') alan=chipler(t.secenek,deger,true);
+            else if(t.tip==='liste_secim') alan=`<select class="form-select form-select-sm ka-kural-liste-sec" ${c.duzenleyebilir?'':'disabled'}>${t.secenek.map(o=>`<option value="${kacir(o[0])}" ${String(deger)===String(o[0])?'selected':''}>${kacir(o[1])}</option>`).join('')}</select>`;
+            else if(t.tip==='sabit') alan=`<div class="ka-kural-sabit">${['Pzt','Sal','Çar'].map(g=>`<span class="text-muted small">${g}</span><select class="form-select form-select-sm ka-kural-sabit-sec" data-gun="${g}" ${c.duzenleyebilir?'':'disabled'}><option value="">—</option>${personeller.map(p=>`<option value="${kacir(p)}" ${String((deger||{})[g]||'')===String(p)?'selected':''}>${kacir(p)}</option>`).join('')}</select>`).join('')}</div>`;
+            html+=`<div class="ka-kural-satir" data-kod="${kacir(t.kod)}" data-tip="${t.tip}"><div><b>${kacir(t.ad)}</b>${t.aciklama?`<div class="text-muted small">${kacir(t.aciklama)}</div>`:''}</div><div>${alan}</div>${c.duzenleyebilir?'<button type="button" class="btn btn-primary btn-sm ka-kural-kaydet">Kaydet</button>':'<span class="text-muted small">Salt okunur</span>'}</div>`;
+        });
+        $('#kaKuralListesi').html(html);
+        $('#kaKuralListesi .ka-kural-sabit-sec, #kaKuralListesi .ka-kural-personel-ekle, #kaKuralListesi .ka-kural-liste-sec').each(function(){select2Kur(this);});
+    }).fail(function(xhr){hata((xhr.responseJSON||{}).message||'Kurallar yüklenemedi.');});}
+    function analizGunlukYukle(){istek({action:'analiz-gunluk'}).done(c=>{if(c.status!=='success')return hata(c.message);$('#kaAnalizGunluk').html((c.kayitlar||[]).map(x=>`<div class="ka-log-satir"><span>${tarihTR(x.ts)} ${String(x.ts).slice(11,16)}</span><span class="badge bg-light text-dark">${kacir(x.kategori)}</span><span>${kacir(x.aciklama)}</span><span class="text-muted">${kacir(x.kullanici)}</span></div>`).join('')||'<div class="p-3 text-muted small">İşlem kaydı yok.</div>');});}
+
     // ---------- Dashboard ----------
 
     function ozetYukle() {
@@ -192,7 +306,7 @@
                         ${kacir(o.personel || ekipKisa(o.ekip_adi))} için hazır <b>${ILCE_ADI[o.siradaki_ilce]}</b> mahallesi yok
                         <div class="text-muted">${o.ilk_hazir
                         ? 'ilk hazır: ' + kacir(o.ilk_hazir.ad) + ' · ' + tarihTR(o.ilk_hazir.hazir_tarihi)
-                        : 'bugün mesaj atılırsa 5 gün sonra hazır olur'}</div>
+                        : `bugün mesaj atılırsa ${MESAJ_BEKLEME_GUN} gün sonra hazır olur`}</div>
                     </div>
                 </div>`;
             }
@@ -467,6 +581,8 @@
             if (c.status !== 'success') return hata(c.message);
             nobetVerisi = c;
             $('#kaTelefonUyari').toggleClass('d-none', (c.personeller || []).length > 0);
+            const aracli=(c.aracli_ekipler||[]).length;
+            $('#kaNobetHavuzNot').html(`Havuza <b>${(c.saha_personelleri||[]).length}</b> personel girdi. Her güne 1 saha nöbetçisi ve telefon nöbetçisi yazılır; o hafta ilçeye giden ekip merkez nöbetine yazılmaz${aracli?`, şirket aracı kısıtı olan <b>${aracli} ekip</b> ilçe görevine seçilmez`:''}. Turuncu çerçeveli elle düzenlemeler yeniden üretimde korunur.`);
             takvimCiz();
             ilceTabloCiz();
         });
@@ -548,6 +664,8 @@
 
         $('#kaTabloIlce tbody').html(haftalar.map(function (h) {
             const kayit = c.ilce[h] || {};
+            const haftaSonu=new Date(h+'T12:00:00');haftaSonu.setDate(haftaSonu.getDate()+6);
+            const haftaEtiketi=`${kisaTarih(h)}–${String(haftaSonu.getDate()).padStart(2,'0')}.${String(haftaSonu.getMonth()+1).padStart(2,'0')}`;
             const hucre = function (ilce) {
                 if (!yetki.nobet || !sablon) {
                     return kayit[ilce] ? kacir(ekipPersoneli(kayit[ilce].ekip_id) || ekipKisa(kayit[ilce].ekip_adi)) : '<span class="text-muted">-</span>';
@@ -568,7 +686,7 @@
             };
 
             return `<tr>
-                <td class="text-muted small">${kisaTarih(h)}</td>
+                <td class="text-muted small text-nowrap">${haftaEtiketi}</td>
                 <td>${hucre('turkoglu')}</td>
                 <td>${hucre('pazarcik')}</td>
             </tr>`;
@@ -588,6 +706,10 @@
         const c = nobetVerisi;
         const sayac = {};
 
+        (c.saha_personelleri || []).forEach(function(p){
+            sayac[Number(p.id)]={n:0,hs:0,ad:p.adi_soyadi || '—'};
+        });
+
         Object.keys(c.saha).forEach(function (t) {
             const id = Number(c.saha[t].personel_id);
             const haftaGun = new Date(t).getDay();
@@ -603,7 +725,7 @@
             return;
         }
 
-        const enBuyuk = Math.max.apply(null, satirlar.map(s => s.n));
+        const enBuyuk = Math.max(1, ...satirlar.map(s => s.n));
         const toplamHs = satirlar.reduce((t, s) => t + s.hs, 0);
         $('#kaNobetDagilimNot').html(`${satirlar.length} personel · ${Object.keys(c.saha).length} gün · <b>${toplamHs}</b> hafta sonu nöbeti`);
 
@@ -1489,11 +1611,231 @@
         if (kapali) ozetGorunumUygula(true, false);
     })();
 
+    $('.ka-analiz-baz').on('click',function(){
+        analizBaz=$(this).data('baz');$('.ka-analiz-baz').removeClass('btn-primary').addClass('btn-outline-primary');
+        $(this).removeClass('btn-outline-primary').addClass('btn-primary');analizYukle();
+    });
+    $('#kaAnalizAy').on('change',function(){normalYuklendi=false;analizYukle();});
+    $(document).on('click','.ka-uyari-kapat',function(){
+        $('#kaUyariKey').val($(this).data('key'));$('#kaUyariOzet').text($(this).data('ozet'));$('#kaUyariGerekce').val('');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('kaModalUyariGerekce')).show();
+    });
+    $('#kaFormUyariGerekce').on('submit',function(e){e.preventDefault();istek({action:'analiz-uyari-kapat',key:$('#kaUyariKey').val(),gerekce:$('#kaUyariGerekce').val()},'POST').done(c=>{if(c.status!=='success')return hata(c.message);bootstrap.Modal.getInstance(document.getElementById('kaModalUyariGerekce')).hide();basari(c.message);analizYukle();});});
+    $(document).on('change','.ka-kontrol',function(){const el=$(this);istek({action:'analiz-kontrol-isaretle',key:el.data('key'),ay:$('#kaAnalizAy').val(),isaretli:el.is(':checked')?1:0},'POST').done(c=>{if(c.status!=='success'){el.prop('checked',!el.is(':checked'));return hata(c.message);}analizYukle();});});
+    $('#kaKontrolEkle').on('click',function(){const ad=$('#kaKontrolYeniAd').val().trim();if(ad.length<3)return hata('Kontrol maddesi en az 3 karakter olmalıdır.');istek({action:'analiz-kontrol-ekle',ad:ad},'POST').done(c=>{if(c.status!=='success')return hata(c.message);$('#kaKontrolYeniAd').val('');analizYukle();});});
+    $(document).on('click','.ka-kontrol-sil',function(e){e.preventDefault();e.stopPropagation();const key=$(this).data('key');Swal.fire({title:'Kontrol maddesi kaldırılsın mı?',icon:'warning',showCancelButton:true,confirmButtonText:'Kaldır',cancelButtonText:'Vazgeç'}).then(r=>{if(!r.isConfirmed)return;istek({action:'analiz-kontrol-sil',key:key},'POST').done(c=>{if(c.status!=='success')return hata(c.message);analizYukle();});});});
+    $(document).on('click','.ka-kural-chip',function(){
+        if($(this).hasClass('ka-personel-chip')){
+            const chip=$(this),grup=chip.closest('.ka-personel-secimler'),deger=String(chip.data('value'));
+            grup.find('.ka-kural-personel-ekle').append($('<option>',{value:deger,text:deger}));chip.remove();return;
+        }
+        const grup=$(this).closest('.ka-kural-secimler');
+        if(Number(grup.data('tek'))===1) grup.find('.ka-kural-chip').removeClass('aktif');
+        $(this).toggleClass('aktif',Number(grup.data('tek'))!==1 || !$(this).hasClass('aktif'));
+    });
+    $(document).on('click','.ka-personel-ekle-btn',function(){
+        $(this).siblings('.ka-personel-ekle-alan').removeClass('d-none');
+        $(this).siblings('.ka-personel-ekle-alan').find('select').select2('open');
+    });
+    $(document).on('change','.ka-kural-personel-ekle',function(){
+        const sec=$(this),deger=String(sec.val()||'');if(!deger)return;
+        const grup=sec.closest('.ka-personel-secimler');
+        if(!grup.find('.ka-personel-chip').filter(function(){return String($(this).data('value'))===deger;}).length){
+            $(`<button type="button" class="ka-kural-chip ka-personel-chip aktif" data-value="${kacir(deger)}">${kacir(deger)} <span aria-hidden="true">×</span></button>`).insertBefore(grup.find('.ka-personel-ekle-btn'));
+        }
+        sec.find('option').filter(function(){return String(this.value)===deger;}).remove();sec.val('').trigger('change.select2');
+        grup.find('.ka-personel-ekle-alan').addClass('d-none');
+    });
+    $(document).on('click','.ka-kural-kaydet',function(){
+        const sat=$(this).closest('.ka-kural-satir'),tip=sat.data('tip');let deger;
+        if(tip==='sayi') deger=sat.find('.ka-kural-deger').val();
+        else if(tip==='sabit') {deger={};sat.find('.ka-kural-sabit-sec').each(function(){deger[$(this).data('gun')]=$(this).val()||'';});deger=JSON.stringify(deger);}
+        else if(tip==='liste_secim') deger=JSON.stringify(String(sat.find('.ka-kural-liste-sec').val()||''));
+        else if(tip==='secim') deger=JSON.stringify(String(sat.find('.ka-kural-chip.aktif').data('value')||''));
+        else deger=JSON.stringify(sat.find('.ka-kural-chip.aktif').map(function(){return String($(this).data('value'));}).get());
+        istek({action:'analiz-kural-kaydet',kod:sat.data('kod'),deger:deger},'POST').done(c=>{if(c.status!=='success')return hata(c.message);basari(c.message);kuralYuklendi=false;kuralYukle();analizYukle();});
+    });
+
+    function tabSiralamaKur() {
+        const $nav = $('.nav-tabs-custom');
+        if (!$nav.length) return;
+
+        const $msAuto = $nav.find('.nav-item.ms-auto');
+        const defaultOrder = [];
+
+        $nav.find('.nav-item:not(.ms-auto)').each(function () {
+            const href = $(this).find('a.nav-link').attr('href');
+            if (href) defaultOrder.push(href);
+        });
+
+        // 1. Kayıtlı sıralamayı yükle
+        try {
+            const savedOrderJson = localStorage.getItem('ka_tab_order');
+            if (savedOrderJson) {
+                const savedOrder = JSON.parse(savedOrderJson);
+                if (Array.isArray(savedOrder) && savedOrder.length) {
+                    savedOrder.forEach(function (href) {
+                        const $item = $nav.find('.nav-item:not(.ms-auto)').filter(function () {
+                            return $(this).find('a.nav-link').attr('href') === href;
+                        });
+                        if ($item.length) {
+                            $item.insertBefore($msAuto);
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Sekme sırası yüklenirken hata:', e);
+        }
+
+        // 2. Drag & Drop Başlat
+        let draggedItem = null;
+
+        $nav.find('.nav-item:not(.ms-auto)')
+            .attr('draggable', 'true')
+            .find('a.nav-link')
+            .attr('draggable', 'false');
+
+        $nav.on('dragstart', '.nav-item:not(.ms-auto)', function (e) {
+            draggedItem = this;
+            $(this).addClass('ka-tab-dragging');
+            if (e.originalEvent && e.originalEvent.dataTransfer) {
+                e.originalEvent.dataTransfer.effectAllowed = 'move';
+                e.originalEvent.dataTransfer.setData('text/plain', $(this).find('a.nav-link').attr('href') || '');
+            }
+        });
+
+        $nav.on('dragend', '.nav-item:not(.ms-auto)', function () {
+            $(this).removeClass('ka-tab-dragging');
+            $nav.find('.nav-item').removeClass('ka-tab-drag-over-left ka-tab-drag-over-right');
+            draggedItem = null;
+
+            // Sıralamayı kaydet
+            const newOrder = [];
+            $nav.find('.nav-item:not(.ms-auto)').each(function () {
+                const href = $(this).find('a.nav-link').attr('href');
+                if (href) newOrder.push(href);
+            });
+            try {
+                localStorage.setItem('ka_tab_order', JSON.stringify(newOrder));
+            } catch (e) {}
+        });
+
+        $nav.on('dragover', '.nav-item:not(.ms-auto)', function (e) {
+            e.preventDefault();
+            if (e.originalEvent && e.originalEvent.dataTransfer) {
+                e.originalEvent.dataTransfer.dropEffect = 'move';
+            }
+            if (!draggedItem || draggedItem === this) return;
+
+            const rect = this.getBoundingClientRect();
+            const clientX = (e.originalEvent && e.originalEvent.clientX !== undefined) ? e.originalEvent.clientX : e.clientX;
+            const relX = clientX - rect.left;
+            const isLeft = relX < (rect.width / 2);
+
+            $nav.find('.nav-item').removeClass('ka-tab-drag-over-left ka-tab-drag-over-right');
+            if (isLeft) {
+                $(this).addClass('ka-tab-drag-over-left');
+            } else {
+                $(this).addClass('ka-tab-drag-over-right');
+            }
+        });
+
+        $nav.on('dragleave', '.nav-item:not(.ms-auto)', function (e) {
+            // Sadece öğenin dışına çıkıldığında temizle
+            const rect = this.getBoundingClientRect();
+            const clientX = (e.originalEvent && e.originalEvent.clientX !== undefined) ? e.originalEvent.clientX : e.clientX;
+            const clientY = (e.originalEvent && e.originalEvent.clientY !== undefined) ? e.originalEvent.clientY : e.clientY;
+            if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+                $(this).removeClass('ka-tab-drag-over-left ka-tab-drag-over-right');
+            }
+        });
+
+        $nav.on('drop', '.nav-item:not(.ms-auto)', function (e) {
+            e.preventDefault();
+            if (!draggedItem || draggedItem === this) return;
+
+            const rect = this.getBoundingClientRect();
+            const clientX = (e.originalEvent && e.originalEvent.clientX !== undefined) ? e.originalEvent.clientX : e.clientX;
+            const relX = clientX - rect.left;
+            const isLeft = relX < (rect.width / 2);
+
+            if (isLeft) {
+                $(draggedItem).insertBefore(this);
+            } else {
+                $(draggedItem).insertAfter(this);
+            }
+            $nav.find('.nav-item').removeClass('ka-tab-drag-over-left ka-tab-drag-over-right');
+
+            // Sıralamayı kaydet
+            const newOrder = [];
+            $nav.find('.nav-item:not(.ms-auto)').each(function () {
+                const href = $(this).find('a.nav-link').attr('href');
+                if (href) newOrder.push(href);
+            });
+            try {
+                localStorage.setItem('ka_tab_order', JSON.stringify(newOrder));
+            } catch (e) {}
+        });
+
+        // 3. Sıfırlama butonu
+        $('#kaTabResetBtn').on('click', function () {
+            try {
+                localStorage.removeItem('ka_tab_order');
+            } catch (e) {}
+            defaultOrder.forEach(function (href) {
+                const $item = $nav.find('.nav-item:not(.ms-auto)').filter(function () {
+                    return $(this).find('a.nav-link').attr('href') === href;
+                });
+                if ($item.length) {
+                    $item.insertBefore($msAuto);
+                }
+            });
+            basari('Sekme sıralaması varsayılana sıfırlandı.');
+        });
+    }
+
+    function aktifSekmeVerisiniYukle(hedef) {
+        if (!hedef || hedef === '#pane-ka-dashboard') {
+            analizYukle();
+        } else if (hedef === '#pane-ka-mahalle') {
+            mahalleYukle();
+        } else if (hedef === '#pane-ka-ekip') {
+            ekipYukle();
+        } else if (hedef === '#pane-ka-gecmis') {
+            gecmisYukle();
+        } else if (hedef === '#pane-ka-nobet') {
+            nobetYukle();
+        } else if (hedef === '#pane-ka-ozet-rapor') {
+            ['#kaRaporYil', '#kaRaporAy', '#kaRaporPersonel', '#kaRaporBolge', '#kaRaporDefter']
+                .forEach(function (alan) { select2Kur(alan); });
+            ozetRaporYukle();
+            window.setTimeout(ozetRaporYukseklikAyarla, 30);
+        } else if (hedef === '#pane-ka-detay-rapor') {
+            detayRaporYukle();
+        } else if (hedef === '#pane-ka-matris') {
+            matrisYukle();
+        } else if (hedef === '#pane-ka-normal') {
+            normalYukle();
+        } else if (hedef === '#pane-ka-kurallar') {
+            kuralYukle();
+        } else if (hedef === '#pane-ka-islem-gunlugu') {
+            analizGunlukYukle();
+        }
+    }
+
     $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
         const hedef = $(e.target).attr('href');
-        if (hedef === '#pane-ka-mahalle' && !mahalleVerisi.length) mahalleYukle();
-        if (hedef === '#pane-ka-nobet' && !nobetVerisi) nobetYukle();
-        if (hedef === '#pane-ka-ozet-rapor' && !ozetRaporYuklendi) {
+        try {
+            if (hedef) localStorage.setItem('ka_active_tab', hedef);
+        } catch (e) {}
+
+        if (hedef === '#pane-ka-dashboard') analizYukle();
+        else if (hedef === '#pane-ka-mahalle' && !mahalleVerisi.length) mahalleYukle();
+        else if (hedef === '#pane-ka-ekip' && !ekipListesi.length) ekipYukle();
+        else if (hedef === '#pane-ka-gecmis' && !gecmisVerisi.length) gecmisYukle();
+        else if (hedef === '#pane-ka-nobet' && !nobetVerisi) nobetYukle();
+        else if (hedef === '#pane-ka-ozet-rapor' && !ozetRaporYuklendi) {
             ['#kaRaporYil', '#kaRaporAy', '#kaRaporPersonel', '#kaRaporBolge', '#kaRaporDefter']
                 .forEach(function (alan) { select2Kur(alan); });
             ozetRaporYukle();
@@ -1502,13 +1844,18 @@
         else $('html, body').css('overflow-y', '');
         if (hedef === '#pane-ka-detay-rapor') detayRaporYukle();
         if (hedef === '#pane-ka-matris' && !matrisVerisi) matrisYukle();
+        if (hedef === '#pane-ka-normal' && !normalYuklendi) normalYukle();
+        if (hedef === '#pane-ka-kurallar' && !kuralYuklendi) kuralYukle();
+        if (hedef === '#pane-ka-islem-gunlugu') analizGunlukYukle();
     });
 
     $(function () {
+        select2Kur('#kaAnalizAy');
         ozetYukle();
-        mahalleYukle();
-        ekipYukle();
-        gecmisYukle();
+        tabSiralamaKur();
+
+        const aktifHref = $('.nav-tabs-custom a.nav-link.active').attr('href') || '#pane-ka-dashboard';
+        aktifSekmeVerisiniYukle(aktifHref);
     });
 
 })(jQuery);

@@ -103,12 +103,12 @@ class PersonelKesintileriModel extends Model
         $sql = $this->db->prepare("
             SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi, bd.kapali_mi,
                                      COALESCE(pk.durum, 'beklemede') as durum,
-                                     ky.adi_soyadi as kayit_yapan_ad_soyad
+                                     COALESCE(ky.adi_soyadi, ky.user_name) as kayit_yapan_ad_soyad
             FROM {$this->table} pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
             LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id
-            LEFT JOIN personel ky ON pk.kayit_yapan = ky.id
+            LEFT JOIN users ky ON pk.kayit_yapan = ky.id
             WHERE {$where}
             ORDER BY pk.tekrar_tipi DESC, pk.baslangic_donemi DESC, pk.donem_id DESC, pk.olusturma_tarihi DESC
         ");

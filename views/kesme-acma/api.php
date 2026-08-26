@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 use App\Model\EkipGunlukDurumModel;
 use App\Model\EkipMahalleAtamaModel;
 use App\Model\KesmeAcmaRaporModel;
+use App\Model\KesmeAcmaAnalizModel;
 use App\Model\KesmeNobetModel;
 use App\Model\MahalleModel;
 use App\Model\SystemLogModel;
@@ -70,6 +71,7 @@ $Mahalle = new MahalleModel();
 $Atama = new EkipMahalleAtamaModel();
 $Durum = new EkipGunlukDurumModel();
 $Rapor = new KesmeAcmaRaporModel();
+$Analiz = new KesmeAcmaAnalizModel();
 $Nobet = new KesmeNobetModel();
 $Plan = new KesmeAcmaPlanService($Mahalle, $Atama, $Durum, $Rapor, $Nobet);
 $Log = new SystemLogModel();
@@ -291,6 +293,64 @@ try {
             ]);
         }
 
+        case 'analiz-dashboard': {
+            $ay = trim((string) ($_GET['ay'] ?? date('Y-m')));
+            if (!preg_match('/^20\d{2}-(0[1-9]|1[0-2])$/', $ay)) {
+                kaYanit(false, 'Ay bilgisi geçersiz.');
+            }
+            $baz = ($_GET['baz'] ?? 'olumlu') === 'tum' ? 'tum' : 'olumlu';
+            kaYanit(true, '', ['analiz' => $Analiz->dashboard($ay, $baz)]);
+        }
+
+        case 'analiz-normal': {
+            $ay = trim((string) ($_GET['ay'] ?? date('Y-m')));
+            if (!preg_match('/^20\d{2}-(0[1-9]|1[0-2])$/', $ay)) kaYanit(false, 'Ay bilgisi geçersiz.');
+            kaYanit(true, '', ['normal_degerler' => $Analiz->normalDegerler($ay)]);
+        }
+
+        case 'analiz-kurallar':
+            kaYanit(true, '', [
+                'kurallar' => $Analiz->kurallar(),
+                'personeller' => $Nobet->telefonKuralSecenekleri(),
+                'ekipler' => $Rapor->ekipler(),
+                'duzenleyebilir' => kaIzin('kesme_analiz_yonetim'),
+            ]);
+
+        case 'analiz-gunluk':
+            kaYanit(true, '', ['kayitlar' => $Analiz->gunluk()]);
+
+        case 'analiz-kural-kaydet': {
+            kaYetkiKontrol('kesme_analiz_yonetim');
+            $Analiz->kuralKaydet(trim((string) ($_POST['kod'] ?? '')), $_POST['deger'] ?? null, $userId);
+            kaYanit(true, 'Kural kaydedildi; analiz yeniden hesaplanacak.');
+        }
+
+        case 'analiz-uyari-kapat': {
+            kaYetkiKontrol('kesme_analiz_yonetim');
+            $Analiz->uyariKapat((string) ($_POST['key'] ?? ''), trim((string) ($_POST['gerekce'] ?? '')), $userId);
+            kaYanit(true, 'Uyarı gerekçeyle kontrol edildi.');
+        }
+
+        case 'analiz-kontrol-isaretle': {
+            kaYetkiKontrol('kesme_analiz_yonetim');
+            $ay = trim((string) ($_POST['ay'] ?? date('Y-m')));
+            if (!preg_match('/^20\d{2}-(0[1-9]|1[0-2])$/', $ay)) kaYanit(false, 'Ay bilgisi geçersiz.');
+            $Analiz->kontrolIsaretle((string) ($_POST['key'] ?? ''), $ay, (int) ($_POST['isaretli'] ?? 0) === 1, $userId);
+            kaYanit(true, 'Kontrol listesi güncellendi.');
+        }
+
+        case 'analiz-kontrol-ekle': {
+            kaYetkiKontrol('kesme_analiz_yonetim');
+            $Analiz->kontrolMaddeEkle((string) ($_POST['ad'] ?? ''), $userId);
+            kaYanit(true, 'Kontrol maddesi eklendi.');
+        }
+
+        case 'analiz-kontrol-sil': {
+            kaYetkiKontrol('kesme_analiz_yonetim');
+            $Analiz->kontrolMaddeSil((string) ($_POST['key'] ?? ''), $userId);
+            kaYanit(true, 'Kontrol maddesi kaldırıldı.');
+        }
+
         case 'mahalle-kaydet': {
             kaYetkiKontrol('kesme_mahalle_tanim');
 
@@ -386,7 +446,7 @@ try {
                 }
             }
             if ($secilen && $secilen['durum'] === 'bekliyor' && empty($_POST['zorla'])) {
-                kaYanit(false, 'Mahalle henüz atanabilir değil; mesajdan 5 gün geçmesi gerekiyor (hazır: '
+                kaYanit(false, 'Mahalle henüz atanabilir değil; mesajdan ' . $Mahalle->mesajBeklemeGun() . ' gün geçmesi gerekiyor (hazır: '
                     . date('d.m.Y', strtotime($secilen['hazir_tarihi'])) . ').');
             }
             if ($secilen && $secilen['durum'] === 'mesajsiz' && empty($_POST['zorla'])) {
@@ -531,6 +591,7 @@ try {
 
             $Log->logAction($userId, 'Nöbet Planı Üretildi',
                 "hafta:$haftaBasi saha:$saha ilçe:$ilce telefon:$telefon", SystemLogModel::LEVEL_IMPORTANT);
+            $Analiz->gunlukYaz('nobet', "Haftalık plan üretildi: $haftaBasi · saha:$saha · ilçe:$ilce · telefon:$telefon", $userId);
 
             $etiket = date('d.m.Y', strtotime($haftaBasi)) . ' – ' . date('d.m.Y', strtotime($haftaSonu));
             $mesaj = "$etiket haftası: $saha gün saha nöbeti, $ilce ilçe görevi";

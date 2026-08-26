@@ -173,6 +173,190 @@ function kacakTarih($deger, string $varsayilan = ''): string
     return $ts !== false ? date('Y-m-d', $ts) : ($varsayilan !== '' ? $varsayilan : date('Y-m-d'));
 }
 
+const KACAK_EXCEL_MAX_BYTE = 10485760;
+
+const KACAK_EXCEL_MAX_SATIR = 5000;
+
+/**
+ * Excel başlık satırını sistem alan adlarına eşler. Hem KASKİ takip dosyasının
+ * hem de modülün kendi dışa aktarımının başlıkları desteklenir.
+ */
+function kacakExcelBasliklariCoz(array $satir): array
+{
+    $esler = [
+        'tarih' => ['tarih', 'islem tarihi', 'tutanak tarihi'],
+        'tutanak_no' => ['tutanak no', 'tutanakno', 'tutanak numarasi', 'tutanak'],
+        'abone_adi' => ['isim soyisim', 'abone adi', 'ad soyad', 'adi soyadi', 'abone', 'abone ismi'],
+        'sayac_no' => ['sayac no', 'sayacno', 'sayac numarasi', 'sayac'],
+        'tur' => ['tur', 'turu', 'islem turu', 'tutanak turu'],
+        'endeks' => ['endeks', 'endeks degeri'],
+        'memur' => ['islem yapan memur', 'islem yapan', 'memur', 'ekip', 'personel', 'ekip adi'],
+        'ilce' => ['ilce', 'bolge'],
+        'tutar' => ['tutar', 'tahakkuk tutari', 'ceza tutari'],
+        'kontrol_edildi' => ['kontrol edildi', 'kontrol', 'kontrol durumu'],
+        'usulsuz' => ['usulsuz', 'usulsuz mu'],
+        'teslim' => ['teslim durumu', 'teslim', 'teslim alindi'],
+        'sayi' => ['sayi', 'adet'],
+        'aciklama' => ['aciklama', 'not', 'notlar'],
+    ];
+
+    $harita = [];
+    foreach ($satir as $sutun => $baslik) {
+        $anahtar = KacakKontrolModel::adAnahtari((string) $baslik);
+        if ($anahtar === '') {
+            continue;
+        }
+        foreach ($esler as $alan => $adaylar) {
+            if (isset($harita[$alan])) {
+                continue;
+            }
+            if (in_array($anahtar, $adaylar, true)) {
+                $harita[$alan] = $sutun;
+                break;
+            }
+        }
+    }
+
+    return $harita;
+}
+
+/**
+ * Excel seri numarası veya metin tarihini Y-m-d biçimine çevirir.
+ */
+function kacakExcelTarih($deger): ?string
+{
+    $deger = trim((string) $deger);
+    if ($deger === '') {
+        return null;
+    }
+
+    if (is_numeric($deger)) {
+        try {
+            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $deger)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    $deger = preg_replace('/\s+/u', ' ', $deger);
+    foreach (['d.m.Y H:i:s', 'd.m.Y H:i', 'd.m.Y', 'd/m/Y H:i:s', 'd/m/Y H:i', 'd/m/Y', 'd-m-Y', 'Y-m-d H:i:s', 'Y-m-d'] as $bicim) {
+        $tarih = DateTime::createFromFormat($bicim, $deger);
+        if ($tarih instanceof DateTime) {
+            return $tarih->format('Y-m-d');
+        }
+    }
+
+    $ts = strtotime($deger);
+
+    return $ts !== false ? date('Y-m-d', $ts) : null;
+}
+
+/**
+ * "BÜNYAMİN ATEŞ,SAMED ARSLAN" biçimindeki memur alanını personel id listesine çevirir.
+ * Eşleşmeyen isimler ikinci sırada döner; çağıran satırı atlar.
+ */
+function kacakExcelPersonelCoz(string $ham, array $personelHaritasi): array
+{
+    $ham = trim($ham);
+    if ($ham === '') {
+        return [[], []];
+    }
+
+    $tamAnahtar = KacakKontrolModel::adAnahtari($ham);
+    if ($tamAnahtar !== '' && isset($personelHaritasi[$tamAnahtar])) {
+        return [[$personelHaritasi[$tamAnahtar]], []];
+    }
+
+    $parcalar = preg_split('/[,;\/&+]|\sve\s/u', $ham);
+    $idler = [];
+    $bulunamayan = [];
+
+    foreach ((array) $parcalar as $parca) {
+        $anahtar = KacakKontrolModel::adAnahtari((string) $parca);
+        if ($anahtar === '') {
+            continue;
+        }
+        if (isset($personelHaritasi[$anahtar])) {
+            $idler[] = $personelHaritasi[$anahtar];
+        } else {
+            $bulunamayan[] = trim((string) $parca);
+        }
+    }
+
+    return [array_values(array_unique($idler)), $bulunamayan];
+}
+
+function kacakExcelTur(string $ham): ?string
+{
+    $anahtar = KacakKontrolModel::adAnahtari($ham);
+    if ($anahtar === '') {
+        return null;
+    }
+
+    foreach (KacakKontrolModel::TURLER as $tur) {
+        if (KacakKontrolModel::adAnahtari($tur) === $anahtar) {
+            return $tur;
+        }
+    }
+
+    if (strpos($anahtar, 'abonesiz') !== false) {
+        return 'Abonesiz';
+    }
+    if (strpos($anahtar, 'usulsuz') !== false) {
+        return 'Usülsüz';
+    }
+    if (strpos($anahtar, 'kacak') !== false) {
+        return 'Kaçak';
+    }
+
+    return null;
+}
+
+/**
+ * "4.500,00 TL" / "4500.50" gibi tutar metinlerini float'a çevirir.
+ */
+function kacakExcelTutar(string $ham): ?float
+{
+    $ham = trim($ham);
+    if ($ham === '') {
+        return null;
+    }
+
+    $temiz = preg_replace('/[^0-9,.\-]/u', '', $ham);
+    if ($temiz === '' || $temiz === '-') {
+        return null;
+    }
+
+    $sonNokta = strrpos($temiz, '.');
+    $sonVirgul = strrpos($temiz, ',');
+
+    if ($sonVirgul !== false && ($sonNokta === false || $sonVirgul > $sonNokta)) {
+        $temiz = str_replace('.', '', $temiz);
+        $temiz = str_replace(',', '.', $temiz);
+    } else {
+        $temiz = str_replace(',', '', $temiz);
+    }
+
+    return is_numeric($temiz) ? (float) $temiz : null;
+}
+
+function kacakExcelEvetMi(string $ham): bool
+{
+    $anahtar = KacakKontrolModel::adAnahtari($ham);
+    if ($anahtar === '') {
+        return false;
+    }
+
+    $olumsuz = ['hayir', 'yok', '0', 'edilmedi', 'alinmadi', 'bekliyor', 'teslim edilmedi', 'kontrol edilmedi'];
+    if (in_array($anahtar, $olumsuz, true)) {
+        return false;
+    }
+
+    $olumlu = ['evet', 'var', 'x', '1', 'ok', 'e', 'edildi', 'alindi', 'teslim edildi', 'teslim alindi', 'kontrol edildi', 'tamam', 'dogru', 'true'];
+
+    return in_array($anahtar, $olumlu, true);
+}
+
 try {
     switch ($action) {
 
@@ -429,6 +613,269 @@ try {
                 count($eklenen) . ' kayıt eklendi.' . kacakMedyaUyariMetni($medyaUyarilari),
                 ['ids' => $eklenen, 'medya_uyarilari' => $medyaUyarilari]
             );
+            break;
+
+        // =====================================================
+        // EXCEL'DEN TOPLU KAYIT YÜKLEME
+        // =====================================================
+        case 'excel-yukle':
+            kacakYetkiKontrol('kacak_duzenle');
+
+            if (empty($_FILES['excelFile']) || ($_FILES['excelFile']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                kacakYanit(false, 'Geçerli bir Excel dosyası seçmelisiniz.');
+            }
+
+            $uzanti = strtolower(pathinfo((string) $_FILES['excelFile']['name'], PATHINFO_EXTENSION));
+            if (!in_array($uzanti, ['xlsx', 'xls', 'csv'], true)) {
+                kacakYanit(false, 'Yalnızca .xlsx, .xls veya .csv uzantılı dosyalar yüklenebilir.');
+            }
+
+            if ((int) $_FILES['excelFile']['size'] > KACAK_EXCEL_MAX_BYTE) {
+                kacakYanit(false, 'Dosya boyutu ' . (KACAK_EXCEL_MAX_BYTE / 1048576) . ' MB sınırını aşıyor.');
+            }
+
+            @set_time_limit(300);
+
+            try {
+                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($_FILES['excelFile']['tmp_name']);
+                $satirlar = $spreadsheet->getActiveSheet()->toArray(null, true, false, false);
+                $spreadsheet->disconnectWorksheets();
+                unset($spreadsheet);
+            } catch (\Throwable $e) {
+                error_log('Kaçak Excel okuma hatası: ' . $e->getMessage());
+                kacakYanit(false, 'Excel dosyası okunamadı. Dosyanın bozuk olmadığından emin olun.');
+            }
+
+            $baslikSatiri = null;
+            $baslikIndeks = -1;
+            foreach ($satirlar as $i => $satir) {
+                if ($i > 20) {
+                    break;
+                }
+                $harita = kacakExcelBasliklariCoz((array) $satir);
+                if (isset($harita['tutanak_no'])) {
+                    $baslikSatiri = $harita;
+                    $baslikIndeks = $i;
+                    break;
+                }
+            }
+
+            if ($baslikSatiri === null) {
+                kacakYanit(false, 'Başlık satırı bulunamadı. Dosyada "TUTANAK NO" sütunu bulunmalıdır. Örnek şablonu indirip kullanabilirsiniz.');
+            }
+
+            $eksikBaslik = [];
+            foreach (['tarih' => 'TARİH', 'ilce' => 'İLÇE', 'memur' => 'İŞLEM YAPAN MEMUR'] as $anahtar => $etiket) {
+                if (!isset($baslikSatiri[$anahtar])) {
+                    $eksikBaslik[] = $etiket;
+                }
+            }
+            if (!empty($eksikBaslik)) {
+                kacakYanit(false, 'Şu sütunlar dosyada bulunamadı: ' . implode(', ', $eksikBaslik) . '. Örnek şablonu indirip kullanabilirsiniz.');
+            }
+
+            $veriSatirlari = array_slice($satirlar, $baslikIndeks + 1, null, true);
+            unset($satirlar);
+
+            if (count($veriSatirlari) > KACAK_EXCEL_MAX_SATIR) {
+                kacakYanit(false, 'Dosyada ' . count($veriSatirlari) . ' satır var. Tek seferde en fazla ' . KACAK_EXCEL_MAX_SATIR . ' satır yüklenebilir; dosyayı bölerek deneyin.');
+            }
+
+            $mevcutTutanaklar = $Kacak->getTutanakNoHaritasi();
+            $personelHaritasi = $Kacak->getPersonelAdHaritasi();
+            $gecerliIlceler = [];
+            foreach (KacakKontrolModel::ILCELER as $gecerliIlce) {
+                $gecerliIlceler[KacakKontrolModel::adAnahtari($gecerliIlce)] = $gecerliIlce;
+            }
+
+            $hazir = [];
+            $atlanan = [];
+            $dosyaIciTutanaklar = [];
+
+            foreach ($veriSatirlari as $i => $satir) {
+                $satir = (array) $satir;
+                $satirNo = $i + 1;
+
+                $doluMu = false;
+                foreach ($satir as $hucre) {
+                    if (trim((string) $hucre) !== '') {
+                        $doluMu = true;
+                        break;
+                    }
+                }
+                if (!$doluMu) {
+                    continue;
+                }
+
+                $al = function (string $anahtar) use ($satir, $baslikSatiri) {
+                    if (!isset($baslikSatiri[$anahtar])) {
+                        return '';
+                    }
+                    return trim((string) ($satir[$baslikSatiri[$anahtar]] ?? ''));
+                };
+
+                $tutanakNo = $al('tutanak_no');
+                $tutanakAnahtar = KacakKontrolModel::tutanakAnahtari($tutanakNo);
+
+                if ($tutanakAnahtar === '') {
+                    $atlanan[] = ['satir' => $satirNo, 'tutanak_no' => '-', 'neden' => 'Tutanak numarası boş.'];
+                    continue;
+                }
+
+                if (isset($mevcutTutanaklar[$tutanakAnahtar])) {
+                    $mevcut = $mevcutTutanaklar[$tutanakAnahtar];
+                    $mevcutTarih = !empty($mevcut['tarih']) ? date('d.m.Y', strtotime($mevcut['tarih'])) : '-';
+                    $mevcutEkip = trim((string) ($mevcut['ekip_adi'] ?? ''));
+                    $atlanan[] = [
+                        'satir' => $satirNo,
+                        'tutanak_no' => $tutanakNo,
+                        'neden' => 'Mükerrer: bu tutanak sistemde zaten kayıtlı (' . $mevcutTarih . ($mevcutEkip !== '' ? ' / ' . $mevcutEkip : '') . ').',
+                    ];
+                    continue;
+                }
+
+                if (isset($dosyaIciTutanaklar[$tutanakAnahtar])) {
+                    $atlanan[] = [
+                        'satir' => $satirNo,
+                        'tutanak_no' => $tutanakNo,
+                        'neden' => 'Mükerrer: aynı tutanak numarası dosyanın ' . $dosyaIciTutanaklar[$tutanakAnahtar] . '. satırında da var.',
+                    ];
+                    continue;
+                }
+
+                $tarih = kacakExcelTarih($al('tarih'));
+                if ($tarih === null) {
+                    $atlanan[] = ['satir' => $satirNo, 'tutanak_no' => $tutanakNo, 'neden' => 'Tarih boş ya da okunamadı: "' . $al('tarih') . '"'];
+                    continue;
+                }
+
+                $ilceHam = $al('ilce');
+                $ilceAnahtar = KacakKontrolModel::adAnahtari($ilceHam);
+                if ($ilceAnahtar === '') {
+                    $atlanan[] = ['satir' => $satirNo, 'tutanak_no' => $tutanakNo, 'neden' => 'İlçe boş.'];
+                    continue;
+                }
+                if (!isset($gecerliIlceler[$ilceAnahtar])) {
+                    $atlanan[] = ['satir' => $satirNo, 'tutanak_no' => $tutanakNo, 'neden' => '"' . $ilceHam . '" geçerli bir ilçe değil.'];
+                    continue;
+                }
+                $ilce = $gecerliIlceler[$ilceAnahtar];
+
+                [$personelIds, $bulunamayanlar] = kacakExcelPersonelCoz($al('memur'), $personelHaritasi);
+                if (!empty($bulunamayanlar)) {
+                    $atlanan[] = [
+                        'satir' => $satirNo,
+                        'tutanak_no' => $tutanakNo,
+                        'neden' => 'Personel bulunamadı: ' . implode(', ', $bulunamayanlar),
+                    ];
+                    continue;
+                }
+                if (empty($personelIds)) {
+                    $atlanan[] = ['satir' => $satirNo, 'tutanak_no' => $tutanakNo, 'neden' => 'İşlem yapan memur boş.'];
+                    continue;
+                }
+
+                $usulsuzHam = $al('usulsuz');
+                $tur = kacakExcelTur($al('tur'));
+                if ($tur === null) {
+                    $usulsuzAnahtar = KacakKontrolModel::adAnahtari($usulsuzHam);
+                    $usulsuzVar = $usulsuzAnahtar !== '' && !in_array($usulsuzAnahtar, ['hayir', 'yok', '0', 'degil'], true);
+                    $tur = $usulsuzVar ? 'Usülsüz' : 'Kaçak';
+                }
+
+                $sayiHam = $al('sayi');
+                $tutarHam = $al('tutar');
+
+                $dosyaIciTutanaklar[$tutanakAnahtar] = $satirNo;
+                $hazir[] = [
+                    'satir' => $satirNo,
+                    'veri' => [
+                        'tarih' => $tarih,
+                        'personel_ids' => $personelIds,
+                        'ilce' => $ilce,
+                        'tur' => $tur,
+                        'tutanak_no' => mb_substr($tutanakNo, 0, 100, 'UTF-8'),
+                        'abone_adi' => mb_substr($al('abone_adi'), 0, 255, 'UTF-8') ?: null,
+                        'sayac_no' => mb_substr($al('sayac_no'), 0, 100, 'UTF-8') ?: null,
+                        'endeks' => mb_substr($al('endeks'), 0, 50, 'UTF-8') ?: null,
+                        'sayi' => $sayiHam !== '' ? max(1, (int) $sayiHam) : 1,
+                        'tutar' => kacakExcelTutar($tutarHam),
+                        'kontrol_edildi' => kacakExcelEvetMi($al('kontrol_edildi')) ? 1 : 0,
+                        'usulsuz_notu' => $usulsuzHam !== '' ? $usulsuzHam : null,
+                        'aciklama' => $al('aciklama') !== '' ? $al('aciklama') : null,
+                        'kaynak' => 'excel',
+                        'onay_durumu' => 'onaylandi',
+                        'onaylayan_id' => $userId,
+                        'mukerrer_kontrol' => false,
+                    ],
+                    'teslim' => kacakExcelEvetMi($al('teslim')),
+                ];
+            }
+
+            if (empty($hazir)) {
+                kacakYanit(false, 'Yüklenebilir satır bulunamadı.', [
+                    'basarili' => 0,
+                    'atlanan' => $atlanan,
+                    'atlananSayisi' => count($atlanan),
+                ]);
+            }
+
+            $eklenenIdler = [];
+            $teslimIdler = [];
+            $enEskiTarih = null;
+            $enYeniTarih = null;
+            $db = $Kacak->getDb();
+            $db->beginTransaction();
+            try {
+                foreach ($hazir as $kayit) {
+                    $yeniId = $Kacak->createRecord($kayit['veri']);
+                    $eklenenIdler[] = $yeniId;
+                    if ($kayit['teslim']) {
+                        $teslimIdler[] = $yeniId;
+                    }
+                    $satirTarihi = $kayit['veri']['tarih'];
+                    if ($enEskiTarih === null || $satirTarihi < $enEskiTarih) {
+                        $enEskiTarih = $satirTarihi;
+                    }
+                    if ($enYeniTarih === null || $satirTarihi > $enYeniTarih) {
+                        $enYeniTarih = $satirTarihi;
+                    }
+                }
+                $db->commit();
+            } catch (\Throwable $e) {
+                $db->rollBack();
+                error_log('Kaçak Excel yükleme hatası: ' . $e->getMessage());
+                kacakYanit(false, 'Kayıtlar veritabanına yazılırken hata oluştu, hiçbir satır eklenmedi.');
+            }
+
+            if (!empty($teslimIdler)) {
+                try {
+                    $Kacak->teslimAlindiIsaretle($teslimIdler, $userId);
+                } catch (\Throwable $e) {
+                    error_log('Kaçak Excel teslim işaretleme hatası: ' . $e->getMessage());
+                }
+            }
+
+            $Log->logAction(
+                $userId,
+                'Kaçak Excel Yükleme',
+                count($eklenenIdler) . ' kayıt Excel ile eklendi, ' . count($atlanan) . ' satır atlandı. Dosya: ' . $_FILES['excelFile']['name'],
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+
+            $mesaj = count($eklenenIdler) . ' kayıt yüklendi.';
+            if (!empty($atlanan)) {
+                $mesaj .= ' ' . count($atlanan) . ' satır atlandı.';
+            }
+
+            kacakYanit(true, $mesaj, [
+                'basarili' => count($eklenenIdler),
+                'atlanan' => $atlanan,
+                'atlananSayisi' => count($atlanan),
+                'teslimIsaretlenen' => count($teslimIdler),
+                'ilkTarih' => $enEskiTarih,
+                'sonTarih' => $enYeniTarih,
+            ]);
             break;
 
         case 'delete':

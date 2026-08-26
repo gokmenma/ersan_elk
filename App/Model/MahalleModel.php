@@ -21,8 +21,6 @@ class MahalleModel extends Model
         'girilmiyor' => 'Girilmiyor',
     ];
 
-    const MESAJ_BEKLEME_GUN = 5;
-
     public function __construct()
     {
         parent::__construct($this->table);
@@ -31,6 +29,18 @@ class MahalleModel extends Model
     private function firmaId(): int
     {
         return (int) ($_SESSION['firma_id'] ?? 0);
+    }
+
+    public function mesajBeklemeGun(): int
+    {
+        $stmt = $this->db->prepare("SELECT deger FROM kesme_acma_kural_degeri
+            WHERE firma_id = ? AND kural_kodu = 'mahalle_mesaj_bekleme' LIMIT 1");
+        $stmt->execute([$this->firmaId()]);
+        $deger = json_decode((string) $stmt->fetchColumn(), true);
+        if (!is_numeric($deger) || (int) $deger < 0) {
+            throw new \RuntimeException('Mahalle mesaj bekleme kuralı tanımlı değil.');
+        }
+        return (int) $deger;
     }
 
     public function listele(): array
@@ -126,7 +136,7 @@ class MahalleModel extends Model
 
     public function mesajKaydet(int $mahalleId, string $mesajTarihi, ?int $kaydedenId): array
     {
-        $hazir = date('Y-m-d', strtotime($mesajTarihi . ' +' . self::MESAJ_BEKLEME_GUN . ' day'));
+        $hazir = date('Y-m-d', strtotime($mesajTarihi . ' +' . $this->mesajBeklemeGun() . ' day'));
 
         $stmt = $this->db->prepare("INSERT INTO mahalle_mesaj
             (firma_id, mahalle_id, mesaj_tarihi, hazir_tarihi, kaydeden_id) VALUES (?, ?, ?, ?, ?)");

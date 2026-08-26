@@ -348,10 +348,10 @@ foreach ($kesintiler as $k) {
                                                             </td>
                                                             <td>
                                                                 <div class="fw-bold text-dark">
-                                                                    <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
+                                                                    <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem', ENT_QUOTES, 'UTF-8') ?>
                                                                 </div>
                                                                 <div class="text-muted small">
-                                                                    <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
+                                                                    <?= !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($k->olusturma_tarihi)) : '-' ?>
                                                                 </div>
                                                             </td>
                                                             <td>
@@ -491,10 +491,10 @@ foreach ($kesintiler as $k) {
                                     </td>
                                     <td>
                                         <div class="fw-bold text-dark">
-                                            <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
+                                            <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem', ENT_QUOTES, 'UTF-8') ?>
                                         </div>
                                         <div class="text-muted small">
-                                            <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
+                                            <?= !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($k->olusturma_tarihi)) : '-' ?>
                                         </div>
                                     </td>
                                     <td>

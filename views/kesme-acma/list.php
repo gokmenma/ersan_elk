@@ -9,6 +9,7 @@ use App\Service\Gate;
 
 $Rapor = new KesmeAcmaRaporModel();
 $Nobet = new KesmeNobetModel();
+$MahalleKural = new MahalleModel();
 $PersonelRapor = new PersonelModel();
 $TanimlamalarRapor = new TanimlamalarModel();
 
@@ -16,6 +17,7 @@ $ekipler = $Rapor->ekipler();
 $ekipUyeleri = $Rapor->ekipUyeHaritasi();
 $personeller = $Nobet->telefonHavuzu();
 $bugun = date('Y-m-d');
+$mesajBeklemeGun = $MahalleKural->mesajBeklemeGun();
 $sahaPersonelleri = $Nobet->sahaPersonelleri($bugun, array_map(function ($ekip) {
     return (int) $ekip['id'];
 }, $ekipler));
@@ -25,6 +27,7 @@ $yetkiMesaj = Gate::allows('kesme_mesaj') || Gate::isSuperAdmin();
 $yetkiAtama = Gate::allows('kesme_atama') || Gate::isSuperAdmin();
 $yetkiKalanIs = Gate::allows('kesme_kalan_is') || Gate::isSuperAdmin();
 $yetkiNobet = Gate::allows('kesme_nobet') || Gate::isSuperAdmin();
+$yetkiAnalizYonetim = Gate::allows('kesme_analiz_yonetim') || Gate::isSuperAdmin();
 
 $ekipEtiketi = function (array $ekip) use ($ekipUyeleri): string {
     $uyeler = $ekipUyeleri[(int) $ekip['id']] ?? '';
@@ -74,6 +77,11 @@ $raporAyOptions = [
     '05' => 'Mayıs', '06' => 'Haziran', '07' => 'Temmuz', '08' => 'Ağustos',
     '09' => 'Eylül', '10' => 'Ekim', '11' => 'Kasım', '12' => 'Aralık',
 ];
+$analizAyOptions = [];
+for ($i = 0; $i < 18; $i++) {
+    $anahtar = date('Y-m', strtotime("-$i month"));
+    $analizAyOptions[$anahtar] = $raporAyOptions[date('m', strtotime($anahtar . '-01'))] . ' ' . date('Y', strtotime($anahtar . '-01'));
+}
 $raporPersonelOptions = ['' => 'Tüm Personeller'];
 foreach ($PersonelRapor->all(false, 'puantaj', date('Y-m-t')) as $raporPersonel) {
     $raporPersonelOptions[$raporPersonel->id] = $raporPersonel->adi_soyadi;
@@ -306,6 +314,67 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
 
     .ka-ozet-toggle.ka-donuk i {
         transform: rotate(180deg);
+    }
+
+    /* Sekmeler Sürükle - Bırak (Drag & Drop) */
+    .nav-tabs-custom {
+        user-select: none;
+    }
+    .nav-tabs-custom .nav-item:not(.ms-auto) {
+        cursor: grab;
+        position: relative;
+        transition: transform .15s ease, opacity .15s ease;
+    }
+    .nav-tabs-custom .nav-item:not(.ms-auto):active {
+        cursor: grabbing;
+    }
+    .nav-tabs-custom .nav-item.ka-tab-dragging {
+        opacity: 0.35;
+        transform: scale(0.96);
+    }
+    .nav-tabs-custom .nav-item.ka-tab-drag-over-left::before {
+        content: '';
+        position: absolute;
+        left: -3px;
+        top: 2px;
+        bottom: 2px;
+        width: 3px;
+        background-color: var(--bs-primary, #556ee6);
+        border-radius: 3px;
+        z-index: 10;
+        pointer-events: none;
+    }
+    .nav-tabs-custom .nav-item.ka-tab-drag-over-right::after {
+        content: '';
+        position: absolute;
+        right: -3px;
+        top: 2px;
+        bottom: 2px;
+        width: 3px;
+        background-color: var(--bs-primary, #556ee6);
+        border-radius: 3px;
+        z-index: 10;
+        pointer-events: none;
+    }
+    .ka-tab-reset-btn {
+        border: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        color: var(--bs-secondary-color);
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform .2s ease, color .15s ease, border-color .15s ease;
+    }
+    .ka-tab-reset-btn:hover {
+        color: var(--bs-primary);
+        border-color: var(--bs-primary);
+    }
+    .ka-tab-reset-btn i {
+        font-size: 14px;
     }
 
     .ka-rozet {
@@ -870,6 +939,32 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
         font-size: .72rem;
         box-shadow: inset 0 0 0 1px rgba(85, 110, 230, .12);
     }
+
+    .ka-analiz-toolbar {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .ka-analiz-toolbar .form-floating{min-width:190px}
+    .ka-dashboard-bar{margin-bottom:10px}.ka-dashboard-metrikler .card{border:1px solid var(--bs-border-color)!important}.ka-analiz-metrik .card-body{padding:12px 14px}.ka-analiz-metrik strong{display:block;margin-top:7px;font-size:1.35rem;font-variant-numeric:tabular-nums}.ka-metrik-alt{font-size:.68rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ka-dashboard-kolonlar>.col-xl-8>.card,.ka-dashboard-kolonlar>.col-xl-4>.card{border:1px solid var(--bs-border-color)!important}.ka-dashboard-kolonlar .card-header{padding:13px 16px;border-bottom:1px solid var(--bs-border-color)}.ka-dashboard-kolonlar .card-header h5{font-size:.9rem}.ka-dashboard-kolonlar .card-header p{font-size:.7rem!important;margin-top:3px}.ka-dashboard-kolonlar table th{font-size:.68rem;white-space:nowrap}.ka-dashboard-kolonlar table td{font-size:.75rem}
+    .ka-analiz-grafik{min-height:220px;overflow-x:auto}.ka-analiz-grafik svg{min-width:650px}
+    .ka-uyari{border-bottom:1px solid var(--bs-border-color);padding:12px 14px}.ka-uyari:last-child{border-bottom:0}
+    .ka-uyari-puan{width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(244,106,106,.12);color:#f46a6a;font-weight:700;flex:none}
+    .ka-uyari-bulgu{font-size:.75rem;color:var(--bs-secondary-color);margin-top:4px}.ka-analiz-scroll{max-height:430px;overflow:auto}
+    .ka-kontrol-satir{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--bs-border-color);font-size:.82rem}
+    .ka-kontrol-satir:last-child{border-bottom:0}.ka-kural-grup{padding:10px 14px;background:rgba(var(--bs-primary-rgb),.07);border-bottom:1px solid var(--bs-border-color);font-size:.78rem}.ka-kural-satir{display:grid;grid-template-columns:minmax(230px,1fr) minmax(280px,420px) 90px;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--bs-border-color)}
+    .ka-kural-secimler{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.ka-kural-chip{border:1px solid var(--bs-border-color);background:var(--bs-body-bg);color:var(--bs-secondary-color);border-radius:6px;padding:5px 9px;font-size:.72rem}.ka-kural-chip.aktif{border-color:var(--bs-primary);background:rgba(var(--bs-primary-rgb),.13);color:var(--bs-primary);font-weight:600}.ka-personel-ekle-btn{border:1px dashed var(--bs-border-color);background:transparent;color:var(--bs-secondary-color);border-radius:6px;padding:5px 9px;font-size:.72rem}.ka-personel-ekle-btn:hover{border-color:var(--bs-primary);color:var(--bs-primary)}.ka-personel-ekle-alan{min-width:230px}.ka-personel-ekle-alan .select2-container{width:100%!important}.ka-kural-sabit{display:grid;grid-template-columns:38px 1fr;gap:5px;align-items:center}.ka-kural-sabit .select2-container{width:100%!important}
+    .ka-log-satir{display:grid;grid-template-columns:150px 100px 1fr 180px;gap:12px;padding:10px 14px;border-bottom:1px solid var(--bs-border-color);font-size:.8rem}
+    #pane-ka-nobet>.card>.card-body{overflow-x:auto;padding:14px 16px 18px}
+    #pane-ka-nobet .ka-takvim{min-width:760px;grid-template-columns:repeat(7,minmax(96px,1fr));gap:6px}
+    #pane-ka-nobet .ka-gun{min-height:88px;padding:8px;background:var(--bs-tertiary-bg);border-radius:9px}
+    #pane-ka-nobet .ka-gun.hafta-sonu{background:rgba(var(--bs-danger-rgb),.055);border-color:rgba(var(--bs-danger-rgb),.22)}
+    #pane-ka-nobet .ka-nobet-kutu{margin-top:1px;padding:0 18px 0 0;background:transparent;color:var(--bs-body-color);border:0;border-radius:0;text-align:left;font-size:.76rem;line-height:1.35;box-shadow:none}
+    #pane-ka-nobet .ka-nobet-kutu:hover{box-shadow:none;color:var(--bs-primary)}
+    #pane-ka-nobet .ka-nobet-kutu.canli-kayit{background:transparent;color:var(--bs-body-color);border:0}
+    #pane-ka-nobet .ka-nobet-kutu.bos-kutu{padding:5px;border:1px dashed var(--bs-border-color);border-radius:6px;text-align:center;color:var(--bs-secondary-color);background:var(--bs-body-bg)}
+    #pane-ka-nobet .ka-nobet-kutu.elle{padding:4px 20px 4px 5px;border:1px solid #f1a520!important;border-radius:6px!important;box-shadow:0 0 0 1px rgba(241,165,32,.2)!important;background:rgba(241,165,32,.06)!important}
+    #pane-ka-nobet .ka-nobet-kutu .ka-kaynak-etiket{display:none}
+    #pane-ka-nobet .ka-telefon-kutu{margin-top:7px;padding:5px 16px 0 0;border:0;border-top:1px solid var(--bs-border-color);border-radius:0;background:transparent;text-align:left;font-size:.68rem;color:var(--bs-secondary-color)}
+    #pane-ka-nobet .ka-telefon-kutu.elle{padding:5px 16px 3px 4px;border:1px solid #f1a520!important;border-radius:5px!important}
+    #pane-ka-nobet .ka-gun .gun-no{font-size:.66rem}.ka-nobet-aciklama{font-size:.72rem;color:var(--bs-secondary-color)}
+    @media(max-width:767.98px){.ka-kural-satir{grid-template-columns:1fr}.ka-kural-satir>.ka-kural-kaydet{width:100%}.ka-log-satir{grid-template-columns:1fr}.ka-analiz-toolbar .form-floating{width:100%}}
 </style>
 
 <div class="container-fluid">
@@ -901,7 +996,7 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                     <span class="ka-kart-ikon"><i class="bx bx-map-alt"></i></span>
                     <div class="ka-etiket mb-1">Atanabilir mahalle</div>
                     <div class="ka-deger text-dark" id="kaAtanabilir">-</div>
-                    <small class="text-muted">mesajı atıldı, 5 günü doldu</small>
+                    <small class="text-muted">mesajı atıldı, <?= (int) $mesajBeklemeGun ?> günü doldu</small>
                 </div>
             </div>
         </div>
@@ -934,8 +1029,17 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                 <i class="bx bx-list-ul me-1"></i> Detaylı Rapor</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-ka-matris" role="tab">
                 <i class="bx bx-table me-1"></i> Günlük İşlem</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-ka-normal" role="tab">
+                <i class="bx bx-pulse me-1"></i> Normal Değerler</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-ka-kurallar" role="tab">
+                <i class="bx bx-slider-alt me-1"></i> Kurallar</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-ka-islem-gunlugu" role="tab">
+                <i class="bx bx-history me-1"></i> İşlem Günlüğü</a></li>
         <li class="nav-item ms-auto d-flex align-items-center gap-2">
             <span class="text-muted small" id="kaSonAktarim"></span>
+            <button type="button" class="ka-tab-reset-btn" id="kaTabResetBtn" title="Sekme sırasını varsayılana döndür">
+                <i class="bx bx-reset"></i>
+            </button>
             <button type="button" class="ka-ozet-toggle" id="kaOzetToggle" title="Özet kartlarını gizle/göster">
                 <i class="bx bx-chevron-up"></i>
             </button>
@@ -945,28 +1049,33 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
     <div class="tab-content">
 
         <div class="tab-pane fade show active" id="pane-ka-dashboard">
-            <div class="row g-3">
-                <div class="col-lg-7">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-transparent border-bottom py-3">
-                            <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-bar-chart-alt-2 me-1 text-primary"></i> Bu ay yapılan işlem</h5>
-                            <p class="text-muted small mb-0 mt-1" id="kaAyOzet">Ay başından bugüne sonuçlanan iş sayısı; kırmızı sütunlar pazar günleridir.</p>
+            <div id="kaGrafik" class="d-none"></div>
+            <div class="card border-0 shadow-sm ka-dashboard-bar">
+                <div class="card-body py-2">
+                    <div class="ka-analiz-toolbar">
+                        <?= Form::FormSelect2('kaAnalizAy', $analizAyOptions, date('Y-m'), 'Analiz Ayı', 'calendar', 'key', '', 'form-select select2') ?>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="İşlem tabanı">
+                            <button type="button" class="btn btn-primary ka-analiz-baz" data-baz="olumlu">Olumlu işler</button>
+                            <button type="button" class="btn btn-outline-primary ka-analiz-baz" data-baz="tum">Tüm işlemler</button>
                         </div>
-                        <div class="card-body">
-                            <div id="kaGrafik" style="min-height:200px"></div>
-                        </div>
+                        <div class="ms-lg-auto text-lg-end"><b class="small text-dark" id="kaAnalizDonem"></b><div class="text-muted" style="font-size:.7rem">Seçili dönem · önceki ay ile karşılaştırma</div></div>
                     </div>
                 </div>
-                <div class="col-lg-5">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-transparent border-bottom py-3">
-                            <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-list-check me-1 text-primary"></i> Bugün yapılacaklar</h5>
-                            <p class="text-muted small mb-0 mt-1">Bitişine 2 iş günü kalan ekipler ve sahipsiz işler.</p>
-                        </div>
-                        <div class="card-body pt-2" id="kaYapilacaklar">
-                            <div class="text-muted small">Yükleniyor...</div>
-                        </div>
-                    </div>
+            </div>
+            <div class="row g-2 mt-1 ka-dashboard-metrikler" id="kaAnalizMetrikler"></div>
+            <div class="row g-3 mt-0 ka-dashboard-kolonlar">
+                <div class="col-xl-8 d-flex flex-column gap-3">
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent d-flex flex-wrap align-items-start gap-2"><div><h5 class="mb-0 fw-bold text-dark">Günlük iş</h5><p class="small text-muted mb-0">Pazar günleri kırmızı; seçilen taban tüm metrik ve personel değerlerine uygulanır.</p></div><span class="badge bg-light text-muted ms-auto">Seçili dönem</span></div><div class="card-body ka-analiz-grafik" id="kaAnalizGrafik"></div></div>
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark">Personel karşılaştırması</h5><p class="small text-muted mb-0">Ödeme ve kapalı sapmaları personelin çalıştığı mahallelerin geçmiş normallerine göredir.</p></div><div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Personel</th><th class="text-end">Gün</th><th class="text-end">Toplam</th><th class="text-end">Olumlu</th><th class="text-end">G. Ort.</th><th class="text-end">Δ Toplam</th><th class="text-end">Δ G. Ort.</th><th class="text-end">Ödeme</th><th class="text-end">Ödeme Sapma</th><th class="text-end">Kapalı</th><th class="text-end">Kapalı Sapma</th><th class="text-end">Sonuç %</th></tr></thead><tbody id="kaAnalizPersonel"></tbody></table></div></div>
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark">Mahalle bazında kapalı ve ödeme oranı</h5></div><div class="table-responsive ka-analiz-scroll"><table class="table table-sm mb-0"><thead class="table-light"><tr><th>Mahalle</th><th class="text-end">İş</th><th class="text-end">Kapalı %</th><th class="text-end">Ödeme %</th></tr></thead><tbody id="kaAnalizMahalle"></tbody></table></div></div>
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark">İş sonucu dağılımı</h5><p class="small text-muted mb-0">Seçili dönemde girilen sonuçların adet dağılımı.</p></div><div class="card-body ka-analiz-scroll" id="kaAnalizSonuclar"></div></div>
+                </div>
+                <div class="col-xl-4 d-flex flex-column gap-3">
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark">Bugün yapılacaklar</h5><p class="small text-muted mb-0">Bitişine 2 iş günü kalan ekipler ve sahipsiz işler.</p></div><div class="card-body pt-2" id="kaYapilacaklar"><div class="text-muted small">Yükleniyor...</div></div></div>
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent d-flex align-items-center"><div><h5 class="mb-0 fw-bold text-dark">Dikkat listesi</h5><p class="small text-muted mb-0">Mahalle normaliyle düzeltilmiş açık sinyaller.</p></div><span class="badge bg-danger ms-auto" id="kaUyariSayisi">0</span></div><div class="ka-analiz-scroll" id="kaDikkatListesi"></div></div>
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark">Veri sağlığı</h5><p class="small text-muted mb-0">Rakamları yorumlamadan önce kontrol edin.</p></div><div class="card-body small" id="kaAnalizSaglik">Yükleniyor…</div></div>
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark">Aylık kontrol listesi</h5><p class="small text-muted mb-0">Her ay yapılması gereken işler.</p></div><div id="kaKontrolListesi"></div><?php if ($yetkiAnalizYonetim): ?><div class="card-footer bg-transparent d-flex gap-2"><input type="text" class="form-control form-control-sm" id="kaKontrolYeniAd" maxlength="120" placeholder="Yeni kontrol maddesi"><button type="button" class="btn btn-primary btn-sm text-nowrap" id="kaKontrolEkle">Ekle</button></div><?php endif; ?></div>
+                    <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark">Veri kalitesi</h5><p class="small text-muted mb-0">Kişiye değil kayda ait sorunlar.</p></div><div class="card-body small" id="kaAnalizKalite"></div></div>
                 </div>
             </div>
         </div>
@@ -976,7 +1085,7 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                 <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
                         <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-map me-1 text-primary"></i> Mahalle Havuzu</h5>
-                        <p class="text-muted small mb-0 mt-1">Mahalleye önce mesaj atılır; mesajdan <b>5 gün sonra</b> "atanabilir" olur ve ekip gönderilebilir.</p>
+                        <p class="text-muted small mb-0 mt-1">Mahalleye önce mesaj atılır; mesajdan <b><?= (int) $mesajBeklemeGun ?> gün sonra</b> "atanabilir" olur ve ekip gönderilebilir.</p>
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
                         <?php if ($yetkiTanim): ?>
@@ -1163,16 +1272,14 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
         </div>
 
         <div class="tab-pane fade" id="pane-ka-nobet">
-            <div class="row g-3">
-                <div class="col-lg-8">
-                    <div class="card border-0 shadow-sm h-100">
+            <div class="card border-0 shadow-sm mb-3">
                         <div class="card-header bg-transparent border-bottom py-3">
                             <div class="row align-items-center g-2">
-                                <div class="col-md-7 col-lg-8">
+                                <div class="col-md-7 col-lg-9">
                                     <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-calendar me-1 text-primary"></i> <span id="kaNobetBaslik">Merkez Nöbeti</span></h5>
-                                    <p class="text-muted small mb-0 mt-1">Her gün 1 personel nöbetçidir; o hafta ilçeye giden ekiplerin personeli merkez nöbetine yazılmaz. Plan hafta hafta üretilir, geçmiş günlere yazılmaz ve elle değiştirilen günler (turuncu çerçeve) korunur.</p>
+                                    <p class="text-muted small mb-0 mt-1" id="kaNobetHavuzNot">Her güne bir saha ve bir telefon nöbetçisi yazılır.</p>
                                 </div>
-                                <div class="col-md-5 col-lg-4 text-md-end">
+                                <div class="col-md-5 col-lg-3 text-md-end">
                                     <div class="d-inline-flex align-items-center gap-2">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <button type="button" class="btn btn-outline-secondary" id="kaAyGeri" title="Önceki Ay"><i class="bx bx-chevron-left"></i></button>
@@ -1180,7 +1287,7 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                                         </div>
                                         <?php if ($yetkiNobet): ?>
                                             <button type="button" class="btn btn-primary btn-sm text-nowrap" id="kaBtnNobetUret">
-                                                <i class="bx bx-refresh me-1"></i> Haftalık Plan Oluştur
+                                                <i class="bx bx-refresh me-1"></i> Planı Yeniden Üret
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -1199,10 +1306,10 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                             <div class="ka-takvim mb-2" id="kaTakvimBaslik"></div>
                             <div class="ka-takvim" id="kaTakvim"></div>
                         </div>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="card border-0 shadow-sm mb-3">
+            </div>
+            <div class="row g-3">
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-transparent border-bottom py-3">
                             <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-car me-1 text-primary"></i> Haftalık İlçe Görevi</h5>
                             <p class="text-muted small mb-0 mt-1">İlçeye en uzun süredir gitmemiş ekip önce seçilir; şirket aracı kullanan personeli olan ekip gönderilmez.</p>
@@ -1221,9 +1328,10 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                                 </table>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="card border-0 shadow-sm">
+                </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-transparent border-bottom py-3">
                             <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-bar-chart-alt-2 me-1 text-primary"></i> Nöbet Dağılımı</h5>
                             <p class="text-muted small mb-0 mt-1" id="kaNobetDagilimNot">Ay içinde personel başına düşen nöbet günü; koyu bölüm hafta sonudur.</p>
@@ -1335,7 +1443,73 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
             </div>
         </div>
 
+        <div class="tab-pane fade" id="pane-ka-normal">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark"><i class="bx bx-pulse me-1 text-primary"></i> Normal Değerler</h5><p class="small text-muted mb-0 mt-1">Personelin önceki sekiz aylık günlük değerlerinden hesaplanan ortanca ve %25–%75 alışılmış aralığı. Parantez içi seçili ay değeridir.</p></div><div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Personel</th><th class="text-end">Günlük Olumlu İş</th><th class="text-end">Alışılmış Aralık</th><th class="text-end">Günlük Ödeme</th><th class="text-end">Alışılmış Aralık</th><th class="text-end">Ödeme Oranı</th><th class="text-end">Alışılmış Aralık</th></tr></thead><tbody id="kaNormalDegerler"></tbody></table></div></div>
+        </div>
+
+        <div class="tab-pane fade" id="pane-ka-kurallar">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark"><i class="bx bx-slider-alt me-1 text-primary"></i> Kural Defteri</h5><p class="small text-muted mb-0 mt-1">Nöbet, mahalle atama, ödeme kontrolü ve analiz eşikleri veritabanından okunur. Her değişiklik işlem günlüğüne yazılır.</p></div><div id="kaKuralListesi"></div></div>
+        </div>
+
+        <div class="tab-pane fade" id="pane-ka-islem-gunlugu">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-transparent"><h5 class="mb-0 fw-bold text-dark"><i class="bx bx-history me-1 text-primary"></i> İşlem Günlüğü</h5><p class="small text-muted mb-0 mt-1">Kural, uyarı, kontrol listesi ve nöbet işlemlerinin kalıcı izi.</p></div><div id="kaAnalizGunluk"></div></div>
+        </div>
+
     </div>
+    <script>
+    (function() {
+        try {
+            var nav = document.querySelector('.nav-tabs-custom');
+            if (!nav) return;
+            var msAuto = nav.querySelector('.nav-item.ms-auto');
+
+            // 1. Sekme sıralamasını render öncesi DOM'da uygula
+            var savedOrder = localStorage.getItem('ka_tab_order');
+            if (savedOrder) {
+                var order = JSON.parse(savedOrder);
+                if (Array.isArray(order) && order.length) {
+                    var items = Array.prototype.slice.call(nav.querySelectorAll('.nav-item:not(.ms-auto)'));
+                    var itemMap = {};
+                    items.forEach(function(el) {
+                        var a = el.querySelector('a.nav-link');
+                        if (a && a.getAttribute('href')) {
+                            itemMap[a.getAttribute('href')] = el;
+                        }
+                    });
+                    order.forEach(function(href) {
+                        if (itemMap[href]) {
+                            nav.insertBefore(itemMap[href], msAuto);
+                        }
+                    });
+                }
+            }
+
+            // 2. Aktif sekmeyi render öncesi ayarla (flashback / FOUC önleme)
+            var hash = window.location.hash;
+            var savedTab = localStorage.getItem('ka_active_tab');
+            var targetTab = (hash && nav.querySelector('a[href="' + hash + '"]')) ? hash : (savedTab || '');
+
+            if (targetTab && targetTab !== '#pane-ka-dashboard' && nav.querySelector('a[href="' + targetTab + '"]')) {
+                var curActiveLink = nav.querySelector('a.nav-link.active');
+                if (curActiveLink) curActiveLink.classList.remove('active');
+                var targetLink = nav.querySelector('a[href="' + targetTab + '"]');
+                if (targetLink) targetLink.classList.add('active');
+
+                var defaultPane = document.getElementById('pane-ka-dashboard');
+                if (defaultPane) defaultPane.classList.remove('show', 'active');
+                var targetPaneId = targetTab.replace('#', '');
+                var targetPane = document.getElementById(targetPaneId);
+                if (targetPane) targetPane.classList.add('show', 'active');
+            }
+        } catch(e) {}
+    })();
+    </script>
+</div>
+
+<div class="modal fade" id="kaModalUyariGerekce" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Uyarıyı Kontrol Et</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <form id="kaFormUyariGerekce"><div class="modal-body"><input type="hidden" id="kaUyariKey"><p class="small text-muted" id="kaUyariOzet"></p><div class="form-floating"><textarea class="form-control" id="kaUyariGerekce" style="height:120px" minlength="5" required></textarea><label for="kaUyariGerekce">Kontrol gerekçesi</label></div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button><button type="submit" class="btn btn-primary">Kontrol Edildi Olarak Kaydet</button></div></form>
+    </div></div>
 </div>
 
 <div class="modal fade" id="kaModalMahalle" tabindex="-1" aria-hidden="true">
@@ -1373,7 +1547,7 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                 <div class="modal-body">
                     <input type="hidden" name="mahalle_id" id="kaMesajMahalleId">
                     <p class="text-muted small">Mahalle: <b id="kaMesajMahalleAd"></b><br>
-                        Mesajdan 5 gün sonra mahalle kendiliğinden "atanabilir" duruma geçer.</p>
+                        Mesajdan <?= (int) $mesajBeklemeGun ?> gün sonra mahalle kendiliğinden "atanabilir" duruma geçer.</p>
                     <?= Form::FormDate('kaMesajTarih', date('d.m.Y'), 'Mesaj Tarihi') ?>
                 </div>
                 <div class="modal-footer">
@@ -1511,8 +1685,10 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
         mesaj: <?= $yetkiMesaj ? 'true' : 'false' ?>,
         atama: <?= $yetkiAtama ? 'true' : 'false' ?>,
         kalanIs: <?= $yetkiKalanIs ? 'true' : 'false' ?>,
-        nobet: <?= $yetkiNobet ? 'true' : 'false' ?>
+        nobet: <?= $yetkiNobet ? 'true' : 'false' ?>,
+        analiz: <?= $yetkiAnalizYonetim ? 'true' : 'false' ?>
     };
     window.kaBugun = '<?= $bugun ?>';
+    window.kaMesajBeklemeGun = <?= (int) $mesajBeklemeGun ?>;
 </script>
 <script src="views/kesme-acma/js/list.js?v=<?= @filemtime(__DIR__ . '/js/list.js') ?>"></script>

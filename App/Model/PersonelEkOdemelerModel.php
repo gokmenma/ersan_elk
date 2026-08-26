@@ -104,11 +104,11 @@ class PersonelEkOdemelerModel extends Model
 
         $sql = $this->db->prepare("
             SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi, bd.kapali_mi,
-                   p.adi_soyadi as kayit_yapan_ad_soyad
+                   COALESCE(u.adi_soyadi, u.user_name) as kayit_yapan_ad_soyad
             FROM {$this->table} peo
             LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
             LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
-            LEFT JOIN personel p ON peo.kayit_yapan = p.id
+            LEFT JOIN users u ON peo.kayit_yapan = u.id
             WHERE {$where}
             ORDER BY peo.tekrar_tipi DESC, peo.baslangic_donemi DESC, peo.donem_id DESC, peo.created_at DESC
         ");
