@@ -1652,7 +1652,6 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         yeniDosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob, cekim: tutanak.cekim || '' }];
                     }
 
-                    const mevcuttan = bekleyenKayitlar.find(x => x.uuid === kacakKuyrukEditUuid);
                     const eskiEkAdet = mevcuttan ? (mevcuttan.ekDosyalar || []).length : 0;
 
                     // Düzenleme sırasında seçilen saha fotoğrafları kuyruğa eklenmezse
