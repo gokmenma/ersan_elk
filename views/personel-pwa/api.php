@@ -4806,6 +4806,12 @@ try {
             ], $kacakId);
             if ($duplicate) response(false, null, 'Tutanak veya sayaç bilgisi başka bir kayıtta zaten bulunuyor.');
 
+            $hasExistingTutanak = $KacakModel->countPhotos($kacakId, 'tutanak') > 0;
+            $hasNewTutanak = !empty($_FILES['tutanak_foto']['name']) && ($_FILES['tutanak_foto']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+            if (!$hasExistingTutanak && !$hasNewTutanak) {
+                response(false, null, 'Kaçak bildirimi için tutanak fotoğrafı yüklenmesi zorunludur.');
+            }
+
             $ok = $KacakModel->updatePendingByReporter($kacakId, (int) $personel_id, [
                 'tarih' => $tarih, 'personel_ids' => [(int) $personel_id, $ekipArkadasiId],
                 'ilce' => $ilce, 'tur' => $_POST['tur'] ?? 'Kaçak',
@@ -4891,6 +4897,12 @@ try {
             }
             if ($kayit['onay_durumu'] !== 'beklemede' || $kayit['durum'] === 'iptal') {
                 response(false, null, 'Yalnızca onay bekleyen aktif kayıtların fotoğrafları silinebilir.');
+            }
+            if (($foto['tur'] ?? '') === 'tutanak') {
+                $tutanakSayisi = $KacakModel->countPhotos($kacakId, 'tutanak');
+                if ($tutanakSayisi <= 1) {
+                    response(false, null, 'Kaçak bildiriminde tutanak fotoğrafı zorunludur, son tutanak fotoğrafını silemezsiniz.');
+                }
             }
             if ($KacakModel->deletePhoto($fotoId)) {
                 response(true, ['foto_id' => $fotoId], 'Fotoğraf silindi.');
@@ -5180,11 +5192,14 @@ try {
                 response(false, null, 'Lütfen geçerli bir ilçe seçin.');
             }
 
-            if (empty($_FILES['tutanak_foto']['name'])) {
+            if (empty($_FILES['tutanak_foto']['name']) || ($_FILES['tutanak_foto']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
                 if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
                     response(false, null, 'Tutanak fotoğrafının boyutu sunucu yükleme sınırını aşıyor.');
                 }
-                response(false, null, 'Tutanak fotoğrafı zorunludur.');
+                if (!empty($_FILES['tutanak_foto']['error']) && $_FILES['tutanak_foto']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    response(false, null, 'Tutanak fotoğrafı yüklenemedi (Hata kodu: ' . $_FILES['tutanak_foto']['error'] . '). Lütfen tekrar deneyin.');
+                }
+                response(false, null, 'Kaçak bildirimi yapabilmek için tutanak fotoğrafı / resim yüklenmesi zorunludur.');
             }
 
             $kacakTarih = !empty($_POST['tarih']) && strtotime($_POST['tarih'])

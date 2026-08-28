@@ -1339,14 +1339,48 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?ar
     $eklenen = 0;
     $uyarilar = [];
 
+    $tutanakFiles = [];
     if (!empty($_FILES['tutanak_foto']['name'])) {
+        if (is_array($_FILES['tutanak_foto']['name'])) {
+            foreach ($_FILES['tutanak_foto']['name'] as $i => $ad) {
+                if (!empty($ad) && ($_FILES['tutanak_foto']['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                    $tutanakFiles[] = [
+                        'name' => $ad,
+                        'tmp_name' => $_FILES['tutanak_foto']['tmp_name'][$i],
+                        'error' => $_FILES['tutanak_foto']['error'][$i],
+                        'size' => $_FILES['tutanak_foto']['size'][$i],
+                        'cekim' => $_POST['tutanak_foto_cekim'][$i] ?? null,
+                    ];
+                }
+            }
+        } else if (($_FILES['tutanak_foto']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $tutanakFiles[] = [
+                'name' => $_FILES['tutanak_foto']['name'],
+                'tmp_name' => $_FILES['tutanak_foto']['tmp_name'],
+                'error' => $_FILES['tutanak_foto']['error'],
+                'size' => $_FILES['tutanak_foto']['size'],
+                'cekim' => $_POST['tutanak_foto_cekim'] ?? null,
+            ];
+        }
+    }
+    if (!empty($_FILES['tutanak_file']['name']) && ($_FILES['tutanak_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $tutanakFiles[] = [
+            'name' => $_FILES['tutanak_file']['name'],
+            'tmp_name' => $_FILES['tutanak_file']['tmp_name'],
+            'error' => $_FILES['tutanak_file']['error'],
+            'size' => $_FILES['tutanak_file']['size'],
+            'cekim' => null,
+        ];
+    }
+
+    foreach ($tutanakFiles as $tf) {
         try {
-            $yol = $Kacak->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak', $cekim);
-            $Kacak->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], null, $userId, null,
-                KacakKontrolModel::cekimBilgisiCoz($cekim, $_POST['tutanak_foto_cekim'] ?? null));
+            $yol = $Kacak->storeUploadedFile($tf, $kacakId, 'tutanak', $cekim);
+            $Kacak->addPhoto($kacakId, 'tutanak', $yol, $tf['name'], null, $userId, null,
+                KacakKontrolModel::cekimBilgisiCoz($cekim, $tf['cekim']));
             $eklenen++;
         } catch (\Throwable $e) {
-            error_log('Kaçak tutanak fotoğrafı yüklenemedi: ' . $e->getMessage());
+            error_log('Kaçak tutanak belgesi yüklenemedi: ' . $e->getMessage());
         }
     }
 

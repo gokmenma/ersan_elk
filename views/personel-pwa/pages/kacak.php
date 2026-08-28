@@ -116,7 +116,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <span class="text-xs font-bold text-slate-500 uppercase">Tutanak Fotoğrafı</span>
-                    <span id="kacak-tutanak-required" class="text-xs text-slate-400">Zorunlu</span>
+                    <span id="kacak-tutanak-required" class="text-xs text-red-500 font-bold">Zorunlu</span>
                 </div>
 
                 <input type="file" id="kacak-tutanak-input" accept="image/*,application/pdf" style="display:none">
@@ -864,9 +864,18 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             kacakEditToken = editData?.edit_token || null;
             kacakKuyrukEditUuid = null;
             document.getElementById('kacak-form-title').textContent = editData ? 'Kaçak Tutanağını Düzenle' : 'Kaçak Tutanağı Bildir';
-            document.getElementById('kacak-tutanak-required').textContent = editData ? 'Yeni belge isteğe bağlı' : 'Zorunlu';
+            const reqLabel = document.getElementById('kacak-tutanak-required');
+            if (reqLabel) {
+                reqLabel.textContent = editData ? 'Yeni belge isteğe bağlı' : 'Zorunlu';
+                reqLabel.className = editData ? 'text-xs text-slate-400' : 'text-xs text-red-500 font-bold';
+            }
             document.getElementById('kacak-submit-text').textContent = editData ? 'DEĞİŞİKLİKLERİ KAYDET' : 'BİLDİRİMİ GÖNDER';
             document.getElementById('kacak-tutanak-input').value = '';
+            document.getElementById('kacak-tutanak-camera-input').value = '';
+            document.getElementById('kacak-saha-input').value = '';
+            document.getElementById('kacak-saha-camera-input').value = '';
+            document.getElementById('kacak-video-input').value = '';
+            document.getElementById('kacak-video-camera-input').value = '';
             document.getElementById('kacak-tutanak-label').textContent = 'Fotoğraf Seç';
             document.getElementById('kacak-tutanak-preview').style.display = 'none';
             aiButonGuncelle();
@@ -995,7 +1004,16 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         // ----- Tutanak seçimi -----
         function handleTutanakFileSelect(e) {
-            const file = e.target.files[0];
+            const file = e.target.files && e.target.files[0];
+            if (file) {
+                if (e.target.id === 'kacak-tutanak-input') {
+                    const cam = document.getElementById('kacak-tutanak-camera-input');
+                    if (cam) cam.value = '';
+                } else if (e.target.id === 'kacak-tutanak-camera-input') {
+                    const inp = document.getElementById('kacak-tutanak-input');
+                    if (inp) inp.value = '';
+                }
+            }
             aiButonGuncelle();
             if (!file) {
                 document.getElementById('kacak-tutanak-label').textContent = 'Belge Seçilmedi';
@@ -1540,7 +1558,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             const tutanakSelectedFile = (tutanakInput.files && tutanakInput.files[0]) || (tutanakCamInput.files && tutanakCamInput.files[0]);
 
             if (!kacakEditToken && !tutanakSelectedFile) {
-                return Alert.warning('Tutanak Zorunlu', 'Lütfen tutanağın fotoğrafını çekin veya ekleyin.');
+                return Alert.warning('Resim Yükleme Zorunlu', 'Kaçak işlemi bildirirken tutanak fotoğrafı / resim yüklemek zorunludur. Lütfen fotoğraf çekin veya galeriden seçin.');
             }
             if (!window.OfflineQueue) {
                 return Alert.error('Hata', 'Uygulama bileşenleri yüklenemedi, sayfayı yenileyin.');
@@ -1574,6 +1592,14 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             try {
                 if (kacakEditToken) {
                     if (!cevrimici()) return Alert.warning('Bağlantı Gerekli', 'Kayıt düzenleme işlemi çevrimiçi yapılabilir.');
+
+                    const mevcutTutanak = document.getElementById('mevcut-tutanak-card');
+                    if (!mevcutTutanak && !tutanakSelectedFile) {
+                        btn.disabled = false;
+                        btnText.textContent = 'DEĞİŞİKLİKLERİ KAYDET';
+                        return Alert.warning('Resim Yükleme Zorunlu', 'Kayıtta tutanak fotoğrafı bulunmuyor. Lütfen tutanak fotoğrafı yükleyin.');
+                    }
+
                     const fd = new FormData(this);
                     fd.append('action', 'updateKacakBildirim');
                     fd.append('edit_token', kacakEditToken);
@@ -1608,13 +1634,21 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 }
 
                 if (kacakKuyrukEditUuid) {
+                    const mevcuttan = bekleyenKayitlar.find(x => x.uuid === kacakKuyrukEditUuid);
+                    const eskiTutanakVar = mevcuttan && mevcuttan.dosyalar && mevcuttan.dosyalar.some(d => d.alan === 'tutanak_foto');
+                    if (!tutanakSelectedFile && !eskiTutanakVar) {
+                        btn.disabled = false;
+                        btnText.textContent = 'DEĞİŞİKLİKLERİ KAYDET';
+                        return Alert.warning('Resim Yükleme Zorunlu', 'Kaçak bildirimi için tutanak fotoğrafı yüklemek zorunludur.');
+                    }
+
                     const alanlar = {};
                     new FormData(this).forEach((deger, ad) => { alanlar[ad] = deger; });
                     alanlar.client_uuid = kacakKuyrukEditUuid;
 
                     let yeniDosyalar = null;
-                    if (tutanakInput.files && tutanakInput.files[0]) {
-                        const tutanak = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
+                    if (tutanakSelectedFile) {
+                        const tutanak = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
                         yeniDosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob, cekim: tutanak.cekim || '' }];
                     }
 

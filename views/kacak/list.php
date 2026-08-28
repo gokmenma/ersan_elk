@@ -217,6 +217,47 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         font-size: 13px;
     }
 
+    .kacak-upload-btn-card {
+        width: 92px;
+        min-height: 120px;
+        border: 2px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        cursor: pointer;
+        padding: 8px 6px;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    [data-bs-theme="dark"] .kacak-upload-btn-card {
+        background: #1e293b;
+        border-color: #475569;
+    }
+    .kacak-upload-btn-card:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
+        transform: translateY(-2px);
+    }
+    [data-bs-theme="dark"] .kacak-upload-btn-card:hover {
+        background: #1e3a8a33;
+        border-color: #60a5fa;
+    }
+    .kacak-upload-btn-card.video-card:hover {
+        border-color: #ef4444;
+        background: #fef2f2;
+    }
+    [data-bs-theme="dark"] .kacak-upload-btn-card.video-card:hover {
+        background: #7f1d1d33;
+        border-color: #f87171;
+    }
+    .kacak-upload-btn-card.tutanak-card:hover {
+        border-color: #f59e0b;
+        background: #fffbeb;
+    }
+    [data-bs-theme="dark"] .kacak-upload-btn-card.tutanak-card:hover {
+        background: #78350f33;
+        border-color: #fbbf24;
+    }
+
     /* Çekim ile yükleme arasında uzun boşluk olan fotoğrafları öne çıkarır. */
     @keyframes kacakGecikmeNabzi {
         0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, .85); }
@@ -908,10 +949,10 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <?= Form::FormDate('tarih', Date::today(), 'Tarih') ?>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <?= Form::FormMultipleSelect2(
                                 name: 'kacak_personel_ids',
                                 options: $personelOptions,
@@ -924,33 +965,6 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                 required: true,
                                 id: 'kacak_personel_ids'
                             ) ?>
-                        </div>
-                        <div class="col-md-4">
-                            <?= Form::FormFileInput(
-                                name: 'saha_fotolari[]',
-                                label: 'Saha Fotoğrafları (en fazla ' . KacakKontrolModel::MAX_SAHA_FOTO . ')',
-                                icon: 'image',
-                                class: 'form-control',
-                                attributes: 'multiple accept="image/*"',
-                                id: 'saha_fotolari'
-                            ) ?>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <?= Form::FormFileInput(
-                                name: 'videolar[]',
-                                label: 'Video (en fazla ' . KacakKontrolModel::MAX_VIDEO . ' adet, ' . KacakKontrolModel::VIDEO_MAX_SURE . ' saniye)',
-                                icon: 'video',
-                                class: 'form-control',
-                                attributes: 'multiple accept="video/*"',
-                                id: 'kacak_videolar'
-                            ) ?>
-                            <small class="text-muted d-block mt-1">Her video en fazla
-                                <?= KacakKontrolModel::VIDEO_MAX_SURE ?> saniye ve
-                                <?= round(KacakKontrolModel::videoYuklemeSiniri() / 1048576) ?> MB olabilir.</small>
-                            <div id="kacakVideoPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
                     </div>
 
@@ -1002,18 +1016,52 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         </template>
                     </div>
 
-                    <div id="mevcutFotolarBolumu" class="accordion mt-3 d-none">
+                    <!-- Gizli dosya inputları -->
+                    <input type="file" id="tutanak_foto" name="tutanak_foto[]" multiple accept="image/*,application/pdf" class="d-none">
+                    <input type="file" id="saha_fotolari" name="saha_fotolari[]" multiple accept="image/*" class="d-none">
+                    <input type="file" id="kacak_videolar" name="videolar[]" multiple accept="video/*" class="d-none">
+
+                    <div id="mevcutFotolarBolumu" class="accordion mt-3">
                         <div class="accordion-item border rounded-3 overflow-hidden">
                             <h2 class="accordion-header" id="headingFotolar">
-                                <button class="accordion-button collapsed py-2 px-3 bg-light fw-semibold text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFotolar" aria-expanded="false" aria-controls="collapseFotolar">
+                                <button class="accordion-button py-2 px-3 bg-light fw-semibold text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFotolar" aria-expanded="true" aria-controls="collapseFotolar">
                                     <i class="bx bx-images me-2 fs-5"></i>
                                     <span>Yüklü Belgeler ve Görseller</span>
                                     <span class="badge bg-primary rounded-pill ms-2" id="fotoSayisiBadge">0</span>
                                 </button>
                             </h2>
-                            <div id="collapseFotolar" class="accordion-collapse collapse" aria-labelledby="headingFotolar">
+                            <div id="collapseFotolar" class="accordion-collapse collapse show" aria-labelledby="headingFotolar">
                                 <div class="accordion-body p-3">
-                                    <div class="d-flex flex-wrap gap-3" id="mevcutFotolar"></div>
+                                    <div class="d-flex flex-wrap gap-3 align-items-start" id="mevcutFotolar">
+                                        <div id="mevcutFotolarListesi" class="d-flex flex-wrap gap-3"></div>
+                                        <div id="yeniTutanaklarPreview" class="d-flex flex-wrap gap-3"></div>
+                                        <div id="yeniFotolarPreview" class="d-flex flex-wrap gap-3"></div>
+                                        <div id="yeniVideolarPreview" class="d-flex flex-wrap gap-3"></div>
+
+                                        <!-- Tutanak Ekle Kartı -->
+                                        <div id="btnTutanakSecCard" class="kacak-upload-btn-card tutanak-card text-center d-flex flex-column align-items-center justify-content-center" role="button" title="Tutanak Belgesi / Fotoğrafı Seç (Görsel veya PDF)">
+                                            <i class="bx bx-file-blank fs-2 text-warning"></i>
+                                            <span class="fw-bold text-warning mt-1" style="font-size:0.72rem;">Tutanak Ekle</span>
+                                            <span class="text-muted" style="font-size:0.62rem;">Görsel / PDF</span>
+                                        </div>
+
+                                        <!-- Fotoğraf Ekle Kartı -->
+                                        <div id="btnFotoSecCard" class="kacak-upload-btn-card text-center d-flex flex-column align-items-center justify-content-center" role="button" title="Saha Fotoğrafı Seç (en fazla <?= KacakKontrolModel::MAX_SAHA_FOTO ?> adet)">
+                                            <i class="bx bx-camera-plus fs-2 text-primary"></i>
+                                            <span class="fw-bold text-primary mt-1" style="font-size:0.72rem;">Fotoğraf Ekle</span>
+                                            <span class="text-muted" style="font-size:0.62rem;">Max <?= KacakKontrolModel::MAX_SAHA_FOTO ?> adet</span>
+                                        </div>
+
+                                        <!-- Video Ekle Kartı -->
+                                        <div id="btnVideoSecCard" class="kacak-upload-btn-card video-card text-center d-flex flex-column align-items-center justify-content-center" role="button" title="Video Seç (en fazla <?= KacakKontrolModel::MAX_VIDEO ?> adet, <?= KacakKontrolModel::VIDEO_MAX_SURE ?> sn)">
+                                            <i class="bx bx-video-plus fs-2 text-danger"></i>
+                                            <span class="fw-bold text-danger mt-1" style="font-size:0.72rem;">Video Ekle</span>
+                                            <span class="text-muted" style="font-size:0.62rem;">Max <?= KacakKontrolModel::MAX_VIDEO ?> adet, <?= KacakKontrolModel::VIDEO_MAX_SURE ?>sn</span>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-2" style="font-size:0.75rem;">
+                                        <i class="bx bx-info-circle me-1"></i>Tutanak belgesi (PDF veya JPEG/PNG), saha fotoğrafları (en fazla <?= KacakKontrolModel::MAX_SAHA_FOTO ?> adet), videolar ise en fazla <?= KacakKontrolModel::VIDEO_MAX_SURE ?> saniye ve <?= round(KacakKontrolModel::videoYuklemeSiniri() / 1048576) ?> MB olabilir.
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -1357,6 +1405,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         const VIDEO_MAX_BYTE = <?= KacakKontrolModel::videoYuklemeSiniri() ?>;
         const CEKIM_GECIKME_DK = <?= KacakKontrolModel::CEKIM_GECIKME_DK ?>;
         const BILDIRIM_KACAK_ID = <?= json_encode($bildirimKacakId) ?>;
+        let kacakSeciliTutanaklar = [];
+        let kacakSeciliFotolar = [];
         let kacakSeciliVideolar = [];
         const YETKI = {
             duzenle: <?= $yetkiDuzenle ? 'true' : 'false' ?>,
@@ -1918,23 +1968,37 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             }
         });
 
+        function badgeGuncelle() {
+            const mevcutYuklu = $('#mevcutFotolarListesi .kacak-foto-item').length;
+            const yeniTutanak = kacakSeciliTutanaklar.length;
+            const yeniFoto = kacakSeciliFotolar.length;
+            const yeniVideo = kacakSeciliVideolar.length;
+            const toplam = mevcutYuklu + yeniTutanak + yeniFoto + yeniVideo;
+            $('#fotoSayisiBadge').text(toplam);
+        }
+
         // ---------- MODAL: AÇ / KAYDET ----------
         function modalSifirla() {
             $('#kacakForm')[0].reset();
             $('#kacak_id').val(0);
             $('#kacakSatirlar').empty();
-            $('#mevcutFotolarBolumu').addClass('d-none');
-            $('#collapseFotolar').removeClass('show');
-            $('#headingFotolar .accordion-button').addClass('collapsed').attr('aria-expanded', 'false');
-            $('#mevcutFotolar').empty().removeData('fotolar').removeData('kacak-id').removeData('loaded');
-            $('#fotoSayisiBadge').text('0');
+            $('#mevcutFotolarBolumu').removeClass('d-none');
+            $('#collapseFotolar').addClass('show');
+            $('#headingFotolar .accordion-button').removeClass('collapsed').attr('aria-expanded', 'true');
+            $('#mevcutFotolarListesi').empty().removeData('fotolar').removeData('kacak-id').removeData('loaded');
+            $('#yeniTutanaklarPreview').empty();
+            $('#yeniFotolarPreview').empty();
+            $('#yeniVideolarPreview').empty();
+            kacakSeciliTutanaklar = [];
+            kacakSeciliFotolar = [];
+            kacakSeciliVideolar = [];
+            badgeGuncelle();
             $('#kacak_personel_ids').val(null).trigger('change');
 
             // Video ve dosya alanlarını tam temizle
-            kacakSeciliVideolar = [];
-            $('#kacakVideoPreview').empty();
-            $('#kacak_videolar').val('');
+            $('#tutanak_foto').val('');
             $('#saha_fotolari').val('');
+            $('#kacak_videolar').val('');
             $('#tutanak_file').val('');
         }
 
@@ -1964,21 +2028,15 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $('#kacak_personel_ids').val(k.personel_ids_array).trigger('change');
                 satirEkle(k);
                 const fotolar = k.fotograflar || [];
+                const $target = $('#mevcutFotolarListesi');
+                $target.empty()
+                    .data('fotolar', fotolar)
+                    .data('kacak-id', k.id)
+                    .data('loaded', true);
                 if (fotolar.length > 0) {
-                    $('#mevcutFotolarBolumu').removeClass('d-none');
-                    $('#fotoSayisiBadge').text(fotolar.length);
-                    $('#collapseFotolar').addClass('show');
-                    $('#headingFotolar .accordion-button').removeClass('collapsed').attr('aria-expanded', 'true');
-                    const $target = $('#mevcutFotolar');
-                    $target.empty()
-                        .data('fotolar', fotolar)
-                        .data('kacak-id', k.id)
-                        .data('loaded', true);
                     fotolariBas($target, fotolar, k.id);
-                } else {
-                    $('#mevcutFotolarBolumu').addClass('d-none');
-                    $('#collapseFotolar').removeClass('show');
                 }
+                badgeGuncelle();
 
                 // Onay bekleyen (mobil) bildirimlerde düzelt-ve-onayla akışı
                 const onayBekliyor = k.onay_durumu === 'beklemede';
@@ -2025,8 +2083,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             const form = document.getElementById('kacakForm');
             if (!form.reportValidity()) return;
 
-            const sahaInput = document.getElementById('saha_fotolari');
-            if (sahaInput && sahaInput.files.length > MAX_SAHA_FOTO) {
+            const mevcutYuklu = $('#mevcutFotolarListesi .kacak-foto-item').length;
+            if (mevcutYuklu + kacakSeciliFotolar.length > MAX_SAHA_FOTO) {
                 Swal.fire('Uyarı', `En fazla ${MAX_SAHA_FOTO} saha fotoğrafı yükleyebilirsiniz.`, 'warning');
                 return;
             }
@@ -2038,26 +2096,49 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             const $butonlar = $('#kacakForm button[type="submit"], #btnKaydetVeOnayla');
             $butonlar.prop('disabled', true);
 
-            // Ham fotoğraflar sunucuya gitmeden önce küçültülür; sıkıştırıcı yüklenemezse
-            // dosyalar olduğu gibi gider ve sunucu tarafındaki optimizasyon devreye girer.
-            if (window.ResimSikistir && sahaInput && sahaInput.files.length) {
-                try {
-                    // Çekim anı küçültmede kaybolacağı için ham dosyalardan önceden okunur.
-                    const cekimler = await Promise.all(Array.from(sahaInput.files).map(cekimOku));
-                    const kucukler = await window.ResimSikistir.listeyiKucult(sahaInput.files, 1600, 0.75);
-                    fd.delete('saha_fotolari[]');
-                    kucukler.forEach((dosya, i) => {
-                        fd.append('saha_fotolari[]', dosya, dosya.name);
-                        fd.append('saha_fotolari_cekim[]', cekimler[i] || '');
-                    });
-                } catch (hata) {
-                    console.error('Fotoğraf küçültme başarısız, orijinal dosyalar gönderiliyor:', hata);
+            // Tutanak dosyaları
+            fd.delete('tutanak_foto[]');
+            if (kacakSeciliTutanaklar && kacakSeciliTutanaklar.length > 0) {
+                if (window.ResimSikistir) {
+                    try {
+                        const cekimler = await Promise.all(kacakSeciliTutanaklar.map(cekimOku));
+                        const kucukler = await window.ResimSikistir.listeyiKucult(kacakSeciliTutanaklar, 2200, 0.82);
+                        kucukler.forEach((dosya, i) => {
+                            fd.append('tutanak_foto[]', dosya, dosya.name);
+                            fd.append('tutanak_foto_cekim[]', cekimler[i] || '');
+                        });
+                    } catch (hata) {
+                        console.error('Tutanak küçültme başarısız, orijinal dosyalar gönderiliyor:', hata);
+                        kacakSeciliTutanaklar.forEach(f => fd.append('tutanak_foto[]', f, f.name));
+                    }
+                } else {
+                    kacakSeciliTutanaklar.forEach(f => fd.append('tutanak_foto[]', f, f.name));
+                }
+            }
+
+            // Saha Fotoğrafları
+            fd.delete('saha_fotolari[]');
+            if (kacakSeciliFotolar && kacakSeciliFotolar.length > 0) {
+                if (window.ResimSikistir) {
+                    try {
+                        const cekimler = await Promise.all(kacakSeciliFotolar.map(cekimOku));
+                        const kucukler = await window.ResimSikistir.listeyiKucult(kacakSeciliFotolar, 1600, 0.75);
+                        kucukler.forEach((dosya, i) => {
+                            fd.append('saha_fotolari[]', dosya, dosya.name);
+                            fd.append('saha_fotolari_cekim[]', cekimler[i] || '');
+                        });
+                    } catch (hata) {
+                        console.error('Fotoğraf küçültme başarısız, orijinal dosyalar gönderiliyor:', hata);
+                        kacakSeciliFotolar.forEach(f => fd.append('saha_fotolari[]', f, f.name));
+                    }
+                } else {
+                    kacakSeciliFotolar.forEach(f => fd.append('saha_fotolari[]', f, f.name));
                 }
             }
 
             // Videolar seçim anında doğrulanmıştı; eğer istemcide işlendiyse süre ve kapak karesi ile gönderilir
+            fd.delete('videolar[]');
             if (kacakSeciliVideolar && kacakSeciliVideolar.length > 0) {
-                fd.delete('videolar[]');
                 kacakSeciliVideolar.forEach(v => {
                     fd.append('videolar[]', v.dosya, v.dosya.name);
                     fd.append('video_cekimleri[]', v.cekim || '');
@@ -2110,22 +2191,126 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             if (ekipOzetYuklendi) ekipOzetiYukle();
         }
 
-        $('#kacak_videolar').on('change', async function () {
-            const onizleme = $('#kacakVideoPreview');
-            onizleme.empty();
-            kacakSeciliVideolar = [];
+        // Tutanak Ekle kartına tıklama
+        $('#btnTutanakSecCard').on('click', function () {
+            $('#tutanak_foto').trigger('click');
+        });
 
-            if (this.files.length > MAX_VIDEO) {
-                Swal.fire('Uyarı', `En fazla ${MAX_VIDEO} video seçebilirsiniz.`, 'warning');
-                this.value = '';
-                return;
+        // Fotoğraf Ekle kartına tıklama
+        $('#btnFotoSecCard').on('click', function () {
+            $('#saha_fotolari').trigger('click');
+        });
+
+        // Video Ekle kartına tıklama
+        $('#btnVideoSecCard').on('click', function () {
+            $('#kacak_videolar').trigger('click');
+        });
+
+        // Tutanak seçimi
+        $('#tutanak_foto').on('change', function () {
+            const files = Array.from(this.files || []);
+            if (!files.length) return;
+
+            for (const f of files) {
+                kacakSeciliTutanaklar.push(f);
+            }
+            this.value = '';
+            yeniTutanaklariCiz();
+        });
+
+        function yeniTutanaklariCiz() {
+            const $container = $('#yeniTutanaklarPreview');
+            $container.empty();
+            kacakSeciliTutanaklar.forEach((file, idx) => {
+                const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                const thumb = isPdf
+                    ? `<div class="kacak-foto-thumb d-flex align-items-center justify-content-center bg-light"><i class="bx bxs-file-pdf fs-1 text-danger"></i></div>`
+                    : `<img src="${URL.createObjectURL(file)}" class="kacak-foto-thumb" loading="lazy" alt="${esc(file.name)}">`;
+
+                $container.append(`
+                    <div class="kacak-foto-item text-center">
+                        ${thumb}
+                        <button type="button" class="btn btn-danger btn-sm btn-yeni-tutanak-sil" data-idx="${idx}" title="Kaldır">
+                            <i class="bx bx-x"></i>
+                        </button>
+                        <div class="small text-muted mt-1 text-truncate" style="max-width:92px;" title="${esc(file.name)}">${esc(file.name)}</div>
+                        <span class="badge bg-warning text-dark" style="font-size:.6rem">Yeni Tutanak</span>
+                    </div>
+                `);
+            });
+            badgeGuncelle();
+        }
+
+        $(document).on('click', '.btn-yeni-tutanak-sil', function () {
+            const idx = parseInt($(this).data('idx'), 10);
+            if (!isNaN(idx) && idx >= 0 && idx < kacakSeciliTutanaklar.length) {
+                kacakSeciliTutanaklar.splice(idx, 1);
+                yeniTutanaklariCiz();
+            }
+        });
+
+        // Fotoğraf seçimi
+        $('#saha_fotolari').on('change', function () {
+            const files = Array.from(this.files || []);
+            if (!files.length) return;
+
+            const mevcutYuklu = $('#mevcutFotolarListesi .kacak-foto-item').length;
+            if (mevcutYuklu + kacakSeciliFotolar.length + files.length > MAX_SAHA_FOTO) {
+                Swal.fire('Uyarı', `En fazla ${MAX_SAHA_FOTO} saha fotoğrafı ekleyebilirsiniz. (Mevcut: ${mevcutYuklu + kacakSeciliFotolar.length}, Eklenmek istenen: ${files.length})`, 'warning');
             }
 
-            onizleme.html('<span class="text-muted small">Videolar kontrol ediliyor...</span>');
+            for (const f of files) {
+                if (mevcutYuklu + kacakSeciliFotolar.length >= MAX_SAHA_FOTO) break;
+                kacakSeciliFotolar.push(f);
+            }
+            this.value = '';
+            yeniFotolariCiz();
+        });
+
+        function yeniFotolariCiz() {
+            const $container = $('#yeniFotolarPreview');
+            $container.empty();
+            kacakSeciliFotolar.forEach((file, idx) => {
+                const objUrl = URL.createObjectURL(file);
+                $container.append(`
+                    <div class="kacak-foto-item text-center">
+                        <img src="${objUrl}" class="kacak-foto-thumb" loading="lazy" alt="${esc(file.name)}">
+                        <button type="button" class="btn btn-danger btn-sm btn-yeni-foto-sil" data-idx="${idx}" title="Kaldır">
+                            <i class="bx bx-x"></i>
+                        </button>
+                        <div class="small text-muted mt-1 text-truncate" style="max-width:92px;" title="${esc(file.name)}">${esc(file.name)}</div>
+                        <span class="badge bg-success" style="font-size:.6rem">Yeni Saha</span>
+                    </div>
+                `);
+            });
+            badgeGuncelle();
+        }
+
+        $(document).on('click', '.btn-yeni-foto-sil', function () {
+            const idx = parseInt($(this).data('idx'), 10);
+            if (!isNaN(idx) && idx >= 0 && idx < kacakSeciliFotolar.length) {
+                kacakSeciliFotolar.splice(idx, 1);
+                yeniFotolariCiz();
+            }
+        });
+
+        // Video seçimi
+        $('#kacak_videolar').on('change', async function () {
+            const files = Array.from(this.files || []);
+            if (!files.length) return;
+
+            const mevcutVideoSayisi = $('#mevcutFotolarListesi .kacak-foto-item a[title="Videoyu oynat"]').length;
+            if (mevcutVideoSayisi + kacakSeciliVideolar.length + files.length > MAX_VIDEO) {
+                Swal.fire('Uyarı', `En fazla ${MAX_VIDEO} video ekleyebilirsiniz.`, 'warning');
+            }
+
             const kabulEdilen = [];
             const hatalar = [];
 
-            for (const dosya of Array.from(this.files)) {
+            for (const dosya of files) {
+                if (mevcutVideoSayisi + kacakSeciliVideolar.length + kabulEdilen.length >= MAX_VIDEO) {
+                    break;
+                }
                 try {
                     kabulEdilen.push(await VideoKontrol.incele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE));
                 } catch (hata) {
@@ -2133,20 +2318,48 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 }
             }
 
-            kacakSeciliVideolar = kabulEdilen;
-            onizleme.empty();
-
-            kabulEdilen.forEach(v => {
-                const kapak = v.kapak
-                    ? `<img src="${v.kapak}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6">`
-                    : `<div style="width:70px;height:70px;border-radius:8px;border:1px solid #dee2e6" class="d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-3 text-muted"></i></div>`;
-                onizleme.append(`<div class="position-relative">${kapak}
-                    <span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:.65rem">${VideoKontrol.sureBicimle(v.sure)}</span></div>`);
-            });
+            this.value = '';
+            kacakSeciliVideolar = kacakSeciliVideolar.concat(kabulEdilen);
+            yeniVideolariCiz();
 
             if (hatalar.length) {
                 Swal.fire('Bazı videolar eklenemedi', hatalar.join('<br>'), 'warning');
-                if (kabulEdilen.length === 0) this.value = '';
+            }
+        });
+
+        function yeniVideolariCiz() {
+            const $container = $('#yeniVideolarPreview');
+            $container.empty();
+            kacakSeciliVideolar.forEach((v, idx) => {
+                const kapak = v.kapak
+                    ? `<img src="${v.kapak}" class="kacak-foto-thumb" loading="lazy" alt="Video">`
+                    : `<div class="kacak-foto-thumb d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-1 text-muted"></i></div>`;
+                const sureRozeti = v.sure
+                    ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:.65rem">${VideoKontrol.sureBicimle(v.sure)}</span>`
+                    : '';
+                $container.append(`
+                    <div class="kacak-foto-item text-center">
+                        <div class="position-relative d-inline-block">
+                            ${kapak}
+                            <span class="position-absolute top-50 start-50 translate-middle badge rounded-circle bg-dark bg-opacity-75 p-2"><i class="bx bx-play fs-5"></i></span>
+                            ${sureRozeti}
+                        </div>
+                        <button type="button" class="btn btn-danger btn-sm btn-yeni-video-sil" data-idx="${idx}" title="Kaldır">
+                            <i class="bx bx-x"></i>
+                        </button>
+                        <div class="small text-muted mt-1 text-truncate" style="max-width:92px;">Video (${(v.dosya.size / 1048576).toFixed(1)} MB)</div>
+                        <span class="badge bg-success" style="font-size:.6rem">Yeni Video</span>
+                    </div>
+                `);
+            });
+            badgeGuncelle();
+        }
+
+        $(document).on('click', '.btn-yeni-video-sil', function () {
+            const idx = parseInt($(this).data('idx'), 10);
+            if (!isNaN(idx) && idx >= 0 && idx < kacakSeciliVideolar.length) {
+                kacakSeciliVideolar.splice(idx, 1);
+                yeniVideolariCiz();
             }
         });
 
@@ -2488,11 +2701,13 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         }
 
         $(document).on('show.bs.collapse', '#collapseFotolar', function () {
-            const $target = $('#mevcutFotolar');
+            const $target = $('#mevcutFotolarListesi');
             if (!$target.data('loaded')) {
                 const fotolar = $target.data('fotolar') || [];
                 const kacakId = $target.data('kacak-id') || 0;
-                fotolariBas($target, fotolar, kacakId);
+                if (fotolar.length > 0) {
+                    fotolariBas($target, fotolar, kacakId);
+                }
                 $target.data('loaded', true);
             }
         });
@@ -2540,11 +2755,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $.post(API, { action: 'delete-photo', foto_id: fotoId }, null, 'json').done(function (res) {
                     if (res.status !== 'success') return hataGoster(res);
                     $item.remove();
-                    const kalanAdet = $('#mevcutFotolar .kacak-foto-item').length;
-                    $('#fotoSayisiBadge').text(kalanAdet);
-                    if (kalanAdet === 0) {
-                        $('#mevcutFotolarBolumu').addClass('d-none');
-                    }
+                    badgeGuncelle();
                     if (kacakFotoLightbox) kacakFotoLightbox.reload();
                     kayitlariYukle();
                 });
