@@ -676,7 +676,7 @@
         var maxBoy = ayarlar.maxBoy || 720;
         var hedefBitrate = ayarlar.hedefBitrate || 1200000; // 1.2 Mbps
         var fps = ayarlar.fps || 25;
-        var maxByteLimit = ayarlar.maxByte || (15 * 1024 * 1024);
+        var maxByteLimit = ayarlar.maxByte || (35 * 1024 * 1024);
 
         if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {
             return Promise.resolve(dosya);
@@ -855,7 +855,7 @@
                     temizle();
                     coz(dosya);
                 }
-            }, 20000);
+            }, 30000);
 
             ["onloadedmetadata", "onerror"].forEach(function (olay) {
                 var asilIsleyici = video[olay];
@@ -889,10 +889,10 @@
             if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {
                 return ret(new Error("Yalnızca video dosyası yükleyebilirsiniz."));
             }
-            var hamMaxByte = 100 * 1024 * 1024;
+            var hamMaxByte = 200 * 1024 * 1024;
             if (dosya.size > hamMaxByte) {
                 return ret(new Error(
-                    "Seçtiğiniz video çok büyük (en fazla 100 MB olabilir). Seçtiğiniz dosya " +
+                    "Seçtiğiniz video çok büyük (en fazla 200 MB olabilir). Seçtiğiniz dosya " +
                     (dosya.size / 1048576).toFixed(1) + " MB."
                 ));
             }
@@ -917,7 +917,7 @@
 
             var zamanAsimi = setTimeout(function () {
                 basarisiz("Video okunamadı. Farklı bir dosya deneyin.");
-            }, 15000);
+            }, 30000);
 
             video.preload = "metadata";
             video.muted = true;

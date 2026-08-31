@@ -22,9 +22,9 @@ class IhbarModel extends Model
 
     const MAX_VIDEO = 2;
 
-    const VIDEO_MAX_SURE = 20;
+    const VIDEO_MAX_SURE = 90;
 
-    const VIDEO_MAX_BYTE = 15728640;
+    const VIDEO_MAX_BYTE = 36700160;
 
     const VIDEO_MIMES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'];
 
