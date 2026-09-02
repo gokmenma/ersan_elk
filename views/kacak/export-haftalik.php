@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Date;
+use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\KacakKontrolModel;
 use App\Model\SystemLogModel;
@@ -394,11 +395,11 @@ if ($tip === 'teslim_zip') {
     foreach ($liste as $kayit) {
         $kacakId = (int) $kayit['id'];
         $detay = $Kacak->getRecord($kacakId) ?? $kayit;
-        $ilceName = mb_strtoupper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')), 'UTF-8');
+        $ilceName = Helper::trUpper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')));
 
         $tutanakNo = trim((string) ($kayit['tutanak_no'] ?? ''));
-        $aboneAdi = mb_strtoupper(trim((string) ($kayit['abone_adi'] ?? '')), 'UTF-8');
-        $tur = mb_strtoupper(trim((string) ($kayit['tur'] ?? 'KAÇAK')), 'UTF-8');
+        $aboneAdi = Helper::trUpper(trim((string) ($kayit['abone_adi'] ?? '')));
+        $tur = Helper::trUpper(trim((string) ($kayit['tur'] ?? 'KAÇAK')));
 
         $folderParts = [];
         if ($tutanakNo !== '') {
@@ -453,19 +454,19 @@ if ($tip === 'teslim_zip') {
             if ($isPdf) {
                 $ext = 'pdf';
                 $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
             } elseif ($isVideo) {
                 $ext = $origExt ?: 'mp4';
                 $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
             } else {
                 $ext = 'jpeg';
                 $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
                 $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
                 if ($jpegData !== null) {
-                    $zip->addFromString($recordPathInZip . '/' . $dosyaAdi, $jpegData);
+                    $zip->addFromString($recordPathInZip . '/' . $dosyaAdi, $jpegData, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
                 } else {
-                    $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+                    $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
                 }
 
                 // Saha fotoğrafı ise tek sayfa PDF için biriktir
@@ -486,7 +487,7 @@ if ($tip === 'teslim_zip') {
             $pdfBinary = uretKacakTekSayfaPdfBinary($detay, $sahaFotolariZip, $geciciDosyalarZip);
             if ($pdfBinary !== null) {
                 $pdfDosyaAdi = sprintf('foto_ciktisi_%s.pdf', $tutanakNo ?: ('kayit_' . $kacakId));
-                $zip->addFromString($recordPathInZip . '/' . $pdfDosyaAdi, $pdfBinary);
+                $zip->addFromString($recordPathInZip . '/' . $pdfDosyaAdi, $pdfBinary, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
                 $toplamDosyaSayisi++;
             }
         }
@@ -557,8 +558,8 @@ if ($tip === 'teslim') {
             Date::dmY($kayit['tarih']),
             $kayit['tutanak_no'],
             $kayit['abone_adi'],
-            mb_strtoupper((string) $kayit['ilce'], 'UTF-8'),
-            mb_strtoupper((string) $kayit['tur'], 'UTF-8'),
+            Helper::trUpper((string) $kayit['ilce']),
+            Helper::trUpper((string) $kayit['tur']),
             $kayit['ekip_adi'],
             $kayit['sebep'],
             $kayit['foto_cikti_gerekli'] ? 'GEREKLİ' : '-',
@@ -650,7 +651,7 @@ if ($tip === 'teslim') {
     $toplamAbonesiz = $toplamKacak = $toplamUsulsuz = 0;
     foreach ($Kacak->getBolgeBazliOzet($baslangic, $bitis) as $kayit) {
         $sheet->fromArray([
-            mb_strtoupper((string) $kayit['ilce'], 'UTF-8'),
+            Helper::trUpper((string) $kayit['ilce']),
             (int) $kayit['abonesiz'],
             (int) $kayit['kacak'],
             (int) $kayit['usulsuz'],

@@ -31,7 +31,7 @@ class KacakKontrolModel extends Model
 
     const MAX_SAHA_FOTO = 15;
 
-    const MAX_VIDEO = 2;
+    const MAX_VIDEO = 3;
 
     const VIDEO_MAX_SURE = 90;
 

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Date;
+use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\KacakKontrolModel;
 use App\Model\KacakSicilEksikModel;
@@ -1645,7 +1646,7 @@ function kacakArsivle(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId
                 $foto['id'],
                 $ext
             );
-            $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi);
+            $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
         } elseif ($isVideo) {
             $ext = $origExt ?: 'mp4';
             $dosyaAdi = sprintf(
@@ -1655,7 +1656,7 @@ function kacakArsivle(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId
                 $foto['id'],
                 $ext
             );
-            $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi);
+            $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
         } else {
             $ext = 'jpeg';
             $dosyaAdi = sprintf(
@@ -1667,9 +1668,9 @@ function kacakArsivle(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId
             );
             $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
             if ($jpegData !== null) {
-                $zip->addFromString($ilce . '/' . $turKlasor . '/' . $dosyaAdi, $jpegData);
+                $zip->addFromString($ilce . '/' . $turKlasor . '/' . $dosyaAdi, $jpegData, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
             } else {
-                $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi);
+                $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
             }
         }
         $eklenenIds[] = (int) $foto['id'];
@@ -1746,8 +1747,8 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
     $root = KacakKontrolModel::rootPath();
 
     $tutanakNoClean = !empty($kayit['tutanak_no']) ? trim((string) $kayit['tutanak_no']) : '';
-    $aboneAdiClean = !empty($kayit['abone_adi']) ? mb_strtoupper(trim((string) $kayit['abone_adi']), 'UTF-8') : '';
-    $turClean = !empty($kayit['tur']) ? mb_strtoupper(trim((string) $kayit['tur']), 'UTF-8') : 'KAÇAK';
+    $aboneAdiClean = !empty($kayit['abone_adi']) ? Helper::trUpper(trim((string) $kayit['abone_adi'])) : '';
+    $turClean = !empty($kayit['tur']) ? Helper::trUpper(trim((string) $kayit['tur'])) : 'KAÇAK';
 
     $folderParts = [];
     if ($tutanakNoClean !== '') {
@@ -1812,19 +1813,19 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
         if ($isPdf) {
             $ext = 'pdf';
             $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
-            $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
+            $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
         } elseif ($isVideo) {
             $ext = $origExt ?: 'mp4';
             $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
-            $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
+            $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
         } else {
             $ext = 'jpeg';
             $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
             $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
             if ($jpegData !== null) {
-                $zip->addFromString($folderName . '/' . $dosyaAdi, $jpegData);
+                $zip->addFromString($folderName . '/' . $dosyaAdi, $jpegData, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
             } else {
-                $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
+                $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
             }
         }
         $eklenenSayisi++;
