@@ -368,6 +368,141 @@ try {
             exit;
 
         // =====================================================
+        // BİLDİRİM PERSONELLERİ (KASKI) YÖNETİMİ
+        // =====================================================
+        case 'get_bildirim_personelleri':
+            $records = $Personel->getBildirimPersonelleri();
+            $data = [];
+            foreach ($records as $r) {
+                $token = Security::encrypt((string) $r->id);
+                $statusBadge = ($r->aktif_mi == 1 && (empty($r->isten_cikis_tarihi) || $r->isten_cikis_tarihi === '0000-00-00'))
+                    ? '<span class="badge bg-success font-size-12"><i class="bx bx-check-circle me-1"></i>Aktif</span>'
+                    : '<span class="badge bg-danger font-size-12"><i class="bx bx-x-circle me-1"></i>Pasif</span>';
+
+                $actions = '<div class="d-flex align-items-center gap-1">';
+                $actions .= '<button type="button" class="btn btn-sm btn-outline-primary" onclick="editBildirimPersonel(\'' . $token . '\')" title="Düzenle"><i class="bx bx-edit"></i></button>';
+                $actions .= '<button type="button" class="btn btn-sm btn-outline-warning" onclick="openSifreModal(\'' . $token . '\', \'' . htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8') . '\')" title="Şifre Belirle"><i class="bx bx-key"></i></button>';
+                if ($r->aktif_mi == 1) {
+                    $actions .= '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleBildirimPersonelStatus(\'' . $token . '\', \'pasif\')" title="Pasife Al"><i class="bx bx-pause"></i></button>';
+                } else {
+                    $actions .= '<button type="button" class="btn btn-sm btn-outline-success" onclick="toggleBildirimPersonelStatus(\'' . $token . '\', \'aktif\')" title="Aktif Et"><i class="bx bx-play"></i></button>';
+                }
+                $actions .= '<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteBildirimPersonel(\'' . $token . '\', \'' . htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8') . '\')" title="Sil"><i class="bx bx-trash"></i></button>';
+                $actions .= '</div>';
+
+                $data[] = [
+                    'id' => (int) $r->id,
+                    'token' => $token,
+                    'adi_soyadi' => htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8'),
+                    'tc_kimlik_no' => htmlspecialchars($r->tc_kimlik_no ?? '', ENT_QUOTES, 'UTF-8'),
+                    'cep_telefonu' => htmlspecialchars($r->cep_telefonu ?? '', ENT_QUOTES, 'UTF-8'),
+                    'ekip_bolge' => htmlspecialchars($r->ekip_bolge ?? '-', ENT_QUOTES, 'UTF-8'),
+                    'email_adresi' => htmlspecialchars($r->email_adresi ?? '-', ENT_QUOTES, 'UTF-8'),
+                    'durum_html' => $statusBadge,
+                    'tarih' => Date::dmY($r->olusturma_tarihi ?? ''),
+                    'actions' => $actions
+                ];
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'data' => $data,
+                'recordsTotal' => count($data),
+                'recordsFiltered' => count($data)
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        case 'get_bildirim_personeli':
+            $token = $_POST['token'] ?? $_GET['token'] ?? '';
+            $id = (int) Security::decrypt($token);
+            if ($id <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz personel anahtarı.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $record = $Personel->getBildirimPersoneli($id);
+            if (!$record) {
+                echo json_encode(['status' => 'error', 'message' => 'Personel bulunamadı.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            echo json_encode([
+                'status' => 'success',
+                'data' => [
+                    'token' => $token,
+                    'adi_soyadi' => $record->adi_soyadi,
+                    'tc_kimlik_no' => $record->tc_kimlik_no,
+                    'cep_telefonu' => $record->cep_telefonu,
+                    'email_adresi' => $record->email_adresi,
+                    'ekip_bolge' => $record->ekip_bolge,
+                    'aktif_mi' => (int) $record->aktif_mi
+                ]
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        case 'save_bildirim_personel':
+            $token = $_POST['token'] ?? '';
+            $id = !empty($token) ? (int) Security::decrypt($token) : 0;
+            $res = $Personel->saveBildirimPersoneli($_POST, $id);
+            if (($res['status'] ?? '') === 'success') {
+                $islem = $id > 0 ? 'Bildirim Personeli Güncellendi' : 'Yeni Bildirim Personeli Eklendi';
+                $Log->logAction($userId, $islem, "Ad Soyad: " . ($_POST['adi_soyadi'] ?? '') . ", ID: " . ($res['id'] ?? $id), SystemLogModel::LEVEL_INFO);
+            }
+            echo json_encode($res, JSON_UNESCAPED_UNICODE);
+            exit;
+
+        case 'toggle_bildirim_personel_status':
+            $token = $_POST['token'] ?? '';
+            $id = (int) Security::decrypt($token);
+            if ($id <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz personel anahtarı.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $ok = $Personel->toggleBildirimPersoneliStatus($id);
+            if ($ok) {
+                $Log->logAction($userId, 'Bildirim Personeli Durumu Değiştirildi', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
+                echo json_encode(['status' => 'success', 'message' => 'Personel durumu güncellendi.'], JSON_UNESCAPED_UNICODE);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'İşlem başarısız.'], JSON_UNESCAPED_UNICODE);
+            }
+            exit;
+
+        case 'reset_bildirim_personel_sifre':
+            $token = $_POST['token'] ?? '';
+            $id = (int) Security::decrypt($token);
+            $sifre = trim($_POST['sifre'] ?? '');
+            if ($id <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz personel anahtarı.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            if (empty($sifre)) {
+                echo json_encode(['status' => 'error', 'message' => 'Lütfen yeni bir şifre giriniz.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $ok = $Personel->resetBildirimPersoneliPassword($id, $sifre);
+            if ($ok) {
+                $Log->logAction($userId, 'Bildirim Personeli Şifresi Sıfırlandı', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
+                echo json_encode(['status' => 'success', 'message' => 'Şifre başarıyla güncellendi.'], JSON_UNESCAPED_UNICODE);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Şifre güncellenemedi.'], JSON_UNESCAPED_UNICODE);
+            }
+            exit;
+
+        case 'delete_bildirim_personel':
+            $token = $_POST['token'] ?? '';
+            $id = (int) Security::decrypt($token);
+            if ($id <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz personel anahtarı.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $ok = $Personel->deleteBildirimPersoneli($id);
+            if ($ok) {
+                $Log->logAction($userId, 'Bildirim Personeli Silindi', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
+                echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.'], JSON_UNESCAPED_UNICODE);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Silme işlemi başarısız.'], JSON_UNESCAPED_UNICODE);
+            }
+            exit;
+
+        // =====================================================
         // LİSTELEME
         // =====================================================
         case 'list':

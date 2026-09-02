@@ -406,6 +406,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-arsiv"
                             type="button"><i class="bx bx-archive me-1"></i> Fotoğraf Arşivi</button></li>
                 <?php endif; ?>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-bildirim-personelleri"
+                        type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Bildirim Personelleri</button></li>
             </ul>
         </div>
     </div>
@@ -894,6 +896,44 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 </div>
             </div>
         <?php endif; ?>
+
+        <!-- ============ BİLDİRİM PERSONELLERİ (KASKI) ============ -->
+        <div class="tab-pane fade" id="pane-bildirim-personelleri">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div>
+                            <h5 class="mb-1 text-dark fw-bold"><i class="bx bx-user-check text-primary me-1"></i> Bildirim Personelleri (KASKI)</h5>
+                            <p class="text-muted small mb-0">Bu personeller yalnızca Personel PWA mobil uygulaması üzerinden Kaçak Bildirimi yapmak üzere yetkilidir; bordro, puantaj ve genel personel listelerinde yer almazlar.</p>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-primary btn-sm px-3" onclick="openNewBildirimPersonelModal()">
+                                <i class="bx bx-plus me-1"></i> Yeni Bildirim Personeli Ekle
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle nowrap w-100" id="bildirimPersonelTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Adı Soyadı</th>
+                                    <th>T.C. Kimlik No</th>
+                                    <th>Cep Telefonu</th>
+                                    <th>Ekip / Bölge</th>
+                                    <th>E-Posta</th>
+                                    <th>Durum</th>
+                                    <th>Kayıt Tarihi</th>
+                                    <th class="text-end">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
 </div>
@@ -1391,6 +1431,76 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 </div>
             </form>
         </div>
+    </div>
+</div>
+
+<!-- ============ BİLDİRİM PERSONELİ EKLE / DÜZENLE MODALI ============ -->
+<div class="modal fade" id="modalBildirimPersonel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <form id="formBildirimPersonel" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalBildirimPersonelTitle">Yeni Bildirim Personeli</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <input type="hidden" name="token" id="bp_token" value="">
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label required">Adı Soyadı</label>
+                    <input type="text" name="adi_soyadi" id="bp_adi_soyadi" class="form-control" required placeholder="Örn: Ahmet Yılmaz">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label required">T.C. Kimlik Numarası</label>
+                    <input type="text" name="tc_kimlik_no" id="bp_tc_kimlik_no" class="form-control" maxlength="11" required placeholder="11 haneli T.C. No">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label required">Cep Telefonu</label>
+                    <input type="tel" name="cep_telefonu" id="bp_cep_telefonu" class="form-control" maxlength="11" required placeholder="05XXXXXXXXX">
+                </div>
+                <div class="mb-3" id="bp_sifre_wrapper">
+                    <label class="form-label">Giriş Şifresi <small class="text-muted" id="bp_sifre_hint">(Boş bırakılırsa otomatik üretilir)</small></label>
+                    <div class="input-group">
+                        <input type="text" name="sifre" id="bp_sifre" class="form-control" placeholder="En az 6 karakter">
+                        <button class="btn btn-outline-secondary" type="button" onclick="generateRandomPassword('bp_sifre')"><i class="bx bx-dice-5"></i> Üret</button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bölge / Ekip Notu</label>
+                    <input type="text" name="ekip_bolge" id="bp_ekip_bolge" class="form-control" placeholder="Örn: Onikişubat - KASKI Denetim">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">E-Posta (Opsiyonel)</label>
+                    <input type="email" name="email_adresi" id="bp_email_adresi" class="form-control" placeholder="ornek@kaski.gov.tr">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="submit" class="btn btn-primary" id="btnSaveBildirimPersonel"><i class="bx bx-save me-1"></i> Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============ ŞİFRE BELİRLE MODALI ============ -->
+<div class="modal fade" id="modalSifreBelirle" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <form id="formSifreBelirle" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Şifre Belirle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <input type="hidden" name="token" id="sifre_token" value="">
+            <div class="modal-body">
+                <p class="text-muted small mb-2"><strong id="sifre_personel_adi"></strong> personeli için yeni giriş şifresi belirleyin:</p>
+                <div class="input-group mb-2">
+                    <input type="text" name="sifre" id="yeni_sifre" class="form-control" required placeholder="Yeni şifre">
+                    <button class="btn btn-outline-secondary" type="button" onclick="generateRandomPassword('yeni_sifre')"><i class="bx bx-dice-5"></i></button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="submit" class="btn btn-warning btn-sm" id="btnSaveSifre"><i class="bx bx-key me-1"></i> Güncelle</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -4080,9 +4190,195 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             if (hedef === '#pane-iptaller' && !iptalTable) iptalleriYukle();
             if (hedef === '#pane-ekip-ozet' && !ekipOzetYuklendi) ekipOzetiYukle();
             if (hedef === '#pane-sicil' && !sicilTable) siciliYukle();
+            if (hedef === '#pane-bildirim-personelleri' && !bildirimPersonelTable) loadBildirimPersonelleri();
             if (typeof $.fn.dataTable !== 'undefined') {
                 $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
             }
+        });
+
+        // =====================================================
+        // BİLDİRİM PERSONELLERİ (KASKI) YÖNETİMİ JS
+        // =====================================================
+        let bildirimPersonelTable = null;
+
+        function loadBildirimPersonelleri() {
+            if (bildirimPersonelTable) {
+                bildirimPersonelTable.ajax.reload(null, false);
+                return;
+            }
+
+            bildirimPersonelTable = $('#bildirimPersonelTable').DataTable({
+                processing: true,
+                serverSide: false,
+                ajax: {
+                    url: API,
+                    type: 'POST',
+                    data: { action: 'get_bildirim_personelleri' },
+                    dataSrc: function (json) {
+                        if (json.status === 'error') {
+                            Swal.fire('Hata', json.message || 'Veriler yüklenemedi.', 'error');
+                            return [];
+                        }
+                        return json.data || [];
+                    }
+                },
+                columns: [
+                    { data: null, render: (data, type, row, meta) => meta.row + 1 },
+                    { data: 'adi_soyadi', className: 'fw-bold text-dark' },
+                    { data: 'tc_kimlik_no' },
+                    { data: 'cep_telefonu' },
+                    { data: 'ekip_bolge' },
+                    { data: 'email_adresi' },
+                    { data: 'durum_html' },
+                    { data: 'tarih' },
+                    { data: 'actions', className: 'text-end', orderable: false }
+                ],
+                order: [[1, 'asc']],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
+                },
+                pageLength: 25,
+                responsive: true
+            });
+        }
+
+        window.openNewBildirimPersonelModal = function () {
+            $('#formBildirimPersonel')[0].reset();
+            $('#bp_token').val('');
+            $('#modalBildirimPersonelTitle').text('Yeni Bildirim Personeli');
+            $('#bp_sifre_wrapper').show();
+            $('#bp_sifre_hint').text('(Boş bırakılırsa 6 haneli rastgele şifre üretilir)');
+            window.generateRandomPassword('bp_sifre');
+            $('#modalBildirimPersonel').modal('show');
+        };
+
+        window.editBildirimPersonel = function (token) {
+            $.post(API, { action: 'get_bildirim_personeli', token: token }, function (res) {
+                if (res.status === 'success') {
+                    const d = res.data;
+                    $('#bp_token').val(d.token);
+                    $('#bp_adi_soyadi').val(d.adi_soyadi);
+                    $('#bp_tc_kimlik_no').val(d.tc_kimlik_no);
+                    $('#bp_cep_telefonu').val(d.cep_telefonu);
+                    $('#bp_ekip_bolge').val(d.ekip_bolge || '');
+                    $('#bp_email_adresi').val(d.email_adresi || '');
+                    $('#bp_sifre').val('');
+                    $('#bp_sifre_hint').text('(Değiştirmek istemiyorsanız boş bırakın)');
+                    $('#modalBildirimPersonelTitle').text('Bildirim Personelini Düzenle');
+                    $('#modalBildirimPersonel').modal('show');
+                } else {
+                    Swal.fire('Hata', res.message || 'Bilgiler alınamadı.', 'error');
+                }
+            }, 'json');
+        };
+
+        window.openSifreModal = function (token, adiSoyadi) {
+            $('#formSifreBelirle')[0].reset();
+            $('#sifre_token').val(token);
+            $('#sifre_personel_adi').text(adiSoyadi);
+            window.generateRandomPassword('yeni_sifre');
+            $('#modalSifreBelirle').modal('show');
+        };
+
+        window.toggleBildirimPersonelStatus = function (token, targetStatus) {
+            const isPasifYap = targetStatus === 'pasif';
+            const actionText = isPasifYap ? 'pasife almak' : 'aktif etmek';
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: `Bu personeli ${actionText} istediğinize emin misiniz?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Evet, Devam Et',
+                cancelButtonText: 'İptal'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    $.post(API, { action: 'toggle_bildirim_personel_status', token: token }, function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire('Başarılı', res.message, 'success');
+                            if (bildirimPersonelTable) bildirimPersonelTable.ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Hata', res.message, 'error');
+                        }
+                    }, 'json');
+                }
+            });
+        };
+
+        window.deleteBildirimPersonel = function (token, adiSoyadi) {
+            Swal.fire({
+                title: 'Personeli Sil?',
+                text: `${adiSoyadi} isimli bildirim personelini sistemden silmek istediğinize emin misiniz?`,
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonText: 'Evet, Sil',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#d33'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    $.post(API, { action: 'delete_bildirim_personel', token: token }, function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire('Silindi', res.message, 'success');
+                            if (bildirimPersonelTable) bildirimPersonelTable.ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Hata', res.message, 'error');
+                        }
+                    }, 'json');
+                }
+            });
+        };
+
+        window.generateRandomPassword = function (targetId) {
+            const rand = Math.floor(100000 + Math.random() * 900000);
+            $('#' + targetId).val(rand);
+        };
+
+        $('#formBildirimPersonel').on('submit', function (e) {
+            e.preventDefault();
+            const $btn = $('#btnSaveBildirimPersonel');
+            $btn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Kaydediliyor...');
+            const formData = $(this).serialize() + '&action=save_bildirim_personel';
+
+            $.post(API, formData, function (res) {
+                $btn.prop('disabled', false).html('<i class="bx bx-save me-1"></i> Kaydet');
+                if (res.status === 'success') {
+                    $('#modalBildirimPersonel').modal('hide');
+                    if (res.generated_password) {
+                        Swal.fire({
+                            title: 'Personel Oluşturuldu!',
+                            html: `<p>Giriş Şifresi: <strong class="fs-5 text-primary">${res.generated_password}</strong></p><p class="small text-muted">Personel bu şifre ile PWA üzerinden giriş yapabilir.</p>`,
+                            icon: 'success'
+                        });
+                    } else {
+                        Swal.fire('Başarılı', res.message, 'success');
+                    }
+                    if (bildirimPersonelTable) bildirimPersonelTable.ajax.reload(null, false);
+                } else {
+                    Swal.fire('Hata', res.message || 'Kayıt sırasında hata oluştu.', 'error');
+                }
+            }, 'json').fail(function () {
+                $btn.prop('disabled', false).html('<i class="bx bx-save me-1"></i> Kaydet');
+                Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
+            });
+        });
+
+        $('#formSifreBelirle').on('submit', function (e) {
+            e.preventDefault();
+            const $btn = $('#btnSaveSifre');
+            $btn.prop('disabled', true);
+            const formData = $(this).serialize() + '&action=reset_bildirim_personel_sifre';
+
+            $.post(API, formData, function (res) {
+                $btn.prop('disabled', false);
+                if (res.status === 'success') {
+                    $('#modalSifreBelirle').modal('hide');
+                    Swal.fire('Başarılı', res.message, 'success');
+                } else {
+                    Swal.fire('Hata', res.message || 'Şifre güncellenemedi.', 'error');
+                }
+            }, 'json').fail(function () {
+                $btn.prop('disabled', false);
+                Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
+            });
         });
 
         $(document).on('shown.bs.modal', '.modal', function () {
@@ -4104,11 +4400,11 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             kayitlariYukle();
 
             // Yeni kaçak bildiriminden gelindiyse ilgili onay sekmesini aç.
-            // Sekmenin shown olayı onay tablosunu yükler; yükleme sırasında
-            // BILDIRIM_KACAK_ID ile yalnızca bağlantıdaki kayıt gösterilir.
             const baslangicParametreleri = new URLSearchParams(window.location.search);
             if (baslangicParametreleri.get('tab') === 'onay') {
                 $('#kacakTabs button[data-bs-target="#pane-onaylar"]').tab('show');
+            } else if (baslangicParametreleri.get('tab') === 'bildirim-personelleri') {
+                $('#kacakTabs button[data-bs-target="#pane-bildirim-personelleri"]').tab('show');
             }
 
             if (YETKI.sicilBildir || YETKI.sicilYanitla) {

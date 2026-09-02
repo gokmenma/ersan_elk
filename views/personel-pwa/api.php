@@ -94,6 +94,29 @@ if ($personel_id > 0) {
         }
         return $cached;
     }
+
+    // KASKI Kaçak Bildirim Personeli Yetki Koruması
+    $isKaskiKacak = ($personel->personel_tipi ?? 'standart') === 'kaski_kacak';
+    if ($isKaskiKacak) {
+        $allowedKaskiActions = [
+            'login', 'logout', 'get_profile', 'update_profile', 'update_password', 'change_password',
+            'get_theme', 'save_theme', 'subscribe_push', 'unsubscribe_push',
+            'get_notifications', 'mark_notification_read', 'check_updates',
+            // Kaçak işlemleri
+            'kacak_kaydet', 'kacak_foto_yukle', 'kacak_video_yukle', 'kacak_video_chunk',
+            'kacak_kayitlar', 'kacak_ozet', 'kacak_detay', 'kacak_foto_sil', 'kacak_sil',
+            'kacak_guncelle', 'kacak_ekip_adaylari', 'kacak_kuyruk_senkron',
+            'kacak_sicil_duzeltme_talepleri', 'kacak_sicil_duzeltme_kaydet',
+            'getKacakKayitlar', 'updateKacakBildirim', 'deleteKacakBildirim', 'deleteKacakFoto',
+            'getKacakSahaFotoLimit', 'uploadKacakSahaFoto', 'uploadKacakVideo', 'uploadKacakVideoChunk',
+            'uploadKacakBildirim', 'getKacakSicilTalepleri', 'saveKacakSicilTalep'
+        ];
+
+        if (!in_array($action, $allowedKaskiActions, true) && stripos($action, 'kacak') === false) {
+            echo json_encode(['success' => false, 'message' => 'Bu işlem için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
 }
 
 // Response helper

@@ -146,25 +146,32 @@ $PersonelIcralariModel = new PersonelIcralariModel();
 $devamEdenIcralar = $PersonelIcralariModel->getDevamEdenIcralar($personel_id);
 $hasIcra = count($devamEdenIcralar) > 0;
 
-// Sayfa yönlendirmesi
-$page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay', 'km-bildirimleri', 'ihbar'];
+$isKaskiKacak = ($personel->personel_tipi ?? 'standart') === 'kaski_kacak';
 
-if ($isEndeksOkuma && $isEkipSefi) {
-    $allowed_pages[] = 'ekip-takibi';
-}
+if ($isKaskiKacak) {
+    $allowed_pages = ['kacak', 'profil'];
+    $page = isset($_GET['page']) && in_array($_GET['page'], $allowed_pages, true) ? $_GET['page'] : 'kacak';
+} else {
+    // Sayfa yönlendirmesi
+    $page = $_GET['page'] ?? 'ana-sayfa';
+    $allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay', 'km-bildirimleri', 'ihbar'];
 
-if ($isKesmeAcma) {
-    $allowed_pages[] = 'nobet';
-    $allowed_pages[] = 'aparat';
-}
+    if ($isEndeksOkuma && $isEkipSefi) {
+        $allowed_pages[] = 'ekip-takibi';
+    }
 
-if ($isKacakKontrol) {
-    $allowed_pages[] = 'kacak';
-}
+    if ($isKesmeAcma) {
+        $allowed_pages[] = 'nobet';
+        $allowed_pages[] = 'aparat';
+    }
 
-if (!in_array($page, $allowed_pages)) {
-    $page = 'ana-sayfa';
+    if ($isKacakKontrol) {
+        $allowed_pages[] = 'kacak';
+    }
+
+    if (!in_array($page, $allowed_pages)) {
+        $page = 'ana-sayfa';
+    }
 }
 
 // Service worker'ın çevrimdışı kullanım için önden çektiği sayfa gerçekten
@@ -182,12 +189,16 @@ if (!$onbellekIcin) {
 
 // Bağlantı yokken açılabilmesi için önden önbelleğe alınacak sayfalar.
 // Personelin yetkisi olmayan sayfa listeye girmez.
-$cevrimdisiSayfalar = ['index.php', 'index.php?page=ana-sayfa', 'index.php?page=ihbar'];
-if ($isKacakKontrol) {
-    $cevrimdisiSayfalar[] = 'index.php?page=kacak';
-}
-if ($isKesmeAcma) {
-    $cevrimdisiSayfalar[] = 'index.php?page=aparat';
+if ($isKaskiKacak) {
+    $cevrimdisiSayfalar = ['index.php', 'index.php?page=kacak', 'index.php?page=profil'];
+} else {
+    $cevrimdisiSayfalar = ['index.php', 'index.php?page=ana-sayfa', 'index.php?page=ihbar'];
+    if ($isKacakKontrol) {
+        $cevrimdisiSayfalar[] = 'index.php?page=kacak';
+    }
+    if ($isKesmeAcma) {
+        $cevrimdisiSayfalar[] = 'index.php?page=aparat';
+    }
 }
 
 // Durum çubuğu, sayfanın en üstündeki başlık alanıyla aynı renkte olmalı.
@@ -341,6 +352,26 @@ if ($page === 'ihbar') {
     </main>
 
     <!-- Bottom Navigation -->
+    <?php if ($isKaskiKacak): ?>
+    <nav
+        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
+        <a href="?page=kacak"
+            class="nav-item flex flex-col items-center gap-1 py-2 px-6 rounded-xl transition-all <?php echo $page === 'kacak' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined <?php echo $page === 'kacak' ? 'filled' : ''; ?>">gpp_maybe</span>
+            <span class="text-[11px] font-semibold">Kaçak İşlemleri</span>
+        </a>
+        <a href="?page=profil"
+            class="nav-item flex flex-col items-center gap-1 py-2 px-6 rounded-xl transition-all <?php echo $page === 'profil' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined <?php echo $page === 'profil' ? 'filled' : ''; ?>">person</span>
+            <span class="text-[11px] font-semibold">Profilim</span>
+        </a>
+        <a href="javascript:void(0)" onclick="logout()"
+            class="nav-item flex flex-col items-center gap-1 py-2 px-6 rounded-xl transition-all text-red-500">
+            <span class="material-symbols-outlined">logout</span>
+            <span class="text-[11px] font-semibold">Çıkış Yap</span>
+        </a>
+    </nav>
+    <?php else: ?>
     <nav
         class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
         <a href="?page=ana-sayfa"
@@ -401,6 +432,7 @@ if ($page === 'ihbar') {
             <span class="text-[10px] font-semibold">Diğer</span>
         </button>
     </nav>
+    <?php endif; ?>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay"

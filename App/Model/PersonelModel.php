@@ -264,17 +264,22 @@ class PersonelModel extends Model
             'target_date' => $targetDate
         ];
 
-        // Dışarıdan sigortalı filtresi
+        // Dışarıdan sigortalı ve personel tipi filtresi
         if ($modul) {
             if ($modul === 'all_with_external') {
                 // Do not restrict by external SSK status at all
-            } else {
+            } elseif ($modul === 'kacak') {
                 $sql .= " AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0 
+                               OR FIND_IN_SET('kacak', COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri))
+                               OR p.personel_tipi = 'kaski_kacak')";
+            } else {
+                $sql .= " AND p.personel_tipi = 'standart' 
+                          AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0 
                                OR FIND_IN_SET(:modul, COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri)))";
                 $params['modul'] = $modul;
             }
         } else {
-            $sql .= " AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
+            $sql .= " AND p.personel_tipi = 'standart' AND p.personel_tipi = 'standart' AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
         }
 
         if ($activeOnly) {
@@ -310,13 +315,20 @@ class PersonelModel extends Model
         ];
 
         if ($modul) {
-            if ($modul !== 'all_with_external') {
+            if ($modul === 'all_with_external') {
+                // No filter
+            } elseif ($modul === 'kacak') {
                 $sql .= " AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0
+                               OR FIND_IN_SET('kacak', COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri))
+                               OR p.personel_tipi = 'kaski_kacak')";
+            } else {
+                $sql .= " AND p.personel_tipi = 'standart' 
+                          AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0
                                OR FIND_IN_SET(:modul, COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri)))";
                 $params['modul'] = $modul;
             }
         } else {
-            $sql .= " AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
+            $sql .= " AND p.personel_tipi = 'standart' AND p.personel_tipi = 'standart' AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
         }
 
         if ($activeOnly) {
@@ -371,7 +383,7 @@ class PersonelModel extends Model
                     AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi = '0000-00-00' OR pcg.isten_cikis_tarihi >= :target_date6)
                 WHERE p.firma_id = :firma_id 
                   AND p.silinme_tarihi IS NULL
-                  AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
+                  AND p.personel_tipi = 'standart' AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
 
         if ($activeOnly) {
             $sql .= " AND (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NULL 
@@ -437,7 +449,7 @@ class PersonelModel extends Model
                 FROM {$this->table} p 
                 WHERE p.firma_id = :firma_id 
                 AND p.silinme_tarihi IS NULL
-                AND (p.disardan_sigortali = 0 OR FIND_IN_SET('demirbas', p.gorunum_modulleri) OR FIND_IN_SET('arac', p.gorunum_modulleri))
+                AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('demirbas', p.gorunum_modulleri) OR FIND_IN_SET('arac', p.gorunum_modulleri))
                 AND (p.adi_soyadi LIKE :term OR p.cep_telefonu LIKE :term)";
 
         if ($type === 'kesme_acma') {
@@ -445,7 +457,7 @@ class PersonelModel extends Model
                     FROM {$this->table} p
                     WHERE p.firma_id = :firma_id
                     AND p.silinme_tarihi IS NULL
-                    AND (p.disardan_sigortali = 0 OR FIND_IN_SET('demirbas', p.gorunum_modulleri) OR FIND_IN_SET('arac', p.gorunum_modulleri))
+                    AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('demirbas', p.gorunum_modulleri) OR FIND_IN_SET('arac', p.gorunum_modulleri))
                     AND (p.departman LIKE '%Kesme%' OR p.departman LIKE '%Açma%')
                     AND (p.adi_soyadi LIKE :term OR p.cep_telefonu LIKE :term)";
         }
@@ -482,7 +494,7 @@ class PersonelModel extends Model
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
                 WHERE p.firma_id = :firma_id
-                AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))
+                AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))
                 AND (
                     p.adi_soyadi LIKE :term OR
                     p.cep_telefonu LIKE :term OR
@@ -511,7 +523,7 @@ class PersonelModel extends Model
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
                 LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                 LEFT JOIN firmalar f ON p.firma_id = f.id
-                WHERE p.firma_id = :firma_id AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
+                WHERE p.firma_id = :firma_id AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
 
         $params = ['firma_id' => $_SESSION['firma_id']];
 
@@ -603,7 +615,7 @@ class PersonelModel extends Model
 
         $extra_where = $is_restricted ? " AND (FIND_IN_SET(departman, :restricted_dept) OR TRIM(departman) = '' OR departman IS NULL)" : "";
         
-        $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri)) $extra_where";
+        $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND personel_tipi = 'standart' AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri)) $extra_where";
         $params = ['firma_id' => $_SESSION['firma_id'], 'modul' => $modul];
         if ($is_restricted) {
             $params['restricted_dept'] = $restricted_dept;
@@ -700,13 +712,13 @@ class PersonelModel extends Model
                     AND pg.firma_id = :firma_id_sub
                 ) t_all ON p.id = t_all.personel_id
                 WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL 
-                AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))
+                AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))
                 $extra_where_p";
 
         $params['firma_id_sub'] = $_SESSION['firma_id'];
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalSql = "SELECT COUNT(*) FROM {$this->table} p WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) $extra_where_p";
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} p WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) $extra_where_p";
         $totalQuery = $this->db->prepare($totalSql);
         
         $totalParams = ['firma_id' => $_SESSION['firma_id']];
@@ -939,7 +951,7 @@ class PersonelModel extends Model
                                  AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                                  AND pg.firma_id = :firma_id_sub
                              ) t_all ON p.id = t_all.personel_id
-                             WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) $filterSql GROUP BY p.id) as temp";
+                             WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) $filterSql GROUP BY p.id) as temp";
 
         $filteredQuery = $this->db->prepare($filteredQuerySql);
 
@@ -1976,7 +1988,7 @@ class PersonelModel extends Model
                     AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                     AND pg.firma_id = :firma_id_sub
                 ) t_all ON p.id = t_all.personel_id
-                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $extra_where_p AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $extra_where_p AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
 
         // Diğer sütunlardaki aktif filtreleri uygula (Cascading)
         $filterSql = "";
@@ -2171,7 +2183,7 @@ class PersonelModel extends Model
                     AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                     AND pg.firma_id = :firma_id_sub
                 ) t_all ON p.id = t_all.personel_id
-                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $extra_where_p AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $extra_where_p AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
 
         // Diğer sütunlardaki aktif filtreleri uygula (Cascading)
         $filterSql = "";
@@ -2450,5 +2462,229 @@ class PersonelModel extends Model
     {
         $sql = $this->db->prepare("UPDATE personel_is_turu_ucretleri SET silinme_tarihi = NOW(), aktif = 0 WHERE id = ?");
         return $sql->execute([$id]);
+    }
+
+    // =========================================================================
+    // KASKI / KAÇAK BİLDİRİM PERSONELLERİ YÖNETİM METOTLARI
+    // =========================================================================
+
+    /**
+     * Kaçak Kontrol modülü için sadece KASKI Bildirim Personellerini getirir.
+     */
+    public function getBildirimPersonelleri(int $firmaId = 0): array
+    {
+        $firmaId = $firmaId > 0 ? $firmaId : (int) ($_SESSION['firma_id'] ?? 0);
+        $stmt = $this->db->prepare(
+            "SELECT p.id, p.adi_soyadi, p.tc_kimlik_no, p.cep_telefonu, p.email_adresi,
+                    p.aktif_mi, p.olusturma_tarihi, p.guncelleme_tarihi, p.isten_cikis_tarihi,
+                    p.departman, p.gorev, p.ekip_bolge
+             FROM {$this->table} p
+             WHERE p.firma_id = :firma_id
+               AND p.personel_tipi = 'kaski_kacak'
+               AND p.silinme_tarihi IS NULL
+             ORDER BY p.adi_soyadi ASC"
+        );
+        $stmt->execute(['firma_id' => $firmaId]);
+        $records = $stmt->fetchAll(PDO::FETCH_OBJ);
+        return array_map(fn($r) => $this->decryptFields($r), $records);
+    }
+
+    /**
+     * Tek bir bildirim personelini ID ile getirir (şifre çözülmüş olarak).
+     */
+    public function getBildirimPersoneli(int $id, int $firmaId = 0): ?object
+    {
+        $firmaId = $firmaId > 0 ? $firmaId : (int) ($_SESSION['firma_id'] ?? 0);
+        $stmt = $this->db->prepare(
+            "SELECT * FROM {$this->table}
+             WHERE id = :id AND firma_id = :firma_id AND personel_tipi = 'kaski_kacak' AND silinme_tarihi IS NULL"
+        );
+        $stmt->execute(['id' => $id, 'firma_id' => $firmaId]);
+        $record = $stmt->fetch(PDO::FETCH_OBJ);
+        return $record ? $this->decryptFields($record) : null;
+    }
+
+    /**
+     * Yeni bir bildirim personeli kaydeder veya mevcut olanı günceller.
+     */
+    public function saveBildirimPersoneli(array $data, int $id = 0): array
+    {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        if ($firmaId <= 0) {
+            return ['status' => 'error', 'message' => 'Firma oturumu bulunamadı.'];
+        }
+
+        $adiSoyadi = trim($data['adi_soyadi'] ?? '');
+        $tcNo = preg_replace('/\D/', '', $data['tc_kimlik_no'] ?? '');
+        $telefon = preg_replace('/\D/', '', $data['cep_telefonu'] ?? '');
+        $email = trim($data['email_adresi'] ?? '');
+        $sifre = trim($data['sifre'] ?? '');
+        $ekipBolge = trim($data['ekip_bolge'] ?? '');
+        $aktifMi = isset($data['aktif_mi']) ? (int) $data['aktif_mi'] : 1;
+
+        if (empty($adiSoyadi)) {
+            return ['status' => 'error', 'message' => 'Ad Soyad alanı zorunludur.'];
+        }
+
+        if (strlen($tcNo) !== 11) {
+            return ['status' => 'error', 'message' => 'T.C. Kimlik Numarası 11 haneli olmalıdır.'];
+        }
+
+        if (empty($telefon) || strlen($telefon) < 10) {
+            return ['status' => 'error', 'message' => 'Geçerli bir cep telefonu numarası giriniz.'];
+        }
+
+        // TC Hash benzersizlik kontrolü
+        $tcHash = hash('sha256', $tcNo);
+        $tcCheckSql = "SELECT id, adi_soyadi, personel_tipi FROM {$this->table} WHERE tc_hash = :tc_hash AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        if ($id > 0) {
+            $tcCheckSql .= " AND id <> :id";
+        }
+        $tcCheckStmt = $this->db->prepare($tcCheckSql);
+        $tcParams = ['tc_hash' => $tcHash, 'firma_id' => $firmaId];
+        if ($id > 0) {
+            $tcParams['id'] = $id;
+        }
+        $tcCheckStmt->execute($tcParams);
+        if ($exist = $tcCheckStmt->fetch(PDO::FETCH_OBJ)) {
+            return ['status' => 'error', 'message' => "Bu T.C. Kimlik Numarası ({$exist->adi_soyadi}) ile kayıtlı bir personel zaten var."];
+        }
+
+        // Telefon benzersizlik kontrolü
+        $phoneCheckSql = "SELECT id, adi_soyadi FROM {$this->table} WHERE (cep_telefonu = :phone OR cep_telefonu = :phone0) AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        if ($id > 0) {
+            $phoneCheckSql .= " AND id <> :id";
+        }
+        $phoneCheckStmt = $this->db->prepare($phoneCheckSql);
+        $phoneParams = ['phone' => $telefon, 'phone0' => '0' . $telefon, 'firma_id' => $firmaId];
+        if ($id > 0) {
+            $phoneParams['id'] = $id;
+        }
+        $phoneCheckStmt->execute($phoneParams);
+        if ($existPhone = $phoneCheckStmt->fetch(PDO::FETCH_OBJ)) {
+            return ['status' => 'error', 'message' => "Bu telefon numarası ({$existPhone->adi_soyadi}) ile kayıtlı bir personel zaten var."];
+        }
+
+        if ($id === 0 && empty($sifre)) {
+            // Varsayılan rastgele 6 haneli şifre
+            $sifre = (string) rand(100000, 999999);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $today = date('Y-m-d');
+
+        if ($id > 0) {
+            // Güncelleme
+            $updateFields = [
+                'adi_soyadi' => $adiSoyadi,
+                'tc_kimlik_no' => Security::encrypt($tcNo),
+                'tc_hash' => $tcHash,
+                'cep_telefonu' => $telefon,
+                'email_adresi' => $email ?: null,
+                'ekip_bolge' => $ekipBolge ?: null,
+                'aktif_mi' => $aktifMi,
+                'guncelleme_tarihi' => $now
+            ];
+
+            if (!empty($sifre)) {
+                $updateFields['sifre'] = password_hash($sifre, PASSWORD_DEFAULT);
+            }
+
+            $setClauses = [];
+            $params = ['id' => $id, 'firma_id' => $firmaId];
+            foreach ($updateFields as $col => $val) {
+                $setClauses[] = "{$col} = :{$col}";
+                $params[$col] = $val;
+            }
+
+            $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses) . " WHERE id = :id AND firma_id = :firma_id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            return ['status' => 'success', 'message' => 'Bildirim personeli başarıyla güncellendi.', 'id' => $id];
+        } else {
+            // Yeni Kayıt
+            $insertData = [
+                'firma_id' => $firmaId,
+                'personel_tipi' => 'kaski_kacak',
+                'adi_soyadi' => $adiSoyadi,
+                'tc_kimlik_no' => Security::encrypt($tcNo),
+                'tc_hash' => $tcHash,
+                'cep_telefonu' => $telefon,
+                'email_adresi' => $email ?: null,
+                'sifre' => password_hash($sifre, PASSWORD_DEFAULT),
+                'ekip_bolge' => $ekipBolge ?: null,
+                'departman' => 'Kaçak Kontrol',
+                'gorev' => 'Kaçak Bildirim Personeli',
+                'maas_durumu' => 'Maaş Hesaplanmayan',
+                'puantaj_hakedis_dahil' => 0,
+                'saha_takibi' => 0,
+                'disardan_sigortali' => 1,
+                'gorunum_modulleri' => 'kacak',
+                'aktif_mi' => $aktifMi,
+                'ise_giris_tarihi' => $today,
+                'olusturma_tarihi' => $now,
+                'guncelleme_tarihi' => $now
+            ];
+
+            $cols = array_keys($insertData);
+            $placeholders = array_map(fn($c) => ":{$c}", $cols);
+            $sql = "INSERT INTO {$this->table} (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $placeholders) . ")";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($insertData);
+            $newId = (int) $this->db->lastInsertId();
+
+            return [
+                'status' => 'success',
+                'message' => 'Bildirim personeli başarıyla oluşturuldu.',
+                'id' => $newId,
+                'generated_password' => $sifre
+            ];
+        }
+    }
+
+    /**
+     * Bildirim personelinin aktif/pasif durumunu tersine çevirir.
+     */
+    public function toggleBildirimPersoneliStatus(int $id, int $firmaId = 0): bool
+    {
+        $firmaId = $firmaId > 0 ? $firmaId : (int) ($_SESSION['firma_id'] ?? 0);
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET aktif_mi = CASE WHEN aktif_mi = 1 THEN 0 ELSE 1 END,
+                 isten_cikis_tarihi = CASE WHEN aktif_mi = 1 THEN CURDATE() ELSE NULL END,
+                 guncelleme_tarihi = NOW()
+             WHERE id = :id AND firma_id = :firma_id AND personel_tipi = 'kaski_kacak'"
+        );
+        return $stmt->execute(['id' => $id, 'firma_id' => $firmaId]);
+    }
+
+    /**
+     * Bildirim personelinin şifresini günceller.
+     */
+    public function resetBildirimPersoneliPassword(int $id, string $newPassword, int $firmaId = 0): bool
+    {
+        $firmaId = $firmaId > 0 ? $firmaId : (int) ($_SESSION['firma_id'] ?? 0);
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET sifre = :sifre, guncelleme_tarihi = NOW()
+             WHERE id = :id AND firma_id = :firma_id AND personel_tipi = 'kaski_kacak'"
+        );
+        return $stmt->execute(['sifre' => $hash, 'id' => $id, 'firma_id' => $firmaId]);
+    }
+
+    /**
+     * Bildirim personelini soft-delete yapar.
+     */
+    public function deleteBildirimPersoneli(int $id, int $firmaId = 0): bool
+    {
+        $firmaId = $firmaId > 0 ? $firmaId : (int) ($_SESSION['firma_id'] ?? 0);
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET silinme_tarihi = NOW(), aktif_mi = 0, isten_cikis_tarihi = CURDATE()
+             WHERE id = :id AND firma_id = :firma_id AND personel_tipi = 'kaski_kacak'"
+        );
+        return $stmt->execute(['id' => $id, 'firma_id' => $firmaId]);
     }
 }

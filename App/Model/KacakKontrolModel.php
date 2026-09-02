@@ -1350,9 +1350,10 @@ class KacakKontrolModel extends Model
         $sql = "SELECT id, adi_soyadi, gorev, departman
                 FROM personel
                 WHERE firma_id = ?
-                  AND departman LIKE ?
+                  AND (departman LIKE ? OR personel_tipi = 'kaski_kacak')
                   AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi = '')
-                  AND silinme_tarihi IS NULL";
+                  AND silinme_tarihi IS NULL
+                  AND aktif_mi = 1";
         $params = [$this->firmaId(), '%Kaçak%'];
 
         if ($haricPersonelId > 0) {
