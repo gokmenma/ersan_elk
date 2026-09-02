@@ -64,6 +64,8 @@ $yetkiSicilBildir = Gate::allows('kacak_sicil_bildir') || Gate::isSuperAdmin();
 $yetkiSicilYanitla = Gate::allows('kacak_sicil_yanitla') || Gate::isSuperAdmin();
 $yetkiSicil = $yetkiSicilBildir || $yetkiSicilYanitla;
 
+$yetkiBildirimPersonelleri = Gate::allows('kacak_bildirim_personelleri') || Gate::isSuperAdmin();
+
 $sicilNedenOptions = KacakSicilEksikModel::NEDENLER;
 $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDENLER;
 ?>
@@ -406,8 +408,10 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-arsiv"
                             type="button"><i class="bx bx-archive me-1"></i> Fotoğraf Arşivi</button></li>
                 <?php endif; ?>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-bildirim-personelleri"
-                        type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Kaski Personelleri</button></li>
+                <?php if ($yetkiBildirimPersonelleri): ?>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-bildirim-personelleri"
+                            type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Bildirim Personelleri</button></li>
+                <?php endif; ?>
             </ul>
         </div>
     </div>
@@ -897,43 +901,45 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             </div>
         <?php endif; ?>
 
-        <!-- ============ BİLDİRİM PERSONELLERİ (KASKI) ============ -->
-        <div class="tab-pane fade" id="pane-bildirim-personelleri">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                        <div>
-                            <h5 class="mb-1 text-dark fw-bold"><i class="bx bx-user-check text-primary me-1"></i> Bildirim Personelleri (KASKI)</h5>
-                            <p class="text-muted small mb-0">Bu personeller yalnızca Personel PWA mobil uygulaması üzerinden Kaçak Bildirimi yapmak üzere yetkilidir; bordro, puantaj ve genel personel listelerinde yer almazlar.</p>
+        <?php if ($yetkiBildirimPersonelleri): ?>
+            <!-- ============ BİLDİRİM PERSONELLERİ (KASKI) ============ -->
+            <div class="tab-pane fade" id="pane-bildirim-personelleri">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <div>
+                                <h5 class="mb-1 text-dark fw-bold"><i class="bx bx-user-check text-primary me-1"></i> Bildirim Personelleri (KASKI)</h5>
+                                <p class="text-muted small mb-0">Bu personeller yalnızca Personel PWA mobil uygulaması üzerinden Kaçak Bildirimi yapmak üzere yetkilidir; bordro, puantaj ve genel personel listelerinde yer almazlar.</p>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-primary btn-sm px-3" onclick="openNewBildirimPersonelModal()">
+                                    <i class="bx bx-plus me-1"></i> Yeni Bildirim Personeli Ekle
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <button type="button" class="btn btn-primary btn-sm px-3" onclick="openNewBildirimPersonelModal()">
-                                <i class="bx bx-plus me-1"></i> Yeni Bildirim Personeli Ekle
-                            </button>
-                        </div>
-                    </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle nowrap w-100" id="bildirimPersonelTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-center" data-filter="none">#</th>
-                                    <th data-filter="string">Adı Soyadı</th>
-                                    <th data-filter="string">T.C. Kimlik No</th>
-                                    <th data-filter="string">Cep Telefonu</th>
-                                    <th data-filter="select">Ekip / Bölge</th>
-                                    <th data-filter="string">E-Posta</th>
-                                    <th class="text-center" data-filter="select">Durum</th>
-                                    <th class="text-center" data-filter="date">Kayıt Tarihi</th>
-                                    <th class="text-center" data-filter="none">İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle nowrap w-100" id="bildirimPersonelTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center" data-filter="none">#</th>
+                                        <th data-filter="string">Adı Soyadı</th>
+                                        <th data-filter="string">T.C. Kimlik No</th>
+                                        <th data-filter="string">Cep Telefonu</th>
+                                        <th data-filter="select">Ekip / Bölge</th>
+                                        <th data-filter="string">E-Posta</th>
+                                        <th class="text-center" data-filter="select">Durum</th>
+                                        <th class="text-center" data-filter="date">Kayıt Tarihi</th>
+                                        <th class="text-center" data-filter="none">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        <?php endif; ?>
 
     </div>
 </div>
@@ -1525,7 +1531,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             iptalEkle: <?= $yetkiIptalEkle ? 'true' : 'false' ?>,
             arsiv: <?= $yetkiArsiv ? 'true' : 'false' ?>,
             sicilBildir: <?= $yetkiSicilBildir ? 'true' : 'false' ?>,
-            sicilYanitla: <?= $yetkiSicilYanitla ? 'true' : 'false' ?>
+            sicilYanitla: <?= $yetkiSicilYanitla ? 'true' : 'false' ?>,
+            bildirimPersonelleri: <?= $yetkiBildirimPersonelleri ? 'true' : 'false' ?>
         };
         const SICIL_NEDENLER = <?= json_encode(KacakSicilEksikModel::NEDENLER, JSON_UNESCAPED_UNICODE) ?>;
         const SICIL_UYARI_GUN = <?= KacakSicilEksikModel::UYARI_GUN ?>;

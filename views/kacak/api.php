@@ -86,7 +86,7 @@ $saltOkunurActionlar = [
 
 if (in_array($action, $saltOkunurActionlar, true)) {
     kacakSuperAdmin();
-    foreach (['kacak_onay', 'kacak_duzenle', 'kacak_iptal', 'kacak_iptal_ekle', 'kacak_arsiv', 'kacak_sicil_bildir', 'kacak_sicil_yanitla'] as $izin) {
+    foreach (['kacak_onay', 'kacak_duzenle', 'kacak_iptal', 'kacak_iptal_ekle', 'kacak_arsiv', 'kacak_sicil_bildir', 'kacak_sicil_yanitla', 'kacak_bildirim_personelleri'] as $izin) {
         kacakIzin($izin);
     }
     session_write_close();
@@ -374,6 +374,7 @@ try {
         // BİLDİRİM PERSONELLERİ (KASKI) YÖNETİMİ
         // =====================================================
         case 'get_bildirim_personelleri':
+            kacakYetkiKontrol('kacak_bildirim_personelleri');
             $records = $Personel->getBildirimPersonelleri();
             $data = [];
             foreach ($records as $r) {
@@ -416,6 +417,7 @@ try {
             exit;
 
         case 'get_bildirim_personeli':
+            kacakYetkiKontrol('kacak_bildirim_personelleri');
             $token = $_POST['token'] ?? $_GET['token'] ?? '';
             $id = (int) Security::decrypt($token);
             if ($id <= 0) {
@@ -442,6 +444,7 @@ try {
             exit;
 
         case 'save_bildirim_personel':
+            kacakYetkiKontrol('kacak_bildirim_personelleri');
             $token = $_POST['token'] ?? '';
             $id = !empty($token) ? (int) Security::decrypt($token) : 0;
             $res = $Personel->saveBildirimPersoneli($_POST, $id);
@@ -453,6 +456,7 @@ try {
             exit;
 
         case 'toggle_bildirim_personel_status':
+            kacakYetkiKontrol('kacak_bildirim_personelleri');
             $token = $_POST['token'] ?? '';
             $id = (int) Security::decrypt($token);
             if ($id <= 0) {
@@ -469,6 +473,7 @@ try {
             exit;
 
         case 'reset_bildirim_personel_sifre':
+            kacakYetkiKontrol('kacak_bildirim_personelleri');
             $token = $_POST['token'] ?? '';
             $id = (int) Security::decrypt($token);
             $sifre = trim($_POST['sifre'] ?? '');
@@ -490,6 +495,7 @@ try {
             exit;
 
         case 'delete_bildirim_personel':
+            kacakYetkiKontrol('kacak_bildirim_personelleri');
             $token = $_POST['token'] ?? '';
             $id = (int) Security::decrypt($token);
             if ($id <= 0) {
