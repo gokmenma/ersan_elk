@@ -407,7 +407,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             type="button"><i class="bx bx-archive me-1"></i> Fotoğraf Arşivi</button></li>
                 <?php endif; ?>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-bildirim-personelleri"
-                        type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Bildirim Personelleri</button></li>
+                        type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Kaski Personelleri</button></li>
             </ul>
         </div>
     </div>
