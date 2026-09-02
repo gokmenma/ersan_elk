@@ -80,6 +80,8 @@ $saltOkunurActionlar = [
     'sicil-counts',
     'sicil-detay',
     'sicil-tutanak-ara',
+    'get_bildirim_personelleri',
+    'get_bildirim_personeli',
 ];
 
 if (in_array($action, $saltOkunurActionlar, true)) {
@@ -92,6 +94,7 @@ if (in_array($action, $saltOkunurActionlar, true)) {
 
 $Kacak = new KacakKontrolModel();
 $Sicil = new KacakSicilEksikModel();
+$Personel = new PersonelModel();
 $Log = new SystemLogModel();
 
 function kacakYanit(bool $ok, string $mesaj = '', array $ek = []): void

@@ -917,15 +917,15 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <table class="table table-hover align-middle nowrap w-100" id="bildirimPersonelTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>#</th>
-                                    <th>Adı Soyadı</th>
-                                    <th>T.C. Kimlik No</th>
-                                    <th>Cep Telefonu</th>
-                                    <th>Ekip / Bölge</th>
-                                    <th>E-Posta</th>
-                                    <th>Durum</th>
-                                    <th>Kayıt Tarihi</th>
-                                    <th class="text-end">İşlemler</th>
+                                    <th class="text-center" data-filter="none">#</th>
+                                    <th data-filter="string">Adı Soyadı</th>
+                                    <th data-filter="string">T.C. Kimlik No</th>
+                                    <th data-filter="string">Cep Telefonu</th>
+                                    <th data-filter="select">Ekip / Bölge</th>
+                                    <th data-filter="string">E-Posta</th>
+                                    <th class="text-center" data-filter="select">Durum</th>
+                                    <th class="text-center" data-filter="date">Kayıt Tarihi</th>
+                                    <th class="text-center" data-filter="none">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -4207,7 +4207,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 return;
             }
 
-            bildirimPersonelTable = $('#bildirimPersonelTable').DataTable({
+            bildirimPersonelTable = $('#bildirimPersonelTable').DataTable(dtSecenekleri({
                 processing: true,
                 serverSide: false,
                 ajax: {
@@ -4223,23 +4223,24 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     }
                 },
                 columns: [
-                    { data: null, render: (data, type, row, meta) => meta.row + 1 },
+                    { data: null, className: 'text-center', orderable: false, render: (data, type, row, meta) => meta.row + 1 },
                     { data: 'adi_soyadi', className: 'fw-bold text-dark' },
                     { data: 'tc_kimlik_no' },
                     { data: 'cep_telefonu' },
                     { data: 'ekip_bolge' },
                     { data: 'email_adresi' },
-                    { data: 'durum_html' },
-                    { data: 'tarih' },
-                    { data: 'actions', className: 'text-end', orderable: false }
+                    { data: 'durum_html', className: 'text-center' },
+                    { data: 'tarih', className: 'text-center' },
+                    { data: 'actions', className: 'text-center', orderable: false }
                 ],
                 order: [[1, 'asc']],
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
-                },
-                pageLength: 25,
-                responsive: true
-            });
+                drawCallback: function () {
+                    tooltipleriTazele(this);
+                    if (typeof feather !== 'undefined') {
+                        try { feather.replace(); } catch (e) {}
+                    }
+                }
+            }));
         }
 
         window.openNewBildirimPersonelModal = function () {
