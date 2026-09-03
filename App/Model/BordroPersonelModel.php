@@ -1248,7 +1248,8 @@ class BordroPersonelModel extends Model
             $asgariUcretYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
             $asgariUcretYatacak = round($asgariUcretYatacak * $nonKurRatio, 2);
             
-            $bankaBaz = ($isNet) ? max(0, $netAlacagi - $sodexoOdemesi) * $nonKurRatio : ($asgariUcretYatacak + $yontemliBankaEki);
+            // USER REQ: Yemek veya eş yardımı verilmediği zaman resmi banka tutarı asgari ücrettir, geri kalan elden ödenir.
+            $bankaBaz = $asgariUcretYatacak + $yontemliBankaEki;
             $bankaMax = max(0, $netAlacagi - $sodexoOdemesi);
             $bankaBaz = min($bankaBaz, $bankaMax);
             $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
@@ -5485,11 +5486,11 @@ class BordroPersonelModel extends Model
             // Kalan net alacağı (tüm kesintiler düştükten sonra)
             $netAlacagi = max(0, $netMaas - $toplamKesinti);
 
-            if ($isPrimUsulu) {
-                $bankaYatacakMinimum = ($fiiliCalismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $fiiliCalismaGunu);
+            if ($isPrimUsulu || $isNetMaas) {
+                $bankaYatacakMinimum = ($maasHesapGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $maasHesapGunu);
                 $bankaYatacakMinimum = round($bankaYatacakMinimum * $nonKurRatio, 2);
                 $bankaBaz = min($bankaYatacakMinimum + floatval($yontemliOdemeler['banka'] ?? 0), $netAlacagi);
-                $bankaOdemesi = $bankaBaz;
+                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
                 $eldenOdeme = max(0, $netAlacagi - $bankaOdemesi - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
             } else {
                 $bankaOdemesi = max(0, $netAlacagi - $sodexoOdemesi) * $nonKurRatio;

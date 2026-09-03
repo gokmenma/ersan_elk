@@ -76,13 +76,19 @@ $daysCount = count($reportDates);
 $manuelDusumMap = [];
 if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
     if ($activeTab === 'kacakkontrol') {
+        $isKaski = !empty($_GET['kaski']) && $_GET['kaski'] == '1';
         $sqlDusum = "SELECT ekip_adi as ekip_kodu_id, SUM(ABS(sayi)) as total_dusum 
-                     FROM kacak_kontrol 
-                     WHERE firma_id = ? 
-                     AND aciklama = 'Manuel Düşüm'
-                     AND tarih BETWEEN ? AND ?
-                     AND " . \App\Model\KacakKontrolModel::raporKosulu() . "
-                     GROUP BY ekip_adi";
+                     FROM kacak_kontrol k
+                     WHERE k.firma_id = ? 
+                     AND k.aciklama = 'Manuel Düşüm'
+                     AND k.tarih BETWEEN ? AND ?
+                     AND " . \App\Model\KacakKontrolModel::raporKosulu('k');
+        if ($isKaski) {
+            $sqlDusum .= " AND EXISTS (SELECT 1 FROM personel p WHERE p.personel_tipi = 'kaski_kacak' AND (p.id = k.bildiren_personel_id OR FIND_IN_SET(p.id, k.personel_ids)))";
+        } else {
+            $sqlDusum .= " AND NOT EXISTS (SELECT 1 FROM personel p WHERE p.personel_tipi = 'kaski_kacak' AND (p.id = k.bildiren_personel_id OR FIND_IN_SET(p.id, k.personel_ids)))";
+        }
+        $sqlDusum .= " GROUP BY k.ekip_adi";
         $stmtDusum = $Puantaj->db->prepare($sqlDusum);
         $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
         while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
@@ -117,8 +123,9 @@ if ($activeTab === 'okuma') {
     $summary = $EndeksOkuma->getSummaryByRange($startDateStr, $endDateStr, $filterPersonelId, $filterRegion, $filterDefter);
     $title = "Okuma Özet Raporu";
 } elseif ($activeTab === 'kacakkontrol') {
-    $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr, $filterRegion);
-    $title = "Kaçak Kontrol Özet Raporu";
+    $isKaski = !empty($_GET['kaski']) && $_GET['kaski'] == '1';
+    $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr, $filterRegion, $isKaski ? 'kaski_kacak' : 'standart');
+    $title = $isKaski ? "KASKI Personelleri Kaçak Kontrol Özet Raporu" : "Kaçak Kontrol Özet Raporu";
 } elseif ($activeTab === 'sokme_takma') {
     $SayacDegisim = new \App\Model\SayacDegisimModel();
     $summary = $SayacDegisim->getSummaryDetailedByRange($startDateStr, $endDateStr, $filterPersonelId, $filterRegion);

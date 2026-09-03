@@ -1119,8 +1119,14 @@ try {
             $bolgeEkipleri = $TanimlamalarModel->getEkipKodlariByBolgeAll($bolge);
 
             // 4. Tarih parametreleri
-            $startDate = $_POST['start_date'] ?? date('Y-m-01');
-            $endDate = $_POST['end_date'] ?? date('Y-m-d');
+            $startDate = !empty($_POST['start_date']) ? substr(trim($_POST['start_date']), 0, 10) : date('Y-m-01');
+            $endDate = !empty($_POST['end_date']) ? substr(trim($_POST['end_date']), 0, 10) : date('Y-m-d');
+            if ($startDate > $endDate) {
+                $temp = $startDate;
+                $startDate = $endDate;
+                $endDate = $temp;
+            }
+            $isSingleDay = ($startDate === $endDate);
             $bugun = date('Y-m-d');
 
             $db = (new \App\Model\Model('endeks_okuma'))->getDb();
@@ -1131,21 +1137,27 @@ try {
             foreach ($bolgeEkipleri as $ekip) {
                 $ekipId = $ekip->id;
 
-                // Günlük toplam (bugün)
-                $stmtDaily = $db->prepare("SELECT COALESCE(SUM(okunan_abone_sayisi), 0) as toplam 
-                    FROM endeks_okuma 
-                    WHERE ekip_kodu_id = ? AND tarih = ? AND firma_id = ? AND silinme_tarihi IS NULL");
-                $stmtDaily->execute([$ekipId, $bugun, $firmaId]);
-                $gunlukToplam = (int) ($stmtDaily->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
-
-                // Aylık toplam (seçilen tarih aralığı)
+                // Seçilen tarih aralığı toplamı ve çalışılan gün sayısı
                 $stmtMonthly = $db->prepare("SELECT COALESCE(SUM(okunan_abone_sayisi), 0) as toplam, COUNT(DISTINCT tarih) as gun_sayisi
                     FROM endeks_okuma 
                     WHERE ekip_kodu_id = ? AND tarih BETWEEN ? AND ? AND firma_id = ? AND silinme_tarihi IS NULL");
                 $stmtMonthly->execute([$ekipId, $startDate, $endDate, $firmaId]);
                 $monthlyResult = $stmtMonthly->fetch(PDO::FETCH_OBJ);
-                $aylikToplam = (int) ($monthlyResult->toplam ?? 0);
+                $donemToplam = (int) ($monthlyResult->toplam ?? 0);
                 $calisilanGun = (int) ($monthlyResult->gun_sayisi ?? 0);
+                $gunlukOrt = $calisilanGun > 0 ? (int) round($donemToplam / $calisilanGun) : 0;
+
+                // Günlük toplam: Tek gün ise dönemin toplamı; aralık ise hedef günün (varsa bugün, yoksa bitiş tarihi) toplamı
+                if ($isSingleDay) {
+                    $gunlukToplam = $donemToplam;
+                } else {
+                    $hedefGun = ($bugun >= $startDate && $bugun <= $endDate) ? $bugun : $endDate;
+                    $stmtDaily = $db->prepare("SELECT COALESCE(SUM(okunan_abone_sayisi), 0) as toplam 
+                        FROM endeks_okuma 
+                        WHERE ekip_kodu_id = ? AND tarih = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+                    $stmtDaily->execute([$ekipId, $hedefGun, $firmaId]);
+                    $gunlukToplam = (int) ($stmtDaily->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+                }
 
                 // Günlük detay (seçilen tarih aralığı)
                 $stmtDetail = $db->prepare("SELECT tarih, SUM(okunan_abone_sayisi) as toplam
@@ -1156,23 +1168,43 @@ try {
                 $stmtDetail->execute([$ekipId, $startDate, $endDate, $firmaId]);
                 $gunlukDetay = $stmtDetail->fetchAll(PDO::FETCH_OBJ);
 
-                // Bu ekip koduna aktif olarak atanmış personeli bul
-                $stmtPersonel = $db->prepare("SELECT p.adi_soyadi, p.departman 
-                    FROM personel_ekip_gecmisi pg
-                    JOIN personel p ON pg.personel_id = p.id
-                    WHERE pg.ekip_kodu_id = ? AND pg.firma_id = ?
-                    AND pg.baslangic_tarihi <= CURDATE()
-                    AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
-                    ORDER BY pg.id DESC LIMIT 1");
-                $stmtPersonel->execute([$ekipId, $firmaId]);
-                $personelResult = $stmtPersonel->fetch(PDO::FETCH_OBJ);
+                // Bu ekip koduna atanmış personeli bul
+                // 1. Öncelik: O dönemde endeks_okuma kaydı girmiş personel
+                $stmtEndeksPersonel = $db->prepare("SELECT p.adi_soyadi, p.departman 
+                    FROM endeks_okuma eo 
+                    JOIN personel p ON eo.personel_id = p.id 
+                    WHERE eo.ekip_kodu_id = ? AND eo.tarih BETWEEN ? AND ? AND eo.firma_id = ? AND eo.silinme_tarihi IS NULL 
+                    ORDER BY eo.id DESC LIMIT 1");
+                $stmtEndeksPersonel->execute([$ekipId, $startDate, $endDate, $firmaId]);
+                $personelResult = $stmtEndeksPersonel->fetch(PDO::FETCH_OBJ);
 
-                // Eğer ekibe atanmış personel varsa:
-                // Sadece departmanında "Endeks Okuma" geçip geçmediğine bak
-                // Diğer departmanlarının (örn: Kaçak Kontrol) ne olduğunun bir önemi yok
-                if ($personelResult) {
+                // 2. Öncelik: O dönemde ekip geçmişinde aktif olan personel
+                if (!$personelResult) {
+                    $stmtPersonel = $db->prepare("SELECT p.adi_soyadi, p.departman 
+                        FROM personel_ekip_gecmisi pg
+                        JOIN personel p ON pg.personel_id = p.id
+                        WHERE pg.ekip_kodu_id = ? AND pg.firma_id = ?
+                        AND (pg.baslangic_tarihi <= ? AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?))
+                        ORDER BY pg.id DESC LIMIT 1");
+                    $stmtPersonel->execute([$ekipId, $firmaId, $endDate, $startDate]);
+                    $personelResult = $stmtPersonel->fetch(PDO::FETCH_OBJ);
+                }
+
+                // 3. Öncelik: En güncel atanmış personel
+                if (!$personelResult) {
+                    $stmtSonPersonel = $db->prepare("SELECT p.adi_soyadi, p.departman 
+                        FROM personel_ekip_gecmisi pg
+                        JOIN personel p ON pg.personel_id = p.id
+                        WHERE pg.ekip_kodu_id = ? AND pg.firma_id = ?
+                        ORDER BY pg.id DESC LIMIT 1");
+                    $stmtSonPersonel->execute([$ekipId, $firmaId]);
+                    $personelResult = $stmtSonPersonel->fetch(PDO::FETCH_OBJ);
+                }
+
+                // Eğer ekibe atanmış personel varsa ve o dönemde hiç okuma yoksa departman kontrolü
+                if ($personelResult && $donemToplam === 0) {
                     $dep = $personelResult->departman ?? '';
-                    if (stripos($dep, 'Endeks Okuma') === false) {
+                    if (!empty($dep) && stripos($dep, 'Endeks Okuma') === false) {
                         continue;
                     }
                 }
@@ -1184,8 +1216,10 @@ try {
                     'ekip_adi' => $ekip->tur_adi,
                     'personel_adi' => $personelAdi,
                     'gunluk_toplam' => $gunlukToplam,
-                    'aylik_toplam' => $aylikToplam,
+                    'aylik_toplam' => $donemToplam,
+                    'donem_toplam' => $donemToplam,
                     'calisilan_gun' => $calisilanGun,
+                    'gunluk_ort' => $gunlukOrt,
                     'gunluk_detay' => array_map(function ($d) {
                         return ['tarih' => $d->tarih, 'toplam' => (int) $d->toplam];
                     }, $gunlukDetay)
@@ -1194,6 +1228,9 @@ try {
 
             response(true, [
                 'bolge' => $bolge,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'is_single_day' => $isSingleDay,
                 'ekipler' => $ekiplerData
             ]);
             break;

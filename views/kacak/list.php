@@ -410,7 +410,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 <?php endif; ?>
                 <?php if ($yetkiBildirimPersonelleri): ?>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-bildirim-personelleri"
-                            type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Bildirim Personelleri</button></li>
+                            type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Kaski Personelleri</button></li>
                 <?php endif; ?>
             </ul>
         </div>
@@ -902,18 +902,21 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         <?php endif; ?>
 
         <?php if ($yetkiBildirimPersonelleri): ?>
-            <!-- ============ BİLDİRİM PERSONELLERİ (KASKI) ============ -->
+            <!-- ============ KASKİ PERSONELLERİ ============ -->
             <div class="tab-pane fade" id="pane-bildirim-personelleri">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                             <div>
-                                <h5 class="mb-1 text-dark fw-bold"><i class="bx bx-user-check text-primary me-1"></i> Bildirim Personelleri (KASKI)</h5>
+                                <h5 class="mb-1 text-dark fw-bold"><i class="bx bx-user-check text-primary me-1"></i> Kaski Personelleri</h5>
                                 <p class="text-muted small mb-0">Bu personeller yalnızca Personel PWA mobil uygulaması üzerinden Kaçak Bildirimi yapmak üzere yetkilidir; bordro, puantaj ve genel personel listelerinde yer almazlar.</p>
                             </div>
-                            <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-outline-info btn-sm px-3" onclick="openKaskiEkipOzetModal()">
+                                    <i class="bx bx-table me-1"></i> Ekip Özeti
+                                </button>
                                 <button type="button" class="btn btn-primary btn-sm px-3" onclick="openNewBildirimPersonelModal()">
-                                    <i class="bx bx-plus me-1"></i> Yeni Bildirim Personeli Ekle
+                                    <i class="bx bx-plus me-1"></i> Yeni Kaski Personeli Ekle
                                 </button>
                             </div>
                         </div>
@@ -1440,12 +1443,12 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
     </div>
 </div>
 
-<!-- ============ BİLDİRİM PERSONELİ EKLE / DÜZENLE MODALI ============ -->
+<!-- ============ KASKİ PERSONELİ EKLE / DÜZENLE MODALI ============ -->
 <div class="modal fade" id="modalBildirimPersonel" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-md">
         <form id="formBildirimPersonel" class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalBildirimPersonelTitle">Yeni Bildirim Personeli</h5>
+                <h5 class="modal-title" id="modalBildirimPersonelTitle">Yeni Kaski Personeli</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <input type="hidden" name="token" id="bp_token" value="">
@@ -1507,6 +1510,34 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 <button type="submit" class="btn btn-warning btn-sm" id="btnSaveSifre"><i class="bx bx-key me-1"></i> Güncelle</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- ============ KASKİ PERSONELLERİ EKİP ÖZETİ MODALI ============ -->
+<div class="modal fade" id="modalKaskiEkipOzet" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down">
+        <div class="modal-content">
+            <div class="modal-header py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <h5 class="modal-title text-dark fw-bold mb-0"><i class="bx bx-table text-primary me-1"></i> Kaski Personelleri — Aylık Ekip Özeti</h5>
+                    <p class="text-muted small mb-0">Kaski personellerinin seçilen dönemdeki gün bazlı bildirim sayıları</p>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div style="min-width: 150px; max-width: 175px;">
+                        <?= Form::FormDate('kaski_ozet_donem_picker', date('Y-m'), 'Dönem', 'calendar', 'form-control flatpickr-month') ?>
+                    </div>
+                    <button type="button" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" id="btnKaskiEkipOzetExcel" title="Excel İndir">
+                        <i class="bx bx-download"></i> Excel
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body p-3">
+                <div id="kaskiEkipOzetIcerik">
+                    <div class="text-center text-muted p-5">Rapor yükleniyor...</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -4253,7 +4284,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         window.openNewBildirimPersonelModal = function () {
             $('#formBildirimPersonel')[0].reset();
             $('#bp_token').val('');
-            $('#modalBildirimPersonelTitle').text('Yeni Bildirim Personeli');
+            $('#modalBildirimPersonelTitle').text('Yeni Kaski Personeli');
             $('#bp_sifre_wrapper').show();
             $('#bp_sifre_hint').text('(Boş bırakılırsa 6 haneli rastgele şifre üretilir)');
             window.generateRandomPassword('bp_sifre');
@@ -4272,7 +4303,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     $('#bp_email_adresi').val(d.email_adresi || '');
                     $('#bp_sifre').val('');
                     $('#bp_sifre_hint').text('(Değiştirmek istemiyorsanız boş bırakın)');
-                    $('#modalBildirimPersonelTitle').text('Bildirim Personelini Düzenle');
+                    $('#modalBildirimPersonelTitle').text('Kaski Personelini Düzenle');
                     $('#modalBildirimPersonel').modal('show');
                 } else {
                     Swal.fire('Hata', res.message || 'Bilgiler alınamadı.', 'error');
@@ -4315,7 +4346,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         window.deleteBildirimPersonel = function (token, adiSoyadi) {
             Swal.fire({
                 title: 'Personeli Sil?',
-                text: `${adiSoyadi} isimli bildirim personelini sistemden silmek istediğinize emin misiniz?`,
+                text: `${adiSoyadi} isimli Kaski personelini sistemden silmek istediğinize emin misiniz?`,
                 icon: 'error',
                 showCancelButton: true,
                 confirmButtonText: 'Evet, Sil',
@@ -4339,6 +4370,87 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             const rand = Math.floor(100000 + Math.random() * 900000);
             $('#' + targetId).val(rand);
         };
+
+        // ---------- KASKİ PERSONELLERİ EKİP ÖZETİ JS ----------
+        let currentKaskiOzetYear = new Date().getFullYear();
+        let currentKaskiOzetMonth = new Date().getMonth() + 1;
+        let kaskiOzetYuklendi = false;
+
+        function kaskiEkipOzetiYukle(year, month) {
+            const y = year || currentKaskiOzetYear;
+            const m = month || currentKaskiOzetMonth;
+
+            currentKaskiOzetYear = y;
+            currentKaskiOzetMonth = m;
+
+            const $kutu = $('#kaskiEkipOzetIcerik');
+            $kutu.html('<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Kaski Ekip Özeti hazırlanıyor...</p></div>');
+
+            $.get('views/puantaj/api.php', {
+                action: 'get-report-table',
+                tab: 'kacakkontrol',
+                kaski: 1,
+                year: y,
+                month: m,
+                filter_type: 'period'
+            }).done(function (html) {
+                $kutu.html(html);
+                kaskiOzetYuklendi = true;
+                $kutu.find('#workTypeLegend').addClass('d-none');
+                if (typeof feather !== 'undefined') {
+                    try { feather.replace(); } catch (e) {}
+                }
+            }).fail(function () {
+                $kutu.html('<div class="alert alert-danger mb-0">Rapor yüklenirken bir hata oluştu.</div>');
+            });
+        }
+
+        window.openKaskiEkipOzetModal = function () {
+            $('#modalKaskiEkipOzet').modal('show');
+            initKaskiOzetDonemPicker();
+            kaskiEkipOzetiYukle(currentKaskiOzetYear, currentKaskiOzetMonth);
+        };
+
+        function initKaskiOzetDonemPicker() {
+            const el = document.getElementById('kaski_ozet_donem_picker');
+            if (!el) return;
+
+            if (el._flatpickr) {
+                return;
+            }
+
+            const pluginFunc = window.monthSelectPlugin || (typeof monthSelectPlugin !== 'undefined' ? monthSelectPlugin : null);
+
+            flatpickr(el, {
+                locale: 'tr',
+                dateFormat: 'Y-m',
+                altInput: true,
+                altFormat: 'F Y',
+                defaultDate: `${currentKaskiOzetYear}-${String(currentKaskiOzetMonth).padStart(2, '0')}`,
+                plugins: pluginFunc ? [new pluginFunc({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y", theme: "light" })] : [],
+                onChange: function (selectedDates, dateStr) {
+                    if (dateStr) {
+                        const parts = dateStr.split('-');
+                        if (parts.length === 2) {
+                            currentKaskiOzetYear = parseInt(parts[0], 10);
+                            currentKaskiOzetMonth = parseInt(parts[1], 10);
+                            kaskiEkipOzetiYukle(currentKaskiOzetYear, currentKaskiOzetMonth);
+                        }
+                    }
+                }
+            });
+        }
+
+        $('#btnKaskiEkipOzetExcel').on('click', function () {
+            const q = $.param({
+                tab: 'kacakkontrol',
+                kaski: 1,
+                year: currentKaskiOzetYear,
+                month: currentKaskiOzetMonth,
+                filter_type: 'period'
+            });
+            window.location.href = 'views/puantaj/rapor-excel.php?' + q;
+        });
 
         $('#formBildirimPersonel').on('submit', function (e) {
             e.preventDefault();

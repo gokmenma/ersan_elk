@@ -325,7 +325,7 @@ class PuantajModel extends Model
         return $summary;
     }
 
-    public function getKacakSummaryByRange($startDate, $endDate, $region = '')
+    public function getKacakSummaryByRange($startDate, $endDate, $region = '', string $personelTipi = 'standart')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT k.ekip_adi, k.tarih, SUM(k.sayi) as toplam 
@@ -335,6 +335,12 @@ class PuantajModel extends Model
                 AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)
                 AND " . \App\Model\KacakKontrolModel::raporKosulu('k');
         $params = [$firmaId, $startDate, $endDate];
+
+        if ($personelTipi === 'standart') {
+            $sql .= " AND NOT EXISTS (SELECT 1 FROM personel p WHERE p.personel_tipi = 'kaski_kacak' AND (p.id = k.bildiren_personel_id OR FIND_IN_SET(p.id, k.personel_ids)))";
+        } elseif ($personelTipi === 'kaski_kacak') {
+            $sql .= " AND EXISTS (SELECT 1 FROM personel p WHERE p.personel_tipi = 'kaski_kacak' AND (p.id = k.bildiren_personel_id OR FIND_IN_SET(p.id, k.personel_ids)))";
+        }
 
         if ($region) {
             $sql .= " AND (k.ilce = ? OR ek.ekip_bolge = ?)";

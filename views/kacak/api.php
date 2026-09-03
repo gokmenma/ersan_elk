@@ -449,7 +449,7 @@ try {
             $id = !empty($token) ? (int) Security::decrypt($token) : 0;
             $res = $Personel->saveBildirimPersoneli($_POST, $id);
             if (($res['status'] ?? '') === 'success') {
-                $islem = $id > 0 ? 'Bildirim Personeli Güncellendi' : 'Yeni Bildirim Personeli Eklendi';
+                $islem = $id > 0 ? 'Kaski Personeli Güncellendi' : 'Yeni Kaski Personeli Eklendi';
                 $Log->logAction($userId, $islem, "Ad Soyad: " . ($_POST['adi_soyadi'] ?? '') . ", ID: " . ($res['id'] ?? $id), SystemLogModel::LEVEL_INFO);
             }
             echo json_encode($res, JSON_UNESCAPED_UNICODE);
@@ -465,7 +465,7 @@ try {
             }
             $ok = $Personel->toggleBildirimPersoneliStatus($id);
             if ($ok) {
-                $Log->logAction($userId, 'Bildirim Personeli Durumu Değiştirildi', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
+                $Log->logAction($userId, 'Kaski Personeli Durumu Değiştirildi', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
                 echo json_encode(['status' => 'success', 'message' => 'Personel durumu güncellendi.'], JSON_UNESCAPED_UNICODE);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'İşlem başarısız.'], JSON_UNESCAPED_UNICODE);
@@ -487,7 +487,7 @@ try {
             }
             $ok = $Personel->resetBildirimPersoneliPassword($id, $sifre);
             if ($ok) {
-                $Log->logAction($userId, 'Bildirim Personeli Şifresi Sıfırlandı', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
+                $Log->logAction($userId, 'Kaski Personeli Şifresi Sıfırlandı', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
                 echo json_encode(['status' => 'success', 'message' => 'Şifre başarıyla güncellendi.'], JSON_UNESCAPED_UNICODE);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Şifre güncellenemedi.'], JSON_UNESCAPED_UNICODE);
@@ -504,7 +504,7 @@ try {
             }
             $ok = $Personel->deleteBildirimPersoneli($id);
             if ($ok) {
-                $Log->logAction($userId, 'Bildirim Personeli Silindi', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
+                $Log->logAction($userId, 'Kaski Personeli Silindi', "Personel ID: $id", SystemLogModel::LEVEL_INFO);
                 echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.'], JSON_UNESCAPED_UNICODE);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Silme işlemi başarısız.'], JSON_UNESCAPED_UNICODE);

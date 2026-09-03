@@ -12,3 +12,12 @@
 [04-Aug-2026 19:57:49 Europe/Istanbul] PHP Warning:  Undefined array key 486 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
 [04-Aug-2026 19:57:49 Europe/Istanbul] PHP Warning:  Undefined array key 500 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
 [04-Aug-2026 20:04:24 Europe/Istanbul] Aparat negatif stok: islem_id=1 ekip_id=403 tip_id=1 personel=113
+[03-Sep-2026 19:39:35 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 42
+[03-Sep-2026 19:39:40 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 42
+[03-Sep-2026 19:39:40 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 516
+[03-Sep-2026 19:40:02 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 42
+[03-Sep-2026 19:40:03 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 516
+[03-Sep-2026 19:42:16 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 42
+[03-Sep-2026 19:42:17 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 516
+[03-Sep-2026 19:42:28 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 42
+[03-Sep-2026 19:42:29 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 516
