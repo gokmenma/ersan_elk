@@ -69,6 +69,13 @@ Eger personelin net maas tutari tanimsiz veya 0 ise (`maas_tutari <= 0`), calisi
 netMaas = brutMaas + toplamEkOdeme - (toplamKesinti - icraKesintisi)
 ```
 
+### Net Maaşlı Personelde Yemek / Eş Yardımı Olmadığında Dağıtım Kuralı
+
+Maaşa dahil yemek veya eş yardımı tanımlanmamış (`yemek_yardimi_dahil = 0` ve `es_yardimi_dahil = 0`) net maaşlı personellerde:
+1. Resmî olarak bankaya yatacak taban tutar, çalışılan güne orantılı **asgari ücret net hakedişidir** (`asgariUcretYatacak = (asgariUcretNet / 30) * calismaGunu`) + varsa bankadan ödenecek ek ödemelerdir.
+2. Personelin sözleşme net maaşını tamamlayan geri kalan bakiye tutar (`netAlacagi - bankaOdemesi`), **Elden Ödeme** olarak dağıtılır.
+3. Bu kural `hesaplaMaas`, `hesaplaOrtakGosterimDegerleri`, bordro detay modalı ve banka export raporlarında birebir aynı şekilde geçerlidir.
+
 ### Puantaj Hakedisi Kurali
 
 `personel.puantaj_hakedis_dahil = 1` ise puantaj/sayac/kacak kontrol calismalari sozlesme netinin
