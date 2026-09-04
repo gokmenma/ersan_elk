@@ -73,6 +73,157 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 <link rel="stylesheet" href="assets/libs/glightbox/css/glightbox.min.css">
 
 <style>
+    /* Teslim Alma Listesi Toolbar & Checkbox UI/UX */
+    .teslim-filter-toolbar {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    [data-bs-theme="dark"] .teslim-filter-toolbar {
+        background: #1e293b;
+        border-color: #334155;
+    }
+    .teslim-date-col {
+        width: 155px;
+    }
+    .btn-teslim-listele {
+        height: 48px;
+        border-radius: 9px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 18px;
+        box-shadow: 0 2px 6px rgba(13, 110, 253, 0.22);
+        transition: all 0.2s ease;
+    }
+    .btn-teslim-listele:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.35);
+    }
+    .teslim-secim-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 42px;
+        padding: 0 14px;
+        border-radius: 24px;
+        font-size: 0.83rem;
+        font-weight: 600;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        user-select: none;
+    }
+    .teslim-secim-badge.zero-selected {
+        background: #ffffff;
+        color: #94a3b8;
+        border: 1px solid #e2e8f0;
+    }
+    [data-bs-theme="dark"] .teslim-secim-badge.zero-selected {
+        background: #0f172a;
+        color: #64748b;
+        border-color: #334155;
+    }
+    .teslim-secim-badge.has-selected {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.14);
+    }
+    [data-bs-theme="dark"] .teslim-secim-badge.has-selected {
+        background: #1e3a8a40;
+        color: #60a5fa;
+        border-color: #2563eb60;
+    }
+    .teslim-secim-badge .btn-secim-temizle {
+        background: #dbeafe;
+        color: #1e40af;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+        transition: all 0.15s;
+    }
+    .teslim-secim-badge .btn-secim-temizle:hover {
+        background: #bfdbfe;
+        color: #1e3a8a;
+        transform: scale(1.1);
+    }
+    .btn-teslim-islemler {
+        height: 48px;
+        border-radius: 9px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 18px;
+        transition: all 0.2s ease;
+    }
+    .btn-teslim-islemler.has-selection {
+        background: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #ffffff !important;
+        box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3);
+    }
+    .btn-teslim-islemler.has-selection:hover {
+        background: #1d4ed8 !important;
+        transform: translateY(-1px);
+    }
+
+    /* Checkbox & Row Styling */
+    #teslimTable .form-check-input,
+    #teslimTumunuSec {
+        width: 19px;
+        height: 19px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 0 auto;
+        display: block;
+        transition: all 0.18s ease;
+    }
+    #teslimTable .form-check-input:hover,
+    #teslimTumunuSec:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+    #teslimTable .form-check-input:checked,
+    #teslimTumunuSec:checked {
+        background-color: #2563eb;
+        border-color: #2563eb;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+    }
+    #teslimTumunuSec:indeterminate {
+        background-color: #2563eb;
+        border-color: #2563eb;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
+    }
+    #teslimTable tbody tr {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+    #teslimTable tbody tr:hover {
+        background-color: rgba(241, 245, 249, 0.7);
+    }
+    #teslimTable tbody tr.row-selected {
+        background-color: #eff6ff !important;
+    }
+    #teslimTable tbody tr.row-selected td:first-child {
+        border-left: 3px solid #2563eb;
+    }
+
     .kacak-ozet-serit {
         border-radius: 14px;
     }
@@ -720,24 +871,29 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         </div>
                     </div>
 
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 bg-light rounded-3 border mb-3">
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                            <div style="width: 140px;">
+                    <div class="teslim-filter-toolbar mb-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2.5">
+                            <div class="teslim-date-col">
                                 <?= Form::FormDate('teslim_baslangic', Date::dmY($haftaBasi), 'Başlangıç') ?>
                             </div>
-                            <div style="width: 140px;">
+                            <div class="teslim-date-col">
                                 <?= Form::FormDate('teslim_bitis', Date::dmY($bugun), 'Bitiş') ?>
                             </div>
-                            <button class="btn btn-primary btn-sm px-3" id="btnTeslimListesi" style="height: 48px;" title="Listeyi Getir">
-                                <i class="bx bx-refresh me-1"></i>Listele
+                            <button class="btn btn-primary btn-teslim-listele" id="btnTeslimListesi" title="Listeyi Getir">
+                                <i class="bx bx-refresh fs-5"></i>
+                                <span>Listele</span>
                             </button>
                             <div class="vr mx-1 d-none d-md-block" style="height: 32px; opacity: 0.2;"></div>
-                            <span class="badge bg-white text-secondary border py-2 px-2.5" id="teslimSecimBilgi">0 kayıt seçildi</span>
+                            <div id="teslimSecimBilgi" class="teslim-secim-badge zero-selected">
+                                <i class="bx bx-check-square fs-6 text-muted"></i>
+                                <span>0 kayıt seçildi</span>
+                            </div>
                         </div>
 
                         <div class="dropdown">
-                            <button class="btn btn-outline-secondary btn-sm px-3 dropdown-toggle fw-medium" type="button" id="btnTeslimIslemler" data-bs-toggle="dropdown" aria-expanded="false" disabled style="height: 48px;">
-                                <i class="bx bx-cog me-1"></i>İşlemler
+                            <button class="btn btn-outline-secondary btn-teslim-islemler dropdown-toggle" type="button" id="btnTeslimIslemler" data-bs-toggle="dropdown" aria-expanded="false" disabled>
+                                <i class="bx bx-cog fs-5 me-1"></i>
+                                <span>İşlemler</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="btnTeslimIslemler">
                                 <li>
@@ -2975,16 +3131,37 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         let teslimTumTokens = [];
 
         function syncTeslimSecimCheckboxes() {
-            $('#teslimTable .teslim-secim').each(function () {
-                $(this).prop('checked', teslimSecilenler.has(this.value));
+            $('#teslimTable tbody tr').each(function () {
+                const $row = $(this);
+                const $chk = $row.find('.teslim-secim');
+                if ($chk.length) {
+                    const isChecked = teslimSecilenler.has($chk.val());
+                    $chk.prop('checked', isChecked);
+                    $row.toggleClass('row-selected', isChecked);
+                }
             });
-            const allSelected = teslimTumTokens.length > 0 && teslimTumTokens.every(t => teslimSecilenler.has(t));
-            $('#teslimTumunuSec').prop('checked', allSelected);
+
+            const checkedCount = teslimSecilenler.size;
+            const totalCount = teslimTumTokens.length;
+            const allSelected = totalCount > 0 && checkedCount === totalCount;
+            const isIndeterminate = checkedCount > 0 && checkedCount < totalCount;
+            const $master = $('#teslimTumunuSec');
+            $master.prop('checked', allSelected);
+            $master.prop('indeterminate', isIndeterminate);
         }
 
         function teslimSecimGuncelle() {
-            $('#teslimSecimBilgi').text(teslimSecilenler.size + ' kayıt seçildi');
-            $('#btnTeslimIslemler').prop('disabled', teslimSecilenler.size === 0);
+            const count = teslimSecilenler.size;
+            const $badge = $('#teslimSecimBilgi');
+            const $btnIslemler = $('#btnTeslimIslemler');
+
+            if (count === 0) {
+                $badge.removeClass('has-selected').addClass('zero-selected').html('<i class="bx bx-check-square fs-6 text-muted"></i><span>0 kayıt seçildi</span>');
+                $btnIslemler.prop('disabled', true).removeClass('has-selection btn-primary text-white').addClass('btn-outline-secondary');
+            } else {
+                $badge.removeClass('zero-selected').addClass('has-selected').html('<i class="bx bx-check-double fs-5 text-primary"></i><span><strong>' + count + '</strong> kayıt seçildi</span><button type="button" class="btn-secim-temizle" id="btnTeslimSecimTemizle" title="Seçimi Temizle"><i class="bx bx-x"></i></button>');
+                $btnIslemler.prop('disabled', false).removeClass('btn-outline-secondary').addClass('btn-primary has-selection text-white');
+            }
         }
 
         $('#btnTeslimListesi').on('click', function () {
@@ -2997,7 +3174,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
                 teslimSecilenler.clear();
                 teslimTumTokens = (res.data || []).map(r => r.token);
-                $('#teslimTumunuSec').prop('checked', false);
+                $('#teslimTumunuSec').prop('checked', false).prop('indeterminate', false);
                 const rows = (res.data || []).map(r => [
                     '<input type="checkbox" class="form-check-input teslim-secim" value="' + esc(r.token) + '">',
                     esc(r.tarih_formatted),
@@ -3044,6 +3221,30 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             } else {
                 teslimSecilenler.clear();
             }
+            syncTeslimSecimCheckboxes();
+            teslimSecimGuncelle();
+        });
+
+        $('#teslimTable tbody').on('click', 'tr', function (e) {
+            if ($(e.target).closest('a, button, input, label').length) {
+                return;
+            }
+            const $chk = $(this).find('.teslim-secim');
+            if (!$chk.length) return;
+            const token = $chk.val();
+            if (teslimSecilenler.has(token)) {
+                teslimSecilenler.delete(token);
+            } else {
+                teslimSecilenler.add(token);
+            }
+            syncTeslimSecimCheckboxes();
+            teslimSecimGuncelle();
+        });
+
+        $(document).on('click', '#btnTeslimSecimTemizle', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            teslimSecilenler.clear();
             syncTeslimSecimCheckboxes();
             teslimSecimGuncelle();
         });
