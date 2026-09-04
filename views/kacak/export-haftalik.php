@@ -443,8 +443,10 @@ if ($tip === 'process_export_job') {
     $eTime = strtotime($bitis);
     $startDay = (int) date('j', $sTime);
     $startMonthName = $trMonths[(int) date('n', $sTime)] ?? date('F', $sTime);
-    $endDay = (int) date('j', $eTime);
     $endMonthName = $trMonths[(int) date('n', $eTime)] ?? date('F', $eTime);
+
+    session_write_close();
+    @ignore_user_abort(true);
 
     if ($exportType === 'teslim_foto_pdf') {
         $targetFile = $exportStorageDir . '/export_' . $jobId . '.pdf';
@@ -564,135 +566,142 @@ if ($tip === 'process_export_job') {
         }
     } else {
         // ZIP Arşivi Oluşturma
-        $targetFile = $exportStorageDir . '/export_' . $jobId . '.zip';
-        $rootFolder = sprintf('%d %s - %d %s Tarihleri Arasında Yapılan İşlemler', $startDay, $startMonthName, $endDay, $endMonthName);
+        try {
+            $targetFile = $exportStorageDir . '/export_' . $jobId . '.zip';
+            $rootFolder = sprintf('%d %s - %d %s Tarihleri Arasında Yapılan İşlemler', $startDay, $startMonthName, $endDay, $endMonthName);
 
-        $zip = new \ZipArchive();
-        if ($zip->open($targetFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => 'Arşiv dosyası açılamadı.']);
-            echo json_encode(['success' => false, 'message' => 'Arşiv dosyası oluşturulamadı.']);
-            exit;
-        }
-
-        $toplamDosyaSayisi = 0;
-        $geciciDosyalarZip = [];
-
-        foreach ($liste as $index => $kayit) {
-            $kacakId = (int) $kayit['id'];
-            $detay = $kayit;
-            $ilceName = Helper::trUpper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')));
-            $tutanakNo = trim((string) ($kayit['tutanak_no'] ?? ''));
-            $aboneAdi = Helper::trUpper(trim((string) ($kayit['abone_adi'] ?? '')));
-            $tur = Helper::trUpper(trim((string) ($kayit['tur'] ?? 'KAÇAK')));
-
-            $folderParts = [];
-            if ($tutanakNo !== '') {
-                $folderParts[] = $tutanakNo;
-            } else {
-                $folderParts[] = 'KAYIT_' . $kacakId;
-            }
-            if ($aboneAdi !== '') {
-                $folderParts[] = $aboneAdi;
+            $zip = new \ZipArchive();
+            if ($zip->open($targetFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => 'Arşiv dosyası açılamadı.']);
+                echo json_encode(['success' => false, 'message' => 'Arşiv dosyası oluşturulamadı.']);
+                exit;
             }
 
-            $rawTutanakFolder = implode(' - ', $folderParts) . ' (' . $tur . ')';
-            $tutanakFolder = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawTutanakFolder));
+            $toplamDosyaSayisi = 0;
+            $geciciDosyalarZip = [];
 
-            $recordPathInZip = $rootFolder . '/' . $ilceName . '/' . $tutanakFolder;
-            $zip->addEmptyDir($recordPathInZip);
+            foreach ($liste as $index => $kayit) {
+                $kacakId = (int) $kayit['id'];
+                $detay = $kayit;
+                $ilceName = Helper::trUpper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')));
+                $tutanakNo = trim((string) ($kayit['tutanak_no'] ?? ''));
+                $aboneAdi = Helper::trUpper(trim((string) ($kayit['abone_adi'] ?? '')));
+                $tur = Helper::trUpper(trim((string) ($kayit['tur'] ?? 'KAÇAK')));
 
-            $fotolar = $tumFotolarGrouped[$kacakId] ?? [];
-            $tutanakSeq = 1;
-            $sahaSeq = 1;
-            $iptalSeq = 1;
-            $videoSeq = 1;
-            $sahaFotolariZip = [];
-
-            foreach ($fotolar as $foto) {
-                $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
-                if (!is_file($kaynak)) continue;
-
-                $origExt = strtolower(pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION));
-                $fotoTur = strtolower($foto['tur'] ?? 'saha');
-                $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
-
-                if ($fotoTur === 'tutanak') {
-                    $prefix = 'tutanak';
-                    $seq = $tutanakSeq++;
-                } elseif ($fotoTur === 'iptal') {
-                    $prefix = 'iptal';
-                    $seq = $iptalSeq++;
-                } elseif ($medyaTipi === 'video') {
-                    $prefix = 'video';
-                    $seq = $videoSeq++;
+                $folderParts = [];
+                if ($tutanakNo !== '') {
+                    $folderParts[] = $tutanakNo;
                 } else {
-                    $prefix = 'saha';
-                    $seq = $sahaSeq++;
+                    $folderParts[] = 'KAYIT_' . $kacakId;
+                }
+                if ($aboneAdi !== '') {
+                    $folderParts[] = $aboneAdi;
                 }
 
-                $isPdf = ($origExt === 'pdf');
-                $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
-                $ext = $origExt ?: ($isPdf ? 'pdf' : ($isVideo ? 'mp4' : 'jpeg'));
-                $entryName = $recordPathInZip . '/' . $dosyaAdi;
-                $zip->addFile($kaynak, $entryName, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-                $zip->setCompressionName($entryName, \ZipArchive::CM_STORE);
-                $toplamDosyaSayisi++;
+                $rawTutanakFolder = implode(' - ', $folderParts) . ' (' . $tur . ')';
+                $tutanakFolder = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawTutanakFolder));
+
+                $recordPathInZip = $rootFolder . '/' . $ilceName . '/' . $tutanakFolder;
+                $zip->addEmptyDir($recordPathInZip);
+
+                $fotolar = $tumFotolarGrouped[$kacakId] ?? [];
+                $tutanakSeq = 1;
+                $sahaSeq = 1;
+                $iptalSeq = 1;
+                $videoSeq = 1;
+
+                foreach ($fotolar as $foto) {
+                    $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
+                    if (!is_file($kaynak)) continue;
+
+                    $origExt = strtolower(pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION));
+                    $fotoTur = strtolower($foto['tur'] ?? 'saha');
+                    $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
+
+                    if ($fotoTur === 'tutanak') {
+                        $prefix = 'tutanak';
+                        $seq = $tutanakSeq++;
+                    } elseif ($fotoTur === 'iptal') {
+                        $prefix = 'iptal';
+                        $seq = $iptalSeq++;
+                    } elseif ($medyaTipi === 'video') {
+                        $prefix = 'video';
+                        $seq = $videoSeq++;
+                    } else {
+                        $prefix = 'saha';
+                        $seq = $sahaSeq++;
+                    }
+
+                    $isPdf = ($origExt === 'pdf');
+                    $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
+                    $ext = $origExt ?: ($isPdf ? 'pdf' : ($isVideo ? 'mp4' : 'jpeg'));
+                    $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
+                    $entryName = $recordPathInZip . '/' . $dosyaAdi;
+                    $zip->addFile($kaynak, $entryName, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+                    $zip->setCompressionName($entryName, \ZipArchive::CM_STORE);
+                    $toplamDosyaSayisi++;
+                }
+
+                $processed = $index + 1;
+                $pct = min(95, 5 + (int) round(($processed / $totalCount) * 90));
+                if ($processed % 2 === 0 || $processed === $totalCount) {
+                    updateJobStatus($exportStorageDir, $jobId, [
+                        'processed_records' => $processed,
+                        'progress' => $pct,
+                        'message' => "Tutanaklar ve fotoğraflar arşive ekleniyor... ({$processed} / {$totalCount})"
+                    ]);
+                }
             }
 
-            $processed = $index + 1;
-            $pct = min(95, 5 + (int) round(($processed / $totalCount) * 90));
-            if ($processed % 2 === 0 || $processed === $totalCount) {
-                updateJobStatus($exportStorageDir, $jobId, [
-                    'processed_records' => $processed,
-                    'progress' => $pct,
-                    'message' => "Tutanaklar ve fotoğraflar arşive ekleniyor... ({$processed} / {$totalCount})"
-                ]);
+            foreach ($geciciDosyalarZip as $tmpF) {
+                @unlink($tmpF);
             }
-        }
 
-        foreach ($geciciDosyalarZip as $tmpF) {
-            @unlink($tmpF);
-        }
+            $zip->close();
 
-        $zip->close();
+            if (!is_file($targetFile)) {
+                updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => 'ZIP dosyası oluşturulamadı.']);
+                echo json_encode(['success' => false, 'message' => 'ZIP dosyası oluşturulamadı.']);
+                exit;
+            }
 
-        if (!is_file($targetFile)) {
-            updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => 'ZIP dosyası oluşturulamadı.']);
-            echo json_encode(['success' => false, 'message' => 'ZIP dosyası oluşturulamadı.']);
+            $zipDownloadName = $rootFolder . '.zip';
+            $fileSize = (int) filesize($targetFile);
+            $sizeFmt = formatBytes($fileSize);
+
+            $logModel = new App\Model\SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'Teslim Alma Listesi Toplu İndirme (ZIP - Async)',
+                "Aralık: $baslangic - $bitis, Kayıt Sayısı: $totalCount, Dosya Sayısı: $toplamDosyaSayisi, Boyut: $sizeFmt, Klasör: $rootFolder",
+                App\Model\SystemLogModel::LEVEL_INFO
+            );
+
+            updateJobStatus($exportStorageDir, $jobId, [
+                'status' => 'completed',
+                'progress' => 100,
+                'processed_records' => $totalCount,
+                'message' => 'ZIP arşivi hazırlandı.',
+                'file_path' => $targetFile,
+                'filename' => $zipDownloadName,
+                'file_size' => $fileSize,
+                'file_size_fmt' => $sizeFmt,
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'status' => 'completed',
+                'job_id' => $jobId,
+                'filename' => $zipDownloadName,
+                'file_size_fmt' => $sizeFmt
+            ]);
+            exit;
+        } catch (\Throwable $e) {
+            error_log('process_export_job ZIP error: ' . $e->getMessage());
+            updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'ZIP oluşturulurken hata: ' . $e->getMessage()]);
             exit;
         }
-
-        $zipDownloadName = $rootFolder . '.zip';
-        $fileSize = (int) filesize($targetFile);
-        $sizeFmt = formatBytes($fileSize);
-
-        $logModel = new App\Model\SystemLogModel();
-        $logModel->logAction(
-            $userId,
-            'Teslim Alma Listesi Toplu İndirme (ZIP - Async)',
-            "Aralık: $baslangic - $bitis, Kayıt Sayısı: $totalCount, Dosya Sayısı: $toplamDosyaSayisi, Boyut: $sizeFmt, Klasör: $rootFolder",
-            App\Model\SystemLogModel::LEVEL_INFO
-        );
-
-        updateJobStatus($exportStorageDir, $jobId, [
-            'status' => 'completed',
-            'progress' => 100,
-            'processed_records' => $totalCount,
-            'message' => 'ZIP arşivi hazırlandı.',
-            'file_path' => $targetFile,
-            'filename' => $zipDownloadName,
-            'file_size' => $fileSize,
-            'file_size_fmt' => $sizeFmt,
-        ]);
-
-        echo json_encode([
-            'success' => true,
-            'status' => 'completed',
-            'job_id' => $jobId,
-            'filename' => $zipDownloadName,
-            'file_size_fmt' => $sizeFmt
-        ]);
-        exit;
     }
 }
 
