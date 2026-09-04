@@ -1074,6 +1074,40 @@ class KacakKontrolModel extends Model
         return $rows;
     }
 
+    public function getTeslimAlmaListesiByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT k.id, k.tarih, k.tutanak_no, k.abone_adi, k.ilce, k.tur, k.ekip_adi,
+                       COALESCE(t.teslim_alindi, 0) AS teslim_alindi, t.teslim_tarihi
+                FROM kacak_kontrol k
+                LEFT JOIN kacak_teslim_takip t
+                  ON t.kacak_id = k.id AND t.firma_id = k.firma_id
+                 AND t.is_active = 1 AND t.deleted_at IS NULL
+                WHERE k.firma_id = ? AND k.id IN ($placeholders)
+                  AND " . self::raporKosulu('k') . "
+                ORDER BY k.ilce ASC, k.tarih ASC, k.tutanak_no ASC";
+
+        $params = array_merge([$this->firmaId()], $ids);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as &$row) {
+            $merkezMi = in_array($row['ilce'], self::MERKEZ_ILCELER, true);
+            $row['sebep'] = $merkezMi ? 'Onikişubat/Dulkadiroğlu (tümü)' : 'Kaçak/Usülsüz evrak';
+            $row['foto_cikti_gerekli'] = ($merkezMi && $row['tur'] === 'Kaçak') ? 1 : 0;
+            $row['teslim_durumu'] = (int) $row['teslim_alindi'] === 1 ? 'Teslim Alındı' : 'Teslim Alınmadı';
+        }
+        unset($row);
+
+        return $rows;
+    }
+
     public function teslimAlindiIsaretle(array $ids, int $userId): int
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));

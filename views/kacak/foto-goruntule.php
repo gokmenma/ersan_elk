@@ -16,7 +16,7 @@ if ($userId <= 0 || empty($_SESSION['firma_id'])) {
     exit('Yetkisiz erişim.');
 }
 
-if (!Gate::allows('kacak_islemleri') && !Gate::allows('kacak/list') && !Gate::isSuperAdmin()) {
+if (!Gate::allows('kacak_islemleri') && !Gate::allows('kacak/list') && !Gate::allows('kacak_duzenle') && !Gate::allows('kacak_onay') && !Gate::allows('kacak_arsiv') && !Gate::isSuperAdmin()) {
     http_response_code(403);
     exit('Yetkisiz erişim.');
 }

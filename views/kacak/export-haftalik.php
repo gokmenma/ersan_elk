@@ -25,7 +25,7 @@ if ($userId <= 0 || empty($_SESSION['firma_id'])) {
     exit('Yetkisiz erişim.');
 }
 
-if (!Gate::allows('kacak_islemleri') && !Gate::isSuperAdmin()) {
+if (!Gate::allows('kacak_islemleri') && !Gate::allows('kacak/list') && !Gate::allows('kacak_duzenle') && !Gate::allows('kacak_onay') && !Gate::allows('kacak_arsiv') && !Gate::isSuperAdmin()) {
     http_response_code(403);
     exit('Yetkisiz erişim.');
 }
@@ -39,26 +39,23 @@ $Kacak = new KacakKontrolModel();
 
 function seciliTeslimKayitlari(KacakKontrolModel $model, string $baslangic, string $bitis, array $tokenlar): array
 {
-    $tumListe = $model->getTeslimAlmaListesi($baslangic, $bitis);
-    if (empty($tokenlar)) {
-        return $tumListe;
+    if (!empty($tokenlar)) {
+        $ids = [];
+        foreach ($tokenlar as $token) {
+            $id = (int) Security::decrypt((string) $token);
+            if ($id > 0) $ids[] = $id;
+        }
+        if (!empty($ids)) {
+            return $model->getTeslimAlmaListesiByIds($ids);
+        }
     }
-    $ids = [];
-    foreach ($tokenlar as $token) {
-        $id = (int) Security::decrypt((string) $token);
-        if ($id > 0) $ids[$id] = true;
-    }
-    if (empty($ids)) {
-        return $tumListe;
-    }
-    return array_values(array_filter(
-        $tumListe,
-        static fn(array $kayit): bool => isset($ids[(int) $kayit['id']])
-    ));
+    return $model->getTeslimAlmaListesi($baslangic, $bitis);
 }
 
+@set_time_limit(0);
+ini_set('max_execution_time', '0');
 ini_set('pcre.backtrack_limit', '10000000');
-ini_set('memory_limit', '512M');
+ini_set('memory_limit', '1024M');
 
 function getKacakFotoGorselYolu(string $kaynak, array &$geciciDosyalar): ?string
 {
@@ -499,6 +496,12 @@ if ($tip === 'teslim_zip') {
     }
 
     $zip->close();
+
+    if ($toplamDosyaSayisi === 0) {
+        @unlink($zipYolu);
+        http_response_code(404);
+        exit('Seçilen kayıtlara ait sunucuda yüklü herhangi bir fotoğraf veya evrak bulunamadı.');
+    }
 
     if (!is_file($zipYolu)) {
         http_response_code(500);

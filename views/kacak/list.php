@@ -3203,10 +3203,53 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     document.body.removeChild(a);
                 })
                 .catch(err => {
-                    Swal.fire('Hata', err.message || 'İndirme sırasında bir sorun oluştu.', 'error');
+                    Swal.fire('Bilgi', err.message || 'İndirme sırasında bir sorun oluştu.', 'warning');
                 })
                 .finally(() => {
                     $mainBtn.prop('disabled', teslimSecilenler.size === 0).html(origHtml);
+                });
+        });
+
+        // Tekil kayıt ZIP indirme
+        $(document).on('click', '.btn-foto-zip, #btnFotoModalZip', function (e) {
+            e.preventDefault();
+            const href = $(this).attr('href');
+            if (!href || href === '#' || href === 'javascript:void(0)') return;
+
+            const $btn = $(this);
+            const origHtml = $btn.html();
+            $btn.addClass('disabled').html('<span class="spinner-border spinner-border-sm" role="status"></span>');
+
+            fetch(href)
+                .then(async response => {
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(errText || 'Dosya indirilemedi.');
+                    }
+                    const disposition = response.headers.get('Content-Disposition');
+                    let filename = 'Kacak_Kayit_Fotograflari.zip';
+                    if (disposition) {
+                        const matches = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(disposition);
+                        if (matches) {
+                            filename = decodeURIComponent(matches[1] || matches[2]);
+                        }
+                    }
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(err => {
+                    Swal.fire('Bilgi', err.message || 'İndirilebilir dosya bulunamadı.', 'info');
+                })
+                .finally(() => {
+                    $btn.removeClass('disabled').html(origHtml);
                 });
         });
 

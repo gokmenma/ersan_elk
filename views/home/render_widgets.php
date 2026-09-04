@@ -438,10 +438,22 @@ function renderWidget(string $widgetId, array $data = []) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if (empty($recent_requests)): ?>
+                                    <?php
+                                    $filtered_requests = [];
+                                    if (!empty($recent_requests)) {
+                                        $canAvans = \App\Service\Gate::allows('avans_talepleri');
+                                        foreach ($recent_requests as $req) {
+                                            if ($req->tip == 'Avans' && !$canAvans) {
+                                                continue;
+                                            }
+                                            $filtered_requests[] = $req;
+                                        }
+                                    }
+                                    ?>
+                                    <?php if (empty($filtered_requests)): ?>
                                         <tr><td colspan="5" class="text-center py-4">Bekleyen talep bulunmamaktadır.</td></tr>
                                     <?php else: ?>
-                                        <?php foreach ($recent_requests as $req):
+                                        <?php foreach ($filtered_requests as $req):
                                             $personel = $personel_map[$req->personel_id] ?? null;
                                             $badgeClass = 'badge-warning';
                                             if ($req->tip == 'Avans') $badgeClass = 'badge-success';

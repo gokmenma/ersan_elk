@@ -49,18 +49,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $aylarUzun = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
     // CACHE HELPER
-    $getWidgetCache = function($key) use ($firmaId) {
-        $cachePath = dirname(__DIR__, 2) . "/cache/dashboard/widget_{$firmaId}_{$key}.html";
+    $getWidgetCache = function($key) use ($firmaId, $userId) {
+        $cachePath = dirname(__DIR__, 2) . "/cache/dashboard/widget_{$firmaId}_{$userId}_{$key}.html";
         if (file_exists($cachePath) && (time() - filemtime($cachePath)) < 300) {
             return file_get_contents($cachePath);
         }
         return null;
     };
 
-    $setWidgetCache = function($key, $html) use ($firmaId) {
+    $setWidgetCache = function($key, $html) use ($firmaId, $userId) {
         $dir = dirname(__DIR__, 2) . "/cache/dashboard";
         if (!is_dir($dir)) mkdir($dir, 0777, true);
-        $cachePath = "$dir/widget_{$firmaId}_{$key}.html";
+        $cachePath = "$dir/widget_{$firmaId}_{$userId}_{$key}.html";
         file_put_contents($cachePath, $html);
     };
 
@@ -208,7 +208,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $talep_c = (int) $stmtTalep->fetch(PDO::FETCH_OBJ)->count;
                             } catch (\Exception $e) {}
 
-                            $data['personel_talep_sayisi'] = (int)$avansModel->getBekleyenAvansSayisi() + (int)$izinModel->getBekleyenIzinSayisi() + (int)$talepModel->getBekleyenTalepSayisi() + $degisim_c + $mazeret_c + $talep_c;
+                            $canAvans = \App\Service\Gate::allows('avans_talepleri');
+                            $avansSayisi = $canAvans ? (int)$avansModel->getBekleyenAvansSayisi() : 0;
+                            $data['personel_talep_sayisi'] = $avansSayisi + (int)$izinModel->getBekleyenIzinSayisi() + (int)$talepModel->getBekleyenTalepSayisi() + $degisim_c + $mazeret_c + $talep_c;
                         } elseif ($widgetId == 'widget-nobetciler') {
                             $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
                         } elseif ($widgetId == 'widget-gorevler' || $widgetId == 'widget-yaklasan-gorevler') {
@@ -218,12 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $data['personelLogs'] = $systemLogModel->getPersonelLoginLogs(10);
                             $data['kullaniciLogs'] = $systemLogModel->getUserLoginLogs(10);
                             if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')) {
-                                $data['aiAgentLogs'] = $systemLogModel->getAiAgentLogs(10);
+                                 $data['aiAgentLogs'] = $systemLogModel->getAiAgentLogs(10);
                             }
                         } elseif ($widgetId == 'widget-gec-kalanlar') {
                             $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
                         } elseif ($widgetId == 'widget-talepler') {
-                            $avanslar = $avansModel->getBekleyenAvanslarForDashboard(5);
+                            $canAvans = \App\Service\Gate::allows('avans_talepleri');
+                            $avanslar = $canAvans ? $avansModel->getBekleyenAvanslarForDashboard(5) : [];
                             $izinler = $izinModel->getBekleyenIzinlerForDashboard(5);
                             $talepler = $talepModel->getBekleyenTaleplerForDashboard(5);
 
