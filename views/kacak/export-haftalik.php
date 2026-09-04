@@ -633,28 +633,10 @@ if ($tip === 'process_export_job') {
                 $isPdf = ($origExt === 'pdf');
                 $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
                 $ext = $origExt ?: ($isPdf ? 'pdf' : ($isVideo ? 'mp4' : 'jpeg'));
-                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-
-                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-
-                if ($fotoTur === 'saha' && !$isVideo && !$isPdf) {
-                    $gorselDisk = getKacakFotoGorselYolu($kaynak, $geciciDosyalarZip);
-                    if ($gorselDisk !== null) {
-                        $fotoCopy = $foto;
-                        $fotoCopy['dosya_yolu_disk'] = $gorselDisk;
-                        $sahaFotolariZip[] = $fotoCopy;
-                    }
-                }
+                $entryName = $recordPathInZip . '/' . $dosyaAdi;
+                $zip->addFile($kaynak, $entryName, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+                $zip->setCompressionName($entryName, \ZipArchive::CM_STORE);
                 $toplamDosyaSayisi++;
-            }
-
-            if (!empty($sahaFotolariZip)) {
-                $pdfBinary = uretKacakTekSayfaPdfBinary($detay, $sahaFotolariZip, $geciciDosyalarZip);
-                if ($pdfBinary !== null) {
-                    $pdfDosyaAdi = sprintf('foto_ciktisi_%s.pdf', $tutanakNo ?: ('kayit_' . $kacakId));
-                    $zip->addFromString($recordPathInZip . '/' . $pdfDosyaAdi, $pdfBinary, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-                    $toplamDosyaSayisi++;
-                }
             }
 
             $processed = $index + 1;
@@ -959,28 +941,10 @@ if ($tip === 'teslim_zip') {
             $isPdf = ($origExt === 'pdf');
             $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
             $ext = $origExt ?: ($isPdf ? 'pdf' : ($isVideo ? 'mp4' : 'jpeg'));
-            $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-
-            $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-
-            if ($fotoTur === 'saha' && !$isVideo && !$isPdf) {
-                $gorselDisk = getKacakFotoGorselYolu($kaynak, $geciciDosyalarZip);
-                if ($gorselDisk !== null) {
-                    $fotoCopy = $foto;
-                    $fotoCopy['dosya_yolu_disk'] = $gorselDisk;
-                    $sahaFotolariZip[] = $fotoCopy;
-                }
-            }
+            $entryName = $recordPathInZip . '/' . $dosyaAdi;
+            $zip->addFile($kaynak, $entryName, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+            $zip->setCompressionName($entryName, \ZipArchive::CM_STORE);
             $toplamDosyaSayisi++;
-        }
-
-        if (!empty($sahaFotolariZip)) {
-            $pdfBinary = uretKacakTekSayfaPdfBinary($detay, $sahaFotolariZip, $geciciDosyalarZip);
-            if ($pdfBinary !== null) {
-                $pdfDosyaAdi = sprintf('foto_ciktisi_%s.pdf', $tutanakNo ?: ('kayit_' . $kacakId));
-                $zip->addFromString($recordPathInZip . '/' . $pdfDosyaAdi, $pdfBinary, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-                $toplamDosyaSayisi++;
-            }
         }
     }
 
