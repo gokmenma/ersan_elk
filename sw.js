@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "yonetici-pwa-v9";
+const CACHE_NAME = "yonetici-pwa-v10";
 const OFFLINE_URL = new URL("offline-admin.html", self.registration.scope).href;
 
 // Önbelleğe alınacak dosyalar
@@ -56,28 +56,22 @@ self.addEventListener("activate", (event) => {
 
 // Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
-  const requestScheme = new URL(event.request.url).protocol;
+  const url = event.request.url;
+  const requestScheme = new URL(url).protocol;
   if (requestScheme !== "http:" && requestScheme !== "https:") {
     return;
   }
 
-  // API isteklerini her zaman networkten al
-  if (event.request.url.includes("api.php")) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          return response;
-        })
-        .catch(() => {
-          return new Response(
-            JSON.stringify({
-              success: false,
-              message: "Çevrimdışı modda API erişimi yok",
-            }),
-            { headers: { "Content-Type": "application/json" } },
-          );
-        }),
-    );
+  // POST/PUT/DELETE istekleri, dosya indirme/export/API uç noktaları doğrudan ağ üzerinden yapılmalıdır
+  if (
+    event.request.method !== "GET" ||
+    url.includes("api.php") ||
+    url.includes("export") ||
+    url.includes("download") ||
+    url.includes("foto-goruntule") ||
+    url.includes("kacak-foto") ||
+    url.includes("ajax")
+  ) {
     return;
   }
 
