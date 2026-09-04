@@ -336,11 +336,16 @@ if ($tip === 'teslim_foto_pdf') {
             ? 'Kacak_Foto_Ciktisi_' . preg_replace('/[^\p{L}\p{N}_.-]+/u', '_', (string) $liste[0]['tutanak_no']) . '.pdf'
             : 'Kacak_Foto_Ciktilari_' . $baslangic . '_' . $bitis . '.pdf';
 
+        $asciiPdfAdi = Helper::toAscii($dosyaAdi);
+        $encodedPdfAdi = rawurlencode($dosyaAdi);
+
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
 
-        $mpdf->Output($dosyaAdi, 'D');
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $asciiPdfAdi . '"; filename*=UTF-8\'\'' . $encodedPdfAdi);
+        echo $mpdf->Output('', 'S');
 
         // Geçici dosyaları temizle
         foreach ($geciciDosyalar as $tmpF) {
@@ -509,9 +514,10 @@ if ($tip === 'teslim_zip') {
     }
 
     $zipDownloadName = $rootFolder . '.zip';
+    $asciiZipAdi = Helper::toAscii($zipDownloadName);
     $encodedZipAdi = rawurlencode($zipDownloadName);
     header('Content-Type: application/zip');
-    header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipDownloadName) . '"; filename*=UTF-8\'\'' . $encodedZipAdi);
+    header('Content-Disposition: attachment; filename="' . $asciiZipAdi . '"; filename*=UTF-8\'\'' . $encodedZipAdi);
     header('Content-Length: ' . filesize($zipYolu));
     header('Cache-Control: no-cache, must-revalidate');
     readfile($zipYolu);

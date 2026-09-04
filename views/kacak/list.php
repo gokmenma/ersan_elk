@@ -3064,94 +3064,24 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         $('#btnTeslimFotoPdf').on('click', function (e) {
             e.preventDefault();
             if (teslimSecilenler.size === 0) return;
-            const $mainBtn = $('#btnTeslimIslemler');
-            const origHtml = $mainBtn.html();
-            $mainBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Hazırlanıyor...');
-
-            const formData = new FormData();
-            formData.append('tip', 'teslim_foto_pdf');
-            formData.append('start_date', toIsoDate($('#teslim_baslangic').val()));
-            formData.append('end_date', toIsoDate($('#teslim_bitis').val()));
-            teslimSecilenler.forEach(t => formData.append('tokens[]', t));
-
-            fetch('views/kacak/export-haftalik.php', {method: 'POST', body: formData})
-                .then(async response => {
-                    if (!response.ok) {
-                        const errText = await response.text();
-                        throw new Error(errText || 'Fotoğraf çıktısı PDF dosyası indirilemedi.');
-                    }
-                    const disposition = response.headers.get('Content-Disposition');
-                    let filename = 'Kacak_Foto_Ciktilari.pdf';
-                    if (disposition) {
-                        const matches = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(disposition);
-                        if (matches) {
-                            filename = decodeURIComponent(matches[1] || matches[2]);
-                        }
-                    }
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                })
-                .catch(err => {
-                    Swal.fire('Bilgi', err.message || 'PDF oluşturulurken bir sorun oluştu.', 'warning');
-                })
-                .finally(() => {
-                    $mainBtn.prop('disabled', teslimSecilenler.size === 0).html(origHtml);
-                });
+            const form = $('<form>', {method: 'POST', action: 'views/kacak/export-haftalik.php'}).appendTo('body');
+            $('<input>', {type:'hidden', name:'tip', value:'teslim_foto_pdf'}).appendTo(form);
+            $('<input>', {type:'hidden', name:'start_date', value:toIsoDate($('#teslim_baslangic').val())}).appendTo(form);
+            $('<input>', {type:'hidden', name:'end_date', value:toIsoDate($('#teslim_bitis').val())}).appendTo(form);
+            teslimSecilenler.forEach(t => $('<input>', {type:'hidden', name:'tokens[]', value:t}).appendTo(form));
+            form.trigger('submit').remove();
         });
 
         $('#teslimTable').on('click', '.btn-teslim-foto-tekil-pdf', function (e) {
             e.stopPropagation();
             const token = $(this).data('token');
             if (!token) return;
-            const $btn = $(this);
-            const origHtml = $btn.html();
-            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:12px;height:12px;" role="status"></span>');
-
-            const formData = new FormData();
-            formData.append('tip', 'teslim_foto_pdf');
-            formData.append('start_date', toIsoDate($('#teslim_baslangic').val()));
-            formData.append('end_date', toIsoDate($('#teslim_bitis').val()));
-            formData.append('tokens[]', token);
-
-            fetch('views/kacak/export-haftalik.php', {method: 'POST', body: formData})
-                .then(async response => {
-                    if (!response.ok) {
-                        const errText = await response.text();
-                        throw new Error(errText || 'Fotoğraf çıktısı PDF dosyası indirilemedi.');
-                    }
-                    const disposition = response.headers.get('Content-Disposition');
-                    let filename = 'Kacak_Foto_Ciktisi.pdf';
-                    if (disposition) {
-                        const matches = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(disposition);
-                        if (matches) {
-                            filename = decodeURIComponent(matches[1] || matches[2]);
-                        }
-                    }
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                })
-                .catch(err => {
-                    Swal.fire('Bilgi', err.message || 'PDF oluşturulamadı.', 'warning');
-                })
-                .finally(() => {
-                    $btn.prop('disabled', false).html(origHtml);
-                });
+            const form = $('<form>', {method: 'POST', action: 'views/kacak/export-haftalik.php'}).appendTo('body');
+            $('<input>', {type:'hidden', name:'tip', value:'teslim_foto_pdf'}).appendTo(form);
+            $('<input>', {type:'hidden', name:'start_date', value:toIsoDate($('#teslim_baslangic').val())}).appendTo(form);
+            $('<input>', {type:'hidden', name:'end_date', value:toIsoDate($('#teslim_bitis').val())}).appendTo(form);
+            $('<input>', {type:'hidden', name:'tokens[]', value:token}).appendTo(form);
+            form.trigger('submit').remove();
         });
 
         $('#btnTeslimExcel').on('click', function (e) {
@@ -3168,46 +3098,12 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         $('#btnTeslimZip').on('click', function (e) {
             e.preventDefault();
             if (teslimSecilenler.size === 0) return;
-            const $mainBtn = $('#btnTeslimIslemler');
-            const origHtml = $mainBtn.html();
-            $mainBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Hazırlanıyor...');
-
-            const formData = new FormData();
-            formData.append('tip', 'teslim_zip');
-            formData.append('start_date', toIsoDate($('#teslim_baslangic').val()));
-            formData.append('end_date', toIsoDate($('#teslim_bitis').val()));
-            teslimSecilenler.forEach(t => formData.append('tokens[]', t));
-            fetch('views/kacak/export-haftalik.php', {method: 'POST', body: formData})
-                .then(async response => {
-                    if (!response.ok) {
-                        const errText = await response.text();
-                        throw new Error(errText || 'ZIP dosyası indirilemedi.');
-                    }
-                    const disposition = response.headers.get('Content-Disposition');
-                    let filename = 'Teslim_Alma_Listesi.zip';
-                    if (disposition) {
-                        const matches = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(disposition);
-                        if (matches) {
-                            filename = decodeURIComponent(matches[1] || matches[2]);
-                        }
-                    }
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                })
-                .catch(err => {
-                    Swal.fire('Bilgi', err.message || 'İndirme sırasında bir sorun oluştu.', 'warning');
-                })
-                .finally(() => {
-                    $mainBtn.prop('disabled', teslimSecilenler.size === 0).html(origHtml);
-                });
+            const form = $('<form>', {method: 'POST', action: 'views/kacak/export-haftalik.php'}).appendTo('body');
+            $('<input>', {type:'hidden', name:'tip', value:'teslim_zip'}).appendTo(form);
+            $('<input>', {type:'hidden', name:'start_date', value:toIsoDate($('#teslim_baslangic').val())}).appendTo(form);
+            $('<input>', {type:'hidden', name:'end_date', value:toIsoDate($('#teslim_bitis').val())}).appendTo(form);
+            teslimSecilenler.forEach(t => $('<input>', {type:'hidden', name:'tokens[]', value:t}).appendTo(form));
+            form.trigger('submit').remove();
         });
 
         // Tekil kayıt ZIP indirme

@@ -1994,9 +1994,10 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
         ob_end_clean();
     }
 
+    $asciiZipAdi = Helper::toAscii($zipAdi);
     $encodedZipAdi = rawurlencode($zipAdi);
     header('Content-Type: application/zip');
-    header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipAdi) . '"; filename*=UTF-8\'\'' . $encodedZipAdi);
+    header('Content-Disposition: attachment; filename="' . $asciiZipAdi . '"; filename*=UTF-8\'\'' . $encodedZipAdi);
     header('Content-Length: ' . filesize($zipYolu));
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');

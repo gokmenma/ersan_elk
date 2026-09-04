@@ -146,6 +146,13 @@ class Helper
         return mb_strtoupper($text, "UTF-8");
     }
 
+    public static function toAscii($text): string
+    {
+        $search = ['ı', 'İ', 'ğ', 'Ğ', 'ü', 'Ü', 'ş', 'Ş', 'ö', 'Ö', 'ç', 'Ç'];
+        $replace = ['i', 'I', 'g', 'G', 'u', 'U', 's', 'S', 'o', 'O', 'c', 'C'];
+        return str_replace($search, $replace, (string) $text);
+    }
+
     public static function gidenEki($kurumAdi)
     {
         $kurumAdi = (string) ($kurumAdi ?? '');
