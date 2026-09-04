@@ -22,13 +22,28 @@ $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 
 if ($userId <= 0 || empty($_SESSION['firma_id'])) {
     http_response_code(403);
+    if (isset($_REQUEST['tip']) && in_array($_REQUEST['tip'], ['start_export_job', 'process_export_job', 'check_export_job'], true)) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim.']);
+        exit;
+    }
     exit('Yetkisiz erişim.');
 }
 
 if (!Gate::allows('kacak_islemleri') && !Gate::allows('kacak/list') && !Gate::allows('kacak_duzenle') && !Gate::allows('kacak_onay') && !Gate::allows('kacak_arsiv') && !Gate::isSuperAdmin()) {
     http_response_code(403);
+    if (isset($_REQUEST['tip']) && in_array($_REQUEST['tip'], ['start_export_job', 'process_export_job', 'check_export_job'], true)) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim.']);
+        exit;
+    }
     exit('Yetkisiz erişim.');
 }
+
+@set_time_limit(0);
+ini_set('max_execution_time', '0');
+ini_set('pcre.backtrack_limit', '10000000');
+ini_set('memory_limit', '1024M');
 
 $istek = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' ? $_POST : $_GET;
 $tip = $istek['tip'] ?? 'ozet';
@@ -36,6 +51,136 @@ $baslangic = Date::convertExcelDate($istek['start_date'] ?? '', 'Y-m-d') ?: date
 $bitis = Date::convertExcelDate($istek['end_date'] ?? '', 'Y-m-d') ?: date('Y-m-d');
 
 $Kacak = new KacakKontrolModel();
+$exportStorageDir = dirname(__DIR__, 2) . '/storage/temp_exports';
+
+if (!is_dir($exportStorageDir)) {
+    @mkdir($exportStorageDir, 0775, true);
+}
+
+// 24 saatten eski geçici dosyaları temizleyen çöp toplayıcı (Garbage Collector)
+function cleanupOldExportFiles(string $dir): void
+{
+    if (!is_dir($dir)) return;
+    $files = glob($dir . '/*');
+    if ($files === false) return;
+    $now = time();
+    foreach ($files as $file) {
+        if (is_file($file) && basename($file) !== '.htaccess') {
+            if ($now - filemtime($file) > 86400) {
+                @unlink($file);
+            }
+        }
+    }
+}
+cleanupOldExportFiles($exportStorageDir);
+
+function getJobFilePath(string $dir, string $jobId, string $ext = 'json'): string
+{
+    $cleanId = preg_replace('/[^a-zA-Z0-9_-]/', '', $jobId);
+    return $dir . '/job_' . $cleanId . '.' . $ext;
+}
+
+function updateJobStatus(string $dir, string $jobId, array $data): void
+{
+    $file = getJobFilePath($dir, $jobId, 'json');
+    $existing = [];
+    if (is_file($file)) {
+        $json = @file_get_contents($file);
+        if ($json) {
+            $existing = json_decode($json, true) ?: [];
+        }
+    }
+    $updated = array_merge($existing, $data, ['updated_at' => time()]);
+    @file_put_contents($file, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
+function formatBytes(int $bytes, int $precision = 2): string
+{
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= (1 << (10 * $pow));
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+/**
+ * HTTP Range destekli duraklatılabilir/devam ettirilebilir (Resumable) dosya indirme akışı
+ */
+function deliverFileWithRangeSupport(string $filePath, string $downloadFilename, string $contentType = 'application/octet-stream'): void
+{
+    if (!is_file($filePath)) {
+        http_response_code(404);
+        exit('İndirilecek dosya bulunamadı veya süresi dolmuş.');
+    }
+
+    $fileSize = (int) filesize($filePath);
+    $offset = 0;
+    $length = $fileSize;
+    $statusCode = 200;
+
+    $headers = [
+        'Content-Type: ' . $contentType,
+        'Accept-Ranges: bytes',
+        'Cache-Control: public, must-revalidate, max-age=0',
+        'Pragma: no-cache',
+    ];
+
+    $asciiName = Helper::toAscii($downloadFilename);
+    $encodedName = rawurlencode($downloadFilename);
+    $headers[] = 'Content-Disposition: attachment; filename="' . $asciiName . '"; filename*=UTF-8\'\'' . $encodedName;
+
+    if (isset($_SERVER['HTTP_RANGE'])) {
+        $range = $_SERVER['HTTP_RANGE'];
+        if (preg_match('/bytes=\h*(\d+)-(\d*)[\D.*]?/i', $range, $matches)) {
+            $start = (int) $matches[1];
+            $end = ($matches[2] !== '') ? (int) $matches[2] : ($fileSize - 1);
+            if ($start <= $end && $end < $fileSize) {
+                $offset = $start;
+                $length = $end - $start + 1;
+                $statusCode = 206;
+                $headers[] = "Content-Range: bytes {$offset}-{$end}/{$fileSize}";
+            }
+        }
+    }
+
+    $headers[] = 'Content-Length: ' . $length;
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    http_response_code($statusCode);
+    foreach ($headers as $h) {
+        header($h);
+    }
+
+    $fp = @fopen($filePath, 'rb');
+    if ($fp === false) {
+        exit;
+    }
+
+    if ($offset > 0) {
+        fseek($fp, $offset);
+    }
+
+    $chunkSize = 1024 * 1024; // 1 MB
+    $bytesRemaining = $length;
+
+    while (!feof($fp) && $bytesRemaining > 0 && connection_status() === CONNECTION_NORMAL) {
+        $readSize = min($chunkSize, $bytesRemaining);
+        $buffer = fread($fp, $readSize);
+        if ($buffer === false) {
+            break;
+        }
+        echo $buffer;
+        flush();
+        $bytesRemaining -= strlen($buffer);
+    }
+
+    fclose($fp);
+    exit;
+}
 
 function seciliTeslimKayitlari(KacakKontrolModel $model, string $baslangic, string $bitis, array $tokenlar): array
 {
@@ -52,22 +197,15 @@ function seciliTeslimKayitlari(KacakKontrolModel $model, string $baslangic, stri
     return $model->getTeslimAlmaListesi($baslangic, $bitis);
 }
 
-@set_time_limit(0);
-ini_set('max_execution_time', '0');
-ini_set('pcre.backtrack_limit', '10000000');
-ini_set('memory_limit', '1024M');
-
 function getKacakFotoGorselYolu(string $kaynak, array &$geciciDosyalar): ?string
 {
     if (!is_file($kaynak)) {
         return null;
     }
     $ext = strtolower(pathinfo($kaynak, PATHINFO_EXTENSION));
-    // mPDF doğrudan jpg, jpeg, png, gif dosyalarını yerel disk yolundan okuyabilir
     if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif'], true)) {
         return $kaynak;
     }
-    // WebP veya diğer formatlar için geçici JPEG dosyası oluştur
     $jpegBinary = KacakKontrolModel::getAsJpegBinary($kaynak);
     if ($jpegBinary !== null) {
         $tmpFile = sys_get_temp_dir() . '/' . uniqid('kacak_pdf_img_', true) . '.jpg';
@@ -84,8 +222,6 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
     $esc = static fn($v): string => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
 
     $html = '<div class="page-container">';
-
-    // Fotoğraf Grid Alanı (Sadece resimler yer alır, metin ve başlıklar kaldırılmıştır)
     $fotoAdet = count($sahaFotolari);
 
     if ($fotoAdet === 0) {
@@ -148,49 +284,25 @@ function uretKacakFotoPdfHtml(array $detay, array $sahaFotolari): string
                 <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 63mm; max-height: 134mm;" />
             </td>';
         }
-        if ($fotoAdet % 3 !== 0) {
-            $kalan = 3 - ($fotoAdet % 3);
-            for ($k = 0; $k < $kalan; $k++) {
-                $html .= '<td class="photo-cell" style="width: 33.33%; border: none;"></td>';
-            }
-        }
-        $html .= '</tr></table>';
-    } elseif ($fotoAdet <= 8) {
-        $html .= '<table class="photo-grid-table"><tr>';
-        for ($i = 0; $i < $fotoAdet; $i++) {
-            if ($i > 0 && $i % 4 === 0) {
-                $html .= '</tr><tr>';
-            }
-            $f = $sahaFotolari[$i];
-            $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $html .= '<td class="photo-cell" style="width: 25%; height: 138mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 47mm; max-height: 134mm;" />
-            </td>';
-        }
-        if ($fotoAdet % 4 !== 0) {
-            $kalan = 4 - ($fotoAdet % 4);
-            for ($k = 0; $k < $kalan; $k++) {
-                $html .= '<td class="photo-cell" style="width: 25%; border: none;"></td>';
-            }
+        if ($fotoAdet === 5) {
+            $html .= '<td class="photo-cell" style="width: 33.33%; height: 138mm; background: #f8fafc;"></td>';
         }
         $html .= '</tr></table>';
     } else {
+        $gosterilecekler = array_slice($sahaFotolari, 0, 8);
         $html .= '<table class="photo-grid-table"><tr>';
-        for ($i = 0; $i < $fotoAdet; $i++) {
-            if ($i > 0 && $i % 3 === 0) {
+        foreach ($gosterilecekler as $i => $f) {
+            if ($i > 0 && $i % 4 === 0) {
                 $html .= '</tr><tr>';
             }
-            $f = $sahaFotolari[$i];
             $gorselSrc = $esc($f['dosya_yolu_disk']);
-            $html .= '<td class="photo-cell" style="width: 33.33%; height: 90mm;">
-                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 63mm; max-height: 86mm;" />
+            $html .= '<td class="photo-cell" style="width: 25%; height: 138mm;">
+                <img src="' . $gorselSrc . '" class="photo-img" style="max-width: 46mm; max-height: 134mm;" />
             </td>';
         }
-        if ($fotoAdet % 3 !== 0) {
-            $kalan = 3 - ($fotoAdet % 3);
-            for ($k = 0; $k < $kalan; $k++) {
-                $html .= '<td class="photo-cell" style="width: 33.33%; border: none;"></td>';
-            }
+        $kalan = 8 - count($gosterilecekler);
+        for ($k = 0; $k < $kalan; $k++) {
+            $html .= '<td class="photo-cell" style="width: 25%; height: 138mm; background: #f8fafc;"></td>';
         }
         $html .= '</tr></table>';
     }
@@ -207,15 +319,9 @@ function uretKacakTekSayfaPdfBinary(array $detay, array $sahaFotolari, array &$g
     $css = '
         body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
         .page-container { width: 100%; }
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
-        .header-table td { padding: 3px 6px; font-size: 8.5pt; border: 1px solid #cbd5e1; }
-        .header-title-box { background: #1e3a8a; color: #ffffff; text-align: center; font-weight: bold; font-size: 11pt; padding: 6px; letter-spacing: 0.5px; }
-        .info-label { font-weight: bold; color: #475569; width: 18%; background: #f8fafc; }
-        .info-value { color: #0f172a; width: 32%; font-weight: 600; }
         .photo-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .photo-cell { text-align: center; vertical-align: middle; padding: 3px; border: 1px solid #e2e8f0; background: #ffffff; }
         .photo-img { vertical-align: middle; border: 1px solid #cbd5e1; border-radius: 2px; }
-        .photo-caption { font-size: 7.5pt; color: #64748b; margin-top: 2px; text-align: center; }
         .no-photo-box { text-align: center; padding: 40mm 10mm; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 11pt; border-radius: 4px; }
     ';
 
@@ -239,9 +345,423 @@ function uretKacakTekSayfaPdfBinary(array $detay, array $sahaFotolari, array &$g
     }
 }
 
+// -------------------------------------------------------------
+// ASENKRON GÖREV VE DURUM YÖNETİMİ ENDPOINT'LERİ (API)
+// -------------------------------------------------------------
+
+// 1. Görevi Başlat (start_export_job)
+if ($tip === 'start_export_job') {
+    header('Content-Type: application/json; charset=utf-8');
+    $exportType = $istek['export_type'] ?? 'teslim_zip';
+    $tokens = (array) ($istek['tokens'] ?? []);
+
+    $liste = seciliTeslimKayitlari($Kacak, $baslangic, $bitis, $tokens);
+    if ($exportType === 'teslim_foto_pdf') {
+        $liste = array_values(array_filter($liste, static fn(array $k): bool => !empty($k['foto_cikti_gerekli'])));
+    }
+
+    if (empty($liste)) {
+        echo json_encode([
+            'success' => false,
+            'message' => ($exportType === 'teslim_foto_pdf')
+                ? 'Seçilen kayıtlar arasında fotoğraf çıktısı gerekli olan kayıt bulunamadı.'
+                : 'Dışa aktarma için seçili kayıt bulunamadı.'
+        ]);
+        exit;
+    }
+
+    $jobId = bin2hex(random_bytes(16));
+    $initialData = [
+        'job_id' => $jobId,
+        'user_id' => $userId,
+        'export_type' => $exportType,
+        'start_date' => $baslangic,
+        'end_date' => $bitis,
+        'total_records' => count($liste),
+        'processed_records' => 0,
+        'progress' => 0,
+        'status' => 'queued',
+        'message' => 'Dışa aktarma sıraya alındı...',
+        'file_path' => '',
+        'filename' => '',
+        'file_size' => 0,
+        'file_size_fmt' => '',
+        'created_at' => time(),
+        'error' => null,
+    ];
+
+    updateJobStatus($exportStorageDir, $jobId, $initialData);
+
+    echo json_encode([
+        'success' => true,
+        'job_id' => $jobId,
+        'total_records' => count($liste),
+        'message' => 'Görev başlatıldı.'
+    ]);
+    exit;
+}
+
+// 2. Görevi İşle (process_export_job)
+if ($tip === 'process_export_job') {
+    header('Content-Type: application/json; charset=utf-8');
+    $jobId = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($istek['job_id'] ?? ''));
+    $exportType = $istek['export_type'] ?? 'teslim_zip';
+    $tokens = (array) ($istek['tokens'] ?? []);
+
+    if ($jobId === '') {
+        echo json_encode(['success' => false, 'message' => 'Geçersiz görev ID.']);
+        exit;
+    }
+
+    $liste = seciliTeslimKayitlari($Kacak, $baslangic, $bitis, $tokens);
+    if ($exportType === 'teslim_foto_pdf') {
+        $liste = array_values(array_filter($liste, static fn(array $k): bool => !empty($k['foto_cikti_gerekli'])));
+    }
+
+    $totalCount = count($liste);
+    if ($totalCount === 0) {
+        updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => 'Kayıt bulunamadı.']);
+        echo json_encode(['success' => false, 'message' => 'Kayıt bulunamadı.']);
+        exit;
+    }
+
+    updateJobStatus($exportStorageDir, $jobId, [
+        'status' => 'processing',
+        'progress' => 5,
+        'message' => 'Kayıtlar ve fotoğraflar taranıyor...'
+    ]);
+
+    $rootDiskPath = KacakKontrolModel::rootPath();
+    $kacakIds = array_map(static fn(array $k): int => (int) $k['id'], $liste);
+    $tumFotolarGrouped = $Kacak->getPhotosByKacakIds($kacakIds);
+
+    $trMonths = [
+        1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran',
+        7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'
+    ];
+    $sTime = strtotime($baslangic);
+    $eTime = strtotime($bitis);
+    $startDay = (int) date('j', $sTime);
+    $startMonthName = $trMonths[(int) date('n', $sTime)] ?? date('F', $sTime);
+    $endDay = (int) date('j', $eTime);
+    $endMonthName = $trMonths[(int) date('n', $eTime)] ?? date('F', $eTime);
+
+    if ($exportType === 'teslim_foto_pdf') {
+        $targetFile = $exportStorageDir . '/export_' . $jobId . '.pdf';
+        $geciciDosyalar = [];
+        $toplamFotoSayisi = 0;
+
+        $css = '
+            body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
+            .page-container { width: 100%; }
+            .photo-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            .photo-cell { text-align: center; vertical-align: middle; padding: 3px; border: 1px solid #e2e8f0; background: #ffffff; }
+            .photo-img { vertical-align: middle; border: 1px solid #cbd5e1; border-radius: 2px; }
+            .no-photo-box { text-align: center; padding: 40mm 10mm; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 11pt; border-radius: 4px; }
+        ';
+
+        try {
+            $mpdf = new Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4-P',
+                'margin_left' => 8,
+                'margin_right' => 8,
+                'margin_top' => 8,
+                'margin_bottom' => 8,
+                'tempDir' => sys_get_temp_dir(),
+            ]);
+            $mpdf->SetTitle('Kaçak Teslim Alma - Fotoğraf Çıktıları');
+            $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+
+            foreach ($liste as $index => $kayit) {
+                $kacakId = (int) $kayit['id'];
+                $detay = $kayit;
+                $tumFotolar = $tumFotolarGrouped[$kacakId] ?? [];
+                $sahaFotolari = [];
+
+                foreach ($tumFotolar as $foto) {
+                    $fotoTur = strtolower($foto['tur'] ?? 'saha');
+                    $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
+                    $ext = strtolower(pathinfo($foto['dosya_yolu'] ?? '', PATHINFO_EXTENSION));
+
+                    if ($fotoTur === 'tutanak' || $fotoTur === 'iptal') continue;
+                    if ($medyaTipi === 'video' || in_array($ext, ['mp4', 'mov', 'webm', '3gp', 'avi', 'mkv', 'pdf'], true)) continue;
+
+                    $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
+                    $gorselYolu = getKacakFotoGorselYolu($kaynak, $geciciDosyalar);
+                    if ($gorselYolu !== null) {
+                        $foto['dosya_yolu_disk'] = $gorselYolu;
+                        $sahaFotolari[] = $foto;
+                        $toplamFotoSayisi++;
+                    }
+                }
+
+                if ($index > 0) {
+                    $mpdf->AddPage();
+                }
+
+                $sayfaHtml = uretKacakFotoPdfHtml($detay, $sahaFotolari);
+                $mpdf->WriteHTML($sayfaHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+
+                $processed = $index + 1;
+                $pct = min(95, 5 + (int) round(($processed / $totalCount) * 90));
+                if ($processed % 2 === 0 || $processed === $totalCount) {
+                    updateJobStatus($exportStorageDir, $jobId, [
+                        'processed_records' => $processed,
+                        'progress' => $pct,
+                        'message' => "Fotoğraflar PDF sayfalarına yerleştiriliyor... ({$processed} / {$totalCount})"
+                    ]);
+                }
+            }
+
+            $mpdf->Output($targetFile, 'F');
+
+            foreach ($geciciDosyalar as $tmpF) {
+                @unlink($tmpF);
+            }
+
+            $downloadName = ($totalCount === 1 && !empty($liste[0]['tutanak_no']))
+                ? 'Kacak_Foto_Ciktisi_' . preg_replace('/[^\p{L}\p{N}_.-]+/u', '_', (string) $liste[0]['tutanak_no']) . '.pdf'
+                : 'Kacak_Foto_Ciktilari_' . $baslangic . '_' . $bitis . '.pdf';
+
+            $fileSize = (int) filesize($targetFile);
+            $sizeFmt = formatBytes($fileSize);
+
+            $logModel = new SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'Teslim Alma Fotoğraf Çıktısı (PDF - Async)',
+                "Aralık: $baslangic - $bitis, Kayıt Sayısı: $totalCount, Foto Sayısı: $toplamFotoSayisi, Boyut: $sizeFmt",
+                SystemLogModel::LEVEL_INFO
+            );
+
+            updateJobStatus($exportStorageDir, $jobId, [
+                'status' => 'completed',
+                'progress' => 100,
+                'processed_records' => $totalCount,
+                'message' => 'PDF dosyası hazırlandı.',
+                'file_path' => $targetFile,
+                'filename' => $downloadName,
+                'file_size' => $fileSize,
+                'file_size_fmt' => $sizeFmt,
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'status' => 'completed',
+                'job_id' => $jobId,
+                'filename' => $downloadName,
+                'file_size_fmt' => $sizeFmt
+            ]);
+            exit;
+        } catch (\Throwable $e) {
+            foreach ($geciciDosyalar as $tmpF) {
+                @unlink($tmpF);
+            }
+            updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'PDF oluşturulurken hata: ' . $e->getMessage()]);
+            exit;
+        }
+    } else {
+        // ZIP Arşivi Oluşturma
+        $targetFile = $exportStorageDir . '/export_' . $jobId . '.zip';
+        $rootFolder = sprintf('%d %s - %d %s Tarihleri Arasında Yapılan İşlemler', $startDay, $startMonthName, $endDay, $endMonthName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($targetFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => 'Arşiv dosyası açılamadı.']);
+            echo json_encode(['success' => false, 'message' => 'Arşiv dosyası oluşturulamadı.']);
+            exit;
+        }
+
+        $toplamDosyaSayisi = 0;
+        $geciciDosyalarZip = [];
+
+        foreach ($liste as $index => $kayit) {
+            $kacakId = (int) $kayit['id'];
+            $detay = $kayit;
+            $ilceName = Helper::trUpper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')));
+            $tutanakNo = trim((string) ($kayit['tutanak_no'] ?? ''));
+            $aboneAdi = Helper::trUpper(trim((string) ($kayit['abone_adi'] ?? '')));
+            $tur = Helper::trUpper(trim((string) ($kayit['tur'] ?? 'KAÇAK')));
+
+            $folderParts = [];
+            if ($tutanakNo !== '') {
+                $folderParts[] = $tutanakNo;
+            } else {
+                $folderParts[] = 'KAYIT_' . $kacakId;
+            }
+            if ($aboneAdi !== '') {
+                $folderParts[] = $aboneAdi;
+            }
+
+            $rawTutanakFolder = implode(' - ', $folderParts) . ' (' . $tur . ')';
+            $tutanakFolder = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawTutanakFolder));
+
+            $recordPathInZip = $rootFolder . '/' . $ilceName . '/' . $tutanakFolder;
+            $zip->addEmptyDir($recordPathInZip);
+
+            $fotolar = $tumFotolarGrouped[$kacakId] ?? [];
+            $tutanakSeq = 1;
+            $sahaSeq = 1;
+            $iptalSeq = 1;
+            $videoSeq = 1;
+            $sahaFotolariZip = [];
+
+            foreach ($fotolar as $foto) {
+                $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
+                if (!is_file($kaynak)) continue;
+
+                $origExt = strtolower(pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION));
+                $fotoTur = strtolower($foto['tur'] ?? 'saha');
+                $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
+
+                if ($fotoTur === 'tutanak') {
+                    $prefix = 'tutanak';
+                    $seq = $tutanakSeq++;
+                } elseif ($fotoTur === 'iptal') {
+                    $prefix = 'iptal';
+                    $seq = $iptalSeq++;
+                } elseif ($medyaTipi === 'video') {
+                    $prefix = 'video';
+                    $seq = $videoSeq++;
+                } else {
+                    $prefix = 'saha';
+                    $seq = $sahaSeq++;
+                }
+
+                $isPdf = ($origExt === 'pdf');
+                $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
+                $ext = $origExt ?: ($isPdf ? 'pdf' : ($isVideo ? 'mp4' : 'jpeg'));
+                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
+
+                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+
+                if ($fotoTur === 'saha' && !$isVideo && !$isPdf) {
+                    $gorselDisk = getKacakFotoGorselYolu($kaynak, $geciciDosyalarZip);
+                    if ($gorselDisk !== null) {
+                        $fotoCopy = $foto;
+                        $fotoCopy['dosya_yolu_disk'] = $gorselDisk;
+                        $sahaFotolariZip[] = $fotoCopy;
+                    }
+                }
+                $toplamDosyaSayisi++;
+            }
+
+            if (!empty($sahaFotolariZip)) {
+                $pdfBinary = uretKacakTekSayfaPdfBinary($detay, $sahaFotolariZip, $geciciDosyalarZip);
+                if ($pdfBinary !== null) {
+                    $pdfDosyaAdi = sprintf('foto_ciktisi_%s.pdf', $tutanakNo ?: ('kayit_' . $kacakId));
+                    $zip->addFromString($recordPathInZip . '/' . $pdfDosyaAdi, $pdfBinary, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+                    $toplamDosyaSayisi++;
+                }
+            }
+
+            $processed = $index + 1;
+            $pct = min(95, 5 + (int) round(($processed / $totalCount) * 90));
+            if ($processed % 2 === 0 || $processed === $totalCount) {
+                updateJobStatus($exportStorageDir, $jobId, [
+                    'processed_records' => $processed,
+                    'progress' => $pct,
+                    'message' => "Tutanaklar ve fotoğraflar arşive ekleniyor... ({$processed} / {$totalCount})"
+                ]);
+            }
+        }
+
+        foreach ($geciciDosyalarZip as $tmpF) {
+            @unlink($tmpF);
+        }
+
+        $zip->close();
+
+        if (!is_file($targetFile)) {
+            updateJobStatus($exportStorageDir, $jobId, ['status' => 'failed', 'error' => 'ZIP dosyası oluşturulamadı.']);
+            echo json_encode(['success' => false, 'message' => 'ZIP dosyası oluşturulamadı.']);
+            exit;
+        }
+
+        $zipDownloadName = $rootFolder . '.zip';
+        $fileSize = (int) filesize($targetFile);
+        $sizeFmt = formatBytes($fileSize);
+
+        $logModel = new App\Model\SystemLogModel();
+        $logModel->logAction(
+            $userId,
+            'Teslim Alma Listesi Toplu İndirme (ZIP - Async)',
+            "Aralık: $baslangic - $bitis, Kayıt Sayısı: $totalCount, Dosya Sayısı: $toplamDosyaSayisi, Boyut: $sizeFmt, Klasör: $rootFolder",
+            App\Model\SystemLogModel::LEVEL_INFO
+        );
+
+        updateJobStatus($exportStorageDir, $jobId, [
+            'status' => 'completed',
+            'progress' => 100,
+            'processed_records' => $totalCount,
+            'message' => 'ZIP arşivi hazırlandı.',
+            'file_path' => $targetFile,
+            'filename' => $zipDownloadName,
+            'file_size' => $fileSize,
+            'file_size_fmt' => $sizeFmt,
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'status' => 'completed',
+            'job_id' => $jobId,
+            'filename' => $zipDownloadName,
+            'file_size_fmt' => $sizeFmt
+        ]);
+        exit;
+    }
+}
+
+// 3. Görev Durumunu Kontrol Et (check_export_job)
+if ($tip === 'check_export_job') {
+    header('Content-Type: application/json; charset=utf-8');
+    $jobId = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($istek['job_id'] ?? ''));
+    $statusFile = getJobFilePath($exportStorageDir, $jobId, 'json');
+
+    if ($jobId === '' || !is_file($statusFile)) {
+        echo json_encode(['success' => false, 'status' => 'not_found', 'message' => 'Görev bulunamadı.']);
+        exit;
+    }
+
+    $json = @file_get_contents($statusFile);
+    $data = json_decode($json, true) ?: [];
+    echo json_encode(array_merge(['success' => true], $data));
+    exit;
+}
+
+// 4. Hazırlanan Dosyayı Resumable / HTTP Range ile İndir (download_job)
+if ($tip === 'download_job') {
+    $jobId = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($istek['job_id'] ?? ''));
+    $statusFile = getJobFilePath($exportStorageDir, $jobId, 'json');
+
+    if ($jobId === '' || !is_file($statusFile)) {
+        http_response_code(404);
+        exit('İndirme oturumu bulunamadı veya süresi dolmuş.');
+    }
+
+    $json = @file_get_contents($statusFile);
+    $data = json_decode($json, true) ?: [];
+
+    if (($data['status'] ?? '') !== 'completed' || empty($data['file_path']) || !is_file($data['file_path'])) {
+        http_response_code(404);
+        exit('Dosya henüz hazırlanmamış veya silinmiş.');
+    }
+
+    $ext = strtolower(pathinfo($data['file_path'], PATHINFO_EXTENSION));
+    $mime = ($ext === 'pdf') ? 'application/pdf' : 'application/zip';
+    $downloadFilename = !empty($data['filename']) ? $data['filename'] : basename($data['file_path']);
+
+    deliverFileWithRangeSupport($data['file_path'], $downloadFilename, $mime);
+}
+
+// -------------------------------------------------------------
+// SENKRON / KLASİK AKIŞLAR (Geriye Dönük Uyumluluk)
+// -------------------------------------------------------------
+
 if ($tip === 'teslim_foto_pdf') {
     $seciliListe = seciliTeslimKayitlari($Kacak, $baslangic, $bitis, (array) ($istek['tokens'] ?? []));
-    // Sadece fotoğraf çıktısı gerekli olanları filtrele (Onikişubat / Dulkadiroğlu Kaçak kayıtları)
     $liste = array_values(array_filter($seciliListe, static fn(array $k): bool => !empty($k['foto_cikti_gerekli'])));
 
     if (empty($liste)) {
@@ -251,22 +771,15 @@ if ($tip === 'teslim_foto_pdf') {
 
     $rootDiskPath = KacakKontrolModel::rootPath();
     $geciciDosyalar = [];
-
     $kacakIds = array_map(static fn(array $k): int => (int) $k['id'], $liste);
     $tumFotolarGrouped = $Kacak->getPhotosByKacakIds($kacakIds);
 
     $css = '
         body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
         .page-container { width: 100%; }
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
-        .header-table td { padding: 3px 6px; font-size: 8.5pt; border: 1px solid #cbd5e1; }
-        .header-title-box { background: #1e3a8a; color: #ffffff; text-align: center; font-weight: bold; font-size: 11pt; padding: 6px; letter-spacing: 0.5px; }
-        .info-label { font-weight: bold; color: #475569; width: 18%; background: #f8fafc; }
-        .info-value { color: #0f172a; width: 32%; font-weight: 600; }
         .photo-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .photo-cell { text-align: center; vertical-align: middle; padding: 3px; border: 1px solid #e2e8f0; background: #ffffff; }
         .photo-img { vertical-align: middle; border: 1px solid #cbd5e1; border-radius: 2px; }
-        .photo-caption { font-size: 7.5pt; color: #64748b; margin-top: 2px; text-align: center; }
         .no-photo-box { text-align: center; padding: 40mm 10mm; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 11pt; border-radius: 4px; }
     ';
 
@@ -290,8 +803,6 @@ if ($tip === 'teslim_foto_pdf') {
         foreach ($liste as $index => $kayit) {
             $kacakId = (int) $kayit['id'];
             $detay = $kayit;
-
-            // Fotoğrafları toplu önbellekten al: Tutanak, İptal ve Video hariç, sadece saha tespit fotoğrafları
             $tumFotolar = $tumFotolarGrouped[$kacakId] ?? [];
             $sahaFotolari = [];
 
@@ -300,12 +811,8 @@ if ($tip === 'teslim_foto_pdf') {
                 $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
                 $ext = strtolower(pathinfo($foto['dosya_yolu'] ?? '', PATHINFO_EXTENSION));
 
-                if ($fotoTur === 'tutanak' || $fotoTur === 'iptal') {
-                    continue;
-                }
-                if ($medyaTipi === 'video' || in_array($ext, ['mp4', 'mov', 'webm', '3gp', 'avi', 'mkv', 'pdf'], true)) {
-                    continue;
-                }
+                if ($fotoTur === 'tutanak' || $fotoTur === 'iptal') continue;
+                if ($medyaTipi === 'video' || in_array($ext, ['mp4', 'mov', 'webm', '3gp', 'avi', 'mkv', 'pdf'], true)) continue;
 
                 $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
                 $gorselYolu = getKacakFotoGorselYolu($kaynak, $geciciDosyalar);
@@ -347,7 +854,6 @@ if ($tip === 'teslim_foto_pdf') {
         header('Content-Disposition: attachment; filename="' . $asciiPdfAdi . '"; filename*=UTF-8\'\'' . $encodedPdfAdi);
         echo $mpdf->Output('', 'S');
 
-        // Geçici dosyaları temizle
         foreach ($geciciDosyalar as $tmpF) {
             @unlink($tmpF);
         }
@@ -376,15 +882,12 @@ if ($tip === 'teslim_zip') {
 
     $sTime = strtotime($baslangic);
     $eTime = strtotime($bitis);
-
     $startDay = (int) date('j', $sTime);
     $startMonthName = $trMonths[(int) date('n', $sTime)] ?? date('F', $sTime);
-
     $endDay = (int) date('j', $eTime);
     $endMonthName = $trMonths[(int) date('n', $eTime)] ?? date('F', $eTime);
 
     $rootFolder = sprintf('%d %s - %d %s Tarihleri Arasında Yapılan İşlemler', $startDay, $startMonthName, $endDay, $endMonthName);
-
     $zipYolu = sys_get_temp_dir() . '/' . uniqid('kacak_teslim_zip_', true) . '.zip';
     $zip = new \ZipArchive();
 
@@ -404,7 +907,6 @@ if ($tip === 'teslim_zip') {
         $kacakId = (int) $kayit['id'];
         $detay = $kayit;
         $ilceName = Helper::trUpper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')));
-
         $tutanakNo = trim((string) ($kayit['tutanak_no'] ?? ''));
         $aboneAdi = Helper::trUpper(trim((string) ($kayit['abone_adi'] ?? '')));
         $tur = Helper::trUpper(trim((string) ($kayit['tur'] ?? 'KAÇAK')));
@@ -426,7 +928,6 @@ if ($tip === 'teslim_zip') {
         $zip->addEmptyDir($recordPathInZip);
 
         $fotolar = $tumFotolarGrouped[$kacakId] ?? [];
-
         $tutanakSeq = 1;
         $sahaSeq = 1;
         $iptalSeq = 1;
@@ -435,9 +936,7 @@ if ($tip === 'teslim_zip') {
 
         foreach ($fotolar as $foto) {
             $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
-            if (!is_file($kaynak)) {
-                continue;
-            }
+            if (!is_file($kaynak)) continue;
 
             $origExt = strtolower(pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION));
             $fotoTur = strtolower($foto['tur'] ?? 'saha');
@@ -462,10 +961,8 @@ if ($tip === 'teslim_zip') {
             $ext = $origExt ?: ($isPdf ? 'pdf' : ($isVideo ? 'mp4' : 'jpeg'));
             $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
 
-            // Dosyayı doğrudan disktan arşive akıt (Bellek ve CPU tasarrufu)
             $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
 
-            // Saha fotoğrafı ise tek sayfa PDF için biriktir
             if ($fotoTur === 'saha' && !$isVideo && !$isPdf) {
                 $gorselDisk = getKacakFotoGorselYolu($kaynak, $geciciDosyalarZip);
                 if ($gorselDisk !== null) {
@@ -474,11 +971,9 @@ if ($tip === 'teslim_zip') {
                     $sahaFotolariZip[] = $fotoCopy;
                 }
             }
-
             $toplamDosyaSayisi++;
         }
 
-        // Tek sayfa A4 saha fotoğrafları PDF'ini de ZIP içerisindeki klasöre ekle
         if (!empty($sahaFotolariZip)) {
             $pdfBinary = uretKacakTekSayfaPdfBinary($detay, $sahaFotolariZip, $geciciDosyalarZip);
             if ($pdfBinary !== null) {
@@ -489,7 +984,6 @@ if ($tip === 'teslim_zip') {
         }
     }
 
-    // Geçici dosyaları temizle
     foreach ($geciciDosyalarZip as $tmpF) {
         @unlink($tmpF);
     }

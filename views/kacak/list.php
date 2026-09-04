@@ -3061,27 +3061,147 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             });
         });
 
+        function baslatTopluIndirmeGorevi(exportType, title, tokenList) {
+            const tokens = tokenList || Array.from(teslimSecilenler);
+            if (!tokens.length) {
+                Swal.fire('Uyarı', 'Lütfen işlem yapılacak kayıtları seçin.', 'warning');
+                return;
+            }
+
+            const startDate = toIsoDate($('#teslim_baslangic').val());
+            const endDate = toIsoDate($('#teslim_bitis').val());
+
+            // 1. Görevi Başlat
+            $.post('views/kacak/export-haftalik.php', {
+                tip: 'start_export_job',
+                export_type: exportType,
+                start_date: startDate,
+                end_date: endDate,
+                tokens: tokens
+            }, function (res) {
+                if (!res || !res.success) {
+                    Swal.fire('Bilgi', res.message || 'Görev başlatılamadı.', 'info');
+                    return;
+                }
+
+                const jobId = res.job_id;
+                let isModalOpen = true;
+
+                Swal.fire({
+                    title: title,
+                    html: `
+                        <div class="text-start p-2">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small" id="exportJobStatusText">Hazırlanıyor...</span>
+                                <span class="fw-bold text-primary small" id="exportJobPercentText">%0</span>
+                            </div>
+                            <div class="progress" style="height: 14px; border-radius: 7px; background-color: #e2e8f0;">
+                                <div id="exportJobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                            <div class="mt-3 text-muted" style="font-size: 11.5px; line-height: 1.4;">
+                                <i class="ri-information-line text-info me-1"></i> İsterseniz bu pencereyi kapatabilirsiniz; işlem arka planda devam eder ve hazır olduğunda indirme bildirimi sunulur.
+                            </div>
+                        </div>
+                    `,
+                    allowOutsideClick: false,
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="ri-download-2-line me-1"></i> Dosyayı İndir',
+                    confirmButtonColor: '#10b981',
+                    cancelButtonText: 'Arka Planda Devam Et',
+                    cancelButtonColor: '#64748b',
+                    didOpen: () => {
+                        const confirmBtn = Swal.getConfirmButton();
+                        if (confirmBtn) confirmBtn.style.display = 'none';
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = `views/kacak/export-haftalik.php?tip=download_job&job_id=${jobId}`;
+                    } else {
+                        isModalOpen = false;
+                    }
+                });
+
+                // 2. İşlemi Arka Planda Başlat
+                $.post('views/kacak/export-haftalik.php', {
+                    tip: 'process_export_job',
+                    job_id: jobId,
+                    export_type: exportType,
+                    start_date: startDate,
+                    end_date: endDate,
+                    tokens: tokens
+                });
+
+                // 3. Durumu Polling ile Canlı Güncelle
+                const pollInterval = setInterval(() => {
+                    $.getJSON('views/kacak/export-haftalik.php', {
+                        tip: 'check_export_job',
+                        job_id: jobId
+                    }, function (statusRes) {
+                        if (!statusRes || !statusRes.success) return;
+
+                        const progress = statusRes.progress || 0;
+                        const message = statusRes.message || 'İşleniyor...';
+
+                        if (isModalOpen && Swal.isVisible()) {
+                            $('#exportJobStatusText').text(message);
+                            $('#exportJobPercentText').text('%' + progress);
+                            $('#exportJobProgressBar').css('width', progress + '%');
+                        }
+
+                        if (statusRes.status === 'completed') {
+                            clearInterval(pollInterval);
+                            const dlUrl = `views/kacak/export-haftalik.php?tip=download_job&job_id=${jobId}`;
+                            const fileSizeFmt = statusRes.file_size_fmt || '';
+
+                            if (isModalOpen && Swal.isVisible()) {
+                                $('#exportJobStatusText').html(`<strong class="text-success"><i class="ri-checkbox-circle-fill me-1"></i> Dosya hazırlandı! (${fileSizeFmt})</strong>`);
+                                $('#exportJobPercentText').text('%100');
+                                $('#exportJobProgressBar').removeClass('progress-bar-animated bg-primary').addClass('bg-success').css('width', '100%');
+
+                                const confirmBtn = Swal.getConfirmButton();
+                                if (confirmBtn) confirmBtn.style.display = 'inline-block';
+                                const cancelBtn = Swal.getCancelButton();
+                                if (cancelBtn) cancelBtn.innerText = 'Kapat';
+
+                                window.location.href = dlUrl;
+                            } else {
+                                Swal.fire({
+                                    title: 'İndirme Dosyanız Hazırlandı!',
+                                    text: `${title} başarıyla oluşturuldu (${fileSizeFmt}).`,
+                                    icon: 'success',
+                                    showCancelButton: true,
+                                    confirmButtonText: '<i class="ri-download-2-line me-1"></i> Dosyayı İndir',
+                                    confirmButtonColor: '#10b981',
+                                    cancelButtonText: 'Kapat'
+                                }).then(r => {
+                                    if (r.isConfirmed) {
+                                        window.location.href = dlUrl;
+                                    }
+                                });
+                            }
+                        } else if (statusRes.status === 'failed') {
+                            clearInterval(pollInterval);
+                            Swal.fire('Hata', statusRes.error || 'Dışa aktarma sırasında bir hata oluştu.', 'error');
+                        }
+                    });
+                }, 1000);
+
+            }, 'json').fail(() => {
+                Swal.fire('Hata', 'Sunucuya bağlanırken bir sorun oluştu.', 'error');
+            });
+        }
+
         $('#btnTeslimFotoPdf').on('click', function (e) {
             e.preventDefault();
             if (teslimSecilenler.size === 0) return;
-            const form = $('<form>', {method: 'POST', action: 'views/kacak/export-haftalik.php'}).appendTo('body');
-            $('<input>', {type:'hidden', name:'tip', value:'teslim_foto_pdf'}).appendTo(form);
-            $('<input>', {type:'hidden', name:'start_date', value:toIsoDate($('#teslim_baslangic').val())}).appendTo(form);
-            $('<input>', {type:'hidden', name:'end_date', value:toIsoDate($('#teslim_bitis').val())}).appendTo(form);
-            teslimSecilenler.forEach(t => $('<input>', {type:'hidden', name:'tokens[]', value:t}).appendTo(form));
-            form.trigger('submit').remove();
+            baslatTopluIndirmeGorevi('teslim_foto_pdf', 'Toplu Fotoğraf Çıktısı (PDF)');
         });
 
         $('#teslimTable').on('click', '.btn-teslim-foto-tekil-pdf', function (e) {
             e.stopPropagation();
             const token = $(this).data('token');
             if (!token) return;
-            const form = $('<form>', {method: 'POST', action: 'views/kacak/export-haftalik.php'}).appendTo('body');
-            $('<input>', {type:'hidden', name:'tip', value:'teslim_foto_pdf'}).appendTo(form);
-            $('<input>', {type:'hidden', name:'start_date', value:toIsoDate($('#teslim_baslangic').val())}).appendTo(form);
-            $('<input>', {type:'hidden', name:'end_date', value:toIsoDate($('#teslim_bitis').val())}).appendTo(form);
-            $('<input>', {type:'hidden', name:'tokens[]', value:token}).appendTo(form);
-            form.trigger('submit').remove();
+            baslatTopluIndirmeGorevi('teslim_foto_pdf', 'Fotoğraf Çıktısı (PDF)', [token]);
         });
 
         $('#btnTeslimExcel').on('click', function (e) {
@@ -3098,12 +3218,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         $('#btnTeslimZip').on('click', function (e) {
             e.preventDefault();
             if (teslimSecilenler.size === 0) return;
-            const form = $('<form>', {method: 'POST', action: 'views/kacak/export-haftalik.php'}).appendTo('body');
-            $('<input>', {type:'hidden', name:'tip', value:'teslim_zip'}).appendTo(form);
-            $('<input>', {type:'hidden', name:'start_date', value:toIsoDate($('#teslim_baslangic').val())}).appendTo(form);
-            $('<input>', {type:'hidden', name:'end_date', value:toIsoDate($('#teslim_bitis').val())}).appendTo(form);
-            teslimSecilenler.forEach(t => $('<input>', {type:'hidden', name:'tokens[]', value:t}).appendTo(form));
-            form.trigger('submit').remove();
+            baslatTopluIndirmeGorevi('teslim_zip', 'Toplu Evrak Arşivi (ZIP)');
         });
 
         // Tekil kayıt ZIP indirme
