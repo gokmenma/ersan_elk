@@ -754,6 +754,29 @@ class KacakKontrolModel extends Model
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getPhotosByKacakIds(array $kacakIds): array
+    {
+        $kacakIds = array_values(array_unique(array_filter(array_map('intval', $kacakIds))));
+        if (empty($kacakIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($kacakIds), '?'));
+        $sql = "SELECT * FROM kacak_kontrol_fotograflari
+                WHERE kacak_id IN ($placeholders)
+                  AND silinme_tarihi IS NULL AND arsivlendi = 0
+                ORDER BY tur DESC, id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($kacakIds);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['kacak_id']][] = $row;
+        }
+        return $grouped;
+    }
+
     public function countPhotos(int $kacakId, string $tur): int
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM kacak_kontrol_fotograflari

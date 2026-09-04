@@ -252,6 +252,9 @@ if ($tip === 'teslim_foto_pdf') {
     $rootDiskPath = KacakKontrolModel::rootPath();
     $geciciDosyalar = [];
 
+    $kacakIds = array_map(static fn(array $k): int => (int) $k['id'], $liste);
+    $tumFotolarGrouped = $Kacak->getPhotosByKacakIds($kacakIds);
+
     $css = '
         body { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; }
         .page-container { width: 100%; }
@@ -286,10 +289,10 @@ if ($tip === 'teslim_foto_pdf') {
 
         foreach ($liste as $index => $kayit) {
             $kacakId = (int) $kayit['id'];
-            $detay = $Kacak->getRecord($kacakId) ?? $kayit;
+            $detay = $kayit;
 
-            // Fotoğrafları al: Tutanak, İptal ve Video hariç, sadece saha tespit fotoğrafları
-            $tumFotolar = $Kacak->getPhotos($kacakId);
+            // Fotoğrafları toplu önbellekten al: Tutanak, İptal ve Video hariç, sadece saha tespit fotoğrafları
+            $tumFotolar = $tumFotolarGrouped[$kacakId] ?? [];
             $sahaFotolari = [];
 
             foreach ($tumFotolar as $foto) {
@@ -389,9 +392,12 @@ if ($tip === 'teslim_zip') {
     $toplamDosyaSayisi = 0;
     $geciciDosyalarZip = [];
 
+    $kacakIds = array_map(static fn(array $k): int => (int) $k['id'], $liste);
+    $tumFotolarGrouped = $Kacak->getPhotosByKacakIds($kacakIds);
+
     foreach ($liste as $kayit) {
         $kacakId = (int) $kayit['id'];
-        $detay = $Kacak->getRecord($kacakId) ?? $kayit;
+        $detay = $kayit;
         $ilceName = Helper::trUpper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')));
 
         $tutanakNo = trim((string) ($kayit['tutanak_no'] ?? ''));
@@ -412,9 +418,14 @@ if ($tip === 'teslim_zip') {
         $tutanakFolder = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawTutanakFolder));
 
         $recordPathInZip = $rootFolder . '/' . $ilceName . '/' . $tutanakFolder;
+
+        $fotolar = $tumFotolarGrouped[$kacakId] ?? [];
+        if (empty($fotolar)) {
+            continue;
+        }
+
         $zip->addEmptyDir($recordPathInZip);
 
-        $fotolar = $Kacak->getPhotos($kacakId);
         $tutanakSeq = 1;
         $sahaSeq = 1;
         $iptalSeq = 1;
@@ -447,35 +458,22 @@ if ($tip === 'teslim_zip') {
 
             $isPdf = ($origExt === 'pdf');
             $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
+            $ext = $origExt ?: ($isPdf ? 'pdf' : ($isVideo ? 'mp4' : 'jpeg'));
+            $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
 
-            if ($isPdf) {
-                $ext = 'pdf';
-                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-            } elseif ($isVideo) {
-                $ext = $origExt ?: 'mp4';
-                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-            } else {
-                $ext = 'jpeg';
-                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-                $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
-                if ($jpegData !== null) {
-                    $zip->addFromString($recordPathInZip . '/' . $dosyaAdi, $jpegData, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-                } else {
-                    $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
-                }
+            // Dosyayı doğrudan disktan arşive akıt (Bellek ve CPU tasarrufu)
+            $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
 
-                // Saha fotoğrafı ise tek sayfa PDF için biriktir
-                if ($fotoTur === 'saha' && $medyaTipi !== 'video') {
-                    $gorselDisk = getKacakFotoGorselYolu($kaynak, $geciciDosyalarZip);
-                    if ($gorselDisk !== null) {
-                        $fotoCopy = $foto;
-                        $fotoCopy['dosya_yolu_disk'] = $gorselDisk;
-                        $sahaFotolariZip[] = $fotoCopy;
-                    }
+            // Saha fotoğrafı ise tek sayfa PDF için biriktir
+            if ($fotoTur === 'saha' && !$isVideo && !$isPdf) {
+                $gorselDisk = getKacakFotoGorselYolu($kaynak, $geciciDosyalarZip);
+                if ($gorselDisk !== null) {
+                    $fotoCopy = $foto;
+                    $fotoCopy['dosya_yolu_disk'] = $gorselDisk;
+                    $sahaFotolariZip[] = $fotoCopy;
                 }
             }
+
             $toplamDosyaSayisi++;
         }
 
@@ -495,13 +493,14 @@ if ($tip === 'teslim_zip') {
         @unlink($tmpF);
     }
 
-    $zip->close();
-
     if ($toplamDosyaSayisi === 0) {
+        @$zip->close();
         @unlink($zipYolu);
         http_response_code(404);
         exit('Seçilen kayıtlara ait sunucuda yüklü herhangi bir fotoğraf veya evrak bulunamadı.');
     }
+
+    $zip->close();
 
     if (!is_file($zipYolu)) {
         http_response_code(500);
