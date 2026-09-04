@@ -418,13 +418,9 @@ if ($tip === 'teslim_zip') {
         $tutanakFolder = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawTutanakFolder));
 
         $recordPathInZip = $rootFolder . '/' . $ilceName . '/' . $tutanakFolder;
+        $zip->addEmptyDir($recordPathInZip);
 
         $fotolar = $tumFotolarGrouped[$kacakId] ?? [];
-        if (empty($fotolar)) {
-            continue;
-        }
-
-        $zip->addEmptyDir($recordPathInZip);
 
         $tutanakSeq = 1;
         $sahaSeq = 1;
@@ -491,13 +487,6 @@ if ($tip === 'teslim_zip') {
     // Geçici dosyaları temizle
     foreach ($geciciDosyalarZip as $tmpF) {
         @unlink($tmpF);
-    }
-
-    if ($toplamDosyaSayisi === 0) {
-        @$zip->close();
-        @unlink($zipYolu);
-        http_response_code(404);
-        exit('Seçilen kayıtlara ait sunucuda yüklü herhangi bir fotoğraf veya evrak bulunamadı.');
     }
 
     $zip->close();
