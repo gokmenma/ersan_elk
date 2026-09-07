@@ -2839,15 +2839,6 @@ class BordroPersonelModel extends Model
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
-        // Puantaj hakedişi kapalıysa prim oluşturulmaz
-        if ($this->personelModelCache === null) {
-            $this->personelModelCache = new \App\Model\PersonelModel();
-        }
-        $personelKacak = $this->personelModelCache->find($personel_id);
-        if ($personelKacak && isset($personelKacak->puantaj_hakedis_dahil) && intval($personelKacak->puantaj_hakedis_dahil) === 0) {
-            return $sonuc;
-        }
-
         // 2. Bordro parametrelerinden kacak_ihbar_primi ayarını al
         $donemTarihi = $baslangic_tarihi;
         $ihbarParam = $this->getParametreCached('kacak_ihbar_primi', $donemTarihi);
@@ -2864,19 +2855,38 @@ class BordroPersonelModel extends Model
         $sonuc['birim_tutar'] = $birimTutar;
 
         // 3. Personelin dönem içinde olumlu sonuçlanan ihbarlarını say
+        // Bildiren personel; bildiren_personel_id ile veya users tablosu üzerinden (personel_id / ad-soyad) tespit edilir.
+        // Tarih kriteri; ihbarın bildirildiği tarih (created_at) veya sonuçlanma tarihi ilgili dönemde olan kayıtları kapsar.
         $sql = $this->db->prepare("
-            SELECT COUNT(i.id) AS olumlu_sayisi
+            SELECT COUNT(DISTINCT i.id) AS olumlu_sayisi
             FROM ihbarlar i
-            WHERE i.bildiren_personel_id = ?
-              AND i.durum = 'olumlu'
-              AND i.silinme_tarihi IS NULL
-              AND DATE(COALESCE(
-                  (SELECT it.created_at FROM ihbar_tarihce it WHERE it.ihbar_id = i.id AND it.tip = 'durum_degisti' AND it.aciklama LIKE '%olumlu%' ORDER BY it.id DESC LIMIT 1),
-                  i.updated_at,
-                  i.created_at
-              )) BETWEEN ? AND ?
+            LEFT JOIN users u ON u.id = i.olusturan_user_id
+            LEFT JOIN personel p ON p.id = ?
+            WHERE (
+                i.bildiren_personel_id = ?
+                OR (i.bildiren_personel_id IS NULL AND u.personel_id = ?)
+                OR (i.bildiren_personel_id IS NULL AND u.adi_soyadi IS NOT NULL AND u.adi_soyadi = p.adi_soyadi)
+            )
+            AND i.durum = 'olumlu'
+            AND i.silinme_tarihi IS NULL
+            AND (
+                DATE(i.created_at) BETWEEN ? AND ?
+                OR DATE(COALESCE(
+                    (SELECT it.created_at FROM ihbar_tarihce it WHERE it.ihbar_id = i.id AND it.tip = 'durum_degisti' AND it.aciklama LIKE '%olumlu%' ORDER BY it.id DESC LIMIT 1),
+                    i.updated_at,
+                    i.created_at
+                )) BETWEEN ? AND ?
+            )
         ");
-        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $sql->execute([
+            $personel_id,
+            $personel_id,
+            $personel_id,
+            $baslangic_tarihi,
+            $bitis_tarihi,
+            $baslangic_tarihi,
+            $bitis_tarihi
+        ]);
         $olumluSayisi = (int) $sql->fetchColumn();
 
         if ($olumluSayisi <= 0) {
