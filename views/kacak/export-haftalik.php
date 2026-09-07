@@ -443,6 +443,7 @@ if ($tip === 'process_export_job') {
     $eTime = strtotime($bitis);
     $startDay = (int) date('j', $sTime);
     $startMonthName = $trMonths[(int) date('n', $sTime)] ?? date('F', $sTime);
+    $endDay = (int) date('j', $eTime);
     $endMonthName = $trMonths[(int) date('n', $eTime)] ?? date('F', $eTime);
 
     session_write_close();

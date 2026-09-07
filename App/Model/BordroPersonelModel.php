@@ -2814,6 +2814,93 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin bildirdiği ve olumlu sonuçlanan kaçak ihbarları için prim hesaplar ve ek ödeme olarak oluşturur
+     * 
+     * İş Kuralı:
+     * - Personelin bildirdiği ve ilgili dönemde olumlu sonuçlanan kaçak ihbarları tespit edilir
+     * - bordro_parametreleri tablosundan kacak_ihbar_primi tutarı (100 TL) birim fiyat olarak alınır
+     * - Toplam Tutar = Olumlu İhbar Sayısı × Birim Fiyat
+     * - Prim personel_ek_odemeler tablosuna kaydedilir
+     * 
+     * @param int $personel_id Personel ID
+     * @param int $donem_id Bordro dönem ID
+     * @param string $baslangic_tarihi Dönem başlangıç tarihi (Y-m-d)
+     * @param string $bitis_tarihi Dönem bitiş tarihi (Y-m-d)
+     * @return array ['ihbar_sayisi' => int, 'birim_tutar' => float, 'toplam_prim' => float]
+     */
+    public function olusturKacakIhbarPrimleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        $sonuc = ['ihbar_sayisi' => 0, 'birim_tutar' => 0, 'toplam_prim' => 0];
+
+        // 1. Önceki kaçak ihbar primlerini temizle (duplicate önlemek için)
+        $deleteSql = $this->db->prepare("
+            DELETE FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Kaçak İhbar Primi]%'
+        ");
+        $deleteSql->execute([$personel_id, $donem_id]);
+
+        // Puantaj hakedişi kapalıysa prim oluşturulmaz
+        if ($this->personelModelCache === null) {
+            $this->personelModelCache = new \App\Model\PersonelModel();
+        }
+        $personelKacak = $this->personelModelCache->find($personel_id);
+        if ($personelKacak && isset($personelKacak->puantaj_hakedis_dahil) && intval($personelKacak->puantaj_hakedis_dahil) === 0) {
+            return $sonuc;
+        }
+
+        // 2. Bordro parametrelerinden kacak_ihbar_primi ayarını al
+        $donemTarihi = $baslangic_tarihi;
+        $ihbarParam = $this->getParametreCached('kacak_ihbar_primi', $donemTarihi);
+
+        if (!$ihbarParam) {
+            return $sonuc;
+        }
+
+        $birimTutar = floatval($ihbarParam->varsayilan_tutar ?? 0);
+        if ($birimTutar <= 0) {
+            return $sonuc;
+        }
+
+        $sonuc['birim_tutar'] = $birimTutar;
+
+        // 3. Personelin dönem içinde olumlu sonuçlanan ihbarlarını say
+        $sql = $this->db->prepare("
+            SELECT COUNT(i.id) AS olumlu_sayisi
+            FROM ihbarlar i
+            WHERE i.bildiren_personel_id = ?
+              AND i.durum = 'olumlu'
+              AND i.silinme_tarihi IS NULL
+              AND DATE(COALESCE(
+                  (SELECT it.created_at FROM ihbar_tarihce it WHERE it.ihbar_id = i.id AND it.tip = 'durum_degisti' AND it.aciklama LIKE '%olumlu%' ORDER BY it.id DESC LIMIT 1),
+                  i.updated_at,
+                  i.created_at
+              )) BETWEEN ? AND ?
+        ");
+        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $olumluSayisi = (int) $sql->fetchColumn();
+
+        if ($olumluSayisi <= 0) {
+            return $sonuc;
+        }
+
+        $toplamPrim = round($olumluSayisi * $birimTutar, 2);
+        $sonuc['ihbar_sayisi'] = $olumluSayisi;
+        $sonuc['toplam_prim'] = $toplamPrim;
+
+        // 4. Ek ödeme oluştur
+        $aciklama = "[Kaçak İhbar Primi] (" . $olumluSayisi . " adet Olumlu İhbar)";
+
+        $insertSql = $this->db->prepare("
+            INSERT INTO personel_ek_odemeler 
+            (personel_id, donem_id, tur, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
+            VALUES (?, ?, 'prim', ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+        ");
+        $insertSql->execute([$personel_id, $donem_id, $aciklama, $toplamPrim]);
+
+        return $sonuc;
+    }
+
+    /**
      * Personelin onaylanmış avanslarını dönem için kesinti olarak oluşturur
      */
     public function olusturAvansKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
@@ -4206,6 +4293,10 @@ class BordroPersonelModel extends Model
         // ========== KAÇAK KONTROL PRİMLERİ ==========
         // Personelin dönem içinde 260'ı aşan kaçak kontrol işlemleri için prim hesapla
         $this->olusturKacakKontrolPrimleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // ========== KAÇAK İHBAR PRİMLERİ ==========
+        // Personelin dönem içinde olumlu sonuçlanan kaçak ihbarları için prim hesapla
+        $this->olusturKacakIhbarPrimleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // ========== AVANS KESİNTİLERİ ==========
         // Dönem içindeki onaylanmış avansları bulup kesinti olarak ekle

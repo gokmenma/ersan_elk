@@ -28,13 +28,115 @@
         class="px-4 py-2 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[108px] z-20">
         <div class="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             <button onclick="changeIhbarTab('gelen')"
-                class="ihbar-tab-btn active flex-1 py-2 text-sm font-semibold rounded-md" data-tab="gelen">
+                class="ihbar-tab-btn active flex-1 py-2 text-sm font-semibold rounded-md transition-all" data-tab="gelen">
                 Gelen İhbarlar
             </button>
             <button onclick="changeIhbarTab('bildirdiklerim')"
-                class="ihbar-tab-btn flex-1 py-2 text-sm font-medium rounded-md text-slate-500"
+                class="ihbar-tab-btn flex-1 py-2 text-sm font-medium rounded-md text-slate-500 transition-all"
                 data-tab="bildirdiklerim">
                 Bildirdiklerim
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtre & Arama Alanı -->
+    <div class="px-4 pt-3 pb-1 bg-slate-50 dark:bg-background-dark space-y-2.5">
+        <!-- Arama Çubuğu & Detaylı Filtre Butonu -->
+        <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">search</span>
+                <input type="text" id="ihbar-search-input" oninput="onIhbarSearch(this.value)"
+                    placeholder="İlçe, mahalle veya açıklamada ara..."
+                    class="w-full pl-9 pr-8 py-2 text-xs font-medium rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all shadow-sm">
+                <button type="button" id="ihbar-search-clear" onclick="clearIhbarSearch()" style="display:none;"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
+            </div>
+            <button type="button" onclick="toggleIhbarAdvancedFilter()" id="ihbar-filter-toggle-btn"
+                class="relative px-3 py-2 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95"
+                title="Detaylı Filtre">
+                <span class="material-symbols-outlined text-lg">tune</span>
+                <span id="ihbar-active-filter-badge" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-white dark:border-card-dark hidden"></span>
+            </button>
+        </div>
+
+        <!-- Hızlı Durum Çipleri (Pills) -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs -mx-1 px-1">
+            <button type="button" onclick="setIhbarDurumFilter('all')" data-durum="all"
+                class="ihbar-durum-chip active shrink-0 px-3 py-1.5 rounded-xl font-bold transition-all shadow-sm">
+                Tümü <span class="ml-1 opacity-80 font-semibold" id="chip-count-all">0</span>
+            </button>
+            <button type="button" onclick="setIhbarDurumFilter('olumlu')" data-durum="olumlu"
+                class="ihbar-durum-chip shrink-0 px-3 py-1.5 rounded-xl font-semibold transition-all">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block mr-1"></span>Olumlu <span class="ml-1 opacity-80 text-[11px]" id="chip-count-olumlu">0</span>
+            </button>
+            <button type="button" onclick="setIhbarDurumFilter('olumsuz')" data-durum="olumsuz"
+                class="ihbar-durum-chip shrink-0 px-3 py-1.5 rounded-xl font-semibold transition-all">
+                <span class="w-2 h-2 rounded-full bg-rose-500 inline-block mr-1"></span>Olumsuz <span class="ml-1 opacity-80 text-[11px]" id="chip-count-olumsuz">0</span>
+            </button>
+            <button type="button" onclick="setIhbarDurumFilter('yonlendirildi')" data-durum="yonlendirildi"
+                class="ihbar-durum-chip shrink-0 px-3 py-1.5 rounded-xl font-semibold transition-all">
+                <span class="w-2 h-2 rounded-full bg-blue-500 inline-block mr-1"></span>Yönlendirildi <span class="ml-1 opacity-80 text-[11px]" id="chip-count-yonlendirildi">0</span>
+            </button>
+            <button type="button" onclick="setIhbarDurumFilter('islemde')" data-durum="islemde"
+                class="ihbar-durum-chip shrink-0 px-3 py-1.5 rounded-xl font-semibold transition-all">
+                <span class="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1"></span>İşlemde <span class="ml-1 opacity-80 text-[11px]" id="chip-count-islemde">0</span>
+            </button>
+            <button type="button" onclick="setIhbarDurumFilter('yeni')" data-durum="yeni"
+                class="ihbar-durum-chip shrink-0 px-3 py-1.5 rounded-xl font-semibold transition-all">
+                <span class="w-2 h-2 rounded-full bg-slate-400 inline-block mr-1"></span>Yeni <span class="ml-1 opacity-80 text-[11px]" id="chip-count-yeni">0</span>
+            </button>
+        </div>
+
+        <!-- Açılır Gelişmiş Filtre Paneli -->
+        <div id="ihbar-advanced-filter-panel" class="hidden bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-red-600">tune</span>
+                    Detaylı Filtreleme
+                </span>
+                <button type="button" onclick="resetAllIhbarFilters()" class="text-[11px] font-semibold text-red-600 hover:text-red-700">
+                    Sıfırla
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-500 mb-1">İlçe</label>
+                    <select id="ihbar-ilce-filter" onchange="onIhbarIlceChange(this.value)"
+                        class="w-full px-2.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white">
+                        <option value="">Tüm İlçeler</option>
+                        <option value="Afşin">Afşin</option>
+                        <option value="Andırın">Andırın</option>
+                        <option value="Çağlayancerit">Çağlayancerit</option>
+                        <option value="Dulkadiroğlu">Dulkadiroğlu</option>
+                        <option value="Ekinözü">Ekinözü</option>
+                        <option value="Elbistan">Elbistan</option>
+                        <option value="Göksun">Göksun</option>
+                        <option value="Nurhak">Nurhak</option>
+                        <option value="Onikişubat">Onikişubat</option>
+                        <option value="Pazarcık">Pazarcık</option>
+                        <option value="Türkoğlu">Türkoğlu</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-500 mb-1">Başlangıç Tarihi</label>
+                    <input type="date" id="ihbar-bas-tarih" onchange="onIhbarDateChange()"
+                        class="w-full px-2.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-500 mb-1">Bitiş Tarihi</label>
+                    <input type="date" id="ihbar-bit-tarih" onchange="onIhbarDateChange()"
+                        class="w-full px-2.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white">
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtre Sonuç Bilgi Satırı -->
+        <div class="flex items-center justify-between text-[11px] text-slate-500 px-0.5 pt-0.5" id="ihbar-filter-summary">
+            <span id="ihbar-count-text">Yükleniyor...</span>
+            <button type="button" id="ihbar-clear-all-link" onclick="resetAllIhbarFilters()" class="text-red-600 font-semibold hidden hover:underline">
+                Filtreleri Temizle
             </button>
         </div>
     </div>
@@ -82,6 +184,29 @@
 
     .dark .ihbar-tab-btn.active {
         background: #1a2130;
+    }
+
+    .ihbar-durum-chip {
+        background: #ffffff;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+
+    .dark .ihbar-durum-chip {
+        background: #1e293b;
+        color: #94a3b8;
+        border-color: #334155;
+    }
+
+    .ihbar-durum-chip.active {
+        background: #dc2626 !important;
+        color: #ffffff !important;
+        border-color: #dc2626 !important;
+        box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+    }
+
+    .ihbar-durum-chip.active span {
+        color: #ffffff !important;
     }
 
     #pwa-full-modal.ihbar-form-modal > .fixed.top-0,
@@ -212,11 +337,196 @@
         return map[durum] || durum;
     }
 
+    // Filtre Değişkenleri
+    let filterSearch = '';
+    let filterDurum = 'all';
+    let filterIlce = '';
+    let filterBasTarih = '';
+    let filterBitTarih = '';
+    let isAdvancedFilterOpen = false;
+
+    function onIhbarSearch(val) {
+        filterSearch = (val || '').trim();
+        const clearBtn = document.getElementById('ihbar-search-clear');
+        if (clearBtn) {
+            clearBtn.style.display = filterSearch ? 'flex' : 'none';
+        }
+        renderIhbarlar();
+    }
+
+    function clearIhbarSearch() {
+        const input = document.getElementById('ihbar-search-input');
+        if (input) input.value = '';
+        onIhbarSearch('');
+    }
+
+    function setIhbarDurumFilter(durum) {
+        filterDurum = durum || 'all';
+        document.querySelectorAll('.ihbar-durum-chip').forEach(chip => {
+            if (chip.getAttribute('data-durum') === filterDurum) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+        renderIhbarlar();
+    }
+
+    function toggleIhbarAdvancedFilter() {
+        isAdvancedFilterOpen = !isAdvancedFilterOpen;
+        const panel = document.getElementById('ihbar-advanced-filter-panel');
+        if (panel) {
+            panel.classList.toggle('hidden', !isAdvancedFilterOpen);
+        }
+    }
+
+    function onIhbarIlceChange(val) {
+        filterIlce = val || '';
+        checkAdvancedFilterBadge();
+        renderIhbarlar();
+    }
+
+    function onIhbarDateChange() {
+        filterBasTarih = document.getElementById('ihbar-bas-tarih')?.value || '';
+        filterBitTarih = document.getElementById('ihbar-bit-tarih')?.value || '';
+        checkAdvancedFilterBadge();
+        renderIhbarlar();
+    }
+
+    function checkAdvancedFilterBadge() {
+        const badge = document.getElementById('ihbar-active-filter-badge');
+        const hasAdvanced = Boolean(filterIlce || filterBasTarih || filterBitTarih);
+        if (badge) {
+            badge.classList.toggle('hidden', !hasAdvanced);
+        }
+    }
+
+    function resetAllIhbarFilters() {
+        filterSearch = '';
+        filterDurum = 'all';
+        filterIlce = '';
+        filterBasTarih = '';
+        filterBitTarih = '';
+
+        const searchInput = document.getElementById('ihbar-search-input');
+        if (searchInput) searchInput.value = '';
+        const searchClear = document.getElementById('ihbar-search-clear');
+        if (searchClear) searchClear.style.display = 'none';
+
+        const ilceSelect = document.getElementById('ihbar-ilce-filter');
+        if (ilceSelect) ilceSelect.value = '';
+
+        const basInput = document.getElementById('ihbar-bas-tarih');
+        if (basInput) basInput.value = '';
+
+        const bitInput = document.getElementById('ihbar-bit-tarih');
+        if (bitInput) bitInput.value = '';
+
+        document.querySelectorAll('.ihbar-durum-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.getAttribute('data-durum') === 'all');
+        });
+
+        checkAdvancedFilterBadge();
+        renderIhbarlar();
+    }
+
+    function updateIhbarChipCounts(rawData) {
+        const counts = {
+            all: rawData ? rawData.length : 0,
+            olumlu: 0,
+            olumsuz: 0,
+            yonlendirildi: 0,
+            islemde: 0,
+            yeni: 0
+        };
+
+        if (Array.isArray(rawData)) {
+            rawData.forEach(item => {
+                const d = (item.durum || '').toLowerCase();
+                if (counts[d] !== undefined) {
+                    counts[d]++;
+                }
+            });
+        }
+
+        Object.keys(counts).forEach(k => {
+            const el = document.getElementById('chip-count-' + k);
+            if (el) el.textContent = counts[k];
+        });
+    }
+
+    function getFilteredIhbarlar() {
+        const rawData = currentIhbarTab === 'gelen' ? ihbarGelenData : ihbarBildirdiklerimData;
+        updateIhbarChipCounts(rawData);
+
+        if (!Array.isArray(rawData)) return [];
+
+        return rawData.filter(item => {
+            if (filterDurum !== 'all' && (item.durum || '').toLowerCase() !== filterDurum) {
+                return false;
+            }
+
+            if (filterIlce && (item.ilce || '').toLocaleLowerCase('tr-TR') !== filterIlce.toLocaleLowerCase('tr-TR')) {
+                return false;
+            }
+
+            if (filterSearch) {
+                const searchLower = filterSearch.toLocaleLowerCase('tr-TR');
+                const textPool = [
+                    item.ilce || '',
+                    item.mahalle || '',
+                    item.aciklama || '',
+                    item.telefon || '',
+                    item.komsu_abone_no || '',
+                    item.atanan_ekip_adi || ''
+                ].join(' ').toLocaleLowerCase('tr-TR');
+
+                if (!textPool.includes(searchLower)) {
+                    return false;
+                }
+            }
+
+            if (filterBasTarih || filterBitTarih) {
+                if (!item.tarih) return false;
+                const match = item.tarih.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+                if (match) {
+                    const itemDateISO = `${match[3]}-${match[2]}-${match[1]}`;
+                    if (filterBasTarih && itemDateISO < filterBasTarih) {
+                        return false;
+                    }
+                    if (filterBitTarih && itemDateISO > filterBitTarih) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        });
+    }
+
     function renderIhbarlar() {
         const container = document.getElementById('ihbar-list');
-        const data = currentIhbarTab === 'gelen' ? ihbarGelenData : ihbarBildirdiklerimData;
+        const rawData = currentIhbarTab === 'gelen' ? ihbarGelenData : ihbarBildirdiklerimData;
+        const filteredData = getFilteredIhbarlar();
 
-        if (!data || data.length === 0) {
+        const countText = document.getElementById('ihbar-count-text');
+        const clearAllLink = document.getElementById('ihbar-clear-all-link');
+        const hasActiveFilters = Boolean(filterSearch || (filterDurum !== 'all') || filterIlce || filterBasTarih || filterBitTarih);
+
+        if (countText) {
+            const rawCount = Array.isArray(rawData) ? rawData.length : 0;
+            if (hasActiveFilters) {
+                countText.innerHTML = `<span class="font-bold text-slate-700 dark:text-slate-300">${filteredData.length}</span> / ${rawCount} ihbar listeleniyor`;
+            } else {
+                countText.innerHTML = `Toplam <span class="font-bold text-slate-700 dark:text-slate-300">${filteredData.length}</span> ihbar`;
+            }
+        }
+
+        if (clearAllLink) {
+            clearAllLink.style.display = hasActiveFilters ? 'inline-block' : 'none';
+        }
+
+        if (!rawData || rawData.length === 0) {
             container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">
@@ -227,7 +537,23 @@
             return;
         }
 
-        container.innerHTML = data.map(ihbar => `
+        if (filteredData.length === 0) {
+            container.innerHTML = `
+            <div class="p-8 text-center bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm my-2">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                    <span class="material-symbols-outlined text-2xl">search_off</span>
+                </div>
+                <p class="text-sm font-bold text-slate-800 dark:text-white">Kriterlere Uygun İhbar Bulunamadı</p>
+                <p class="text-xs text-slate-400 mt-1 mb-4">Arama veya filtre kriterlerinizi değiştirerek tekrar deneyebilirsiniz.</p>
+                <button type="button" onclick="resetAllIhbarFilters()"
+                    class="px-4 py-2 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl border border-red-200 dark:border-red-900/50 hover:bg-red-100 transition-colors">
+                    Filtreleri Temizle
+                </button>
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = filteredData.map(ihbar => `
         <div class="card p-4" onclick="showIhbarDetay(${ihbar.id}, '${currentIhbarTab}')">
             <div class="flex items-start justify-between gap-2">
                 <div class="flex-1 min-w-0">
