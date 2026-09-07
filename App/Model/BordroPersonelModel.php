@@ -2839,26 +2839,16 @@ class BordroPersonelModel extends Model
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
-        // 2. Bordro parametrelerinden kacak_ihbar_primi ayarını al
-        $donemTarihi = $baslangic_tarihi;
-        $ihbarParam = $this->getParametreCached('kacak_ihbar_primi', $donemTarihi);
-
-        if (!$ihbarParam) {
-            return $sonuc;
-        }
-
-        $birimTutar = floatval($ihbarParam->varsayilan_tutar ?? 0);
-        if ($birimTutar <= 0) {
-            return $sonuc;
-        }
-
-        $sonuc['birim_tutar'] = $birimTutar;
-
-        // 3. Personelin dönem içinde olumlu sonuçlanan ihbarlarını say
+        // 2. Personelin dönem içinde olumlu sonuçlanan ihbarlarını tarihleriyle birlikte çek
         // Bildiren personel; bildiren_personel_id ile veya users tablosu üzerinden (personel_id / ad-soyad) tespit edilir.
         // Tarih kriteri; ihbarın bildirildiği tarih (created_at) veya sonuçlanma tarihi ilgili dönemde olan kayıtları kapsar.
         $sql = $this->db->prepare("
-            SELECT COUNT(DISTINCT i.id) AS olumlu_sayisi
+            SELECT DISTINCT i.id,
+                   DATE(COALESCE(
+                       (SELECT it.created_at FROM ihbar_tarihce it WHERE it.ihbar_id = i.id AND it.tip = 'durum_degisti' AND it.aciklama LIKE '%olumlu%' ORDER BY it.id DESC LIMIT 1),
+                       i.created_at,
+                       i.updated_at
+                   )) AS ihbar_tarihi
             FROM ihbarlar i
             LEFT JOIN users u ON u.id = i.olusturan_user_id
             LEFT JOIN personel p ON p.id = ?
@@ -2877,6 +2867,7 @@ class BordroPersonelModel extends Model
                     i.created_at
                 )) BETWEEN ? AND ?
             )
+            ORDER BY i.created_at ASC
         ");
         $sql->execute([
             $personel_id,
@@ -2887,19 +2878,51 @@ class BordroPersonelModel extends Model
             $baslangic_tarihi,
             $bitis_tarihi
         ]);
-        $olumluSayisi = (int) $sql->fetchColumn();
+        $ihbarlar = $sql->fetchAll(PDO::FETCH_OBJ);
 
-        if ($olumluSayisi <= 0) {
+        if (empty($ihbarlar)) {
             return $sonuc;
         }
 
-        $toplamPrim = round($olumluSayisi * $birimTutar, 2);
-        $sonuc['ihbar_sayisi'] = $olumluSayisi;
+        // 3. Her ihbar için yapıldığı gün geçerli olan kacak_ihbar_primi parametresini belirle
+        $paramModel = $this->cachedParametreModel ?? new \App\Model\BordroParametreModel();
+        $toplamPrim = 0.0;
+        $fiyatGruplari = []; // [100.00 => 2, 150.00 => 3]
+        $toplamGecerliIhbar = 0;
+
+        foreach ($ihbarlar as $ihbar) {
+            $ihbarGunu = $ihbar->ihbar_tarihi ?: $baslangic_tarihi;
+            // İlgili gün için geçerli parametreyi çek
+            $param = $paramModel->getByKod('kacak_ihbar_primi', $ihbarGunu);
+            $birimFiyat = $param ? floatval($param->varsayilan_tutar ?? 0) : 0.0;
+
+            if ($birimFiyat > 0) {
+                $fiyatKey = number_format($birimFiyat, 2, '.', '');
+                $fiyatGruplari[$fiyatKey] = ($fiyatGruplari[$fiyatKey] ?? 0) + 1;
+                $toplamPrim += $birimFiyat;
+                $toplamGecerliIhbar++;
+            }
+        }
+
+        if ($toplamGecerliIhbar <= 0 || $toplamPrim <= 0) {
+            return $sonuc;
+        }
+
+        $toplamPrim = round($toplamPrim, 2);
+        $sonuc['ihbar_sayisi'] = $toplamGecerliIhbar;
         $sonuc['toplam_prim'] = $toplamPrim;
 
-        // 4. Ek ödeme oluştur
-        $aciklama = "[Kaçak İhbar Primi] (" . $olumluSayisi . " adet Olumlu İhbar)";
+        // 4. Açıklama metnini oluştur (Örn: "2 adet x 100 ₺ + 3 adet x 150 ₺" veya "3 adet x 100 ₺")
+        $aciklamaDetaylar = [];
+        foreach ($fiyatGruplari as $fiyat => $adet) {
+            $fiyatGosterim = number_format((float)$fiyat, 0, ',', '.') . ' ₺';
+            $aciklamaDetaylar[] = $adet . " adet x " . $fiyatGosterim;
+            $sonuc['birim_tutar'] = (float)$fiyat;
+        }
 
+        $aciklama = "[Kaçak İhbar Primi] (" . implode(' + ', $aciklamaDetaylar) . ")";
+
+        // 5. Ek ödeme oluştur
         $insertSql = $this->db->prepare("
             INSERT INTO personel_ek_odemeler 
             (personel_id, donem_id, tur, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
