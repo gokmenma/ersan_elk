@@ -38,3 +38,11 @@
 - Yemek yardımı yüksek hesaplanıp banka ödemesinden sonradan “fark kesintisi” düşülemez. Banka limit matrahı, sözleşme neti ve yalnızca kayıtlı yuvarlama farkı dışında aşamaz.
 - Net ücretli ve puantaj/ek ödeme üreten personelde kazanç sözleşme netinin **üzerine ayrıca eklenir**. Maaşa dahil yemek yardımı alan personelde kazançlar **öncelikle personelin günlük yemek tavanını (günlük yemek limiti tavanına kadar) doldurur** ve yemek yardımına dahil edilerek bankadan ödenir. Günlük yemek limitini aşan bakiye tutar ise **elden ödeme** olarak dağıtılır. Kesinti, önce resmî banka tavanından mahsup edilir; banka tavanını aşan kesinti varsa ancak bu bakiye elden tutardan düşülür.
 - Bu kuralları değiştiren her çalışma, önce `docs/BORDRO_HESAPLAMA_KURALLARI.md` dosyasını güncellemek ve liste–detay–kayıt hesaplarının aynı çıktıyı verdiğini doğrulamak zorundadır.
+
+## 6. Bordro — Gün Bazlı Sürekli Ek Ödemeler (Tarih Aralığı Kuralı)
+- Sürekli ek ödemelerden (araç kirası vb.) dönem kaydı üretilirken `baslangic_donemi` ve `bitis_donemi` alanları korunacaktır.
+- Gün bazlı ek ödemelerde (`aylik_fiili_gun_net`, `aylik_gun_net`, vb.) personelin ay içindeki fiili veya çalışılan gün sayısı doğrudan tüm döneme çarpılmaz; ek ödemenin geçerlilik aralığı ile bordro döneminin kesişim aralığındaki (`max(donemBas, odemeBas)` ve `min(donemBit, odemeBit)`) fiili gün sayısı esas alınır.
+
+## 7. Sistem ve Git İletişimi (SSH Port 443)
+- Geliştirme ortamındaki ağ kısıtlamaları nedeniyle GitHub SSH (Port 22) zaman aşımına uğrayabilmektedir. Git SSH işlemleri `~/.ssh/config` üzerinden `Host github.com -> Hostname ssh.github.com, Port 443` üzerinden yürütülmelidir.
+
