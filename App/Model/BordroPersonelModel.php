@@ -1995,7 +1995,7 @@ class BordroPersonelModel extends Model
             } elseif ($hesaplamaTipi === 'oran_brut' && $brutMaas > 0) {
                 $oran = floatval($odeme->oran ?? 0);
                 $tutar = $brutMaas * ($oran / 100);
-            } elseif (in_array($hesaplamaTipi, ['aylik_gun_brut', 'aylik_gun_net', 'gunluk_brut', 'gunluk_net', 'gunluk_kismi_muaf'])) {
+            } elseif (in_array($hesaplamaTipi, ['aylik_gun_brut', 'aylik_gun_net', 'gunluk_brut', 'gunluk_net', 'gunluk_kismi_muaf', 'aylik_fiili_gun_net'])) {
                 // Gün bazlı hesaplamalar için aylık tutarı olduğu gibi kaydet
                 // Gerçek hesaplama hesaplaMaas fonksiyonunda çalışma gününe göre yapılacak
                 $tutar = floatval($odeme->tutar ?? 0);
@@ -4624,7 +4624,23 @@ class BordroPersonelModel extends Model
                 if ($baseFromLabel > 0) {
                     $tutar = floatval($baseFromLabel);
                 }
+            } elseif (!empty($odeme->ana_tutar) && floatval($odeme->ana_tutar) > 0 && !empty($odeme->ana_odeme_id)) {
+                $tutar = floatval($odeme->ana_tutar);
             }
+
+            // Ek ödemenin geçerlilik aralığı ile bordro döneminin kesişimini belirle
+            $donemBaslangic = $kayit->baslangic_tarihi;
+            $donemBitis = $kayit->bitis_tarihi;
+            $odemeBaslangic = (!empty($odeme->baslangic_donemi) && $odeme->baslangic_donemi !== '0000-00-00') 
+                ? $odeme->baslangic_donemi 
+                : $donemBaslangic;
+            $odemeBitis = (!empty($odeme->bitis_donemi) && $odeme->bitis_donemi !== '0000-00-00') 
+                ? $odeme->bitis_donemi 
+                : $donemBitis;
+
+            $hesapBaslangic = max($donemBaslangic, $odemeBaslangic);
+            $hesapBitis = min($donemBitis, $odemeBitis);
+            $kesisimGecerli = ($hesapBaslangic <= $hesapBitis);
 
             // Detay kaydı
             $detay = [
@@ -4745,37 +4761,54 @@ class BordroPersonelModel extends Model
                 case 'aylik_gun_net':
                     // Gün sayısını hesapla
                     $gunSayisi = 0;
-                    if ($parametre->gun_sayisi_otomatik) {
-                        // Puantajdan otomatik hesapla
+                    if (!$kesisimGecerli) {
+                        $gunSayisi = 0;
+                        $detay['gun_kaynak'] = 'gecersiz_tarih_araligi';
+                    } elseif ($parametre->gun_sayisi_otomatik) {
+                        // Puantajdan otomatik hesapla (kesişim aralığında)
                         $gunSayisi = $this->getCalismaGunuSayisi(
                             $kayit->personel_id,
-                            $kayit->baslangic_tarihi,
-                            $kayit->bitis_tarihi
+                            $hesapBaslangic,
+                            $hesapBitis
                         );
                         
                         // FALLBACK: Puantaj verisi yoksa (ekip_no boş veya veri girilmemiş)
                         // personelin maaş hesap gününü kullan (dönem için hesaplanan gerçek çalışma günü)
                         if ($gunSayisi <= 0) {
-                            $gunSayisi = $maasHesapGunu;
-                            $detay['gun_kaynak'] = 'maas_hesap_gunu (puantaj verisi yok)';
+                            $tumAyCalismaGunu = $this->getCalismaGunuSayisi($kayit->personel_id, $donemBaslangic, $donemBitis);
+                            if ($tumAyCalismaGunu <= 0 && $maasHesapGunu > 0) {
+                                $donemGunFarki = max(1, (strtotime($donemBitis) - strtotime($donemBaslangic)) / 86400 + 1);
+                                $aralikGunFarki = max(1, (strtotime($hesapBitis) - strtotime($hesapBaslangic)) / 86400 + 1);
+                                $gunSayisi = round($maasHesapGunu * ($aralikGunFarki / $donemGunFarki));
+                                $detay['gun_kaynak'] = 'maas_hesap_gunu_oransal (puantaj verisi yok)';
+                            } else {
+                                $gunSayisi = 0;
+                                $detay['gun_kaynak'] = 'puantaj (aralıkta çalışma yok)';
+                            }
                         } else {
                             $detay['gun_kaynak'] = 'puantaj';
                         }
                     } else {
                         // Manuel/Sabit gün sayısı - ama izinleri düş
                         $varsayilanGun = intval($parametre->varsayilan_gun_sayisi ?? 30);
+                        $donemGunFarki = max(1, (strtotime($donemBitis) - strtotime($donemBaslangic)) / 86400 + 1);
+                        $aralikGunFarki = max(1, (strtotime($hesapBitis) - strtotime($hesapBaslangic)) / 86400 + 1);
+                        $oransalVarsayilan = ($aralikGunFarki < $donemGunFarki)
+                            ? round($varsayilanGun * ($aralikGunFarki / $donemGunFarki))
+                            : $varsayilanGun;
+
                         $loopUcretliIzin = $this->getUcretliIzinGunu(
                             $kayit->personel_id,
-                            $kayit->baslangic_tarihi,
-                            $kayit->bitis_tarihi
+                            $hesapBaslangic,
+                            $hesapBitis
                         );
                         // Ücretsiz izin gün sayısını da al
                         $loopUcretsizIzin = $this->getUcretsizIzinGunuDirekt(
                             $kayit->personel_id,
-                            $kayit->baslangic_tarihi,
-                            $kayit->bitis_tarihi
+                            $hesapBaslangic,
+                            $hesapBitis
                         );
-                        $gunSayisi = max(0, $varsayilanGun - $loopUcretliIzin - $loopUcretsizIzin);
+                        $gunSayisi = max(0, $oransalVarsayilan - $loopUcretliIzin - $loopUcretsizIzin);
                         $detay['gun_kaynak'] = 'manuel';
                     }
 
@@ -4856,18 +4889,34 @@ class BordroPersonelModel extends Model
 
                 case 'aylik_fiili_gun_net':
                     // Fiili Çalışılan Gün bazlı Net hesaplama (Bireysel Puantajdan)
-                    $gunSayisi = $this->getFiiliCalismaGunuSayisi(
-                        $kayit->personel_id,
-                        $kayit->baslangic_tarihi,
-                        $kayit->bitis_tarihi
-                    );
-                    
-                    // FALLBACK: Eğer puantajdan fiili gün sıfır geliyorsa SSK (Normal) çalışma gününü baz al.
-                    if ($gunSayisi <= 0) {
-                        $gunSayisi = $normGun;
-                        $detay['gun_kaynak'] = 'norm_gun (fallback)';
+                    // Eğer ek ödemenin başlangıç veya bitiş tarihi varsa, bu tarih aralığındaki fiili günler hesaplanır
+                    if ($kesisimGecerli) {
+                        $gunSayisi = $this->getFiiliCalismaGunuSayisi(
+                            $kayit->personel_id,
+                            $hesapBaslangic,
+                            $hesapBitis
+                        );
+                        
+                        // FALLBACK: Eğer puantajdan fiili gün sıfır geliyorsa:
+                        // Personelin tüm ay için hiç puantajı yoksa SSK gününden oranla
+                        if ($gunSayisi <= 0) {
+                            $tumAyFiiliGun = $this->getFiiliCalismaGunuSayisi($kayit->personel_id, $donemBaslangic, $donemBitis);
+                            if ($tumAyFiiliGun <= 0 && $normGun > 0) {
+                                // Puantaj hiç yok, SSK gününü takvim gününe oranla
+                                $donemGunFarki = max(1, (strtotime($donemBitis) - strtotime($donemBaslangic)) / 86400 + 1);
+                                $aralikGunFarki = max(1, (strtotime($hesapBitis) - strtotime($hesapBaslangic)) / 86400 + 1);
+                                $gunSayisi = round($normGun * ($aralikGunFarki / $donemGunFarki));
+                                $detay['gun_kaynak'] = 'norm_gun_oransal (fallback)';
+                            } else {
+                                $gunSayisi = 0;
+                                $detay['gun_kaynak'] = 'puantaj_bireysel (aralıkta fiili gün yok)';
+                            }
+                        } else {
+                            $detay['gun_kaynak'] = 'puantaj_bireysel';
+                        }
                     } else {
-                        $detay['gun_kaynak'] = 'puantaj_bireysel';
+                        $gunSayisi = 0;
+                        $detay['gun_kaynak'] = 'gecersiz_tarih_araligi';
                     }
                     
                     $detay['gun_sayisi'] = $gunSayisi;
@@ -5912,9 +5961,14 @@ class BordroPersonelModel extends Model
         // bu dönem için halihazırda oluşturulmuş olan (aligned) kayıtları çekmeliyiz.
         // Böylece master kayıtlar (rate) güncel kalır, period kayıtları (amount) hesaplanır.
         $sql = $this->db->prepare("
-            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.icra_pirim_dahil,
+            SELECT peo.*, 
+                   COALESCE(peo.baslangic_donemi, ana.baslangic_donemi) AS baslangic_donemi,
+                   COALESCE(peo.bitis_donemi, ana.bitis_donemi) AS bitis_donemi,
+                   COALESCE(ana.tutar, peo.tutar) AS ana_tutar,
+                   bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.icra_pirim_dahil,
                    COALESCE(u.adi_soyadi, u.user_name) AS kayit_yapan_ad_soyad
             FROM personel_ek_odemeler peo
+            LEFT JOIN personel_ek_odemeler ana ON peo.ana_odeme_id = ana.id
             LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
             LEFT JOIN users u ON peo.kayit_yapan = u.id
             WHERE peo.personel_id = ? 
