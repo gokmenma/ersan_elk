@@ -1277,7 +1277,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                         if ($sozlesmeMaasFarkiGosterim > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı</td>
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Sözleşme Farkı</td>
                                         <td class="text-end pe-4">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
@@ -1363,7 +1363,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     if (!$isPrimUsulu && $modalMaasFarkiGosterim > 0) {
                         $html .= '<tr class="parent-row">
-                                    <td><div class="d-flex align-items-center ps-2"><i class="bx bx-trending-up text-primary me-2 opacity-75" style="font-size: 14px;"></i><span>Maaş Farkı</span></div></td>
+                                    <td><div class="d-flex align-items-center ps-2"><i class="bx bx-trending-up text-primary me-2 opacity-75" style="font-size: 14px;"></i><span>Sözleşme Farkı</span></div></td>
                                     <td class="text-end fw-medium text-primary">' . number_format($modalMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     }
@@ -2669,12 +2669,37 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $html .= '</div></div>';
 
                 // 4. Diğer Kazançlar / İkramiyeler Card
-                $digerKazancToplam = $primTutar + $nobetTutar + $kacakTutar + $puantajTutar + $digerKazancTutar;
+                $sozlesmeFarki = 0.0;
+                if ($asgariMatrarhGoster) {
+                    $kartlarToplami = $calisanBrutMaas + $fazlaCalismaToplam + $sosyalYardimToplam + $primTutar + $nobetTutar + $kacakTutar + $puantajTutar + $digerKazancTutar;
+                    $sozlesmeFarki = max(0.0, round($displayToplamAlacak - $kartlarToplami, 2));
+                }
+                if ($sozlesmeFarki <= 0 && $modalMaasFarkiGosterim > 0 && $asgariMatrarhGoster) {
+                    $sozlesmeFarki = $modalMaasFarkiGosterim;
+                }
+
+                $digerKazancToplam = $primTutar + $nobetTutar + $kacakTutar + $puantajTutar + $digerKazancTutar + $sozlesmeFarki;
                 $nobetPop = $buildPopoverHtml($nobetGruplu);
                 $kacakPop = $buildPopoverHtml($kacakGruplu);
                 $puantajPop = $buildPopoverHtml($puantajGruplu);
                 $primPop = $buildEkOdemePopoverHtml($primListesi, 'Prim / İkramiye Detayları');
                 $digerKazancPop = $buildEkOdemePopoverHtml($digerKazancListesi, 'Diğer Ek Ödeme Detayları');
+
+                $sozlesmeFarkiPop = '';
+                if ($sozlesmeFarki > 0) {
+                    $sozlesmeFarkiPop = '<div class="ref-popover-content">';
+                    $sozlesmeFarkiPop .= '<div style="margin-bottom:6px; color:#cbd5e1; font-size:0.75rem; border-bottom:1px dashed rgba(255,255,255,0.15); padding-bottom:4px; font-weight:600;">SÖZLEŞME FARKI DETAYI</div>';
+                    $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Sözleşme Hakedişi:</span><span style="color:#ffffff; font-weight:bold;">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</span></div>';
+                    $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Asgari Taban:</span><span style="color:#ffffff;">-' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺</span></div>';
+                    if ($sosyalYardimToplam > 0) {
+                        $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Sosyal Yardımlar:</span><span style="color:#ffffff;">-' . number_format($sosyalYardimToplam, 2, ',', '.') . ' ₺</span></div>';
+                    }
+                    if ($fazlaCalismaToplam > 0) {
+                        $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Fazla Çalışmalar:</span><span style="color:#ffffff;">-' . number_format($fazlaCalismaToplam, 2, ',', '.') . ' ₺</span></div>';
+                    }
+                    $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; border-top:1px dashed rgba(255,255,255,0.15); padding-top:4px;"><span style="color:#38bdf8; font-weight:bold;">Kalan Sözleşme Farkı:</span><span style="color:#10b981; font-weight:bold;">+' . number_format($sozlesmeFarki, 2, ',', '.') . ' ₺</span></div>';
+                    $sozlesmeFarkiPop .= '</div>';
+                }
 
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">4. DİĞER KAZANÇLAR / İKRAMİYELER</div>';
@@ -2685,6 +2710,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $html .= '<div class="ref-card-item' . (!empty($puantajPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Puantaj Hakedişi' . $puantajBaslikDetay . (!empty($puantajPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($puantajTutar) . '</span>' . $puantajPop . '</div>';
                 $html .= '<div class="ref-card-item' . (!empty($primPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Prim / İkramiye' . (!empty($primPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($primTutar) . '</span>' . $primPop . '</div>';
                 $html .= '<div class="ref-card-item' . (!empty($digerKazancPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Diğer Ek Ödemeler' . (!empty($digerKazancPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($digerKazancTutar) . '</span>' . $digerKazancPop . '</div>';
+                $html .= '<div class="ref-card-item' . (!empty($sozlesmeFarkiPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Sözleşme Farkı' . (!empty($sozlesmeFarkiPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($sozlesmeFarki) . '</span>' . $sozlesmeFarkiPop . '</div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">' . $fmt($digerKazancToplam) . '</span></div>';
                 $html .= '</div></div>';
