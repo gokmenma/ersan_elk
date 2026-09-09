@@ -800,6 +800,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 $Personel = new PersonelModel();
                 $personel = $Personel->find($bp->personel_id);
+                if ($personel && $donemBilgi) {
+                    $personel = $BordroPersonel->overrideWithHistoricalGorevGecmisi($personel, $donemBilgi->baslangic_tarihi, $donemBilgi->bitis_tarihi);
+                }
 
                 // Kesinti ve ek ödeme türü etiketleri
                 $kesintiTurEtiketleri = [
@@ -1657,6 +1660,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 $Personel = new PersonelModel();
                 $personel = $Personel->find($bp->personel_id);
+                if ($personel && $donemBilgi) {
+                    $personel = $BordroPersonel->overrideWithHistoricalGorevGecmisi($personel, $donemBilgi->baslangic_tarihi, $donemBilgi->bitis_tarihi);
+                }
 
                 // Kesinti ve ek ödeme türü etiketleri
                 $kesintiTurEtiketleri = [

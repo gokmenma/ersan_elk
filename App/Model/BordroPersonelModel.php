@@ -691,6 +691,8 @@ class BordroPersonelModel extends Model
             ? ((int) round(($donemBitTs - $donemBasTs) / 86400) + 1)
             : 30;
 
+        $p = $this->overrideWithHistoricalGorevGecmisi($p, $donemBaslangic, $donemBitis);
+
         $rawEkOdeme = 0; 
 
         if (!empty($p->gorev_gecmisi_var)) {
@@ -1446,6 +1448,7 @@ class BordroPersonelModel extends Model
         
         foreach ($results as &$r) {
             $this->overrideWithHistoricalCalismaGecmisi($r, $donemBaslangic, $donemBitis);
+            $this->overrideWithHistoricalGorevGecmisi($r, $donemBaslangic, $donemBitis);
         }
 
         $pm = new PersonelModel();
@@ -2199,6 +2202,9 @@ class BordroPersonelModel extends Model
             return;
         }
 
+        $personel = $this->overrideWithHistoricalCalismaGecmisi($personel, $baslangic_tarihi, $bitis_tarihi);
+        $personel = $this->overrideWithHistoricalGorevGecmisi($personel, $baslangic_tarihi, $bitis_tarihi);
+
         // 2. Önceki puantaj kaynaklı ek ödemeleri temizle (duplicate önlemek için)
         // Açıklamada "[Puantaj]" etiketi olanları siliyoruz
         $deleteSql = $this->db->prepare("
@@ -2401,6 +2407,9 @@ class BordroPersonelModel extends Model
         $PersonelModel = new \App\Model\PersonelModel();
         $personel = $PersonelModel->find($personel_id);
         if (!$personel) return;
+
+        $personel = $this->overrideWithHistoricalCalismaGecmisi($personel, $baslangic_tarihi, $bitis_tarihi);
+        $personel = $this->overrideWithHistoricalGorevGecmisi($personel, $baslangic_tarihi, $bitis_tarihi);
 
         // Sadece [Sayaç] ile başlayanları temizle. [Puantaj] olanlar (SKA vb.) yukarıda olusturPuantajOdemeleri tarafından oluşturuldu.
         $this->db->prepare("
@@ -3039,6 +3048,12 @@ class BordroPersonelModel extends Model
 
         if (!$personel) return;
 
+        $donemAy = date('Y-m', strtotime($baslangic_tarihi));
+        $donemTarihi = $donemAy . '-01';
+        $donemBitis = date('Y-m-t', strtotime($donemTarihi));
+
+        $personel = $this->overrideWithHistoricalGorevGecmisi($personel, $donemTarihi, $donemBitis);
+
         // 1. Yemek Yardımı
         if (!empty($personel->yemek_yardimi_aliyor) && !empty($personel->yemek_yardimi_parametre_id)) {
             $yemekYardimiDahil = intval($personel->yemek_yardimi_dahil ?? 0);
@@ -3053,9 +3068,6 @@ class BordroPersonelModel extends Model
                     $asgariNetVal = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net') ?? 28075.50);
                     
                     // Puantajdan X günlerini say
-                    $donemAy = date('Y-m', strtotime($baslangic_tarihi));
-                    $donemTarihi = $donemAy . '-01';
-                    $donemBitis = date('Y-m-t', strtotime($donemTarihi));
                     $fiiliGunSayisi = $this->getFiiliCalismaGunuSayisi($personel_id, $donemTarihi, $donemBitis);
                     if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $maasHesapGunu;
 
@@ -4086,7 +4098,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.adi_soyadi, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.ise_giris_tarihi, p.isten_cikis_tarihi, 
+            SELECT bp.*, p.adi_soyadi, p.departman, p.gorev, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.ise_giris_tarihi, p.isten_cikis_tarihi, 
                    p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,
                    p.es_yardimi_dahil, p.es_yardimi_tutari, p.es_yardimi_parametre_id,
                    bd.baslangic_tarihi, bd.bitis_tarihi
@@ -4102,6 +4114,7 @@ class BordroPersonelModel extends Model
             return false;
 
         $kayit = $this->overrideWithHistoricalCalismaGecmisi($kayit, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+        $kayit = $this->overrideWithHistoricalGorevGecmisi($kayit, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // Dönem tarihi - parametreleri bu tarihe göre çek
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
@@ -4134,6 +4147,10 @@ class BordroPersonelModel extends Model
         ");
         $sqlGecmis->execute([$kayit->personel_id, $donemBitis, $donemTarihi]);
         $gecmisKayitlar = $sqlGecmis->fetchAll(\PDO::FETCH_OBJ);
+        $histGorev = $this->getHistoricalGorevGecmisi($kayit->personel_id, $donemTarihi, $donemBitis);
+        if (empty($gecmisKayitlar) && $histGorev && !empty($histGorev->kayitlar)) {
+            $gecmisKayitlar = $histGorev->kayitlar;
+        }
         $karisikMaasOzeti = $this->getKarisikMaasGecmisiOzeti(
             (int) $kayit->personel_id,
             $donemTarihi,
@@ -4216,7 +4233,12 @@ class BordroPersonelModel extends Model
             } else {
                 $nominalBrutMaas = ($toplamGecerliGun > 0) ? ($agirlikliBrutMaas / $toplamGecerliGun * 30) : $agirlikliBrutMaas;
                 $kayit->maas_tutari = round($nominalBrutMaas, 2);
-                $kayit->hedef_net_maas_tutari = 0;
+                $kayit->hedef_net_maas_tutari = $isNetMaas ? round($nominalBrutMaas, 2) : 0;
+            }
+
+            if ($histGorev) {
+                $kayit->gorev = $histGorev->gorev;
+                $kayit->departman = $histGorev->departman;
             }
         } else {
             $nominalBrutMaas = floatval($kayit->maas_tutari ?? 0);
@@ -5734,6 +5756,10 @@ class BordroPersonelModel extends Model
 
         $hesaplamaDetay = [
             'hesaplama_tarihi' => date('Y-m-d H:i:s'),
+            'gorev' => $kayit->gorev ?? '',
+            'departman' => $kayit->departman ?? '',
+            'gorev_gecmisi_parcali' => !empty($kayit->gorev_gecmisi_parcali),
+            'gorev_gecmisi_parcalar' => $kayit->gorev_gecmisi_parcalar ?? [],
             'maas_durumu' => $maasDurumuRaw,
             'is_net_maas' => $isNetMaas,
             'is_prim_usulu' => $isPrimUsulu,
@@ -6037,6 +6063,7 @@ class BordroPersonelModel extends Model
 
         foreach ($results as &$r) {
             $this->overrideWithHistoricalCalismaGecmisi($r, $donemBaslangic, $donemBitis);
+            $this->overrideWithHistoricalGorevGecmisi($r, $donemBaslangic, $donemBitis);
         }
 
         $pm = new PersonelModel();
@@ -6085,6 +6112,173 @@ class BordroPersonelModel extends Model
                 if (array_key_exists('sgk_yapilan_firma', $record)) $record['sgk_yapilan_firma'] = $hist->sgk_yapilan_firma;
                 if (array_key_exists('disardan_sigortali', $record)) $record['disardan_sigortali'] = $hist->disardan_sigortali;
                 if (array_key_exists('gorunum_modulleri', $record)) $record['gorunum_modulleri'] = $hist->gorunum_modulleri;
+            }
+        }
+        return $record;
+    }
+
+    /**
+     * Personelin belirli bir donemdeki gorev/maas gecmisi kayitlarini getirir
+     * Tek kayit varsa onu, birden fazla varsa agirlikli/parcali ozetini doner
+     */
+    public function getHistoricalGorevGecmisi($personel_id, $baslangic, $bitis)
+    {
+        $personel_id = intval($personel_id);
+        if ($personel_id <= 0) return null;
+
+        $donemBasTs = strtotime($baslangic);
+        $donemBitTs = strtotime($bitis);
+        if ($donemBasTs === false || $donemBitTs === false) return null;
+
+        // Donemle kesisenter tum gorev gecmisi kayitlarini al (kronolojik sira)
+        $sql = "SELECT id, personel_id, departman, gorev, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi 
+                FROM personel_gorev_gecmisi 
+                WHERE personel_id = ? 
+                AND baslangic_tarihi <= ? 
+                AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+                ORDER BY baslangic_tarihi ASC, id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id, $bitis, $baslangic]);
+        $kayitlar = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        // Eger dogrudan kesisenter kayit yoksa, donem basindan once baslayip sonlandirilmis en son kayda bak
+        if (empty($kayitlar)) {
+            $sqlFallback = "SELECT id, personel_id, departman, gorev, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi 
+                            FROM personel_gorev_gecmisi 
+                            WHERE personel_id = ? 
+                            AND baslangic_tarihi <= ? 
+                            ORDER BY baslangic_tarihi DESC, id DESC 
+                            LIMIT 1";
+            $stmtFb = $this->db->prepare($sqlFallback);
+            $stmtFb->execute([$personel_id, $bitis]);
+            $fb = $stmtFb->fetch(PDO::FETCH_OBJ);
+            if ($fb) {
+                $kayitlar = [$fb];
+            } else {
+                return null;
+            }
+        }
+
+        if (count($kayitlar) === 1) {
+            $tekKayit = $kayitlar[0];
+            $gBas = strtotime($tekKayit->baslangic_tarihi);
+            $gBit = empty($tekKayit->bitis_tarihi) ? $donemBitTs : strtotime($tekKayit->bitis_tarihi);
+            $hesapBas = max($donemBasTs, $gBas);
+            $hesapBit = min($donemBitTs, $gBit);
+            $gecerliGun = ($hesapBit >= $hesapBas) ? (int) round(($hesapBit - $hesapBas) / 86400) + 1 : 30;
+
+            return (object) [
+                'departman' => $tekKayit->departman,
+                'gorev' => $tekKayit->gorev,
+                'son_gorev' => $tekKayit->gorev,
+                'maas_durumu' => $tekKayit->maas_durumu,
+                'maas_tutari' => floatval($tekKayit->maas_tutari),
+                'toplam_gun' => $gecerliGun,
+                'is_parcali' => false,
+                'kayitlar' => $kayitlar,
+                'agirlikli_maas' => floatval($tekKayit->maas_tutari),
+                'hedef_net' => floatval($tekKayit->maas_tutari),
+            ];
+        }
+
+        // Birden fazla kayit varsa (Donem ici tarih bazli gecis)
+        $toplamGun = 0;
+        $toplamHakedis = 0.0;
+        $parcaDetay = [];
+        $sonKayit = end($kayitlar);
+
+        foreach ($kayitlar as $k) {
+            $gBas = strtotime($k->baslangic_tarihi);
+            $gBit = empty($k->bitis_tarihi) ? $donemBitTs : strtotime($k->bitis_tarihi);
+            $hesapBas = max($donemBasTs, $gBas);
+            $hesapBit = min($donemBitTs, $gBit);
+
+            if ($hesapBit >= $hesapBas) {
+                $gun = (int) round(($hesapBit - $hesapBas) / 86400) + 1;
+                $toplamGun += $gun;
+                $tutar = floatval($k->maas_tutari);
+                $gunlukTutar = $tutar / 30;
+                $toplamHakedis += ($gunlukTutar * $gun);
+
+                $parcaDetay[] = [
+                    'id' => $k->id,
+                    'gorev' => $k->gorev,
+                    'departman' => $k->departman,
+                    'maas_durumu' => $k->maas_durumu,
+                    'maas_tutari' => $tutar,
+                    'baslangic' => date('Y-m-d', $hesapBas),
+                    'bitis' => date('Y-m-d', $hesapBit),
+                    'gun' => $gun,
+                    'hakedis' => round($gunlukTutar * $gun, 2)
+                ];
+            }
+        }
+
+        $agirlikliMaas = ($toplamGun > 0) ? round(($toplamHakedis / $toplamGun) * 30, 2) : floatval($sonKayit->maas_tutari);
+
+        // Parcali gorev gosterim metni
+        $gorevlerUniq = array_values(array_unique(array_filter(array_column($parcaDetay, 'gorev'))));
+        $gorevMetni = !empty($gorevlerUniq) ? implode(' / ', $gorevlerUniq) : ($sonKayit->gorev ?? '');
+
+        return (object) [
+            'departman' => $sonKayit->departman,
+            'gorev' => $gorevMetni,
+            'son_gorev' => $sonKayit->gorev,
+            'maas_durumu' => $sonKayit->maas_durumu,
+            'maas_tutari' => $agirlikliMaas,
+            'toplam_gun' => $toplamGun,
+            'is_parcali' => true,
+            'kayitlar' => $kayitlar,
+            'parca_detay' => $parcaDetay,
+            'agirlikli_maas' => $agirlikliMaas,
+            'hedef_net' => $agirlikliMaas,
+        ];
+    }
+
+    /**
+     * Personel nesnesini veya dizisini ilgili donemin gorev gecmisiyle zenginlestirir/override eder
+     */
+    public function overrideWithHistoricalGorevGecmisi($record, $baslangic, $bitis)
+    {
+        if (is_object($record)) {
+            $personel_id = $record->personel_id ?? $record->id ?? null;
+            if (!$personel_id) return $record;
+            $hist = $this->getHistoricalGorevGecmisi($personel_id, $baslangic, $bitis);
+            if ($hist) {
+                if (property_exists($record, 'departman') || isset($record->departman)) $record->departman = $hist->departman;
+                if (property_exists($record, 'gorev') || isset($record->gorev)) $record->gorev = $hist->gorev;
+                if (property_exists($record, 'maas_durumu') || isset($record->maas_durumu)) $record->maas_durumu = $hist->maas_durumu;
+                if (property_exists($record, 'maas_tutari') || isset($record->maas_tutari)) $record->maas_tutari = $hist->maas_tutari;
+                $record->gg_departman = $hist->departman;
+                $record->gg_gorev = $hist->gorev;
+                $record->gg_maas_durumu = $hist->maas_durumu;
+                $record->gg_maas_tutari = $hist->maas_tutari;
+                $record->gorev_gecmisi_var = 1;
+                $record->gg_toplam_gun = $hist->toplam_gun;
+                if (!empty($hist->is_parcali)) {
+                    $record->gorev_gecmisi_parcali = true;
+                    $record->gorev_gecmisi_parcalar = $hist->parca_detay;
+                }
+            }
+        } elseif (is_array($record)) {
+            $personel_id = $record['personel_id'] ?? $record['id'] ?? null;
+            if (!$personel_id) return $record;
+            $hist = $this->getHistoricalGorevGecmisi($personel_id, $baslangic, $bitis);
+            if ($hist) {
+                $record['departman'] = $hist->departman;
+                $record['gorev'] = $hist->gorev;
+                $record['maas_durumu'] = $hist->maas_durumu;
+                $record['maas_tutari'] = $hist->maas_tutari;
+                $record['gg_departman'] = $hist->departman;
+                $record['gg_gorev'] = $hist->gorev;
+                $record['gg_maas_durumu'] = $hist->maas_durumu;
+                $record['gg_maas_tutari'] = $hist->maas_tutari;
+                $record['gorev_gecmisi_var'] = 1;
+                $record['gg_toplam_gun'] = $hist->toplam_gun;
+                if (!empty($hist->is_parcali)) {
+                    $record['gorev_gecmisi_parcali'] = true;
+                    $record['gorev_gecmisi_parcalar'] = $hist->parca_detay;
+                }
             }
         }
         return $record;
