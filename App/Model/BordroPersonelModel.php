@@ -732,7 +732,8 @@ class BordroPersonelModel extends Model
         if ($karisikMaasOzeti !== null) {
             $maasDurumu = 'Prim Usülü / Sabit Maaş';
         }
-        $isInclusive = $this->hasMaasaDahilSosyalYardim($p);
+        // Karma maaşta kayıt hesabı dahil yardım dağıtımını kullanmaz; gösterim de aynı modu izler.
+        $isInclusive = $karisikMaasOzeti === null && $this->hasMaasaDahilSosyalYardim($p);
 
         $toplamKesinti = floatval($p->guncel_toplam_kesinti ?? $p->kesinti_tutar ?? 0);
         
@@ -827,7 +828,7 @@ class BordroPersonelModel extends Model
         $isNet = (stripos($maasDurumu, 'Net') !== false);
         $isBrut = (stripos($maasDurumu, 'Brüt') !== false || stripos($maasDurumu, 'Brut') !== false);
         $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
-        $isInclusive = $this->hasMaasaDahilSosyalYardim($p);
+        $isInclusive = $karisikMaasOzeti === null && $this->hasMaasaDahilSosyalYardim($p);
 
         if ($hesaplamayaEsasMaas <= 0) {
             if ($this->cachedParametreModel === null) {

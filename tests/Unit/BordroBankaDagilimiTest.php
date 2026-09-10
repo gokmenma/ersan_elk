@@ -73,14 +73,20 @@ final class BordroBankaDagilimiTest extends TestCase
         $this->assertKayitGosterim('Net', 1, 'Manuel prim', 500, false, true);
     }
 
-    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false): void
+    public function testKarmaMaastaKarttakiYemekIsaretiBankaPriminiVeKesintiyiEngellemez(): void
+    {
+        $this->assertKayitGosterim('Prim Usülü', 1, '[Kaçak İhbar Primi] (6 adet x 100 ₺)', 500, false, false, true);
+        $this->assertKayitGosterim('Prim Usülü', 0, 'Manuel prim', 500, false, false, true);
+    }
+
+    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false): void
     {
         $record = (object) [
             'id' => 1, 'personel_id' => 1, 'donem_id' => 1,
             'baslangic_tarihi' => '2026-09-01', 'bitis_tarihi' => '2026-09-30',
             'ise_giris_tarihi' => '2020-01-01', 'isten_cikis_tarihi' => null,
             'maas_durumu' => $maasTuru, 'maas_tutari' => 30000,
-            'yemek_yardimi_dahil' => 0, 'es_yardimi_dahil' => 0,
+            'yemek_yardimi_dahil' => $karma ? 1 : 0, 'es_yardimi_dahil' => 0,
             'sodexo' => 0, 'sodexo_odemesi' => 0, 'diger_odeme' => 0,
             'guncel_toplam_kesinti' => $kesinti, 'sgk_yapilan_firma' => 'Firma',
             'dagitim_manuel' => $manuel ? 1 : 0, 'banka_odemesi' => 25000,
@@ -118,12 +124,19 @@ final class BordroBankaDagilimiTest extends TestCase
             return true;
         });
         $pdo = $this->createMock(PDO::class);
-        $pdo->method('prepare')->willReturnCallback(function ($sql) use ($record, $maasTuru) {
+        $pdo->method('prepare')->willReturnCallback(function ($sql) use ($record, $maasTuru, $karma) {
             $stmt = $this->createMock(PDOStatement::class);
             $stmt->method('execute')->willReturn(true);
             $stmt->method('fetch')->willReturn(str_contains($sql, 'WHERE bp.id = ?') ? clone $record : false);
-            $stmt->method('fetchAll')->willReturnCallback(function ($mode) use ($sql, $maasTuru) {
+            $stmt->method('fetchAll')->willReturnCallback(function ($mode) use ($sql, $maasTuru, $karma) {
                 if (str_contains($sql, 'FROM personel_gorev_gecmisi')) {
+                    if ($karma) {
+                        $rows = [
+                            ['maas_durumu' => 'Net', 'maas_tutari' => 60000, 'baslangic_tarihi' => '2026-09-01', 'bitis_tarihi' => '2026-09-15'],
+                            ['maas_durumu' => 'Prim Usülü', 'maas_tutari' => 0, 'baslangic_tarihi' => '2026-09-16', 'bitis_tarihi' => '2026-09-30'],
+                        ];
+                        return array_map(fn ($row) => $mode === PDO::FETCH_OBJ ? (object) $row : $row, $rows);
+                    }
                     $row = ['maas_durumu' => $maasTuru, 'maas_tutari' => 30000, 'baslangic_tarihi' => '2026-09-01', 'bitis_tarihi' => '2026-09-30'];
                     return [$mode === PDO::FETCH_OBJ ? (object) $row : $row];
                 }
@@ -146,6 +159,10 @@ final class BordroBankaDagilimiTest extends TestCase
 
         self::assertTrue($model->hesaplaMaas(1));
         $display = $model->hesaplaOrtakGosterimDegerleri(clone $record, $record, 28075.5);
+        if ($karma) {
+            self::assertTrue($display['karisikMaasGecmisi']);
+            self::assertFalse($display['isInclusive']);
+        }
         $expectedBank = $manuel ? 25000.0 : max(0.0, 28075.5 + ($bankaSecimi ? 600 : 0) - ($eldenKesinti ? 0 : $kesinti));
         $expectedNet = 31800.0 - $kesinti;
         self::assertSame($expectedBank, $saved['banka_odemesi']);

@@ -843,7 +843,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
-                $isInclusive = (intval($bp->yemek_yardimi_dahil ?? 0) === 1 || intval($bp->es_yardimi_dahil ?? 0) === 1);
+                $isInclusive = (bool) $hesap['isInclusive'];
                 $includedDeduction = floatval($hesap['includedAllowanceDeduction'] ?? 0);
 
                 $includedAllowanceFiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? 0);
@@ -1703,7 +1703,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
-                $isInclusive = (intval($bp->yemek_yardimi_dahil ?? 0) === 1 || intval($bp->es_yardimi_dahil ?? 0) === 1);
+                $isInclusive = (bool) $hesap['isInclusive'];
                 $includedDeduction = floatval($hesap['includedAllowanceDeduction'] ?? 0);
 
                 $includedAllowanceFiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? 0);

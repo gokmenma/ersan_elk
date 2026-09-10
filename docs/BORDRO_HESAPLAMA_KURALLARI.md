@@ -127,6 +127,7 @@ Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maas
 - Maaşa dahil primlerin yemek havuzuna aktarılması, günlük limit ve yuvarlama hesabı korunur; ayrıca banka kalemi eklenerek çift sayılmaz.
 - Örnek: toplam hakediş 29.795,00; asgari banka tabanı 26.203,80; banka işaretli prim 600,00; diğer banka eki yok; özel kesinti 500,00 ise banka **26.303,80**, elden **2.991,20**, net **29.295,00** olur.
 - Liste, detay ve banka Excel/raporu ortak gösterim hesabını; kayıt hesabı da aynı banka dağıtım yardımcısını kullanır.
+- Aynı dönemde sabit maaş ve prim usulü görev geçmişi bulunan karma maaşta, personel kartındaki yemek/eş dahil işareti otomatik dahil yardım dağıtımını etkinleştirmez. Kayıt hesabındaki `karisikMaasOzeti === null` koşulu ortak gösterimde de uygulanır; detay/yazdırma bu etkin modu ortak hesabın `isInclusive` sonucundan alır. Böylece banka işaretli prim yemek havuzunda kaybolmaz, özel kesinti banka matrahından düşer.
 
 ## Maasa Dahil Sosyal Yardim Kurali
 
