@@ -118,6 +118,16 @@ matrahinda iki kez sayilir.
 Prim usulu net gibi islenir. Varsayilan ek odeme kanali `elden` kabul edilir; parametrede odeme yontemi varsa o yontem kullanilir.
 Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maasHesapGunu > 0`), puantaj veya ek odeme uretilmemis ya da asgari tabandan dusuk kalmis olsa dahi personelin hakedisi en az calisilan gune tekabul eden `asgariHakedis` (`asgari_ucret_net / 30 * maasHesapGunu`) tutarindan az olamaz.
 
+### Banka İşaretli Prim ve Özel Kesinti Sırası
+
+- `[Kaçak İhbar Primi]`, puantaj/kaçak kontrol hakedişi değildir; diğer primler gibi kaydın `banka_matrahina_ekle` seçimine uyar. Puantaj sınıflandırması yalnızca `[Puantaj]`, `[Sayaç]` ve `[Kaçak Kontrol]` etiketleriyle yapılır.
+- Maaşa dahil sosyal yardım olmayan net, prim usulü ve karma maaşlarda banka matrahı önce asgari net hakediş + banka kanallı ek ödemeler olarak kurulur. Prim türü olması banka seçimini geçersiz kılamaz.
+- Ardından avans/özel kesinti gibi personel kesintileri bu banka matrahından düşülür. Bankayı aşan kesinti bakiyesi elden ödemeye yansır. İcra toplam kesintinin içindeyse ikinci kez düşülmez; yasal vergi/SGK hesabı değişmez.
+- Açıkça `elden_tutardan` tanımlanan kesintiler yalnızca elden tutara uygulanır. Manuel dağıtım korunur.
+- Maaşa dahil primlerin yemek havuzuna aktarılması, günlük limit ve yuvarlama hesabı korunur; ayrıca banka kalemi eklenerek çift sayılmaz.
+- Örnek: toplam hakediş 29.795,00; asgari banka tabanı 26.203,80; banka işaretli prim 600,00; diğer banka eki yok; özel kesinti 500,00 ise banka **26.303,80**, elden **2.991,20**, net **29.295,00** olur.
+- Liste, detay ve banka Excel/raporu ortak gösterim hesabını; kayıt hesabı da aynı banka dağıtım yardımcısını kullanır.
+
 ## Maasa Dahil Sosyal Yardim Kurali
 
 `yemek_yardimi_dahil = 1` veya `es_yardimi_dahil = 1` ise personel maasa dahil sosyal yardim modundadir.
@@ -308,8 +318,10 @@ Prim usulunde banka icin asgari net taban dikkate alinir: ancak alacağa dahil e
 
 ```text
 bankaYatacakMinimum = (asgari_ucret_net / 30) * fiiliCalismaGunu
-bankaBaz = min(bankaYatacakMinimum + banka kanalli ek odemeler, netMaas - sodexoOdemesi)
-bankaOdemesi = max(0, bankaBaz - icraKesintisi)
+bankaMatrahi = bankaYatacakMinimum + banka kanalli ek odemeler
+bankaOdemesi = min(max(0, bankaMatrahi - toplamPersonelKesintisi),
+                   max(0, netAlacagi - sodexoOdemesi - digerOdeme))
+# toplamPersonelKesintisi icrayi bir kez icerir; elden_tutardan harictir.
 ```
 
 ## Manuel Dagilim Kurali

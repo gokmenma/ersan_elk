@@ -61,6 +61,26 @@ class BordroPersonelModel extends Model
         parent::__construct($this->table);
     }
 
+    private function isPuantajEkOdeme(string $aciklama): bool
+    {
+        $aciklama = mb_strtolower($aciklama, 'UTF-8');
+        return strpos($aciklama, '[puantaj]') === 0
+            || strpos($aciklama, '[sayaç]') === 0
+            || strpos($aciklama, '[kaçak kontrol]') === 0;
+    }
+
+    // Net/prim maaşta ek ödemeler önce bankaya eklenir, personel kesintileri sonra düşülür.
+    // netAlacagi kesintiler sonrası tutardır; icra toplamKesinti içinde yalnızca bir kez bulunur.
+    private function hesaplaNormalBankaDagilimi(float $asgariTaban, float $bankaEkleri, float $toplamKesinti, float $netAlacagi, float $sodexo, float $diger): array
+    {
+        $bankaMatrahi = max(0.0, $asgariTaban + $bankaEkleri);
+        $banka = min(max(0.0, $bankaMatrahi - $toplamKesinti), max(0.0, $netAlacagi - $sodexo - $diger));
+        return [
+            'banka' => round($banka, 2),
+            'elden' => round(max(0.0, $netAlacagi - $banka - $sodexo - $diger), 2),
+        ];
+    }
+
     private function isValidDateValue($date): bool
     {
         return !empty($date) && $date !== '0000-00-00';
@@ -862,7 +882,7 @@ class BordroPersonelModel extends Model
             }
             $tutar = floatval($eo->tutar);
             $aciklama = (string) ($eo->aciklama ?? '');
-            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
+            $isPuantajOdeme = $this->isPuantajEkOdeme($aciklama);
             if ($isInclusive && $isPrimUsulu && $isPuantajOdeme) {
                 $primUsuluPuantajHedefToplami += $tutar;
             }
@@ -888,7 +908,7 @@ class BordroPersonelModel extends Model
                 if (($isNet && $isPuantajOdeme) || $isPrimOdemeItem) {
                     $yontem = 'elden';
                 }
-                if ($isPrimTuru && !$isPuantajOdeme) {
+                if ($isInclusive && $isPrimTuru && !$isPuantajOdeme) {
                     // Elle girilen prim "Banka" seçiliyse yemek tavanını yükseltir ve tutar
                     // yemeğe absorbe olur; ayrıca banka kalemi olarak gösterilmez (çift sayım).
                     if ($yontem === 'banka') {
@@ -1251,11 +1271,18 @@ class BordroPersonelModel extends Model
             $asgariUcretYatacak = round($asgariUcretYatacak * $nonKurRatio, 2);
             
             // USER REQ: Yemek veya eş yardımı verilmediği zaman resmi banka tutarı asgari ücrettir, geri kalan elden ödenir.
-            $bankaBaz = $asgariUcretYatacak + $yontemliBankaEki;
-            $bankaMax = max(0, $netAlacagi - $sodexoOdemesi);
-            $bankaBaz = min($bankaBaz, $bankaMax);
-            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-            $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
+            if ($isNet || $isPrimUsulu) {
+                $normalDagilim = $this->hesaplaNormalBankaDagilimi(
+                    $asgariUcretYatacak, $yontemliBankaEki, $toplamKesintiClean,
+                    $netAlacagi, $sodexoOdemesi, $digerOdeme
+                );
+                $bankaOdemesi = $normalDagilim['banka'];
+                $eldenOdeme = $normalDagilim['elden'];
+            } else {
+                $bankaBaz = min($asgariUcretYatacak + $yontemliBankaEki, max(0, $netAlacagi - $sodexoOdemesi));
+                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+                $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
+            }
 
             // Compliance: KUR personel banka sifirlama kurali (Sadece otomatik dağıtımda geçerli)
             if ($nonKurRatio <= 0.0 && $bankaOdemesi > 0) {
@@ -4701,7 +4728,7 @@ class BordroPersonelModel extends Model
 
             // --- PUANTAJ ÖDEMELERİ KONTROLÜ (Öncelikli olarak vergilendirme/matrah switch'i öncesi) ---
             $aciklama = (string) ($odeme->aciklama ?? '');
-            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
+            $isPuantajOdeme = $this->isPuantajEkOdeme($aciklama);
 
             if ($isPuantajOdeme) {
                 $detay['etiket'] = $parametre->etiket;
@@ -5044,14 +5071,14 @@ class BordroPersonelModel extends Model
             $aciklamaLower = mb_strtolower((string) ($odeme->aciklama ?? ''), 'UTF-8');
             // Yalnızca otomatik üretilen puantaj/sayaç/kaçak kalemleri resmî banka tavanına
             // taşınmaz. Elle girilen primlerde kullanıcının Banka/Elden seçimi geçerlidir.
-            $isPrimOdemeItem = (strpos($aciklamaLower, '[puantaj]') === 0 || strpos($aciklamaLower, '[saya') === 0 || strpos($aciklamaLower, '[kaçak') === 0);
+            $isPrimOdemeItem = $this->isPuantajEkOdeme($aciklamaLower);
             $isPrimTuru = (strpos($turLower, 'prim') !== false);
 
             if ($isPrimOdemeItem) {
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
                 }
-            } elseif ($isPrimTuru) {
+            } elseif ($isPrimTuru && $this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
                 // Elle girilen prim yemek tavanına yansır; ayrı banka kalemi olarak eklenmez.
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
@@ -5403,7 +5430,7 @@ class BordroPersonelModel extends Model
                 foreach ($ekOdemeDetaylari as $ek) {
                     $aciklama = (string)($ek['aciklama'] ?? '');
                     $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
-                    $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
+                    $isPuantajEk = $this->isPuantajEkOdeme($aciklama);
                     $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
                     $isPrimEk = strpos($kod, 'prim') !== false;
                     if (!$isPuantajEk && !$isDahilYardimEk) {
@@ -5501,7 +5528,7 @@ class BordroPersonelModel extends Model
             foreach ($ekOdemeDetaylari as $ek) {
                 $aciklama = (string)($ek['aciklama'] ?? '');
                 $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
-                $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
+                $isPuantajEk = $this->isPuantajEkOdeme($aciklama);
                 $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
                 $isPrimEk = strpos($kod, 'prim') !== false;
                 $isBankaMatrahi = !isset($ek['banka_matrahina_ekle']) || intval($ek['banka_matrahina_ekle']) === 1;
@@ -5684,9 +5711,12 @@ class BordroPersonelModel extends Model
             if ($isPrimUsulu || $isNetMaas) {
                 $bankaYatacakMinimum = ($maasHesapGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $maasHesapGunu);
                 $bankaYatacakMinimum = round($bankaYatacakMinimum * $nonKurRatio, 2);
-                $bankaBaz = min($bankaYatacakMinimum + floatval($yontemliOdemeler['banka'] ?? 0), $netAlacagi);
-                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-                $eldenOdeme = max(0, $netAlacagi - $bankaOdemesi - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
+                $normalDagilim = $this->hesaplaNormalBankaDagilimi(
+                    $bankaYatacakMinimum, floatval($yontemliOdemeler['banka'] ?? 0), $toplamKesinti,
+                    $netAlacagi, $sodexoOdemesi, floatval($kayit->diger_odeme ?? 0)
+                );
+                $bankaOdemesi = $normalDagilim['banka'];
+                $eldenOdeme = $normalDagilim['elden'];
             } else {
                 $bankaOdemesi = max(0, $netAlacagi - $sodexoOdemesi) * $nonKurRatio;
                 $eldenOdeme = max(0, $netAlacagi - $bankaOdemesi - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
