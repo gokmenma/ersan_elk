@@ -2670,7 +2670,7 @@ class BordroPersonelModel extends Model
     }
 
     /** Hafta içi nöbetin resmi net hedefi: asgari net / 225 × 1,5 × toplam saat. */
-    private function hesaplaHaftaIciNobetNetHedef(string $aciklama, string $donemTarihi): float
+    public function hesaplaHaftaIciNobetNetHedef(string $aciklama, string $donemTarihi): float
     {
         if (!preg_match('/(\d+)\s*Gün\s*x\s*(\d+)\s*Saat/iu', $aciklama, $eslesme)) {
             return 0.0;

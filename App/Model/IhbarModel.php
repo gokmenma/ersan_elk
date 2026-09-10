@@ -315,8 +315,9 @@ class IhbarModel extends Model
               AND firma_id = ?
               AND aktif_mi = 1
               AND silinme_tarihi IS NULL
-              AND departman LIKE ?");
-        $kontrol->execute(array_merge($personelIds, [$this->firmaId(), '%Kaçak%']));
+              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi = '')
+              AND (departman LIKE '%Kaçak%' OR departman LIKE '%kacak%' OR departman LIKE '%KACAK%' OR personel_tipi = 'kaski_kacak' OR FIND_IN_SET('kacak', COALESCE(gorunum_modulleri, '')) > 0)");
+        $kontrol->execute(array_merge($personelIds, [$this->firmaId()]));
         if ((int) $kontrol->fetchColumn() !== count($personelIds)) {
             throw new \Exception('İhbarlar yalnızca aktif Kaçak Kontrol personeline yönlendirilebilir.');
         }
@@ -356,8 +357,9 @@ class IhbarModel extends Model
               AND firma_id = ?
               AND aktif_mi = 1
               AND silinme_tarihi IS NULL
-              AND departman LIKE ?");
-        $kontrol->execute(array_merge($personelIds, [$this->firmaId(), '%Kaçak%']));
+              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi = '')
+              AND (departman LIKE '%Kaçak%' OR departman LIKE '%kacak%' OR departman LIKE '%KACAK%' OR personel_tipi = 'kaski_kacak' OR FIND_IN_SET('kacak', COALESCE(gorunum_modulleri, '')) > 0)");
+        $kontrol->execute(array_merge($personelIds, [$this->firmaId()]));
         if ((int) $kontrol->fetchColumn() !== count($personelIds)) {
             throw new \Exception('İhbarlar yalnızca aktif Kaçak Kontrol personeline yönlendirilebilir.');
         }
@@ -634,10 +636,10 @@ class IhbarModel extends Model
             WHERE firma_id = ?
               AND aktif_mi = 1
               AND silinme_tarihi IS NULL
-              AND departman LIKE ?
-              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')
+              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi = '')
+              AND (departman LIKE '%Kaçak%' OR departman LIKE '%kacak%' OR departman LIKE '%KACAK%' OR personel_tipi = 'kaski_kacak' OR FIND_IN_SET('kacak', COALESCE(gorunum_modulleri, '')) > 0)
             ORDER BY adi_soyadi ASC");
-        $stmt->execute([$this->firmaId(), '%Kaçak%']);
+        $stmt->execute([$this->firmaId()]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -701,13 +703,15 @@ class IhbarModel extends Model
                 AND ck.firma_id = p.firma_id
                 AND ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
             WHERE p.firma_id = :firma_id AND p.aktif_mi = 1 AND p.saha_takibi = 1
-              AND p.silinme_tarihi IS NULL AND p.departman LIKE :departman
+              AND p.silinme_tarihi IS NULL
+              AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi = '')
+              AND (p.departman LIKE '%Kaçak%' OR p.departman LIKE '%kacak%' OR p.departman LIKE '%KACAK%' OR p.personel_tipi = 'kaski_kacak' OR FIND_IN_SET('kacak', COALESCE(p.gorunum_modulleri, '')) > 0)
               AND ph.islem_tipi = 'BASLA' AND DATE(ph.zaman) = CURDATE()
               AND (:excluded_id = 0 OR p.id <> :excluded_id2)
               AND (:exclude_current = 0 OR NOT EXISTS (SELECT 1 FROM ihbar_atamalar a WHERE a.ihbar_id = :ihbar_id
                               AND a.personel_id = p.id AND a.silinme_tarihi IS NULL))
             ORDER BY {$orderBy}");
-        $stmt->execute([':firma_id' => $this->firmaId(), ':departman' => '%Kaçak%', ':ihbar_id' => $ihbarId,
+        $stmt->execute([':firma_id' => $this->firmaId(), ':ihbar_id' => $ihbarId,
             ':lat' => $lat, ':lng' => $lng, ':lat2' => $lat, ':ilce' => $ihbar->ilce ?? '', ':mahalle' => $ihbar->mahalle ?? '',
             ':excluded_id' => $excludedPersonelId, ':excluded_id2' => $excludedPersonelId,
             ':exclude_current' => $excludeCurrentAssignments ? 1 : 0, ':capacity_ihbar' => $ihbarId]);

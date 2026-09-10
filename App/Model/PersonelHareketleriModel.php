@@ -37,11 +37,13 @@ class PersonelHareketleriModel extends Model
                 SELECT ph2.id FROM personel_hareketleri ph2 WHERE ph2.personel_id = p.id
                   AND ph2.silinme_tarihi IS NULL ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1)
             WHERE p.firma_id = ? AND p.aktif_mi = 1 AND p.saha_takibi = 1 AND p.silinme_tarihi IS NULL
-              AND p.departman LIKE ? AND ph.islem_tipi = 'BASLA'
+              AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi = '')
+              AND (p.departman LIKE '%Kaçak%' OR p.departman LIKE '%kacak%' OR p.departman LIKE '%KACAK%' OR p.personel_tipi = 'kaski_kacak' OR FIND_IN_SET('kacak', COALESCE(p.gorunum_modulleri, '')) > 0)
+              AND ph.islem_tipi = 'BASLA'
               AND DATE(ph.zaman) = CURDATE()
               AND NOT EXISTS (SELECT 1 FROM personel_konum_istekleri k WHERE k.personel_id = p.id
                   AND k.durum = 'BEKLIYOR' AND k.istek_zamani >= DATE_SUB(NOW(), INTERVAL 2 MINUTE))");
-        $stmt->execute([$firmaId, '%Kaçak%']);
+        $stmt->execute([$firmaId]);
         $insert = $this->db->prepare("INSERT INTO personel_konum_istekleri (personel_id, durum, istek_zamani)
             VALUES (?, 'BEKLIYOR', NOW())");
         $count = 0;
@@ -56,9 +58,13 @@ class PersonelHareketleriModel extends Model
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM personel_konum_istekleri k
             JOIN personel p ON p.id = k.personel_id
-            WHERE p.firma_id = ? AND p.departman LIKE ? AND k.durum = 'BEKLIYOR'
+            WHERE p.firma_id = ?
+              AND p.silinme_tarihi IS NULL
+              AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi = '')
+              AND (p.departman LIKE '%Kaçak%' OR p.departman LIKE '%kacak%' OR p.departman LIKE '%KACAK%' OR p.personel_tipi = 'kaski_kacak' OR FIND_IN_SET('kacak', COALESCE(p.gorunum_modulleri, '')) > 0)
+              AND k.durum = 'BEKLIYOR'
               AND k.istek_zamani >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
-        $stmt->execute([$firmaId, '%Kaçak%']);
+        $stmt->execute([$firmaId]);
         return (int) $stmt->fetchColumn();
     }
 
