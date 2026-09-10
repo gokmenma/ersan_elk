@@ -174,9 +174,6 @@ try {
                     } elseif ($eoTur === 'hafta_tatili_calisma' || $eoTur === 'hafta_tatili') {
                         $htcBrut += ($resmiTutar > 0 ? $resmiTutar : $tutar);
                         $htcNet += ($netEtki > 0 ? $netEtki : $tutar);
-                    } elseif ($eoTur === 'hafta_sonu_nobet') {
-                        // Hafta Sonu Nöbeti ek kazanç / prim olarak eklenir
-                        $primTutar += $tutar;
                     } elseif (($eoTur === 'prim' || $eoTur === 'ikramiye')
                         && strpos($aciklama, '[Puantaj]') !== 0
                         && strpos($aciklama, '[Sayaç]') !== 0
