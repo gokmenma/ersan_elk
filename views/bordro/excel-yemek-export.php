@@ -104,6 +104,21 @@ try {
                 $icra = floatval($p->icra_kesintisi);
             }
 
+            $donemYil = (int) date('Y', strtotime($donem->baslangic_tarihi));
+            $sgkOrani = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donem->baslangic_tarihi) ?? 14) / 100;
+            $issizlikOrani = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donem->baslangic_tarihi) ?? 1) / 100;
+            $damgaOrani = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donem->baslangic_tarihi) ?? 0.759) / 100;
+
+            $aylikMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
+            $yeniKumulatif = floatval($matrahlar['yeni_kumulatif'] ?? $p->kumulatif_matrah ?? 0);
+            $oncekiKumulatif = floatval($matrahlar['kumulatif_matrah'] ?? ($matrahlar['onceki_kumulatif'] ?? ($yeniKumulatif - $aylikMatrah)));
+            $raporGun = isset($matrahlar['rapor_gunu']) ? intval($matrahlar['rapor_gunu']) : $BordroPersonel->getGunSayisiByKisaKod($p->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'RP');
+            $kayitliAsgariNet = floatval($detay['parametreler']['asgari_ucret_net'] ?? $asgariUcretNet);
+
+            // Puantaj / Özel Çalışma Gün Sayıları (RTÇ ve HTÇ)
+            $rtcGun = intval($matrahlar['rtc_gun'] ?? $BordroPersonel->getOzelCalismaGunSayisi($p->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'resmi_tatil_calismasi'));
+            $htcGun = intval($matrahlar['htc_gun'] ?? $BordroPersonel->getOzelCalismaGunSayisi($p->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'hafta_tatili_calismasi'));
+
             $rtcBrut = 0.0;
             $rtcNet = 0.0;
             $htcBrut = 0.0;
@@ -111,6 +126,39 @@ try {
             $fmBrut = 0.0;
             $fmNet = 0.0;
             $primTutar = 0.0;
+
+            // RTÇ/HTÇ ayın ana vergi matrahından sonra vergilendirilir (detay modalı ile birebir aynı)
+            $kumulatifMatrahGrossUp = floatval($matrahlar['onceki_kumulatif'] ?? 0)
+                + floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
+
+            $rtcMatrahGrossUp = 0.0;
+            if ($rtcGun > 0) {
+                $rtcNetItem = round($kayitliAsgariNet / 30 * $rtcGun, 2);
+                $rtcNet += $rtcNetItem;
+                $rtcParametre = $BordroParametre->getByKod('resmi_tatil_calisma', $donem->baslangic_tarihi);
+                $rtcGross = $BordroParametre->bruteUpForNetTarget(
+                    $rtcNetItem,
+                    $kumulatifMatrahGrossUp,
+                    !$rtcParametre || !empty($rtcParametre->sgk_matrahi_dahil) ? $sgkOrani : 0.0,
+                    !$rtcParametre || !empty($rtcParametre->sgk_matrahi_dahil) ? $issizlikOrani : 0.0,
+                    !$rtcParametre || !empty($rtcParametre->damga_vergisi_dahil) ? $damgaOrani : 0.0,
+                    $donemYil,
+                    !$rtcParametre || !empty($rtcParametre->gelir_vergisi_dahil)
+                );
+                $rtcBrut += round(floatval($rtcGross['brut'] ?? 0), 2);
+                $rtcMatrahGrossUp = floatval($rtcGross['matrah'] ?? 0);
+            }
+
+            if ($htcGun > 0) {
+                $htcHedefNet = round($kayitliAsgariNet / 30 * $htcGun, 2);
+                $nominalMaas = floatval($matrahlar['nominal_maas'] ?? ($p->maas_tutari ?? 0));
+                $isInclusive = (intval($p->yemek_yardimi_dahil ?? 0) === 1 || intval($p->es_yardimi_dahil ?? 0) === 1);
+                $htcEldenTutar = $isInclusive ? 0.0 : round(($nominalMaas - $kayitliAsgariNet) / 30 * $htcGun, 2);
+                $htcNet += round($htcEldenTutar + $htcHedefNet, 2);
+
+                $htcGross = $BordroParametre->bruteUpForNetTarget($htcHedefNet, $kumulatifMatrahGrossUp + $rtcMatrahGrossUp, $sgkOrani, $issizlikOrani, $damgaOrani, $donemYil, true);
+                $htcBrut += round(floatval($htcGross['brut'] ?? 0) + $htcEldenTutar, 2);
+            }
 
             if (!empty($kayitliEkOdemeler) && is_array($kayitliEkOdemeler)) {
                 foreach ($kayitliEkOdemeler as $eo) {
@@ -122,28 +170,36 @@ try {
 
                     if ($eoTur === 'resmi_tatil_calisma' || $eoTur === 'resmi_tatil') {
                         $rtcBrut += ($resmiTutar > 0 ? $resmiTutar : $tutar);
-                        $rtcNet += $netEtki;
+                        $rtcNet += ($netEtki > 0 ? $netEtki : $tutar);
                     } elseif ($eoTur === 'hafta_tatili_calisma' || $eoTur === 'hafta_tatili') {
                         $htcBrut += ($resmiTutar > 0 ? $resmiTutar : $tutar);
-                        $htcNet += $netEtki;
+                        $htcNet += ($netEtki > 0 ? $netEtki : $tutar);
+                    } elseif ($eoTur === 'hafta_sonu_nobet') {
+                        // Hafta Sonu Nöbeti ek kazanç / prim olarak eklenir
+                        $primTutar += $tutar;
                     } elseif (($eoTur === 'prim' || $eoTur === 'ikramiye')
                         && strpos($aciklama, '[Puantaj]') !== 0
                         && strpos($aciklama, '[Sayaç]') !== 0
                         && strpos($aciklama, '[Kaçak Kontrol]') !== 0) {
                         $primTutar += $tutar;
-                    } elseif ($eoTur === 'hafta_ici_nobet' || $eoTur === 'hafta_sonu_nobet' || $eoTur === 'mesai' || strpos($eoTur, 'nobet') !== false) {
-                        $fmBrut += ($resmiTutar > 0 ? $resmiTutar : $tutar);
+                    } elseif ($eoTur === 'hafta_ici_nobet' || $eoTur === 'mesai' || $eoTur === 'fazla_mesai' || (strpos($eoTur, 'nobet') !== false && strpos($eoTur, 'hafta_sonu') === false)) {
                         $rNet = 0.0;
+                        $rBrut = $resmiTutar > 0 ? $resmiTutar : $tutar;
                         if ($eoTur === 'hafta_ici_nobet') {
                             $nobetNetHedef = $BordroPersonel->hesaplaHaftaIciNobetNetHedef($aciklama, $donem->baslangic_tarihi);
                             if ($nobetNetHedef > 0) {
                                 $rNet = $nobetNetHedef;
+                                if ($resmiTutar <= 0) {
+                                    $grossUpNobet = $BordroParametre->bruteUpForNetTarget($nobetNetHedef, $kumulatifMatrahGrossUp, $sgkOrani, $issizlikOrani, $damgaOrani, $donemYil, true);
+                                    $rBrut = round(floatval($grossUpNobet['brut'] ?? $tutar), 2);
+                                }
                             }
                         }
                         if ($rNet <= 0) {
                             $rNet = ($netEtki > 0) ? $netEtki : $tutar;
                         }
                         $fmNet += $rNet;
+                        $fmBrut += $rBrut;
                     }
                 }
             }
@@ -152,12 +208,6 @@ try {
                 $fmBrut = $fmNet;
             }
 
-            $aylikMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
-            $yeniKumulatif = floatval($matrahlar['yeni_kumulatif'] ?? $p->kumulatif_matrah ?? 0);
-            $oncekiKumulatif = floatval($matrahlar['kumulatif_matrah'] ?? ($matrahlar['onceki_kumulatif'] ?? ($yeniKumulatif - $aylikMatrah)));
-            $raporGun = isset($matrahlar['rapor_gunu']) ? intval($matrahlar['rapor_gunu']) : $BordroPersonel->getGunSayisiByKisaKod($p->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'RP');
-
-            $kayitliAsgariNet = floatval($detay['parametreler']['asgari_ucret_net'] ?? $asgariUcretNet);
             $resmiAlacakAsgari = round(($kayitliAsgariNet / 30) * $toplamGun, 2);
             $bankaOdeme = floatval($p->banka_odemesi ?? ($detay['odeme_dagilimi']['banka_net'] ?? 0));
             $resmiAlacakToplam = $bankaOdeme;
@@ -278,16 +328,17 @@ try {
             $yeniKumulatif = floatval($matrahlar['yeni_kumulatif'] ?? $p->kumulatif_matrah ?? 0);
             $oncekiKumulatif = floatval($matrahlar['kumulatif_matrah'] ?? ($yeniKumulatif - $aylikMatrah));
 
+            $donemYil = (int) date('Y', strtotime($donem->baslangic_tarihi));
+            $sgkOrani = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donem->baslangic_tarihi) ?? 14) / 100;
+            $issizlikOrani = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donem->baslangic_tarihi) ?? 1) / 100;
+            $damgaOrani = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donem->baslangic_tarihi) ?? 0.759) / 100;
+
             // Resmi Tatil Çalışması Net ve Brüt Hesabı
             $rtcGun = intval($hesap['rtcGun'] ?? 0);
             $rtcNet = 0.0;
             $rtcBrut = 0.0;
             if ($rtcGun > 0) {
                 $rtcNet = round(floatval($asgariUcretNet) / 30 * $rtcGun, 2);
-                $donemYil = (int) date('Y', strtotime($donem->baslangic_tarihi));
-                $sgkOrani = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donem->baslangic_tarihi) ?? 14) / 100;
-                $issizlikOrani = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donem->baslangic_tarihi) ?? 1) / 100;
-                $damgaOrani = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donem->baslangic_tarihi) ?? 0.759) / 100;
                 $rtcParametre = $BordroParametre->getByKod('resmi_tatil_calisma', $donem->baslangic_tarihi);
 
                 $rtcGross = $BordroParametre->bruteUpForNetTarget(
@@ -313,16 +364,11 @@ try {
                 $htcEldenTutar = $isInclusive ? 0.0 : round(($nominalMaas - floatval($asgariUcretNet)) / 30 * $htcGun, 2);
                 $htcNet = round($htcEldenTutar + $htcHedefNet, 2);
 
-                $donemYil = (int) date('Y', strtotime($donem->baslangic_tarihi));
-                $sgkOrani = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donem->baslangic_tarihi) ?? 14) / 100;
-                $issizlikOrani = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donem->baslangic_tarihi) ?? 1) / 100;
-                $damgaOrani = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donem->baslangic_tarihi) ?? 0.759) / 100;
-
                 $htcGross = $BordroParametre->bruteUpForNetTarget($htcHedefNet, $oncekiKumulatif, $sgkOrani, $issizlikOrani, $damgaOrani, $donemYil, true);
                 $htcBrut = round(floatval($htcGross['brut'] ?? 0) + $htcEldenTutar, 2);
             }
 
-            // Fazla Mesai Net ve Brüt Hesabı
+            // Fazla Mesai, Hafta Sonu Nöbet ve Prim Ek Ödemeleri
             $fmBrut = 0.0;
             $fmNet = 0.0;
             $primTutar = 0.0;
@@ -330,15 +376,22 @@ try {
             foreach ($ekOdemeler as $eo) {
                 $eoTur = mb_strtolower((string)($eo->tur ?? ''), 'UTF-8');
                 $aciklama = (string)($eo->aciklama ?? '');
+                $rTutar = floatval($eo->resmi_tutar ?? 0);
+                $tutar = floatval($eo->tutar ?? 0);
+
                 if (($eoTur === 'prim' || $eoTur === 'ikramiye')
                     && strpos($aciklama, '[Puantaj]') !== 0
                     && strpos($aciklama, '[Sayaç]') !== 0
                     && strpos($aciklama, '[Kaçak Kontrol]') !== 0) {
-                    $primTutar += floatval($eo->tutar ?? 0);
-                }
-                if ($eo->tur === 'hafta_ici_nobet' || $eo->tur === 'hafta_sonu_nobet' || $eo->tur === 'mesai' || strpos($eoTur, 'nobet') !== false) {
-                    $rTutar = floatval($eo->resmi_tutar ?? 0);
-                    $fmBrut += $rTutar;
+                    $primTutar += $tutar;
+                } elseif ($eoTur === 'resmi_tatil_calisma' || $eoTur === 'resmi_tatil' || strpos($eoTur, 'resmi_tatil') !== false) {
+                    $rtcBrut += ($rTutar > 0 ? $rTutar : $tutar);
+                    $rtcNet += $tutar;
+                } elseif ($eoTur === 'hafta_tatili_calisma' || $eoTur === 'hafta_tatili' || $eoTur === 'hafta_sonu_nobet' || strpos($eoTur, 'hafta_sonu') !== false) {
+                    $htcBrut += ($rTutar > 0 ? $rTutar : $tutar);
+                    $htcNet += $tutar;
+                } elseif ($eoTur === 'hafta_ici_nobet' || $eoTur === 'mesai' || $eoTur === 'fazla_mesai' || (strpos($eoTur, 'nobet') !== false && strpos($eoTur, 'hafta_sonu') === false)) {
+                    $fmBrut += ($rTutar > 0 ? $rTutar : $tutar);
                     
                     $rNet = 0.0;
                     if ($rTutar > 0) {
@@ -354,6 +407,8 @@ try {
                             $rDv = $rTutar * 0.00759;
                             $rNet = round($rTutar - $rSgk - $rGv - $rDv, 2);
                         }
+                    } else {
+                        $rNet = $tutar;
                     }
                     $fmNet += $rNet;
                 }
