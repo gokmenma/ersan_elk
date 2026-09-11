@@ -54,17 +54,20 @@ $ayAdlari = [
     7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık',
 ];
 
+$kaskiSaltOkunurPortal = ($_SESSION['portal_scope'] ?? '') === 'kaski';
 $yetkiDuzenle = Gate::allows('kacak_duzenle') || Gate::isSuperAdmin();
 $yetkiOnay = Gate::allows('kacak_onay') || Gate::isSuperAdmin();
 $yetkiIptal = Gate::allows('kacak_iptal') || Gate::isSuperAdmin();
 $yetkiIptalEkle = Gate::allows('kacak_iptal_ekle') || Gate::isSuperAdmin();
-$yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
+$yetkiArsiv = !$kaskiSaltOkunurPortal && (Gate::allows('kacak_arsiv') || Gate::isSuperAdmin());
 
 $yetkiSicilBildir = Gate::allows('kacak_sicil_bildir') || Gate::isSuperAdmin();
 $yetkiSicilYanitla = Gate::allows('kacak_sicil_yanitla') || Gate::isSuperAdmin();
 $yetkiSicil = $yetkiSicilBildir || $yetkiSicilYanitla;
+$sicilSekmesiGoster = $yetkiSicil || $kaskiSaltOkunurPortal;
 
 $yetkiBildirimPersonelleri = Gate::allows('kacak_bildirim_personelleri') || Gate::isSuperAdmin();
+$bildirimPersonelleriSekmesiGoster = $yetkiBildirimPersonelleri || $kaskiSaltOkunurPortal;
 
 $sicilNedenOptions = KacakSicilEksikModel::NEDENLER;
 $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDENLER;
@@ -549,7 +552,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         type="button"><i class="bx bx-bar-chart-alt-2 me-1"></i> Haftalık Rapor</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-teslim"
                         type="button"><i class="bx bx-printer me-1"></i> Teslim Alma Listesi</button></li>
-                <?php if ($yetkiSicil): ?>
+                <?php if ($sicilSekmesiGoster): ?>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-sicil"
                             type="button" id="tabSicil"><i class="bx bx-user-x me-1"></i> Sicil Oluşmayanlar
                             <span class="badge bg-danger ms-1" id="sicilBadge" style="display:none">0</span>
@@ -559,7 +562,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-arsiv"
                             type="button"><i class="bx bx-archive me-1"></i> Fotoğraf Arşivi</button></li>
                 <?php endif; ?>
-                <?php if ($yetkiBildirimPersonelleri): ?>
+                <?php if ($bildirimPersonelleriSekmesiGoster): ?>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-bildirim-personelleri"
                             type="button" id="tabBildirimPersonelleri"><i class="bx bx-user-check me-1"></i> Kaski Personelleri</button></li>
                 <?php endif; ?>
@@ -890,6 +893,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             </div>
                         </div>
 
+                        <?php if (!$kaskiSaltOkunurPortal): ?>
                         <div class="dropdown">
                             <button class="btn btn-outline-secondary btn-teslim-islemler dropdown-toggle" type="button" id="btnTeslimIslemler" data-bs-toggle="dropdown" aria-expanded="false" disabled>
                                 <i class="bx bx-cog fs-5 me-1"></i>
@@ -919,6 +923,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                 </li>
                             </ul>
                         </div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="table-responsive">
@@ -944,7 +949,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             </div>
         </div>
 
-        <?php if ($yetkiSicil): ?>
+        <?php if ($sicilSekmesiGoster): ?>
             <!-- ============ SİCİL OLUŞMAYANLAR ============ -->
             <div class="tab-pane fade" id="pane-sicil">
                 <div class="card border-0 shadow-sm">
@@ -1057,7 +1062,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             </div>
         <?php endif; ?>
 
-        <?php if ($yetkiBildirimPersonelleri): ?>
+        <?php if ($bildirimPersonelleriSekmesiGoster): ?>
             <!-- ============ KASKİ PERSONELLERİ ============ -->
             <div class="tab-pane fade" id="pane-bildirim-personelleri">
                 <div class="card border-0 shadow-sm">
@@ -1071,9 +1076,11 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                 <button type="button" class="btn btn-outline-info btn-sm px-3" onclick="openKaskiEkipOzetModal()">
                                     <i class="bx bx-table me-1"></i> Ekip Özeti
                                 </button>
-                                <button type="button" class="btn btn-primary btn-sm px-3" onclick="openNewBildirimPersonelModal()">
-                                    <i class="bx bx-plus me-1"></i> Yeni Kaski Personeli Ekle
-                                </button>
+                                <?php if (!$kaskiSaltOkunurPortal): ?>
+                                    <button type="button" class="btn btn-primary btn-sm px-3" onclick="openNewBildirimPersonelModal()">
+                                        <i class="bx bx-plus me-1"></i> Yeni Kaski Personeli Ekle
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -1468,7 +1475,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
     </div>
 <?php endif; ?>
 
-<?php if ($yetkiSicil): ?>
+        <?php if ($sicilSekmesiGoster): ?>
     <!-- ============ SİCİL DETAY MODALI ============ -->
     <div class="modal fade" id="sicilDetayModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">

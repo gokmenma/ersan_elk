@@ -237,4 +237,6 @@ if ($page == "hakedisler/hakedis-detay") {
     <script src="views/gorevler/js/gorevler.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
-<?php include_once __DIR__ . '/destek-chat.php'; ?>
+<?php if (($_SESSION['portal_scope'] ?? '') !== 'kaski'): ?>
+    <?php include_once __DIR__ . '/destek-chat.php'; ?>
+<?php endif; ?>

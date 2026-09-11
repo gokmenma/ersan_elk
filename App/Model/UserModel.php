@@ -37,6 +37,32 @@ class UserModel extends Model
         return $sql->fetch(PDO::FETCH_OBJ) ?? null;
     }
 
+    /**
+     * Kullanıcının adı verilen yetki grubuna bağlı olup olmadığını döndürür.
+     * Portal girişleri gibi oturum kurulmadan önce yapılması gereken kontrollerde
+     * Gate yerine bu metot kullanılır.
+     */
+    public function hasRoleName(int $userId, string $roleName): bool
+    {
+        if ($userId <= 0 || trim($roleName) === '') {
+            return false;
+        }
+
+        $query = $this->db->prepare(
+            "SELECT COUNT(*)
+             FROM users u
+             INNER JOIN user_roles ur ON FIND_IN_SET(CAST(ur.id AS CHAR), u.roles) > 0
+             WHERE u.id = :user_id
+               AND ur.role_name = :role_name"
+        );
+        $query->execute([
+            'user_id' => $userId,
+            'role_name' => $roleName,
+        ]);
+
+        return (int) $query->fetchColumn() > 0;
+    }
+
 
     /**
      * Kullanıcıları listelemek için gerekli verileri getirir.

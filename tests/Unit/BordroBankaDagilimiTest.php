@@ -117,6 +117,7 @@ final class BordroBankaDagilimiTest extends TestCase
         $ozet = $model->getMuhasebeOdemeOzeti([
             'mealAllowanceDeduction' => 8100,
             'muhasebeHariciYemekTutari' => 0,
+            'muhasebeBankaYemekTutari' => 0,
             'sodexoOdemesi' => 0,
             'includedAllowanceFiiliGun' => 27,
             'calismaGunu' => 30,
@@ -128,17 +129,28 @@ final class BordroBankaDagilimiTest extends TestCase
             'digerOdeme' => 0,
             'muhasebePrimTutari' => 0,
             'muhasebePrimHakedisi' => 100,
+            'muhasebeBankaPrimTutari' => 0,
             'muhasebeDagilimaDahilPrim' => 100,
             'toplamAlacagi' => 37300,
             'netAlacagi' => 22300,
             'bankaOncelikliKesinti' => 0,
             'bankaAktarilanKesinti' => 15000,
+            'bankaEkOdemeDetaylari' => [
+                ['etiket' => 'Resmi Tatil Çalışması (Net)', 'tutar' => 935.85],
+                ['etiket' => 'Hafta Tatili Çalışması (Net)', 'tutar' => 935.85],
+                ['etiket' => 'Fazla Mesai (Net)', 'tutar' => 250],
+            ],
             'manualDagitimVar' => false,
         ]);
 
         self::assertSame(100.0, $ozet['prim_hakedisi_bilgi']);
         self::assertSame(100.0, $ozet['dagilima_dahil_prim_bilgi']);
         self::assertSame(0.0, $ozet['prim']);
+        self::assertSame(8100.0, $ozet['resmi_yemek_yardimi']);
+        self::assertSame(0.0, $ozet['resmi_prim_ikramiye']);
+        self::assertSame(935.85, $ozet['resmi_rtc_net']);
+        self::assertSame(935.85, $ozet['resmi_htc_net']);
+        self::assertSame(250.0, $ozet['resmi_fazla_mesai_net']);
         self::assertSame(37111.35, $ozet['resmi_banka_matrahi']);
         self::assertSame(15000.0, $ozet['bankadan_dusulen_kesinti']);
         self::assertSame(22111.35, $ozet['banka_odemesi']);
@@ -255,8 +267,14 @@ final class BordroBankaDagilimiTest extends TestCase
         );
         if ($hariciYemek) {
             self::assertSame(300.0, $display['muhasebeHariciYemekTutari']);
+            self::assertSame(300.0, $display['muhasebeBankaYemekTutari']);
+            self::assertSame(300.0, $excel['resmi_yemek_yardimi']);
             self::assertSame(round(300 / $display['calismaGunu'], 2), $excel['gunluk_nakit']);
         }
+        self::assertSame(
+            (!$inclusive && $bankaSecimi ? $primAmount : 0.0),
+            $excel['resmi_prim_ikramiye']
+        );
         self::assertSame($display['muhasebePrimTutari'], $excel['prim']);
         self::assertSame(0.0, $excel['banka_kontrol_farki']);
         self::assertSame(0.0, $excel['dagitim_farki']);

@@ -61,6 +61,34 @@ if (!kacakIzin('kacak_islemleri') && !kacakIzin('kacak/list') && !kacakSuperAdmi
     exit;
 }
 
+// KASKİ portalı rol izinleri sonradan hatalı değiştirilse bile yazma işlemi yapamaz.
+if (($_SESSION['portal_scope'] ?? '') === 'kaski') {
+    $kaskiSaltOkunurActionlar = [
+        'get-unique-values',
+        'list',
+        'get-record',
+        'pending-count',
+        'dashboard',
+        'get-photos',
+        'download-zip',
+        'gunluk-rapor',
+        'haftalik-rapor',
+        'teslim-alma-listesi',
+        'sicil-list',
+        'sicil-counts',
+        'sicil-detay',
+        'get_bildirim_personelleri',
+    ];
+    if (!in_array($action, $kaskiSaltOkunurActionlar, true)) {
+        http_response_code(403);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'KASKİ portalı salt okunurdur; bu işlem gerçekleştirilemez.',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
 // Salt okunur isteklerde oturum kilidini bırak; aksi halde aynı sekmeden gelen
 // paralel AJAX çağrıları PHP session dosya kilidi yüzünden sıraya girer.
 // Gate, AuthController::user() üzerinden session_start() çağırdığı için tüm
@@ -141,6 +169,9 @@ function kacakYetkiKontrol(string $izin): void
  */
 function sicilGorusYetkiKontrol(): void
 {
+    if (($_SESSION['portal_scope'] ?? '') === 'kaski') {
+        return;
+    }
     if (!kacakIzin('kacak_sicil_bildir') && !kacakIzin('kacak_sicil_yanitla') && !kacakSuperAdmin()) {
         kacakYanit(false, 'Bu işlem için yetkiniz bulunmuyor.');
     }
@@ -374,7 +405,9 @@ try {
         // BİLDİRİM PERSONELLERİ (KASKI) YÖNETİMİ
         // =====================================================
         case 'get_bildirim_personelleri':
-            kacakYetkiKontrol('kacak_bildirim_personelleri');
+            if (($_SESSION['portal_scope'] ?? '') !== 'kaski') {
+                kacakYetkiKontrol('kacak_bildirim_personelleri');
+            }
             $records = $Personel->getBildirimPersonelleri();
             $data = [];
             foreach ($records as $r) {
@@ -383,16 +416,19 @@ try {
                     ? '<span class="badge bg-success font-size-12"><i class="bx bx-check-circle me-1"></i>Aktif</span>'
                     : '<span class="badge bg-danger font-size-12"><i class="bx bx-x-circle me-1"></i>Pasif</span>';
 
-                $actions = '<div class="d-flex align-items-center gap-1">';
-                $actions .= '<button type="button" class="btn btn-sm btn-outline-primary" onclick="editBildirimPersonel(\'' . $token . '\')" title="Düzenle"><i class="bx bx-edit"></i></button>';
-                $actions .= '<button type="button" class="btn btn-sm btn-outline-warning" onclick="openSifreModal(\'' . $token . '\', \'' . htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8') . '\')" title="Şifre Belirle"><i class="bx bx-key"></i></button>';
-                if ($r->aktif_mi == 1) {
-                    $actions .= '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleBildirimPersonelStatus(\'' . $token . '\', \'pasif\')" title="Pasife Al"><i class="bx bx-pause"></i></button>';
-                } else {
-                    $actions .= '<button type="button" class="btn btn-sm btn-outline-success" onclick="toggleBildirimPersonelStatus(\'' . $token . '\', \'aktif\')" title="Aktif Et"><i class="bx bx-play"></i></button>';
+                $actions = '<span class="text-muted">-</span>';
+                if (($_SESSION['portal_scope'] ?? '') !== 'kaski') {
+                    $actions = '<div class="d-flex align-items-center gap-1">';
+                    $actions .= '<button type="button" class="btn btn-sm btn-outline-primary" onclick="editBildirimPersonel(\'' . $token . '\')" title="Düzenle"><i class="bx bx-edit"></i></button>';
+                    $actions .= '<button type="button" class="btn btn-sm btn-outline-warning" onclick="openSifreModal(\'' . $token . '\', \'' . htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8') . '\')" title="Şifre Belirle"><i class="bx bx-key"></i></button>';
+                    if ($r->aktif_mi == 1) {
+                        $actions .= '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleBildirimPersonelStatus(\'' . $token . '\', \'pasif\')" title="Pasife Al"><i class="bx bx-pause"></i></button>';
+                    } else {
+                        $actions .= '<button type="button" class="btn btn-sm btn-outline-success" onclick="toggleBildirimPersonelStatus(\'' . $token . '\', \'aktif\')" title="Aktif Et"><i class="bx bx-play"></i></button>';
+                    }
+                    $actions .= '<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteBildirimPersonel(\'' . $token . '\', \'' . htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8') . '\')" title="Sil"><i class="bx bx-trash"></i></button>';
+                    $actions .= '</div>';
                 }
-                $actions .= '<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteBildirimPersonel(\'' . $token . '\', \'' . htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8') . '\')" title="Sil"><i class="bx bx-trash"></i></button>';
-                $actions .= '</div>';
 
                 $data[] = [
                     'id' => (int) $r->id,

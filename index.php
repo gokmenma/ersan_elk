@@ -16,6 +16,12 @@ use App\Model\UserModel;
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 
+// KASKİ oturumu genel yönetim panelinde dolaşamaz.
+if (($_SESSION['portal_scope'] ?? '') === 'kaski') {
+    header('Location: kaski/index.php');
+    exit();
+}
+
 // Eğer oturum açmamışsa veya firma seçilmemişse giriş sayfasına yönlendir
 if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
     header("Location: logout.php");
@@ -27,6 +33,10 @@ $StatusCheckUser = new UserModel();
 $currentUserStatusCheck = $StatusCheckUser->find($currentUserId);
 if (!$currentUserStatusCheck || ($currentUserStatusCheck->durum ?? 'Aktif') === 'Pasif') {
     header("Location: logout.php?status=inactive");
+    exit();
+}
+if ($StatusCheckUser->hasRoleName($currentUserId, 'KASKİ Görüntüleme')) {
+    header('Location: kaski/logout.php');
     exit();
 }
 

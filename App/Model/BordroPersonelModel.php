@@ -889,8 +889,10 @@ class BordroPersonelModel extends Model
         $resmiDahilEkToplam = 0.0;
         $bankayaTasinabilirEkOdemeGosterim = 0.0;
         $muhasebePrimToplami = 0.0;
+        $muhasebeBankaPrimToplami = 0.0;
         $muhasebedeGizlenecekPrim = 0.0;
         $muhasebeHariciYemekToplami = 0.0;
+        $muhasebeBankaYemekToplami = 0.0;
         // Primler yemek tavanını yükseltir ancak sözleşme hakedişi tabanından mahsup edilemez;
         // mahsup için primsiz toplam ayrı tutulur.
         $bankaMahsupEdilebilirEkOdemeGosterim = 0.0;
@@ -938,6 +940,12 @@ class BordroPersonelModel extends Model
                 }
                 if (!$isInclusive && $isYemekOdeme && $yontem !== 'sodexo') {
                     $muhasebeHariciYemekToplami += max(0.0, $tutar);
+                }
+                if (!$isInclusive && $isYemekOdeme && $yontem === 'banka') {
+                    $muhasebeBankaYemekToplami += max(0.0, $tutar);
+                }
+                if (!$isInclusive && $isMuhasebePrimi && $yontem === 'banka') {
+                    $muhasebeBankaPrimToplami += max(0.0, $tutar);
                 }
                 if ($isInclusive && $isPrimTuru && !$isPuantajOdeme) {
                     // Elle girilen prim "Banka" seçiliyse yemek tavanını yükseltir ve tutar
@@ -1340,8 +1348,10 @@ class BordroPersonelModel extends Model
         return [
             'muhasebePrimTutari' => max(0.0, round($muhasebePrimToplami - $muhasebedeGizlenecekPrim, 2)),
             'muhasebePrimHakedisi' => round($muhasebePrimToplami, 2),
+            'muhasebeBankaPrimTutari' => round($muhasebeBankaPrimToplami, 2),
             'muhasebeDagilimaDahilPrim' => round($muhasebedeGizlenecekPrim, 2),
             'muhasebeHariciYemekTutari' => round($muhasebeHariciYemekToplami, 2),
+            'muhasebeBankaYemekTutari' => round($muhasebeBankaYemekToplami, 2),
             'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
             'ucretsizIzinGunu' => $ucretsizIzinGunu, 'calismaGunu' => $calismaGunu,
             'kesintiHaricIcra' => $kesintiHaricIcra, 'icraKesintisi' => $icraKesintisi,
@@ -1375,6 +1385,10 @@ class BordroPersonelModel extends Model
             (float) $hesap['mealAllowanceDeduction'] + (float) ($hesap['muhasebeHariciYemekTutari'] ?? 0),
             2
         );
+        $resmiYemek = round(
+            (float) $hesap['mealAllowanceDeduction'] + (float) ($hesap['muhasebeBankaYemekTutari'] ?? 0),
+            2
+        );
         $kart = (float) $hesap['sodexoOdemesi'];
         $gun = (int) $hesap['includedAllowanceFiiliGun'];
         if ($gun <= 0 && ($yemek > 0 || $kart > 0)) {
@@ -1391,6 +1405,24 @@ class BordroPersonelModel extends Model
             2
         );
         $resmiBankaMatrahi = round($bankaOdemesi + $bankaKesintisi, 2);
+        $resmiRtcNet = 0.0;
+        $resmiHtcNet = 0.0;
+        $resmiFazlaMesaiNet = 0.0;
+        foreach (($hesap['bankaEkOdemeDetaylari'] ?? []) as $bankaEkOdeme) {
+            $etiket = mb_strtolower((string) ($bankaEkOdeme['etiket'] ?? ''), 'UTF-8');
+            $tutar = max(0.0, (float) ($bankaEkOdeme['tutar'] ?? 0));
+            if (strpos($etiket, 'resmi tatil') !== false || strpos($etiket, 'resmî tatil') !== false) {
+                $resmiRtcNet += $tutar;
+            } elseif (strpos($etiket, 'hafta tatili') !== false) {
+                $resmiHtcNet += $tutar;
+            } elseif (
+                strpos($etiket, 'fazla mesai') !== false
+                || strpos($etiket, 'hafta içi') !== false
+                || strpos($etiket, 'nöbet') !== false
+            ) {
+                $resmiFazlaMesaiNet += $tutar;
+            }
+        }
         $eldenKesintisi = max(0.0, round($toplamKesinti - $bankaKesintisi, 2));
         $dagitimToplami = round($bankaOdemesi + $eldenOdeme + $kart + $digerOdeme, 2);
         return [
@@ -1398,6 +1430,7 @@ class BordroPersonelModel extends Model
             'fiili_gun' => $gun,
             'gunluk_nakit' => $gun > 0 ? round(($yemek > 0 ? $yemek : $kart) / $gun, 2) : 0.0,
             'nakit_yemek' => $yemek,
+            'resmi_yemek_yardimi' => $resmiYemek,
             'sodexo_yemek' => $kart,
             'es_yardimi' => (float) $hesap['spouseAllowanceDeduction'],
             'icra' => (float) $hesap['icraKesintisi'],
@@ -1406,6 +1439,10 @@ class BordroPersonelModel extends Model
             'net_maas' => $bankaOdemesi,
             'diger_odeme' => $digerOdeme,
             'prim' => (float) $hesap['muhasebePrimTutari'],
+            'resmi_prim_ikramiye' => (float) ($hesap['muhasebeBankaPrimTutari'] ?? 0),
+            'resmi_rtc_net' => round($resmiRtcNet, 2),
+            'resmi_htc_net' => round($resmiHtcNet, 2),
+            'resmi_fazla_mesai_net' => round($resmiFazlaMesaiNet, 2),
             'prim_hakedisi_bilgi' => (float) ($hesap['muhasebePrimHakedisi'] ?? 0),
             'dagilima_dahil_prim_bilgi' => (float) ($hesap['muhasebeDagilimaDahilPrim'] ?? 0),
             'toplam_hakedis' => $toplamHakedis,

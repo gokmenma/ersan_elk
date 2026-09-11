@@ -47,6 +47,12 @@ if ($_POST["action"] == "kullanici-kaydet") {
             }
         }
 
+        $izinOnayiYapacakMi = ($_POST['izin_onayi_yapacakmi'] ?? 'Hayır') === 'Evet' ? 'Evet' : 'Hayır';
+        $izinOnaySirasiRaw = trim((string) ($_POST['izin_onay_sirasi'] ?? ''));
+        $izinOnaySirasi = $izinOnayiYapacakMi === 'Evet' && $izinOnaySirasiRaw !== ''
+            ? max(1, (int) $izinOnaySirasiRaw)
+            : null;
+
         $data = [
             'id' => $id, // Eğer id varsa deşifre et
             'user_name' => $_POST['user_name'],
@@ -58,8 +64,8 @@ if ($_POST["action"] == "kullanici-kaydet") {
             'owner_id' => $_SESSION["owner_id"],
             'roles' => is_array($_POST['roles']) ? implode(',', $_POST['roles']) : $_POST['roles'],
             'firma_ids' => $user_firma_ids,
-            'izin_onayi_yapacakmi' => $_POST['izin_onayi_yapacakmi'],
-            'izin_onay_sirasi' => $_POST['izin_onay_sirasi'],
+            'izin_onayi_yapacakmi' => $izinOnayiYapacakMi,
+            'izin_onay_sirasi' => $izinOnaySirasi,
             'mail_avans_talep' => $mail_avans_talep,
             'mail_izin_talep' => $mail_izin_talep,
             'mail_genel_talep' => $mail_genel_talep,
