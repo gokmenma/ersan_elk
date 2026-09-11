@@ -34,6 +34,26 @@ final class BordroBankaDagilimiTest extends TestCase
             $method->invoke($model, 26203.80, 600, 500, 25000, 800, 200));
     }
 
+    public function testMaasaDahilKesintiOnceBankadanSonraEldenDusulur(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'hesaplaDahilBankaDagilimi');
+
+        self::assertSame([
+            'banka' => 22111.35,
+            'elden' => 188.65,
+            'banka_kesintisi' => 15000.0,
+            'elden_kesintisi' => 0.0,
+        ], $method->invoke($model, 37300, 37111.35, 15000));
+
+        self::assertSame([
+            'banka' => 0.0,
+            'elden' => 0.0,
+            'banka_kesintisi' => 37111.35,
+            'elden_kesintisi' => 188.65,
+        ], $method->invoke($model, 37300, 37111.35, 40000));
+    }
+
     public function testYemekGunlukTavaniVeYuvarlamaFarkiKorunur(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

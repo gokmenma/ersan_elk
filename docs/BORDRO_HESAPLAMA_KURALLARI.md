@@ -105,6 +105,12 @@ Banka hakedis tavani `toplamHakedis`tir; puantaj hakedisi bu tavani yukseltir. N
 elden odeme kalmaz. Kesintiler once resmi banka tavanindan dusulur; banka tavanini asan kesinti
 kalirsa yalnizca bu bakiye elden tutardan mahsup edilir.
 
+Bu sıra yalnızca puantajlı personele özgü değildir; maaşa dahil yemek/eş yardımı bulunan bütün
+otomatik dağıtımlarda uygulanır. Önceden oluşmuş elden bakiye, banka matrahı kesintiyi karşılayabildiği
+sürece korunur. Örnek: toplam hakediş 37.300, resmi banka matrahı 37.111,35 ve kesinti 15.000 ise
+banka 22.111,35; elden 188,65; toplam ödeme 22.300 olur. `elden_tutardan` kesintiler bu sıranın
+dışındadır ve yalnızca elden bakiyeye uygulanır.
+
 `puantaj_hakedis_dahil = 0` ise `[Puantaj]`, `[Sayaç]` ve `[Kaçak Kontrol]` ek odemeleri hic
 olusturulmaz (`olusturPuantajOdemeleri()`, `olusturSayacDegisimOdemeleri()`,
 `olusturKacakKontrolPrimleri()`).

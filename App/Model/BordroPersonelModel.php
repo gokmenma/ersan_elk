@@ -81,6 +81,25 @@ class BordroPersonelModel extends Model
         ];
     }
 
+    // Maaşa dahil yardım dağılımında kesinti önce resmî banka matrahından düşer.
+    // Bankanın karşılayamadığı kesinti kalırsa yalnızca bu bakiye elden tutara geçer.
+    private function hesaplaDahilBankaDagilimi(float $toplamHakedis, float $bankaMatrahi, float $toplamKesinti): array
+    {
+        $toplamHakedis = max(0.0, $toplamHakedis);
+        $bankaMatrahi = min(max(0.0, $bankaMatrahi), $toplamHakedis);
+        $toplamKesinti = max(0.0, $toplamKesinti);
+        $eldenBrut = max(0.0, $toplamHakedis - $bankaMatrahi);
+        $bankaKesintisi = min($bankaMatrahi, $toplamKesinti);
+        $eldenKesintisi = min($eldenBrut, max(0.0, $toplamKesinti - $bankaKesintisi));
+
+        return [
+            'banka' => round(max(0.0, $bankaMatrahi - $bankaKesintisi), 2),
+            'elden' => round(max(0.0, $eldenBrut - $eldenKesintisi), 2),
+            'banka_kesintisi' => round($bankaKesintisi, 2),
+            'elden_kesintisi' => round($eldenKesintisi, 2),
+        ];
+    }
+
     private function isValidDateValue($date): bool
     {
         return !empty($date) && $date !== '0000-00-00';
@@ -1253,34 +1272,18 @@ class BordroPersonelModel extends Model
             }
             $ekOdemeBankaEki = max(0.0, floatval($yontemliBankaEki ?? 0) - floatval($rtcHtcBankaNetiGosterim ?? 0));
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + floatval($rtcHtcBankaNetiGosterim ?? 0) + $ekOdemeBankaEki);
-            $eldenBrut = max(0.0, $toplamAlacagiNet - $bankaMatrahi);
+            $dahilBankaDagilimi = $this->hesaplaDahilBankaDagilimi(
+                $toplamAlacagiNet,
+                $bankaMatrahi,
+                $toplamKesintiClean
+            );
             $bankaOncelikliKesinti = 0.0;
-            $kesintiSatirlari = $this->getDonemKesintileriListe($p->personel_id, $p->donem_id);
-            foreach ($kesintiSatirlari as $kesintiSatiri) {
-                $kesintiTur = mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8');
-                if ($kesintiTur === 'icra' || strpos($kesintiTur, 'avans') !== false) {
-                    $bankaOncelikliKesinti += floatval($kesintiSatiri->tutar ?? 0);
-                }
-            }
-            if ($bankaOncelikliKesinti <= 0 && $icraKesintisi > 0) {
-                $bankaOncelikliKesinti = $icraKesintisi;
-            }
-            $bankaOncelikliKesinti = min($toplamKesintiClean, $bankaOncelikliKesinti);
-            if ($isNet && $netMaasPuantajHedefToplami > 0) {
-                // Net + puantajda kesinti önce resmî banka tavanından düşer.
-                $bankaAktarilanKesinti = min($bankaMatrahi, $toplamKesintiClean);
-                $eldenDusulenKesinti = max(0, $toplamKesintiClean - $bankaAktarilanKesinti);
-                $bankaOdemesi = max(0, $bankaMatrahi - $bankaAktarilanKesinti);
-            } else {
-                $eldenOncelikliKesinti = max(0, $toplamKesintiClean - $bankaOncelikliKesinti);
-                $eldenDusulenKesinti = min($eldenBrut, $eldenOncelikliKesinti);
-                $bankaAktarilanKesinti = max(0, $eldenOncelikliKesinti - $eldenDusulenKesinti);
-                $bankaOdemesi = max(0, $bankaMatrahi - $bankaOncelikliKesinti - $bankaAktarilanKesinti);
-            }
+            $bankaAktarilanKesinti = $dahilBankaDagilimi['banka_kesintisi'];
+            $bankaOdemesi = $dahilBankaDagilimi['banka'];
             
             $sodexoOdemesi = 0;
             $digerOdeme = 0;
-            $eldenOdeme = max(0, $eldenBrut - $eldenDusulenKesinti);
+            $eldenOdeme = $dahilBankaDagilimi['elden'];
         } else {
             $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $digerOdeme = floatval($p->diger_odeme ?? 0);
@@ -5696,27 +5699,12 @@ class BordroPersonelModel extends Model
             }
             $ekOdemeBankaNetiHesap = max(0.0, floatval($yontemliOdemeler['banka'] ?? 0) - floatval($rtcHtcBankaNetiHesap ?? 0));
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0) + $ekOdemeBankaNetiHesap);
-            $eldenBrut = max(0.0, $netMaasIcinDagitim - $bankaMatrahi);
-            $bankaOncelikliKesinti = 0.0;
-            foreach ($kesintiDetaylari as $kd) {
-                $kesintiKod = mb_strtolower((string) ($kd['kod'] ?? ''), 'UTF-8');
-                if ($kesintiKod === 'icra' || strpos($kesintiKod, 'avans') !== false) {
-                    $bankaOncelikliKesinti += floatval($kd['tutar'] ?? 0);
-                }
-            }
-            $bankaOncelikliKesinti = min($toplamKesinti, $bankaOncelikliKesinti);
-            if ($isNetMaas && $netMaasPuantajHakedisi > 0) {
-                // Kesinti bankadan mahsup edilir; banka tavanını aşan kısmı varsa
-                // ancak o zaman elden puantaj bakiyesinden düşülür.
-                $bankaAktarilanKesinti = min($bankaMatrahi, $toplamKesinti);
-                $eldenDusulenKesinti = max(0, $toplamKesinti - $bankaAktarilanKesinti);
-                $bankaOdemesi = max(0, $bankaMatrahi - $bankaAktarilanKesinti);
-            } else {
-                $eldenOncelikliKesinti = max(0, $toplamKesinti - $bankaOncelikliKesinti);
-                $eldenDusulenKesinti = min($eldenBrut, $eldenOncelikliKesinti);
-                $bankaAktarilanKesinti = max(0, $eldenOncelikliKesinti - $eldenDusulenKesinti);
-                $bankaOdemesi = max(0, $bankaMatrahi - $bankaOncelikliKesinti - $bankaAktarilanKesinti);
-            }
+            $dahilBankaDagilimi = $this->hesaplaDahilBankaDagilimi(
+                $netMaasIcinDagitim,
+                $bankaMatrahi,
+                $toplamKesinti
+            );
+            $bankaOdemesi = $dahilBankaDagilimi['banka'];
             
             $hesaplamaDetay['matrahlar']['brut_maas'] = $asgariYatacak;
             $hesaplamaDetay['odeme_dagilimi']['banka_net'] = $bankaOdemesi;
@@ -5745,7 +5733,7 @@ class BordroPersonelModel extends Model
             }
             
             $sodexoOdemesi = 0;
-            $eldenOdeme = max(0, $eldenBrut - $eldenDusulenKesinti);
+            $eldenOdeme = $dahilBankaDagilimi['elden'];
         } else {
             if (isset($kayit->sodexo_manuel) && $kayit->sodexo_manuel == 1) {
                 $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
