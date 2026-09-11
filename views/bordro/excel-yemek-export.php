@@ -8,6 +8,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+    http_response_code(403);
+    exit('Yetkisiz erişim.');
+}
+
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\BordroPersonelModel;
@@ -56,28 +61,15 @@ try {
     $yemekVerileri = [];
 
     foreach ($personeller as $p) {
+        // Listeyle aynı güncel hesap; kayıtlı eski ödeme tutarlarına geri dönülmez.
+        $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
         if (!empty($p->hesaplama_tarihi)) {
-            // 1. HESAPLANMIŞ VE KAYDEDİLMİŞ VERİLERDEN OKUMA (Doğrudan kayıtlı bordro verileri)
+            // Kayıtlı bordronun vergi, mesai ve kesinti ayrıntıları.
             $detay = !empty($p->hesaplama_detay) ? json_decode($p->hesaplama_detay, true) : [];
             $ozet = $detay['ozet'] ?? [];
             $matrahlar = $detay['matrahlar'] ?? [];
             $kayitliKesintiler = $detay['kesintiler'] ?? [];
             $kayitliEkOdemeler = $detay['ek_odemeler'] ?? [];
-
-            $toplamGun = intval($matrahlar['maas_hesap_gunu'] ?? ($p->calisan_gun ?? 30));
-            $nakitYemek = floatval($ozet['dahil_yemek_yardimi'] ?? 0);
-            $esYardimi = floatval($ozet['dahil_es_yardimi'] ?? 0);
-            $sodexoYemek = floatval($p->sodexo_odemesi ?? 0);
-            $fiiliGun = intval($ozet['dahil_yemek_gun'] ?? 0);
-            if ($fiiliGun <= 0 && $sodexoYemek > 0) {
-                $fiiliGun = $toplamGun;
-            }
-            $gunlukNakit = floatval($ozet['dahil_yemek_gunluk'] ?? 0);
-            if ($gunlukNakit <= 0 && $nakitYemek > 0 && $fiiliGun > 0) {
-                $gunlukNakit = $nakitYemek / $fiiliGun;
-            } elseif ($gunlukNakit <= 0 && $sodexoYemek > 0 && $fiiliGun > 0) {
-                $gunlukNakit = $sodexoYemek / $fiiliGun;
-            }
 
             $avansToplam = 0.0;
             $icra = 0.0;
@@ -125,7 +117,6 @@ try {
             $htcNet = 0.0;
             $fmBrut = 0.0;
             $fmNet = 0.0;
-            $primTutar = 0.0;
 
             // RTÇ/HTÇ ayın ana vergi matrahından sonra vergilendirilir (detay modalı ile birebir aynı)
             $kumulatifMatrahGrossUp = floatval($matrahlar['onceki_kumulatif'] ?? 0)
@@ -174,11 +165,6 @@ try {
                     } elseif ($eoTur === 'hafta_tatili_calisma' || $eoTur === 'hafta_tatili') {
                         $htcBrut += ($resmiTutar > 0 ? $resmiTutar : $tutar);
                         $htcNet += ($netEtki > 0 ? $netEtki : $tutar);
-                    } elseif (($eoTur === 'prim' || $eoTur === 'ikramiye')
-                        && strpos($aciklama, '[Puantaj]') !== 0
-                        && strpos($aciklama, '[Sayaç]') !== 0
-                        && strpos($aciklama, '[Kaçak Kontrol]') !== 0) {
-                        $primTutar += $tutar;
                     } elseif ($eoTur === 'hafta_ici_nobet' || $eoTur === 'mesai' || $eoTur === 'fazla_mesai' || (strpos($eoTur, 'nobet') !== false && strpos($eoTur, 'hafta_sonu') === false)) {
                         $rNet = 0.0;
                         $rBrut = $resmiTutar > 0 ? $resmiTutar : $tutar;
@@ -205,69 +191,25 @@ try {
                 $fmBrut = $fmNet;
             }
 
-            $resmiAlacakAsgari = round(($kayitliAsgariNet / 30) * $toplamGun, 2);
-            $bankaOdeme = floatval($p->banka_odemesi ?? ($detay['odeme_dagilimi']['banka_net'] ?? 0));
-            $resmiAlacakToplam = $bankaOdeme;
-            $digerOdeme = floatval($p->diger_odeme ?? 0);
-
-            $yemekVerileri[] = [
+            $muhasebeSatiri = [
                 'tc_kimlik' => $p->tc_kimlik_no ?? '-',
                 'adi_soyadi' => $p->adi_soyadi ?? '-',
-                'toplam_gun' => $toplamGun,
                 'rapor_gun' => $raporGun,
-                'fiili_gun' => $fiiliGun,
-                'gunluk_nakit' => round($gunlukNakit, 2),
-                'nakit_yemek' => $nakitYemek,
-                'sodexo_yemek' => $sodexoYemek,
-                'es_yardimi' => $esYardimi,
                 'avans' => $avansToplam,
-                'icra' => $icra,
-                'resmi_alacak_asgari' => $resmiAlacakAsgari,
                 'rtc_brut' => $rtcBrut,
                 'rtc_net' => $rtcNet,
                 'htc_brut' => $htcBrut,
                 'htc_net' => $htcNet,
-                'prim' => round($primTutar, 2),
                 'fm_brut' => $fmBrut,
                 'fm_net' => $fmNet,
-                'resmi_alacak_toplam' => $resmiAlacakToplam,
                 'gelir_vergisi' => floatval($p->gelir_vergisi ?? 0),
-                'net_maas' => $bankaOdeme,
                 'onceki_kumulatif' => $oncekiKumulatif,
                 'aylik_matrah' => $aylikMatrah,
                 'diger_kesintiler' => $digerKesintiler,
-                'diger_odeme' => $digerOdeme
             ];
         } else {
             // 2. HESAPLANMAMIŞ PERSONELLER İÇİN CANLI HESAPLAMA (FALLBACK)
-            $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
             
-            $nakitYemek = 0;
-            $sodexoYemek = 0;
-            $esYardimi = 0;
-            $fiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? 0);
-            
-            // 1. Maaşa Dahil Yemek Yardımı (Nakit/Banka)
-            if (isset($hesap['mealAllowanceDeduction']) && $hesap['mealAllowanceDeduction'] > 0) {
-                $nakitYemek = $hesap['mealAllowanceDeduction'];
-                $fiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? $fiiliGun);
-            }
-            
-            // 2. Sodexo / Yemek Kartı Ödemeleri
-            if (isset($hesap['sodexoOdemesi']) && $hesap['sodexoOdemesi'] > 0) {
-                $sodexoYemek = $hesap['sodexoOdemesi'];
-                if ($nakitYemek <= 0) {
-                    if (isset($hesap['calismaGunu']) && $hesap['calismaGunu'] > 0) {
-                        $fiiliGun = $hesap['calismaGunu'];
-                    }
-                }
-            }
-
-            // 3. Eş Yardımı
-            if (isset($hesap['spouseAllowanceDeduction']) && $hesap['spouseAllowanceDeduction'] > 0) {
-                $esYardimi = $hesap['spouseAllowanceDeduction'];
-            }
-
             // Avansları hesapla
             $avansToplam = 0;
             $kesintiler = $BordroPersonel->getDonemKesintileriListe($p->personel_id, $donemId);
@@ -278,46 +220,6 @@ try {
                 }
             }
             
-            $icra = $hesap['icraKesintisi'] ?? 0;
-            $toplamGun = $hesap['calismaGunu'] ?? 0;
-
-            $toplamAlacak = floatval($hesap['toplamAlacagi'] ?? 0);
-            $toplamYasalKesinti = 0;
-            if ($p->sgk_isci > 0) $toplamYasalKesinti += floatval($p->sgk_isci);
-            if ($p->issizlik_isci > 0) $toplamYasalKesinti += floatval($p->issizlik_isci);
-            if ($p->gelir_vergisi > 0) $toplamYasalKesinti += floatval($p->gelir_vergisi);
-            if ($p->damga_vergisi > 0) $toplamYasalKesinti += floatval($p->damga_vergisi);
-            
-            $guncelKesintiGosterim = 0;
-            $kesintiKayitlari = $BordroPersonel->getDonemKesintileriListe($p->personel_id, $donemId);
-            foreach ($kesintiKayitlari as $k) {
-                if ($k->tur !== 'izin_kesinti') {
-                    $guncelKesintiGosterim += floatval($k->tutar);
-                }
-            }
-            $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
-            $gorunenNetMaas = max(0, round($toplamAlacak - $kesintiTutarOzet, 2));
-
-            $bankaOdeme = floatval($hesap['bankaOdemesi'] ?? 0);
-            $eldenOdeme = floatval($hesap['eldenOdeme'] ?? 0);
-            $sodexoOdeme = floatval($hesap['sodexoOdemesi'] ?? 0);
-            $digerOdeme = floatval($hesap['digerOdeme'] ?? 0);
-            $dagitimToplami = round($bankaOdeme + $eldenOdeme + $sodexoOdeme + $digerOdeme, 2);
-            $dagitimFarki = round($gorunenNetMaas - $dagitimToplami, 2);
-            if (abs($dagitimFarki) >= 0.01 && $eldenOdeme <= 0 && $sodexoOdeme <= 0 && $digerOdeme <= 0 && $bankaOdeme > 0 && abs($dagitimFarki) <= 100) {
-                $bankaOdeme = round($bankaOdeme + $dagitimFarki, 2);
-            }
-
-            // Günlük yemek bedeli hesabı
-            $gunlukNakit = 0;
-            if ($nakitYemek > 0 && $fiiliGun > 0) {
-                $gunlukNakit = $nakitYemek / $fiiliGun;
-            } elseif ($sodexoYemek > 0 && $fiiliGun > 0) {
-                $gunlukNakit = $sodexoYemek / $fiiliGun;
-            } elseif (isset($p->yemek_yardimi_tutari) && floatval($p->yemek_yardimi_tutari) > 0) {
-                $gunlukNakit = floatval($p->yemek_yardimi_tutari);
-            }
-
             // Vergi Matrahları
             $detay = !empty($p->hesaplama_detay) ? json_decode($p->hesaplama_detay, true) : [];
             $matrahlar = $detay['matrahlar'] ?? [];
@@ -368,7 +270,6 @@ try {
             // Fazla Mesai, Hafta Sonu Nöbet ve Prim Ek Ödemeleri
             $fmBrut = 0.0;
             $fmNet = 0.0;
-            $primTutar = 0.0;
             $ekOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($p->personel_id, $donemId);
             foreach ($ekOdemeler as $eo) {
                 $eoTur = mb_strtolower((string)($eo->tur ?? ''), 'UTF-8');
@@ -376,12 +277,7 @@ try {
                 $rTutar = floatval($eo->resmi_tutar ?? 0);
                 $tutar = floatval($eo->tutar ?? 0);
 
-                if (($eoTur === 'prim' || $eoTur === 'ikramiye')
-                    && strpos($aciklama, '[Puantaj]') !== 0
-                    && strpos($aciklama, '[Sayaç]') !== 0
-                    && strpos($aciklama, '[Kaçak Kontrol]') !== 0) {
-                    $primTutar += $tutar;
-                } elseif ($eoTur === 'resmi_tatil_calisma' || $eoTur === 'resmi_tatil' || strpos($eoTur, 'resmi_tatil') !== false) {
+                if ($eoTur === 'resmi_tatil_calisma' || $eoTur === 'resmi_tatil' || strpos($eoTur, 'resmi_tatil') !== false) {
                     $rtcBrut += ($rTutar > 0 ? $rTutar : $tutar);
                     $rtcNet += $tutar;
                 } elseif ($eoTur === 'hafta_tatili_calisma' || $eoTur === 'hafta_tatili' || $eoTur === 'hafta_sonu_nobet' || strpos($eoTur, 'hafta_sonu') !== false) {
@@ -417,29 +313,18 @@ try {
 
             $raporGun = $BordroPersonel->getGunSayisiByKisaKod($p->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'RP');
 
-            $yemekVerileri[] = [
+            $muhasebeSatiri = [
                 'tc_kimlik' => $p->tc_kimlik_no ?? '-',
                 'adi_soyadi' => $p->adi_soyadi ?? '-',
-                'toplam_gun' => $toplamGun,
                 'rapor_gun' => $raporGun,
-                'fiili_gun' => $fiiliGun,
-                'gunluk_nakit' => round($gunlukNakit, 2),
-                'nakit_yemek' => $nakitYemek,
-                'sodexo_yemek' => $sodexoYemek,
-                'es_yardimi' => $esYardimi,
                 'avans' => $avansToplam,
-                'icra' => $icra,
-                'resmi_alacak_asgari' => floatval($hesap['asgariHakedis'] ?? 0),
                 'rtc_brut' => $rtcBrut,
                 'rtc_net' => $rtcNet,
                 'htc_brut' => $htcBrut,
                 'htc_net' => $htcNet,
-                'prim' => round($primTutar, 2),
                 'fm_brut' => $fmBrut,
                 'fm_net' => $fmNet,
-                'resmi_alacak_toplam' => floatval($hesap['resmiAlacagi'] ?? 0),
                 'gelir_vergisi' => floatval($p->gelir_vergisi ?? 0),
-                'net_maas' => $bankaOdeme,
                 'onceki_kumulatif' => $oncekiKumulatif,
                 'aylik_matrah' => $aylikMatrah,
                 'diger_kesintiler' => (function() use ($BordroPersonel, $p, $donemId) {
@@ -461,9 +346,12 @@ try {
                     }
                     return $digerKesintiToplam;
                 })(),
-                'diger_odeme' => $digerOdeme
             ];
         }
+        $yemekVerileri[] = array_merge(
+            $muhasebeSatiri,
+            $BordroPersonel->getMuhasebeOdemeOzeti($hesap)
+        );
     }
 
     if (empty($yemekVerileri)) {

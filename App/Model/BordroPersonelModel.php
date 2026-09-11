@@ -869,6 +869,9 @@ class BordroPersonelModel extends Model
         $sozlesmeHakedisiOverride = false;
         $resmiDahilEkToplam = 0.0;
         $bankayaTasinabilirEkOdemeGosterim = 0.0;
+        $muhasebePrimToplami = 0.0;
+        $yemekHavuzundakiPrim = 0.0;
+        $primYemekPayi = 0.0;
         // Primler yemek tavanını yükseltir ancak sözleşme hakedişi tabanından mahsup edilemez;
         // mahsup için primsiz toplam ayrı tutulur.
         $bankaMahsupEdilebilirEkOdemeGosterim = 0.0;
@@ -884,6 +887,10 @@ class BordroPersonelModel extends Model
             $tutar = floatval($eo->tutar);
             $aciklama = (string) ($eo->aciklama ?? '');
             $isPuantajOdeme = $this->isPuantajEkOdeme($aciklama);
+            $isMuhasebePrimi = in_array($eoTurLower, ['prim', 'ikramiye'], true) && !$isPuantajOdeme;
+            if ($isMuhasebePrimi) {
+                $muhasebePrimToplami += $tutar;
+            }
             if ($isInclusive && $isPrimUsulu && $isPuantajOdeme) {
                 $primUsuluPuantajHedefToplami += $tutar;
             }
@@ -914,6 +921,9 @@ class BordroPersonelModel extends Model
                     // yemeğe absorbe olur; ayrıca banka kalemi olarak gösterilmez (çift sayım).
                     if ($yontem === 'banka') {
                         $bankayaTasinabilirEkOdemeGosterim += $tutar;
+                        if ($isMuhasebePrimi) {
+                            $yemekHavuzundakiPrim += max(0.0, $tutar);
+                        }
                     }
                 } elseif ($yontem === 'banka' && !$isPrimOdemeItem) {
                     $bankaKatkisi = ($eoTurLower === 'hafta_sonu_nobet')
@@ -1144,6 +1154,19 @@ class BordroPersonelModel extends Model
             $includedAllowanceDeduction = round($mealAllowanceDeduction + $spouseAllowanceDeduction, 2);
             $yuvarlamaFarki = max(0, round($mealAllowanceDeduction - $yemekHamToplam, 2));
 
+            // Muhasebede aynı kazancı yemek ve prim sütunlarında tekrar toplamayın.
+            // Yuvarlama ayrı kalır; prim dışı hedef önce yemek havuzundan karşılanır.
+            if (!$isPrimUsulu && $yemekHavuzundakiPrim > 0) {
+                $primsizYemekHedefi = max(0.0, round(
+                    $yemekTavanHedefi - $yemekHavuzundakiPrim + $htcEkOdemeTutarDagilim
+                    - $asgariTabanVal - $spouseAllowanceDeduction - $rtcHtcBankaNetiGosterim,
+                    2
+                ));
+                $primYemekPayi = round(min($yemekHavuzundakiPrim, max(0.0,
+                    $mealAllowanceDeduction - $yuvarlamaFarki - $primsizYemekHedefi
+                )), 2);
+            }
+
             // Yemek yardımının günlük vergi istisna limitini aşan kısmı ücret sayılır ve gelir vergisine tabidir.
             // Marjinal dilim payı, RTÇ/HTÇ'den sonraki sırada (varsa onun matrah katkısı da dahil edilerek) izole edilir.
             $yemekIstisnaGunlukGosterim = floatval($this->cachedParametreModel->getGenelAyar('yemek_yardimi_gunluk_istisna', $donemBaslangic) ?? 0);
@@ -1307,6 +1330,8 @@ class BordroPersonelModel extends Model
         $resmiAlacagi = $bankaOdemesi;
 
         return [
+            'muhasebePrimTutari' => round($muhasebePrimToplami - $primYemekPayi, 2),
+            'primYemekPayi' => $primYemekPayi,
             'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
             'ucretsizIzinGunu' => $ucretsizIzinGunu, 'calismaGunu' => $calismaGunu,
             'kesintiHaricIcra' => $kesintiHaricIcra, 'icraKesintisi' => $icraKesintisi,
@@ -1330,6 +1355,31 @@ class BordroPersonelModel extends Model
             'bankaOncelikliKesinti' => $bankaOncelikliKesinti,
             'bankaAktarilanKesinti' => $bankaAktarilanKesinti,
             'bankaEkOdemeDetaylari' => $bankaEkOdemeDetaylari,
+        ];
+    }
+
+    /** Muhasebe Excel ödeme alanları, listenin ortak hesabından üretilir. */
+    public function getMuhasebeOdemeOzeti(array $hesap): array
+    {
+        $yemek = (float) $hesap['mealAllowanceDeduction'];
+        $kart = (float) $hesap['sodexoOdemesi'];
+        $gun = (int) $hesap['includedAllowanceFiiliGun'];
+        if ($gun <= 0 && $kart > 0) {
+            $gun = (int) $hesap['calismaGunu'];
+        }
+        return [
+            'toplam_gun' => (int) $hesap['calismaGunu'],
+            'fiili_gun' => $gun,
+            'gunluk_nakit' => $gun > 0 ? round(($yemek > 0 ? $yemek : $kart) / $gun, 2) : 0.0,
+            'nakit_yemek' => $yemek,
+            'sodexo_yemek' => $kart,
+            'es_yardimi' => (float) $hesap['spouseAllowanceDeduction'],
+            'icra' => (float) $hesap['icraKesintisi'],
+            'resmi_alacak_asgari' => (float) $hesap['asgariHakedis'],
+            'resmi_alacak_toplam' => (float) $hesap['bankaOdemesi'],
+            'net_maas' => (float) $hesap['bankaOdemesi'],
+            'diger_odeme' => (float) $hesap['digerOdeme'],
+            'prim' => (float) $hesap['muhasebePrimTutari'],
         ];
     }
 
@@ -5540,7 +5590,8 @@ class BordroPersonelModel extends Model
                         if (!$isPrimEk) {
                             $bankaMahsupEdilebilirEkOdeme += $ekTutar;
                         }
-                    } elseif (!$isPrimEk) {
+                    } else {
+                        // Elden seçilen prim de sözleşme üstü kazançtır.
                         $eldenTasinabilirEkOdeme += $ekTutar;
                     }
                 }
