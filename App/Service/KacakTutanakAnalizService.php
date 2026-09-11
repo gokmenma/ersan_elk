@@ -103,6 +103,22 @@ class KacakTutanakAnalizService
             $satir['sayi'] = max(1, (int) ($satir['sayi'] ?? 1));
             $satir['tarih'] = $this->normalizeTarih($satir['tarih'] ?? '', $varsayilanTarih);
             $satir['personel_ids'] = $this->filterPersonelIds($satir['personel_ids'] ?? [], $personelAdaylari);
+
+            // Yeni alanlar
+            if (!empty($satir['abone_tc'])) {
+                $tcClean = preg_replace('/[^\d]/', '', (string) $satir['abone_tc']);
+                $satir['abone_tc'] = (strlen($tcClean) === 10 || strlen($tcClean) === 11) ? $tcClean : null;
+            }
+            if (!empty($satir['abone_dogum_tarihi'])) {
+                $satir['abone_dogum_tarihi'] = $this->normalizeTarih($satir['abone_dogum_tarihi'], '');
+            }
+            if (!empty($satir['abone_tel'])) {
+                $satir['abone_tel'] = mb_substr(trim((string) $satir['abone_tel']), 0, 20, 'UTF-8');
+            }
+            if (!empty($satir['sayac_markasi'])) {
+                $satir['sayac_markasi'] = mb_substr(trim((string) $satir['sayac_markasi']), 0, 100, 'UTF-8');
+            }
+
             unset($satir['ilçe']);
         }
         unset($satir);
@@ -123,8 +139,9 @@ class KacakTutanakAnalizService
         $stmt = $db->prepare("SELECT DISTINCT personel_ids FROM kacak_kontrol
                               WHERE firma_id = ? AND personel_ids IS NOT NULL AND personel_ids != '' AND silinme_tarihi IS NULL");
         $stmt->execute([$firmaId]);
-        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $idsStr) {
-            foreach (explode(',', (string) $idsStr) as $pid) {
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            foreach (explode(',', (string) $row['personel_ids']) as $pid) {
                 $pid = (int) trim($pid);
                 if ($pid > 0) {
                     $gecmisIds[$pid] = true;
@@ -132,21 +149,25 @@ class KacakTutanakAnalizService
             }
         }
 
-        $adaylar = $dropdownPersonel;
-        if (count($gecmisIds) >= 2) {
-            $kesisim = array_values(array_filter($dropdownPersonel, static fn($p) => isset($gecmisIds[(int) $p['id']])));
-            if (count($kesisim) >= 2) {
-                $adaylar = $kesisim;
+        $adaylar = [];
+        foreach ($dropdownPersonel as $p) {
+            $pid = (int) $p['id'];
+            if (isset($gecmisIds[$pid]) || count($dropdownPersonel) <= 10) {
+                $adaylar[] = $p;
             }
         }
 
-        $ids = array_map(static fn($p) => (int) $p['id'], $adaylar);
-        if (empty($ids)) {
+        if (empty($adaylar)) {
+            $adaylar = $dropdownPersonel;
+        }
+
+        if (empty($adaylar)) {
             return [];
         }
 
+        $ids = array_column($adaylar, 'id');
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmtUnvan = $db->prepare("SELECT id, gorev FROM personel WHERE id IN ($placeholders)");
+        $stmtUnvan = $db->prepare("SELECT id, gorev FROM personel WHERE id IN ({$placeholders})");
         $stmtUnvan->execute($ids);
         $unvanMap = [];
         foreach ($stmtUnvan->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -176,7 +197,7 @@ class KacakTutanakAnalizService
 
         $turler = implode(', ', KacakKontrolModel::TURLER);
 
-        $prompt = "Aşağıdaki {$kaynak} KASKİ kaçak/abonesiz/usülsüz tutanak verilerinden tarih, ilçe, tür ({$turler}), tutanak no, abone adı, sayaç no, endeks, sayı, açıklama ve görevli personel verilerini ayıklamanı istiyorum.
+        $prompt = "Aşağıdaki {$kaynak} KASKİ kaçak/abonesiz/usülsüz tutanak verilerinden tarih, ilçe, tür ({$turler}), tutanak no, adı soyadı, tc kimlik no veya vergi no, doğum tarihi, telefon no, sayaç seri no, sayaç markası, endeks, sayı, açıklama ve görevli personel verilerini ayıklamanı istiyorum.
 Verileri kesinlikle geçerli bir JSON dizisi (Array) olarak dön. Ek açıklama, markdown veya kod bloğu (```json gibi) ekleme.
 
 Sistemde kayıtlı ve bu ekranda seçilebilir personel listesi aşağıdadır. SADECE buradaki ID'leri kullan, listede olmayan bir ID asla üretme. 'unvan' kişinin görevini, 'sef_mi' ekip şefi olup olmadığını gösterir:
@@ -189,10 +210,10 @@ Kritik Kurallar:
    - Tutanaktaki fiili tespit/düzenleme tarihini oku.
    - Öncelikle belgenin EN ALT/SAĞ ALT bölümüne bak. 'MEMNU İŞİ YAPAN' yazısının hemen üstündeki veya yanındaki el yazısı tarih, tutanak tarihidir. Örneğin görselde burada '17.07.2026' yazıyorsa sonuç kesinlikle '2026-07-17' olmalıdır.
    - Görsel girdisi iki resim içeriyorsa ikinci resim bu sağ-alt tarih alanının büyütülmüş yakın planıdır. Tarihin gün, ay ve özellikle yıl rakamlarını ikinci resimden tek tek doğrula. İkinci resimdeki tarihi tam belgedeki küçük görüntüye tercih et.
-   - Üstteki 'A - ABONE BİLGİLERİ' bölümünde, T.C. Kimlik No veya abone bilgilerinin yakınında yazan tarih doğum/abone tarihidir. Örneğin '20.08.1991' gibi bir tarihi tutanak tarihi olarak ASLA kullanma.
-   - Seri numarası, sayaç numarası, telefon numarası veya formun basım tarihini tarih olarak yorumlama.
+   - Üstteki 'A - ABONE BİLGİLERİ' bölümünde, T.C. Kimlik No veya abone bilgilerinin yakınında yazan tarih doğum/abone tarihidir. Örneğin '20.08.1991' gibi bir tarihi tutanak tarihi olarak ASLA kullanma; bunu 'abone_dogum_tarihi' alanına yaz.
+   - Seri numarası, sayaç numarası, telefon numarası veya formun basım tarihini tutanak tarihi olarak yorumlama.
    - Birden fazla tarih görürsen konuma göre seçim yap: sağ alttaki 'MEMNU İŞİ YAPAN' tarihi her zaman üstteki abone/doğum tarihinden önceliklidir.
-   - Seçtiğin tarihi YYYY-MM-DD formatına çevir. Sağ alttaki tarih hiç okunamıyorsa {$varsayilanTarih} kullan ve 'guven.tarih' değerini 30 veya daha düşük ver.
+   - Seçtiğin tutanak tarihini YYYY-MM-DD formatına çevir. Sağ alttaki tarih hiç okunamıyorsa {$varsayilanTarih} kullan ve 'guven.tarih' değerini 30 veya daha düşük ver.
 2. İlçe: 'İlçesi' kutucuğundaki el yazısını dikkatli oku ve yukarıdaki geçerli ilçe listesiyle birebir eşleştir. Yanlış ilçe eşleştirmekten kaçın (görselde 'Onikişubat' yazıyorsa 'Dulkadiroğlu' yazma). Net değilse en yakın tahmini yaz ve 'guven.ilce' değerine düşük yüzde ver.
 3. Personel Eşleştirme (çok sıkı, asla varsayım yapma):
    - Tutanağın altında 'KONTROL EDENLER' / 'Tutanak Düzenleyen Memurlar' alanındaki imza veya parafların baş harflerini tespit et.
@@ -207,12 +228,16 @@ Alanlar:
 - tur (SADECE şunlardan biri: {$turler}. Tutanakta kaçak tespiti/kaçak kullanma geçiyorsa 'Kaçak'; abonesiz kullanım geçiyorsa 'Abonesiz'; usülsüz kullanım/usulsuz geçiyorsa 'Usülsüz' yaz.)
 - tutanak_no ('SERİ / A Sıra No' kutusundaki numara)
 - abone_adi ('Adı Soyadı' kutusundaki kişi)
+- abone_tc ('T.C. Kimlik No' veya 'Vergi No' kutusundaki 11 veya 10 haneli rakamlar)
+- abone_dogum_tarihi ('Doğum Tarihi' kutusundaki tarih, YYYY-MM-DD)
+- abone_tel ('Telefon No' / 'Tel' kutusundaki numara)
 - sayac_no ('Sayaç Seri No.' kutusundaki numara)
+- sayac_markasi ('Sayaç Markası' kutusundaki marka)
 - endeks ('Sayaç Endeksi' kutusundaki değer)
 - sayi (tamsayı, yoksa 1)
 - aciklama (açıklama alanı veya durum detayı)
 - personel_ids (tespit edilen personel ID dizisi, örn: [12, 15]; eşleşme yoksa [])
-- guven (her alan için 0-100 arası güven yüzdesi; anahtarlar: tarih, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, personel_ids)
+- guven (her alan için 0-100 arası güven yüzdesi; anahtarlar: tarih, ilce, tur, tutanak_no, abone_adi, abone_tc, abone_dogum_tarihi, abone_tel, sayac_no, sayac_markasi, endeks, sayi, aciklama, personel_ids)
 
 ";
 

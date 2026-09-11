@@ -213,10 +213,47 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 </div>
             </div>
 
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Sayaç Markası</label>
+                    <input type="text" name="sayac_markasi" id="kacak-sayac-markasi" placeholder="Opsiyonel"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Adı Soyadı</label>
+                    <input type="text" name="abone_adi" id="kacak-abone-adi"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                </div>
+            </div>
+
             <div>
-                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Abone Adı Soyadı</label>
-                <input type="text" name="abone_adi" id="kacak-abone-adi"
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase">TC Kimlik veya Vergi No</label>
+                    <span class="text-xs text-red-500 font-bold">Zorunlu</span>
+                </div>
+                <input type="text" name="abone_tc" id="kacak-abone-tc" inputmode="numeric" maxlength="11" required
+                    placeholder="11 haneli TC veya 10 haneli Vergi No"
                     class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                <p class="text-xs text-slate-400 mt-1">11 haneli TC Kimlik No veya 10 haneli Vergi Kimlik No giriniz.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase">Doğum Tarihi</label>
+                        <span id="kacak-dogum-zorunlu" class="text-xs text-slate-400 font-normal">(Opsiyonel)</span>
+                    </div>
+                    <input type="date" name="abone_dogum_tarihi" id="kacak-abone-dogum-tarihi"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase">Tel No</label>
+                        <span class="text-xs text-slate-400 font-normal">(Opsiyonel)</span>
+                    </div>
+                    <input type="tel" name="abone_tel" id="kacak-abone-tel" maxlength="20" placeholder="05XXXXXXXXX"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -370,7 +407,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Abone Adı Soyadı</label>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Adı Soyadı</label>
                 <input type="text" name="abone_adi" id="sicil-abone-adi"
                     class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
             </div>
@@ -640,6 +677,23 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             }
         };
 
+        window.guncelleTcDogumZorunlulugu = function () {
+            const tcEl = document.getElementById('kacak-abone-tc');
+            const zorunluEl = document.getElementById('kacak-dogum-zorunlu');
+            const dogumEl = document.getElementById('kacak-abone-dogum-tarihi');
+            if (!tcEl || !zorunluEl) return;
+            const val = tcEl.value.trim();
+            if (val.length === 11) {
+                zorunluEl.textContent = '(Zorunlu)';
+                zorunluEl.className = 'text-xs text-red-500 font-bold ml-1';
+                if (dogumEl) dogumEl.required = true;
+            } else {
+                zorunluEl.textContent = '(Opsiyonel)';
+                zorunluEl.className = 'text-xs text-slate-400 font-normal ml-1';
+                if (dogumEl) dogumEl.required = false;
+            }
+        };
+
         window.kacakKuyrukDuzenle = function (uuid) {
             const k = bekleyenKayitlar.find(x => x.uuid === uuid);
             if (!k) return Alert.error('Hata', 'Kayıt bulunamadı.');
@@ -653,7 +707,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             const alanlar = k.alanlar || {};
             const form = document.getElementById('kacak-bildir-form');
             if (form) {
-                ['tarih', 'ilce', 'tur', 'tutanak_no', 'abone_adi', 'sayac_no', 'endeks', 'sayi', 'aciklama'].forEach(ad => {
+                ['tarih', 'ilce', 'tur', 'tutanak_no', 'abone_adi', 'abone_tc', 'abone_dogum_tarihi', 'abone_tel', 'sayac_no', 'sayac_markasi', 'endeks', 'sayi', 'aciklama'].forEach(ad => {
                     const alan = form.querySelector(`[name="${ad}"]`);
                     if (alan && alanlar[ad] !== undefined) alan.value = alanlar[ad];
                 });
@@ -662,6 +716,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     if (sel) sel.value = String(alanlar.ekip_arkadasi_id);
                 }
             }
+            guncelleTcDogumZorunlulugu();
         };
 
         window.kacakKuyrukSil = async function (uuid) {
@@ -818,8 +873,12 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             ${satir('Tür', k.tur)}
             ${satir('İlçe', k.ilce)}
             ${satir('Tutanak No', k.tutanak_no)}
-            ${satir('Abone Adı', k.abone_adi)}
+            ${satir('Adı Soyadı', k.abone_adi)}
+            ${satir('TC / Vergi No', k.abone_tc)}
+            ${k.abone_dogum_tarihi ? satir('Doğum Tarihi', k.abone_dogum_tarihi) : ''}
+            ${k.abone_tel ? satir('Telefon No', k.abone_tel) : ''}
             ${satir('Sayaç No', k.sayac_no)}
+            ${k.sayac_markasi ? satir('Sayaç Markası', k.sayac_markasi) : ''}
             ${satir('Endeks', k.endeks)}
             ${satir('Sayı', k.sayi)}
             ${satir('Ekip', k.ekip_adi)}
@@ -896,12 +955,16 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
             if (editData) {
                 const form = document.getElementById('kacak-bildir-form');
-                ['tarih','ilce','tur','tutanak_no','abone_adi','sayac_no','endeks','sayi','aciklama'].forEach(ad => {
+                ['tarih','ilce','tur','tutanak_no','abone_adi','abone_tc','abone_dogum_tarihi','abone_tel','sayac_no','sayac_markasi','endeks','sayi','aciklama'].forEach(ad => {
                     const alan=form.querySelector(`[name="${ad}"]`); if(alan) alan.value=editData[ad] ?? '';
                 });
                 const ekipIds=String(editData.personel_ids||'').split(',').map(Number);
                 const arkadas=ekipIds.find(id=>id!==BEN);
                 if(arkadas) document.getElementById('kacak-ekip-arkadasi').value=String(arkadas);
+                guncelleTcDogumZorunlulugu();
+            } else {
+                guncelleTcDogumZorunlulugu();
+            }
 
                 const fotolar = editData.fotograflar || [];
                 const tutanakFoto = fotolar.find(f => f.tur === 'tutanak');
@@ -1333,10 +1396,15 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 if (satir.tur) document.getElementById('kacak-tur').value = satir.tur;
                 if (satir.tutanak_no) document.getElementById('kacak-tutanak-no').value = satir.tutanak_no;
                 if (satir.abone_adi) document.getElementById('kacak-abone-adi').value = satir.abone_adi;
+                if (satir.abone_tc) document.getElementById('kacak-abone-tc').value = satir.abone_tc;
+                if (satir.abone_dogum_tarihi) document.getElementById('kacak-abone-dogum-tarihi').value = satir.abone_dogum_tarihi;
+                if (satir.abone_tel) document.getElementById('kacak-abone-tel').value = satir.abone_tel;
                 if (satir.sayac_no) document.getElementById('kacak-sayac-no').value = satir.sayac_no;
+                if (satir.sayac_markasi) document.getElementById('kacak-sayac-markasi').value = satir.sayac_markasi;
                 if (satir.endeks) document.getElementById('kacak-endeks').value = satir.endeks;
                 if (satir.sayi) document.getElementById('kacak-sayi').value = satir.sayi;
                 if (satir.aciklama) document.getElementById('kacak-aciklama').value = satir.aciklama;
+                guncelleTcDogumZorunlulugu();
 
                 const digerPersonel = (satir.personel_ids || []).find(id => String(id) !== String(BEN));
                 if (digerPersonel) {
@@ -1584,6 +1652,19 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 if (selected < minDate) {
                     return Alert.warning('Geçersiz Tarih', 'Geriye dönük en fazla 1 hafta (7 gün) önceki bir tarih seçilebilir.');
                 }
+            }
+
+            const aboneTc = (this.querySelector('[name=abone_tc]')?.value || '').trim();
+            if (!aboneTc) {
+                return Alert.warning('TC / Vergi No Zorunlu', 'Lütfen TC Kimlik No veya Vergi No alanını doldurun.');
+            }
+            if (!/^\d{10,11}$/.test(aboneTc)) {
+                return Alert.warning('Geçersiz TC / Vergi No', 'TC Kimlik No 11 haneli veya Vergi No 10 haneli rakamlardan oluşmalıdır.');
+            }
+
+            const aboneDogum = (this.querySelector('[name=abone_dogum_tarihi]')?.value || '').trim();
+            if (aboneTc.length === 11 && !aboneDogum) {
+                return Alert.warning('Doğum Tarihi Zorunlu', 'TC Kimlik No girildiğinde Doğum Tarihi alanı zorunludur.');
             }
 
             btn.disabled = true;
@@ -1918,6 +1999,12 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
             document.getElementById('sicil-duzeltme-form')
                 .addEventListener('submit', sicilDuzeltmeGonder);
+
+            const tcInput = document.getElementById('kacak-abone-tc');
+            if (tcInput) {
+                tcInput.addEventListener('input', guncelleTcDogumZorunlulugu);
+                tcInput.addEventListener('change', guncelleTcDogumZorunlulugu);
+            }
 
             // Kuyruk hem bu sayfadan hem de arka plan senkronizasyonundan değişebilir.
             window.addEventListener('kuyruk-degisti', async (e) => {

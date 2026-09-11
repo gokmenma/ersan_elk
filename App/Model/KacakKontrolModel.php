@@ -515,9 +515,10 @@ class KacakKontrolModel extends Model
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol
             (firma_id, personel_ids, bildiren_personel_id, kaynak, client_uuid, offline_olusturma, beklenen_foto_sayisi,
              onay_durumu, onaylayan_id, onay_tarihi,
-             durum, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi,
+             durum, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, abone_tc, abone_dogum_tarihi, abone_tel,
+             sayac_no, sayac_markasi, endeks, sayi,
              tutar, kontrol_edildi, usulsuz_notu, aciklama, islem_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         $onayDurumu = $data['onay_durumu'] ?? 'onaylandi';
         $onaylayanId = $onayDurumu === 'onaylandi' ? ($data['onaylayan_id'] ?? ($_SESSION['user_id'] ?? null)) : null;
@@ -526,6 +527,10 @@ class KacakKontrolModel extends Model
         $clientUuid = trim((string) ($data['client_uuid'] ?? ''));
         $offlineOlusturma = !empty($data['offline_olusturma']) && strtotime((string) $data['offline_olusturma'])
             ? date('Y-m-d H:i:s', strtotime((string) $data['offline_olusturma']))
+            : null;
+
+        $aboneDogumTarihi = !empty($data['abone_dogum_tarihi']) && strtotime((string) $data['abone_dogum_tarihi'])
+            ? date('Y-m-d', strtotime((string) $data['abone_dogum_tarihi']))
             : null;
 
         $stmt->execute([
@@ -545,7 +550,11 @@ class KacakKontrolModel extends Model
             $tur,
             $data['tutanak_no'] ?? null,
             $data['abone_adi'] ?? null,
+            $data['abone_tc'] ?? null,
+            $aboneDogumTarihi,
+            $data['abone_tel'] ?? null,
             $data['sayac_no'] ?? null,
+            $data['sayac_markasi'] ?? null,
             $data['endeks'] ?? null,
             $sayi,
             isset($data['tutar']) && $data['tutar'] !== '' && $data['tutar'] !== null ? (float) $data['tutar'] : null,
@@ -562,8 +571,8 @@ class KacakKontrolModel extends Model
     {
         $count = max(0, min(self::MAX_SAHA_FOTO + 1, $count));
         $stmt = $this->db->prepare("UPDATE kacak_kontrol
-                                    SET beklenen_foto_sayisi = GREATEST(beklenen_foto_sayisi, ?)
-                                    WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+                                     SET beklenen_foto_sayisi = GREATEST(beklenen_foto_sayisi, ?)
+                                     WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
         return $stmt->execute([$count, $id, $this->firmaId()]);
     }
 
@@ -574,12 +583,12 @@ class KacakKontrolModel extends Model
     public function syncExpectedPhotoCount(int $kacakId): bool
     {
         $stmt = $this->db->prepare("UPDATE kacak_kontrol
-                                    SET beklenen_foto_sayisi = (
-                                        SELECT COUNT(*) FROM kacak_kontrol_fotograflari
-                                        WHERE kacak_id = ? AND medya_tipi = 'foto'
-                                          AND silinme_tarihi IS NULL AND arsivlendi = 0
-                                    )
-                                    WHERE id = ? AND firma_id = ?");
+                                     SET beklenen_foto_sayisi = (
+                                         SELECT COUNT(*) FROM kacak_kontrol_fotograflari
+                                         WHERE kacak_id = ? AND medya_tipi = 'foto'
+                                           AND silinme_tarihi IS NULL AND arsivlendi = 0
+                                     )
+                                     WHERE id = ? AND firma_id = ?");
         return $stmt->execute([$kacakId, $kacakId, $this->firmaId()]);
     }
 
@@ -609,9 +618,14 @@ class KacakKontrolModel extends Model
             }
         }
 
+        $aboneDogumTarihi = !empty($data['abone_dogum_tarihi']) && strtotime((string) $data['abone_dogum_tarihi'])
+            ? date('Y-m-d', strtotime((string) $data['abone_dogum_tarihi']))
+            : null;
+
         $stmt = $this->db->prepare("UPDATE kacak_kontrol SET
                 tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?,
-                tutanak_no = ?, abone_adi = ?, sayac_no = ?, endeks = ?, sayi = ?, aciklama = ?
+                tutanak_no = ?, abone_adi = ?, abone_tc = ?, abone_dogum_tarihi = ?, abone_tel = ?,
+                sayac_no = ?, sayac_markasi = ?, endeks = ?, sayi = ?, aciklama = ?
             WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
 
         return $stmt->execute([
@@ -622,7 +636,11 @@ class KacakKontrolModel extends Model
             $tur,
             $data['tutanak_no'] ?? null,
             $data['abone_adi'] ?? null,
+            $data['abone_tc'] ?? null,
+            $aboneDogumTarihi,
+            $data['abone_tel'] ?? null,
             $data['sayac_no'] ?? null,
+            $data['sayac_markasi'] ?? null,
             $data['endeks'] ?? null,
             max(1, (int) ($data['sayi'] ?? 1)),
             $data['aciklama'] ?? null,
@@ -644,17 +662,23 @@ class KacakKontrolModel extends Model
             throw new Exception('Geçersiz kaçak türü.');
         }
 
+        $aboneDogumTarihi = !empty($data['abone_dogum_tarihi']) && strtotime((string) $data['abone_dogum_tarihi'])
+            ? date('Y-m-d', strtotime((string) $data['abone_dogum_tarihi']))
+            : null;
+
         $ekipAdi = $this->buildEkipAdi($personelIds);
         $stmt = $this->db->prepare("UPDATE kacak_kontrol SET
                 tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?,
-                tutanak_no = ?, abone_adi = ?, sayac_no = ?, endeks = ?, sayi = ?, aciklama = ?
+                tutanak_no = ?, abone_adi = ?, abone_tc = ?, abone_dogum_tarihi = ?, abone_tel = ?,
+                sayac_no = ?, sayac_markasi = ?, endeks = ?, sayi = ?, aciklama = ?
             WHERE id = ? AND firma_id = ? AND bildiren_personel_id = ?
               AND onay_durumu = 'beklemede' AND durum <> 'iptal' AND silinme_tarihi IS NULL");
         return $stmt->execute([
             $data['tarih'] ?? date('Y-m-d'), implode(',', $personelIds), $ekipAdi,
             $this->normalizeIlce($data['ilce'] ?? ''), $tur,
             $data['tutanak_no'] ?? null, $data['abone_adi'] ?? null,
-            $data['sayac_no'] ?? null, $data['endeks'] ?? null,
+            $data['abone_tc'] ?? null, $aboneDogumTarihi, $data['abone_tel'] ?? null,
+            $data['sayac_no'] ?? null, $data['sayac_markasi'] ?? null, $data['endeks'] ?? null,
             max(1, (int) ($data['sayi'] ?? 1)), $data['aciklama'] ?? null,
             $id, $this->firmaId(), $personelId,
         ]);
@@ -1061,15 +1085,12 @@ class KacakKontrolModel extends Model
 
     /**
      * Haftalık teslim alma listesi.
-     * Fiziki teslim kuralı: Onikişubat/Dulkadiroğlu'ndaki tüm tutanaklar,
-     * diğer ilçelerde ise Kaçak ve Usülsüz evraklar teslim alınır.
+     * Tüm ilçelerdeki Kaçak, Usülsüz ve Abonesiz tutanak evrakları teslim alınır.
      * Önceki dönemlerden teslim alınmamış kayıtlar seçilen döneme devreder.
-     * Foto çıktısı ise yalnızca merkez ilçelerdeki Kaçak kayıtlar için gerekir.
+     * Foto çıktısı ise Kaçak kayıtlar için gerekir.
      */
     public function getTeslimAlmaListesi(string $baslangic, string $bitis): array
     {
-        $merkezPlaceholders = implode(',', array_fill(0, count(self::MERKEZ_ILCELER), '?'));
-
         $sql = "SELECT k.id, k.tarih, k.tutanak_no, k.abone_adi, k.ilce, k.tur, k.ekip_adi,
                        COALESCE(t.teslim_alindi, 0) AS teslim_alindi, t.teslim_tarihi
                 FROM kacak_kontrol k
@@ -1078,18 +1099,16 @@ class KacakKontrolModel extends Model
                  AND t.is_active = 1 AND t.deleted_at IS NULL
                 WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ?
                   AND " . self::raporKosulu('k') . "
-                  AND (k.ilce IN ($merkezPlaceholders) OR k.tur IN ('Kaçak', 'Usülsüz'))
                 ORDER BY k.ilce ASC, k.tarih ASC, k.tutanak_no ASC";
 
-        $params = array_merge([$this->firmaId(), $baslangic, $bitis], self::MERKEZ_ILCELER);
+        $params = [$this->firmaId(), $baslangic, $bitis];
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($rows as &$row) {
-            $merkezMi = in_array($row['ilce'], self::MERKEZ_ILCELER, true);
-            $row['sebep'] = $merkezMi ? 'Onikişubat/Dulkadiroğlu (tümü)' : 'Kaçak/Usülsüz evrak';
-            $row['foto_cikti_gerekli'] = ($merkezMi && $row['tur'] === 'Kaçak') ? 1 : 0;
+            $row['sebep'] = 'Tutanak evrakı';
+            $row['foto_cikti_gerekli'] = ($row['tur'] === 'Kaçak') ? 1 : 0;
             $row['teslim_durumu'] = (int) $row['teslim_alindi'] === 1 ? 'Teslim Alındı' : 'Teslim Alınmadı';
         }
         unset($row);
@@ -1121,9 +1140,8 @@ class KacakKontrolModel extends Model
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($rows as &$row) {
-            $merkezMi = in_array($row['ilce'], self::MERKEZ_ILCELER, true);
-            $row['sebep'] = $merkezMi ? 'Onikişubat/Dulkadiroğlu (tümü)' : 'Kaçak/Usülsüz evrak';
-            $row['foto_cikti_gerekli'] = ($merkezMi && $row['tur'] === 'Kaçak') ? 1 : 0;
+            $row['sebep'] = 'Tutanak evrakı';
+            $row['foto_cikti_gerekli'] = ($row['tur'] === 'Kaçak') ? 1 : 0;
             $row['teslim_durumu'] = (int) $row['teslim_alindi'] === 1 ? 'Teslim Alındı' : 'Teslim Alınmadı';
         }
         unset($row);
@@ -1143,7 +1161,6 @@ class KacakKontrolModel extends Model
                 FROM kacak_kontrol k
                 WHERE k.firma_id = ? AND k.id IN ($placeholders)
                   AND " . self::raporKosulu('k') . "
-                  AND (k.ilce IN ('Onikişubat', 'Dulkadiroğlu') OR k.tur IN ('Kaçak', 'Usülsüz'))
                 ON DUPLICATE KEY UPDATE teslim_alindi = 1, teslim_tarihi = NOW(),
                     teslim_alan_user_id = VALUES(teslim_alan_user_id), is_active = 1, deleted_at = NULL";
         $stmt = $this->db->prepare($sql);

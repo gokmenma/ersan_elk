@@ -867,7 +867,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <div>
                             <h5 class="mb-1"><i class="bx bx-printer me-1 text-primary"></i> Haftalık Teslim Alma Listesi</h5>
-                            <p class="small text-muted mb-0"><strong>Fiziki teslim alma:</strong> Onikişubat/Dulkadiroğlu'nda tüm tutanaklar + diğer ilçelerdeki Kaçak ve Usülsüz evraklar. <strong>Foto çıktısı:</strong> Yalnızca Onikişubat/Dulkadiroğlu'ndaki Kaçak kayıtlar.</p>
+                            <p class="small text-muted mb-0"><strong>Fiziki teslim alma:</strong> Tüm ilçelerdeki tutanaklar. <strong>Foto çıktısı:</strong> Kaçak kayıtlar.</p>
                         </div>
                     </div>
 

@@ -4866,6 +4866,22 @@ try {
             ], $kacakId);
             if ($duplicate) response(false, null, 'Tutanak veya sayaç bilgisi başka bir kayıtta zaten bulunuyor.');
 
+            $aboneTc = trim((string) ($_POST['abone_tc'] ?? ''));
+            if ($aboneTc === '') {
+                response(false, null, 'TC Kimlik veya Vergi No alanı zorunludur.');
+            }
+            if (!ctype_digit($aboneTc) || (strlen($aboneTc) !== 10 && strlen($aboneTc) !== 11)) {
+                response(false, null, 'TC Kimlik No 11 haneli veya Vergi No 10 haneli rakamlardan oluşmalıdır.');
+            }
+
+            $aboneDogumTarihi = trim((string) ($_POST['abone_dogum_tarihi'] ?? ''));
+            if (strlen($aboneTc) === 11 && $aboneDogumTarihi === '') {
+                response(false, null, 'TC Kimlik No girildiğinde Doğum Tarihi alanı zorunludur.');
+            }
+            if ($aboneDogumTarihi !== '' && !strtotime($aboneDogumTarihi)) {
+                response(false, null, 'Geçerli bir doğum tarihi giriniz.');
+            }
+
             $hasExistingTutanak = $KacakModel->countPhotos($kacakId, 'tutanak') > 0;
             $hasNewTutanak = !empty($_FILES['tutanak_foto']['name']) && ($_FILES['tutanak_foto']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
             if (!$hasExistingTutanak && !$hasNewTutanak) {
@@ -4877,7 +4893,11 @@ try {
                 'ilce' => $ilce, 'tur' => $_POST['tur'] ?? 'Kaçak',
                 'tutanak_no' => trim((string) ($_POST['tutanak_no'] ?? '')) ?: null,
                 'abone_adi' => trim((string) ($_POST['abone_adi'] ?? '')) ?: null,
+                'abone_tc' => $aboneTc,
+                'abone_dogum_tarihi' => $aboneDogumTarihi !== '' ? date('Y-m-d', strtotime($aboneDogumTarihi)) : null,
+                'abone_tel' => trim((string) ($_POST['abone_tel'] ?? '')) ?: null,
                 'sayac_no' => trim((string) ($_POST['sayac_no'] ?? '')) ?: null,
+                'sayac_markasi' => trim((string) ($_POST['sayac_markasi'] ?? '')) ?: null,
                 'endeks' => trim((string) ($_POST['endeks'] ?? '')) ?: null,
                 'sayi' => max(1, (int) ($_POST['sayi'] ?? 1)),
                 'aciklama' => trim((string) ($_POST['aciklama'] ?? '')) ?: null,
@@ -5297,6 +5317,22 @@ try {
                 response(false, null, $msg);
             }
 
+            $aboneTc = trim((string) ($_POST['abone_tc'] ?? ''));
+            if ($aboneTc === '') {
+                response(false, null, 'TC Kimlik veya Vergi No alanı zorunludur.');
+            }
+            if (!ctype_digit($aboneTc) || (strlen($aboneTc) !== 10 && strlen($aboneTc) !== 11)) {
+                response(false, null, 'TC Kimlik No 11 haneli veya Vergi No 10 haneli rakamlardan oluşmalıdır.');
+            }
+
+            $aboneDogumTarihi = trim((string) ($_POST['abone_dogum_tarihi'] ?? ''));
+            if (strlen($aboneTc) === 11 && $aboneDogumTarihi === '') {
+                response(false, null, 'TC Kimlik No girildiğinde Doğum Tarihi alanı zorunludur.');
+            }
+            if ($aboneDogumTarihi !== '' && !strtotime($aboneDogumTarihi)) {
+                response(false, null, 'Geçerli bir doğum tarihi giriniz.');
+            }
+
             if ($kacakClientUuid !== '') {
                 $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid, true);
                 if ($mevcutKayit) {
@@ -5321,7 +5357,11 @@ try {
                     'tur' => $_POST['tur'] ?? 'Kaçak',
                     'tutanak_no' => $_POST['tutanak_no'] ?? null,
                     'abone_adi' => $_POST['abone_adi'] ?? null,
+                    'abone_tc' => $aboneTc,
+                    'abone_dogum_tarihi' => $aboneDogumTarihi !== '' ? date('Y-m-d', strtotime($aboneDogumTarihi)) : null,
+                    'abone_tel' => trim((string) ($_POST['abone_tel'] ?? '')) ?: null,
                     'sayac_no' => $_POST['sayac_no'] ?? null,
+                    'sayac_markasi' => trim((string) ($_POST['sayac_markasi'] ?? '')) ?: null,
                     'endeks' => $_POST['endeks'] ?? null,
                     'sayi' => $_POST['sayi'] ?? 1,
                     'aciklama' => $_POST['aciklama'] ?? null,

@@ -6,6 +6,7 @@ cache/*
 # /**backups klasorunu ekle (yedek dosyalari repoya girmesin) */
 backups/*
 !backups/.htaccess
+/*.sql
 
 # /**uploads klasorunu ekle */
 uploads/*
