@@ -439,7 +439,8 @@ Bordro hesaplama etki alani:
 
 - Hesaplama tarihi dolu olsa da muhasebe Excel ödeme özeti liste ve detayın kullandığı `hesaplaOrtakGosterimDegerleri()` sonucundan alınır. Eski `banka_odemesi` kaydı otomatik dağıtımda güncel hesabın yerine geçmez; manuel dağıtım ortak hesabın kurallarıyla korunur.
 - “Ödenecek Net Maaş” sütunu toplam net hakediş değil, **banka ödemesidir**.
-- Prim / İkramiye sütunundan yalnızca ortak hesapta yemek havuzuna aktarılan prim payı çıkarılır. Elden seçilen prim, yemek limitini aşan bakiye ve dahil yardım modu etkin olmayan personelin primi korunur. Puantaj/sayaç/kaçak kontrol otomatik kazançları bu sütuna eklenmez.
-- Pay hesabında önce prim dışındaki yemek hedefi karşılanır; kalan yemek tutarı banka işaretli prim toplamıyla sınırlandırılır. Günlük yuvarlama farkı primden bağımsız tutulur; mevcut yemek, hakediş ve ödeme dağıtımı hesapları değiştirilmez.
+- Muhasebe Excel'indeki Yemek sütunu, maaşa dahil yemek yardımına ek olarak ayrı ek ödeme kaydıyla verilen nakit/banka yemek yardımını da içerir. Kart/Sodexo yöntemindeki yemek ödemesi yalnızca Sodexo / Kart sütununda gösterilir ve Yemek sütununda ikinci kez sayılmaz. Ayrı yemek yardımında fiilî gün bulunmuyorsa ortak hesaptaki çalışma günü kullanılır.
+- Maaşa dahil yardım modunda banka matrahına eklenen primin tamamı muhasebe Excel'indeki Prim / İkramiye sütunundan çıkarılır. Yemek limitini aşarak elden ödemede kalan kısmı da bu sütunda tekrar gösterilmez; elden ödeme dağılımında kalır. Elden seçilen prim ile dahil yardım modu etkin olmayan personelin primi korunur. Puantaj/sayaç/kaçak kontrol otomatik kazançları bu sütuna eklenmez.
+- Bu gizleme yalnızca muhasebe aktarımının Prim / İkramiye sütununa uygulanır; günlük yemek yuvarlaması, hakediş ve banka/elden ödeme dağıtımı değiştirilmez.
 - Prim kaydı ve bordro detayındaki asıl kazanç silinmez; bu ayrıştırma yalnızca muhasebe aktarımında mükerrer toplamı önler.
 - Maaşa dahil personelde elden seçilen manuel prim de kayıt hesabında hedef hakedişe eklenir; banka seçili olmaması kazancı ortadan kaldırmaz. Liste–kayıt–detay–Excel karşılaştırmasında banka ve elden seçimi birlikte doğrulanır.

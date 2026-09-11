@@ -79,14 +79,19 @@ final class BordroBankaDagilimiTest extends TestCase
         $this->assertKayitGosterim('Prim Usülü', 0, 'Manuel prim', 500, false, false, true);
     }
 
-    public function testMuhasebePrimYemekPayiVeKayitListeExcelTutarliligi(): void
+    public function testMuhasebedeBankaSeciliPrimTamamenGizlenirVeListeExcelTutarlidir(): void
     {
         $this->assertKayitGosterim('Net', 1, 'Manuel prim', 0, false, false, false, true, 3000);
         $this->assertKayitGosterim('Net', 1, 'Manuel prim', 0, false, false, false, true, 600);
         $this->assertKayitGosterim('Net', 0, 'Manuel prim', 0, false, false, false, true, 3000);
     }
 
-    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600): void
+    public function testHariciNakitYemekMuhasebeListesindeGosterilir(): void
+    {
+        $this->assertKayitGosterim('Net', 1, 'Manuel prim', 0, false, false, false, false, 600, true);
+    }
+
+    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false): void
     {
         $record = (object) [
             'id' => 1, 'personel_id' => 1, 'donem_id' => 1,
@@ -103,6 +108,9 @@ final class BordroBankaDagilimiTest extends TestCase
             (object) ['id' => 1, 'tur' => 'prim', 'tutar' => $primAmount, 'resmi_tutar' => 0, 'aciklama' => $primAciklama, 'banka_matrahina_ekle' => $bankaSecimi],
             (object) ['id' => 2, 'tur' => 'diger', 'tutar' => $inclusive ? 0 : 1200, 'resmi_tutar' => 0, 'aciklama' => 'Diğer ödeme', 'banka_matrahina_ekle' => 0],
         ];
+        if ($hariciYemek) {
+            $payments[] = (object) ['id' => 3, 'tur' => 'yemek_yardimi_tum', 'tutar' => 300, 'resmi_tutar' => 0, 'aciklama' => '[Yemek Yardımı] Günlük', 'banka_matrahina_ekle' => 1];
+        }
         $deductions = [(object) ['id' => 1, 'tur' => 'ozel_kesinti', 'tutar' => $kesinti, 'aciklama' => 'Özel kesinti', 'hesaplama_tipi' => $eldenKesinti ? 'elden_tutardan' : 'sabit']];
         $sources = [
             'getDonemEkOdemeleriListe', 'getDonemKesintileriListe', 'getHistoricalGorevGecmisi',
@@ -154,7 +162,7 @@ final class BordroBankaDagilimiTest extends TestCase
         });
         $this->setProperty($model, 'db', $pdo);
         $params = [];
-        foreach (['prim', 'diger'] as $code) {
+        foreach (['prim', 'diger', 'yemek_yardimi_tum'] as $code) {
             $params[$code] = (object) ['etiket' => $code, 'hesaplama_tipi' => 'net', 'odeme_yontemi' => 'elden', 'sgk_matrahi_dahil' => 0, 'gelir_vergisi_dahil' => 0, 'damga_vergisi_dahil' => 0];
         }
         $paramModel = $this->getMockBuilder(BordroParametreModel::class)->disableOriginalConstructor()->onlyMethods(['getByKod', 'getGenelAyar', 'hesaplaGelirVergisi', 'hesaplaAsgariUcretGelirVergisiIstisnasi'])->getMock();
@@ -173,18 +181,26 @@ final class BordroBankaDagilimiTest extends TestCase
             self::assertTrue($display['karisikMaasGecmisi']);
             self::assertFalse($display['isInclusive']);
         }
-        $expectedBank = $manuel ? 25000.0 : max(0.0, 28075.5 + ($bankaSecimi ? 600 : 0) - ($eldenKesinti ? 0 : $kesinti));
-        $expectedNet = 31800.0 - $kesinti;
+        $expectedBank = $manuel ? 25000.0 : max(0.0, 28075.5 + ($bankaSecimi ? 600 : 0) + ($hariciYemek ? 300 : 0) - ($eldenKesinti ? 0 : $kesinti));
+        $expectedNet = 31800.0 + ($hariciYemek ? 300 : 0) - $kesinti;
         if ($inclusive) {
             $meal = $bankaSecimi ? ($primAmount === 3000.0 ? 7800.0 : 5538.0) : 4940.0;
             $expectedBank = 28075.5 + $meal;
             $expectedNet = 33000.0 + $primAmount + ($bankaSecimi && $primAmount === 3000.0 ? 0.0 : ($bankaSecimi ? 13.5 : 15.5));
             self::assertEquals($meal, $display['mealAllowanceDeduction']);
-            self::assertEquals($bankaSecimi ? ($primAmount === 3000.0 ? 124.5 : 0.0) : $primAmount, $display['muhasebePrimTutari']);
+            self::assertEquals($bankaSecimi ? 0.0 : $primAmount, $display['muhasebePrimTutari']);
         }
         $excel = $model->getMuhasebeOdemeOzeti($display);
         self::assertSame($expectedBank, $excel['net_maas']);
-        self::assertEquals($display['mealAllowanceDeduction'], $excel['nakit_yemek']);
+        self::assertEquals(
+            $display['mealAllowanceDeduction'] + ($hariciYemek ? 300 : 0),
+            $excel['nakit_yemek']
+        );
+        if ($hariciYemek) {
+            self::assertSame(300.0, $display['muhasebeHariciYemekTutari']);
+            self::assertSame(round(300 / $display['calismaGunu'], 2), $excel['gunluk_nakit']);
+        }
+        self::assertSame($display['muhasebePrimTutari'], $excel['prim']);
         if (!$inclusive) {
             self::assertSame($primAmount, $excel['prim']);
         }
