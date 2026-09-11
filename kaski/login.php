@@ -10,12 +10,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (($_SESSION['portal_scope'] ?? '') === 'kaski' && !empty($_SESSION['user_id'])) {
+$User = new UserModel();
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+if (!empty($_SESSION['loggedin'])
+    && $currentUserId > 0
+    && $User->hasRoleName($currentUserId, 'KASKİ Görüntüleme')) {
+    $_SESSION['portal_scope'] = 'kaski';
     header('Location: index.php');
     exit;
 }
 
-$User = new UserModel();
 $error = '';
 $username = '';
 $csrfToken = $_SESSION['kaski_login_csrf'] ?? bin2hex(random_bytes(32));

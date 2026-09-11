@@ -11,8 +11,7 @@ $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $User = new UserModel();
 $user = $userId > 0 ? $User->find($userId) : null;
 
-if (($_SESSION['portal_scope'] ?? '') !== 'kaski'
-    || !$user
+if (!$user
     || ($user->durum ?? 'Aktif') === 'Pasif'
     || !$User->hasRoleName($userId, 'KASKİ Görüntüleme')
     || empty($_SESSION['firma_id'])) {
@@ -20,6 +19,7 @@ if (($_SESSION['portal_scope'] ?? '') !== 'kaski'
     exit;
 }
 
+$_SESSION['portal_scope'] = 'kaski';
 $_SESSION['user'] = $user;
 $_GET['p'] = 'kacak/list';
 $page = 'kacak/list';
@@ -69,6 +69,9 @@ include $projectRoot . '/layouts/main.php';
             </div>
             <div class="d-flex align-items-center gap-2">
                 <span class="d-none d-md-inline text-muted"><?= $safeUserName ?></span>
+                <a class="btn btn-outline-primary btn-sm" href="kaski/yonetim-paneli.php">
+                    <i class="bx bx-grid-alt me-1"></i><span class="d-none d-sm-inline">Yönetim Paneli</span>
+                </a>
                 <a class="btn btn-outline-danger btn-sm" href="kaski/logout.php"><i class="bx bx-log-out me-1"></i>Çıkış</a>
             </div>
         </div>

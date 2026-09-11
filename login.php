@@ -32,7 +32,7 @@ if (isset($_COOKIE["remember_me"])) {
     $decrypted_id = Security::decrypt($_COOKIE["remember_me"]);
     if ($decrypted_id) {
         $user = $User->find($decrypted_id);
-        if ($user && ($user->durum ?? 'Aktif') !== 'Pasif' && !$User->hasRoleName((int) $user->id, 'KASKİ Görüntüleme')) {
+        if ($user && ($user->durum ?? 'Aktif') !== 'Pasif') {
             session_regenerate_id(true);
             $_SESSION["loggedin"] = true;
             $_SESSION["user"] = $user;
@@ -126,9 +126,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($username_err)) {
             // Durum Kontrolü
             if (($user->durum ?? 'Aktif') === 'Pasif') {
                 $username_err = "Hesabınız pasif durumdadır. Lütfen yönetici ile iletişime geçiniz.";
-            } elseif ($User->hasRoleName((int) $user->id, 'KASKİ Görüntüleme')) {
-                // KASKİ hesapları genel yönetim paneline alınmaz.
-                $username_err = "Bu hesap yalnızca KASKİ portalından giriş yapabilir.";
             } else {
                 $hashed_password = $user->password;
 

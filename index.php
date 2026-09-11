@@ -35,10 +35,6 @@ if (!$currentUserStatusCheck || ($currentUserStatusCheck->durum ?? 'Aktif') === 
     header("Location: logout.php?status=inactive");
     exit();
 }
-if ($StatusCheckUser->hasRoleName($currentUserId, 'KASKİ Görüntüleme')) {
-    header('Location: kaski/logout.php');
-    exit();
-}
 
 $Menus = new MenuModel();
 
