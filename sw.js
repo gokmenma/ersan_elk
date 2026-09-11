@@ -57,7 +57,12 @@ self.addEventListener("activate", (event) => {
 // Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
   const url = event.request.url;
-  const requestScheme = new URL(url).protocol;
+  let requestScheme = "";
+  try {
+    requestScheme = new URL(url).protocol;
+  } catch (e) {
+    return;
+  }
   if (requestScheme !== "http:" && requestScheme !== "https:") {
     return;
   }

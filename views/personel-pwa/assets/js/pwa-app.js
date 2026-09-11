@@ -732,8 +732,7 @@ const Push = {
 
   init: async () => {
     if (!window.isSecureContext) {
-      console.error("Push messaging requires a secure context (HTTPS).");
-      // Toast.show("Bildirimler için HTTPS bağlantısı gereklidir!", "error");
+      console.warn("Push bildirimleri güvenli bağlantı (HTTPS veya localhost) gerektirir.");
       return;
     }
 

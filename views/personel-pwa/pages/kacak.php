@@ -961,10 +961,6 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 const ekipIds=String(editData.personel_ids||'').split(',').map(Number);
                 const arkadas=ekipIds.find(id=>id!==BEN);
                 if(arkadas) document.getElementById('kacak-ekip-arkadasi').value=String(arkadas);
-                guncelleTcDogumZorunlulugu();
-            } else {
-                guncelleTcDogumZorunlulugu();
-            }
 
                 const fotolar = editData.fotograflar || [];
                 const tutanakFoto = fotolar.find(f => f.tur === 'tutanak');
@@ -1036,6 +1032,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         </div>`;
                 }
             }
+            guncelleTcDogumZorunlulugu();
             Modal.open('kacak-bildir-modal');
         };
 

@@ -7,7 +7,7 @@
 // temizlenir hem de importScripts URL'i değişir. Kayıt updateViaCache belirtmediği
 // için varsayılan "imports" geçerlidir ve sürümsüz import HTTP önbelleğinden
 // gelip service worker'ı eski kodla çalıştırır.
-const KUYRUK_SURUM = "17";
+const KUYRUK_SURUM = "18";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v1";
 const OFFLINE_URL = "offline.html";
@@ -18,7 +18,7 @@ const PRECACHE_ASSETS = [
   "./assets/css/tailwind-build.css",
   "./assets/js/pwa-app.js",
   "./assets/js/pwa-offline-queue.js",
-  "../../assets/js/exif-cekim.js",
+  "./assets/js/exif-cekim.js",
   "./manifest.json",
   "./offline.html",
   "./assets/icons/icon-144-new.png",
@@ -46,9 +46,7 @@ self.addEventListener("install", (event) => {
           ),
         ),
       )
-      .then(() => {
-        self.skipWaiting();
-      }),
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -61,16 +59,30 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME && cacheName !== SAYFA_CACHE) {
-              console.log("Deleting old cache:", cacheName);
+              console.log("Eski önbellek siliniyor:", cacheName);
               return caches.delete(cacheName);
             }
           }),
         );
       })
-      .then(() => {
-        self.clients.claim();
-      }),
+      .then(() => self.clients.claim()),
   );
+});
+
+// Web sayfasından (pwa-app.js) gelen bildirimleri dinle
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+
+  // Giriş yapıldığında kullanıcının sık kullandığı sayfaları arka planda önbelleğe al
+  if (event.data && event.data.type === "SAYFALARI_ONBELLEKLE") {
+    const sayfalar = Array.isArray(event.data.sayfalar) ? event.data.sayfalar : [];
+    if (sayfalar.length > 0) {
+      event.waitUntil(sayfalariOnbellekle(sayfalar));
+    }
+  }
 });
 
 /**
@@ -124,8 +136,19 @@ async function sayfalariOnbellekle(sayfalar) {
 
 // Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
+  const url = event.request.url;
+  let requestScheme = "";
+  try {
+    requestScheme = new URL(url).protocol;
+  } catch (e) {
+    return;
+  }
+  if (requestScheme !== "http:" && requestScheme !== "https:") {
+    return;
+  }
+
   // API isteklerini her zaman networkten al
-  if (event.request.url.includes("api.php")) {
+  if (url.includes("api.php") || url.includes("kacak-foto") || url.includes("foto-goruntule")) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -142,6 +165,11 @@ self.addEventListener("fetch", (event) => {
           );
         }),
     );
+    return;
+  }
+
+  // POST/PUT/DELETE gibi istekler önbelleklenmez
+  if (event.request.method !== "GET") {
     return;
   }
 
@@ -183,12 +211,12 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
-          // Başarılı yanıtları önbelleğe al
-          if (networkResponse && networkResponse.status === 200) {
+          // Başarılı GET yanıtlarını önbelleğe al
+          if (networkResponse && networkResponse.status === 200 && event.request.method === "GET") {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+              cache.put(event.request, responseToCache).catch(() => {});
+            }).catch(() => {});
           }
           return networkResponse;
         })
