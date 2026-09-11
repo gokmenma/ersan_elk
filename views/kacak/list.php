@@ -3487,13 +3487,18 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             const $kutu = $('#ekipOzetIcerik');
             $kutu.html('<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Rapor hazırlanıyor...</p></div>');
 
-            $.get('views/puantaj/api.php', {
+            const params = {
                 action: 'get-report-table',
                 tab: 'kacakkontrol',
                 year: y,
                 month: m,
                 filter_type: 'period'
-            }).done(function (html) {
+            };
+            <?php if ($kaskiSaltOkunurPortal): ?>
+            params.kaski = 1;
+            <?php endif; ?>
+
+            $.get('views/puantaj/api.php', params).done(function (html) {
                 $kutu.html(html);
                 ekipOzetYuklendi = true;
 
@@ -3543,12 +3548,16 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         }
 
         $('#btnEkipOzetExcel').on('click', function () {
-            const q = $.param({
+            const excelParams = {
                 tab: 'kacakkontrol',
                 year: currentOzetYear,
                 month: currentOzetMonth,
                 filter_type: 'period'
-            });
+            };
+            <?php if ($kaskiSaltOkunurPortal): ?>
+            excelParams.kaski = 1;
+            <?php endif; ?>
+            const q = $.param(excelParams);
             window.location.href = 'views/puantaj/rapor-excel.php?' + q;
         });
 

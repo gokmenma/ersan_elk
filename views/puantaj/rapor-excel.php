@@ -76,7 +76,7 @@ $daysCount = count($reportDates);
 $manuelDusumMap = [];
 if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
     if ($activeTab === 'kacakkontrol') {
-        $isKaski = !empty($_GET['kaski']) && $_GET['kaski'] == '1';
+        $isKaski = (!empty($_GET['kaski']) && $_GET['kaski'] == '1') || (($_SESSION['portal_scope'] ?? '') === 'kaski');
         $sqlDusum = "SELECT ekip_adi as ekip_kodu_id, SUM(ABS(sayi)) as total_dusum 
                      FROM kacak_kontrol k
                      WHERE k.firma_id = ? 
@@ -123,7 +123,7 @@ if ($activeTab === 'okuma') {
     $summary = $EndeksOkuma->getSummaryByRange($startDateStr, $endDateStr, $filterPersonelId, $filterRegion, $filterDefter);
     $title = "Okuma Özet Raporu";
 } elseif ($activeTab === 'kacakkontrol') {
-    $isKaski = !empty($_GET['kaski']) && $_GET['kaski'] == '1';
+    $isKaski = (!empty($_GET['kaski']) && $_GET['kaski'] == '1') || (($_SESSION['portal_scope'] ?? '') === 'kaski');
     $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr, $filterRegion, $isKaski ? 'kaski_kacak' : 'standart');
     $title = $isKaski ? "KASKI Personelleri Kaçak Kontrol Özet Raporu" : "Kaçak Kontrol Özet Raporu";
 } elseif ($activeTab === 'sokme_takma') {

@@ -31,6 +31,11 @@ class KacakSicilEksikModel extends Model
 
     const KRITIK_GUN = 7;
 
+    public static function isKaskiPortal(): bool
+    {
+        return ($_SESSION['portal_scope'] ?? '') === 'kaski';
+    }
+
     public function __construct()
     {
         parent::__construct($this->table);
@@ -115,6 +120,15 @@ class KacakSicilEksikModel extends Model
     {
         $where = ['s.firma_id = ?', 's.silinme_tarihi IS NULL'];
         $params = [$this->firmaId()];
+
+        if (self::isKaskiPortal() || !empty($filters['kaski_only']) || (($filters['personel_tipi'] ?? '') === 'kaski_kacak')) {
+            $where[] = "EXISTS (
+                SELECT 1 FROM personel p 
+                WHERE p.personel_tipi = 'kaski_kacak' 
+                  AND (FIND_IN_SET(p.id, s.atanan_personel_ids) 
+                       OR (k.id IS NOT NULL AND (p.id = k.bildiren_personel_id OR FIND_IN_SET(p.id, k.personel_ids))))
+            )";
+        }
 
         if (!empty($filters['durum'])) {
             $durumlar = is_array($filters['durum']) ? $filters['durum'] : [$filters['durum']];
@@ -321,6 +335,15 @@ class KacakSicilEksikModel extends Model
             $params[] = $personelId;
         }
 
+        if (self::isKaskiPortal()) {
+            $where .= " AND EXISTS (
+                SELECT 1 FROM personel p 
+                WHERE p.personel_tipi = 'kaski_kacak' 
+                  AND (FIND_IN_SET(p.id, atanan_personel_ids) 
+                       OR EXISTS (SELECT 1 FROM kacak_kontrol kk WHERE kk.id = kacak_sicil_eksik.kacak_id AND (p.id = kk.bildiren_personel_id OR FIND_IN_SET(p.id, kk.personel_ids))))
+            )";
+        }
+
         $stmt = $this->db->prepare("SELECT
                 SUM(CASE WHEN durum = 'beklemede' THEN 1 ELSE 0 END) AS beklemede,
                 SUM(CASE WHEN durum = 'yanitlandi' THEN 1 ELSE 0 END) AS yanitlandi,
@@ -353,12 +376,13 @@ class KacakSicilEksikModel extends Model
             return [];
         }
 
+        $whereKaski = self::isKaskiPortal() ? " AND EXISTS (SELECT 1 FROM personel p WHERE p.personel_tipi = 'kaski_kacak' AND (p.id = k.bildiren_personel_id OR FIND_IN_SET(p.id, k.personel_ids)))" : "";
         $stmt = $this->db->prepare("SELECT k.id, k.tutanak_no, k.tarih, k.abone_adi, k.ilce, k.tur,
                                            k.ekip_adi, k.sayac_no, k.abone_tc, k.abone_dogum_tarihi,
                                            k.sicil_durumu, k.durum AS tutanak_durumu
                                     FROM kacak_kontrol k
                                     WHERE k.firma_id = ? AND k.silinme_tarihi IS NULL
-                                      AND k.tutanak_no LIKE ?
+                                      AND k.tutanak_no LIKE ?{$whereKaski}
                                     ORDER BY k.tarih DESC, k.id DESC
                                     LIMIT " . (int) $limit);
         $stmt->execute([$this->firmaId(), '%' . $terim . '%']);

@@ -80,6 +80,24 @@ class KacakKontrolModel extends Model
                 AND NOT ({$p}durum = 'iptal' AND {$p}hakedisten_dus = 1)";
     }
 
+    public static function isKaskiPortal(): bool
+    {
+        return ($_SESSION['portal_scope'] ?? '') === 'kaski';
+    }
+
+    /**
+     * KASKİ personellerine ('kaski_kacak') ait kayıtları filtreleyen ortak SQL koşulu.
+     */
+    public static function kaskiPersonelKosulu(string $alias = 'k'): string
+    {
+        $p = $alias !== '' ? $alias . '.' : '';
+        return "EXISTS (
+            SELECT 1 FROM personel p 
+            WHERE p.personel_tipi = 'kaski_kacak' 
+              AND (p.id = {$p}bildiren_personel_id OR FIND_IN_SET(p.id, {$p}personel_ids))
+        )";
+    }
+
     private function firmaId(): int
     {
         return (int) ($_SESSION['firma_id'] ?? 0);
@@ -160,6 +178,14 @@ class KacakKontrolModel extends Model
     {
         $where = ['k.firma_id = ?', 'k.silinme_tarihi IS NULL'];
         $params = [$this->firmaId()];
+
+        $isKaski = self::isKaskiPortal()
+            || !empty($filters['kaski_only'])
+            || (($filters['personel_tipi'] ?? '') === 'kaski_kacak');
+
+        if ($isKaski) {
+            $where[] = self::kaskiPersonelKosulu('k');
+        }
 
         if (!empty($filters['tarih_baslangic'])) {
             $where[] = 'k.tarih >= ?';
@@ -326,10 +352,11 @@ class KacakKontrolModel extends Model
 
     public function getRecord(int $id): ?array
     {
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('k') : "";
         $stmt = $this->db->prepare("SELECT k.*, bp.adi_soyadi AS bildiren_adi
                                     FROM kacak_kontrol k
                                     LEFT JOIN personel bp ON bp.id = k.bildiren_personel_id
-                                    WHERE k.id = ? AND k.firma_id = ? AND k.silinme_tarihi IS NULL");
+                                    WHERE k.id = ? AND k.firma_id = ? AND k.silinme_tarihi IS NULL{$whereKaski}");
         $stmt->execute([$id, $this->firmaId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
@@ -344,8 +371,9 @@ class KacakKontrolModel extends Model
 
     public function getPendingCount(): int
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM kacak_kontrol
-                                    WHERE firma_id = ? AND onay_durumu = 'beklemede' AND silinme_tarihi IS NULL");
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('k') : "";
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM kacak_kontrol k
+                                    WHERE k.firma_id = ? AND k.onay_durumu = 'beklemede' AND k.silinme_tarihi IS NULL{$whereKaski}");
         $stmt->execute([$this->firmaId()]);
         return (int) $stmt->fetchColumn();
     }
@@ -748,11 +776,12 @@ class KacakKontrolModel extends Model
     {
         $limit = max(1, min(500, $limit));
         $like = '%' . trim($arama) . '%';
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('') : "";
         $stmt = $this->db->prepare("SELECT id, tarih, tutanak_no, abone_adi, ilce, tur
                                     FROM kacak_kontrol
                                     WHERE firma_id = ? AND silinme_tarihi IS NULL
                                       AND durum = 'aktif' AND onay_durumu = 'onaylandi'
-                                      AND (tutanak_no LIKE ? OR abone_adi LIKE ? OR sayac_no LIKE ?)
+                                      AND (tutanak_no LIKE ? OR abone_adi LIKE ? OR sayac_no LIKE ?){$whereKaski}
                                     ORDER BY tarih DESC, id DESC
                                     LIMIT {$limit}");
         $stmt->execute([$this->firmaId(), $like, $like, $like]);
@@ -786,16 +815,14 @@ class KacakKontrolModel extends Model
         }
 
         $placeholders = implode(',', array_fill(0, count($kacakIds), '?'));
-        $sql = "SELECT * FROM kacak_kontrol_fotograflari
-                WHERE kacak_id IN ($placeholders)
-                  AND silinme_tarihi IS NULL AND arsivlendi = 0
-                ORDER BY tur DESC, id ASC";
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare("SELECT * FROM kacak_kontrol_fotograflari
+                                    WHERE kacak_id IN ($placeholders)
+                                      AND silinme_tarihi IS NULL AND arsivlendi = 0
+                                    ORDER BY kacak_id ASC, tur DESC, id ASC");
         $stmt->execute($kacakIds);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $grouped = [];
-        foreach ($rows as $row) {
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $grouped[(int) $row['kacak_id']][] = $row;
         }
         return $grouped;
@@ -980,11 +1007,12 @@ class KacakKontrolModel extends Model
      */
     public function getPhotosForArchive(string $baslangic, string $bitis): array
     {
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('k') : "";
         $stmt = $this->db->prepare("SELECT f.*, k.tarih, k.ilce, k.tur AS kayit_turu, k.tutanak_no, k.abone_adi, k.ekip_adi
                                     FROM kacak_kontrol_fotograflari f
                                     INNER JOIN kacak_kontrol k ON k.id = f.kacak_id
                                     WHERE f.firma_id = ? AND f.silinme_tarihi IS NULL AND f.arsivlendi = 0
-                                      AND k.tarih BETWEEN ? AND ?
+                                      AND k.tarih BETWEEN ? AND ?{$whereKaski}
                                     ORDER BY k.tarih ASC, k.ilce ASC, f.id ASC");
         $stmt->execute([$this->firmaId(), $baslangic, $bitis]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1012,10 +1040,11 @@ class KacakKontrolModel extends Model
      */
     public function getGunlukRapor(string $tarih): array
     {
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('') : "";
         $stmt = $this->db->prepare("SELECT ilce, tur, SUM(sayi) AS toplam
                                     FROM kacak_kontrol
                                     WHERE firma_id = ? AND tarih = ?
-                                      AND " . self::raporKosulu() . "
+                                      AND " . self::raporKosulu() . "{$whereKaski}
                                     GROUP BY ilce, tur");
         $stmt->execute([$this->firmaId(), $tarih]);
 
@@ -1069,6 +1098,7 @@ class KacakKontrolModel extends Model
      */
     public function getBolgeBazliOzet(string $baslangic, string $bitis): array
     {
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('') : "";
         $stmt = $this->db->prepare("SELECT ilce,
                                            SUM(CASE WHEN tur = 'Abonesiz' THEN sayi ELSE 0 END) AS abonesiz,
                                            SUM(CASE WHEN tur = 'Kaçak' THEN sayi ELSE 0 END) AS kacak,
@@ -1076,7 +1106,7 @@ class KacakKontrolModel extends Model
                                            SUM(sayi) AS toplam
                                     FROM kacak_kontrol
                                     WHERE firma_id = ? AND tarih BETWEEN ? AND ?
-                                      AND " . self::raporKosulu() . "
+                                      AND " . self::raporKosulu() . "{$whereKaski}
                                     GROUP BY ilce
                                     ORDER BY toplam DESC");
         $stmt->execute([$this->firmaId(), $baslangic, $bitis]);
@@ -1091,6 +1121,7 @@ class KacakKontrolModel extends Model
      */
     public function getTeslimAlmaListesi(string $baslangic, string $bitis): array
     {
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('k') : "";
         $sql = "SELECT k.id, k.tarih, k.tutanak_no, k.abone_adi, k.ilce, k.tur, k.ekip_adi,
                        COALESCE(t.teslim_alindi, 0) AS teslim_alindi, t.teslim_tarihi
                 FROM kacak_kontrol k
@@ -1098,7 +1129,7 @@ class KacakKontrolModel extends Model
                   ON t.kacak_id = k.id AND t.firma_id = k.firma_id
                  AND t.is_active = 1 AND t.deleted_at IS NULL
                 WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ?
-                  AND " . self::raporKosulu('k') . "
+                  AND " . self::raporKosulu('k') . "{$whereKaski}
                 ORDER BY k.ilce ASC, k.tarih ASC, k.tutanak_no ASC";
 
         $params = [$this->firmaId(), $baslangic, $bitis];
@@ -1123,6 +1154,7 @@ class KacakKontrolModel extends Model
             return [];
         }
 
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('k') : "";
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $sql = "SELECT k.id, k.tarih, k.tutanak_no, k.abone_adi, k.ilce, k.tur, k.ekip_adi,
                        COALESCE(t.teslim_alindi, 0) AS teslim_alindi, t.teslim_tarihi
@@ -1131,7 +1163,7 @@ class KacakKontrolModel extends Model
                   ON t.kacak_id = k.id AND t.firma_id = k.firma_id
                  AND t.is_active = 1 AND t.deleted_at IS NULL
                 WHERE k.firma_id = ? AND k.id IN ($placeholders)
-                  AND " . self::raporKosulu('k') . "
+                  AND " . self::raporKosulu('k') . "{$whereKaski}
                 ORDER BY k.ilce ASC, k.tarih ASC, k.tutanak_no ASC";
 
         $params = array_merge([$this->firmaId()], $ids);
@@ -1179,6 +1211,7 @@ class KacakKontrolModel extends Model
             $wherePersonel = ' AND (bildiren_personel_id = ? OR FIND_IN_SET(?, personel_ids))';
             array_push($params, $personelId, $personelId);
         }
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('') : "";
 
         $stmt = $this->db->prepare("SELECT
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' THEN sayi ELSE 0 END) AS aktif,
@@ -1189,7 +1222,7 @@ class KacakKontrolModel extends Model
                     SUM(CASE WHEN durum = 'iptal' AND hakedisten_dus = 1 THEN sayi ELSE 0 END) AS iptal_dusulen,
                     SUM(CASE WHEN onay_durumu = 'beklemede' THEN 1 ELSE 0 END) AS bekleyen
                 FROM kacak_kontrol
-                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL{$wherePersonel}");
+                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL{$wherePersonel}{$whereKaski}");
         $stmt->execute($params);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -1203,6 +1236,9 @@ class KacakKontrolModel extends Model
         if ($personelId > 0) {
             $base .= ' AND (bildiren_personel_id = ? OR FIND_IN_SET(?, personel_ids))';
             array_push($params, $personelId, $personelId);
+        }
+        if (self::isKaskiPortal()) {
+            $base .= ' AND ' . self::kaskiPersonelKosulu('');
         }
 
         $trend = $this->db->prepare("SELECT tarih,
@@ -1355,7 +1391,8 @@ class KacakKontrolModel extends Model
         }
 
         $colName = $allowed[$column];
-        $stmt = $this->db->prepare("SELECT DISTINCT {$colName} FROM kacak_kontrol WHERE firma_id = ? AND silinme_tarihi IS NULL AND {$colName} IS NOT NULL AND {$colName} <> '' ORDER BY {$colName} ASC");
+        $whereKaski = self::isKaskiPortal() ? " AND " . self::kaskiPersonelKosulu('') : "";
+        $stmt = $this->db->prepare("SELECT DISTINCT {$colName} FROM kacak_kontrol WHERE firma_id = ? AND silinme_tarihi IS NULL AND {$colName} IS NOT NULL AND {$colName} <> ''{$whereKaski} ORDER BY {$colName} ASC");
         $stmt->execute([$this->firmaId()]);
         $rawVals = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
