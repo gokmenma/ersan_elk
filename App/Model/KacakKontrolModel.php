@@ -1418,17 +1418,39 @@ class KacakKontrolModel extends Model
 
     /**
      * PWA tarafında ekip arkadaşı olarak seçilebilecek personeller.
+     * Bildiren personel KASKİ personeli ('kaski_kacak') ise yalnızca diğer KASKİ personelleri listelenir.
+     * Standart şirket personeli ise yalnızca standart kaçak personelleri listelenir.
      */
     public function getEkipAdaylari(int $haricPersonelId = 0): array
     {
-        $sql = "SELECT id, adi_soyadi, gorev, departman
-                FROM personel
-                WHERE firma_id = ?
-                  AND (departman LIKE ? OR personel_tipi = 'kaski_kacak')
-                  AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi = '')
-                  AND silinme_tarihi IS NULL
-                  AND aktif_mi = 1";
-        $params = [$this->firmaId(), '%Kaçak%'];
+        $isKaski = false;
+        if ($haricPersonelId > 0) {
+            $stmtCheck = $this->db->prepare("SELECT personel_tipi FROM personel WHERE id = ? AND firma_id = ?");
+            $stmtCheck->execute([$haricPersonelId, $this->firmaId()]);
+            $tip = $stmtCheck->fetchColumn();
+            $isKaski = ($tip === 'kaski_kacak');
+        }
+
+        if ($isKaski) {
+            $sql = "SELECT id, adi_soyadi, gorev, departman
+                    FROM personel
+                    WHERE firma_id = ?
+                      AND personel_tipi = 'kaski_kacak'
+                      AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi = '')
+                      AND silinme_tarihi IS NULL
+                      AND aktif_mi = 1";
+            $params = [$this->firmaId()];
+        } else {
+            $sql = "SELECT id, adi_soyadi, gorev, departman
+                    FROM personel
+                    WHERE firma_id = ?
+                      AND (departman LIKE ?)
+                      AND (personel_tipi IS NULL OR personel_tipi <> 'kaski_kacak')
+                      AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi = '')
+                      AND silinme_tarihi IS NULL
+                      AND aktif_mi = 1";
+            $params = [$this->firmaId(), '%Kaçak%'];
+        }
 
         if ($haricPersonelId > 0) {
             $sql .= " AND id <> ?";
