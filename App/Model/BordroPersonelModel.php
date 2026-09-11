@@ -1292,6 +1292,11 @@ class BordroPersonelModel extends Model
             
             // USER REQ: Yemek veya eş yardımı verilmediği zaman resmi banka tutarı asgari ücrettir, geri kalan elden ödenir.
             if ($isNet || $isPrimUsulu) {
+                $bankaMatrahi = min(
+                    max(0.0, $asgariUcretYatacak + $yontemliBankaEki),
+                    max(0.0, $toplamAlacagi - $sodexoOdemesi - $digerOdeme)
+                );
+                $bankaAktarilanKesinti = min($bankaMatrahi, $toplamKesintiClean);
                 $normalDagilim = $this->hesaplaNormalBankaDagilimi(
                     $asgariUcretYatacak, $yontemliBankaEki, $toplamKesintiClean,
                     $netAlacagi, $sodexoOdemesi, $digerOdeme
@@ -1302,6 +1307,8 @@ class BordroPersonelModel extends Model
                 $bankaBaz = min($asgariUcretYatacak + $yontemliBankaEki, max(0, $netAlacagi - $sodexoOdemesi));
                 $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
                 $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
+                $bankaOncelikliKesinti = min($icraKesintisi, max(0.0, $bankaBaz));
+                $bankaMatrahi = round($bankaOdemesi + $bankaOncelikliKesinti, 2);
             }
 
             // Compliance: KUR personel banka sifirlama kurali (Sadece otomatik dağıtımda geçerli)
@@ -1316,6 +1323,11 @@ class BordroPersonelModel extends Model
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
+        if ($bankayaYatmayacak) {
+            $bankaMatrahi = 0.0;
+            $bankaOncelikliKesinti = 0.0;
+            $bankaAktarilanKesinti = 0.0;
+        }
 
         $toplamEldenKesintisiUygulanan = min($eldenOdeme, $eldenKesintisiToplam);
         $eldenOdeme = max(0.0, $eldenOdeme - $toplamEldenKesintisiUygulanan);
@@ -1327,6 +1339,8 @@ class BordroPersonelModel extends Model
 
         return [
             'muhasebePrimTutari' => max(0.0, round($muhasebePrimToplami - $muhasebedeGizlenecekPrim, 2)),
+            'muhasebePrimHakedisi' => round($muhasebePrimToplami, 2),
+            'muhasebeDagilimaDahilPrim' => round($muhasebedeGizlenecekPrim, 2),
             'muhasebeHariciYemekTutari' => round($muhasebeHariciYemekToplami, 2),
             'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
             'ucretsizIzinGunu' => $ucretsizIzinGunu, 'calismaGunu' => $calismaGunu,
@@ -1366,6 +1380,19 @@ class BordroPersonelModel extends Model
         if ($gun <= 0 && ($yemek > 0 || $kart > 0)) {
             $gun = (int) $hesap['calismaGunu'];
         }
+        $toplamHakedis = round((float) $hesap['toplamAlacagi'], 2);
+        $netOdenecek = round((float) $hesap['netAlacagi'], 2);
+        $toplamKesinti = max(0.0, round($toplamHakedis - $netOdenecek, 2));
+        $bankaOdemesi = round((float) $hesap['bankaOdemesi'], 2);
+        $eldenOdeme = round((float) $hesap['eldenOdeme'], 2);
+        $digerOdeme = round((float) $hesap['digerOdeme'], 2);
+        $bankaKesintisi = round(
+            (float) ($hesap['bankaOncelikliKesinti'] ?? 0) + (float) ($hesap['bankaAktarilanKesinti'] ?? 0),
+            2
+        );
+        $resmiBankaMatrahi = round($bankaOdemesi + $bankaKesintisi, 2);
+        $eldenKesintisi = max(0.0, round($toplamKesinti - $bankaKesintisi, 2));
+        $dagitimToplami = round($bankaOdemesi + $eldenOdeme + $kart + $digerOdeme, 2);
         return [
             'toplam_gun' => (int) $hesap['calismaGunu'],
             'fiili_gun' => $gun,
@@ -1375,10 +1402,24 @@ class BordroPersonelModel extends Model
             'es_yardimi' => (float) $hesap['spouseAllowanceDeduction'],
             'icra' => (float) $hesap['icraKesintisi'],
             'resmi_alacak_asgari' => (float) $hesap['asgariHakedis'],
-            'resmi_alacak_toplam' => (float) $hesap['bankaOdemesi'],
-            'net_maas' => (float) $hesap['bankaOdemesi'],
-            'diger_odeme' => (float) $hesap['digerOdeme'],
+            'resmi_alacak_toplam' => $bankaOdemesi,
+            'net_maas' => $bankaOdemesi,
+            'diger_odeme' => $digerOdeme,
             'prim' => (float) $hesap['muhasebePrimTutari'],
+            'prim_hakedisi_bilgi' => (float) ($hesap['muhasebePrimHakedisi'] ?? 0),
+            'dagilima_dahil_prim_bilgi' => (float) ($hesap['muhasebeDagilimaDahilPrim'] ?? 0),
+            'toplam_hakedis' => $toplamHakedis,
+            'toplam_personel_kesintisi' => $toplamKesinti,
+            'net_odenecek_toplam' => $netOdenecek,
+            'resmi_banka_matrahi' => $resmiBankaMatrahi,
+            'bankadan_dusulen_kesinti' => $bankaKesintisi,
+            'elden_dusulen_kesinti' => $eldenKesintisi,
+            'banka_odemesi' => $bankaOdemesi,
+            'elden_odeme' => $eldenOdeme,
+            'dagitim_toplami' => $dagitimToplami,
+            'dagitim_farki' => round($netOdenecek - $dagitimToplami, 2),
+            'banka_kontrol_farki' => round($resmiBankaMatrahi - $bankaKesintisi - $bankaOdemesi, 2),
+            'manuel_dagitim' => !empty($hesap['manualDagitimVar']),
         ];
     }
 

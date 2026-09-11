@@ -111,6 +111,43 @@ final class BordroBankaDagilimiTest extends TestCase
         $this->assertKayitGosterim('Net', 1, 'Manuel prim', 0, false, false, false, false, 600, true);
     }
 
+    public function testMuhasebeMutabakatOzetiPrimVeOdemeKanallariniAyirir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $ozet = $model->getMuhasebeOdemeOzeti([
+            'mealAllowanceDeduction' => 8100,
+            'muhasebeHariciYemekTutari' => 0,
+            'sodexoOdemesi' => 0,
+            'includedAllowanceFiiliGun' => 27,
+            'calismaGunu' => 30,
+            'spouseAllowanceDeduction' => 0,
+            'icraKesintisi' => 0,
+            'asgariHakedis' => 28075.50,
+            'bankaOdemesi' => 22111.35,
+            'eldenOdeme' => 188.65,
+            'digerOdeme' => 0,
+            'muhasebePrimTutari' => 0,
+            'muhasebePrimHakedisi' => 100,
+            'muhasebeDagilimaDahilPrim' => 100,
+            'toplamAlacagi' => 37300,
+            'netAlacagi' => 22300,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 15000,
+            'manualDagitimVar' => false,
+        ]);
+
+        self::assertSame(100.0, $ozet['prim_hakedisi_bilgi']);
+        self::assertSame(100.0, $ozet['dagilima_dahil_prim_bilgi']);
+        self::assertSame(0.0, $ozet['prim']);
+        self::assertSame(37111.35, $ozet['resmi_banka_matrahi']);
+        self::assertSame(15000.0, $ozet['bankadan_dusulen_kesinti']);
+        self::assertSame(22111.35, $ozet['banka_odemesi']);
+        self::assertSame(188.65, $ozet['elden_odeme']);
+        self::assertSame(22300.0, $ozet['dagitim_toplami']);
+        self::assertSame(0.0, $ozet['banka_kontrol_farki']);
+        self::assertSame(0.0, $ozet['dagitim_farki']);
+    }
+
     private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false): void
     {
         $record = (object) [
@@ -221,6 +258,8 @@ final class BordroBankaDagilimiTest extends TestCase
             self::assertSame(round(300 / $display['calismaGunu'], 2), $excel['gunluk_nakit']);
         }
         self::assertSame($display['muhasebePrimTutari'], $excel['prim']);
+        self::assertSame(0.0, $excel['banka_kontrol_farki']);
+        self::assertSame(0.0, $excel['dagitim_farki']);
         if (!$inclusive) {
             self::assertSame($primAmount, $excel['prim']);
         }
