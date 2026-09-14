@@ -31,7 +31,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 $donemId = $_GET['donem_id'] ?? null;
-$ids = null;
+$ids = $_GET['ids'] ?? null;
 $idArray = [];
 if ($ids) {
     $idArray = explode(',', $ids);

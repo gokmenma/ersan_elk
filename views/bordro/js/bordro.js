@@ -1017,12 +1017,21 @@ $(document).ready(function () {
     return [];
   }
 
+  // Dışa aktarılacak ID'leri al (Önce seçili olanlar, seçim yoksa filtrelenmişler)
+  function getExportIds() {
+    const selectedIds = typeof getSelectedIds === "function" ? getSelectedIds() : [];
+    if (selectedIds && selectedIds.length > 0) {
+      return selectedIds;
+    }
+    return getFilteredIds();
+  }
+
   // Excel Export
   $("#btnExportExcel").on("click", function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
       let url = "views/bordro/export-excel.php?donem_id=" + donemId;
-      const ids = getFilteredIds();
+      const ids = getExportIds();
       if (ids.length > 0) {
         url += "&ids=" + ids.join(",");
       }
@@ -1035,6 +1044,10 @@ $(document).ready(function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
       let url = "views/bordro/excel-banka-export.php?donem_id=" + donemId;
+      const ids = getExportIds();
+      if (ids.length > 0) {
+        url += "&ids=" + ids.join(",");
+      }
       window.location.href = url;
     }
   });
@@ -1044,7 +1057,7 @@ $(document).ready(function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
       let url = "views/bordro/excel-sodexo-export.php?donem_id=" + donemId;
-      const ids = getFilteredIds();
+      const ids = getExportIds();
       if (ids.length > 0) {
         url += "&ids=" + ids.join(",");
       }
@@ -1052,12 +1065,12 @@ $(document).ready(function () {
     }
   });
 
-  // Excel Export (Yemek/Eş Yardımı Listesi)
+  // Excel Export (Yemek/Eş Yardımı - Muhasebe Listesi)
   $("#btnExportExcelYemek").on("click", function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
       let url = "views/bordro/excel-yemek-export.php?donem_id=" + donemId;
-      const ids = getFilteredIds();
+      const ids = getExportIds();
       if (ids.length > 0) {
         url += "&ids=" + ids.join(",");
       }
