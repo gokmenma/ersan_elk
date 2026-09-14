@@ -72,7 +72,15 @@ class PersonelModel extends Model
         );
         $stmt->execute([$id, $firmaId]);
 
-        return $stmt->rowCount() === 1;
+        if ($stmt->rowCount() === 1) {
+            // Silinen personele ait bekleyen talepleri de soft delete yap
+            $this->db->prepare("UPDATE personel_avanslari SET silinme_tarihi = NOW(), silinme_aciklama = 'Personel silindiği için otomatik iptal edildi' WHERE personel_id = ? AND durum = 'beklemede' AND silinme_tarihi IS NULL")->execute([$id]);
+            $this->db->prepare("UPDATE personel_izinleri SET silinme_tarihi = NOW(), silinme_aciklama = 'Personel silindiği için otomatik iptal edildi' WHERE personel_id = ? AND onay_durumu = 'beklemede' AND silinme_tarihi IS NULL")->execute([$id]);
+            $this->db->prepare("UPDATE personel_talepleri SET silinme_tarihi = NOW(), silinme_aciklama = 'Personel silindiği için otomatik iptal edildi' WHERE personel_id = ? AND durum = 'beklemede' AND silinme_tarihi IS NULL")->execute([$id]);
+            return true;
+        }
+
+        return false;
     }
 
     public function findByTc(string $tc): array

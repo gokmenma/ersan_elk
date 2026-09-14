@@ -154,12 +154,16 @@ use App\Helper\Helper;
 
                             if ($.fn.DataTable.isDataTable('#tblCalismaGecmisi')) {
                                 $('#tblCalismaGecmisi').DataTable().destroy();
+                                $('#tblCalismaGecmisi thead .dt-filter-row').remove();
+                                $('[data-table-id="tblCalismaGecmisi"]').remove();
                             }
 
                             $tbody.empty();
+                            $('#workHistoryCount').text(response.data ? response.data.length : 0);
 
                             if (response.data && response.data.length > 0) {
                                 var bugun = new Date().toISOString().split('T')[0];
+                                var hasActivePeriod = false;
 
                                 $.each(response.data, function (i, item) {
                                     var iseGirisTarihi = item.ise_giris_tarihi; // formatted
@@ -176,6 +180,9 @@ use App\Helper\Helper;
                                     }
 
                                     var isAktif = (ymdGiris <= bugun && (ymdCikis === null || ymdCikis >= bugun));
+                                    if (isAktif) {
+                                        hasActivePeriod = true;
+                                    }
 
                                     var statusBadge = isAktif
                                         ? '<span class="badge bg-success">Aktif</span>'
@@ -221,6 +228,12 @@ use App\Helper\Helper;
                                         '</tr>';
                                     $tbody.append(row);
                                 });
+
+                                $('#workCurrentStatus').html(hasActivePeriod
+                                    ? '<span class="text-success">● Aktif</span>'
+                                    : '<span class="text-secondary">● Pasif</span>');
+                            } else {
+                                $('#workCurrentStatus').html('<span class="text-secondary">● Pasif</span>');
                             }
 
                             if (typeof window.invalidateAllTabs === 'function') {
@@ -238,10 +251,14 @@ use App\Helper\Helper;
                         $('#tblCalismaGecmisi').DataTable().destroy();
                     }
                     var dtOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
-                    $('#tblCalismaGecmisi').DataTable($.extend(true, {}, dtOptions, {
+                    var options = $.extend(true, {}, dtOptions, {
                         order: [[0, 'desc']],
                         pageLength: 5
-                    }));
+                    });
+                    if (typeof applyLengthStateSave === 'function') {
+                        options = applyLengthStateSave(options);
+                    }
+                    $('#tblCalismaGecmisi').DataTable(options);
                 }
             }
 

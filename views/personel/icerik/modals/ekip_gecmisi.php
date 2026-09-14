@@ -84,10 +84,12 @@ use App\Helper\Form;
 
                             if ($.fn.DataTable.isDataTable('#tblEkipGecmisi')) {
                                 $('#tblEkipGecmisi').DataTable().destroy();
-                                $('#tblEkipGecmisi thead .search-input-row').remove();
+                                $('#tblEkipGecmisi thead .dt-filter-row').remove();
+                                $('[data-table-id="tblEkipGecmisi"]').remove();
                             }
 
                             $tbody.empty();
+                            var activeTeamCount = 0;
 
                             if (response.data && response.data.length > 0) {
                                 var bugun = new Date().toISOString().split('T')[0];
@@ -99,6 +101,9 @@ use App\Helper\Form;
 
                                     if (isAktif && !newestActiveEkip) {
                                         newestActiveEkip = item.ekip_adi;
+                                    }
+                                    if (isAktif) {
+                                        activeTeamCount++;
                                     }
 
                                     var statusBadge = isAktif
@@ -133,8 +138,12 @@ use App\Helper\Form;
 
                                 if (newestActiveEkip) {
                                     $('small.text-muted:contains("Ekip No:") b').text(newestActiveEkip);
+                                } else {
+                                    $('small.text-muted:contains("Ekip No:") b').text('---');
                                 }
                             }
+
+                            $('#workActiveTeamCount').text(activeTeamCount);
 
                             if (typeof window.invalidateAllTabs === 'function') {
                                 window.invalidateAllTabs();
@@ -170,7 +179,11 @@ use App\Helper\Form;
                         pageLength: 5
                     };
 
-                    $('#tblEkipGecmisi').DataTable(Object.assign({}, dtOptions, customOptions));
+                    var options = Object.assign({}, dtOptions, customOptions);
+                    if (typeof applyLengthStateSave === 'function') {
+                        options = applyLengthStateSave(options);
+                    }
+                    $('#tblEkipGecmisi').DataTable(options);
                 }
             }
 

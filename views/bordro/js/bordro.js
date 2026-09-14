@@ -864,6 +864,9 @@ $(document).ready(function () {
             if (result.isConfirmed) {
               // Zorla kapat
               donemDurumGuncelle(action, isChecked, true);
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+              // Talepleri İncele tıklandığında talepler sayfasına git
+              window.location.href = "index.php?p=talepler";
             } else {
               $("#switchDonemDurum").prop("checked", false);
             }

@@ -356,7 +356,10 @@
         $header.append($modeTrigger);
 
         if (filterType !== "select") {
-          $dropdown = $('<div class="dt-filter-mode-dropdown"></div>');
+          $dropdown = $('<div class="dt-filter-mode-dropdown"></div>').attr(
+            "data-table-id",
+            tableId,
+          );
           (FILTER_MODES[filterType] || FILTER_MODES["string"]).forEach((m) => {
             $dropdown.append(
               $('<button type="button" class="mode-opt"></button>')
@@ -455,7 +458,10 @@
           });
         uniqueVals.sort((a, b) => a.localeCompare(b, "tr"));
 
-        const $excelDpy = $('<div class="dt-filter-excel-dropdown"></div>');
+        const $excelDpy = $('<div class="dt-filter-excel-dropdown"></div>').attr(
+          "data-table-id",
+          tableId,
+        );
         $excelDpy.append(
           '<div class="search-box"><input type="text" placeholder="Ara..."></div>',
         );

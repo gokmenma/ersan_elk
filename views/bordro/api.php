@@ -3038,6 +3038,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 ]);
                 break;
 
+            // Dönemi Kapat
             case 'donem-kapat':
                 $donem_id = intval($_POST['donem_id'] ?? 0);
 
@@ -3061,6 +3062,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     JOIN personel p ON pa.personel_id = p.id
                     WHERE pa.durum = 'beklemede' 
                     AND pa.silinme_tarihi IS NULL
+                    AND p.silinme_tarihi IS NULL
                     AND p.firma_id = ?
                     AND pa.talep_tarihi BETWEEN ? AND ?
                 ");
@@ -3080,9 +3082,12 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     SELECT COUNT(*) as count, SUM(DATEDIFF(bitis_tarihi, baslangic_tarihi) + 1) as toplam_gun
                     FROM personel_izinleri pi
                     JOIN personel p ON pi.personel_id = p.id
+                    LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                     WHERE pi.onay_durumu = 'beklemede' 
                     AND pi.silinme_tarihi IS NULL
+                    AND p.silinme_tarihi IS NULL
                     AND p.firma_id = ?
+                    AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
                     AND (
                         (pi.baslangic_tarihi BETWEEN ? AND ?)
                         OR (pi.bitis_tarihi BETWEEN ? AND ?)
