@@ -637,10 +637,30 @@ $(document).ready(function () {
     });
   });
 
+  // Helper for loading placeholder in bordro detail modal
+  function showBordroDetailLoading(titleText) {
+    if (titleText) {
+      $("#bordroDetailModal .modal-title").html('<i class="bx bx-show me-2"></i>' + titleText);
+    }
+    $("#bordroDetailContent").html(`
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3.5rem; height: 3.5rem;">
+          <span class="visually-hidden">Yükleniyor...</span>
+        </div>
+        <h5 class="fw-bold text-dark">Bordro Detayları Yükleniyor</h5>
+        <p class="text-muted small mb-0">Lütfen bekleyin, hesaplama ve döküm verileri hazırlanıyor...</p>
+      </div>
+    `);
+    renderBordroDetailFooterSummary(null);
+    showModal("bordroDetailModal");
+  }
+
   // Detay Görüntüle
   $(document).on("click", ".btn-detail", function () {
     const id = $(this).data("id");
     console.log("Bordro Detay tıklandı, ID:", id);
+
+    showBordroDetailLoading("Bordro Detayı");
 
     $.ajax({
       url: "views/bordro/api.php",
@@ -667,6 +687,7 @@ $(document).ready(function () {
 
           showModal("bordroDetailModal");
         } else {
+          $("#bordroDetailContent").html('<div class="alert alert-danger my-4 mx-3 text-center"><i class="bx bx-error-circle me-1"></i> ' + (response.message || "Detaylar getirilemedi.") + '</div>');
           Swal.fire({
             icon: "error",
             title: "Hata!",
@@ -676,6 +697,7 @@ $(document).ready(function () {
       },
       error: function (xhr, status, error) {
         console.error("Detay getirme hatası:", error);
+        $("#bordroDetailContent").html('<div class="alert alert-danger my-4 mx-3 text-center"><i class="bx bx-error-circle me-1"></i> Detaylar yüklenirken bir bağlantı hatası oluştu.</div>');
       },
     });
   });
@@ -684,6 +706,8 @@ $(document).ready(function () {
   $(document).on("click", ".btn-detail-old", function () {
     const id = $(this).data("id");
     console.log("Bordro Eski Detay tıklandı, ID:", id);
+
+    showBordroDetailLoading("Bordro Detayı");
 
     $.ajax({
       url: "views/bordro/api.php",
@@ -699,6 +723,7 @@ $(document).ready(function () {
           renderBordroDetailFooterSummary(null);
           showModal("bordroDetailModal");
         } else {
+          $("#bordroDetailContent").html('<div class="alert alert-danger my-4 mx-3 text-center"><i class="bx bx-error-circle me-1"></i> ' + (response.message || "Detaylar getirilemedi.") + '</div>');
           Swal.fire({
             icon: "error",
             title: "Hata!",
@@ -708,6 +733,7 @@ $(document).ready(function () {
       },
       error: function (xhr, status, error) {
         console.error("Eski detay getirme hatası:", error);
+        $("#bordroDetailContent").html('<div class="alert alert-danger my-4 mx-3 text-center"><i class="bx bx-error-circle me-1"></i> Detaylar yüklenirken bir bağlantı hatası oluştu.</div>');
       },
     });
   });
@@ -715,6 +741,16 @@ $(document).ready(function () {
   // İcra Detay Görüntüle
   $(document).on("click", ".btn-icra-detail", function () {
     const id = $(this).data("id");
+    $("#icra_detay_personel_ad").text("Yükleniyor...");
+    $("#icra_detay_content").html(`
+      <div class="text-center py-4">
+        <div class="spinner-border text-danger mb-2" role="status" style="width: 2.5rem; height: 2.5rem;">
+          <span class="visually-hidden">Yükleniyor...</span>
+        </div>
+        <div class="text-muted fw-semibold">İcra detayları yükleniyor...</div>
+      </div>
+    `);
+    showModal("modalIcraDetay");
 
     $.ajax({
       url: "views/bordro/api.php",
@@ -730,6 +766,7 @@ $(document).ready(function () {
           $("#icra_detay_content").html(response.html);
           showModal("modalIcraDetay");
         } else {
+          $("#icra_detay_content").html('<div class="alert alert-danger my-2 text-center">' + (response.message || "İcra detayı bulunamadı.") + '</div>');
           Swal.fire({
             icon: "error",
             title: "Hata!",
@@ -739,6 +776,7 @@ $(document).ready(function () {
       },
       error: function (xhr, status, error) {
         console.error("İcra detay getirme hatası:", error);
+        $("#icra_detay_content").html('<div class="alert alert-danger my-2 text-center">İcra detayları yüklenirken bir hata oluştu.</div>');
         Swal.fire({
           icon: "error",
           title: "Sistem Hatası",

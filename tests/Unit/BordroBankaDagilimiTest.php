@@ -44,14 +44,65 @@ final class BordroBankaDagilimiTest extends TestCase
             'elden' => 188.65,
             'banka_kesintisi' => 15000.0,
             'elden_kesintisi' => 0.0,
-        ], $method->invoke($model, 37300, 37111.35, 15000));
+        ], $method->invoke($model, 37300, 37111.35, 15000, 0));
 
         self::assertSame([
             'banka' => 0.0,
             'elden' => 0.0,
             'banka_kesintisi' => 37111.35,
             'elden_kesintisi' => 188.65,
-        ], $method->invoke($model, 37300, 37111.35, 40000));
+        ], $method->invoke($model, 37300, 37111.35, 40000, 0));
+    }
+
+    public function testDahilMaasEldenKesintiOncelikliEldenDuserKalanBankadanDuser(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'hesaplaDahilBankaDagilimi');
+
+        // Toplam Hakediş: 37300, Banka Matrahı: 37111.35, Elden Matrahı: 188.65
+        // 1. Elden kesintisi 100 TL -> Sadece elden'den düşer
+        self::assertSame([
+            'banka' => 37111.35,
+            'elden' => 88.65,
+            'banka_kesintisi' => 0.0,
+            'elden_kesintisi' => 100.0,
+        ], $method->invoke($model, 37300, 37111.35, 0, 100));
+
+        // 2. Elden kesintisi 500 TL -> 188.65 elden'den düşer, kalan 311.35 bankadan düşer
+        self::assertSame([
+            'banka' => 36800.00,
+            'elden' => 0.0,
+            'banka_kesintisi' => 311.35,
+            'elden_kesintisi' => 188.65,
+        ], $method->invoke($model, 37300, 37111.35, 0, 500));
+    }
+
+    public function testNormalMaasEldenKesintiOncelikliEldenDuserKalanBankadanDuser(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'hesaplaNormalBankaDagilimi');
+
+        // Asgari taban: 28075.50, Banka ekleri: 0 -> Banka matrahı: 28075.50
+        // Toplam net alacağı: 35000 (kesinti sonrası: 33000)
+        // 1. Elden kesinti 2000 TL: Önceden elden matrahı: 35000 - 28075.50 = 6924.50.
+        // Kesinti 2000 TL elden'den düşer -> Kalan elden: 4924.50, Kalan banka: 28075.50
+        self::assertSame([
+            'banka' => 28075.50,
+            'elden' => 4924.50,
+        ], $method->invoke($model, 28075.50, 0, 0, 33000, 0, 0, 2000));
+
+        // 2. Elden kesinti 8000 TL: Elden matrahı 6924.50 sıfırlanır, kalan 1075.50 bankadan düşer.
+        // Kalan banka: 28075.50 - 1075.50 = 27000.00, Kalan elden: 0
+        self::assertSame([
+            'banka' => 27000.00,
+            'elden' => 0.0,
+        ], $method->invoke($model, 28075.50, 0, 0, 27000, 0, 0, 8000));
+
+        // 3. Banka kesinti 2000 TL (Elden kesinti: 0): Bankadan düşer -> Banka: 26075.50, Elden: 6924.50
+        self::assertSame([
+            'banka' => 26075.50,
+            'elden' => 6924.50,
+        ], $method->invoke($model, 28075.50, 0, 2000, 33000, 0, 0, 0));
     }
 
     public function testYemekGunlukTavaniVeYuvarlamaFarkiKorunur(): void
@@ -180,7 +231,7 @@ final class BordroBankaDagilimiTest extends TestCase
         if ($hariciYemek) {
             $payments[] = (object) ['id' => 3, 'tur' => 'yemek_yardimi_tum', 'tutar' => 300, 'resmi_tutar' => 0, 'aciklama' => '[Yemek Yardımı] Günlük', 'banka_matrahina_ekle' => 1];
         }
-        $deductions = [(object) ['id' => 1, 'tur' => 'ozel_kesinti', 'tutar' => $kesinti, 'aciklama' => 'Özel kesinti', 'hesaplama_tipi' => $eldenKesinti ? 'elden_tutardan' : 'sabit']];
+        $deductions = [(object) ['id' => 1, 'tur' => 'ozel_kesinti', 'tutar' => $kesinti, 'aciklama' => 'Özel kesinti', 'hesaplama_tipi' => $eldenKesinti ? 'elden_tutardan' : 'sabit', 'banka_matrahina_ekle' => $eldenKesinti ? 0 : 1]];
         $sources = [
             'getDonemEkOdemeleriListe', 'getDonemKesintileriListe', 'getHistoricalGorevGecmisi',
             'overrideWithHistoricalCalismaGecmisi', 'overrideWithHistoricalGorevGecmisi',

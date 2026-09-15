@@ -189,6 +189,7 @@ class PersonelKesintileriModel extends Model
             'parametre_id' => $surekliKesinti->parametre_id,
             'icra_id' => $surekliKesinti->icra_id,
             'tarih' => $surekliKesinti->tarih,
+            'banka_matrahina_ekle' => intval($surekliKesinti->banka_matrahina_ekle ?? 1),
             'ana_kesinti_id' => $surekliKesinti->id, // Ana kayıt referansı
             'aktif' => 1
         ];

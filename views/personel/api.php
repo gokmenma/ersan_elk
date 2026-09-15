@@ -1010,6 +1010,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $newData[$dbCol] = $val;
                 }
 
+                if (isset($newData['arac_kullanim'])) {
+                    $newData['arac_kullanim'] = PersonelModel::sanitizeAracKullanim($newData['arac_kullanim']);
+                }
+
                 // Firma ID Kontrolü ve Varsayılan Atama (Sadece yeni kayıtlarda boş ise varsayılan ata)
                 if (!$isUpdate && empty($newData['firma_id'])) {
                     if ($defaultFirmaId) {
@@ -1823,7 +1827,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'isten_cikis_tarihi' => $isten_cikis_tarihi,
                 'personel_sinifi' => $data['personel_sinifi'] ?? 'Beyaz Yaka',
                 'saha_takibi' => $data['saha_takibi'] ?? '0',
-                'arac_kullanim' => $data['arac_kullanim'] ?? 'Yok',
+                'arac_kullanim' => PersonelModel::sanitizeAracKullanim($data['arac_kullanim'] ?? 'Yok'),
                 'sgk_yapilan_firma' => $data['sgk_yapilan_firma'] ?? 'Yok',
                 'disardan_sigortali' => $data['disardan_sigortali'],
                 'gorunum_modulleri' => $data['gorunum_modulleri'],
@@ -1930,7 +1934,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'isten_cikis_tarihi' => $isten_cikis_tarihi,
                 'personel_sinifi' => $data['personel_sinifi'] ?? 'Beyaz Yaka',
                 'saha_takibi' => $data['saha_takibi'] ?? '0',
-                'arac_kullanim' => $data['arac_kullanim'] ?? 'Yok',
+                'arac_kullanim' => PersonelModel::sanitizeAracKullanim($data['arac_kullanim'] ?? 'Yok'),
                 'sgk_yapilan_firma' => $data['sgk_yapilan_firma'] ?? 'Yok',
                 'disardan_sigortali' => $data['disardan_sigortali'],
                 'gorunum_modulleri' => $data['gorunum_modulleri'],

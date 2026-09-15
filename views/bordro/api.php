@@ -1031,7 +1031,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $hesaplananAdet = $parsedAdet;
                         if (isset($detayData['ek_odemeler']) && is_array($detayData['ek_odemeler'])) {
                             foreach ($detayData['ek_odemeler'] as $jedo) {
-                                if ($jedo['kod'] === $odeme->tur) {
+                                if (isset($jedo['id']) && $jedo['id'] == $odeme->id) {
                                     $hesaplananTutar = floatval($jedo['hesaplanan_tutar'] ?? $jedo['tutar']);
                                     $hesaplananAdet = intval($jedo['gun_sayisi'] ?? $parsedAdet);
                                     break; 
@@ -1124,6 +1124,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
                             $adet = intval($detayMatch[1]); 
                             $birimFiyat = trim($detayMatch[2]);
+                        } elseif (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $aciklama, $detayMatch)) {
+                            $adet = intval($detayMatch[1]); 
+                            $birimFiyat = trim($detayMatch[2]);
                         } elseif (preg_match('/(\d+)\s*Adet/iu', $aciklama, $adetMatch)) {
                             $adet = intval($adetMatch[1]);
                         }
@@ -1160,7 +1163,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $puantajToplamIslemSayisi += intval($grup['adet'] ?? 0);
                 }
                 $puantajBaslikDetay = $puantajToplamIslemSayisi > 0
-                    ? ' <small class="text-muted fw-normal">' . $puantajToplamIslemSayisi . ' Adet</small>'
+                    ? ' <span class="badge bg-light text-dark fw-normal ms-2">' . $puantajToplamIslemSayisi . ' Adet</span>'
                     : '';
 
                 // ============================================================
@@ -1334,7 +1337,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if ($isPrimUsulu && !empty($puantajGruplu)) {
                             $collPuantajBaseId = "cPuantajBase_" . $bp->id;
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '" data-bs-toggle="collapse" data-bs-target=".' . $collPuantajBaseId . '" aria-expanded="false">
-                                        <td class="ps-4 fw-semibold text-success"><i class="bx bx-briefcase me-1 opacity-75"></i>Puantaj Hakedişleri' . $puantajBaslikDetay . '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></td>
+                                        <td class="ps-4 fw-semibold text-success"><i class="bx bx-briefcase me-1 opacity-75"></i><span>Puantaj Hakedişleri</span>' . $puantajBaslikDetay . '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></td>
                                         <td class="text-end pe-4 fw-semibold text-success">' . number_format($toplamPuantajTutar, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                             foreach ($puantajGruplu as $grup) {
@@ -1390,7 +1393,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!empty($puantajOdemeler) && !($isPrimUsulu && $isInclusive)) {
                     $collId = "colPuantaj_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
-                                <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-success"></i><span>Puantaj Hakedişleri</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-success"></i><span>Puantaj Hakedişleri</span>' . $puantajBaslikDetay . '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                 <td class="text-end text-success fw-bold">+' . number_format($toplamPuantajTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
                     foreach ($puantajGruplu as $grup) {
@@ -1891,7 +1894,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $hesaplananAdet = $parsedAdet;
                         if (isset($detayData['ek_odemeler']) && is_array($detayData['ek_odemeler'])) {
                             foreach ($detayData['ek_odemeler'] as $jedo) {
-                                if ($jedo['kod'] === $odeme->tur) {
+                                if (isset($jedo['id']) && $jedo['id'] == $odeme->id) {
                                     $hesaplananTutar = floatval($jedo['hesaplanan_tutar'] ?? $jedo['tutar']);
                                     $hesaplananAdet = intval($jedo['gun_sayisi'] ?? $parsedAdet);
                                     break; 
@@ -1982,6 +1985,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         $adet = 0; $birimFiyat = '';
                         if (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                            $adet = intval($detayMatch[1]); 
+                            $birimFiyat = trim($detayMatch[2]);
+                        } elseif (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $aciklama, $detayMatch)) {
                             $adet = intval($detayMatch[1]); 
                             $birimFiyat = trim($detayMatch[2]);
                         } elseif (preg_match('/(\d+)\s*Adet/iu', $aciklama, $adetMatch)) {
@@ -3391,6 +3397,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $tutar = floatval($_POST['kesinti_tutar'] ?? 0);
                 $tur = trim($_POST['kesinti_tur'] ?? 'diger');
                 $tarih = !empty($_POST['tarih']) ? Date::dttoeng($_POST['tarih']) : date('Y-m-d');
+                $bankaMatrahinaEkle = isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1;
 
                 if ($personel_id <= 0 || $donem_id <= 0) {
                     throw new Exception('Geçersiz personel veya dönem.');
@@ -3423,10 +3430,10 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     // Güncelleme
                     $sql = $BordroPersonel->getDb()->prepare("
                         UPDATE personel_kesintileri 
-                        SET aciklama = ?, tutar = ?, tur = ?, tarih = ?
+                        SET aciklama = ?, tutar = ?, tur = ?, tarih = ?, banka_matrahina_ekle = ?
                         WHERE id = ?
                     ");
-                    if ($sql->execute([$aciklama, $tutar, $tur, $tarih, $id])) {
+                    if ($sql->execute([$aciklama, $tutar, $tur, $tarih, $bankaMatrahinaEkle, $id])) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 
@@ -3439,7 +3446,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     }
                 } else {
                     // Ekleme
-                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur, 'onaylandi', null, $tarih, $userId)) {
+                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur, 'onaylandi', null, $tarih, $userId, $bankaMatrahinaEkle)) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 

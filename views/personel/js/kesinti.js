@@ -74,10 +74,12 @@ $(document).ready(function () {
     $("#kesinti_parametre_id").val("").trigger("change");
     $("#tekrar_tek_sefer").prop("checked", true);
     $("#hesaplama_sabit").prop("checked", true);
+    $("#kesinti_banka_matrah_evet").prop("checked", true);
     
     // UI Sıfırla
     updateTekrarTipiUI();
     updateHesaplamaTipiUI();
+    updateKesintiKanalUI();
     $("#param_info_bar").addClass("d-none");
     $("#div_icra_secimi").addClass("d-none");
     $("#div_ucretsiz_izin_secenek").addClass("d-none");
@@ -192,6 +194,14 @@ $(document).ready(function () {
           
           // Açıklama
           $("#formPersonelKesintiEkle input[name='aciklama']").val(response.aciklama);
+
+          // Banka Matrahı / Kanalı
+          if (response.banka_matrahina_ekle !== undefined && parseInt(response.banka_matrahina_ekle) === 0) {
+            $("#kesinti_banka_matrah_hayir").prop("checked", true);
+          } else {
+            $("#kesinti_banka_matrah_evet").prop("checked", true);
+          }
+          updateKesintiKanalUI();
           
           // Modalı göster
           $("#modalPersonelKesintiEkle").modal("show");
@@ -204,6 +214,20 @@ $(document).ready(function () {
       }
     });
   });
+
+  // Kesinti Kanalı Değişince Bilgilendirme Metnini Güncelle
+  $(document).on("change", 'input[name="banka_matrahina_ekle"]', function () {
+    updateKesintiKanalUI();
+  });
+
+  function updateKesintiKanalUI() {
+    var val = $('input[name="banka_matrahina_ekle"]:checked').val();
+    if (val === "0") {
+      $("#kesinti_kanal_bilgi_metin").html('<strong>Elden Seçilirse:</strong> Kesinti tutarı öncelikle elden ödeme tutarından düşülür. Elden tutarın yetmediği durumda kalan bakiye banka ödemesinden mahsup edilir.');
+    } else {
+      $("#kesinti_kanal_bilgi_metin").html('<strong>Banka Seçilirse:</strong> Kesinti tutarı öncelikle resmî banka ödemesinden düşülür. Banka tutarını aşarsa kalan kısım elden ödemeden mahsup edilir.');
+    }
+  }
 
   // Tekrar tipi değişince - EVENT DELEGATION
   $(document).on("change", 'input[name="tekrar_tipi"]', function () {
@@ -494,6 +518,7 @@ $(document).ready(function () {
       tutar: hesaplamaTipi === "sabit" ? form.find("input[name='kesinti_tutar']").val() : 0,
       oran: hesaplamaTipi !== "sabit" ? form.find("input[name='oran']").val() : 0,
       tarih: $("#kesinti_tarih").val(),
+      banka_matrahina_ekle: $('input[name="banka_matrahina_ekle"]:checked').val() !== undefined ? $('input[name="banka_matrahina_ekle"]:checked').val() : 1,
       aciklama: form.find("input[name='aciklama']").val(),
       icra_id: $("#kesinti_icra_id").val() || null,
       taksit_sayisi: tekrarTipi === "taksitli" ? $("#kesinti_taksit_sayisi").val() : null,

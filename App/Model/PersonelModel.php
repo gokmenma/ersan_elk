@@ -13,6 +13,49 @@ class PersonelModel extends Model
 
     private const ENCRYPTED_FIELDS = ['kaski_sifre', 'kaski_kullanici_adi', 'iban_numarasi', 'ek_odeme_iban_numarasi', 'kan_grubu', 'tc_kimlik_no'];
 
+    /**
+     * Araç kullanım metnini standart değerlere ('Kendi Aracı', 'Şirket aracı', 'Yok') dönüştürür.
+     */
+    public static function sanitizeAracKullanim(?string $val): string
+    {
+        if ($val === null || trim((string)$val) === '') {
+            return 'Yok';
+        }
+        $normalized = mb_strtolower(trim((string)$val), 'UTF-8');
+        $clean = str_replace(['?', ''], '', $normalized);
+        $ascii = strtr($clean, [
+            'ı' => 'i', 'İ' => 'i', 'ğ' => 'g', 'Ğ' => 'g',
+            'ü' => 'u', 'Ü' => 'u', 'ş' => 's', 'Ş' => 's',
+            'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c'
+        ]);
+
+        if (strpos($clean, 'kendi') !== false || strpos($ascii, 'kendi') !== false || strpos($clean, 'özel') !== false || strpos($ascii, 'ozel') !== false) {
+            return 'Kendi Aracı';
+        }
+        if (strpos($clean, 'sirket') !== false || strpos($clean, 'şirket') !== false || strpos($clean, 'irket') !== false || strpos($ascii, 'sirket') !== false) {
+            return 'Şirket aracı';
+        }
+        return 'Yok';
+    }
+
+    /**
+     * Personelin kendi aracıyla çalışıp çalışmadığını güvenle kontrol eder.
+     */
+    public static function isKendiAraci(?string $aracKullanim): bool
+    {
+        if ($aracKullanim === null || trim((string)$aracKullanim) === '') {
+            return false;
+        }
+        $val = mb_strtolower(trim((string)$aracKullanim), 'UTF-8');
+        $clean = str_replace(['?', ''], '', $val);
+        $ascii = strtr($clean, [
+            'ı' => 'i', 'İ' => 'i', 'ğ' => 'g', 'Ğ' => 'g',
+            'ü' => 'u', 'Ü' => 'u', 'ş' => 's', 'Ş' => 's',
+            'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c'
+        ]);
+        return (strpos($clean, 'kendi') !== false || strpos($ascii, 'kendi') !== false || strpos($clean, 'özel') !== false || strpos($ascii, 'ozel') !== false);
+    }
+
     public function __construct()
     {
         parent::__construct($this->table);
@@ -1576,7 +1619,7 @@ class PersonelModel extends Model
             !empty($data['isten_cikis_tarihi']) ? $data['isten_cikis_tarihi'] : null,
             $data['personel_sinifi'] ?? 'Beyaz Yaka',
             $data['saha_takibi'] ?? '0',
-            $data['arac_kullanim'] ?? 'Yok',
+            self::sanitizeAracKullanim($data['arac_kullanim'] ?? 'Yok'),
             $data['sgk_yapilan_firma'] ?? 'Yok',
             $data['disardan_sigortali'] ?? 0,
             $data['gorunum_modulleri'] ?? null,
@@ -1639,7 +1682,7 @@ class PersonelModel extends Model
             !empty($data['isten_cikis_tarihi']) ? $data['isten_cikis_tarihi'] : null,
             $data['personel_sinifi'] ?? 'Beyaz Yaka',
             $data['saha_takibi'] ?? '0',
-            $data['arac_kullanim'] ?? 'Yok',
+            self::sanitizeAracKullanim($data['arac_kullanim'] ?? 'Yok'),
             $data['sgk_yapilan_firma'] ?? 'Yok',
             $data['disardan_sigortali'] ?? 0,
             $data['gorunum_modulleri'] ?? null,

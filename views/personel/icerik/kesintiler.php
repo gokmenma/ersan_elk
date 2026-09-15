@@ -333,6 +333,11 @@ foreach ($kesintiler as $k) {
                                                                 ];
                                                                 echo $hesaplama_labels[$k->hesaplama_tipi ?? 'sabit'] ?? 'Sabit Tutar';
                                                                 ?>
+                                                                <?php if (intval($k->banka_matrahina_ekle ?? 1) === 1): ?>
+                                                                    <div class="mt-1"><span class="badge bg-soft-success text-success" style="font-size: 10px;"><i class="bx bxs-bank me-1"></i>Banka Matrahı</span></div>
+                                                                <?php else: ?>
+                                                                    <div class="mt-1"><span class="badge bg-soft-warning text-warning" style="font-size: 10px;"><i class="bx bx-money me-1"></i>Elden / Harici</span></div>
+                                                                <?php endif; ?>
                                                             </td>
                                                             <td class="fw-bold">
                                                                 <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
@@ -476,6 +481,11 @@ foreach ($kesintiler as $k) {
                                         ];
                                         echo $hesaplama_labels[$k->hesaplama_tipi ?? 'sabit'] ?? 'Sabit Tutar';
                                         ?>
+                                        <?php if (intval($k->banka_matrahina_ekle ?? 1) === 1): ?>
+                                            <div class="mt-1"><span class="badge bg-soft-success text-success" style="font-size: 10px;"><i class="bx bxs-bank me-1"></i>Banka Matrahı</span></div>
+                                        <?php else: ?>
+                                            <div class="mt-1"><span class="badge bg-soft-warning text-warning" style="font-size: 10px;"><i class="bx bx-money me-1"></i>Elden / Harici</span></div>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="fw-bold">
                                         <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
@@ -775,6 +785,30 @@ foreach ($kesintiler as $k) {
 
                         <div class="col-md-6">
                             <?= Form::FormFloatInput("text", "kesinti_tarih", Date::today(), "GG.AA.YYYY", "İşlem Tarihi", "calendar", "form-control flatpickr", true, null, "off", false) ?>
+                        </div>
+
+                        <!-- Kesinti Kanalı (Banka / Elden) -->
+                        <div class="col-md-6">
+                            <label class="form-label fs-11 fw-bold text-uppercase text-muted mb-1 ls-1">Kesinti Kanalı</label>
+                            <div class="segmented-control-container bg-light w-100 p-1 rounded-3" style="height: 48px;">
+                                <input type="radio" class="segmented-control-input" name="banka_matrahina_ekle" id="kesinti_banka_matrah_evet" value="1" checked>
+                                <label class="segmented-control-label rounded-2 py-2" for="kesinti_banka_matrah_evet" title="Banka Matrahından Düşülür (Varsayılan)">
+                                    <i class="bx bxs-bank me-1 text-success"></i> Banka
+                                </label>
+
+                                <input type="radio" class="segmented-control-input" name="banka_matrahina_ekle" id="kesinti_banka_matrah_hayir" value="0">
+                                <label class="segmented-control-label rounded-2 py-2" for="kesinti_banka_matrah_hayir" title="Önce Elden Tutardan Düşülür, Kalırsa Bankadan Düşülür">
+                                    <i class="bx bx-money me-1 text-warning"></i> Elden
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Kesinti Kanalı Açıklaması -->
+                        <div class="col-12 mt-1">
+                            <div class="alert alert-light border border-light-subtle p-2 mb-0 rounded-3 fs-12 text-muted" id="kesinti_kanal_bilgi_kutusu">
+                                <i class="bx bx-info-circle text-primary me-1 align-middle fs-6"></i>
+                                <span id="kesinti_kanal_bilgi_metin"><strong>Banka Seçilirse:</strong> Kesinti tutarı öncelikle resmî banka ödemesinden düşülür. Banka tutarını aşarsa kalan kısım elden ödemeden mahsup edilir.</span>
+                            </div>
                         </div>
 
                         <!-- Açıklama -->

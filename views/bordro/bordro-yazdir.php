@@ -148,10 +148,14 @@ $buildKesintiGroups = static function (array $kayitlar, array $etiketler): array
 
 $buildEkOdemeGroups = static function (array $kayitlar, array $hesaplamaDetay, array $etiketler): array {
     $groups = [];
+    $jsonById = [];
     $jsonByCode = [];
     $ozet = is_array($hesaplamaDetay['ozet'] ?? null) ? $hesaplamaDetay['ozet'] : [];
 
     foreach (($hesaplamaDetay['ek_odemeler'] ?? []) as $jsonOdeme) {
+        if (isset($jsonOdeme['id'])) {
+            $jsonById[$jsonOdeme['id']] = $jsonOdeme;
+        }
         $kod = $jsonOdeme['kod'] ?? null;
         if ($kod === null) {
             continue;
@@ -179,7 +183,11 @@ $buildEkOdemeGroups = static function (array $kayitlar, array $hesaplamaDetay, a
             $hesaplananAdet = intval($adetMatch[1]);
         }
 
-        if (isset($jsonByCode[$tur]) && !empty($jsonByCode[$tur])) {
+        if (isset($kayit->id) && isset($jsonById[$kayit->id])) {
+            $jsonOdeme = $jsonById[$kayit->id];
+            $hesaplananTutar = floatval($jsonOdeme['hesaplanan_tutar'] ?? $jsonOdeme['tutar'] ?? $hesaplananTutar);
+            $hesaplananAdet = intval($jsonOdeme['gun_sayisi'] ?? $hesaplananAdet);
+        } elseif (isset($jsonByCode[$tur]) && !empty($jsonByCode[$tur])) {
             $jsonOdeme = array_shift($jsonByCode[$tur]);
             $hesaplananTutar = floatval($jsonOdeme['hesaplanan_tutar'] ?? $jsonOdeme['tutar'] ?? $hesaplananTutar);
             $hesaplananAdet = intval($jsonOdeme['gun_sayisi'] ?? $hesaplananAdet);
