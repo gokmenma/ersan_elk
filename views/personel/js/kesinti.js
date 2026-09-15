@@ -932,14 +932,12 @@ $(document).ready(function () {
       if (typeof bootstrap !== "undefined" && bootstrap.Modal) {
         var modalObj = bootstrap.Modal.getInstance(modalEl[0]);
         if (modalObj) {
-          try { modalObj.hide(); } catch(e){}
-          try { modalObj.dispose(); } catch(e){}
-        } else {
-          modalEl.modal("hide");
+          try {
+            modalObj.dispose();
+          } catch(e){}
         }
-      } else {
-        modalEl.modal("hide");
       }
+      modalEl.removeClass("show in fade").css("display", "none").attr("aria-hidden", "true");
     }
     $(".modal-backdrop").remove();
     $("body").removeClass("modal-open").css({ overflow: "", "padding-right": "" });

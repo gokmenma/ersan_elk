@@ -288,12 +288,18 @@ use App\Helper\Helper;
                 if ($.fn.DataTable && $('#tblGorevGecmisi').length) {
                     if ($.fn.DataTable.isDataTable('#tblGorevGecmisi')) {
                         $('#tblGorevGecmisi').DataTable().destroy();
+                        $('#tblGorevGecmisi thead .dt-filter-row').remove();
+                        $('[data-table-id="tblGorevGecmisi"]').remove();
                     }
                     var dtOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
-                    $('#tblGorevGecmisi').DataTable($.extend(true, {}, dtOptions, {
+                    var options = $.extend(true, {}, dtOptions, {
                         order: [[0, 'desc']],
                         pageLength: 5
-                    }));
+                    });
+                    if (typeof applyLengthStateSave === 'function') {
+                        options = applyLengthStateSave(options);
+                    }
+                    $('#tblGorevGecmisi').DataTable(options);
                 }
             }
 

@@ -4,6 +4,42 @@ use App\Helper\Helper;
 ?>
 
 <style>
+    #finansal .finance-overview {
+        background: linear-gradient(135deg, rgba(85, 110, 230, .12), rgba(80, 165, 241, .05));
+        border: 1px solid rgba(85, 110, 230, .18); border-radius: 14px;
+    }
+    #finansal .finance-overview-icon, #finansal .finance-section-icon {
+        align-items: center; display: inline-flex; flex: 0 0 auto; justify-content: center;
+    }
+    #finansal .finance-overview-icon { background: rgba(85, 110, 230, .12); border-radius: 12px; color: #556ee6; height: 48px; width: 48px; }
+    #finansal .finance-section-card { border: 1px solid rgba(128, 137, 150, .18) !important; border-radius: 14px; box-shadow: 0 .25rem .75rem rgba(18, 38, 63, .045); overflow: hidden; }
+    #finansal .finance-section-card .card-header { background: var(--bs-body-bg, #fff); border-top: 3px solid rgba(85, 110, 230, .28); padding: 1rem 1.25rem; }
+    #finansal .finance-section-icon { border-radius: 10px; height: 36px; width: 36px; }
+    #finansal .finance-section-icon.bank { background: rgba(80, 165, 241, .12); color: #50a5f1; }
+    #finansal .finance-section-icon.benefit { background: rgba(241, 180, 76, .14); color: #d89d2f; }
+    #finansal .finance-section-icon.social { background: rgba(52, 195, 143, .12); color: #34c38f; }
+    #finansal .finance-subtitle { color: #74788d; font-size: .78rem; }
+    #finansal .finance-help { background: rgba(116, 120, 141, .055); border-radius: 9px; color: #74788d; font-size: .78rem; padding: .65rem .8rem; }
+    #finansal .finance-group { background: rgba(116, 120, 141, .035); border: 1px solid rgba(128, 137, 150, .12); border-radius: 12px; padding: 1rem; }
+    #finansal .finance-group > h6 { align-items: center; display: flex; gap: .35rem; }
+    #finansal .social-benefit-card { background: rgba(255,255,255,.7); border: 1px solid rgba(128, 137, 150, .16); border-radius: 12px; height: 100%; }
+    #finansal .social-benefit-card .form-switch { align-items: center; background: rgba(52,195,143,.06); border-radius: 9px; display: flex; margin: -0.15rem -0.15rem 1rem; padding: .65rem .75rem; }
+    #finansal .social-benefit-card .form-check-input {
+        flex: 0 0 auto;
+        float: none;
+        margin-left: 0 !important;
+        margin-right: .6rem;
+        margin-top: 0;
+        position: static;
+    }
+    #finansal .social-benefit-card .form-check-label { flex: 1; }
+    #finansal .history-card { border: 1px solid rgba(128, 137, 150, .18) !important; border-radius: 14px; overflow: hidden; }
+    #finansal .history-card .table > :not(caption) > * > * { padding: .8rem .9rem; }
+    #finansal .history-card .table thead th { color: #74788d; font-size: .73rem; letter-spacing: .025em; text-transform: uppercase; white-space: nowrap; }
+    [data-bs-theme="dark"] #finansal .finance-overview { background: linear-gradient(135deg, rgba(85, 110, 230, .2), rgba(80, 165, 241, .08)); }
+    [data-bs-theme="dark"] #finansal .finance-group, [data-bs-theme="dark"] #finansal .social-benefit-card { background: rgba(255,255,255,.035); }
+    @media (max-width: 767.98px) { #finansal .finance-section-card .card-header, #finansal .finance-section-card .card-body { padding: 1rem; } }
+
     /* Select2 Multiple Floating Label Fix */
     .form-floating-custom .select2-container--default .select2-selection--multiple {
         min-height: 58px !important;
@@ -54,24 +90,37 @@ use App\Helper\Helper;
     }
 </style>
 
-<div class="row">
+<div class="finance-overview p-3 p-lg-4 mb-3">
+    <div class="d-flex align-items-start gap-3">
+        <span class="finance-overview-icon"><i class="bx bx-wallet fs-3"></i></span>
+        <div>
+            <h4 class="mb-1 text-dark">Maaş ve yan haklar</h4>
+            <p class="text-muted mb-0">Banka ödeme bilgileri, kesintiler, sosyal yardımlar ve maaş geçmişini tek akışta yönetin.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
     <div class="col-md-12">
-        <div class="card border">
+        <div class="card border finance-section-card">
             <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-money me-2"></i>Maaş & Banka Bilgileri</h5>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="finance-section-icon bank"><i class="bx bx-money fs-5"></i></span>
+                    <div><h5 class="card-title mb-1 text-dark">Maaş ve banka bilgileri</h5><div class="finance-subtitle">Ödeme hesapları ve vergi matrahı devri</div></div>
+                </div>
             </div>
-            <div class="card-body">
+            <div class="card-body p-3 p-lg-4">
                 <!-- 1. Grup: Banka Bilgileri -->
-                <div class="mb-4">
-                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-building-house me-1"></i>Banka Bilgileri</h6>
+                <div class="mb-4 finance-group">
+                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-building-house me-1 text-primary"></i>Banka bilgileri</h6>
                     <div class="row">
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-4 mb-2">
                             <?php echo Form::FormFloatInput("text", "iban_numarasi", $personel->iban_numarasi ?? "", "Maaş IBAN", "Maaş IBAN Numarası", "credit-card"); ?>
                         </div>
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-4 mb-2">
                             <?php echo Form::FormFloatInput("text", "ek_odeme_iban_numarasi", $personel->ek_odeme_iban_numarasi ?? "", "Ek Ödeme IBAN", "Ek Ödeme IBAN", "credit-card"); ?>
                         </div>
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-4 mb-2">
                             <?php echo Form::FormFloatInput("text", "kumulatif_matrah_devir", Helper::formattedMoney($personel->kumulatif_matrah_devir ?? 0), "Küm. Vergi Matrahı Devri", "Devir Kümülatif Matrah", "trending-up", "form-control money"); ?>
                         </div>
                     </div>
@@ -80,10 +129,10 @@ use App\Helper\Helper;
                 <!-- YAN HAKLAR VE BANKA BİLGİLERİ -->
 
                 <!-- 3. Grup: Yan Haklar & Kesintiler -->
-                <div class="mb-4">
-                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-star me-1"></i>Yan Haklar & Kesintiler</h6>
+                <div class="mb-4 finance-group">
+                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-star me-1 text-warning"></i>Yan haklar ve kesintiler</h6>
                     <div class="row">
-                        <div class="col-md-2 mb-2">
+                        <div class="col-md-3 mb-2">
                             <?php echo Form::FormSelect2("bes_kesintisi_varmi", ['1' => 'Evet', '0' => 'Hayır'], $personel->bes_kesintisi_varmi ?? '', "Bes Kesintisi Var mı?", "dollar-sign"); ?>
                         </div>
                         <div class="col-md-3 mb-2">
@@ -102,12 +151,12 @@ use App\Helper\Helper;
                 </div>
 
                 <!-- 4. Grup: Ek Sosyal Yardımlar -->
-                <div class="mt-4 pt-2 border-top">
-                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-plus-circle me-1"></i>Ek Sosyal Yardımlar</h6>
+                <div class="mt-4 pt-2 border-top finance-group">
+                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-plus-circle me-1 text-success"></i>Ek sosyal yardımlar</h6>
                     <div class="row">
                         <!-- Yemek Yardımı -->
                         <div class="col-md-6 mb-3">
-                            <div class="card">
+                            <div class="card social-benefit-card">
                                 <div class="card-body p-3">
                                     <div class="form-check form-switch mb-3">
                                         <input type="hidden" name="yemek_yardimi_aliyor" value="0">
@@ -160,7 +209,7 @@ use App\Helper\Helper;
 
                         <!-- Eş Yardımı -->
                         <div class="col-md-6 mb-3">
-                            <div class="card">
+                            <div class="card social-benefit-card">
                                 <div class="card-body p-3">
                                     <div class="form-check form-switch mb-3">
                                         <input type="hidden" name="es_yardimi_aliyor" value="0">
@@ -216,9 +265,9 @@ use App\Helper\Helper;
 
     <!-- Görev/Maaş Geçmişi Tablosu -->
     <div class="col-md-12 mt-3">
-        <div class="card border h-100">
+        <div class="card border h-100 history-card">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-briefcase me-2"></i>Maaş Tipi Geçmişi</h5>
+                <div><h5 class="card-title mb-1 text-primary"><i class="bx bx-briefcase me-2"></i>Maaş tipi geçmişi</h5><div class="small text-muted">Görev, maaş türü ve geçerlilik dönemlerini takip edin.</div></div>
                 <div id="gorevGecmisiButtonContainer">
                     <?php if ($id > 0): ?>
                         <?php 
@@ -243,12 +292,12 @@ use App\Helper\Helper;
                             <thead class="table-light">
                                 <tr>
                                     <th style="display:none">ID</th>
-                                    <th>Departman & Görev</th>
-                                    <th>Maaş Tipi</th>
-                                    <th>Tutar</th>
-                                    <th>Başlangıç Tarihi</th>
-                                    <th>Bitiş Tarihi</th>
-                                    <th>Durum</th>
+                                    <th data-filter="string">Departman & Görev</th>
+                                    <th data-filter="select">Maaş Tipi</th>
+                                    <th data-filter="number">Tutar</th>
+                                    <th data-filter="date">Başlangıç Tarihi</th>
+                                    <th data-filter="date">Bitiş Tarihi</th>
+                                    <th data-filter="select">Durum</th>
                                     <th class="text-center">İşlem</th>
                                 </tr>
                             </thead>
@@ -318,10 +367,10 @@ use App\Helper\Helper;
 
     <!-- Personele Özel İş Türü Ücretleri Tablosu -->
     <div class="col-md-12 mt-3">
-        <div class="card border h-100 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+        <div class="card border h-100 shadow-sm history-card">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
                 <div>
-                    <h5 class="card-title mb-0 text-primary fw-bold"><i class="bx bx-purchase-tag me-2"></i>Personele Özel İş Türü Birim Fiyatları</h5>
+                    <h5 class="card-title mb-1 text-primary fw-bold"><i class="bx bx-purchase-tag me-2"></i>Özel iş türü birim fiyatları</h5>
                     <small class="text-muted">Bu personele özel tanımlanan birim fiyatlar, sistemdeki genel iş türü fiyatlarının üzerine yazar.</small>
                 </div>
                 <div>
@@ -338,12 +387,12 @@ use App\Helper\Helper;
                         <table id="tblOzelIsTuruUcretleri" class="table table-hover align-middle mb-0 w-100">
                             <thead class="table-light">
                                 <tr>
-                                    <th>İş Türü</th>
-                                    <th>Özel Birim Ücret</th>
-                                    <th>Özel Araçlı Ücret</th>
-                                    <th>Geçerlilik Başlangıç</th>
-                                    <th>Geçerlilik Bitiş</th>
-                                    <th>Durum</th>
+                                    <th data-filter="string">İş Türü</th>
+                                    <th data-filter="number">Özel Birim Ücret</th>
+                                    <th data-filter="number">Özel Araçlı Ücret</th>
+                                    <th data-filter="date">Geçerlilik Başlangıç</th>
+                                    <th data-filter="date">Geçerlilik Bitiş</th>
+                                    <th data-filter="select">Durum</th>
                                     <th class="text-center">İşlem</th>
                                 </tr>
                             </thead>

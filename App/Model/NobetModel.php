@@ -702,6 +702,141 @@ class NobetModel extends Model
     }
 
     /**
+     * Personellerin detaylı nöbet istatistikleri ve dağılımı
+     * @param string $baslangic Başlangıç tarihi (Y-m-d)
+     * @param string $bitis Bitiş tarihi (Y-m-d)
+     * @param string|null $departman Departman filtresi
+     * @param string $personelDurumu 'active', 'passive', 'all'
+     * @return array
+     */
+    public function getTumPersonelNobetIstatistikleri($baslangic, $bitis, $departman = null, $personelDurumu = 'active')
+    {
+        $firma_id = $_SESSION['firma_id'] ?? null;
+        $params = [
+            'firma_id' => $firma_id,
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ];
+
+        $deptSql = "";
+        if (!empty($departman) && $departman !== 'all') {
+            $deptSql = " AND p.departman = :departman";
+            $params['departman'] = $departman;
+        }
+
+        $statusSql = "";
+        if ($personelDurumu === 'active') {
+            $statusSql = " AND (p.aktif_mi = 1 AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi > CURDATE()))";
+        } elseif ($personelDurumu === 'passive') {
+            $statusSql = " AND (p.aktif_mi = 0 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi <= CURDATE()))";
+        }
+
+        $sql = "SELECT 
+                    p.id, 
+                    p.adi_soyadi, 
+                    p.departman, 
+                    p.resim_yolu, 
+                    p.cep_telefonu,
+                    p.aktif_mi,
+                    p.isten_cikis_tarihi,
+                    t.tur_adi as ekip_adi,
+                    COUNT(n.id) as toplam_nobet,
+                    SUM(CASE WHEN (DAYOFWEEK(n.nobet_tarihi) IN (1, 7) OR n.nobet_tipi = 'hafta_sonu') AND n.nobet_tipi != 'resmi_tatil' THEN 1 ELSE 0 END) as hafta_sonu_nobet,
+                    SUM(CASE WHEN DAYOFWEEK(n.nobet_tarihi) NOT IN (1, 7) AND (n.nobet_tipi IS NULL OR n.nobet_tipi = 'standart') THEN 1 ELSE 0 END) as hafta_ici_nobet,
+                    SUM(CASE WHEN n.nobet_tipi = 'resmi_tatil' THEN 1 ELSE 0 END) as resmi_tatil_nobet,
+                    SUM(CASE WHEN n.nobet_tipi = 'ozel' THEN 1 ELSE 0 END) as ozel_nobet,
+                    SUM(CASE WHEN n.durum = 'devir_alindi' THEN 1 ELSE 0 END) as devir_alindi_sayisi,
+                    MAX(n.nobet_tarihi) as son_nobet_tarihi
+                FROM personel p
+                LEFT JOIN {$this->table} n ON p.id = n.personel_id 
+                    AND n.nobet_tarihi BETWEEN :baslangic AND :bitis
+                    AND n.silinme_tarihi IS NULL
+                    AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal'))
+                LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
+                WHERE p.firma_id = :firma_id 
+                AND p.silinme_tarihi IS NULL 
+                {$statusSql}
+                {$deptSql}
+                GROUP BY p.id, p.adi_soyadi, p.departman, p.resim_yolu, p.cep_telefonu, p.aktif_mi, p.isten_cikis_tarihi, t.tur_adi
+                ORDER BY toplam_nobet DESC, p.adi_soyadi ASC";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        $personeller = $query->fetchAll(PDO::FETCH_OBJ);
+
+        // Özet KPI ve Departman Dağılımını Hesapla
+        $toplamNobet = 0;
+        $haftaSonuToplam = 0;
+        $resmiTatilToplam = 0;
+        $haftaIciToplam = 0;
+        $nobetTutanPersonelSayisi = 0;
+        $toplamPersonelSayisi = count($personeller);
+        $deptStats = [];
+
+        foreach ($personeller as $p) {
+            $p->toplam_nobet = (int) ($p->toplam_nobet ?? 0);
+            $p->hafta_sonu_nobet = (int) ($p->hafta_sonu_nobet ?? 0);
+            $p->hafta_ici_nobet = (int) ($p->hafta_ici_nobet ?? 0);
+            $p->resmi_tatil_nobet = (int) ($p->resmi_tatil_nobet ?? 0);
+            $p->ozel_nobet = (int) ($p->ozel_nobet ?? 0);
+            $p->devir_alindi_sayisi = (int) ($p->devir_alindi_sayisi ?? 0);
+
+            $toplamNobet += $p->toplam_nobet;
+            $haftaSonuToplam += $p->hafta_sonu_nobet;
+            $resmiTatilToplam += $p->resmi_tatil_nobet;
+            $haftaIciToplam += $p->hafta_ici_nobet;
+
+            if ($p->toplam_nobet > 0) {
+                $nobetTutanPersonelSayisi++;
+            }
+
+            $deptName = !empty($p->departman) ? $p->departman : 'Belirtilmemiş';
+            if (!isset($deptStats[$deptName])) {
+                $deptStats[$deptName] = [
+                    'departman' => $deptName,
+                    'toplam_nobet' => 0,
+                    'personel_sayisi' => 0,
+                    'nobet_tutan_sayisi' => 0
+                ];
+            }
+            $deptStats[$deptName]['toplam_nobet'] += $p->toplam_nobet;
+            $deptStats[$deptName]['personel_sayisi']++;
+            if ($p->toplam_nobet > 0) {
+                $deptStats[$deptName]['nobet_tutan_sayisi']++;
+            }
+        }
+
+        // Yüzdelik payları hesapla
+        foreach ($personeller as &$p) {
+            $p->oran = $toplamNobet > 0 ? round(($p->toplam_nobet / $toplamNobet) * 100, 1) : 0;
+        }
+
+        $ortalamaNobet = $nobetTutanPersonelSayisi > 0 ? round($toplamNobet / $nobetTutanPersonelSayisi, 1) : 0;
+        $genelOrtalama = $toplamPersonelSayisi > 0 ? round($toplamNobet / $toplamPersonelSayisi, 1) : 0;
+
+        // Departmanları nöbet sayısına göre sırala
+        usort($deptStats, function ($a, $b) {
+            return $b['toplam_nobet'] <=> $a['toplam_nobet'];
+        });
+
+        return [
+            'personeller' => $personeller,
+            'kpi' => [
+                'toplam_nobet' => $toplamNobet,
+                'hafta_ici_toplam' => $haftaIciToplam,
+                'hafta_sonu_toplam' => $haftaSonuToplam,
+                'resmi_tatil_toplam' => $resmiTatilToplam,
+                'toplam_personel' => $toplamPersonelSayisi,
+                'nobet_tutan_personel' => $nobetTutanPersonelSayisi,
+                'nobet_tutmayan_personel' => $toplamPersonelSayisi - $nobetTutanPersonelSayisi,
+                'ortalama_nobet' => $ortalamaNobet,
+                'genel_ortalama' => $genelOrtalama
+            ],
+            'departmanlar' => array_values($deptStats)
+        ];
+    }
+
+    /**
      * Yaklaşan nöbetleri getirir (Bildirim için)
      * @param int $saat Kaç saat içindeki nöbetler
      */

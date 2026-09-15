@@ -14,7 +14,7 @@ $showDeletedToStaff = ($settingsData['nobet_silinmis_goster'] ?? '0') === '1';
 $hasSettingPermission = Gate::allows("nobet_onceki_gunlerde_islem_yapabilir");
 $canApprove = Gate::allows("yonetici_onayi");
 
-$personeller = $Personel->all(true, 'nobet');
+$personeller = $Personel->all(false, 'nobet');
 
 // Departmanları doğrudan personel listesinden dinamik olarak al
 $deptList = [];
@@ -271,6 +271,29 @@ $title = 'Nöbet Planlama';
                             <?php endforeach; ?>
                         </ul>
                     </div>
+
+                    <!-- Personel Durumu Filtre Dropdown (Aktif / Ayrılan / Tümü) -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown" id="status-filter-btn"
+                            title="Personel Durumu (Aktif / Ayrılan)">
+                            <i class="bx bx-user-check"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" id="status-filter-dropdown"
+                            style="font-size: 13px; min-width: 210px;">
+                            <li>
+                                <h6 class="dropdown-header">Personel Durumu</h6>
+                            </li>
+                            <li><a class="dropdown-item active" href="javascript:void(0)" data-status="active"><i
+                                        class="bx bx-user-check text-success me-2"></i>Aktif Personeller</a></li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-status="passive"><i
+                                        class="bx bx-user-x text-danger me-2"></i>İşten Ayrılanlar</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-status="all"><i
+                                        class="bx bx-group text-primary me-2"></i>Tümü (Aktif + Ayrılan)</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -285,16 +308,22 @@ $title = 'Nöbet Planlama';
                     $deptName = $personel->departman ?? 'Diğer';
                     $normalizedDept = normalizeDeptName($deptName);
                     $rowColor = $deptColorMap[$normalizedDept] ?? '#6b7280';
+                    $isAyrilmis = ($personel->aktif_mi == 0) || (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00' && $personel->isten_cikis_tarihi <= date('Y-m-d'));
                     ?>
-                    <div class="personel-item fc-event"
+                    <div class="personel-item fc-event <?php echo $isAyrilmis ? 'personel-ayrilmis' : ''; ?>"
                         data-id="<?php echo \App\Helper\Security::encrypt($personel->id); ?>"
                         data-raw-id="<?php echo $personel->id; ?>"
                         data-name="<?php echo htmlspecialchars($personel->adi_soyadi); ?>"
-                        data-departman="<?php echo htmlspecialchars($deptName); ?>" data-color="<?php echo $rowColor; ?>"
-                        style="--dept-color: <?php echo $rowColor; ?>">
+                        data-departman="<?php echo htmlspecialchars($deptName); ?>" 
+                        data-is-active="<?php echo $isAyrilmis ? '0' : '1'; ?>"
+                        data-color="<?php echo $rowColor; ?>"
+                        style="--dept-color: <?php echo $rowColor; ?>; <?php echo $isAyrilmis ? 'opacity: 0.85;' : ''; ?>">
                         <div class="d-flex justify-content-between align-items-start w-100">
-                            <div class="personel-name">
-                                <?php echo htmlspecialchars($personel->adi_soyadi); ?>
+                            <div class="personel-name d-flex align-items-center gap-1">
+                                <span><?php echo htmlspecialchars($personel->adi_soyadi); ?></span>
+                                <?php if ($isAyrilmis): ?>
+                                    <span class="badge bg-soft-danger text-danger px-1 py-0" style="font-size: 9px; font-weight: 600;">Ayrıldı</span>
+                                <?php endif; ?>
                             </div>
                             <span class="nobet-count" data-personel-id="<?php echo $personel->id; ?>">0</span>
                         </div>
@@ -461,6 +490,13 @@ $title = 'Nöbet Planlama';
                             <!-- Personeller JS ile buraya eklenecek -->
                         </ul>
                     </div>
+
+                    <!-- Personel Nöbet İstatistikleri Butonu -->
+                    <button class="btn btn-soft-warning" type="button" id="btn-nobet-istatistik"
+                        data-bs-toggle="modal" data-bs-target="#nobetIstatistikModal" title="Personel Nöbet İstatistikleri"
+                        style="background: rgba(245, 158, 11, 0.12); color: #d97706; border: none; font-weight: 600; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; border-radius: 8px;">
+                        <i class="bx bx-bar-chart-alt-2 fs-4"></i>
+                    </button>
                 </div>
 
                 <div class="d-flex align-items-center gap-3">
@@ -852,6 +888,244 @@ $title = 'Nöbet Planlama';
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Personel Nöbet İstatistikleri Modalı -->
+<div class="modal fade modern-settings-modal" id="nobetIstatistikModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header border-bottom py-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-sm d-flex align-items-center justify-content-center rounded-3" style="width: 42px; height: 42px; background: rgba(245, 158, 11, 0.15); color: #d97706;">
+                        <i class="bx bx-bar-chart-alt-2 fs-3"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Personel Nöbet İstatistikleri</h5>
+                        <p class="text-muted small mb-0" id="istatistik-donem-baslik">Dönem Nöbet Dağılımı ve Katılım Özeti</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1" id="btn-export-istatistik-excel">
+                        <i class="bx bx-download"></i> Excel İndir
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+            </div>
+
+            <div class="modal-body p-4">
+                <!-- Filtreleme Araç Çubuğu (Form Helper ile Oluşturuldu) -->
+                <?php
+                $donemTuruOptions = [
+                    'aylik' => 'Aylık Dönem',
+                    'yillik' => 'Tüm Yıl',
+                    'ozel' => 'Özel Tarih Aralığı'
+                ];
+
+                $ayOptions = [
+                    '01' => 'Ocak',
+                    '02' => 'Şubat',
+                    '03' => 'Mart',
+                    '04' => 'Nisan',
+                    '05' => 'Mayıs',
+                    '06' => 'Haziran',
+                    '07' => 'Temmuz',
+                    '08' => 'Ağustos',
+                    '09' => 'Eylül',
+                    '10' => 'Ekim',
+                    '11' => 'Kasım',
+                    '12' => 'Aralık'
+                ];
+
+                $yilOptions = [];
+                $curYear = (int)date('Y');
+                for ($y = $curYear - 2; $y <= $curYear + 2; $y++) {
+                    $yilOptions[(string)$y] = (string)$y;
+                }
+
+                $deptFilterOptions = ['all' => 'Tüm Departmanlar'];
+                if (!empty($departments)) {
+                    foreach ($departments as $dept) {
+                        $deptFilterOptions[$dept] = $dept;
+                    }
+                }
+
+                $personelDurumOptions = [
+                    'active' => 'Aktif Personeller',
+                    'all' => 'Tümü (Ayrılanlar Dahil)',
+                    'passive' => 'İşten Ayrılanlar'
+                ];
+                ?>
+                <div class="card border shadow-none mb-4 bg-light bg-opacity-50">
+                    <div class="card-body p-3">
+                        <div class="row g-2 align-items-center">
+                            <!-- Dönem Türü Seçimi -->
+                            <div class="col-md-2 col-sm-6" id="ist-filter-type-col">
+                                <?php echo \App\Helper\Form::FormSelect2('ist_filter_type', $donemTuruOptions, 'aylik', 'Dönem Türü', 'calendar', 'key', '', 'form-select select2', false, 'width:100%', '', 'ist-filter-type'); ?>
+                            </div>
+
+                            <!-- Ay Seçimi -->
+                            <div class="col-md-2 col-sm-6" id="ist-filter-ay-wrapper">
+                                <?php echo \App\Helper\Form::FormSelect2('ist_filter_ay', $ayOptions, date('m'), 'Ay Seçimi', 'calendar-event', 'key', '', 'form-select select2', false, 'width:100%', '', 'ist-filter-ay'); ?>
+                            </div>
+
+                            <!-- Yıl Seçimi -->
+                            <div class="col-md-2 col-sm-6" id="ist-filter-yil-wrapper">
+                                <?php echo \App\Helper\Form::FormSelect2('ist_filter_yil', $yilOptions, (string)date('Y'), 'Yıl Seçimi', 'calendar-alt', 'key', '', 'form-select select2', false, 'width:100%', '', 'ist-filter-yil'); ?>
+                            </div>
+
+                            <!-- Özel Tarih Aralığı (Özel Seçilirse) -->
+                            <div class="col-md-4 col-sm-6 d-none" id="ist-filter-tarih-wrapper">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <?php echo \App\Helper\Form::FormFloatInput('date', 'ist-filter-baslangic', date('Y-m-01'), '', 'Başlangıç', 'calendar', 'form-control', false, null, 'off'); ?>
+                                    </div>
+                                    <div class="col-6">
+                                        <?php echo \App\Helper\Form::FormFloatInput('date', 'ist-filter-bitis', date('Y-m-t'), '', 'Bitiş', 'calendar', 'form-control', false, null, 'off'); ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Departman Seçimi -->
+                            <div class="col-md-3 col-sm-6" id="ist-filter-dept-wrapper">
+                                <?php echo \App\Helper\Form::FormSelect2('ist_filter_departman', $deptFilterOptions, 'all', 'Departman', 'buildings', 'key', '', 'form-select select2', false, 'width:100%', '', 'ist-filter-departman'); ?>
+                            </div>
+
+                            <!-- Personel Durumu Seçimi -->
+                            <div class="col-md-2 col-sm-6" id="ist-filter-status-wrapper">
+                                <?php echo \App\Helper\Form::FormSelect2('ist_filter_status', $personelDurumOptions, 'active', 'Durum', 'user-check', 'key', '', 'form-select select2', false, 'width:100%', '', 'ist-filter-status'); ?>
+                            </div>
+
+                            <!-- Yenile Butonu -->
+                            <div class="col-md-1 col-sm-6">
+                                <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center shadow-sm" id="btn-ist-filtre-uygula" title="Filtrele" style="height: 58px; border-radius: 8px;">
+                                    <i class="bx bx-refresh fs-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Kartları -->
+                <div class="row g-3 mb-4" id="ist-kpi-cards">
+                    <div class="col-xl-3 col-sm-6">
+                        <div class="card border shadow-sm h-100 p-3 mb-0" style="border-left: 4px solid #3b82f6 !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold text-uppercase" style="font-size: 11px;">Toplam Nöbet</span>
+                                <div class="avatar-xs d-flex align-items-center justify-content-center rounded" style="width: 32px; height: 32px; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+                                    <i class="bx bx-calendar fs-5"></i>
+                                </div>
+                            </div>
+                            <h3 class="fw-bold mb-1 text-dark" id="ist-kpi-toplam-nobet">0</h3>
+                            <span class="text-muted small" id="ist-kpi-donem-text" style="font-size: 11px;">Seçili dönemde</span>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-sm-6">
+                        <div class="card border shadow-sm h-100 p-3 mb-0" style="border-left: 4px solid #10b981 !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold text-uppercase" style="font-size: 11px;">Nöbet Tutan Personel</span>
+                                <div class="avatar-xs d-flex align-items-center justify-content-center rounded" style="width: 32px; height: 32px; background: rgba(16, 185, 129, 0.12); color: #10b981;">
+                                    <i class="bx bx-user-check fs-5"></i>
+                                </div>
+                            </div>
+                            <h3 class="fw-bold mb-1 text-dark" id="ist-kpi-tutan-personel">0 / 0</h3>
+                            <span class="text-muted small" id="ist-kpi-katilim-orani" style="font-size: 11px;">%0 Katılım Oranı</span>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-sm-6">
+                        <div class="card border shadow-sm h-100 p-3 mb-0" style="border-left: 4px solid #f59e0b !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold text-uppercase" style="font-size: 11px;">Ortalama Nöbet</span>
+                                <div class="avatar-xs d-flex align-items-center justify-content-center rounded" style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+                                    <i class="bx bx-calculator fs-5"></i>
+                                </div>
+                            </div>
+                            <h3 class="fw-bold mb-1 text-dark" id="ist-kpi-ortalama">0.0</h3>
+                            <span class="text-muted small" style="font-size: 11px;">Nöbet tutan personel başına</span>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-sm-6">
+                        <div class="card border shadow-sm h-100 p-3 mb-0" style="border-left: 4px solid #8b5cf6 !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold text-uppercase" style="font-size: 11px;">Hafta Sonu / Tatil</span>
+                                <div class="avatar-xs d-flex align-items-center justify-content-center rounded" style="width: 32px; height: 32px; background: rgba(139, 92, 246, 0.12); color: #8b5cf6;">
+                                    <i class="bx bx-calendar-week fs-5"></i>
+                                </div>
+                            </div>
+                            <h3 class="fw-bold mb-1 text-dark" id="ist-kpi-haftasonu-tatil">0 / 0</h3>
+                            <span class="text-muted small" id="ist-kpi-haftasonu-oran" style="font-size: 11px;">%0 Hafta Sonu Oranı</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tablo Başlık ve Hızlı Arama & Excel Butonu -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <h6 class="fw-bold mb-0">Personel Dağılım Listesi</h6>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="ist-toggle-only-active" checked>
+                            <label class="form-check-label small text-muted" for="ist-toggle-only-active">Yalnızca Nöbeti Olanları Göster</label>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="min-width: 240px;">
+                            <?php echo \App\Helper\Form::FormFloatInput('text', 'ist-table-search', '', 'Personel ara...', 'Personel Ara', 'search', 'form-control'); ?>
+                        </div>
+                        <button type="button" class="btn btn-success d-flex align-items-center gap-2 fw-bold shadow-sm" id="btn-export-istatistik-excel" style="height: 58px; padding: 0 18px; border-radius: 8px;">
+                            <i class="bx bxs-file-export fs-4"></i>
+                            <span>Excel İndir</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tablo -->
+                <div class="table-responsive rounded border mb-4" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" id="ist-personel-table">
+                        <thead class="table-light sticky-top" style="z-index: 2;">
+                            <tr style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <th style="width: 40px;" class="text-center">#</th>
+                                <th>Personel</th>
+                                <th>Departman</th>
+                                <th class="text-center">Hafta İçi</th>
+                                <th class="text-center">Hafta Sonu</th>
+                                <th class="text-center">Resmi Tatil</th>
+                                <th class="text-center">Toplam</th>
+                                <th style="width: 170px;">Nöbet Payı</th>
+                                <th class="text-center">Son Nöbet</th>
+                                <th class="text-center" style="width: 90px;">Eylem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ist-personel-tbody" style="font-size: 13px;">
+                            <tr>
+                                <td colspan="10" class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    İstatistikler yükleniyor...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Departman Dağılım Özeti -->
+                <div class="card border shadow-none bg-light bg-opacity-25 mb-0">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bx bx-buildings text-primary"></i> Departman Bazlı Nöbet Dağılımı
+                        </h6>
+                        <div class="row g-2" id="ist-departman-list">
+                            <!-- Dinamik doldurulacak -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-top py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">Kapat</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1308,8 +1582,26 @@ $title = 'Nöbet Planlama';
         // PERSONEL FİLTRELEME
         // ============================================
         const searchInput = document.getElementById('personel-search');
-        const defaultDept = '<?php echo \App\Helper\Helper::DEPARTMAN['Kesme Açma']; ?>';
+        const defaultDept = 'Kesme Açma';
         let selectedDept = localStorage.getItem('nobet_selected_dept') || defaultDept;
+
+        // Eski veya tireli kayıtları düzelt ('Kesme-Açma' -> 'Kesme Açma')
+        if (selectedDept === 'Kesme-Açma') {
+            selectedDept = 'Kesme Açma';
+            localStorage.setItem('nobet_selected_dept', selectedDept);
+        }
+
+        function normalizeDept(name) {
+            if (!name) return '';
+            return name.replace(/[-_]/g, ' ').trim().toLowerCase();
+        }
+
+        function matchDeptStrings(dept1, dept2) {
+            if (!dept1 || !dept2) return false;
+            if (dept1 === 'all' || dept2 === 'all') return true;
+            if (dept1 === dept2) return true;
+            return normalizeDept(dept1) === normalizeDept(dept2);
+        }
 
         // Departman Dropdown Takibi
         const deptDropdownItems = document.querySelectorAll('#dept-filter-dropdown .dropdown-item');
@@ -1326,53 +1618,150 @@ $title = 'Nöbet Planlama';
 
                 // Buton Rengini Değiştir
                 const filterBtn = document.getElementById('dept-filter-btn');
-                if (selectedDept === 'all') {
-                    filterBtn.classList.replace('btn-primary', 'btn-light');
-                } else {
-                    filterBtn.classList.replace('btn-light', 'btn-primary');
+                if (filterBtn) {
+                    if (selectedDept === 'all') {
+                        filterBtn.classList.remove('btn-primary');
+                        filterBtn.classList.add('btn-outline-light');
+                    } else {
+                        filterBtn.classList.remove('btn-outline-light');
+                        filterBtn.classList.add('btn-primary');
+                    }
                 }
 
                 filterPersonel();
             });
         });
 
-        // Sayfa açılışında kayıtlı departmanı aktif yap
+        // Personel Durumu (Aktif / Ayrılan / Tümü) Dropdown Takibi
+        let selectedStatus = localStorage.getItem('nobet_selected_status') || 'active';
+        const statusDropdownItems = document.querySelectorAll('#status-filter-dropdown .dropdown-item');
+        statusDropdownItems.forEach(item => {
+            item.addEventListener('click', function () {
+                statusDropdownItems.forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                selectedStatus = this.dataset.status;
+                localStorage.setItem('nobet_selected_status', selectedStatus);
+
+                const statusBtn = document.getElementById('status-filter-btn');
+                if (statusBtn) {
+                    if (selectedStatus === 'active') {
+                        statusBtn.innerHTML = '<i class="bx bx-user-check"></i>';
+                        statusBtn.classList.remove('btn-primary', 'btn-danger');
+                        statusBtn.classList.add('btn-outline-light');
+                        statusBtn.title = 'Personel Durumu: Aktif';
+                    } else if (selectedStatus === 'passive') {
+                        statusBtn.innerHTML = '<i class="bx bx-user-x"></i>';
+                        statusBtn.classList.remove('btn-outline-light', 'btn-primary');
+                        statusBtn.classList.add('btn-danger');
+                        statusBtn.title = 'Personel Durumu: İşten Ayrılanlar';
+                    } else {
+                        statusBtn.innerHTML = '<i class="bx bx-group"></i>';
+                        statusBtn.classList.remove('btn-outline-light', 'btn-danger');
+                        statusBtn.classList.add('btn-primary');
+                        statusBtn.title = 'Personel Durumu: Tümü';
+                    }
+                }
+
+                filterPersonel();
+            });
+        });
+
+        // Sayfa açılışında kayıtlı/varsayılan departmanı ve durumu aktif yap
         (function applyStoredDept() {
+            let matched = false;
+
             // Dropdown'da aktif olanı işaretle
             deptDropdownItems.forEach(i => {
-                if (i.dataset.dept === selectedDept) {
+                if (matchDeptStrings(i.dataset.dept, selectedDept)) {
+                    i.classList.add('active');
+                    selectedDept = i.dataset.dept; // Gerçek dropdown değerine eşitle
+                    matched = true;
+                } else {
+                    i.classList.remove('active');
+                }
+            });
+
+            // Eğer kayıtlı departman hiçbir seçenekte bulunamadıysa varsayılana ('Kesme Açma' veya 'all') dön
+            if (!matched) {
+                selectedDept = defaultDept;
+                deptDropdownItems.forEach(i => {
+                    if (matchDeptStrings(i.dataset.dept, selectedDept)) {
+                        i.classList.add('active');
+                        selectedDept = i.dataset.dept;
+                        matched = true;
+                    }
+                });
+                if (!matched) {
+                    selectedDept = 'all';
+                    const allItem = document.querySelector('#dept-filter-dropdown .dropdown-item[data-dept="all"]');
+                    if (allItem) allItem.classList.add('active');
+                }
+                localStorage.setItem('nobet_selected_dept', selectedDept);
+            }
+
+            // Durum dropdown'ını işaretle
+            statusDropdownItems.forEach(i => {
+                if (i.dataset.status === selectedStatus) {
                     i.classList.add('active');
                 } else {
                     i.classList.remove('active');
                 }
             });
 
-            // Buton stilini güncelle
+            // Buton stillerini güncelle
             const filterBtn = document.getElementById('dept-filter-btn');
-            if (filterBtn && selectedDept !== 'all') {
-                filterBtn.classList.remove('btn-outline-light');
-                filterBtn.classList.add('btn-primary');
+            if (filterBtn) {
+                if (selectedDept !== 'all') {
+                    filterBtn.classList.remove('btn-outline-light');
+                    filterBtn.classList.add('btn-primary');
+                } else {
+                    filterBtn.classList.remove('btn-primary');
+                    filterBtn.classList.add('btn-outline-light');
+                }
+            }
+
+            const statusBtn = document.getElementById('status-filter-btn');
+            if (statusBtn) {
+                if (selectedStatus === 'active') {
+                    statusBtn.innerHTML = '<i class="bx bx-user-check"></i>';
+                    statusBtn.classList.remove('btn-primary', 'btn-danger');
+                    statusBtn.classList.add('btn-outline-light');
+                } else if (selectedStatus === 'passive') {
+                    statusBtn.innerHTML = '<i class="bx bx-user-x"></i>';
+                    statusBtn.classList.remove('btn-outline-light', 'btn-primary');
+                    statusBtn.classList.add('btn-danger');
+                } else {
+                    statusBtn.innerHTML = '<i class="bx bx-group"></i>';
+                    statusBtn.classList.remove('btn-outline-light', 'btn-danger');
+                    statusBtn.classList.add('btn-primary');
+                }
             }
 
             // Filtreyi uygula
-            if (selectedDept !== 'all') {
-                filterPersonel();
-            }
+            filterPersonel();
         })();
 
         function filterPersonel() {
-            const searchTerm = searchInput.value.toLowerCase();
+            const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
             document.querySelectorAll('.personel-item').forEach(item => {
-                const name = item.dataset.name.toLowerCase();
-                const itemDept = item.dataset.departman; // Orijinal departman adı
+                const name = (item.dataset.name || '').toLowerCase();
+                const itemDept = item.dataset.departman || ''; // Orijinal departman adı
                 const itemDeptLower = itemDept.toLowerCase();
+                const isActive = item.dataset.isActive; // '1' or '0'
 
-                // Hem arama terimine hem de seçili departmana bak
-                const matchSearch = name.includes(searchTerm) || itemDeptLower.includes(searchTerm);
-                const matchDept = selectedDept === 'all' || itemDept === selectedDept;
+                // Hem arama terimine, hem seçili departmana, hem personel durumuna bak
+                const matchSearch = searchTerm === '' || name.includes(searchTerm) || itemDeptLower.includes(searchTerm);
+                const matchDept = matchDeptStrings(itemDept, selectedDept);
 
-                if (matchSearch && matchDept) {
+                let matchStatus = true;
+                if (selectedStatus === 'active') {
+                    matchStatus = (isActive === '1');
+                } else if (selectedStatus === 'passive') {
+                    matchStatus = (isActive === '0');
+                }
+
+                if (matchSearch && matchDept && matchStatus) {
                     item.style.setProperty('display', 'flex', 'important');
                 } else {
                     item.style.setProperty('display', 'none', 'important');
@@ -1380,7 +1769,9 @@ $title = 'Nöbet Planlama';
             });
         }
 
-        searchInput.addEventListener('input', filterPersonel);
+        if (searchInput) {
+            searchInput.addEventListener('input', filterPersonel);
+        }
 
         // ============================================
         // PERSONEL SIRALAMA
@@ -2451,6 +2842,347 @@ $title = 'Nöbet Planlama';
                     console.error('Hata:', error);
                     showToast('error', 'Sunucu ile iletişim kurulamadı');
                 });
+        }
+
+        // ============================================
+        // PERSONEL NÖBET İSTATİSTİKLERİ MODAL & JS
+        // ============================================
+        let currentIstatistikData = null;
+        const istatistikModalEl = document.getElementById('nobetIstatistikModal');
+        const istatistikModal = istatistikModalEl ? new bootstrap.Modal(istatistikModalEl) : null;
+
+        // Select2 Başlatma (Modal dropdownParent ile)
+        $('#nobetIstatistikModal .select2').select2({
+            dropdownParent: $('#nobetIstatistikModal'),
+            width: '100%'
+        });
+
+        // Dönem türü değiştiğinde form alanlarını düzenle
+        $('#ist-filter-type').on('change', function() {
+            const val = $(this).val();
+            if (val === 'aylik') {
+                $('#ist-filter-ay-wrapper').removeClass('d-none');
+                $('#ist-filter-yil-wrapper').removeClass('d-none');
+                $('#ist-filter-tarih-wrapper').addClass('d-none');
+            } else if (val === 'yillik') {
+                $('#ist-filter-ay-wrapper').addClass('d-none');
+                $('#ist-filter-yil-wrapper').removeClass('d-none');
+                $('#ist-filter-tarih-wrapper').addClass('d-none');
+            } else if (val === 'ozel') {
+                $('#ist-filter-ay-wrapper').addClass('d-none');
+                $('#ist-filter-yil-wrapper').addClass('d-none');
+                $('#ist-filter-tarih-wrapper').removeClass('d-none');
+            }
+            loadNobetIstatistikleri();
+        });
+
+        // Filtre değişimlerinde veriyi tazele
+        $('#ist-filter-ay, #ist-filter-yil, #ist-filter-departman, #ist-filter-status').on('change', function() {
+            loadNobetIstatistikleri();
+        });
+
+        $('#ist-filter-baslangic, #ist-filter-bitis').on('change', function() {
+            loadNobetIstatistikleri();
+        });
+
+        $('#btn-ist-filtre-uygula').on('click', function() {
+            loadNobetIstatistikleri();
+        });
+
+        // Arama ve Sadece Nöbeti Olanlar filtreleri (İstemci tarafında anlık)
+        $(document).on('input', '#ist-table-search', function() {
+            if (currentIstatistikData && currentIstatistikData.personeller) {
+                renderIstatistikTable(currentIstatistikData.personeller);
+            }
+        });
+
+        $('#ist-toggle-only-active').on('change', function() {
+            if (currentIstatistikData && currentIstatistikData.personeller) {
+                renderIstatistikTable(currentIstatistikData.personeller);
+            }
+        });
+
+        // Modal açıldığında takvimdeki mevcut ayı ve yılı varsayılan seç
+        if (istatistikModalEl) {
+            istatistikModalEl.addEventListener('show.bs.modal', function() {
+                if (calendar) {
+                    const calDate = calendar.getDate();
+                    const currentMonthStr = String(calDate.getMonth() + 1).padStart(2, '0');
+                    const currentYearStr = String(calDate.getFullYear());
+
+                    $('#ist-filter-ay').val(currentMonthStr).trigger('change.select2');
+                    $('#ist-filter-yil').val(currentYearStr).trigger('change.select2');
+
+                    // Özel tarih inputlarını da o ayın başı ve sonu yap
+                    const baslangic = `${currentYearStr}-${currentMonthStr}-01`;
+                    const lastDay = new Date(calDate.getFullYear(), calDate.getMonth() + 1, 0).getDate();
+                    const bitis = `${currentYearStr}-${currentMonthStr}-${String(lastDay).padStart(2, '0')}`;
+
+                    $('#ist-filter-baslangic').val(baslangic);
+                    $('#ist-filter-bitis').val(bitis);
+                }
+                loadNobetIstatistikleri();
+            });
+        }
+
+        function loadNobetIstatistikleri() {
+            const tbody = document.getElementById('ist-personel-tbody');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    İstatistikler yükleniyor...
+                </td></tr>`;
+            }
+
+            const donemTuru = $('#ist-filter-type').val() || 'aylik';
+            const ay = $('#ist-filter-ay').val() || '01';
+            const yil = $('#ist-filter-yil').val() || new Date().getFullYear();
+            const departman = $('#ist-filter-departman').val() || 'all';
+            const personelDurumu = $('#ist-filter-status').val() || 'active';
+            const baslangic = $('#ist-filter-baslangic').val() || '';
+            const bitis = $('#ist-filter-bitis').val() || '';
+
+            const params = new URLSearchParams({
+                action: 'get-personel-istatistikleri',
+                donem_turu: donemTuru,
+                ay: ay,
+                yil: yil,
+                departman: departman,
+                personel_durumu: personelDurumu,
+                baslangic: baslangic,
+                bitis: bitis
+            });
+
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success && res.data) {
+                    currentIstatistikData = res.data;
+                    currentIstatistikData.donem = res.donem;
+
+                    // Başlık güncelle
+                    const baslikEl = document.getElementById('istatistik-donem-baslik');
+                    if (baslikEl && res.donem) {
+                        baslikEl.textContent = `${res.donem.baslangic_formatli} - ${res.donem.bitis_formatli} Dönemi Nöbet Dağılımı ve Katılım Özeti`;
+                    }
+
+                    // KPI kartları güncelle
+                    const kpi = res.data.kpi;
+                    if (kpi) {
+                        const topNobetEl = document.getElementById('ist-kpi-toplam-nobet');
+                        const tutanPersEl = document.getElementById('ist-kpi-tutan-personel');
+                        const katilimOranEl = document.getElementById('ist-kpi-katilim-orani');
+                        const ortalamaEl = document.getElementById('ist-kpi-ortalama');
+                        const haftasonuTatilEl = document.getElementById('ist-kpi-haftasonu-tatil');
+                        const haftasonuOranEl = document.getElementById('ist-kpi-haftasonu-oran');
+
+                        if (topNobetEl) topNobetEl.textContent = kpi.toplam_nobet;
+                        if (tutanPersEl) tutanPersEl.textContent = `${kpi.nobet_tutan_personel} / ${kpi.toplam_personel}`;
+                        
+                        const katilimYuzde = kpi.toplam_personel > 0 ? Math.round((kpi.nobet_tutan_personel / kpi.toplam_personel) * 100) : 0;
+                        if (katilimOranEl) katilimOranEl.textContent = `%${katilimYuzde} Katılım Oranı`;
+
+                        if (ortalamaEl) ortalamaEl.textContent = kpi.ortalama_nobet;
+                        if (haftasonuTatilEl) haftasonuTatilEl.textContent = `${kpi.hafta_sonu_toplam} / ${kpi.resmi_tatil_toplam}`;
+
+                        const hsYuzde = kpi.toplam_nobet > 0 ? Math.round((kpi.hafta_sonu_toplam / kpi.toplam_nobet) * 100) : 0;
+                        if (haftasonuOranEl) haftasonuOranEl.textContent = `%${hsYuzde} Hafta Sonu Oranı`;
+                    }
+
+                    // Tabloyu çiz
+                    renderIstatistikTable(res.data.personeller);
+
+                    // Departman özetini çiz
+                    renderDepartmanSummary(res.data.departmanlar);
+                } else {
+                    if (tbody) {
+                        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">${res.message || 'Veriler yüklenemedi.'}</td></tr>`;
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('İstatistik yükleme hatası:', err);
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">Sunucu ile iletişim kurulamadı.</td></tr>`;
+                }
+            });
+        }
+
+        function renderIstatistikTable(personeller) {
+            const tbody = document.getElementById('ist-personel-tbody');
+            if (!tbody) return;
+
+            if (!personeller || personeller.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">Kayıt bulunamadı.</td></tr>`;
+                return;
+            }
+
+            const searchVal = (istTableSearch ? istTableSearch.value : '').toLowerCase().trim();
+            const onlyActive = istToggleOnlyActive ? istToggleOnlyActive.checked : false;
+
+            const filtered = personeller.filter(p => {
+                if (onlyActive && p.toplam_nobet === 0) return false;
+                if (searchVal) {
+                    const name = (p.adi_soyadi || '').toLowerCase();
+                    const dept = (p.departman || '').toLowerCase();
+                    if (!name.includes(searchVal) && !dept.includes(searchVal)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">Filtre kriterlerine uygun personel bulunamadı.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach((p, idx) => {
+                const rowBg = p.toplam_nobet > 0 ? '' : 'class="text-muted bg-light bg-opacity-25"';
+                const avatar = p.resim || 'assets/images/users/user-dummy-img.jpg';
+                const deptBadge = p.departman 
+                    ? `<span class="badge rounded-pill bg-light text-dark border px-2 py-1">${p.departman}</span>`
+                    : '<span class="text-muted small">-</span>';
+
+                const progressColor = p.oran > 15 ? 'bg-danger' : (p.oran > 8 ? 'bg-warning' : 'bg-primary');
+
+                html += `<tr ${rowBg}>
+                    <td class="text-center fw-bold text-muted" style="font-size: 11px;">${idx + 1}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="${avatar}" class="rounded-circle" width="30" height="30" style="object-fit: cover; border: 1px solid #e2e8f0;">
+                            <div>
+                                <div class="fw-bold text-dark d-flex align-items-center gap-1">
+                                    <span>${p.adi_soyadi}</span>
+                                    ${p.is_ayrilmis ? '<span class="badge bg-soft-danger text-danger px-1 py-0" style="font-size: 9px;">Ayrıldı</span>' : ''}
+                                </div>
+                                ${p.cep_telefonu ? `<div class="text-muted small" style="font-size: 11px;">${p.cep_telefonu}</div>` : ''}
+                            </div>
+                        </div>
+                    </td>
+                    <td>${deptBadge}</td>
+                    <td class="text-center">
+                        <span class="badge rounded-pill bg-light text-secondary border px-2 py-1 fw-bold">${p.hafta_ici_nobet}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge rounded-pill bg-soft-info text-info px-2 py-1 fw-bold" style="background: rgba(13, 202, 240, 0.12);">${p.hafta_sonu_nobet}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge rounded-pill bg-soft-warning text-warning px-2 py-1 fw-bold" style="background: rgba(255, 193, 7, 0.15); color: #b45309 !important;">${p.resmi_tatil_nobet}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge rounded-pill ${p.toplam_nobet > 0 ? 'bg-primary' : 'bg-secondary'} px-3 py-1 fw-bold fs-7">${p.toplam_nobet}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 6px; background-color: #e2e8f0; border-radius: 4px;">
+                                <div class="progress-bar ${progressColor}" role="progressbar" style="width: ${Math.min(p.oran * 3, 100)}%; border-radius: 4px;"></div>
+                            </div>
+                            <span class="small fw-semibold text-muted" style="min-width: 38px; font-size: 11px;">%${p.oran}</span>
+                        </div>
+                    </td>
+                    <td class="text-center text-muted small" style="font-size: 12px;">${p.son_nobet_formatli}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-ist-show-calendar py-1 px-2" data-personel-id="${p.id}" data-name="${p.adi_soyadi}" title="Takvimde Filtrele">
+                            <i class="bx bx-calendar-check"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            tbody.innerHTML = html;
+
+            // "Takvimde Filtrele" butonları
+            tbody.querySelectorAll('.btn-ist-show-calendar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const pId = this.dataset.personelId;
+                    const pName = this.dataset.name;
+
+                    selectedFilterPersonelId = pId;
+                    const calFilterBtn = document.getElementById('personel-filter-btn');
+                    if (calFilterBtn) {
+                        calFilterBtn.innerHTML = '<i class="bx bx-user-check fs-4"></i>';
+                        calFilterBtn.title = 'Filtre: ' + pName;
+                        calFilterBtn.style.background = '#00b8d9';
+                        calFilterBtn.style.color = '#fff';
+                    }
+
+                    // Takvimi güncelle ve modalı kapat
+                    if (calendar) {
+                        calendar.refetchEvents();
+                    }
+                    if (istatistikModal) {
+                        istatistikModal.hide();
+                    }
+                });
+            });
+        }
+
+        function renderDepartmanSummary(deptStats) {
+            const listEl = document.getElementById('ist-departman-list');
+            if (!listEl) return;
+
+            if (!deptStats || deptStats.length === 0) {
+                listEl.innerHTML = '<div class="col-12 text-muted small">Departman verisi bulunamadı.</div>';
+                return;
+            }
+
+            let html = '';
+            deptStats.forEach(d => {
+                html += `<div class="col-md-3 col-sm-6">
+                    <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="fw-semibold text-truncate small" style="max-width: 140px;" title="${d.departman}">${d.departman}</div>
+                            <div class="text-muted" style="font-size: 10px;">${d.nobet_tutan_sayisi}/${d.personel_sayisi} Personel</div>
+                        </div>
+                        <span class="badge bg-soft-primary text-primary fw-bold fs-7 px-2 py-1">${d.toplam_nobet} Nöbet</span>
+                    </div>
+                </div>`;
+            });
+
+            listEl.innerHTML = html;
+        }
+
+        // Excel / CSV Dışa Aktarma
+        const btnExportExcel = document.getElementById('btn-export-istatistik-excel');
+        if (btnExportExcel) {
+            btnExportExcel.addEventListener('click', function() {
+                if (!currentIstatistikData || !currentIstatistikData.personeller || currentIstatistikData.personeller.length === 0) {
+                    showToast('warning', 'Dışa aktarılacak veri bulunamadı.');
+                    return;
+                }
+
+                let csvContent = '\uFEFF'; // UTF-8 BOM
+                csvContent += 'Sıra;Personel;Departman;Hafta İçi Nöbet;Hafta Sonu Nöbet;Resmi Tatil Nöbet;Toplam Nöbet;Nöbet Payı (%);Son Nöbet Tarihi\n';
+
+                currentIstatistikData.personeller.forEach((p, idx) => {
+                    const row = [
+                        idx + 1,
+                        `"${(p.adi_soyadi || '').replace(/"/g, '""')}"`,
+                        `"${(p.departman || '').replace(/"/g, '""')}"`,
+                        p.hafta_ici_nobet,
+                        p.hafta_sonu_nobet,
+                        p.resmi_tatil_nobet,
+                        p.toplam_nobet,
+                        p.oran,
+                        p.son_nobet_formatli
+                    ];
+                    csvContent += row.join(';') + '\n';
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                const donemStr = currentIstatistikData.donem ? `${currentIstatistikData.donem.baslangic}_${currentIstatistikData.donem.bitis}` : 'nobet';
+                link.setAttribute('download', `nobet_istatistikleri_${donemStr}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
         }
 
         // Sayfa yüklendiğinde talepleri yükle

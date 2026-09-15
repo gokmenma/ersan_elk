@@ -4,9 +4,14 @@ use App\Helper\Date;
 use App\Helper\Security;
 ?>
 
-<div class="row">
+<div class="row g-3">
     <div class="col-12">
-        <div class="personel-ai-panel mb-3">
+        <div class="general-overview p-3 p-lg-4 mb-0">
+            <div class="d-flex align-items-start gap-3">
+                <span class="general-overview-icon"><i class="bx bx-id-card fs-3"></i></span>
+                <div><h4 class="mb-1 text-dark">Genel personel bilgileri</h4><p class="text-muted mb-0">Kimlik, iletişim, kişisel ve fiziksel bilgileri tek form üzerinden yönetin.</p></div>
+            </div>
+        <div class="personel-ai-panel mt-3 mb-0">
             <div class="personel-ai-glow personel-ai-glow-one"></div>
             <div class="personel-ai-glow personel-ai-glow-two"></div>
             <button type="button" class="personel-ai-toggle <?= $id > 0 ? 'collapsed' : '' ?>" data-bs-toggle="collapse"
@@ -35,12 +40,13 @@ use App\Helper\Security;
                 </div>
             </div>
         </div>
+        </div>
     </div>
     <!-- Sol Kolon: Kimlik ve Kişisel Bilgiler -->
     <div class="col-md-6">
-        <div class="card border">
+        <div class="card border general-card">
             <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-id-card me-2"></i>Kimlik Bilgileri</h5>
+                <div class="d-flex align-items-center gap-3"><span class="general-section-icon identity"><i class="bx bx-id-card fs-5"></i></span><div><h5 class="card-title mb-1 text-dark">Kimlik bilgileri</h5><div class="general-subtitle">Resmî kimlik ve temel bilgiler</div></div></div>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -70,9 +76,9 @@ use App\Helper\Security;
             </div>
         </div>
 
-        <div class="card border mt-3">
+        <div class="card border mt-3 general-card">
             <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-user-circle me-2"></i>Kişisel Detaylar</h5>
+                <div class="d-flex align-items-center gap-3"><span class="general-section-icon personal"><i class="bx bx-user-circle fs-5"></i></span><div><h5 class="card-title mb-1 text-dark">Kişisel detaylar</h5><div class="general-subtitle">Aile, doğum ve çalışma tercihleri</div></div></div>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -112,9 +118,9 @@ use App\Helper\Security;
 
     <!-- Sağ Kolon: İletişim ve Diğer -->
     <div class="col-md-6">
-        <div class="card border">
+        <div class="card border general-card">
             <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-phone me-2"></i>İletişim Bilgileri</h5>
+                <div class="d-flex align-items-center gap-3"><span class="general-section-icon contact"><i class="bx bx-phone fs-5"></i></span><div><h5 class="card-title mb-1 text-dark">İletişim bilgileri</h5><div class="general-subtitle">Telefon, e-posta ve adres</div></div></div>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -138,9 +144,9 @@ use App\Helper\Security;
             </div>
         </div>
 
-        <div class="card border mt-3">
+        <div class="card border mt-3 general-card">
             <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-body me-2"></i>Fiziksel & Diğer</h5>
+                <div class="d-flex align-items-center gap-3"><span class="general-section-icon physical"><i class="bx bx-body fs-5"></i></span><div><h5 class="card-title mb-1 text-dark">Fiziksel ve diğer</h5><div class="general-subtitle">Beden ölçüleri ve ek tercihler</div></div></div>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -168,6 +174,21 @@ use App\Helper\Security;
 </div>
 
 <style>
+    #home .general-overview { background: linear-gradient(135deg, rgba(85,110,230,.12), rgba(52,195,143,.05)); border: 1px solid rgba(85,110,230,.18); border-radius: 14px; }
+    #home .general-overview .personel-ai-panel { box-shadow: none; }
+    #home .general-overview-icon { align-items: center; background: rgba(85,110,230,.12); border-radius: 12px; color: #556ee6; display: inline-flex; flex: 0 0 auto; height: 48px; justify-content: center; width: 48px; }
+    #home .general-help { background: rgba(116,120,141,.055); border-radius: 9px; color: #74788d; font-size: .78rem; padding: .65rem .8rem; }
+    #home .general-card { border: 1px solid rgba(128,137,150,.18) !important; border-radius: 14px; box-shadow: 0 .25rem .75rem rgba(18,38,63,.045); overflow: hidden; }
+    #home > .row.g-3 { align-items: flex-start; }
+    #home .general-card .card-header { background: var(--bs-body-bg,#fff); border-top: 3px solid rgba(85,110,230,.22); padding: 1rem 1.25rem; }
+    #home .general-section-icon { align-items: center; border-radius: 10px; display: inline-flex; height: 36px; justify-content: center; width: 36px; }
+    #home .general-section-icon.identity { background: rgba(85,110,230,.12); color: #556ee6; }
+    #home .general-section-icon.personal { background: rgba(241,180,76,.14); color: #d89d2f; }
+    #home .general-section-icon.contact { background: rgba(80,165,241,.12); color: #50a5f1; }
+    #home .general-section-icon.physical { background: rgba(52,195,143,.12); color: #34c38f; }
+    #home .general-subtitle { color: #74788d; font-size: .78rem; }
+    [data-bs-theme="dark"] #home .general-overview { background: linear-gradient(135deg, rgba(85,110,230,.2), rgba(52,195,143,.07)); }
+    @media (max-width: 767.98px) { #home .general-card .card-header, #home .general-card .card-body { padding: 1rem; } }
     .personel-ai-panel {
         position: relative;
         isolation: isolate;

@@ -783,6 +783,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode(['success' => true, 'status' => 'success', 'data' => $dagilim]);
                 break;
 
+            case 'get-personel-istatistikleri':
+                $donemTuru = $_POST['donem_turu'] ?? 'aylik'; // 'aylik', 'yillik', 'ozel'
+                $departman = $_POST['departman'] ?? 'all';
+
+                if ($donemTuru === 'yillik') {
+                    $yil = !empty($_POST['yil']) ? (int)$_POST['yil'] : (int)date('Y');
+                    $baslangic = "{$yil}-01-01";
+                    $bitis = "{$yil}-12-31";
+                } elseif ($donemTuru === 'ozel') {
+                    $baslangic = !empty($_POST['baslangic']) ? $_POST['baslangic'] : date('Y-m-01');
+                    $bitis = !empty($_POST['bitis']) ? $_POST['bitis'] : date('Y-m-t');
+                } else {
+                    // Aylık
+                    $yil = !empty($_POST['yil']) ? (int)$_POST['yil'] : (int)date('Y');
+                    $ay = !empty($_POST['ay']) ? str_pad((int)$_POST['ay'], 2, '0', STR_PAD_LEFT) : date('m');
+                    $baslangic = "{$yil}-{$ay}-01";
+                    $bitis = date('Y-m-t', strtotime($baslangic));
+                }
+
+                $personelDurumu = $_POST['personel_durumu'] ?? 'active';
+                $stats = $Nobet->getTumPersonelNobetIstatistikleri($baslangic, $bitis, $departman, $personelDurumu);
+
+                // ID'leri ve resimleri formatla
+                foreach ($stats['personeller'] as &$p) {
+                    $p->encrypted_id = Security::encrypt($p->id);
+                    $p->resim = !empty($p->resim_yolu) ? $p->resim_yolu : 'assets/images/users/user-dummy-img.jpg';
+                    $p->son_nobet_formatli = !empty($p->son_nobet_tarihi) ? Date::dmY($p->son_nobet_tarihi) : '-';
+                    $isAyrilmis = ($p->aktif_mi == 0) || (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00' && $p->isten_cikis_tarihi <= date('Y-m-d'));
+                    $p->is_ayrilmis = $isAyrilmis;
+                }
+
+                echo json_encode([
+                    'success' => true, 
+                    'status' => 'success', 
+                    'data' => $stats,
+                    'donem' => [
+                        'baslangic' => $baslangic,
+                        'bitis' => $bitis,
+                        'baslangic_formatli' => Date::dmY($baslangic),
+                        'bitis_formatli' => Date::dmY($bitis)
+                    ]
+                ]);
+                break;
+
             case 'get-nobet-detay':
                 $id = Security::decrypt($_POST['nobet_id']);
                 $nobet = $Nobet->find($id);
