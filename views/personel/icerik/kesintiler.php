@@ -585,28 +585,29 @@ foreach ($kesintiler as $k) {
 <script>
     function toggleKesintiView(mode) {
         if (mode === 'liste') {
-            document.getElementById('tblKesintilerGruplu').classList.add('d-none');
-            document.getElementById('tblKesintilerListe').classList.remove('d-none');
+            var grp = document.getElementById('tblKesintilerGruplu');
+            var lst = document.getElementById('tblKesintilerListe');
+            if (grp) grp.classList.add('d-none');
+            if (lst) lst.classList.remove('d-none');
+            var radListe = document.getElementById('kesintiViewListe');
+            if (radListe) radListe.checked = true;
             localStorage.setItem('kesintiViewMode', 'liste');
         } else {
-            document.getElementById('tblKesintilerListe').classList.add('d-none');
-            document.getElementById('tblKesintilerGruplu').classList.remove('d-none');
+            var grp = document.getElementById('tblKesintilerGruplu');
+            var lst = document.getElementById('tblKesintilerListe');
+            if (lst) lst.classList.add('d-none');
+            if (grp) grp.classList.remove('d-none');
+            var radGruplu = document.getElementById('kesintiViewGruplu');
+            if (radGruplu) radGruplu.checked = true;
             localStorage.setItem('kesintiViewMode', 'gruplu');
         }
     }
 
+    window.toggleKesintiView = toggleKesintiView;
+
     // Sayfa yüklendiğinde tercihi uygula
     (function () {
         var savedMode = localStorage.getItem('kesintiViewMode') || 'gruplu';
-
-        // Radio butonunu güncelle
-        if (savedMode === 'liste') {
-            if (document.getElementById('kesintiViewListe')) document.getElementById('kesintiViewListe').checked = true;
-        } else {
-            if (document.getElementById('kesintiViewGruplu')) document.getElementById('kesintiViewGruplu').checked = true;
-        }
-
-        // Görünümü uygula
         toggleKesintiView(savedMode);
     })();
 </script>

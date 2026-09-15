@@ -507,7 +507,7 @@ if ($id > 0) {
                                     <span class="visually-hidden">Yükleniyor...</span>
                                 </div>
                             </div>
-                        </div>
+
                         <div class="tab-pane <?php echo $activeTab === 'finansal_islemler' ? 'active show' : ''; ?>"
                             id="finansal_islemler" role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=finansal_islemler&id=<?php echo $id; ?>">
@@ -558,7 +558,7 @@ if ($id > 0) {
 </div>
 
 <script>
-    function loadTabContent(targetPane) {
+    function loadTabContent(targetPane, callback) {
         if (targetPane && targetPane.hasAttribute('data-url') && targetPane.getAttribute('data-loaded') === 'false') {
             var url = targetPane.getAttribute('data-url');
             $(targetPane).html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
@@ -567,17 +567,31 @@ if ($id > 0) {
                 $(targetPane).html(html);
                 targetPane.setAttribute('data-loaded', 'true');
                 initPlugins(targetPane);
+                if (typeof callback === 'function') {
+                    callback();
+                }
             }).fail(function () {
                 $(targetPane).html('<div class="alert alert-danger">İçerik yüklenirken bir hata oluştu.</div>');
             });
         }
     }
 
-    window.reloadActiveTab = function () {
+    window.loadTabContent = loadTabContent;
+    window.initPlugins = initPlugins;
+
+    window.reloadActiveTab = function (callback) {
         var activePane = document.querySelector('.tab-pane.active');
         if (activePane && activePane.hasAttribute('data-url')) {
             activePane.setAttribute('data-loaded', 'false');
-            loadTabContent(activePane);
+            loadTabContent(activePane, callback);
+        }
+    };
+
+    window.reloadTab = function (tabId, callback) {
+        var pane = document.getElementById(tabId);
+        if (pane && pane.hasAttribute('data-url')) {
+            pane.setAttribute('data-loaded', 'false');
+            loadTabContent(pane, callback);
         }
     };
 
@@ -659,10 +673,57 @@ if ($id > 0) {
             });
         }
 
+        // Segmented Control Aktiflik Durumunu Senkronize Et
+        if ($(container).find(".segmented-control-container").length > 0) {
+            $(container).find(".segmented-control-container").each(function () {
+                var c = $(this);
+                var checked = c.find('.segmented-control-input:checked');
+                c.find('.segmented-control-label').removeClass('active');
+                if (checked.length) {
+                    var firstChecked = checked.first();
+                    c.find('.segmented-control-input').not(firstChecked).prop('checked', false).removeAttr('checked');
+                    firstChecked.prop('checked', true).attr('checked', 'checked');
+                    var forId = firstChecked.attr('id');
+                    if (forId) {
+                        c.find('label[for="' + forId + '"]').addClass('active');
+                    }
+                }
+            });
+        }
+
         if (typeof feather !== "undefined") {
             feather.replace();
         }
     }
+
+    // Global Segmented Control Delegasyonu
+    $(document).off('change.segmented', '.segmented-control-input').on('change.segmented', '.segmented-control-input', function () {
+        var c = $(this).closest('.segmented-control-container');
+        if (c.length) {
+            c.find('.segmented-control-input').not(this).prop('checked', false).removeAttr('checked');
+            c.find('.segmented-control-label').removeClass('active');
+            var forId = $(this).attr('id');
+            if (forId) {
+                c.find('label[for="' + forId + '"]').addClass('active');
+            }
+        }
+    });
+
+    $(document).off('click.segmented', '.segmented-control-label').on('click.segmented', '.segmented-control-label', function (e) {
+        var c = $(this).closest('.segmented-control-container');
+        var forId = $(this).attr('for');
+        var input = c.length && forId ? c.find('#' + forId) : (forId ? $('#' + forId) : null);
+        if (input && input.length) {
+            e.preventDefault();
+            if (c.length) {
+                c.find('.segmented-control-input').prop('checked', false).removeAttr('checked');
+                c.find('.segmented-control-label').removeClass('active');
+            }
+            input.prop('checked', true).attr('checked', 'checked');
+            $(this).addClass('active');
+            input.trigger('change');
+        }
+    });
 
     document.addEventListener("DOMContentLoaded", function () {
         initPlugins(document);

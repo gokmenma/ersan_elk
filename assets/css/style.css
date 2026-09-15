@@ -3903,7 +3903,13 @@ table.dataTable.table-bordered {
 }
 
 .segmented-control-input {
-  display: none !important;
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .segmented-control-label {
@@ -3924,17 +3930,21 @@ table.dataTable.table-bordered {
   justify-content: center;
 }
 
-.segmented-control-input:checked + .segmented-control-label {
-  color: #556ee6;
-  background-color: #fff;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+.segmented-control-label.active {
+  color: #556ee6 !important;
+  background-color: #fff !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
 }
 
-.segmented-control-label:hover:not(
-    .segmented-control-input:checked + .segmented-control-label
-  ) {
-  color: #495057;
-  background-color: rgba(255, 255, 255, 0.4);
+.segmented-control-label:not(.active) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  color: #74788d !important;
+}
+
+.segmented-control-label:hover:not(.active) {
+  color: #495057 !important;
+  background-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 /* Custom Checkbox Design */
@@ -4056,11 +4066,21 @@ table.dataTable.table-bordered {
   border-color: #32394e;
 }
 
-[data-bs-theme="dark"]
-  .segmented-control-input:checked
-  + .segmented-control-label {
-  background-color: #32394e;
-  color: #fff;
+[data-bs-theme="dark"] .segmented-control-label.active {
+  background-color: #32394e !important;
+  color: #fff !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-bs-theme="dark"] .segmented-control-label:not(.active) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  color: #9299af !important;
+}
+
+[data-bs-theme="dark"] .segmented-control-label:hover:not(.active) {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 [data-bs-theme="dark"] .select2-floating label {
