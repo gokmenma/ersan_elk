@@ -40,6 +40,7 @@ use App\Helper\Security;
                 </div>
             </div>
         </div>
+        
         </div>
     </div>
     <!-- Sol Kolon: Kimlik ve Kişisel Bilgiler -->

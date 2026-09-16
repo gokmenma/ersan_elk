@@ -22,6 +22,28 @@ use App\Helper\Helper;
     #finansal .finance-help { background: rgba(116, 120, 141, .055); border-radius: 9px; color: #74788d; font-size: .78rem; padding: .65rem .8rem; }
     #finansal .finance-group { background: rgba(116, 120, 141, .035); border: 1px solid rgba(128, 137, 150, .12); border-radius: 12px; padding: 1rem; }
     #finansal .finance-group > h6 { align-items: center; display: flex; gap: .35rem; }
+    #finansal .iban-copy-field .form-control { padding-right: 3.25rem; }
+    #finansal .iban-copy-button {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 8px;
+        color: #74788d;
+        display: inline-flex;
+        height: 36px;
+        justify-content: center;
+        padding: 0;
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        transition: background-color .15s ease, color .15s ease;
+        width: 36px;
+        z-index: 5;
+    }
+    #finansal .iban-copy-button:hover,
+    #finansal .iban-copy-button:focus { background: rgba(85, 110, 230, .1); color: #556ee6; }
+    #finansal .iban-copy-button.is-copied { background: rgba(52, 195, 143, .12); color: #34c38f; }
     #finansal .social-benefit-card { background: rgba(255,255,255,.7); border: 1px solid rgba(128, 137, 150, .16); border-radius: 12px; height: 100%; }
     #finansal .social-benefit-card .form-switch { align-items: center; background: rgba(52,195,143,.06); border-radius: 9px; display: flex; margin: -0.15rem -0.15rem 1rem; padding: .65rem .75rem; }
     #finansal .social-benefit-card .form-check-input {
@@ -115,7 +137,12 @@ use App\Helper\Helper;
                     <h6 class="fw-bold text-muted mb-3"><i class="bx bx-building-house me-1 text-primary"></i>Banka bilgileri</h6>
                     <div class="row">
                         <div class="col-md-4 mb-2">
-                            <?php echo Form::FormFloatInput("text", "iban_numarasi", $personel->iban_numarasi ?? "", "Maaş IBAN", "Maaş IBAN Numarası", "credit-card"); ?>
+                            <div class="iban-copy-field position-relative">
+                                <?php echo Form::FormFloatInput("text", "iban_numarasi", $personel->iban_numarasi ?? "", "Maaş IBAN", "Maaş IBAN Numarası", "credit-card"); ?>
+                                <button type="button" class="iban-copy-button" id="btnCopyMaasIban" title="TR olmadan kopyala" aria-label="Maaş IBAN numarasını TR olmadan kopyala">
+                                    <i class="bx bx-copy fs-5" aria-hidden="true"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="col-md-4 mb-2">
                             <?php echo Form::FormFloatInput("text", "ek_odeme_iban_numarasi", $personel->ek_odeme_iban_numarasi ?? "", "Ek Ödeme IBAN", "Ek Ödeme IBAN", "credit-card"); ?>
@@ -463,6 +490,50 @@ use App\Helper\Helper;
 
 <script>
 $(document).ready(function() {
+    $('#btnCopyMaasIban').on('click', async function() {
+        const button = this;
+        const iban = String($('#iban_numarasi').val() || '')
+            .replace(/\s+/g, '')
+            .replace(/^TR/i, '');
+
+        if (!iban) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'IBAN bulunamadı',
+                timer: 1400,
+                showConfirmButton: false
+            });
+            return;
+        }
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(iban);
+            } else {
+                const copyArea = document.createElement('textarea');
+                copyArea.value = iban;
+                copyArea.style.position = 'fixed';
+                copyArea.style.opacity = '0';
+                document.body.appendChild(copyArea);
+                copyArea.select();
+                const copied = document.execCommand('copy');
+                copyArea.remove();
+                if (!copied) throw new Error('Kopyalama başarısız');
+            }
+
+            $(button).addClass('is-copied').find('i').attr('class', 'bx bx-check fs-5');
+            setTimeout(function() {
+                $(button).removeClass('is-copied').find('i').attr('class', 'bx bx-copy fs-5');
+            }, 1400);
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Kopyalanamadı',
+                text: 'IBAN numarası panoya kopyalanırken bir hata oluştu.'
+            });
+        }
+    });
+
     // Yemek Yardımı Toggle
     $('input[name="yemek_yardimi_aliyor"]').on('change', function() {
       if ($(this).is(':checked')) {
