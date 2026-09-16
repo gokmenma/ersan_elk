@@ -1256,7 +1256,13 @@ class BordroPersonelModel extends Model
             // Banka matrahına eklenen ek ödemeler ve puantaj, öncelikle yemek tavanını doldurur.
             $yemekTavanHedefi = $isPrimUsulu && $karisikMaasOzeti === null
                 ? $primUsuluPuantajHedefToplami
-                : round($sozlesmeHakedisi + $netMaasPuantajHedefToplami + max(0, $bankaKarsilanabilirEkOdemeGosterim ?? 0), 2);
+                : round(
+                    $sozlesmeHakedisi
+                    + $netMaasPuantajHedefToplami
+                    + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
+                    + max(0, $bankaKarsilanabilirEkOdemeGosterim ?? 0),
+                    2
+                );
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
                 $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $spouseAllowanceDeduction - $rtcHtcBankaNetiGosterim,
                 2
