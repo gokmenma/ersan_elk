@@ -379,21 +379,30 @@ try {
     // Başlıklar
     $basliklar = [
         'A' => 'ADI SOYADI',
-        'B' => 'TC KİMLİK NO',
-        'C' => 'RAPOR (GÜN)',
-        'D' => 'TOPLAM GÜN',
-        'E' => 'FİİLİ GÜN',
-        'F' => 'YEMEK',
-        'G' => 'EŞ YARDIMI',
+        'B' => 'RAPOR (GÜN)',
+        'C' => 'TOPLAM GÜN',
+        'D' => 'YEMEK',
+        'E' => 'EŞ YARDIMI',
+        'F' => 'AVANS',
+        'G' => 'İCRA',
         'H' => 'RESMİ TATİL ÇALIŞMASI (NET)',
         'I' => 'H.T. ÇALIŞMASI (NET)',
-        'J' => 'FAZLA MESAİ (NET)',
-        'K' => 'PRİM / İKRAMİYE',
-        'L' => 'AVANS',
-        'M' => 'İCRA',
-        'N' => 'DİĞER KESİNTİLER',
-        'O' => 'SODEXO / KART',
-        'P' => 'BANKAYA YATIRILACAK TOPLAM'
+        'J' => 'PRİM / İKRAMİYE',
+        'K' => 'FAZLA MESAİ (NET)',
+        'L' => 'ÖDENECEK NET MAAŞ',
+        'M' => 'DİĞER KESİNTİLER',
+        'N' => 'TC KİMLİK NO',
+        'O' => 'FİİLİ GÜN',
+        'P' => 'GÜNLÜK YEMEK (NAKİT)',
+        'Q' => 'SODEXO / KART',
+        'R' => 'ALACAK (ASGARİ ÜCRET)',
+        'S' => 'RESMİ TATİL ÇALIŞMASI (BRÜT)',
+        'T' => 'HAFTA TATİLİ ÇALIŞMASI (BRÜT)',
+        'U' => 'FAZLA MESAİ (BRÜT)',
+        'V' => 'ALACAK TOPLAMI',
+        'W' => 'GELİR VERGİSİ KESİNTİSİ',
+        'X' => 'KÜMÜLATİF VERGİ MATRAHI (BU AY HARİÇ)',
+        'Y' => 'AYLIK VERGİ MATRAHI (BU AY)'
     ];
 
     // Başlık stili
@@ -425,7 +434,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:P1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:Y1')->applyFromArray($baslikStyle);
     $sheet->getRowDimension(1)->setRowHeight(25);
 
     // Veri stili
@@ -445,30 +454,50 @@ try {
     $satir = 2;
     foreach ($yemekVerileri as $veri) {
         $sheet->setCellValue('A' . $satir, $veri['adi_soyadi']);
-        $sheet->setCellValueExplicit('B' . $satir, $veri['tc_kimlik'], DataType::TYPE_STRING);
-        $sheet->setCellValue('C' . $satir, $veri['rapor_gun']);
-        $sheet->setCellValue('D' . $satir, $veri['toplam_gun']);
-        $sheet->setCellValue('E' . $satir, $veri['fiili_gun']);
-        $sheet->setCellValue('F' . $satir, $veri['nakit_yemek']);
-        $sheet->setCellValue('G' . $satir, $veri['es_yardimi']);
+        $sheet->setCellValue('B' . $satir, $veri['rapor_gun']);
+        $sheet->setCellValue('C' . $satir, $veri['toplam_gun']);
+        $sheet->setCellValue('D' . $satir, $veri['nakit_yemek']);
+        $sheet->setCellValue('E' . $satir, $veri['es_yardimi']);
+        $sheet->setCellValue('F' . $satir, $veri['avans']);
+        $sheet->setCellValue('G' . $satir, $veri['icra']);
         $sheet->setCellValue('H' . $satir, $veri['rtc_net']);
         $sheet->setCellValue('I' . $satir, $veri['htc_net']);
-        $sheet->setCellValue('J' . $satir, $veri['fm_net']);
-        $sheet->setCellValue('K' . $satir, $veri['prim']);
-        $sheet->setCellValue('L' . $satir, $veri['avans']);
-        $sheet->setCellValue('M' . $satir, $veri['icra']);
-        $sheet->setCellValue('N' . $satir, $veri['diger_kesintiler']);
-        $sheet->setCellValue('O' . $satir, $veri['sodexo_yemek']);
-        $sheet->setCellValue('P' . $satir, $veri['net_maas']);
+        $sheet->setCellValue('J' . $satir, $veri['prim']);
+        $sheet->setCellValue('K' . $satir, $veri['fm_net']);
+        $sheet->setCellValue('L' . $satir, $veri['net_maas']);
+        $sheet->setCellValue('M' . $satir, $veri['diger_kesintiler']);
+        $sheet->setCellValueExplicit('N' . $satir, $veri['tc_kimlik'], DataType::TYPE_STRING);
+        $sheet->setCellValue('O' . $satir, $veri['fiili_gun']);
+        $sheet->setCellValue('P' . $satir, $veri['gunluk_nakit']);
+        $sheet->setCellValue('Q' . $satir, $veri['sodexo_yemek']);
+        $sheet->setCellValue('R' . $satir, $veri['resmi_alacak_asgari']);
+        $sheet->setCellValue('S' . $satir, $veri['rtc_brut']);
+        $sheet->setCellValue('T' . $satir, $veri['htc_brut']);
+        $sheet->setCellValue('U' . $satir, $veri['fm_brut']);
+        $sheet->setCellValue('V' . $satir, $veri['resmi_alacak_toplam']);
+        $sheet->setCellValue('W' . $satir, $veri['gelir_vergisi']);
+        $sheet->setCellValue('X' . $satir, $veri['onceki_kumulatif']);
+        $sheet->setCellValue('Y' . $satir, $veri['aylik_matrah']);
  
         // Formatlar
-        foreach (['B', 'C', 'D', 'E'] as $merkezKolon) {
-            $sheet->getStyle($merkezKolon . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        }
-        foreach (['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'] as $paraKolonu) {
+        $sheet->getStyle('B' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('C' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('D' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('E' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('F' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('G' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('H' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('I' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('J' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('K' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('L' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('M' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('N' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('O' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        foreach (['P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'] as $paraKolonu) {
             $sheet->getStyle($paraKolonu . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         }
-        $sheet->getStyle("A{$satir}:P{$satir}")->applyFromArray($dataStyle);
+        $sheet->getStyle("A{$satir}:Y{$satir}")->applyFromArray($dataStyle);
         
         $satir++;
     }
@@ -476,18 +505,31 @@ try {
     // Toplam satırı ekle
     $toplamSatir = $satir;
     $sheet->setCellValue('A' . $toplamSatir, 'TOPLAM');
-    foreach (['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'] as $toplamKolonu) {
+    $sheet->setCellValue('B' . $toplamSatir, '=SUM(B2:B' . ($satir - 1) . ')');
+    $sheet->setCellValue('C' . $toplamSatir, '=SUM(C2:C' . ($satir - 1) . ')');
+    $sheet->setCellValue('D' . $toplamSatir, '=SUM(D2:D' . ($satir - 1) . ')');
+    $sheet->setCellValue('E' . $toplamSatir, '=SUM(E2:E' . ($satir - 1) . ')');
+    $sheet->setCellValue('F' . $toplamSatir, '=SUM(F2:F' . ($satir - 1) . ')');
+    $sheet->setCellValue('G' . $toplamSatir, '=SUM(G2:G' . ($satir - 1) . ')');
+    $sheet->setCellValue('H' . $toplamSatir, '=SUM(H2:H' . ($satir - 1) . ')');
+    $sheet->setCellValue('I' . $toplamSatir, '=SUM(I2:I' . ($satir - 1) . ')');
+    $sheet->setCellValue('J' . $toplamSatir, '=SUM(J2:J' . ($satir - 1) . ')');
+    $sheet->setCellValue('K' . $toplamSatir, '=SUM(K2:K' . ($satir - 1) . ')');
+    $sheet->setCellValue('L' . $toplamSatir, '=SUM(L2:L' . ($satir - 1) . ')');
+    $sheet->setCellValue('M' . $toplamSatir, '=SUM(M2:M' . ($satir - 1) . ')');
+    $sheet->setCellValue('O' . $toplamSatir, '=SUM(O2:O' . ($satir - 1) . ')');
+    foreach (['Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'] as $toplamKolonu) {
         $sheet->setCellValue($toplamKolonu . $toplamSatir, '=SUM(' . $toplamKolonu . '2:' . $toplamKolonu . ($satir - 1) . ')');
     }
     
-    $sheet->getStyle('A' . $toplamSatir . ':P' . $toplamSatir)->getFont()->setBold(true);
+    $sheet->getStyle('A' . $toplamSatir . ':Y' . $toplamSatir)->getFont()->setBold(true);
     
-    $currencyCols = ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+    $currencyCols = ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
     foreach ($currencyCols as $col) {
         $sheet->getStyle($col . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     }
     
-    $sheet->getStyle('A' . $toplamSatir . ':P' . $toplamSatir)->applyFromArray([
+    $sheet->getStyle('A' . $toplamSatir . ':Y' . $toplamSatir)->applyFromArray([
         'fill' => [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => 'F3F4F6']
@@ -496,30 +538,23 @@ try {
             'top' => ['borderStyle' => Border::BORDER_MEDIUM]
         ]
     ]);
-    $sheet->freezePane('A2');
-    $sheet->setAutoFilter('A1:P' . ($toplamSatir - 1));
 
-    // Ayrıntılı ödeme mutabakatı yalnız iç kontrol içindi; muhasebe aktarımına eklenmez.
-    if (false) {
     // Muhasebecinin işlem sırasını izleyen ödeme mutabakat sayfası.
     $mutabakatSheet = $spreadsheet->createSheet();
     $mutabakatSheet->setTitle('Ödeme Mutabakatı');
     $mutabakatSheet->mergeCells('A1:B1');
     $mutabakatSheet->mergeCells('C1:K1');
-    $mutabakatSheet->mergeCells('L1:Q1');
-    $mutabakatSheet->mergeCells('S1:AD1');
+    $mutabakatSheet->mergeCells('L1:O1');
     $mutabakatSheet->setCellValue('A1', 'PERSONEL');
     $mutabakatSheet->setCellValue('C1', '1 - EKLENECEK RESMÎ KALEMLER');
-    $mutabakatSheet->setCellValue('L1', '2 - ÇIKARILACAK KESİNTİLER (L-N DETAY, O-P UYGULANACAK)');
-    $mutabakatSheet->setCellValue('R1', '3 - BANKAYA YATACAK');
-    $mutabakatSheet->setCellValue('S1', '4 - BİLGİ VE KONTROL');
+    $mutabakatSheet->setCellValue('L1', '2 - ÇIKARILACAK KESİNTİLER');
+    $mutabakatSheet->setCellValue('P1', '3 - BANKAYA YATACAK');
 
     $mutabakatGruplari = [
         ['aralik' => 'A1:B1', 'renk' => '475569'],
         ['aralik' => 'C1:K1', 'renk' => '166534'],
-        ['aralik' => 'L1:Q1', 'renk' => '991B1B'],
-        ['aralik' => 'R1:R1', 'renk' => '92400E'],
-        ['aralik' => 'S1:AD1', 'renk' => '1E40AF'],
+        ['aralik' => 'L1:O1', 'renk' => '991B1B'],
+        ['aralik' => 'P1:P1', 'renk' => '92400E'],
     ];
     foreach ($mutabakatGruplari as $grup) {
         $mutabakatSheet->getStyle($grup['aralik'])->applyFromArray([
@@ -546,21 +581,7 @@ try {
         'M' => 'İCRA (KESİNTİ DETAYI)',
         'N' => 'DİĞER KESİNTİLER (DETAY)',
         'O' => 'BANKADAN DÜŞÜLECEK (UYGULANACAK)',
-        'P' => 'ELDEN DÜŞÜLECEK (UYGULANACAK)',
-        'Q' => 'TOPLAM PERSONEL KESİNTİSİ (KONTROL)',
-        'R' => 'BANKAYA YATACAK TUTAR',
-        'S' => 'ELDEN ÖDEME',
-        'T' => 'SODEXO / KART',
-        'U' => 'DİĞER ÖDEME',
-        'V' => 'ÖDENECEK NET TOPLAM',
-        'W' => 'TOPLAM HAKEDİŞ',
-        'X' => 'PRİM / İKRAMİYE HAKEDİŞİ (BİLGİ)',
-        'Y' => 'YEMEK / BANKA DAĞILIMINA DAHİL PRİM (BİLGİ)',
-        'Z' => 'PRİMİN AYRI ÖDEMEDE KALAN KISMI (BİLGİ)',
-        'AA' => 'DAĞITIM TOPLAMI',
-        'AB' => 'BANKA KONTROL FARKI',
-        'AC' => 'DAĞITIM KONTROL FARKI',
-        'AD' => 'AÇIKLAMA',
+        'P' => 'BANKAYA YATACAK TUTAR',
     ];
     foreach ($mutabakatBasliklari as $kolon => $baslik) {
         $mutabakatSheet->setCellValue($kolon . '2', $baslik);
@@ -569,9 +590,8 @@ try {
     foreach ([
         ['aralik' => 'A2:B2', 'renk' => '64748B'],
         ['aralik' => 'C2:K2', 'renk' => '15803D'],
-        ['aralik' => 'L2:Q2', 'renk' => 'B91C1C'],
-        ['aralik' => 'R2:R2', 'renk' => 'B45309'],
-        ['aralik' => 'S2:AD2', 'renk' => '2563EB'],
+        ['aralik' => 'L2:O2', 'renk' => 'B91C1C'],
+        ['aralik' => 'P2:P2', 'renk' => 'B45309'],
     ] as $grup) {
         $mutabakatSheet->getStyle($grup['aralik'])->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
@@ -592,23 +612,17 @@ try {
         'A' => 24, 'B' => 15,
         'C' => 16, 'D' => 14, 'E' => 13, 'F' => 16, 'G' => 15, 'H' => 15,
         'I' => 16, 'J' => 16, 'K' => 17,
-        'L' => 14, 'M' => 14, 'N' => 15, 'O' => 17, 'P' => 17, 'Q' => 17,
-        'R' => 18,
-        'S' => 14, 'T' => 14, 'U' => 14, 'V' => 17, 'W' => 16,
-        'X' => 18, 'Y' => 19, 'Z' => 19, 'AA' => 16, 'AB' => 16, 'AC' => 16, 'AD' => 46,
+        'L' => 14, 'M' => 14, 'N' => 15, 'O' => 17, 'P' => 18,
     ];
     foreach ($mutabakatGenislikleri as $kolon => $genislik) {
         $mutabakatSheet->getColumnDimension($kolon)->setAutoSize(false)->setWidth($genislik);
     }
 
     $mutabakatParaKolonlari = [
-        'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC',
+        'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
     ];
     $mutabakatSatir = 3;
     foreach ($yemekVerileri as $veri) {
-        $dagilimaDahilPrim = (float) ($veri['dagilima_dahil_prim_bilgi'] ?? 0);
-        $ayriPrim = (float) ($veri['prim'] ?? 0);
         $resmiKalan = max(0.0, round((float) $veri['resmi_banka_matrahi'], 2));
         $resmiEklenenPayi = static function (float $aday) use (&$resmiKalan): float {
             $pay = min(max(0.0, round($aday, 2)), $resmiKalan);
@@ -630,20 +644,6 @@ try {
         $icraKesintiDetayi = min(max(0.0, round((float) $veri['icra'], 2)), $kesintiKalan);
         $kesintiKalan = round($kesintiKalan - $icraKesintiDetayi, 2);
         $digerKesintiDetayi = $kesintiKalan;
-        $aciklama = !empty($veri['manuel_dagitim']) ? 'Manuel ödeme dağıtımı.' : 'Mutabık.';
-        if ($dagilimaDahilPrim > 0) {
-            $aciklama = number_format($dagilimaDahilPrim, 2, ',', '.')
-                . ' TL prim yemek/banka dağılımına dahildir; yeniden eklenmez.';
-            if ($ayriPrim > 0) {
-                $aciklama .= ' ' . number_format($ayriPrim, 2, ',', '.') . ' TL prim ayrıca ödenir.';
-            }
-        } elseif ($ayriPrim > 0) {
-            $aciklama = number_format($ayriPrim, 2, ',', '.') . ' TL prim ayrıca ödenir.';
-        }
-        if (abs($digerResmiEklenen) >= 0.01) {
-            $aciklama .= ' Diğer resmî eklenen: ' . number_format($digerResmiEklenen, 2, ',', '.') . ' TL.';
-        }
-
         $mutabakatSheet->setCellValue('A' . $mutabakatSatir, $veri['adi_soyadi']);
         $mutabakatSheet->setCellValueExplicit('B' . $mutabakatSatir, $veri['tc_kimlik'], DataType::TYPE_STRING);
         $mutabakatSheet->setCellValue('C' . $mutabakatSatir, $resmiAsgari);
@@ -659,40 +659,18 @@ try {
         $mutabakatSheet->setCellValue('M' . $mutabakatSatir, $icraKesintiDetayi);
         $mutabakatSheet->setCellValue('N' . $mutabakatSatir, $digerKesintiDetayi);
         $mutabakatSheet->setCellValue('O' . $mutabakatSatir, $veri['bankadan_dusulen_kesinti']);
-        $mutabakatSheet->setCellValue('P' . $mutabakatSatir, $veri['elden_dusulen_kesinti']);
-        $mutabakatSheet->setCellValue('Q' . $mutabakatSatir, $veri['toplam_personel_kesintisi']);
-        $mutabakatSheet->setCellValue('R' . $mutabakatSatir, $veri['banka_odemesi']);
-        $mutabakatSheet->setCellValue('S' . $mutabakatSatir, $veri['elden_odeme']);
-        $mutabakatSheet->setCellValue('T' . $mutabakatSatir, $veri['sodexo_yemek']);
-        $mutabakatSheet->setCellValue('U' . $mutabakatSatir, $veri['diger_odeme']);
-        $mutabakatSheet->setCellValue('V' . $mutabakatSatir, $veri['net_odenecek_toplam']);
-        $mutabakatSheet->setCellValue('W' . $mutabakatSatir, $veri['toplam_hakedis']);
-        $mutabakatSheet->setCellValue('X' . $mutabakatSatir, $veri['prim_hakedisi_bilgi']);
-        $mutabakatSheet->setCellValue('Y' . $mutabakatSatir, $dagilimaDahilPrim);
-        $mutabakatSheet->setCellValue('Z' . $mutabakatSatir, $ayriPrim);
-        $mutabakatSheet->setCellValue('AA' . $mutabakatSatir, $veri['dagitim_toplami']);
-        $mutabakatSheet->setCellValue('AB' . $mutabakatSatir, $veri['banka_kontrol_farki']);
-        $mutabakatSheet->setCellValue('AC' . $mutabakatSatir, $veri['dagitim_farki']);
-        $mutabakatSheet->setCellValue('AD' . $mutabakatSatir, $aciklama);
-        $mutabakatSheet->getStyle('A' . $mutabakatSatir . ':AD' . $mutabakatSatir)->applyFromArray($dataStyle);
+        $mutabakatSheet->setCellValue('P' . $mutabakatSatir, $veri['banka_odemesi']);
+        $mutabakatSheet->getStyle('A' . $mutabakatSatir . ':P' . $mutabakatSatir)->applyFromArray($dataStyle);
         $mutabakatSheet->getStyle('C' . $mutabakatSatir . ':K' . $mutabakatSatir)
             ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('ECFDF5');
-        $mutabakatSheet->getStyle('L' . $mutabakatSatir . ':Q' . $mutabakatSatir)
+        $mutabakatSheet->getStyle('L' . $mutabakatSatir . ':O' . $mutabakatSatir)
             ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FEF2F2');
-        $mutabakatSheet->getStyle('R' . $mutabakatSatir)
+        $mutabakatSheet->getStyle('P' . $mutabakatSatir)
             ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FEF3C7');
-        $mutabakatSheet->getStyle('R' . $mutabakatSatir)->getFont()->setBold(true)->getColor()->setRGB('92400E');
-        $mutabakatSheet->getStyle('S' . $mutabakatSatir . ':AD' . $mutabakatSatir)
-            ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('EFF6FF');
+        $mutabakatSheet->getStyle('P' . $mutabakatSatir)->getFont()->setBold(true)->getColor()->setRGB('92400E');
         foreach ($mutabakatParaKolonlari as $paraKolonu) {
             $mutabakatSheet->getStyle($paraKolonu . $mutabakatSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         }
-        $kontrolRengi = (abs((float) $veri['banka_kontrol_farki']) < 0.01 && abs((float) $veri['dagitim_farki']) < 0.01)
-            ? 'DCFCE7'
-            : 'FEE2E2';
-        $mutabakatSheet->getStyle('AB' . $mutabakatSatir . ':AC' . $mutabakatSatir)
-            ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($kontrolRengi);
-        $mutabakatSheet->getStyle('AD' . $mutabakatSatir)->getAlignment()->setWrapText(true);
         $mutabakatSatir++;
     }
 
@@ -706,22 +684,19 @@ try {
         $mutabakatSheet->getStyle($toplamKolonu . $mutabakatToplamSatir)
             ->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     }
-    $mutabakatSheet->getStyle('A' . $mutabakatToplamSatir . ':AD' . $mutabakatToplamSatir)->applyFromArray([
+    $mutabakatSheet->getStyle('A' . $mutabakatToplamSatir . ':P' . $mutabakatToplamSatir)->applyFromArray([
         'font' => ['bold' => true],
         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F3F4F6']],
         'borders' => ['top' => ['borderStyle' => Border::BORDER_MEDIUM]],
     ]);
     $mutabakatSheet->getStyle('C' . $mutabakatToplamSatir . ':K' . $mutabakatToplamSatir)
         ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('DCFCE7');
-    $mutabakatSheet->getStyle('L' . $mutabakatToplamSatir . ':Q' . $mutabakatToplamSatir)
+    $mutabakatSheet->getStyle('L' . $mutabakatToplamSatir . ':O' . $mutabakatToplamSatir)
         ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FEE2E2');
-    $mutabakatSheet->getStyle('R' . $mutabakatToplamSatir)
+    $mutabakatSheet->getStyle('P' . $mutabakatToplamSatir)
         ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FDE68A');
-    $mutabakatSheet->getStyle('S' . $mutabakatToplamSatir . ':AD' . $mutabakatToplamSatir)
-        ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('DBEAFE');
-    $mutabakatSheet->setAutoFilter('A2:AD' . ($mutabakatToplamSatir - 1));
-    }
-    $spreadsheet->setActiveSheetIndex(0);
+    $mutabakatSheet->setAutoFilter('A2:P' . ($mutabakatToplamSatir - 1));
+    $spreadsheet->setActiveSheetIndex(1);
     
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);
