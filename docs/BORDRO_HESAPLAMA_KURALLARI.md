@@ -379,6 +379,7 @@ vergiliKisim = max(0, tutar - muafLimit)
 ## SGK Firmasi Degisimi ve Banka Asgari Ucret Gunu
 
 - Donem icinde ISKUR/KUR ile normal SGK firmasi arasinda gecis varsa banka asgari ucret payi aylik orana gore dagitilmaz; net asgari ucretin gunluk tutari (`asgari_ucret_net / 30`) yalnizca KUR disindaki hak edilmis gunlerle carpilir.
+- SGK firmasi ISKUR/KUR olan calisma gecmisi tarihleri maas hesap gunune ve SGK prim gun sayisina dahil edilmez. Bu tarihler icin sozlesme maasi, asgari taban veya isveren SGK gunu uretilmez.
 - Personelin ise girisinden onceki ve isten cikisindan sonraki gunler varsayilan SGK firmasina yazilamaz.
 - Calisma gecmisi bulunan donemde yalnizca bir calisma gecmisi kaydinin kapsadigi tarihler aktif kabul edilir; kayitlar arasindaki bosluklar firma gunu sayilmaz.
 - Onayli ucretsiz izin ve rapor gunleri denk geldikleri SGK firma gununden dusulur. Boylece eksik gunler KUR ve KUR disi gunlere oransal olarak dagitilmaz.

@@ -195,7 +195,7 @@ class BordroPersonelModel extends Model
 
     private function getCalismaGecmisiAktifTarihleri(int $personelId, string $donemBaslangic, string $donemBitis): ?array
     {
-        $stmt = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi
+        $stmt = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi, sgk_yapilan_firma
             FROM personel_calisma_gecmisi
             WHERE personel_id = ?
               AND ise_giris_tarihi <= ?
@@ -207,6 +207,10 @@ class BordroPersonelModel extends Model
         if (empty($araliklar)) {
             return null;
         }
+
+        $araliklar = array_values(array_filter($araliklar, static function (array $aralik): bool {
+            return stripos((string) ($aralik['sgk_yapilan_firma'] ?? ''), 'KUR') === false;
+        }));
 
         return $this->birlesikTarihAraligiGunleri($araliklar, $donemBaslangic, $donemBitis);
     }
@@ -931,13 +935,16 @@ class BordroPersonelModel extends Model
             $p->ise_giris_tarihi ?? null,
             $p->isten_cikis_tarihi ?? null
         );
-        $calismaGecmisiAktifGun = $this->getCalismaGecmisiAktifGunSayisi(
+        $calismaGecmisiAktifTarihler = $this->getCalismaGecmisiAktifTarihleri(
             (int) $p->personel_id,
             $donemBaslangic,
             $donemBitis
         );
-        if ($calismaGecmisiAktifGun !== null) {
-            $aktifTakvimGun = $calismaGecmisiAktifGun;
+        $calismaGecmisiUcretGunu = null;
+        if ($calismaGecmisiAktifTarihler !== null) {
+            $aktifTakvimGun = count($calismaGecmisiAktifTarihler);
+            $eksikGunTarihleri = $this->getMaasEksikGunTarihleri((int) $p->personel_id, $donemBaslangic, $donemBitis);
+            $calismaGecmisiUcretGunu = min(30, count(array_diff_key($calismaGecmisiAktifTarihler, $eksikGunTarihleri)));
         }
 
         // Puantaj günlerini önceden alalım ki görev geçmişi eksik olsa bile çalışılan günleri sayabilelim
@@ -953,7 +960,9 @@ class BordroPersonelModel extends Model
             }
         }
 
-        $calismaGunu = $this->getMaasHesapGunu($aktifTakvimGun, $donemTakvimGunu, $ucretsizIzinGunu + $raporGunu);
+        $calismaGunu = $calismaGecmisiUcretGunu !== null
+            ? min($calismaGecmisiUcretGunu, $aktifTakvimGun)
+            : $this->getMaasHesapGunu($aktifTakvimGun, $donemTakvimGunu, $ucretsizIzinGunu + $raporGunu);
         $asgariTabanVal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
 
         $isNet = (stripos($maasDurumu, 'Net') !== false);
@@ -2829,12 +2838,17 @@ class BordroPersonelModel extends Model
         $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($personel_id, $baslangic_tarihi, $bitis_tarihi);
         $raporGunu = $this->getGunSayisiByKisaKod($personel_id, $baslangic_tarihi, $bitis_tarihi, 'RP');
         $aktifTakvimGun = $this->getAktifTakvimGunSayisi($baslangic_tarihi, $bitis_tarihi, $personel->ise_giris_tarihi ?? null, $personel->isten_cikis_tarihi ?? null);
-        $calismaGecmisiAktifGun = $this->getCalismaGecmisiAktifGunSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi);
-        if ($calismaGecmisiAktifGun !== null) {
-            $aktifTakvimGun = $calismaGecmisiAktifGun;
+        $calismaGecmisiAktifTarihler = $this->getCalismaGecmisiAktifTarihleri($personel_id, $baslangic_tarihi, $bitis_tarihi);
+        $calismaGecmisiUcretGunu = null;
+        if ($calismaGecmisiAktifTarihler !== null) {
+            $aktifTakvimGun = count($calismaGecmisiAktifTarihler);
+            $eksikGunTarihleri = $this->getMaasEksikGunTarihleri($personel_id, $baslangic_tarihi, $bitis_tarihi);
+            $calismaGecmisiUcretGunu = min(30, count(array_diff_key($calismaGecmisiAktifTarihler, $eksikGunTarihleri)));
         }
         $aydakiGunSayisi = (int) round((strtotime($bitis_tarihi) - strtotime($baslangic_tarihi)) / 86400) + 1;
-        $maasHesapGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $ucretsizIzinGunu + $raporGunu);
+        $maasHesapGunu = $calismaGecmisiUcretGunu !== null
+            ? $calismaGecmisiUcretGunu
+            : $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $ucretsizIzinGunu + $raporGunu);
 
         if ($this->cachedParametreModel === null) {
             $this->cachedParametreModel = new BordroParametreModel();
@@ -4680,13 +4694,20 @@ class BordroPersonelModel extends Model
         // Çalışma geçmişinde birden fazla dönem varsa hepsinin birleşik kapsamını kullan.
         // overrideWithHistoricalCalismaGecmisi() gösterim alanları için tek kayıt seçtiğinden,
         // doğrudan o alanlarla hesap yapmak yeniden işe girişlerde yalnızca son parçayı sayıyordu.
-        $calismaGecmisiAktifGun = $this->getCalismaGecmisiAktifGunSayisi(
+        $calismaGecmisiAktifTarihler = $this->getCalismaGecmisiAktifTarihleri(
             (int) $kayit->personel_id,
             $kayit->baslangic_tarihi,
             $kayit->bitis_tarihi
         );
-        if ($calismaGecmisiAktifGun !== null) {
-            $aktifTakvimGun = $calismaGecmisiAktifGun;
+        $calismaGecmisiUcretGunu = null;
+        if ($calismaGecmisiAktifTarihler !== null) {
+            $aktifTakvimGun = count($calismaGecmisiAktifTarihler);
+            $eksikGunTarihleri = $this->getMaasEksikGunTarihleri(
+                (int) $kayit->personel_id,
+                $kayit->baslangic_tarihi,
+                $kayit->bitis_tarihi
+            );
+            $calismaGecmisiUcretGunu = min(30, count(array_diff_key($calismaGecmisiAktifTarihler, $eksikGunTarihleri)));
         }
 
         // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
@@ -4696,7 +4717,9 @@ class BordroPersonelModel extends Model
         }
 
         $maasEksikGunToplami = $ucretsizIzinGunu + $raporGunu;
-        $maasHesapGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $maasEksikGunToplami);
+        $maasHesapGunu = $calismaGecmisiUcretGunu !== null
+            ? min($calismaGecmisiUcretGunu, $aktifTakvimGun)
+            : $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $maasEksikGunToplami);
 
         // USER REQ: Profil bazlı ödemeler (Yemek Yardımı dengelemesi gibi) kesintiler VE çalışma günü netleştikten sonra yapılmalıdır.
         // Çünkü "Maaşa Dahil" çalışanlarda yemek yardımı tutarı, (Hedef Net - Kesintiler) ve pro-rated asgari üzerinden hesaplanır.
