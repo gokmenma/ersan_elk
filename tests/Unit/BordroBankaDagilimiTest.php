@@ -99,18 +99,18 @@ final class BordroBankaDagilimiTest extends TestCase
         ], $method->invoke($model, 17300, 16701.90, 6000, 0));
     }
 
-    public function testDahilMaasTumKesintilerOnceBankadanSonraEldenDuser(): void
+    public function testDahilMaasKesintileriSecilenKanaldanOncelikliDuser(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
         $method = new ReflectionMethod($model, 'hesaplaDahilBankaDagilimi');
 
         // Toplam Hakediş: 37300, Banka Matrahı: 37111.35, Elden Matrahı: 188.65
-        // Ödeme yöntemi elden işaretli olsa da maaşa dahil dağıtımda önce bankadan düşer.
+        // Elden işaretli kesinti önce elden hakedişten düşer.
         self::assertSame([
-            'banka' => 37011.35,
-            'elden' => 188.65,
-            'banka_kesintisi' => 100.0,
-            'elden_kesintisi' => 0.0,
+            'banka' => 37111.35,
+            'elden' => 88.65,
+            'banka_kesintisi' => 0.0,
+            'elden_kesintisi' => 100.0,
         ], $method->invoke($model, 37300, 37111.35, 0, 100));
 
         // Banka matrahını aşan bölüm ancak bu durumda elden hakedişten düşer.
@@ -126,7 +126,7 @@ final class BordroBankaDagilimiTest extends TestCase
             'elden' => 1093.56,
             'banka_kesintisi' => 13019.50,
             'elden_kesintisi' => 0.0,
-        ], $method->invoke($model, 30820, 29726.44, 11925.94, 1093.56));
+        ], $method->invoke($model, 30820, 29726.44, 13019.50, 0));
     }
 
     public function testNormalMaasEldenKesintiOncelikliEldenDuserKalanBankadanDuser(): void

@@ -3055,7 +3055,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                 // Onaylanmamış avansları kontrol et
                 $avansQuery = $BordroDonem->getDb()->prepare("
-                    SELECT COUNT(*) as count, SUM(tutar) as toplam 
+                    SELECT COUNT(*) as count, SUM(pa.tutar) as toplam
                     FROM personel_avanslari pa
                     JOIN personel p ON pa.personel_id = p.id
                     WHERE pa.durum = 'beklemede' 
@@ -3077,7 +3077,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                 // Onaylanmamış izinleri kontrol et
                 $izinQuery = $BordroDonem->getDb()->prepare("
-                    SELECT COUNT(*) as count, SUM(DATEDIFF(bitis_tarihi, baslangic_tarihi) + 1) as toplam_gun
+                    SELECT COUNT(*) as count, SUM(DATEDIFF(pi.bitis_tarihi, pi.baslangic_tarihi) + 1) as toplam_gun
                     FROM personel_izinleri pi
                     JOIN personel p ON pi.personel_id = p.id
                     LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id

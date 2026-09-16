@@ -119,25 +119,34 @@ class BordroPersonelModel extends Model
         ];
     }
 
-    // Maaşa dahil yardım dağılımında tüm personel kesintileri önce resmî banka
-    // matrahından düşer. Banka matrahını aşan kesinti ancak o zaman elden
-    // hakedişten mahsup edilir; banka matrahı dışındaki hakediş elden ödenir.
+    // Maaşa dahil yardım dağılımında kesintinin kayıtlı ödeme kanalı korunur:
+    // banka kesintisi önce banka matrahından, elden kesintisi önce elden
+    // hakedişten düşer; ilgili kanal yetmezse kalan tutar diğerine aktarılır.
     private function hesaplaDahilBankaDagilimi(float $toplamHakedis, float $bankaMatrahi, float $bankaKesintisi, float $eldenKesintisi = 0.0): array
     {
         $toplamHakedis = max(0.0, $toplamHakedis);
         $bankaMatrahi = min(max(0.0, $bankaMatrahi), $toplamHakedis);
         $eldenBrut = max(0.0, $toplamHakedis - $bankaMatrahi);
-        $toplamKesinti = max(0.0, $bankaKesintisi) + max(0.0, $eldenKesintisi);
-        $bankadanDusulen = min($bankaMatrahi, $toplamKesinti);
-        $eldenDusulen = min($eldenBrut, max(0.0, $toplamKesinti - $bankadanDusulen));
-        $kalanBanka = max(0.0, $bankaMatrahi - $bankadanDusulen);
-        $kalanElden = max(0.0, $eldenBrut - $eldenDusulen);
+
+        $dusulenEldenElden = min($eldenBrut, $eldenKesintisi);
+        $kalanEldenKesintisi = max(0.0, $eldenKesintisi - $dusulenEldenElden);
+        $kalanElden = max(0.0, $eldenBrut - $dusulenEldenElden);
+
+        $dusulenBankaBanka = min($bankaMatrahi, $bankaKesintisi);
+        $kalanBankaKesintisi = max(0.0, $bankaKesintisi - $dusulenBankaBanka);
+        $kalanBanka = max(0.0, $bankaMatrahi - $dusulenBankaBanka);
+
+        $dusulenEldenBanka = min($kalanBanka, $kalanEldenKesintisi);
+        $kalanBanka = max(0.0, $kalanBanka - $dusulenEldenBanka);
+
+        $dusulenBankaElden = min($kalanElden, $kalanBankaKesintisi);
+        $kalanElden = max(0.0, $kalanElden - $dusulenBankaElden);
 
         return [
             'banka' => round($kalanBanka, 2),
             'elden' => round($kalanElden, 2),
-            'banka_kesintisi' => round($bankadanDusulen, 2),
-            'elden_kesintisi' => round($eldenDusulen, 2),
+            'banka_kesintisi' => round($dusulenBankaBanka + $dusulenEldenBanka, 2),
+            'elden_kesintisi' => round($dusulenEldenElden + $dusulenBankaElden, 2),
         ];
     }
 
