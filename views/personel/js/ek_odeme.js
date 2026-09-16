@@ -88,6 +88,7 @@ $(document).ready(function () {
     $("#ek_banka_matrah_evet").prop("checked", true);
     updateEkTekrarTipiUI();
     updateEkHesaplamaTipiUI();
+    updateEkBankaMatrahiUI();
 
     // Set today's date
     var today = new Date();
@@ -215,6 +216,7 @@ $(document).ready(function () {
           } else {
             $("#ek_banka_matrah_evet").prop("checked", true);
           }
+          updateEkBankaMatrahiUI();
 
           // Modalı göster
           $("#modalPersonelEkOdemeEkle").modal("show");
@@ -234,7 +236,17 @@ $(document).ready(function () {
   });
 
   function updateEkTekrarTipiUI() {
-    var tekrarTipi = $('input[name="ek_tekrar_tipi"]:checked').val();
+    var modal = $("#modalPersonelEkOdemeEkle");
+    var container = modal.find('input[name="ek_tekrar_tipi"]').closest('.segmented-control-container');
+    var checkedInput = container.find('input[name="ek_tekrar_tipi"]:checked');
+    if (!checkedInput.length) {
+      checkedInput = container.find("#ek_tekrar_tek_sefer").prop("checked", true);
+    }
+    var tekrarTipi = checkedInput.val();
+
+    container.find('.segmented-control-input').not(checkedInput).prop('checked', false).removeAttr('checked');
+    container.find('.segmented-control-label').removeClass('active');
+    container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
     console.log("Ek ödeme tekrar tipi değişti:", tekrarTipi); // Debug
 
     if (tekrarTipi === "surekli") {
@@ -256,7 +268,17 @@ $(document).ready(function () {
   });
 
   function updateEkHesaplamaTipiUI() {
-    var hesaplamaTipi = $('input[name="ek_hesaplama_tipi"]:checked').val();
+    var modal = $("#modalPersonelEkOdemeEkle");
+    var container = modal.find('input[name="ek_hesaplama_tipi"]').closest('.segmented-control-container');
+    var checkedInput = container.find('input[name="ek_hesaplama_tipi"]:checked');
+    if (!checkedInput.length) {
+      checkedInput = container.find("#ek_hesaplama_sabit").prop("checked", true);
+    }
+    var hesaplamaTipi = checkedInput.val();
+
+    container.find('.segmented-control-input').not(checkedInput).prop('checked', false).removeAttr('checked');
+    container.find('.segmented-control-label').removeClass('active');
+    container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
     console.log("Ek ödeme hesaplama tipi değişti:", hesaplamaTipi); // Debug
 
     if (hesaplamaTipi === "sabit") {
@@ -272,6 +294,23 @@ $(document).ready(function () {
       $("#ek_odeme_tutar").prop("required", false);
       $("#ek_odeme_oran").prop("required", true);
     }
+  }
+
+  $(document).on("change", '#modalPersonelEkOdemeEkle input[name="banka_matrahina_ekle"]', function () {
+    updateEkBankaMatrahiUI();
+  });
+
+  function updateEkBankaMatrahiUI() {
+    var modal = $("#modalPersonelEkOdemeEkle");
+    var container = modal.find('input[name="banka_matrahina_ekle"]').closest('.segmented-control-container');
+    var checkedInput = container.find('input[name="banka_matrahina_ekle"]:checked');
+    if (!checkedInput.length) {
+      checkedInput = container.find("#ek_banka_matrah_evet").prop("checked", true);
+    }
+
+    container.find('.segmented-control-input').not(checkedInput).prop('checked', false).removeAttr('checked');
+    container.find('.segmented-control-label').removeClass('active');
+    container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
   }
 
   // Parametre seçilince - EVENT DELEGATION
@@ -389,10 +428,11 @@ $(document).ready(function () {
     // Güncelleme kontrolü
     var idInput = form.find('input[name="id"]');
     var action = idInput.length > 0 ? "update_ek_odeme" : "save_ek_odeme";
+    var bankaMatrahi = form.find('input[name="banka_matrahina_ekle"]:checked').val();
 
     var data = {
       action: action,
-      personel_id: $('input[name="personel_id"]').val(),
+      personel_id: form.find('input[name="personel_id"]').val(),
       parametre_id: parametreId,
       tur: turKod,
       tekrar_tipi: tekrarTipi,
@@ -411,7 +451,7 @@ $(document).ready(function () {
           : 0,
       tarih: ekOdemeGetTarih("#ek_odeme_tarih"),
       aciklama: $("#formPersonelEkOdemeEkle input[name='aciklama']").val(),
-      banka_matrahina_ekle: $('input[name="banka_matrahina_ekle"]:checked').val() !== undefined ? $('input[name="banka_matrahina_ekle"]:checked').val() : 1,
+      banka_matrahina_ekle: bankaMatrahi !== undefined ? bankaMatrahi : 1,
     };
 
     // Update ise ID ekle
@@ -440,9 +480,16 @@ $(document).ready(function () {
       dataType: "json",
       success: function (response) {
         if (response.success) {
-          $("#modalPersonelEkOdemeEkle").modal("hide");
-          refreshEkOdemeTab();
-          Swal.fire("Başarılı", "Ek ödeme kaydedildi.", "success");
+          var modal = $("#modalPersonelEkOdemeEkle");
+
+          // Sekme içeriği modal kapanmadan yenilenirse modal DOM'dan erken
+          // kaldırılır ve Bootstrap backdrop'u sayfanın üzerinde kalır. Bu da
+          // modal ikinci kez açıldığında tüm tıklamaları engeller.
+          modal.one("hidden.bs.modal.ekOdemeRefresh", function () {
+            refreshEkOdemeTab();
+            Swal.fire("Başarılı", "Ek ödeme kaydedildi.", "success");
+          });
+          modal.modal("hide");
         } else {
           Swal.fire("Hata", response.error || "Bir hata oluştu", "error");
         }
@@ -537,12 +584,30 @@ $(document).ready(function () {
   });
 
   function refreshEkOdemeTab() {
+    var modalEl = $("#modalPersonelEkOdemeEkle");
+    if (modalEl.length && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      var modalObj = bootstrap.Modal.getInstance(modalEl[0]);
+      if (modalObj) {
+        try {
+          modalObj.dispose();
+        } catch (e) {}
+      }
+    }
+
+    // Dinamik sekme yenilenirken eski modal katmanından hiçbir parça kalmasın.
+    modalEl.removeClass("show in fade").css("display", "none").attr("aria-hidden", "true");
+    $(".modal-backdrop").remove();
+    $("body").removeClass("modal-open").css({ overflow: "", "padding-right": "" });
+
     var targetPane = $("#ek_odemeler");
     var url = targetPane.attr("data-url");
     if (url) {
       $.get(url, function (html) {
         targetPane.html(html);
-        if (typeof initPlugins === "function") {
+        targetPane.attr("data-loaded", "true");
+        if (typeof window.initPlugins === "function") {
+          window.initPlugins(targetPane[0]);
+        } else if (typeof initPlugins === "function") {
           initPlugins(targetPane[0]);
         }
       });

@@ -22,6 +22,36 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertFalse($method->invoke($model, 'Manuel prim'));
     }
 
+    public function testSgkFirmaDagilimiIseGirisOncesiniSaymazVeEksikGunleriGercekFirmadanDuser(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $pdo = $this->createMock(PDO::class);
+        $stmt = $this->createMock(PDOStatement::class);
+        $pdo->method('prepare')->willReturn($stmt);
+        $stmt->method('execute')->willReturn(true);
+        $stmt->method('fetchAll')->willReturn([
+            ['ise_giris_tarihi' => '2026-08-11', 'isten_cikis_tarihi' => '2026-08-25', 'sgk_yapilan_firma' => 'İŞKUR'],
+            ['ise_giris_tarihi' => '2026-08-26', 'isten_cikis_tarihi' => null, 'sgk_yapilan_firma' => 'Ersan Elektrik'],
+        ]);
+        $this->setProperty($model, 'db', $pdo);
+
+        $dagilim = $model->getSgkFirmaDagilimi(
+            1,
+            '2026-08-01',
+            '2026-08-31',
+            'Ersan Elektrik',
+            '2026-08-11',
+            null,
+            ['2026-08-20' => true, '2026-08-27' => true]
+        );
+
+        self::assertSame(15, $dagilim['kur_days']);
+        self::assertSame(6, $dagilim['non_kur_days']);
+        self::assertSame(21, $dagilim['total_days']);
+        self::assertSame(14, $dagilim['payable_kur_days']);
+        self::assertSame(5, $dagilim['payable_non_kur_days']);
+    }
+
     public function testEkranOrnegiVeBankaTavaniniAsanKesinti(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

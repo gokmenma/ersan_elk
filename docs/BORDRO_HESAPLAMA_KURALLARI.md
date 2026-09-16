@@ -376,6 +376,14 @@ vergiliKisim = max(0, tutar - muafLimit)
 
 ## Kesinti Kurallari
 
+## SGK Firmasi Degisimi ve Banka Asgari Ucret Gunu
+
+- Donem icinde ISKUR/KUR ile normal SGK firmasi arasinda gecis varsa banka asgari ucret payi aylik orana gore dagitilmaz; net asgari ucretin gunluk tutari (`asgari_ucret_net / 30`) yalnizca KUR disindaki hak edilmis gunlerle carpilir.
+- Personelin ise girisinden onceki ve isten cikisindan sonraki gunler varsayilan SGK firmasina yazilamaz.
+- Calisma gecmisi bulunan donemde yalnizca bir calisma gecmisi kaydinin kapsadigi tarihler aktif kabul edilir; kayitlar arasindaki bosluklar firma gunu sayilmaz.
+- Onayli ucretsiz izin ve rapor gunleri denk geldikleri SGK firma gununden dusulur. Boylece eksik gunler KUR ve KUR disi gunlere oransal olarak dagitilmaz.
+- Liste, bordro detay modali, kaydedilen banka/elden dagilimi ve Excel ciktilari ayni ortak model sonucunu kullanmalidir.
+
 - Avans, ozel kesinti vb. net hakedisten dusulur.
 - Icra kesintisi odeme dagiliminda ayrica izlenir.
 - Icra kesintisi net hakedisten onceki matrah uzerinden hesaplanir.

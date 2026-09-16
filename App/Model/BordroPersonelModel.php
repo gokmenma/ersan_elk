@@ -306,6 +306,29 @@ class BordroPersonelModel extends Model
         return $gunler;
     }
 
+    /** Banka asgari ücret gününden düşülecek onaylı ücretsiz izin ve rapor tarihleri. */
+    private function getMaasEksikGunTarihleri(int $personelId, string $donemBaslangic, string $donemBitis): array
+    {
+        $stmt = $this->db->prepare("SELECT pi.baslangic_tarihi, pi.bitis_tarihi
+            FROM personel_izinleri pi
+            INNER JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ? AND pi.onay_durumu = 'Onaylandı'
+              AND pi.silinme_tarihi IS NULL AND t.silinme_tarihi IS NULL
+              AND t.grup = 'izin_turu' AND (t.ucretli_mi = 0 OR t.kisa_kod = 'RP')
+              AND pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?");
+        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
+
+        $gunler = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $izin) {
+            $basTs = strtotime(max($donemBaslangic, (string) $izin['baslangic_tarihi']));
+            $bitTs = strtotime(min($donemBitis, (string) $izin['bitis_tarihi']));
+            for ($ts = $basTs; $ts !== false && $bitTs !== false && $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
+                $gunler[date('Y-m-d', $ts)] = true;
+            }
+        }
+        return $gunler;
+    }
+
     private function getMaasHesapGunu(int $aktifTakvimGun, int $donemTakvimGun, int $eksikGunToplami): int
     {
         if ($aktifTakvimGun <= 0) {
@@ -730,7 +753,7 @@ class BordroPersonelModel extends Model
         ];
     }
 
-    public function getSgkFirmaDagilimi($personel_id, $baslangic, $bitis, $defaultFirma = 'Yok')
+    public function getSgkFirmaDagilimi($personel_id, $baslangic, $bitis, $defaultFirma = 'Yok', $iseGiris = null, $istenCikis = null, array $eksikGunler = [])
     {
         $sql = "SELECT ise_giris_tarihi, isten_cikis_tarihi, sgk_yapilan_firma 
                 FROM personel_calisma_gecmisi 
@@ -740,26 +763,18 @@ class BordroPersonelModel extends Model
         $stmt->execute([$personel_id]);
         $segments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if (empty($segments)) {
-            $isKur = (stripos((string)$defaultFirma, 'KUR') !== false);
-            return [
-                'kur_days' => $isKur ? 30 : 0,
-                'non_kur_days' => $isKur ? 0 : 30,
-                'total_days' => 30,
-                'non_kur_ratio' => $isKur ? 0.0 : 1.0
-            ];
-        }
-
         $kurDays = 0;
         $nonKurDays = 0;
+        $payableKurDays = 0;
+        $payableNonKurDays = 0;
 
         $cur = strtotime($baslangic);
         $end = strtotime($bitis);
 
         while ($cur !== false && $cur <= $end) {
             $tarih = date('Y-m-d', $cur);
-            
-            $activeCompany = $defaultFirma;
+
+            $activeCompany = null;
             foreach ($segments as $seg) {
                 $segGiris = $seg['ise_giris_tarihi'];
                 $segCikis = !empty($seg['isten_cikis_tarihi']) && $seg['isten_cikis_tarihi'] !== '0000-00-00' ? $seg['isten_cikis_tarihi'] : null;
@@ -770,10 +785,27 @@ class BordroPersonelModel extends Model
                 }
             }
 
+            // Çalışma geçmişi yoksa ana personel tarihleri içinde varsayılan firmayı kullan.
+            // Geçmiş varsa kayıtsız günleri (özellikle işe giriş öncesini) firmaya yazma.
+            if ($activeCompany === null && empty($segments)) {
+                $girisUygun = !$this->isValidDateValue($iseGiris) || $tarih >= $iseGiris;
+                $cikisUygun = !$this->isValidDateValue($istenCikis) || $tarih <= $istenCikis;
+                if ($girisUygun && $cikisUygun) {
+                    $activeCompany = $defaultFirma;
+                }
+            }
+
+            if ($activeCompany === null) {
+                $cur = strtotime('+1 day', $cur);
+                continue;
+            }
+
             if (stripos((string)$activeCompany, 'KUR') !== false) {
                 $kurDays++;
+                if (!isset($eksikGunler[$tarih])) $payableKurDays++;
             } else {
                 $nonKurDays++;
+                if (!isset($eksikGunler[$tarih])) $payableNonKurDays++;
             }
 
             $cur = strtotime('+1 day', $cur);
@@ -783,8 +815,10 @@ class BordroPersonelModel extends Model
         return [
             'kur_days' => $kurDays,
             'non_kur_days' => $nonKurDays,
+            'payable_kur_days' => $payableKurDays,
+            'payable_non_kur_days' => $payableNonKurDays,
             'total_days' => $totalDays,
-            'non_kur_ratio' => $totalDays > 0 ? ($nonKurDays / $totalDays) : 1.0
+            'non_kur_ratio' => $totalDays > 0 ? ($nonKurDays / $totalDays) : 0.0
         ];
     }
 
@@ -1333,8 +1367,18 @@ class BordroPersonelModel extends Model
         $manualDagitimVar = isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1;
 
         // Resolve SGK firm proration
-        $dagilim = $this->getSgkFirmaDagilimi($p->personel_id, $donemBaslangic, $donemBitis, $p->sgk_yapilan_firma ?? 'Yok');
+        $eksikGunTarihleri = $this->getMaasEksikGunTarihleri((int) $p->personel_id, $donemBaslangic, $donemBitis);
+        $dagilim = $this->getSgkFirmaDagilimi(
+            $p->personel_id,
+            $donemBaslangic,
+            $donemBitis,
+            $p->sgk_yapilan_firma ?? 'Yok',
+            $p->ise_giris_tarihi ?? null,
+            $p->isten_cikis_tarihi ?? null,
+            $eksikGunTarihleri
+        );
         $nonKurRatio = $dagilim['non_kur_ratio'];
+        $nonKurUcretGunu = min($calismaGunu, intval($dagilim['payable_non_kur_days'] ?? round($calismaGunu * $nonKurRatio)));
         
         $asgariYatacak = 0.0;
         $bankaMatrahi = 0.0;
@@ -1347,8 +1391,7 @@ class BordroPersonelModel extends Model
             $digerOdeme = floatval($p->diger_odeme ?? 0);
             $eldenOdeme = $netAlacagi - $bankaOdemesi - $sodexoOdemesi - $digerOdeme;
         } elseif ($isInclusive) {
-            $asgariYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
-            $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
+            $asgariYatacak = round(($asgariUcretNet / 30) * $nonKurUcretGunu, 2);
             $kalanNetHakedis = max(0, $toplamAlacagi - $toplamKesintiClean);
             // NOT: RTÇ/HTÇ'nin kendi SGK/Gelir Vergisi/Damga Vergisi kesintisi zaten brüte tamamlama
             // (gross-up) ile kendi içinde absorbe edilip yontemliBankaEki'ne sadece NET tutar olarak
@@ -1385,8 +1428,7 @@ class BordroPersonelModel extends Model
         } else {
             $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $digerOdeme = floatval($p->diger_odeme ?? 0);
-            $asgariUcretYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
-            $asgariUcretYatacak = round($asgariUcretYatacak * $nonKurRatio, 2);
+            $asgariUcretYatacak = round(($asgariUcretNet / 30) * $nonKurUcretGunu, 2);
             
             // USER REQ: Yemek veya eş yardımı verilmediği zaman resmi banka tutarı asgari ücrettir, geri kalan elden ödenir.
             if ($isNet || $isPrimUsulu) {
@@ -5760,8 +5802,18 @@ class BordroPersonelModel extends Model
         $bankaMahsupEdilebilirEkOdeme = 0.0;
 
         // Resolve SGK firm proration
-        $dagilim = $this->getSgkFirmaDagilimi($kayit->personel_id, $donemTarihi, $donemBitis, $kayit->sgk_yapilan_firma ?? 'Yok');
+        $eksikGunTarihleri = $this->getMaasEksikGunTarihleri((int) $kayit->personel_id, $donemTarihi, $donemBitis);
+        $dagilim = $this->getSgkFirmaDagilimi(
+            $kayit->personel_id,
+            $donemTarihi,
+            $donemBitis,
+            $kayit->sgk_yapilan_firma ?? 'Yok',
+            $kayit->ise_giris_tarihi ?? null,
+            $kayit->isten_cikis_tarihi ?? null,
+            $eksikGunTarihleri
+        );
         $nonKurRatio = $dagilim['non_kur_ratio'];
+        $nonKurUcretGunu = min($maasHesapGunu, intval($dagilim['payable_non_kur_days'] ?? round($maasHesapGunu * $nonKurRatio)));
 
         if ($maasaDahilYardimAktif) {
             foreach ($ekOdemeDetaylari as $ek) {
@@ -5855,8 +5907,7 @@ class BordroPersonelModel extends Model
         }
 
         if ($maasaDahilYardimAktif) {
-            $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
-            $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
+            $asgariYatacak = round(($asgariNetNominal / 30) * $nonKurUcretGunu, 2);
             
             // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ve HTÇ'nin ham
             // karşılığı ($htcEkOdeme) sözleşme netinin üstüne ayrıca hak edilir.
@@ -5943,8 +5994,7 @@ class BordroPersonelModel extends Model
             $netAlacagi = max(0, $netMaas - $toplamKesinti);
 
             if ($isPrimUsulu || $isNetMaas) {
-                $bankaYatacakMinimum = ($maasHesapGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $maasHesapGunu);
-                $bankaYatacakMinimum = round($bankaYatacakMinimum * $nonKurRatio, 2);
+                $bankaYatacakMinimum = round(($asgariUcretNet / 30) * $nonKurUcretGunu, 2);
                 $normalDagilim = $this->hesaplaNormalBankaDagilimi(
                     $bankaYatacakMinimum, floatval($yontemliOdemeler['banka'] ?? 0), $bankaKesintisiToplam,
                     $netAlacagi, $sodexoOdemesi, floatval($kayit->diger_odeme ?? 0), $eldenKesintisiToplam
