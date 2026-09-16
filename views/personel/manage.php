@@ -507,6 +507,7 @@ if ($id > 0) {
                                     <span class="visually-hidden">Yükleniyor...</span>
                                 </div>
                             </div>
+                        </div>
 
                         <div class="tab-pane <?php echo $activeTab === 'finansal_islemler' ? 'active show' : ''; ?>"
                             id="finansal_islemler" role="tabpanel" data-loaded="false"
