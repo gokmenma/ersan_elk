@@ -476,4 +476,5 @@ Bordro hesaplama etki alani:
 ### Net ve prim usulü bordroda kesinti özeti
 
 - Net maaşlı veya prim usulü personelde SGK, gelir vergisi ve damga vergisi net hedefe ulaşmak için brüte tamamlama hesabında zaten karşılanır. Detay ekranındaki `Kesintiler Toplamı`, ödenecek netten gerçekten mahsup edilen icra, avans ve diğer personel kesintilerini gösterir; brüte tamamlama içinde karşılanan yasal kesintiler bu özete ikinci kez eklenmez.
-- Banka matrahından karşılanabilen personel kesintisi bankadan düşülür. Banka matrahı dışında kalan net hakediş elden ödeme olarak dağıtılır; kesintinin banka matrahından karşılanamayan bölümü varsa elden hakedişten mahsup edilir.
+- Eski bordro detayının `Kesintiler (Düşürücüler)` bölümünde yasal kesintiler ayrıca satır olarak gösterilmez. Bu bölüm ve bölüm toplamı yalnız net ödemeden gerçekten düşülen personel kesintilerinden oluşur.
+- Maaşa dahil yardım dağıtımında kesintinin ödeme yöntemi işaretinden bağımsız olarak toplam personel kesintisi önce resmî banka matrahından düşülür. Banka matrahı dışında kalan net hakediş elden ödeme olarak dağıtılır; yalnız kesinti banka matrahını aşarsa aşan bölüm elden hakedişten mahsup edilir.

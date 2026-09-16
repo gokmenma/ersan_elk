@@ -1519,18 +1519,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
 
-                if ($toplamYasalKesinti > 0) {
-                    $collId = "cLegal_" . $bp->id;
-                    $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
-                                <td><div class="d-flex align-items-center"><i class="bx bx-building-house me-2 text-danger"></i><span>Yasal Kesintiler</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
-                                <td class="text-end text-danger fw-bold">-' . number_format($toplamYasalKesinti, 2, ',', '.') . ' ₺</td>
-                              </tr>';
-                    if ($bp->sgk_isci > 0) { $html .= '<tr class="child-row collapse ' . $collId . '"><td class="ps-4">SGK İşçi Payı (%14)</td><td class="text-end pe-4">-' . number_format($bp->sgk_isci, 2, ',', '.') . ' ₺</td></tr>'; }
-                    if ($bp->issizlik_isci > 0) { $html .= '<tr class="child-row collapse ' . $collId . '"><td class="ps-4">İşsizlik Sigortası (%1)</td><td class="text-end pe-4">-' . number_format($bp->issizlik_isci, 2, ',', '.') . ' ₺</td></tr>'; }
-                    if ($bp->gelir_vergisi > 0) { $html .= '<tr class="child-row collapse ' . $collId . '"><td class="ps-4">Gelir Vergisi</td><td class="text-end pe-4">-' . number_format($bp->gelir_vergisi, 2, ',', '.') . ' ₺</td></tr>'; }
-                    if ($bp->damga_vergisi > 0) { $html .= '<tr class="child-row collapse ' . $collId . '"><td class="ps-4">Damga Vergisi</td><td class="text-end pe-4">-' . number_format($bp->damga_vergisi, 2, ',', '.') . ' ₺</td></tr>'; }
-                }
-
                 if (!empty($kesintilerGruplanmis)) {
                     foreach ($kesintilerGruplanmis as $kes) {
                         $cId = "cOth_" . md5($kes->etiket);
@@ -1548,7 +1536,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             }
                         }
                     }
-                } else if ($toplamYasalKesinti <= 0) {
+                } else {
                     $html .= '<tr><td colspan="2" class="text-center py-4 text-muted"><i class="bx bx-smile fs-4 d-block mb-1 opacity-50"></i>Kesinti bulunmuyor.</td></tr>';
                 }
 
