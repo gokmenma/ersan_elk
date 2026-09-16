@@ -472,3 +472,8 @@ Bordro hesaplama etki alani:
 - Bu gizleme yalnızca muhasebe aktarımının Prim / İkramiye sütununa uygulanır; günlük yemek yuvarlaması, hakediş ve banka/elden ödeme dağıtımı değiştirilmez.
 - Prim kaydı ve bordro detayındaki asıl kazanç silinmez; bu ayrıştırma yalnızca muhasebe aktarımında mükerrer toplamı önler.
 - Maaşa dahil personelde elden seçilen manuel prim de kayıt hesabında hedef hakedişe eklenir; banka seçili olmaması kazancı ortadan kaldırmaz. Liste–kayıt–detay–Excel karşılaştırmasında banka ve elden seçimi birlikte doğrulanır.
+
+### Net ve prim usulü bordroda kesinti özeti
+
+- Net maaşlı veya prim usulü personelde SGK, gelir vergisi ve damga vergisi net hedefe ulaşmak için brüte tamamlama hesabında zaten karşılanır. Detay ekranındaki `Kesintiler Toplamı`, ödenecek netten gerçekten mahsup edilen icra, avans ve diğer personel kesintilerini gösterir; brüte tamamlama içinde karşılanan yasal kesintiler bu özete ikinci kez eklenmez.
+- Banka matrahından karşılanabilen personel kesintisi bankadan düşülür. Banka matrahı dışında kalan net hakediş elden ödeme olarak dağıtılır; kesintinin banka matrahından karşılanamayan bölümü varsa elden hakedişten mahsup edilir.

@@ -1080,7 +1080,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $displayToplamAlacak = round($toplamAlacak, 2);
-                $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
+                $kesintiTutarOzet = ($isNetMaas || $isPrimUsulu)
+                    ? round($guncelKesintiGosterim, 2)
+                    : round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
                 // Net Maaş / Prim Usülü personelde RTÇ/HTÇ/nöbet gibi kalemlerin SGK/Gelir Vergisi/Damga
                 // Vergisi kesintileri zaten brüte tamamlama (gross-up) ile kendi içinde absorbe edildiğinden
                 // (Toplam Hakediş baştan net hedefi garanti eder), bu "yasal kesintiler" toplamdan BİR DAHA
@@ -1943,7 +1945,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $displayToplamAlacak = round($toplamAlacak, 2);
-                $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
+                $kesintiTutarOzet = ($isNetMaas || $isPrimUsulu)
+                    ? round($guncelKesintiGosterim, 2)
+                    : round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
                 // Net Maaş / Prim Usülü personelde RTÇ/HTÇ/nöbet gibi kalemlerin SGK/Gelir Vergisi/Damga
                 // Vergisi kesintileri zaten brüte tamamlama (gross-up) ile kendi içinde absorbe edildiğinden
                 // (Toplam Hakediş baştan net hedefi garanti eder), bu "yasal kesintiler" toplamdan BİR DAHA
