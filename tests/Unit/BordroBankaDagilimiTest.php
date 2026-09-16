@@ -84,6 +84,21 @@ final class BordroBankaDagilimiTest extends TestCase
         ], $method->invoke($model, 37300, 37111.35, 40000, 0));
     }
 
+    public function testResmiOlmayanEkOdemelerBankaMatrahiniAsmazKalanEldenOdenir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'hesaplaDahilBankaDagilimi');
+
+        // Net hakediş 17.300; resmî matrah yalnız asgari 13.101,90 + yemek 3.600.
+        // Diğer gelir 700 + araç kirası 1.200 toplam hakedişte kalır fakat resmî matraha girmez.
+        self::assertSame([
+            'banka' => 10701.90,
+            'elden' => 598.10,
+            'banka_kesintisi' => 6000.0,
+            'elden_kesintisi' => 0.0,
+        ], $method->invoke($model, 17300, 16701.90, 6000, 0));
+    }
+
     public function testDahilMaasEldenKesintiOncelikliEldenDuserKalanBankadanDuser(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
@@ -332,7 +347,7 @@ final class BordroBankaDagilimiTest extends TestCase
             self::assertTrue($display['isInclusive']);
         }
         $inclusive = $inclusive || $karma;
-        $expectedBank = $manuel ? 25000.0 : max(0.0, 28075.5 + ($bankaSecimi ? 600 : 0) + ($hariciYemek ? 300 : 0) - ($eldenKesinti ? 0 : $kesinti));
+        $expectedBank = $manuel ? 25000.0 : max(0.0, 28075.5 + ($hariciYemek ? 300 : 0) - ($eldenKesinti ? 0 : $kesinti));
         $expectedNet = 31800.0 + ($hariciYemek ? 300 : 0) - $kesinti;
         if ($inclusive) {
             $meal = $karma
@@ -359,7 +374,7 @@ final class BordroBankaDagilimiTest extends TestCase
             self::assertSame(round(300 / $display['calismaGunu'], 2), $excel['gunluk_nakit']);
         }
         self::assertSame(
-            (!$inclusive && $bankaSecimi ? $primAmount : 0.0),
+            0.0,
             $excel['resmi_prim_ikramiye']
         );
         self::assertSame($display['muhasebePrimTutari'], $excel['prim']);

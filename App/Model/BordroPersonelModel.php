@@ -69,7 +69,19 @@ class BordroPersonelModel extends Model
             || strpos($aciklama, '[kaçak kontrol]') === 0;
     }
 
-    // Net/prim maaşta ek ödemeler önce bankaya eklenir, personel kesintileri sonra düşülür.
+    /** Parametre işaretinden bağımsız olarak resmî banka alacağının doğal kalemleri. */
+    private function isDogalResmiAlacakTuru(string $kod): bool
+    {
+        $kod = mb_strtolower($kod, 'UTF-8');
+        return strpos($kod, 'yemek') !== false
+            || strpos($kod, 'es_yardimi') !== false
+            || strpos($kod, 'aile_yardimi') !== false
+            || strpos($kod, 'fazla_mesai') !== false
+            || strpos($kod, 'resmi_tatil') !== false
+            || strpos($kod, 'hafta_tatili') !== false;
+    }
+
+    // Net/prim maaşta yalnız resmî alacak kalemleri bankaya eklenir, personel kesintileri sonra düşülür.
     // Banka kesintileri önce bankadan (yetmezse elden'den), Elden kesintileri önce elden'den (yetmezse bankadan) düşülür.
     private function hesaplaNormalBankaDagilimi(float $asgariTaban, float $bankaEkleri, float $bankaKesintisi, float $netAlacagi, float $sodexo, float $diger, float $eldenKesintisi = 0.0): array
     {
@@ -1056,9 +1068,21 @@ class BordroPersonelModel extends Model
                 } else {
                     $yontem = $param->odeme_yontemi ?? ($isPrimUsulu ? 'elden' : 'banka');
                 }
+                $resmiAlacakDahil = $this->isDogalResmiAlacakTuru($eoTurLower)
+                    || !empty($param->resmi_alacagina_dahil)
+                    || floatval($eo->resmi_tutar ?? 0) > 0;
                 // Net maaş + puantaj veya primler, resmî banka tavanına taşınmaz.
                 if (($isNet && $isPuantajOdeme) || $isPrimOdemeItem) {
                     $yontem = 'elden';
+                }
+                // Banka seçimi, dahil yemek/eş yardımının kapasite hesabını etkiler;
+                // ödemenin kendisini resmî banka alacağına taşımak için ayrıca
+                // parametrenin "resmî alacağa dahil" olması gerekir.
+                if ($yontem === 'banka' && !$isPuantajOdeme) {
+                    $bankayaTasinabilirEkOdemeGosterim += $tutar;
+                    if (!$isPrimTuru) {
+                        $bankaMahsupEdilebilirEkOdemeGosterim += $tutar;
+                    }
                 }
                 if (!$isInclusive && $isYemekOdeme && $yontem !== 'sodexo') {
                     $muhasebeHariciYemekToplami += max(0.0, $tutar);
@@ -1066,28 +1090,23 @@ class BordroPersonelModel extends Model
                 if (!$isInclusive && $isYemekOdeme && $yontem === 'banka') {
                     $muhasebeBankaYemekToplami += max(0.0, $tutar);
                 }
-                if (!$isInclusive && $isMuhasebePrimi && $yontem === 'banka') {
+                if (!$isInclusive && $isMuhasebePrimi && $yontem === 'banka' && $resmiAlacakDahil) {
                     $muhasebeBankaPrimToplami += max(0.0, $tutar);
                 }
                 if ($isInclusive && $isPrimTuru && !$isPuantajOdeme) {
                     // Elle girilen prim "Banka" seçiliyse yemek tavanını yükseltir ve tutar
                     // yemeğe absorbe olur; ayrıca banka kalemi olarak gösterilmez (çift sayım).
                     if ($yontem === 'banka') {
-                        $bankayaTasinabilirEkOdemeGosterim += $tutar;
                         if ($isMuhasebePrimi) {
                             // Bu prim yemek/banka dağılımının içinde olduğundan muhasebe
                             // Excel'inde ayrıca Prim / İkramiye olarak gösterilmez.
                             $muhasebedeGizlenecekPrim += max(0.0, $tutar);
                         }
                     }
-                } elseif ($yontem === 'banka' && !$isPrimOdemeItem) {
+                } elseif ($yontem === 'banka' && !$isPrimOdemeItem && $resmiAlacakDahil) {
                     $bankaKatkisi = ($eoTurLower === 'hafta_sonu_nobet')
                         ? 0.0
                         : max($tutar, $this->ekOdemeResmiNetHedefi($eo, $param, $donemBaslangic));
-                    if (!$isPuantajOdeme) {
-                        $bankayaTasinabilirEkOdemeGosterim += $tutar;
-                        $bankaMahsupEdilebilirEkOdemeGosterim += $tutar;
-                    }
                     $yontemliBankaEki += $bankaKatkisi;
                     if ($bankaKatkisi > 0) {
                         $label = $param->etiket ?? $eo->tur;
@@ -4992,7 +5011,8 @@ class BordroPersonelModel extends Model
                 'kod' => $odeme->tur,
                 'tutar' => $tutar,
                 'aciklama' => $odeme->aciklama ?? null,
-                'banka_matrahina_ekle' => $odeme->banka_matrahina_ekle ?? 1
+                'banka_matrahina_ekle' => $odeme->banka_matrahina_ekle ?? 1,
+                'resmi_alacagina_dahil' => $parametre ? intval($parametre->resmi_alacagina_dahil ?? 0) : 0
             ];
 
             if ($odeme->tur === 'mesai') {
@@ -5349,6 +5369,9 @@ class BordroPersonelModel extends Model
                 $yontem = $parametre->odeme_yontemi ?? $defaultYontem;
             }
             $rTutar = floatval($odeme->resmi_tutar ?? 0);
+            $resmiAlacakDahil = $this->isDogalResmiAlacakTuru((string) ($odeme->tur ?? ''))
+                || !empty($parametre->resmi_alacagina_dahil)
+                || $rTutar > 0;
             $rNet = 0.0;
             if ($rTutar > 0) {
                 $rSgk = $rTutar * 0.15;
@@ -5378,11 +5401,15 @@ class BordroPersonelModel extends Model
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
                 }
-            } elseif ($yontem === 'banka') {
+            } elseif ($yontem === 'banka' && $resmiAlacakDahil) {
                 $bankaKatkisi = ($turLower === 'hafta_sonu_nobet')
                     ? 0.0
                     : max($ekOdemeTutari, $this->ekOdemeResmiNetHedefi($odeme, $parametre, $kayit->baslangic_tarihi));
                 $yontemliOdemeler['banka'] += $bankaKatkisi;
+            } elseif ($yontem === 'banka') {
+                // Banka seçimi yardım hesabını etkiler; parametre resmî değilse
+                // ek ödemenin kendisi resmî banka alacağına girmez ve elden kalır.
+                $yontemliOdemeler['elden'] += $ekOdemeTutari;
             } else {
                 $bankaPay = ($isPrimUsulu || $isNetMaas) ? $rNet : $rTutar;
                 $yontemliOdemeler['banka'] += $bankaPay;

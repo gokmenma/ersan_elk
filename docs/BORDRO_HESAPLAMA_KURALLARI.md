@@ -385,6 +385,14 @@ vergiliKisim = max(0, tutar - muafLimit)
 - Onayli ucretsiz izin ve rapor gunleri denk geldikleri SGK firma gununden dusulur. Boylece eksik gunler KUR ve KUR disi gunlere oransal olarak dagitilmaz.
 - Liste, bordro detay modali, kaydedilen banka/elden dagilimi ve Excel ciktilari ayni ortak model sonucunu kullanmalidir.
 
+## Resmi Alacak, Yardim Hesap Matrahi ve Odeme Kanali Ayrimi
+
+- Resmi banka alacaginin dogal kalemleri maas/asgari ucret, maasa dahil yemek yardimi, es yardimi, fazla calisma ile resmi tatil/hafta tatili calismasidir.
+- Genel bir ek odemede `banka_matrahina_ekle = 1` secimi tek basina odemeyi resmi alacaga donusturmez. Bu secim, maasa dahil yemek/es yardimi kapasitesinin hesabinda ek kazancin dikkate alinmasini saglar.
+- Genel ek odemenin kendisinin resmi banka alacagina eklenmesi icin ilgili bordro parametresinde `resmi_alacagina_dahil = 1` olmasi veya kayitta pozitif `resmi_tutar` bulunmasi gerekir.
+- Resmi alacaga dahil olmayan ek odeme toplam net hak edisi arttirir; resmi banka matrahina eklenmeyen bakiye elden odemeye aktarilir.
+- Banka odemesi, resmi banka matrahindan banka oncelikli kesintiler dusulerek bulunur ve toplam net hak edisi asamaz. `Elden = odenecek net toplam - banka - kart/Sodexo - diger kanal` mutabakati korunur.
+
 - Avans, ozel kesinti vb. net hakedisten dusulur.
 - Icra kesintisi odeme dagiliminda ayrica izlenir.
 - Icra kesintisi net hakedisten onceki matrah uzerinden hesaplanir.
