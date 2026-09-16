@@ -460,6 +460,8 @@ Bordro hesaplama etki alani:
 
 ### Muhasebe Excel — ortak ödeme özeti ve prim tekrarı
 
+- Muhasebeye indirilen dosya tek bir `Muhasebe Listesi` sayfası içerir. Bu sayfada yalnız personel/TC, rapor-toplam-fiilî gün, yemek, eş yardımı, resmî tatil, hafta tatili, fazla mesai, prim, kesintiler, kart ve bankaya yatırılacak toplam bulunur. Elden ödeme, iç matrahlar, vergi analizleri ve kontrol/mutabakat sütunları dışarı aktarılmaz.
+
 - Hesaplama tarihi dolu olsa da muhasebe Excel ödeme özeti liste ve detayın kullandığı `hesaplaOrtakGosterimDegerleri()` sonucundan alınır. Eski `banka_odemesi` kaydı otomatik dağıtımda güncel hesabın yerine geçmez; manuel dağıtım ortak hesabın kurallarıyla korunur.
 - Excel'de kazanç kaynağı ile ödeme kanalı ayrı gösterilir. `Prim / İkramiye Hakedişi (Bilgi)` personelin gerçek prim kaydını, `Yemek/Banka Dağılımına Dahil Prim (Bilgi)` bu primin ödeme matrahında zaten yer alan kısmını, `Primin Ayrı Ödemede Kalan Kısmı (Bilgi)` ise ayrı kalem olarak dağıtılan kısmını ifade eder. Bu açıklama sütunlarının tamamı `Toplam Hakediş` içinde yer alır ve ödeme toplamına yeniden eklenmez.
 - `Ödeme Mutabakatı` sayfasında iki denklem kişi ve genel toplam için sıfır farkla doğrulanır: `Resmî Banka Matrahı - Bankadan Düşülen Kesinti = Banka Ödemesi` ve `Ödenecek Net Toplam = Banka + Elden + Sodexo/Kart + Diğer`. Toplam personel kesintisinin bankadan karşılanmayan kısmı ayrıca `Elden Düşülen Kesinti` olarak gösterilir.
