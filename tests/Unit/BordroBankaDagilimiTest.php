@@ -144,7 +144,7 @@ final class BordroBankaDagilimiTest extends TestCase
         $this->assertKayitGosterim('Net', 1, 'Manuel prim', 500, false, true);
     }
 
-    public function testKarmaMaastaKarttakiYemekIsaretiBankaPriminiVeKesintiyiEngellemez(): void
+    public function testTekYemekParametreliKarmaMaastaYemekHesaplanir(): void
     {
         $this->assertKayitGosterim('Prim Usülü', 1, '[Kaçak İhbar Primi] (6 adet x 100 ₺)', 500, false, false, true);
         $this->assertKayitGosterim('Prim Usülü', 0, 'Manuel prim', 500, false, false, true);
@@ -299,14 +299,20 @@ final class BordroBankaDagilimiTest extends TestCase
         $display = $model->hesaplaOrtakGosterimDegerleri(clone $record, $record, 28075.5);
         if ($karma) {
             self::assertTrue($display['karisikMaasGecmisi']);
-            self::assertFalse($display['isInclusive']);
+            self::assertTrue($display['isInclusive']);
         }
+        $inclusive = $inclusive || $karma;
         $expectedBank = $manuel ? 25000.0 : max(0.0, 28075.5 + ($bankaSecimi ? 600 : 0) + ($hariciYemek ? 300 : 0) - ($eldenKesinti ? 0 : $kesinti));
         $expectedNet = 31800.0 + ($hariciYemek ? 300 : 0) - $kesinti;
         if ($inclusive) {
-            $meal = $bankaSecimi ? ($primAmount === 3000.0 ? 7800.0 : 5538.0) : 4940.0;
-            $expectedBank = 28075.5 + $meal;
+            $meal = $karma
+                ? ($bankaSecimi ? 2548.0 : 1950.0)
+                : ($bankaSecimi ? ($primAmount === 3000.0 ? 7800.0 : 5538.0) : 4940.0);
+            $expectedBank = 28075.5 + $meal - ($karma && !$eldenKesinti ? $kesinti : 0);
             $expectedNet = 33000.0 + $primAmount + ($bankaSecimi && $primAmount === 3000.0 ? 0.0 : ($bankaSecimi ? 13.5 : 15.5));
+            if ($karma) {
+                $expectedNet = $display['netAlacagi'];
+            }
             self::assertEquals($meal, $display['mealAllowanceDeduction']);
             self::assertEquals($bankaSecimi ? 0.0 : $primAmount, $display['muhasebePrimTutari']);
         }

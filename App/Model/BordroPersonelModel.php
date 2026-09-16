@@ -336,6 +336,31 @@ class BordroPersonelModel extends Model
             || intval($kayit->es_yardimi_dahil ?? 0) === 1;
     }
 
+    /**
+     * Aynı bordro döneminde birden fazla yemek parametresi geçerliyse otomatik
+     * maaşa-dahil dağıtım yapılmaz. Tek parametreli dönemlerde görev/maaş türü
+     * değişmiş olsa bile yemek yardımı hesaplanabilir.
+     */
+    private function hasMultipleMealParametersInPeriod(object $kayit, string $baslangic, string $bitis): bool
+    {
+        $kod = 'yemek_yardimi_tum';
+
+        if (!empty($kayit->yemek_yardimi_parametre_id)) {
+            if ($this->cachedParametreModel === null) {
+                $this->cachedParametreModel = new BordroParametreModel();
+            }
+            $secilenParametre = $this->cachedParametreModel->getById($kayit->yemek_yardimi_parametre_id);
+            if ($secilenParametre && !empty($secilenParametre->kod)) {
+                $kod = (string) $secilenParametre->kod;
+            }
+        }
+
+        $sql = $this->db->prepare("\n            SELECT COUNT(*)\n            FROM bordro_parametreleri\n            WHERE kod = ?\n              AND aktif = 1\n              AND (gecerlilik_baslangic IS NULL OR gecerlilik_baslangic <= ?)\n              AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n        ");
+        $sql->execute([$kod, $bitis, $baslangic]);
+
+        return intval($sql->fetchColumn()) > 1;
+    }
+
     private function getParametreGunlukTutar(object $parametre): float
     {
         $gunlukTutar = floatval($parametre->gunluk_tutar ?? 0);
@@ -795,8 +820,10 @@ class BordroPersonelModel extends Model
         if ($karisikMaasOzeti !== null) {
             $maasDurumu = 'Prim Usülü / Sabit Maaş';
         }
-        // Karma maaşta kayıt hesabı dahil yardım dağıtımını kullanmaz; gösterim de aynı modu izler.
-        $isInclusive = $karisikMaasOzeti === null && $this->hasMaasaDahilSosyalYardim($p);
+        // Görev/maaş türü değişimi tek başına dahil yardımı kapatmaz. Yalnızca aynı
+        // döneme birden fazla yemek parametresi denk gelirse otomatik dağıtım durur.
+        $isInclusive = $this->hasMaasaDahilSosyalYardim($p)
+            && !$this->hasMultipleMealParametersInPeriod($p, $donemBaslangic, $donemBitis);
 
         $toplamKesinti = floatval($p->guncel_toplam_kesinti ?? $p->kesinti_tutar ?? 0);
         
@@ -898,7 +925,8 @@ class BordroPersonelModel extends Model
         $isNet = (stripos($maasDurumu, 'Net') !== false);
         $isBrut = (stripos($maasDurumu, 'Brüt') !== false || stripos($maasDurumu, 'Brut') !== false);
         $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
-        $isInclusive = $karisikMaasOzeti === null && $this->hasMaasaDahilSosyalYardim($p);
+        $isInclusive = $this->hasMaasaDahilSosyalYardim($p)
+            && !$this->hasMultipleMealParametersInPeriod($p, $donemBaslangic, $donemBitis);
 
         if ($hesaplamayaEsasMaas <= 0) {
             if ($this->cachedParametreModel === null) {
@@ -1178,7 +1206,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($karisikMaasOzeti !== null) {
+        if ($karisikMaasOzeti !== null && !$isInclusive) {
             // Prim usulü günleri yalnızca puantaj/ek ödeme kazancı üretir.
             // Sabit maaş sadece kendi tarih parçası kadar eklenir; aylık net taban uygulanmaz.
             $sozlesmeHakedisi = floatval($karisikMaasOzeti['sabit_hakedis']);
@@ -1196,7 +1224,9 @@ class BordroPersonelModel extends Model
                 $p->hedef_net_maas_tutari = $maasTutari;
             }
 
-            $sozlesmeHakedisi = $this->getSozlesmeHakedisi($p->personel_id, $maasTutari, $calismaGunu, $donemBaslangic);
+            $sozlesmeHakedisi = $karisikMaasOzeti !== null
+                ? floatval($karisikMaasOzeti['sabit_hakedis'])
+                : $this->getSozlesmeHakedisi($p->personel_id, $maasTutari, $calismaGunu, $donemBaslangic);
 
             $hariciEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
@@ -1224,7 +1254,7 @@ class BordroPersonelModel extends Model
             // Prim usulünde sözleşme maaşı sıfır olabilir; bu durumda yemek tavanının
             // kaynağı puantajdan oluşan dönem hedefidir.
             // Banka matrahına eklenen ek ödemeler ve puantaj, öncelikle yemek tavanını doldurur.
-            $yemekTavanHedefi = $isPrimUsulu
+            $yemekTavanHedefi = $isPrimUsulu && $karisikMaasOzeti === null
                 ? $primUsuluPuantajHedefToplami
                 : round($sozlesmeHakedisi + $netMaasPuantajHedefToplami + max(0, $bankaKarsilanabilirEkOdemeGosterim ?? 0), 2);
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
@@ -1258,13 +1288,15 @@ class BordroPersonelModel extends Model
                 $rtcHtcKesintiToplamGosterim = round($rtcHtcKesintiToplamGosterim + $yemekIstisnaVergisiGosterim, 2);
             }
 
-            if ($isPrimUsulu) {
+            if ($isPrimUsulu && $karisikMaasOzeti === null) {
                 $toplamAlacagi = max($primUsuluPuantajHedefToplami + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
             } else {
                 // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ve HTÇ'nin
                 // ham karşılığı sözleşme hakedişinin üstüne eklenir. Yemek havuzunu
                 // şişirmemesi için helper'a $hariciEkOdemeForDahil gider.
-                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
+                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme
+                    + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
+                    + $yuvarlamaFarki;
             }
         } else {
             $sozlesmeHakedisi = $karisikMaasOzeti !== null
@@ -4336,6 +4368,8 @@ class BordroPersonelModel extends Model
         // Dönem tarihi - parametreleri bu tarihe göre çek
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
         $donemBitis = $kayit->bitis_tarihi ?? date('Y-m-t');
+        $maasaDahilYardimAktif = $this->hasMaasaDahilSosyalYardim($kayit)
+            && !$this->hasMultipleMealParametersInPeriod($kayit, $donemTarihi, $donemBitis);
 
         // ========== ÜCRETSİZ İZİN VE RApOR HAKEDİŞLERİNİ BAŞTAN HESAPLA ==========
         // SGK uyumlu gün hesabı (30/31 gün kuralları) için bu veriler scaling öncesi gerekli.
@@ -4821,7 +4855,7 @@ class BordroPersonelModel extends Model
         $includedAllowanceDeduction = 0.0;
         $mealAllowanceDeduction = 0.0;
         $spouseAllowanceDeduction = 0.0;
-        $isPrimUsuluDahilYardim = $isPrimUsulu && $this->hasMaasaDahilSosyalYardim($kayit);
+        $isPrimUsuluDahilYardim = $isPrimUsulu && $karisikMaasOzeti === null && $this->hasMaasaDahilSosyalYardim($kayit);
         
         $bankayaTasinabilirEkOdeme = 0.0;
         $sozlesmeHakedisi = 0.0;
@@ -5268,7 +5302,7 @@ class BordroPersonelModel extends Model
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
                 }
-            } elseif ($isPrimTuru && $this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
+            } elseif ($isPrimTuru && $maasaDahilYardimAktif) {
                 // Elle girilen prim yemek tavanına yansır; ayrı banka kalemi olarak eklenmez.
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
@@ -5455,7 +5489,7 @@ class BordroPersonelModel extends Model
 
         // USER REQ: Yemek Yardımı Maaşa Dahil dengelemesi
         // Yemek yardımı tutarını ana maaş hakedişinden düşüyoruz ki toplam hakediş (net hedef) değişmesin.
-        if ($this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
+        if ($maasaDahilYardimAktif) {
             $asgariNetNominal = floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50);
             $brutMaas = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
         } elseif ($mealAllowanceDeduction > 0) {
@@ -5723,7 +5757,7 @@ class BordroPersonelModel extends Model
         $dagilim = $this->getSgkFirmaDagilimi($kayit->personel_id, $donemTarihi, $donemBitis, $kayit->sgk_yapilan_firma ?? 'Yok');
         $nonKurRatio = $dagilim['non_kur_ratio'];
 
-        if ($this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
+        if ($maasaDahilYardimAktif) {
             foreach ($ekOdemeDetaylari as $ek) {
                 $aciklama = (string)($ek['aciklama'] ?? '');
                 $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
@@ -5745,7 +5779,12 @@ class BordroPersonelModel extends Model
                 }
             }
 
-            $sozlesmeHakedisiCalc = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? date('Y-m-01'));
+            $sozlesmeHakedisiCalc = $karisikMaasOzeti !== null
+                ? floatval($karisikMaasOzeti['sabit_hakedis'])
+                : $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? date('Y-m-01'));
+            if ($karisikMaasOzeti !== null) {
+                $targetNetHakedis = $sozlesmeHakedisiCalc;
+            }
             if ($isNetMaas && !$isPrimUsulu) {
                 $bankaKarsilanabilirEkOdemeHesap = max(0.0, $bankaMahsupEdilebilirEkOdeme + $htcEkOdeme);
                 $sozlesmeHakedisiCalc = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisiCalc, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
@@ -5753,7 +5792,7 @@ class BordroPersonelModel extends Model
             }
             $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30, 4) * $htcGunHesap : 0.0;
             $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2);
-            $puantajHedefToplamiDahil = $isPrimUsuluDahilYardim
+            $puantajHedefToplamiDahil = ($isPrimUsuluDahilYardim || $karisikMaasOzeti !== null)
                 ? $primUsuluPuantajHedefToplami
                 : ($netMaasPuantajHakedisi > 0 ? $netMaasPuantajHakedisi : 0.0);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
@@ -5774,7 +5813,9 @@ class BordroPersonelModel extends Model
             // Prim usulü veya net maaşlı personelde yemek tavanı hedefi (puantaj ve banka ek ödemeleri yemek limitine absorbe edilir)
             $yemekTavanHedefi = $isPrimUsuluDahilYardim
                 ? $primUsuluPuantajHedefToplami
-                : round($targetNetHakedis + $netMaasPuantajHakedisi + max(0, $bankayaTasinabilirEkOdeme), 2);
+                : round($targetNetHakedis + $netMaasPuantajHakedisi
+                    + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
+                    + max(0, $bankayaTasinabilirEkOdeme), 2);
             $yemekIcinKalanSozlesmeLimiti = max(0, round(
                 $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($rtcHtcBankaNetiHesap ?? 0),
                 2
@@ -5807,7 +5848,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
+        if ($maasaDahilYardimAktif) {
             $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
             
@@ -5818,6 +5859,7 @@ class BordroPersonelModel extends Model
                 + $eldenTasinabilirEkOdeme
                 + $htcEkOdeme
                 + $netMaasPuantajHakedisi
+                + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                 + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
             
