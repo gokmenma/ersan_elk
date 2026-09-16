@@ -551,6 +551,58 @@ foreach ($departmanlar as $dept) {
         margin-bottom: 4px;
     }
 
+    .personel-map-marker {
+        display: flex;
+        align-items: center;
+        width: max-content;
+        filter: drop-shadow(0 3px 6px rgba(30, 42, 56, 0.22));
+        transition: transform 0.18s ease, filter 0.18s ease;
+    }
+
+    .personel-map-marker:hover {
+        transform: translateY(-2px);
+        filter: drop-shadow(0 5px 9px rgba(30, 42, 56, 0.3));
+    }
+
+    .personel-map-marker__pin {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 34px;
+        width: 34px;
+        height: 34px;
+        color: #fff;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 3px #fff;
+    }
+
+    .personel-map-marker--no-location .personel-map-marker__pin {
+        opacity: 0.78;
+        box-shadow: inset 0 0 0 2px #fff;
+        border: 1px dashed rgba(255, 255, 255, 0.9);
+    }
+
+    .personel-map-marker__name {
+        max-width: 190px;
+        margin-left: -9px;
+        padding: 6px 11px 6px 15px;
+        overflow: hidden;
+        color: #343a40;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(52, 58, 64, 0.1);
+        border-left: 3px solid var(--marker-color);
+        border-radius: 0 9px 9px 0;
+        pointer-events: none;
+        backdrop-filter: blur(4px);
+    }
+
     .fullscreen-map-wrapper {
         position: fixed !important;
         top: 0 !important;
@@ -573,6 +625,15 @@ foreach ($departmanlar as $dept) {
 <script>
     var currentPersonelId = null;
     var personelTakipDT = null;
+
+    function escapeMapHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
     var haritaMap = null;
     var allMapData = []; // Store raw data for filtering
     var haritaMarkers = [];
@@ -899,6 +960,7 @@ foreach ($departmanlar as $dept) {
             var bounds = [];
 
             data.forEach(function (p) {
+                var personelAdi = escapeMapHtml(p.adi_soyadi || 'İsimsiz Personel');
                 // Konum yoksa Kahramanmaraş merkez + rastgele offset
                 var lat = p.lat || (kahramanmarasLat + (Math.random() - 0.5) * 0.05);
                 var lng = p.lng || (kahramanmarasLng + (Math.random() - 0.5) * 0.05);
@@ -919,24 +981,22 @@ foreach ($departmanlar as $dept) {
                     statusIcon = 'bx-calendar-minus';
                 }
 
-                // Konum yoksa marker'ı farklı göster
-                var markerStyle = hasLocation
-                    ? 'border: 3px solid white;'
-                    : 'border: 3px dashed white; opacity: 0.7;';
-
                 var icon = L.divIcon({
                     className: 'custom-marker',
-                    html: '<div style="background-color: ' + markerColor + '; width: 32px; height: 32px; border-radius: 50%; ' + markerStyle + ' box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><i class="bx ' + statusIcon + '" style="color: white; font-size: 16px;"></i></div>',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
+                    html: '<div class="personel-map-marker' + (hasLocation ? '' : ' personel-map-marker--no-location') + '" style="--marker-color: ' + markerColor + ';">' +
+                        '<div class="personel-map-marker__pin" style="background-color: ' + markerColor + ';"><i class="bx ' + statusIcon + '" style="font-size: 17px;"></i></div>' +
+                        '<div class="personel-map-marker__name" title="' + personelAdi + '">' + personelAdi + '</div>' +
+                        '</div>',
+                    iconSize: [220, 34],
+                    iconAnchor: [17, 17]
                 });
 
                 var marker = L.marker([lat, lng], { icon: icon }).addTo(haritaMap);
 
                 // Popup içeriği
                 var fotoHtml = p.foto
-                    ? '<img src="' + p.foto + '" width="50" height="50" style="object-fit: cover; border-radius: 50%;">'
-                    : '<div style="width:50px;height:50px;background:#556ee6;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px;">' + p.adi_soyadi.charAt(0) + '</div>';
+                    ? '<img src="' + escapeMapHtml(p.foto) + '" width="50" height="50" style="object-fit: cover; border-radius: 50%;">'
+                    : '<div style="width:50px;height:50px;background:#556ee6;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px;">' + personelAdi.charAt(0) + '</div>';
 
                 var konumInfo = hasLocation
                     ? '<small class="text-muted">Son konum: ' + new Date(p.son_zaman || Date.now()).toLocaleTimeString('tr-TR') + '</small>'
@@ -947,8 +1007,8 @@ foreach ($departmanlar as $dept) {
                 marker.bindPopup(
                     '<div class="marker-popup" style="text-align:center; min-width: 150px;">' +
                     fotoHtml +
-                    '<h6 class="mt-2 mb-1">' + p.adi_soyadi + '</h6>' +
-                    '<span class="badge ' + badgeClass + ' mb-1">' + p.durum_text + '</span><br>' +
+                    '<h6 class="mt-2 mb-1">' + personelAdi + '</h6>' +
+                    '<span class="badge ' + badgeClass + ' mb-1">' + escapeMapHtml(p.durum_text) + '</span><br>' +
                     konumInfo +
                     '<div class="mt-2 pt-2 border-top">' +
                     '<button class="btn btn-sm btn-soft-danger w-100" onclick="konumIste(' + p.id + ')">' +

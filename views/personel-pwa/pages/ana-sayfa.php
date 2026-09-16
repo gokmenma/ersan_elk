@@ -668,9 +668,14 @@ use App\Helper\Helper;
             });
         });
 
+        let konumIstegiKontrolEdiliyor = false;
         async function checkKonumIstegi() {
+            if (konumIstegiKontrolEdiliyor || document.visibilityState !== 'visible') return;
+            konumIstegiKontrolEdiliyor = true;
             try {
-                const response = await API.request('checkKonumIstegi');
+                // Bu işlem her 10 saniyede bir arka planda çalışır; tam ekran
+                // preloader göstermek uygulama yenileniyormuş hissi oluşturur.
+                const response = await API.request('checkKonumIstegi', {}, false);
                 if (response.success && response.data && response.data.istek_id) {
                     const istekId = response.data.istek_id;
                     console.log('Anlık konum isteği alındı (ID: ' + istekId + '). Konum alınıyor...');
@@ -682,12 +687,14 @@ use App\Helper\Helper;
                             istek_id: istekId,
                             lat: konum.enlem,
                             lng: konum.boylam
-                        });
+                        }, false);
                         console.log('Anlık konum başarıyla iletildi.');
                     }
                 }
             } catch (error) {
                 console.error('Konum isteği kontrol hatası:', error);
+            } finally {
+                konumIstegiKontrolEdiliyor = false;
             }
         }
 
@@ -701,7 +708,7 @@ use App\Helper\Helper;
                     lat: konum.enlem,
                     lng: konum.boylam,
                     hassasiyet: konum.hassasiyet
-                });
+                }, false);
             } catch (error) {
                 console.warn('Canlı konum güncellenemedi:', error);
             } finally {
