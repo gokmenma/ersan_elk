@@ -3021,8 +3021,10 @@ $title = 'Nöbet Planlama';
                 return;
             }
 
-            const searchVal = (istTableSearch ? istTableSearch.value : '').toLowerCase().trim();
-            const onlyActive = istToggleOnlyActive ? istToggleOnlyActive.checked : false;
+            const searchEl = document.getElementById('ist-table-search');
+            const searchVal = (searchEl ? searchEl.value : '').toLowerCase().trim();
+            const toggleEl = document.getElementById('ist-toggle-only-active');
+            const onlyActive = toggleEl ? toggleEl.checked : false;
 
             const filtered = personeller.filter(p => {
                 if (onlyActive && p.toplam_nobet === 0) return false;
