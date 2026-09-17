@@ -291,7 +291,7 @@ if (!empty($icralar)) {
                                         <?php if(!empty($i->iban)): ?>
                                             <div class="text-primary small mt-1">
                                                 <i data-feather="credit-card" class="me-1" style="width: 12px; height: 12px;"></i>
-                                                <b>IBAN:</b> <?= htmlspecialchars($i->iban) ?>
+                                                <b>IBAN:</b> <?= htmlspecialchars(\App\Helper\Helper::formatIban($i->iban)) ?>
                                             </div>
                                         <?php endif; ?>
                                         <?php if(!empty($i->hesap_bilgileri)): ?>
@@ -527,7 +527,7 @@ if (!empty($icralar)) {
                             <h6 class="fw-bold mb-3 text-info border-bottom pb-2"><i data-feather="credit-card" class="icon-sm me-1"></i> Banka Bilgileri</h6>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <?= Form::FormFloatInput("text", "icra_iban", "", "İcra Dairesi IBAN", "TR00...", "credit-card", "form-control shadow-none", false, null, "off", false) ?>
+                                    <?= Form::FormFloatInput("text", "icra_iban", "", "TR00 0000 0000 0000 0000 0000 00", "İcra Dairesi IBAN", "credit-card", "form-control shadow-none mask-iban", false, 32, "off", false) ?>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <?= Form::FormFloatTextarea("icra_hesap_bilgileri", "", "Hesap Bilgileri", "Banka ve Şube", "info", "form-control shadow-none", false, "38px", 1) ?>
@@ -744,7 +744,7 @@ if (!empty($icralar)) {
                                         <td>
                                             <?= htmlspecialchars($i->icra_dairesi) ?>
                                             <?php if(!empty($i->iban)): ?>
-                                                <br><small class="text-muted"><b>IBAN:</b> <?= htmlspecialchars($i->iban) ?></small>
+                                                <br><small class="text-muted"><b>IBAN:</b> <?= htmlspecialchars(\App\Helper\Helper::formatIban($i->iban)) ?></small>
                                             <?php endif; ?>
                                             <?php if(!empty($i->hesap_bilgileri)): ?>
                                                 <br><small class="text-muted"><b>Hesap:</b> <?= htmlspecialchars($i->hesap_bilgileri) ?></small>

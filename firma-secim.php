@@ -704,7 +704,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                         <img id="firma_logo_preview" alt="Firma logosu" style="display:none;max-width:120px;max-height:80px;margin-top:10px;object-fit:contain;border-radius:6px;border:1px solid var(--bs-border-color);padding:4px;">
                     </div>
                     <div class="form-group">
-                        <?php echo Form::FormFloatInput("text", "firma_iban", "", "Firma IBAN", "Firma IBAN", "credit-card"); ?>
+                        <?php echo Form::FormFloatInput("text", "firma_iban", "", "TR00 0000 0000 0000 0000 0000 00", "Firma IBAN", "credit-card", "form-control mask-iban", false, 32); ?>
                     </div>
                     <div class="form-group full">
                         <?php echo Form::FormFloatTextarea("adres", "", "Adres", "Adres", "map-pin"); ?>

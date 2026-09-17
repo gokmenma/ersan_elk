@@ -285,10 +285,10 @@ if (Gate::allows("log_kayitlari")) {
             #modalLogDetay .change-arrow {
                 display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem;
             }
-            #modalLogDetay .change-arrow .from-val {
+            #modalLogDetay .change-table .from-val {
                 background: #fee2e2; color: #b91c1c; padding: 1px 8px; border-radius: 20px; font-size: 0.78rem;
             }
-            #modalLogDetay .change-arrow .to-val {
+            #modalLogDetay .change-table .to-val {
                 background: #dcfce7; color: #15803d; padding: 1px 8px; border-radius: 20px; font-size: 0.78rem;
             }
             #modalLogDetay .change-arrow .arrow-icon { color: #94a3b8; font-size: 1rem; }
@@ -497,55 +497,67 @@ if (Gate::allows("log_kayitlari")) {
                 var user = btn.data('user');
                 var date = btn.data('date');
                 var content = btn.data('content');
+                var changes = [];
+                try {
+                    changes = JSON.parse(atob(btn.attr('data-changes') || 'W10='));
+                } catch (e) {
+                    changes = [];
+                }
                 document.getElementById('logDetayTitle').textContent = title;
                 document.getElementById('logDetayUser').textContent = user;
                 document.getElementById('logDetayDate').textContent = date;
 
                 if (btn.hasClass('btn-ai-response')) {
                     document.getElementById('logDetayContent').textContent = content;
-                } else if (content.indexOf('(Güncellenen veriler: {') !== -1) {
-                    try {
-                        let parts = content.split(' (Güncellenen veriler: { ');
-                        let mainText = parts[0];
-                        let changesPart = parts[1].replace(/ ?\}\)?$/, '');
-                        let changes = changesPart.split(', ');
+                } else if (Array.isArray(changes) && changes.length > 0) {
+                    const contentBox = document.getElementById('logDetayContent');
+                    contentBox.replaceChildren();
 
-                        let formattedContent = `<div class="d-flex align-items-start gap-2 mb-3">
-                        <i class='bx bx-edit-alt text-primary mt-1' style='font-size:1.1rem;flex-shrink:0;'></i>
-                        <span style='font-size:0.875rem;color:#374151;line-height:1.55;'>${mainText}</span>
-                    </div>`;
+                    const summary = document.createElement('div');
+                    summary.className = 'd-flex align-items-start gap-2 mb-3';
+                    const summaryIcon = document.createElement('i');
+                    summaryIcon.className = 'bx bx-edit-alt text-primary mt-1';
+                    summaryIcon.style.cssText = 'font-size:1.1rem;flex-shrink:0;';
+                    const summaryText = document.createElement('span');
+                    summaryText.style.cssText = 'font-size:0.875rem;color:#374151;line-height:1.55;';
+                    summaryText.textContent = content;
+                    summary.append(summaryIcon, summaryText);
+                    contentBox.appendChild(summary);
 
-                        if (changes.some(c => c.indexOf(': ') !== -1)) {
-                            formattedContent += `<div class="change-table">
-                            <table class="table table-sm mb-0">
-                                <thead><tr><th>Alan</th><th>Değişim</th></tr></thead>
-                                <tbody>`;
-                            changes.forEach(change => {
-                                if (change.indexOf(': ') !== -1) {
-                                    let sepIdx = change.indexOf(': ');
-                                    let key = change.substring(0, sepIdx).trim();
-                                    let val = change.substring(sepIdx + 2).trim();
-                                    let displayVal = val;
-                                    if (val.indexOf(' -> ') !== -1) {
-                                        let parts = val.split(' -> ');
-                                        displayVal = `<span class="change-arrow"><span class="from-val">${parts[0] || 'Boş'}</span><i class='bx bx-right-arrow-alt arrow-icon'></i><span class="to-val">${parts[1] || 'Boş'}</span></span>`;
-                                    } else if (val.indexOf(' → ') !== -1) {
-                                        let parts = val.split(' → ');
-                                        displayVal = `<span class="change-arrow"><span class="from-val">${parts[0] || 'Boş'}</span><i class='bx bx-right-arrow-alt arrow-icon'></i><span class="to-val">${parts[1] || 'Boş'}</span></span>`;
-                                    }
-                                    formattedContent += `<tr><td class="field-cell" style="width:30%;font-weight:600;color:#4361ee;">${key}</td><td>${displayVal}</td></tr>`;
-                                }
-                            });
-                            formattedContent += `</tbody></table></div>`;
-                        }
-                        document.getElementById('logDetayContent').innerHTML = formattedContent;
-                    } catch (e) {
-                        document.getElementById('logDetayContent').textContent = content;
-                    }
+                    const tableWrap = document.createElement('div');
+                    tableWrap.className = 'change-table';
+                    const table = document.createElement('table');
+                    table.className = 'table table-sm mb-0';
+                    table.innerHTML = '<thead><tr><th>Alan</th><th>Eski Değer</th><th>Yeni Değer</th></tr></thead><tbody></tbody>';
+                    const tbody = table.querySelector('tbody');
+
+                    changes.forEach(function (change) {
+                        const row = document.createElement('tr');
+                        const fieldCell = document.createElement('td');
+                        fieldCell.className = 'field-cell';
+                        fieldCell.style.cssText = 'width:30%;font-weight:600;color:#4361ee;';
+                        fieldCell.textContent = change.field || '-';
+
+                        const oldCell = document.createElement('td');
+                        const oldValue = document.createElement('span');
+                        oldValue.className = 'from-val';
+                        oldValue.textContent = change.old || 'Boş';
+                        oldCell.appendChild(oldValue);
+
+                        const newCell = document.createElement('td');
+                        const newValue = document.createElement('span');
+                        newValue.className = 'to-val';
+                        newValue.textContent = change.new || 'Boş';
+                        newCell.appendChild(newValue);
+
+                        row.append(fieldCell, oldCell, newCell);
+                        tbody.appendChild(row);
+                    });
+
+                    tableWrap.appendChild(table);
+                    contentBox.appendChild(tableWrap);
                 } else {
-                    document.getElementById('logDetayContent').innerHTML =
-                        '<i class="bx bx-info-circle text-primary me-2" style="font-size:1rem;vertical-align:middle;"></i>' +
-                        content.replace(/\n/g, '<br>');
+                    document.getElementById('logDetayContent').textContent = content;
                 }
                 var myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalLogDetay'));
                 myModal.show();

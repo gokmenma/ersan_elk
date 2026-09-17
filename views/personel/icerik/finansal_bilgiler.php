@@ -138,14 +138,14 @@ use App\Helper\Helper;
                     <div class="row">
                         <div class="col-md-4 mb-2">
                             <div class="iban-copy-field position-relative">
-                                <?php echo Form::FormFloatInput("text", "iban_numarasi", $personel->iban_numarasi ?? "", "Maaş IBAN", "Maaş IBAN Numarası", "credit-card"); ?>
+                                <?php echo Form::FormFloatInput("text", "iban_numarasi", Helper::formatIban($personel->iban_numarasi ?? ""), "TR00 0000 0000 0000 0000 0000 00", "Maaş IBAN Numarası", "credit-card", "form-control mask-iban", false, 32); ?>
                                 <button type="button" class="iban-copy-button" id="btnCopyMaasIban" title="TR olmadan kopyala" aria-label="Maaş IBAN numarasını TR olmadan kopyala">
                                     <i class="bx bx-copy fs-5" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <?php echo Form::FormFloatInput("text", "ek_odeme_iban_numarasi", $personel->ek_odeme_iban_numarasi ?? "", "Ek Ödeme IBAN", "Ek Ödeme IBAN", "credit-card"); ?>
+                            <?php echo Form::FormFloatInput("text", "ek_odeme_iban_numarasi", Helper::formatIban($personel->ek_odeme_iban_numarasi ?? ""), "TR00 0000 0000 0000 0000 0000 00", "Ek Ödeme IBAN", "credit-card", "form-control mask-iban", false, 32); ?>
                         </div>
                         <div class="col-md-4 mb-2">
                             <?php echo Form::FormFloatInput("text", "kumulatif_matrah_devir", Helper::formattedMoney($personel->kumulatif_matrah_devir ?? 0), "Küm. Vergi Matrahı Devri", "Devir Kümülatif Matrah", "trending-up", "form-control money"); ?>

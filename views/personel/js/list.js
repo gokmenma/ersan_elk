@@ -156,9 +156,16 @@ $(document).ready(function () {
         { data: "medeni_durum", visible: false },
         { data: "kan_grubu", visible: false },
         { data: "adres", visible: false },
-        { data: "ehliyet_sinifi", visible: false },
-        { data: "iban_numarasi", visible: false },
-        { data: "banka", visible: false },
+        {
+          data: "iban_numarasi",
+          visible: false,
+          render: function (data) {
+            if (!data) return "";
+            var clean = String(data).replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+            var parts = clean.match(/.{1,4}/g);
+            return parts ? parts.join(" ") : data;
+          },
+        },
         {
           data: "maas_tutari",
           visible: false,

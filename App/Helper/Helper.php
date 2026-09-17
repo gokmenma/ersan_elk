@@ -105,6 +105,21 @@ class Helper
         return (self::MONEY_UNIT[$currency] ?? '₺') . $formattedNumber;
     }
 
+    /**
+     * IBAN numarasını 4'erli bloklar halinde formatlar (Örn: TR06 0000 0000 0000 0000 0000 00)
+     */
+    public static function formatIban(?string $iban): string
+    {
+        if (empty($iban)) {
+            return '';
+        }
+        $clean = strtoupper(preg_replace('/[^A-Z0-9]/', '', (string)$iban));
+        if ($clean === '') {
+            return '';
+        }
+        return implode(' ', str_split($clean, 4));
+    }
+
 
 
     public static function base_url($path = '')

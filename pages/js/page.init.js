@@ -76,7 +76,36 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 }
+
+  // Pattern (IBAN) - TR00 0000 0000 0000 0000 0000 00 (Tam 26 hane - 2 harf + 24 rakam)
+  function initIbanMask(container) {
+    if (typeof IMask === "undefined") return;
+    var scope = container || document;
+    var ibanInputs = scope.querySelectorAll(".mask-iban, .iban-mask, input[name='iban_numarasi'], input[name='ek_odeme_iban_numarasi'], input[name='firma_iban'], input[name='icra_iban']");
+    ibanInputs.forEach(function (input) {
+      if (input._imask) return;
+      input.setAttribute('maxlength', '32');
+      input._imask = IMask(input, {
+        mask: 'TR00 0000 0000 0000 0000 0000 00',
+        definitions: {
+          '0': /[0-9]/
+        },
+        prepareChar: function (str) {
+          return str.toUpperCase();
+        }
+      });
+    });
+  }
+  window.initIbanMask = initIbanMask;
+  initIbanMask();
 });
+
+$(document).on("shown.bs.modal", function () {
+  if (typeof window.initIbanMask === "function") {
+    window.initIbanMask(this);
+  }
+});
+
 
 $("#finansalIslemModal").on("hidden.bs.modal", function () {
   // Focus'u güvenli bir elemente taşı

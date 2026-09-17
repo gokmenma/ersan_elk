@@ -667,13 +667,15 @@ function formatMobileFileSize($bytes) {
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Maaş IBAN</label>
-                                <input type="text" name="iban_numarasi" value="<?= htmlspecialchars($personel->iban_numarasi ?? '') ?>" 
-                                       class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white">
+                                <input type="text" name="iban_numarasi" value="<?= htmlspecialchars(\App\Helper\Helper::formatIban($personel->iban_numarasi ?? '')) ?>" 
+                                       placeholder="TR00 0000 0000 0000 0000 0000 00" maxlength="32"
+                                       class="mask-iban w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Ek Ödeme IBAN</label>
-                                <input type="text" name="ek_odeme_iban_numarasi" value="<?= htmlspecialchars($personel->ek_odeme_iban_numarasi ?? '') ?>" 
-                                       class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white">
+                                <input type="text" name="ek_odeme_iban_numarasi" value="<?= htmlspecialchars(\App\Helper\Helper::formatIban($personel->ek_odeme_iban_numarasi ?? '')) ?>" 
+                                       placeholder="TR00 0000 0000 0000 0000 0000 00" maxlength="32"
+                                       class="mask-iban w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white">
                             </div>
                         </div>
                     </div>

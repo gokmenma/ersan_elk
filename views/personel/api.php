@@ -250,11 +250,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             // IBAN doğrulaması
+            $ibanLabels = [
+                'iban_numarasi' => 'Maaş IBAN',
+                'ek_odeme_iban_numarasi' => 'Ek Ödeme IBAN'
+            ];
             foreach (['iban_numarasi', 'ek_odeme_iban_numarasi'] as $ibanField) {
                 $ibanVal = $data[$ibanField] ?? '';
-                if (!empty($ibanVal) && !Validator::iban($ibanVal)) {
-                    echo json_encode(['status' => 'error', 'message' => "'$ibanField' alanı geçersiz bir IBAN değeri içeriyor."]);
-                    exit;
+                if (!empty($ibanVal)) {
+                    $cleanIban = strtoupper(preg_replace('/\s+/', '', (string)$ibanVal));
+                    $label = $ibanLabels[$ibanField] ?? $ibanField;
+                    if (strlen($cleanIban) > 26) {
+                        echo json_encode(['status' => 'error', 'message' => "'$label' alanı 26 karakterden uzun olamaz."]);
+                        exit;
+                    }
+                    if (!Validator::iban($cleanIban)) {
+                        echo json_encode(['status' => 'error', 'message' => "'$label' alanı geçersiz bir IBAN değeri içeriyor. Lütfen kontrol ediniz."]);
+                        exit;
+                    }
+                    $data[$ibanField] = $cleanIban;
                 }
             }
 
@@ -506,7 +519,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($oldData) {
                     foreach ($data as $key => $value) {
                         // Bazı alanları loglamaya gerek yok veya özel karşılaştırma lazım
-                        if (in_array($key, ['id', 'firma_id', 'guncelleme_tarihi', 'sifre', 'kaski_sifre', 'iban_numarasi', 'ek_odeme_iban_numarasi', 'tc_kimlik_no']))
+                        if (in_array($key, ['id', 'personel_id', 'action', 'firma_id', 'guncelleme_tarihi', 'sifre', 'kaski_sifre'], true))
                             continue;
 
                         $oldValue = $oldData->$key ?? null;
@@ -540,6 +553,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if (strpos($key, 'tarih') !== false) {
                                 $displayOld = ($normOld !== '') ? Date::dmY($oldValue) : 'Boş';
                                 $displayNew = ($normNew !== '') ? Date::dmY($newValue) : 'Boş';
+                            } elseif (in_array($key, ['iban_numarasi', 'ek_odeme_iban_numarasi', 'tc_kimlik_no'], true)) {
+                                // Hassas değerleri logda açık biçimde saklama; yalnızca değiştiğini belirt.
+                                $displayOld = $displayOld === 'Boş' ? 'Boş' : 'Kayıtlı değer';
+                                $displayNew = $displayNew === 'Boş' ? 'Boş' : 'Yeni değer';
                             } elseif (is_numeric($normOld) && is_numeric($normNew)) {
                                 // Tutar veya ücret ise formatla, değilse (id vb) olduğu gibi bırak
                                 if (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false || strpos($key, 'matrah') !== false) {

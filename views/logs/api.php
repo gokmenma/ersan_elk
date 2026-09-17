@@ -48,6 +48,61 @@ try {
             $filteredRecords = $systemLogModel->getLogsCount($filters);
 
             $data = [];
+            $personelAlanEtiketleri = [
+                'adi_soyadi' => 'Adı Soyadı',
+                'tc_kimlik_no' => 'T.C. Kimlik No',
+                'telefon' => 'Telefon',
+                'email' => 'E-posta',
+                'adres' => 'Adres',
+                'dogum_tarihi' => 'Doğum Tarihi',
+                'ise_giris_tarihi' => 'İşe Giriş Tarihi',
+                'isten_cikis_tarihi' => 'İşten Çıkış Tarihi',
+                'aktif_mi' => 'Aktiflik Durumu',
+                'ekip_no' => 'Ekip No',
+                'iban_numarasi' => 'Maaş IBAN',
+                'ek_odeme_iban_numarasi' => 'Ek Ödeme IBAN',
+                'maas' => 'Maaş',
+                'kumulatif_matrah_devir' => 'Kümülatif Matrah Devri',
+                'sodexo' => 'Sodexo Ödemesi',
+                'sodexo_kart_no' => 'Sodexo Kart No',
+                'bes_kesintisi_varmi' => 'BES Kesintisi',
+                'yemek_yardimi_aliyor' => 'Yemek Yardımı',
+                'yemek_yardimi_tutari' => 'Yemek Yardımı Tutarı',
+                'yemek_yardimi_dahil' => 'Yemek Yardımı Maaşa Dahil',
+                'es_yardimi_aliyor' => 'Eş Yardımı',
+                'es_yardimi_tutari' => 'Eş Yardımı Tutarı',
+                'es_yardimi_dahil' => 'Eş Yardımı Maaşa Dahil',
+                'puantaj_hakedis_dahil' => 'Puantaj Hakediş Durumu'
+            ];
+
+            $parsePersonelChanges = static function (string $description) use ($personelAlanEtiketleri): array {
+                $result = ['summary' => $description, 'changes' => []];
+                if (!preg_match('/^(.*?)\s*\(Güncellenen veriler:\s*\{\s*(.*?)\s*\}\)\s*$/us', $description, $matches)) {
+                    return $result;
+                }
+
+                $result['summary'] = trim($matches[1]);
+                $changesText = trim($matches[2]);
+                if ($changesText === '' || $changesText === 'Değişiklik yok') {
+                    return $result;
+                }
+
+                foreach (preg_split('/,\s+(?=[a-zA-Z0-9_]+:\s)/u', $changesText) as $change) {
+                    if (!preg_match('/^([^:]+):\s*(.*?)\s+(?:->|→)\s+(.*)$/us', trim($change), $parts)) {
+                        continue;
+                    }
+                    $field = trim($parts[1]);
+                    $fallbackLabel = mb_convert_case(str_replace('_', ' ', $field), MB_CASE_TITLE, 'UTF-8');
+                    $result['changes'][] = [
+                        'field' => $personelAlanEtiketleri[$field] ?? $fallbackLabel,
+                        'old' => trim($parts[2]),
+                        'new' => trim($parts[3])
+                    ];
+                }
+
+                return $result;
+            };
+
             foreach ($logs as $log) {
                 $logLevel = $log->level ?? 0;
                 if ($logLevel >= 2) {
@@ -70,6 +125,11 @@ try {
                     'UTF-8'
                 );
                 $escapedActionType = htmlspecialchars((string) $log->action_type, ENT_QUOTES, 'UTF-8');
+                $description = (string) $log->description;
+                $personelChangeData = $log->action_type === 'Personel Güncelleme'
+                    ? $parsePersonelChanges($description)
+                    : ['summary' => $description, 'changes' => []];
+                $encodedChanges = base64_encode(json_encode($personelChangeData['changes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
                 $userHtml = '<div class="d-flex align-items-center gap-2">'
                     .'<span class="avatar-title rounded-circle bg-soft-primary text-primary flex-shrink-0" '
@@ -88,7 +148,8 @@ try {
                                         data-title="'.$escapedActionType.'"
                                         data-user="'.$escapedUserName.'"
                                         data-date="'.date('d.m.Y H:i', strtotime($log->created_at)).'"
-                                        data-content="'.htmlspecialchars((string) $log->description, ENT_QUOTES, 'UTF-8').'">
+                                        data-content="'.htmlspecialchars($personelChangeData['summary'], ENT_QUOTES, 'UTF-8').'"
+                                        data-changes="'.htmlspecialchars($encodedChanges, ENT_QUOTES, 'UTF-8').'">
                                         <i class="bx bx-show me-1 text-primary"></i> Detay
                                     </button>
                                   </div>'

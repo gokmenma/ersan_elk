@@ -2,7 +2,7 @@ $(function () {
   const apiUrl = "views/tanimlamalar/icra-daireleri/api.php";
   
   if ($.fn.inputmask) {
-    $(".mask-iban").inputmask("TR999999999999999999999999", {
+    $(".mask-iban").inputmask("TR99 9999 9999 9999 9999 9999 99", {
       placeholder: "_",
       showMaskOnHover: false,
       showMaskOnFocus: true,

@@ -251,7 +251,7 @@ foreach ($donemler as $donem) {
                                             <td>
                                                 <?php if ($ibanDolu): ?>
                                                     <code
-                                                        class="text-primary"><?= htmlspecialchars($personel->iban_numarasi) ?></code>
+                                                        class="text-primary"><?= htmlspecialchars(App\Helper\Helper::formatIban($personel->iban_numarasi)) ?></code>
                                                 <?php else: ?>
                                                     <span class="text-danger">
                                                         <i class="bx bx-error-circle me-1"></i>IBAN Tanımlı Değil
