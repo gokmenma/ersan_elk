@@ -353,10 +353,16 @@
 
         var sira = kayit.ekGonderilen;
         var dosya = kayit.ekDosyalar[sira];
+        // Ana kayıt sunucuya alanlar.client_uuid ile yazılır. Kuyruk kaydı daha
+        // önce düzenlenmiş/taşınmışsa IndexedDB anahtarı (kayit.uuid) bundan
+        // farklı olabilir; ek fotoğraf da ana kayıtta kullanılan UUID'yi taşımalı.
+        var kayitAnahtari = kayit.alanlar && kayit.alanlar.client_uuid
+            ? kayit.alanlar.client_uuid
+            : kayit.uuid;
 
         return istekGonder(
             kayit.ekAction,
-            { client_uuid: kayit.uuid, sira: sira, toplam: toplam },
+            { client_uuid: kayitAnahtari, sira: sira, toplam: toplam },
             [{ alan: kayit.ekAlan, ad: dosya.ad, tip: dosya.tip, blob: dosya.blob, cekim: dosya.cekim || "" }],
             "fotoğraf " + (sira + 1) + "/" + toplam + ", " + mbMetni(dosya.blob)
         ).then(function (cevap) {
