@@ -486,8 +486,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         let kacakEditToken = null;
         let kacakKuyrukEditUuid = null;
 
-        const REF_ANAHTAR = 'kacak_referans';
-        const LISTE_ANAHTAR = 'kacak_liste';
+        // Aynı cihazda farklı personeller oturum açabildiği için personel bazlı tutulur.
+        // Aksi halde önceki kullanıcının ekip adayları güncel sunucu listesini ezer.
+        const REF_ANAHTAR = `kacak_referans_${BEN}`;
+        const LISTE_ANAHTAR = `kacak_liste_${BEN}`;
 
         const cevrimici = () => navigator.onLine !== false;
 
@@ -806,14 +808,12 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
             const res = await API.request('getKacakReferans', {}, false);
             if (res && res.success && res.data) {
-                OfflineQueue.referansKaydet(REF_ANAHTAR, res.data);
+                await OfflineQueue.referansKaydet(REF_ANAHTAR, res.data);
+                referanslariDoldur(res.data);
             }
         }
 
-        async function referansUygula() {
-            if (!window.OfflineQueue) return;
-
-            const ref = await OfflineQueue.referansOku(REF_ANAHTAR);
+        function referanslariDoldur(ref) {
             if (!ref) return;
 
             const doldur = (el, degerler, etiketle) => {
@@ -830,6 +830,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 i => `<option value="${esc(i)}">${esc(i)}</option>`);
             doldur(document.getElementById('kacak-tur'), ref.turler,
                 t => `<option value="${esc(t)}">${esc(t)}</option>`);
+        }
+
+        async function referansUygula() {
+            if (!window.OfflineQueue) return;
+            referanslariDoldur(await OfflineQueue.referansOku(REF_ANAHTAR));
         }
 
         window.kacakDetayAc = function (id) {
@@ -958,9 +963,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 ['tarih','ilce','tur','tutanak_no','abone_adi','abone_tc','abone_dogum_tarihi','abone_tel','sayac_no','sayac_markasi','endeks','sayi','aciklama'].forEach(ad => {
                     const alan=form.querySelector(`[name="${ad}"]`); if(alan) alan.value=editData[ad] ?? '';
                 });
-                const ekipIds=String(editData.personel_ids||'').split(',').map(Number);
+                const hamEkipIds = Array.isArray(editData.personel_ids_array)
+                    ? editData.personel_ids_array
+                    : String(editData.personel_ids || '').split(',');
+                const ekipIds=hamEkipIds.map(Number).filter(Number.isInteger);
                 const arkadas=ekipIds.find(id=>id!==BEN);
-                if(arkadas) document.getElementById('kacak-ekip-arkadasi').value=String(arkadas);
+                const ekipSecimi = document.getElementById('kacak-ekip-arkadasi');
+                if (ekipSecimi) ekipSecimi.value = arkadas ? String(arkadas) : '';
 
                 const fotolar = editData.fotograflar || [];
                 const tutanakFoto = fotolar.find(f => f.tur === 'tutanak');
@@ -1662,6 +1671,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             const aboneDogum = (this.querySelector('[name=abone_dogum_tarihi]')?.value || '').trim();
             if (aboneTc.length === 11 && !aboneDogum) {
                 return Alert.warning('Doğum Tarihi Zorunlu', 'TC Kimlik No girildiğinde Doğum Tarihi alanı zorunludur.');
+            }
+
+            const ekipArkadasiId = (this.querySelector('[name=ekip_arkadasi_id]')?.value || '').trim();
+            if (!ekipArkadasiId) {
+                return Alert.warning('Ekip Arkadaşı Zorunlu', 'Lütfen ekip arkadaşınızı seçin.');
             }
 
             btn.disabled = true;
