@@ -297,12 +297,13 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             }
         }
 
-        $stmtAllEkip = $EndeksOkuma->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $EndeksOkuma->db->prepare("SELECT id, tur_adi, grup FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
-                $ekipKodlari[$m[1]] = $ek['id'];
+            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(((string) ($ek['grup'] ?? '')) . ' ' . ((string) ($ek['tur_adi'] ?? ''))));
+            if ($teamNo > 0) {
+                $ekipKodlari[$teamNo] = $ek['id'];
             }
         }
 
@@ -393,57 +394,98 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 
                 $personelMatches[] = $pId;
             } else {
-                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $okuyucuAdi, $m)) {
-                    $ekipNo = $m[1];
+                $ekipNo = \App\Helper\EkipHelper::extractTeamNo($okuyucuAdi);
+                if ($ekipNo > 0) {
                     $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
+
+                    // Eğer ekip sistemde yoksa otomatik tanım oluştur
+                    if (!$ekipKoduId) {
+                        try {
+                            $insEkip = $EndeksOkuma->db->prepare("INSERT INTO tanimlamalar (firma_id, type, grup, tur_adi, kayit_tarihi, kayit_yapan) VALUES (?, 1, 'ekip_kodu', ?, NOW(), 0)");
+                            $insEkip->execute([$firmaId, $okuyucuAdi]);
+                            $ekipKoduId = (int) $EndeksOkuma->db->lastInsertId();
+                            $ekipKodlari[$ekipNo] = $ekipKoduId;
+                            cronLog("Yeni ekip tanımı otomatik oluşturuldu: $okuyucuAdi (ID: $ekipKoduId)");
+                        } catch (Exception $e) {
+                            cronLog("Ekip kodu ekleme hatası: " . $e->getMessage());
+                        }
+                    }
 
                     if ($ekipKoduId) {
                         if (isset($ekipGecmisi[$ekipKoduId])) {
                             foreach ($ekipGecmisi[$ekipKoduId] as $hist) {
                                 if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
-                                    $personelMatches[] = $hist['personel_id'];
+                                    $personelMatches[] = (int) $hist['personel_id'];
                                 }
                             }
                         }
                         if (empty($personelMatches) && isset($personelByEkip[$ekipKoduId])) {
                             $personelMatches = $personelByEkip[$ekipKoduId];
                         }
+                        $personelMatches = array_values(array_unique($personelMatches));
                     }
                 }
             }
 
-            if ($ekipKoduId === 0 || empty($personelMatches)) {
+            $aboneNo = !empty($veri['ABONE_NO']) ? trim($veri['ABONE_NO']) : (!empty($veri['ABONENO']) ? trim($veri['ABONENO']) : (!empty($veri['abone_no']) ? trim($veri['abone_no']) : null));
+            $isemriNo = !empty($veri['ISEMRI_NO']) ? trim($veri['ISEMRI_NO']) : (!empty($veri['ISEMRINO']) ? trim($veri['ISEMRINO']) : (!empty($veri['is_emri_no']) ? trim($veri['is_emri_no']) : null));
+            $aboneSayisi = (float) ($veri['ABONE_SAYISI'] ?? 0);
+
+            // Personel atanmamışsa / eşleşmemişse kaydı atlamıyoruz (manuel sorgulamadaki gibi ekliyoruz)
+            if (empty($personelMatches)) {
                 $atlanAnKayitlar++;
-                $atlanAnListesi[] = $okuyucuAdi . " (Bölge: " . $bolge . ")";
-                continue;
-            }
-
-            // Bölüştürme
-            $personelSayisi = count($personelMatches);
-            $bolunmusAbone = (float)$veri['ABONE_SAYISI'] / $personelSayisi;
-            $ekAciklama = $personelSayisi > 1 ? " (İş $personelSayisi kişiye bölündü. Toplam: {$veri['ABONE_SAYISI']})" : "";
-
-            foreach ($personelMatches as $pId) {
-                $perPersonIslemId = $islemId . '_' . $pId;
+                $atlanAnListesi[] = $okuyucuAdi . " (Bölge: " . $bolge . ", Defter: " . $defter . ")";
 
                 $insertBatch[] = [
-                    $perPersonIslemId,
-                    $pId,
+                    $islemId . '_0',
+                    0, // personel_id
                     $ekipKoduId,
                     $firmaId,
                     $bolge,
                     $okuyucuAdi,
                     0, 0, 0, 0, // sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk
                     1, // okunan_gun_sayisi
-                    $bolunmusAbone,
-                    $bolunmusAbone, // ort_okunan_abone_sayisi_gunluk
+                    $aboneSayisi,
+                    $aboneSayisi, // ort_okunan_abone_sayisi_gunluk
                     100, // okuma_performansi
                     $normDate,
                     $defter,
                     $sayacDurum,
-                    "Cron sorgulama" . $ekAciklama
+                    $aboneNo,
+                    $isemriNo,
+                    "Cron sorgulama"
                 ];
                 $yeniKayit++;
+            } else {
+                // Bölüştürme
+                $personelSayisi = count($personelMatches);
+                $bolunmusAbone = $aboneSayisi / $personelSayisi;
+                $ekAciklama = $personelSayisi > 1 ? " (İş $personelSayisi kişiye bölündü. Toplam: {$aboneSayisi})" : "";
+
+                foreach ($personelMatches as $pId) {
+                    $perPersonIslemId = $islemId . '_' . $pId;
+
+                    $insertBatch[] = [
+                        $perPersonIslemId,
+                        $pId,
+                        $ekipKoduId,
+                        $firmaId,
+                        $bolge,
+                        $okuyucuAdi,
+                        0, 0, 0, 0, // sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk
+                        1, // okunan_gun_sayisi
+                        $bolunmusAbone,
+                        $bolunmusAbone, // ort_okunan_abone_sayisi_gunluk
+                        100, // okuma_performansi
+                        $normDate,
+                        $defter,
+                        $sayacDurum,
+                        $aboneNo,
+                        $isemriNo,
+                        "Cron sorgulama" . $ekAciklama
+                    ];
+                    $yeniKayit++;
+                }
             }
         }
 
@@ -460,8 +502,8 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         if (!empty($insertBatch)) {
             $insertChunks = array_chunk($insertBatch, 500);
             foreach ($insertChunks as $chunk) {
-                $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum, aciklama) VALUES $valuesPart";
+                $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum, abone_no, is_emri_no, aciklama) VALUES $valuesPart";
                 $params = [];
                 foreach ($chunk as $row) {
                     $params = array_merge($params, $row);
@@ -474,9 +516,10 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $EndeksOkuma->db->commit();
 
         if ($atlanAnKayitlar > 0) {
-            cronLog("$atlanAnKayitlar kayıt atlandı (ekip eşleşmedi).");
+            cronLog("$atlanAnKayitlar kayıt personelsiz eklendi (ekip eşleşmedi/ataması yok).");
         }
 
+        $toplamApiCount = count($apiData ?? []);
         unset($apiData);
         unset($insertBatch);
 
@@ -492,6 +535,6 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         'silinen_kayit' => $silinenKayit,
         'atlanAn' => $atlanAnKayitlar,
         'atlanAnListesi' => array_unique($atlanAnListesi),
-        'toplam_api' => count($apiData ?? [])
+        'toplam_api' => $toplamApiCount ?? 0
     ];
 }

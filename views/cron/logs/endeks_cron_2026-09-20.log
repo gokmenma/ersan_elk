@@ -1,0 +1,16 @@
+[2026-09-20 23:53:00] === Endeks Okuma Cron başlatıldı ===
+[2026-09-20 23:53:00] Ayarlar firma_id=1 ile yüklendi. Toplam 81 ayar.
+[2026-09-20 23:53:00] Online sorgulama aktif. (Değer: '1')
+[2026-09-20 23:53:00] Kontrol: Şimdiki saat (yuvarlanmış): 23:45
+[2026-09-20 23:53:00] Endeks saatleri: 19:00, 21:00, 22:00, 23:00, 08:00, 08:15, 08:30, 08:45, 09:00, 09:15, 09:30, 09:45, 10:00, 10:15, 10:30, 10:45, 11:00, 11:15, 11:30, 11:45, 12:00, 12:15, 12:30, 12:45, 13:00, 13:15, 13:30, 13:45, 14:00, 14:15, 14:30, 14:45, 15:00, 15:15, 15:30, 15:45, 16:00, 16:15, 16:30, 16:45, 17:00, 17:15, 17:30, 17:45, 18:00, 18:15, 18:30, 18:45, 23:45
+[2026-09-20 23:53:00] Endeks sorgulama zamanı geldi! (Saat: 23:45)
+[2026-09-20 23:53:00] Endeks sorgulama başlatılıyor...
+[2026-09-20 23:53:00] API sorgusu yapılıyor: Tarih=20/09/2026
+[2026-09-20 23:53:00] API'den 51 kayıt geldi.
+[2026-09-20 23:53:00] Yeni ekip tanımı otomatik oluşturuldu: ER-SAN ELEKTRİK EKİP-155 (ID: 2902)
+[2026-09-20 23:53:00] 51 yeni kayıt eklendi.
+[2026-09-20 23:53:00] 51 kayıt personelsiz eklendi (ekip eşleşmedi/ataması yok).
+[2026-09-20 23:53:00] Endeks sorgulama tamamlandı: {"yeni_kayit":51,"silinen_kayit":0,"atlanAn":51,"atlanAnListesi":{"0":"ER-SAN ELEKTR\u0130K EK\u0130P-148 (B\u00f6lge: PAZARCIK, Defter: 140)","5":"ER-SAN ELEKTR\u0130K EK\u0130P-148 (B\u00f6lge: PAZARCIK, Defter: 141)","8":"ER-SAN ELEKTR\u0130K EK\u0130P-148 (B\u00f6lge: PAZARCIK, Defter: 142)","11":"ER-SAN ELEKTR\u0130K EK\u0130P-148 (B\u00f6lge: PAZARCIK, Defter: 9998)","13":"ER-SAN ELEKTR\u0130K EK\u0130P-148 (B\u00f6lge: PAZARCIK, Defter: 9999)","14":"ER-SAN ELEKTR\u0130K EK\u0130P-149 (B\u00f6lge: PAZARCIK, Defter: 140)","17":"ER-SAN ELEKTR\u0130K EK\u0130P-149 (B\u00f6lge: PAZARCIK, Defter: 141)","21":"ER-SAN ELEKTR\u0130K EK\u0130P-149 (B\u00f6lge: PAZARCIK, Defter: 142)","24":"ER-SAN ELEKTR\u0130K EK\u0130P-149 (B\u00f6lge: PAZARCIK, Defter: 9998)","25":"ER-SAN ELEKTR\u0130K EK\u0130P-150 (B\u00f6lge: PAZARCIK, Defter: 140)","33":"ER-SAN ELEKTR\u0130K EK\u0130P-150 (B\u00f6lge: PAZARCIK, Defter: 141)","36":"ER-SAN ELEKTR\u0130K EK\u0130P-150 (B\u00f6lge: PAZARCIK, Defter: 142)","39":"ER-SAN ELEKTR\u0130K EK\u0130P-150 (B\u00f6lge: PAZARCIK, Defter: 9998)","40":"ER-SAN ELEKTR\u0130K EK\u0130P-155 (B\u00f6lge: PAZARCIK, Defter: 140)","44":"ER-SAN ELEKTR\u0130K EK\u0130P-155 (B\u00f6lge: PAZARCIK, Defter: 141)","47":"ER-SAN ELEKTR\u0130K EK\u0130P-155 (B\u00f6lge: PAZARCIK, Defter: 142)"},"toplam_api":0}
+[2026-09-20 23:53:00] Endeks Cron tamamlandı. Süre: 1069.93ms
+[2026-09-20 23:53:00] ========================================
+
