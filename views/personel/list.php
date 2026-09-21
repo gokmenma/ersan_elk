@@ -469,8 +469,6 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         <th data-filter="string">SGK YAPILAN FİRMA</th>
                                         <th data-filter="string">SODEXO NO</th>
                                         <th data-filter="string">2. TELEFON</th>
-                                        <th data-filter="string">KASKI KULLANICI ADI</th>
-                                        <th data-filter="string">KASKI ŞİFRE</th>
                                     </tr>
                                 </thead>
                                 <tbody>

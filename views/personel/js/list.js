@@ -156,6 +156,7 @@ $(document).ready(function () {
         { data: "medeni_durum", visible: false },
         { data: "kan_grubu", visible: false },
         { data: "adres", visible: false },
+        { data: "ehliyet_sinifi", visible: false },
         {
           data: "iban_numarasi",
           visible: false,
@@ -166,6 +167,7 @@ $(document).ready(function () {
             return parts ? parts.join(" ") : data;
           },
         },
+        { data: "banka", visible: false },
         {
           data: "maas_tutari",
           visible: false,
@@ -182,8 +184,6 @@ $(document).ready(function () {
         { data: "sgk_yapilan_firma", visible: false },
         { data: "sodexo_kart_no", visible: false },
         { data: "cep_telefonu_2", visible: false },
-        { data: "kaski_kullanici_adi", visible: false },
-        { data: "kaski_sifre", visible: false },
       ],
       createdRow: function (row, data, dataIndex) {
         $(row).attr("data-id", data.id);
