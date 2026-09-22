@@ -2427,10 +2427,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         // 2. Mevcut kayıtları temizle (İleride transaction içerisinde yapılacak, SQL'i hazırlıyoruz)
         $filterArray = !empty($resultsFilter) ? array_map('trim', explode(',', $resultsFilter)) : [];
+        // API sonuçları çoğunlukla tamamen büyük harfle (örn. "MÜHÜR TAKILDI"),
+        // tanımlamalar ise başlık biçiminde (örn. "Mühür Takıldı") gelebiliyor.
+        // PHP in_array karşılaştırması büyük/küçük harfe duyarlı olduğundan aynı
+        // sonuç yanlışlıkla filtre dışı kalmasın.
+        $normalizedFilterNames = [];
+        foreach ($filterArray as $filterName) {
+            $normalizedFilterNames[mb_strtoupper(trim($filterName), 'UTF-8')] = true;
+        }
         $deleteSql = "UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL";
         $deleteParams = [$firmaId, $baslangicTarihi, $bitisTarihi];
 
-        if (!empty($filterArray)) {
+        if (!empty($activeTab)) {
+            // Aynı sekme yeniden sorgulandığında önce o sekmenin mevcut kayıtlarını
+            // kimlik üzerinden pasife al. Sonuç adıyla silmek, API ve tanımlamadaki
+            // büyük/küçük harf farklarında (MÜHÜR TAKILDI / Mühür Takıldı) çalışmaz
+            // ve her sorguda toplamın üst üste eklenmesine neden olur.
+            $deleteSql .= " AND is_emri_sonucu_id IN (
+                SELECT id FROM tanimlamalar
+                WHERE firma_id = ? AND rapor_sekmesi = ? AND silinme_tarihi IS NULL
+            )";
+            $deleteParams[] = $firmaId;
+            $deleteParams[] = $activeTab;
+        } elseif (!empty($filterArray)) {
             $placeholders = implode(',', array_fill(0, count($filterArray), '?'));
             $deleteSql .= " AND TRIM(is_emri_sonucu) IN ($placeholders)";
             $deleteParams = array_merge($deleteParams, $filterArray);
@@ -2451,7 +2470,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 
             // 1. İş Emri Sonucu / Ücretli iş kontrolü (USER: Sadece ücretli iş türlerini ver)
-            if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray)) {
+            $normalizedResultName = mb_strtoupper($isEmriSonucu, 'UTF-8');
+            if (!empty($normalizedFilterNames) && !isset($normalizedFilterNames[$normalizedResultName])) {
                 $uniqKey = "FILTER|" . $isEmriSonucu;
                 if (!isset($mevcutHatalar[$uniqKey])) {
                     $atlanAnListesi[] = "Filtreye Takıldı: $isEmriSonucu (Ekip: $ekipKoduStr)";

@@ -273,13 +273,14 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 break;
         }
 
-        cronLog("API'den " . count($apiData) . " kayıt geldi.");
+        $toplamApiKayit = count($apiData);
+        cronLog("API'den " . $toplamApiKayit . " kayıt geldi.");
         if (empty($apiData))
             return ['yeni_kayit' => 0, 'guncellenen_kayit' => 0, 'toplam_api' => 0, 'mesaj' => 'API\'den veri gelmedi.'];
 
         // 1. Ekip ve Personel lookup verilerini yükle
-        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
-        $stmtAllEkip->execute();
+        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE firma_id = ? AND grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip->execute([$firmaId]);
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
             if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
@@ -287,8 +288,8 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             }
         }
 
-        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
-        $stmtAllPersonel->execute();
+        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, ekip_no FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL");
+        $stmtAllPersonel->execute([$firmaId]);
         $personelByEkip = [];
         while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
             if (($p['ekip_no'] ?? 0) > 0) {
@@ -305,7 +306,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
         // 2. API verilerini işle
         $insertBatch = [];
-        $resultNamesInApi = [];
+        $resultIdsInApi = [];
         foreach ($apiData as $veri) {
             $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
             $ekipKoduStr = trim($veri['EKIP'] ?? '');
@@ -319,10 +320,6 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 strpos($isEmriTipiUpper, 'DEĞİŞME SÖKME TAKMA') !== false
             ) {
                 continue;
-            }
-
-            if (!empty($isEmriSonucu)) {
-                $resultNamesInApi[] = $isEmriSonucu;
             }
 
             $sonuclanmis = (float)($veri['SONUCLANMIS'] ?? 0);
@@ -348,6 +345,9 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                     'aciklama' => "Cron sorgulama"
                 ]);
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
+            }
+            if ($isEmriSonucuId > 0) {
+                $resultIdsInApi[] = (int) $isEmriSonucuId;
             }
 
             // Ekip ve Personel Bul (TÜM aktif personeller)
@@ -419,12 +419,14 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
         $Puantaj->db->beginTransaction();
 
-        // 3. Mevcut kayıtları temizle (Sadece gelen tipler için)
-        if (!empty($resultNamesInApi)) {
-            $uniqueNames = array_unique($resultNamesInApi);
-            $placeholders = implode(',', array_fill(0, count($uniqueNames), '?'));
-            $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL AND TRIM(is_emri_sonucu) IN ($placeholders)");
-            $deleteStmt->execute(array_merge([$firmaId, $tarih], $uniqueNames));
+        // 3. Mevcut kayıtları temizle (Sadece API'den gelen iş türleri için).
+        // Sonuç metni farklı harf biçimlerinde gelebileceği için kimlik üzerinden
+        // silinir; aksi halde cron her çalışmada toplamın üzerine ekleyebilir.
+        if (!empty($resultIdsInApi)) {
+            $uniqueResultIds = array_values(array_unique($resultIdsInApi));
+            $placeholders = implode(',', array_fill(0, count($uniqueResultIds), '?'));
+            $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL AND is_emri_sonucu_id IN ($placeholders)");
+            $deleteStmt->execute(array_merge([$firmaId, $tarih], $uniqueResultIds));
             $silinenKayit = $deleteStmt->rowCount();
         }
 
@@ -449,6 +451,9 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         unset($insertBatch);
 
     } catch (Exception $e) {
+        if ($Puantaj->db->inTransaction()) {
+            $Puantaj->db->rollBack();
+        }
         cronLog("HATA: " . $e->getMessage());
     }
 
@@ -465,7 +470,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         'atlanAn' => $atlanAnKayitlar,
         'atlanAnListesi' => array_unique($atlanAnListesi),
         'bos_sonuc' => $bosSonucSayisi,
-        'toplam_api' => count($apiData ?? []),
+        'toplam_api' => $toplamApiKayit ?? 0,
         'eksikZimmetListesi' => array_unique($eksikZimmetListesi)
     ];
 }
