@@ -248,7 +248,7 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
                 </div>
                 <?php if ($id > 0): ?>
                     <button type="button" class="btn btn-sm btn-primary px-3 shadow-none" id="btnOpenCalismaGecmisiModal">
-                        <i class="bx bx-plus me-1"></i> Yeni Çalışma Dönemi Ekle
+                        <i class="bx bx-plus me-1"></i> İşe Giriş / Yeniden İşe Giriş
                     </button>
                 <?php endif; ?>
             </div>

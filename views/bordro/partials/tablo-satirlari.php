@@ -1,14 +1,5 @@
 <?php use App\Helper\Helper; ?>
-                                        <?php if (empty($personeller)): ?>
-                                            <tr>
-                                                <td colspan="13" class="text-center text-muted py-4">
-                                                    <i class="bx bx-user-x fs-1 d-block mb-2"></i>
-                                                    Bu döneme henüz personel eklenmemiş.<br>
-                                                    <small>"Personelleri Güncelle" butonuna tıklayarak personelleri
-                                                        ekleyebilirsiniz.</small>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
+                                        <?php if (!empty($personeller)): ?>
                                             <?php $idx = 1;
                                             foreach ($personeller as $personel):
                                                 // Ön-hesaplanmış değerleri oku (tekrar hesaplama yok)

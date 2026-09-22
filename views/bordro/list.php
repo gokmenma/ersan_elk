@@ -749,6 +749,31 @@ if (!empty($dbGelirler)) {
                                         Hesapla</span>
                                 </button>
 
+                                <button type="button"
+                                    class="btn btn-outline-secondary btn-sm px-2 d-flex align-items-center justify-content-center ms-1"
+                                    id="btnToggleBordroOzet"
+                                    title="Özet Kartları Gizle / Göster"
+                                    style="min-width: 32px; height: 31px;">
+                                    <i class="bx bx-chevron-up fs-4" id="iconToggleBordroOzet"></i>
+                                </button>
+                                <script>
+                                    (function() {
+                                        try {
+                                            if (localStorage.getItem('bordro_ozet_collapsed') === 'true') {
+                                                document.write('<style id="bordroOzetPreloadStyle">#bordroOzetAlani { display: none !important; }</style>');
+                                                var icon = document.getElementById('iconToggleBordroOzet');
+                                                if (icon) {
+                                                    icon.className = 'bx bx-chevron-down fs-4';
+                                                }
+                                                var btn = document.getElementById('btnToggleBordroOzet');
+                                                if (btn) {
+                                                    btn.setAttribute('title', 'Özet Kartları Göster');
+                                                }
+                                            }
+                                        } catch (e) {}
+                                    })();
+                                </script>
+
                             <?php endif; ?>
                         </div>
                     </div>

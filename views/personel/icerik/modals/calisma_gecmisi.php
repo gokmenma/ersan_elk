@@ -15,7 +15,7 @@ use App\Helper\Helper;
                             </div>
                         </div>
                         <div>
-                            <h5 class="modal-title fw-bold text-dark mb-0">Yeni Çalışma Dönemi Tanımla</h5>
+                            <h5 class="modal-title fw-bold text-dark mb-0">İşe Giriş / Yeniden İşe Giriş</h5>
                             <p id="modal_calisma_header_subtitle" class="text-muted mb-0 small">Değişiklikleri kaydetmek için formu doldurun.</p>
                         </div>
                     </div>
@@ -65,6 +65,19 @@ use App\Helper\Helper;
 
                                 echo Form::FormSelect2("sgk_yapilan_firma", $firma_option, $firma_adi, "SGK Yapılan Firma", "book-open", "key", "", "form-select select2", false, "width:100%", "", "modal_sgk_yapilan_firma");
                                 ?>
+                            </div>
+
+                            <div class="col-md-12" id="modal_maas_devam_container">
+                                <div class="form-check form-switch border rounded p-3 ps-5 bg-light">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                        id="modal_onceki_maasla_devam" name="onceki_maasla_devam" value="1" checked>
+                                    <label class="form-check-label fw-semibold" for="modal_onceki_maasla_devam">
+                                        Önceki görev ve maaş bilgileriyle devam et
+                                    </label>
+                                    <div class="small text-muted mt-1">
+                                        Yeni çalışma dönemiyle aynı başlangıç tarihinde önceki maaş bilgilerinden yeni bir dönem açılır.
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="col-md-12" id="modal_gorunum_modulleri_row" style="display:none;">
@@ -314,11 +327,13 @@ use App\Helper\Helper;
                 $(document).off('click', '#btnOpenCalismaGecmisiModal').on('click', '#btnOpenCalismaGecmisiModal', function () {
                     $('#calisma_gecmisi_id').val('');
                     $('#calisma_gecmisi_action').val('calisma-gecmisi-ekle');
-                    $('#modalCalismaGecmisiEkle .modal-title').text('Yeni Çalışma Dönemi Tanımla');
+                    $('#modalCalismaGecmisiEkle .modal-title').text('İşe Giriş / Yeniden İşe Giriş');
                     $('#modal_calisma_header_subtitle').text('Değişiklikleri kaydetmek için formu doldurun.');
                     $('#modal_calisma_header_icon').attr('class', 'bx bx-plus-circle');
                     $('#modal_calisma_header_icon_box').css({'background': 'rgba(52, 195, 143, 0.1)', 'color': '#34c38f'});
                     $('#formCalismaGecmisiEkle')[0].reset();
+                    $('#modal_onceki_maasla_devam').prop('checked', true);
+                    $('#modal_maas_devam_container').show();
                     var defaultDate = '<?= \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()) ?>';
                     var $input = $('#formCalismaGecmisiEkle input[name="ise_giris_tarihi"]');
                     $input.val(defaultDate);
@@ -363,6 +378,7 @@ use App\Helper\Helper;
                                 var data = response.data;
                                 $('#calisma_gecmisi_id').val(data.id);
                                 $('#calisma_gecmisi_action').val('calisma-gecmisi-guncelle');
+                                $('#modal_maas_devam_container').hide();
                                 $('#modalCalismaGecmisiEkle .modal-title').text('Çalışma Dönemini Düzenle');
                                 $('#modal_calisma_header_subtitle').text('Kayıt bilgilerini aşağıdan güncelleyebilirsiniz.');
                                 $('#modal_calisma_header_icon').attr('class', 'bx bx-edit-alt');

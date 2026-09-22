@@ -38,7 +38,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     --sidebar-foreground: #3f3f46;
                     --sidebar-muted: #71717a;
                     --sidebar-accent: #18181b;
-                    --sidebar-font: "Geist", sans-serif;
+                    --sidebar-font: var(--bs-font-sans-serif, inherit);
                 }
 
                 [data-bs-theme="dark"] {
@@ -66,7 +66,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
                     border-right: 1px solid var(--sidebar-border) !important;
                     box-shadow: none !important;
-                    font-family: var(--sidebar-font);
+                    font-family: inherit !important;
                     top: 0 !important; /* Ensure it starts from top */
                 }
 

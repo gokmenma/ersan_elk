@@ -743,7 +743,47 @@ body[data-sidebar="brand"] .navbar-brand-box {
 }
 
 /* Dynamic Font Families */
+html[data-font-family="Inter"],
+[data-font-family="Inter"] {
+  --bs-font-sans-serif: "Inter", sans-serif !important;
+  --bs-body-font-family: "Inter", sans-serif !important;
+  --sidebar-font: "Inter", sans-serif !important;
+  font-family: "Inter", sans-serif !important;
+}
 [data-font-family="Inter"] body,
+[data-font-family="Inter"] .vertical-menu,
+[data-font-family="Inter"] #sidebar-menu,
+[data-font-family="Inter"] #sidebar-menu ul li a,
+[data-font-family="Inter"] #sidebar-menu .menu-title,
+[data-font-family="Inter"] .brand-name,
+[data-font-family="Inter"] .brand-sub,
+[data-font-family="Inter"] #page-topbar,
+[data-font-family="Inter"] .navbar-brand-box,
+[data-font-family="Inter"] .main-content,
+[data-font-family="Inter"] .page-content,
+[data-font-family="Inter"] input,
+[data-font-family="Inter"] button,
+[data-font-family="Inter"] select,
+[data-font-family="Inter"] textarea,
+[data-font-family="Inter"] .form-control,
+[data-font-family="Inter"] .form-select,
+[data-font-family="Inter"] .btn,
+[data-font-family="Inter"] .dropdown-menu,
+[data-font-family="Inter"] .dropdown-item,
+[data-font-family="Inter"] .modal,
+[data-font-family="Inter"] .modal-title,
+[data-font-family="Inter"] .modal-body,
+[data-font-family="Inter"] .card,
+[data-font-family="Inter"] .card-title,
+[data-font-family="Inter"] .table,
+[data-font-family="Inter"] .dataTables_wrapper,
+[data-font-family="Inter"] .select2-container,
+[data-font-family="Inter"] .select2-dropdown,
+[data-font-family="Inter"] .swal2-popup,
+[data-font-family="Inter"] .flatpickr-calendar,
+[data-font-family="Inter"] .nav-tabs,
+[data-font-family="Inter"] .nav-link,
+[data-font-family="Inter"] .badge,
 [data-font-family="Inter"] .h1,
 [data-font-family="Inter"] .h2,
 [data-font-family="Inter"] .h3,
@@ -758,7 +798,48 @@ body[data-sidebar="brand"] .navbar-brand-box {
 [data-font-family="Inter"] h6 {
   font-family: "Inter", sans-serif !important;
 }
+
+html[data-font-family="Outfit"],
+[data-font-family="Outfit"] {
+  --bs-font-sans-serif: "Outfit", sans-serif !important;
+  --bs-body-font-family: "Outfit", sans-serif !important;
+  --sidebar-font: "Outfit", sans-serif !important;
+  font-family: "Outfit", sans-serif !important;
+}
 [data-font-family="Outfit"] body,
+[data-font-family="Outfit"] .vertical-menu,
+[data-font-family="Outfit"] #sidebar-menu,
+[data-font-family="Outfit"] #sidebar-menu ul li a,
+[data-font-family="Outfit"] #sidebar-menu .menu-title,
+[data-font-family="Outfit"] .brand-name,
+[data-font-family="Outfit"] .brand-sub,
+[data-font-family="Outfit"] #page-topbar,
+[data-font-family="Outfit"] .navbar-brand-box,
+[data-font-family="Outfit"] .main-content,
+[data-font-family="Outfit"] .page-content,
+[data-font-family="Outfit"] input,
+[data-font-family="Outfit"] button,
+[data-font-family="Outfit"] select,
+[data-font-family="Outfit"] textarea,
+[data-font-family="Outfit"] .form-control,
+[data-font-family="Outfit"] .form-select,
+[data-font-family="Outfit"] .btn,
+[data-font-family="Outfit"] .dropdown-menu,
+[data-font-family="Outfit"] .dropdown-item,
+[data-font-family="Outfit"] .modal,
+[data-font-family="Outfit"] .modal-title,
+[data-font-family="Outfit"] .modal-body,
+[data-font-family="Outfit"] .card,
+[data-font-family="Outfit"] .card-title,
+[data-font-family="Outfit"] .table,
+[data-font-family="Outfit"] .dataTables_wrapper,
+[data-font-family="Outfit"] .select2-container,
+[data-font-family="Outfit"] .select2-dropdown,
+[data-font-family="Outfit"] .swal2-popup,
+[data-font-family="Outfit"] .flatpickr-calendar,
+[data-font-family="Outfit"] .nav-tabs,
+[data-font-family="Outfit"] .nav-link,
+[data-font-family="Outfit"] .badge,
 [data-font-family="Outfit"] .h1,
 [data-font-family="Outfit"] .h2,
 [data-font-family="Outfit"] .h3,
@@ -773,7 +854,48 @@ body[data-sidebar="brand"] .navbar-brand-box {
 [data-font-family="Outfit"] h6 {
   font-family: "Outfit", sans-serif !important;
 }
+
+html[data-font-family="Poppins"],
+[data-font-family="Poppins"] {
+  --bs-font-sans-serif: "Poppins", sans-serif !important;
+  --bs-body-font-family: "Poppins", sans-serif !important;
+  --sidebar-font: "Poppins", sans-serif !important;
+  font-family: "Poppins", sans-serif !important;
+}
 [data-font-family="Poppins"] body,
+[data-font-family="Poppins"] .vertical-menu,
+[data-font-family="Poppins"] #sidebar-menu,
+[data-font-family="Poppins"] #sidebar-menu ul li a,
+[data-font-family="Poppins"] #sidebar-menu .menu-title,
+[data-font-family="Poppins"] .brand-name,
+[data-font-family="Poppins"] .brand-sub,
+[data-font-family="Poppins"] #page-topbar,
+[data-font-family="Poppins"] .navbar-brand-box,
+[data-font-family="Poppins"] .main-content,
+[data-font-family="Poppins"] .page-content,
+[data-font-family="Poppins"] input,
+[data-font-family="Poppins"] button,
+[data-font-family="Poppins"] select,
+[data-font-family="Poppins"] textarea,
+[data-font-family="Poppins"] .form-control,
+[data-font-family="Poppins"] .form-select,
+[data-font-family="Poppins"] .btn,
+[data-font-family="Poppins"] .dropdown-menu,
+[data-font-family="Poppins"] .dropdown-item,
+[data-font-family="Poppins"] .modal,
+[data-font-family="Poppins"] .modal-title,
+[data-font-family="Poppins"] .modal-body,
+[data-font-family="Poppins"] .card,
+[data-font-family="Poppins"] .card-title,
+[data-font-family="Poppins"] .table,
+[data-font-family="Poppins"] .dataTables_wrapper,
+[data-font-family="Poppins"] .select2-container,
+[data-font-family="Poppins"] .select2-dropdown,
+[data-font-family="Poppins"] .swal2-popup,
+[data-font-family="Poppins"] .flatpickr-calendar,
+[data-font-family="Poppins"] .nav-tabs,
+[data-font-family="Poppins"] .nav-link,
+[data-font-family="Poppins"] .badge,
 [data-font-family="Poppins"] .h1,
 [data-font-family="Poppins"] .h2,
 [data-font-family="Poppins"] .h3,
@@ -788,7 +910,48 @@ body[data-sidebar="brand"] .navbar-brand-box {
 [data-font-family="Poppins"] h6 {
   font-family: "Poppins", sans-serif !important;
 }
+
+html[data-font-family="Plus Jakarta Sans"],
+[data-font-family="Plus Jakarta Sans"] {
+  --bs-font-sans-serif: "Plus Jakarta Sans", sans-serif !important;
+  --bs-body-font-family: "Plus Jakarta Sans", sans-serif !important;
+  --sidebar-font: "Plus Jakarta Sans", sans-serif !important;
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+}
 [data-font-family="Plus Jakarta Sans"] body,
+[data-font-family="Plus Jakarta Sans"] .vertical-menu,
+[data-font-family="Plus Jakarta Sans"] #sidebar-menu,
+[data-font-family="Plus Jakarta Sans"] #sidebar-menu ul li a,
+[data-font-family="Plus Jakarta Sans"] #sidebar-menu .menu-title,
+[data-font-family="Plus Jakarta Sans"] .brand-name,
+[data-font-family="Plus Jakarta Sans"] .brand-sub,
+[data-font-family="Plus Jakarta Sans"] #page-topbar,
+[data-font-family="Plus Jakarta Sans"] .navbar-brand-box,
+[data-font-family="Plus Jakarta Sans"] .main-content,
+[data-font-family="Plus Jakarta Sans"] .page-content,
+[data-font-family="Plus Jakarta Sans"] input,
+[data-font-family="Plus Jakarta Sans"] button,
+[data-font-family="Plus Jakarta Sans"] select,
+[data-font-family="Plus Jakarta Sans"] textarea,
+[data-font-family="Plus Jakarta Sans"] .form-control,
+[data-font-family="Plus Jakarta Sans"] .form-select,
+[data-font-family="Plus Jakarta Sans"] .btn,
+[data-font-family="Plus Jakarta Sans"] .dropdown-menu,
+[data-font-family="Plus Jakarta Sans"] .dropdown-item,
+[data-font-family="Plus Jakarta Sans"] .modal,
+[data-font-family="Plus Jakarta Sans"] .modal-title,
+[data-font-family="Plus Jakarta Sans"] .modal-body,
+[data-font-family="Plus Jakarta Sans"] .card,
+[data-font-family="Plus Jakarta Sans"] .card-title,
+[data-font-family="Plus Jakarta Sans"] .table,
+[data-font-family="Plus Jakarta Sans"] .dataTables_wrapper,
+[data-font-family="Plus Jakarta Sans"] .select2-container,
+[data-font-family="Plus Jakarta Sans"] .select2-dropdown,
+[data-font-family="Plus Jakarta Sans"] .swal2-popup,
+[data-font-family="Plus Jakarta Sans"] .flatpickr-calendar,
+[data-font-family="Plus Jakarta Sans"] .nav-tabs,
+[data-font-family="Plus Jakarta Sans"] .nav-link,
+[data-font-family="Plus Jakarta Sans"] .badge,
 [data-font-family="Plus Jakarta Sans"] .h1,
 [data-font-family="Plus Jakarta Sans"] .h2,
 [data-font-family="Plus Jakarta Sans"] .h3,
@@ -803,7 +966,48 @@ body[data-sidebar="brand"] .navbar-brand-box {
 [data-font-family="Plus Jakarta Sans"] h6 {
   font-family: "Plus Jakarta Sans", sans-serif !important;
 }
+
+html[data-font-family="Lexend"],
+[data-font-family="Lexend"] {
+  --bs-font-sans-serif: "Lexend", sans-serif !important;
+  --bs-body-font-family: "Lexend", sans-serif !important;
+  --sidebar-font: "Lexend", sans-serif !important;
+  font-family: "Lexend", sans-serif !important;
+}
 [data-font-family="Lexend"] body,
+[data-font-family="Lexend"] .vertical-menu,
+[data-font-family="Lexend"] #sidebar-menu,
+[data-font-family="Lexend"] #sidebar-menu ul li a,
+[data-font-family="Lexend"] #sidebar-menu .menu-title,
+[data-font-family="Lexend"] .brand-name,
+[data-font-family="Lexend"] .brand-sub,
+[data-font-family="Lexend"] #page-topbar,
+[data-font-family="Lexend"] .navbar-brand-box,
+[data-font-family="Lexend"] .main-content,
+[data-font-family="Lexend"] .page-content,
+[data-font-family="Lexend"] input,
+[data-font-family="Lexend"] button,
+[data-font-family="Lexend"] select,
+[data-font-family="Lexend"] textarea,
+[data-font-family="Lexend"] .form-control,
+[data-font-family="Lexend"] .form-select,
+[data-font-family="Lexend"] .btn,
+[data-font-family="Lexend"] .dropdown-menu,
+[data-font-family="Lexend"] .dropdown-item,
+[data-font-family="Lexend"] .modal,
+[data-font-family="Lexend"] .modal-title,
+[data-font-family="Lexend"] .modal-body,
+[data-font-family="Lexend"] .card,
+[data-font-family="Lexend"] .card-title,
+[data-font-family="Lexend"] .table,
+[data-font-family="Lexend"] .dataTables_wrapper,
+[data-font-family="Lexend"] .select2-container,
+[data-font-family="Lexend"] .select2-dropdown,
+[data-font-family="Lexend"] .swal2-popup,
+[data-font-family="Lexend"] .flatpickr-calendar,
+[data-font-family="Lexend"] .nav-tabs,
+[data-font-family="Lexend"] .nav-link,
+[data-font-family="Lexend"] .badge,
 [data-font-family="Lexend"] .h1,
 [data-font-family="Lexend"] .h2,
 [data-font-family="Lexend"] .h3,
@@ -818,7 +1022,48 @@ body[data-sidebar="brand"] .navbar-brand-box {
 [data-font-family="Lexend"] h6 {
   font-family: "Lexend", sans-serif !important;
 }
+
+html[data-font-family="Geist"],
+[data-font-family="Geist"] {
+  --bs-font-sans-serif: "Geist", sans-serif !important;
+  --bs-body-font-family: "Geist", sans-serif !important;
+  --sidebar-font: "Geist", sans-serif !important;
+  font-family: "Geist", sans-serif !important;
+}
 [data-font-family="Geist"] body,
+[data-font-family="Geist"] .vertical-menu,
+[data-font-family="Geist"] #sidebar-menu,
+[data-font-family="Geist"] #sidebar-menu ul li a,
+[data-font-family="Geist"] #sidebar-menu .menu-title,
+[data-font-family="Geist"] .brand-name,
+[data-font-family="Geist"] .brand-sub,
+[data-font-family="Geist"] #page-topbar,
+[data-font-family="Geist"] .navbar-brand-box,
+[data-font-family="Geist"] .main-content,
+[data-font-family="Geist"] .page-content,
+[data-font-family="Geist"] input,
+[data-font-family="Geist"] button,
+[data-font-family="Geist"] select,
+[data-font-family="Geist"] textarea,
+[data-font-family="Geist"] .form-control,
+[data-font-family="Geist"] .form-select,
+[data-font-family="Geist"] .btn,
+[data-font-family="Geist"] .dropdown-menu,
+[data-font-family="Geist"] .dropdown-item,
+[data-font-family="Geist"] .modal,
+[data-font-family="Geist"] .modal-title,
+[data-font-family="Geist"] .modal-body,
+[data-font-family="Geist"] .card,
+[data-font-family="Geist"] .card-title,
+[data-font-family="Geist"] .table,
+[data-font-family="Geist"] .dataTables_wrapper,
+[data-font-family="Geist"] .select2-container,
+[data-font-family="Geist"] .select2-dropdown,
+[data-font-family="Geist"] .swal2-popup,
+[data-font-family="Geist"] .flatpickr-calendar,
+[data-font-family="Geist"] .nav-tabs,
+[data-font-family="Geist"] .nav-link,
+[data-font-family="Geist"] .badge,
 [data-font-family="Geist"] .h1,
 [data-font-family="Geist"] .h2,
 [data-font-family="Geist"] .h3,
@@ -851,6 +1096,83 @@ header#page-topbar .dropdown.show .header-item {
 
 [data-bs-theme="dark"] header#page-topbar .header-item:hover {
   color: #eff2f7 !important;
+}
+
+/* Theme Preset Cards */
+.theme-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.theme-preset-card {
+  border: 2px solid var(--bs-border-color);
+  border-radius: 10px;
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+  background: var(--bs-card-bg, #ffffff);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+}
+.theme-preset-card:hover {
+  border-color: var(--bs-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.theme-preset-card.active {
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.25) !important;
+  background: rgba(var(--bs-primary-rgb), 0.04);
+}
+.theme-preset-card .preset-preview {
+  width: 100%;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.theme-preset-card .preset-topbar {
+  width: 100%;
+  height: 14px;
+}
+.theme-preset-card .preset-body {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 34px;
+}
+.theme-preset-card .preset-sidebar {
+  width: 30%;
+  height: 100%;
+}
+.theme-preset-card .preset-content {
+  width: 70%;
+  height: 100%;
+  padding: 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+.theme-preset-card .preset-accent-bar {
+  width: 16px;
+  height: 6px;
+  border-radius: 3px;
+}
+.theme-preset-card .preset-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .color-selector-group {

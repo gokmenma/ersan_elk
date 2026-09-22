@@ -5,6 +5,7 @@
             { name: 'data-font-family', target: 'html' },
             { name: 'data-bs-theme', target: 'html' },
             { name: 'data-orientation', target: 'html' },
+            { name: 'data-theme-preset', target: 'html' },
             { name: 'dir', target: 'html' }
         ];
 
@@ -182,7 +183,8 @@ body:not(:has(#quick-favorites-bar)) .main-content .page-content {
     margin-left: 0 !important;
     margin-right: 0 !important;
     box-sizing: border-box !important;
-}
+}
+
 
 .main-content .card {
     margin-bottom: 20px !important;

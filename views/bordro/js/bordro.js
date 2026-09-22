@@ -114,6 +114,39 @@ function renderBordroDetailFooterSummary(summary) {
 }
 
 $(document).ready(function () {
+  // Özet Alanı Toggle Başlangıç Senkronizasyonu
+  var isOzetCollapsed = localStorage.getItem('bordro_ozet_collapsed') === 'true';
+  if (isOzetCollapsed) {
+    $('#bordroOzetAlani').hide();
+    $('#iconToggleBordroOzet').removeClass('bx-chevron-up').addClass('bx-chevron-down');
+    $('#btnToggleBordroOzet').attr('title', 'Özet Kartları Göster');
+  } else {
+    $('#bordroOzetAlani').show();
+    $('#iconToggleBordroOzet').removeClass('bx-chevron-down').addClass('bx-chevron-up');
+    $('#btnToggleBordroOzet').attr('title', 'Özet Kartları Gizle');
+  }
+  $('#bordroOzetPreloadStyle').remove();
+
+  // Özet Alanı Toggle Buton Tıklama Olayı
+  $('#btnToggleBordroOzet').on('click', function () {
+    var $ozet = $('#bordroOzetAlani');
+    var $icon = $('#iconToggleBordroOzet');
+    var $btn = $(this);
+    var willHide = $ozet.is(':visible');
+
+    if (willHide) {
+      $ozet.stop(true, true).slideUp(200);
+      $icon.removeClass('bx-chevron-up').addClass('bx-chevron-down');
+      $btn.attr('title', 'Özet Kartları Göster');
+      localStorage.setItem('bordro_ozet_collapsed', 'true');
+    } else {
+      $ozet.stop(true, true).slideDown(200);
+      $icon.removeClass('bx-chevron-down').addClass('bx-chevron-up');
+      $btn.attr('title', 'Özet Kartları Gizle');
+      localStorage.setItem('bordro_ozet_collapsed', 'false');
+    }
+  });
+
   // Flatpickr Başlat
   if (typeof flatpickr !== "undefined" || $.fn.flatpickr) {
     $(".flatpickr").flatpickr({

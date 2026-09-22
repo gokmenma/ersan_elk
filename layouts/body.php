@@ -6,6 +6,7 @@
                 'data-font-family',
                 'data-bs-theme',
                 'data-orientation',
+                'data-theme-preset',
                 'dir'
             ];
             htmlAttrs.forEach(name => {

@@ -75,35 +75,35 @@ $notificationOptions = [
                         <!-- Profil Bilgileri Tab -->
                         <div class="tab-pane active" id="profil-bilgileri" role="tabpanel">
                             <h4 class="card-title">Profil Bilgileri</h4>
-                            <p class="card-title-desc">Kişisel bilgilerinizi buradan güncelleyebilirsiniz.</p>
+                            <p class="card-title-desc">Kişisel bilgilerinizi görüntüleyebilir, hesabınızın şifresini aşağıdan güncelleyebilirsiniz.</p>
                             <form id="profileForm">
                                 <input type="hidden" name="action" value="profil-guncelle">
                                 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <?php echo Form::FormFloatInput("text", "adi_soyadi", $currentUser->adi_soyadi ?? '', "Adı Soyadı Giriniz", "Adı Soyadı", "user", "form-control", true); ?>
+                                        <?php echo Form::FormFloatInput("text", "adi_soyadi", $currentUser->adi_soyadi ?? '', "Adı Soyadı", "Adı Soyadı", "user", "form-control bg-light", false, null, "off", true); ?>
                                     </div>
 
                                     <div class="col-md-6 mb-3">
-                                        <?php echo Form::FormFloatInput("text", "user_name", $currentUser->user_name ?? '', "Kullanıcı Adı Giriniz", "Kullanıcı Adı", "at-sign", "form-control", true); ?>
+                                        <?php echo Form::FormFloatInput("text", "user_name", $currentUser->user_name ?? '', "Kullanıcı Adı", "Kullanıcı Adı", "at-sign", "form-control bg-light", false, null, "off", true); ?>
                                     </div>
 
                                     <div class="col-md-6 mb-3">
-                                        <?php echo Form::FormFloatInput("email", "email_adresi", $currentUser->email_adresi ?? '', "E-Posta Adresi Giriniz", "E-Posta Adresi", "mail", "form-control", false); ?>
+                                        <?php echo Form::FormFloatInput("email", "email_adresi", $currentUser->email_adresi ?? '', "E-Posta Adresi", "E-Posta Adresi", "mail", "form-control bg-light", false, null, "off", true); ?>
                                     </div>
 
                                     <div class="col-md-6 mb-3">
-                                        <?php echo Form::FormFloatInput("text", "telefon", $currentUser->telefon ?? '', "Telefon Numarası Giriniz", "Telefon", "phone", "form-control phone-mask", false); ?>
+                                        <?php echo Form::FormFloatInput("text", "telefon", $currentUser->telefon ?? '', "Telefon Numarası", "Telefon", "phone", "form-control phone-mask bg-light", false, null, "off", true); ?>
                                     </div>
 
                                     <div class="col-md-12 mb-3">
-                                        <?php echo Form::FormFloatInput("password", "password", "", "Yeni Şifre Giriniz (Değiştirmek istemiyorsanız boş bırakın)", "Yeni Şifre (Değiştirmek istemiyorsanız boş bırakın)", "lock", "form-control", false, null, "new-password"); ?>
+                                        <?php echo Form::FormFloatInput("password", "password", "", "Yeni Şifre Giriniz", "Yeni Şifre Giriniz", "lock", "form-control", true, null, "new-password"); ?>
                                     </div>
                                 </div>
 
                                 <div class="row mt-3">
                                     <div class="col-12 text-end">
-                                        <button type="submit" class="btn btn-primary waves-effect waves-light"><i class="bx bx-save font-size-16 align-middle me-2"></i> Bilgileri Güncelle</button>
+                                        <button type="submit" class="btn btn-primary waves-effect waves-light"><i class="bx bx-key font-size-16 align-middle me-2"></i> Şifreyi Güncelle</button>
                                     </div>
                                 </div>
                             </form>

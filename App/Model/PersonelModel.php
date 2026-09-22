@@ -1628,6 +1628,149 @@ class PersonelModel extends Model
         ]);
     }
 
+    /**
+     * Maaş değişikliğini tek işlemde uygular. Yeni başlangıç tarihinde geçerli
+     * kayıt varsa bir gün önce kapatılır ve yeni dönem açılır.
+     */
+    public function addGorevMaasDegisikligi(array $data): bool
+    {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("SELECT * FROM personel_gorev_gecmisi
+                WHERE personel_id = ? AND baslangic_tarihi <= ?
+                AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+                ORDER BY baslangic_tarihi DESC, id DESC LIMIT 1");
+            $stmt->execute([$data['personel_id'], $data['baslangic_tarihi'], $data['baslangic_tarihi']]);
+            $current = $stmt->fetch(\PDO::FETCH_OBJ);
+
+            if ($current) {
+                if ($current->baslangic_tarihi >= $data['baslangic_tarihi']) {
+                    throw new \RuntimeException('Yeni maaş dönemi mevcut dönemin başlangıcından sonra başlamalıdır.');
+                }
+                $previousDay = date('Y-m-d', strtotime($data['baslangic_tarihi'] . ' -1 day'));
+                $closeStmt = $this->db->prepare("UPDATE personel_gorev_gecmisi SET bitis_tarihi = ? WHERE id = ?");
+                $closeStmt->execute([$previousDay, $current->id]);
+            }
+
+            if (!$this->addGorevGecmisi($data)) {
+                throw new \RuntimeException('Yeni maaş dönemi kaydedilemedi.');
+            }
+            $this->syncPersonelFromGorevGecmisi($data['personel_id']);
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Yeni çalışma dönemini ve istenirse önceki görev/maaş bilgilerinin yeni
+     * dönemini tek transaction içinde oluşturur.
+     */
+    public function addCalismaDonemiWithPreviousSalary(array $data, bool $copyPreviousSalary): string
+    {
+        $this->db->beginTransaction();
+        try {
+            if (!$this->addCalismaGecmisi($data)) {
+                throw new \RuntimeException('Çalışma dönemi kaydedilemedi.');
+            }
+
+            $salaryStatus = 'not_requested';
+            if ($copyPreviousSalary) {
+                $overlapStmt = $this->db->prepare("SELECT COUNT(*) FROM personel_gorev_gecmisi
+                    WHERE personel_id = ? AND baslangic_tarihi <= ?
+                    AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)");
+                $overlapStmt->execute([$data['personel_id'], $data['ise_giris_tarihi'], $data['ise_giris_tarihi']]);
+
+                if ((int) $overlapStmt->fetchColumn() === 0) {
+                    $salaryStatus = 'no_previous';
+                    $previousStmt = $this->db->prepare("SELECT * FROM personel_gorev_gecmisi
+                        WHERE personel_id = ? AND baslangic_tarihi < ?
+                        ORDER BY baslangic_tarihi DESC, id DESC LIMIT 1");
+                    $previousStmt->execute([$data['personel_id'], $data['ise_giris_tarihi']]);
+                    $previous = $previousStmt->fetch(\PDO::FETCH_OBJ);
+
+                    if ($previous) {
+                        $salaryCopied = $this->addGorevGecmisi([
+                            'personel_id' => $data['personel_id'],
+                            'departman' => $previous->departman,
+                            'gorev' => $previous->gorev,
+                            'maas_durumu' => $previous->maas_durumu,
+                            'maas_tutari' => $previous->maas_tutari,
+                            'baslangic_tarihi' => $data['ise_giris_tarihi'],
+                            'bitis_tarihi' => null,
+                            'aciklama' => 'Yeniden işe girişte önceki maaş bilgilerinden otomatik oluşturuldu.'
+                        ]);
+                        if (!$salaryCopied) {
+                            throw new \RuntimeException('Maaş dönemi kaydedilemedi.');
+                        }
+                        $salaryStatus = 'copied';
+                    }
+                } else {
+                    $salaryStatus = 'already_exists';
+                }
+            }
+
+            $this->syncPersonelFromCalismaGecmisi($data['personel_id']);
+            if ($salaryStatus === 'copied') {
+                $this->syncPersonelFromGorevGecmisi($data['personel_id']);
+            }
+            $this->db->commit();
+            return $salaryStatus;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** Çalışma dönemini günceller; çıkış varsa o gün geçerli maaş dönemini de kapatır. */
+    public function updateCalismaDonemiAndCloseSalary(array $data, int $personelId, ?string $oldExitDate = null): bool
+    {
+        $this->db->beginTransaction();
+        try {
+            if (!$this->updateCalismaGecmisi($data)) {
+                throw new \RuntimeException('Çalışma dönemi güncellenemedi.');
+            }
+
+            if (!empty($data['isten_cikis_tarihi'])) {
+                $stmt = $this->db->prepare("SELECT id FROM personel_gorev_gecmisi
+                    WHERE personel_id = ? AND baslangic_tarihi <= ?
+                    AND (bitis_tarihi IS NULL OR bitis_tarihi >= ? OR bitis_tarihi = ?)
+                    ORDER BY baslangic_tarihi DESC, id DESC LIMIT 1");
+                $stmt->execute([$personelId, $data['isten_cikis_tarihi'], $data['isten_cikis_tarihi'], $oldExitDate]);
+                $salaryId = (int) $stmt->fetchColumn();
+                if ($salaryId > 0) {
+                    $closeStmt = $this->db->prepare("UPDATE personel_gorev_gecmisi SET bitis_tarihi = ? WHERE id = ?");
+                    $closeStmt->execute([$data['isten_cikis_tarihi'], $salaryId]);
+                }
+            } elseif (!empty($oldExitDate)) {
+                $laterStmt = $this->db->prepare("SELECT COUNT(*) FROM personel_gorev_gecmisi
+                    WHERE personel_id = ? AND baslangic_tarihi > ?");
+                $laterStmt->execute([$personelId, $oldExitDate]);
+                if ((int) $laterStmt->fetchColumn() === 0) {
+                    $reopenStmt = $this->db->prepare("UPDATE personel_gorev_gecmisi
+                        SET bitis_tarihi = NULL WHERE personel_id = ? AND bitis_tarihi = ?");
+                    $reopenStmt->execute([$personelId, $oldExitDate]);
+                }
+            }
+
+            $this->syncPersonelFromCalismaGecmisi($personelId);
+            $this->syncPersonelFromGorevGecmisi($personelId);
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     /** Excel içe aktarımında güncel çalışma dönemini oluşturur/günceller. */
     public function upsertExcelCalismaGecmisi(int $personelId, array $data): void
     {

@@ -28,48 +28,40 @@ if ($action == "profil-guncelle") {
             exit;
         }
 
+        $password = trim($_POST['password'] ?? '');
+        if (empty($password)) {
+            echo json_encode(['status' => 'error', 'message' => 'Lütfen yeni bir şifre giriniz.']);
+            exit;
+        }
+
+        if (strlen($password) < 6) {
+            echo json_encode(['status' => 'error', 'message' => 'Şifre en az 6 karakter olmalıdır.']);
+            exit;
+        }
+
         $data = [
             'id' => (int)$userId,
-            'user_name' => trim($_POST['user_name'] ?? ''),
-            'adi_soyadi' => trim($_POST['adi_soyadi'] ?? ''),
-            'email_adresi' => trim($_POST['email_adresi'] ?? ''),
-            'telefon' => trim($_POST['telefon'] ?? '')
+            'password' => password_hash($password, PASSWORD_BCRYPT)
         ];
 
-        // Şifre boş değilse güncelle
-        if (!empty($_POST['password'])) {
-            $data['password'] = password_hash($_POST['password'], PASSWORD_BCRYPT);
-        }
-
-        // Kullanıcı güncellemesini yapıyoruz
+        // Kullanıcı şifresini güncelliyoruz
         $User->saveWithAttr($data);
-
-        // Kullanıcı güncellendi, Session içindeki bazı bilgileri de güncelleyelim
-        if (isset($_SESSION["user"])) {
-            $_SESSION["user"]->adi_soyadi = $data["adi_soyadi"];
-            $_SESSION["user_full_name"] = $data["adi_soyadi"];
-        }
 
         try {
             $log = new SystemLogModel();
-            $log->logAction($userId, 'Profil Güncelleme', 'Profil bilgileri güncellendi.');
+            $log->logAction($userId, 'Şifre Güncelleme', 'Kullanıcı şifresi başarıyla güncellendi.');
         } catch (\Exception $e) {}
 
         echo json_encode([
             'status' => 'success',
-            'message' => 'Profil bilgileriniz başarıyla güncellendi.'
+            'message' => 'Şifreniz başarıyla güncellendi.'
         ]);
 
     } catch (\PDOException $ex) {
-        if ($ex->getCode() == 23000) {
-            $message = "Bu kullanıcı adı veya e-posta zaten kullanımda.";
-        } else {
-            $message = "Bir hata oluştu: " . $ex->getMessage();
-        }
-        
+        error_log("Profil şifre güncelleme hatası: " . $ex->getMessage());
         echo json_encode([
             'status' => 'error',
-            'message' => $message
+            'message' => 'Şifre güncellenirken bir hata oluştu.'
         ]);
     }
     exit;

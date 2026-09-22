@@ -1515,53 +1515,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'aciklama' => $data['aciklama'] ?? null
             ];
 
-            // Aktif görev kontrolü
-            $aktifGorevCheck = $Personel->getAktifGorevGecmisi($data['personel_id']);
-            if ($aktifGorevCheck) {
-                throw new Exception("Personelin aktif bir görev geçmişi bulunmaktadır. Yeni bir görev kaydı eklemeden önce mevcut görev kaydına bitiş tarihi ekleyerek sonlandırmalısınız.");
-            }
+            $Personel->addGorevMaasDegisikligi($saveData);
 
-            $gapAddedMessage = "";
-            $stmt = $Personel->db->prepare("SELECT * FROM personel_gorev_gecmisi WHERE personel_id = ? AND bitis_tarihi IS NOT NULL AND bitis_tarihi < ? ORDER BY bitis_tarihi DESC LIMIT 1");
-            $stmt->execute([$data['personel_id'], $saveData['baslangic_tarihi']]);
-            $latestRecord = $stmt->fetch(\PDO::FETCH_OBJ);
-
-            if ($latestRecord && !empty($latestRecord->bitis_tarihi)) {
-                $startGap = date('Y-m-d', strtotime($latestRecord->bitis_tarihi . ' +1 day'));
-                $endGap = date('Y-m-d', strtotime($saveData['baslangic_tarihi'] . ' -1 day'));
-                if ($startGap <= $endGap) {
-                    $stmtUZ = $Personel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND kisa_kod = 'UZ' AND silinme_tarihi IS NULL LIMIT 1");
-                    $stmtUZ->execute();
-                    $uzLeave = $stmtUZ->fetch(\PDO::FETCH_OBJ);
-                    if (!$uzLeave) {
-                        $stmtUZ = $Personel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND tur_adi LIKE '%Çalışılmayan Gün%' AND silinme_tarihi IS NULL LIMIT 1");
-                        $stmtUZ->execute();
-                        $uzLeave = $stmtUZ->fetch(\PDO::FETCH_OBJ);
-                    }
-                    if ($uzLeave) {
-                        $toplamGun = (int) round((strtotime($endGap) - strtotime($startGap)) / 86400) + 1;
-                        $stmtInsertIzin = $Personel->db->prepare("
-                            INSERT INTO personel_izinleri (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, onay_durumu, talep_tarihi, olusturma_tarihi)
-                            VALUES (?, ?, ?, ?, ?, 'Onaylandı', NOW(), NOW())
-                        ");
-                        $stmtInsertIzin->execute([
-                            $data['personel_id'],
-                            $uzLeave->id,
-                            $startGap,
-                            $endGap,
-                            $toplamGun
-                        ]);
-                        $gapAddedMessage = " Önceki ücret türü bitiş tarihi ile yeni ücret türü başlangıç tarihi arasında boşluk olan tarihler için (" . Date::dmY($startGap) . " - " . Date::dmY($endGap) . ") '{$uzLeave->tur_adi}' izni eklenmiştir.";
-                    }
-                }
-            }
-
-            $Personel->addGorevGecmisi($saveData);
-
-            // Personel tablosunu aktif kayıtla senkronize et
-            $Personel->syncPersonelFromGorevGecmisi($data['personel_id']);
-
-            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla eklendi.' . $gapAddedMessage]);
+            echo json_encode(['status' => 'success', 'message' => 'Maaş değişikliği başarıyla kaydedildi. Önceki dönem yeni başlangıç tarihinden bir gün önce otomatik kapatıldı.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
@@ -1852,10 +1808,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'isten_ayrilis_belge_yolu' => $documentPath
             ];
 
-            $Personel->addCalismaGecmisi($saveData);
-            $Personel->syncPersonelFromCalismaGecmisi($data['personel_id']);
+            $salaryStatus = $Personel->addCalismaDonemiWithPreviousSalary(
+                $saveData,
+                !empty($data['onceki_maasla_devam'])
+            );
 
-            echo json_encode(['status' => 'success', 'message' => 'Çalışma bilgileri geçmişi başarıyla eklendi.']);
+            $message = 'Çalışma bilgileri geçmişi başarıyla eklendi.';
+            if ($salaryStatus === 'copied') {
+                $message .= ' Önceki görev ve maaş bilgileriyle yeni maaş dönemi oluşturuldu.';
+            } elseif ($salaryStatus === 'no_previous') {
+                $message .= ' Kopyalanabilecek önceki maaş kaydı bulunamadı; Maaş Değişikliği Tanımla bölümünden maaş bilgisi ekleyin.';
+            }
+            echo json_encode(['status' => 'success', 'message' => $message]);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
@@ -1959,10 +1923,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'isten_ayrilis_belge_yolu' => $documentPath
             ];
 
-            $Personel->updateCalismaGecmisi($saveData);
-            $Personel->syncPersonelFromCalismaGecmisi($oldGecmis->personel_id);
+            $Personel->updateCalismaDonemiAndCloseSalary(
+                $saveData,
+                (int) $oldGecmis->personel_id,
+                $oldGecmis->isten_cikis_tarihi ?: null
+            );
 
-            echo json_encode(['status' => 'success', 'message' => 'Çalışma bilgileri geçmişi başarıyla güncellendi.']);
+            $message = 'Çalışma bilgileri geçmişi başarıyla güncellendi.';
+            if (!empty($isten_cikis_tarihi)) {
+                $message .= ' İlgili maaş dönemi de aynı tarihte kapatıldı.';
+            }
+            echo json_encode(['status' => 'success', 'message' => $message]);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }

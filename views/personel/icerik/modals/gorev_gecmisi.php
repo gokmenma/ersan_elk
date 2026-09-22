@@ -68,7 +68,7 @@ use App\Helper\Helper;
                             </div>
                         </div>
                         <div>
-                            <h5 class="modal-title fw-bold text-dark mb-0">Yeni Maaş Tipi Tanımla</h5>
+                            <h5 class="modal-title fw-bold text-dark mb-0">Maaş Değişikliği Tanımla</h5>
                             <p id="modal_header_subtitle" class="text-muted mb-0 small">Değişiklikleri kaydetmek için formu doldurun.</p>
                         </div>
                     </div>
@@ -258,22 +258,7 @@ use App\Helper\Helper;
                                 });
                             }
 
-                            // Buton container'ını güncelle (Aktif kayıt varsa yenisine izin verme)
-                            var isAnyActive = false;
-                            var todayStr = new Date().toISOString().split('T')[0];
-                            $.each(response.data, function(i, item) {
-                                var bitisDate = item.bitis_tarihi ? item.bitis_tarihi : null;
-                                if (item.baslangic_tarihi <= todayStr && (bitisDate === null || bitisDate >= todayStr)) {
-                                    isAnyActive = true;
-                                    return false; // break
-                                }
-                            });
-                            
-                            if (isAnyActive) {
-                                $('#gorevGecmisiButtonContainer').html('<span class="badge bg-soft-warning text-warning p-2"><i class="bx bx-info-circle me-1"></i> Aktif görev kaydı varken yenisi eklenemez.</span>');
-                            } else {
-                                $('#gorevGecmisiButtonContainer').html('<button type="button" class="btn btn-sm btn-primary" id="btnOpenGorevGecmisiModal"><i class="bx bx-plus"></i> Yeni Maaş Tipi Tanımla</button>');
-                            }
+                            $('#gorevGecmisiButtonContainer').html('<button type="button" class="btn btn-sm btn-primary" id="btnOpenGorevGecmisiModal"><i class="bx bx-plus"></i> Maaş Değişikliği Tanımla</button>');
 
                             if (typeof window.invalidateAllTabs === 'function') {
                                 window.invalidateAllTabs();
@@ -326,7 +311,7 @@ use App\Helper\Helper;
                 $(document).off('click', '#btnOpenGorevGecmisiModal').on('click', '#btnOpenGorevGecmisiModal', function () {
                     $('#gorev_gecmisi_id').val('');
                     $('#gorev_gecmisi_action').val('gorev-gecmisi-ekle');
-                    $('#modalGorevGecmisiEkle .modal-title').text('Yeni Maaş Tipi Tanımla');
+                    $('#modalGorevGecmisiEkle .modal-title').text('Maaş Değişikliği Tanımla');
                     $('#modal_header_subtitle').text('Değişiklikleri kaydetmek için formu doldurun.');
                     $('#modal_header_icon').attr('class', 'bx bx-plus-circle');
                     $('#modal_header_icon_box').css({'background': 'rgba(52, 195, 143, 0.1)', 'color': '#34c38f'});

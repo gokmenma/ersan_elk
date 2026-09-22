@@ -14,6 +14,105 @@
         <hr class="m-0" />
 
         <div class="p-4">
+            <h6 class="mb-3 d-flex align-items-center justify-content-between">
+                <span>Hazır Temalar (Ön Tanımlı)</span>
+                <span class="badge bg-primary-subtle text-primary font-size-11">Tek Tıkla Uygula</span>
+            </h6>
+            <div class="theme-preset-grid mb-4">
+                <div class="theme-preset-card" data-preset="kode" role="button" title="Kode Teması (Mavi Üst Bar, Koyu Menü, Inter Font)">
+                    <div class="preset-preview">
+                        <div class="preset-topbar" style="background: #399bff;"></div>
+                        <div class="preset-body">
+                            <div class="preset-sidebar" style="background: #282e38;"></div>
+                            <div class="preset-content" style="background: #f4f6f9;">
+                                <div class="preset-accent-bar" style="background: #399bff;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="preset-name">Kode</span>
+                </div>
+
+                <div class="theme-preset-card" data-preset="ersan" role="button" title="Ersan Gold (Açık Üst Bar, Koyu Menü, Altın Vurgu)">
+                    <div class="preset-preview">
+                        <div class="preset-topbar" style="background: #ffffff; border-bottom: 1px solid #e2e8f0;"></div>
+                        <div class="preset-body">
+                            <div class="preset-sidebar" style="background: #1e293b;"></div>
+                            <div class="preset-content" style="background: #f8fafc;">
+                                <div class="preset-accent-bar" style="background: #e2bd61;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="preset-name">Ersan Gold</span>
+                </div>
+
+                <div class="theme-preset-card" data-preset="midnight-emerald" role="button" title="Midnight Emerald (Zümrüt Üst Bar, Koyu Menü)">
+                    <div class="preset-preview">
+                        <div class="preset-topbar" style="background: #10b981;"></div>
+                        <div class="preset-body">
+                            <div class="preset-sidebar" style="background: #15241f;"></div>
+                            <div class="preset-content" style="background: #f0fdf4;">
+                                <div class="preset-accent-bar" style="background: #10b981;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="preset-name">Zümrüt</span>
+                </div>
+
+                <div class="theme-preset-card" data-preset="royal-purple" role="button" title="Royal Purple (Mor Üst Bar, Koyu Menü)">
+                    <div class="preset-preview">
+                        <div class="preset-topbar" style="background: #5156be;"></div>
+                        <div class="preset-body">
+                            <div class="preset-sidebar" style="background: #1e1b2e;"></div>
+                            <div class="preset-content" style="background: #faf5ff;">
+                                <div class="preset-accent-bar" style="background: #5156be;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="preset-name">Kraliyet Moru</span>
+                </div>
+
+                <div class="theme-preset-card" data-preset="crimson-rose" role="button" title="Crimson Rose (Rose Üst Bar, Koyu Menü)">
+                    <div class="preset-preview">
+                        <div class="preset-topbar" style="background: #ec003f;"></div>
+                        <div class="preset-body">
+                            <div class="preset-sidebar" style="background: #232125;"></div>
+                            <div class="preset-content" style="background: #fff1f2;">
+                                <div class="preset-accent-bar" style="background: #ec003f;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="preset-name">Rose</span>
+                </div>
+
+                <div class="theme-preset-card" data-preset="minimalist" role="button" title="Minimalist Pure (Açık Üst Bar, Beyaz Menü, Sade)">
+                    <div class="preset-preview">
+                        <div class="preset-topbar" style="background: #ffffff; border-bottom: 1px solid #e2e8f0;"></div>
+                        <div class="preset-body">
+                            <div class="preset-sidebar" style="background: #ffffff; border-right: 1px solid #e2e8f0;"></div>
+                            <div class="preset-content" style="background: #fcfcfd;">
+                                <div class="preset-accent-bar" style="background: #18181b;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="preset-name">Sade Beyaz</span>
+                </div>
+
+                <div class="theme-preset-card" data-preset="dark-pro" role="button" title="Dark Pro (Tam Gece Modu, Cyan Vurgu)">
+                    <div class="preset-preview">
+                        <div class="preset-topbar" style="background: #191e22; border-bottom: 1px solid #303840;"></div>
+                        <div class="preset-body">
+                            <div class="preset-sidebar" style="background: #191e22; border-right: 1px solid #303840;"></div>
+                            <div class="preset-content" style="background: #121619;">
+                                <div class="preset-accent-bar" style="background: #06b6d4;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="preset-name">Koyu Gece</span>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
             <h6 class="mb-3">Tema Rengi Seçin</h6>
             <div class="color-selector-group">
                 <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"

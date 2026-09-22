@@ -294,21 +294,14 @@ use App\Helper\Helper;
     <div class="col-md-12 mt-3">
         <div class="card border h-100 history-card">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <div><h5 class="card-title mb-1 text-primary"><i class="bx bx-briefcase me-2"></i>Maaş tipi geçmişi</h5><div class="small text-muted">Görev, maaş türü ve geçerlilik dönemlerini takip edin.</div></div>
+                <div><h5 class="card-title mb-1 text-primary"><i class="bx bx-briefcase me-2"></i>Maaş tipi geçmişi</h5><div class="small text-muted">Çalışma devam ederken yapılan görev, maaş türü ve ücret değişikliklerini yönetin.</div></div>
                 <div id="gorevGecmisiButtonContainer">
                     <?php if ($id > 0): ?>
                         <?php 
-                        $aktifGorevCheck = $PersonelModel->getAktifGorevGecmisi($id);
-                        if (!$aktifGorevCheck): 
                         ?>
-                            <button type="button" class="btn btn-sm btn-primary" id="btnOpenGorevGecmisiModal">
-                                <i class="bx bx-plus"></i> Yeni Maaş Tipi Tanımla
-                            </button>
-                        <?php else: ?>
-                            <span class="badge bg-soft-warning text-warning p-2">
-                                <i class="bx bx-info-circle me-1"></i> Aktif görev kaydı varken yenisi eklenemez.
-                            </span>
-                        <?php endif; ?>
+                        <button type="button" class="btn btn-sm btn-primary" id="btnOpenGorevGecmisiModal">
+                            <i class="bx bx-plus"></i> Maaş Değişikliği Tanımla
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>

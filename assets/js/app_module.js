@@ -395,6 +395,181 @@ File: Main Js File
       body.setAttribute("data-theme-mode", savedColorTheme);
     }
 
+    // Theme Presets Definition
+    const THEME_PRESETS = {
+      kode: {
+        name: "Kode",
+        topbarColor: "#399bff",
+        sidebarColor: "#282e38",
+        primaryColor: "#399bff",
+        themeMode: "default",
+        layoutMode: "light",
+        fontFamily: "Inter"
+      },
+      ersan: {
+        name: "Ersan Gold",
+        topbarColor: "light",
+        sidebarColor: "dark",
+        primaryColor: "#e2bd61",
+        themeMode: "ersan",
+        layoutMode: "light",
+        fontFamily: "Geist"
+      },
+      "midnight-emerald": {
+        name: "Zümrüt",
+        topbarColor: "#10b981",
+        sidebarColor: "#15241f",
+        primaryColor: "#10b981",
+        themeMode: "emerald",
+        layoutMode: "light",
+        fontFamily: "Plus Jakarta Sans"
+      },
+      "royal-purple": {
+        name: "Kraliyet Moru",
+        topbarColor: "#5156be",
+        sidebarColor: "#1e1b2e",
+        primaryColor: "#5156be",
+        themeMode: "purple",
+        layoutMode: "light",
+        fontFamily: "Outfit"
+      },
+      "crimson-rose": {
+        name: "Rose",
+        topbarColor: "#ec003f",
+        sidebarColor: "#232125",
+        primaryColor: "#ec003f",
+        themeMode: "rose",
+        layoutMode: "light",
+        fontFamily: "Poppins"
+      },
+      minimalist: {
+        name: "Sade Beyaz",
+        topbarColor: "light",
+        sidebarColor: "light",
+        primaryColor: "#18181b",
+        themeMode: "slate",
+        layoutMode: "light",
+        fontFamily: "Geist"
+      },
+      "dark-pro": {
+        name: "Koyu Gece",
+        topbarColor: "dark",
+        sidebarColor: "dark",
+        primaryColor: "#06b6d4",
+        themeMode: "cyan",
+        layoutMode: "dark",
+        fontFamily: "Inter"
+      }
+    };
+
+    function applyPresetTheme(presetKey, isInitial) {
+      const preset = THEME_PRESETS[presetKey];
+      if (!preset) return;
+
+      // 1. Layout Mode (Light/Dark)
+      html.setAttribute("data-bs-theme", preset.layoutMode);
+      localStorage.setItem("data-bs-theme", preset.layoutMode);
+      updateRadio("layout-mode-" + preset.layoutMode);
+
+      // 2. Font Family
+      html.setAttribute("data-font-family", preset.fontFamily);
+      localStorage.setItem("data-font-family", preset.fontFamily);
+      const fontRadioMap = {
+        "Geist": "font-geist",
+        "Inter": "font-inter",
+        "Outfit": "font-outfit",
+        "Poppins": "font-poppins",
+        "Plus Jakarta Sans": "font-jakarta",
+        "Lexend": "font-lexend"
+      };
+      if (fontRadioMap[preset.fontFamily]) {
+        updateRadio(fontRadioMap[preset.fontFamily]);
+      }
+
+      // 3. Primary / Theme Color
+      if (preset.primaryColor.startsWith("#")) {
+        $("#custom-theme-picker").val(preset.primaryColor);
+        document.documentElement.style.setProperty("--bs-primary", preset.primaryColor);
+        const r = parseInt(preset.primaryColor.slice(1, 3), 16),
+              g = parseInt(preset.primaryColor.slice(3, 5), 16),
+              b = parseInt(preset.primaryColor.slice(5, 7), 16);
+        document.documentElement.style.setProperty("--bs-primary-rgb", `${r}, ${g}, ${b}`);
+        localStorage.setItem("custom-primary-color", preset.primaryColor);
+      } else {
+        localStorage.removeItem("custom-primary-color");
+      }
+      html.setAttribute("data-theme-mode", preset.themeMode);
+      body.setAttribute("data-theme-mode", preset.themeMode);
+      localStorage.setItem("data-theme-mode", preset.themeMode);
+      updateRadio("theme-" + preset.themeMode);
+
+      // 4. Topbar Color
+      if (preset.topbarColor.startsWith("#")) {
+        applyCustomTopbar(preset.topbarColor);
+        localStorage.setItem("custom-topbar-color", preset.topbarColor);
+        $("#custom-topbar-picker").val(preset.topbarColor);
+        document.body.removeAttribute("data-topbar");
+        localStorage.removeItem("data-topbar");
+        $("input[name='topbar-color']").prop("checked", false);
+      } else {
+        localStorage.removeItem("custom-topbar-color");
+        $("#custom-topbar-style").remove();
+        document.body.setAttribute("data-topbar", preset.topbarColor);
+        localStorage.setItem("data-topbar", preset.topbarColor);
+        updateRadio("topbar-color-" + preset.topbarColor);
+      }
+
+      // 5. Sidebar Color
+      if (preset.sidebarColor.startsWith("#")) {
+        applyCustomSidebar(preset.sidebarColor);
+        localStorage.setItem("custom-sidebar-color", preset.sidebarColor);
+        $("#custom-sidebar-picker").val(preset.sidebarColor);
+        document.body.removeAttribute("data-sidebar");
+        localStorage.removeItem("data-sidebar");
+        $("input[name='sidebar-color']").prop("checked", false);
+      } else {
+        localStorage.removeItem("custom-sidebar-color");
+        $("#custom-sidebar-style").remove();
+        document.body.setAttribute("data-sidebar", preset.sidebarColor);
+        localStorage.setItem("data-sidebar", preset.sidebarColor);
+        updateRadio("sidebar-color-" + preset.sidebarColor);
+      }
+
+      // 6. Active state on preset card
+      $(".theme-preset-card").removeClass("active");
+      $(`.theme-preset-card[data-preset="${presetKey}"]`).addClass("active");
+      localStorage.setItem("data-theme-preset", presetKey);
+      document.documentElement.setAttribute("data-theme-preset", presetKey);
+
+      if (!isInitial && typeof showToast === "function") {
+        showToast(preset.name + " teması uygulandı", "success");
+      }
+    }
+
+    // Preset card click listener
+    $(document).on("click", ".theme-preset-card", function () {
+      const presetKey = $(this).data("preset");
+      if (presetKey) {
+        applyPresetTheme(presetKey, false);
+      }
+    });
+
+    // Check saved preset on load
+    const savedPreset = localStorage.getItem("data-theme-preset");
+    if (savedPreset && THEME_PRESETS[savedPreset]) {
+      $(`.theme-preset-card[data-preset="${savedPreset}"]`).addClass("active");
+      document.documentElement.setAttribute("data-theme-preset", savedPreset);
+    }
+
+    // Clear preset selection when manual customizer settings are altered
+    $(document).on("change input", "input[name='theme-mode'], input[name='font-family'], input[name='layout-mode'], input[name='topbar-color'], input[name='sidebar-color'], #custom-theme-picker, #custom-topbar-picker, #custom-sidebar-picker", function (e) {
+      if (!$(e.target).closest(".theme-preset-card").length) {
+        $(".theme-preset-card").removeClass("active");
+        localStorage.removeItem("data-theme-preset");
+        document.documentElement.removeAttribute("data-theme-preset");
+      }
+    });
+
     // right side-bar toggle
     $(".right-bar-toggle").on("click", function (e) {
       $("body").toggleClass("right-bar-enabled");
