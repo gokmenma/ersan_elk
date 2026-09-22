@@ -372,11 +372,39 @@ use App\Service\Gate;
             font-size: 16px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
             transition: all 0.15s ease;
+            cursor: pointer;
         }
         .puantaj-focus-toggle:hover {
             border-color: #cbd5e1;
             background: #f1f5f9;
             color: var(--pnt-text-main);
+        }
+
+        /* Odak Modu (Focus Mode) Geçiş ve Gizleme */
+        .puantaj-focus-panel {
+            transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, margin 0.28s ease, padding 0.28s ease;
+            max-height: 500px;
+            opacity: 1;
+            overflow: visible;
+        }
+
+        body.puantaj-focus-transition .puantaj-focus-panel {
+            overflow: hidden !important;
+        }
+
+        body.puantaj-focus-mode .puantaj-focus-panel {
+            max-height: 0 !important;
+            opacity: 0 !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+        }
+
+        body.puantaj-focus-mode .puantaj-table-wrapper {
+            max-height: calc(100vh - 210px) !important;
         }
 
         /* -------------------------------------------------------------

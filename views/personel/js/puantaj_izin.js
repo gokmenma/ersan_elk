@@ -26,35 +26,22 @@ $(document).ready(function () {
   const savedIskurDahil = localStorage.getItem("puantaj_iskur_dahil") !== "0";
   $("#check-iskur-dahil").prop("checked", savedIskurDahil);
 
-  // Initialize Bootstrap Tooltips and Popovers safely
-  try {
-    const container = document.getElementById("puantaj-full-container");
-    if (container && typeof bootstrap !== "undefined") {
-      if (bootstrap.Tooltip) {
-        const existingTooltip = bootstrap.Tooltip.getInstance(container);
-        if (!existingTooltip) {
-          new bootstrap.Tooltip(container, {
-            selector: '[data-bs-toggle="tooltip"]',
-            trigger: "hover",
-            container: "body",
-          });
-        }
-      }
-      if (bootstrap.Popover) {
-        const existingPopover = bootstrap.Popover.getInstance(container);
-        if (!existingPopover) {
-          new bootstrap.Popover(container, {
-            selector: '[data-bs-toggle="popover"]',
-            trigger: "hover focus",
-            html: true,
-            container: "body",
-          });
-        }
-      }
+  // On-demand Tooltip ve Popover desteği (Çift instance çakışmasını %100 engeller)
+  $(document).on("mouseenter", '[data-bs-toggle="tooltip"]', function () {
+    if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
+      bootstrap.Tooltip.getOrCreateInstance(this, { container: "body" });
     }
-  } catch (err) {
-    console.warn("Bootstrap Tooltip/Popover init warning:", err);
-  }
+  });
+
+  $(document).on("mouseenter focus", '[data-bs-toggle="popover"]', function () {
+    if (typeof bootstrap !== "undefined" && bootstrap.Popover) {
+      bootstrap.Popover.getOrCreateInstance(this, {
+        container: "body",
+        trigger: "hover focus",
+        html: true,
+      });
+    }
+  });
 
   loadDefinitions(function () {
     renderTable();
@@ -211,7 +198,8 @@ $(document).ready(function () {
     }
   }
 
-  $("#btn-puantaj-focus").on("click", function () {
+  $(document).on("click", "#btn-puantaj-focus", function (e) {
+    e.preventDefault();
     setPuantajFocusMode(!$("body").hasClass("puantaj-focus-mode"));
   });
 
