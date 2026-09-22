@@ -221,7 +221,8 @@ if ($page == "hakedisler/hakedis-detay") {
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('./sw.js').then(function (registration) {
+            navigator.serviceWorker.register('./sw.js?v=<?php echo file_exists("sw.js") ? filemtime("sw.js") : time(); ?>').then(function (registration) {
+                registration.update();
                 console.log('ServiceWorker registration successful with scope: ', registration.scope);
             }, function (err) {
                 console.log('ServiceWorker registration failed: ', err);

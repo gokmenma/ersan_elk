@@ -16,6 +16,7 @@ use App\Model\AracModel;
 use App\Model\AracHareketleriModel;
 use App\Model\SettingsModel;
 use App\Helper\Security;
+use App\Helper\Date;
 
 // Response helper
 function response($success, $data = null, $message = '')
@@ -183,8 +184,10 @@ try {
         // Personel hareket geçmişi
         case 'getHareketGecmisi':
             $personel_id = isset($_POST['personel_id']) ? Security::decrypt($_POST['personel_id']) : 0;
-            $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-7 days'));
-            $bitis = $_POST['bitis'] ?? date('Y-m-d');
+            $baslangic = !empty($_POST['baslangic']) ? Date::dttoeng($_POST['baslangic']) : date('Y-m-d', strtotime('-7 days'));
+            $bitis = !empty($_POST['bitis']) ? Date::dttoeng($_POST['bitis']) : date('Y-m-d');
+            if (empty($baslangic)) $baslangic = date('Y-m-d', strtotime('-7 days'));
+            if (empty($bitis)) $bitis = date('Y-m-d');
 
             if (!$personel_id) {
                 response(false, null, 'Personel ID gerekli');
@@ -195,8 +198,6 @@ try {
                 response(false, null, 'Personel bulunamadı');
             }
             
-            $hareketler = $HareketModel->getRapor($personel_id, $baslangic, $bitis);
-
             $hareketler = $HareketModel->getRapor($personel_id, $baslangic, $bitis);
 
             $data = [];
@@ -228,16 +229,11 @@ try {
 
         // Tarih aralığı raporu
         case 'getRapor':
-            $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-30 days'));
-            $bitis = $_POST['bitis'] ?? date('Y-m-d');
+            $baslangic = !empty($_POST['baslangic']) ? Date::dttoeng($_POST['baslangic']) : date('Y-m-d', strtotime('-30 days'));
+            $bitis = !empty($_POST['bitis']) ? Date::dttoeng($_POST['bitis']) : date('Y-m-d');
+            if (empty($baslangic)) $baslangic = date('Y-m-d', strtotime('-30 days'));
+            if (empty($bitis)) $bitis = date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
-            
-            // PersonelHareketleriModel::getRapor departman filtresi almıyor, 
-            // ama dolaylı yoldan firma_id üzerinden veya manuel filtreleme ile yapabiliriz.
-            // En temizi SQL'i burada kısıtlamak veya Model'i güncellemek.
-            // Ancak Model'i PersonelModel::all gibi güncelleyebiliriz veya burada sonuçları filtreleyebiliriz.
-            
-            $hareketler = $HareketModel->getRapor(null, $baslangic, $bitis, $firma_id);
             
             $hareketler = $HareketModel->getRapor(null, $baslangic, $bitis, $firma_id);
 
@@ -375,8 +371,10 @@ try {
 
         // Çalışma süreleri raporu
         case 'getCalismaRaporu':
-            $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-7 days'));
-            $bitis = $_POST['bitis'] ?? date('Y-m-d');
+            $baslangic = !empty($_POST['baslangic']) ? Date::dttoeng($_POST['baslangic']) : date('Y-m-d', strtotime('-7 days'));
+            $bitis = !empty($_POST['bitis']) ? Date::dttoeng($_POST['bitis']) : date('Y-m-d');
+            if (empty($baslangic)) $baslangic = date('Y-m-d', strtotime('-7 days'));
+            if (empty($bitis)) $bitis = date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
             $departman = $_POST['departman'] ?? null;
             
@@ -808,15 +806,20 @@ try {
 
         case 'getDashboardAnaliz':
             $firma_id = $_SESSION['firma_id'] ?? null;
-            $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-7 days'));
-            $bitis = $_POST['bitis'] ?? date('Y-m-d');
-            $departman = !empty($_POST['departman']) ? $_POST['departman'] : null;
+            $baslangic_raw = $_POST['baslangic'] ?? $_GET['baslangic'] ?? '';
+            $bitis_raw = $_POST['bitis'] ?? $_GET['bitis'] ?? '';
+            $baslangic = !empty($baslangic_raw) ? Date::dttoeng($baslangic_raw) : date('Y-m-d', strtotime('-7 days'));
+            $bitis = !empty($bitis_raw) ? Date::dttoeng($bitis_raw) : date('Y-m-d');
+            if (empty($baslangic)) $baslangic = date('Y-m-d', strtotime('-7 days'));
+            if (empty($bitis)) $bitis = date('Y-m-d');
+
+            $departman = !empty($_POST['departman']) ? $_POST['departman'] : (!empty($_GET['departman']) ? $_GET['departman'] : null);
             
             if ($is_restricted) {
                 $departman = $restricted_dept;
             }
 
-            $personel_id_param = $_POST['personel_id'] ?? null;
+            $personel_id_param = $_POST['personel_id'] ?? $_GET['personel_id'] ?? null;
             $selected_personel_id = null;
             if (!empty($personel_id_param) && $personel_id_param !== 'all') {
                 $selected_personel_id = is_numeric($personel_id_param) ? (int)$personel_id_param : (int)Security::decrypt($personel_id_param);
@@ -847,12 +850,17 @@ try {
             $stmtP->execute($paramsPersonel);
             $personelList = $stmtP->fetchAll(PDO::FETCH_ASSOC);
 
+            $rootPath = dirname(dirname(__DIR__));
             $personelMap = [];
             $personelIds = [];
             foreach ($personelList as $p) {
                 $pId = (int)$p['id'];
                 $personelIds[] = $pId;
-                $fotoUrl = !empty($p['personel_resim_yolu']) ? $p['personel_resim_yolu'] : (!empty($p['resim_yolu']) ? $p['resim_yolu'] : '');
+                $rawFoto = !empty($p['personel_resim_yolu']) ? $p['personel_resim_yolu'] : (!empty($p['resim_yolu']) ? $p['resim_yolu'] : '');
+                $fotoUrl = 'assets/images/users/user-dummy-img.jpg';
+                if (!empty($rawFoto) && file_exists($rootPath . '/' . $rawFoto)) {
+                    $fotoUrl = $rawFoto;
+                }
                 $personelMap[$pId] = [
                     'id' => $pId,
                     'id_enc' => Security::encrypt($pId),
@@ -1332,6 +1340,295 @@ try {
                 response(false, null, 'Kaydedilirken bir hata oluştu');
             }
             break;
+
+        case 'exportCalismaRaporu':
+            $firma_id = $_SESSION['firma_id'] ?? null;
+            $baslangic_raw = $_POST['baslangic'] ?? $_GET['baslangic'] ?? '';
+            $bitis_raw = $_POST['bitis'] ?? $_GET['bitis'] ?? '';
+            $baslangic = !empty($baslangic_raw) ? Date::dttoeng($baslangic_raw) : date('Y-m-d', strtotime('-7 days'));
+            $bitis = !empty($bitis_raw) ? Date::dttoeng($bitis_raw) : date('Y-m-d');
+            if (empty($baslangic)) $baslangic = date('Y-m-d', strtotime('-7 days'));
+            if (empty($bitis)) $bitis = date('Y-m-d');
+
+            $departman = !empty($_POST['departman']) ? $_POST['departman'] : (!empty($_GET['departman']) ? $_GET['departman'] : null);
+            if ($is_restricted) {
+                $departman = $restricted_dept;
+            }
+
+            // Personel Listesini Çek
+            $sqlPersonel = "SELECT id, adi_soyadi, departman, gorev, cep_telefonu 
+                            FROM personel 
+                            WHERE silinme_tarihi IS NULL 
+                              AND aktif_mi = 1 
+                              AND (saha_takibi = 1 OR disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri))";
+            $paramsPersonel = [];
+            if ($firma_id) {
+                $sqlPersonel .= " AND firma_id = :firma_id";
+                $paramsPersonel[':firma_id'] = $firma_id;
+            }
+            if ($departman) {
+                $sqlPersonel .= " AND departman = :departman";
+                $paramsPersonel[':departman'] = $departman;
+            }
+            $sqlPersonel .= " ORDER BY adi_soyadi ASC";
+
+            $stmtP = $db->prepare($sqlPersonel);
+            $stmtP->execute($paramsPersonel);
+            $personelList = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+
+            $personelMap = [];
+            foreach ($personelList as $p) {
+                $pId = (int)$p['id'];
+                $personelMap[$pId] = [
+                    'id' => $pId,
+                    'adi_soyadi' => $p['adi_soyadi'],
+                    'departman' => $p['departman'] ?: 'Genel',
+                    'gorev' => $p['gorev'] ?: '-',
+                    'cep_telefonu' => $p['cep_telefonu'] ?: '-',
+                    'calistigi_gunler' => [],
+                    'toplam_dakika' => 0,
+                    'zamaninda_sayisi' => 0,
+                    'gec_sayisi' => 0,
+                    'toplam_gecikme_dk' => 0,
+                    'baslama_saatleri' => [],
+                    'bitis_saatleri' => []
+                ];
+            }
+
+            // Hareket Kayıtlarını Çek
+            $sqlHareket = "SELECT ph.personel_id, ph.islem_tipi, ph.zaman
+                           FROM personel_hareketleri ph
+                           WHERE ph.silinme_tarihi IS NULL
+                             AND ph.zaman >= :baslangic_dt AND ph.zaman <= :bitis_dt";
+            $paramsHareket = [
+                ':baslangic_dt' => $baslangic . ' 00:00:00',
+                ':bitis_dt' => $bitis . ' 23:59:59'
+            ];
+            if ($firma_id) {
+                $sqlHareket .= " AND ph.firma_id = :firma_id";
+                $paramsHareket[':firma_id'] = $firma_id;
+            }
+            $sqlHareket .= " ORDER BY ph.personel_id ASC, ph.zaman ASC";
+
+            $stmtH = $db->prepare($sqlHareket);
+            $stmtH->execute($paramsHareket);
+            $hareketler = $stmtH->fetchAll(PDO::FETCH_ASSOC);
+
+            // İzinleri Çek
+            $sqlIzin = "SELECT pi.personel_id, pi.baslangic_tarihi, pi.bitis_tarihi 
+                        FROM personel_izinleri pi 
+                        LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id 
+                        WHERE pi.silinme_tarihi IS NULL 
+                          AND pi.onay_durumu = 'Onaylandı' 
+                          AND pi.baslangic_tarihi <= :bitis_date 
+                          AND pi.bitis_tarihi >= :baslangic_date
+                          AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
+            $stmtIzin = $db->prepare($sqlIzin);
+            $stmtIzin->execute([
+                ':baslangic_date' => $baslangic,
+                ':bitis_date' => $bitis
+            ]);
+            $izinList = $stmtIzin->fetchAll(PDO::FETCH_ASSOC);
+            $izinGunleri = [];
+            foreach ($izinList as $iz) {
+                $pId = (int)$iz['personel_id'];
+                $cur = strtotime($iz['baslangic_tarihi']);
+                $end = strtotime($iz['bitis_tarihi']);
+                while ($cur <= $end) {
+                    $dStr = date('Y-m-d', $cur);
+                    if ($dStr >= $baslangic && $dStr <= $bitis) {
+                        $izinGunleri[$pId][$dStr] = true;
+                    }
+                    $cur = strtotime('+1 day', $cur);
+                }
+            }
+
+            $personelGunlukData = [];
+            foreach ($hareketler as $h) {
+                $pId = (int)$h['personel_id'];
+                if (!isset($personelMap[$pId])) continue;
+
+                $gun = date('Y-m-d', strtotime($h['zaman']));
+                if (!isset($personelGunlukData[$pId][$gun])) {
+                    $personelGunlukData[$pId][$gun] = [
+                        'hareketler' => [],
+                        'ilk_basla' => null,
+                        'son_bitir' => null
+                    ];
+                }
+                $personelGunlukData[$pId][$gun]['hareketler'][] = $h;
+                if ($h['islem_tipi'] === 'BASLA' && !$personelGunlukData[$pId][$gun]['ilk_basla']) {
+                    $personelGunlukData[$pId][$gun]['ilk_basla'] = $h['zaman'];
+                }
+                if ($h['islem_tipi'] === 'BITIR') {
+                    $personelGunlukData[$pId][$gun]['son_bitir'] = $h['zaman'];
+                }
+            }
+
+            $gunler = [];
+            $curDate = strtotime($baslangic);
+            $endDate = strtotime($bitis);
+            while ($curDate <= $endDate) {
+                $gunler[] = date('Y-m-d', $curDate);
+                $curDate = strtotime('+1 day', $curDate);
+            }
+
+            foreach ($personelMap as $pId => &$pInfo) {
+                $deptMesai = getDeptMesai($pInfo['departman'], $deptMesaileri);
+                
+                foreach ($gunler as $dStr) {
+                    $isIzinli = isset($izinGunleri[$pId][$dStr]);
+
+                    if (isset($personelGunlukData[$pId][$dStr])) {
+                        $gData = $personelGunlukData[$pId][$dStr];
+                        $hareketList = $gData['hareketler'];
+
+                        $gunlukDk = 0;
+                        $lastBasla = null;
+
+                        foreach ($hareketList as $hk) {
+                            if ($hk['islem_tipi'] === 'BASLA') {
+                                $lastBasla = strtotime($hk['zaman']);
+                            } elseif ($hk['islem_tipi'] === 'BITIR' && $lastBasla !== null) {
+                                $bitisTs = strtotime($hk['zaman']);
+                                if ($bitisTs > $lastBasla) {
+                                    $gunlukDk += ($bitisTs - $lastBasla) / 60;
+                                }
+                                $lastBasla = null;
+                            }
+                        }
+
+                        if ($lastBasla !== null && $dStr === date('Y-m-d')) {
+                            $nowTs = time();
+                            if ($nowTs > $lastBasla) {
+                                $farkDk = ($nowTs - $lastBasla) / 60;
+                                if ($farkDk > 0 && $farkDk < 840) {
+                                    $gunlukDk += $farkDk;
+                                }
+                            }
+                        }
+
+                        if ($gunlukDk <= 0 && $gData['ilk_basla'] && $gData['son_bitir']) {
+                            $fark = strtotime($gData['son_bitir']) - strtotime($gData['ilk_basla']);
+                            if ($fark > 0) {
+                                $gunlukDk = $fark / 60;
+                            }
+                        }
+
+                        if ($gData['ilk_basla']) {
+                            $pInfo['calistigi_gunler'][] = $dStr;
+                            $pInfo['toplam_dakika'] += $gunlukDk;
+
+                            $baslamaDt = new DateTime($gData['ilk_basla']);
+                            $baslamaSaatStr = $baslamaDt->format('H:i');
+                            $baslamaHms = $baslamaDt->format('H:i:s');
+                            $pInfo['baslama_saatleri'][] = strtotime('1970-01-01 ' . $baslamaHms);
+
+                            if ($gData['son_bitir']) {
+                                $bitisHms = date('H:i:s', strtotime($gData['son_bitir']));
+                                $pInfo['bitis_saatleri'][] = strtotime('1970-01-01 ' . $bitisHms);
+                            }
+
+                            if (!$isIzinli) {
+                                if ($baslamaSaatStr > $deptMesai) {
+                                    $pInfo['gec_sayisi']++;
+                                    $limitTs = strtotime($dStr . ' ' . $deptMesai);
+                                    $startTs = $baslamaDt->getTimestamp();
+                                    $gecikmeDk = max(0, round(($startTs - $limitTs) / 60));
+                                    $pInfo['toplam_gecikme_dk'] += $gecikmeDk;
+                                } else {
+                                    $pInfo['zamaninda_sayisi']++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            unset($pInfo);
+
+            // Spreadsheet oluştur
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Çalışma Analizi');
+
+            $sheet->mergeCells('A1:M1');
+            $sheet->setCellValue('A1', 'PERSONEL ÇALIŞMA VE PERFORMANS RAPORU (' . date('d.m.Y', strtotime($baslangic)) . ' - ' . date('d.m.Y', strtotime($bitis)) . ')');
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+            $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+            $headers = [
+                'Personel Adı Soyadı',
+                'Departman',
+                'Görev',
+                'Cep Telefonu',
+                'Çalışılan Gün',
+                'Toplam Mesai (Saat)',
+                'Ortalama Mesai (Saat)',
+                'Zamanında Başlama',
+                'Geç Başlama',
+                'Toplam Gecikme (Dk)',
+                'Dakiklik Skoru',
+                'Ort. Giriş Saati',
+                'Ort. Çıkış Saati'
+            ];
+
+            $col = 'A';
+            foreach ($headers as $h) {
+                $sheet->setCellValue($col . '3', $h);
+                $col++;
+            }
+
+            $sheet->getStyle('A3:M3')->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
+            $sheet->getStyle('A3:M3')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FF2A3042');
+            $sheet->getStyle('A3:M3')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+            $rowIdx = 4;
+            foreach ($personelMap as $p) {
+                $calistigiGun = count($p['calistigi_gunler']);
+                $toplamSaat = round($p['toplam_dakika'] / 60, 1);
+                $ortSaat = $calistigiGun > 0 ? round($toplamSaat / $calistigiGun, 1) : 0;
+                $toplamGiris = $p['zamaninda_sayisi'] + $p['gec_sayisi'];
+                $dakiklikSkor = $toplamGiris > 0 ? round(($p['zamaninda_sayisi'] / $toplamGiris) * 100) : 100;
+
+                $avgBaslama = '-';
+                if (!empty($p['baslama_saatleri'])) {
+                    $avgBaslama = date('H:i', (int)(array_sum($p['baslama_saatleri']) / count($p['baslama_saatleri'])));
+                }
+
+                $avgBitis = '-';
+                if (!empty($p['bitis_saatleri'])) {
+                    $avgBitis = date('H:i', (int)(array_sum($p['bitis_saatleri']) / count($p['bitis_saatleri'])));
+                }
+
+                $sheet->setCellValue('A' . $rowIdx, $p['adi_soyadi']);
+                $sheet->setCellValue('B' . $rowIdx, $p['departman']);
+                $sheet->setCellValue('C' . $rowIdx, $p['gorev']);
+                $sheet->setCellValue('D' . $rowIdx, $p['cep_telefonu']);
+                $sheet->setCellValue('E' . $rowIdx, $calistigiGun);
+                $sheet->setCellValue('F' . $rowIdx, $toplamSaat);
+                $sheet->setCellValue('G' . $rowIdx, $ortSaat);
+                $sheet->setCellValue('H' . $rowIdx, $p['zamaninda_sayisi']);
+                $sheet->setCellValue('I' . $rowIdx, $p['gec_sayisi']);
+                $sheet->setCellValue('J' . $rowIdx, $p['toplam_gecikme_dk']);
+                $sheet->setCellValue('K' . $rowIdx, '%' . $dakiklikSkor);
+                $sheet->setCellValue('L' . $rowIdx, $avgBaslama);
+                $sheet->setCellValue('M' . $rowIdx, $avgBitis);
+
+                $rowIdx++;
+            }
+
+            foreach (range('A', 'M') as $colLetter) {
+                $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+            }
+
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="Personel_Calisma_Raporu_' . date('Ymd_His') . '.xlsx"');
+            header('Cache-Control: max-age=0');
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
+            exit;
 
         default:
             response(false, null, 'Geçersiz işlem');

@@ -15,23 +15,46 @@ use App\Helper\Date;
 $maintitle = "Personel Takip";
 $title = "Saha Personel Takibi";
 
-$db = (new \App\Core\Db())->db;
-$stmt = $db->prepare("SELECT DISTINCT departman FROM personel WHERE silinme_tarihi IS NULL AND departman IS NOT NULL AND departman != '' AND (saha_takibi = 1 OR disardan_sigortali = 0) ORDER BY departman ASC");
-$stmt->execute();
-$departmanlar = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
 $departmanOptions = ['' => 'Tüm Departmanlar'];
-foreach ($departmanlar as $dept) {
-    $departmanOptions[$dept] = $dept;
-}
-
-$stmtPList = $db->prepare("SELECT id, adi_soyadi, departman FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND (saha_takibi = 1 OR disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri)) ORDER BY adi_soyadi ASC");
-$stmtPList->execute();
-$dashboardPersoneller = $stmtPList->fetchAll(PDO::FETCH_ASSOC);
-
 $dashboardPersonelOptions = ['all' => 'Tüm Personeller'];
-foreach ($dashboardPersoneller as $dp) {
-    $dashboardPersonelOptions[$dp['id']] = $dp['adi_soyadi'] . ($dp['departman'] ? ' (' . $dp['departman'] . ')' : '');
+
+try {
+    $db = (new \App\Core\Db())->db;
+    $firma_id = $_SESSION['firma_id'] ?? null;
+
+    // Departmanlar
+    $sqlDept = "SELECT DISTINCT departman FROM personel WHERE silinme_tarihi IS NULL AND departman IS NOT NULL AND departman != ''";
+    $paramsDept = [];
+    if ($firma_id) {
+        $sqlDept .= " AND firma_id = :firma_id";
+        $paramsDept[':firma_id'] = $firma_id;
+    }
+    $sqlDept .= " ORDER BY departman ASC";
+    $stmtDept = $db->prepare($sqlDept);
+    $stmtDept->execute($paramsDept);
+    $departmanlar = $stmtDept->fetchAll(PDO::FETCH_COLUMN);
+
+    foreach ($departmanlar as $dept) {
+        $departmanOptions[$dept] = $dept;
+    }
+
+    // Personel Listesi
+    $sqlP = "SELECT id, adi_soyadi, departman FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1";
+    $paramsP = [];
+    if ($firma_id) {
+        $sqlP .= " AND firma_id = :firma_id";
+        $paramsP[':firma_id'] = $firma_id;
+    }
+    $sqlP .= " ORDER BY adi_soyadi ASC";
+    $stmtP = $db->prepare($sqlP);
+    $stmtP->execute($paramsP);
+    $dashboardPersoneller = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($dashboardPersoneller as $dp) {
+        $dashboardPersonelOptions[$dp['id']] = $dp['adi_soyadi'] . (!empty($dp['departman']) ? ' (' . $dp['departman'] . ')' : '');
+    }
+} catch (\Throwable $e) {
+    error_log("Personel takip list.php init error: " . $e->getMessage());
 }
 ?>
 
@@ -466,7 +489,7 @@ foreach ($dashboardPersoneller as $dp) {
                                 <div class="card-body p-3">
                                     <div class="row align-items-center">
                                         <div class="col-auto">
-                                            <img id="dashBireyselFoto" src="assets/images/users/user-dummy-img.jpg" class="rounded-circle avatar-md border p-1" style="object-fit: cover; width: 64px; height: 64px;" alt="Personel">
+                                            <img id="dashBireyselFoto" src="assets/images/users/user-dummy-img.jpg" onerror="this.onerror=null;this.src='assets/images/users/user-dummy-img.jpg';" class="rounded-circle avatar-md border p-1" style="object-fit: cover; width: 64px; height: 64px;" alt="Personel">
                                         </div>
                                         <div class="col">
                                             <div class="d-flex align-items-center gap-2 mb-1">
@@ -709,7 +732,7 @@ foreach ($dashboardPersoneller as $dp) {
                 <!-- Personel Bilgisi -->
                 <div class="d-flex align-items-center mb-4 p-3 bg-light rounded">
                     <div class="flex-shrink-0">
-                        <img id="gecmisPersonelFoto" src="assets/images/users/user-dummy-img.jpg" class="rounded-circle"
+                        <img id="gecmisPersonelFoto" src="assets/images/users/user-dummy-img.jpg" onerror="this.onerror=null;this.src='assets/images/users/user-dummy-img.jpg';" class="rounded-circle"
                             width="60" height="60" style="object-fit: cover;">
                     </div>
                     <div class="flex-grow-1 ms-3">
@@ -1330,7 +1353,7 @@ foreach ($dashboardPersoneller as $dp) {
 
                 // Popup içeriği
                 var fotoHtml = p.foto
-                    ? '<img src="' + escapeMapHtml(p.foto) + '" width="50" height="50" style="object-fit: cover; border-radius: 50%;">'
+                    ? '<img src="' + escapeMapHtml(p.foto) + '" onerror="this.onerror=null;this.src=\'assets/images/users/user-dummy-img.jpg\';" width="50" height="50" style="object-fit: cover; border-radius: 50%;">'
                     : '<div style="width:50px;height:50px;background:#556ee6;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px;">' + personelAdi.charAt(0) + '</div>';
 
                 var konumInfo = hasLocation

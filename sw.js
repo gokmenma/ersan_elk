@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "yonetici-pwa-v11";
+const CACHE_NAME = "yonetici-pwa-v12";
 const OFFLINE_URL = new URL("offline-admin.html", self.registration.scope).href;
 
 // Önbelleğe alınacak dosyalar
@@ -67,9 +67,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // POST/PUT/DELETE istekleri, dosya indirme/export/API uç noktaları doğrudan ağ üzerinden yapılmalıdır
+  // POST/PUT/DELETE istekleri, ERP yönetim sayfaları ve API uç noktaları doğrudan ağ üzerinden yapılmalıdır (Service Worker araya girmez)
   if (
     event.request.method !== "GET" ||
+    url.includes("p=") ||
+    url.includes("index") ||
+    url.includes("views/") ||
     url.includes("api.php") ||
     url.includes("export") ||
     url.includes("download") ||
@@ -80,21 +83,28 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigasyon istekleri
+  // Navigasyon istekleri (Sadece PWA bağımsız sayfalar)
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).catch(async () => {
         const offlinePage = await caches.match(OFFLINE_URL);
-        return offlinePage || new Response(
-          "<!doctype html><html lang='tr'><meta charset='utf-8'><meta name='viewport' content='width=device-width'><title>Bağlantı yok</title><body><h1>Bağlantı kurulamadı</h1><p>Lütfen internet bağlantınızı kontrol edip sayfayı yenileyin.</p></body></html>",
-          { status: 503, statusText: "Offline", headers: { "Content-Type": "text/html; charset=UTF-8" } },
+        return (
+          offlinePage ||
+          new Response(
+            "<!doctype html><html lang='tr'><meta charset='utf-8'><meta name='viewport' content='width=device-width'><title>Bağlantı yok</title><body><h1>Bağlantı kurulamadı</h1><p>Lütfen internet bağlantınızı kontrol edip sayfayı yenileyin.</p></body></html>",
+            {
+              status: 503,
+              statusText: "Offline",
+              headers: { "Content-Type": "text/html; charset=UTF-8" },
+            },
+          )
         );
       }),
     );
     return;
   }
 
-  // Diğer istekler - stale while revalidate
+  // Diğer statik varlık istekleri - stale while revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
@@ -114,11 +124,14 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => {
           // Network hatası durumunda önbellekten dön
-          return cachedResponse || new Response("Kaynak çevrimdışıyken kullanılamıyor.", {
-            status: 503,
-            statusText: "Offline",
-            headers: { "Content-Type": "text/plain; charset=UTF-8" },
-          });
+          return (
+            cachedResponse ||
+            new Response("Kaynak çevrimdışıyken kullanılamıyor.", {
+              status: 503,
+              statusText: "Offline",
+              headers: { "Content-Type": "text/plain; charset=UTF-8" },
+            })
+          );
         });
 
       // Önbellekte varsa hemen dön, yoksa fetch'i bekle
@@ -139,110 +152,40 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  console.log("Push Data Received:", data);
-
-  const title = data.title || "Ersan | Yönetici Paneli";
+  const title = data.title || "Ersan Elektrik";
   const options = {
-    body: data.body || "Yeni bildiriminiz var",
-    icon: "./assets/icons/icon-192-new.png", // Her zaman varsayılan logo
+    body: data.body || "Yeni bir bildiriminiz var.",
+    icon: data.icon || "./assets/icons/icon-192-new.png",
     badge: "./assets/icons/icon-72-new.png",
-    vibrate: [100, 50, 100],
     data: {
-      dateOfArrival: Date.now(),
-      url: data.url || "index.php",
+      url: data.url || "./index.php",
     },
-    actions: [
-      { action: "explore", title: "Görüntüle" },
-      { action: "close", title: "Kapat" },
-    ],
   };
-
-  // Resim varsa ekle - Android Chrome'da büyük resim olarak görünür
-  if (data.image && data.image.startsWith("http")) {
-    options.image = data.image;
-    console.log("Push Notification Image:", data.image);
-  }
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-function bildirimAdresiniCozumle(ham) {
-  const kok = self.registration.scope;
-  let adres = ham || "index.php";
-
-  if (adres.startsWith("?")) {
-    adres = "index.php" + adres;
-  }
-
-  try {
-    const hedef = new URL(adres, kok);
-    return hedef.origin === self.location.origin ? hedef.href : kok;
-  } catch (e) {
-    return kok;
-  }
-}
-
-async function bildirimHedefiniAc(hedefUrl) {
-  const pencereler = await clients.matchAll({
-    type: "window",
-    includeUncontrolled: true,
-  });
-
-  const ayniOrigin = pencereler.filter((c) => {
-    try {
-      return new URL(c.url).origin === self.location.origin;
-    } catch (e) {
-      return false;
-    }
-  });
-
-  const tamEslesen = ayniOrigin.find((c) => c.url === hedefUrl);
-  if (tamEslesen && "focus" in tamEslesen) {
-    return tamEslesen.focus();
-  }
-
-  for (const pencere of ayniOrigin) {
-    if (!("focus" in pencere)) continue;
-    try {
-      const odaklanan = await pencere.focus();
-      if (odaklanan && typeof odaklanan.navigate === "function") {
-        await odaklanan.navigate(hedefUrl);
-        return;
-      }
-    } catch (e) {
-      console.log("Bildirim yonlendirmesi basarisiz:", e);
-    }
-    break;
-  }
-
-  if (clients.openWindow) {
-    return clients.openWindow(hedefUrl);
-  }
-}
-
-// Notification click
+// Notification click event
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  if (event.action === "close") {
-    return;
-  }
+  const targetUrl =
+    event.notification.data && event.notification.data.url
+      ? event.notification.data.url
+      : "./index.php";
 
-  const hedefUrl = bildirimAdresiniCozumle(
-    (event.notification.data && event.notification.data.url) || "",
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        for (let client of windowClients) {
+          if (client.url === targetUrl && "focus" in client) {
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      }),
   );
-
-  event.waitUntil(bildirimHedefiniAc(hedefUrl));
 });
-
-// Background sync
-self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-requests") {
-    event.waitUntil(syncPendingRequests());
-  }
-});
-
-async function syncPendingRequests() {
-  // TODO: IndexedDB'den bekleyen istekleri al ve gönder
-  console.log("Syncing pending requests...");
-}
