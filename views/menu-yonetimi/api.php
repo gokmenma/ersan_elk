@@ -23,14 +23,18 @@ if (!Gate::isSuperAdmin()) {
 $currentUser = AuthController::user();
 $currentUserId = (int) ($currentUser->id ?? $_SESSION['user_id'] ?? 0);
 
-$action = $_REQUEST['action'] ?? '';
+$rawInput = file_get_contents('php://input');
+$jsonPayload = (!empty($rawInput) && is_string($rawInput)) ? json_decode($rawInput, true) : null;
+
+$action = $_REQUEST['action'] ?? ($jsonPayload['action'] ?? '');
 $model = new MenuManagementModel();
 
 try {
     switch ($action) {
         case 'fetch_list':
             $includeDeleted = !empty($_GET['include_deleted']) && $_GET['include_deleted'] == '1';
-            $menus = $model->getAllMenus($includeDeleted);
+            $onlyActive = isset($_GET['only_active']) ? ($_GET['only_active'] == '1') : true;
+            $menus = $model->getAllMenus($includeDeleted, $onlyActive);
             echo json_encode([
                 'status' => 'success',
                 'data' => $menus
@@ -121,6 +125,59 @@ try {
             echo json_encode([
                 'status' => 'success',
                 'message' => 'Menü başarıyla silindi (soft delete).'
+            ], JSON_UNESCAPED_UNICODE);
+            break;
+
+        case 'update_hierarchy':
+            $items = [];
+            if (isset($jsonPayload['items']) && is_array($jsonPayload['items'])) {
+                $items = $jsonPayload['items'];
+            } elseif (isset($_POST['items'])) {
+                $items = is_string($_POST['items']) ? json_decode($_POST['items'], true) : $_POST['items'];
+            }
+
+            if (empty($items) || !is_array($items)) {
+                throw new Exception("Güncellenecek hiyerarşi verisi bulunamadı.");
+            }
+
+            $sanitizedItems = [];
+            foreach ($items as $item) {
+                $rawId = $item['id'] ?? 0;
+                $id = is_numeric($rawId) ? (int)$rawId : (int)Security::decrypt((string)$rawId);
+                
+                $rawParentId = $item['parent_id'] ?? 0;
+                $parentId = 0;
+                if (is_numeric($rawParentId)) {
+                    $parentId = (int)$rawParentId;
+                } elseif (!empty($rawParentId)) {
+                    $parentId = (int)Security::decrypt((string)$rawParentId);
+                }
+
+                if ($id > 0) {
+                    $sanitizedItems[] = [
+                        'id' => $id,
+                        'parent_id' => $parentId,
+                        'menu_order' => (int)($item['menu_order'] ?? 1),
+                        'group_name' => isset($item['group_name']) ? trim((string)$item['group_name']) : null,
+                        'group_order' => isset($item['group_order']) ? (int)$item['group_order'] : 0
+                    ];
+                }
+            }
+
+            $result = $model->updateMenuHierarchy($sanitizedItems, $currentUserId);
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Menü hiyerarşisi ve sıralaması başarıyla güncellendi.',
+                'data' => $result
+            ], JSON_UNESCAPED_UNICODE);
+            break;
+
+        case 'reset_defaults':
+            $result = $model->resetToDefaultStructure($currentUserId);
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Tüm menü hiyerarşisi ve sıralaması başarıyla varsayılana sıfırlandı.',
+                'data' => $result
             ], JSON_UNESCAPED_UNICODE);
             break;
 

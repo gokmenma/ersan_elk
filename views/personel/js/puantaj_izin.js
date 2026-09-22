@@ -26,22 +26,37 @@ $(document).ready(function () {
   const savedIskurDahil = localStorage.getItem("puantaj_iskur_dahil") !== "0";
   $("#check-iskur-dahil").prop("checked", savedIskurDahil);
 
-  // Initialize Bootstrap Tooltips and Popovers ONCE using delegation on the container
-  // This is MUCH faster for large tables (delegation vs thousands of instances)
-  const tooltipInstance = new bootstrap.Tooltip(document.getElementById('puantaj-full-container'), {
-    selector: '[data-bs-toggle="tooltip"]',
-    trigger: 'hover',
-    container: 'body'
-  });
+  // Initialize Bootstrap Tooltips and Popovers safely
+  try {
+    const container = document.getElementById("puantaj-full-container");
+    if (container && typeof bootstrap !== "undefined") {
+      if (bootstrap.Tooltip) {
+        const existingTooltip = bootstrap.Tooltip.getInstance(container);
+        if (!existingTooltip) {
+          new bootstrap.Tooltip(container, {
+            selector: '[data-bs-toggle="tooltip"]',
+            trigger: "hover",
+            container: "body",
+          });
+        }
+      }
+      if (bootstrap.Popover) {
+        const existingPopover = bootstrap.Popover.getInstance(container);
+        if (!existingPopover) {
+          new bootstrap.Popover(container, {
+            selector: '[data-bs-toggle="popover"]',
+            trigger: "hover focus",
+            html: true,
+            container: "body",
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Bootstrap Tooltip/Popover init warning:", err);
+  }
 
-  const popoverInstance = new bootstrap.Popover(document.getElementById('puantaj-full-container'), {
-    selector: '[data-bs-toggle="popover"]',
-    trigger: 'hover focus',
-    html: true,
-    container: 'body'
-  });
-
-  loadDefinitions(function() {
+  loadDefinitions(function () {
     renderTable();
   });
 
@@ -94,6 +109,28 @@ $(document).ready(function () {
     }
 
     calculateTotals();
+    updateWorkspaceMeta();
+  }
+
+  function updateWorkspaceMeta() {
+    const visibleCount = Array.from(tableRows).filter((row) => row.style.display !== "none").length;
+    const changeCount = Object.keys(unsavedChanges).length;
+    const ayLabel = $("#select-ay option:selected").text() || "";
+    const yilLabel = $("#select-yil").val() || "";
+
+    $("#puantaj-visible-count").text(`${visibleCount} personel`);
+    $("#puantaj-period-label").text(`${ayLabel} ${yilLabel} dönemi · Hücreye tıklayarak hızlı giriş yapabilirsiniz`);
+
+    const $changePill = $("#puantaj-change-pill");
+    if (changeCount > 0) {
+      $changePill.addClass("is-unsaved");
+      $changePill.find("i").attr("class", "mdi mdi-content-save-alert-outline");
+      $("#puantaj-change-count").text(`${changeCount} bekleyen değişiklik`);
+    } else {
+      $changePill.removeClass("is-unsaved");
+      $changePill.find("i").attr("class", "mdi mdi-check-circle-outline");
+      $("#puantaj-change-count").text("Tüm değişiklikler kayıtlı");
+    }
   }
 
   let filterTimer = null;
@@ -150,6 +187,37 @@ $(document).ready(function () {
   $("#btn-save-floating").on("click", function () {
     $("#btn-save-selected").trigger("click");
   });
+
+  // Odak modu: filtre ve puantaj paletini kapatıp dikey alanı tabloya bırakır.
+  let focusTransitionTimer = null;
+  function setPuantajFocusMode(isActive, animate = true) {
+    const $body = $("body");
+    if (focusTransitionTimer) clearTimeout(focusTransitionTimer);
+    if (animate) $body.addClass("puantaj-focus-transition");
+    $body.toggleClass("puantaj-focus-mode", isActive);
+    const $button = $("#btn-puantaj-focus");
+    $button
+      .attr("title", isActive ? "Üst alanları göster" : "Üst alanları gizle")
+      .attr("aria-label", isActive ? "Üst alanları göster" : "Üst alanları gizle")
+      .attr("aria-expanded", isActive ? "false" : "true")
+      .find("i")
+      .attr("class", isActive ? "mdi mdi-chevron-down" : "mdi mdi-chevron-up");
+    localStorage.setItem("puantaj_focus_mode", isActive ? "1" : "0");
+    updateStickyHeights();
+    if (animate) {
+      focusTransitionTimer = setTimeout(() => {
+        $body.removeClass("puantaj-focus-transition");
+      }, 380);
+    }
+  }
+
+  $("#btn-puantaj-focus").on("click", function () {
+    setPuantajFocusMode(!$("body").hasClass("puantaj-focus-mode"));
+  });
+
+  if (localStorage.getItem("puantaj_focus_mode") === "1") {
+    setPuantajFocusMode(true, false);
+  }
 
   // ESC ile Tam Ekrandan Çık
   $(document).on("keydown", function (e) {
@@ -284,6 +352,10 @@ $(document).ready(function () {
   })();
 
   $(document).on("click", ".draggable-izin", function () {
+    if ($(this).closest("#izin-turleri-palette").length) {
+      $("#izin-turleri-palette .draggable-izin").removeClass("is-selected");
+      $(this).addClass("is-selected");
+    }
     selectedType = {
       id: $(this).data("id"),
       name: $(this).data("name"),
@@ -308,39 +380,53 @@ $(document).ready(function () {
     return new Date(year, month, 0).getDate();
   }
 
-  // Helper: Get style from tailwind class (WITH CACHE)
+  // Helper: Get style from tailwind class (WITH CACHE & Soft Palette)
   const styleCache = {};
-  function getStyleFromTailwind(tailwindClass) {
-    if (!tailwindClass) return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
-    if (styleCache[tailwindClass]) return styleCache[tailwindClass];
+  function getStyleFromTailwind(tailwindClass, shortCode) {
+    const code = (shortCode || "").toUpperCase();
+    const cacheKey = `${tailwindClass || ""}_${code}`;
+    if (styleCache[cacheKey]) return styleCache[cacheKey];
 
     let result;
-    // Check if it's already a hex
-    if (tailwindClass.startsWith("#")) {
+
+    // Çalışılan Gün (X) için göz yormayan soft Ice Blue
+    if (code === "X") {
+      result = { bg: "#eff6ff", color: "#2563eb", border: "#dbeafe" };
+    }
+    // Hafta Tatili (HT) için soft Warm Amber / Gold
+    else if (code === "HT") {
+      result = { bg: "#fffbeb", color: "#d97706", border: "#fef3c7" };
+    }
+    // Hex rengi kontrolü
+    else if (tailwindClass && tailwindClass.startsWith("#")) {
       result = {
-        bg: tailwindClass + "26", // 15% opacity hex
+        bg: tailwindClass + "1a", // %10 yumuşak pastel opaklık
         color: tailwindClass,
+        border: tailwindClass + "33"
       };
-    } else if (tailwindClass.includes("blue")) {
-      result = { bg: "#dbeafe", color: "#2563eb" };
-    } else if (tailwindClass.includes("amber")) {
-      result = { bg: "#fef3c7", color: "#d97706" };
-    } else if (tailwindClass.includes("red")) {
-      result = { bg: "#fee2e2", color: "#dc2626" };
-    } else if (tailwindClass.includes("pink")) {
-      result = { bg: "#fce7f3", color: "#db2777" };
-    } else if (tailwindClass.includes("gray")) {
-      result = { bg: "#f3f4f6", color: "#4b5563" };
-    } else if (tailwindClass.includes("green")) {
-      result = { bg: "#dcfce7", color: "#16a34a" };
-    } else if (tailwindClass.includes("purple")) {
-      result = { bg: "#f3e8ff", color: "#9333ea" };
+    } else if (tailwindClass && (tailwindClass.includes("blue") || tailwindClass.includes("primary"))) {
+      result = { bg: "#eff6ff", color: "#2563eb", border: "#dbeafe" };
+    } else if (tailwindClass && tailwindClass.includes("amber")) {
+      result = { bg: "#fffbeb", color: "#d97706", border: "#fef3c7" };
+    } else if (tailwindClass && (tailwindClass.includes("red") || tailwindClass.includes("rose") || tailwindClass.includes("danger"))) {
+      result = { bg: "#fff1f2", color: "#e11d48", border: "#ffe4e6" };
+    } else if (tailwindClass && tailwindClass.includes("pink")) {
+      result = { bg: "#fdf2f8", color: "#db2777", border: "#fce7f3" };
+    } else if (tailwindClass && (tailwindClass.includes("gray") || tailwindClass.includes("slate") || tailwindClass.includes("secondary"))) {
+      result = { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" };
+    } else if (tailwindClass && (tailwindClass.includes("green") || tailwindClass.includes("emerald") || tailwindClass.includes("success"))) {
+      result = { bg: "#f0fdf4", color: "#16a34a", border: "#dcfce7" };
+    } else if (tailwindClass && (tailwindClass.includes("purple") || tailwindClass.includes("violet") || tailwindClass.includes("indigo"))) {
+      result = { bg: "#f5f3ff", color: "#7c3aed", border: "#ede9fe" };
+    } else if (tailwindClass && (tailwindClass.includes("orange") || tailwindClass.includes("warning"))) {
+      result = { bg: "#fff7ed", color: "#ea580c", border: "#ffedd5" };
+    } else if (tailwindClass && (tailwindClass.includes("cyan") || tailwindClass.includes("teal") || tailwindClass.includes("info"))) {
+      result = { bg: "#f0fdfa", color: "#0d9488", border: "#ccfbf1" };
     } else {
-      // Default to primary theme color (light style)
-      result = { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
+      result = { bg: "#eff6ff", color: "#3b82f6", border: "#dbeafe" };
     }
 
-    styleCache[tailwindClass] = result;
+    styleCache[cacheKey] = result;
     return result;
   }
 
@@ -358,8 +444,8 @@ $(document).ready(function () {
             } else {
               ucretliIzinIds.add(item.id.toString());
             }
-            const style = getStyleFromTailwind(item.renk);
             const shortCode = getShortCode(item);
+            const style = getStyleFromTailwind(item.renk, shortCode);
             html += `
                             <div class="izin-item-container draggable-izin" draggable="true"
                                  data-id="${item.id}" 
@@ -368,7 +454,7 @@ $(document).ready(function () {
                                  data-shortcode="${shortCode}"
                                  data-bs-toggle="tooltip" 
                                  title="${item.tur_adi}">
-                                <div class="izin-box" style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33;">
+                                <div class="izin-box" style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.border};">
                                     ${shortCode}
                                 </div>
                                 <span class="d-none">${item.tur_adi}</span>
@@ -430,6 +516,20 @@ $(document).ready(function () {
     });
   }
 
+  function getPersonInitials(fullName) {
+    const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "—";
+    const first = parts[0].charAt(0);
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+    return `${first}${last}`.toLocaleUpperCase("tr-TR");
+  }
+
+  function getPersonAvatarTone(fullName) {
+    let hash = 0;
+    for (const character of fullName || "") hash = (hash + character.charCodeAt(0)) % 5;
+    return `personel-avatar-tone-${hash}`;
+  }
+
   // Render Table
   function renderTable() {
     const ay = $("#select-ay").val();
@@ -438,6 +538,7 @@ $(document).ready(function () {
     const bolge = $("#select-bolge").val() || "";
     const iskur_dahil = $("#check-iskur-dahil").is(":checked") ? 1 : 0;
     const daysCount = getDaysInMonth(ay, yil);
+    updateWorkspaceMeta();
 
     // Tabloyu temizle ve yükleniyor göster
     $("#table-body").empty();
@@ -449,10 +550,13 @@ $(document).ready(function () {
     for (let d = 1; d <= daysCount; d++) {
       const date = new Date(yil, ay - 1, d);
       const isSunday = date.getDay() === 0;
+      const now = new Date();
+      const isToday = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && d === now.getDate();
       const dayName = dayNames[date.getDay()];
       const sundayClass = isSunday ? "is-sunday" : "";
+      const todayClass = isToday ? "is-today" : "";
 
-      headerHtml += `<th class="${sundayClass}">
+      headerHtml += `<th class="${sundayClass} ${todayClass}">
          <div class="day-header-pill">
              <div class="day-name">${dayName}</div>
              <div class="day-number">${d}</div>
@@ -485,6 +589,7 @@ $(document).ready(function () {
                   bodyHtml += `<tr data-personel-adi="${turkceKucukHarf(p.adi_soyadi)}">
                         <td class="personel-info sticky-col" title="${p.adi_soyadi}" data-personel-id="${p.id}" data-gg-toplam-gun="${p.gg_toplam_gun || 0}" data-gorev-gecmisi="${p.gorev_gecmisi_var || 0}">
                             <div class="d-flex align-items-center">
+                                <span class="personel-avatar-mini ${getPersonAvatarTone(p.adi_soyadi)}">${getPersonInitials(p.adi_soyadi)}</span>
                                 <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name text-primary fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
                             </div>
                         </td>`;
@@ -497,6 +602,8 @@ $(document).ready(function () {
                     const dateObj = new Date(yil, ay - 1, d);
                     const isSunday = dateObj.getDay() === 0;
                     const sundayClass = isSunday ? "is-sunday" : "";
+                    const now = new Date();
+                    const todayClass = dateObj.getFullYear() === now.getFullYear() && dateObj.getMonth() === now.getMonth() && d === now.getDate() ? "is-today" : "";
 
                     const pGirisStr = p.ise_giris_tarihi && p.ise_giris_tarihi !== "0000-00-00" ? p.ise_giris_tarihi : "";
                     const pCikisStr = p.isten_cikis_tarihi && p.isten_cikis_tarihi !== "0000-00-00" ? p.isten_cikis_tarihi : "";
@@ -525,7 +632,7 @@ $(document).ready(function () {
 
                     // Önce unsavedChanges kontrol et (Excel'den yüklenen dahil)
                     if (unsaved) {
-                      const unsavedStyle = getStyleFromTailwind(unsaved.color);
+                      const unsavedStyle = getStyleFromTailwind(unsaved.color, unsaved.shortCode);
                       const typeId = (
                         unsaved.type_id || unsaved.typeId
                       )?.toString();
@@ -542,19 +649,19 @@ $(document).ready(function () {
                                      data-name="${unsaved.name}"
                                      data-color="${unsaved.color}"
                                      data-is-default="false"
-                                     style="background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33;">
+                                     style="background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.border};">
                                     ${unsaved.shortCode}
                                     <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
                                 </div>`;
                     } else if (entries.length > 0) {
                       const entry = entries[0];
-                      const styleObj = getStyleFromTailwind(entry.color);
+                      const shortCode = getShortCode(entry);
+                      const styleObj = getStyleFromTailwind(entry.color, shortCode);
                       const typeId = entry.tip_id?.toString();
                       // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
                       if (!isDisabled && typeId && ucretliIzinIds.has(typeId)) paidCount++;
                       
                       hasEntryClass = "has-entry";
-                      const shortCode = getShortCode(entry);
 
                       let deleteBtn = "";
                       if (entry.type !== "default") {
@@ -570,13 +677,13 @@ $(document).ready(function () {
                                      data-name="${entry.name}"
                                      data-color="${entry.color}"
                                      data-is-default="${entry.type === "default"}"
-                                     style="background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33;">
+                                     style="background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.border};">
                                     ${shortCode}
                                     ${deleteBtn}
                                 </div>`;
                     }
 
-                    bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass} ${disabledClass}" 
+                    bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass} ${todayClass} ${disabledClass}"
                                          data-personel-id="${p.id}" 
                                          data-date="${dateStr}">
                                         ${cellContent}
@@ -851,10 +958,10 @@ $(document).ready(function () {
         const isActive = currentTypeId === item.id.toString();
         const activeClass = isActive ? "active" : "";
 
-        const style = getStyleFromTailwind(item.renk);
+        const style = getStyleFromTailwind(item.renk, shortCode);
         const itemHtml = `
           <div class="menu-item ${activeClass}" data-id="${item.id}" data-shortcode="${shortCode}" data-name="${item.tur_adi}" data-color="${item.renk}">
-            <div class="menu-item-code" style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33;">
+            <div class="menu-item-code" style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.border};">
               ${shortCode}
             </div>
             <span>${item.tur_adi}</span>
@@ -967,9 +1074,9 @@ $(document).ready(function () {
       shortCode: type.shortCode,
     };
     // Update UI instantly using Vanilla JS (Much faster than jQuery)
-    const styleObj = getStyleFromTailwind(type.color);
+    const styleObj = getStyleFromTailwind(type.color, type.shortCode);
     cell.style.cssText = "";
-    cell.className = `day-cell has-entry unsaved ${cell.classList.contains("is-sunday") ? "is-sunday" : ""}`;
+    cell.className = `day-cell has-entry unsaved ${cell.classList.contains("is-sunday") ? "is-sunday" : ""} ${cell.classList.contains("is-today") ? "is-today" : ""}`;
     cell.innerHTML = `
       <div class="cell-content draggable-izin" draggable="true"
            data-bs-toggle="tooltip" 
@@ -978,7 +1085,7 @@ $(document).ready(function () {
            data-name="${type.name}" 
            data-color="${type.color}" 
            data-shortcode="${type.shortCode}"
-           style="background-color: ${styleObj.bg}; color: ${styleObj.color}; border: 1px solid ${styleObj.color}4D;">
+           style="background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.border};">
           ${type.shortCode}
           <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
       </div>`;
@@ -1029,6 +1136,7 @@ $(document).ready(function () {
     if (calculateTotalsTimer) clearTimeout(calculateTotalsTimer);
     calculateTotalsTimer = setTimeout(() => {
       calculateTotals();
+      updateWorkspaceMeta();
     }, 150);
   }
 
@@ -1102,6 +1210,7 @@ $(document).ready(function () {
     const savedExcelPersonnel = new Set(excelReplacedPersonnel);
     unsavedChanges = {};
     excelReplacedPersonnel.clear();
+    updateWorkspaceMeta();
 
     let savingToast = showToast("Kaydediliyor...", "info");
     if (typeof Pace !== "undefined") Pace.restart();
@@ -1277,22 +1386,11 @@ $(document).ready(function () {
 
   /**
    * Dinamik olarak sticky (sabit) başlıkların yüksekliklerini hesaplar.
-   * İzin türleri alanı genişlediğinde tablonun üstte kalan kısmını ayarlar.
    */
   function updateStickyHeights() {
-    const headerHeight = $(".puantaj-table-header").outerHeight() || 0;
-    const isPaletteFloating = $("body").hasClass("puantaj-palette-floating");
-
-    // Yüzen paletin konumu kullanıcı tarafından belirlenir; sticky hesap bunu ezmemeli.
-    if (isPaletteFloating) {
-      return;
-    }
-
-    // Normal modda sticky offsetleri
-    if (!$("body").hasClass("puantaj-fullscreen")) {
-      $(".card-izin-turleri").css("top", headerHeight + 70 + "px"); // 70px ana navbar tahmini
-    } else {
-      $(".card-izin-turleri").css("top", headerHeight + "px");
+    // Normal modda kartlar doğal akışta yer alır, top offset'i uygulanmaz
+    if (!$("body").hasClass("puantaj-palette-floating")) {
+      $(".card-izin-turleri").css("top", "");
     }
   }
 
@@ -1671,7 +1769,7 @@ $(document).ready(function () {
 
     // Bootstrap Modal'ı göster
     const modalEl = document.getElementById("sgkRaporModal");
-    const modal = new bootstrap.Modal(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
 
     // Event Listeners
@@ -1786,7 +1884,7 @@ $(document).ready(function () {
 
   // Modal Açma
   $("#btn-open-excel-modal").on("click", function () {
-    const modal = new bootstrap.Modal(
+    const modal = bootstrap.Modal.getOrCreateInstance(
       document.getElementById("excelImportModal"),
     );
     modal.show();

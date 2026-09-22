@@ -730,7 +730,7 @@ $(document).ready(function () {
   }
 
   function syncAttachmentFields() {
-    const order = attachments.map(item => item.type === "existing" ? { type: "existing", id: item.id } : { type: "new", key: item.key });
+    const order = attachments.map(item => item.type === "existing" ? { type: "existing", id: item.id } : (item.type === "template" ? { type: "template", id: item.id } : { type: "new", key: item.key }));
     $("#ek_duzen_json").val(JSON.stringify(order));
     $("#silinen_ek_ids_json").val(JSON.stringify(removedAttachmentIds));
   }
@@ -748,6 +748,59 @@ $(document).ready(function () {
   });
 
   renderAttachments();
+
+  const templateModal = $("#evrakSablonModal");
+  let documentTemplates = [];
+  function loadDocumentTemplates() {
+    $("#evrakSablonListesi").html('<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Şablonlar yükleniyor...</div>');
+    return $.post("views/evrak-takip/api.php", { action: "evrak-sablon-listele" }).done(function (response) {
+      if (response.status !== "success") return Swal.fire("Hata", response.message || "Şablonlar yüklenemedi.", "error");
+      documentTemplates = response.data || [];
+      const list = $("#evrakSablonListesi").empty();
+      if (!documentTemplates.length) return list.html('<div class="border rounded-3 text-center text-muted py-4">Henüz kayıtlı şablon yok.</div>');
+      documentTemplates.forEach(function (template) {
+        const row = $('<div class="list-group-item d-flex align-items-center justify-content-between gap-2"></div>');
+        $('<button type="button" class="btn btn-link text-start text-decoration-none flex-grow-1 p-0"></button>').html('<span class="d-block fw-bold text-dark">' + escapeHtml(template.adi) + '</span><span class="small text-muted">' + escapeHtml(template.guncelleme_tarihi) + ' · ' + (template.ek_dosyalar || []).length + ' ek</span>').on("click", () => applyDocumentTemplate(template)).appendTo(row);
+        const actions = $('<div class="btn-group btn-group-sm"></div>');
+        $('<button type="button" class="btn btn-outline-secondary"><i class="bx bx-edit"></i></button>').on("click", function () { $("#evrakSablonId").val(template.id); $("#evrakSablonAdi").val(template.adi).focus(); }).appendTo(actions);
+        $('<button type="button" class="btn btn-outline-danger"><i class="bx bx-trash"></i></button>').on("click", () => deleteDocumentTemplate(template)).appendTo(actions);
+        row.append(actions).appendTo(list);
+      });
+    });
+  }
+  function applyDocumentTemplate(template) {
+    Swal.fire({ title: "Şablon yüklensin mi?", text: "Formdaki mevcut bilgiler tam evrak şablonuyla değiştirilecek.", icon: "question", showCancelButton: true, confirmButtonText: "Yükle", cancelButtonText: "Vazgeç" }).then(function (result) {
+      if (!result.isConfirmed) return;
+      const data = template.veri || {};
+      ["tarih", "evrak_no", "konu", "kurum_adi", "muhatap_alt_birim", "muhatap_adres", "ilgiler", "ekler"].forEach(field => $("#" + field).val(data[field] || "").trigger("input").trigger("change"));
+      ["ilgili_evrak_id", "personel_id", "ilgili_personel_id"].forEach(field => $("#" + field).val(data[field] || null).trigger("change"));
+      $("#giden_evrak_icerik").summernote("code", data.aciklama || "<p><br></p>");
+      $("#ust_yazi_gerekli_degil").prop("checked", Number(data.ust_yazi_gerekli_degil) === 1).trigger("change");
+      selectedSigners = (data.imza_kullanici_ids || []).map((rawId, index) => { const user = allSigningUsers.find(item => Number(item.raw_id) === Number(rawId)); return user ? { ...user, kimin_adina: (data.imza_kimin_adina || [])[index] || "" } : null; }).filter(Boolean).slice(0, 3);
+      syncSignerState();
+      attachments = (template.ek_dosyalar || []).map(item => ({ ...item, type: "template" }));
+      removedAttachmentIds.length = 0; renderAttachments(); templateModal.modal("hide");
+      Swal.fire({ icon: "success", title: "Şablon Yüklendi", text: "Tüm evrak alanları ve ekleri forma aktarıldı.", timer: 1700, showConfirmButton: false });
+    });
+  }
+  function deleteDocumentTemplate(template) {
+    Swal.fire({ title: "Şablon silinsin mi?", text: template.adi, icon: "warning", showCancelButton: true, confirmButtonText: "Sil", cancelButtonText: "Vazgeç", confirmButtonColor: "#d33" }).then(function (result) {
+      if (!result.isConfirmed) return;
+      $.post("views/evrak-takip/api.php", { action: "evrak-sablon-sil", sablon_id: template.id }).done(response => response.status === "success" ? loadDocumentTemplates() : Swal.fire("Hata", response.message, "error"));
+    });
+  }
+  $("#btnEvrakSablonlari").on("click", function () { $("#evrakSablonId, #evrakSablonAdi").val(""); templateModal.modal("show"); loadDocumentTemplates(); });
+  $("#btnEvrakSablonYeni").on("click", function () { $("#evrakSablonId, #evrakSablonAdi").val(""); $("#evrakSablonAdi").focus(); });
+  $("#btnEvrakSablonKaydet").on("click", function () {
+    const name = $("#evrakSablonAdi").val().trim(); if (!name) return Swal.fire("Eksik Bilgi", "Şablon adını giriniz.", "warning");
+    syncContent();
+    const payload = { tarih: $("#tarih").val(), evrak_no: $("#evrak_no").val(), konu: $("#konu").val(), kurum_adi: $("#kurum_adi").val(), muhatap_alt_birim: $("#muhatap_alt_birim").val(), muhatap_adres: $("#muhatap_adres").val(), ilgiler: $("#ilgiler").val(), ekler: $("#ekler").val(), aciklama: $("#giden_evrak_icerik").summernote("code"), ust_yazi_gerekli_degil: $("#ust_yazi_gerekli_degil").is(":checked") ? 1 : 0, ilgili_evrak_id: $("#ilgili_evrak_id").val(), personel_id: $("#personel_id").val(), ilgili_personel_id: $("#ilgili_personel_id").val(), imza_kullanici_ids: selectedSigners.map(item => item.raw_id), imza_kimin_adina: selectedSigners.map(item => item.kimin_adina || "") };
+    const data = new FormData(); data.append("action", "evrak-sablon-kaydet"); data.append("sablon_id", $("#evrakSablonId").val()); data.append("sablon_adi", name); data.append("sablon_verisi", JSON.stringify(payload));
+    data.append("sablon_mevcut_ekler", JSON.stringify(attachments.filter(item => item.type !== "new" && item.id).map(item => ({ type: item.type, id: item.id }))));
+    attachments.filter(item => item.type === "new").forEach((item, index) => data.append("sablon_yeni_ekler[" + index + "]", item.file, item.name));
+    const button = $(this).prop("disabled", true);
+    $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data, contentType: false, processData: false }).done(function (response) { if (response.status === "success") { $("#evrakSablonId").val(response.id); Swal.fire("Başarılı", response.message, "success"); loadDocumentTemplates(); } else Swal.fire("Hata", response.message, "error"); }).always(() => button.prop("disabled", false));
+  });
 
   function buildFormData() {
     syncContent();

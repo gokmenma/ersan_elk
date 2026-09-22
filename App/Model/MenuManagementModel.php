@@ -75,11 +75,20 @@ class MenuManagementModel extends Model
      * Tüm menü listesini ve üst menü isimlerini getirir.
      * 
      * @param bool $includeDeleted Silinmiş (soft-deleted) menülerin dahil edilip edilmeyeceği
+     * @param bool $onlyActive Sadece aktif menülerin getirilmesi
      * @return array
      */
-    public function getAllMenus(bool $includeDeleted = false): array
+    public function getAllMenus(bool $includeDeleted = false, bool $onlyActive = true): array
     {
-        $whereSql = $includeDeleted ? "1=1" : "m.deleted_at IS NULL";
+        $conditions = [];
+        if (!$includeDeleted) {
+            $conditions[] = "m.deleted_at IS NULL";
+        }
+        if ($onlyActive) {
+            $conditions[] = "m.is_active = 1";
+        }
+
+        $whereSql = !empty($conditions) ? implode(" AND ", $conditions) : "1=1";
 
         $sql = "SELECT 
                     m.id,
@@ -281,7 +290,81 @@ class MenuManagementModel extends Model
     }
 
     /**
+     * Menü hiyerarşisini ve sıralamasını toplu olarak günceller (Sürükle-Bırak / Girintileme desteği).
+     * 
+     * @param array $items Array of ['id' => int, 'parent_id' => int, 'menu_order' => int, 'group_name' => string, 'group_order' => int]
+     * @param int $userId İşlemi yapan kullanıcı ID
+     * @return bool
+     */
+    public function updateMenuHierarchy(array $items, int $userId): bool
+    {
+        if (empty($items)) {
+            return false;
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            $sql = "UPDATE {$this->table} SET 
+                        parent_id = ?, 
+                        menu_order = ?,
+                        group_name = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE group_name END,
+                        group_order = CASE WHEN ? > 0 THEN ? ELSE group_order END
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+
+            foreach ($items as $item) {
+                $id = (int) ($item['id'] ?? 0);
+                if ($id <= 0) {
+                    continue;
+                }
+
+                $parentId = max(0, (int) ($item['parent_id'] ?? 0));
+                // Kendisini parent yapmasını engelle
+                if ($parentId === $id) {
+                    $parentId = 0;
+                }
+
+                $menuOrder = max(1, (int) ($item['menu_order'] ?? 1));
+                $groupName = isset($item['group_name']) ? trim((string)$item['group_name']) : null;
+                $groupOrder = isset($item['group_order']) ? (int) $item['group_order'] : 0;
+
+                $stmt->execute([
+                    $parentId,
+                    $menuOrder,
+                    $groupName,
+                    $groupName,
+                    $groupName,
+                    $groupOrder,
+                    $groupOrder,
+                    $id
+                ]);
+            }
+
+            $this->db->commit();
+
+            $logModel = new SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'Menü Hiyerarşi Düzenleme',
+                "Menü sıralama ve hiyerarşi yapısı güncellendi (" . count($items) . " öğe).",
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+
+            $this->clearMenuCache();
+            return true;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("updateMenuHierarchy error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
      * Menüyü soft delete yapar (deleted_at = NOW(), is_active = 0).
+     * Alt menülerin yetim kalmaması için parent_id'leri 0 yapılır.
      * 
      * @param int $id
      * @param int $userId
@@ -294,23 +377,40 @@ class MenuManagementModel extends Model
             throw new Exception("Silinecek menü bulunamadı.");
         }
 
-        $sql = "UPDATE {$this->table} SET deleted_at = NOW(), is_active = 0 WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $result = $stmt->execute([$id]);
+        try {
+            $this->db->beginTransaction();
 
-        if ($result) {
-            $logModel = new SystemLogModel();
-            $logModel->logAction(
-                $userId,
-                'Menü Silme (Soft Delete)',
-                "Menü soft-delete edildi: '{$menu->menu_name}' (ID: {$id}).",
-                SystemLogModel::LEVEL_CRITICAL
-            );
+            // 1. Silinecek menünün alt menülerini ana seviyeye çıkar (parent_id = 0)
+            $stmtChildren = $this->db->prepare("UPDATE {$this->table} SET parent_id = 0 WHERE parent_id = ?");
+            $stmtChildren->execute([$id]);
 
-            $this->clearMenuCache();
+            // 2. Menüyü soft delete yap
+            $sql = "UPDATE {$this->table} SET deleted_at = NOW(), is_active = 0 WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([$id]);
+
+            $this->db->commit();
+
+            if ($result) {
+                $logModel = new SystemLogModel();
+                $logModel->logAction(
+                    $userId,
+                    'Menü Silme (Soft Delete)',
+                    "Menü soft-delete edildi: '{$menu->menu_name}' (ID: {$id}).",
+                    SystemLogModel::LEVEL_CRITICAL
+                );
+
+                $this->clearMenuCache();
+            }
+
+            return $result;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("softDeleteMenu error: " . $e->getMessage());
+            throw $e;
         }
-
-        return $result;
     }
 
     /**
@@ -344,6 +444,153 @@ class MenuManagementModel extends Model
         }
 
         return $result;
+    }
+
+    /**
+     * Menü yapısını ve hiyerarşisini varsayılan fabrika ayarlarına sıfırlar.
+     * 
+     * @param int $userId İşlemi yapan kullanıcı ID
+     * @return bool
+     */
+    public function resetToDefaultStructure(int $userId): bool
+    {
+        $defaults = [
+            // Ana Sayfa (group_order: 1)
+            ['id' => 1, 'parent_id' => 0, 'group' => 'Ana Sayfa', 'g_order' => 1, 'm_order' => 1],
+
+            // Personel Yönetim (group_order: 2)
+            ['id' => 2, 'parent_id' => 0, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 1],
+            ['id' => 4, 'parent_id' => 2, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 1],
+            ['id' => 11, 'parent_id' => 2, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 2],
+            ['id' => 15, 'parent_id' => 2, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 3],
+            ['id' => 3, 'parent_id' => 2, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 4],
+            ['id' => 85, 'parent_id' => 2, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 5],
+
+            ['id' => 9, 'parent_id' => 0, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 2],
+            ['id' => 921, 'parent_id' => 9, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 1],
+            ['id' => 10, 'parent_id' => 9, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 2],
+            ['id' => 63, 'parent_id' => 9, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 3],
+
+            ['id' => 6, 'parent_id' => 0, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 3],
+            ['id' => 48, 'parent_id' => 6, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 1],
+            ['id' => 49, 'parent_id' => 6, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 2],
+            ['id' => 60, 'parent_id' => 6, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 3],
+            ['id' => 610, 'parent_id' => 6, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 4],
+            ['id' => 611, 'parent_id' => 6, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 5],
+
+            ['id' => 50, 'parent_id' => 0, 'group' => 'Personel Yönetim', 'g_order' => 2, 'm_order' => 4],
+
+            // İş Takip Yönetim (group_order: 3)
+            ['id' => 5, 'parent_id' => 0, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 1],
+            ['id' => 61, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 1],
+            ['id' => 67, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 2],
+            ['id' => 62, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 3],
+            ['id' => 954, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 4],
+            ['id' => 920, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 5],
+            ['id' => 944, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 6],
+            ['id' => 971, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 7],
+            ['id' => 972, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 8],
+            ['id' => 969, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 9],
+            ['id' => 970, 'parent_id' => 5, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 10],
+
+            ['id' => 945, 'parent_id' => 0, 'group' => 'İş Takip Yönetim', 'g_order' => 3, 'm_order' => 2],
+
+            // Finans (group_order: 4)
+            ['id' => 80, 'parent_id' => 0, 'group' => 'Finans', 'g_order' => 4, 'm_order' => 1],
+            ['id' => 916, 'parent_id' => 0, 'group' => 'Finans', 'g_order' => 4, 'm_order' => 2],
+            ['id' => 917, 'parent_id' => 0, 'group' => 'Finans', 'g_order' => 4, 'm_order' => 3],
+            ['id' => 918, 'parent_id' => 0, 'group' => 'Finans', 'g_order' => 4, 'm_order' => 4],
+            ['id' => 919, 'parent_id' => 0, 'group' => 'Finans', 'g_order' => 4, 'm_order' => 5],
+
+            // Yönetim (group_order: 5)
+            ['id' => 56, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 1],
+            ['id' => 70, 'parent_id' => 56, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 1],
+            ['id' => 71, 'parent_id' => 56, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 2],
+            ['id' => 915, 'parent_id' => 56, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 3],
+            ['id' => 941, 'parent_id' => 56, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 4],
+
+            ['id' => 22, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 2],
+            ['id' => 958, 'parent_id' => 22, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 1],
+            ['id' => 934, 'parent_id' => 22, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 2],
+            ['id' => 935, 'parent_id' => 22, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 3],
+            ['id' => 936, 'parent_id' => 22, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 4],
+            ['id' => 937, 'parent_id' => 22, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 5],
+            ['id' => 938, 'parent_id' => 22, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 6],
+            ['id' => 939, 'parent_id' => 22, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 7],
+
+            ['id' => 922, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 3],
+
+            ['id' => 23, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 4],
+            ['id' => 47, 'parent_id' => 23, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 1],
+            ['id' => 51, 'parent_id' => 23, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 2],
+            ['id' => 58, 'parent_id' => 23, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 3],
+            ['id' => 82, 'parent_id' => 23, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 4],
+            ['id' => 83, 'parent_id' => 23, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 5],
+            ['id' => 84, 'parent_id' => 23, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 6],
+            ['id' => 87, 'parent_id' => 23, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 7],
+
+            ['id' => 25, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 5],
+            ['id' => 26, 'parent_id' => 25, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 1],
+            ['id' => 27, 'parent_id' => 25, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 2],
+            ['id' => 57, 'parent_id' => 25, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 3],
+            ['id' => 55, 'parent_id' => 25, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 4],
+
+            ['id' => 81, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 6],
+            ['id' => 86, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 7],
+            ['id' => 28, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 8],
+
+            ['id' => 19, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 9],
+            ['id' => 20, 'parent_id' => 19, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 1],
+            ['id' => 21, 'parent_id' => 19, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 2],
+
+            ['id' => 29, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 10],
+            ['id' => 955, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 11],
+            ['id' => 7, 'parent_id' => 0, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 12],
+            ['id' => 17, 'parent_id' => 7, 'group' => 'Yönetim', 'g_order' => 5, 'm_order' => 1],
+
+            // Destek (group_order: 6)
+            ['id' => 929, 'parent_id' => 0, 'group' => 'Destek', 'g_order' => 6, 'm_order' => 1],
+            ['id' => 931, 'parent_id' => 0, 'group' => 'Destek', 'g_order' => 6, 'm_order' => 2]
+        ];
+
+        try {
+            $this->db->beginTransaction();
+
+            $sql = "UPDATE {$this->table} SET parent_id = ?, group_name = ?, group_order = ?, menu_order = ? WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+
+            foreach ($defaults as $d) {
+                $stmt->execute([
+                    $d['parent_id'],
+                    $d['group'],
+                    $d['g_order'],
+                    $d['m_order'],
+                    $d['id']
+                ]);
+            }
+
+            // User custom order tablosunu temizle
+            $this->db->exec("DELETE FROM user_menu_orders");
+
+            $this->db->commit();
+
+            $logModel = new SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'Menü Sıfırlama',
+                "Menü hiyerarşisi ve sıralaması varsayılan fabrika ayarlarına sıfırlandı.",
+                SystemLogModel::LEVEL_CRITICAL
+            );
+
+            $this->clearMenuCache();
+            return true;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("resetToDefaultStructure error: " . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**

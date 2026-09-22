@@ -69,7 +69,7 @@
             const contrast = getAdaptiveColors(customSidebar);
             const style = document.createElement('style');
             style.id = 'custom-sidebar-style';
-            style.innerHTML = `body { --sidebar-bg: ${customSidebar}; --sidebar-border: ${contrast.border}; --sidebar-item-hover: ${contrast.surface}; --sidebar-item-active: ${contrast.surface}; --sidebar-foreground: ${contrast.text}; --sidebar-muted: ${contrast.muted}; } body .vertical-menu, body .sidebar-sticky-top { background-color: ${customSidebar} !important; border-color: ${contrast.border} !important; } body .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; } body .sidebar-search::placeholder { color: ${contrast.subtle} !important; } body .sidebar-search-container .search-icon, body #sidebar-menu ul li a i, body #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; } body #sidebar-menu ul li a, body #sidebar-menu ul li ul.sub-menu li a, body .brand-name { color: ${contrast.text} !important; } body #sidebar-menu .menu-title, body .brand-sub { color: ${contrast.muted} !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { background-color: ${contrast.surface} !important; color: ${contrast.text} !important; } body .vertical-menu .logo-dark { display: ${contrast.dark ? 'none' : 'block'} !important; } body .vertical-menu .logo-light { display: ${contrast.dark ? 'block' : 'none'} !important; }`;
+            style.innerHTML = `body { --sidebar-bg: ${customSidebar}; --sidebar-border: ${contrast.border}; --sidebar-item-hover: ${contrast.surface}; --sidebar-item-active: ${contrast.surface}; --sidebar-foreground: ${contrast.text}; --sidebar-muted: ${contrast.muted}; } body .vertical-menu, body .sidebar-sticky-top { background-color: ${customSidebar} !important; } body .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; } body .sidebar-search:focus { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; } body .sidebar-search::placeholder { color: ${contrast.subtle} !important; } body .sidebar-search-container .search-icon, body #sidebar-menu ul li a i, body #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; } body #sidebar-menu ul li a, body #sidebar-menu ul li ul.sub-menu li a, body .brand-name { color: ${contrast.text} !important; } body #sidebar-menu .menu-title, body .brand-sub { color: ${contrast.muted} !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { background-color: ${contrast.surface} !important; color: ${contrast.text} !important; } body .vertical-menu .logo-dark { display: ${contrast.dark ? 'none' : 'block'} !important; } body .vertical-menu .logo-light { display: ${contrast.dark ? 'block' : 'none'} !important; }`;
             document.head.appendChild(style);
         }
         // Synchronously apply critical layout width/left position styles
@@ -77,10 +77,70 @@
         layoutStyle.id = 'layout-initial-position-style';
         layoutStyle.innerHTML = `@media (min-width: 992px) { body:not([data-sidebar-size="sm"]) #page-topbar, body:not([data-sidebar-size="sm"]) .quick-favorites-bar { left: 250px !important; width: calc(100% - 250px) !important; } body:not([data-sidebar-size="sm"]) .main-content { margin-left: 250px !important; margin-right: 0 !important; width: calc(100% - 250px) !important; } body:not([data-sidebar-size="sm"]) .vertical-menu { width: 250px !important; } body[data-sidebar-size="sm"] #page-topbar, body[data-sidebar-size="sm"] .quick-favorites-bar { left: 60px !important; width: calc(100% - 60px) !important; } body[data-sidebar-size="sm"] .main-content { margin-left: 60px !important; margin-right: 0 !important; width: calc(100% - 60px) !important; } body[data-sidebar-size="sm"] .vertical-menu { width: 60px !important; } }`;
         document.head.appendChild(layoutStyle);
+
+        // Synchronously prevent scroll jump (Zero-Flicker Sidebar Scroll Lock)
+        const savedSidebarScroll = localStorage.getItem('sidebar_scroll_top');
+        if (savedSidebarScroll !== null) {
+            const scrollPos = parseInt(savedSidebarScroll, 10) || 0;
+            if (scrollPos > 0) {
+                // Pozisyon ayarlanana kadar 0 konumunun görünmesini engelle
+                const lockStyle = document.createElement('style');
+                lockStyle.id = 'sidebar-scroll-lock';
+                lockStyle.innerHTML = '.vertical-menu .sidebar-menu-scroll { opacity: 0 !important; visibility: hidden !important; }';
+                document.head.appendChild(lockStyle);
+
+                const unlockSidebar = () => {
+                    const lock = document.getElementById('sidebar-scroll-lock');
+                    if (lock) lock.remove();
+                };
+
+                const applySidebarScroll = () => {
+                    const wrapper = document.querySelector('.vertical-menu .simplebar-content-wrapper');
+                    if (wrapper) {
+                        wrapper.scrollTop = scrollPos;
+                        unlockSidebar();
+                        return true;
+                    }
+                    const rawScroll = document.getElementById('sidebar-menu-scroll') || document.querySelector('.sidebar-menu-scroll');
+                    if (rawScroll) {
+                        rawScroll.scrollTop = scrollPos;
+                    }
+                    return false;
+                };
+
+                const observer = new MutationObserver(() => {
+                    if (applySidebarScroll()) {
+                        // SimpleBar wrapper oluştu ve scroll uygulandı
+                    }
+                });
+                observer.observe(document.documentElement, { childList: true, subtree: true });
+
+                // DOM ve load anlarında teyit et ve kilidi kesinlikle kaldır
+                window.addEventListener('DOMContentLoaded', () => {
+                    applySidebarScroll();
+                    setTimeout(applySidebarScroll, 20);
+                    setTimeout(() => {
+                        applySidebarScroll();
+                        unlockSidebar();
+                        observer.disconnect();
+                    }, 100);
+                });
+
+                // Fail-safe: En geç 150ms sonra kilidi mutlaka kaldır
+                setTimeout(unlockSidebar, 150);
+            }
+        }
     })();
 </script>
 
 <style>
+/* Sidebar Scroll Flicker & Animation Reset */
+.vertical-menu,
+.sidebar-menu-scroll,
+.vertical-menu .simplebar-content-wrapper {
+    scroll-behavior: auto !important;
+}
+
 /* Layout Symmetry & Boxed Mode Reset */
 html, body, #layout-wrapper {
     max-width: 100% !important;
@@ -234,6 +294,8 @@ use App\Helper\Helper;
     integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
     crossorigin="anonymous"></script>
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<!-- Feather Icons (Immediate load for early render) -->
+<script src="<?php echo Helper::base_url('assets/libs/feather-icons/feather.min.js'); ?>"></script>
 
 
 

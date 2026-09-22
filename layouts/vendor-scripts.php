@@ -83,7 +83,7 @@ $page = $_GET['p'] ?? 'home';
 
 <!-- Kullanıcı Grupları Sayfası -->
 <?php if ($page == 'kullanici-gruplari/list') { ?>
-    <script src="views/kullanici-gruplari/js/list.js"></script>
+    <script src="views/kullanici-gruplari/js/list.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
 <!-- Menü Yönetimi Sayfası -->
@@ -230,9 +230,9 @@ if ($page == "hakedisler/hakedis-detay") {
     }
 </script>
 
-<?php if ($page == 'gorevler/list' || $page == 'puantaj/defter-bazli-rapor') { ?>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-<?php } ?>
+<!-- SortableJS (Global for sidebar and reorderable lists) -->
+<script src="assets/libs/sortablejs/sortable.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js';"></script>
+
 <?php if ($page == 'gorevler/list') { ?>
     <script src="views/gorevler/js/gorevler.js?v=<?php echo time(); ?>"></script>
 <?php } ?>

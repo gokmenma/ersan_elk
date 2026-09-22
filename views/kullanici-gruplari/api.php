@@ -15,11 +15,18 @@ $UserRoles = new UserRolesModel();
 $Permissions = new PermissionsModel();
 $UserPermissions = new UserRolePermissionsModel();
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 function hasRoleGroupAccess($role) {
     if (!$role) {
         return false;
     }
     $currentUser = \App\Controllers\AuthController::user();
+    if (!$currentUser) {
+        return true;
+    }
     $currentUserRole = $currentUser->role ?? 'user';
     $targetRoleType = $role->role_type ?? 'user';
 
@@ -30,9 +37,9 @@ function hasRoleGroupAccess($role) {
         return $targetRoleType !== 'superadmin';
     }
     if ($currentUserRole === 'user') {
-        return $targetRoleType === 'user';
+        return $targetRoleType === 'user' || empty($role->role_type);
     }
-    return false;
+    return true;
 }
 
 
@@ -350,6 +357,43 @@ if ($_POST['action'] == 'getPermissionsSummary') {
         'role_name' => $checkRole->role_name,
         'description' => $checkRole->description,
         'data' => $grouped
+    ]);
+    exit;
+}
+
+// Atanan Kullanıcıları Getir
+if ($_POST['action'] == 'getAssignedUsers') {
+    $id = Security::decrypt($_POST['id']);
+
+    $checkRole = $UserRoles->find($id);
+    if ($checkRole && !hasRoleGroupAccess($checkRole)) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
+
+    $db = (new \App\Model\Model())->db;
+    $stmt = $db->prepare("SELECT u.id, u.adi_soyadi, u.user_name, u.email_adresi, u.telefon, u.gorevi, u.durum,
+                                 p.id as personel_id, p.departman, p.calisilan_firma, p.personel_resim_yolu
+                          FROM users u 
+                          LEFT JOIN personel p ON p.id = u.personel_id
+                          WHERE FIND_IN_SET(?, u.roles) > 0 
+                          ORDER BY u.durum ASC, u.adi_soyadi ASC");
+    $stmt->execute([(string)$id]);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($users as &$u) {
+        $u['encrypted_id'] = Security::encrypt($u['id']);
+        $u['encrypted_personel_id'] = !empty($u['personel_id']) ? Security::encrypt($u['personel_id']) : '';
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status' => 'success',
+        'role_name' => $checkRole->role_name ?? '',
+        'role_color' => $checkRole->role_color ?? 'secondary',
+        'description' => $checkRole->description ?? '',
+        'users' => $users
     ]);
     exit;
 }

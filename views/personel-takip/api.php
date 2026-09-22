@@ -806,6 +806,494 @@ try {
             response(true, $data);
             break;
 
+        case 'getDashboardAnaliz':
+            $firma_id = $_SESSION['firma_id'] ?? null;
+            $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-7 days'));
+            $bitis = $_POST['bitis'] ?? date('Y-m-d');
+            $departman = !empty($_POST['departman']) ? $_POST['departman'] : null;
+            
+            if ($is_restricted) {
+                $departman = $restricted_dept;
+            }
+
+            $personel_id_param = $_POST['personel_id'] ?? null;
+            $selected_personel_id = null;
+            if (!empty($personel_id_param) && $personel_id_param !== 'all') {
+                $selected_personel_id = is_numeric($personel_id_param) ? (int)$personel_id_param : (int)Security::decrypt($personel_id_param);
+            }
+
+            // 1. Personel Listesini Çek
+            $sqlPersonel = "SELECT id, adi_soyadi, departman, gorev, cep_telefonu, resim_yolu, personel_resim_yolu 
+                            FROM personel 
+                            WHERE silinme_tarihi IS NULL 
+                              AND aktif_mi = 1 
+                              AND (saha_takibi = 1 OR disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri))";
+            $paramsPersonel = [];
+            if ($firma_id) {
+                $sqlPersonel .= " AND firma_id = :firma_id";
+                $paramsPersonel[':firma_id'] = $firma_id;
+            }
+            if ($departman) {
+                $sqlPersonel .= " AND departman = :departman";
+                $paramsPersonel[':departman'] = $departman;
+            }
+            if ($selected_personel_id) {
+                $sqlPersonel .= " AND id = :pid";
+                $paramsPersonel[':pid'] = $selected_personel_id;
+            }
+            $sqlPersonel .= " ORDER BY adi_soyadi ASC";
+
+            $stmtP = $db->prepare($sqlPersonel);
+            $stmtP->execute($paramsPersonel);
+            $personelList = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+
+            $personelMap = [];
+            $personelIds = [];
+            foreach ($personelList as $p) {
+                $pId = (int)$p['id'];
+                $personelIds[] = $pId;
+                $fotoUrl = !empty($p['personel_resim_yolu']) ? $p['personel_resim_yolu'] : (!empty($p['resim_yolu']) ? $p['resim_yolu'] : '');
+                $personelMap[$pId] = [
+                    'id' => $pId,
+                    'id_enc' => Security::encrypt($pId),
+                    'adi_soyadi' => $p['adi_soyadi'],
+                    'departman' => $p['departman'] ?: 'Genel',
+                    'gorev' => $p['gorev'] ?: '-',
+                    'cep_telefonu' => $p['cep_telefonu'] ?: '-',
+                    'foto' => $fotoUrl,
+                    'calistigi_gunler' => [],
+                    'toplam_dakika' => 0,
+                    'zamaninda_sayisi' => 0,
+                    'gec_sayisi' => 0,
+                    'toplam_gecikme_dk' => 0,
+                    'baslama_saatleri' => [],
+                    'bitis_saatleri' => []
+                ];
+            }
+
+            // 2. Hareket Kayıtlarını Çek
+            $sqlHareket = "SELECT ph.personel_id, ph.islem_tipi, ph.zaman, ph.konum_enlem, ph.konum_boylam, ph.konum_hassasiyeti, ph.cihaz_bilgisi
+                           FROM personel_hareketleri ph
+                           WHERE ph.silinme_tarihi IS NULL
+                             AND ph.zaman >= :baslangic_dt AND ph.zaman <= :bitis_dt";
+            $paramsHareket = [
+                ':baslangic_dt' => $baslangic . ' 00:00:00',
+                ':bitis_dt' => $bitis . ' 23:59:59'
+            ];
+            if ($firma_id) {
+                $sqlHareket .= " AND ph.firma_id = :firma_id";
+                $paramsHareket[':firma_id'] = $firma_id;
+            }
+            $sqlHareket .= " ORDER BY ph.personel_id ASC, ph.zaman ASC";
+
+            $stmtH = $db->prepare($sqlHareket);
+            $stmtH->execute($paramsHareket);
+            $hareketler = $stmtH->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. İzinleri Çek
+            $sqlIzin = "SELECT pi.personel_id, pi.baslangic_tarihi, pi.bitis_tarihi 
+                        FROM personel_izinleri pi 
+                        LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id 
+                        WHERE pi.silinme_tarihi IS NULL 
+                          AND pi.onay_durumu = 'Onaylandı' 
+                          AND pi.baslangic_tarihi <= :bitis_date 
+                          AND pi.bitis_tarihi >= :baslangic_date
+                          AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
+            $stmtIzin = $db->prepare($sqlIzin);
+            $stmtIzin->execute([
+                ':baslangic_date' => $baslangic,
+                ':bitis_date' => $bitis
+            ]);
+            $izinList = $stmtIzin->fetchAll(PDO::FETCH_ASSOC);
+            $izinGunleri = []; // [personel_id => [Y-m-d => true]]
+            foreach ($izinList as $iz) {
+                $pId = (int)$iz['personel_id'];
+                $cur = strtotime($iz['baslangic_tarihi']);
+                $end = strtotime($iz['bitis_tarihi']);
+                while ($cur <= $end) {
+                    $dStr = date('Y-m-d', $cur);
+                    if ($dStr >= $baslangic && $dStr <= $bitis) {
+                        $izinGunleri[$pId][$dStr] = true;
+                    }
+                    $cur = strtotime('+1 day', $cur);
+                }
+            }
+
+            // 4. Günlük Hareketleri Grupla: [personel_id => [Y-m-d => [ 'hareketler' => [...], 'basla' => ..., 'bitir' => ... ]]]
+            $personelGunlukData = [];
+            foreach ($hareketler as $h) {
+                $pId = (int)$h['personel_id'];
+                if (!isset($personelMap[$pId])) continue; // Filtre dışı personeller
+
+                $gun = date('Y-m-d', strtotime($h['zaman']));
+                if (!isset($personelGunlukData[$pId][$gun])) {
+                    $personelGunlukData[$pId][$gun] = [
+                        'hareketler' => [],
+                        'ilk_basla' => null,
+                        'son_bitir' => null,
+                        'ilk_konum' => null,
+                        'son_konum' => null
+                    ];
+                }
+                $personelGunlukData[$pId][$gun]['hareketler'][] = $h;
+                if ($h['islem_tipi'] === 'BASLA' && !$personelGunlukData[$pId][$gun]['ilk_basla']) {
+                    $personelGunlukData[$pId][$gun]['ilk_basla'] = $h['zaman'];
+                    $personelGunlukData[$pId][$gun]['ilk_konum'] = ['lat' => $h['konum_enlem'], 'lng' => $h['konum_boylam']];
+                }
+                if ($h['islem_tipi'] === 'BITIR') {
+                    $personelGunlukData[$pId][$gun]['son_bitir'] = $h['zaman'];
+                    $personelGunlukData[$pId][$gun]['son_konum'] = ['lat' => $h['konum_enlem'], 'lng' => $h['konum_boylam']];
+                }
+            }
+
+            // 5. Tarih Listesi Oluştur (Seri)
+            $trAylar = ['01'=>'Oca', '02'=>'Şub', '03'=>'Mar', '04'=>'Nis', '05'=>'May', '06'=>'Haz', '07'=>'Tem', '08'=>'Ağu', '09'=>'Eyl', '10'=>'Eki', '11'=>'Kas', '12'=>'Ara'];
+            $trGunler = ['1'=>'Pzt', '2'=>'Sal', '3'=>'Çar', '4'=>'Per', '5'=>'Cum', '6'=>'Cmt', '7'=>'Paz'];
+
+            $gunler = [];
+            $curDate = strtotime($baslangic);
+            $endDate = strtotime($bitis);
+            while ($curDate <= $endDate) {
+                $dStr = date('Y-m-d', $curDate);
+                $dAy = date('m', $curDate);
+                $dGun = date('d', $curDate);
+                $dN = date('N', $curDate);
+                $gunler[$dStr] = [
+                    'tarih' => $dStr,
+                    'label' => $dGun . ' ' . ($trAylar[$dAy] ?? '') . ' ' . ($trGunler[$dN] ?? ''),
+                    'toplam_dakika' => 0,
+                    'calisan_kisi_sayisi' => 0,
+                    'zamaninda_sayisi' => 0,
+                    'gec_sayisi' => 0
+                ];
+                $curDate = strtotime('+1 day', $curDate);
+            }
+
+            // Saat Dağılım Kovaları
+            $saatKovalari = [
+                '07:30 Öncesi' => 0,
+                '07:30 - 08:00' => 0,
+                '08:00 - 08:30' => 0,
+                '08:30 - 09:00' => 0,
+                '09:00 Sonrası' => 0
+            ];
+
+            // Bireysel Analiz için günlük liste
+            $bireyselGunlukKayitlar = [];
+
+            // 6. Hesaplamaları Gerçekleştir
+            $toplamGenelDakika = 0;
+            $toplamGecikmeDakika = 0;
+            $toplamZamanindaBaslama = 0;
+            $toplamGecBaslama = 0;
+            $toplamIzinliGun = 0;
+            $aktifPersonelSet = [];
+
+            foreach ($personelMap as $pId => &$pInfo) {
+                $deptMesai = getDeptMesai($pInfo['departman'], $deptMesaileri);
+                
+                foreach ($gunler as $dStr => $gInfo) {
+                    $isIzinli = isset($izinGunleri[$pId][$dStr]);
+                    if ($isIzinli) {
+                        $toplamIzinliGun++;
+                    }
+
+                    if (isset($personelGunlukData[$pId][$dStr])) {
+                        $gData = $personelGunlukData[$pId][$dStr];
+                        $hareketList = $gData['hareketler'];
+
+                        // Günlük çalışma süresini hesapla (BASLA - BITIR çiftleri veya ilk-son)
+                        $gunlukDk = 0;
+                        $lastBasla = null;
+
+                        foreach ($hareketList as $hk) {
+                            if ($hk['islem_tipi'] === 'BASLA') {
+                                $lastBasla = strtotime($hk['zaman']);
+                            } elseif ($hk['islem_tipi'] === 'BITIR' && $lastBasla !== null) {
+                                $bitisTs = strtotime($hk['zaman']);
+                                if ($bitisTs > $lastBasla) {
+                                    $gunlukDk += ($bitisTs - $lastBasla) / 60;
+                                }
+                                $lastBasla = null;
+                            }
+                        }
+
+                        // Eğer gün bugün ise ve hala mesaide ise (son BASLA açık kalmışsa)
+                        if ($lastBasla !== null && $dStr === date('Y-m-d')) {
+                            $nowTs = time();
+                            if ($nowTs > $lastBasla) {
+                                $farkDk = ($nowTs - $lastBasla) / 60;
+                                if ($farkDk > 0 && $farkDk < 840) { // Max 14 saat sınırı
+                                    $gunlukDk += $farkDk;
+                                }
+                            }
+                        }
+
+                        // Eğer çiftler bulunamadı ama ilk_basla ve son_bitir varsa
+                        if ($gunlukDk <= 0 && $gData['ilk_basla'] && $gData['son_bitir']) {
+                            $fark = strtotime($gData['son_bitir']) - strtotime($gData['ilk_basla']);
+                            if ($fark > 0) {
+                                $gunlukDk = $fark / 60;
+                            }
+                        }
+
+                        // Minimum 1 dakika varsa çalıştığı gün say
+                        if ($gData['ilk_basla']) {
+                            $aktifPersonelSet[$pId] = true;
+                            $pInfo['calistigi_gunler'][] = $dStr;
+                            $pInfo['toplam_dakika'] += $gunlukDk;
+                            $toplamGenelDakika += $gunlukDk;
+
+                            $gunler[$dStr]['toplam_dakika'] += $gunlukDk;
+                            $gunler[$dStr]['calisan_kisi_sayisi']++;
+
+                            // Başlama saati ve gecikme kontrolü
+                            $baslamaDt = new DateTime($gData['ilk_basla']);
+                            $baslamaSaatStr = $baslamaDt->format('H:i');
+                            $baslamaHms = $baslamaDt->format('H:i:s');
+                            $pInfo['baslama_saatleri'][] = strtotime('1970-01-01 ' . $baslamaHms);
+
+                            if ($gData['son_bitir']) {
+                                $bitisHms = date('H:i:s', strtotime($gData['son_bitir']));
+                                $pInfo['bitis_saatleri'][] = strtotime('1970-01-01 ' . $bitisHms);
+                            }
+
+                            // Saat Dilimi Kovası
+                            if ($baslamaSaatStr < '07:30') {
+                                $saatKovalari['07:30 Öncesi']++;
+                            } elseif ($baslamaSaatStr <= '08:00') {
+                                $saatKovalari['07:30 - 08:00']++;
+                            } elseif ($baslamaSaatStr <= '08:30') {
+                                $saatKovalari['08:00 - 08:30']++;
+                            } elseif ($baslamaSaatStr <= '09:00') {
+                                $saatKovalari['08:30 - 09:00']++;
+                            } else {
+                                $saatKovalari['09:00 Sonrası']++;
+                            }
+
+                            $gecikmeDk = 0;
+                            $isLate = false;
+                            if (!$isIzinli) {
+                                if ($baslamaSaatStr > $deptMesai) {
+                                    $isLate = true;
+                                    $pInfo['gec_sayisi']++;
+                                    $toplamGecBaslama++;
+                                    $gunler[$dStr]['gec_sayisi']++;
+
+                                    $limitTs = strtotime($dStr . ' ' . $deptMesai);
+                                    $startTs = $baslamaDt->getTimestamp();
+                                    $gecikmeDk = max(0, round(($startTs - $limitTs) / 60));
+                                    $pInfo['toplam_gecikme_dk'] += $gecikmeDk;
+                                    $toplamGecikmeDakika += $gecikmeDk;
+                                } else {
+                                    $pInfo['zamaninda_sayisi']++;
+                                    $toplamZamanindaBaslama++;
+                                    $gunler[$dStr]['zamaninda_sayisi']++;
+                                }
+                            }
+
+                            // Bireysel Analiz Kaydı
+                            if ($selected_personel_id && $pId === $selected_personel_id) {
+                                $durumBadge = '<span class="badge bg-success-subtle text-success border border-success">Zamanında</span>';
+                                $gecikmeText = '-';
+                                if ($isLate) {
+                                    $durumBadge = '<span class="badge bg-warning-subtle text-warning border border-warning">Geç Başladı</span>';
+                                    $gecikmeText = $gecikmeDk >= 60 ? (floor($gecikmeDk/60) . ' sa ' . ($gecikmeDk%60) . ' dk') : ($gecikmeDk . ' dk');
+                                }
+                                $saatCalisma = round($gunlukDk / 60, 2);
+                                $bireyselGunlukKayitlar[] = [
+                                    'tarih' => date('d.m.Y', strtotime($dStr)),
+                                    'gun_adi' => $trGunler[date('N', strtotime($dStr))] ?? '',
+                                    'baslama' => $baslamaSaatStr,
+                                    'bitis' => $gData['son_bitir'] ? date('H:i', strtotime($gData['son_bitir'])) : ($dStr === date('Y-m-d') ? '<span class="badge bg-info">Devam Ediyor</span>' : '-'),
+                                    'calisma_saati' => $saatCalisma . ' sa',
+                                    'durum' => $durumBadge,
+                                    'gecikme' => $gecikmeText,
+                                    'ilk_konum' => $gData['ilk_konum'],
+                                    'son_konum' => $gData['son_konum']
+                                ];
+                            }
+                        }
+                    } elseif ($selected_personel_id && $pId === $selected_personel_id) {
+                        // Seçili personel için çalışmadığı/izinli gün kaydı
+                        $durumBadge = $isIzinli ? '<span class="badge bg-info-subtle text-info border border-info">İzinli</span>' : '<span class="badge bg-secondary-subtle text-secondary">Kayıt Yok</span>';
+                        $bireyselGunlukKayitlar[] = [
+                            'tarih' => date('d.m.Y', strtotime($dStr)),
+                            'gun_adi' => $trGunler[date('N', strtotime($dStr))] ?? '',
+                            'baslama' => '-',
+                            'bitis' => '-',
+                            'calisma_saati' => '0 sa',
+                            'durum' => $durumBadge,
+                            'gecikme' => '-',
+                            'ilk_konum' => null,
+                            'son_konum' => null
+                        ];
+                    }
+                }
+            }
+            unset($pInfo);
+
+            // 7. Personel Performans Listesi
+            $personelPerformansList = [];
+            $departmanStats = [];
+
+            foreach ($personelMap as $pId => $p) {
+                $calistigiGun = count($p['calistigi_gunler']);
+                $toplamSaat = round($p['toplam_dakika'] / 60, 1);
+                $ortSaat = $calistigiGun > 0 ? round($toplamSaat / $calistigiGun, 1) : 0;
+                
+                $toplamGiris = $p['zamaninda_sayisi'] + $p['gec_sayisi'];
+                $dakiklikSkor = $toplamGiris > 0 ? round(($p['zamaninda_sayisi'] / $toplamGiris) * 100) : 100;
+
+                // Ortalama Başlama ve Bitiş Saatleri
+                $avgBaslama = '-';
+                if (!empty($p['baslama_saatleri'])) {
+                    $avgBaslamaTs = array_sum($p['baslama_saatleri']) / count($p['baslama_saatleri']);
+                    $avgBaslama = date('H:i', (int)$avgBaslamaTs);
+                }
+
+                $avgBitis = '-';
+                if (!empty($p['bitis_saatleri'])) {
+                    $avgBitisTs = array_sum($p['bitis_saatleri']) / count($p['bitis_saatleri']);
+                    $avgBitis = date('H:i', (int)$avgBitisTs);
+                }
+
+                $item = [
+                    'id' => $p['id'],
+                    'id_enc' => $p['id_enc'],
+                    'adi_soyadi' => $p['adi_soyadi'],
+                    'foto' => $p['foto'],
+                    'departman' => $p['departman'],
+                    'gorev' => $p['gorev'],
+                    'cep_telefonu' => $p['cep_telefonu'],
+                    'calistigi_gun' => $calistigiGun,
+                    'toplam_saat' => $toplamSaat,
+                    'ort_saat' => $ortSaat,
+                    'zamaninda_sayisi' => $p['zamaninda_sayisi'],
+                    'gec_sayisi' => $p['gec_sayisi'],
+                    'toplam_gecikme_dk' => $p['toplam_gecikme_dk'],
+                    'dakiklik_skor' => $dakiklikSkor,
+                    'avg_baslama' => $avgBaslama,
+                    'avg_bitis' => $avgBitis
+                ];
+                $personelPerformansList[] = $item;
+
+                // Departman Gruplama
+                $dept = $p['departman'];
+                if (!isset($departmanStats[$dept])) {
+                    $departmanStats[$dept] = [
+                        'departman' => $dept,
+                        'toplam_dakika' => 0,
+                        'personel_sayisi' => 0,
+                        'aktif_calisan_sayisi' => 0,
+                        'zamaninda_sayisi' => 0,
+                        'gec_sayisi' => 0
+                    ];
+                }
+                $departmanStats[$dept]['personel_sayisi']++;
+                $departmanStats[$dept]['toplam_dakika'] += $p['toplam_dakika'];
+                $departmanStats[$dept]['zamaninda_sayisi'] += $p['zamaninda_sayisi'];
+                $departmanStats[$dept]['gec_sayisi'] += $p['gec_sayisi'];
+                if ($calistigiGun > 0) {
+                    $departmanStats[$dept]['aktif_calisan_sayisi']++;
+                }
+            }
+
+            // Departman Listesi Formatı
+            $departmanListFormatted = [];
+            foreach ($departmanStats as $dept => $dStat) {
+                $toplamSaatDept = round($dStat['toplam_dakika'] / 60, 1);
+                $ortSaatDept = $dStat['aktif_calisan_sayisi'] > 0 ? round($toplamSaatDept / $dStat['aktif_calisan_sayisi'], 1) : 0;
+                $toplamGirisDept = $dStat['zamaninda_sayisi'] + $dStat['gec_sayisi'];
+                $dakiklikDept = $toplamGirisDept > 0 ? round(($dStat['zamaninda_sayisi'] / $toplamGirisDept) * 100) : 100;
+
+                $departmanListFormatted[] = [
+                    'departman' => $dept,
+                    'toplam_saat' => $toplamSaatDept,
+                    'ort_saat' => $ortSaatDept,
+                    'personel_sayisi' => $dStat['personel_sayisi'],
+                    'aktif_calisan_sayisi' => $dStat['aktif_calisan_sayisi'],
+                    'dakiklik_skor' => $dakiklikDept
+                ];
+            }
+
+            // 8. Liderlik Tabloları (Top 5)
+            // Top Çalışanlar (Toplam Saate Göre)
+            $topCalisanlar = $personelPerformansList;
+            usort($topCalisanlar, function($a, $b) {
+                return $b['toplam_saat'] <=> $a['toplam_saat'];
+            });
+            $topCalisanlar = array_slice($topCalisanlar, 0, 5);
+
+            // Top Gecikenler (Geç Başlama Sayısına ve Gecikme Dakikasına Göre)
+            $topGecikenler = array_filter($personelPerformansList, function($x) {
+                return $x['gec_sayisi'] > 0;
+            });
+            usort($topGecikenler, function($a, $b) {
+                if ($b['gec_sayisi'] === $a['gec_sayisi']) {
+                    return $b['toplam_gecikme_dk'] <=> $a['toplam_gecikme_dk'];
+                }
+                return $b['gec_sayisi'] <=> $a['gec_sayisi'];
+            });
+            $topGecikenler = array_slice(array_values($topGecikenler), 0, 5);
+
+            // 9. Günlük Trend Serisi Formatı
+            $trendCategories = [];
+            $trendSeriesSaat = [];
+            $trendSeriesKisi = [];
+            $trendSeriesGec = [];
+            foreach ($gunler as $g) {
+                $trendCategories[] = $g['label'];
+                $trendSeriesSaat[] = round($g['toplam_dakika'] / 60, 1);
+                $trendSeriesKisi[] = $g['calisan_kisi_sayisi'];
+                $trendSeriesGec[] = $g['gec_sayisi'];
+            }
+
+            // 10. Genel KPI Kartları
+            $toplamSaatGenel = round($toplamGenelDakika / 60, 1);
+            $toplamGunSayisi = max(1, count($gunler));
+            $gunlukOrtalamaSaatGenel = round($toplamSaatGenel / $toplamGunSayisi, 1);
+            $toplamGirisGenel = $toplamZamanindaBaslama + $toplamGecBaslama;
+            $genelDakiklikOrani = $toplamGirisGenel > 0 ? round(($toplamZamanindaBaslama / $toplamGirisGenel) * 100) : 100;
+            $toplamTakipPersonel = count($personelMap);
+            $aktifCalisanSayisiGenel = count($aktifPersonelSet);
+            $katilimOraniGenel = $toplamTakipPersonel > 0 ? round(($aktifCalisanSayisiGenel / $toplamTakipPersonel) * 100) : 0;
+
+            $responsePayload = [
+                'kpi' => [
+                    'toplam_saat' => $toplamSaatGenel,
+                    'gunluk_ort_saat' => $gunlukOrtalamaSaatGenel,
+                    'zamaninda_oran' => $genelDakiklikOrani,
+                    'gec_kalan_sayisi' => $toplamGecBaslama,
+                    'toplam_gecikme_dk' => $toplamGecikmeDakika,
+                    'toplam_takip_personel' => $toplamTakipPersonel,
+                    'aktif_calisan_sayisi' => $aktifCalisanSayisiGenel,
+                    'katilim_orani' => $katilimOraniGenel,
+                    'toplam_izin_gun' => $toplamIzinliGun
+                ],
+                'trend' => [
+                    'categories' => $trendCategories,
+                    'saat_serisi' => $trendSeriesSaat,
+                    'kisi_serisi' => $trendSeriesKisi,
+                    'gec_serisi' => $trendSeriesGec
+                ],
+                'saat_dagilimi' => $saatKovalari,
+                'durum_dagilimi' => [
+                    'zamaninda' => $toplamZamanindaBaslama,
+                    'gec' => $toplamGecBaslama,
+                    'izinli' => $toplamIzinliGun
+                ],
+                'departman_analiz' => $departmanListFormatted,
+                'top_calisanlar' => $topCalisanlar,
+                'top_gecikenler' => $topGecikenler,
+                'personel_performans' => $personelPerformansList,
+                'is_single_personel' => (bool)$selected_personel_id,
+                'bireysel_kayitlar' => $bireyselGunlukKayitlar
+            ];
+
+            response(true, $responsePayload);
+            break;
+
         case 'getDepartmanMesaileri':
             // Yetki kontrolü
             if (!\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")) {

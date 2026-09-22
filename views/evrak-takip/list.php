@@ -122,12 +122,31 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
                                 <i data-feather="arrow-up-circle" class="icon-sm me-1"></i> <span
                                     class="d-none d-md-inline">Yeni Giden Evrak</span>
                             </a>
+
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+
+                            <button type="button"
+                                class="btn btn-sm btn-light border-0 text-muted px-2 py-1 d-flex align-items-center justify-content-center evrak-ozet-toggle"
+                                id="btnEvrakOzetToggle"
+                                title="Özet kartlarını gizle">
+                                <i class="bx bx-chevron-up fs-5"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
 
+                <script>
+                    (function() {
+                        try {
+                            if (localStorage.getItem("evrak_ozet_kapali") === "1") {
+                                document.write(\x27<style id="evrak-ozet-preload-style">#evrakOzetSatir{max-height:0!important;opacity:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden!important;pointer-events:none!important;}</style>\x27);
+                            }
+                        } catch (e) {}
+                    })();
+                </script>
+
                 <!-- Özet Kartları -->
-                <div class="row g-3 mb-4">
+                <div class="row g-3 mb-4 evrak-ozet-satir" id="evrakOzetSatir">
                     <!-- Toplam Evrak -->
                     <div class="col-xl-3 col-md-6">
                         <div class="card border-0 shadow-sm h-100 bordro-summary-card"
@@ -634,6 +653,51 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
     .btn-delete-konu:hover {
         color: #ef4444 !important;
         background-color: rgba(239, 68, 68, 0.15) !important;
+    }
+
+    .evrak-ozet-satir {
+        overflow: hidden;
+        max-height: 500px;
+        opacity: 1;
+        transition: max-height .28s ease, opacity .2s ease, margin .28s ease;
+    }
+
+    .evrak-ozet-satir.evrak-ozet-kapali {
+        max-height: 0;
+        opacity: 0;
+        margin-bottom: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        pointer-events: none;
+    }
+
+    .evrak-ozet-toggle {
+        border: 1px solid var(--bs-border-color, #e2e8f0);
+        background: var(--bs-body-bg, #fff);
+        color: var(--bs-secondary-color, #64748b);
+        width: 32px;
+        height: 31px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all .2s ease;
+    }
+
+    .evrak-ozet-toggle:hover {
+        color: var(--bs-primary, #3b82f6);
+        border-color: var(--bs-primary, #3b82f6);
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .evrak-ozet-toggle i {
+        font-size: 18px;
+        transition: transform .25s ease;
+    }
+
+    .evrak-ozet-toggle.evrak-donuk i {
+        transform: rotate(180deg);
     }
 </style>
 

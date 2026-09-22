@@ -52,7 +52,10 @@ File: Main Js File
 
   function initMetisMenu() {
     //metis menu
-    $("#side-menu").metisMenu();
+    if ($("#side-menu").is("ul")) {
+      $("#side-menu").metisMenu();
+    }
+    $("#side-menu .metismenu, ul.metismenu").metisMenu();
   }
 
   function initCounterNumber() {
@@ -138,22 +141,41 @@ File: Main Js File
 
   function initMenuItemScroll() {
     // focus active menu in left sidebar
-    $(document).ready(function () {
-      if (
-        $("#sidebar-menu").length > 0 &&
-        $("#sidebar-menu .mm-active .active").length > 0
-      ) {
-        var activeMenu = $("#sidebar-menu .mm-active .active").offset().top;
-        if (activeMenu > 300) {
-          activeMenu = activeMenu - 300;
-          $(".vertical-menu .simplebar-content-wrapper").animate(
-            {
-              scrollTop: activeMenu,
-            },
-            "slow",
-          );
+    function scrollToActiveMenu() {
+      var scrollWrapper = document.querySelector(".vertical-menu .simplebar-content-wrapper") || document.querySelector(".vertical-menu");
+      if (!scrollWrapper) return;
+
+      try {
+        var savedScroll = localStorage.getItem('sidebar_scroll_top');
+        if (savedScroll !== null) {
+          scrollWrapper.scrollTop = parseInt(savedScroll, 10) || 0;
+          return;
         }
+      } catch (e) {}
+
+      var $activeEl = $("#sidebar-menu li.mm-active a.active, #sidebar-menu a.active, #sidebar-menu li.mm-active").first();
+      if (!$activeEl.length) return;
+
+      var stickyHeader = document.querySelector(".sidebar-sticky-top");
+      var stickyHeight = stickyHeader ? stickyHeader.offsetHeight : 120;
+      
+      var activeRect = $activeEl[0].getBoundingClientRect();
+      var wrapperRect = scrollWrapper.getBoundingClientRect();
+
+      var relativeTop = activeRect.top - wrapperRect.top;
+      if (relativeTop < stickyHeight || relativeTop > (wrapperRect.height - 80)) {
+        var targetScroll = scrollWrapper.scrollTop + relativeTop - stickyHeight - 20;
+        if (targetScroll < 0) targetScroll = 0;
+
+        $(scrollWrapper).stop().animate({
+          scrollTop: targetScroll
+        }, 300);
       }
+    }
+
+    $(document).ready(function () {
+      setTimeout(scrollToActiveMenu, 100);
+      setTimeout(scrollToActiveMenu, 300);
     });
   }
 
@@ -958,7 +980,7 @@ File: Main Js File
       $("#custom-sidebar-style").remove();
       $(`<style id="custom-sidebar-style">
         body { --sidebar-bg: ${color}; --sidebar-border: ${contrast.border}; --sidebar-item-hover: ${contrast.surface}; --sidebar-item-active: ${contrast.surface}; --sidebar-foreground: ${contrast.text}; --sidebar-muted: ${contrast.muted}; }
-        body .vertical-menu, body .sidebar-sticky-top { background-color: ${color} !important; border-color: ${contrast.border} !important; }
+        body .vertical-menu, body .sidebar-sticky-top { background-color: ${color} !important; }
         body .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; }
         body .sidebar-search::placeholder { color: ${contrast.subtle} !important; }
         body .sidebar-search-container .search-icon, body #sidebar-menu ul li a i, body #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; }

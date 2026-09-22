@@ -21,7 +21,7 @@ foreach ($parents as $p) {
     $parentOptions[$p->id] = $p->menu_name;
 }
 
-$maintitle = "Ana Sayfa";
+$maintitle = "Yönetim";
 $title = "Menü Yönetimi";
 ?>
 
@@ -32,162 +32,274 @@ $title = "Menü Yönetimi";
 
     <div class="row">
         <div class="col-12">
-            <div class="card">
+            <div class="card shadow-sm border-0 rounded-3">
                 <style>
-                    /* Premium Filter Buttons matched with Personel List */
-                    .status-filter-group {
-                        background: #f8fafc;
-                        padding: 4px;
-                        border-radius: 50px;
-                        border: 1px solid #e2e8f0;
+                    /* Minimal Tree & Card Styles */
+                    .menu-tree-container {
+                        min-height: 150px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 6px;
+                    }
+
+                    .menu-item-card {
+                        background: #ffffff;
+                        border: 1px solid #edf2f7;
+                        border-radius: 6px;
+                        transition: all 0.15s ease;
+                        position: relative;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+                    }
+
+                    .menu-item-card:hover {
+                        border-color: #cbd5e1;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+                    }
+
+                    .menu-item-card.is-parent {
+                        border-left: 3px solid #3b82f6 !important;
+                        margin-left: 0;
+                    }
+
+                    .menu-item-card.is-child {
+                        border-left: 3px solid #8b5cf6 !important;
+                        margin-left: 32px;
+                        background-color: #fcfcfd;
+                    }
+
+                    @media (max-width: 768px) {
+                        .menu-item-card.is-child {
+                            margin-left: 16px;
+                        }
+                    }
+
+                    .menu-item-header {
+                        padding: 8px 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 10px;
+                        cursor: pointer;
+                        user-select: none;
+                    }
+
+                    .menu-drag-handle {
+                        cursor: grab;
+                        color: #cbd5e1;
+                        padding: 2px 4px;
+                        display: flex;
+                        align-items: center;
+                        transition: color 0.15s;
+                    }
+
+                    .menu-drag-handle:hover {
+                        color: #64748b;
+                    }
+
+                    .menu-drag-handle:active {
+                        cursor: grabbing;
+                    }
+
+                    .menu-icon-box {
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 6px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 14px;
+                        flex-shrink: 0;
+                    }
+
+                    .menu-icon-box.parent-icon {
+                        background-color: #eff6ff;
+                        color: #2563eb;
+                    }
+
+                    .menu-icon-box.child-icon {
+                        background-color: #f5f3ff;
+                        color: #7c3aed;
+                    }
+
+                    /* Minimal High-Contrast Tags */
+                    .menu-tag {
                         display: inline-flex;
+                        align-items: center;
+                        font-size: 10.5px;
+                        font-weight: 600;
+                        line-height: 1;
+                        padding: 3px 6px;
+                        border-radius: 4px;
+                        white-space: nowrap;
+                    }
+
+                    .menu-tag-parent {
+                        background-color: #f1f5f9 !important;
+                        color: #334155 !important;
+                        border: 1px solid #e2e8f0 !important;
+                    }
+
+                    .menu-tag-child {
+                        background-color: #f5f3ff !important;
+                        color: #6b21a8 !important;
+                        border: 1px solid #ede9fe !important;
+                    }
+
+                    .menu-tag-group {
+                        background-color: #eff6ff !important;
+                        color: #1d4ed8 !important;
+                        border: 1px solid #dbeafe !important;
+                    }
+
+                    /* Ghost Action Buttons */
+                    .menu-action-btn-group {
+                        display: flex;
                         align-items: center;
                         gap: 2px;
                     }
 
-                    .status-filter-group .btn-check + .btn {
-                        margin-bottom: 0 !important;
-                        border: none !important;
-                        border-radius: 50px !important;
-                        font-size: 0.75rem;
-                        font-weight: 600;
-                        padding: 6px 16px;
-                        color: #64748b;
-                        transition: all 0.2s ease;
-                        display: flex;
+                    .menu-action-btn-group .btn-ghost {
+                        width: 28px;
+                        height: 28px;
+                        padding: 0;
+                        display: inline-flex;
                         align-items: center;
                         justify-content: center;
-                        gap: 6px;
-                        line-height: normal;
+                        border-radius: 4px;
+                        border: none;
+                        background: transparent;
+                        color: #94a3b8;
+                        transition: all 0.15s ease;
                     }
 
-                    .status-filter-group .btn-check:checked + .btn[for="filter-all"] { background: #64748b !important; color: #fff !important; }
-                    .status-filter-group .btn-check:checked + .btn[for="filter-aktif"] { background: #34c38f !important; color: #fff !important; }
-                    .status-filter-group .btn-check:checked + .btn[for="filter-pasif"] { background: #ef4444 !important; color: #fff !important; }
-
-                    .status-filter-group .count-tag {
-                        background: rgba(255,255,255,0.2);
-                        padding: 2px 8px;
-                        border-radius: 10px;
-                        font-size: 11px;
+                    .menu-action-btn-group .btn-ghost:hover {
+                        background: #f1f5f9;
+                        color: #1e293b;
                     }
 
-                    .status-filter-group .btn-check:not(:checked) + .btn .count-tag {
-                        background: rgba(0,0,0,0.05);
-                        color: #64748b;
+                    .menu-action-btn-group .btn-indent:hover {
+                        color: #2563eb !important;
+                        background: #eff6ff !important;
                     }
 
-                    [data-bs-theme="dark"] .status-filter-group {
-                        background: #2a3042 !important;
-                        border-color: #32394e !important;
+                    .menu-action-btn-group .btn-outdent:hover {
+                        color: #7c3aed !important;
+                        background: #f5f3ff !important;
                     }
 
-                    [data-bs-theme="dark"] .status-filter-group .btn-check + .btn {
-                        color: #94a3b8 !important;
+                    .menu-action-btn-group .btn-delete:hover {
+                        color: #dc2626 !important;
+                        background: #fef2f2 !important;
                     }
 
-                    [data-bs-theme="dark"] .personel-action-toolbar {
-                        background-color: #2a3042 !important;
-                        border-color: #32394e !important;
+                    .menu-item-body {
+                        display: none;
+                        padding: 12px 16px;
+                        background: #f8fafc;
+                        border-top: 1px solid #edf2f7;
+                        border-bottom-left-radius: 6px;
+                        border-bottom-right-radius: 6px;
                     }
 
-                    /* High contrast soft badges for menu table */
-                    .badge-soft-menu-parent {
-                        background-color: #f1f5f9 !important;
-                        color: #475569 !important;
-                        border: 1px solid #cbd5e1 !important;
-                        font-weight: 600;
-                        padding: 4px 10px;
-                        font-size: 11px;
-                    }
-                    .badge-soft-menu-sub {
-                        background-color: #e0f2fe !important;
-                        color: #0369a1 !important;
-                        border: 1px solid #bae6fd !important;
-                        font-weight: 600;
-                        padding: 4px 10px;
-                        font-size: 11px;
-                    }
-                    .badge-soft-menu-group {
-                        background-color: #e0e7ff !important;
-                        color: #3730a3 !important;
-                        border: 1px solid #c7d2fe !important;
-                        font-weight: 600;
-                        padding: 4px 10px;
-                        font-size: 11px;
+                    .sortable-ghost {
+                        opacity: 0.3;
+                        background: #f1f5f9 !important;
+                        border: 1.5px dashed #94a3b8 !important;
                     }
 
-                    [data-bs-theme="dark"] .badge-soft-menu-parent {
+                    .sortable-chosen {
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+                    }
+
+                    /* Dark Mode Support */
+                    [data-bs-theme="dark"] .menu-item-card {
+                        background: #2a3042;
+                        border-color: #32394e;
+                    }
+                    [data-bs-theme="dark"] .menu-item-card.is-child {
+                        background-color: #262b3c;
+                    }
+                    [data-bs-theme="dark"] .menu-item-body {
+                        background: #222736;
+                        border-top-color: #32394e;
+                    }
+                    [data-bs-theme="dark"] .menu-action-btn-group .btn-ghost:hover {
+                        background: #32394e;
+                        color: #f1f5f9;
+                    }
+                    [data-bs-theme="dark"] .menu-tag-parent {
                         background-color: #334155 !important;
-                        color: #cbd5e1 !important;
+                        color: #f1f5f9 !important;
                         border-color: #475569 !important;
                     }
-                    [data-bs-theme="dark"] .badge-soft-menu-sub {
-                        background-color: #075985 !important;
-                        color: #e0f2fe !important;
-                        border-color: #0284c7 !important;
+                    [data-bs-theme="dark"] .menu-tag-child {
+                        background-color: #3b2d54 !important;
+                        color: #e9d5ff !important;
+                        border-color: #6b21a8 !important;
                     }
-                    [data-bs-theme="dark"] .badge-soft-menu-group {
-                        background-color: #3730a3 !important;
-                        color: #e0e7ff !important;
-                        border-color: #4338ca !important;
-                    }
-
-                    #menuTable {
-                        opacity: 1;
+                    [data-bs-theme="dark"] .menu-tag-group {
+                        background-color: #1e3a8a !important;
+                        color: #bfdbfe !important;
+                        border-color: #2563eb !important;
                     }
                 </style>
 
-                <div class="card-body overflow-auto">
-                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
-                        <div class="d-flex gap-3 align-items-center flex-wrap">
-                            <div class="status-filter-group" role="group">
-                                <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="">
-                                <label class="btn" for="filter-all">
-                                    <i class="bx bx-grid-alt"></i> Tümü 
-                                    <span class="count-tag ms-1" id="count-all">0</span>
-                                </label>
-                                
-                                <input type="radio" class="btn-check" name="status-filter" id="filter-aktif" value="Aktif" checked>
-                                <label class="btn" for="filter-aktif">
-                                    <i class="bx bx-user-check"></i> Aktif 
-                                    <span class="count-tag ms-1" id="count-aktif">0</span>
-                                </label>
+                <div class="card-body p-3 p-md-4">
+                    <!-- Minimal Top Toolbar -->
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 pb-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <h5 class="mb-0 fw-bold text-dark fs-15 d-flex align-items-center">
+                                <i class="bx bx-menu-alt-left text-primary me-1 fs-4"></i>Menü Hiyerarşisi
+                            </h5>
+                            <span class="badge bg-light text-secondary border px-2 py-1 fs-11 fw-semibold" id="badgeTotalItems">0 Menü</span>
 
-                                <input type="radio" class="btn-check" name="status-filter" id="filter-pasif" value="Pasif">
-                                <label class="btn" for="filter-pasif">
-                                    <i class="bx bx-user-x"></i> Pasif 
-                                    <span class="count-tag ms-1" id="count-pasif">0</span>
-                                </label>
+                            <!-- Group Filter Select -->
+                            <div class="ms-2" style="min-width: 160px;">
+                                <select id="filterGroupSelect" class="form-select form-select-sm shadow-none rounded-2" style="font-size: 12px;">
+                                    <option value="">Tüm Gruplar</option>
+                                    <?php foreach ($groups as $g): ?>
+                                        <option value="<?php echo htmlspecialchars($g, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($g, ENT_QUOTES, 'UTF-8'); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                         </div>
 
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 personel-action-toolbar">
-                            <button type="button" id="btnAddNewMenu" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center fw-semibold">
-                                <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Menü
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <button type="button" id="btnToggleAllAccordions" class="btn btn-sm btn-light border text-muted px-2 py-1 fs-12 fw-medium">
+                                <i class="bx bx-expand-vertical me-1"></i> Tümünü Aç
+                            </button>
+
+                            <button type="button" id="btnResetDefaults" class="btn btn-sm btn-outline-danger px-2 py-1 fs-12 fw-medium" title="Tüm hiyerarşiyi varsayılan sistem ayarlarına sıfırlar">
+                                <i class="bx bx-reset me-1"></i> Varsayılana Dön
+                            </button>
+
+                            <button type="button" id="btnAddNewMenu" class="btn btn-sm btn-success px-3 py-1 fs-12 fw-semibold shadow-sm">
+                                <i class="bx bx-plus me-1"></i> Yeni Menü
                             </button>
                         </div>
                     </div>
 
-                    <div class="responsive" style="overflow-x: auto !important;">
-                        <table id="menuTable" class="table table-bordered nowrap w-100">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width: 40px;">#</th>
-                                    <th data-filter="string">MENÜ ADI</th>
-                                    <th data-filter="select">ÜST MENÜ</th>
-                                    <th data-filter="select">GRUP ADI</th>
-                                    <th data-filter="string">SAYFA BAĞLANTISI (LİNK)</th>
-                                    <th class="text-center" data-filter="string">İKON</th>
-                                    <th class="text-center" data-filter="number" style="width: 70px;">SIRA</th>
-                                    <th class="text-center" data-filter="select" style="width: 100px;">DURUM</th>
-                                    <th class="text-center" style="width: 90px;">İŞLEM</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Loaded dynamically via DataTables -->
-                            </tbody>
-                        </table>
+                    <!-- Minimal Tip Box -->
+                    <div class="alert alert-info border-0 d-flex align-items-center py-2 px-3 mb-3 rounded-2" style="background-color: #f0f7ff; color: #1e40af; border-left: 3px solid #3b82f6 !important;">
+                        <i class="feather feather-info text-primary fs-6 me-2 flex-shrink-0"></i>
+                        <div class="fs-12">
+                            <strong>İpucu:</strong> Menüleri sürükleyerek sıralayabilir; <i class="bx bx-right-arrow-alt text-primary fw-bold"></i> butonu ile alt menü, <i class="bx bx-left-arrow-alt text-purple fw-bold"></i> ile ana menü yapabilirsiniz.
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Menu Tree Container -->
+                    <div id="menuTreeLoading" class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="text-muted ms-2 fs-12">Menü yapısı yükleniyor...</span>
+                    </div>
+
+                    <div id="menuTreeContainer" class="menu-tree-container" style="display: none;">
+                        <!-- Rendered via JS -->
+                    </div>
+
+                    <div id="menuTreeEmpty" class="text-center py-4" style="display: none;">
+                        <i class="bx bx-folder-open display-5 text-muted"></i>
+                        <p class="text-muted mt-2 fs-12">Bu grupta görüntülenecek menü bulunamadı.</p>
                     </div>
                 </div>
             </div>
@@ -195,82 +307,62 @@ $title = "Menü Yönetimi";
     </div>
 </div>
 
-<!-- Menü Ekle / Düzenle Modal -->
+<!-- Modal: Yeni Menü Ekle -->
 <div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white py-3">
-                <h5 class="modal-title text-white fw-bold" id="menuModalLabel">
-                    <i class="feather feather-edit me-2"></i>Yeni Menü Ekle
-                </h5>
+            <div class="modal-header bg-primary text-white py-2 px-3">
+                <h6 class="modal-title text-white fw-bold" id="menuModalLabel">
+                    <i class="feather feather-plus-circle me-1"></i>Yeni Menü Ekle
+                </h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
             <form id="menuForm" autocomplete="off">
-                <input type="hidden" name="id" id="menu_id" value="">
-                <div class="modal-body p-4">
+                <input type="hidden" name="id" id="modal_menu_id" value="">
+                <div class="modal-body p-3 p-md-4">
                     <div class="row g-3">
-                        <!-- Menü Adı -->
                         <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "menu_name", "", "Örn: Personel İşlemleri", "Menü Adı", "menu", "form-control", true) ?>
+                            <?= Form::FormFloatInput("text", "menu_name", "", "Örn: Personel Listesi", "Menü Adı", "menu", "form-control", true) ?>
                         </div>
 
-                        <!-- Sayfa Açıklaması -->
                         <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "page_description", "", "Top-bar altında görünecek açıklama", "Sayfa Açıklaması", "file-text") ?>
+                            <?= Form::FormFloatInput("text", "menu_link", "", "Örn: personel/list", "Sayfa Bağlantısı (Link)", "link") ?>
                         </div>
 
-                        <!-- Üst Menü -->
                         <div class="col-md-6">
                             <?= Form::FormSelect2("parent_id", $parentOptions, 0, "Üst Menü", "corner-down-right", "key", "", "form-select") ?>
                         </div>
 
-                        <!-- Grup Adı -->
                         <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "group_name", "", "Örn: Yönetim", "Grup Adı", "grid", "form-control", false, null, "on", false, 'list="group_list"') ?>
-                            <datalist id="group_list">
+                            <?= Form::FormFloatInput("text", "group_name", "Yönetim", "Örn: Yönetim", "Grup Adı", "grid", "form-control", false, null, "on", false, 'list="modal_group_list"') ?>
+                            <datalist id="modal_group_list">
                                 <?php foreach ($groups as $g): ?>
                                     <option value="<?php echo htmlspecialchars($g, ENT_QUOTES, 'UTF-8'); ?>"></option>
                                 <?php endforeach; ?>
                             </datalist>
                         </div>
 
-                        <!-- Sayfa Bağlantısı (Link) -->
                         <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "menu_link", "", "Örn: personel/list", "Sayfa Bağlantısı (Link)", "link") ?>
-                        </div>
-
-                        <!-- İkon -->
-                        <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "menu_icon", "", "Örn: users, settings, sliders", "Feather / BoxIcon İkon Adı", "help-circle", "form-control", false, null, "on", false, '', false, 'iconPreview') ?>
-                        </div>
-
-                        <!-- Menü Sırası & Grup Sırası -->
-                        <div class="col-md-3">
-                            <?= Form::FormFloatInput("number", "menu_order", "1", "1", "Menü Sırası", "hash", "form-control", false, null, "on", false, 'min="1"') ?>
-                        </div>
-
-                        <div class="col-md-3">
-                            <?= Form::FormFloatInput("number", "group_order", "1", "1", "Grup Sırası", "hash", "form-control", false, null, "on", false, 'min="1"') ?>
-                        </div>
-
-                        <!-- Durum & Gösterim Seçenekleri -->
-                        <div class="col-md-6">
-                            <?= Form::FormSelect2("is_active", [1 => 'Aktif', 0 => 'Pasif'], 1, "Durum", "check-circle", "key", "", "form-select") ?>
+                            <?= Form::FormFloatInput("text", "menu_icon", "", "Örn: users, settings, home", "İkon Adı (Feather/BoxIcon)", "help-circle", "form-control", false, null, "on", false, '', false, 'modalIconPreview') ?>
                         </div>
 
                         <div class="col-md-6">
-                            <?= Form::FormSelect2("is_menu", [1 => 'Evet', 0 => 'Hayır (Gizli Rota)'], 1, "Menüde Görünsün mü?", "eye", "key", "", "form-select") ?>
+                            <?= Form::FormFloatInput("text", "page_description", "", "Top-bar altında görünecek açıklama", "Sayfa Açıklaması", "file-text") ?>
                         </div>
 
                         <div class="col-md-6">
-                            <?= Form::FormSelect2("is_authorized", [1 => 'Evet (Rol Yetkisi Gerekir)', 0 => 'Hayır (Herkese Açık)'], 1, "Yetki Kontrolü Olsun mu?", "shield", "key", "", "form-select") ?>
+                            <?= Form::FormSelect2("is_menu", [1 => 'Evet (Menüde Göster)', 0 => 'Hayır (Gizli Rota)'], 1, "Menüde Görünsün mü?", "eye", "key", "", "form-select") ?>
+                        </div>
+
+                        <div class="col-md-6">
+                            <?= Form::FormSelect2("is_authorized", [1 => 'Evet (Yetki Kontrolü Var)', 0 => 'Hayır (Açık)'], 1, "Yetki Kontrolü", "shield", "key", "", "form-select") ?>
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer bg-light py-3">
-                    <button type="button" class="btn btn-secondary waves-effect" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" id="btnSaveMenu" class="btn btn-primary waves-effect waves-light">
+                <div class="modal-footer bg-light py-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm waves-effect" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" id="btnSaveModalMenu" class="btn btn-primary btn-sm waves-effect waves-light px-3">
                         <i class="bx bx-save me-1"></i> Kaydet
                     </button>
                 </div>

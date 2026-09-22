@@ -149,8 +149,8 @@ $users = $User->getUsers();
     </div> <!-- end row -->
 </div> <!-- container-fluid -->
 <!-- Modal -->
-<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="usreModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="uyeIslemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable user-modal-dialog-custom">
         <div class="modal-content user-modal-content">
             <!-- Modern spinner -->
             <div class="d-flex justify-content-center align-items-center" style="height: 600px;">

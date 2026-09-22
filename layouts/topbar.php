@@ -88,81 +88,80 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
                     <?php echo htmlspecialchars($topbarDesc); ?>
                 </span>
             </div>
-
-            <!-- Firma seçimi (Şimdilik gizlendi) -->
-            <?php /* Firma seçimi geçici olarak gizlendi
-            if (count($firma_option) > 1): ?>
-            <form class="app-search d-none d-lg-block ms-2 ms-lg-3" style="width: 200px;">
-                <?php
-                echo Form::FormSelect2(
-                    name: "firma_id",
-                    options: $firma_option,
-                    valueField: "id",
-                    textField: "firma_adi",
-                    selectedValue: $_SESSION['firma_id'],
-                    label: "Firma",
-                    icon: "git-branch",
-                    class: 'form-control select2 w-100 p-1'
-                ); ?>
-            </form>
-            <?php endif; */ ?>
         </div>
+
+        <!-- Global Arama Kutusu (Geniş Ekranlarda Topbarın Tam Ortasında) -->
+        <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
+        <div class="topbar-global-search-wrapper d-none d-xl-block">
+            <div class="position-relative" id="global-search-wrapper">
+                <div class="global-search-box">
+                    <span class="global-search-icon">
+                        <i class="bx bx-search-alt-2"></i>
+                    </span>
+                    <input type="text" class="global-search-input" id="global-search-input" 
+                           placeholder="Personel ara... (İsim, TC, Görev, Telefon)" 
+                           autocomplete="off" spellcheck="false">
+                    <div class="global-search-actions">
+                        <span class="global-search-spinner" id="global-search-spinner" style="display: none;">
+                            <i class="bx bx-loader-alt bx-spin"></i>
+                        </span>
+                        <button type="button" class="btn btn-sm btn-link global-search-clear p-0" id="global-search-clear" style="display: none;" title="Temizle">
+                            <i class="bx bx-x font-size-18"></i>
+                        </button>
+                        <span class="global-search-kbd d-none d-xxl-inline-flex" title="Kısayol">
+                            <kbd>Ctrl</kbd><kbd class="ms-1">K</kbd>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Açılır Şık Sonuç Paneli -->
+                <div class="global-search-dropdown shadow-lg" id="global-search-dropdown" style="display: none;">
+                    <div class="global-search-results-list" id="global-search-results">
+                        <!-- Dinamik Sonuçlar -->
+                    </div>
+                    <div class="global-search-footer">
+                        <span class="global-search-stats" id="global-search-stats">Toplam 0 sonuç</span>
+                        <div class="global-search-shortcuts">
+                            <span><kbd>↑</kbd><kbd class="ms-1">↓</kbd> Gezin</span>
+                            <span class="ms-2"><kbd>↵</kbd> Seç</span>
+                            <span class="ms-2"><kbd>ESC</kbd> Kapat</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div class="d-flex align-items-center">
 
-            <!-- Personel Arama Kutusu (Sağda İkon Buton ile Açılır) -->
+            <!-- Küçük/Orta Ekranlarda (1200px altı) Arama İkon Butonu -->
             <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
-            <div class="dropdown d-inline-block me-1">
-                <button type="button" class="btn header-item noti-icon position-relative"
-                    id="page-header-personel-dropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                    aria-haspopup="true" aria-expanded="false" title="Personel Ara">
-                    <i data-feather="user-check" class="icon-lg"></i>
+            <div class="dropdown d-inline-block d-xl-none ms-1">
+                <button type="button" class="btn header-item noti-icon position-relative" id="page-header-search-dropdown" data-bs-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="false" title="Personel Ara (Ctrl+K)">
+                    <i data-feather="search" class="icon-lg"></i>
                 </button>
-                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-3 shadow-lg"
-                    aria-labelledby="page-header-personel-dropdown" style="min-width: 320px; width: 340px;"
-                    id="personel-search-dropdown-menu">
-                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-                        <h6 class="m-0 font-size-13 fw-semibold text-primary">
-                            <i class="bx bx-user-search me-1"></i> Personel Ara
-                        </h6>
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0 shadow-lg border-0"
+                    aria-labelledby="page-header-search-dropdown" style="min-width: 320px; width: 88vw; max-width: 420px; border-radius: 12px; overflow: hidden;">
+                    <div class="p-3 border-bottom bg-light">
+                        <div class="position-relative">
+                            <input type="text" class="form-control rounded-pill ps-4 pe-4 font-size-13" id="global-search-mobile-input" 
+                                   placeholder="Personel ara... (İsim, TC, Görev, Telefon)" autocomplete="off">
+                            <i class="bx bx-search-alt position-absolute top-50 start-0 translate-middle-y ms-2 text-muted font-size-16"></i>
+                            <span class="position-absolute top-50 end-0 translate-middle-y me-2" id="global-search-mobile-spinner" style="display: none;">
+                                <i class="bx bx-loader-alt bx-spin text-primary font-size-16"></i>
+                            </span>
+                        </div>
                     </div>
-                    <div class="position-relative mt-2">
-                        <?php
-                        echo Form::FormSelect2(
-                            name: "topbar_personel_search",
-                            options: ['' => ''],
-                            selectedValue: "",
-                            label: "Personel Ara",
-                            icon: "users",
-                            class: 'form-control w-100 p-1',
-                            id: 'topbar-personel-search'
-                        );
-                        ?>
+                    <div class="global-search-results-list" id="global-search-mobile-results" style="max-height: 360px; overflow-y: auto;">
+                        <div class="p-4 text-center text-muted font-size-12">
+                            <i class="bx bx-search-alt font-size-24 d-block mb-1 text-muted opacity-50"></i>
+                            Aramak istediğiniz personelin adını, TC'sini veya görevini yazınız.
+                        </div>
                     </div>
                 </div>
             </div>
             <?php endif; ?>
-
-            <div class="dropdown d-inline-block d-lg-none ms-2">
-                <button type="button" class="btn header-item" id="page-header-search-dropdown" data-bs-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="false">
-                    <i data-feather="search" class="icon-lg"></i>
-                </button>
-                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
-                    aria-labelledby="page-header-search-dropdown">
-
-                    <form class="p-3">
-                        <div class="form-group m-0">
-                            <div class="input-group">
-                                <input type="text" class="form-control" placeholder="Search ..."
-                                    aria-label="Search Result">
-
-                                <button class="btn btn-primary" type="submit"><i class="mdi mdi-magnify"></i></button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
 
             <div class="dropdown d-inline-block language-switch">
 
@@ -540,58 +539,655 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
             }, 'json');
         });
 
-        // Personel Arama Kutusu JS Kodları (Açılır Dropdown Yapısı)
-        if ($('#topbar-personel-search').length > 0) {
-            $('#topbar-personel-search').select2({
-                placeholder: 'Personel Ara...',
-                allowClear: true,
-                dropdownParent: $('#personel-search-dropdown-menu'),
-                ajax: {
-                    url: 'views/personel/ajax_search.php',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return {
-                            q: params.term
-                        };
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.results || []
-                        };
-                    },
-                    cache: true
-                },
-                minimumInputLength: 2,
-                language: {
-                    inputTooShort: function () {
-                        return "En az 2 karakter girmelisiniz";
-                    },
-                    noResults: function () {
-                        return "Personel bulunamadı";
-                    },
-                    searching: function () {
-                        return "Aranıyor...";
+        // Global Arama Kutusu (Spotlight Search) JS Kodları
+        const $searchInput = $('#global-search-input');
+        const $searchDropdown = $('#global-search-dropdown');
+        const $searchResults = $('#global-search-results');
+        const $searchSpinner = $('#global-search-spinner');
+        const $searchClear = $('#global-search-clear');
+        const $searchStats = $('#global-search-stats');
+        let searchDebounceTimer = null;
+        let activeItemIndex = -1;
+        let lastSearchQuery = '';
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function highlightMatch(text, query) {
+            if (!text || !query) return text || '';
+            const cleanQuery = query.trim();
+            if (cleanQuery.length === 0) return text;
+            const regex = new RegExp('(' + escapeRegExp(cleanQuery) + ')', 'gi');
+            return String(text).replace(regex, '<mark class="global-search-highlight">$1</mark>');
+        }
+
+        function performSearch(query) {
+            query = query.trim();
+            if (query.length < 2) {
+                $searchSpinner.hide();
+                $searchDropdown.hide();
+                $searchResults.empty();
+                return;
+            }
+
+            $searchSpinner.show();
+            lastSearchQuery = query;
+
+            $.ajax({
+                url: 'api/global_search.php',
+                type: 'GET',
+                data: { q: query },
+                dataType: 'json',
+                success: function (response) {
+                    $searchSpinner.hide();
+                    if (response.status === 'success') {
+                        renderSearchResults(response, query);
+                    } else {
+                        renderSearchError(response.message || 'Arama sırasında bir hata oluştu.');
                     }
                 },
-                templateResult: function (repo) {
-                    if (repo.loading) return repo.text;
-                    return $('<span><i class="bx bx-user me-2 text-primary"></i>' + repo.text + '</span>');
+                error: function () {
+                    $searchSpinner.hide();
+                    renderSearchError('Sunucu bağlantı hatası oluştu.');
                 }
-            }).on('select2:select', function (e) {
-                var data = e.params.data;
-                if (data.id) {
-                    window.location.href = 'index.php?p=personel/manage&id=' + data.id;
-                }
-            });
-
-            // Dropdown ikonuna tıklandığında Select2'yi otomatik aç ve odaklan
-            $('#page-header-personel-dropdown').on('shown.bs.dropdown', function () {
-                setTimeout(function () {
-                    $('#topbar-personel-search').select2('open');
-                }, 100);
             });
         }
+
+        function renderSearchResults(response, query) {
+            activeItemIndex = -1;
+            const categories = response.categories || {};
+            const total = response.total || 0;
+
+            $searchStats.text('Toplam ' + total + ' sonuç bulundu');
+
+            if (total === 0) {
+                $searchResults.html(`
+                    <div class="global-search-empty text-center p-4">
+                        <div class="avatar-md mx-auto mb-2 text-muted">
+                            <i class="bx bx-search-alt font-size-24"></i>
+                        </div>
+                        <h6 class="font-size-14 text-dark mb-1">Sonuç Bulunamadı</h6>
+                        <p class="text-muted font-size-12 mb-0">"<strong>${$('<div>').text(query).html()}</strong>" ile eşleşen personel kaydı bulunamadı.</p>
+                    </div>
+                `);
+                $searchDropdown.show();
+                return;
+            }
+
+            let html = '';
+
+            // Personel Kategorisi
+            if (categories.personel && categories.personel.items && categories.personel.items.length > 0) {
+                html += `
+                    <div class="global-search-category">
+                        <div class="global-search-category-header">
+                            <span><i class="bx bx-user me-1 text-primary"></i> ${categories.personel.label}</span>
+                            <span class="badge bg-soft-primary text-primary font-size-11">${categories.personel.count}</span>
+                        </div>
+                        <div class="global-search-items-group">
+                `;
+
+                categories.personel.items.forEach(function (p, index) {
+                    const highlightedName = highlightMatch(p.title, query);
+                    const highlightedDuty = highlightMatch(p.duty, query);
+                    const highlightedDept = p.department ? highlightMatch(p.department, query) : '';
+                    const highlightedPhone = p.phone ? highlightMatch(p.phone, query) : '';
+
+                    let avatarHtml = '';
+                    if (p.avatar_url) {
+                        avatarHtml = `
+                            <div class="global-search-avatar">
+                                <img src="${p.avatar_url}" alt="${p.title}" class="rounded-circle w-100 h-100 object-fit-cover">
+                                <span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span>
+                            </div>
+                        `;
+                    } else {
+                        avatarHtml = `
+                            <div class="global-search-avatar" style="background-color: ${p.avatar_color};">
+                                <span>${p.initials}</span>
+                                <span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span>
+                            </div>
+                        `;
+                    }
+
+                    let tcBadge = '';
+                    if (p.masked_tc || p.tc) {
+                        tcBadge = `<span class="badge bg-light text-muted border font-size-11 ms-2 font-monospace"><i class="bx bx-id-card me-1"></i>${p.masked_tc || p.tc}</span>`;
+                    }
+
+                    let metaItems = [];
+                    if (highlightedDuty) metaItems.push(`<span><i class="bx bx-briefcase-alt-2 me-1"></i>${highlightedDuty}</span>`);
+                    if (highlightedDept) metaItems.push(`<span><i class="bx bx-buildings me-1"></i>${highlightedDept}</span>`);
+                    if (highlightedPhone) metaItems.push(`<span><i class="bx bx-phone me-1"></i>${highlightedPhone}</span>`);
+                    if (p.team) metaItems.push(`<span><i class="bx bx-group me-1"></i>${p.team}</span>`);
+
+                    html += `
+                        <a href="${p.url}" class="global-search-item" data-index="${index}">
+                            ${avatarHtml}
+                            <div class="global-search-item-info flex-grow-1 min-w-0 ms-3">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <div class="d-flex align-items-center text-truncate">
+                                        <span class="global-search-item-title text-truncate">${highlightedName}</span>
+                                        ${tcBadge}
+                                    </div>
+                                    <span class="badge ${p.status_badge} font-size-11 ms-2 flex-shrink-0">${p.status_text}</span>
+                                </div>
+                                <div class="global-search-item-meta text-truncate">
+                                    ${metaItems.join('<span class="mx-1 text-muted">•</span>')}
+                                </div>
+                            </div>
+                            <div class="global-search-item-arrow ms-2">
+                                <i class="bx bx-chevron-right font-size-18 text-muted"></i>
+                            </div>
+                        </a>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            $searchResults.html(html);
+            $searchDropdown.show();
+        }
+
+        function renderSearchError(msg) {
+            $searchResults.html(`
+                <div class="global-search-empty text-center p-3 text-danger">
+                    <i class="bx bx-error-circle font-size-20 me-1"></i> ${$('<div>').text(msg).html()}
+                </div>
+            `);
+            $searchDropdown.show();
+        }
+
+        function updateActiveItem(items) {
+            items.removeClass('active');
+            if (activeItemIndex >= 0 && activeItemIndex < items.length) {
+                const $active = items.eq(activeItemIndex);
+                $active.addClass('active');
+                
+                // Otomatik scroll
+                const container = $searchResults[0];
+                const activeEl = $active[0];
+                if (container && activeEl) {
+                    const containerTop = container.scrollTop;
+                    const containerBottom = containerTop + container.clientHeight;
+                    const elemTop = activeEl.offsetTop;
+                    const elemBottom = elemTop + activeEl.clientHeight;
+
+                    if (elemTop < containerTop) {
+                        container.scrollTop = elemTop;
+                    } else if (elemBottom > containerBottom) {
+                        container.scrollTop = elemBottom - container.clientHeight;
+                    }
+                }
+            }
+        }
+
+        // Input Olayları
+        $searchInput.on('input', function () {
+            const query = $(this).val();
+            
+            if (query.trim().length > 0) {
+                $searchClear.show();
+            } else {
+                $searchClear.hide();
+            }
+
+            clearTimeout(searchDebounceTimer);
+            if (query.trim().length >= 2) {
+                searchDebounceTimer = setTimeout(function () {
+                    performSearch(query);
+                }, 250);
+            } else {
+                $searchSpinner.hide();
+                $searchDropdown.hide();
+                $searchResults.empty();
+            }
+        });
+
+        $searchInput.on('focus', function () {
+            const query = $(this).val().trim();
+            if (query.length >= 2 && $searchResults.children().length > 0) {
+                $searchDropdown.show();
+            }
+        });
+
+        $searchClear.on('click', function () {
+            $searchInput.val('').focus();
+            $searchClear.hide();
+            $searchSpinner.hide();
+            $searchDropdown.hide();
+            $searchResults.empty();
+            lastSearchQuery = '';
+        });
+
+        // Klavye Navigasyonu
+        $searchInput.on('keydown', function (e) {
+            const items = $searchResults.find('.global-search-item');
+            
+            if (!$searchDropdown.is(':visible') || items.length === 0) {
+                if (e.key === 'Escape') {
+                    $searchInput.blur();
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeItemIndex = (activeItemIndex + 1) % items.length;
+                updateActiveItem(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeItemIndex = (activeItemIndex - 1 + items.length) % items.length;
+                updateActiveItem(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeItemIndex >= 0 && activeItemIndex < items.length) {
+                    window.location.href = items.eq(activeItemIndex).attr('href');
+                } else if (items.length > 0) {
+                    window.location.href = items.first().attr('href');
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                $searchDropdown.hide();
+                $searchInput.blur();
+            }
+        });
+
+        // Mobil / Kompakt Arama Olayları
+        const $mobileInput = $('#global-search-mobile-input');
+        const $mobileResults = $('#global-search-mobile-results');
+        const $mobileSpinner = $('#global-search-mobile-spinner');
+        let mobileDebounceTimer = null;
+
+        $mobileInput.on('input', function () {
+            const query = $(this).val().trim();
+            clearTimeout(mobileDebounceTimer);
+
+            if (query.length < 2) {
+                $mobileSpinner.hide();
+                $mobileResults.html('<div class="p-4 text-center text-muted font-size-12"><i class="bx bx-search-alt font-size-24 d-block mb-1 text-muted opacity-50"></i>Aramak istediğiniz personelin adını, TC\'sini veya görevini yazınız.</div>');
+                return;
+            }
+
+            $mobileSpinner.show();
+
+            mobileDebounceTimer = setTimeout(function () {
+                $.ajax({
+                    url: 'api/global_search.php',
+                    type: 'GET',
+                    data: { q: query },
+                    dataType: 'json',
+                    success: function (response) {
+                        $mobileSpinner.hide();
+                        if (response.status === 'success') {
+                            const categories = response.categories || {};
+                            if (categories.personel && categories.personel.items && categories.personel.items.length > 0) {
+                                let mHtml = '';
+                                categories.personel.items.forEach(function (p) {
+                                    const hName = highlightMatch(p.title, query);
+                                    let avHtml = p.avatar_url ? 
+                                        `<div class="global-search-avatar"><img src="${p.avatar_url}" class="rounded-circle w-100 h-100 object-fit-cover"><span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span></div>` :
+                                        `<div class="global-search-avatar" style="background-color: ${p.avatar_color};"><span>${p.initials}</span><span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span></div>`;
+
+                                    let tcBadge = p.masked_tc || p.tc ? `<span class="badge bg-light text-muted border font-size-10 ms-1">${p.masked_tc || p.tc}</span>` : '';
+
+                                    mHtml += `
+                                        <a href="${p.url}" class="global-search-item">
+                                            ${avHtml}
+                                            <div class="global-search-item-info flex-grow-1 min-w-0 ms-2">
+                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                    <div class="d-flex align-items-center text-truncate">
+                                                        <span class="global-search-item-title text-truncate font-size-13">${hName}</span>
+                                                        ${tcBadge}
+                                                    </div>
+                                                    <span class="badge ${p.status_badge} font-size-10 ms-1 flex-shrink-0">${p.status_text}</span>
+                                                </div>
+                                                <div class="global-search-item-meta text-truncate font-size-11">
+                                                    <span>${p.duty}</span>
+                                                    ${p.department ? '<span class="mx-1">•</span><span>' + p.department + '</span>' : ''}
+                                                    ${p.phone ? '<span class="mx-1">•</span><span>' + p.phone + '</span>' : ''}
+                                                </div>
+                                            </div>
+                                            <div class="global-search-item-arrow ms-1">
+                                                <i class="bx bx-chevron-right font-size-16 text-muted"></i>
+                                            </div>
+                                        </a>
+                                    `;
+                                });
+                                $mobileResults.html(mHtml);
+                            } else {
+                                $mobileResults.html('<div class="p-4 text-center text-muted font-size-12">"<strong>' + $('<div>').text(query).html() + '</strong>" ile eşleşen kayıt bulunamadı.</div>');
+                            }
+                        }
+                    },
+                    error: function() {
+                        $mobileSpinner.hide();
+                    }
+                });
+            }, 250);
+        });
+
+        $('#page-header-search-dropdown').on('shown.bs.dropdown', function () {
+            setTimeout(function () {
+                $mobileInput.focus();
+            }, 100);
+        });
+
+        // Dışarı tıklandığında kapat
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#global-search-wrapper').length) {
+                $searchDropdown.hide();
+            }
+        });
+
+        // Global Kısayol: Ctrl+K veya Cmd+K (Geniş ekranda bara, küçük ekranda menüye odaklanır)
+        $(document).on('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+                e.preventDefault();
+                if ($searchInput.is(':visible')) {
+                    $searchInput.focus().select();
+                } else {
+                    const dropdownBtn = document.getElementById('page-header-search-dropdown');
+                    if (dropdownBtn) {
+                        const bsDropdown = bootstrap.Dropdown.getOrCreateInstance(dropdownBtn);
+                        bsDropdown.toggle();
+                    }
+                }
+            }
+        });
+
+    });
+</script>
+
+<style>
+/* Global Arama Çubuğu ve Sonuç Paneli Stilleri */
+.navbar-header {
+    position: relative;
+}
+
+.topbar-global-search-wrapper {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 500px);
+    max-width: 560px;
+    z-index: 1000;
+}
+
+@media (min-width: 1500px) {
+    .topbar-global-search-wrapper {
+        max-width: 640px;
+        width: calc(100% - 540px);
+    }
+}
+
+@media (min-width: 1200px) and (max-width: 1499px) {
+    .topbar-global-search-wrapper {
+        max-width: 460px;
+        width: calc(100% - 460px);
+    }
+}
+
+.global-search-box {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: rgba(var(--bs-tertiary-bg-rgb, 243, 243, 249), 0.85);
+    border: 1px solid var(--bs-border-color, #e2e5e8);
+    border-radius: 30px;
+    padding: 0.3rem 0.8rem 0.3rem 1.1rem;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.global-search-box:focus-within {
+    background: var(--bs-card-bg, #ffffff);
+    border-color: #5156be;
+    box-shadow: 0 0 0 3.5px rgba(81, 86, 190, 0.18), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.global-search-icon {
+    color: #74788d;
+    font-size: 1.2rem;
+    margin-right: 0.4rem;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.global-search-input {
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.875rem;
+    width: 100%;
+    outline: none !important;
+    box-shadow: none !important;
+    color: var(--bs-body-color, #495057);
+}
+
+.global-search-input::placeholder {
+    color: #98a6ad;
+    font-weight: 400;
+}
+
+.global-search-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 6px;
+}
+
+.global-search-spinner {
+    color: #5156be;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+.global-search-clear {
+    color: #74788d;
+    text-decoration: none !important;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+.global-search-clear:hover {
+    color: #f46a6a;
+}
+
+.global-search-kbd {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.global-search-kbd kbd {
+    font-size: 0.68rem;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: #74788d;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+/* Açılır Sonuç Paneli */
+.global-search-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    min-width: 100%;
+    background: var(--bs-card-bg, #ffffff);
+    border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.08));
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(18, 38, 63, 0.16), 0 3px 10px rgba(18, 38, 63, 0.06);
+    z-index: 1060;
+    overflow: hidden;
+    animation: searchDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes searchDropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.99);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.global-search-results-list {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 0.4rem 0;
+}
+
+.global-search-category-header {
+    padding: 0.5rem 1rem 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #74788d;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--bs-border-color, #f1f1f5);
+}
+
+.global-search-item {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    color: var(--bs-body-color, #495057);
+    text-decoration: none !important;
+    transition: all 0.15s ease;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.global-search-item:last-child {
+    border-bottom: none;
+}
+
+.global-search-item:hover,
+.global-search-item.active {
+    background-color: rgba(81, 86, 190, 0.08);
+    border-left-color: #5156be;
+    color: var(--bs-body-color, #495057);
+}
+
+.global-search-item:hover .global-search-item-title,
+.global-search-item.active .global-search-item-title {
+    color: #5156be;
+}
+
+.global-search-item:hover .global-search-item-arrow i,
+.global-search-item.active .global-search-item-arrow i {
+    color: #5156be !important;
+    transform: translateX(3px);
+    transition: transform 0.15s ease;
+}
+
+/* Avatar */
+.global-search-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #ffffff;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.global-search-status-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--bs-card-bg, #ffffff);
+}
+
+/* Personel Bilgi Metinleri */
+.global-search-item-title {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--bs-heading-color, #212529);
+}
+
+.global-search-item-meta {
+    font-size: 0.74rem;
+    color: #74788d;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.global-search-highlight {
+    background-color: rgba(241, 180, 76, 0.35);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
+    font-weight: 700;
+}
+
+/* Footer */
+.global-search-footer {
+    padding: 0.45rem 1rem;
+    background: var(--bs-tertiary-bg, #f8f9fa);
+    border-top: 1px solid var(--bs-border-color, #e9e9ef);
+    font-size: 0.74rem;
+    color: #74788d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.global-search-shortcuts kbd {
+    font-size: 0.68rem;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: #74788d;
+    border-radius: 3px;
+    padding: 1px 4px;
+}
+
+/* Dark Mode Desteği */
+[data-bs-theme="dark"] .global-search-box {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+[data-bs-theme="dark"] .global-search-box:focus-within {
+    background: var(--bs-card-bg);
+}
+[data-bs-theme="dark"] .global-search-kbd kbd,
+[data-bs-theme="dark"] .global-search-shortcuts kbd {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #a6b0cf;
+}
+[data-bs-theme="dark"] .global-search-highlight {
+    background-color: rgba(241, 180, 76, 0.45);
+    color: #fff;
+}
+</style>
 
     });
 </script>

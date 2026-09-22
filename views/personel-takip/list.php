@@ -24,107 +24,128 @@ $departmanOptions = ['' => 'Tüm Departmanlar'];
 foreach ($departmanlar as $dept) {
     $departmanOptions[$dept] = $dept;
 }
+
+$stmtPList = $db->prepare("SELECT id, adi_soyadi, departman FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND (saha_takibi = 1 OR disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri)) ORDER BY adi_soyadi ASC");
+$stmtPList->execute();
+$dashboardPersoneller = $stmtPList->fetchAll(PDO::FETCH_ASSOC);
+
+$dashboardPersonelOptions = ['all' => 'Tüm Personeller'];
+foreach ($dashboardPersoneller as $dp) {
+    $dashboardPersonelOptions[$dp['id']] = $dp['adi_soyadi'] . ($dp['departman'] ? ' (' . $dp['departman'] . ')' : '');
+}
 ?>
 
-<!-- Leaflet CSS -->
+<!-- Leaflet CSS & ApexCharts CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="assets/libs/apexcharts/apexcharts.css" />
 
 <div class="container-fluid">
     <?php include 'layouts/breadcrumb.php'; ?>
 
-    <!-- Özet Kartları -->
-    <div class="row g-3 mb-4">
-        <div class="col-xl col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(52, 195, 143, 0.1);">
-                            <i class="bx bx-run fs-4 text-success"></i>
+    <!-- Özet Kartları Sarmalayıcı -->
+    <script>
+        (function() {
+            try {
+                if (localStorage.getItem('personel_takip_summary_collapsed') === 'true') {
+                    document.write('<style>#personelTakipOzetAlani { display: none !important; }</style>');
+                }
+            } catch(e) {}
+        })();
+    </script>
+    <div id="personelTakipOzetAlani" class="takip-summary-wrapper">
+        <div class="row g-3 mb-4">
+            <div class="col-xl col-md-6">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                    style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body p-3">
+                        <div class="icon-label-container">
+                            <div class="icon-box" style="background: rgba(52, 195, 143, 0.1);">
+                                <i class="bx bx-run fs-4 text-success"></i>
+                            </div>
+                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAHA</span>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAHA</span>
+                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">ŞU AN GÖREVDE
+                        </p>
+                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                            <span class="counter-value" id="stat-gorevde">0</span>
+                        </h4>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">ŞU AN GÖREVDE
-                    </p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span class="counter-value" id="stat-gorevde">0</span>
-                    </h4>
                 </div>
             </div>
-        </div>
 
-        <div class="col-xl col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
-                            <i class="bx bx-check-circle fs-4 text-primary"></i>
+            <div class="col-xl col-md-6">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                    style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body p-3">
+                        <div class="icon-label-container">
+                            <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
+                                <i class="bx bx-check-circle fs-4 text-primary"></i>
+                            </div>
+                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BAŞARI</span>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BAŞARI</span>
+                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÖREVİ
+                            TAMAMLADI</p>
+                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                            <span class="counter-value" id="stat-tamamladi">0</span>
+                        </h4>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÖREVİ
-                        TAMAMLADI</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span class="counter-value" id="stat-tamamladi">0</span>
-                    </h4>
                 </div>
             </div>
-        </div>
 
-        <div class="col-xl col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(241, 180, 76, 0.1);">
-                            <i class="bx bx-time fs-4 text-warning"></i>
+            <div class="col-xl col-md-6">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                    style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body p-3">
+                        <div class="icon-label-container">
+                            <div class="icon-box" style="background: rgba(241, 180, 76, 0.1);">
+                                <i class="bx bx-time fs-4 text-warning"></i>
+                            </div>
+                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BEKLEYEN</span>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BEKLEYEN</span>
+                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">HENÜZ
+                            BAŞLAMADI</p>
+                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                            <span class="counter-value" id="stat-baslamadi">0</span>
+                        </h4>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">HENÜZ
-                        BAŞLAMADI</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span class="counter-value" id="stat-baslamadi">0</span>
-                    </h4>
                 </div>
             </div>
-        </div>
 
-        <div class="col-xl col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(80, 165, 241, 0.1);">
-                            <i class="bx bx-calendar-minus fs-4 text-info"></i>
+            <div class="col-xl col-md-6">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                    style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body p-3">
+                        <div class="icon-label-container">
+                            <div class="icon-box" style="background: rgba(80, 165, 241, 0.1);">
+                                <i class="bx bx-calendar-minus fs-4 text-info"></i>
+                            </div>
+                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İSTATİSTİK</span>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İSTATİSTİK</span>
+                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜN İZİNLİ
+                        </p>
+                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                            <span class="counter-value" id="stat-izinli">0</span>
+                        </h4>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜN İZİNLİ
-                    </p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span class="counter-value" id="stat-izinli">0</span>
-                    </h4>
                 </div>
             </div>
-        </div>
 
-        <div class="col-xl col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
-                            <i class="bx bx-alarm-exclamation fs-4 text-danger"></i>
+            <div class="col-xl col-md-6">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                    style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body p-3">
+                        <div class="icon-label-container">
+                            <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
+                                <i class="bx bx-alarm-exclamation fs-4 text-danger"></i>
+                            </div>
+                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR
+                        </p>
+                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                            <span class="counter-value text-danger" id="stat-gec-kalan">0</span>
+                        </h4>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR
-                    </p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span class="counter-value text-danger" id="stat-gec-kalan">0</span>
-                    </h4>
                 </div>
             </div>
         </div>
@@ -134,7 +155,7 @@ foreach ($departmanlar as $dept) {
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <ul class="nav nav-tabs card-header-tabs" role="tablist">
                         <li class="nav-item">
                             <a class="nav-link active" data-bs-toggle="tab" href="#tabListe" role="tab">
@@ -159,7 +180,22 @@ foreach ($departmanlar as $dept) {
                                 <i class="bx bx-alarm-exclamation me-1"></i> Geç Kalanlar
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tabDashboard" role="tab"
+                                onclick="initDashboardTab()">
+                                <i class="bx bx-pie-chart-alt-2 me-1"></i> Analiz & Dashboard
+                            </a>
+                        </li>
                     </ul>
+                    <div class="ms-auto d-flex align-items-center">
+                        <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-none" 
+                                id="btnToggleTakipOzet" 
+                                onclick="toggleTakipSummary()" 
+                                title="Özet kartlarını gizle / göster">
+                            <i class="bx bx-chevron-up fs-5" id="iconToggleTakipOzet"></i>
+                            <span class="small d-none d-md-inline" id="txtToggleTakipOzet">Özeti Gizle</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="tab-content">
@@ -373,12 +409,289 @@ foreach ($departmanlar as $dept) {
                                 </table>
                             </div>
                         </div>
+
+                        <!-- ANALİZ & DASHBOARD TAB -->
+                        <div class="tab-pane fade" id="tabDashboard" role="tabpanel">
+                            <!-- Filtre ve Hızlı Tarih Çubuğu -->
+                            <div class="card border border-light shadow-sm mb-4 bg-light-subtle">
+                                <div class="card-body p-3">
+                                    <div class="row g-2 align-items-center mb-3">
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.5px;">Hızlı Dönem:</span>
+                                                <div class="btn-group btn-group-sm" role="group" id="dashQuickDateGroup">
+                                                    <button type="button" class="btn btn-outline-primary" onclick="setDashQuickDate('today', this)">Bugün</button>
+                                                    <button type="button" class="btn btn-outline-primary" onclick="setDashQuickDate('yesterday', this)">Dün</button>
+                                                    <button type="button" class="btn btn-outline-primary" onclick="setDashQuickDate('week', this)">Bu Hafta</button>
+                                                    <button type="button" class="btn btn-outline-primary active" onclick="setDashQuickDate('month', this)">Bu Ay</button>
+                                                    <button type="button" class="btn btn-outline-primary" onclick="setDashQuickDate('last_month', this)">Geçen Ay</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 text-md-end">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1" id="dashActiveFilterLabel">
+                                                <i class="bx bx-calendar me-1"></i> Bu Ay
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-xl-2 col-md-3">
+                                            <?= Form::FormFloatInput("text", "dashBaslangic", Date::dmY(date('Y-m-01')), "", "Başlangıç Tarihi", "calendar", 'form-control flatpickr') ?>
+                                        </div>
+                                        <div class="col-xl-2 col-md-3">
+                                            <?= Form::FormFloatInput("text", "dashBitis", Date::today(), "", "Bitiş Tarihi", "calendar", 'form-control flatpickr') ?>
+                                        </div>
+                                        <div class="col-xl-3 col-md-3">
+                                            <?= Form::FormSelect2("dashPersonelFilter", $dashboardPersonelOptions, "all", "Personel Seçimi", "bx bx-user", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="loadDashboardAnaliz()"') ?>
+                                        </div>
+                                        <div class="col-xl-2 col-md-3">
+                                            <?= Form::FormSelect2("dashDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="loadDashboardAnaliz()"') ?>
+                                        </div>
+                                        <div class="col-xl-3 col-md-12">
+                                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2" style="height: 56px;">
+                                                <button type="button" class="btn btn-primary flex-grow-1 h-100 fw-bold d-flex align-items-center justify-content-center" onclick="loadDashboardAnaliz()">
+                                                    <i class="bx bx-filter-alt me-1"></i> Analiz Et
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success h-100 d-flex align-items-center justify-content-center px-3" onclick="exportDashboardExcel()" title="Excel Çıktısı Al">
+                                                    <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bireysel Personel Kartı (Sadece tek personel seçildiğinde açılır) -->
+                            <div id="dashBireyselKarti" class="card border-primary border-top border-3 shadow-sm mb-4" style="display: none;">
+                                <div class="card-body p-3">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <img id="dashBireyselFoto" src="assets/images/users/user-dummy-img.jpg" class="rounded-circle avatar-md border p-1" style="object-fit: cover; width: 64px; height: 64px;" alt="Personel">
+                                        </div>
+                                        <div class="col">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <h5 class="mb-0 fw-bold" id="dashBireyselAd">-</h5>
+                                                <span class="badge bg-secondary-subtle text-secondary" id="dashBireyselDept">-</span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-4 text-muted small">
+                                                <div><i class="bx bx-calendar-check text-primary me-1"></i> Çalışılan Gün: <b class="text-dark" id="dashBireyselGun">0</b></div>
+                                                <div><i class="bx bx-time-five text-success me-1"></i> Toplam Mesai: <b class="text-dark" id="dashBireyselSure">0 sa</b></div>
+                                                <div><i class="bx bx-log-in-circle text-info me-1"></i> Ort. Başlama: <b class="text-dark" id="dashBireyselOrtGiris">--:--</b></div>
+                                                <div><i class="bx bx-alarm-exclamation text-danger me-1"></i> Toplam Gecikme: <b class="text-danger" id="dashBireyselGecikme">0 kez</b></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="$('#dashPersonelFilter').val('all').trigger('change');">
+                                                <i class="bx bx-x me-1"></i> Genel Görünüme Dön
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- KPI Kartları Satırı -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="small fw-bold opacity-75">TOPLAM ÇALIŞMA SÜRESİ</span>
+                                                <div class="rounded p-2 bg-white bg-opacity-25">
+                                                    <i class="bx bx-time-five fs-4 text-white"></i>
+                                                </div>
+                                            </div>
+                                            <h3 class="mb-1 fw-bold text-white" id="dashKpiToplamSure">0 sa 0 dk</h3>
+                                            <div class="small opacity-75 d-flex justify-content-between">
+                                                <span>Toplam Kayıt: <b id="dashKpiToplamKayit">0</b></span>
+                                                <span>Fiilî Gün: <b id="dashKpiFiiliGun">0</b></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="small fw-bold opacity-75">ORTALAMA GİRİŞ & GÜNLÜK</span>
+                                                <div class="rounded p-2 bg-white bg-opacity-25">
+                                                    <i class="bx bx-log-in-circle fs-4 text-white"></i>
+                                                </div>
+                                            </div>
+                                            <h3 class="mb-1 fw-bold text-white" id="dashKpiOrtGiris">08:30</h3>
+                                            <div class="small opacity-75 d-flex justify-content-between">
+                                                <span>Ort. Günlük: <b id="dashKpiOrtGunluk">0 sa</b></span>
+                                                <span>Hedef: <b>08:30</b></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="small fw-bold opacity-75">ZAMANINDA BAŞLAMA ORANI</span>
+                                                <div class="rounded p-2 bg-white bg-opacity-25">
+                                                    <i class="bx bx-check-shield fs-4 text-white"></i>
+                                                </div>
+                                            </div>
+                                            <h3 class="mb-1 fw-bold text-white" id="dashKpiZamanindaOran">%0</h3>
+                                            <div class="progress mt-2 bg-white bg-opacity-25" style="height: 5px;">
+                                                <div class="progress-bar bg-white" id="dashKpiZamanindaBar" role="progressbar" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-xl-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); color: white;">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="small fw-bold opacity-75">TOPLAM GECİKME & KAYIP</span>
+                                                <div class="rounded p-2 bg-white bg-opacity-25">
+                                                    <i class="bx bx-alarm-exclamation fs-4 text-white"></i>
+                                                </div>
+                                            </div>
+                                            <h3 class="mb-1 fw-bold text-white" id="dashKpiGecikmeSayisi">0 kez</h3>
+                                            <div class="small opacity-75 d-flex justify-content-between">
+                                                <span>Toplam Gecikme: <b id="dashKpiGecikmeDk">0 dk</b></span>
+                                                <span>Gecikme Oranı: <b id="dashKpiGecikmeOran">%0</b></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Grafikler Satırı 1 -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-lg-8">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2">
+                                            <h6 class="card-title mb-0 fw-bold text-dark">
+                                                <i class="bx bx-line-chart text-primary me-1"></i> Günlük Çalışma Süresi & Personel Katılım Trendi
+                                            </h6>
+                                            <small class="text-muted">Gün bazlı toplam saat ve kişi sayısı</small>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div id="chartDashTrend" style="min-height: 320px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-4">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2">
+                                            <h6 class="card-title mb-0 fw-bold text-dark">
+                                                <i class="bx bx-pie-chart-alt text-warning me-1"></i> İşe Başlama Saati Dağılımı
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div id="chartDashSaat" style="min-height: 320px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Grafikler Satırı 2 -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-lg-7">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2">
+                                            <h6 class="card-title mb-0 fw-bold text-dark">
+                                                <i class="bx bx-bar-chart text-info me-1"></i> Departman Bazlı Toplam Mesai (Saat)
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div id="chartDashDept" style="min-height: 280px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2">
+                                            <h6 class="card-title mb-0 fw-bold text-dark">
+                                                <i class="bx bx-doughnut-chart text-success me-1"></i> Görev / Kayıt Durum Dağılımı
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div id="chartDashDurum" style="min-height: 280px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Liderlik & Detay Tablosu Satırı -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-xl-4 col-lg-5">
+                                    <!-- En Çok Çalışanlar -->
+                                    <div class="card border-0 shadow-sm mb-3">
+                                        <div class="card-header bg-transparent border-bottom py-2">
+                                            <h6 class="card-title mb-0 fw-bold text-dark">
+                                                <i class="bx bx-trophy text-warning me-1"></i> En Çok Mesai Yapanlar (Top 5)
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-2">
+                                            <div class="list-group list-group-flush" id="dashTopCalisanlarList">
+                                                <div class="text-center text-muted p-3">Yükleniyor...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- En Çok Gecikenler -->
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-header bg-transparent border-bottom py-2">
+                                            <h6 class="card-title mb-0 fw-bold text-dark">
+                                                <i class="bx bx-alarm-exclamation text-danger me-1"></i> En Çok Gecikenler (Top 5)
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-2">
+                                            <div class="list-group list-group-flush" id="dashTopGecikenlerList">
+                                                <div class="text-center text-muted p-3">Yükleniyor...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-xl-8 col-lg-7">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2">
+                                            <h6 class="card-title mb-0 fw-bold text-dark">
+                                                <i class="bx bx-table text-primary me-1"></i> Personel Performans & Katılım Özeti
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover table-striped align-middle dt-responsive nowrap w-100" id="dashPersonelPerformansTable">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Personel</th>
+                                                            <th>Departman</th>
+                                                            <th class="text-center">Çalışılan Gün</th>
+                                                            <th class="text-center">Toplam Süre</th>
+                                                            <th class="text-center">Ort. Günlük</th>
+                                                            <th class="text-center">Gecikme</th>
+                                                            <th class="text-center">Zamanında %</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="dashPersonelPerformansBody">
+                                                        <tr>
+                                                            <td colspan="7" class="text-center text-muted">Yükleniyor...</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
 </div>
 
 <!-- Hareket Geçmişi Modalı -->
@@ -404,7 +717,6 @@ foreach ($departmanlar as $dept) {
                         <p class="text-muted mb-0" id="gecmisPersonelTarih">Son 7 günlük hareketler</p>
                     </div>
                 </div>
-
                 <div class="row g-2 mb-3 align-items-end">
                     <div class="col-md-5">
                         <?= Form::FormFloatInput("text", "gecmisBaslangic", Date::dmY('-7 days'), "", "Başlangıç Tarihi", "calendar", 'form-control flatpickr') ?>
@@ -614,13 +926,26 @@ foreach ($departmanlar as $dept) {
         padding: 20px !important;
     }
 
+
+    .fullscreen-map-wrapper {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 9999 !important;
+        background: #f8f9fa;
+        padding: 20px !important;
+    }
+
     .fullscreen-map-wrapper #personelHarita {
         height: calc(100vh - 100px) !important;
     }
 </style>
 
-<!-- Leaflet JS -->
+<!-- Leaflet JS & ApexCharts JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 
 <script>
     var currentPersonelId = null;
@@ -684,17 +1009,25 @@ foreach ($departmanlar as $dept) {
             }
         });
 
-        // Select2 Çakışma Önleyici (Eğer select2 yüklü değilse tekrar yüklemeye çalış)
+        // Select2 Çakışma Önleyici
         if (typeof $.fn.select2 === 'undefined') {
             console.warn('Select2 not found, retrying...');
-            // Head-style'da zaten var ama bazen çakışmalar JS temizliğine neden olabiliyor
         } else {
             $('.select2').select2({ width: '100%' });
         }
 
+        // Özet kartları buton durumunu localStorage'a göre senkronize et
+        try {
+            if (localStorage.getItem('personel_takip_summary_collapsed') === 'true') {
+                const icon = document.getElementById('iconToggleTakipOzet');
+                const txt = document.getElementById('txtToggleTakipOzet');
+                if (icon) icon.className = 'bx bx-chevron-down fs-5';
+                if (txt) txt.textContent = 'Özeti Göster';
+            }
+        } catch(e) {}
+
         // Sayfa yenilendiğinde aktif olan tabın verisini yükle
         setTimeout(function () {
-            // URL'den tab parametresini oku ve ilgili tabı aç
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
             if (tabParam) {
@@ -703,10 +1036,10 @@ foreach ($departmanlar as $dept) {
                     const tab = new bootstrap.Tab(tabEl);
                     tab.show();
 
-                    // Tab yükleme fonksiyonlarını manuel tetikle (bazı tablar show'da tetiklenmiyor olabilir)
                     if (tabParam === 'tabHarita') initHarita();
                     else if (tabParam === 'tabRapor') loadCalismaRaporu();
                     else if (tabParam === 'tabGecKalanlar') loadGecKalanlar();
+                    else if (tabParam === 'tabDashboard') initDashboardTab();
                 }
             }
 
@@ -719,6 +1052,8 @@ foreach ($departmanlar as $dept) {
                     loadCalismaRaporu();
                 } else if (target === '#tabGecKalanlar') {
                     loadGecKalanlar();
+                } else if (target === '#tabDashboard') {
+                    initDashboardTab();
                 }
             }
         }, 300);
@@ -1474,6 +1809,488 @@ foreach ($departmanlar as $dept) {
             btn.disabled = false;
             btn.innerHTML = oldHtml;
         }
+    }
+
+    // ==========================================
+    // ÖZET KARTLARI TOGGLE
+    // ==========================================
+    function toggleTakipSummary() {
+        const ozet = document.getElementById('personelTakipOzetAlani');
+        const icon = document.getElementById('iconToggleTakipOzet');
+        const txt = document.getElementById('txtToggleTakipOzet');
+        if (!ozet) return;
+
+        const isCurrentlyHidden = $(ozet).is(':hidden') || ozet.style.display === 'none';
+        
+        if (isCurrentlyHidden) {
+            $(ozet).slideDown(250);
+            localStorage.setItem('personel_takip_summary_collapsed', 'false');
+            if (icon) icon.className = 'bx bx-chevron-up fs-5';
+            if (txt) txt.textContent = 'Özeti Gizle';
+        } else {
+            $(ozet).slideUp(250);
+            localStorage.setItem('personel_takip_summary_collapsed', 'true');
+            if (icon) icon.className = 'bx bx-chevron-down fs-5';
+            if (txt) txt.textContent = 'Özeti Göster';
+        }
+    }
+
+    // ==========================================
+    // ANALİZ & DASHBOARD MODÜLÜ
+    // ==========================================
+    var dashCharts = {
+        trend: null,
+        saat: null,
+        dept: null,
+        durum: null
+    };
+    var dashPerformansDT = null;
+    var dashInitialLoaded = false;
+
+    function initDashboardTab() {
+        if (!dashInitialLoaded) {
+            loadDashboardAnaliz();
+            dashInitialLoaded = true;
+        } else {
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        }
+    }
+
+    function setDashQuickDate(type, btn) {
+        if (btn) {
+            $('#dashQuickDateGroup .btn').removeClass('active');
+            $(btn).addClass('active');
+        }
+
+        const now = new Date();
+        let start = new Date();
+        let end = new Date();
+        let label = 'Özel Tarih';
+
+        const formatDateStr = (d) => {
+            return String(d.getDate()).padStart(2, '0') + '.' +
+                   String(d.getMonth() + 1).padStart(2, '0') + '.' +
+                   d.getFullYear();
+        };
+
+        if (type === 'today') {
+            start = now;
+            end = now;
+            label = 'Bugün';
+        } else if (type === 'yesterday') {
+            start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            end = start;
+            label = 'Dün';
+        } else if (type === 'week') {
+            const dayOfWeek = now.getDay() || 7; // Pazartesi 1, Pazar 7
+            start = new Date(now.getTime() - (dayOfWeek - 1) * 24 * 60 * 60 * 1000);
+            end = now;
+            label = 'Bu Hafta';
+        } else if (type === 'month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = now;
+            label = 'Bu Ay';
+        } else if (type === 'last_month') {
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            end = new Date(now.getFullYear(), now.getMonth(), 0);
+            label = 'Geçen Ay';
+        }
+
+        document.getElementById('dashBaslangic').value = formatDateStr(start);
+        document.getElementById('dashBitis').value = formatDateStr(end);
+        document.getElementById('dashActiveFilterLabel').innerHTML = `<i class="bx bx-calendar me-1"></i> ${label}`;
+
+        loadDashboardAnaliz();
+    }
+
+    async function loadDashboardAnaliz() {
+        const baslangic = document.getElementById('dashBaslangic')?.value || '';
+        const bitis = document.getElementById('dashBitis')?.value || '';
+        const personelId = $('#dashPersonelFilter').val() || 'all';
+        const departman = $('#dashDepartmanFilter').val() || '';
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'getDashboardAnaliz');
+            formData.append('baslangic', baslangic);
+            formData.append('bitis', bitis);
+            formData.append('personel_id', personelId);
+            formData.append('departman', departman);
+
+            const response = await fetch('views/personel-takip/api.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                renderDashboardKPIs(result.data);
+                renderDashboardCharts(result.data);
+                renderTopLists(result.data);
+                renderDashboardTable(result.data);
+                renderBireyselCard(result.data);
+            } else {
+                console.error('Dashboard API hatası:', result.message);
+            }
+        } catch (error) {
+            console.error('Dashboard analiz yüklenirken hata oluştu:', error);
+        }
+    }
+
+    function renderDashboardKPIs(data) {
+        const kpi = data.kpi || {};
+        
+        // Toplam Süre
+        document.getElementById('dashKpiToplamSure').textContent = `${kpi.toplam_saat || 0} sa`;
+        document.getElementById('dashKpiToplamKayit').textContent = kpi.aktif_calisan_sayisi || 0;
+        document.getElementById('dashKpiFiiliGun').textContent = `${kpi.toplam_takip_personel || 0} kişi`;
+
+        // Ortalama Giriş & Günlük
+        document.getElementById('dashKpiOrtGiris').textContent = `${kpi.gunluk_ort_saat || 0} sa/gün`;
+        document.getElementById('dashKpiOrtGunluk').textContent = `%${kpi.katilim_orani || 0} katılım`;
+
+        // Zamanında Başlama Oranı
+        const zamanindaOran = kpi.zamaninda_oran || 0;
+        document.getElementById('dashKpiZamanindaOran').textContent = `%${zamanindaOran}`;
+        document.getElementById('dashKpiZamanindaBar').style.width = `${zamanindaOran}%`;
+
+        // Gecikme
+        document.getElementById('dashKpiGecikmeSayisi').textContent = `${kpi.gec_kalan_sayisi || 0} kez`;
+        document.getElementById('dashKpiGecikmeDk').textContent = `${kpi.toplam_gecikme_dk || 0} dk`;
+        const toplamGiris = (kpi.gec_kalan_sayisi || 0) + Math.round((kpi.gec_kalan_sayisi || 0) * (zamanindaOran / (100 - zamanindaOran || 1)));
+        const gecikmeOran = 100 - zamanindaOran;
+        document.getElementById('dashKpiGecikmeOran').textContent = `%${gecikmeOran}`;
+    }
+
+    function renderBireyselCard(data) {
+        const card = document.getElementById('dashBireyselKarti');
+        if (!data.is_single_personel || !data.personel_performans || data.personel_performans.length === 0) {
+            if (card) card.style.display = 'none';
+            return;
+        }
+
+        const p = data.personel_performans[0];
+        if (card) card.style.display = 'block';
+
+        const fotoEl = document.getElementById('dashBireyselFoto');
+        if (fotoEl) fotoEl.src = p.foto || 'assets/images/users/user-dummy-img.jpg';
+        document.getElementById('dashBireyselAd').textContent = p.adi_soyadi || '-';
+        document.getElementById('dashBireyselDept').textContent = p.departman || 'Genel';
+        document.getElementById('dashBireyselGun').textContent = `${p.calistigi_gun || 0} gün`;
+        document.getElementById('dashBireyselSure').textContent = `${p.toplam_saat || 0} sa (Ort. ${p.ort_saat || 0} sa)`;
+        document.getElementById('dashBireyselOrtGiris').textContent = p.avg_baslama || '--:--';
+        document.getElementById('dashBireyselGecikme').textContent = `${p.gec_sayisi || 0} kez (${p.toplam_gecikme_dk || 0} dk kayıp)`;
+    }
+
+    function renderDashboardCharts(data) {
+        // 1. Trend Grafiği (Bar + Line)
+        const trend = data.trend || {};
+        const categories = Array.isArray(trend.categories) ? trend.categories : [];
+        const saatSerisi = Array.isArray(trend.saat_serisi) ? trend.saat_serisi : [];
+        const kisiSerisi = Array.isArray(trend.kisi_serisi) ? trend.kisi_serisi : [];
+
+        const trendOptions = {
+            series: [
+                {
+                    name: 'Toplam Mesai (Saat)',
+                    type: 'column',
+                    data: saatSerisi
+                },
+                {
+                    name: 'Çalışan Kişi Sayısı',
+                    type: 'line',
+                    data: kisiSerisi
+                }
+            ],
+            chart: {
+                height: 320,
+                type: 'line',
+                toolbar: { show: false },
+                fontFamily: 'inherit'
+            },
+            stroke: {
+                width: [0, 3],
+                curve: 'smooth'
+            },
+            plotOptions: {
+                bar: {
+                    columnWidth: '40%',
+                    borderRadius: 4
+                }
+            },
+            colors: ['#556ee6', '#34c38f'],
+            xaxis: {
+                categories: categories
+            },
+            yaxis: [
+                {
+                    title: { text: 'Saat' },
+                    labels: {
+                        formatter: val => val !== undefined && val !== null ? Number(val).toFixed(1) : '0'
+                    }
+                },
+                {
+                    opposite: true,
+                    title: { text: 'Kişi' },
+                    labels: {
+                        formatter: val => val !== undefined && val !== null ? Math.round(val) : '0'
+                    }
+                }
+            ],
+            tooltip: {
+                shared: true,
+                intersect: false
+            }
+        };
+
+        if (dashCharts.trend) {
+            dashCharts.trend.updateOptions(trendOptions);
+        } else {
+            const el = document.querySelector("#chartDashTrend");
+            if (el) {
+                dashCharts.trend = new ApexCharts(el, trendOptions);
+                dashCharts.trend.render();
+            }
+        }
+
+        // 2. Saat Dağılımı Donut
+        const saatBuckets = data.saat_dagilimi || {};
+        const saatLabels = Object.keys(saatBuckets);
+        const saatSeries = Object.values(saatBuckets);
+
+        const saatOptions = {
+            series: saatSeries.length ? saatSeries : [0],
+            labels: saatLabels.length ? saatLabels : ['Veri Yok'],
+            chart: {
+                type: 'donut',
+                height: 320,
+                fontFamily: 'inherit'
+            },
+            colors: ['#34c38f', '#50a5f1', '#556ee6', '#f1b44c', '#f46a6a'],
+            legend: {
+                position: 'bottom'
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: 'Toplam Giriş',
+                                formatter: () => saatSeries.reduce((a, b) => a + (Number(b) || 0), 0)
+                            }
+                        }
+                    }
+                }
+            },
+            dataLabels: { enabled: false }
+        };
+
+        if (dashCharts.saat) {
+            dashCharts.saat.updateOptions(saatOptions);
+        } else {
+            const el = document.querySelector("#chartDashSaat");
+            if (el) {
+                dashCharts.saat = new ApexCharts(el, saatOptions);
+                dashCharts.saat.render();
+            }
+        }
+
+        // 3. Departman Mesai Bar Chart
+        const deptList = Array.isArray(data.departman_analiz) ? data.departman_analiz : [];
+        const deptNames = deptList.map(d => d.departman || 'Genel');
+        const deptSaatler = deptList.map(d => d.toplam_saat || 0);
+
+        const deptOptions = {
+            series: [{
+                name: 'Toplam Mesai (Saat)',
+                data: deptSaatler
+            }],
+            chart: {
+                type: 'bar',
+                height: 280,
+                toolbar: { show: false },
+                fontFamily: 'inherit'
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 4,
+                    horizontal: true,
+                    barHeight: '50%'
+                }
+            },
+            colors: ['#50a5f1'],
+            dataLabels: {
+                enabled: true,
+                formatter: val => `${val} sa`
+            },
+            xaxis: {
+                categories: deptNames
+            }
+        };
+
+        if (dashCharts.dept) {
+            dashCharts.dept.updateOptions(deptOptions);
+        } else {
+            const el = document.querySelector("#chartDashDept");
+            if (el) {
+                dashCharts.dept = new ApexCharts(el, deptOptions);
+                dashCharts.dept.render();
+            }
+        }
+
+        // 4. Durum Dağılımı Pie/Donut
+        const durumObj = data.durum_dagilimi || {};
+        const durumLabels = ['Zamanında Başlayan', 'Geç Başlayan', 'İzinli'];
+        const durumSeries = [
+            durumObj.zamaninda || 0,
+            durumObj.gec || 0,
+            durumObj.izinli || 0
+        ];
+
+        const durumOptions = {
+            series: durumSeries,
+            labels: durumLabels,
+            chart: {
+                type: 'pie',
+                height: 280,
+                fontFamily: 'inherit'
+            },
+            colors: ['#34c38f', '#f46a6a', '#50a5f1'],
+            legend: {
+                position: 'bottom'
+            }
+        };
+
+        if (dashCharts.durum) {
+            dashCharts.durum.updateOptions(durumOptions);
+        } else {
+            const el = document.querySelector("#chartDashDurum");
+            if (el) {
+                dashCharts.durum = new ApexCharts(el, durumOptions);
+                dashCharts.durum.render();
+            }
+        }
+    }
+
+    function renderTopLists(data) {
+        // En çok çalışanlar
+        const calisanlar = Array.isArray(data.top_calisanlar) ? data.top_calisanlar : [];
+        const calisanlarEl = document.getElementById('dashTopCalisanlarList');
+        if (calisanlarEl) {
+            if (calisanlar.length === 0) {
+                calisanlarEl.innerHTML = '<div class="text-center text-muted p-3">Kayıt bulunamadı</div>';
+            } else {
+                let html = '';
+                calisanlar.forEach((item, idx) => {
+                    const medalColor = idx === 0 ? 'text-warning' : (idx === 1 ? 'text-secondary' : (idx === 2 ? 'text-bronze' : 'text-muted'));
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-2 py-2 border-0 border-bottom">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold ${medalColor}" style="width: 20px;">#${idx + 1}</span>
+                                <div>
+                                    <div class="fw-bold text-dark mb-0">${escapeMapHtml(item.adi_soyadi)}</div>
+                                    <small class="text-muted">${escapeMapHtml(item.departman || 'Genel')} • ${item.calistigi_gun || 0} gün</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary fw-bold fs-6">${item.toplam_saat} sa</span>
+                        </div>
+                    `;
+                });
+                calisanlarEl.innerHTML = html;
+            }
+        }
+
+        // En çok gecikenler
+        const gecikenler = Array.isArray(data.top_gecikenler) ? data.top_gecikenler : [];
+        const gecikenlerEl = document.getElementById('dashTopGecikenlerList');
+        if (gecikenlerEl) {
+            if (gecikenler.length === 0) {
+                gecikenlerEl.innerHTML = '<div class="text-center text-muted p-3">Gecikme kaydı bulunamadı</div>';
+            } else {
+                let html = '';
+                gecikenler.forEach((item, idx) => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-2 py-2 border-0 border-bottom">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-danger" style="width: 20px;">#${idx + 1}</span>
+                                <div>
+                                    <div class="fw-bold text-dark mb-0">${escapeMapHtml(item.adi_soyadi)}</div>
+                                    <small class="text-muted">${escapeMapHtml(item.departman || 'Genel')}</small>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-danger-subtle text-danger fw-bold">${item.gec_sayisi} kez</span>
+                                <div class="text-muted small">${item.toplam_gecikme_dk} dk kayıp</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                gecikenlerEl.innerHTML = html;
+            }
+        }
+    }
+
+    function renderDashboardTable(data) {
+        const tableBody = document.getElementById('dashPersonelPerformansBody');
+        const list = Array.isArray(data.personel_performans) ? data.personel_performans : [];
+
+        if (dashPerformansDT) {
+            dashPerformansDT.destroy();
+            dashPerformansDT = null;
+        }
+
+        if (list.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Kayıt bulunamadı.</td></tr>';
+            return;
+        }
+
+        let html = '';
+        list.forEach(p => {
+            const skor = p.dakiklik_skor !== undefined ? p.dakiklik_skor : 100;
+            const zamanindaClass = skor >= 85 ? 'text-success' : (skor >= 60 ? 'text-warning' : 'text-danger');
+            html += `
+                <tr>
+                    <td class="fw-bold">${escapeMapHtml(p.adi_soyadi)}</td>
+                    <td><span class="badge bg-light text-dark">${escapeMapHtml(p.departman || 'Genel')}</span></td>
+                    <td class="text-center">${p.calistigi_gun || 0} gün</td>
+                    <td class="text-center fw-bold text-primary">${p.toplam_saat || 0} sa</td>
+                    <td class="text-center">${p.ort_saat || 0} sa</td>
+                    <td class="text-center"><span class="badge ${p.gec_sayisi > 0 ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'}">${p.gec_sayisi || 0} kez (${p.toplam_gecikme_dk || 0} dk)</span></td>
+                    <td class="text-center fw-bold ${zamanindaClass}">%${skor}</td>
+                </tr>
+            `;
+        });
+        tableBody.innerHTML = html;
+
+        if (typeof applyLengthStateSave !== 'undefined' && typeof getDatatableOptions !== 'undefined') {
+            dashPerformansDT = $('#dashPersonelPerformansTable').DataTable(
+                applyLengthStateSave({
+                    ...getDatatableOptions(),
+                    pageLength: 10,
+                    order: [[3, 'desc']]
+                })
+            );
+        } else {
+            dashPerformansDT = $('#dashPersonelPerformansTable').DataTable({
+                pageLength: 10,
+                order: [[3, 'desc']],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
+                }
+            });
+        }
+    }
+
+    function exportDashboardExcel() {
+        const baslangic = document.getElementById('dashBaslangic')?.value || '';
+        const bitis = document.getElementById('dashBitis')?.value || '';
+        const departman = $('#dashDepartmanFilter').val() || '';
+        window.location.href = `views/personel-takip/api.php?action=exportCalismaRaporu&baslangic=${encodeURIComponent(baslangic)}&bitis=${encodeURIComponent(bitis)}&departman=${encodeURIComponent(departman)}`;
     }
 </script>
 

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\EvrakTakipModel;
+use App\Model\EvrakSablonModel;
 use App\Model\PersonelModel;
 use App\Model\UserModel;
 use App\Model\BildirimModel;
@@ -43,6 +44,93 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     try {
         switch ($action) {
+            case 'evrak-sablon-listele':
+                $rows = (new EvrakSablonModel())->getAllActive();
+                $templates = array_map(static function ($row): array {
+                    $attachmentRows = (new EvrakSablonModel())->getAttachments((int) $row->id);
+                    return [
+                        'id' => Security::encrypt((int) $row->id),
+                        'adi' => (string) $row->adi,
+                        'veri' => json_decode((string) $row->sablon_verisi, true) ?: [],
+                        'ek_dosyalar' => array_map(static fn($file) => [
+                            'id' => Security::encrypt((int) $file->id), 'name' => (string) $file->dosya_adi,
+                            'path' => (string) $file->dosya_yolu, 'size' => (int) $file->dosya_boyutu,
+                        ], $attachmentRows),
+                        'guncelleme_tarihi' => !empty($row->updated_at) ? date('d.m.Y H:i', strtotime($row->updated_at)) : '',
+                    ];
+                }, $rows);
+                echo json_encode(['status' => 'success', 'data' => $templates], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+
+            case 'evrak-sablon-kaydet':
+                $templateId = !empty($_POST['sablon_id']) ? $decryptId($_POST['sablon_id']) : 0;
+                $templateName = trim((string) ($_POST['sablon_adi'] ?? ''));
+                if ($templateName === '' || mb_strlen($templateName) > 150) {
+                    throw new Exception('Şablon adı zorunludur ve en fazla 150 karakter olabilir.');
+                }
+                $rawTemplateData = json_decode((string) ($_POST['sablon_verisi'] ?? ''), true);
+                if (!is_array($rawTemplateData)) {
+                    throw new Exception('Şablon verisi geçersiz.');
+                }
+                $allowedTemplateFields = [
+                    'konu', 'kurum_adi', 'muhatap_alt_birim', 'muhatap_adres', 'ilgiler', 'ekler',
+                    'tarih', 'evrak_no', 'konu', 'kurum_adi', 'muhatap_alt_birim', 'muhatap_adres', 'ilgiler', 'ekler',
+                    'aciklama', 'ust_yazi_gerekli_degil', 'imza_kullanici_ids', 'imza_kimin_adina',
+                    'ilgili_evrak_id', 'personel_id', 'ilgili_personel_id'
+                ];
+                $templateData = array_intersect_key($rawTemplateData, array_flip($allowedTemplateFields));
+                $templateData['aciklama'] = RichTextSanitizer::sanitize((string) ($templateData['aciklama'] ?? ''));
+                foreach (['konu', 'kurum_adi', 'muhatap_alt_birim', 'muhatap_adres', 'ilgiler', 'ekler'] as $field) {
+                    $templateData[$field] = mb_substr(trim((string) ($templateData[$field] ?? '')), 0, $field === 'konu' || $field === 'kurum_adi' ? 500 : 5000);
+                }
+                $templateData['ust_yazi_gerekli_degil'] = !empty($templateData['ust_yazi_gerekli_degil']) ? 1 : 0;
+                $signerIds = array_values(array_unique(array_filter(array_map('intval', (array) ($templateData['imza_kullanici_ids'] ?? [])))));
+                $validSigners = $Model->getSigningUsersByIds(array_slice($signerIds, 0, 3));
+                $templateData['imza_kullanici_ids'] = array_map(static fn($user) => (int) $user->id, $validSigners);
+                $templateData['imza_kimin_adina'] = array_slice(array_map(static fn($value) => mb_substr(trim((string) $value), 0, 255), (array) ($templateData['imza_kimin_adina'] ?? [])), 0, 3);
+                $savedTemplateId = (new EvrakSablonModel())->saveTemplate($templateId, $templateName, $templateData, $currentUserId);
+                $templateFiles = [];
+                $existingFiles = json_decode((string) ($_POST['sablon_mevcut_ekler'] ?? '[]'), true) ?: [];
+                foreach ($existingFiles as $file) {
+                    $attachmentId = $decryptId($file['id'] ?? '');
+                    $attachment = ($file['type'] ?? '') === 'template'
+                        ? (new EvrakSablonModel())->getAttachment($attachmentId)
+                        : $Model->getAttachmentById($attachmentId);
+                    if (!$attachment) continue;
+                    $source = dirname(__DIR__, 2) . '/' . ltrim((string) $attachment->dosya_yolu, '/');
+                    if (!is_file($source)) continue;
+                    $templateDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/sablon-ekleri/';
+                    if (!is_dir($templateDir)) @mkdir($templateDir, 0777, true);
+                    $stored = 'sablon_' . $savedTemplateId . '_' . bin2hex(random_bytes(8)) . '.' . strtolower(pathinfo($source, PATHINFO_EXTENSION));
+                    if (copy($source, $templateDir . $stored)) {
+                        $templateFiles[] = ['dosya_adi' => mb_substr((string) $attachment->dosya_adi, 0, 255), 'dosya_yolu' => 'uploads/evrak-takip/sablon-ekleri/' . $stored, 'mime_tipi' => $attachment->mime_tipi ?: (mime_content_type($source) ?: null), 'dosya_boyutu' => (int) $attachment->dosya_boyutu];
+                    }
+                }
+                if (!empty($_FILES['sablon_yeni_ekler']['name']) && is_array($_FILES['sablon_yeni_ekler']['name'])) {
+                    foreach ($_FILES['sablon_yeni_ekler']['name'] as $key => $name) {
+                        $tmp = (string) ($_FILES['sablon_yeni_ekler']['tmp_name'][$key] ?? '');
+                        $size = (int) ($_FILES['sablon_yeni_ekler']['size'][$key] ?? 0);
+                        if (!is_uploaded_file($tmp) || $size <= 0 || $size > 10 * 1024 * 1024) continue;
+                        $ext = strtolower(pathinfo((string) $name, PATHINFO_EXTENSION));
+                        if (!in_array($ext, ['pdf','jpg','jpeg','png','webp','doc','docx','xls','xlsx','odt','ods'], true)) continue;
+                        $templateDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/sablon-ekleri/';
+                        if (!is_dir($templateDir)) @mkdir($templateDir, 0777, true);
+                        $stored = 'sablon_' . $savedTemplateId . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
+                        if (move_uploaded_file($tmp, $templateDir . $stored)) $templateFiles[] = ['dosya_adi' => mb_substr(basename((string) $name), 0, 255), 'dosya_yolu' => 'uploads/evrak-takip/sablon-ekleri/' . $stored, 'mime_tipi' => mime_content_type($templateDir . $stored) ?: null, 'dosya_boyutu' => $size];
+                    }
+                }
+                (new EvrakSablonModel())->replaceAttachments($savedTemplateId, $templateFiles);
+                echo json_encode(['status' => 'success', 'message' => $templateId > 0 ? 'Şablon güncellendi.' : 'Şablon kaydedildi.', 'id' => Security::encrypt($savedTemplateId)], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-sablon-sil':
+                $templateId = $decryptId($_POST['sablon_id'] ?? '');
+                if ($templateId <= 0 || !(new EvrakSablonModel())->softDeleteTemplate($templateId, $currentUserId)) {
+                    throw new Exception('Şablon bulunamadı veya daha önce silinmiş.');
+                }
+                echo json_encode(['status' => 'success', 'message' => 'Şablon silindi.'], JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'evrak-kaydet':
                 $data = $_POST;
                 $attachmentOrder = json_decode((string) ($data['ek_duzen_json'] ?? '[]'), true) ?: [];
@@ -233,10 +321,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $orderedExistingIds = [];
                 $newAttachmentPositions = [];
+                $templateAttachmentPositions = [];
                 foreach ($attachmentOrder as $position => $attachmentItem) {
                     if (($attachmentItem['type'] ?? '') === 'existing') {
                         $attachmentId = $decryptId($attachmentItem['id'] ?? '');
                         $orderedExistingIds[] = $attachmentId;
+                    } elseif (($attachmentItem['type'] ?? '') === 'template') {
+                        $orderedExistingIds[] = 0;
+                        $templateAttachmentId = $decryptId($attachmentItem['id'] ?? '');
+                        if ($templateAttachmentId > 0) $templateAttachmentPositions[] = ['id' => $templateAttachmentId, 'sira' => $position + 1];
                     } else {
                         $orderedExistingIds[] = 0;
                         $key = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($attachmentItem['key'] ?? ''));
@@ -253,6 +346,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
                 $Model->syncAttachmentState($real_id, $orderedExistingIds, $removedAttachmentIds);
+
+                foreach ($templateAttachmentPositions as $templateAttachmentPosition) {
+                    $templateAttachment = (new EvrakSablonModel())->getAttachment($templateAttachmentPosition['id']);
+                    if (!$templateAttachment) continue;
+                    $source = dirname(__DIR__, 2) . '/' . ltrim((string) $templateAttachment->dosya_yolu, '/');
+                    if (!is_file($source)) continue;
+                    $attachmentDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/ekler/';
+                    if (!is_dir($attachmentDir)) @mkdir($attachmentDir, 0777, true);
+                    $storedName = 'ek_' . $real_id . '_' . bin2hex(random_bytes(8)) . '.' . strtolower(pathinfo($source, PATHINFO_EXTENSION));
+                    if (!copy($source, $attachmentDir . $storedName)) throw new Exception('Şablon eki evraka kopyalanamadı.');
+                    $Model->saveAttachment($real_id, ['dosya_adi' => $templateAttachment->dosya_adi, 'dosya_yolu' => 'uploads/evrak-takip/ekler/' . $storedName, 'mime_tipi' => $templateAttachment->mime_tipi, 'dosya_boyutu' => $templateAttachment->dosya_boyutu, 'sira' => $templateAttachmentPosition['sira']]);
+                }
 
                 if (!empty($_FILES['ek_dosyalari']['name']) && is_array($_FILES['ek_dosyalari']['name'])) {
                     $attachmentDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/ekler/';

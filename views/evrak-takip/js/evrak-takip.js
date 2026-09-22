@@ -890,5 +890,46 @@ $(document).ready(function () {
 
   $(document).on("hidden.bs.modal", "#evrakPdfModal", resetPdfModalState);
 
+  // ---------- Özet kartlarını gizle/göster ----------
+  const EVRAK_OZET_SAKLI_ANAHTAR = "evrak_ozet_kapali";
+
+  function evrakOzetGorunumUygula(kapali, animasyonlu) {
+    const satir = $("#evrakOzetSatir");
+    const dugme = $("#btnEvrakOzetToggle");
+    if (!satir.length) return;
+    if (!animasyonlu) satir.css("transition", "none");
+    satir.toggleClass("evrak-ozet-kapali", kapali);
+    if (!animasyonlu && satir[0]) {
+      void satir[0].offsetHeight;
+      satir.css("transition", "");
+    }
+    dugme.toggleClass("evrak-donuk", kapali)
+      .attr("title", kapali ? "Özet kartlarını göster" : "Özet kartlarını gizle");
+
+    const preloadStyle = document.getElementById("evrak-ozet-preload-style");
+    if (preloadStyle) {
+      preloadStyle.remove();
+    }
+  }
+
+  $(document).on("click", "#btnEvrakOzetToggle", function (e) {
+    e.preventDefault();
+    const kapaliOlacak = !$("#evrakOzetSatir").hasClass("evrak-ozet-kapali");
+    evrakOzetGorunumUygula(kapaliOlacak, true);
+    try {
+      localStorage.setItem(EVRAK_OZET_SAKLI_ANAHTAR, kapaliOlacak ? "1" : "0");
+    } catch (e) { /* yoksay */ }
+  });
+
+  (function evrakOzetBaslangicDurumu() {
+    let kapali = false;
+    try {
+      kapali = localStorage.getItem(EVRAK_OZET_SAKLI_ANAHTAR) === "1";
+    } catch (e) { /* yoksay */ }
+    if (kapali) {
+      evrakOzetGorunumUygula(true, false);
+    }
+  })();
+
   $("#btnRefresh").on("click", function () { location.reload(); });
 });

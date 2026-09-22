@@ -54,7 +54,8 @@ class MenuModel extends Model
             // Geçerli bir kiracı yoksa veya kiracıya özel cache dizini ayarlanamadıysa,
             // önbellekleme yapmadan doğrudan veritabanından çek.
             // VEYA burada bir istisna fırlatabilirsiniz.
-            return $this->fetchAndBuildMenuFromDb($user_id);
+            $menuData = $this->fetchAndBuildMenuFromDb($user_id);
+            return $this->applyUserOrderToMenuData($menuData, $user_id);
         }
 
         //$this->clearMenuCacheForRole(0); // Genel önbelleği temizle
@@ -78,7 +79,7 @@ class MenuModel extends Model
             if ($cachedData !== false) {
                 $unserializedData = @unserialize($cachedData); // Aynı şekilde hata kontrolü
                 if ($unserializedData !== false) {
-                    return $unserializedData;
+                    return $this->applyUserOrderToMenuData($unserializedData, $user_id);
                 }
                 // Unserialize başarısız olursa, cache dosyasını bozuk kabul et ve sil.
                 @unlink($cacheFile);
@@ -98,7 +99,7 @@ class MenuModel extends Model
             }
         }
 
-        return $menuData;
+        return $this->applyUserOrderToMenuData($menuData, $user_id);
     }
 
     private function normalizeRoleIds($roleIds): array
@@ -542,6 +543,182 @@ class MenuModel extends Model
             }
             return $result;
         }
+    }
+
+    /**
+     * Kullanıcının özel menü sıralama tercihlerini getirir.
+     */
+    public function getUserMenuOrder(int $userId): ?array
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+        try {
+            $stmt = $this->db->prepare("SELECT order_data FROM user_menu_orders WHERE user_id = ? LIMIT 1");
+            $stmt->execute([$userId]);
+            $json = $stmt->fetchColumn();
+            if ($json) {
+                $data = json_decode($json, true);
+                if (is_array($data)) {
+                    return $data;
+                }
+            }
+        } catch (\Exception $e) {
+            error_log('getUserMenuOrder Error: ' . $e->getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Kullanıcının özel menü sıralama tercihlerini kaydeder.
+     */
+    public function saveUserMenuOrder(int $userId, array $orderData): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        try {
+            $json = json_encode($orderData, JSON_UNESCAPED_UNICODE);
+            $stmt = $this->db->prepare("INSERT INTO user_menu_orders (user_id, order_data) 
+                                        VALUES (?, ?) 
+                                        ON DUPLICATE KEY UPDATE order_data = VALUES(order_data), updated_at = NOW()");
+            $res = $stmt->execute([$userId, $json]);
+            if ($res) {
+                try {
+                    $log = new SystemLogModel();
+                    $log->logAction($userId, 'Menü Düzeni', "Kullanıcı menü sırasını özelleştirdi.");
+                } catch (\Exception $e) {}
+            }
+            return $res;
+        } catch (\Exception $e) {
+            error_log('saveUserMenuOrder Error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Kullanıcının menü sıralama tercihlerini sıfırlayıp varsayılana döndürür.
+     */
+    public function resetUserMenuOrder(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        try {
+            $stmt = $this->db->prepare("DELETE FROM user_menu_orders WHERE user_id = ?");
+            $res = $stmt->execute([$userId]);
+            if ($res) {
+                try {
+                    $log = new SystemLogModel();
+                    $log->logAction($userId, 'Menü Düzeni', "Kullanıcı menü sırasını varsayılana sıfırladı.");
+                } catch (\Exception $e) {}
+            }
+            return true;
+        } catch (\Exception $e) {
+            error_log('resetUserMenuOrder Error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Ham veya önbellekteki hiyerarşik menü dizisini kullanıcının özel sıralamasına göre yeniden sıralar.
+     */
+    public function applyUserOrderToMenuData(array $menuData, int $userId): array
+    {
+        if (empty($menuData) || $userId <= 0) {
+            return $menuData;
+        }
+
+        $userOrder = $this->getUserMenuOrder($userId);
+        if (!$userOrder) {
+            return $menuData;
+        }
+
+        $groupOrderList = $userOrder['groups'] ?? [];
+        $menuOrdersByGroup = $userOrder['menus'] ?? [];
+        $subOrdersByParent = $userOrder['submenus'] ?? [];
+
+        // 1. Grupların Sıralanması
+        $orderedMenuData = [];
+        $menuDataMap = [];
+        foreach ($menuData as $gName => $gMenus) {
+            $menuDataMap[trim((string)$gName)] = ['orig' => $gName, 'menus' => $gMenus];
+        }
+
+        if (!empty($groupOrderList) && is_array($groupOrderList)) {
+            foreach ($groupOrderList as $groupName) {
+                $cleanGName = trim((string)$groupName);
+                if (isset($menuDataMap[$cleanGName])) {
+                    $origKey = $menuDataMap[$cleanGName]['orig'];
+                    $orderedMenuData[$origKey] = $menuDataMap[$cleanGName]['menus'];
+                    unset($menuDataMap[$cleanGName]);
+                }
+            }
+        }
+        // Sıralama listesinde olmayan kalan grupları sonuna ekle
+        foreach ($menuDataMap as $cleanGName => $info) {
+            $orderedMenuData[$info['orig']] = $info['menus'];
+        }
+
+        // 2. Her Grup Altındaki Üst Menülerin ve Alt Menülerin Sıralanması
+        foreach ($orderedMenuData as $groupName => &$menus) {
+            if (!is_array($menus)) {
+                continue;
+            }
+
+            $groupMenuOrder = $menuOrdersByGroup[$groupName] ?? null;
+            if (!empty($groupMenuOrder) && is_array($groupMenuOrder)) {
+                $menuMap = [];
+                foreach ($menus as $m) {
+                    $menuMap[(int)$m->id] = $m;
+                }
+
+                $sortedMenus = [];
+                foreach ($groupMenuOrder as $menuId) {
+                    $mId = (int)$menuId;
+                    if (isset($menuMap[$mId])) {
+                        $sortedMenus[] = $menuMap[$mId];
+                        unset($menuMap[$mId]);
+                    }
+                }
+                // Listede olmayan kalan menüleri ekle
+                foreach ($menuMap as $m) {
+                    $sortedMenus[] = $m;
+                }
+                $menus = $sortedMenus;
+            }
+
+            // 3. Alt Menülerin (Children) Sıralanması
+            foreach ($menus as &$menuItem) {
+                if (!empty($menuItem->children) && is_array($menuItem->children)) {
+                    $parentId = (int)$menuItem->id;
+                    $subOrder = $subOrdersByParent[(string)$parentId] ?? $subOrdersByParent[$parentId] ?? null;
+                    if (!empty($subOrder) && is_array($subOrder)) {
+                        $subMap = [];
+                        foreach ($menuItem->children as $sub) {
+                            $subMap[(int)$sub->id] = $sub;
+                        }
+
+                        $sortedChildren = [];
+                        foreach ($subOrder as $subId) {
+                            $sId = (int)$subId;
+                            if (isset($subMap[$sId])) {
+                                $sortedChildren[] = $subMap[$sId];
+                                unset($subMap[$sId]);
+                            }
+                        }
+                        foreach ($subMap as $sub) {
+                            $sortedChildren[] = $sub;
+                        }
+                        $menuItem->children = $sortedChildren;
+                    }
+                }
+            }
+            unset($menuItem);
+        }
+        unset($menus);
+
+        return $orderedMenuData;
     }
 }
 

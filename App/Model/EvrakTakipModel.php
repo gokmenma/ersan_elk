@@ -556,6 +556,17 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getAttachmentById(int $attachmentId): object|false
+    {
+        $sql = $this->db->prepare("SELECT ee.id, ee.dosya_adi, ee.dosya_yolu, ee.mime_tipi, ee.dosya_boyutu
+            FROM evrak_takip_ekleri ee
+            INNER JOIN {$this->table} et ON et.id = ee.evrak_id AND et.firma_id = ee.firma_id
+            WHERE ee.id = :id AND ee.firma_id = :firma_id AND ee.silinme_tarihi IS NULL
+              AND et.silinme_tarihi IS NULL LIMIT 1");
+        $sql->execute(['id' => $attachmentId, 'firma_id' => (int) ($_SESSION['firma_id'] ?? 0)]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
     /**
      * Liste ekranında N+1 sorgu oluşturmadan aktif evrak eklerini getirir.
      *

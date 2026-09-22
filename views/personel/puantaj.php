@@ -14,7 +14,7 @@ use App\Service\Gate;
     <!-- start page title -->
     <?php
     $maintitle = "Personel Yönetimi";
-    $title = "Puantaj ve İzin Yönetimi" ;
+    $title = "Puantaj ve İzin Yönetimi";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
     <!-- end page title -->
@@ -24,375 +24,206 @@ use App\Service\Gate;
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
     <style>
-        .calendar-card {
-            min-height: 500px;
+        /* -------------------------------------------------------------
+         * Modern Soft SaaS Puantaj Design System (Light & Dark)
+         * ----------------------------------------------------------- */
+        #puantaj-full-container {
+            --pnt-primary: #4f46e5;
+            --pnt-primary-light: #6366f1;
+            --pnt-primary-soft: #eef2ff;
+            --pnt-primary-border: #e0e7ff;
+            --pnt-primary-text: #4338ca;
+            
+            --pnt-text-main: #0f172a;
+            --pnt-text-muted: #64748b;
+            --pnt-text-subtle: #94a3b8;
+            
+            --pnt-border-subtle: #f1f5f9;
+            --pnt-border-light: #e2e8f0;
+            --pnt-border-medium: #cbd5e1;
+            
+            --pnt-surface-card: #ffffff;
+            --pnt-surface-alt: #f8fafc;
+            --pnt-surface-hover: #f8faff;
+            
+            --pnt-sunday-bg: #fff1f2;
+            --pnt-sunday-text: #e11d48;
+            --pnt-sunday-border: #ffe4e6;
+            --pnt-sunday-column-bg: #fffcfc;
+            
+            --pnt-today-bg: #eef2ff;
+            --pnt-today-text: #4338ca;
+            --pnt-today-border: #c7d2fe;
+            --pnt-today-column-bg: #f8faff;
         }
 
-        .izin-type-card {
-            cursor: grab;
-            transition: transform 0.2s;
-            margin-bottom: 10px;
-            border-left: 5px solid transparent;
+        #puantaj-full-container > .row { row-gap: 8px; }
+        #puantaj-full-container > .row > .col-12 > .card { margin-bottom: 0 !important; }
+
+        /* Üst Filtre Kartı */
+        .puantaj-table-header {
+            overflow: visible;
+            border: 1px solid var(--pnt-border-light) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03) !important;
+            background: var(--pnt-surface-card);
         }
 
-        /* Puantaj türleri: yer kaplayan bir satır yerine taşınabilir araç paleti */
+        .puantaj-table-header .card-header {
+            min-height: 68px;
+            padding: 10px 16px !important;
+            border: 0 !important;
+        }
+
+        .puantaj-filter-cluster { gap: 8px !important; }
+        .puantaj-filter-cluster > div { position: relative; }
+
+        .puantaj-filter-cluster .form-control,
+        .puantaj-filter-cluster .select2-selection {
+            border-color: #e2e8f0 !important;
+            background-color: #f8fafc !important;
+            border-radius: 8px !important;
+            box-shadow: none !important;
+            font-size: 13px !important;
+            color: var(--pnt-text-main) !important;
+            transition: all 0.15s ease;
+        }
+
+        .puantaj-filter-cluster .form-control:focus,
+        .puantaj-filter-cluster .select2-container--open .select2-selection {
+            border-color: #6366f1 !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+        }
+
+        .iskur-filter {
+            min-width: 120px;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .action-button-container {
+            padding: 4px !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            background: #ffffff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        }
+
+        .action-button-container .btn {
+            min-height: 34px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        #btn-save-selected {
+            border: 0;
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28) !important;
+            transition: all 0.18s ease;
+        }
+
+        #btn-save-selected:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.38) !important;
+        }
+
+        /* Puantaj Türleri Palet Kartı */
+        .card-izin-turleri {
+            position: relative;
+            top: auto !important;
+            border: 1px solid var(--pnt-border-light) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+            background: var(--pnt-surface-card);
+        }
+        body:not(.puantaj-palette-floating) .card-izin-turleri {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            transform: none !important;
+        }
+
+        .card-izin-turleri .card-body { padding: 8px 14px !important; }
+        body:not(.puantaj-palette-floating) .card-izin-turleri .card-body {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        body:not(.puantaj-palette-floating) .card-izin-turleri .izin-palette-header { display: contents; }
+        body:not(.puantaj-palette-floating) .card-izin-turleri .izin-palette-header > :first-child { flex: 0 0 auto; }
+        body:not(.puantaj-palette-floating) .card-izin-turleri .izin-palette-header > :last-child { order: 4; margin-left: auto; }
+        body:not(.puantaj-palette-floating) .card-izin-turleri .view-buttons { order: 2; }
+        body:not(.puantaj-palette-floating) .card-izin-turleri .tab-content { order: 3; flex: 1 1 auto; min-width: 0; }
+        body:not(.puantaj-palette-floating) .card-izin-turleri .tab-pane > div {
+            justify-content: flex-start !important;
+            padding: 0 !important;
+        }
+
         .izin-palette-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            min-height: 34px;
+            justify-content: flex-start;
+            gap: 10px;
+            min-height: 32px;
         }
 
         .izin-palette-title {
-            color: #334155;
             font-size: 12px;
             font-weight: 700;
-            letter-spacing: .01em;
+            color: var(--pnt-text-main);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .izin-palette-title::before {
+            content: '';
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--pnt-primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .izin-palette-helper {
+            margin-left: 8px;
+            color: var(--pnt-text-muted);
+            font-size: 11px;
+            font-weight: 500;
         }
 
         .izin-palette-handle {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
+            width: 26px;
+            height: 26px;
             padding: 0;
             border: 0;
-            border-radius: 7px;
-            color: #94a3b8;
+            border-radius: 6px;
+            color: var(--pnt-text-subtle);
             background: transparent;
             cursor: grab;
             touch-action: none;
+            transition: all 0.15s ease;
         }
-
-        .izin-palette-handle:hover { color: #556ee6; background: #eef2ff; }
+        .izin-palette-handle:hover { color: var(--pnt-primary); background: var(--pnt-primary-soft); }
         .izin-palette-handle:active { cursor: grabbing; }
         .izin-palette-restore { display: none; }
 
-        .izin-type-card:hover {
-            transform: scale(1.02);
-        }
-
-        .draggable-izin {
-            cursor: grab;
-            transition: all 0.2s;
-            border: none !important;
-            font-weight: 600;
-        }
-
-
-
-        .izin-chip-placeholder {
-            display: none;
-        }
-
-        .table-puantaj {
-            border-collapse: separate !important;
-            /* Daha sıkı aralık: aynı ekranda daha fazla gün ve daha az görsel gürültü. */
-            border-spacing: 2px !important;
-        }
-
-        .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1) {
-            width: 32px;
-            height: 50px;
-            padding: 4px 2px !important;
-            border: none !important;
-            border-radius: 6px;
-            vertical-align: middle;
-            background-color: #059669;
-            background-image: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            color: #ffffff;
-            display: table-cell;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-puantaj .day-cell {
-            width: 32px;
-            height: 34px;
-            cursor: cell;
-            user-select: none;
-            position: relative;
-            padding: 0 !important;
-            border: 1px solid #e2e8f0 !important;
-            border-radius: 5px;
-            background-color: #f8fafc;
-            box-shadow: none;
-            transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
-        }
-
-        .table-puantaj .day-cell:hover:not(.disabled) {
-            z-index: 3;
-            border-color: rgba(85, 110, 230, .5) !important;
-            box-shadow: 0 4px 12px rgba(85, 110, 230, .14);
-            transform: translateY(-1px);
-        }
-
-        .table-puantaj .day-cell.disabled { opacity: .42; background: #f1f5f9; }
-
-        .table-puantaj .is-sunday {
-            background-color: #fee2e2 !important;
-            color: #ef4444 !important;
-            border: 1px solid #fca5a5 !important;
-        }
-
-        .table-puantaj thead th.is-sunday:not(.sticky-col) {
-            background-color: #ef4444 !important;
-            color: #ffffff !important;
-            border: none !important;
-        }
-
-        .day-header-pill {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            line-height: 1.2;
-        }
-
-        .day-header-pill .day-name {
-            font-size: 10px;
-            font-weight: 500;
-            opacity: 0.9;
-        }
-
-        .day-header-pill .day-number {
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .table-puantaj .day-cell.has-entry {
-            font-weight: bold;
-        }
-
-        .table-puantaj .day-cell.selected {
-            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-            border: 2px dashed var(--bs-primary) !important;
-            z-index: 2;
-        }
-
-        .table-puantaj .day-cell.unsaved {
-            position: relative;
-        }
-
-        .table-puantaj .day-cell.unsaved::after {
-            content: '●';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            font-size: 8px;
-            color: #f1b44c;
-        }
-
-        .izin-box {
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 11px;
-            cursor: grab;
-            transition: all 0.2s;
-            user-select: none;
-        }
-
-        .izin-box:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .izin-item-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0;
-            width: 36px;
-        }
-
-        .izin-item-container span {
-            font-size: 10px;
-            font-weight: 600;
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            width: 100%;
-        }
-
-        /* Prevent Layout Shift during Drag & Drop */
-        .sortable-ghost {
-            opacity: 1 !important;
-        }
-
-        .sortable-drag {
-            opacity: 0.8;
-            transform: scale(0.8);
-            z-index: 1000;
-        }
-
-        .day-cell .izin-item-container {
-            display: none !important;
-        }
-
-        .table-puantaj .personel-info {
-            text-align: left;
-            width: 180px !important;
-            min-width: 180px !important;
-            max-width: 180px !important;
-            font-size: 11px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding: 8px 12px !important;
-            vertical-align: middle;
-            border: 1px dashed #ced4da !important;
-            border-radius: 4px;
-        }
-
-        .table-puantaj .personel-info .d-flex {
-            width: 170px;
-        }
-
-        .text-truncate-name {
-            display: inline-block;
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .cell-content {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-            position: relative;
-            /* Aynı türde ardışık kayıtlar birleşmiş görünmesin diye iç ayırıcı çizgi. */
-            border-radius: 5px;
-            box-shadow: inset 0 0 0 1px rgba(71, 85, 105, .18);
-            cursor: grab;
-            letter-spacing: .01em;
-            transition: transform .16s ease, box-shadow .16s ease;
-        }
-
-        .table-puantaj .day-cell:hover:not(.disabled) .cell-content {
-            transform: scale(1.04);
-            box-shadow: inset 0 0 0 1px rgba(71, 85, 105, .24), 0 3px 8px rgba(15, 23, 42, .10);
-        }
-
-        .btn-delete-cell {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            background: #ff3d60;
-            color: white;
-            border-radius: 50%;
-            width: 12px;
-            height: 12px;
-            font-size: 8px;
-            line-height: 12px;
-            text-align: center;
-            cursor: pointer;
-            display: none;
-            z-index: 5;
-        }
-
-        .day-cell:hover .btn-delete-cell {
-            display: block;
-        }
-
-        .badge-izin {
-            position: relative;
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            color: #fff;
-            width: 100%;
-        }
-
-        .badge-izin .btn-delete {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #ff3d60;
-            color: white;
-            border-radius: 50%;
-            width: 14px;
-            height: 14px;
-            font-size: 10px;
-            line-height: 14px;
-            text-align: center;
-            cursor: pointer;
-            display: none;
-        }
-
-        .badge-izin:hover .btn-delete {
-            display: block;
-        }
-
-        .tab-content>.tab-pane {
-            display: none;
-        }
-
-        .tab-content>.active {
-            display: block;
-        }
-
-        .fade {
-            transition: opacity 0.15s linear;
-        }
-
-        .tab-pane.fade {
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(10px);
-            opacity: 0;
-        }
-
-        .tab-pane.fade.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .sticky-col {
-            position: sticky;
-            left: 0;
-            background-color: #ffffff !important;
-            z-index: 20;
-            border: 1px solid #ced4da !important;
-            width: 180px !important;
-            min-width: 180px !important;
-            max-width: 180px !important;
-        }
-
-        .sticky-col-right-1 {
-            position: sticky;
-            right: 0;
-            background-color: #f8f9fa !important;
-            z-index: 20;
-            border: 1px solid #ced4da !important;
-            width: 70px !important;
-            min-width: 70px !important;
-            max-width: 70px !important;
-            text-align: center;
-            vertical-align: middle;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        /* Nöbet'ten gelen Pill-Tab Stili */
+        /* Modern Segmented Control / View Buttons */
         .view-buttons {
             display: flex;
             flex-direction: row !important;
             flex-wrap: nowrap;
-            gap: 4px;
-            background: #f4f4f5;
-            padding: 4px;
+            gap: 2px;
+            background: #f1f5f9;
+            padding: 3px;
             border-radius: 8px;
             width: fit-content;
         }
@@ -401,164 +232,643 @@ use App\Service\Gate;
             display: block;
             flex: 0 0 auto;
             white-space: nowrap;
-            padding: 6px 16px;
-            font-size: 12px;
+            padding: 4px 12px;
+            font-size: 11px;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: 6px;
             border: none !important;
             background: transparent;
-            color: #71717a;
-            transition: all 0.2s ease;
+            color: var(--pnt-text-muted);
+            transition: all 0.15s ease;
             margin-bottom: 0 !important;
         }
 
         .view-buttons .nav-link:hover {
-            color: #18181b;
+            color: var(--pnt-text-main);
         }
 
         .view-buttons .nav-link.active {
-            background: #fff !important;
-            color: #18181b !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            background: #ffffff !important;
+            color: var(--pnt-primary-text) !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            font-weight: 700;
         }
 
-        /* Dark mode uyumu */
-        [data-bs-theme="dark"] .view-buttons {
-            background: #191e22 !important;
-            border: 1px solid #32394e !important;
+        /* İzin Çipleri Paleti (Draggable Box) */
+        .izin-box {
+            width: 40px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 7px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: grab;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
         }
 
-        [data-bs-theme="dark"] .view-buttons .nav-link {
-            color: #74788d !important;
+        .izin-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
         }
 
-        [data-bs-theme="dark"] .view-buttons .nav-link:hover {
-            color: #eff2f7 !important;
+        .izin-item-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            width: 40px;
         }
 
-        [data-bs-theme="dark"] .view-buttons .nav-link.active {
-            background: #282f36 !important;
-            color: #eff2f7 !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        .draggable-izin {
+            cursor: grab;
+            transition: all 0.15s ease;
+            user-select: none;
         }
 
-        [data-bs-theme="dark"] .sticky-col,
-        [data-bs-theme="dark"] .sticky-col-right-1 {
-            background-color: #282f36 !important;
-            border-color: #32394e !important;
-            color: #eff2f7 !important;
+        #izin-turleri-palette .draggable-izin.is-selected .izin-box {
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--pnt-primary), 0 4px 10px rgba(79, 70, 229, 0.25);
         }
 
-        [data-bs-theme="dark"] .puantaj-table-wrapper {
-            background: #191e22 !important;
+        #izin-turleri-palette .draggable-izin.is-selected::after {
+            content: '✓';
+            position: absolute;
+            top: -5px;
+            right: -4px;
+            display: grid;
+            place-items: center;
+            width: 15px;
+            height: 15px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            background: var(--pnt-primary);
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: 900;
+            z-index: 2;
         }
 
-        [data-bs-theme="dark"] .table-puantaj thead tr,
-        [data-bs-theme="dark"] .table-puantaj thead th {
-            background-color: #282f36 !important;
-            border-color: #32394e !important;
-            color: #eff2f7 !important;
-            box-shadow: none !important;
+        /* Puantaj Tablo Kartı */
+        .puantaj-grid-card {
+            overflow: hidden;
+            border: 1px solid var(--pnt-border-light) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(15, 23, 42, 0.03) !important;
+            background: var(--pnt-surface-card);
         }
 
-        [data-bs-theme="dark"] .table-puantaj .day-cell {
-            background-color: #191e22 !important;
-            border-color: #32394e !important;
+        .puantaj-grid-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 48px;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--pnt-border-light);
+            background: #f8fafc;
         }
 
-        [data-bs-theme="dark"] .table-puantaj .personel-info {
-            background-color: #282f36 !important;
-            border-color: #32394e !important;
-            color: #eff2f7 !important;
+        .puantaj-grid-title {
+            color: var(--pnt-text-main);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        .puantaj-grid-subtitle { color: var(--pnt-text-muted); font-size: 11px; }
+        .puantaj-live-stats { display: flex; align-items: center; gap: 6px; }
+        
+        .puantaj-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 28px;
+            padding: 3px 10px;
+            border: 1px solid var(--pnt-border-light);
+            border-radius: 999px;
+            background: #ffffff;
+            color: var(--pnt-text-muted);
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .puantaj-stat-pill i { color: var(--pnt-primary); font-size: 14px; }
+        .puantaj-stat-pill.is-unsaved { border-color: #fde68a; background: #fffbeb; color: #b45309; }
+        .puantaj-stat-pill.is-unsaved i { color: #d97706; }
+
+        .puantaj-focus-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid var(--pnt-border-light);
+            border-radius: 50%;
+            background: #ffffff;
+            color: var(--pnt-text-muted);
+            font-size: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            transition: all 0.15s ease;
+        }
+        .puantaj-focus-toggle:hover {
+            border-color: #cbd5e1;
+            background: #f1f5f9;
+            color: var(--pnt-text-main);
         }
 
-        [data-bs-theme="dark"] .table-puantaj .is-sunday {
-            background-color: rgba(244, 106, 106, 0.05) !important;
-            color: #f46a6a !important;
+        /* -------------------------------------------------------------
+         * Modern Tablo & Grid Stilleri (Pixel-Perfect & Ergonomik)
+         * ----------------------------------------------------------- */
+        .puantaj-table-wrapper {
+            max-height: calc(100vh - 350px);
+            overflow: auto;
+            background: #ffffff;
+            scrollbar-color: #cbd5e1 transparent;
+            scrollbar-width: thin;
         }
 
-        [data-bs-theme="dark"] .table-puantaj thead th.is-sunday:not(.sticky-col) {
-            background-color: rgba(244, 106, 106, 0.1) !important;
-            color: #f46a6a !important;
+        .table-puantaj {
+            width: 100%;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            background: #ffffff;
+            font-family: inherit;
         }
 
-        [data-bs-theme="dark"] .puantaj-table-header,
-        [data-bs-theme="dark"] .card-izin-turleri {
-            background-color: #282f36 !important;
-            border-bottom-color: #32394e !important;
-        }
-
-        [data-bs-theme="dark"] #puantaj-full-container {
-            background: #191e22 !important;
-        }
-
-        [data-bs-theme="dark"] .bg-soft-success {
-            background-color: rgba(16, 185, 129, 0.1) !important;
-        }
-
-        [data-bs-theme="dark"] .bg-soft-info {
-            background-color: rgba(59, 130, 246, 0.1) !important;
-        }
-
-        [data-bs-theme="dark"] .action-button-container {
-            background-color: #191e22 !important;
-            border-color: #32394e !important;
-        }
-
-        /* Sticky Header Improvements */
-        .puantaj-table-header {
+        /* Sticky Header */
+        .table-puantaj thead {
             position: sticky;
-            top: 70px;
-            z-index: 1025;
-            background-color: var(--bs-card-bg, #fff);
+            top: 0;
+            z-index: 30;
+            background: #f8fafc;
         }
 
-        .card-izin-turleri {
+        .table-puantaj thead tr {
+            background: #f8fafc;
+        }
+
+        /* Gün Başlık Hücreleri */
+        .table-puantaj thead th:not(.sticky-col):not(.sticky-col-right-1) {
+            width: 44px;
+            min-width: 44px;
+            max-width: 44px;
+            height: 52px;
+            padding: 0 !important;
+            vertical-align: middle;
+            text-align: center;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-right: 1px solid #edf2f7 !important;
+            color: var(--pnt-text-muted);
+            user-select: none;
+            transition: background 0.15s ease;
+        }
+
+        .day-header-pill {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+            padding: 4px 2px;
+        }
+
+        .day-header-pill .day-name {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+        }
+
+        .day-header-pill .day-number {
+            margin-top: 2px;
+            font-size: 14px;
+            font-weight: 750;
+            color: #1e293b;
+        }
+
+        /* Pazar Gün Başlığı: Soft Rose */
+        .table-puantaj thead th.is-sunday:not(.sticky-col) {
+            background: #fff1f2 !important;
+            border-bottom: 2px solid #fda4af !important;
+            border-right: 1px solid #ffe4e6 !important;
+        }
+        .table-puantaj thead th.is-sunday .day-name {
+            color: #e11d48 !important;
+        }
+        .table-puantaj thead th.is-sunday .day-number {
+            color: #be123c !important;
+        }
+
+        /* Bugün Gün Başlığı: Soft Indigo */
+        .table-puantaj thead th.is-today:not(.sticky-col) {
+            background: #eef2ff !important;
+            border-bottom: 2px solid #6366f1 !important;
+            border-right: 1px solid #e0e7ff !important;
+        }
+        .table-puantaj thead th.is-today .day-name {
+            color: #4f46e5 !important;
+        }
+        .table-puantaj thead th.is-today .day-number {
+            color: #3730a3 !important;
+        }
+
+        /* Tablo Gövdesi ve Satırları */
+        .table-puantaj tbody tr {
+            background: #ffffff;
+            transition: background 0.12s ease;
+        }
+
+        .table-puantaj tbody tr:hover {
+            background: #f8faff !important;
+        }
+
+        /* Personel Kolonu (Sabit Sol) */
+        .sticky-col {
             position: sticky;
-            top: 135px;
-            /* Tahmini header yüksekliği */
-            z-index: 1020;
-            background-color: var(--bs-card-bg, #fff);
-            border-bottom: 1px solid #dee2e6;
+            left: 0;
+            z-index: 25;
+            background-color: #ffffff !important;
+            border-right: 1px solid #e2e8f0 !important;
+            border-bottom: 1px solid #edf2f7 !important;
+            width: 220px !important;
+            min-width: 220px !important;
+            max-width: 220px !important;
+            box-shadow: 2px 0 6px rgba(0, 0, 0, 0.02);
         }
 
-        /* Palet taşındığında normal akıştan çıkar; tablo bu boşluğu hemen kullanır. */
+        .table-puantaj thead th.sticky-col {
+            z-index: 35;
+            background-color: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-right: 1px solid #e2e8f0 !important;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+            text-align: left;
+            padding: 0 14px !important;
+            vertical-align: middle;
+            height: 52px;
+        }
+
+        .table-puantaj .personel-info {
+            height: 48px;
+            padding: 6px 14px !important;
+            vertical-align: middle;
+            font-size: 13px;
+            background-color: #ffffff !important;
+        }
+
+        .table-puantaj tbody tr:hover .personel-info {
+            background-color: #f8faff !important;
+            border-left: 3px solid #6366f1 !important;
+            padding-left: 11px !important;
+        }
+
+        .table-puantaj .personel-info .d-flex {
+            width: 100%;
+            gap: 10px;
+        }
+
+        .personel-avatar-mini {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 32px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .personel-avatar-tone-0 { background: #eff6ff; color: #2563eb; }
+        .personel-avatar-tone-1 { background: #f0fdf4; color: #16a34a; }
+        .personel-avatar-tone-2 { background: #fff7ed; color: #ea580c; }
+        .personel-avatar-tone-3 { background: #f5f3ff; color: #7c3aed; }
+        .personel-avatar-tone-4 { background: #fff1f2; color: #e11d48; }
+
+        .table-puantaj .text-truncate-name {
+            display: inline-block;
+            max-width: 155px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #1e293b !important;
+            font-weight: 600 !important;
+            font-size: 12.5px;
+            transition: color 0.15s ease;
+        }
+
+        .table-puantaj .text-truncate-name:hover {
+            color: var(--pnt-primary) !important;
+        }
+
+        /* Gün Hücresi (.day-cell) */
+        .table-puantaj .day-cell {
+            width: 44px;
+            min-width: 44px;
+            max-width: 44px;
+            height: 48px;
+            padding: 3px !important;
+            vertical-align: middle;
+            text-align: center;
+            border-right: 1px solid #edf2f7 !important;
+            border-bottom: 1px solid #edf2f7 !important;
+            background: #ffffff;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background 0.12s ease;
+        }
+
+        /* Pazar Sütunu Hücreleri: Soft Pastel Rose */
+        .table-puantaj .day-cell.is-sunday {
+            background-color: #fffcfc !important;
+            border-right: 1px solid #ffe4e6 !important;
+        }
+
+        /* Bugün Sütunu Hücreleri: Soft Pastel Indigo */
+        .table-puantaj .day-cell.is-today {
+            background-color: #f8faff !important;
+            border-right: 1px solid #e0e7ff !important;
+        }
+
+        /* Devre Dışı Gün Hücreleri */
+        .table-puantaj .day-cell.disabled {
+            background-color: #f8fafc !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Hücre Hover */
+        .table-puantaj .day-cell:hover:not(.disabled) {
+            z-index: 5;
+            box-shadow: inset 0 0 0 1.5px #6366f1, 0 2px 8px rgba(99, 102, 241, 0.15) !important;
+            border-radius: 6px;
+        }
+
+        /* Hücre İçi İzin Çipi (.cell-content) */
+        .table-puantaj .cell-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            min-height: 34px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 750;
+            letter-spacing: 0.01em;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+            transition: all 0.12s ease;
+        }
+
+        .table-puantaj .cell-content:hover {
+            transform: scale(1.03);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Silme Butonu (Hover'da Çıkan Mini X) */
+        .btn-delete-cell {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: #ffffff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            font-size: 11px;
+            line-height: 14px;
+            text-align: center;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+            font-weight: 900;
+        }
+
+        .day-cell:hover .btn-delete-cell {
+            display: block;
+        }
+
+        /* Kaydedilmemiş Değişiklik Göstergesi */
+        .table-puantaj .day-cell.unsaved::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #f59e0b;
+            box-shadow: 0 0 0 1.5px #ffffff;
+            z-index: 8;
+        }
+
+        /* Toplam Gün Kolonu (Sabit Sağ) */
+        .sticky-col-right-1 {
+            position: sticky;
+            right: 0;
+            z-index: 25;
+            background-color: #f8fafc !important;
+            border-left: 1px solid #e2e8f0 !important;
+            border-bottom: 1px solid #edf2f7 !important;
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 13px;
+            font-weight: 750;
+            color: #1e293b;
+        }
+
+        .table-puantaj thead th.sticky-col-right-1 {
+            z-index: 35;
+            background-color: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-left: 1px solid #e2e8f0 !important;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+            height: 52px;
+            padding: 0 !important;
+        }
+
+        .table-puantaj .toplam-calisma-gunu {
+            font-size: 13px;
+            font-weight: 750;
+            color: #334155;
+        }
+
+        /* Footer (Toplamlar Satırı) */
+        .table-puantaj tfoot {
+            position: sticky;
+            bottom: 0;
+            z-index: 30;
+            background: #f8fafc;
+        }
+
+        .table-puantaj tfoot tr {
+            height: 46px;
+            background: #f8fafc !important;
+        }
+
+        .table-puantaj tfoot td {
+            height: 46px;
+            vertical-align: middle;
+            border-top: 1px solid #cbd5e1 !important;
+            border-bottom: 0 !important;
+            border-right: 1px solid #edf2f7 !important;
+            background: #f8fafc !important;
+            font-size: 12px;
+            font-weight: 700;
+            color: #334155;
+            padding: 0 !important;
+        }
+
+        .table-puantaj tfoot td.sticky-col {
+            z-index: 35;
+            background: #f8fafc !important;
+            border-right: 1px solid #e2e8f0 !important;
+            padding: 0 14px !important;
+        }
+
+        .table-puantaj tfoot td.sticky-col-right-1 {
+            z-index: 35;
+            background: #f8fafc !important;
+            border-left: 1px solid #e2e8f0 !important;
+        }
+
+        .table-puantaj tfoot td.is-sunday {
+            background: #fff1f2 !important;
+            color: #be123c !important;
+        }
+
+        /* Preloader */
+        .puantaj-preloader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            display: none;
+            z-index: 1060;
+            backdrop-filter: blur(4px);
+        }
+
+        .puantaj-preloader .loader-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            min-width: 220px;
+        }
+
+        /* Context Menu */
+        .custom-context-menu {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            padding: 5px;
+            min-width: 200px;
+            animation: menuFadeIn 0.15s ease-out;
+        }
+
+        @keyframes menuFadeIn {
+            from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .custom-context-menu .menu-item {
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #334155;
+            transition: all 0.12s ease;
+        }
+
+        .custom-context-menu .menu-item:hover {
+            background: #f1f5f9;
+            color: var(--pnt-primary);
+        }
+
+        .custom-context-menu .menu-item i,
+        .custom-context-menu .menu-item .menu-item-code {
+            font-size: 11px;
+            width: 24px;
+            height: 24px;
+            line-height: 22px;
+            text-align: center;
+            border-radius: 5px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .custom-context-menu .menu-divider {
+            height: 1px;
+            background: #f1f5f9;
+            margin: 4px 0;
+        }
+
+        .custom-context-menu .menu-header {
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Floating Palet & Fullscreen Modları */
         body.puantaj-palette-floating .card-izin-turleri {
             position: fixed;
-            /* Sidebar ve üst menüden önde kalmalı; palet çalışma aracıdır. */
             z-index: 1205;
-            width: min(360px, calc(100vw - 32px));
+            width: min(380px, calc(100vw - 32px));
             margin: 0 !important;
-            border: 1px solid rgba(85, 110, 230, .18) !important;
+            border: 1px solid rgba(99, 102, 241, 0.2) !important;
             border-radius: 12px;
-            box-shadow: 0 18px 45px rgba(15, 23, 42, .18) !important;
-            cursor: default;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18) !important;
         }
 
         body.puantaj-palette-floating .card-izin-turleri .card-body { padding: 10px !important; }
-        body.puantaj-palette-floating .view-buttons { flex-direction: row !important; flex-wrap: nowrap !important; }
-        body.puantaj-palette-floating .view-buttons .nav-link { width: auto !important; }
         body.puantaj-palette-floating .izin-palette-restore { display: inline-flex; }
-        body.puantaj-palette-floating .izin-palette-title::after {
-            content: ' • Yüzen palet';
-            color: #94a3b8;
-            font-weight: 500;
-        }
         body.puantaj-palette-floating .card-izin-turleri .tab-content { max-height: 180px; overflow-y: auto; }
-        body.puantaj-palette-floating .puantaj-table-wrapper { max-height: calc(100vh - 285px); }
-        body.puantaj-palette-dragging .card-izin-turleri { user-select: none; cursor: grabbing; }
 
-        /* Fullscreen Modu Stilleri */
-        body.puantaj-fullscreen {
-            overflow: hidden !important;
-        }
-
-        /* Gerçek çalışma alanı: uygulama navigasyonu ve filtre kartları kapanır. */
+        body.puantaj-fullscreen { overflow: hidden !important; }
         body.puantaj-fullscreen .vertical-menu,
         body.puantaj-fullscreen #page-topbar,
-        body.puantaj-fullscreen .quick-favorites-bar {
-            display: none !important;
-        }
+        body.puantaj-fullscreen .quick-favorites-bar { display: none !important; }
 
         body.puantaj-fullscreen #puantaj-full-container {
             position: fixed;
@@ -567,75 +877,17 @@ use App\Service\Gate;
             width: 100vw;
             height: 100vh;
             z-index: 1050;
-            background: var(--bs-body-bg, #f3f3f9);
-            padding: 12px;
+            background: #f1f5f9;
+            padding: 10px;
             overflow: hidden;
         }
 
-        body.puantaj-fullscreen #puantaj-full-container > .row { height: 100%; }
-        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:first-child,
-        body.puantaj-fullscreen #puantaj-full-container .card-izin-turleri {
-            display: none;
-        }
-
-        /* Palet daha önce yüzdürülmemiş olsa bile tam ekranda her zaman erişilebilir. */
-        body.puantaj-fullscreen:not(.puantaj-palette-floating) #puantaj-full-container .card-izin-turleri {
-            display: block !important;
-            position: fixed;
-            top: 16px !important;
-            left: 50%;
-            z-index: 2140;
-            width: min(420px, calc(100vw - 32px));
-            margin: 0 !important;
-            border: 1px solid rgba(85, 110, 230, .2) !important;
-            border-radius: 12px;
-            box-shadow: 0 16px 40px rgba(15, 23, 42, .22) !important;
-            transform: translateX(-50%);
-        }
-
-        body.puantaj-fullscreen:not(.puantaj-palette-floating) #puantaj-full-container .card-izin-turleri .card-body {
-            padding: 10px !important;
-        }
-
-        /* Kart ve kaydırma alanı ekranın tamamını tabloya ayırır. */
-        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:last-child,
-        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:last-child > .card,
-        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:last-child .card-body {
-            height: 100%;
-        }
-
-        body.puantaj-fullscreen .puantaj-table-header {
-            top: 0 !important;
-        }
-
-        body.puantaj-fullscreen .card-izin-turleri {
-            top: 70px !important;
-        }
-
-        body.puantaj-fullscreen.puantaj-palette-floating .card-izin-turleri { top: auto !important; }
-
-        /* Tam ekran, kendi stacking context'ini oluşturur; palet bunun da üstünde kalır. */
-        body.puantaj-fullscreen.puantaj-palette-floating .card-izin-turleri {
-            z-index: 2140 !important;
-        }
-
-        /* Son güvence: tam ekranda palet hiçbir kapsayıcı/katman tarafından gizlenemez. */
-        body.puantaj-fullscreen #izin-turleri-palette,
-        body.puantaj-fullscreen #puantaj-full-container #izin-turleri-palette {
-            display: block !important;
-            position: fixed !important;
-            top: 16px !important;
-            left: 50% !important;
-            z-index: 2147483000 !important;
-            width: min(420px, calc(100vw - 32px)) !important;
-            margin: 0 !important;
-            transform: translateX(-50%) !important;
-            visibility: visible !important;
-            opacity: 1 !important;
+        body.puantaj-fullscreen .puantaj-table-wrapper {
+            height: calc(100vh - 65px) !important;
+            max-height: calc(100vh - 65px) !important;
         }
 
         .puantaj-save-fab { display: none; }
-
         body.puantaj-fullscreen .puantaj-save-fab {
             position: fixed;
             right: 24px;
@@ -644,315 +896,362 @@ use App\Service\Gate;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            min-height: 46px;
+            min-height: 42px;
             padding: 0 18px;
             border: 0;
-            border-radius: 12px;
-            background: #111827;
-            color: #fff;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            color: #ffffff;
             font-size: 13px;
             font-weight: 700;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, .28);
-            transition: transform .16s ease, box-shadow .16s ease;
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+            transition: all 0.15s ease;
         }
-
         body.puantaj-fullscreen .puantaj-save-fab:hover {
             transform: translateY(-2px);
-            box-shadow: 0 16px 32px rgba(15, 23, 42, .34);
-            color: #fff;
+            box-shadow: 0 12px 28px rgba(79, 70, 229, 0.45);
+            color: #ffffff;
         }
 
-        footer {
-            display: none;
+        /* -------------------------------------------------------------
+         * DARK MODE TAM UYUM KURALLARI
+         * ----------------------------------------------------------- */
+        [data-bs-theme="dark"] #puantaj-full-container,
+        [data-layout-mode="dark"] #puantaj-full-container,
+        body.dark #puantaj-full-container {
+            --pnt-border-light: #334155;
+            --pnt-border-subtle: #1e293b;
+            --pnt-surface-card: #1f2733;
+            --pnt-surface-alt: #161b22;
+            --pnt-text-main: #f8fafc;
+            --pnt-text-muted: #94a3b8;
         }
 
-        body.puantaj-fullscreen .puantaj-table-wrapper {
-            height: calc(100vh - 24px) !important;
-            max-height: calc(100vh - 24px) !important;
+        [data-bs-theme="dark"] .puantaj-table-header,
+        [data-layout-mode="dark"] .puantaj-table-header,
+        [data-bs-theme="dark"] .card-izin-turleri,
+        [data-layout-mode="dark"] .card-izin-turleri,
+        [data-bs-theme="dark"] .puantaj-grid-card,
+        [data-layout-mode="dark"] .puantaj-grid-card {
+            background: #1f2733 !important;
+            border-color: #334155 !important;
         }
 
-        .puantaj-table-wrapper {
-            max-height: calc(100vh - 395px);
-            overflow: auto;
-            background: #fff;
-            /* Scroll snap removed for fluid scrolling without exact row jumps */
+        [data-bs-theme="dark"] .puantaj-filter-cluster .form-control,
+        [data-bs-theme="dark"] .puantaj-filter-cluster .form-control:focus,
+        [data-bs-theme="dark"] .puantaj-filter-cluster .select2-selection,
+        [data-bs-theme="dark"] .iskur-filter,
+        [data-layout-mode="dark"] .puantaj-filter-cluster .form-control,
+        [data-layout-mode="dark"] .puantaj-filter-cluster .select2-selection,
+        [data-layout-mode="dark"] .iskur-filter {
+            background-color: #161b22 !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
         }
 
-
-
-        /* Thead sticky - wrapper içinde sabit kalır */
-        .table-puantaj thead {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            background: #fff;
+        [data-bs-theme="dark"] .puantaj-filter-cluster .form-floating label,
+        [data-layout-mode="dark"] .puantaj-filter-cluster .form-floating label {
+            color: #94a3b8 !important;
         }
 
-
-
-        /* Thead satırına arka plan ver - border-spacing boşluğunu kapat */
-        .table-puantaj thead tr {
-            background-color: transparent;
+        [data-bs-theme="dark"] .action-button-container,
+        [data-layout-mode="dark"] .action-button-container {
+            background: #161b22 !important;
+            border-color: #334155 !important;
         }
 
-        [data-bs-theme="dark"] .table-puantaj thead tr {
-            background-color: #282f36 !important;
+        [data-bs-theme="dark"] .view-buttons,
+        [data-layout-mode="dark"] .view-buttons {
+            background: #161b22 !important;
         }
 
-        .table-puantaj thead th {
-            vertical-align: middle;
-            text-align: center;
+        [data-bs-theme="dark"] .view-buttons .nav-link,
+        [data-layout-mode="dark"] .view-buttons .nav-link {
+            color: #94a3b8 !important;
         }
 
-        .table-puantaj thead th.sticky-col,
-        .table-puantaj thead th.sticky-col-right-1 {
-            background-color: #f8f9fa !important;
-            border: 1px solid #ced4da !important;
-            height: 50px;
-            /* Match other th */
-            box-shadow: 0 1px 0 0 #fff;
+        [data-bs-theme="dark"] .view-buttons .nav-link.active,
+        [data-layout-mode="dark"] .view-buttons .nav-link.active {
+            background: #283342 !important;
+            color: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         }
 
-        /* Footer sticky - wrapper içinde, ekranın altında sabit kalır */
-        .table-puantaj tfoot {
-            position: sticky;
-            bottom: 0;
-            z-index: 50;
+        [data-bs-theme="dark"] .puantaj-grid-summary,
+        [data-layout-mode="dark"] .puantaj-grid-summary {
+            background: #19202a !important;
+            border-color: #334155 !important;
         }
 
-        .table-puantaj tfoot tr {
-            background-color: #f7f7f7;
-            height: 40px;
+        [data-bs-theme="dark"] .puantaj-stat-pill,
+        [data-layout-mode="dark"] .puantaj-stat-pill {
+            background: #161b22 !important;
+            border-color: #334155 !important;
+            color: #cbd5e1 !important;
         }
 
-        [data-bs-theme="dark"] .table-puantaj tfoot tr {
-            background-color: #282f36 !important;
+        [data-bs-theme="dark"] .puantaj-focus-toggle,
+        [data-layout-mode="dark"] .puantaj-focus-toggle {
+            background: #161b22 !important;
+            border-color: #334155 !important;
+            color: #cbd5e1 !important;
         }
 
-        .table-puantaj tfoot td {
-            background-color: #f8f9fa !important;
-            vertical-align: middle;
-            border: 1px solid #ced4da !important;
-            height: 40px;
-            box-shadow: 0 -1px 0 0 #fff;
+        [data-bs-theme="dark"] .puantaj-table-wrapper,
+        [data-layout-mode="dark"] .puantaj-table-wrapper,
+        [data-bs-theme="dark"] .table-puantaj,
+        [data-layout-mode="dark"] .table-puantaj {
+            background: #161b22 !important;
         }
 
-        /* Footer sol ve sağ kolonlar */
-        .table-puantaj tfoot td.sticky-col {
-            z-index: 60;
-            background-color: #f8f9fa !important;
-            border-bottom-left-radius: 8px;
+        [data-bs-theme="dark"] .table-puantaj thead,
+        [data-bs-theme="dark"] .table-puantaj thead tr,
+        [data-layout-mode="dark"] .table-puantaj thead,
+        [data-layout-mode="dark"] .table-puantaj thead tr {
+            background: #12161c !important;
         }
 
-        .table-puantaj tfoot td.sticky-col-right-1 {
-            z-index: 60;
-            background-color: #f8f9fa !important;
+        [data-bs-theme="dark"] .table-puantaj thead th:not(.sticky-col):not(.sticky-col-right-1),
+        [data-layout-mode="dark"] .table-puantaj thead th:not(.sticky-col):not(.sticky-col-right-1) {
+            background: #12161c !important;
+            border-color: #2b3542 !important;
+            color: #94a3b8 !important;
         }
 
-        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col,
-        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-1 {
-            background-color: #282f36 !important;
+        [data-bs-theme="dark"] .table-puantaj thead th .day-name,
+        [data-layout-mode="dark"] .table-puantaj thead th .day-name {
+            color: #94a3b8 !important;
         }
 
-        /* Header'daki sol ve sağ kolonun z-index'i en yüksek olmalı */
-        .table-puantaj thead th.sticky-col,
-        .table-puantaj thead th.sticky-col-right-1 {
-            z-index: 60;
-            background-color: #f8f9fa !important;
+        [data-bs-theme="dark"] .table-puantaj thead th .day-number,
+        [data-layout-mode="dark"] .table-puantaj thead th .day-number {
+            color: #f1f5f9 !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead th.is-sunday:not(.sticky-col),
+        [data-layout-mode="dark"] .table-puantaj thead th.is-sunday:not(.sticky-col) {
+            background: rgba(244, 63, 94, 0.22) !important;
+            border-bottom: 2px solid #f43f5e !important;
+            border-right-color: rgba(244, 63, 94, 0.25) !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead th.is-sunday .day-name,
+        [data-bs-theme="dark"] .table-puantaj thead th.is-sunday .day-number,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-sunday .day-name,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-sunday .day-number {
+            color: #fda4af !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead th.is-today:not(.sticky-col),
+        [data-layout-mode="dark"] .table-puantaj thead th.is-today:not(.sticky-col) {
+            background: rgba(99, 102, 241, 0.25) !important;
+            border-bottom: 2px solid #818cf8 !important;
+            border-right-color: rgba(99, 102, 241, 0.3) !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead th.is-today .day-name,
+        [data-bs-theme="dark"] .table-puantaj thead th.is-today .day-number,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-today .day-name,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-today .day-number {
+            color: #c7d2fe !important;
         }
 
         [data-bs-theme="dark"] .table-puantaj thead th.sticky-col,
-        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-1 {
-            background-color: #282f36 !important;
+        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-1,
+        [data-layout-mode="dark"] .table-puantaj thead th.sticky-col,
+        [data-layout-mode="dark"] .table-puantaj thead th.sticky-col-right-1 {
+            background: #12161c !important;
+            border-color: #2b3542 !important;
+            color: #94a3b8 !important;
         }
 
-        @media (max-width: 1600px) {
-            .table-puantaj {
-                border-spacing: 3px !important;
-            }
-
-            .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1),
-            .table-puantaj .day-cell {
-                width: 30px;
-            }
-
-            .table-puantaj .day-cell {
-                height: 30px;
-            }
-
-            .day-header-pill .day-number {
-                font-size: 12px;
-            }
+        [data-bs-theme="dark"] .table-puantaj tbody tr,
+        [data-layout-mode="dark"] .table-puantaj tbody tr {
+            background: #161b22 !important;
         }
 
-        .table-puantaj .day-cell.disabled {
-            pointer-events: none;
-            opacity: 0.5;
-            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;
+        [data-bs-theme="dark"] .table-puantaj tbody tr:hover,
+        [data-layout-mode="dark"] .table-puantaj tbody tr:hover {
+            background: #202732 !important;
         }
 
-        /* Puantaj Preloader */
-        .puantaj-preloader {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.82);
-            display: none;
-            z-index: 1060;
-            border-radius: 4px;
-            backdrop-filter: blur(3px);
+        [data-bs-theme="dark"] .table-puantaj .personel-info,
+        [data-layout-mode="dark"] .table-puantaj .personel-info {
+            background: #1a2028 !important;
+            border-color: #2b3542 !important;
+            color: #f1f5f9 !important;
         }
 
-        [data-bs-theme="dark"] .puantaj-preloader {
-            background: rgba(25, 30, 34, 0.85);
+        [data-bs-theme="dark"] .table-puantaj tbody tr:hover .personel-info,
+        [data-layout-mode="dark"] .table-puantaj tbody tr:hover .personel-info {
+            background: #232c38 !important;
         }
 
-        .puantaj-preloader .loader-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 2.5rem;
-            border-radius: 16px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-            text-align: center;
-            min-width: 250px;
+        [data-bs-theme="dark"] .table-puantaj .text-truncate-name,
+        [data-layout-mode="dark"] .table-puantaj .text-truncate-name {
+            color: #f1f5f9 !important;
         }
 
-        [data-bs-theme="dark"] .puantaj-preloader .loader-content {
-            background: #2a3042;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        [data-bs-theme="dark"] .table-puantaj .personel-avatar-mini,
+        [data-layout-mode="dark"] .table-puantaj .personel-avatar-mini {
+            background: #2b3542 !important;
+            color: #93c5fd !important;
         }
 
-        .custom-context-menu {
-            display: none;
-            position: fixed;
-            z-index: 10000;
-            background: white;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            border-radius: 10px;
-            padding: 6px 0;
-            min-width: 200px;
-            animation: menuFadeIn 0.2s ease-out;
+        [data-bs-theme="dark"] .table-puantaj .day-cell,
+        [data-layout-mode="dark"] .table-puantaj .day-cell {
+            background: #1a2028 !important;
+            border-color: #2b3542 !important;
         }
 
-        @keyframes menuFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-5px) scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
+        [data-bs-theme="dark"] .table-puantaj tbody tr:hover .day-cell,
+        [data-layout-mode="dark"] .table-puantaj tbody tr:hover .day-cell {
+            background: #202732 !important;
         }
 
-        .custom-context-menu .menu-item {
-            padding: 10px 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #374151;
-            transition: all 0.2s;
+        [data-bs-theme="dark"] .table-puantaj .day-cell.is-sunday,
+        [data-layout-mode="dark"] .table-puantaj .day-cell.is-sunday {
+            background-color: rgba(244, 63, 94, 0.08) !important;
+            border-color: rgba(244, 63, 94, 0.2) !important;
         }
 
-        .custom-context-menu .menu-item:hover {
-            background: #f9fafb;
-            color: #4f46e5;
+        [data-bs-theme="dark"] .table-puantaj .day-cell.is-today,
+        [data-layout-mode="dark"] .table-puantaj .day-cell.is-today {
+            background-color: rgba(99, 102, 241, 0.12) !important;
+            border-color: rgba(99, 102, 241, 0.25) !important;
         }
 
-        .custom-context-menu .menu-item i,
-        .custom-context-menu .menu-item .menu-item-code {
-            font-size: 11px;
-            width: 28px;
-            height: 28px;
-            line-height: 26px;
-            text-align: center;
-            border-radius: 6px;
-            font-weight: 700;
-            flex-shrink: 0;
+        [data-bs-theme="dark"] .table-puantaj .day-cell.disabled,
+        [data-layout-mode="dark"] .table-puantaj .day-cell.disabled {
+            background: #12161c !important;
+            opacity: 0.35;
         }
 
-        .custom-context-menu .menu-divider {
-            height: 1px;
-            background: #f1f5f9;
-            margin: 6px 0;
+        [data-bs-theme="dark"] .table-puantaj .sticky-col-right-1,
+        [data-layout-mode="dark"] .table-puantaj .sticky-col-right-1 {
+            background: #1a2028 !important;
+            border-color: #2b3542 !important;
+            color: #f1f5f9 !important;
         }
 
-        .custom-context-menu .menu-header {
-            padding: 6px 16px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+        [data-bs-theme="dark"] .table-puantaj .toplam-calisma-gunu,
+        [data-layout-mode="dark"] .table-puantaj .toplam-calisma-gunu {
+            color: #f1f5f9 !important;
         }
 
-        .custom-context-menu .menu-item.active {
-            background: #f1f5f9;
-            color: #4f46e5;
-            font-weight: 700;
+        [data-bs-theme="dark"] .table-puantaj tfoot,
+        [data-bs-theme="dark"] .table-puantaj tfoot tr,
+        [data-bs-theme="dark"] .table-puantaj tfoot td,
+        [data-layout-mode="dark"] .table-puantaj tfoot,
+        [data-layout-mode="dark"] .table-puantaj tfoot tr,
+        [data-layout-mode="dark"] .table-puantaj tfoot td {
+            background: #12161c !important;
+            border-color: #2b3542 !important;
+            color: #f1f5f9 !important;
         }
 
-        .custom-context-menu .menu-item.active::after {
-            content: '\eb7a';
-            font-family: 'boxicons' !important;
-            margin-left: auto;
-            font-size: 18px;
+        [data-bs-theme="dark"] .table-puantaj tfoot td.is-sunday,
+        [data-layout-mode="dark"] .table-puantaj tfoot td.is-sunday {
+            background: rgba(244, 63, 94, 0.15) !important;
+            color: #fda4af !important;
         }
 
-        .custom-context-menu .menu-item.text-danger:hover {
-            background: #fef2f2;
-            color: #dc2626;
+        /* Dark Mode İzin Çipleri Renk Tanımları */
+        [data-bs-theme="dark"] .cell-content[data-shortcode="X"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="x"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="X"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="x"],
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="X"] .izin-box,
+        [data-layout-mode="dark"] .izin-item-container[data-shortcode="X"] .izin-box {
+            background-color: rgba(59, 130, 246, 0.22) !important;
+            color: #93c5fd !important;
+            border: 1px solid rgba(59, 130, 246, 0.4) !important;
         }
 
-        /* Dark Mode Styles */
-        [data-bs-theme="dark"] .custom-context-menu {
-            background: #2a3042;
-            border-color: #32394e;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        [data-bs-theme="dark"] .cell-content[data-shortcode="HT"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="ht"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="HT"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="ht"],
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="HT"] .izin-box,
+        [data-layout-mode="dark"] .izin-item-container[data-shortcode="HT"] .izin-box {
+            background-color: rgba(245, 158, 11, 0.22) !important;
+            color: #fcd34d !important;
+            border: 1px solid rgba(245, 158, 11, 0.4) !important;
         }
 
-        [data-bs-theme="dark"] .custom-context-menu .menu-item {
-            color: #a6b0cf;
+        [data-bs-theme="dark"] .cell-content[data-shortcode="RP"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="D"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="ÜZ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="RP"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="D"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="ÜZ"],
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="RP"] .izin-box,
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="D"] .izin-box,
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="ÜZ"] .izin-box {
+            background-color: rgba(244, 63, 94, 0.22) !important;
+            color: #fda4af !important;
+            border: 1px solid rgba(244, 63, 94, 0.4) !important;
         }
 
-        [data-bs-theme="dark"] .custom-context-menu .menu-item:hover {
-            background: #32394e;
-            color: #fff;
+        [data-bs-theme="dark"] .cell-content[data-shortcode="Yİ"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="Üİ"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="RTÇ"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="HTÇ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="Yİ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="Üİ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="RTÇ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="HTÇ"],
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="Yİ"] .izin-box,
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="Üİ"] .izin-box,
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="RTÇ"] .izin-box,
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="HTÇ"] .izin-box {
+            background-color: rgba(16, 185, 129, 0.22) !important;
+            color: #6ee7b7 !important;
+            border: 1px solid rgba(16, 185, 129, 0.4) !important;
         }
 
-        [data-bs-theme="dark"] .custom-context-menu .menu-divider {
-            background: #32394e;
+        [data-bs-theme="dark"] .cell-content[data-shortcode="Mİ"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="Bİ"],
+        [data-bs-theme="dark"] .cell-content[data-shortcode="Eİ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="Mİ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="Bİ"],
+        [data-layout-mode="dark"] .cell-content[data-shortcode="Eİ"],
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="Mİ"] .izin-box,
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="Bİ"] .izin-box,
+        [data-bs-theme="dark"] .izin-item-container[data-shortcode="Eİ"] .izin-box {
+            background-color: rgba(168, 85, 247, 0.22) !important;
+            color: #d8b4fe !important;
+            border: 1px solid rgba(168, 85, 247, 0.4) !important;
         }
 
-        [data-bs-theme="dark"] .custom-context-menu .menu-header {
-            color: #74788d;
+        [data-bs-theme="dark"] .custom-context-menu,
+        [data-layout-mode="dark"] .custom-context-menu {
+            background: #1f2733 !important;
+            border-color: #334155 !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
         }
 
-        [data-bs-theme="dark"] .custom-context-menu .menu-item.active {
-            background: #32394e;
-            color: #fff;
+        [data-bs-theme="dark"] .custom-context-menu .menu-item,
+        [data-layout-mode="dark"] .custom-context-menu .menu-item {
+            color: #cbd5e1 !important;
+        }
+
+        [data-bs-theme="dark"] .custom-context-menu .menu-item:hover,
+        [data-layout-mode="dark"] .custom-context-menu .menu-item:hover {
+            background: #2b3542 !important;
+            color: #ffffff !important;
         }
     </style>
 
     <div id="puantaj-full-container">
         <div class="row">
             <!-- Üst Satır: Ay/Yıl ve Butonlar -->
-            <div class="col-12">
+            <div class="col-12 puantaj-focus-panel">
                 <div class="card mb-2 puantaj-table-header">
                     <div
                         class="card-header d-flex flex-wrap justify-content-between align-items-center bg-transparent border-bottom gap-2">
                         <div class="d-flex align-items-center flex-wrap">
-                            <div class="d-flex align-items-center flex-wrap gap-2">
+                            <div class="d-flex align-items-center flex-wrap gap-2 puantaj-filter-cluster">
                                 <div style="width: 130px;">
                                     <?php
                                     $yillar = [];
@@ -982,7 +1281,7 @@ use App\Service\Gate;
                                 <div style="width: 180px;">
                                     <?php echo Form::FormSelect2("select-bolge", ["" => "Tüm Bölgeler"], "", "Bölge", "map-pin", 'key', '', "form-control select2"); ?>
                                 </div>
-                                <div class="d-flex align-items-center ms-2" style="height: 38px;">
+                                <div class="d-flex align-items-center iskur-filter">
                                     <div class="form-check form-switch form-switch-md mb-0">
                                         <input class="form-check-input" type="checkbox" id="check-iskur-dahil" checked>
                                         <label class="form-check-label fw-semibold text-muted ms-1" style="font-size: 12px; cursor: pointer;" for="check-iskur-dahil">İŞKUR Dahil</label>
@@ -1068,11 +1367,14 @@ use App\Service\Gate;
             </div>
 
             <!-- Orta Satır: İzin Türleri (Tabloya Daha Yakın) -->
-            <div class="col-12">
+            <div class="col-12 puantaj-focus-panel puantaj-focus-panel--palette">
                 <div class="card mb-2 card-izin-turleri border-0 shadow-sm" id="izin-turleri-palette">
                     <div class="card-body p-2">
                         <div class="izin-palette-header">
-                            <span class="izin-palette-title">Puantaj türleri</span>
+                            <div>
+                                <span class="izin-palette-title">Puantaj türleri</span>
+                                <span class="izin-palette-helper">Bir tür seçin, ardından takvim hücresine tıklayın</span>
+                            </div>
                             <div class="view-buttons nav" role="tablist">
                                 <a class="nav-link active" data-bs-toggle="tab" href="#ucretli-izinler" role="tab">
                                     Ücretli
@@ -1109,8 +1411,21 @@ use App\Service\Gate;
 
             <!-- Alt Satır: Tablo -->
             <div class="col-12">
-                <div class="card">
+                <div class="card puantaj-grid-card">
                     <div class="card-body p-0 position-relative">
+                        <div class="puantaj-grid-summary">
+                            <div>
+                                <div class="puantaj-grid-title"><i class="mdi mdi-calendar-edit-outline me-1"></i> Aylık çalışma planı</div>
+                                <div class="puantaj-grid-subtitle" id="puantaj-period-label">Dönem verileri hazırlanıyor</div>
+                            </div>
+                            <div class="puantaj-live-stats">
+                                <span class="puantaj-stat-pill"><i class="mdi mdi-account-group-outline"></i><span id="puantaj-visible-count">0 personel</span></span>
+                                <span class="puantaj-stat-pill" id="puantaj-change-pill"><i class="mdi mdi-check-circle-outline"></i><span id="puantaj-change-count">Tüm değişiklikler kayıtlı</span></span>
+                                <button type="button" class="puantaj-focus-toggle" id="btn-puantaj-focus" title="Üst alanları gizle" aria-label="Üst alanları gizle" aria-expanded="true">
+                                    <i class="mdi mdi-chevron-up"></i>
+                                </button>
+                            </div>
+                        </div>
                         <!-- Preloader - Tablonun Genelinde Çıkması İçin Buraya Taşındı -->
                         <div class="puantaj-preloader" id="puantaj-loader">
                             <div class="loader-content">

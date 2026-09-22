@@ -260,4 +260,128 @@ $(document).ready(function () {
       }
     });
   });
+
+  // Atanan Personelleri / Kullanıcıları Modalda Göster
+  $(document).on("click", ".show-assigned-users", function (e) {
+    e.preventDefault();
+    var id = $(this).data("id");
+    var name = $(this).data("name");
+
+    $("#assignedUsersModalLabel").html(
+      '<i class="mdi mdi-account-group-outline me-2 text-primary"></i>"' +
+        name +
+        '" Grubuna Atanmış Personeller'
+    );
+    $("#assignedUsersModalSub").text(
+      '"' + name + '" yetki grubuna sahip tüm aktif ve pasif personeller'
+    );
+    $("#assignedUsersContent").html(
+      '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>'
+    );
+    $("#assignedUsersModal").modal("show");
+
+    $.ajax({
+      url: "views/kullanici-gruplari/api.php",
+      type: "POST",
+      data: { action: "getAssignedUsers", id: id },
+      dataType: "json",
+      success: function (res) {
+        if (res.status === "success") {
+          if (!res.users || res.users.length === 0) {
+            $("#assignedUsersContent").html(
+              '<div class="text-center py-5 text-muted">' +
+                '<i class="mdi mdi-account-off-outline font-size-36 d-block mb-2 text-secondary"></i>' +
+                '<p class="mb-0">Bu yetki grubuna henüz herhangi bir personel atanmamış.</p>' +
+                '</div>'
+            );
+            return;
+          }
+
+          var html = '<div class="p-3 border-bottom bg-light d-flex align-items-center justify-content-between gap-3 flex-wrap">';
+          html += '<div class="input-group input-group-sm" style="max-width: 320px;">';
+          html += '<span class="input-group-text bg-white border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>';
+          html += '<input type="text" id="assignedUserSearch" class="form-control border-start-0" placeholder="Personel ara (Ad, Görev, Departman)...">';
+          html += '</div>';
+          html += '<span class="badge bg-soft-primary text-primary font-size-12 px-3 py-2 fw-semibold"><i class="mdi mdi-account-multiple me-1"></i>Toplam ' + res.users.length + ' Personel</span>';
+          html += '</div>';
+
+          html += '<div class="table-responsive"><table class="table table-hover align-middle mb-0" id="assignedUsersTable">';
+          html +=
+            '<thead class="table-light"><tr><th style="width:35%;">Personel / Kullanıcı</th><th style="width:25%;">Görev & Departman</th><th style="width:25%;">İletişim</th><th class="text-center" style="width:15%;">Durum</th></tr></thead><tbody>';
+
+          res.users.forEach(function (u) {
+            var statusBadge =
+              u.durum === "Aktif"
+                ? '<span class="badge bg-soft-success text-success font-size-11 px-2 py-1"><i class="mdi mdi-circle-medium"></i> Aktif</span>'
+                : '<span class="badge bg-soft-danger text-danger font-size-11 px-2 py-1"><i class="mdi mdi-circle-medium"></i> Pasif</span>';
+
+            var firstChar = u.adi_soyadi
+              ? u.adi_soyadi.trim().charAt(0).toUpperCase()
+              : "P";
+
+            var avatarHtml = '';
+            if (u.personel_resim_yolu) {
+              avatarHtml = '<img src="' + u.personel_resim_yolu + '" alt="" class="avatar-xs rounded-circle flex-shrink-0 object-cover">';
+            } else {
+              avatarHtml = '<div class="avatar-xs flex-shrink-0"><span class="avatar-title rounded-circle bg-soft-primary text-primary font-size-13 fw-bold">' + firstChar + '</span></div>';
+            }
+
+            var deptHtml = '';
+            if (u.departman) {
+              deptHtml = '<span class="badge bg-light text-secondary border font-size-10 me-1">' + u.departman + '</span>';
+            }
+
+            html += "<tr class='assigned-user-row'>";
+            html += "<td>";
+            html += '<div class="d-flex align-items-center gap-2">';
+            html += avatarHtml;
+            html +=
+              '<div><div class="fw-bold text-dark font-size-13 user-search-name">' +
+              (u.adi_soyadi || "-") +
+              '</div><div class="text-muted font-size-11">@' +
+              (u.user_name || "-") +
+              "</div></div>";
+            html += "</div></td>";
+            html +=
+              '<td><div class="text-dark font-size-12 fw-medium user-search-dept">' +
+              (u.gorevi || "-") +
+              "</div>" + (deptHtml ? '<div class="mt-1">' + deptHtml + '</div>' : '') + "</td>";
+            html +=
+              '<td><div class="font-size-12 text-dark">' +
+              (u.email_adresi || "-") +
+              '</div><div class="font-size-11 text-muted">' +
+              (u.telefon || "-") +
+              "</div></td>";
+            html += '<td class="text-center">' + statusBadge + "</td>";
+            html += "</tr>";
+          });
+
+          html += "</tbody></table></div>";
+          $("#assignedUsersContent").html(html);
+        } else {
+          $("#assignedUsersContent").html(
+            '<div class="alert alert-danger m-3">' + res.message + "</div>"
+          );
+        }
+      },
+      error: function () {
+        $("#assignedUsersContent").html(
+          '<div class="alert alert-danger m-3">Personel listesi alınırken bir hata oluştu.</div>'
+        );
+      },
+    });
+  });
+
+  // Atanan kullanıcılar modalında canlı filtreleme
+  $(document).on("keyup", "#assignedUserSearch", function () {
+    var search = $(this).val().toLowerCase().trim();
+    $("#assignedUsersTable tbody tr.assigned-user-row").each(function () {
+      var rowText = $(this).text().toLowerCase();
+      if (rowText.indexOf(search) > -1) {
+        $(this).show();
+      } else {
+        $(this).hide();
+      }
+    });
+  });
 });

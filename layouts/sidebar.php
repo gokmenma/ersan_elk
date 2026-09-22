@@ -9,7 +9,7 @@ use App\Model\MenuModel;
 $Menus = new MenuModel();
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 
-// Tüm menü verisini tek bir fonksiyona göndererek hiyerarşik yapıyı oluştur.
+// Tüm menü verisini hiyerarşik ve kullanıcı sırasına göre oluştur
 $menu_data = $Menus->getHierarchicalMenuForRole($currentUserId);
 
 // Aktif menü tespiti
@@ -25,58 +25,57 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
 <div class="vertical-menu">
 
-    <div data-simplebar class="h-100">
+    <style>
+        :root {
+            --sidebar-bg: #ffffff;
+            --sidebar-border: #f1f1f4;
+            --sidebar-item-hover: #f4f4f5;
+            --sidebar-item-active: #f4f4f5;
+            --sidebar-foreground: #3f3f46;
+            --sidebar-muted: #71717a;
+            --sidebar-accent: #18181b;
+            --sidebar-font: var(--bs-font-sans-serif, inherit);
+        }
 
-        <!--- Sidemenu -->
-        <div id="sidebar-menu">
-            <style>
-                :root {
-                    --sidebar-bg: #ffffff;
-                    --sidebar-border: #f1f1f4;
-                    --sidebar-item-hover: #f4f4f5;
-                    --sidebar-item-active: #f4f4f5;
-                    --sidebar-foreground: #3f3f46;
-                    --sidebar-muted: #71717a;
-                    --sidebar-accent: #18181b;
-                    --sidebar-font: var(--bs-font-sans-serif, inherit);
-                }
+        [data-bs-theme="dark"] {
+            --sidebar-bg: #191e22;
+            --sidebar-border: #22292f;
+            --sidebar-item-hover: #242b31;
+            --sidebar-item-active: #242b31;
+            --sidebar-foreground: #adb5bd;
+            --sidebar-muted: #74788d;
+            --sidebar-accent: #1c84ee;
+        }
 
-                [data-bs-theme="dark"] {
-                    --sidebar-bg: #191e22;
-                    --sidebar-border: #22292f;
-                    --sidebar-item-hover: #242b31;
-                    --sidebar-item-active: #242b31;
-                    --sidebar-foreground: #adb5bd;
-                    --sidebar-muted: #74788d;
-                    --sidebar-accent: #1c84ee;
-                }
+        body[data-sidebar="dark"] {
+            --sidebar-bg: #191e22;
+            --sidebar-border: #303840;
+            --sidebar-item-hover: #30373f;
+            --sidebar-item-active: #30373f;
+            --sidebar-foreground: #f8fafc;
+            --sidebar-muted: #cbd5e1;
+            --sidebar-accent: #6d5dfc;
+        }
 
-                body[data-sidebar="dark"] {
-                    --sidebar-bg: #191e22;
-                    --sidebar-border: #303840;
-                    --sidebar-item-hover: #30373f;
-                    --sidebar-item-active: #30373f;
-                    --sidebar-foreground: #f8fafc;
-                    --sidebar-muted: #cbd5e1;
-                    --sidebar-accent: #6d5dfc;
-                }
+        .vertical-menu {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+            background-color: var(--sidebar-bg) !important;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
+            border-right: 1px solid var(--sidebar-border) !important;
+            box-shadow: none !important;
+            font-family: inherit !important;
+            top: 0 !important;
+        }
 
-                .vertical-menu {
-                    background-color: var(--sidebar-bg) !important;
-                    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
-                    border-right: 1px solid var(--sidebar-border) !important;
-                    box-shadow: none !important;
-                    font-family: inherit !important;
-                    top: 0 !important; /* Ensure it starts from top */
-                }
-
-                /* Hide topbar brand box since we have it in sidebar */
                 .navbar-brand-box {
                     display: none !important;
                 }
 
                 #page-topbar {
-                    left: 250px !important; /* Standard sidebar width (250px) */
+                    left: 250px !important;
                     background-color: var(--sidebar-bg) !important;
                     background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
                     border-bottom: 1px solid var(--sidebar-border) !important;
@@ -94,32 +93,39 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     border-right-color: #22292f !important;
                 }
 
-                body[data-sidebar="dark"] #sidebar-menu ul li a,
+                body[data-sidebar="dark"] #sidebar-menu a,
                 body[data-sidebar="dark"] #side-menu .menu-title,
                 body[data-sidebar="dark"] .brand-name {
                     color: #f8fafc !important;
                 }
 
                 body[data-sidebar="dark"] .brand-sub,
-                body[data-sidebar="dark"] #sidebar-menu ul li ul.sub-menu li a {
+                body[data-sidebar="dark"] #sidebar-menu ul.sub-menu li a {
                     color: #cbd5e1 !important;
                 }
 
-                body[data-sidebar="dark"] #sidebar-menu ul li a i,
-                body[data-sidebar="dark"] #sidebar-menu ul li a svg,
+                body[data-sidebar="dark"] #sidebar-menu a i,
+                body[data-sidebar="dark"] #sidebar-menu a svg,
                 body[data-sidebar="dark"] .sidebar-search-container .search-icon {
                     color: #cbd5e1 !important;
                     stroke: #cbd5e1 !important;
                 }
 
                 body[data-sidebar="dark"] .sidebar-search {
-                    background-color: #30373f !important;
-                    border-color: #3b4450 !important;
-                    color: #f8fafc !important;
+                    background-color: rgba(255, 255, 255, 0.12) !important;
+                    border-color: rgba(255, 255, 255, 0.18) !important;
+                    color: #ffffff !important;
+                }
+
+                body[data-sidebar="dark"] .sidebar-search:focus {
+                    background-color: rgba(255, 255, 255, 0.18) !important;
+                    border-color: rgba(255, 255, 255, 0.35) !important;
+                    color: #ffffff !important;
+                    box-shadow: none !important;
                 }
 
                 body[data-sidebar="dark"] .sidebar-search::placeholder {
-                    color: #94a3b8 !important;
+                    color: rgba(255, 255, 255, 0.5) !important;
                 }
 
                 body[data-sidebar="dark"] #sidebar-menu ul li a:hover,
@@ -149,8 +155,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     width: 60px !important;
                 }
 
-                /* Dar menüde ikonları tam ortalama */
-                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a {
+                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a {
                     padding: 12px 0 !important;
                     text-align: center !important;
                     display: flex !important;
@@ -158,14 +163,13 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     justify-content: center !important;
                 }
 
-                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a i,
-                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a svg,
-                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a [data-feather] {
+                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a i,
+                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a svg,
+                body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a [data-feather] {
                     margin: 0 auto !important;
                     display: block !important;
                 }
 
-                /* Dar menüde favori yıldız ikonlarını gizleme */
                 body[data-sidebar-size="sm"] .star-btn,
                 body[data-sidebar-size="sm"] .vertical-menu .star-btn,
                 body[data-sidebar-size="sm"] #side-menu .star-btn,
@@ -180,7 +184,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                         left: 0 !important;
                     }
                     .navbar-brand-box {
-                        display: flex !important; /* Show on mobile if needed */
+                        display: flex !important;
                     }
                     .sidebar-brand-box {
                         display: none !important;
@@ -192,17 +196,24 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     min-height: 100%;
                 }
 
-                /* Sticky Sidebar Header (Brand + Search) */
+                /* Sticky Sidebar Header */
                 .sidebar-sticky-top {
-                    position: sticky;
-                    top: 0;
+                    position: relative;
                     z-index: 100;
+                    flex-shrink: 0;
                     background-color: var(--sidebar-bg);
                     background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
-                    padding: 12px 8px 16px 8px;
-                    margin: -8px -8px 0 -8px;
+                    padding: 12px 8px 12px 8px;
+                    margin: 0;
                     border-bottom: 1px solid transparent;
                     transition: all 0.2s ease;
+                }
+
+                .sidebar-menu-scroll {
+                    flex: 1 1 auto;
+                    min-height: 0;
+                    height: 100%;
+                    overflow-y: auto;
                 }
 
                 body[data-sidebar="red"] .sidebar-sticky-top { background-color: #f46a6a !important; }
@@ -216,10 +227,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 body[data-sidebar="cyan"] .sidebar-sticky-top { background-color: #06b6d4 !important; }
                 body[data-sidebar="default"] .sidebar-sticky-top { background-color: #1c84ee !important; }
                 body[data-sidebar="brand"] .sidebar-sticky-top { background-color: var(--bs-primary) !important; }
-                 body[data-sidebar="dark"] .sidebar-sticky-top { background-color: #191e22 !important; }
+                body[data-sidebar="dark"] .sidebar-sticky-top { background-color: #191e22 !important; }
                 body[data-sidebar="light"] .sidebar-sticky-top { background-color: #ffffff !important; }
 
-                /* Siyah (slate) temada navigasyonu koyu kart yuzeyiyle esitle. */
                 html[data-theme-mode="slate"][data-bs-theme="dark"] body .vertical-menu,
                 html[data-theme-mode="slate"][data-bs-theme="dark"] body .sidebar-sticky-top,
                 html[data-theme-mode="slate"][data-bs-theme="dark"] body #page-topbar {
@@ -228,7 +238,114 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     border-color: #2b333e !important;
                 }
 
-                /* Themed Search Input Styling */
+                /* Sidebar Search & Settings */
+                .sidebar-search-container {
+                    padding: 0 8px;
+                    position: relative;
+                }
+
+                .sidebar-search {
+                    background-color: var(--sidebar-item-hover) !important;
+                    border: 1px solid var(--sidebar-border) !important;
+                    color: var(--sidebar-foreground) !important;
+                    border-radius: 8px !important;
+                    padding-left: 36px !important;
+                    height: 38px;
+                    font-size: 13px;
+                    transition: all 0.2s ease;
+                    width: 100%;
+                }
+
+                .sidebar-search:focus {
+                    border-color: var(--sidebar-accent) !important;
+                    background-color: var(--sidebar-item-hover) !important;
+                    color: var(--sidebar-foreground) !important;
+                    box-shadow: none !important;
+                    outline: none !important;
+                }
+
+                .sidebar-search-container .search-icon {
+                    position: absolute !important;
+                    left: 12px !important;
+                    top: 50% !important;
+                    width: 14px;
+                    height: 14px;
+                    color: var(--sidebar-muted);
+                    pointer-events: none;
+                    transform: translateY(-50%);
+                }
+
+                .btn-sidebar-settings {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 8px !important;
+                    background-color: var(--sidebar-item-hover) !important;
+                    border: 1px solid var(--sidebar-border) !important;
+                    color: var(--sidebar-muted) !important;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0 !important;
+                    flex-shrink: 0;
+                    transition: all 0.2s ease;
+                }
+
+                .btn-sidebar-settings:hover,
+                .btn-sidebar-settings:focus,
+                .btn-sidebar-settings[aria-expanded="true"] {
+                    background-color: var(--sidebar-item-active) !important;
+                    color: var(--sidebar-accent) !important;
+                    border-color: var(--sidebar-accent) !important;
+                }
+
+                body[data-sidebar="dark"] .btn-sidebar-settings,
+                body[data-sidebar="red"] .btn-sidebar-settings,
+                body[data-sidebar="purple"] .btn-sidebar-settings,
+                body[data-sidebar="slate"] .btn-sidebar-settings,
+                body[data-sidebar="emerald"] .btn-sidebar-settings,
+                body[data-sidebar="orange"] .btn-sidebar-settings,
+                body[data-sidebar="rose"] .btn-sidebar-settings,
+                body[data-sidebar="ersan"] .btn-sidebar-settings,
+                body[data-sidebar="teal"] .btn-sidebar-settings,
+                body[data-sidebar="cyan"] .btn-sidebar-settings,
+                body[data-sidebar="default"] .btn-sidebar-settings,
+                body[data-sidebar="brand"] .btn-sidebar-settings {
+                    background-color: rgba(255, 255, 255, 0.12) !important;
+                    border-color: rgba(255, 255, 255, 0.15) !important;
+                    color: rgba(255, 255, 255, 0.7) !important;
+                }
+
+                body[data-sidebar="dark"] .btn-sidebar-settings:hover,
+                body[data-sidebar="dark"] .btn-sidebar-settings[aria-expanded="true"] {
+                    background-color: rgba(255, 255, 255, 0.2) !important;
+                    color: #ffffff !important;
+                }
+
+                .menu-settings-dropdown .dropdown-menu {
+                    background: var(--bs-card-bg, #ffffff);
+                    border: 1px solid var(--sidebar-border, #e9ecef);
+                    border-radius: 8px;
+                    padding: 6px;
+                    z-index: 1050;
+                }
+
+                [data-bs-theme="dark"] .menu-settings-dropdown .dropdown-menu {
+                    background: #1c2228 !important;
+                    border-color: #283038 !important;
+                }
+
+                .menu-settings-dropdown .dropdown-item {
+                    border-radius: 6px;
+                    font-size: 13px;
+                    padding: 6px 10px;
+                    color: var(--sidebar-foreground);
+                }
+
+                .menu-settings-dropdown .dropdown-item:hover {
+                    background-color: rgba(239, 68, 68, 0.1);
+                    color: #ef4444;
+                }
+
                 body[data-sidebar="red"] .sidebar-search,
                 body[data-sidebar="purple"] .sidebar-search,
                 body[data-sidebar="slate"] .sidebar-search,
@@ -246,6 +363,24 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: #ffffff !important;
                 }
 
+                body[data-sidebar="red"] .sidebar-search:focus,
+                body[data-sidebar="purple"] .sidebar-search:focus,
+                body[data-sidebar="slate"] .sidebar-search:focus,
+                body[data-sidebar="emerald"] .sidebar-search:focus,
+                body[data-sidebar="orange"] .sidebar-search:focus,
+                body[data-sidebar="rose"] .sidebar-search:focus,
+                body[data-sidebar="ersan"] .sidebar-search:focus,
+                body[data-sidebar="teal"] .sidebar-search:focus,
+                body[data-sidebar="cyan"] .sidebar-search:focus,
+                body[data-sidebar="default"] .sidebar-search:focus,
+                body[data-sidebar="brand"] .sidebar-search:focus,
+                body[data-sidebar="dark"] .sidebar-search:focus {
+                    background-color: rgba(255, 255, 255, 0.18) !important;
+                    border-color: rgba(255, 255, 255, 0.35) !important;
+                    color: #ffffff !important;
+                    box-shadow: none !important;
+                }
+
                 body[data-sidebar="red"] .sidebar-search::placeholder,
                 body[data-sidebar="purple"] .sidebar-search::placeholder,
                 body[data-sidebar="slate"] .sidebar-search::placeholder,
@@ -261,15 +396,14 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: rgba(255, 255, 255, 0.5) !important;
                 }
 
-                /* Hide brand logo on small sidebar */
                 body[data-sidebar-size="sm"] .sidebar-sticky-top {
                     position: static;
                     padding: 12px 8px;
                 }
 
-                /* Sidebar Brand/Header Section */
+                /* Sidebar Brand/Header */
                 .sidebar-brand-box {
-                    padding: 0 12px 24px 12px;
+                    padding: 0 12px 12px 12px;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
@@ -316,7 +450,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: var(--sidebar-muted);
                 }
 
-                /* Dark/Colored sidebar themes brand text compatibility override */
                 body[data-sidebar="dark"] .brand-name,
                 body[data-sidebar="brand"] .brand-name,
                 body[data-sidebar="default"] .brand-name,
@@ -347,52 +480,122 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: rgba(255, 255, 255, 0.6) !important;
                 }
 
-                /* Sidebar Search */
-                .sidebar-search-container {
-                    padding: 0 8px;
-                    position: relative;
-                }
-
-                .sidebar-search {
-                    background-color: var(--sidebar-item-hover) !important;
-                    border: 1px solid var(--sidebar-border) !important;
-                    color: var(--sidebar-foreground) !important;
-                    border-radius: 8px !important;
-                    padding-left: 36px !important;
-                    height: 38px;
-                    font-size: 13px;
-                    transition: all 0.2s ease;
-                    width: 100%;
-                }
-
-                .sidebar-search:focus {
-                    border-color: var(--sidebar-accent) !important;
-                    background-color: #fff !important;
-                }
-
-                .sidebar-search-container .search-icon {
-                    position: absolute !important;
-                    left: 20px !important;
-                    top: 50% !important;
-                    width: 14px;
-                    height: 14px;
-                    color: var(--sidebar-muted);
-                    pointer-events: none;
-                    transform: translateY(-50%);
-                }
-
-                /* Menu Items Styling */
+                /* Menu Items & Groups Styling */
                 #side-menu {
                     padding: 0;
+                    margin: 0;
                 }
 
-                #side-menu .menu-title {
+                .menu-section {
+                    list-style: none;
+                    margin-bottom: 4px;
+                }
+
+                #sidebar-menu .menu-title,
+                #side-menu .menu-title,
+                .vertical-menu .menu-title {
                     font-size: 11px;
                     font-weight: 600;
                     text-transform: none;
                     color: var(--sidebar-muted);
-                    padding: 16px 12px 8px 12px;
+                    padding: 10px 12px 6px 12px !important;
                     letter-spacing: 0.01em;
+                    pointer-events: auto !important;
+                    cursor: grab !important;
+                    user-select: none !important;
+                    -webkit-user-select: none !important;
+                    touch-action: none;
+                    border-radius: 6px;
+                    transition: background 0.15s ease, color 0.15s ease;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                }
+
+                #sidebar-menu .menu-title:hover,
+                #side-menu .menu-title:hover {
+                    background-color: var(--sidebar-item-hover) !important;
+                    color: var(--sidebar-foreground) !important;
+                }
+
+                #sidebar-menu .menu-title:active,
+                #side-menu .menu-title:active {
+                    cursor: grabbing !important;
+                }
+
+                #side-menu .menu-title > * {
+                    pointer-events: none !important;
+                }
+
+                .group-drag-handle {
+                    width: 14px !important;
+                    height: 14px !important;
+                    opacity: 0 !important;
+                    visibility: hidden !important;
+                    transition: opacity 0.2s ease, visibility 0.2s ease, color 0.2s ease !important;
+                    color: var(--sidebar-muted) !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    flex-shrink: 0 !important;
+                }
+
+                #side-menu .menu-title:hover .group-drag-handle,
+                #side-menu .menu-section:hover .group-drag-handle {
+                    opacity: 0.8 !important;
+                    visibility: visible !important;
+                    color: var(--sidebar-accent) !important;
+                }
+
+                .menu-items-list {
+                    padding: 0;
+                    margin: 0;
+                }
+
+                /* Drag & Drop Visual Classes */
+                .sortable-ghost-group {
+                    opacity: 0.45;
+                    background: rgba(28, 132, 238, 0.08) !important;
+                    border: 1px dashed var(--sidebar-accent) !important;
+                    border-radius: 8px;
+                }
+
+                .sortable-fallback-group {
+                    background: var(--sidebar-bg, #ffffff) !important;
+                    border: 1px solid var(--sidebar-border, #e2e8f0) !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25) !important;
+                    opacity: 0.95 !important;
+                    overflow: hidden !important;
+                    pointer-events: none !important;
+                }
+
+                .sortable-ghost-item {
+                    opacity: 0.4;
+                    background: rgba(28, 132, 238, 0.15) !important;
+                    border-radius: 8px;
+                }
+
+                .sortable-ghost-subitem {
+                    opacity: 0.4;
+                    background: rgba(28, 132, 238, 0.15) !important;
+                    border-radius: 8px;
+                }
+
+                .sortable-chosen-item,
+                .sortable-chosen-group,
+                .sortable-chosen-subitem {
+                    cursor: grabbing !important;
+                }
+
+                .menu-item-draggable,
+                .submenu-item-draggable {
+                    cursor: grab;
+                }
+
+                .menu-item-draggable:active,
+                .submenu-item-draggable:active {
+                    cursor: grabbing;
                 }
 
                 #sidebar-menu ul li ul.sub-menu li a:hover {
@@ -420,7 +623,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     align-items: center;
                     gap: 8px;
                     transition: background-color 0.2s ease, color 0.2s ease, padding 0.2s ease;
-                    margin: 2px 12px 2px 4px; /* More margin from right and left edges */
+                    margin: 2px 12px 2px 4px;
                     position: relative;
                 }
 
@@ -454,13 +657,28 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: var(--sidebar-foreground);
                 }
 
-                /* Sub-menu Indentation (Shadcn style with requested padding) */
+                /* Sub-menu Indentation & MetisMenu State */
                 .sub-menu {
-                    padding: 0 0 0 12px !important; /* Indent text by 12px from the line */
-                    margin: 0 0 0 28px !important; /* Align the line with parent icons */
+                    padding: 0 0 0 12px !important;
+                    margin: 0 0 0 28px !important;
                     list-style: none;
                     border-left: 1px solid var(--sidebar-border) !important;
                     position: relative;
+                }
+
+                .sub-menu.mm-collapse:not(.mm-show) {
+                    display: none;
+                }
+
+                .sub-menu.mm-collapsing {
+                    position: relative;
+                    height: 0;
+                    overflow: hidden;
+                    transition: height 0.3s ease;
+                }
+
+                .sub-menu.mm-collapse.mm-show {
+                    display: block;
                 }
 
                 #sidebar-menu .sub-menu li a,
@@ -469,7 +687,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     padding-left: 1rem !important;
                     color: var(--sidebar-foreground) !important;
                     border-radius: 8px !important;
-                    margin: 2px 16px 2px 6px; /* Increased right and left spacing for active background */
+                    margin: 2px 16px 2px 6px;
                     white-space: nowrap !important;
                 }
 
@@ -479,11 +697,11 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 #sidebar-menu ul li ul.sub-menu li a:hover,
                 #sidebar-menu ul li ul.sub-menu li.mm-active > a,
                 #sidebar-menu ul li ul.sub-menu li a.active {
-                    padding-left: 1.2rem !important; /* As requested: 1.2rem padding on hover */
+                    padding-left: 1.2rem !important;
                     border-radius: 8px !important;
                 }
 
-                /* Arrow styling (Chevron) - Accurate Shadcn placement */
+                /* Arrow styling */
                 .has-arrow:after {
                     content: "" !important;
                     display: block !important;
@@ -501,19 +719,18 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 .mm-active > .has-arrow:after {
-                    transform: translateY(-30%) rotate(-45deg) !important; /* Point down when open */
+                    transform: translateY(-30%) rotate(-45deg) !important;
                 }
 
-                /* Sidebar Icons Refresh */
                 [data-feather] {
                     width: 16px;
                     height: 16px;
                 }
 
-                /* Star styling refinement */
+                /* Star styling */
                 .star-btn {
                     position: absolute;
-                    right: 16px; /* Moved slightly more to the left as requested */
+                    right: 16px;
                     top: 50%;
                     transform: translateY(-50%);
                     color: var(--sidebar-muted);
@@ -528,17 +745,14 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     z-index: 5;
                 }
 
-                /* Shift star left if there is an arrow */
                 .has-arrow + .star-btn {
-                    right: 44px !important; /* Adjusted slightly more to the left as requested */
+                    right: 44px !important;
                 }
 
-                /* Star: show on hover of the li's direct child */
                 #side-menu li:hover > .star-btn {
                     opacity: 1 !important;
                 }
 
-                /* CRITICAL FIX: When hovering inside sub-menu, HIDE the parent li's star */
                 #side-menu li:has(> .sub-menu:hover) > .star-btn {
                     opacity: 0 !important;
                     pointer-events: none !important;
@@ -554,7 +768,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: #f1b44c !important;
                 }
 
-                /* Link padding adjustments to accommodate moved stars */
                 #side-menu li a {
                     padding-right: 72px !important;
                 }
@@ -563,7 +776,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     padding-right: 52px !important;
                 }
 
-                /* Scrollbar Refinement */
                 .simplebar-track.simplebar-vertical {
                     background-color: transparent;
                     width: 6px;
@@ -573,7 +785,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     opacity: 0.5;
                 }
 
-                /* Specific for mobile and collapsed */
                 body[data-sidebar-size="sm"] .vertical-menu {
                     width: 60px !important;
                 }
@@ -606,89 +817,139 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 </div>
 
                 <div class="sidebar-search-container">
-                    <div class="position-relative">
-                        <input type="text" class="form-control sidebar-search" id="menu-search-input"
-                            placeholder="Menüde ara...">
-                        <i data-feather="search" class="search-icon"></i>
+                    <div class="d-flex align-items-center gap-1">
+                        <div class="position-relative flex-grow-1">
+                            <input type="text" class="form-control sidebar-search" id="menu-search-input"
+                                placeholder="Menüde ara...">
+                            <i data-feather="search" class="search-icon"></i>
+                        </div>
+                        <div class="dropdown menu-settings-dropdown">
+                            <button class="btn btn-sidebar-settings dropdown-toggle" type="button" id="sidebarMenuSettingsBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Menü Ayarları">
+                                <i data-feather="settings" style="width: 15px; height: 15px;"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" aria-labelledby="sidebarMenuSettingsBtn">
+                                <li>
+                                    <h6 class="dropdown-header text-muted py-1" style="font-size: 11px; text-transform: uppercase;">Menü Ayarları</h6>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item d-flex align-items-center gap-2 py-2" type="button" id="btn-reset-menu-order">
+                                        <i data-feather="rotate-ccw" style="width: 14px; height: 14px; color: #ef4444;"></i>
+                                        <span>Varsayılan Menü Sırası</span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
-            <!-- Left Menu Start -->
-            <ul class="metismenu list-unstyled" id="side-menu">
+
+            <div data-simplebar class="sidebar-menu-scroll" id="sidebar-menu-scroll">
+                <script>
+                    // Sayfa render edilirken yüklenmeden önce anında scroll konumunu oku ve uygula
+                    (function() {
+                        try {
+                            var savedPos = localStorage.getItem('sidebar_scroll_top');
+                            if (savedPos !== null) {
+                                var el = document.getElementById('sidebar-menu-scroll');
+                                if (el) {
+                                    el.scrollTop = parseInt(savedPos, 10) || 0;
+                                }
+                            }
+                        } catch(e) {}
+                    })();
+                </script>
+                <!--- Sidemenu -->
+                <div id="sidebar-menu">
+
+                    <!-- Left Menu Start -->
+                    <div id="side-menu" class="side-menu-container">
 
                 <?php foreach ($menu_data as $group_name => $menus): ?>
 
-                    <li class="menu-title" data-key="t-menu"><?php echo htmlspecialchars($group_name); ?></li>
+                    <div class="menu-section" data-group-name="<?php echo htmlspecialchars($group_name); ?>">
+                        <div class="menu-title d-flex align-items-center justify-content-between" data-key="t-menu" title="Sıralamak için sürükleyin">
+                            <span class="group-title-text"><?php echo htmlspecialchars($group_name); ?></span>
+                            <svg class="group-drag-handle" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                <circle cx="9" cy="5" r="1.5"></circle>
+                                <circle cx="9" cy="12" r="1.5"></circle>
+                                <circle cx="9" cy="19" r="1.5"></circle>
+                                <circle cx="15" cy="5" r="1.5"></circle>
+                                <circle cx="15" cy="12" r="1.5"></circle>
+                                <circle cx="15" cy="19" r="1.5"></circle>
+                            </svg>
+                        </div>
 
-                    <?php foreach ($menus as $menu): ?>
-                        <?php
-                        if (isset($menu->is_menu) && $menu->is_menu == 0)
-                            continue;
+                        <ul class="metismenu menu-items-list list-unstyled" data-group-name="<?php echo htmlspecialchars($group_name); ?>">
+                            <?php foreach ($menus as $menu): ?>
+                                <?php
+                                if (isset($menu->is_menu) && $menu->is_menu == 0)
+                                    continue;
 
-                        $has_children = !empty($menu->children);
+                                $has_children = !empty($menu->children);
 
-                        $visibleChildren = [];
-                        if ($has_children) {
-                            foreach ($menu->children as $sub_menu) {
-                                if (isset($sub_menu->is_menu) && $sub_menu->is_menu == 0) continue;
-                                if (!empty($sub_menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $sub_menu->menu_link)) continue;
-                                $visibleChildren[] = $sub_menu;
-                            }
-                            $has_children = !empty($visibleChildren);
-                        }
+                                $visibleChildren = [];
+                                if ($has_children) {
+                                    foreach ($menu->children as $sub_menu) {
+                                        if (isset($sub_menu->is_menu) && $sub_menu->is_menu == 0) continue;
+                                        if (!empty($sub_menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $sub_menu->menu_link)) continue;
+                                        $visibleChildren[] = $sub_menu;
+                                    }
+                                    $has_children = !empty($visibleChildren);
+                                }
 
-                        if (!$has_children && !empty($menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $menu->menu_link)) continue;
+                                if (!$has_children && !empty($menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $menu->menu_link)) continue;
 
-                        $is_active = in_array((int) $menu->id, $activeMenuIds);
-                        $active_class = $is_active ? 'mm-active' : '';
-                        $has_arrow_class = $has_children ? 'has-arrow' : '';
-                        $link = $has_children ? 'javascript: void(0);' : Route::Link($menu->menu_link);
-                        
-                        $isFavorited = in_array((int) $menu->id, $favoriteMenuIds);
-                        ?>
-                        <li class="<?php echo $active_class; ?>" data-menu-id="<?php echo $menu->id; ?>">
-                            <a href="<?php echo $link; ?>"
-                                class="<?php echo $has_arrow_class; ?> waves-effect <?php echo $is_active ? 'active' : ''; ?>">
-                                <?php if (!empty($menu->menu_icon)): ?>
-                                    <i data-feather="<?php echo htmlspecialchars($menu->menu_icon); ?>"></i>
-                                <?php endif; ?>
-                                <span class="menu-name"><?php echo htmlspecialchars($menu->menu_name); ?></span>
-                            </a>
-                            <div class="star-btn <?php echo $isFavorited ? 'active' : ''; ?>" 
-                                 data-id="<?php echo $menu->id; ?>" 
-                                 title="<?php echo $isFavorited ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
-                                <i class="<?php echo $isFavorited ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
-                            </div>
+                                $is_active = in_array((int) $menu->id, $activeMenuIds);
+                                $active_class = $is_active ? 'mm-active' : '';
+                                $has_arrow_class = $has_children ? 'has-arrow' : '';
+                                $link = $has_children ? 'javascript: void(0);' : Route::Link($menu->menu_link);
+                                
+                                $isFavorited = in_array((int) $menu->id, $favoriteMenuIds);
+                                ?>
+                                <li class="<?php echo $active_class; ?> menu-item-draggable" data-menu-id="<?php echo $menu->id; ?>">
+                                    <a href="<?php echo $link; ?>"
+                                        class="<?php echo $has_arrow_class; ?> waves-effect <?php echo $is_active ? 'active' : ''; ?>">
+                                        <?php if (!empty($menu->menu_icon)): ?>
+                                            <i data-feather="<?php echo htmlspecialchars($menu->menu_icon); ?>"></i>
+                                        <?php endif; ?>
+                                        <span class="menu-name"><?php echo htmlspecialchars($menu->menu_name); ?></span>
+                                    </a>
+                                    <div class="star-btn <?php echo $isFavorited ? 'active' : ''; ?>" 
+                                         data-id="<?php echo $menu->id; ?>" 
+                                         title="<?php echo $isFavorited ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
+                                        <i class="<?php echo $isFavorited ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
+                                    </div>
 
-                            <?php if ($has_children): ?>
-                                <ul class="sub-menu" aria-expanded="<?php echo $is_active ? 'true' : 'false'; ?>">
-                                    <?php
-                                    foreach ($visibleChildren as $sub_menu):
-                                        $is_sub_active = in_array((int) $sub_menu->id, $activeMenuIds);
-                                        $isSubFavorited = in_array((int) $sub_menu->id, $favoriteMenuIds);
-                                        ?>
-                                        <li class="<?php echo $is_sub_active ? 'mm-active' : ''; ?>" data-menu-id="<?php echo $sub_menu->id; ?>">
-                                            <a class="waves-effect <?php echo $is_sub_active ? 'active' : ''; ?>"
-                                                href="<?php echo Route::Link($sub_menu->menu_link); ?>" data-key="t-user-grid">
-                                                <span class="menu-name"><?php echo htmlspecialchars($sub_menu->menu_name); ?></span>
-                                            </a>
-                                            <div class="star-btn <?php echo $isSubFavorited ? 'active' : ''; ?>" 
-                                                 data-id="<?php echo $sub_menu->id; ?>" 
-                                                 title="<?php echo $isSubFavorited ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
-                                                <i class="<?php echo $isSubFavorited ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
-                                            </div>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php endif; ?>
+                                    <?php if ($has_children): ?>
+                                        <ul class="sub-menu mm-collapse <?php echo $is_active ? 'mm-show' : ''; ?>" aria-expanded="<?php echo $is_active ? 'true' : 'false'; ?>" data-parent-id="<?php echo $menu->id; ?>">
+                                            <?php
+                                            foreach ($visibleChildren as $sub_menu):
+                                                $is_sub_active = in_array((int) $sub_menu->id, $activeMenuIds);
+                                                $isSubFavorited = in_array((int) $sub_menu->id, $favoriteMenuIds);
+                                                ?>
+                                                <li class="<?php echo $is_sub_active ? 'mm-active' : ''; ?> submenu-item-draggable" data-menu-id="<?php echo $sub_menu->id; ?>">
+                                                    <a class="waves-effect <?php echo $is_sub_active ? 'active' : ''; ?>"
+                                                        href="<?php echo Route::Link($sub_menu->menu_link); ?>" data-key="t-user-grid">
+                                                        <span class="menu-name"><?php echo htmlspecialchars($sub_menu->menu_name); ?></span>
+                                                    </a>
+                                                    <div class="star-btn <?php echo $isSubFavorited ? 'active' : ''; ?>" 
+                                                         data-id="<?php echo $sub_menu->id; ?>" 
+                                                         title="<?php echo $isSubFavorited ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
+                                                        <i class="<?php echo $isSubFavorited ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
+                                                    </div>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    <?php endif; ?>
 
-                        </li>
-                    <?php endforeach; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
 
                 <?php endforeach; ?>
 
-            </ul>
-
+            </div>
 
         </div>
         <!-- Sidebar -->
@@ -696,65 +957,372 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 </div>
 
 <script>
+    // Anında render: DOMContentLoaded beklemeden sidebar ikonlarını hemen oluştur
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+
+    // Sidebar Scroll Konumu Yönetimi (LocalStorage)
+    (function () {
+        function getSidebarScrollElement() {
+            return document.querySelector('.vertical-menu .simplebar-content-wrapper') 
+                || document.getElementById('sidebar-menu-scroll')
+                || document.querySelector('.sidebar-menu-scroll') 
+                || document.querySelector('.vertical-menu');
+        }
+
+        function restoreSidebarScroll() {
+            try {
+                var savedPos = localStorage.getItem('sidebar_scroll_top');
+                if (savedPos === null) {
+                    var lock = document.getElementById('sidebar-scroll-lock');
+                    if (lock) lock.remove();
+                    return false;
+                }
+                var topVal = parseInt(savedPos, 10) || 0;
+                var el = getSidebarScrollElement();
+                if (el) {
+                    el.scrollTop = topVal;
+                    var lock = document.getElementById('sidebar-scroll-lock');
+                    if (lock) lock.remove();
+                    return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+
+        function saveSidebarScroll() {
+            try {
+                var el = getSidebarScrollElement();
+                if (el && typeof el.scrollTop !== 'undefined') {
+                    localStorage.setItem('sidebar_scroll_top', el.scrollTop);
+                }
+            } catch (e) {}
+        }
+
+        // Anında ilk geri yükleme
+        restoreSidebarScroll();
+
+        // Global capturing scroll dinleyicisi (SimpleBar wrapper oluşturulur oluşturulmaz scroll hareketlerini yakalar)
+        var scrollTimer = null;
+        document.addEventListener('scroll', function (e) {
+            if (e.target && (e.target.classList?.contains('simplebar-content-wrapper') || e.target.id === 'sidebar-menu-scroll' || e.target.classList?.contains('sidebar-menu-scroll'))) {
+                if (scrollTimer) clearTimeout(scrollTimer);
+                scrollTimer = setTimeout(saveSidebarScroll, 30);
+            }
+        }, true);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            restoreSidebarScroll();
+            setTimeout(restoreSidebarScroll, 30);
+            setTimeout(restoreSidebarScroll, 100);
+
+            // Menü linklerine tıklandığında anında kaydet
+            document.querySelectorAll('#side-menu a, .vertical-menu a').forEach(function (link) {
+                link.addEventListener('click', saveSidebarScroll, { passive: true });
+            });
+        });
+
+        // Sayfadan ayrılırken kaydet
+        window.addEventListener('beforeunload', saveSidebarScroll);
+        window.addEventListener('pagehide', saveSidebarScroll);
+    })();
+
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
 
-        const searchInput = document.getElementById('menu-search-input');
-        if (!searchInput) return;
+        // MetisMenu başlat
+        if (typeof $ !== 'undefined' && $.fn.metisMenu) {
+            $('#side-menu .metismenu').metisMenu();
+        }
 
-        searchInput.addEventListener('input', function () {
-            const filter = this.value.toLowerCase().trim();
-            const sideMenu = document.getElementById('side-menu');
-            const allLi = sideMenu.querySelectorAll('li:not(.menu-title)');
-            const titles = sideMenu.querySelectorAll('.menu-title');
+        // Aktif Menüyü Görünür Alana Otomatik Scroll Etme (yalnızca kaydedilmiş scroll yoksa)
+        function scrollToActiveSidebarMenu() {
+            try {
+                if (localStorage.getItem('sidebar_scroll_top') !== null) {
+                    return; // Kullanıcının kayıtlı scroll konumu varsa onu koru
+                }
+            } catch (e) {}
 
-            if (filter === '') {
-                allLi.forEach(li => {
-                    li.style.display = '';
+            const activeEl = document.querySelector('#side-menu li.mm-active a.active, #side-menu a.active, #side-menu li.mm-active');
+            const scrollWrapper = document.querySelector('.vertical-menu .simplebar-content-wrapper') || document.querySelector('.vertical-menu');
+            if (!activeEl || !scrollWrapper) return;
+
+            const stickyHeader = document.querySelector('.sidebar-sticky-top');
+            const stickyHeight = stickyHeader ? stickyHeader.offsetHeight : 120;
+            const activeRect = activeEl.getBoundingClientRect();
+            const wrapperRect = scrollWrapper.getBoundingClientRect();
+
+            const relativeTop = activeRect.top - wrapperRect.top;
+            if (relativeTop < stickyHeight || relativeTop > (wrapperRect.height - 80)) {
+                const targetScroll = scrollWrapper.scrollTop + relativeTop - stickyHeight - 20;
+                scrollWrapper.scrollTo({
+                    top: Math.max(0, targetScroll),
+                    behavior: 'smooth'
                 });
-                titles.forEach(t => t.style.display = '');
-                return;
+            }
+        }
+
+        setTimeout(scrollToActiveSidebarMenu, 150);
+        setTimeout(scrollToActiveSidebarMenu, 400);
+
+        const searchInput = document.getElementById('menu-search-input');
+        const sideMenu = document.getElementById('side-menu');
+
+        // 1. Menüde Arama Filtreleme
+        if (searchInput && sideMenu) {
+            searchInput.addEventListener('input', function () {
+                const filter = this.value.toLowerCase().trim();
+                const sections = sideMenu.querySelectorAll('.menu-section');
+
+                if (filter === '') {
+                    sideMenu.querySelectorAll('li').forEach(li => li.style.display = '');
+                    sections.forEach(s => s.style.display = '');
+                    return;
+                }
+
+                sections.forEach(section => {
+                    let sectionHasVisible = false;
+                    const topItems = section.querySelectorAll('.menu-items-list > li[data-menu-id]');
+
+                    topItems.forEach(topLi => {
+                        let topLiHasVisible = false;
+                        const topAnchor = topLi.querySelector(':scope > a');
+                        const topText = topAnchor ? topAnchor.textContent.toLowerCase() : '';
+
+                        const subItems = topLi.querySelectorAll('.sub-menu > li[data-menu-id]');
+                        let subHasMatch = false;
+
+                        subItems.forEach(subLi => {
+                            const subAnchor = subLi.querySelector('a');
+                            const subText = subAnchor ? subAnchor.textContent.toLowerCase() : '';
+                            if (subText.includes(filter)) {
+                                subLi.style.display = '';
+                                subHasMatch = true;
+                            } else {
+                                subLi.style.display = 'none';
+                            }
+                        });
+
+                        if (topText.includes(filter) || subHasMatch) {
+                            topLi.style.display = '';
+                            topLiHasVisible = true;
+                            if (subHasMatch) {
+                                topLi.classList.add('mm-active');
+                                const subMenu = topLi.querySelector('ul.sub-menu');
+                                if (subMenu) {
+                                    subMenu.classList.add('mm-show');
+                                    subMenu.style.display = 'block';
+                                }
+                            }
+                        } else {
+                            topLi.style.display = 'none';
+                        }
+
+                        if (topLiHasVisible) {
+                            sectionHasVisible = true;
+                        }
+                    });
+
+                    section.style.display = sectionHasVisible ? '' : 'none';
+                });
+            });
+        }
+
+        // 2. SortableJS ile Sürükle-Bırak Menü Sıralaması
+        function initMenuSortables() {
+            if (typeof Sortable === 'undefined' || !sideMenu) return;
+
+            const scrollContainer = document.querySelector('.vertical-menu .simplebar-content-wrapper') || true;
+
+            // A. Grupların Kendi Arasında Sıralanması
+            new Sortable(sideMenu, {
+                animation: 200,
+                handle: '.menu-title',
+                draggable: '.menu-section',
+                ghostClass: 'sortable-ghost-group',
+                chosenClass: 'sortable-chosen-group',
+                dragClass: 'sortable-drag-group',
+                scroll: scrollContainer,
+                scrollSensitivity: 50,
+                scrollSpeed: 12,
+                bubbleScroll: true,
+                swapThreshold: 0.65,
+                invertSwap: true,
+                onEnd: function() {
+                    saveMenuOrderToServer();
+                }
+            });
+
+            // B. Üst Menülerin Kendi Grubu İçinde Sıralanması
+            document.querySelectorAll('.menu-items-list').forEach(function(listEl) {
+                const groupName = listEl.getAttribute('data-group-name') || 'default';
+                new Sortable(listEl, {
+                    group: 'group-menus-' + groupName,
+                    animation: 180,
+                    draggable: '.menu-item-draggable',
+                    ghostClass: 'sortable-ghost-item',
+                    chosenClass: 'sortable-chosen-item',
+                    filter: '.star-btn, .sub-menu',
+                    preventOnFilter: false,
+                    scroll: scrollContainer,
+                    scrollSensitivity: 50,
+                    scrollSpeed: 12,
+                    bubbleScroll: true,
+                    swapThreshold: 0.65,
+                    invertSwap: true,
+                    onEnd: function() {
+                        saveMenuOrderToServer();
+                    }
+                });
+            });
+
+            // C. Alt Menülerin Kendi Üst Menüsü İçinde Sıralanması
+            document.querySelectorAll('ul.sub-menu').forEach(function(subListEl) {
+                const parentId = subListEl.getAttribute('data-parent-id') || 'sub';
+                new Sortable(subListEl, {
+                    group: 'parent-submenus-' + parentId,
+                    animation: 180,
+                    draggable: '.submenu-item-draggable',
+                    ghostClass: 'sortable-ghost-subitem',
+                    chosenClass: 'sortable-chosen-subitem',
+                    filter: '.star-btn',
+                    preventOnFilter: false,
+                    scroll: scrollContainer,
+                    scrollSensitivity: 50,
+                    scrollSpeed: 12,
+                    bubbleScroll: true,
+                    swapThreshold: 0.65,
+                    invertSwap: true,
+                    onEnd: function() {
+                        saveMenuOrderToServer();
+                    }
+                });
+            });
+        }
+
+        // Menü Sırasını Sunucuya Kaydetme Fonksiyonu
+        function saveMenuOrderToServer() {
+            if (searchInput && searchInput.value.trim() !== '') {
+                return; // Arama esnasında filtrelenmiş eksik liste kaydedilmez
             }
 
-            allLi.forEach(li => li.style.display = 'none');
+            const groups = [];
+            const menus = {};
+            const submenus = {};
 
-            allLi.forEach(li => {
-                const anchor = li.querySelector('a');
-                if (!anchor) return;
+            document.querySelectorAll('#side-menu .menu-section').forEach(function(section) {
+                const groupName = section.getAttribute('data-group-name');
+                if (!groupName) return;
+                groups.push(groupName);
 
-                const text = anchor.textContent.toLowerCase();
-                if (text.includes(filter)) {
-                    li.style.display = '';
+                const groupMenuIds = [];
+                const menuList = section.querySelector('.menu-items-list');
+                if (menuList) {
+                    menuList.querySelectorAll(':scope > li[data-menu-id]').forEach(function(li) {
+                        const mId = parseInt(li.getAttribute('data-menu-id'), 10);
+                        if (mId > 0) {
+                            groupMenuIds.push(mId);
 
-                    let parent = li.parentElement.closest('li');
-                    while (parent) {
-                        parent.style.display = '';
-                        parent.classList.add('mm-active');
-                        const subMenu = parent.querySelector('ul.sub-menu');
-                        if (subMenu) {
-                            subMenu.classList.add('mm-show');
-                            subMenu.style.display = 'block';
+                            const subList = li.querySelector(':scope > ul.sub-menu');
+                            if (subList) {
+                                const subIds = [];
+                                subList.querySelectorAll(':scope > li[data-menu-id]').forEach(function(subLi) {
+                                    const sId = parseInt(subLi.getAttribute('data-menu-id'), 10);
+                                    if (sId > 0) {
+                                        subIds.push(sId);
+                                    }
+                                });
+                                submenus[mId] = subIds;
+                            }
                         }
-                        parent = parent.parentElement.closest('li');
-                    }
+                    });
                 }
+                menus[groupName] = groupMenuIds;
             });
 
-            titles.forEach(title => {
-                let next = title.nextElementSibling;
-                let hasVisible = false;
-                while (next && !next.classList.contains('menu-title')) {
-                    if (next.style.display !== 'none') {
-                        hasVisible = true;
-                        break;
+            fetch('api/menu-order.php?action=save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ groups, menus, submenus })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('Menü sırası kaydedildi');
                     }
-                    next = next.nextElementSibling;
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast(data.message || 'Sıralama kaydedilemedi', true);
+                    }
                 }
-                title.style.display = hasVisible ? '' : 'none';
+            })
+            .catch(err => {
+                console.error('Menu save error:', err);
             });
-        });
+        }
+
+        // 3. Varsayılan Menü Sırasına Sıfırlama Butonu
+        const btnReset = document.getElementById('btn-reset-menu-order');
+        if (btnReset) {
+            btnReset.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const executeReset = () => {
+                    fetch('api/menu-order.php?action=reset', {
+                        method: 'POST'
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (typeof showToast === 'function') {
+                                showToast('Menü sırası varsayılana sıfırlandı. Sayfa yenileniyor...');
+                            }
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 600);
+                        } else {
+                            if (typeof showToast === 'function') {
+                                showToast(data.message || 'Sıfırlama başarısız oldu', true);
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Reset error:', err);
+                        if (typeof showToast === 'function') {
+                            showToast('Sunucu ile iletişim kurulamadı', true);
+                        }
+                    });
+                };
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Varsayılan Sıraya Dönülsün mü?',
+                        text: 'Özelleştirdiğiniz menü sırası sıfırlanacak ve sistemin varsayılan menü düzenine geri dönülecektir.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Evet, Sıfırla',
+                        cancelButtonText: 'Vazgeç',
+                        confirmButtonColor: '#1c84ee',
+                        cancelButtonColor: '#74788d'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            executeReset();
+                        }
+                    });
+                } else {
+                    if (confirm('Menü sıranız varsayılan haline döndürülecektir. Onaylıyor musunuz?')) {
+                        executeReset();
+                    }
+                }
+            });
+        }
+
+        // Sortable başlat
+        initMenuSortables();
     });
 </script>
 
@@ -883,7 +1451,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
         const toast = document.getElementById('fav-toast-notification');
         const toastText = document.getElementById('fav-toast-text');
 
-        let activeContextTarget = null; // { menuId, isFav, href, title }
+        let activeContextTarget = null;
         let toastTimeout = null;
 
         function showToast(message, isError = false) {
@@ -896,6 +1464,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 toast.classList.remove('show');
             }, 3000);
         }
+        window.showToast = showToast;
 
         function hideContextMenu() {
             if (ctxMenu) ctxMenu.style.display = 'none';
@@ -1054,7 +1623,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             const favoriteIds = (data.favorite_ids || []).map(id => parseInt(id, 10));
             const favoritesList = data.favorites || [];
 
-            // A. Update Sidebar Stars
+            // Update Sidebar Stars
             const allStarBtns = document.querySelectorAll('.star-btn');
             allStarBtns.forEach(star => {
                 const id = parseInt(star.getAttribute('data-id'), 10);
@@ -1078,7 +1647,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
             });
 
-            // B. Update Top Quick Favorites Bar
+            // Update Top Quick Favorites Bar
             const quickFavItems = document.getElementById('quick-fav-items');
             const emptyHint = document.getElementById('quick-fav-empty-hint');
             const currentUrlParams = new URLSearchParams(window.location.search);

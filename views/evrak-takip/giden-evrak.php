@@ -214,6 +214,7 @@ if ($record) {
             <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
                 <div><h5 class="mb-1 fw-bold"><?php echo $record ? 'Giden Evrak Düzenle' : 'Giden Evrak Ekle'; ?></h5><div class="text-muted small">Resmî yazı içeriğini ve evrak bilgilerini düzenleyin</div></div>
                 <div class="d-flex align-items-center gap-2">
+                    <?php if (!$kilitli): ?><button type="button" id="btnEvrakSablonlari" class="btn btn-outline-secondary"><i data-feather="copy" class="icon-xs me-1"></i> Şablonlar</button><?php endif; ?>
                     <button type="button" id="btnIcraUstYaziAc" class="btn btn-outline-success me-2"><i data-feather="file-plus" class="icon-xs me-1"></i> İcra Üst Yazısı</button>
                     <button type="button" id="btnAiTaslakAc" class="btn btn-outline-primary me-2"><i data-feather="zap" class="icon-xs me-1"></i> Yapay Zekâ ile Oluştur</button>
                     <?php if ($solLogoPath): ?><img src="<?php echo htmlspecialchars($solLogoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Sol logo" style="max-width:52px;max-height:45px;object-fit:contain" title="Sol Logo"><?php endif; ?>
@@ -482,6 +483,26 @@ window.gidenGelenEvraklarMap = <?php echo json_encode($gelenEvrakMap, JSON_UNESC
 window.gidenSigningUsersList = <?php echo json_encode($signingUsersList, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenInitialSelectedSigners = <?php echo json_encode($initialSelectedSigners, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 </script>
+
+<div class="modal fade" id="evrakSablonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 shadow">
+        <div class="modal-header"><div><h5 class="modal-title"><i data-feather="copy" class="icon-sm text-primary me-1"></i> Giden Evrak Şablonları</h5><div class="small text-muted mt-1">Tam evrak şablonunu yükleyin veya mevcut formu şablon olarak saklayın.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-7"><div id="evrakSablonListesi" class="list-group"><div class="text-center text-muted py-4">Şablonlar yükleniyor...</div></div></div>
+                <div class="col-md-5 border-start">
+                    <input type="hidden" id="evrakSablonId">
+                    <label for="evrakSablonAdi" class="form-label fw-semibold">Şablon adı</label>
+                    <input type="text" id="evrakSablonAdi" class="form-control" maxlength="150" placeholder="Örn. Personel görevlendirme yazısı">
+                    <div class="form-text mb-3">Tarih, evrak no, metin, muhatap, imzacılar ve ek dosyalar birlikte saklanır.</div>
+                    <button type="button" id="btnEvrakSablonKaydet" class="btn btn-primary w-100"><i data-feather="save" class="icon-xs me-1"></i> Mevcut Formu Şablon Olarak Kaydet</button>
+                    <button type="button" id="btnEvrakSablonYeni" class="btn btn-light w-100 mt-2">Yeni şablon adı gir</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button></div>
+    </div></div>
+</div>
 
 <div id="evrakAiContextMenu" class="dropdown-menu shadow border-0 p-1">
     <button type="button" id="btnAiSecimDuzenleAc" class="dropdown-item rounded"><i class="bx bx-magic-wand text-primary me-2"></i>Yapay Zekâ ile Düzenle</button>

@@ -69,6 +69,9 @@ function getUserModal(id = 0) {
               }).trigger("change.select2-summary"); // Initial call
           }
       });
+
+      // İzin onay sırası görünürlük durumu
+      toggleIzinOnaySirasi();
     },
   ).fail(function () {
     $(".user-modal-content").html(
@@ -78,11 +81,46 @@ function getUserModal(id = 0) {
   $("#userModal").modal("show");
 }
 
+function toggleIzinOnaySirasi() {
+  var val = $("#izin_onayi_yapacakmi").val();
+  var $input = $("input[name='izin_onay_sirasi']");
+  if (val === "Evet") {
+    $input.prop("disabled", false);
+    $("#izinOnaySirasiWrapper").css("opacity", "1");
+  } else {
+    $input.prop("disabled", true).val("");
+    $("#izinOnaySirasiWrapper").css("opacity", "0.45");
+  }
+}
+
+$(document).on("change", "#izin_onayi_yapacakmi", function () {
+  toggleIzinOnaySirasi();
+});
+
+// Şifre göster / gizle butonu
+$(document).on("click", ".btn-toggle-password", function (e) {
+  e.preventDefault();
+  var $input = $(this).closest(".password-field-wrapper").find("input[name='password']");
+  var $icon = $(this).find("i");
+  if ($input.attr("type") === "password") {
+    $input.attr("type", "text");
+    $icon.removeClass("mdi-eye-outline").addClass("mdi-eye-off-outline");
+  } else {
+    $input.attr("type", "password");
+    $icon.removeClass("mdi-eye-off-outline").addClass("mdi-eye-outline");
+  }
+});
+
+// Bildirim kartları tıklandığında aktiflik sınıfını güncelle
+$(document).on("change", ".notif-checkbox", function () {
+  var isChecked = $(this).is(":checked");
+  $(this).closest(".notification-tile").toggleClass("is-active", isChecked);
+});
+
 $(document).on("click", "#userSaveBtn", function () {
   var form = $("#userForm");
   var userId = form.find("input[name='user_id']").val();
   var isUpdateMode = userId && userId != 0;
-  var passwordField = form.find("input[name='password']");
 
   form.validate({
     rules: {
@@ -125,9 +163,6 @@ $(document).on("click", "#userSaveBtn", function () {
       gorevi: {
         required: true,
       },
-      unvani: {
-        required: true,
-      },
     },
     messages: {
       user_name: {
@@ -159,9 +194,6 @@ $(document).on("click", "#userSaveBtn", function () {
       },
       gorevi: {
         required: "Görevi zorunludur.",
-      },
-      unvani: {
-        required: "Unvanı zorunludur.",
       },
     },
   });
