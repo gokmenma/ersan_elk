@@ -139,7 +139,7 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
                     (function() {
                         try {
                             if (localStorage.getItem("evrak_ozet_kapali") === "1") {
-                                document.write(\x27<style id="evrak-ozet-preload-style">#evrakOzetSatir{max-height:0!important;opacity:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden!important;pointer-events:none!important;}</style>\x27);
+                                document.documentElement.classList.add("evrak-ozet-baslangic-kapali");
                             }
                         } catch (e) {}
                     })();
@@ -662,13 +662,15 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
         transition: max-height .28s ease, opacity .2s ease, margin .28s ease;
     }
 
+    html.evrak-ozet-baslangic-kapali #evrakOzetSatir,
     .evrak-ozet-satir.evrak-ozet-kapali {
-        max-height: 0;
-        opacity: 0;
+        max-height: 0 !important;
+        opacity: 0 !important;
         margin-bottom: 0 !important;
         padding-top: 0 !important;
         padding-bottom: 0 !important;
-        pointer-events: none;
+        overflow: hidden !important;
+        pointer-events: none !important;
     }
 
     .evrak-ozet-toggle {
@@ -696,6 +698,7 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
         transition: transform .25s ease;
     }
 
+    html.evrak-ozet-baslangic-kapali #btnEvrakOzetToggle i,
     .evrak-ozet-toggle.evrak-donuk i {
         transform: rotate(180deg);
     }

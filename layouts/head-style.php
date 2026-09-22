@@ -24,6 +24,13 @@
             if (value) applyAttribute(attr, value);
         });
 
+        // Synchronously read evrak summary cards state before render
+        try {
+            if (localStorage.getItem('evrak_ozet_kapali') === '1') {
+                document.documentElement.classList.add('evrak-ozet-baslangic-kapali');
+            }
+        } catch (e) {}
+
         // Synchronously apply custom primary color CSS variables
         const customPrimary = localStorage.getItem('custom-primary-color');
         if (customPrimary) {

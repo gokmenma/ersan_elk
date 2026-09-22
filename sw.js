@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "yonetici-pwa-v10";
+const CACHE_NAME = "yonetici-pwa-v11";
 const OFFLINE_URL = new URL("offline-admin.html", self.registration.scope).href;
 
 // Önbelleğe alınacak dosyalar

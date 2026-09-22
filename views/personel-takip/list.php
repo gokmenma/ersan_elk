@@ -36,7 +36,7 @@ foreach ($dashboardPersoneller as $dp) {
 ?>
 
 <!-- Leaflet CSS & ApexCharts CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="assets/libs/leaflet/leaflet.css" />
 <link rel="stylesheet" href="assets/libs/apexcharts/apexcharts.css" />
 
 <div class="container-fluid">
@@ -944,7 +944,7 @@ foreach ($dashboardPersoneller as $dp) {
 </style>
 
 <!-- Leaflet JS & ApexCharts JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/libs/leaflet/leaflet.js"></script>
 <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 
 <script>

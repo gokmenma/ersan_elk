@@ -906,10 +906,8 @@ $(document).ready(function () {
     dugme.toggleClass("evrak-donuk", kapali)
       .attr("title", kapali ? "Özet kartlarını göster" : "Özet kartlarını gizle");
 
-    const preloadStyle = document.getElementById("evrak-ozet-preload-style");
-    if (preloadStyle) {
-      preloadStyle.remove();
-    }
+    // Sayfa başındaki erken gizleme sınıfını kaldırarak kontrolü kalıcı CSS sınıflarına devret
+    document.documentElement.classList.remove("evrak-ozet-baslangic-kapali");
   }
 
   $(document).on("click", "#btnEvrakOzetToggle", function (e) {
@@ -926,9 +924,7 @@ $(document).ready(function () {
     try {
       kapali = localStorage.getItem(EVRAK_OZET_SAKLI_ANAHTAR) === "1";
     } catch (e) { /* yoksay */ }
-    if (kapali) {
-      evrakOzetGorunumUygula(true, false);
-    }
+    evrakOzetGorunumUygula(kapali, false);
   })();
 
   $("#btnRefresh").on("click", function () { location.reload(); });
