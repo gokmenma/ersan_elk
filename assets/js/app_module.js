@@ -481,8 +481,106 @@ File: Main Js File
         themeMode: "cyan",
         layoutMode: "dark",
         fontFamily: "Inter"
+      },
+      "ocean-deep": {
+        name: "Okyanus",
+        topbarColor: "#0284c7",
+        sidebarColor: "#0f172a",
+        primaryColor: "#0284c7",
+        themeMode: "cyan",
+        layoutMode: "light",
+        fontFamily: "Plus Jakarta Sans"
+      },
+      "sunset-amber": {
+        name: "Kehribar",
+        topbarColor: "#f59e0b",
+        sidebarColor: "#1c1917",
+        primaryColor: "#f97316",
+        themeMode: "orange",
+        layoutMode: "light",
+        fontFamily: "Montserrat"
+      },
+      "forest-moss": {
+        name: "Orman Yeşili",
+        topbarColor: "#059669",
+        sidebarColor: "#064e3b",
+        primaryColor: "#10b981",
+        themeMode: "emerald",
+        layoutMode: "light",
+        fontFamily: "Manrope"
+      },
+      "cyber-violet": {
+        name: "Siber Mor",
+        topbarColor: "#7c3aed",
+        sidebarColor: "#180d38",
+        primaryColor: "#8b5cf6",
+        themeMode: "purple",
+        layoutMode: "light",
+        fontFamily: "Space Grotesk"
+      },
+      "nordic-slate": {
+        name: "İskandinav Gri",
+        topbarColor: "#475569",
+        sidebarColor: "#1e293b",
+        primaryColor: "#64748b",
+        themeMode: "slate",
+        layoutMode: "light",
+        fontFamily: "DM Sans"
+      },
+      "ruby-dark": {
+        name: "Yakut Gece",
+        topbarColor: "#9f1239",
+        sidebarColor: "#1f0a10",
+        primaryColor: "#e11d48",
+        themeMode: "rose",
+        layoutMode: "light",
+        fontFamily: "Roboto"
+      },
+      "mint-fresh": {
+        name: "Nane Ferahlığı",
+        topbarColor: "#0d9488",
+        sidebarColor: "#132a26",
+        primaryColor: "#0d9488",
+        themeMode: "teal",
+        layoutMode: "light",
+        fontFamily: "Lexend"
+      },
+      "mocha-gold": {
+        name: "Kahve Bronz",
+        topbarColor: "#78350f",
+        sidebarColor: "#271406",
+        primaryColor: "#d97706",
+        themeMode: "ersan",
+        layoutMode: "light",
+        fontFamily: "Nunito"
       }
     };
+
+    const fontRadioMap = {
+      "Geist": "font-geist",
+      "Inter": "font-inter",
+      "Outfit": "font-outfit",
+      "Poppins": "font-poppins",
+      "Plus Jakarta Sans": "font-jakarta",
+      "Montserrat": "font-montserrat",
+      "Roboto": "font-roboto",
+      "Manrope": "font-manrope",
+      "DM Sans": "font-dmsans",
+      "Space Grotesk": "font-spacegrotesk",
+      "Lexend": "font-lexend",
+      "Nunito": "font-nunito"
+    };
+
+    function applyFontFamily(fontName) {
+      if (!fontName) return;
+      html.setAttribute("data-font-family", fontName);
+      localStorage.setItem("data-font-family", fontName);
+      $(".font-preset-card").removeClass("active");
+      $(`.font-preset-card[data-font="${fontName}"]`).addClass("active");
+      if (fontRadioMap[fontName]) {
+        updateRadio(fontRadioMap[fontName]);
+      }
+    }
 
     function applyPresetTheme(presetKey, isInitial) {
       const preset = THEME_PRESETS[presetKey];
@@ -494,19 +592,7 @@ File: Main Js File
       updateRadio("layout-mode-" + preset.layoutMode);
 
       // 2. Font Family
-      html.setAttribute("data-font-family", preset.fontFamily);
-      localStorage.setItem("data-font-family", preset.fontFamily);
-      const fontRadioMap = {
-        "Geist": "font-geist",
-        "Inter": "font-inter",
-        "Outfit": "font-outfit",
-        "Poppins": "font-poppins",
-        "Plus Jakarta Sans": "font-jakarta",
-        "Lexend": "font-lexend"
-      };
-      if (fontRadioMap[preset.fontFamily]) {
-        updateRadio(fontRadioMap[preset.fontFamily]);
-      }
+      applyFontFamily(preset.fontFamily);
 
       // 3. Primary / Theme Color
       if (preset.primaryColor.startsWith("#")) {
@@ -573,6 +659,14 @@ File: Main Js File
       const presetKey = $(this).data("preset");
       if (presetKey) {
         applyPresetTheme(presetKey, false);
+      }
+    });
+
+    // Font card click listener
+    $(document).on("click", ".font-preset-card", function () {
+      const fontName = $(this).data("font");
+      if (fontName) {
+        applyFontFamily(fontName);
       }
     });
 
@@ -654,19 +748,8 @@ File: Main Js File
       updateRadio("theme-default");
     }
 
-    if (html.getAttribute("data-font-family") == "Outfit") {
-      updateRadio("font-outfit");
-    } else if (html.getAttribute("data-font-family") == "Poppins") {
-      updateRadio("font-poppins");
-    } else if (html.getAttribute("data-font-family") == "Plus Jakarta Sans") {
-      updateRadio("font-jakarta");
-    } else if (html.getAttribute("data-font-family") == "Lexend") {
-      updateRadio("font-lexend");
-    } else if (html.getAttribute("data-font-family") == "Inter") {
-      updateRadio("font-inter");
-    } else {
-      updateRadio("font-geist");
-    }
+    const currentSavedFont = html.getAttribute("data-font-family") || localStorage.getItem("data-font-family") || "Geist";
+    applyFontFamily(currentSavedFont);
 
     (html.hasAttribute("data-bs-theme") &&
       html.getAttribute("data-bs-theme") == "dark") ||
@@ -901,8 +984,7 @@ File: Main Js File
     // on font family change
     $("input[name='font-family']").on("change", function () {
       var val = $(this).val();
-      document.documentElement.setAttribute("data-font-family", val);
-      localStorage.setItem("data-font-family", val);
+      applyFontFamily(val);
     });
 
     // on custom theme picker change

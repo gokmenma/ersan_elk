@@ -743,340 +743,88 @@ body[data-sidebar="brand"] .navbar-brand-box {
 }
 
 /* Dynamic Font Families */
-html[data-font-family="Inter"],
-[data-font-family="Inter"] {
+html[data-font-family="Inter"], [data-font-family="Inter"], [data-font-family="Inter"] body, [data-font-family="Inter"] input, [data-font-family="Inter"] button, [data-font-family="Inter"] select, [data-font-family="Inter"] textarea, [data-font-family="Inter"] .btn, [data-font-family="Inter"] .form-control, [data-font-family="Inter"] .form-select, [data-font-family="Inter"] .table, [data-font-family="Inter"] .modal, [data-font-family="Inter"] .card, [data-font-family="Inter"] .vertical-menu, [data-font-family="Inter"] #sidebar-menu, [data-font-family="Inter"] #page-topbar, [data-font-family="Inter"] .main-content, [data-font-family="Inter"] .select2-container, [data-font-family="Inter"] .select2-dropdown, [data-font-family="Inter"] .swal2-popup, [data-font-family="Inter"] .flatpickr-calendar, [data-font-family="Inter"] h1, [data-font-family="Inter"] h2, [data-font-family="Inter"] h3, [data-font-family="Inter"] h4, [data-font-family="Inter"] h5, [data-font-family="Inter"] h6 {
   --bs-font-sans-serif: "Inter", sans-serif !important;
   --bs-body-font-family: "Inter", sans-serif !important;
   --sidebar-font: "Inter", sans-serif !important;
   font-family: "Inter", sans-serif !important;
 }
-[data-font-family="Inter"] body,
-[data-font-family="Inter"] .vertical-menu,
-[data-font-family="Inter"] #sidebar-menu,
-[data-font-family="Inter"] #sidebar-menu ul li a,
-[data-font-family="Inter"] #sidebar-menu .menu-title,
-[data-font-family="Inter"] .brand-name,
-[data-font-family="Inter"] .brand-sub,
-[data-font-family="Inter"] #page-topbar,
-[data-font-family="Inter"] .navbar-brand-box,
-[data-font-family="Inter"] .main-content,
-[data-font-family="Inter"] .page-content,
-[data-font-family="Inter"] input,
-[data-font-family="Inter"] button,
-[data-font-family="Inter"] select,
-[data-font-family="Inter"] textarea,
-[data-font-family="Inter"] .form-control,
-[data-font-family="Inter"] .form-select,
-[data-font-family="Inter"] .btn,
-[data-font-family="Inter"] .dropdown-menu,
-[data-font-family="Inter"] .dropdown-item,
-[data-font-family="Inter"] .modal,
-[data-font-family="Inter"] .modal-title,
-[data-font-family="Inter"] .modal-body,
-[data-font-family="Inter"] .card,
-[data-font-family="Inter"] .card-title,
-[data-font-family="Inter"] .table,
-[data-font-family="Inter"] .dataTables_wrapper,
-[data-font-family="Inter"] .select2-container,
-[data-font-family="Inter"] .select2-dropdown,
-[data-font-family="Inter"] .swal2-popup,
-[data-font-family="Inter"] .flatpickr-calendar,
-[data-font-family="Inter"] .nav-tabs,
-[data-font-family="Inter"] .nav-link,
-[data-font-family="Inter"] .badge,
-[data-font-family="Inter"] .h1,
-[data-font-family="Inter"] .h2,
-[data-font-family="Inter"] .h3,
-[data-font-family="Inter"] .h4,
-[data-font-family="Inter"] .h5,
-[data-font-family="Inter"] .h6,
-[data-font-family="Inter"] h1,
-[data-font-family="Inter"] h2,
-[data-font-family="Inter"] h3,
-[data-font-family="Inter"] h4,
-[data-font-family="Inter"] h5,
-[data-font-family="Inter"] h6 {
-  font-family: "Inter", sans-serif !important;
-}
 
-html[data-font-family="Outfit"],
-[data-font-family="Outfit"] {
+html[data-font-family="Outfit"], [data-font-family="Outfit"], [data-font-family="Outfit"] body, [data-font-family="Outfit"] input, [data-font-family="Outfit"] button, [data-font-family="Outfit"] select, [data-font-family="Outfit"] textarea, [data-font-family="Outfit"] .btn, [data-font-family="Outfit"] .form-control, [data-font-family="Outfit"] .form-select, [data-font-family="Outfit"] .table, [data-font-family="Outfit"] .modal, [data-font-family="Outfit"] .card, [data-font-family="Outfit"] .vertical-menu, [data-font-family="Outfit"] #sidebar-menu, [data-font-family="Outfit"] #page-topbar, [data-font-family="Outfit"] .main-content, [data-font-family="Outfit"] .select2-container, [data-font-family="Outfit"] .select2-dropdown, [data-font-family="Outfit"] .swal2-popup, [data-font-family="Outfit"] .flatpickr-calendar, [data-font-family="Outfit"] h1, [data-font-family="Outfit"] h2, [data-font-family="Outfit"] h3, [data-font-family="Outfit"] h4, [data-font-family="Outfit"] h5, [data-font-family="Outfit"] h6 {
   --bs-font-sans-serif: "Outfit", sans-serif !important;
   --bs-body-font-family: "Outfit", sans-serif !important;
   --sidebar-font: "Outfit", sans-serif !important;
   font-family: "Outfit", sans-serif !important;
 }
-[data-font-family="Outfit"] body,
-[data-font-family="Outfit"] .vertical-menu,
-[data-font-family="Outfit"] #sidebar-menu,
-[data-font-family="Outfit"] #sidebar-menu ul li a,
-[data-font-family="Outfit"] #sidebar-menu .menu-title,
-[data-font-family="Outfit"] .brand-name,
-[data-font-family="Outfit"] .brand-sub,
-[data-font-family="Outfit"] #page-topbar,
-[data-font-family="Outfit"] .navbar-brand-box,
-[data-font-family="Outfit"] .main-content,
-[data-font-family="Outfit"] .page-content,
-[data-font-family="Outfit"] input,
-[data-font-family="Outfit"] button,
-[data-font-family="Outfit"] select,
-[data-font-family="Outfit"] textarea,
-[data-font-family="Outfit"] .form-control,
-[data-font-family="Outfit"] .form-select,
-[data-font-family="Outfit"] .btn,
-[data-font-family="Outfit"] .dropdown-menu,
-[data-font-family="Outfit"] .dropdown-item,
-[data-font-family="Outfit"] .modal,
-[data-font-family="Outfit"] .modal-title,
-[data-font-family="Outfit"] .modal-body,
-[data-font-family="Outfit"] .card,
-[data-font-family="Outfit"] .card-title,
-[data-font-family="Outfit"] .table,
-[data-font-family="Outfit"] .dataTables_wrapper,
-[data-font-family="Outfit"] .select2-container,
-[data-font-family="Outfit"] .select2-dropdown,
-[data-font-family="Outfit"] .swal2-popup,
-[data-font-family="Outfit"] .flatpickr-calendar,
-[data-font-family="Outfit"] .nav-tabs,
-[data-font-family="Outfit"] .nav-link,
-[data-font-family="Outfit"] .badge,
-[data-font-family="Outfit"] .h1,
-[data-font-family="Outfit"] .h2,
-[data-font-family="Outfit"] .h3,
-[data-font-family="Outfit"] .h4,
-[data-font-family="Outfit"] .h5,
-[data-font-family="Outfit"] .h6,
-[data-font-family="Outfit"] h1,
-[data-font-family="Outfit"] h2,
-[data-font-family="Outfit"] h3,
-[data-font-family="Outfit"] h4,
-[data-font-family="Outfit"] h5,
-[data-font-family="Outfit"] h6 {
-  font-family: "Outfit", sans-serif !important;
-}
 
-html[data-font-family="Poppins"],
-[data-font-family="Poppins"] {
+html[data-font-family="Poppins"], [data-font-family="Poppins"], [data-font-family="Poppins"] body, [data-font-family="Poppins"] input, [data-font-family="Poppins"] button, [data-font-family="Poppins"] select, [data-font-family="Poppins"] textarea, [data-font-family="Poppins"] .btn, [data-font-family="Poppins"] .form-control, [data-font-family="Poppins"] .form-select, [data-font-family="Poppins"] .table, [data-font-family="Poppins"] .modal, [data-font-family="Poppins"] .card, [data-font-family="Poppins"] .vertical-menu, [data-font-family="Poppins"] #sidebar-menu, [data-font-family="Poppins"] #page-topbar, [data-font-family="Poppins"] .main-content, [data-font-family="Poppins"] .select2-container, [data-font-family="Poppins"] .select2-dropdown, [data-font-family="Poppins"] .swal2-popup, [data-font-family="Poppins"] .flatpickr-calendar, [data-font-family="Poppins"] h1, [data-font-family="Poppins"] h2, [data-font-family="Poppins"] h3, [data-font-family="Poppins"] h4, [data-font-family="Poppins"] h5, [data-font-family="Poppins"] h6 {
   --bs-font-sans-serif: "Poppins", sans-serif !important;
   --bs-body-font-family: "Poppins", sans-serif !important;
   --sidebar-font: "Poppins", sans-serif !important;
   font-family: "Poppins", sans-serif !important;
 }
-[data-font-family="Poppins"] body,
-[data-font-family="Poppins"] .vertical-menu,
-[data-font-family="Poppins"] #sidebar-menu,
-[data-font-family="Poppins"] #sidebar-menu ul li a,
-[data-font-family="Poppins"] #sidebar-menu .menu-title,
-[data-font-family="Poppins"] .brand-name,
-[data-font-family="Poppins"] .brand-sub,
-[data-font-family="Poppins"] #page-topbar,
-[data-font-family="Poppins"] .navbar-brand-box,
-[data-font-family="Poppins"] .main-content,
-[data-font-family="Poppins"] .page-content,
-[data-font-family="Poppins"] input,
-[data-font-family="Poppins"] button,
-[data-font-family="Poppins"] select,
-[data-font-family="Poppins"] textarea,
-[data-font-family="Poppins"] .form-control,
-[data-font-family="Poppins"] .form-select,
-[data-font-family="Poppins"] .btn,
-[data-font-family="Poppins"] .dropdown-menu,
-[data-font-family="Poppins"] .dropdown-item,
-[data-font-family="Poppins"] .modal,
-[data-font-family="Poppins"] .modal-title,
-[data-font-family="Poppins"] .modal-body,
-[data-font-family="Poppins"] .card,
-[data-font-family="Poppins"] .card-title,
-[data-font-family="Poppins"] .table,
-[data-font-family="Poppins"] .dataTables_wrapper,
-[data-font-family="Poppins"] .select2-container,
-[data-font-family="Poppins"] .select2-dropdown,
-[data-font-family="Poppins"] .swal2-popup,
-[data-font-family="Poppins"] .flatpickr-calendar,
-[data-font-family="Poppins"] .nav-tabs,
-[data-font-family="Poppins"] .nav-link,
-[data-font-family="Poppins"] .badge,
-[data-font-family="Poppins"] .h1,
-[data-font-family="Poppins"] .h2,
-[data-font-family="Poppins"] .h3,
-[data-font-family="Poppins"] .h4,
-[data-font-family="Poppins"] .h5,
-[data-font-family="Poppins"] .h6,
-[data-font-family="Poppins"] h1,
-[data-font-family="Poppins"] h2,
-[data-font-family="Poppins"] h3,
-[data-font-family="Poppins"] h4,
-[data-font-family="Poppins"] h5,
-[data-font-family="Poppins"] h6 {
-  font-family: "Poppins", sans-serif !important;
-}
 
-html[data-font-family="Plus Jakarta Sans"],
-[data-font-family="Plus Jakarta Sans"] {
+html[data-font-family="Plus Jakarta Sans"], [data-font-family="Plus Jakarta Sans"], [data-font-family="Plus Jakarta Sans"] body, [data-font-family="Plus Jakarta Sans"] input, [data-font-family="Plus Jakarta Sans"] button, [data-font-family="Plus Jakarta Sans"] select, [data-font-family="Plus Jakarta Sans"] textarea, [data-font-family="Plus Jakarta Sans"] .btn, [data-font-family="Plus Jakarta Sans"] .form-control, [data-font-family="Plus Jakarta Sans"] .form-select, [data-font-family="Plus Jakarta Sans"] .table, [data-font-family="Plus Jakarta Sans"] .modal, [data-font-family="Plus Jakarta Sans"] .card, [data-font-family="Plus Jakarta Sans"] .vertical-menu, [data-font-family="Plus Jakarta Sans"] #sidebar-menu, [data-font-family="Plus Jakarta Sans"] #page-topbar, [data-font-family="Plus Jakarta Sans"] .main-content, [data-font-family="Plus Jakarta Sans"] .select2-container, [data-font-family="Plus Jakarta Sans"] .select2-dropdown, [data-font-family="Plus Jakarta Sans"] .swal2-popup, [data-font-family="Plus Jakarta Sans"] .flatpickr-calendar, [data-font-family="Plus Jakarta Sans"] h1, [data-font-family="Plus Jakarta Sans"] h2, [data-font-family="Plus Jakarta Sans"] h3, [data-font-family="Plus Jakarta Sans"] h4, [data-font-family="Plus Jakarta Sans"] h5, [data-font-family="Plus Jakarta Sans"] h6 {
   --bs-font-sans-serif: "Plus Jakarta Sans", sans-serif !important;
   --bs-body-font-family: "Plus Jakarta Sans", sans-serif !important;
   --sidebar-font: "Plus Jakarta Sans", sans-serif !important;
   font-family: "Plus Jakarta Sans", sans-serif !important;
 }
-[data-font-family="Plus Jakarta Sans"] body,
-[data-font-family="Plus Jakarta Sans"] .vertical-menu,
-[data-font-family="Plus Jakarta Sans"] #sidebar-menu,
-[data-font-family="Plus Jakarta Sans"] #sidebar-menu ul li a,
-[data-font-family="Plus Jakarta Sans"] #sidebar-menu .menu-title,
-[data-font-family="Plus Jakarta Sans"] .brand-name,
-[data-font-family="Plus Jakarta Sans"] .brand-sub,
-[data-font-family="Plus Jakarta Sans"] #page-topbar,
-[data-font-family="Plus Jakarta Sans"] .navbar-brand-box,
-[data-font-family="Plus Jakarta Sans"] .main-content,
-[data-font-family="Plus Jakarta Sans"] .page-content,
-[data-font-family="Plus Jakarta Sans"] input,
-[data-font-family="Plus Jakarta Sans"] button,
-[data-font-family="Plus Jakarta Sans"] select,
-[data-font-family="Plus Jakarta Sans"] textarea,
-[data-font-family="Plus Jakarta Sans"] .form-control,
-[data-font-family="Plus Jakarta Sans"] .form-select,
-[data-font-family="Plus Jakarta Sans"] .btn,
-[data-font-family="Plus Jakarta Sans"] .dropdown-menu,
-[data-font-family="Plus Jakarta Sans"] .dropdown-item,
-[data-font-family="Plus Jakarta Sans"] .modal,
-[data-font-family="Plus Jakarta Sans"] .modal-title,
-[data-font-family="Plus Jakarta Sans"] .modal-body,
-[data-font-family="Plus Jakarta Sans"] .card,
-[data-font-family="Plus Jakarta Sans"] .card-title,
-[data-font-family="Plus Jakarta Sans"] .table,
-[data-font-family="Plus Jakarta Sans"] .dataTables_wrapper,
-[data-font-family="Plus Jakarta Sans"] .select2-container,
-[data-font-family="Plus Jakarta Sans"] .select2-dropdown,
-[data-font-family="Plus Jakarta Sans"] .swal2-popup,
-[data-font-family="Plus Jakarta Sans"] .flatpickr-calendar,
-[data-font-family="Plus Jakarta Sans"] .nav-tabs,
-[data-font-family="Plus Jakarta Sans"] .nav-link,
-[data-font-family="Plus Jakarta Sans"] .badge,
-[data-font-family="Plus Jakarta Sans"] .h1,
-[data-font-family="Plus Jakarta Sans"] .h2,
-[data-font-family="Plus Jakarta Sans"] .h3,
-[data-font-family="Plus Jakarta Sans"] .h4,
-[data-font-family="Plus Jakarta Sans"] .h5,
-[data-font-family="Plus Jakarta Sans"] .h6,
-[data-font-family="Plus Jakarta Sans"] h1,
-[data-font-family="Plus Jakarta Sans"] h2,
-[data-font-family="Plus Jakarta Sans"] h3,
-[data-font-family="Plus Jakarta Sans"] h4,
-[data-font-family="Plus Jakarta Sans"] h5,
-[data-font-family="Plus Jakarta Sans"] h6 {
-  font-family: "Plus Jakarta Sans", sans-serif !important;
-}
 
-html[data-font-family="Lexend"],
-[data-font-family="Lexend"] {
+html[data-font-family="Lexend"], [data-font-family="Lexend"], [data-font-family="Lexend"] body, [data-font-family="Lexend"] input, [data-font-family="Lexend"] button, [data-font-family="Lexend"] select, [data-font-family="Lexend"] textarea, [data-font-family="Lexend"] .btn, [data-font-family="Lexend"] .form-control, [data-font-family="Lexend"] .form-select, [data-font-family="Lexend"] .table, [data-font-family="Lexend"] .modal, [data-font-family="Lexend"] .card, [data-font-family="Lexend"] .vertical-menu, [data-font-family="Lexend"] #sidebar-menu, [data-font-family="Lexend"] #page-topbar, [data-font-family="Lexend"] .main-content, [data-font-family="Lexend"] .select2-container, [data-font-family="Lexend"] .select2-dropdown, [data-font-family="Lexend"] .swal2-popup, [data-font-family="Lexend"] .flatpickr-calendar, [data-font-family="Lexend"] h1, [data-font-family="Lexend"] h2, [data-font-family="Lexend"] h3, [data-font-family="Lexend"] h4, [data-font-family="Lexend"] h5, [data-font-family="Lexend"] h6 {
   --bs-font-sans-serif: "Lexend", sans-serif !important;
   --bs-body-font-family: "Lexend", sans-serif !important;
   --sidebar-font: "Lexend", sans-serif !important;
   font-family: "Lexend", sans-serif !important;
 }
-[data-font-family="Lexend"] body,
-[data-font-family="Lexend"] .vertical-menu,
-[data-font-family="Lexend"] #sidebar-menu,
-[data-font-family="Lexend"] #sidebar-menu ul li a,
-[data-font-family="Lexend"] #sidebar-menu .menu-title,
-[data-font-family="Lexend"] .brand-name,
-[data-font-family="Lexend"] .brand-sub,
-[data-font-family="Lexend"] #page-topbar,
-[data-font-family="Lexend"] .navbar-brand-box,
-[data-font-family="Lexend"] .main-content,
-[data-font-family="Lexend"] .page-content,
-[data-font-family="Lexend"] input,
-[data-font-family="Lexend"] button,
-[data-font-family="Lexend"] select,
-[data-font-family="Lexend"] textarea,
-[data-font-family="Lexend"] .form-control,
-[data-font-family="Lexend"] .form-select,
-[data-font-family="Lexend"] .btn,
-[data-font-family="Lexend"] .dropdown-menu,
-[data-font-family="Lexend"] .dropdown-item,
-[data-font-family="Lexend"] .modal,
-[data-font-family="Lexend"] .modal-title,
-[data-font-family="Lexend"] .modal-body,
-[data-font-family="Lexend"] .card,
-[data-font-family="Lexend"] .card-title,
-[data-font-family="Lexend"] .table,
-[data-font-family="Lexend"] .dataTables_wrapper,
-[data-font-family="Lexend"] .select2-container,
-[data-font-family="Lexend"] .select2-dropdown,
-[data-font-family="Lexend"] .swal2-popup,
-[data-font-family="Lexend"] .flatpickr-calendar,
-[data-font-family="Lexend"] .nav-tabs,
-[data-font-family="Lexend"] .nav-link,
-[data-font-family="Lexend"] .badge,
-[data-font-family="Lexend"] .h1,
-[data-font-family="Lexend"] .h2,
-[data-font-family="Lexend"] .h3,
-[data-font-family="Lexend"] .h4,
-[data-font-family="Lexend"] .h5,
-[data-font-family="Lexend"] .h6,
-[data-font-family="Lexend"] h1,
-[data-font-family="Lexend"] h2,
-[data-font-family="Lexend"] h3,
-[data-font-family="Lexend"] h4,
-[data-font-family="Lexend"] h5,
-[data-font-family="Lexend"] h6 {
-  font-family: "Lexend", sans-serif !important;
-}
 
-html[data-font-family="Geist"],
-[data-font-family="Geist"] {
+html[data-font-family="Geist"], [data-font-family="Geist"], [data-font-family="Geist"] body, [data-font-family="Geist"] input, [data-font-family="Geist"] button, [data-font-family="Geist"] select, [data-font-family="Geist"] textarea, [data-font-family="Geist"] .btn, [data-font-family="Geist"] .form-control, [data-font-family="Geist"] .form-select, [data-font-family="Geist"] .table, [data-font-family="Geist"] .modal, [data-font-family="Geist"] .card, [data-font-family="Geist"] .vertical-menu, [data-font-family="Geist"] #sidebar-menu, [data-font-family="Geist"] #page-topbar, [data-font-family="Geist"] .main-content, [data-font-family="Geist"] .select2-container, [data-font-family="Geist"] .select2-dropdown, [data-font-family="Geist"] .swal2-popup, [data-font-family="Geist"] .flatpickr-calendar, [data-font-family="Geist"] h1, [data-font-family="Geist"] h2, [data-font-family="Geist"] h3, [data-font-family="Geist"] h4, [data-font-family="Geist"] h5, [data-font-family="Geist"] h6 {
   --bs-font-sans-serif: "Geist", sans-serif !important;
   --bs-body-font-family: "Geist", sans-serif !important;
   --sidebar-font: "Geist", sans-serif !important;
   font-family: "Geist", sans-serif !important;
 }
-[data-font-family="Geist"] body,
-[data-font-family="Geist"] .vertical-menu,
-[data-font-family="Geist"] #sidebar-menu,
-[data-font-family="Geist"] #sidebar-menu ul li a,
-[data-font-family="Geist"] #sidebar-menu .menu-title,
-[data-font-family="Geist"] .brand-name,
-[data-font-family="Geist"] .brand-sub,
-[data-font-family="Geist"] #page-topbar,
-[data-font-family="Geist"] .navbar-brand-box,
-[data-font-family="Geist"] .main-content,
-[data-font-family="Geist"] .page-content,
-[data-font-family="Geist"] input,
-[data-font-family="Geist"] button,
-[data-font-family="Geist"] select,
-[data-font-family="Geist"] textarea,
-[data-font-family="Geist"] .form-control,
-[data-font-family="Geist"] .form-select,
-[data-font-family="Geist"] .btn,
-[data-font-family="Geist"] .dropdown-menu,
-[data-font-family="Geist"] .dropdown-item,
-[data-font-family="Geist"] .modal,
-[data-font-family="Geist"] .modal-title,
-[data-font-family="Geist"] .modal-body,
-[data-font-family="Geist"] .card,
-[data-font-family="Geist"] .card-title,
-[data-font-family="Geist"] .table,
-[data-font-family="Geist"] .dataTables_wrapper,
-[data-font-family="Geist"] .select2-container,
-[data-font-family="Geist"] .select2-dropdown,
-[data-font-family="Geist"] .swal2-popup,
-[data-font-family="Geist"] .flatpickr-calendar,
-[data-font-family="Geist"] .nav-tabs,
-[data-font-family="Geist"] .nav-link,
-[data-font-family="Geist"] .badge,
-[data-font-family="Geist"] .h1,
-[data-font-family="Geist"] .h2,
-[data-font-family="Geist"] .h3,
-[data-font-family="Geist"] .h4,
-[data-font-family="Geist"] .h5,
-[data-font-family="Geist"] .h6,
-[data-font-family="Geist"] h1,
-[data-font-family="Geist"] h2,
-[data-font-family="Geist"] h3,
-[data-font-family="Geist"] h4,
-[data-font-family="Geist"] h5,
-[data-font-family="Geist"] h6 {
-  font-family: "Geist", sans-serif !important;
+
+html[data-font-family="Montserrat"], [data-font-family="Montserrat"], [data-font-family="Montserrat"] body, [data-font-family="Montserrat"] input, [data-font-family="Montserrat"] button, [data-font-family="Montserrat"] select, [data-font-family="Montserrat"] textarea, [data-font-family="Montserrat"] .btn, [data-font-family="Montserrat"] .form-control, [data-font-family="Montserrat"] .form-select, [data-font-family="Montserrat"] .table, [data-font-family="Montserrat"] .modal, [data-font-family="Montserrat"] .card, [data-font-family="Montserrat"] .vertical-menu, [data-font-family="Montserrat"] #sidebar-menu, [data-font-family="Montserrat"] #page-topbar, [data-font-family="Montserrat"] .main-content, [data-font-family="Montserrat"] .select2-container, [data-font-family="Montserrat"] .select2-dropdown, [data-font-family="Montserrat"] .swal2-popup, [data-font-family="Montserrat"] .flatpickr-calendar, [data-font-family="Montserrat"] h1, [data-font-family="Montserrat"] h2, [data-font-family="Montserrat"] h3, [data-font-family="Montserrat"] h4, [data-font-family="Montserrat"] h5, [data-font-family="Montserrat"] h6 {
+  --bs-font-sans-serif: "Montserrat", sans-serif !important;
+  --bs-body-font-family: "Montserrat", sans-serif !important;
+  --sidebar-font: "Montserrat", sans-serif !important;
+  font-family: "Montserrat", sans-serif !important;
+}
+
+html[data-font-family="Roboto"], [data-font-family="Roboto"], [data-font-family="Roboto"] body, [data-font-family="Roboto"] input, [data-font-family="Roboto"] button, [data-font-family="Roboto"] select, [data-font-family="Roboto"] textarea, [data-font-family="Roboto"] .btn, [data-font-family="Roboto"] .form-control, [data-font-family="Roboto"] .form-select, [data-font-family="Roboto"] .table, [data-font-family="Roboto"] .modal, [data-font-family="Roboto"] .card, [data-font-family="Roboto"] .vertical-menu, [data-font-family="Roboto"] #sidebar-menu, [data-font-family="Roboto"] #page-topbar, [data-font-family="Roboto"] .main-content, [data-font-family="Roboto"] .select2-container, [data-font-family="Roboto"] .select2-dropdown, [data-font-family="Roboto"] .swal2-popup, [data-font-family="Roboto"] .flatpickr-calendar, [data-font-family="Roboto"] h1, [data-font-family="Roboto"] h2, [data-font-family="Roboto"] h3, [data-font-family="Roboto"] h4, [data-font-family="Roboto"] h5, [data-font-family="Roboto"] h6 {
+  --bs-font-sans-serif: "Roboto", sans-serif !important;
+  --bs-body-font-family: "Roboto", sans-serif !important;
+  --sidebar-font: "Roboto", sans-serif !important;
+  font-family: "Roboto", sans-serif !important;
+}
+
+html[data-font-family="Manrope"], [data-font-family="Manrope"], [data-font-family="Manrope"] body, [data-font-family="Manrope"] input, [data-font-family="Manrope"] button, [data-font-family="Manrope"] select, [data-font-family="Manrope"] textarea, [data-font-family="Manrope"] .btn, [data-font-family="Manrope"] .form-control, [data-font-family="Manrope"] .form-select, [data-font-family="Manrope"] .table, [data-font-family="Manrope"] .modal, [data-font-family="Manrope"] .card, [data-font-family="Manrope"] .vertical-menu, [data-font-family="Manrope"] #sidebar-menu, [data-font-family="Manrope"] #page-topbar, [data-font-family="Manrope"] .main-content, [data-font-family="Manrope"] .select2-container, [data-font-family="Manrope"] .select2-dropdown, [data-font-family="Manrope"] .swal2-popup, [data-font-family="Manrope"] .flatpickr-calendar, [data-font-family="Manrope"] h1, [data-font-family="Manrope"] h2, [data-font-family="Manrope"] h3, [data-font-family="Manrope"] h4, [data-font-family="Manrope"] h5, [data-font-family="Manrope"] h6 {
+  --bs-font-sans-serif: "Manrope", sans-serif !important;
+  --bs-body-font-family: "Manrope", sans-serif !important;
+  --sidebar-font: "Manrope", sans-serif !important;
+  font-family: "Manrope", sans-serif !important;
+}
+
+html[data-font-family="DM Sans"], [data-font-family="DM Sans"], [data-font-family="DM Sans"] body, [data-font-family="DM Sans"] input, [data-font-family="DM Sans"] button, [data-font-family="DM Sans"] select, [data-font-family="DM Sans"] textarea, [data-font-family="DM Sans"] .btn, [data-font-family="DM Sans"] .form-control, [data-font-family="DM Sans"] .form-select, [data-font-family="DM Sans"] .table, [data-font-family="DM Sans"] .modal, [data-font-family="DM Sans"] .card, [data-font-family="DM Sans"] .vertical-menu, [data-font-family="DM Sans"] #sidebar-menu, [data-font-family="DM Sans"] #page-topbar, [data-font-family="DM Sans"] .main-content, [data-font-family="DM Sans"] .select2-container, [data-font-family="DM Sans"] .select2-dropdown, [data-font-family="DM Sans"] .swal2-popup, [data-font-family="DM Sans"] .flatpickr-calendar, [data-font-family="DM Sans"] h1, [data-font-family="DM Sans"] h2, [data-font-family="DM Sans"] h3, [data-font-family="DM Sans"] h4, [data-font-family="DM Sans"] h5, [data-font-family="DM Sans"] h6 {
+  --bs-font-sans-serif: "DM Sans", sans-serif !important;
+  --bs-body-font-family: "DM Sans", sans-serif !important;
+  --sidebar-font: "DM Sans", sans-serif !important;
+  font-family: "DM Sans", sans-serif !important;
+}
+
+html[data-font-family="Space Grotesk"], [data-font-family="Space Grotesk"], [data-font-family="Space Grotesk"] body, [data-font-family="Space Grotesk"] input, [data-font-family="Space Grotesk"] button, [data-font-family="Space Grotesk"] select, [data-font-family="Space Grotesk"] textarea, [data-font-family="Space Grotesk"] .btn, [data-font-family="Space Grotesk"] .form-control, [data-font-family="Space Grotesk"] .form-select, [data-font-family="Space Grotesk"] .table, [data-font-family="Space Grotesk"] .modal, [data-font-family="Space Grotesk"] .card, [data-font-family="Space Grotesk"] .vertical-menu, [data-font-family="Space Grotesk"] #sidebar-menu, [data-font-family="Space Grotesk"] #page-topbar, [data-font-family="Space Grotesk"] .main-content, [data-font-family="Space Grotesk"] .select2-container, [data-font-family="Space Grotesk"] .select2-dropdown, [data-font-family="Space Grotesk"] .swal2-popup, [data-font-family="Space Grotesk"] .flatpickr-calendar, [data-font-family="Space Grotesk"] h1, [data-font-family="Space Grotesk"] h2, [data-font-family="Space Grotesk"] h3, [data-font-family="Space Grotesk"] h4, [data-font-family="Space Grotesk"] h5, [data-font-family="Space Grotesk"] h6 {
+  --bs-font-sans-serif: "Space Grotesk", sans-serif !important;
+  --bs-body-font-family: "Space Grotesk", sans-serif !important;
+  --sidebar-font: "Space Grotesk", sans-serif !important;
+  font-family: "Space Grotesk", sans-serif !important;
+}
+
+html[data-font-family="Nunito"], [data-font-family="Nunito"], [data-font-family="Nunito"] body, [data-font-family="Nunito"] input, [data-font-family="Nunito"] button, [data-font-family="Nunito"] select, [data-font-family="Nunito"] textarea, [data-font-family="Nunito"] .btn, [data-font-family="Nunito"] .form-control, [data-font-family="Nunito"] .form-select, [data-font-family="Nunito"] .table, [data-font-family="Nunito"] .modal, [data-font-family="Nunito"] .card, [data-font-family="Nunito"] .vertical-menu, [data-font-family="Nunito"] #sidebar-menu, [data-font-family="Nunito"] #page-topbar, [data-font-family="Nunito"] .main-content, [data-font-family="Nunito"] .select2-container, [data-font-family="Nunito"] .select2-dropdown, [data-font-family="Nunito"] .swal2-popup, [data-font-family="Nunito"] .flatpickr-calendar, [data-font-family="Nunito"] h1, [data-font-family="Nunito"] h2, [data-font-family="Nunito"] h3, [data-font-family="Nunito"] h4, [data-font-family="Nunito"] h5, [data-font-family="Nunito"] h6 {
+  --bs-font-sans-serif: "Nunito", sans-serif !important;
+  --bs-body-font-family: "Nunito", sans-serif !important;
+  --sidebar-font: "Nunito", sans-serif !important;
+  font-family: "Nunito", sans-serif !important;
 }
 
 /* Header & Topbar Fixes */
@@ -1098,89 +846,289 @@ header#page-topbar .dropdown.show .header-item {
   color: #eff2f7 !important;
 }
 
-/* Theme Preset Cards */
+/* Right Sidebar Customizer Styles */
+.right-bar {
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.08);
+}
+
+.right-bar .rightbar-title {
+  padding: 1.1rem 1.25rem !important;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-card-bg, #ffffff);
+}
+
+.right-bar .right-bar-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e293b;
+  color: #ffffff !important;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border: none;
+}
+
+.right-bar .right-bar-close-btn:hover {
+  background: #0f172a;
+  transform: rotate(90deg);
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .right-bar .right-bar-close-btn {
+  background: #334155;
+}
+[data-bs-theme="dark"] .right-bar .right-bar-close-btn:hover {
+  background: #475569;
+}
+
+.badge-preset-action {
+  background-color: #f3e8ff !important;
+  color: #9333ea !important;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.badge-font-action {
+  background-color: #e0f2fe !important;
+  color: #0284c7 !important;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+[data-bs-theme="dark"] .badge-preset-action {
+  background-color: rgba(147, 51, 234, 0.2) !important;
+  color: #c084fc !important;
+}
+
+[data-bs-theme="dark"] .badge-font-action {
+  background-color: rgba(2, 132, 199, 0.2) !important;
+  color: #38bdf8 !important;
+}
+
+/* Theme Presets Container & Scrollable */
+.theme-preset-scrollable-container {
+  max-height: 290px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  padding-left: 2px;
+  padding-top: 2px;
+  margin-bottom: 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.theme-preset-scrollable-container::-webkit-scrollbar {
+  width: 5px;
+}
+
+.theme-preset-scrollable-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.theme-preset-scrollable-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.theme-preset-scrollable-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+[data-bs-theme="dark"] .theme-preset-scrollable-container {
+  scrollbar-color: #475569 transparent;
+}
+
+[data-bs-theme="dark"] .theme-preset-scrollable-container::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+[data-bs-theme="dark"] .theme-preset-scrollable-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
 .theme-preset-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
+
 .theme-preset-card {
-  border: 2px solid var(--bs-border-color);
-  border-radius: 10px;
+  border: 1.5px solid var(--bs-border-color, #e2e8f0);
+  border-radius: 12px;
   padding: 6px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+  transition: all 0.22s cubic-bezier(0.165, 0.84, 0.44, 1);
   background: var(--bs-card-bg, #ffffff);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   user-select: none;
+  position: relative;
 }
+
 .theme-preset-card:hover {
-  border-color: var(--bs-primary);
+  border-color: var(--bs-primary, #1c84ee);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
 }
+
 .theme-preset-card.active {
-  border-color: var(--bs-primary) !important;
-  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.25) !important;
+  border-color: var(--bs-primary, #1c84ee) !important;
+  box-shadow: 0 0 0 2px var(--bs-primary, #1c84ee), 0 6px 14px rgba(var(--bs-primary-rgb), 0.18) !important;
   background: rgba(var(--bs-primary-rgb), 0.04);
 }
+
 .theme-preset-card .preset-preview {
   width: 100%;
-  height: 48px;
-  border-radius: 6px;
+  height: 52px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   margin-bottom: 6px;
   display: flex;
   flex-direction: column;
 }
+
 .theme-preset-card .preset-topbar {
   width: 100%;
-  height: 14px;
+  height: 16px;
 }
+
 .theme-preset-card .preset-body {
   display: flex;
   flex: 1;
   width: 100%;
-  height: 34px;
+  height: 36px;
 }
+
 .theme-preset-card .preset-sidebar {
-  width: 30%;
+  width: 32%;
   height: 100%;
 }
+
 .theme-preset-card .preset-content {
-  width: 70%;
+  width: 68%;
   height: 100%;
-  padding: 4px;
+  padding: 5px;
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
 }
+
 .theme-preset-card .preset-accent-bar {
-  width: 16px;
+  width: 18px;
   height: 6px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
+
 .theme-preset-card .preset-name {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--bs-body-color);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bs-heading-color, #1e293b);
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  line-height: 1.3;
 }
 
+[data-bs-theme="dark"] .theme-preset-card {
+  background: #222730;
+  border-color: #323945;
+}
+
+[data-bs-theme="dark"] .theme-preset-card .preset-preview {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .theme-preset-card .preset-name {
+  color: #f1f5f9;
+}
+
+/* Modern Font Preset Cards Grid */
+.font-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.font-preset-card {
+  border: 1.5px solid var(--bs-border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--bs-card-bg, #ffffff);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.165, 0.84, 0.44, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+  user-select: none;
+}
+
+.font-preset-card:hover {
+  border-color: var(--bs-primary, #1c84ee);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.font-preset-card.active {
+  border-color: var(--bs-primary, #1c84ee) !important;
+  box-shadow: 0 0 0 2px var(--bs-primary, #1c84ee), 0 4px 12px rgba(var(--bs-primary-rgb), 0.15) !important;
+  background: rgba(var(--bs-primary-rgb), 0.04);
+}
+
+.font-preset-card .font-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--bs-heading-color, #1e293b);
+  line-height: 1.25;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.font-preset-card .font-desc {
+  font-size: 11px;
+  color: var(--bs-secondary-color, #64748b);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-bs-theme="dark"] .font-preset-card {
+  background: #222730;
+  border-color: #323945;
+}
+
+[data-bs-theme="dark"] .font-preset-card .font-name {
+  color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .font-preset-card .font-desc {
+  color: #94a3b8;
+}
+
+/* Color Selector Group */
 .color-selector-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 20px;
 }
+
 .color-selector-btn {
   width: 32px;
   height: 32px;
@@ -1195,15 +1143,18 @@ header#page-topbar .dropdown.show .header-item {
   margin: 0;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
+
 .color-selector-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.18);
 }
+
 .color-selector-btn:checked {
   border-color: var(--bs-card-bg);
   box-shadow: 0 0 0 3px var(--bs-primary, #6c757d);
   transform: scale(1.15);
 }
+
 .color-selector-btn:checked::after {
   content: "\f012c";
   font-family: "Material Design Icons";
@@ -1214,6 +1165,7 @@ header#page-topbar .dropdown.show .header-item {
   color: #fff;
   font-size: 16px;
 }
+
 .color-selector-btn.color-default {
   background-color: #1c84ee;
 }
@@ -1273,10 +1225,12 @@ header#page-topbar .dropdown.show .header-item {
   margin: 0;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
+
 .color-picker-wrapper:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.18);
 }
+
 .color-picker-wrapper input[type="color"] {
   position: absolute;
   top: 0;
