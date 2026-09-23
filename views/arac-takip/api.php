@@ -916,6 +916,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success', 'message' => 'Yakıt kaydı silindi.']);
                 break;
 
+            case 'yakit-toplu-sil':
+                $ids = $_POST['ids'] ?? [];
+                $aciklama = trim($_POST['aciklama'] ?? '');
+
+                if (empty($ids) || !is_array($ids)) {
+                    throw new Exception("Lütfen silinecek yakıt kayıtlarını seçin.");
+                }
+
+                if (empty($aciklama)) {
+                    throw new Exception("Silme işlemi için açıklama girmek zorunludur.");
+                }
+
+                $deletedCount = 0;
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+
+                foreach ($ids as $sId) {
+                    $sId = intval($sId);
+                    if ($sId > 0) {
+                        $silinecek = $Yakit->find($sId);
+                        if ($silinecek && ($silinecek->firma_id ?? 0) == ($_SESSION['firma_id'] ?? 0)) {
+                            $Yakit->softDelete($sId);
+                            $yTarih = $silinecek->tarih ?? '';
+                            $SystemLog->logAction($userId, 'Yakıt Kaydı Silme (Toplu)', "ID: {$sId}, Tarih: {$yTarih} yakıt kaydı toplu olarak silindi.\nAçıklama: {$aciklama}", SystemLogModel::LEVEL_IMPORTANT);
+                            $deletedCount++;
+                        }
+                    }
+                }
+
+                if ($deletedCount === 0) {
+                    throw new Exception("Silinecek uygun kayıt bulunamadı.");
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => "Seçilen {$deletedCount} adet yakıt kaydı başarıyla silindi."
+                ]);
+                break;
+
             case 'yakit-listesi':
 
                 $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;

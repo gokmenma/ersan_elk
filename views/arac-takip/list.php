@@ -1091,6 +1091,9 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                             ?>
                                         </div>
                                         <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-2">
+                                            <button type="button" class="btn btn-danger" id="btnYakitTopluSil" style="display: none;">
+                                                <i class="bx bx-trash me-1"></i> Seçilenleri Sil (<span id="selectedYakitCount">0</span>)
+                                            </button>
                                             <button type="button" class="btn btn-dark" id="btnYakitFiltrele">
                                                 <i class="bx bx-filter-alt me-1"></i> Filtrele
                                             </button>
@@ -1111,23 +1114,27 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                 <table id="yakitTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:12%" data-filter="string">Plaka</th>
-                                            <th style="width:12%" data-filter="string">Zimmetli Personel</th>
+                                            <th class="text-center" style="width:30px">
+                                                <input type="checkbox" class="form-check-input" id="checkAllYakit" title="Tümünü Seç">
+                                            </th>
+                                            <th class="text-center" style="width:4%">Sıra</th>
+                                            <th style="width:10%" data-filter="string">Plaka</th>
+                                            <th style="width:11%" data-filter="string">Zimmetli Personel</th>
+                                            <th style="width:9%" data-filter="date">Yakıt Tarihi</th>
                                             <th style="width:11%" data-filter="date">Kayıt Tarihi</th>
-                                            <th style="width:9%" class="text-end" data-filter="number">KM</th>
-                                            <th style="width:9%" class="text-end" data-filter="number">Miktar (L)</th>
-                                            <th style="width:9%" class="text-end" data-filter="number">Birim Fiyat</th>
-                                            <th style="width:9%" class="text-end" data-filter="number">Brüt Tutar</th>
-                                            <th style="width:8%" class="text-end" data-filter="number">İskonto%</th>
-                                            <th style="width:11%" class="text-end" data-filter="number">Net Tutar</th>
-                                            <th style="width:13%" data-filter="string">İstasyon</th>
-                                            <th style="width:7%" class="text-center">İşlemler</th>
+                                            <th style="width:8%" class="text-end" data-filter="number">KM</th>
+                                            <th style="width:8%" class="text-end" data-filter="number">Miktar (L)</th>
+                                            <th style="width:8%" class="text-end" data-filter="number">Birim Fiyat</th>
+                                            <th style="width:8%" class="text-end" data-filter="number">Brüt Tutar</th>
+                                            <th style="width:7%" class="text-end" data-filter="number">İskonto%</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Net Tutar</th>
+                                            <th style="width:12%" data-filter="string">İstasyon</th>
+                                            <th style="width:6%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody id="yakitTableBody">
                                         <tr>
-                                            <td colspan="12" class="text-center text-muted py-4">
+                                            <td colspan="14" class="text-center text-muted py-4">
                                                 Yükleniyor...
                                             </td>
                                         </tr>

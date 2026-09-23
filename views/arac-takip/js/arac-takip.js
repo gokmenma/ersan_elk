@@ -1063,6 +1063,72 @@ const AracTakip = {
       }
     });
   },
+  yakitTopluSil: function () {
+    const self = this;
+    const selectedIds = [];
+    $(".yakit-checkbox:checked").each(function () {
+      selectedIds.push($(this).val());
+    });
+
+    if (selectedIds.length === 0) {
+      Swal.fire("Uyarı", "Lütfen silinecek en az bir yakıt kaydı seçin.", "warning");
+      return;
+    }
+
+    Swal.fire({
+      title: "Toplu Silme Onayı",
+      html: `Seçilen <strong>${selectedIds.length}</strong> adet yakıt kaydını silmek istediğinize emin misiniz?<br><br>
+             <textarea id="swal-input-toplu-aciklama" class="form-control" placeholder="Lütfen silme nedeni giriniz..." rows="3"></textarea>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Evet, Hepsini Sil",
+      cancelButtonText: "İptal",
+      preConfirm: () => {
+        const aciklama = document.getElementById("swal-input-toplu-aciklama").value.trim();
+        if (!aciklama) {
+          Swal.showValidationMessage("Silme işlemi için açıklama girmek zorunludur!");
+          return false;
+        }
+        return aciklama;
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Siliniyor...",
+          text: "Kayıtlar siliniyor, lütfen bekleyin.",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        $.post(
+          self.apiUrl,
+          { action: "yakit-toplu-sil", ids: selectedIds, aciklama: result.value },
+          function (response) {
+            if (response.status === "success") {
+              Swal.fire("Başarılı", response.message, "success");
+              $("#checkAllYakit").prop("checked", false);
+              $("#btnYakitTopluSil").hide();
+              const baslangic = $("#yakit-filtre-baslangic").val();
+              const bitis = $("#yakit-filtre-bitis").val();
+              const aracId = $("#yakit-filtre-arac").val();
+              const departman = $("#yakit-filtre-departman").val();
+              const personelId = $("#yakit-filtre-personel").val();
+              self.yakitListesiYukle(aracId, baslangic, bitis, departman, personelId);
+            } else {
+              Swal.fire("Hata", response.message || "Silme işlemi başarısız oldu.", "error");
+            }
+          }
+        ).fail(function () {
+          Swal.fire("Hata", "Sunucu ile iletişim kurulurken bir hata oluştu.", "error");
+        });
+      }
+    });
+  },
+
   yakitListesiYukle: function (aracId = null, baslangic = null, bitis = null, departman = null, personelId = null) {
     const self = this;
     if ($.fn.DataTable.isDataTable("#yakitTable")) {
@@ -1070,6 +1136,8 @@ const AracTakip = {
     }
     const tbody = $("#yakitTableBody");
     self.showLoading(tbody);
+    $("#checkAllYakit").prop("checked", false);
+    $("#btnYakitTopluSil").hide();
 
     const data = { action: "yakit-listesi" };
     if (aracId) data.arac_id = aracId;
@@ -1084,10 +1152,14 @@ const AracTakip = {
         if (response.data && response.data.length > 0) {
           response.data.forEach(function (y, index) {
             html += `<tr>
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input yakit-checkbox" value="${y.id}">
+                            </td>
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${y.plaka}</strong></td>
                             <td><small>${y.zimmetli_personel || '<span class="text-muted">Boşta</span>'}</small></td>
-                            <td><small class="fw-semibold">${self.formatDateTime(y.olusturma_tarihi || y.tarih)}</small></td>
+                            <td>${self.formatDate(y.tarih)}</td>
+                            <td><small class="text-muted">${self.formatDateTime(y.olusturma_tarihi)}</small></td>
                             <td class="text-end"><a href="arac-puantaj?arac_id=${y.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(y.km)} km</a></td>
                             <td class="text-end">${self.formatNumber(y.yakit_miktari)} L</td>
                             <td class="text-end">${self.formatMoney(y.birim_fiyat)}</td>
@@ -1121,13 +1193,13 @@ const AracTakip = {
           $("#yakit-kayit-sayisi").text(response.stats.toplam_kayit);
         }
       } else {
-        const colCount = $("#yakitTable").find("thead tr:first th").length || 12;
+        const colCount = $("#yakitTable").find("thead tr:first th").length || 14;
         let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
         for (let i = 2; i < colCount; i++) tds += "<td></td>";
         tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#yakitTable").find("thead tr:first th").length || 12;
+      const colCount = $("#yakitTable").find("thead tr:first th").length || 14;
       let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
       for (let i = 2; i < colCount; i++) tds += "<td></td>";
       tbody.html(`<tr>${tds}</tr>`);
@@ -3625,6 +3697,39 @@ $(document).ready(function () {
     if (aracId) {
         window.location.href = AracTakip.apiUrl + "?action=zimmet-gecmisi-excel&arac_id=" + aracId;
     }
+  });
+
+  // Yakıt Kayıtları Toplu Seçim ve Silme
+  function updateYakitSelection() {
+    const checkedCount = $(".yakit-checkbox:checked").length;
+    const totalCount = $(".yakit-checkbox").length;
+    $("#selectedYakitCount").text(checkedCount);
+    if (checkedCount > 0) {
+      $("#btnYakitTopluSil").fadeIn(150);
+    } else {
+      $("#btnYakitTopluSil").fadeOut(150);
+    }
+    if (totalCount > 0 && checkedCount === totalCount) {
+      $("#checkAllYakit").prop("checked", true).prop("indeterminate", false);
+    } else if (checkedCount > 0) {
+      $("#checkAllYakit").prop("checked", false).prop("indeterminate", true);
+    } else {
+      $("#checkAllYakit").prop("checked", false).prop("indeterminate", false);
+    }
+  }
+
+  $(document).on("change", "#checkAllYakit", function () {
+    const isChecked = $(this).is(":checked");
+    $(".yakit-checkbox").prop("checked", isChecked);
+    updateYakitSelection();
+  });
+
+  $(document).on("change", ".yakit-checkbox", function () {
+    updateYakitSelection();
+  });
+
+  $(document).on("click", "#btnYakitTopluSil", function () {
+    AracTakip.yakitTopluSil();
   });
 
   // Yakıt Filtreleri
