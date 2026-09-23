@@ -1180,7 +1180,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $inputFileName = $_FILES['excel_file']['tmp_name'];
                 $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
                 $excelSheet = $spreadsheet->getActiveSheet();
-                $rows = $excelSheet->toArray();
+                $rows = $excelSheet->toArray(null, true, false);
 
                 if (count($rows) < 2) {
                     throw new Exception("Excel dosyası boş veya sadece başlık satırı içeriyor.");
@@ -1304,7 +1304,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $arac_id_id_yukle = $aracMap[$plakaNorm];
 
                     // Tarihi dönüştür (Kullanıcının isteği üzerine Date::Ymd kullanıldı)
-                    $tarih = Date::Ymd($tarihRaw);
+                    $tarih = Date::convertExcelDate($row[$colIndices['tarih']]) ?? Date::Ymd($tarihRaw);
                     if (!$tarih) {
                         $errors[] = "Satır $rowNum ($plaka): Geçersiz tarih '$tarihRaw'.";
                         continue;
@@ -1566,7 +1566,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $inputFileName = $_FILES['excel_file']['tmp_name'];
                 $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
                 $sheet = $spreadsheet->getActiveSheet();
-                $rows = $sheet->toArray();
+                $rows = $sheet->toArray(null, true, false);
 
                 if (count($rows) < 2) {
                     throw new Exception("Excel dosyası boş veya sadece başlık satırı içeriyor.");
@@ -1878,7 +1878,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $inputFileName = $_FILES['excel_file']['tmp_name'];
                 $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
                 $sheet = $spreadsheet->getActiveSheet();
-                $rows = $sheet->toArray();
+                $rows = $sheet->toArray(null, true, false);
 
                 if (count($rows) < 2) {
                     throw new Exception("Excel dosyası boş veya sadece başlık satırı içeriyor.");

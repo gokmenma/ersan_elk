@@ -25,75 +25,158 @@ class Date
 
 
 
-    public static function dmY($date = null, $format = 'd.m.Y')
+    /**
+     * Gelen tarih değerini Türkiye formatı öncelikli olarak DateTime nesnesine çevirir.
+     * Excel seri tarihleri, Unix timestamp, d.m.Y, d/m/Y, d-m-Y ve Y-m-d formatlarını destekler.
+     */
+    public static function toDateTime($date): ?\DateTime
     {
-        //date boş ise geri döner
-        if ($date == null || $date == "0000-00-00") {
-            return;
+        if ($date === null) {
+            return null;
         }
 
-        return date($format, strtotime($date));
+        if ($date instanceof \DateTimeInterface) {
+            return $date instanceof \DateTime ? $date : new \DateTime($date->format('Y-m-d H:i:s'));
+        }
+
+        // Sayısal değer (Excel Seri Tarihi veya Unix Timestamp)
+        if (is_numeric($date)) {
+            $num = (float) $date;
+            if ($num <= 0) {
+                return null;
+            }
+            if ($num > 100000000) {
+                $dt = new \DateTime();
+                $dt->setTimestamp((int) $num);
+                return $dt;
+            }
+            try {
+                return PhpSpreadsheetDate::excelToDateTimeObject($num);
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        if (!is_string($date)) {
+            return null;
+        }
+
+        $raw = trim($date);
+        if ($raw === '' || $raw === '0000-00-00' || $raw === '0000-00-00 00:00:00') {
+            return null;
+        }
+
+        // Tarih-saat arası tireyi boşluğa çevir (örn: 19/12/2025-13:40:20)
+        $norm = preg_replace('/(\b\d{1,2}[\.\/\-]\d{1,2}[\.\/\-]\d{2,4})-(\d{1,2}:\d{1,2}(?::\d{1,2})?\b)/', '$1 $2', $raw);
+
+        // Türkiye formatları (Gün önce, Ay sonra) ve ISO standartları
+        $formats = [
+            'd.m.Y H:i:s', 'd.m.Y H:i', 'd.m.Y',
+            'j.n.Y H:i:s', 'j.n.Y H:i', 'j.n.Y',
+            'd/m/Y H:i:s', 'd/m/Y H:i', 'd/m/Y',
+            'j/n/Y H:i:s', 'j/n/Y H:i', 'j/n/Y',
+            'd-m-Y H:i:s', 'd-m-Y H:i', 'd-m-Y',
+            'j-n-Y H:i:s', 'j-n-Y H:i', 'j-n-Y',
+            'd.m.y H:i:s', 'd.m.y H:i', 'd.m.y',
+            'd/m/y H:i:s', 'd/m/y H:i', 'd/m/y',
+            'd-m-y H:i:s', 'd-m-y H:i', 'd-m-y',
+            'd-M-y', 'd M y', 'd-M-Y', 'd M Y', 'j-M-y', 'j-M-Y',
+            'Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d',
+            'Y.m.d H:i:s', 'Y.m.d H:i', 'Y.m.d',
+            'Y/m/d H:i:s', 'Y/m/d H:i', 'Y/m/d'
+        ];
+
+        foreach ($formats as $fmt) {
+            $dt = \DateTime::createFromFormat($fmt, $norm);
+            if ($dt instanceof \DateTimeInterface) {
+                $errors = \DateTime::getLastErrors();
+                if (empty($errors['error_count'])) {
+                    if ((int) $dt->format('Y') < 100) {
+                        $dt->modify('+2000 years');
+                    }
+                    return $dt;
+                }
+            }
+        }
+
+        // Regex ile Türkiye formatı (GÜN.AY.YIL veya GÜN/AY/YIL veya GÜN-AY-YIL)
+        if (preg_match('/^(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/', $norm, $m)) {
+            $day = (int) $m[1];
+            $month = (int) $m[2];
+            $year = (int) $m[3];
+            if ($year < 100) {
+                $year += 2000;
+            }
+            $hour = isset($m[4]) ? (int) $m[4] : 0;
+            $min = isset($m[5]) ? (int) $m[5] : 0;
+            $sec = isset($m[6]) ? (int) $m[6] : 0;
+            if (checkdate($month, $day, $year)) {
+                $dt = new \DateTime();
+                $dt->setDate($year, $month, $day);
+                $dt->setTime($hour, $min, $sec);
+                return $dt;
+            }
+        }
+
+        try {
+            return new \DateTime($norm);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    public static function dmY($date = null, $format = 'd.m.Y')
+    {
+        if ($date === null || $date === '' || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') {
+            return '';
+        }
+
+        $dt = self::toDateTime($date);
+        return $dt ? $dt->format($format) : '';
     }
 
     public static function dttoeng($date)
     {
-        if (empty($date))
+        if (empty($date)) {
             return null;
-        
-        $date = trim($date);
-        
-        // d.m.Y formatını garantiye alalım (PHP dots (.) görünce DMY sanır ama bazen locale göre değişebilir)
-        if (strpos($date, '.') !== false) {
-            $dt = \DateTime::createFromFormat('d.m.Y', $date);
-            if ($dt) {
-                return $dt->format('Y-m-d');
-            }
         }
-        
-        $time = strtotime($date);
-        return $time ? date('Y-m-d', $time) : null;
+
+        $dt = self::toDateTime($date);
+        return $dt ? $dt->format('Y-m-d') : null;
     }
 
     public static function engtodt($date)
     {
-        if (empty($date))
+        if (empty($date)) {
             return null;
-        return date('d.m.Y', strtotime($date));
+        }
+
+        $dt = self::toDateTime($date);
+        return $dt ? $dt->format('d.m.Y') : null;
     }
 
     /** Tarih saat formatında döndürür */
     public static function dmYHis($date = null, $format = 'd.m.Y H:i:s')
     {
-        //date boş ise geri döner
-        if ($date == null) {
-            return;
+        if ($date === null || $date === '' || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') {
+            return '';
         }
 
-        return date($format, strtotime($date));
+        $dt = self::toDateTime($date);
+        return $dt ? $dt->format($format) : '';
     }
 
     public static function Ymd($date, $format = 'Y-m-d')
     {
-        if ($date === null || (is_string($date) && trim($date) === '')) {
-            return ($format == 'Ymd') ? 0 : null;
+        if ($date === null || (is_string($date) && trim($date) === '') || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') {
+            return ($format === 'Ymd') ? 0 : null;
         }
 
-        // 1. Eğer veri Excel'in sayısal tarih formatındaysa (örn: 46115)
-        if (is_numeric($date)) {
-            try {
-                $dt = PhpSpreadsheetDate::excelToDateTimeObject((float) $date);
-                return $dt->format($format);
-            } catch (\Exception $e) {
-                // Hata alırsak string olarak devam et
-            }
+        $dt = self::toDateTime($date);
+        if (!$dt) {
+            return ($format === 'Ymd') ? 0 : null;
         }
-
-        // 2. Eğer veri metin ise
-        // SLASH (/) karakterini NOKTA (.) ile değiştirerek Türkiye formatına zorla
-        $cleanDate = str_replace('/', '.', trim($date));
-        
-        $time = strtotime($cleanDate);
-        return $time ? date($format, $time) : null;
+        return $dt->format($format);
     }
 
     /**Bugün */
@@ -295,108 +378,23 @@ class Date
 
 
     /**
-     * Excel'den gelen sayısal bir tarih değerini istenen formatta döndürür.
-     * @param mixed $dateValue Excel hücresinden gelen değer (sayı veya string)
+     * Excel'den veya herhangi bir kaynaktan gelen tarih değerini istenen formatta döndürür.
+     * Türkiye tarih formatını (gün-ay-yıl) esas alır.
+     * @param mixed $dateValue Excel hücresinden gelen değer (sayı, string veya DateTime)
      * @param string $format Çıktı formatı (Y-m-d H:i:s, timestamp, vs)
      * @return string|int|null Başarılı ise istenen format, değilse null
      */
     public static function convertExcelDate($dateValue, $format = 'Y-m-d'): string|int|null
     {
-        // DEBUG LOG
-        $logFile = dirname(__DIR__, 2) . '/debug_date.txt';
-        $log = "Input: " . print_r($dateValue, true) . " Type: " . gettype($dateValue) . "\n";
-
         if (empty($dateValue)) {
-            file_put_contents($logFile, $log . "Result: Empty\n----------------\n", FILE_APPEND);
             return null;
         }
 
-        // 1. Sayısal ise (Excel seri numarası: 45948.70138888889 gibi)
-        if (is_numeric($dateValue)) {
-            try {
-                // TIMESTAMP İSTİYORSANIZ:
-                if ($format === 'timestamp') {
-                    $res = PhpSpreadsheetDate::excelToTimestamp((float) $dateValue);
-                    file_put_contents($logFile, $log . "Result (Numeric Timestamp): $res\n----------------\n", FILE_APPEND);
-                    return $res;
-                }
-
-                // TARİH STRING İSTİYORSANIZ (saat+dakika dahil):
-                $dateTimeObject = PhpSpreadsheetDate::excelToDateTimeObject((float) $dateValue);
-                $res = $dateTimeObject->format($format);
-                file_put_contents($logFile, $log . "Result (Numeric Object): $res\n----------------\n", FILE_APPEND);
-                return $res;
-
-            } catch (\Exception $e) {
-                file_put_contents($logFile, $log . "Result (Numeric Error): " . $e->getMessage() . "\n----------------\n", FILE_APPEND);
-                return null;
-            }
-        }
-        // 2. Metin ise (örn: "18.02.2025 10:41:41")
-        if (is_string($dateValue)) {
-
-            $raw = trim($dateValue);
-            if ($raw === '') {
-                return null;
-            }
-
-            // 2.a) Bazı kaynaklar tarih-saat arası '-' gönderiyor: 19/12/2025-13:40:20
-            // Bunu güvenle boşluğa çevir (tarih içindeki '-' karakterlerine dokunma)
-            $norm = preg_replace('/(\b\d{2}\/\d{2}\/\d{4})-(\d{2}:\d{2}(?::\d{2})?\b)/', '$1 $2', $raw);
-            $norm = preg_replace('/(\b\d{2}\.\d{2}\.\d{4})-(\d{2}:\d{2}(?::\d{2})?\b)/', '$1 $2', $norm);
-            $norm = preg_replace('/(\b\d{2}-\d{2}-\d{4})-(\d{2}:\d{2}(?::\d{2})?\b)/', '$1 $2', $norm);
-
-            // 2.b) Önce en net formatları dene (Türkiye formatları öncelikli)
-            $knownFormats = [
-                'd.m.Y H:i:s',
-                'd.m.Y H:i',
-                'd.m.Y',
-                'j.n.Y H:i:s',
-                'j.n.Y H:i',
-                'j.n.Y',
-                'd/m/Y H:i:s',
-                'd/m/Y H:i',
-                'd/m/Y',
-                'j/n/Y H:i:s',
-                'j/n/Y H:i',
-                'j/n/Y',
-                'd-m-Y H:i:s',
-                'd-m-Y H:i',
-                'd-m-Y',
-                'Y-m-d H:i:s',
-                'Y-m-d H:i',
-                'Y-m-d',
-                'Y/m/d H:i:s',
-                'Y/m/d H:i',
-                'Y/m/d',
-            ];
-
-            foreach ($knownFormats as $fmt) {
-                $dt = \DateTime::createFromFormat($fmt, $norm);
-                if ($dt instanceof \DateTimeInterface) {
-                    $errors = \DateTime::getLastErrors();
-                    // d.m.Y ve j.n.Y gibi formatlarda leading zero uyarılarını (warning) görmezden gel
-                    if (empty($errors['error_count'])) {
-                        $res = ($format === 'timestamp') ? (int) $dt->format('U') : $dt->format($format);
-                        file_put_contents($logFile, $log . "Result (String Match $fmt): $res\n----------------\n", FILE_APPEND);
-                        return $res;
-                    }
-                }
-            }
-
-            // 2.c) Son çare: PHP'nin DateTime parser'ı
-            try {
-                $dt = new \DateTime($norm);
-                $res = ($format === 'timestamp') ? (int) $dt->format('U') : $dt->format($format);
-                file_put_contents($logFile, $log . "Result (String DateTime): $res\n----------------\n", FILE_APPEND);
-                return $res;
-            } catch (\Throwable $e) {
-                file_put_contents($logFile, $log . "Result (String Error): " . $e->getMessage() . "\n----------------\n", FILE_APPEND);
-                return null;
-            }
+        $dt = self::toDateTime($dateValue);
+        if (!$dt) {
+            return null;
         }
 
-        return null;
+        return ($format === 'timestamp') ? (int) $dt->format('U') : $dt->format($format);
     }
-
 }

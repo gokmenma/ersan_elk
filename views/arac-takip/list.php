@@ -1114,15 +1114,15 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:12%" data-filter="string">Plaka</th>
                                             <th style="width:12%" data-filter="string">Zimmetli Personel</th>
-                                            <th style="width:10%" data-filter="date">Tarih</th>
-                                            <th style="width:10%" class="text-end" data-filter="number">KM</th>
-                                            <th style="width:10%" class="text-end" data-filter="number">Miktar (L)</th>
-                                            <th style="width:10%" class="text-end" data-filter="number">Birim Fiyat</th>
-                                            <th style="width:10%" class="text-end" data-filter="number">Brüt Tutar</th>
+                                            <th style="width:11%" data-filter="date">Kayıt Tarihi</th>
+                                            <th style="width:9%" class="text-end" data-filter="number">KM</th>
+                                            <th style="width:9%" class="text-end" data-filter="number">Miktar (L)</th>
+                                            <th style="width:9%" class="text-end" data-filter="number">Birim Fiyat</th>
+                                            <th style="width:9%" class="text-end" data-filter="number">Brüt Tutar</th>
                                             <th style="width:8%" class="text-end" data-filter="number">İskonto%</th>
-                                            <th style="width:12%" class="text-end" data-filter="number">Net Tutar</th>
-                                            <th style="width:15%" data-filter="string">İstasyon</th>
-                                            <th style="width:8%" class="text-center">İşlemler</th>
+                                            <th style="width:11%" class="text-end" data-filter="number">Net Tutar</th>
+                                            <th style="width:13%" data-filter="string">İstasyon</th>
+                                            <th style="width:7%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody id="yakitTableBody">

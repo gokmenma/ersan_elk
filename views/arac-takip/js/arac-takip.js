@@ -27,6 +27,27 @@ const AracTakip = {
     return date.toLocaleDateString("tr-TR");
   },
 
+  formatDateTime: function (dateStr) {
+    if (!dateStr) return "-";
+    const parts = String(dateStr).trim().split(" ");
+    if (parts.length >= 2) {
+      const dParts = parts[0].split("-");
+      if (dParts.length === 3) {
+        const timeParts = parts[1].substring(0, 5);
+        return `${dParts[2]}.${dParts[1]}.${dParts[0]} ${timeParts}`;
+      }
+    }
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleString("tr-TR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  },
+
   showLoading: function (selector) {
     const table = $(selector).closest("table");
     const colCount = table.find("thead tr:first th").length || 9;
@@ -1066,7 +1087,7 @@ const AracTakip = {
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${y.plaka}</strong></td>
                             <td><small>${y.zimmetli_personel || '<span class="text-muted">Boşta</span>'}</small></td>
-                            <td>${self.formatDate(y.tarih)}</td>
+                            <td><small class="fw-semibold">${self.formatDateTime(y.olusturma_tarihi || y.tarih)}</small></td>
                             <td class="text-end"><a href="arac-puantaj?arac_id=${y.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(y.km)} km</a></td>
                             <td class="text-end">${self.formatNumber(y.yakit_miktari)} L</td>
                             <td class="text-end">${self.formatMoney(y.birim_fiyat)}</td>
@@ -1100,13 +1121,13 @@ const AracTakip = {
           $("#yakit-kayit-sayisi").text(response.stats.toplam_kayit);
         }
       } else {
-        const colCount = $("#yakitTable").find("thead tr:first th").length || 9;
+        const colCount = $("#yakitTable").find("thead tr:first th").length || 12;
         let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
         for (let i = 2; i < colCount; i++) tds += "<td></td>";
         tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#yakitTable").find("thead tr:first th").length || 9;
+      const colCount = $("#yakitTable").find("thead tr:first th").length || 12;
       let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
       for (let i = 2; i < colCount; i++) tds += "<td></td>";
       tbody.html(`<tr>${tds}</tr>`);
