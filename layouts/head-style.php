@@ -31,10 +31,36 @@
             }
         } catch (e) {}
 
+        // Theme Presets Color Map for Instant Zero-Flicker Apply
+        const PRESET_COLORS = {
+            'kode': '#399bff',
+            'ersan': '#e2bd61',
+            'midnight-emerald': '#10b981',
+            'royal-purple': '#5156be',
+            'crimson-rose': '#ec003f',
+            'minimalist': '#18181b',
+            'dark-pro': '#06b6d4',
+            'ocean-deep': '#0284c7',
+            'sunset-amber': '#f59e0b',
+            'forest-moss': '#059669',
+            'cyber-violet': '#7c3aed',
+            'nordic-slate': '#475569',
+            'ruby-dark': '#e11d48',
+            'mint-fresh': '#0d9488',
+            'mocha-gold': '#d97706'
+        };
+
+        const savedPresetKey = localStorage.getItem('data-theme-preset');
+        let customPrimary = localStorage.getItem('custom-primary-color');
+        if (!customPrimary && savedPresetKey && PRESET_COLORS[savedPresetKey]) {
+            customPrimary = PRESET_COLORS[savedPresetKey];
+        }
+
         // Synchronously apply custom primary color CSS variables
-        const customPrimary = localStorage.getItem('custom-primary-color');
         if (customPrimary) {
             document.documentElement.style.setProperty('--bs-primary', customPrimary);
+            document.documentElement.style.setProperty('--bs-link-color', customPrimary);
+            document.documentElement.style.setProperty('--bs-link-hover-color', customPrimary);
             const r = parseInt(customPrimary.slice(1, 3), 16),
                   g = parseInt(customPrimary.slice(3, 5), 16),
                   b = parseInt(customPrimary.slice(5, 7), 16);

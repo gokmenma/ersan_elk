@@ -702,6 +702,11 @@ body[data-sidebar="brand"] .navbar-brand-box {
   color: #eff2f7 !important;
 }
 
+[data-theme-mode="default"] {
+  --bs-primary: #1c84ee;
+  --bs-primary-rgb: 28, 132, 238;
+}
+
 [data-theme-mode="emerald"] {
   --bs-primary: #10b981;
   --bs-primary-rgb: 16, 185, 129;
@@ -740,6 +745,117 @@ body[data-sidebar="brand"] .navbar-brand-box {
 [data-theme-mode="cyan"] {
   --bs-primary: #06b6d4;
   --bs-primary-rgb: 6, 182, 212;
+}
+
+[data-theme-mode="slate"] {
+  --bs-primary: #475569;
+  --bs-primary-rgb: 71, 85, 105;
+}
+
+/* Comprehensive Dynamic Primary Color Synchronization */
+:root {
+  --bs-link-color: var(--bs-primary);
+  --bs-link-hover-color: var(--bs-primary);
+}
+
+/* Tablolardaki Bağlantılar (Personel İsimleri vb.) */
+.table a:not(.btn):not(.badge) {
+  color: var(--bs-primary) !important;
+  text-decoration: none;
+  transition: all 0.15s ease-in-out;
+}
+
+.table a:not(.btn):not(.badge):hover {
+  filter: brightness(0.8);
+  text-decoration: underline;
+}
+
+/* Tablo Seçili Satır & Hover Efektleri */
+#membersTable tbody tr.selected,
+#membersTable tbody tr.selected > td {
+  background-color: var(--bs-primary) !important;
+  color: #ffffff !important;
+}
+
+#membersTable tbody tr.selected a {
+  color: #ffffff !important;
+}
+
+#membersTable tbody tr:not(.selected):hover > td {
+  background-color: rgba(var(--bs-primary-rgb), 0.07) !important;
+}
+
+/* Sayfalama (Pagination) Aktif Sayfa Butonu */
+.pagination .page-item.active .page-link,
+.page-item.active .page-link,
+.dataTables_wrapper .pagination .page-item.active .page-link {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 8px rgba(var(--bs-primary-rgb), 0.25) !important;
+}
+
+/* Primary Butonlar & Outline Butonlar */
+.btn-primary {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+  filter: brightness(0.9);
+}
+
+.btn-outline-primary {
+  color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Genel Primary Yardımcıları */
+.text-primary {
+  color: var(--bs-primary) !important;
+}
+
+.bg-primary {
+  background-color: var(--bs-primary) !important;
+}
+
+.bg-primary-subtle {
+  background-color: rgba(var(--bs-primary-rgb), 0.12) !important;
+}
+
+.border-primary {
+  border-color: var(--bs-primary) !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+.form-check-input:focus {
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25) !important;
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs-custom .nav-item .nav-link.active {
+  color: var(--bs-primary) !important;
+  border-bottom-color: var(--bs-primary) !important;
+}
+
+.nav-pills .nav-link.active {
+  background-color: var(--bs-primary) !important;
+  color: #ffffff !important;
 }
 
 /* Dynamic Font Families */

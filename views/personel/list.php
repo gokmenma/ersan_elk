@@ -39,7 +39,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                         /* Custom Selection Styles with High Specificity */
                         #membersTable tbody tr.selected,
                         #membersTable tbody tr.selected>td {
-                            background-color: #556ee6 !important;
+                            background-color: var(--bs-primary) !important;
                             /* Primary brand color */
                             color: #ffffff !important;
                         }
@@ -52,7 +52,7 @@ if (Gate::canWithMessage("personel_listesi")) {
 
                         /* Hover effect for NON-SELECTED rows only */
                         #membersTable tbody tr:not(.selected):hover>td {
-                            background-color: rgba(85, 110, 230, 0.1) !important;
+                            background-color: rgba(var(--bs-primary-rgb), 0.08) !important;
                         }
 
                         /* Pointer cursor */
@@ -226,12 +226,12 @@ if (Gate::canWithMessage("personel_listesi")) {
 
                         /* Column toggle checkboxes color */
                         .col-toggle-check:checked {
-                            background-color: #556ee6 !important;
-                            border-color: #556ee6 !important;
+                            background-color: var(--bs-primary) !important;
+                            border-color: var(--bs-primary) !important;
                         }
 
                         .dropdown-item:active {
-                            background-color: rgba(85, 110, 230, 0.1) !important;
+                            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
                             color: inherit !important;
                         }
 
@@ -257,8 +257,8 @@ if (Gate::canWithMessage("personel_listesi")) {
                         }
 
                         .drag-handle:hover {
-                            color: #556ee6;
-                            background-color: rgba(85, 110, 230, 0.1);
+                            color: var(--bs-primary);
+                            background-color: rgba(var(--bs-primary-rgb), 0.1);
                             border-radius: 4px;
                         }
 

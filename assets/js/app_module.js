@@ -598,6 +598,8 @@ File: Main Js File
       if (preset.primaryColor.startsWith("#")) {
         $("#custom-theme-picker").val(preset.primaryColor);
         document.documentElement.style.setProperty("--bs-primary", preset.primaryColor);
+        document.documentElement.style.setProperty("--bs-link-color", preset.primaryColor);
+        document.documentElement.style.setProperty("--bs-link-hover-color", preset.primaryColor);
         const r = parseInt(preset.primaryColor.slice(1, 3), 16),
               g = parseInt(preset.primaryColor.slice(3, 5), 16),
               b = parseInt(preset.primaryColor.slice(5, 7), 16);
@@ -991,6 +993,8 @@ File: Main Js File
     $("#custom-theme-picker").on("input", function () {
       var val = $(this).val();
       document.documentElement.style.setProperty("--bs-primary", val);
+      document.documentElement.style.setProperty("--bs-link-color", val);
+      document.documentElement.style.setProperty("--bs-link-hover-color", val);
       const r = parseInt(val.slice(1, 3), 16),
         g = parseInt(val.slice(3, 5), 16),
         b = parseInt(val.slice(5, 7), 16);
