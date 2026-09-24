@@ -171,7 +171,9 @@ class BordroAiAuditService
                 'bordro_id' => $p->id,
                 'ad_soyad' => $p->adi_soyadi ?? $p->ad_soyad ?? ($p->ad ?? '') . ' ' . ($p->soyad ?? ''),
                 'tc_kimlik' => $p->tc_kimlik_no ?? $p->tc_kimlik ?? '',
-                'ucret_tipi' => $p->ucret_tipi ?? 'Net',
+                'gorev' => $p->gg_gorev ?? $p->gorev ?? '',
+                'departman' => $p->gg_departman ?? $p->departman ?? '',
+                'ucret_tipi' => $p->gg_maas_durumu ?? $p->maas_durumu ?? $p->ucret_tipi ?? 'Net',
                 'calisma_gunu' => $p->hesap_calisma_gunu,
                 'fiili_gun' => $p->hesap_fiili_gun,
                 'ise_giris' => $p->ise_giris_tarihi ?? $p->giris_tarihi ?? '',
@@ -291,6 +293,40 @@ class BordroAiAuditService
         $gunlukYemek = (float) ($p->yemek_yardimi_tutari ?? $p->gunluk_yemek_ucreti ?? 0);
         $maasTutari = (float) ($p->maas_tutari ?? 0);
         $gunlukUcret = (float) ($p->gunluk_ucret ?? ($maasTutari > 0 ? ($maasTutari / 30) : 0));
+
+        $gorev = trim((string) ($p->gg_gorev ?? $p->gorev ?? ''));
+        $departman = trim((string) ($p->gg_departman ?? $p->departman ?? ''));
+        $maasDurumu = trim((string) ($p->gg_maas_durumu ?? $p->maas_durumu ?? $p->ucret_tipi ?? ''));
+        $gorevGecmisiVar = (bool) (!empty($p->gorev_gecmisi_var) || !empty($gorevAraliklari));
+
+        // Kural 0-A: Görev Geçmişi Tanımlı Değil (Kritik)
+        if (!$gorevGecmisiVar) {
+            $issues[] = [
+                'code' => 'MISSING_JOB_HISTORY',
+                'severity' => 'CRITICAL',
+                'title' => 'Görev Geçmişi Tanımlı Değil',
+                'description' => "Personelin bu dönem için geçerli görev geçmişi kaydı bulunmamaktadır. Maaş ve hak edişler personel ana kartındaki veri üzerinden hesaplanmaktadır.",
+                'risk_amount' => 0,
+                'action_recommendation' => "Personel kartından 'Görev Geçmişi' sekmesine giderek dönem başlangıcına uygun görev ve maaş kaydı oluşturunuz."
+            ];
+        }
+
+        // Kural 0-B: Görev / Pozisyon veya Ücret Tipi Tanımsız (Kritik)
+        if (empty($gorev) || $gorev === '-' || empty($maasDurumu) || $maasDurumu === '-') {
+            $eksikler = [];
+            if (empty($gorev) || $gorev === '-') $eksikler[] = "Görev/Pozisyon";
+            if (empty($maasDurumu) || $maasDurumu === '-') $eksikler[] = "Maaş Tipi (Net/Brüt)";
+            $eksikStr = implode(' ve ', $eksikler);
+
+            $issues[] = [
+                'code' => 'MISSING_JOB_TYPE',
+                'severity' => 'CRITICAL',
+                'title' => "{$eksikStr} Tanımsız",
+                'description' => "Personelin sistemde {$eksikStr} bilgisi tanımlanmamıştır.",
+                'risk_amount' => 0,
+                'action_recommendation' => "Personel kartında veya görev geçmişinde personelin görev/pozisyon ve maaş tipini (Net/Brüt) belirleyiniz."
+            ];
+        }
 
         // Kural 1: Eksi Bakiye (Kritik)
         if ($netAlacagi < 0) {

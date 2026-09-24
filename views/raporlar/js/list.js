@@ -4,6 +4,55 @@ $(document).ready(function() {
     var reportTables = {};
     var currentTableId = 1;
 
+    if ($.fn.select2) {
+        $('#rapor_turu').select2({ width: '100%' });
+    }
+
+    function escapeHtml(value) {
+        return $('<div>').text(value == null || value === '' ? '-' : value).html();
+    }
+
+    function personRender(data, type) {
+        if (type !== 'display') return data;
+        var name = data || '-';
+        var initials = name === '-' ? '?' : name.trim().split(/\s+/).slice(0, 2).map(function(part) {
+            return part.charAt(0);
+        }).join('').toLocaleUpperCase('tr-TR');
+        return '<div class="report-person"><span class="report-person-avatar">' + escapeHtml(initials) + '</span><span class="report-person-name">' + escapeHtml(name) + '</span></div>';
+    }
+
+    function dateRender(data, type) {
+        if (type !== 'display') return data;
+        return '<span class="report-date"><i class="bx bx-calendar"></i>' + escapeHtml(data) + '</span>';
+    }
+
+    function descriptionRender(data, type) {
+        if (type !== 'display') return data;
+        return '<span class="report-description" title="' + escapeHtml(data) + '">' + escapeHtml(data) + '</span>';
+    }
+
+    function moneyRender(data, type) {
+        if (type !== 'display') return data;
+        return '<span class="report-money">' + escapeHtml(data) + '</span>';
+    }
+
+    function labelRender(data, type) {
+        if (type !== 'display') return data;
+        return '<span class="report-badge report-badge-primary">' + escapeHtml(data) + '</span>';
+    }
+
+    function badgeRender(data, type, forcedClass, forcedIcon) {
+        if (type !== 'display') return data;
+        var normalized = String(data || '').toLocaleLowerCase('tr-TR');
+        var badgeClass = typeof forcedClass === 'string' ? forcedClass : 'secondary';
+        var icon = typeof forcedIcon === 'string' ? forcedIcon : 'bx-info-circle';
+        if (/onay|tamam|bitti|aktif/.test(normalized)) { badgeClass = 'success'; icon = 'bx-check-circle'; }
+        else if (/bekliyor|beklemede|devam/.test(normalized)) { badgeClass = 'warning'; icon = 'bx-time-five'; }
+        else if (/red|iptal|durdur|kesinti/.test(normalized)) { badgeClass = 'danger'; icon = 'bx-x-circle'; }
+        else if (/fek|talep/.test(normalized)) { badgeClass = 'info'; icon = 'bx-info-circle'; }
+        return '<span class="report-badge report-badge-' + badgeClass + '"><i class="bx ' + icon + '"></i>' + escapeHtml(data) + '</span>';
+    }
+
     // DataTable yükleme fonksiyonu
     function loadTable(rapor_turu, start_date, end_date) {
         // Preloader'ı göster
@@ -72,59 +121,58 @@ $(document).ready(function() {
 
         if (rapor_turu == 1) {
             options.columns = [
-                { data: 'personel', defaultContent: '-' },
+                { data: 'personel', defaultContent: '-', render: personRender },
                 { data: 'tc_no', defaultContent: '-' },
                 { data: 'departman', defaultContent: '-' },
-                { data: 'izin_turu', defaultContent: '-' },
-                { data: 'baslangic_tarihi', defaultContent: '-' },
-                { data: 'bitis_tarihi', defaultContent: '-' },
+                { data: 'izin_turu', defaultContent: '-', render: labelRender },
+                { data: 'baslangic_tarihi', defaultContent: '-', render: dateRender },
+                { data: 'bitis_tarihi', defaultContent: '-', render: dateRender },
                 { data: 'gun_sayisi', defaultContent: '-' },
-                { data: 'durum', defaultContent: '-' },
+                { data: 'durum', defaultContent: '-', render: badgeRender },
                 { data: 'onaylayan', defaultContent: '-' },
-                { data: 'aciklama', defaultContent: '-' },
+                { data: 'aciklama', defaultContent: '-', render: descriptionRender },
                 { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
             ];
         } else if (rapor_turu == 2) {
             options.columns = [
-                { data: 'personel', defaultContent: '-' },
+                { data: 'personel', defaultContent: '-', render: personRender },
                 { data: 'tc_no', defaultContent: '-' },
                 { data: 'departman', defaultContent: '-' },
                 { data: 'islem_tipi', render: function(data) {
-                    var color = data === 'Kesinti' ? 'danger' : 'success';
-                    return '<span class="badge bg-' + color + '">' + data + '</span>';
+                    return badgeRender(data, 'display', data === 'Kesinti' ? 'danger' : 'success', data === 'Kesinti' ? 'bx-minus-circle' : 'bx-plus-circle');
                 }},
-                { data: 'tur', defaultContent: '-' },
+                { data: 'tur', defaultContent: '-', render: labelRender },
                 { data: 'detay', defaultContent: '-' },
-                { data: 'tutar', defaultContent: '-' },
-                { data: 'tarih', defaultContent: '-' },
-                { data: 'durum', defaultContent: '-' },
-                { data: 'aciklama', defaultContent: '-' },
+                { data: 'tutar', defaultContent: '-', render: moneyRender },
+                { data: 'tarih', defaultContent: '-', render: dateRender },
+                { data: 'durum', defaultContent: '-', render: badgeRender },
+                { data: 'aciklama', defaultContent: '-', render: descriptionRender },
                 { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
             ];
         } else if (rapor_turu == 3) {
             options.columns = [
-                { data: 'personel', defaultContent: '-' },
+                { data: 'personel', defaultContent: '-', render: personRender },
                 { data: 'tc_no', defaultContent: '-' },
                 { data: 'departman', defaultContent: '-' },
-                { data: 'kategori', defaultContent: '-' },
+                { data: 'kategori', defaultContent: '-', render: labelRender },
                 { data: 'baslik', defaultContent: '-' },
-                { data: 'tarih', defaultContent: '-' },
-                { data: 'durum', defaultContent: '-' },
-                { data: 'cozum_tarihi', defaultContent: '-' },
+                { data: 'tarih', defaultContent: '-', render: dateRender },
+                { data: 'durum', defaultContent: '-', render: badgeRender },
+                { data: 'cozum_tarihi', defaultContent: '-', render: dateRender },
                 { data: 'cozum_aciklama', defaultContent: '-' },
-                { data: 'aciklama', defaultContent: '-' },
+                { data: 'aciklama', defaultContent: '-', render: descriptionRender },
                 { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
             ];
         } else if (rapor_turu == 4) {
             options.columns = [
-                { data: 'personel', defaultContent: '-' },
+                { data: 'personel', defaultContent: '-', render: personRender },
                 { data: 'tc_no', defaultContent: '-' },
                 { data: 'departman', defaultContent: '-' },
                 { data: 'icra_dairesi', defaultContent: '-' },
                 { data: 'dosya_no', defaultContent: '-' },
-                { data: 'toplam_borc', defaultContent: '-' },
-                { data: 'kesilen_tutar', defaultContent: '-' },
-                { data: 'kalan_tutar', defaultContent: '-' },
+                { data: 'toplam_borc', defaultContent: '-', render: moneyRender },
+                { data: 'kesilen_tutar', defaultContent: '-', render: moneyRender },
+                { data: 'kalan_tutar', defaultContent: '-', render: moneyRender },
                 { data: 'durum', render: function(data) {
                     var badges = {
                         'bekliyor': 'warning',
@@ -144,15 +192,18 @@ $(document).ready(function() {
                     };
                     var badgeClass = badges[data] || 'secondary';
                     var label = labels[data] || data;
-                    return '<span class="badge bg-' + badgeClass + '">' + label + '</span>';
+                    return badgeRender(label, 'display', badgeClass);
                 }},
-                { data: 'tarih', defaultContent: '-' },
-                { data: 'aciklama', defaultContent: '-' },
+                { data: 'tarih', defaultContent: '-', render: dateRender },
+                { data: 'aciklama', defaultContent: '-', render: descriptionRender },
                 { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
             ];
         }
 
         // Merkezi başlatma fonksiyonunu çağır
+        if (typeof applyLengthStateSave === 'function') {
+            options = applyLengthStateSave(options);
+        }
         reportTables[rapor_turu] = destroyAndInitDataTable('#table' + rapor_turu, options);
         currentTableId = rapor_turu;
     }

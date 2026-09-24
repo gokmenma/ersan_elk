@@ -55,6 +55,34 @@
 .table-container {
     transition: opacity 0.3s ease;
 }
+
+.report-table-card { border:1px solid #e3e8f0; border-radius:12px; box-shadow:0 6px 20px rgba(34,48,74,.06); overflow:hidden; }
+.report-table-card .card-body { padding:16px; }
+.report-table-card table.dataTable { margin-top:0!important; }
+.report-table-card table.dataTable thead th { background:#f6f8fb; color:#536078; border-color:#dde4ee; font-size:11px; font-weight:700; letter-spacing:.025em; text-transform:uppercase; vertical-align:middle; }
+.report-table-card table.dataTable tbody td { border-color:#e4e9f0; color:#3c4658; vertical-align:middle; padding-top:11px; padding-bottom:11px; }
+.report-table-card table.dataTable tbody tr { transition:background-color .15s ease; }
+.report-table-card table.dataTable tbody tr:hover { background:#f7f9ff; }
+.report-person { display:flex; align-items:center; gap:9px; min-width:150px; }
+.report-person-avatar { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; flex:0 0 30px; border-radius:50%; background:#e8edff; color:#4962d8; font-size:11px; font-weight:700; }
+.report-person-name { color:#27334a; font-weight:600; }
+.report-badge { display:inline-flex; align-items:center; gap:5px; border:1px solid transparent; border-radius:20px; padding:5px 9px; font-size:11px; font-weight:600; line-height:1; white-space:nowrap; }
+.report-badge i { font-size:13px; }
+.report-badge-success { background:#e8f8f0; border-color:#c8eedb; color:#138a58; }
+.report-badge-warning { background:#fff6df; border-color:#f7df9d; color:#b57705; }
+.report-badge-danger { background:#feebed; border-color:#fac9ce; color:#d83b48; }
+.report-badge-info { background:#e8f5fb; border-color:#c4e6f5; color:#167ca8; }
+.report-badge-primary { background:#edf0ff; border-color:#d4dcff; color:#4962d8; }
+.report-badge-secondary { background:#f0f2f5; border-color:#dfe3e8; color:#687386; }
+.report-date { display:inline-flex; align-items:center; gap:5px; color:#58657a; white-space:nowrap; }
+.report-date i { color:#8a96a8; font-size:14px; }
+.report-money { color:#27334a; font-weight:700; white-space:nowrap; }
+.report-description { display:block; max-width:320px; overflow:hidden; text-overflow:ellipsis; color:#687386; white-space:nowrap; }
+.report-table-card .btn-delete-row { width:30px; height:30px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
+[data-bs-theme="dark"] .report-table-card { border-color:#32394e; }
+[data-bs-theme="dark"] .report-table-card table.dataTable thead th { background:#252b3b; color:#b8c1d9; border-color:#353d52; }
+[data-bs-theme="dark"] .report-table-card table.dataTable tbody tr:hover { background:rgba(85,110,230,.08); }
+[data-bs-theme="dark"] .report-person-name,[data-bs-theme="dark"] .report-money { color:#e9edf5; }
 </style>
 
 <div class="row">
@@ -63,10 +91,10 @@
             <div class="card-body border-bottom">
                 <div class="d-flex align-items-center justify-content-between">
                     <h5 class="mb-0 card-title flex-grow-1">Rapor Filtreleri</h5>
-                    
+
                     <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                         <button type="button" id="exportExcelBtn" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                            <i class='mdi mdi-file-excel fs-5 me-1'></i> Excele Aktar
+                            <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
                         </button>
                     </div>
                 </div>
@@ -96,9 +124,8 @@
             </div>
         </div>
         
-        <div class="card">
+        <div class="card report-table-card">
             <div class="card-body position-relative" id="raporCardBody">
-                
                 <!-- Preloader -->
                 <div class="rapor-preloader" id="rapor-loader">
                     <div class="loader-content">
@@ -115,16 +142,16 @@
                     <table id="table1" class="table table-bordered dt-responsive nowrap w-100 datatable datatable-deferred">
                         <thead>
                             <tr>
-                                <th>Personel</th>
-                                <th>TC Kimlik No</th>
-                                <th>Departman</th>
-                                <th>İzin Türü</th>
-                                <th>BaşlangıçTarihi</th>
-                                <th>Bitiş Tarihi</th>
-                                <th>Gün Sayısı</th>
-                                <th>Durum</th>
-                                <th>Onaylayan</th>
-                                <th>Açıklama</th>
+                                <th data-filter="string">Personel</th>
+                                <th data-filter="string">TC Kimlik No</th>
+                                <th data-filter="select">Departman</th>
+                                <th data-filter="select">İzin Türü</th>
+                                <th data-filter="date">Başlangıç Tarihi</th>
+                                <th data-filter="date">Bitiş Tarihi</th>
+                                <th data-filter="string">Gün Sayısı</th>
+                                <th data-filter="select">Durum</th>
+                                <th data-filter="string">Onaylayan</th>
+                                <th data-filter="string">Açıklama</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>
@@ -137,16 +164,16 @@
                     <table id="table2" class="table table-bordered dt-responsive nowrap w-100 datatable datatable-deferred">
                         <thead>
                             <tr>
-                                <th>Personel</th>
-                                <th>TC Kimlik No</th>
-                                <th>Departman</th>
-                                <th>İşlem Tipi</th>
-                                <th>Tür/Parametre</th>
-                                <th>Detay</th>
-                                <th>Tutar</th>
-                                <th>Tarih</th>
-                                <th>Durum</th>
-                                <th>Açıklama</th>
+                                <th data-filter="string">Personel</th>
+                                <th data-filter="string">TC Kimlik No</th>
+                                <th data-filter="select">Departman</th>
+                                <th data-filter="select">İşlem Tipi</th>
+                                <th data-filter="select">Tür/Parametre</th>
+                                <th data-filter="string">Detay</th>
+                                <th data-filter="string">Tutar</th>
+                                <th data-filter="date">Tarih</th>
+                                <th data-filter="select">Durum</th>
+                                <th data-filter="string">Açıklama</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>
@@ -159,16 +186,16 @@
                     <table id="table3" class="table table-bordered dt-responsive nowrap w-100 datatable datatable-deferred">
                         <thead>
                             <tr>
-                                <th>Personel</th>
-                                <th>TC Kimlik No</th>
-                                <th>Departman</th>
-                                <th>Kategori</th>
-                                <th>Başlık</th>
-                                <th>Tarih</th>
-                                <th>Durum</th>
-                                <th>Çözüm Tarihi</th>
-                                <th>Çözüm Açıklaması</th>
-                                <th>Açıklama</th>
+                                <th data-filter="string">Personel</th>
+                                <th data-filter="string">TC Kimlik No</th>
+                                <th data-filter="select">Departman</th>
+                                <th data-filter="select">Kategori</th>
+                                <th data-filter="string">Başlık</th>
+                                <th data-filter="date">Tarih</th>
+                                <th data-filter="select">Durum</th>
+                                <th data-filter="date">Çözüm Tarihi</th>
+                                <th data-filter="string">Çözüm Açıklaması</th>
+                                <th data-filter="string">Açıklama</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>
@@ -181,17 +208,17 @@
                     <table id="table4" class="table table-bordered dt-responsive nowrap w-100 datatable datatable-deferred">
                         <thead>
                             <tr>
-                                <th>Personel</th>
-                                <th>TC Kimlik No</th>
-                                <th>Departman</th>
-                                <th>İcra Dairesi</th>
-                                <th>Dosya No</th>
-                                <th>Toplam Borç</th>
-                                <th>Kesilen Tutar</th>
-                                <th>Kalan Tutar</th>
-                                <th>Durum</th>
-                                <th>Tarih</th>
-                                <th>Açıklama</th>
+                                <th data-filter="string">Personel</th>
+                                <th data-filter="string">TC Kimlik No</th>
+                                <th data-filter="select">Departman</th>
+                                <th data-filter="select">İcra Dairesi</th>
+                                <th data-filter="string">Dosya No</th>
+                                <th data-filter="string">Toplam Borç</th>
+                                <th data-filter="string">Kesilen Tutar</th>
+                                <th data-filter="string">Kalan Tutar</th>
+                                <th data-filter="select">Durum</th>
+                                <th data-filter="date">Tarih</th>
+                                <th data-filter="string">Açıklama</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>

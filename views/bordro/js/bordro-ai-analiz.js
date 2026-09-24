@@ -281,12 +281,29 @@ $(document).ready(function () {
                 ${p.sodexo_alacagi > 0 ? `<div class="small"><span class="text-muted">Yemek:</span> ${formatMoney(p.sodexo_alacagi)}</div>` : ''}
             `;
 
+            // Personel Bilgisi & Görev
+            let gorevHtml = '';
+            if (p.gorev && p.gorev !== '-') {
+                gorevHtml = `<div class="small text-muted text-truncate" style="max-width: 220px;" title="${p.gorev}"><i class="mdi mdi-briefcase-outline me-1"></i>${p.gorev}</div>`;
+            } else {
+                gorevHtml = `<div class="small text-danger fw-medium"><i class="mdi mdi-alert-circle-outline me-1"></i>Görev Tanımsız</div>`;
+            }
+
+            let ucretBadge = p.ucret_tipi && p.ucret_tipi !== '-' 
+                ? `<span class="badge bg-light text-secondary border ms-1" style="font-size: 10px;">${p.ucret_tipi}</span>` 
+                : `<span class="badge bg-danger-subtle text-danger border border-danger ms-1" style="font-size: 10px;"><i class="mdi mdi-alert me-1"></i>Ücret Tipi Yok</span>`;
+
             const tr = `
                 <tr data-risk-type="${riskType}">
                     <td>
-                        <div class="fw-bold text-dark">${p.ad_soyad}</div>
-                        <small class="text-muted">${p.tc_kimlik ? 'TC: ' + p.tc_kimlik : ''}</small>
-                        <span class="badge bg-light text-secondary border ms-1" style="font-size: 10px;">${p.ucret_tipi}</span>
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <div class="fw-bold text-dark">${p.ad_soyad}</div>
+                            ${ucretBadge}
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <small class="text-muted">${p.tc_kimlik ? 'TC: ' + p.tc_kimlik : ''}</small>
+                        </div>
+                        ${gorevHtml}
                     </td>
                     <td>${gunHtml}</td>
                     <td>${dagilimHtml}</td>

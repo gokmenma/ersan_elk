@@ -392,8 +392,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($orderColumnIdx == 0) $orderColumn = 'p.adi_soyadi';
                     else $orderColumn = $columnsMap[$orderColumnIdx] ?? 'pi.created_at';
 
-                    $whereClause = "pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pi.created_at BETWEEN ? AND ?";
-                    $params = [$firmaId, $start_date_full, $end_date_full];
+                    // İcra dosyası daha önce açılmış olsa bile seçilen bordro döneminde
+                    // kesinti üretmişse raporda görünmelidir. Yalnızca pi.created_at ile
+                    // filtrelemek, bordroda görünen eski icra dosyalarını rapordan eliyordu.
+                    $icraDateCondition = "(
+                        pi.created_at BETWEEN ? AND ?
+                        OR EXISTS (
+                            SELECT 1
+                            FROM personel_kesintileri pk_period
+                            INNER JOIN bordro_donemi bd_period ON bd_period.id = pk_period.donem_id
+                            WHERE pk_period.icra_id = pi.id
+                              AND pk_period.tur = 'icra'
+                              AND pk_period.durum = 'onaylandi'
+                              AND pk_period.silinme_tarihi IS NULL
+                              AND bd_period.baslangic_tarihi <= ?
+                              AND bd_period.bitis_tarihi >= ?
+                        )
+                    )";
+                    $whereClause = "pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND {$icraDateCondition}";
+                    $params = [$firmaId, $start_date_full, $end_date_full, $end_date, $start_date];
 
                     if (!empty($searchValue)) {
                         $whereClause .= " AND (p.adi_soyadi LIKE ? OR p.departman LIKE ? OR pi.icra_dairesi LIKE ? OR pi.dosya_no LIKE ? OR pi.durum LIKE ?)";
@@ -411,8 +428,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     // Toplam Kayıt (Filtresiz)
-                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_icralari pi JOIN personel p ON pi.personel_id = p.id WHERE pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pi.created_at BETWEEN ? AND ?");
-                    $stmtTotal->execute([$firmaId, $start_date_full, $end_date_full]);
+                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_icralari pi JOIN personel p ON pi.personel_id = p.id WHERE pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND {$icraDateCondition}");
+                    $stmtTotal->execute([$firmaId, $start_date_full, $end_date_full, $end_date, $start_date]);
                     $recordsTotal = $stmtTotal->fetchColumn();
 
                     // Toplam Kayıt (Filtreli)
