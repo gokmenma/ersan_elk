@@ -90,41 +90,116 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
             </div>
         </div>
 
+        <?php
+        $isSuperAdmin = \App\Service\Gate::isSuperAdmin();
+        $hasPersonelPerm = $isSuperAdmin || \App\Service\Gate::allows('Personel Listesi') || \App\Service\Gate::allows('Personeller') || \App\Service\Gate::allows('personel_listesi');
+        $hasAracPerm = $isSuperAdmin || \App\Service\Gate::allows('Araç Takip') || \App\Service\Gate::allows('Araç Takip/Yönetim');
+        $hasDemirbasPerm = $isSuperAdmin || \App\Service\Gate::allows('Demirbaş Yönetimi') || \App\Service\Gate::allows('Demirbaş/Zimmet İşlemleri Sayfası');
+        $hasCariPerm = $isSuperAdmin || \App\Service\Gate::allows('Cari Takibi') || \App\Service\Gate::allows('Cari Hesap Hareketleri');
+        $hasEvrakPerm = $isSuperAdmin || \App\Service\Gate::allows('Evrak Takip') || \App\Service\Gate::allows('Evrak Bilgileri Sekmesi');
+        $hasGorevPerm = $isSuperAdmin || \App\Service\Gate::allows('Görevler') || \App\Service\Gate::allows('Görev ve Bildirimler');
+        $hasKacakPerm = $isSuperAdmin || \App\Service\Gate::allows('Kaçak İşlemleri') || \App\Service\Gate::allows('Kaçak Bildirim Onayı');
+        $hasAparatPerm = $isSuperAdmin || \App\Service\Gate::allows('Aparat Takip') || \App\Service\Gate::allows('Aparat Deposu') || \App\Service\Gate::allows('Aparat Tanımları');
+
+        $allowedSearchModules = [];
+        if ($hasPersonelPerm) $allowedSearchModules[] = 'personel';
+        if ($hasAracPerm) $allowedSearchModules[] = 'araclar';
+        if ($hasDemirbasPerm) $allowedSearchModules[] = 'demirbaslar';
+        if ($hasCariPerm) $allowedSearchModules[] = 'cariler';
+        if ($hasEvrakPerm) $allowedSearchModules[] = 'evraklar';
+        if ($hasGorevPerm) $allowedSearchModules[] = 'gorevler';
+        if ($hasKacakPerm) $allowedSearchModules[] = 'kacak';
+        if ($hasAparatPerm) $allowedSearchModules[] = 'aparatlar';
+
+        $hasAnySearchPerm = !empty($allowedSearchModules);
+        ?>
+
         <!-- Global Arama Kutusu (Geniş Ekranlarda Topbarın Tam Ortasında) -->
-        <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
+        <?php if ($hasAnySearchPerm): ?>
         <div class="topbar-global-search-wrapper d-none d-xl-block">
-            <div class="position-relative" id="global-search-wrapper">
-                <div class="global-search-box">
-                    <span class="global-search-icon">
-                        <i class="bx bx-search-alt-2"></i>
-                    </span>
-                    <input type="text" class="global-search-input" id="global-search-input" 
-                           placeholder="Personel ara... (İsim, TC, Görev, Telefon)" 
-                           autocomplete="off" spellcheck="false">
-                    <div class="global-search-actions">
-                        <span class="global-search-spinner" id="global-search-spinner" style="display: none;">
-                            <i class="bx bx-loader-alt bx-spin"></i>
-                        </span>
-                        <button type="button" class="btn btn-sm btn-link global-search-clear p-0" id="global-search-clear" style="display: none;" title="Temizle">
-                            <i class="bx bx-x font-size-18"></i>
-                        </button>
-                        <span class="global-search-kbd d-none d-xxl-inline-flex" title="Kısayol">
-                            <kbd>Ctrl</kbd><kbd class="ms-1">K</kbd>
-                        </span>
+            <div class="global-search-container" id="global-search-wrapper">
+                <div class="global-search-input-box">
+                    <i class="bx bx-search-alt-2 global-search-icon"></i>
+                    <input type="text" 
+                           class="global-search-input" 
+                           id="global-search-input" 
+                           placeholder="Personel, araç, demirbaş, cari, evrak veya görev ara..." 
+                           autocomplete="off" 
+                           spellcheck="false">
+                    <button type="button" class="global-search-clear-btn" id="global-search-clear" title="Temizle" style="display: none;">
+                        <i class="bx bx-x"></i>
+                    </button>
+                    <div class="global-search-kbd-badge" title="Kısayol: Ctrl + K">
+                        <kbd>ctrl</kbd><kbd>k</kbd>
+                    </div>
+                    <div class="global-search-spinner" id="global-search-spinner" style="display: none;">
+                        <i class="bx bx-loader-alt bx-spin"></i>
                     </div>
                 </div>
 
-                <!-- Açılır Şık Sonuç Paneli -->
+                <!-- Arama Sonuç Dropdown Kartı -->
                 <div class="global-search-dropdown shadow-lg" id="global-search-dropdown" style="display: none;">
-                    <div class="global-search-results-list" id="global-search-results">
-                        <!-- Dinamik Sonuçlar -->
+                    <!-- Kategori Filtreleme Sekmeleri -->
+                    <div class="global-search-categories" id="global-search-categories">
+                        <button type="button" class="gs-cat-pill active" data-cat="all">
+                            <i class="bx bx-grid-alt"></i> Tümü <span class="gs-count" id="count-all">0</span>
+                        </button>
+                        <?php if ($hasPersonelPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="personel">
+                            <i class="bx bx-user"></i> Personeller <span class="gs-count" id="count-personel">0</span>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($hasAracPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="araclar">
+                            <i class="bx bx-car"></i> Araçlar <span class="gs-count" id="count-araclar">0</span>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($hasDemirbasPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="demirbaslar">
+                            <i class="bx bx-cube"></i> Demirbaşlar <span class="gs-count" id="count-demirbaslar">0</span>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($hasCariPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="cariler">
+                            <i class="bx bx-buildings"></i> Cariler <span class="gs-count" id="count-cariler">0</span>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($hasEvrakPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="evraklar">
+                            <i class="bx bx-file"></i> Evraklar <span class="gs-count" id="count-evraklar">0</span>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($hasGorevPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="gorevler">
+                            <i class="bx bx-check-square"></i> Görevler <span class="gs-count" id="count-gorevler">0</span>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($hasKacakPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="kacak">
+                            <i class="bx bx-shield-quarter"></i> Kaçak / Saha <span class="gs-count" id="count-kacak">0</span>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($hasAparatPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="aparatlar">
+                            <i class="bx bx-wrench"></i> Aparatlar <span class="gs-count" id="count-aparatlar">0</span>
+                        </button>
+                        <?php endif; ?>
                     </div>
+
+                    <!-- Sonuç İçerik Alanı -->
+                    <div class="global-search-results" id="global-search-results">
+                        <!-- JS dinamik render edecek -->
+                    </div>
+
+                    <!-- Alt Bilgi / Kısayol İpuçları Çubuğu -->
                     <div class="global-search-footer">
-                        <span class="global-search-stats" id="global-search-stats">Toplam 0 sonuç</span>
-                        <div class="global-search-shortcuts">
-                            <span><kbd>↑</kbd><kbd class="ms-1">↓</kbd> Gezin</span>
-                            <span class="ms-2"><kbd>↵</kbd> Seç</span>
-                            <span class="ms-2"><kbd>ESC</kbd> Kapat</span>
+                        <div class="gs-footer-info" id="gs-footer-info">
+                            Toplam <span id="gs-total-count">0</span> sonuç bulundu
+                        </div>
+                        <div class="gs-footer-hints">
+                            <span class="gs-hint-item"><kbd>↑</kbd><kbd>↓</kbd> Gezin</span>
+                            <span class="gs-hint-item"><kbd>↵</kbd> Seç</span>
+                            <span class="gs-hint-item"><kbd>Esc</kbd> Kapat</span>
                         </div>
                     </div>
                 </div>
@@ -135,28 +210,28 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
         <div class="d-flex align-items-center">
 
             <!-- Küçük/Orta Ekranlarda (1200px altı) Arama İkon Butonu -->
-            <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
+            <?php if ($hasAnySearchPerm): ?>
             <div class="dropdown d-inline-block d-xl-none ms-1">
                 <button type="button" class="btn header-item noti-icon position-relative" id="page-header-search-dropdown" data-bs-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="false" title="Personel Ara (Ctrl+K)">
+                    aria-haspopup="true" aria-expanded="false" title="Ara (Ctrl+K)">
                     <i data-feather="search" class="icon-lg"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0 shadow-lg border-0"
-                    aria-labelledby="page-header-search-dropdown" style="min-width: 320px; width: 88vw; max-width: 420px; border-radius: 12px; overflow: hidden;">
+                    aria-labelledby="page-header-search-dropdown" style="min-width: 320px; width: 88vw; max-width: 440px; border-radius: 14px; overflow: hidden;">
                     <div class="p-3 border-bottom bg-light">
                         <div class="position-relative">
                             <input type="text" class="form-control rounded-pill ps-4 pe-4 font-size-13" id="global-search-mobile-input" 
-                                   placeholder="Personel ara... (İsim, TC, Görev, Telefon)" autocomplete="off">
+                                   placeholder="Personel, araç, demirbaş, cari veya evrak ara..." autocomplete="off">
                             <i class="bx bx-search-alt position-absolute top-50 start-0 translate-middle-y ms-2 text-muted font-size-16"></i>
                             <span class="position-absolute top-50 end-0 translate-middle-y me-2" id="global-search-mobile-spinner" style="display: none;">
                                 <i class="bx bx-loader-alt bx-spin text-primary font-size-16"></i>
                             </span>
                         </div>
                     </div>
-                    <div class="global-search-results-list" id="global-search-mobile-results" style="max-height: 360px; overflow-y: auto;">
+                    <div class="global-search-results-list" id="global-search-mobile-results" style="max-height: 380px; overflow-y: auto;">
                         <div class="p-4 text-center text-muted font-size-12">
                             <i class="bx bx-search-alt font-size-24 d-block mb-1 text-muted opacity-50"></i>
-                            Aramak istediğiniz personelin adını, TC'sini veya görevini yazınız.
+                            Personel, araç, demirbaş, cari veya evrak aramak için yazmaya başlayın.
                         </div>
                     </div>
                 </div>
@@ -539,373 +614,18 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
             }, 'json');
         });
 
-        // Global Arama Kutusu (Spotlight Search) JS Kodları
-        const $searchInput = $('#global-search-input');
-        const $searchDropdown = $('#global-search-dropdown');
-        const $searchResults = $('#global-search-results');
-        const $searchSpinner = $('#global-search-spinner');
-        const $searchClear = $('#global-search-clear');
-        const $searchStats = $('#global-search-stats');
-        let searchDebounceTimer = null;
-        let activeItemIndex = -1;
-        let lastSearchQuery = '';
-
-        function escapeRegExp(string) {
-            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        }
-
-        function highlightMatch(text, query) {
-            if (!text || !query) return text || '';
-            const cleanQuery = query.trim();
-            if (cleanQuery.length === 0) return text;
-            const regex = new RegExp('(' + escapeRegExp(cleanQuery) + ')', 'gi');
-            return String(text).replace(regex, '<mark class="global-search-highlight">$1</mark>');
-        }
-
-        function performSearch(query) {
-            query = query.trim();
-            if (query.length < 2) {
-                $searchSpinner.hide();
-                $searchDropdown.hide();
-                $searchResults.empty();
-                return;
-            }
-
-            $searchSpinner.show();
-            lastSearchQuery = query;
-
-            $.ajax({
-                url: 'api/global_search.php',
-                type: 'GET',
-                data: { q: query },
-                dataType: 'json',
-                success: function (response) {
-                    $searchSpinner.hide();
-                    if (response.status === 'success') {
-                        renderSearchResults(response, query);
-                    } else {
-                        renderSearchError(response.message || 'Arama sırasında bir hata oluştu.');
-                    }
-                },
-                error: function () {
-                    $searchSpinner.hide();
-                    renderSearchError('Sunucu bağlantı hatası oluştu.');
-                }
-            });
-        }
-
-        function renderSearchResults(response, query) {
-            activeItemIndex = -1;
-            const categories = response.categories || {};
-            const total = response.total || 0;
-
-            $searchStats.text('Toplam ' + total + ' sonuç bulundu');
-
-            if (total === 0) {
-                $searchResults.html(`
-                    <div class="global-search-empty text-center p-4">
-                        <div class="avatar-md mx-auto mb-2 text-muted">
-                            <i class="bx bx-search-alt font-size-24"></i>
-                        </div>
-                        <h6 class="font-size-14 text-dark mb-1">Sonuç Bulunamadı</h6>
-                        <p class="text-muted font-size-12 mb-0">"<strong>${$('<div>').text(query).html()}</strong>" ile eşleşen personel kaydı bulunamadı.</p>
-                    </div>
-                `);
-                $searchDropdown.show();
-                return;
-            }
-
-            let html = '';
-
-            // Personel Kategorisi
-            if (categories.personel && categories.personel.items && categories.personel.items.length > 0) {
-                html += `
-                    <div class="global-search-category">
-                        <div class="global-search-category-header">
-                            <span><i class="bx bx-user me-1 text-primary"></i> ${categories.personel.label}</span>
-                            <span class="badge bg-soft-primary text-primary font-size-11">${categories.personel.count}</span>
-                        </div>
-                        <div class="global-search-items-group">
-                `;
-
-                categories.personel.items.forEach(function (p, index) {
-                    const highlightedName = highlightMatch(p.title, query);
-                    const highlightedDuty = highlightMatch(p.duty, query);
-                    const highlightedDept = p.department ? highlightMatch(p.department, query) : '';
-                    const highlightedPhone = p.phone ? highlightMatch(p.phone, query) : '';
-
-                    let avatarHtml = '';
-                    if (p.avatar_url) {
-                        avatarHtml = `
-                            <div class="global-search-avatar">
-                                <img src="${p.avatar_url}" alt="${p.title}" class="rounded-circle w-100 h-100 object-fit-cover">
-                                <span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span>
-                            </div>
-                        `;
-                    } else {
-                        avatarHtml = `
-                            <div class="global-search-avatar" style="background-color: ${p.avatar_color};">
-                                <span>${p.initials}</span>
-                                <span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span>
-                            </div>
-                        `;
-                    }
-
-                    let tcBadge = '';
-                    if (p.masked_tc || p.tc) {
-                        tcBadge = `<span class="badge bg-light text-muted border font-size-11 ms-2 font-monospace"><i class="bx bx-id-card me-1"></i>${p.masked_tc || p.tc}</span>`;
-                    }
-
-                    let metaItems = [];
-                    if (highlightedDuty) metaItems.push(`<span><i class="bx bx-briefcase-alt-2 me-1"></i>${highlightedDuty}</span>`);
-                    if (highlightedDept) metaItems.push(`<span><i class="bx bx-buildings me-1"></i>${highlightedDept}</span>`);
-                    if (highlightedPhone) metaItems.push(`<span><i class="bx bx-phone me-1"></i>${highlightedPhone}</span>`);
-                    if (p.team) metaItems.push(`<span><i class="bx bx-group me-1"></i>${p.team}</span>`);
-
-                    html += `
-                        <a href="${p.url}" class="global-search-item" data-index="${index}">
-                            ${avatarHtml}
-                            <div class="global-search-item-info flex-grow-1 min-w-0 ms-3">
-                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <div class="d-flex align-items-center text-truncate">
-                                        <span class="global-search-item-title text-truncate">${highlightedName}</span>
-                                        ${tcBadge}
-                                    </div>
-                                    <span class="badge ${p.status_badge} font-size-11 ms-2 flex-shrink-0">${p.status_text}</span>
-                                </div>
-                                <div class="global-search-item-meta text-truncate">
-                                    ${metaItems.join('<span class="mx-1 text-muted">•</span>')}
-                                </div>
-                            </div>
-                            <div class="global-search-item-arrow ms-2">
-                                <i class="bx bx-chevron-right font-size-18 text-muted"></i>
-                            </div>
-                        </a>
-                    `;
-                });
-
-                html += `
-                        </div>
-                    </div>
-                `;
-            }
-
-            $searchResults.html(html);
-            $searchDropdown.show();
-        }
-
-        function renderSearchError(msg) {
-            $searchResults.html(`
-                <div class="global-search-empty text-center p-3 text-danger">
-                    <i class="bx bx-error-circle font-size-20 me-1"></i> ${$('<div>').text(msg).html()}
-                </div>
-            `);
-            $searchDropdown.show();
-        }
-
-        function updateActiveItem(items) {
-            items.removeClass('active');
-            if (activeItemIndex >= 0 && activeItemIndex < items.length) {
-                const $active = items.eq(activeItemIndex);
-                $active.addClass('active');
-                
-                // Otomatik scroll
-                const container = $searchResults[0];
-                const activeEl = $active[0];
-                if (container && activeEl) {
-                    const containerTop = container.scrollTop;
-                    const containerBottom = containerTop + container.clientHeight;
-                    const elemTop = activeEl.offsetTop;
-                    const elemBottom = elemTop + activeEl.clientHeight;
-
-                    if (elemTop < containerTop) {
-                        container.scrollTop = elemTop;
-                    } else if (elemBottom > containerBottom) {
-                        container.scrollTop = elemBottom - container.clientHeight;
-                    }
-                }
-            }
-        }
-
-        // Input Olayları
-        $searchInput.on('input', function () {
-            const query = $(this).val();
-            
-            if (query.trim().length > 0) {
-                $searchClear.show();
-            } else {
-                $searchClear.hide();
-            }
-
-            clearTimeout(searchDebounceTimer);
-            if (query.trim().length >= 2) {
-                searchDebounceTimer = setTimeout(function () {
-                    performSearch(query);
-                }, 250);
-            } else {
-                $searchSpinner.hide();
-                $searchDropdown.hide();
-                $searchResults.empty();
-            }
-        });
-
-        $searchInput.on('focus', function () {
-            const query = $(this).val().trim();
-            if (query.length >= 2 && $searchResults.children().length > 0) {
-                $searchDropdown.show();
-            }
-        });
-
-        $searchClear.on('click', function () {
-            $searchInput.val('').focus();
-            $searchClear.hide();
-            $searchSpinner.hide();
-            $searchDropdown.hide();
-            $searchResults.empty();
-            lastSearchQuery = '';
-        });
-
-        // Klavye Navigasyonu
-        $searchInput.on('keydown', function (e) {
-            const items = $searchResults.find('.global-search-item');
-            
-            if (!$searchDropdown.is(':visible') || items.length === 0) {
-                if (e.key === 'Escape') {
-                    $searchInput.blur();
-                }
-                return;
-            }
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                activeItemIndex = (activeItemIndex + 1) % items.length;
-                updateActiveItem(items);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                activeItemIndex = (activeItemIndex - 1 + items.length) % items.length;
-                updateActiveItem(items);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (activeItemIndex >= 0 && activeItemIndex < items.length) {
-                    window.location.href = items.eq(activeItemIndex).attr('href');
-                } else if (items.length > 0) {
-                    window.location.href = items.first().attr('href');
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                $searchDropdown.hide();
-                $searchInput.blur();
-            }
-        });
-
-        // Mobil / Kompakt Arama Olayları
-        const $mobileInput = $('#global-search-mobile-input');
-        const $mobileResults = $('#global-search-mobile-results');
-        const $mobileSpinner = $('#global-search-mobile-spinner');
-        let mobileDebounceTimer = null;
-
-        $mobileInput.on('input', function () {
-            const query = $(this).val().trim();
-            clearTimeout(mobileDebounceTimer);
-
-            if (query.length < 2) {
-                $mobileSpinner.hide();
-                $mobileResults.html('<div class="p-4 text-center text-muted font-size-12"><i class="bx bx-search-alt font-size-24 d-block mb-1 text-muted opacity-50"></i>Aramak istediğiniz personelin adını, TC\'sini veya görevini yazınız.</div>');
-                return;
-            }
-
-            $mobileSpinner.show();
-
-            mobileDebounceTimer = setTimeout(function () {
-                $.ajax({
-                    url: 'api/global_search.php',
-                    type: 'GET',
-                    data: { q: query },
-                    dataType: 'json',
-                    success: function (response) {
-                        $mobileSpinner.hide();
-                        if (response.status === 'success') {
-                            const categories = response.categories || {};
-                            if (categories.personel && categories.personel.items && categories.personel.items.length > 0) {
-                                let mHtml = '';
-                                categories.personel.items.forEach(function (p) {
-                                    const hName = highlightMatch(p.title, query);
-                                    let avHtml = p.avatar_url ? 
-                                        `<div class="global-search-avatar"><img src="${p.avatar_url}" class="rounded-circle w-100 h-100 object-fit-cover"><span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span></div>` :
-                                        `<div class="global-search-avatar" style="background-color: ${p.avatar_color};"><span>${p.initials}</span><span class="global-search-status-dot ${p.is_active ? 'bg-success' : 'bg-danger'}"></span></div>`;
-
-                                    let tcBadge = p.masked_tc || p.tc ? `<span class="badge bg-light text-muted border font-size-10 ms-1">${p.masked_tc || p.tc}</span>` : '';
-
-                                    mHtml += `
-                                        <a href="${p.url}" class="global-search-item">
-                                            ${avHtml}
-                                            <div class="global-search-item-info flex-grow-1 min-w-0 ms-2">
-                                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                                    <div class="d-flex align-items-center text-truncate">
-                                                        <span class="global-search-item-title text-truncate font-size-13">${hName}</span>
-                                                        ${tcBadge}
-                                                    </div>
-                                                    <span class="badge ${p.status_badge} font-size-10 ms-1 flex-shrink-0">${p.status_text}</span>
-                                                </div>
-                                                <div class="global-search-item-meta text-truncate font-size-11">
-                                                    <span>${p.duty}</span>
-                                                    ${p.department ? '<span class="mx-1">•</span><span>' + p.department + '</span>' : ''}
-                                                    ${p.phone ? '<span class="mx-1">•</span><span>' + p.phone + '</span>' : ''}
-                                                </div>
-                                            </div>
-                                            <div class="global-search-item-arrow ms-1">
-                                                <i class="bx bx-chevron-right font-size-16 text-muted"></i>
-                                            </div>
-                                        </a>
-                                    `;
-                                });
-                                $mobileResults.html(mHtml);
-                            } else {
-                                $mobileResults.html('<div class="p-4 text-center text-muted font-size-12">"<strong>' + $('<div>').text(query).html() + '</strong>" ile eşleşen kayıt bulunamadı.</div>');
-                            }
-                        }
-                    },
-                    error: function() {
-                        $mobileSpinner.hide();
-                    }
-                });
-            }, 250);
-        });
-
-        $('#page-header-search-dropdown').on('shown.bs.dropdown', function () {
-            setTimeout(function () {
-                $mobileInput.focus();
-            }, 100);
-        });
-
-        // Dışarı tıklandığında kapat
-        $(document).on('click', function (e) {
-            if (!$(e.target).closest('#global-search-wrapper').length) {
-                $searchDropdown.hide();
-            }
-        });
-
-        // Global Kısayol: Ctrl+K veya Cmd+K (Geniş ekranda bara, küçük ekranda menüye odaklanır)
-        $(document).on('keydown', function (e) {
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
-                e.preventDefault();
-                if ($searchInput.is(':visible')) {
-                    $searchInput.focus().select();
-                } else {
-                    const dropdownBtn = document.getElementById('page-header-search-dropdown');
-                    if (dropdownBtn) {
-                        const bsDropdown = bootstrap.Dropdown.getOrCreateInstance(dropdownBtn);
-                        bsDropdown.toggle();
-                    }
-                }
-            }
-        });
-
     });
 </script>
 
+<script>
+    window.GLOBAL_SEARCH_ALLOWED_MODULES = <?php echo json_encode($allowedSearchModules ?? []); ?>;
+</script>
+<script src="<?php echo Helper::assetVersion('assets/js/global-search.js'); ?>"></script>
+
 <style>
-/* Global Arama Çubuğu ve Sonuç Paneli Stilleri */
+/* ==============================================================
+   GLOBAL SEARCH COMPONENT STYLES
+   ============================================================== */
 .navbar-header {
     position: relative;
 }
@@ -914,278 +634,695 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    width: calc(100% - 500px);
-    max-width: 560px;
+    width: calc(100% - 480px);
+    max-width: 580px;
     z-index: 1000;
 }
 
 @media (min-width: 1500px) {
     .topbar-global-search-wrapper {
-        max-width: 640px;
-        width: calc(100% - 540px);
+        max-width: 660px;
+        width: calc(100% - 520px);
     }
 }
 
 @media (min-width: 1200px) and (max-width: 1499px) {
     .topbar-global-search-wrapper {
-        max-width: 460px;
+        max-width: 480px;
         width: calc(100% - 460px);
     }
 }
 
-.global-search-box {
-    display: flex;
-    align-items: center;
+.global-search-container {
     position: relative;
-    background: rgba(var(--bs-tertiary-bg-rgb, 243, 243, 249), 0.85);
-    border: 1px solid var(--bs-border-color, #e2e5e8);
-    border-radius: 30px;
-    padding: 0.3rem 0.8rem 0.3rem 1.1rem;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 100%;
 }
 
-.global-search-box:focus-within {
-    background: var(--bs-card-bg, #ffffff);
-    border-color: #5156be;
-    box-shadow: 0 0 0 3.5px rgba(81, 86, 190, 0.18), 0 2px 8px rgba(0, 0, 0, 0.04);
+.global-search-input-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0 12px;
+    height: 40px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.global-search-input-box:focus-within {
+    background: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .global-search-icon {
-    color: #74788d;
-    font-size: 1.2rem;
-    margin-right: 0.4rem;
-    display: flex;
-    align-items: center;
+    color: #94a3b8;
+    font-size: 18px;
+    margin-right: 8px;
     flex-shrink: 0;
+    transition: color 0.2s ease;
+}
+
+.global-search-input-box:focus-within .global-search-icon {
+    color: #3b82f6;
 }
 
 .global-search-input {
+    width: 100%;
     border: none;
     background: transparent;
-    padding: 0.35rem 0.4rem;
-    font-size: 0.875rem;
-    width: 100%;
-    outline: none !important;
-    box-shadow: none !important;
-    color: var(--bs-body-color, #495057);
+    font-size: 13.5px;
+    color: #1e293b;
+    outline: none;
+    padding: 0;
+    font-weight: 500;
 }
 
 .global-search-input::placeholder {
-    color: #98a6ad;
+    color: #94a3b8;
     font-weight: 400;
 }
 
-.global-search-actions {
+.global-search-clear-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px 6px;
+    margin-right: 6px;
+    font-size: 16px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
-    flex-shrink: 0;
-    gap: 6px;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.global-search-clear-btn:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+.global-search-kbd-badge {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    user-select: none;
+    pointer-events: none;
+}
+
+.global-search-kbd-badge kbd {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #64748b;
+    font-size: 10.5px;
+    font-family: inherit;
+    font-weight: 600;
+    padding: 2px 5px;
+    border-radius: 5px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+    line-height: 1;
+    text-transform: lowercase;
+}
+
+@media (max-width: 767px) {
+    .global-search-kbd-badge {
+        display: none;
+    }
 }
 
 .global-search-spinner {
-    color: #5156be;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
+    color: #3b82f6;
+    font-size: 18px;
+    margin-left: 6px;
+    flex-shrink: 0;
 }
 
-.global-search-clear {
-    color: #74788d;
-    text-decoration: none !important;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-}
-.global-search-clear:hover {
-    color: #f46a6a;
-}
-
-.global-search-kbd {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-}
-.global-search-kbd kbd {
-    font-size: 0.68rem;
-    background: rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    color: #74788d;
-    border-radius: 4px;
-    padding: 2px 5px;
-    font-weight: 600;
-    box-shadow: none;
-}
-
-/* Açılır Sonuç Paneli */
+/* ==============================================================
+   GLOBAL SEARCH DROPDOWN CARD
+   ============================================================== */
 .global-search-dropdown {
     position: absolute;
     top: calc(100% + 8px);
-    left: 0;
-    right: 0;
-    width: 100%;
-    min-width: 100%;
-    background: var(--bs-card-bg, #ffffff);
-    border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.08));
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    width: 660px;
+    max-width: 92vw;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     border-radius: 14px;
-    box-shadow: 0 16px 40px rgba(18, 38, 63, 0.16), 0 3px 10px rgba(18, 38, 63, 0.06);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 1060;
     overflow: hidden;
-    animation: searchDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes searchDropdownFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-6px) scale(0.99);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+.global-search-dropdown.show {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    transform: translateX(-50%) translateY(0);
 }
 
-.global-search-results-list {
-    max-height: 380px;
+/* Category Filter Pills Bar */
+.global-search-categories {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.global-search-categories.is-dragging {
+    cursor: grabbing !important;
+}
+
+.global-search-categories::-webkit-scrollbar {
+    height: 4px;
+}
+
+.global-search-categories::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.global-search-categories::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.global-search-categories::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.gs-cat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+
+.gs-cat-pill:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+
+.gs-cat-pill.active {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.gs-cat-pill .gs-count {
+    background: rgba(0, 0, 0, 0.07);
+    color: inherit;
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 10px;
+}
+
+.gs-cat-pill.active .gs-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+/* Results Content Area */
+.global-search-results {
+    max-height: 420px;
     overflow-y: auto;
-    padding: 0.4rem 0;
+    padding: 8px;
 }
 
-.global-search-category-header {
-    padding: 0.5rem 1rem 0.3rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #74788d;
+.global-search-results::-webkit-scrollbar {
+    width: 6px;
+}
+
+.global-search-results::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+/* Category Groups */
+.gs-category-group {
+    margin-bottom: 10px;
+}
+
+.gs-category-group:last-child {
+    margin-bottom: 0;
+}
+
+.gs-category-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid var(--bs-border-color, #f1f1f5);
+    padding: 6px 10px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    text-transform: uppercase;
 }
 
-.global-search-item {
+.gs-category-header .gs-cat-title i {
+    margin-right: 5px;
+    font-size: 14px;
+}
+
+.gs-cat-count-badge {
+    background: #e2e8f0;
+    color: #64748b;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+}
+
+/* Result Item */
+.gs-result-item {
     display: flex;
     align-items: center;
-    padding: 0.65rem 1rem;
-    color: var(--bs-body-color, #495057);
+    gap: 12px;
+    padding: 9px 12px;
+    border-radius: 10px;
     text-decoration: none !important;
     transition: all 0.15s ease;
-    border-left: 3px solid transparent;
     cursor: pointer;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    position: relative;
+    border: 1px solid transparent;
 }
 
-.global-search-item:last-child {
-    border-bottom: none;
+.gs-result-item:hover,
+.gs-result-item.active {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
 }
 
-.global-search-item:hover,
-.global-search-item.active {
-    background-color: rgba(81, 86, 190, 0.08);
-    border-left-color: #5156be;
-    color: var(--bs-body-color, #495057);
-}
-
-.global-search-item:hover .global-search-item-title,
-.global-search-item.active .global-search-item-title {
-    color: #5156be;
-}
-
-.global-search-item:hover .global-search-item-arrow i,
-.global-search-item.active .global-search-item-arrow i {
-    color: #5156be !important;
-    transform: translateX(3px);
-    transition: transform 0.15s ease;
-}
-
-/* Avatar */
-.global-search-avatar {
+/* Avatar / Initial Badge */
+.gs-item-avatar {
     width: 38px;
     height: 38px;
-    border-radius: 50%;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.85rem;
-    color: #ffffff;
-    position: relative;
+    font-size: 13px;
     flex-shrink: 0;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    position: relative;
 }
 
-.global-search-status-dot {
+.gs-avatar-dot {
     position: absolute;
     bottom: -1px;
     right: -1px;
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    border: 2px solid var(--bs-card-bg, #ffffff);
+    border: 2px solid #ffffff;
 }
 
-/* Personel Bilgi Metinleri */
-.global-search-item-title {
-    font-weight: 600;
-    font-size: 0.88rem;
-    color: var(--bs-heading-color, #212529);
+/* Badge Color Themes */
+.gs-avatar-purple { background: #f3e8ff; color: #7e22ce; }
+.gs-avatar-purple .gs-avatar-dot { background: #9333ea; }
+
+.gs-avatar-amber { background: #fef3c7; color: #b45309; }
+.gs-avatar-amber .gs-avatar-dot { background: #f59e0b; }
+
+.gs-avatar-blue { background: #dbeafe; color: #1d4ed8; }
+.gs-avatar-blue .gs-avatar-dot { background: #3b82f6; }
+
+.gs-avatar-emerald { background: #d1fae5; color: #047857; }
+.gs-avatar-emerald .gs-avatar-dot { background: #10b981; }
+
+.gs-avatar-cyan { background: #cffafe; color: #0e7490; }
+.gs-avatar-cyan .gs-avatar-dot { background: #06b6d4; }
+
+.gs-avatar-indigo { background: #e0e7ff; color: #4338ca; }
+.gs-avatar-indigo .gs-avatar-dot { background: #6366f1; }
+
+/* Item Content */
+.gs-item-content {
+    flex: 1;
+    min-width: 0;
 }
 
-.global-search-item-meta {
-    font-size: 0.74rem;
-    color: #74788d;
+.gs-item-row-primary {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 2px;
+    gap: 8px;
+    margin-bottom: 2px;
 }
 
-.global-search-highlight {
-    background-color: rgba(241, 180, 76, 0.35);
-    color: inherit;
+.gs-item-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gs-item-extra {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #059669;
+    background: #ecfdf5;
+    padding: 1px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.gs-item-date {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.gs-item-row-secondary {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gs-item-subtitle {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Highlight Mark */
+.gs-highlight {
+    background: #fef08a;
+    color: #854d0e;
+    font-weight: 700;
     padding: 0 2px;
     border-radius: 2px;
-    font-weight: 700;
 }
 
-/* Footer */
-.global-search-footer {
-    padding: 0.45rem 1rem;
-    background: var(--bs-tertiary-bg, #f8f9fa);
-    border-top: 1px solid var(--bs-border-color, #e9e9ef);
-    font-size: 0.74rem;
-    color: #74788d;
+/* Right Status & Arrow */
+.gs-item-actions {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
-.global-search-shortcuts kbd {
-    font-size: 0.68rem;
-    background: rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    color: #74788d;
-    border-radius: 3px;
+.gs-status-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.gs-status-pill.badge-success { background: #dcfce7; color: #15803d; }
+.gs-status-pill.badge-warning { background: #fef3c7; color: #b45309; }
+.gs-status-pill.badge-danger { background: #fee2e2; color: #b91c1c; }
+.gs-status-pill.badge-primary { background: #dbeafe; color: #1d4ed8; }
+.gs-status-pill.badge-secondary { background: #f1f5f9; color: #475569; }
+
+.gs-item-arrow {
+    font-size: 16px;
+    color: #94a3b8;
+    transition: transform 0.15s ease;
+}
+
+.gs-result-item:hover .gs-item-arrow,
+.gs-result-item.active .gs-item-arrow {
+    transform: translateX(2px);
+    color: #2563eb;
+}
+
+/* Suggestions & Empty States */
+.gs-suggestions-wrap {
+    padding: 12px 10px;
+}
+
+.gs-suggestions-header {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+}
+
+.gs-suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+@media (max-width: 575px) {
+    .gs-suggestions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.gs-suggestion-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    text-decoration: none !important;
+    color: #334155;
+    font-size: 12.5px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.gs-suggestion-card i {
+    font-size: 18px;
+}
+
+.gs-suggestion-card:hover {
+    background: #ffffff;
+    border-color: #3b82f6;
+    color: #2563eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.gs-empty-state {
+    text-align: center;
+    padding: 32px 16px;
+}
+
+.gs-empty-icon {
+    font-size: 32px;
+    color: #cbd5e1;
+    margin-bottom: 8px;
+}
+
+.gs-empty-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.gs-empty-subtitle {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+/* Footer Bar */
+.global-search-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-top: 1px solid #f1f5f9;
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.gs-footer-hints {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gs-hint-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.gs-hint-item kbd {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    font-size: 10px;
     padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
 }
 
-/* Dark Mode Desteği */
-[data-bs-theme="dark"] .global-search-box {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
+/* ==============================================================
+   DARK MODE ADAPTATIONS FOR GLOBAL SEARCH
+   ============================================================== */
+[data-bs-theme="dark"] .global-search-input-box,
+body[data-topbar="dark"] .global-search-input-box {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
-[data-bs-theme="dark"] .global-search-box:focus-within {
-    background: var(--bs-card-bg);
+
+[data-bs-theme="dark"] .global-search-input-box:focus-within,
+body[data-topbar="dark"] .global-search-input-box:focus-within {
+    background: #0f172a;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
 }
-[data-bs-theme="dark"] .global-search-kbd kbd,
-[data-bs-theme="dark"] .global-search-shortcuts kbd {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.15);
-    color: #a6b0cf;
+
+[data-bs-theme="dark"] .global-search-input,
+body[data-topbar="dark"] .global-search-input {
+    color: #f8fafc;
 }
-[data-bs-theme="dark"] .global-search-highlight {
-    background-color: rgba(241, 180, 76, 0.45);
-    color: #fff;
+
+[data-bs-theme="dark"] .global-search-input::placeholder,
+body[data-topbar="dark"] .global-search-input::placeholder {
+    color: #64748b;
+}
+
+[data-bs-theme="dark"] .global-search-kbd-badge kbd,
+body[data-topbar="dark"] .global-search-kbd-badge kbd {
+    background: #0f172a;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .global-search-dropdown,
+body[data-topbar="dark"] .global-search-dropdown {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .global-search-categories,
+body[data-topbar="dark"] .global-search-categories {
+    background: #0f172a;
+    border-bottom-color: #334155;
+    scrollbar-color: #475569 transparent;
+}
+
+[data-bs-theme="dark"] .global-search-categories::-webkit-scrollbar-thumb,
+body[data-topbar="dark"] .global-search-categories::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+[data-bs-theme="dark"] .gs-cat-pill,
+body[data-topbar="dark"] .gs-cat-pill {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .gs-cat-pill:hover,
+body[data-topbar="dark"] .gs-cat-pill:hover {
+    background: #334155;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .gs-cat-pill.active,
+body[data-topbar="dark"] .gs-cat-pill.active {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+}
+
+[data-bs-theme="dark"] .gs-result-item:hover,
+[data-bs-theme="dark"] .gs-result-item.active,
+body[data-topbar="dark"] .gs-result-item:hover,
+body[data-topbar="dark"] .gs-result-item.active {
+    background: #334155;
+    border-color: #475569;
+}
+
+[data-bs-theme="dark"] .gs-item-title,
+body[data-topbar="dark"] .gs-item-title {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .gs-item-row-secondary,
+body[data-topbar="dark"] .gs-item-row-secondary {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .gs-highlight,
+body[data-topbar="dark"] .gs-highlight {
+    background: rgba(234, 179, 8, 0.35);
+    color: #fde047;
+}
+
+[data-bs-theme="dark"] .gs-item-extra,
+body[data-topbar="dark"] .gs-item-extra {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+[data-bs-theme="dark"] .global-search-footer,
+body[data-topbar="dark"] .global-search-footer {
+    background: #0f172a;
+    border-top-color: #334155;
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .gs-hint-item kbd,
+body[data-topbar="dark"] .gs-hint-item kbd {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .gs-suggestion-card,
+body[data-topbar="dark"] .gs-suggestion-card {
+    background: #0f172a;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .gs-suggestion-card:hover,
+body[data-topbar="dark"] .gs-suggestion-card:hover {
+    background: #1e293b;
+    border-color: #60a5fa;
+    color: #93c5fd;
 }
 </style>
 

@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (count($validSigners) !== count(array_unique($signerIds))) {
                     throw new Exception('İmza atacak kullanıcılardan biri geçersiz veya bu firmaya ait değil.');
                 }
-                if (($data['evrak_tipi'] ?? 'gelen') === 'giden' && $validSigners === []) {
+                if (($data['evrak_tipi'] ?? 'gelen') === 'giden' && !$ustYaziGerekliDegil && $validSigners === []) {
                     throw new Exception('En az bir imza atacak kullanıcı seçiniz.');
                 }
                 $data['imza_kullanici_ids'] = json_encode(array_map(fn($user) => (int) $user->id, $validSigners), JSON_UNESCAPED_UNICODE);

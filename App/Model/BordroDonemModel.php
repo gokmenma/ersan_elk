@@ -143,6 +143,24 @@ class BordroDonemModel extends Model
     }
 
     /**
+     * Belirtilen başlangıç tarihinden önceki en son dönemi getirir
+     */
+    public function getPreviousDonem($baslangic_tarihi)
+    {
+        $firma_id = $_SESSION["firma_id"] ?? 1;
+        $sql = $this->db->prepare("
+            SELECT * FROM {$this->table}
+            WHERE silinme_tarihi IS NULL
+            AND firma_id = ?
+            AND baslangic_tarihi < ?
+            ORDER BY baslangic_tarihi DESC
+            LIMIT 1
+        ");
+        $sql->execute([$firma_id, $baslangic_tarihi]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Dönemi siler (soft delete)
      */
     public function deleteDonem($id)
@@ -150,3 +168,4 @@ class BordroDonemModel extends Model
         return $this->softDelete($id);
     }
 }
+

@@ -156,7 +156,7 @@ if (!isset($_SESSION['force_desktop'])) {
             if (!in_array($page, $publicPages, true)) {
                 $hasMenuAccess = RequestPerformanceProfiler::measure(
                     'index.menu_access_check',
-                    fn() => $Menus->userCanAccessMenuLink($currentUserId, $page),
+                    fn() => $Menus->userCanAccessMenuLink($currentUserId, $page === 'bordro/ai-analiz' ? 'bordro/list' : $page),
                     1
                 );
                 if (!$hasMenuAccess) {

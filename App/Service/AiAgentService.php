@@ -110,11 +110,11 @@ class AiAgentService
             } catch (Exception $e) {
                 error_log("AiAgentService API Call Error: " . $e->getMessage());
                 $status = 'error';
-                $responseContent = $this->fallbackHeuristicResponse($userPrompt, $contextDataStr, $e->getMessage());
+                $responseContent = $this->fallbackHeuristicResponse($userPrompt, $contextDataStr, $e->getMessage(), $module);
             }
         } else {
             // API key henüz tanımlanmamışsa yerel deterministik analitik motor devreye girer
-            $responseContent = $this->fallbackHeuristicResponse($userPrompt, $contextDataStr);
+            $responseContent = $this->fallbackHeuristicResponse($userPrompt, $contextDataStr, '', $module);
         }
 
         $executionTimeMs = (int) ((microtime(true) - $startTime) * 1000);
@@ -153,6 +153,23 @@ class AiAgentService
      */
     private function buildSystemPrompt(string $module, string $contextJson): string
     {
+        if ($module === 'bordro-denetim') {
+            return <<<PROMPT
+Sen Ersan Elektrik Kurumsal ERP/CRM Sistemi bünyesinde çalışan üst düzey bir Bordro ve Finans Denetim Yapay Zekasısın (AI Payroll Auditor).
+Görevin: Verilen bordro dönemi verilerini ve tespit edilen riskleri analiz etmek; hatalı işlemleri, fazla/eksik ödemeleri ve mevzuat uyumsuzluklarını yöneticiye net, anlaşılır ve aksiyon odaklı Türkçe bir özet olarak sunmaktır.
+
+Modül: Bordro Denetimi
+Bordro ve Risk Verileri (JSON):
+{$contextJson}
+
+KURALLAR:
+1. Yanıtlarını GitHub Markdown formatında yaz.
+2. Bordro sağlık durumunu, tespit edilen kritik riskleri ve finansal fazla/eksik ödeme hacmini net vurgula.
+3. Maddeler halinde yöneticiye öncelikli yapılması gereken aksiyon ve düzeltme önerilerini sun.
+4. Yanıtlarını net, profesyonel, yapıcı ve doğrudan çözüme dönük tut.
+PROMPT;
+        }
+
         return <<<PROMPT
 Sen Ersan Elektrik Kurumsal ERP/CRM Sistemi bünyesinde çalışan üst düzey bir Yapay Zeka İş Ajanısın (AI Work Agent).
 Görevin: Verilen modül verilerini analiz etmek, riskli durumları (sürücü kötü kullanımı, aşırı servis maliyeti, ikame araç problemleri) tespit etmek ve yöneticiye net, aksiyon odaklı Türkçe değerlendirmeler sunmaktır.
@@ -212,7 +229,8 @@ PROMPT;
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
 
         $responseStr = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -245,8 +263,12 @@ PROMPT;
     /**
      * API Key olmadığı veya hata aldığı durumlarda çalışan Akıllı Deterministik Analitik Motor
      */
-    private function fallbackHeuristicResponse(string $userPrompt, string $contextJson, string $errorMsg = ''): string
+    private function fallbackHeuristicResponse(string $userPrompt, string $contextJson, string $errorMsg = '', string $module = ''): string
     {
+        if ($module === 'bordro-denetim') {
+            return ""; // BordroAiAuditService kendi zengin deterministik raporunu kullanır
+        }
+
         $context = json_decode($contextJson, true) ?? [];
         $personelData = $context['sorgulanan_personel_detayi'] ?? null;
         $plakaData = $context['sorgulanan_plaka_detayi'] ?? null;

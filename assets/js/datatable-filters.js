@@ -855,7 +855,9 @@
           (Array.isArray(val) ? val.length > 0 : val.toString().trim() !== "")
         );
       });
-      if (active.length === 0) {
+      const globalSearchVal = api.search();
+
+      if (active.length === 0 && !globalSearchVal) {
         if ($filterBar) $filterBar.remove();
         $filterBar = null;
         return;
@@ -867,6 +869,12 @@
           .prepend($filterBar);
       }
       let html = '<span class="label">Filtreler:</span>';
+
+      if (globalSearchVal) {
+        const safeSearchVal = $('<div>').text(globalSearchVal).html();
+        html += `<span class="badge bg-primary text-white">Arama: ${safeSearchVal} <i class="bx bx-x remove-global-search ms-1" style="cursor:pointer;" title="Aramayı Kaldır"></i></span>`;
+      }
+
       active.forEach((cell) => {
         const mLabel =
           (FILTER_MODES[cell.type] || []).find((m) => m.key === cell.mode)
@@ -883,6 +891,10 @@
         '<button type="button" class="btn btn-danger btn-sm clear-all">Tümünü Temizle</button>';
       $filterBar.html(html);
     }
+
+    api.on("search.dt", function () {
+      updateFilterBar();
+    });
 
     $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(
       (fn) => !fn._tableId || fn._tableId !== tableId
@@ -905,7 +917,10 @@
       .off("click" + ns)
       .on("click" + ns, (e) => {
         const $t = $(e.target);
-        if ($t.closest(".dt-active-filters-bar .remove").length) {
+        if ($t.closest(".dt-active-filters-bar .remove-global-search").length) {
+          api.search("").draw();
+          updateFilterBar();
+        } else if ($t.closest(".dt-active-filters-bar .remove").length) {
           const col = $t.closest(".remove").data("col");
           const cell = filterCells.find((c) => c.colIdx === col);
           if (cell) {
@@ -945,7 +960,50 @@
       api.column(cell.colIdx).search("");
     }
 
-    // Girişte kaydedilmiş filtreleri uygula
+    // URL parametresinden gelen arama filtresini ilgili kolona otomatik uygula
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlSearch = (urlParams.get("search") || urlParams.get("q") || urlParams.get("arama") || "").trim();
+
+    if (urlSearch) {
+      const priorityKeys = [
+        "plaka", "arac", "demirbas", "cari", "firma", "evrak", "konu", 
+        "baslik", "tutanak", "abone", "personel", "adi soyadi", "ad soyad", "ad", "unvan"
+      ];
+
+      let targetCell = null;
+
+      // 1. Başlık önceliğine göre eşleşen kolonu bul
+      for (let i = 0; i < priorityKeys.length; i++) {
+        const pk = priorityKeys[i];
+        targetCell = filterCells.find((c) => {
+          if (c.type !== "string" && c.type !== "text") return false;
+          const normTitle = normalizeTR(c.title || "");
+          return normTitle.indexOf(pk) !== -1;
+        });
+        if (targetCell) break;
+      }
+
+      // 2. Bulunamadıysa ilk metin filtre hücresini seç
+      if (!targetCell) {
+        targetCell = filterCells.find((c) => (c.type === "string" || c.type === "text") && c.input);
+      }
+
+      if (targetCell) {
+        targetCell.value = urlSearch;
+        targetCell.mode = "contains";
+        if (targetCell.input) {
+          $(targetCell.input).val(urlSearch);
+        }
+        if (targetCell.$trigger) {
+          targetCell.$trigger.addClass("active");
+        }
+        if (api.search()) {
+          api.search("");
+        }
+      }
+    }
+
+    // Girişte kaydedilmiş veya URL'den gelen filtreleri uygula
     const hasInitialFilters = filterCells.some((cell) => {
       const isNullMode = ["null", "not_null"].includes(cell.mode);
       const hasVal =

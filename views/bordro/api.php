@@ -4401,8 +4401,40 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 ]);
                 break;
 
+            // Yapay Zeka Destekli Bordro Denetimi ve Risk Analizi
+            case 'ai-bordro-audit':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                $compare_donem_id = !empty($_POST['compare_donem_id']) ? intval($_POST['compare_donem_id']) : null;
+                $personel_id = !empty($_POST['personel_id']) ? intval($_POST['personel_id']) : null;
+                $use_llm = isset($_POST['use_llm']) ? (bool)$_POST['use_llm'] : true;
+
+                if ($donem_id <= 0) {
+                    throw new Exception('Denetlenecek bordro dönemi seçilmedi.');
+                }
+
+                $auditService = new \App\Service\BordroAiAuditService();
+                $auditResult = $auditService->auditDonem($donem_id, $personel_id, $use_llm, $compare_donem_id);
+
+                if (!$auditResult['success']) {
+                    throw new Exception($auditResult['message'] ?? 'Bordro denetimi gerçekleştirilemedi.');
+                }
+
+                $SystemLog->logAction(
+                    $userId,
+                    'Bordro AI Denetimi',
+                    "Dönem ID: {$donem_id} için AI Bordro Denetimi çalıştırıldı. Sağlık Skoru: %{$auditResult['summary']['saglik_skoru']}",
+                    \App\Model\SystemLogModel::LEVEL_INFO
+                );
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => $auditResult
+                ]);
+                break;
+
             default:
                 throw new Exception('Geçersiz işlem.');
+
 
 
         }

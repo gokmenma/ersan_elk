@@ -49,46 +49,32 @@ try {
             'ilgiler' => trim((string) ($_POST['ilgiler'] ?? '')),
             'ekler' => trim((string) ($_POST['ekler'] ?? '')),
         ];
+        $decryptId = static function ($val): int {
+            if (empty($val)) return 0;
+            if (is_numeric($val)) return (int) $val;
+            $d = Security::decrypt((string) $val);
+            return is_numeric($d) ? (int) $d : 0;
+        };
+
         $signerIds = [];
         foreach (array_slice((array) ($_POST['imza_kullanici_ids'] ?? []), 0, 3) as $encryptedSignerId) {
-            $signerId = (int) Security::decrypt((string) $encryptedSignerId);
+            $signerId = $decryptId($encryptedSignerId);
             if ($signerId > 0) {
                 $signerIds[] = $signerId;
             }
         }
 
-        $ekDosyaYollari = [];
-        if (!empty($_FILES['dosya']['tmp_name']) && is_uploaded_file($_FILES['dosya']['tmp_name'])) {
-            $ekDosyaYollari[] = [
-                'path' => $_FILES['dosya']['tmp_name'],
-                'name' => $_FILES['dosya']['name'] ?? 'Evrak Dosyası',
-                'type' => $_FILES['dosya']['type'] ?? '',
-            ];
-        }
-        if (!empty($_FILES['ek_dosyalari']['tmp_name']) && is_array($_FILES['ek_dosyalari']['tmp_name'])) {
-            foreach ($_FILES['ek_dosyalari']['tmp_name'] as $key => $tmpPath) {
-                if (!empty($tmpPath) && is_uploaded_file($tmpPath)) {
-                    $name = $_FILES['ek_dosyalari']['name'][$key] ?? 'Ek Dosya';
-                    $type = $_FILES['ek_dosyalari']['type'][$key] ?? '';
-                    $ekDosyaYollari[] = [
-                        'path' => $tmpPath,
-                        'name' => $name,
-                        'type' => $type,
-                    ];
-                }
-            }
-        }
+        $existingById = [];
         if (!empty($_POST['id'])) {
-            $evrakRealId = (int) Security::decrypt((string) $_POST['id']);
+            $evrakRealId = $decryptId($_POST['id']);
             if ($evrakRealId > 0) {
                 $existingDoc = $model->getById($evrakRealId);
                 $dbAttachments = $model->getAttachments($evrakRealId);
-                $removedIds = json_decode((string) ($_POST['silinen_ek_ids_json'] ?? '[]'), true) ?: [];
-                $orderInfo = json_decode((string) ($_POST['ek_duzen_json'] ?? '[]'), true) ?: [];
+                $removedEncryptedIds = json_decode((string) ($_POST['silinen_ek_ids_json'] ?? '[]'), true) ?: [];
+                $removedIds = array_map($decryptId, $removedEncryptedIds);
 
-                $existingById = [];
                 if ($existingDoc && !empty($existingDoc->dosya_yolu)) {
-                    $mainFullPath = dirname(__DIR__, 2) . '/' . ltrim($existingDoc->dosya_yolu, '/');
+                    $mainFullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $existingDoc->dosya_yolu, '/');
                     if (file_exists($mainFullPath)) {
                         $existingById[0] = [
                             'path' => $mainFullPath,
@@ -98,8 +84,8 @@ try {
                     }
                 }
                 foreach ($dbAttachments as $att) {
-                    if (!in_array((int) $att->id, array_map('intval', $removedIds), true)) {
-                        $fullPath = dirname(__DIR__, 2) . '/' . ltrim($att->dosya_yolu, '/');
+                    if (!in_array((int) $att->id, $removedIds, true)) {
+                        $fullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $att->dosya_yolu, '/');
                         if (file_exists($fullPath)) {
                             $existingById[(int) $att->id] = [
                                 'path' => $fullPath,
@@ -109,26 +95,71 @@ try {
                         }
                     }
                 }
-                if ($orderInfo !== []) {
-                    $orderedEkler = [];
-                    foreach ($orderInfo as $item) {
-                        if (($item['type'] ?? '') === 'existing' && isset($existingById[(int) ($item['id'] ?? 0)])) {
-                            $orderedEkler[] = $existingById[(int) $item['id']];
-                            unset($existingById[(int) $item['id']]);
-                        }
-                    }
-                    foreach ($existingById as $att) {
-                        $orderedEkler[] = $att;
-                    }
-                    $ekDosyaYollari = array_merge($orderedEkler, $ekDosyaYollari);
-                } else {
-                    $ekDosyaYollari = array_merge(array_values($existingById), $ekDosyaYollari);
+            }
+        }
+
+        $newUploadedByKeys = [];
+        if (!empty($_FILES['ek_dosyalari']['tmp_name']) && is_array($_FILES['ek_dosyalari']['tmp_name'])) {
+            foreach ($_FILES['ek_dosyalari']['tmp_name'] as $key => $tmpPath) {
+                if (!empty($tmpPath) && is_uploaded_file($tmpPath)) {
+                    $name = $_FILES['ek_dosyalari']['name'][$key] ?? 'Ek Dosya';
+                    $type = $_FILES['ek_dosyalari']['type'][$key] ?? '';
+                    $newUploadedByKeys[(string) $key] = [
+                        'path' => $tmpPath,
+                        'name' => $name,
+                        'type' => $type,
+                    ];
                 }
             }
         }
+
+        if (!empty($_FILES['dosya']['tmp_name']) && is_uploaded_file($_FILES['dosya']['tmp_name'])) {
+            $newUploadedByKeys['main_file'] = [
+                'path' => $_FILES['dosya']['tmp_name'],
+                'name' => $_FILES['dosya']['name'] ?? 'Evrak Dosyası',
+                'type' => $_FILES['dosya']['type'] ?? '',
+            ];
+        }
+
+        $orderInfo = json_decode((string) ($_POST['ek_duzen_json'] ?? '[]'), true) ?: [];
+        $ekDosyaYollari = [];
+
+        if (!empty($orderInfo)) {
+            foreach ($orderInfo as $item) {
+                $type = $item['type'] ?? '';
+                if ($type === 'existing') {
+                    $attId = $decryptId($item['id'] ?? '');
+                    if ($attId > 0 && isset($existingById[$attId])) {
+                        $ekDosyaYollari[] = $existingById[$attId];
+                        unset($existingById[$attId]);
+                    }
+                } elseif ($type === 'new') {
+                    $key = (string) ($item['key'] ?? '');
+                    if ($key !== '' && isset($newUploadedByKeys[$key])) {
+                        $ekDosyaYollari[] = $newUploadedByKeys[$key];
+                        unset($newUploadedByKeys[$key]);
+                    }
+                }
+            }
+        }
+
+        foreach ($existingById as $att) {
+            $ekDosyaYollari[] = $att;
+        }
+        foreach ($newUploadedByKeys as $att) {
+            $ekDosyaYollari[] = $att;
+        }
+
         $evrak->ek_dosya_yollari = $ekDosyaYollari;
     } else {
-        $id = (int) Security::decrypt($_GET['id'] ?? '');
+        $decryptId = static function ($val): int {
+            if (empty($val)) return 0;
+            if (is_numeric($val)) return (int) $val;
+            $d = Security::decrypt((string) $val);
+            return is_numeric($d) ? (int) $d : 0;
+        };
+
+        $id = $decryptId($_GET['id'] ?? '');
         if ($id <= 0 || !($evrak = $model->getById($id))) {
             throw new RuntimeException('Evrak bulunamadı.');
         }
@@ -137,7 +168,7 @@ try {
         $ekDosyaYollari = [];
 
         if (!empty($evrak->dosya_yolu)) {
-            $mainFullPath = dirname(__DIR__, 2) . '/' . ltrim($evrak->dosya_yolu, '/');
+            $mainFullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $evrak->dosya_yolu, '/');
             if (file_exists($mainFullPath)) {
                 $ekDosyaYollari[] = [
                     'path' => $mainFullPath,
@@ -148,9 +179,9 @@ try {
         }
 
         foreach ($dbAttachments as $att) {
-            $fullPath = dirname(__DIR__, 2) . '/' . ltrim($att->dosya_yolu, '/');
+            $fullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $att->dosya_yolu, '/');
             if (file_exists($fullPath)) {
-                if (!empty($evrak->dosya_yolu) && ltrim($att->dosya_yolu, '/') === ltrim($evrak->dosya_yolu, '/')) {
+                if (!empty($evrak->dosya_yolu) && ltrim((string) $att->dosya_yolu, '/') === ltrim((string) $evrak->dosya_yolu, '/')) {
                     continue;
                 }
                 $ekDosyaYollari[] = [

@@ -248,33 +248,57 @@ final class EvrakPdfService
             'tempDir' => sys_get_temp_dir(),
         ]);
         $mpdf->SetTitle(($data['evrak_no'] ?? '') . ' - ' . ($data['konu'] ?? 'Evrak'));
-        $mpdf->SetHTMLFooter($footerHtml);
-        $mpdf->WriteHTML($html);
-
         $ekDosyalari = (array) ($data['ek_dosya_yollari'] ?? []);
 
-        if ($ekDosyalari !== []) {
-            $mpdf->writeHTMLFooters();
-            $mpdf->SetHTMLFooter('');
-            $mpdf->SetHTMLFooter('', 'E');
-            $mpdf->SetHTMLFooter('', 'O');
-            $mpdf->SetHTMLHeader('');
-            $mpdf->SetHTMLHeader('', 'E');
-            $mpdf->SetHTMLHeader('', 'O');
+        if (!$ustYaziGerekliDegil) {
+            $mpdf->SetHTMLFooter($footerHtml);
+            $mpdf->WriteHTML($html);
+
+            if ($ekDosyalari !== []) {
+                $mpdf->writeHTMLFooters();
+                $mpdf->SetHTMLFooter('');
+                $mpdf->SetHTMLFooter('', 'E');
+                $mpdf->SetHTMLFooter('', 'O');
+                $mpdf->SetHTMLHeader('');
+                $mpdf->SetHTMLHeader('', 'E');
+                $mpdf->SetHTMLHeader('', 'O');
+            }
+        } elseif ($ekDosyalari === []) {
+            $mpdf->WriteHTML('
+                <!doctype html><html lang="tr"><head><meta charset="UTF-8"><style>
+                    body{font-family:sans-serif;text-align:center;padding-top:50mm;color:#64748b;}
+                </style></head><body>
+                    <div style="font-size:16pt;font-weight:bold;color:#1e293b;margin-bottom:6mm;">' . $escape($data['konu'] ?? 'Evrak') . '</div>
+                    <div style="font-size:11pt;margin-bottom:4mm;">(Bu evrak üst yazısız olarak tanzim edilmiştir.)</div>
+                    <div style="font-size:10pt;color:#94a3b8;">Eklenmiş herhangi bir belge bulunmamaktadır.</div>
+                </body></html>
+            ');
         }
 
         foreach ($ekDosyalari as $ekIndex => $ek) {
             $filePath = is_array($ek) ? ($ek['path'] ?? '') : (string) $ek;
             $fileName = is_array($ek) ? ($ek['name'] ?? 'Ek ' . ($ekIndex + 1)) : basename($filePath);
 
-            if (empty($filePath) || !file_exists($filePath)) {
+            if (empty($filePath) || !file_exists($filePath) || !is_readable($filePath)) {
                 continue;
             }
 
-            $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-            $mime = is_array($ek) ? ($ek['type'] ?? '') : '';
+            $fileNameExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $filePathExt = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+            $ext = $fileNameExt !== '' ? $fileNameExt : $filePathExt;
 
-            if ($ext === 'pdf' || $mime === 'application/pdf') {
+            $mime = is_array($ek) ? ($ek['type'] ?? '') : '';
+            $finfoMime = @(new \finfo(FILEINFO_MIME_TYPE))->file($filePath) ?: '';
+
+            $isPdf = ($ext === 'pdf' || $mime === 'application/pdf' || $mime === 'application/x-pdf' || $finfoMime === 'application/pdf' || $finfoMime === 'application/x-pdf');
+            $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true)
+                || str_starts_with($finfoMime, 'image/')
+                || str_starts_with($mime, 'image/');
+
+            if ($isPdf) {
+                $imported = false;
+
+                // 1. Doğrudan içe aktarma denemesi
                 try {
                     $pageCount = $mpdf->setSourceFile($filePath);
                     for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
@@ -288,10 +312,83 @@ final class EvrakPdfService
                         $tplId = $mpdf->importPage($pageNo);
                         $mpdf->useTemplate($tplId);
                     }
+                    $imported = true;
                 } catch (\Throwable $e) {
-                    error_log('mPDF Import Page Error: ' . $e->getMessage());
+                    error_log('mPDF Direct Import Error (' . $fileName . '): ' . $e->getMessage());
                 }
-            } elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+
+                // 2. Sıkıştırma hatası durumunda qpdf veya ghostscript ile normalize edip aktarma
+                if (!$imported) {
+                    $normalizedPath = self::normalizePdfForImport($filePath);
+                    if ($normalizedPath !== null) {
+                        try {
+                            $pageCount = $mpdf->setSourceFile($normalizedPath);
+                            for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+                                $mpdf->AddPage('P', '', '', '', '', 10, 10, 10, 10, 0, 0);
+                                $mpdf->SetHTMLFooter('');
+                                $mpdf->SetHTMLFooter('', 'E');
+                                $mpdf->SetHTMLFooter('', 'O');
+                                $mpdf->SetHTMLHeader('');
+                                $mpdf->SetHTMLHeader('', 'E');
+                                $mpdf->SetHTMLHeader('', 'O');
+                                $tplId = $mpdf->importPage($pageNo);
+                                $mpdf->useTemplate($tplId);
+                            }
+                            $imported = true;
+                        } catch (\Throwable $e2) {
+                            error_log('mPDF Normalized Import Error (' . $fileName . '): ' . $e2->getMessage());
+                        }
+                        @unlink($normalizedPath);
+                    }
+                }
+
+                // 3. Normalize de edilemezse pdftoppm ile sayfaları yüksek çözünürlükte görsele çevirip ekleme
+                if (!$imported && is_executable('/usr/bin/pdftoppm')) {
+                    $tempPrefix = sys_get_temp_dir() . '/ppm_' . bin2hex(random_bytes(8)) . '_';
+                    $cmd = '/usr/bin/pdftoppm -png -r 150 ' . escapeshellarg($filePath) . ' ' . escapeshellarg($tempPrefix) . ' 2>/dev/null';
+                    @exec($cmd, $out, $ret);
+                    $pngFiles = glob($tempPrefix . '*.png');
+                    if (!empty($pngFiles)) {
+                        natsort($pngFiles);
+                        foreach ($pngFiles as $pngPath) {
+                            $mpdf->AddPage('P', '', '', '', '', 10, 10, 10, 10, 0, 0);
+                            $mpdf->SetHTMLFooter('');
+                            $mpdf->SetHTMLFooter('', 'E');
+                            $mpdf->SetHTMLFooter('', 'O');
+                            $mpdf->SetHTMLHeader('');
+                            $mpdf->SetHTMLHeader('', 'E');
+                            $mpdf->SetHTMLHeader('', 'O');
+                            $mpdf->WriteHTML('
+                                <div style="text-align:center; padding-top:5mm;">
+                                    <img src="' . htmlspecialchars($pngPath, ENT_QUOTES, 'UTF-8') . '" style="max-width:180mm; max-height:260mm; object-fit:contain;" />
+                                </div>
+                            ');
+                            @unlink($pngPath);
+                        }
+                        $imported = true;
+                    }
+                }
+
+                // 4. Dosya tamamen bozuk veya okunamıyorsa son çare bilgi kartı
+                if (!$imported) {
+                    $mpdf->AddPage('P', '', '', '', '', 15, 15, 15, 15, 0, 0);
+                    $mpdf->SetHTMLFooter('');
+                    $mpdf->SetHTMLFooter('', 'E');
+                    $mpdf->SetHTMLFooter('', 'O');
+                    $mpdf->SetHTMLHeader('');
+                    $mpdf->SetHTMLHeader('', 'E');
+                    $mpdf->SetHTMLHeader('', 'O');
+                    $mpdf->WriteHTML('
+                        <div style="text-align:center; padding-top:40mm; font-family:sans-serif;">
+                            <div style="font-size:14pt; font-weight:bold; color:#1e293b; margin-bottom:4mm;">EK ' . ($ekIndex + 1) . ': ' . htmlspecialchars($fileName, ENT_QUOTES, 'UTF-8') . '</div>
+                            <div style="font-size:10pt; color:#64748b; margin-bottom:6mm;">(PDF Belgesi Evrak Kaydına Eklenmiştir)</div>
+                            <div style="display:inline-block; border:1px solid #cbd5e1; border-radius:8px; padding:12px 24px; background:#f8fafc; font-size:9pt; color:#475569;">
+                                Dosya Adı: <b>' . htmlspecialchars($fileName, ENT_QUOTES, 'UTF-8') . '</b>
+                            </div>
+                        </div>
+                    ');
+                }
+            } elseif ($isImage) {
                 $mpdf->AddPage('P', '', '', '', '', 10, 10, 10, 10, 0, 0);
                 $mpdf->SetHTMLFooter('');
                 $mpdf->SetHTMLFooter('', 'E');
@@ -303,6 +400,23 @@ final class EvrakPdfService
                     <div style="text-align:center; padding-top:5mm;">
                         <div style="font-size:10pt; font-weight:bold; margin-bottom:4mm; font-family:sans-serif;">EK ' . ($ekIndex + 1) . ': ' . htmlspecialchars($fileName, ENT_QUOTES, 'UTF-8') . '</div>
                         <img src="' . htmlspecialchars($filePath, ENT_QUOTES, 'UTF-8') . '" style="max-width:180mm; max-height:240mm; object-fit:contain;" />
+                    </div>
+                ');
+            } else {
+                $mpdf->AddPage('P', '', '', '', '', 15, 15, 15, 15, 0, 0);
+                $mpdf->SetHTMLFooter('');
+                $mpdf->SetHTMLFooter('', 'E');
+                $mpdf->SetHTMLFooter('', 'O');
+                $mpdf->SetHTMLHeader('');
+                $mpdf->SetHTMLHeader('', 'E');
+                $mpdf->SetHTMLHeader('', 'O');
+                $mpdf->WriteHTML('
+                    <div style="text-align:center; padding-top:40mm; font-family:sans-serif;">
+                        <div style="font-size:14pt; font-weight:bold; color:#1e293b; margin-bottom:4mm;">EK ' . ($ekIndex + 1) . ': ' . htmlspecialchars($fileName, ENT_QUOTES, 'UTF-8') . '</div>
+                        <div style="font-size:10pt; color:#64748b; margin-bottom:6mm;">(Elektronik Dosya Eki — ' . strtoupper($ext ?: 'DOSYA') . ')</div>
+                        <div style="display:inline-block; border:1px solid #cbd5e1; border-radius:8px; padding:12px 24px; background:#f8fafc; font-size:9pt; color:#475569;">
+                            Dosya Adı: <b>' . htmlspecialchars($fileName, ENT_QUOTES, 'UTF-8') . '</b>
+                        </div>
                     </div>
                 ');
             }
@@ -355,5 +469,30 @@ final class EvrakPdfService
             '<td style="width:33.33%;">' . $col2 . '</td>' .
             '<td style="width:33.33%;">' . $col3 . '</td>' .
             '</tr></table>';
+    }
+
+    private static function normalizePdfForImport(string $sourcePdfPath): ?string
+    {
+        $tempNormalized = sys_get_temp_dir() . '/norm_' . bin2hex(random_bytes(8)) . '.pdf';
+
+        // 1. QPDF ile sıkıştırmayı açma ve PDF 1.4 formatına getirme (en hızlı ve kaliteli)
+        if (is_executable('/usr/bin/qpdf')) {
+            $cmd = '/usr/bin/qpdf --decrypt --object-streams=disable ' . escapeshellarg($sourcePdfPath) . ' ' . escapeshellarg($tempNormalized) . ' 2>/dev/null';
+            @exec($cmd, $out, $ret);
+            if ($ret === 0 && file_exists($tempNormalized) && filesize($tempNormalized) > 0) {
+                return $tempNormalized;
+            }
+        }
+
+        // 2. Ghostscript (CompatibilityLevel=1.4) ile normalize etme
+        if (is_executable('/usr/bin/gs')) {
+            $cmd = '/usr/bin/gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile=' . escapeshellarg($tempNormalized) . ' ' . escapeshellarg($sourcePdfPath) . ' 2>/dev/null';
+            @exec($cmd, $out, $ret);
+            if ($ret === 0 && file_exists($tempNormalized) && filesize($tempNormalized) > 0) {
+                return $tempNormalized;
+            }
+        }
+
+        return null;
     }
 }

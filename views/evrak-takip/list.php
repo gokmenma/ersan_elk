@@ -255,17 +255,17 @@ $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
                                 <thead class="table-light">
                                     <tr
                                         style="background: linear-gradient(to top, rgba(var(--bs-primary-rgb), 0.02) 0%, rgba(var(--bs-primary-rgb), 0.06) 100%) !important;">
-                                        <th class="text-center" style="width: 50px;">#</th>
-                                        <th style="width: 80px;" class="text-center">Tip</th>
-                                        <th style="width: 100px;">Tarih</th>
-                                        <th>Konu / Evrak No</th>
-                                        <th>Gelen/Giden Kurum</th>
-                                        <th>Zimmetli (Ofis)</th>
-                                        <th>İlgili Personel</th>
-                                        <th class="text-center" style="width: 90px;">Cevap</th>
-                                        <th class="text-center" style="width: 110px;">E-İmza</th>
-                                        <th class="text-center" style="width: 110px;">Dosya</th>
-                                        <th class="text-center" style="min-width: 180px; width: 180px;">İşlem</th>
+                                        <th class="text-center" style="width: 50px;" data-filter="none">#</th>
+                                        <th style="width: 80px;" class="text-center" data-filter="select">Tip</th>
+                                        <th style="width: 100px;" data-filter="date">Tarih</th>
+                                        <th data-filter="string">Konu / Evrak No</th>
+                                        <th data-filter="string">Gelen/Giden Kurum</th>
+                                        <th data-filter="string">Zimmetli (Ofis)</th>
+                                        <th data-filter="string">İlgili Personel</th>
+                                        <th class="text-center" style="width: 90px;" data-filter="select">Cevap</th>
+                                        <th class="text-center" style="width: 110px;" data-filter="select">E-İmza</th>
+                                        <th class="text-center" style="width: 110px;" data-filter="none">Dosya</th>
+                                        <th class="text-center" style="min-width: 180px; width: 180px;" data-filter="none">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody>

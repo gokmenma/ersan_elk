@@ -243,8 +243,16 @@ if ($record) {
                                         <label class="form-check-label fw-bold text-dark small ms-1" for="ust_yazi_gerekli_degil">Üst Yazı Gerekli Değil</label>
                                     </div>
                                 </div>
-                                <div id="ustYaziMetinBilgisi" class="alert alert-info py-2 px-3 mb-3 small d-none">
-                                    <i data-feather="info" class="icon-xs me-1"></i> Üst yazı gerekli değil seçeneği işaretlendi. Evrak üst yazısız tanzim edilecektir.
+                                <div id="ustYaziMetinBilgisi" class="alert alert-info py-3 px-3 mb-3 small d-none border-0 shadow-sm">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <div>
+                                            <div class="fw-bold"><i data-feather="info" class="icon-xs me-1"></i> Üst yazı gerekli değil seçeneği aktif.</div>
+                                            <div class="text-muted mt-1">Bu evrak resmî yazı gövdesi olmadan doğrudan eklenen belgelerle sevk edilecektir.</div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary" id="btnEklereGit">
+                                            <i data-feather="paperclip" class="icon-xs me-1"></i> Ekler Sekmesine Git
+                                        </button>
+                                    </div>
                                 </div>
                                 <div id="editorContainer">
                                     <textarea id="giden_evrak_icerik" name="aciklama" class="form-control"><?php echo htmlspecialchars((string) $value('aciklama'), ENT_QUOTES, 'UTF-8'); ?></textarea>
@@ -292,90 +300,137 @@ if ($record) {
                                     <div class="form-text mt-1">İmzalar yukarıdaki sırayla atılır; sırası gelmeyen kullanıcı imzalayamaz.</div>
                                 </div>
                             <?php endif; ?>
-                            <div class="small fw-bold text-uppercase text-muted">Evrak Bilgileri</div>
-                            <?php echo Form::FormFloatInput('text', 'tarih', $dateValue, 'Evrak Tarihi', 'Evrak Tarihi', 'calendar', 'form-control flatpickr', true); ?>
-                            <?php echo Form::FormFloatInput('text', 'evrak_no', $defaultEvrakNo, 'Sayı', 'Sayı / Evrak No', 'hash', 'form-control', true); ?>
-                            <?php echo Form::FormFloatInput('text', 'konu', $value('konu'), 'Konu', 'Konu', 'type', 'form-control', true); ?>
-                            <?php echo Form::FormFloatInput('text', 'kurum_adi', $value('kurum_adi'), 'Muhatap', 'Muhatap Kurum / Kişi', 'home', 'form-control', true); ?>
-                            <?php echo Form::FormFloatInput('text', 'muhatap_alt_birim', $value('muhatap_alt_birim'), 'Muhatap Alt Birimi', 'Alt Birim / Bölüm', 'layers'); ?>
-                            <?php echo Form::FormFloatTextarea('muhatap_adres', $value('muhatap_adres'), 'Muhatap Adresi', 'Muhatap Adresi', 'map-pin', 'form-control', false, '90px'); ?>
-                            <hr class="my-1">
-                            <!-- Modern & Kullanıcı Dostu İmza Yetkilileri Alanı -->
-                            <div class="card border rounded-3 mb-3 bg-white shadow-none">
-                                <div class="card-body p-3">
-                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="bx bx-edit text-primary font-size-16"></i>
-                                            <span class="small fw-bold text-uppercase text-dark" style="font-size:0.75rem;letter-spacing:0.5px">İmza Yetkilileri</span>
-                                            <span id="imzaSecimSayac" class="badge rounded-pill bg-primary-subtle text-primary fw-bold" style="font-size:10.5px">0/3 Seçildi</span>
-                                        </div>
-                                        <span class="small text-muted" style="font-size:0.7rem"><i class="bx bx-info-circle me-1"></i>En fazla 3 imza</span>
-                                    </div>
-
-                                    <div id="imzaSeciciContainer" class="mb-2">
-                                        <select id="imza_kullanici_ekle_select" class="form-select giden-select2" style="width:100%">
-                                            <option value="">+ İmza Yetkilisi Seç ve Ekle...</option>
-                                            <?php foreach ($signingUsersList as $su): ?>
-                                                <option value="<?php echo htmlspecialchars($su['id'], ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($su['name'], ENT_QUOTES, 'UTF-8'); ?>" data-title="<?php echo htmlspecialchars($su['title'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                    <?php echo htmlspecialchars($su['name'] . ($su['title'] ? ' — ' . $su['title'] : ''), ENT_QUOTES, 'UTF-8'); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-
-                                    <!-- İnteraktif İmza Kartları Listesi -->
-                                    <div id="imzaSiraListesi" class="d-flex flex-column gap-2"></div>
-
-                                    <!-- Gizli Senkronizasyon Alanları (Form POST & Validation İçin) -->
-                                    <select name="imza_kullanici_ids[]" id="imza_kullanici_ids" multiple class="d-none"></select>
-                                    <input type="hidden" name="kimin_adina_1" id="kimin_adina_1" value="<?php echo htmlspecialchars($savedKiminAdina[0] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                    <input type="hidden" name="kimin_adina_2" id="kimin_adina_2" value="<?php echo htmlspecialchars($savedKiminAdina[1] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                    <input type="hidden" name="kimin_adina_3" id="kimin_adina_3" value="<?php echo htmlspecialchars($savedKiminAdina[2] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                            
+                            <div>
+                                <div class="small fw-bold text-uppercase text-muted mb-2">Evrak Bilgileri</div>
+                                <div class="d-grid gap-2">
+                                    <?php echo Form::FormFloatInput('text', 'tarih', $dateValue, 'Evrak Tarihi', 'Evrak Tarihi', 'calendar', 'form-control flatpickr', true); ?>
+                                    <?php echo Form::FormFloatInput('text', 'evrak_no', $defaultEvrakNo, 'Sayı', 'Sayı / Evrak No', 'hash', 'form-control', true); ?>
+                                    <?php echo Form::FormFloatInput('text', 'konu', $value('konu'), 'Konu', 'Konu', 'type', 'form-control', true); ?>
+                                    <?php echo Form::FormFloatInput('text', 'kurum_adi', $value('kurum_adi'), 'Muhatap', 'Muhatap Kurum / Kişi', 'home', 'form-control', true); ?>
+                                    <?php echo Form::FormFloatInput('text', 'muhatap_alt_birim', $value('muhatap_alt_birim'), 'Muhatap Alt Birimi', 'Alt Birim / Bölüm', 'layers'); ?>
+                                    <?php echo Form::FormFloatTextarea('muhatap_adres', $value('muhatap_adres'), 'Muhatap Adresi', 'Muhatap Adresi', 'map-pin', 'form-control', false, '90px'); ?>
                                 </div>
                             </div>
 
-                            <?php echo Form::FormSelect2('ilgili_evrak_id', $gelenOptions, $selectedRelated, 'İlişkili Gelen Evrak', 'link', 'key', '', 'form-select giden-select2'); ?>
-                            <?php echo Form::FormSelect2('personel_id', $personelOptions, $value('personel_id'), 'Zimmetlenen Personel', 'user-check', 'key', '', 'form-select giden-select2'); ?>
-                            <?php echo Form::FormSelect2('ilgili_personel_id', $personelOptions, $value('ilgili_personel_id'), 'İlgili Personel', 'user', 'key', '', 'form-select giden-select2'); ?>
-                            <hr class="my-1">
-                            <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
-                                <div class="small fw-bold text-uppercase text-muted">İlgi ve Ekler</div>
-                                <div class="dropdown">
-                                    <button type="button" class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1 shadow-none" data-bs-toggle="dropdown" aria-expanded="false" id="btnIlgiGelenEvrakSec" style="font-size:11px; padding: 2px 8px;">
-                                        <i class="bx bx-file-plus font-size-13"></i>
-                                        <span>Gelen Evraktan İlgi Ekle</span>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="min-width: 320px; max-width: 360px;">
-                                        <div class="d-flex align-items-center justify-content-between px-1 mb-2 border-bottom pb-1">
-                                            <span class="small fw-bold text-dark">İlgiye Eklenecek Gelen Evrak</span>
-                                            <span class="badge bg-light text-muted" style="font-size:10px"><?php echo count($gelenEvraklar); ?> Evrak</span>
+                            <!-- Diğer Alanlar İçin Akordeon (İmza, İlişkili Evrak/Personel, İlgi/Ekler) -->
+                            <div class="accordion" id="gidenDigerAlanlarAccordion">
+                                <!-- Akordeon 1: İmza Yetkilileri -->
+                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none">
+                                    <h2 class="accordion-header" id="headingImzaYetkilileri">
+                                        <button class="accordion-button collapsed py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseImzaYetkilileri" aria-expanded="false" aria-controls="collapseImzaYetkilileri">
+                                            <div class="d-flex align-items-center w-100">
+                                                <i class="bx bx-edit font-size-16 me-2 text-muted"></i>
+                                                <span class="small fw-bold text-uppercase text-muted">İmza Yetkilileri</span>
+                                                <span id="imzaSecimSayac" class="badge rounded-pill bg-light text-muted border fw-bold text-uppercase ms-auto me-2 px-2 py-1" style="font-size:9.5px;">0/3 SEÇİLDİ</span>
+                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon"></i>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseImzaYetkilileri" class="accordion-collapse collapse" aria-labelledby="headingImzaYetkilileri">
+                                        <div class="accordion-body p-3 pt-2">
+                                            <div class="d-flex align-items-center justify-content-end mb-2">
+                                                <span class="small text-muted" style="font-size:0.7rem"><i class="bx bx-info-circle me-1"></i>En fazla 3 imza</span>
+                                            </div>
+
+                                            <div id="imzaSeciciContainer" class="mb-2">
+                                                <select id="imza_kullanici_ekle_select" class="form-select giden-select2" style="width:100%">
+                                                    <option value="">+ İmza Yetkilisi Seç ve Ekle...</option>
+                                                    <?php foreach ($signingUsersList as $su): ?>
+                                                        <option value="<?php echo htmlspecialchars($su['id'], ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($su['name'], ENT_QUOTES, 'UTF-8'); ?>" data-title="<?php echo htmlspecialchars($su['title'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <?php echo htmlspecialchars($su['name'] . ($su['title'] ? ' — ' . $su['title'] : ''), ENT_QUOTES, 'UTF-8'); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+
+                                            <!-- İnteraktif İmza Kartları Listesi -->
+                                            <div id="imzaSiraListesi" class="d-flex flex-column gap-2"></div>
+
+                                            <!-- Gizli Senkronizasyon Alanları (Form POST & Validation İçin) -->
+                                            <select name="imza_kullanici_ids[]" id="imza_kullanici_ids" multiple class="d-none"></select>
+                                            <input type="hidden" name="kimin_adina_1" id="kimin_adina_1" value="<?php echo htmlspecialchars($savedKiminAdina[0] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="kimin_adina_2" id="kimin_adina_2" value="<?php echo htmlspecialchars($savedKiminAdina[1] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="kimin_adina_3" id="kimin_adina_3" value="<?php echo htmlspecialchars($savedKiminAdina[2] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                         </div>
-                                        <select id="ilgiGelenEvrakSelect" class="form-select form-select-sm mb-2" style="width:100%">
-                                            <option value="">Evrak seçiniz...</option>
-                                            <?php foreach ($gelenEvraklar as $gelen): 
-                                                $encId = Security::encrypt($gelen->id);
-                                                $label = ($gelen->evrak_no ?: '-') . ' — ' . $gelen->konu . ' (' . date('d.m.Y', strtotime($gelen->tarih)) . ')';
-                                            ?>
-                                                <option value="<?php echo htmlspecialchars($encId, ENT_QUOTES, 'UTF-8'); ?>" 
-                                                        data-no="<?php echo htmlspecialchars((string) $gelen->evrak_no, ENT_QUOTES, 'UTF-8'); ?>" 
-                                                        data-tarih="<?php echo !empty($gelen->tarih) ? date('d.m.Y', strtotime($gelen->tarih)) : ''; ?>" 
-                                                        data-kurum="<?php echo htmlspecialchars((string) $gelen->kurum_adi, ENT_QUOTES, 'UTF-8'); ?>">
-                                                    <?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <div class="d-flex gap-1">
-                                            <button type="button" id="btnIlgiyeEkle" class="btn btn-primary btn-sm w-100 fw-semibold" style="font-size:11px" disabled>
-                                                <i class="bx bx-plus me-1"></i> İlgi Alanına Ekle
-                                            </button>
+                                    </div>
+                                </div>
+
+                                <!-- Akordeon 2: İlişkili Evrak ve Personel -->
+                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none">
+                                    <h2 class="accordion-header" id="headingIliskiliKayitlar">
+                                        <button class="accordion-button collapsed py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIliskiliKayitlar" aria-expanded="false" aria-controls="collapseIliskiliKayitlar">
+                                            <div class="d-flex align-items-center w-100">
+                                                <i class="bx bx-link font-size-16 me-2 text-muted"></i>
+                                                <span class="small fw-bold text-uppercase text-muted">İlişkili Evrak ve Personel</span>
+                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon ms-auto"></i>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseIliskiliKayitlar" class="accordion-collapse collapse" aria-labelledby="headingIliskiliKayitlar">
+                                        <div class="accordion-body p-3 pt-2 d-grid gap-2">
+                                             <?php echo Form::FormSelect2('ilgili_evrak_id', $gelenOptions, $selectedRelated, 'İlişkili Gelen Evrak', 'link', 'key', '', 'form-select giden-select2'); ?>
+                                            <?php echo Form::FormSelect2('personel_id', $personelOptions, $value('personel_id'), 'Zimmetlenen Personel', 'user-check', 'key', '', 'form-select giden-select2'); ?>
+                                            <?php echo Form::FormSelect2('ilgili_personel_id', $personelOptions, $value('ilgili_personel_id'), 'İlgili Personel', 'user', 'key', '', 'form-select giden-select2'); ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Akordeon 3: İlgi ve Ek Metinleri -->
+                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none">
+                                    <h2 class="accordion-header" id="headingIlgiEkMetinleri">
+                                        <button class="accordion-button collapsed py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIlgiEkMetinleri" aria-expanded="false" aria-controls="collapseIlgiEkMetinleri">
+                                            <div class="d-flex align-items-center w-100">
+                                                <i class="bx bx-paperclip font-size-16 me-2 text-muted"></i>
+                                                <span class="small fw-bold text-uppercase text-muted">İlgi ve Ek Metinleri</span>
+                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon ms-auto"></i>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseIlgiEkMetinleri" class="accordion-collapse collapse" aria-labelledby="headingIlgiEkMetinleri">
+                                        <div class="accordion-body p-3 pt-2 d-grid gap-2">
+                                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                                <span class="small fw-bold text-uppercase text-muted" style="font-size:0.7rem">İlgi Tanımı</span>
+                                                <div class="dropdown">
+                                                    <button type="button" class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1 shadow-none" data-bs-toggle="dropdown" aria-expanded="false" id="btnIlgiGelenEvrakSec" style="font-size:11px; padding: 2px 8px;">
+                                                        <i class="bx bx-file-plus font-size-13"></i>
+                                                        <span>Gelen Evraktan İlgi Ekle</span>
+                                                    </button>
+                                                    <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="min-width: 320px; max-width: 360px;">
+                                                        <div class="d-flex align-items-center justify-content-between px-1 mb-2 border-bottom pb-1">
+                                                            <span class="small fw-bold text-dark">İlgiye Eklenecek Gelen Evrak</span>
+                                                            <span class="badge bg-light text-muted" style="font-size:10px"><?php echo count($gelenEvraklar); ?> Evrak</span>
+                                                        </div>
+                                                        <select id="ilgiGelenEvrakSelect" class="form-select form-select-sm mb-2" style="width:100%">
+                                                            <option value="">Evrak seçiniz...</option>
+                                                            <?php foreach ($gelenEvraklar as $gelen): 
+                                                                $encId = Security::encrypt($gelen->id);
+                                                                $label = ($gelen->evrak_no ?: '-') . ' — ' . $gelen->konu . ' (' . date('d.m.Y', strtotime($gelen->tarih)) . ')';
+                                                            ?>
+                                                                <option value="<?php echo htmlspecialchars($encId, ENT_QUOTES, 'UTF-8'); ?>" 
+                                                                        data-no="<?php echo htmlspecialchars((string) $gelen->evrak_no, ENT_QUOTES, 'UTF-8'); ?>" 
+                                                                        data-tarih="<?php echo !empty($gelen->tarih) ? date('d.m.Y', strtotime($gelen->tarih)) : ''; ?>" 
+                                                                        data-kurum="<?php echo htmlspecialchars((string) $gelen->kurum_adi, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                    <?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                                                </option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                        <div class="d-flex gap-1">
+                                                            <button type="button" id="btnIlgiyeEkle" class="btn btn-primary btn-sm w-100 fw-semibold" style="font-size:11px" disabled>
+                                                                <i class="bx bx-plus me-1"></i> İlgi Alanına Ekle
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <?php echo Form::FormFloatTextarea('ilgiler', $value('ilgiler'), 'İlgi — Her satıra bir kayıt', 'İlgi Belgeleri', 'link', 'form-control', false, '95px'); ?>
+                                            <div class="form-text mt-n2 mb-2">PDF'de a), b), c) şeklinde sıralanır.</div>
+                                            <?php echo Form::FormFloatTextarea('ekler', $value('ekler'), 'Ekler — Her satıra bir kayıt', 'Ek Metni (İsteğe Bağlı)', 'paperclip', 'form-control', false, '80px'); ?>
+                                            <div class="form-text mt-n2">Resmî yazıda Ek alanının görünmesini istiyorsanız doldurunuz.</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <?php echo Form::FormFloatTextarea('ilgiler', $value('ilgiler'), 'İlgi — Her satıra bir kayıt', 'İlgi Belgeleri', 'link', 'form-control', false, '110px'); ?>
-                            <div class="form-text mt-n2 mb-2">PDF'de a), b), c) şeklinde sıralanır.</div>
-                            <?php echo Form::FormFloatTextarea('ekler', $value('ekler'), 'Ekler — Her satıra bir kayıt', 'Ek Metni (İsteğe Bağlı)', 'paperclip', 'form-control', false, '90px'); ?>
-                            <div class="form-text mt-n2">Resmî yazıda Ek alanının görünmesini istiyorsanız doldurunuz.</div>
                         </div>
                     </div>
                 </div>
@@ -472,6 +527,12 @@ if ($record) {
 .giden-meta-panel::-webkit-scrollbar,#gidenEklerTab::-webkit-scrollbar,#gidenEvrakForm .note-editable::-webkit-scrollbar{width:6px}
 .giden-meta-panel::-webkit-scrollbar-thumb,#gidenEklerTab::-webkit-scrollbar-thumb,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb{background-color:rgba(0,0,0,0.15);border-radius:4px}
 .giden-meta-panel::-webkit-scrollbar-thumb:hover,#gidenEklerTab::-webkit-scrollbar-thumb:hover,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb:hover{background-color:rgba(0,0,0,0.3)}
+#gidenDigerAlanlarAccordion .accordion-button{background-color:#fff;border-radius:6px;font-family:inherit}
+#gidenDigerAlanlarAccordion .accordion-button:not(.collapsed){background-color:#f8f9fa;box-shadow:none}
+#gidenDigerAlanlarAccordion .accordion-button:not(.collapsed) .text-muted{color:#556ee6!important}
+#gidenDigerAlanlarAccordion .accordion-button::after{display:none!important}
+#gidenDigerAlanlarAccordion .accordion-icon{transition:transform .2s ease-in-out}
+#gidenDigerAlanlarAccordion .accordion-button:not(.collapsed) .accordion-icon{transform:rotate(45deg)}
 @media(min-width:992px){html,body{overflow:hidden!important}.page-content{padding-bottom:70px!important}}
 @media(max-width:991.98px){.giden-action-bar{left:0}html,body{overflow:auto!important}}
 </style>

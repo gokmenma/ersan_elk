@@ -1194,6 +1194,7 @@ $title = 'Nöbet Planlama';
         // Personel kartlarını sürüklenebilir yap
         new Draggable(document.getElementById('personel-container'), {
             itemSelector: '.personel-item',
+            appendTo: document.body,
             eventData: function (eventEl) {
                 return {
                     id: 'new-' + Date.now(),
@@ -1218,6 +1219,7 @@ $title = 'Nöbet Planlama';
             initialView: 'dayGridMonth',
             showNonCurrentDates: false,
             fixedWeekCount: false,
+            fixedMirrorParent: document.body,
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',

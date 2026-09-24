@@ -242,52 +242,67 @@
   transform: translateX(4px);
 }
 
-/* Sürükleme esnasındaki görünüm (FullCalendar & Universal Drag Ghost) */
-.fc-drag-mirror,
-.fc-event-dragging,
-.personel-item.fc-event-dragging,
-.fc-event.fc-event-dragging,
-[class*="fc-event"].fc-event-dragging {
+/* ============================================
+   SÜRÜKLEME (DRAG & DROP) STİLLERİ
+   ============================================ */
+
+/* 1. Sürüklenen ayna klon (FullCalendar Drag Mirror / Ghost) - Doğrudan Body altındadır */
+body > .fc-event-dragging,
+body > .personel-item.fc-event-dragging,
+body > .fc-event.fc-event-dragging {
+  position: fixed !important;
   z-index: 2147483647 !important;
-  opacity: 1 !important;
+  opacity: 0.95 !important;
   background: var(--dept-color, #3b82f6) !important;
   color: #fff !important;
-  padding: 10px 18px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35) !important;
   border-radius: 8px !important;
-  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5) !important;
-  width: auto !important;
-  min-width: 160px !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
   pointer-events: none !important;
   display: block !important;
   visibility: visible !important;
-  position: absolute !important;
-  /* Fareyi anlık takip etmesi için animasyonları kapatıyoruz */
   transition: none !important;
   transform: none !important;
+  box-sizing: border-box !important;
 }
 
-/* Sürükleme anında sadece ismi göster - TÜM DURUMLARDA */
-.fc-drag-mirror .personel-name,
-.fc-event-dragging .personel-name,
-.personel-item.fc-event-dragging .personel-name,
-.fc-event.fc-event-dragging .personel-name {
+body > .fc-event-dragging .personel-name,
+body > .fc-event-dragging .personel-name span,
+body > .fc-event-dragging .fc-event-title,
+body > .fc-event-dragging .fc-event-main,
+body > .fc-event-dragging .fc-event-title-container {
+  color: #fff !important;
+  font-weight: 700 !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
-  color: #fff !important;
-  font-size: 14px !important;
-  font-weight: 800 !important;
-  text-align: center !important;
-  margin: 0 !important;
 }
 
-/* Sürükleme anında diğer her şeyi kesin gizle */
-.fc-drag-mirror .personel-dept,
-.fc-drag-mirror .nobet-count,
-.fc-event-dragging .personel-dept,
-.fc-event-dragging .nobet-count,
-.fc-event-dragging .personel-item .personel-dept {
+body > .fc-event-dragging .personel-dept {
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 11px !important;
+}
+
+body > .fc-event-dragging .nobet-count,
+body > .fc-event-dragging .fc-event-delete-btn,
+body > .fc-event-dragging .fc-event-status-icons {
   display: none !important;
+}
+
+/* 2. Takvim gridi içinde sürüklenen kaynak etkinliğin grid içindeki görünümü */
+.fc-daygrid-event.fc-event-dragging {
+  position: relative !important;
+  opacity: 0.35 !important;
+  transition: none !important;
+}
+
+/* 3. Hedef hücre üzerindeki bırakma önizlemesi (Drop Mirror) */
+.fc-event-mirror {
+  z-index: 999 !important;
+  opacity: 0.85 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2) !important;
+  pointer-events: none !important;
+  border-radius: 6px !important;
 }
 
 .personel-item .personel-name {

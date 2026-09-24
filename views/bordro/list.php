@@ -253,7 +253,13 @@ if (!empty($dbGelirler)) {
             border-radius: 4px;
         }
 
-        .dropdown-menu .show {
+        .bordro-sticky-header,
+        .bordro-card > .card-header {
+            position: relative;
+            z-index: 1030;
+        }
+
+        .dropdown-menu {
             z-index: 1060;
         }
 
@@ -740,6 +746,14 @@ if (!empty($dbGelirler)) {
                                         </li>
                                     </ul>
                                 </div>
+                                <button type="button"
+                                    class="btn btn-dark btn-sm text-white shadow-sm text-decoration-none px-2 d-flex align-items-center"
+                                    id="btnAiBordroAudit"
+                                    title="Yapay Zeka Destekli Bordro Denetimi ve Risk Analizi"
+                                    style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none;">
+                                    <i class="mdi mdi-robot fs-5 me-1"></i> <span class="d-none d-xl-inline">AI Denetim</span>
+                                </button>
+
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
 
                                 <button type="button"
@@ -1496,6 +1510,10 @@ if (!empty($dbGelirler)) {
 </div>
 
 <script src="views/bordro/js/bordro.js?v=<?= time() ?>"></script>
+<script src="views/bordro/js/bordro-ai-audit.js?v=<?= time() ?>"></script>
+
+<!-- AI Bordro Denetim Modalı -->
+<?php include __DIR__ . '/partials/modal-ai-audit.php'; ?>
 
 <!-- Hatalı İşlemler Sayıları Modal -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>

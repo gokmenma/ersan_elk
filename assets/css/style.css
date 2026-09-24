@@ -21,6 +21,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Bordro Sticky Header & Stacking Context */
+.bordro-sticky-header {
+  position: relative;
+  z-index: 1030;
+}
+
 /* Bordro & Dashboard Summary Cards */
 .bordro-summary-card {
   background-color: var(--bs-card-bg) !important;

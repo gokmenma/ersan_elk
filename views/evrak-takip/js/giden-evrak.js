@@ -46,13 +46,13 @@ $(document).ready(function () {
     // 3. Sayaç rozetini güncelle
     const count = selectedSigners.length;
     const badge = $("#imzaSecimSayac");
-    badge.text(count + "/3 Seçildi");
+    badge.text(count + "/3 SEÇİLDİ");
     if (count === 3) {
-      badge.removeClass("bg-primary-subtle text-primary bg-secondary-subtle text-secondary").addClass("bg-success-subtle text-success");
+      badge.removeClass("bg-light text-muted bg-primary-subtle text-primary").addClass("bg-success-subtle text-success");
     } else if (count === 0) {
-      badge.removeClass("bg-success-subtle text-success bg-primary-subtle text-primary").addClass("bg-secondary-subtle text-secondary");
+      badge.removeClass("bg-success-subtle text-success bg-primary-subtle text-primary").addClass("bg-light text-muted");
     } else {
-      badge.removeClass("bg-success-subtle text-success bg-secondary-subtle text-secondary").addClass("bg-primary-subtle text-primary");
+      badge.removeClass("bg-success-subtle text-success bg-light text-muted").addClass("bg-primary-subtle text-primary");
     }
 
     // 4. Ekleme Dropdown'ını güncelle (seçilenleri seçeneklerden gizle)
@@ -837,31 +837,73 @@ $(document).ready(function () {
     }
   });
 
-  function toggleUstYaziDurumu() {
+  function toggleUstYaziDurumu(isUserAction) {
     const isChecked = $("#ust_yazi_gerekli_degil").is(":checked");
     if (isChecked) {
       $("#ustYaziMetinBilgisi").removeClass("d-none");
+      $("#editorContainer").addClass("d-none");
+      $("#btnIcraUstYaziAc, #btnAiTaslakAc").addClass("d-none");
+      // Üst yazı gerekli değil iken akordeonları kapat
+      $("#collapseImzaYetkilileri, #collapseIliskiliKayitlar, #collapseIlgiEkMetinleri").collapse("hide");
+      if (isUserAction === true) {
+        $("#gidenEvrakTabs button[data-bs-target='#gidenEklerTab']").tab("show");
+      }
     } else {
       $("#ustYaziMetinBilgisi").addClass("d-none");
+      $("#editorContainer").removeClass("d-none");
+      if (!window.gidenEvrakKilitli) {
+        $("#btnIcraUstYaziAc, #btnAiTaslakAc").removeClass("d-none");
+      }
+      if (isUserAction === true) {
+        $("#collapseImzaYetkilileri").collapse("show");
+        $("#gidenEvrakTabs button[data-bs-target='#gidenIcerikTab']").tab("show");
+      } else {
+        if (selectedSigners && selectedSigners.length > 0) {
+          $("#collapseImzaYetkilileri").collapse("show");
+        }
+      }
     }
+    adjustGidenEvrakLayout();
   }
 
-  $(document).on("change", "#ust_yazi_gerekli_degil", toggleUstYaziDurumu);
-  toggleUstYaziDurumu();
+  $(document).on("change", "#ust_yazi_gerekli_degil", function () {
+    toggleUstYaziDurumu(true);
+  });
+  toggleUstYaziDurumu(false);
+
+  $(document).on("click", "#btnEklereGit", function () {
+    $("#gidenEvrakTabs button[data-bs-target='#gidenEklerTab']").tab("show");
+  });
+
+  $("#gidenDigerAlanlarAccordion").on("shown.bs.collapse", function () {
+    $(this).find(".giden-select2").each(function () {
+      if ($(this).data("select2")) {
+        $(this).select2({ width: "100%" });
+      }
+    });
+    adjustGidenEvrakLayout();
+  });
+  $("#gidenDigerAlanlarAccordion").on("hidden.bs.collapse", function () {
+    adjustGidenEvrakLayout();
+  });
 
   function validateForm() {
     if (!$("#evrak_no").val().trim() || !$("#konu").val().trim() || !$("#kurum_adi").val().trim()) {
       Swal.fire("Eksik Bilgi", "Sayı, konu ve muhatap alanları zorunludur.", "warning");
       return false;
     }
-    if (!$("#imza_kullanici_ids").val()?.length) {
-      Swal.fire("Eksik Bilgi", "En az bir imza atacak kişi seçiniz.", "warning");
-      return false;
-    }
     const ustYaziGerekliDegil = $("#ust_yazi_gerekli_degil").is(":checked");
-    if (!ustYaziGerekliDegil && $("#giden_evrak_icerik").summernote("isEmpty")) {
-      Swal.fire("Eksik Bilgi", "Yazı içeriği boş bırakılamaz.", "warning");
-      return false;
+    if (!ustYaziGerekliDegil) {
+      if (!$("#imza_kullanici_ids").val()?.length) {
+        $("#collapseImzaYetkilileri").collapse("show");
+        Swal.fire("Eksik Bilgi", "En az bir imza yetkilisi seçiniz.", "warning");
+        return false;
+      }
+      if ($("#giden_evrak_icerik").summernote("isEmpty")) {
+        $("#gidenEvrakTabs button[data-bs-target='#gidenIcerikTab']").tab("show");
+        Swal.fire("Eksik Bilgi", "Yazı içeriği boş bırakılamaz.", "warning");
+        return false;
+      }
     }
     return true;
   }
@@ -1046,6 +1088,11 @@ $(document).ready(function () {
   $("#btnEImzaOnayaSun").on("click", function () {
     syncContent();
     if (!validateForm()) return;
+    if (!$("#imza_kullanici_ids").val()?.length) {
+      $("#collapseImzaYetkilileri").collapse("show");
+      Swal.fire("Eksik Bilgi", "E-İmza ile onaya sunmak için en az bir imza yetkilisi seçmelisiniz.", "warning");
+      return;
+    }
     Swal.fire({
       title: "E-İmza ile Onaya Sun",
       html: "Evrak önce kaydedilecek, ardından imzacıların onayına sunulacak.<br>İmza sırasında ilk sırada siz varsanız imzanız otomatik atılır.<br><b>Onaya sunulan evrakın içeriği, imza süreci tamamlanana kadar değiştirilemez.</b>",

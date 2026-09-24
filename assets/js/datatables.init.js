@@ -100,6 +100,26 @@ $(document).ready(function () {
           $(this).DataTable(getDatatableOptions());
       }
   });
+
+  // URL tab parametresini kontrol et ve ilgili sekmeyi aç
+  var urlParams = new URLSearchParams(window.location.search);
+  var urlTab = urlParams.get("tab");
+  if (urlTab) {
+    var tabSelectors = [
+      'a[data-bs-toggle="tab"][href="#' + urlTab + '"]',
+      'a[data-bs-toggle="tab"][href="#pane-' + urlTab + '"]',
+      'a[data-bs-toggle="tab"][href="#' + urlTab + 'Content"]',
+      'button[data-bs-toggle="tab"][data-bs-target="#' + urlTab + '"]',
+      'button[data-bs-toggle="tab"][data-bs-target="#pane-' + urlTab + '"]'
+    ];
+    for (var i = 0; i < tabSelectors.length; i++) {
+      var $tabEl = $(tabSelectors[i]);
+      if ($tabEl.length) {
+        $tabEl.tab("show");
+        break;
+      }
+    }
+  }
 });
 
 /**
@@ -337,6 +357,20 @@ function getDatatableOptions() {
 
       if (typeof feather !== "undefined") {
         try { feather.replace(); } catch (e) { console.warn("feather.replace error:", e); }
+      }
+
+      // Basit filtreli tablolarda URL arama parametresini uygula
+      if (!hasAnyAdvancedFilter) {
+        var urlParams = new URLSearchParams(window.location.search);
+        var urlSearch = (urlParams.get("search") || urlParams.get("q") || urlParams.get("arama") || "").trim();
+        if (urlSearch) {
+          var $firstSearchInput = $thead.find(".search-input-row input[type='text']:first");
+          if ($firstSearchInput.length) {
+            $firstSearchInput.val(urlSearch).trigger("input");
+          } else {
+            api.search(urlSearch).draw();
+          }
+        }
       }
 
       // Gelişmiş kolon filtreleri başlat (Sadece bir kez, initComplete sonunda)

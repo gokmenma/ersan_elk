@@ -142,7 +142,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "kullanici/list" || $page == "kullanici-gruplari/list" ||
     $page == "mail-sms/sms-gonder" ||
     $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
-    $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/veri-yukleme" ||
+    $page == "bordro/list" || $page == "bordro/ai-analiz" || strpos($page, "bordro/") === 0 || $page == "demirbas/list" || $page == "puantaj/veri-yukleme" ||
     $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu" ||
     strpos($page, "tanimlamalar/") === 0 ||
     strpos($page, "puantaj/") === 0 ||

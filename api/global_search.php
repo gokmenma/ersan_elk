@@ -1,4 +1,5 @@
 <?php
+ob_start();
 session_start();
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -7,42 +8,126 @@ require_once dirname(__DIR__) . '/Autoloader.php';
 use App\Service\Gate;
 use App\Model\GlobalSearchModel;
 
-header('Content-Type: application/json; charset=utf-8');
-
 // Oturum kontrolü
 if (empty($_SESSION['user_id']) && empty($_SESSION['user']->id)) {
+    if (function_exists('ob_get_level')) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+    header('Content-Type: application/json; charset=utf-8');
     http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'Yetkisiz erişim', 'results' => []]);
+    echo json_encode([
+        'status' => 'error', 
+        'message' => 'Yetkisiz erişim veya oturum süresi dolmuş.'
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 $firmaId = (int)($_SESSION['firma_id'] ?? 0);
 if ($firmaId <= 0) {
-    echo json_encode(['status' => 'error', 'message' => 'Firma seçilmedi', 'results' => []]);
+    if (function_exists('ob_get_level')) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status' => 'error', 
+        'message' => 'Lütfen bir firma seçiniz.'
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-// Yetki kontrolü (Personel listesini görebilme yetkisi)
-if (!Gate::allows('personel_listesi')) {
-    echo json_encode(['status' => 'error', 'message' => 'Personel arama yetkiniz bulunmamaktadır', 'results' => []]);
+$query    = isset($_GET['q']) ? trim((string)$_GET['q']) : (isset($_POST['q']) ? trim((string)$_POST['q']) : '');
+$category = isset($_GET['category']) ? trim((string)$_GET['category']) : 'all';
+$limit    = isset($_GET['limit']) ? min(max((int)$_GET['limit'], 1), 20) : 8;
+
+$allowedCategories = ['all', 'personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
+if (!in_array($category, $allowedCategories, true)) {
+    $category = 'all';
+}
+
+// Modül izinleri kontrolü
+$allowedModules = [];
+$isSuperAdmin = Gate::isSuperAdmin();
+
+if ($isSuperAdmin || Gate::allows('Personel Listesi') || Gate::allows('Personeller') || Gate::allows('personel_listesi')) {
+    $allowedModules[] = 'personel';
+}
+if ($isSuperAdmin || Gate::allows('Araç Takip') || Gate::allows('Araç Takip/Yönetim')) {
+    $allowedModules[] = 'araclar';
+}
+if ($isSuperAdmin || Gate::allows('Demirbaş Yönetimi') || Gate::allows('Demirbaş/Zimmet İşlemleri Sayfası')) {
+    $allowedModules[] = 'demirbaslar';
+}
+if ($isSuperAdmin || Gate::allows('Cari Takibi') || Gate::allows('Cari Hesap Hareketleri')) {
+    $allowedModules[] = 'cariler';
+}
+if ($isSuperAdmin || Gate::allows('Evrak Takip') || Gate::allows('Evrak Bilgileri Sekmesi')) {
+    $allowedModules[] = 'evraklar';
+}
+if ($isSuperAdmin || Gate::allows('Görevler') || Gate::allows('Görev ve Bildirimler')) {
+    $allowedModules[] = 'gorevler';
+}
+if ($isSuperAdmin || Gate::allows('Kaçak İşlemleri') || Gate::allows('Kaçak Bildirim Onayı')) {
+    $allowedModules[] = 'kacak';
+}
+if ($isSuperAdmin || Gate::allows('Aparat Takip') || Gate::allows('Aparat Deposu') || Gate::allows('Aparat Tanımları')) {
+    $allowedModules[] = 'aparatlar';
+}
+
+if (empty($allowedModules)) {
+    if (function_exists('ob_get_level')) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Arama yapabileceğiniz modül yetkisi bulunmamaktadır.',
+        'counts' => ['all' => 0],
+        'results' => []
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-$query = trim($_GET['q'] ?? ($_POST['q'] ?? ''));
+try {
+    $userId = (int)($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
+    $searchModel = new GlobalSearchModel();
+    $data = $searchModel->search($query, $firmaId, $userId, $category, $limit, $allowedModules);
 
-if (mb_strlen($query, 'UTF-8') < 2) {
-    echo json_encode(['status' => 'success', 'total' => 0, 'data' => []]);
+    if (function_exists('ob_get_level')) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status'          => 'success',
+        'query'           => $query,
+        'counts'          => $data['counts'],
+        'results'         => $data['results'],
+        'allowed_modules' => $allowedModules
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+
+} catch (\Exception $e) {
+    error_log('Global Search API Error: ' . $e->getMessage());
+
+    if (function_exists('ob_get_level')) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(500);
+    echo json_encode([
+        'status'  => 'error',
+        'message' => 'Arama işlemi sırasında bir sunucu hatası oluştu.'
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
-
-$userId = (int)($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
-$searchModel = new GlobalSearchModel();
-
-$searchResult = $searchModel->searchGlobal($query, $firmaId, $userId, ['personel'], 15);
-
-echo json_encode([
-    'status' => 'success',
-    'query' => htmlspecialchars($query, ENT_QUOTES, 'UTF-8'),
-    'total' => $searchResult['total'],
-    'categories' => $searchResult['categories']
-]);
