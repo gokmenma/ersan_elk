@@ -121,8 +121,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 $mevcutArac = $Arac->plakaKontrol($plaka, $arac_id, true);
-                if ($mevcutArac && $arac_id == 0) {
-                    throw new Exception("Bu plaka ($plaka) zaten kayıtlı baska bir araca ait.");
+                $mevcutPasifAracGuncelleniyor = false;
+                if ($mevcutArac) {
+                    if (
+                        $arac_id === 0
+                        && (!empty($mevcutArac->silinme_tarihi) || (int) $mevcutArac->aktif_mi === 0)
+                    ) {
+                        // Plaka firma bazında benzersizdir. Aktif listede görünmeyen pasif
+                        // veya soft-delete kaydı yeni satır açmak yerine form verileriyle güncelle.
+                        $arac_id = (int) $mevcutArac->id;
+                        $data['id'] = $arac_id;
+                        $data['silinme_tarihi'] = null;
+                        $mevcutPasifAracGuncelleniyor = true;
+                    } else {
+                        throw new Exception("Bu plaka ($plaka) zaten kayıtlı başka bir araca ait.");
+                    }
                 }
 
                 // Veriyi hazırla
@@ -160,7 +173,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 $Arac->saveWithAttr($data);
 
-                $message = $arac_id > 0 ? "Araç başarıyla güncellendi." : "Araç başarıyla kaydedildi.";
+                $message = $mevcutPasifAracGuncelleniyor
+                    ? ((int) ($data['aktif_mi'] ?? 0) === 1
+                        ? "Mevcut pasif araç yeniden aktifleştirilerek güncellendi."
+                        : "Mevcut pasif araç bilgileri güncellendi.")
+                    : ($arac_id > 0 ? "Araç başarıyla güncellendi." : "Araç başarıyla kaydedildi.");
                 echo json_encode(['status' => 'success', 'message' => $message]);
                 break;
 

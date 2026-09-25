@@ -340,7 +340,7 @@ class AracModel extends Model
         $plakaTemiz = $normalize($plaka);
 
         // Fetch all possible plates for this firm
-        $sql = "SELECT id, plaka FROM {$this->table} WHERE firma_id = :firma_id";
+        $sql = "SELECT id, plaka, aktif_mi, silinme_tarihi FROM {$this->table} WHERE firma_id = :firma_id";
         $params = ['firma_id' => $_SESSION['firma_id']];
 
         if (!$includeDeleted) {
