@@ -294,11 +294,12 @@ if (!empty($dbGelirler)) {
 
         /* Tablo Çerçevesi ve Sığdırma Stilleri */
         .bordro-table-responsive {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border: 1px solid #d9e3ef !important;
+            border-radius: 12px !important;
             background-color: #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
             overflow-x: auto;
+            margin: 4px 0 12px 0 !important;
         }
 
         #bordroTable {
@@ -868,7 +869,7 @@ if (!empty($dbGelirler)) {
                         </div>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-1">
                     <?php if ($selectedDonem): ?>
                         <?php include __DIR__ . '/partials/hesaplama.php'; ?>
 

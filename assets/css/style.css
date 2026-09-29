@@ -3075,92 +3075,148 @@ Select group
 .strong {
   font-weight: 700;
 }
+/* =============================================================
+   Modern Premium Subtle Badge System
+   ============================================================= */
 .badge {
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1.5;
-  display: inline-block;
-  padding: 0.25em 0.3em;
-  border-radius: 0.25rem;
-  color: #fff;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  background-color: #6c757d;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  border-radius: 20px !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  letter-spacing: 0.02em !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.15s ease-in-out !important;
 }
 
-.badge-primary {
-  background-color: var(--bs-primary);
+.badge i, .badge svg {
+  font-size: 13px !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
 }
 
-.badge-success {
-  background-color: #28a745;
+/* Success / Aktif / Evet / Devam Ediyor / Onaylandı */
+.badge.bg-success,
+.badge.bg-soft-success,
+.badge.bg-success-subtle,
+.badge.badge-soft-success,
+.badge-success,
+.badge-pill.badge-success,
+.icra-badge-active {
+  background-color: #ecfdf5 !important;
+  color: #059669 !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
 }
 
-.badge-danger {
-  background-color: #dc3545;
+/* Danger / Pasif / Hayır / Red / İptal / Durduruldu */
+.badge.bg-danger,
+.badge.bg-soft-danger,
+.badge.bg-danger-subtle,
+.badge.badge-soft-danger,
+.badge-danger,
+.badge-pill.badge-danger,
+.icra-badge-danger {
+  background-color: #fef2f2 !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
 }
 
-.badge-warning {
-  background-color: #ffc107;
+/* Warning / Bekliyor / Mavi Yaka / Sürekli / Uyarı */
+.badge.bg-warning,
+.badge.bg-soft-warning,
+.badge.bg-warning-subtle,
+.badge.badge-soft-warning,
+.badge-warning,
+.badge-pill.badge-warning,
+.icra-badge-warning {
+  background-color: #fffbeb !important;
+  color: #d97706 !important;
+  border: 1px solid rgba(245, 158, 11, 0.28) !important;
 }
 
-.badge-info {
-  background-color: #17a2b8;
+/* Primary / Güncel / Dönem / Firma / Bilgi */
+.badge.bg-primary,
+.badge.bg-soft-primary,
+.badge.bg-primary-subtle,
+.badge.badge-soft-primary,
+.badge-primary,
+.badge-pill.badge-primary {
+  background-color: #eef2ff !important;
+  color: #4f46e5 !important;
+  border: 1px solid rgba(99, 102, 241, 0.28) !important;
 }
 
-.badge-light {
-  background-color: #f8f9fa;
+/* Info / Cyan / Beyaz Yaka / Detay / Fekki Geldi */
+.badge.bg-info,
+.badge.bg-soft-info,
+.badge.bg-info-subtle,
+.badge.badge-soft-info,
+.badge-info,
+.badge-pill.badge-info,
+.icra-badge-info {
+  background-color: #f0f9ff !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(14, 165, 233, 0.28) !important;
 }
 
-.badge-dark {
-  background-color: #343a40;
+/* Purple / Mor / SGK / Özel */
+.badge.bg-purple,
+.badge.bg-soft-purple,
+.badge.bg-purple-subtle,
+.badge.badge-soft-purple,
+.badge.icra-badge-purple,
+.badge.text-purple {
+  background-color: #f5f3ff !important;
+  color: #7c3aed !important;
+  border: 1px solid rgba(147, 51, 234, 0.25) !important;
 }
 
-.badge-secondary {
-  background-color: #6c757d;
+/* Secondary / Pasif / Hayır / Adet / Nötr */
+.badge.bg-secondary,
+.badge.bg-soft-secondary,
+.badge.bg-secondary-subtle,
+.badge.badge-soft-secondary,
+.badge-secondary,
+.badge-pill.badge-secondary,
+.icra-badge-secondary {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid rgba(100, 116, 139, 0.2) !important;
+}
+
+/* Light */
+.badge.bg-light,
+.badge.bg-soft-light,
+.badge.bg-light-subtle,
+.badge.badge-soft-light,
+.badge-light,
+.badge-pill.badge-light {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Dark */
+.badge.bg-dark,
+.badge.bg-dark-subtle,
+.badge-dark,
+.badge-pill.badge-dark {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
 }
 
 .badge-pill {
-  padding-right: 0.6em;
-  padding-left: 0.6em;
-  border-radius: 10rem;
-}
-
-.badge-pill .badge {
-  border-radius: 10rem;
-}
-
-.badge-pill .badge-primary {
-  background-color: var(--bs-primary);
-}
-
-.badge-pill .badge-success {
-  background-color: #28a745;
-}
-
-.badge-pill .badge-danger {
-  background-color: #dc3545;
-}
-
-.badge-pill .badge-warning {
-  background-color: #ffc107;
-}
-
-.badge-pill .badge-info {
-  background-color: #17a2b8;
-}
-
-.badge-pill .badge-light {
-  background-color: #f8f9fa;
-}
-
-.badge-pill .badge-dark {
-  background-color: #343a40;
-}
-
-.badge-pill .badge-secondary {
-  background-color: #6c757d;
+  border-radius: 9999px !important;
+  padding: 4px 12px !important;
 }
 
 .font-size-36 {
@@ -3680,54 +3736,97 @@ table thead tr:first-child th {
   color: #eff2f7 !important;
 }
 
-[data-bs-theme="dark"] .badge-soft-success {
-  background-color: rgba(16, 185, 129, 0.15) !important;
-  color: #10b981 !important;
+[data-bs-theme="dark"] .badge.bg-success,
+[data-bs-theme="dark"] .badge.bg-soft-success,
+[data-bs-theme="dark"] .badge.bg-success-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-success,
+[data-bs-theme="dark"] .badge-success,
+[data-bs-theme="dark"] .icra-badge-active {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.32) !important;
 }
 
-[data-bs-theme="dark"] .badge-soft-warning {
-  background-color: rgba(245, 158, 11, 0.15) !important;
-  color: #f59e0b !important;
+[data-bs-theme="dark"] .badge.bg-danger,
+[data-bs-theme="dark"] .badge.bg-soft-danger,
+[data-bs-theme="dark"] .badge.bg-danger-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-danger,
+[data-bs-theme="dark"] .badge-danger,
+[data-bs-theme="dark"] .icra-badge-danger {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
 }
 
-[data-bs-theme="dark"] .badge-soft-danger {
-  background-color: rgba(239, 68, 68, 0.15) !important;
-  color: #ef4444 !important;
-}
-
-[data-bs-theme="dark"] .badge-soft-info {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-  color: #3b82f6 !important;
-}
-
-/* Koyu temada acik renkli badge'ler icin sistem geneli kontrast duzeltmesi. */
 [data-bs-theme="dark"] .badge.bg-warning,
-[data-bs-theme="dark"] .badge.text-bg-warning {
-  background-color: #f6c344 !important;
-  color: #241c00 !important;
+[data-bs-theme="dark"] .badge.bg-soft-warning,
+[data-bs-theme="dark"] .badge.bg-warning-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-warning,
+[data-bs-theme="dark"] .badge-warning,
+[data-bs-theme="dark"] .icra-badge-warning {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.32) !important;
 }
 
-[data-bs-theme="dark"] .badge.bg-warning-subtle {
-  background-color: rgba(246, 195, 68, 0.2) !important;
-  color: #ffd76a !important;
+[data-bs-theme="dark"] .badge.bg-primary,
+[data-bs-theme="dark"] .badge.bg-soft-primary,
+[data-bs-theme="dark"] .badge.bg-primary-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-primary,
+[data-bs-theme="dark"] .badge-primary {
+  background-color: rgba(85, 110, 230, 0.2) !important;
+  color: #818cf8 !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-info,
+[data-bs-theme="dark"] .badge.bg-soft-info,
+[data-bs-theme="dark"] .badge.bg-info-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-info,
+[data-bs-theme="dark"] .badge-info,
+[data-bs-theme="dark"] .icra-badge-info {
+  background-color: rgba(14, 165, 233, 0.16) !important;
+  color: #38bdf8 !important;
+  border-color: rgba(14, 165, 233, 0.32) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-purple,
+[data-bs-theme="dark"] .badge.bg-soft-purple,
+[data-bs-theme="dark"] .badge.bg-purple-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-purple,
+[data-bs-theme="dark"] .badge.icra-badge-purple,
+[data-bs-theme="dark"] .badge.text-purple {
+  background-color: rgba(168, 85, 247, 0.16) !important;
+  color: #c084fc !important;
+  border-color: rgba(168, 85, 247, 0.32) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-secondary,
+[data-bs-theme="dark"] .badge.bg-soft-secondary,
+[data-bs-theme="dark"] .badge.bg-secondary-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-secondary,
+[data-bs-theme="dark"] .badge-secondary,
+[data-bs-theme="dark"] .icra-badge-secondary {
+  background-color: rgba(148, 163, 184, 0.14) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
 }
 
 [data-bs-theme="dark"] .badge.bg-light,
-[data-bs-theme="dark"] .badge.text-bg-light {
-  background-color: #3b455a !important;
-  border-color: #59657a !important;
-  color: #f8fafc !important;
+[data-bs-theme="dark"] .badge.bg-soft-light,
+[data-bs-theme="dark"] .badge.bg-light-subtle,
+[data-bs-theme="dark"] .badge.badge-soft-light,
+[data-bs-theme="dark"] .badge-light {
+  background-color: #2a313c !important;
+  color: #cbd5e1 !important;
+  border-color: #3b4652 !important;
 }
 
 [data-bs-theme="dark"] .badge.bg-dark,
-[data-bs-theme="dark"] .badge.text-bg-dark {
-  background-color: #475569 !important;
-  border-color: #64748b !important;
-  color: #ffffff !important;
-}
-
-[data-bs-theme="dark"] .badge-soft-light {
-  background-color: rgba(226, 232, 240, 0.16) !important;
+[data-bs-theme="dark"] .badge.bg-dark-subtle,
+[data-bs-theme="dark"] .badge-dark {
+  background-color: #334155 !important;
+  border-color: #475569 !important;
   color: #f8fafc !important;
 }
 
@@ -4494,109 +4593,107 @@ body[data-sidebar-size="sm"] #sidebar-menu > ul > li:hover > ul.sub-menu {
 table.table,
 table.dataTable,
 .table {
-  border-radius: 0.5rem !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
-  margin-bottom: 1rem !important;
 }
 
 /* Table with border */
 .table-bordered {
-  border: 1px solid var(--bs-border-color) !important;
-  border-radius: 0.5rem !important;
+  border: 1px solid #d9e3ef !important;
+  border-radius: 12px !important;
 }
 
 /* Hücre kenarlıklarını koru */
 .table-bordered > :not(caption) > * > * {
-  border: 1px solid var(--bs-border-color) !important;
+  border: 1px solid #dbe4ef !important;
 }
 
 /* First row - top corners */
 table thead tr:first-child th:first-child,
 .table thead tr:first-child th:first-child,
 .dataTable thead tr:first-child th:first-child {
-  border-top-right-radius: 0.5rem !important;
+  border-top-left-radius: 11px !important;
 }
 
 table thead tr:first-child th:last-child,
 .table thead tr:first-child th:last-child,
 .dataTable thead tr:first-child th:last-child {
-  border-top-left-radius: 0.5rem !important;
+  border-top-right-radius: 11px !important;
 }
 
 /* Last row - bottom corners */
 table tbody tr:last-child td:first-child,
 .table tbody tr:last-child td:first-child,
 .dataTable tbody tr:last-child td:first-child {
-  border-bottom-right-radius: 0.5rem !important;
+  border-bottom-left-radius: 11px !important;
 }
 
 table tbody tr:last-child td:last-child,
 .table tbody tr:last-child td:last-child,
 .dataTable tbody tr:last-child td:last-child {
-  border-bottom-left-radius: 0.5rem !important;
+  border-bottom-right-radius: 11px !important;
 }
 
 /* If no tbody, apply to thead last row */
 table:not(:has(tbody)) thead tr:last-child th:first-child {
-  border-bottom-right-radius: 0.5rem !important;
+  border-bottom-left-radius: 11px !important;
 }
 
 table:not(:has(tbody)) thead tr:last-child th:last-child {
-  border-bottom-left-radius: 0.5rem !important;
+  border-bottom-right-radius: 11px !important;
 }
 
 /* Table with tfoot - bottom corners on tfoot */
 table tfoot tr:last-child td:first-child,
 .table tfoot tr:last-child td:first-child {
-  border-bottom-right-radius: 0.5rem !important;
+  border-bottom-left-radius: 11px !important;
 }
 
 table tfoot tr:last-child td:last-child,
 .table tfoot tr:last-child td:last-child {
-  border-bottom-left-radius: 0.5rem !important;
+  border-bottom-right-radius: 11px !important;
 }
 
 /* Card içindeki tablolar için */
-.card .table,
-.card table,
-.card-body .table,
-.card-body table {
-  border-radius: 0.5rem !important;
+.card .table-responsive,
+.card-body .table-responsive {
+  border-radius: 12px !important;
 }
 
-.card .table-responsive {
-  border-radius: 0.5rem !important;
+.card-body.p-0:has(> .table-responsive),
+.card-body.p-0:has(> .dataTables_wrapper),
+.card-body.p-0:has(> table.dataTable),
+.card-body.p-0:has(> div > .table-responsive),
+.card-body.p-0:has(> div > .dataTables_wrapper),
+.card-body:has(> .table-responsive),
+.card-body:has(> .dataTables_wrapper),
+.card-body:has(> div > .table-responsive),
+.card-body:has(> div > .dataTables_wrapper) {
+  padding: 4px !important;
 }
 
 /* DataTables wrapper styling */
 .dataTables_wrapper {
-  margin-bottom: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
+  width: 100%;
 }
 
-.dataTables_wrapper .table-responsive,
-.dataTables_wrapper table.dataTable {
-  border-radius: 0.5rem !important;
+.dataTables_wrapper .table-responsive {
+  border-radius: 12px !important;
+  border: 1px solid #d9e3ef;
+  margin: 4px 0 6px 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bs-card-bg, #fff);
 }
 
-/* Box shadow for better visual */
-.table-bordered,
-table.dataTable.table-bordered {
-  box-shadow:
-    0 1px 3px 0 rgb(0 0 0 / 0.1),
-    0 1px 2px -1px rgb(0 0 0 / 0.1) !important;
-}
-
-/* Dark mode table border-radius */
 [data-bs-theme="dark"] .table-bordered,
-[data-bs-theme="dark"] table.dataTable.table-bordered {
-  box-shadow:
-    0 1px 3px 0 rgb(0 0 0 / 0.3),
-    0 1px 2px -1px rgb(0 0 0 / 0.3) !important;
+[data-bs-theme="dark"] .dataTables_wrapper .table-responsive {
+  border-color: #36404a !important;
 }
 
 [data-bs-theme="dark"] .table-bordered > :not(caption) > * > * {
-  border-color: #1e293b !important;
+  border-color: #36404a !important;
 }
 
 .personel-name-container a {
@@ -5002,16 +5099,20 @@ body[data-sidebar-size="sm"] #sidebar-menu .star-btn {
 }
 
 .page-content {
-  padding-top: 128px !important;
-  padding-bottom: 60px !important;
+  padding-top: 74px !important;
+  padding-bottom: 16px !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
 
+body:has(#quick-favorites-bar) .main-content .page-content {
+  padding-top: 116px !important;
+}
+
 body:not(:has(#quick-favorites-bar)) .main-content .page-content {
-  padding-top: 86px !important;
+  padding-top: 74px !important;
 }
 
 .main-content .container-fluid,
@@ -5027,6 +5128,7 @@ body:not(:has(#quick-favorites-bar)) .main-content .page-content {
 
 
 .main-content .card {
+  margin-top: 0 !important;
   margin-bottom: 16px !important;
 }
 

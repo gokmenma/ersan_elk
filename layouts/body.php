@@ -10,7 +10,11 @@
                 'dir'
             ];
             htmlAttrs.forEach(name => {
-                const value = localStorage.getItem(name);
+                let value = localStorage.getItem(name);
+                if (!value && name === 'data-theme-preset') value = 'ersan';
+                if (!value && name === 'data-font-family') value = 'Outfit';
+                if (!value && name === 'data-theme-mode') value = 'ersan';
+                if (!value && name === 'data-bs-theme') value = 'light';
                 if (value) {
                     document.documentElement.setAttribute(name, value);
                 }
@@ -32,6 +36,9 @@
             ];
             bodyAttrs.forEach(name => {
                 let value = localStorage.getItem(name);
+                if (!value && name === 'data-topbar') value = 'light';
+                if (!value && name === 'data-sidebar') value = 'dark';
+                if (!value && name === 'data-theme-mode') value = 'ersan';
                 if (name === 'data-layout-size' && value === 'boxed') {
                     value = 'fluid';
                 }

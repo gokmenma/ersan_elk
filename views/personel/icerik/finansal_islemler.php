@@ -111,9 +111,16 @@ usort($transactions, function ($a, $b) {
 <div class="row">
     <div class="col-12">
         <div class="card border">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-lira me-2"></i>Finansal İşlemler (Avans /
-                    Ödeme)</h5>
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-lira"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 text-dark fw-bold">Finansal İşlemler (Avans / Ödeme)</h5>
+                        <div class="small text-muted">Personele ait avans, elden ödeme ve manuel finansal hareketleri yönetin.</div>
+                    </div>
+                </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal"
                         data-bs-target="#modalManualGelir"><i class="bx bx-plus"></i> Gelir Ekle</button>
@@ -121,16 +128,16 @@ usort($transactions, function ($a, $b) {
                         data-bs-target="#modalManualKesinti"><i class="bx bx-minus"></i> Kesinti Ekle</button>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 datatable w-100">
                         <thead class="table-light">
                             <tr>
-                                <th>Tarih</th>
-                                <th>İşlem Türü</th>
-                                <th>Açıklama</th>
-                                <th>Tutar</th>
-                                <th>Durum</th>
+                                <th data-filter="date">Tarih</th>
+                                <th data-filter="select">İşlem Türü</th>
+                                <th data-filter="string">Açıklama</th>
+                                <th data-filter="number">Tutar</th>
+                                <th data-filter="select">Durum</th>
                             </tr>
                         </thead>
                         <tbody>

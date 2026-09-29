@@ -43,28 +43,33 @@ function formatFileSize($bytes)
 <div class="row">
     <div class="col-12">
         <div class="card border">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-primary"><i data-feather="file" class="me-2 icon-sm"></i>Personel
-                        Evrakları</h5>
-                    <span class="badge bg-primary">
-                        <?= $stats->toplam_evrak ?? 0 ?> Evrak
-                    </span>
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i data-feather="file" style="width: 18px; height: 18px;"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="card-title mb-0 text-dark fw-bold">Personel Evrakları</h5>
+                            <span class="badge bg-primary"><?= $stats->toplam_evrak ?? 0 ?> Evrak</span>
+                        </div>
+                        <div class="small text-muted">Personele ait tüm resmi evrak ve belgeleri görüntüleyin ve yükleyin.</div>
+                    </div>
                 </div>
                 <button type="button" class="btn btn-sm btn-primary" id="btnOpenEvrakModal">
                     <i data-feather="upload" class="icon-xs"></i> Yeni Evrak Yükle
                 </button>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 datatable w-100" id="tblEvraklar">
                         <thead class="table-light">
                             <tr>
-                                <th>Evrak Adı</th>
-                                <th>Tür</th>
-                                <th>Boyut</th>
-                                <th>Yükleme Tarihi</th>
-                                <th>Yükleyen</th>
+                                <th data-filter="string">Evrak Adı</th>
+                                <th data-filter="select">Tür</th>
+                                <th data-filter="string">Boyut</th>
+                                <th data-filter="date">Yükleme Tarihi</th>
+                                <th data-filter="string">Yükleyen</th>
                                 <th class="text-center">İşlem</th>
                             </tr>
                         </thead>

@@ -438,7 +438,7 @@ File: Main Js File
         primaryColor: "#e2bd61",
         themeMode: "ersan",
         layoutMode: "light",
-        fontFamily: "Geist"
+        fontFamily: "Outfit"
       },
       "midnight-emerald": {
         name: "Zümrüt",
@@ -676,7 +676,7 @@ File: Main Js File
     });
 
     // Check saved preset on load
-    const savedPreset = localStorage.getItem("data-theme-preset");
+    const savedPreset = localStorage.getItem("data-theme-preset") || "ersan";
     if (savedPreset && THEME_PRESETS[savedPreset]) {
       $(`.theme-preset-card[data-preset="${savedPreset}"]`).addClass("active");
       document.documentElement.setAttribute("data-theme-preset", savedPreset);
@@ -712,8 +712,8 @@ File: Main Js File
       document.documentElement.style.removeProperty("--bs-link-color");
       document.documentElement.style.removeProperty("--bs-link-hover-color");
 
-      // Apply default preset (Kode)
-      applyPresetTheme("kode", false);
+      // Apply default preset (Ersan Gold with Outfit font)
+      applyPresetTheme("ersan", false);
 
       // Reset layout & size to default
       document.body.removeAttribute("data-layout");
@@ -728,7 +728,7 @@ File: Main Js File
       updateRadio("sidebar-size-default");
 
       if (typeof showToast === "function") {
-        showToast("Tema ve görünüm ayarları varsayılana sıfırlandı.", "info");
+        showToast("Tema ve görünüm ayarları Ersan Gold varsayılanına sıfırlandı.", "info");
       }
     });
 
@@ -795,10 +795,10 @@ File: Main Js File
     if (activeColorTheme) {
       updateRadio("theme-" + activeColorTheme);
     } else {
-      updateRadio("theme-default");
+      updateRadio("theme-ersan");
     }
 
-    const currentSavedFont = html.getAttribute("data-font-family") || localStorage.getItem("data-font-family") || "Geist";
+    const currentSavedFont = html.getAttribute("data-font-family") || localStorage.getItem("data-font-family") || "Outfit";
     applyFontFamily(currentSavedFont);
 
     (html.hasAttribute("data-bs-theme") &&

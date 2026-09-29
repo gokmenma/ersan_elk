@@ -63,20 +63,20 @@ foreach ($vergiMatrahlari as $vm) {
                 </div>
             </div>
 
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0 w-100 align-middle">
+                    <table class="table table-hover mb-0 datatable w-100 align-middle">
                         <thead>
-                            <tr class="bg-light bg-opacity-50 border-bottom">
-                                <th class="text-muted small fw-bold text-uppercase">Dönem</th>
-                                <th class="text-end text-muted small fw-bold text-uppercase">Bu Ayki Matrah</th>
-                                <th class="text-end text-muted small fw-bold text-uppercase">Önceki Kümülatif</th>
-                                <th class="text-end text-muted small fw-bold text-uppercase text-primary">Yeni Kümülatif</th>
-                                <th class="text-end text-muted small fw-bold text-uppercase">SGK İşçi</th>
-                                <th class="text-end text-muted small fw-bold text-uppercase">İşsizlik</th>
-                                <th class="text-end text-muted small fw-bold text-uppercase text-danger">Gelir Vergisi</th>
-                                <th class="text-end text-muted small fw-bold text-uppercase">Damga Vergisi</th>
-                                <th class="text-muted small fw-bold text-uppercase">Hesaplama Tarihi</th>
+                            <tr>
+                                <th data-filter="select">Dönem</th>
+                                <th class="text-end" data-filter="number">Bu Ayki Matrah</th>
+                                <th class="text-end" data-filter="number">Önceki Kümülatif</th>
+                                <th class="text-end text-primary" data-filter="number">Yeni Kümülatif</th>
+                                <th class="text-end" data-filter="number">SGK İşçi</th>
+                                <th class="text-end" data-filter="number">İşsizlik</th>
+                                <th class="text-end text-danger" data-filter="number">Gelir Vergisi</th>
+                                <th class="text-end" data-filter="number">Damga Vergisi</th>
+                                <th data-filter="date">Hesaplama Tarihi</th>
                             </tr>
                         </thead>
                         <tbody>

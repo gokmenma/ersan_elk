@@ -20,7 +20,10 @@
 
         htmlAttributes.forEach(attr => {
             let value = localStorage.getItem(attr.name);
-            if (!value && attr.name === 'data-font-family') value = 'Geist';
+            if (!value && attr.name === 'data-font-family') value = 'Outfit';
+            if (!value && attr.name === 'data-theme-preset') value = 'ersan';
+            if (!value && attr.name === 'data-theme-mode') value = 'ersan';
+            if (!value && attr.name === 'data-bs-theme') value = 'light';
             if (value) applyAttribute(attr, value);
         });
 
@@ -50,7 +53,7 @@
             'mocha-gold': '#d97706'
         };
 
-        const savedPresetKey = localStorage.getItem('data-theme-preset');
+        const savedPresetKey = localStorage.getItem('data-theme-preset') || 'ersan';
         let customPrimary = localStorage.getItem('custom-primary-color');
         if (!customPrimary && savedPresetKey && PRESET_COLORS[savedPresetKey]) {
             customPrimary = PRESET_COLORS[savedPresetKey];
@@ -255,16 +258,20 @@ body[data-sidebar-size="sm"] #sidebar-menu .star-btn {
 }
 
 .page-content {
-    padding-top: 128px !important;
-    padding-bottom: 60px !important;
+    padding-top: 74px !important;
+    padding-bottom: 16px !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
 }
 
+body:has(#quick-favorites-bar) .main-content .page-content {
+    padding-top: 116px !important;
+}
+
 body:not(:has(#quick-favorites-bar)) .main-content .page-content {
-    padding-top: 86px !important;
+    padding-top: 74px !important;
 }
 
 .main-content .container-fluid,
@@ -280,6 +287,7 @@ body:not(:has(#quick-favorites-bar)) .main-content .page-content {
 
 
 .main-content .card {
+    margin-top: 0 !important;
     margin-bottom: 16px !important;
 }
 </style>

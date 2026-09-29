@@ -122,7 +122,15 @@ $onay_durumlari = [
         <div class="card border">
             <div
                 class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-calendar-event me-2"></i>İzin Bilgileri</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-calendar-event"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 text-dark fw-bold">İzin Bilgileri</h5>
+                        <div class="small text-muted">Personelin izin, rapor ve eksik gün hareketlerini yönetin.</div>
+                    </div>
+                </div>
                 <div class="d-flex align-items-center gap-2">
                     <!-- Yıl Seçicisi (Sadece Takvim Görünümünde Görünür) -->
                     <div id="takvimYilSecici" style="display: none;">
@@ -160,21 +168,21 @@ $onay_durumlari = [
                             Ekle</span></button>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <!-- Liste Görünümü -->
                 <div id="izinListContainer" class="p-0">
                     <div class="table-responsive">
                         <table id="izinlerTable" class="table table-selected datatable table-bordered nowrap w-100">
                             <thead class="table-light">
                                 <tr>
-                                    <th>İzin Türü</th>
-                                    <th>Başlangıç</th>
-                                    <th>Bitiş</th>
-                                    <th>Süre (Gün)</th>
-                                    <th>Durum</th>
-                                    <th>Onay Bilgisi</th>
-                                    <th>Açıklama</th>
-                                    <th>İşlem</th>
+                                    <th data-filter="select">İzin Türü</th>
+                                    <th data-filter="date">Başlangıç</th>
+                                    <th data-filter="date">Bitiş</th>
+                                    <th data-filter="number">Süre (Gün)</th>
+                                    <th data-filter="select">Durum</th>
+                                    <th data-filter="string">Onay Bilgisi</th>
+                                    <th data-filter="string">Açıklama</th>
+                                    <th class="text-center">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody>

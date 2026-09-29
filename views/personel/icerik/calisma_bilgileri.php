@@ -137,15 +137,15 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
     <div class="border-top mt-3 pt-3">
         <div class="d-flex align-items-center justify-content-between mb-2">
             <span class="small fw-semibold text-dark"><i class="bx bx-calendar-check me-1 text-primary"></i> Güncel dönem bilgileri</span>
-            <span class="badge bg-primary">Güncel Dönem</span>
+            <span class="badge bg-primary"><i class="bx bx-check-double me-1"></i>Güncel Dönem</span>
         </div>
         <div class="row g-2">
             <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-calendar me-1 text-primary"></i>İşe Giriş</div><p class="work-detail-value" id="display_ise_giris_tarihi"><?= Date::dmY($personel->ise_giris_tarihi ?? Date::today()) ?></p></div></div>
-            <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-calendar-x me-1 text-danger"></i>İşten Çıkış</div><p class="work-detail-value" id="display_isten_cikis_tarihi"><?= !empty($personel->isten_cikis_tarihi) ? Date::dmY($personel->isten_cikis_tarihi) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?></p></div></div>
+            <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-calendar-x me-1 text-danger"></i>İşten Çıkış</div><p class="work-detail-value" id="display_isten_cikis_tarihi"><?= !empty($personel->isten_cikis_tarihi) ? Date::dmY($personel->isten_cikis_tarihi) : '<span class="badge bg-success"><i class="bx bx-play-circle me-1"></i>Devam Ediyor</span>' ?></p></div></div>
             <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-users me-1 text-info"></i>Personel Sınıfı</div><p class="work-detail-value" id="display_personel_sinifi"><?= htmlspecialchars($personel->personel_sinifi ?? 'Beyaz Yaka') ?></p></div></div>
-            <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-map-pin me-1 text-warning"></i>Saha Takibi</div><p class="work-detail-value" id="display_saha_takibi"><?= ($personel->saha_takibi ?? 0) == 1 ? '<span class="badge bg-soft-success text-success">Evet</span>' : '<span class="badge bg-soft-danger text-danger">Hayır</span>' ?></p></div></div>
+            <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-map-pin me-1 text-warning"></i>Saha Takibi</div><p class="work-detail-value" id="display_saha_takibi"><?= ($personel->saha_takibi ?? 0) == 1 ? '<span class="badge bg-success"><i class="bx bx-check me-1"></i>Evet</span>' : '<span class="badge bg-secondary"><i class="bx bx-x me-1"></i>Hayır</span>' ?></p></div></div>
             <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-car me-1 text-primary"></i>Araç Kullanımı</div><p class="work-detail-value" id="display_arac_kullanim"><?= htmlspecialchars($personel->arac_kullanim ?? 'Yok') ?></p></div></div>
-            <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-book-open me-1 text-purple"></i>SGK Firması</div><p class="work-detail-value" id="display_display_sgk_yapilan_firma"><span class="badge bg-soft-purple text-purple" id="display_sgk_yapilan_firma"><?= htmlspecialchars($personel->sgk_yapilan_firma ?? 'Yok') ?></span></p></div></div>
+            <div class="col-6 col-md-4 col-xl-2"><div class="work-summary-card h-100"><div class="work-detail-label"><i class="bx bx-book-open me-1 text-purple"></i>SGK Firması</div><p class="work-detail-value" id="display_display_sgk_yapilan_firma"><span class="badge bg-purple" id="display_sgk_yapilan_firma"><i class="bx bx-buildings me-1"></i><?= htmlspecialchars($personel->sgk_yapilan_firma ?? 'Yok') ?></span></p></div></div>
         </div>
 
         <div class="mt-2" id="display_ayrilis_nedeni_wrapper" style="<?= empty($personel->isten_cikis_tarihi) ? 'display:none;' : '' ?>">
@@ -165,9 +165,14 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
     <div class="col-md-12">
         <div class="card border h-100 shadow-sm work-table-card">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
-                <div>
-                    <h5 class="card-title mb-1 text-primary fw-bold"><i class="bx bx-group me-2"></i>Ekip Atama Geçmişi</h5>
-                    <div class="small text-muted">Personelin görev aldığı ekipleri ve ekip şefliği durumunu tarih bazında yönetin.</div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-warning-subtle text-warning rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-group"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 text-dark fw-bold">Ekip Atama Geçmişi</h5>
+                        <div class="small text-muted">Personelin görev aldığı ekipleri ve ekip şefliği durumunu tarih bazında yönetin.</div>
+                    </div>
                 </div>
                 <?php if ($id > 0): ?>
                     <button type="button" class="btn btn-sm btn-primary px-3 shadow-none" id="btnOpenEkipGecmisiModal">
@@ -175,7 +180,7 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
                     </button>
                 <?php endif; ?>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <?php if ($id > 0): ?>
                     <div class="table-responsive">
                         <table id="tblEkipGecmisi" class="table table-hover align-middle mb-0 w-100">
@@ -196,18 +201,18 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
                                             <td><span class="fw-bold text-dark"><?= htmlspecialchars($g->ekip_adi ?? '') ?></span>
                                             </td>
                                             <td><?= date('d.m.Y', strtotime($g->baslangic_tarihi)) ?></td>
-                                            <td><?= $g->bitis_tarihi ? date('d.m.Y', strtotime($g->bitis_tarihi)) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?>
+                                            <td><?= $g->bitis_tarihi ? date('d.m.Y', strtotime($g->bitis_tarihi)) : '<span class="badge bg-success"><i class="bx bx-play-circle me-1"></i>Devam Ediyor</span>' ?>
                                             </td>
                                             <td>
-                                                <?= isset($g->ekip_sefi_mi) && $g->ekip_sefi_mi == 1 ? '<span class="badge bg-success">Evet</span>' : '<span class="badge bg-secondary">Hayır</span>' ?>
+                                                <?= isset($g->ekip_sefi_mi) && $g->ekip_sefi_mi == 1 ? '<span class="badge bg-primary"><i class="bx bx-crown me-1"></i>Evet</span>' : '<span class="badge bg-secondary">Hayır</span>' ?>
                                             </td>
                                             <td>
                                                 <?php
                                                 $bugun = date('Y-m-d');
                                                 if ($g->baslangic_tarihi <= $bugun && ($g->bitis_tarihi === null || $g->bitis_tarihi >= $bugun)) {
-                                                    echo '<span class="badge bg-success">Aktif</span>';
+                                                    echo '<span class="badge bg-success"><i class="bx bx-check-circle me-1"></i>Aktif</span>';
                                                 } else {
-                                                    echo '<span class="badge bg-secondary">Pasif</span>';
+                                                    echo '<span class="badge bg-secondary"><i class="bx bx-minus-circle me-1"></i>Pasif</span>';
                                                 }
                                                 ?>
                                             </td>
@@ -242,9 +247,14 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
     <div class="col-md-12 mt-3">
         <div class="card border h-100 shadow-sm work-table-card">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
-                <div>
-                    <h5 class="card-title mb-1 text-primary fw-bold"><i class="bx bx-book-open me-2"></i>Çalışma Bilgileri Geçmişi</h5>
-                    <div class="small text-muted">SGK firması ve çalışma tercihlerini dönemler halinde kayıt altında tutun.</div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-warning-subtle text-warning rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-book-open"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 text-dark fw-bold">Çalışma Bilgileri Geçmişi</h5>
+                        <div class="small text-muted">SGK firması ve çalışma tercihlerini dönemler halinde kayıt altında tutun.</div>
+                    </div>
                 </div>
                 <?php if ($id > 0): ?>
                     <button type="button" class="btn btn-sm btn-primary px-3 shadow-none" id="btnOpenCalismaGecmisiModal">
@@ -252,7 +262,7 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
                     </button>
                 <?php endif; ?>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <?php if ($id > 0): ?>
                     <div class="table-responsive">
                         <table id="tblCalismaGecmisi" class="table table-hover align-middle mb-0 w-100">
@@ -282,22 +292,22 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
                                             <td style="display:none"><?= $c->id ?></td>
                                             <td><span class="fw-bold text-dark"><?= htmlspecialchars($c->sgk_yapilan_firma ?? '') ?></span></td>
                                             <td><?= date('d.m.Y', strtotime($iseGiris)) ?></td>
-                                            <td><?= $istenCikis ? date('d.m.Y', strtotime($istenCikis)) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?></td>
+                                            <td><?= $istenCikis ? date('d.m.Y', strtotime($istenCikis)) : '<span class="badge bg-success"><i class="bx bx-play-circle me-1"></i>Devam Ediyor</span>' ?></td>
                                             <td>
                                                 <?= $c->personel_sinifi === 'Beyaz Yaka' 
-                                                    ? '<span class="badge bg-soft-info text-info"><i class="bx bx-user me-1"></i>Beyaz Yaka</span>' 
-                                                    : '<span class="badge bg-soft-warning text-warning"><i class="bx bx-wrench me-1"></i>Mavi Yaka</span>' ?>
+                                                    ? '<span class="badge bg-info"><i class="bx bx-user me-1"></i>Beyaz Yaka</span>' 
+                                                    : '<span class="badge bg-warning"><i class="bx bx-wrench me-1"></i>Mavi Yaka</span>' ?>
                                             </td>
                                             <td>
                                                 <?= $c->saha_takibi == 1 
-                                                    ? '<span class="badge bg-soft-success text-success"><i class="bx bx-check-circle me-1"></i>Evet</span>' 
-                                                    : '<span class="badge bg-soft-danger text-danger"><i class="bx bx-x-circle me-1"></i>Hayır</span>' ?>
+                                                    ? '<span class="badge bg-success"><i class="bx bx-check me-1"></i>Evet</span>' 
+                                                    : '<span class="badge bg-secondary"><i class="bx bx-x me-1"></i>Hayır</span>' ?>
                                             </td>
                                             <td>
-                                                <span class="badge bg-soft-primary text-primary"><i class="bx bx-car me-1"></i><?= htmlspecialchars($c->arac_kullanim) ?></span>
+                                                <span class="badge bg-primary"><i class="bx bx-car me-1"></i><?= htmlspecialchars($c->arac_kullanim) ?></span>
                                             </td>
                                             <td>
-                                                <?= $isAktif ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>' ?>
+                                                <?= $isAktif ? '<span class="badge bg-success"><i class="bx bx-check-circle me-1"></i>Aktif</span>' : '<span class="badge bg-secondary"><i class="bx bx-minus-circle me-1"></i>Pasif</span>' ?>
                                             </td>
                                             <td class="text-center text-nowrap">
                                                 <?php if (!empty($c->isten_ayrilis_belge_yolu)): ?>

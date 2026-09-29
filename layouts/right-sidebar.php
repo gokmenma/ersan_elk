@@ -294,7 +294,7 @@
                     </div>
                     <div class="segmented-option-grid grid-2">
                         <label class="segmented-card" for="layout-mode-light">
-                            <input type="radio" name="layout-mode" id="layout-mode-light" value="light">
+                            <input type="radio" name="layout-mode" id="layout-mode-light" value="light" checked>
                             <div class="segmented-card-inner">
                                 <i class="mdi mdi-white-balance-sunny fs-5 text-warning mb-1"></i>
                                 <span class="segmented-label">Açık Mod</span>
@@ -321,11 +321,11 @@
                     </div>
                     <div class="color-selector-group">
                         <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top" title="Özel Renk Seç">
-                            <input type="color" id="custom-theme-picker" value="#1c84ee">
+                            <input type="color" id="custom-theme-picker" value="#e2bd61">
                             <i class="mdi mdi-eyedropper-variant"></i>
                         </div>
-                        <input class="color-selector-btn color-default" type="radio" name="theme-mode" id="theme-default" value="default" checked data-bs-toggle="tooltip" data-bs-placement="top" title="Mavi">
-                        <input class="color-selector-btn color-ersan" type="radio" name="theme-mode" id="theme-ersan" value="ersan" data-bs-toggle="tooltip" data-bs-placement="top" title="Ersan Altın">
+                        <input class="color-selector-btn color-default" type="radio" name="theme-mode" id="theme-default" value="default" data-bs-toggle="tooltip" data-bs-placement="top" title="Mavi">
+                        <input class="color-selector-btn color-ersan" type="radio" name="theme-mode" id="theme-ersan" value="ersan" checked data-bs-toggle="tooltip" data-bs-placement="top" title="Ersan Altın">
                         <input class="color-selector-btn color-emerald" type="radio" name="theme-mode" id="theme-emerald" value="emerald" data-bs-toggle="tooltip" data-bs-placement="top" title="Zümrüt">
                         <input class="color-selector-btn color-purple" type="radio" name="theme-mode" id="theme-purple" value="purple" data-bs-toggle="tooltip" data-bs-placement="top" title="Mor">
                         <input class="color-selector-btn color-rose" type="radio" name="theme-mode" id="theme-rose" value="rose" data-bs-toggle="tooltip" data-bs-placement="top" title="Gül / Kırmızı">
@@ -345,7 +345,7 @@
                     </div>
                     <div class="segmented-option-grid grid-3">
                         <label class="segmented-card" for="topbar-color-light">
-                            <input type="radio" name="topbar-color" id="topbar-color-light" value="light">
+                            <input type="radio" name="topbar-color" id="topbar-color-light" value="light" checked>
                             <div class="segmented-card-inner">
                                 <span class="segmented-label">Açık</span>
                             </div>
@@ -378,7 +378,7 @@
                             </div>
                         </label>
                         <label class="segmented-card" for="sidebar-color-dark">
-                            <input type="radio" name="sidebar-color" id="sidebar-color-dark" value="dark">
+                            <input type="radio" name="sidebar-color" id="sidebar-color-dark" value="dark" checked>
                             <div class="segmented-card-inner">
                                 <span class="segmented-label">Koyu</span>
                             </div>

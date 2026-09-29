@@ -20,14 +20,15 @@ if ($userId > 0) {
         $_SESSION['show_favorites_bar'] = $showFavoritesBar;
     }
 
-    if ($showFavoritesBar === 0) {
-        echo '<style>body:not(:has(#quick-favorites-bar)) .main-content .page-content { padding-top: 84px !important; }</style>';
-        return;
-    }
-
     $menuModel = new MenuModel();
     $favoriteMenus = $menuModel->getFavoriteMenus($userId);
+
+    if ($showFavoritesBar === 0 || empty($favoriteMenus)) {
+        echo '<style>.page-content, body .main-content .page-content { padding-top: 74px !important; }</style>';
+        return;
+    }
 } else {
+    echo '<style>.page-content, body .main-content .page-content { padding-top: 74px !important; }</style>';
     return;
 }
 ?>
@@ -267,6 +268,6 @@ body[data-sidebar-size="sm"] .quick-favorites-bar {
 
 /* Adjust page content padding top to account for quick-favorites-bar and provide bottom margin */
 body:has(#quick-favorites-bar) .main-content .page-content {
-    padding-top: 132px !important;
+    padding-top: 116px !important;
 }
 </style>

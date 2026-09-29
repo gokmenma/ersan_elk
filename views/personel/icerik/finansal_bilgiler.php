@@ -290,11 +290,18 @@ use App\Helper\Helper;
         </div>
     </div>
 
-    <!-- Görev/Maaş Geçmişi Tablosu -->
     <div class="col-md-12 mt-3">
         <div class="card border h-100 history-card">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <div><h5 class="card-title mb-1 text-primary"><i class="bx bx-briefcase me-2"></i>Maaş tipi geçmişi</h5><div class="small text-muted">Çalışma devam ederken yapılan görev, maaş türü ve ücret değişikliklerini yönetin.</div></div>
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-briefcase"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 text-dark fw-bold">Maaş Tipi Geçmişi</h5>
+                        <div class="small text-muted">Çalışma devam ederken yapılan görev, maaş türü ve ücret değişikliklerini yönetin.</div>
+                    </div>
+                </div>
                 <div id="gorevGecmisiButtonContainer">
                     <?php if ($id > 0): ?>
                         <?php 
@@ -305,7 +312,7 @@ use App\Helper\Helper;
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <?php if ($id > 0): ?>
                     <div class="table-responsive">
                         <table id="tblGorevGecmisi" class="table table-hover mb-0 w-100">
@@ -389,9 +396,14 @@ use App\Helper\Helper;
     <div class="col-md-12 mt-3">
         <div class="card border h-100 shadow-sm history-card">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
-                <div>
-                    <h5 class="card-title mb-1 text-primary fw-bold"><i class="bx bx-purchase-tag me-2"></i>Özel iş türü birim fiyatları</h5>
-                    <small class="text-muted">Bu personele özel tanımlanan birim fiyatlar, sistemdeki genel iş türü fiyatlarının üzerine yazar.</small>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-purchase-tag"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 text-dark fw-bold">Özel İş Türü Birim Fiyatları</h5>
+                        <div class="small text-muted">Bu personele özel tanımlanan birim fiyatlar, sistemdeki genel iş türü fiyatlarının üzerine yazar.</div>
+                    </div>
                 </div>
                 <div>
                     <?php if ($id > 0): ?>
@@ -401,7 +413,7 @@ use App\Helper\Helper;
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <?php if ($id > 0): ?>
                     <div class="table-responsive">
                         <table id="tblOzelIsTuruUcretleri" class="table table-hover align-middle mb-0 w-100">

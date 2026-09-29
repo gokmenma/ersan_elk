@@ -65,18 +65,24 @@ foreach ($kesintiler as $k) {
 ?>
 
 <div class="row">
-    <!-- Kesintiler Bölümü -->
     <div class="col-12 mb-4">
         <div class="card border">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-danger"><i class="bx bx-minus-circle me-2"></i>Personel Kesintileri
-                    </h5>
-                    <span class="badge bg-danger">Toplam: <?= number_format($toplamKesinti, 2, ',', '.') ?> TL</span>
-                    <?php if ($aktifSurekliKesinti > 0): ?>
-                        <span class="badge bg-warning text-dark"><i class="bx bx-refresh me-1"></i><?= $aktifSurekliKesinti ?>
-                            Sürekli Kesinti</span>
-                    <?php endif; ?>
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-danger-subtle text-danger rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-minus-circle"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="card-title mb-0 text-dark fw-bold">Personel Kesintileri</h5>
+                            <span class="badge bg-danger">Toplam: <?= number_format($toplamKesinti, 2, ',', '.') ?> TL</span>
+                            <?php if ($aktifSurekliKesinti > 0): ?>
+                                <span class="badge bg-warning text-dark"><i class="bx bx-refresh me-1"></i><?= $aktifSurekliKesinti ?>
+                                    Sürekli Kesinti</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="small text-muted">Personele ait tüm kesinti kayıtlarını ve onay durumlarını yönetin.</div>
+                    </div>
                 </div>
 
                 <div class="d-flex align-items-center gap-3">
@@ -111,7 +117,7 @@ foreach ($kesintiler as $k) {
                     </div>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <!-- Filtre Alanı -->
                 <?php
                 $is_filter_open = $_GET['is_kesinti_filter_open'] ?? null;
@@ -440,15 +446,15 @@ foreach ($kesintiler as $k) {
                     <table class="table table-hover mb-0 datatable w-100 d-none" id="tblKesintilerListe">
                         <thead class="table-light">
                             <tr>
-                                <th>Tür</th>
-                                <th>Tekrar</th>
-                                <th>Hesaplama</th>
-                                <th>Tutar / Oran</th>
-                                <th>Kayıt Yapan / Tarih</th>
-                                <th>Tarih</th>
-                                <th>Dönem</th>
-                                <th>Açıklama</th>
-                                <th>Durum</th>
+                                <th data-filter="select">Tür</th>
+                                <th data-filter="select">Tekrar</th>
+                                <th data-filter="select">Hesaplama</th>
+                                <th data-filter="number">Tutar / Oran</th>
+                                <th data-filter="string">Kayıt Yapan / Tarih</th>
+                                <th data-filter="date">Tarih</th>
+                                <th data-filter="select">Dönem</th>
+                                <th data-filter="string">Açıklama</th>
+                                <th data-filter="select">Durum</th>
                                 <th class="text-center">İşlem</th>
                             </tr>
                         </thead>
@@ -531,11 +537,11 @@ foreach ($kesintiler as $k) {
                                     <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
                                     <td>
                                         <?php if (($k->onay_durumu ?? 1) == 0): ?>
-                                            <span class="badge bg-warning">Bekliyor</span>
+                                            <span class="badge bg-warning"><i class="bx bx-time-five me-1"></i>Bekliyor</span>
                                         <?php elseif (($k->onay_durumu ?? 1) == 1): ?>
-                                            <span class="badge bg-success">Onaylandı</span>
+                                            <span class="badge bg-success"><i class="bx bx-check-circle me-1"></i>Onaylandı</span>
                                         <?php elseif (($k->onay_durumu ?? 1) == 2): ?>
-                                            <span class="badge bg-danger">Reddedildi</span>
+                                            <span class="badge bg-danger"><i class="bx bx-x-circle me-1"></i>Reddedildi</span>
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-center">

@@ -258,23 +258,21 @@ if (!empty($icralar)) {
                     </button>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 datatable datatable-icra w-100 align-middle">
                         <thead>
-                            <tr class="bg-light bg-opacity-50 border-bottom">
-                                <th style="width:70px" class="text-center py-3 text-muted small fw-bold text-uppercase">
-                                    Sıra</th>
-                                <th class="text-muted small fw-bold text-uppercase">Kurum / Dosya Bilgisi</th>
-                                <th class="text-muted small fw-bold text-uppercase">Toplam Borç</th>
-                                <th class="text-muted small fw-bold text-uppercase">Aylık Kesinti</th>
-                                <th class="text-muted small fw-bold text-uppercase text-primary">Kesilen</th>
-                                <th class="text-muted small fw-bold text-uppercase text-danger">Kalan</th>
-                                <th class="text-muted small fw-bold text-uppercase">Başlangıç</th>
-                                <th class="text-muted small fw-bold text-uppercase">Bitiş</th>
-                                <th class="text-center text-muted small fw-bold text-uppercase">Durum</th>
-                                <th class="text-center text-muted small fw-bold text-uppercase" style="width: 80px;">
-                                    İşlem</th>
+                            <tr>
+                                <th style="width:70px" class="text-center" data-filter="number">Sıra</th>
+                                <th data-filter="string">Kurum / Dosya Bilgisi</th>
+                                <th data-filter="number">Toplam Borç</th>
+                                <th data-filter="number">Aylık Kesinti</th>
+                                <th data-filter="number">Kesilen</th>
+                                <th data-filter="number">Kalan</th>
+                                <th data-filter="date">Başlangıç</th>
+                                <th data-filter="date">Bitiş</th>
+                                <th class="text-center" data-filter="select">Durum</th>
+                                <th class="text-center" style="width: 80px;">İşlem</th>
                             </tr>
                         </thead>
                         <tbody>

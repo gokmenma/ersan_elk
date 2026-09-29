@@ -374,17 +374,40 @@
 
 /* =============================================================
    Merkezi Premium DataTable Görünümü
-   data-filter kullanan tüm tablolar initAdvancedFilters tarafından
-   .datatable-premium-shell kabuğuna alınır.
+   Tüm datatable tabloları bu standart görünümü kullanır.
    ============================================================= */
-.datatable-premium-shell {
-  border: 1px solid #d9e3ef;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--bs-card-bg, #fff);
+.card-body.p-0:has(> .table-responsive),
+.card-body.p-0:has(> .dataTables_wrapper),
+.card-body.p-0:has(> table.dataTable),
+.card-body.p-0:has(> div > .table-responsive),
+.card-body.p-0:has(> div > .dataTables_wrapper),
+.card-body:has(> .table-responsive),
+.card-body:has(> .dataTables_wrapper),
+.card-body:has(> div > .table-responsive),
+.card-body:has(> div > .dataTables_wrapper) {
+  padding: 4px !important;
 }
 
-.datatable-premium-shell table.dataTable {
+.card > .dataTables_wrapper,
+.card-body > .dataTables_wrapper {
+  width: 100%;
+}
+
+.datatable-premium-shell,
+.table-responsive:has(> table.dataTable),
+.dataTables_wrapper > .table-responsive {
+  border: 1px solid #d9e3ef !important;
+  border-radius: 12px !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bs-card-bg, #fff);
+  margin: 4px 0 6px 0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+}
+
+.datatable-premium-shell table.dataTable,
+.table-responsive:has(> table.dataTable) table.dataTable,
+.dataTables_wrapper > .table-responsive table.dataTable {
   width: 100% !important;
   margin: 0 !important;
   border: 0 !important;
@@ -394,19 +417,27 @@
 }
 
 /* Dış çerçeveyi yalnızca shell çizer; table-bordered'ın ikinci çizgisini kaldır. */
-.datatable-premium-shell table.dataTable.table-bordered > :not(caption) > * > *:first-child {
+.datatable-premium-shell table.dataTable.table-bordered > :not(caption) > * > *:first-child,
+.table-responsive:has(> table.dataTable) table.dataTable.table-bordered > :not(caption) > * > *:first-child,
+.dataTables_wrapper > .table-responsive table.dataTable.table-bordered > :not(caption) > * > *:first-child {
   border-left: 0 !important;
 }
 
-.datatable-premium-shell table.dataTable.table-bordered > :not(caption) > * > *:last-child {
+.datatable-premium-shell table.dataTable.table-bordered > :not(caption) > * > *:last-child,
+.table-responsive:has(> table.dataTable) table.dataTable.table-bordered > :not(caption) > * > *:last-child,
+.dataTables_wrapper > .table-responsive table.dataTable.table-bordered > :not(caption) > * > *:last-child {
   border-right: 0 !important;
 }
 
-.datatable-premium-shell table.dataTable > thead:first-child > tr:first-child > th {
+.datatable-premium-shell table.dataTable > thead:first-child > tr:first-child > th,
+.table-responsive:has(> table.dataTable) table.dataTable > thead:first-child > tr:first-child > th,
+.dataTables_wrapper > .table-responsive table.dataTable > thead:first-child > tr:first-child > th {
   border-top: 0 !important;
 }
 
-.datatable-premium-shell table.dataTable > tbody:last-child > tr:last-child > td {
+.datatable-premium-shell table.dataTable > tbody:last-child > tr:last-child > td,
+.table-responsive:has(> table.dataTable) table.dataTable > tbody:last-child > tr:last-child > td,
+.dataTables_wrapper > .table-responsive table.dataTable > tbody:last-child > tr:last-child > td {
   border-bottom: 0 !important;
 }
 
@@ -417,7 +448,9 @@
   border-radius: 0 !important;
 }
 
-.datatable-premium-shell table.dataTable thead th {
+.datatable-premium-shell table.dataTable thead th,
+.table-responsive:has(> table.dataTable) table.dataTable thead th,
+.dataTables_wrapper > .table-responsive table.dataTable thead th {
   position: relative;
   padding: 13px 34px 13px 12px !important;
   background: #f7f9fc !important;
@@ -430,24 +463,35 @@
   white-space: nowrap;
 }
 
-.datatable-premium-shell table.dataTable thead tr:first-child th:first-child {
-  border-top-left-radius: 11px;
+.datatable-premium-shell table.dataTable thead tr:first-child th:first-child,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child th:first-child,
+.dataTables_wrapper > .table-responsive table.dataTable thead tr:first-child th:first-child {
+  border-top-left-radius: 11px !important;
 }
 
-.datatable-premium-shell table.dataTable thead tr:first-child th:last-child {
-  border-top-right-radius: 11px;
+.datatable-premium-shell table.dataTable thead tr:first-child th:last-child,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child th:last-child,
+.dataTables_wrapper > .table-responsive table.dataTable thead tr:first-child th:last-child {
+  border-top-right-radius: 11px !important;
 }
 
-.datatable-premium-shell table.dataTable tbody td {
+.datatable-premium-shell table.dataTable tbody td,
+.table-responsive:has(> table.dataTable) table.dataTable tbody td,
+.dataTables_wrapper > .table-responsive table.dataTable tbody td {
   border-color: #dbe4ef !important;
+  vertical-align: middle;
 }
 
-.datatable-premium-shell table.dataTable tbody tr:last-child td:first-child {
-  border-bottom-left-radius: 11px;
+.datatable-premium-shell table.dataTable tbody tr:last-child td:first-child,
+.table-responsive:has(> table.dataTable) table.dataTable tbody tr:last-child td:first-child,
+.dataTables_wrapper > .table-responsive table.dataTable tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 11px !important;
 }
 
-.datatable-premium-shell table.dataTable tbody tr:last-child td:last-child {
-  border-bottom-right-radius: 11px;
+.datatable-premium-shell table.dataTable tbody tr:last-child td:last-child,
+.table-responsive:has(> table.dataTable) table.dataTable tbody tr:last-child td:last-child,
+.dataTables_wrapper > .table-responsive table.dataTable tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 11px !important;
 }
 
 .datatable-premium-shell .dt-header-with-filter .dt-filter-mode-trigger {
@@ -503,16 +547,102 @@
   font-size: 11px !important;
 }
 
-[data-bs-theme="dark"] .datatable-premium-shell {
-  border-color: #36404a;
+/* =============================================================
+   DataTables Pagination & Controls Styling
+   ============================================================= */
+.dataTables_wrapper > .row:last-child {
+  margin: 6px 0 4px 0 !important;
+  padding: 4px 12px 6px 12px !important;
+  align-items: center;
+}
+
+.dataTables_wrapper > .row:first-child:not(:last-child) {
+  margin: 4px 0 6px 0 !important;
+  padding: 4px 12px !important;
+  align-items: center;
+}
+
+.dataTables_wrapper .pagination {
+  margin: 0;
+  gap: 4px;
+}
+
+.dataTables_wrapper .page-item .page-link {
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  background: #fff;
+  transition: all 0.15s ease-in-out;
+}
+
+.dataTables_wrapper .page-item.active .page-link {
+  background-color: #334155 !important;
+  border-color: #334155 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.dataTables_wrapper .page-item:not(.active):not(.disabled) .page-link:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.dataTables_wrapper .page-item.disabled .page-link {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.dataTables_wrapper .dataTables_info {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  padding-top: 0 !important;
+}
+
+.dataTables_wrapper .dataTables_length label {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.dataTables_wrapper .dataTables_length select {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: #334155;
+  background-color: #f8fafc;
+}
+
+/* =============================================================
+   Dark Mode Support
+   ============================================================= */
+[data-bs-theme="dark"] .datatable-premium-shell,
+[data-bs-theme="dark"] .table-responsive:has(> table.dataTable),
+[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive {
+  border-color: #36404a !important;
   background: #222830;
 }
 
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead th,
-[data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead .dt-filter-row th {
+[data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead .dt-filter-row th,
+[data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead th,
+[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive table.dataTable thead th {
   border-color: #3b4652 !important;
   background: #29313c !important;
   color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .datatable-premium-shell table.dataTable tbody td,
+[data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable tbody td,
+[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive table.dataTable tbody td {
+  border-color: #36404a !important;
+  color: #cbd5e1 !important;
 }
 
 [data-bs-theme="dark"] .datatable-premium-shell .dt-header-with-filter .dt-filter-mode-trigger,
@@ -520,5 +650,40 @@
   border-color: #4a5868 !important;
   background: #171d23 !important;
   color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .page-item .page-link {
+  background-color: #222830;
+  border-color: #36404a;
+  color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .page-item.active .page-link {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #fff !important;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .page-item:not(.active):not(.disabled) .page-link:hover {
+  background-color: #2a313c;
+  border-color: #4b5563;
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .page-item.disabled .page-link {
+  background-color: #1a2026;
+  border-color: #303842;
+  color: #64748b;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_info,
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length label {
+  color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length select {
+  background-color: #1a2026;
+  border-color: #36404a;
+  color: #e2e8f0;
 }
 

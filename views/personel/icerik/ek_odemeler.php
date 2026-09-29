@@ -85,15 +85,22 @@ foreach ($ek_odemeler as $k) {
     <!-- Ek Ödemeler Bölümü -->
     <div class="col-12 mb-4">
         <div class="card border">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-success"><i class="bx bx-plus-circle me-2"></i>Personel Ek Ödemeleri
-                    </h5>
-                    <span class="badge bg-success">Toplam: <?= number_format($toplamEkOdeme, 2, ',', '.') ?> TL</span>
-                    <?php if ($aktifSurekliOdeme > 0): ?>
-                        <span class="badge bg-warning text-dark"><i class="bx bx-refresh me-1"></i><?= $aktifSurekliOdeme ?>
-                            Sürekli Ödeme</span>
-                    <?php endif; ?>
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-xs d-flex align-items-center justify-content-center bg-success-subtle text-success rounded-2" style="width:34px;height:34px;font-size:18px;flex-shrink:0;">
+                        <i class="bx bx-plus-circle"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="card-title mb-0 text-dark fw-bold">Personel Ek Ödemeleri</h5>
+                            <span class="badge bg-success">Toplam: <?= number_format($toplamEkOdeme, 2, ',', '.') ?> TL</span>
+                            <?php if ($aktifSurekliOdeme > 0): ?>
+                                <span class="badge bg-warning text-dark"><i class="bx bx-refresh me-1"></i><?= $aktifSurekliOdeme ?>
+                                    Sürekli Ödeme</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="small text-muted">Personele ait prim, ikramiye, yol/araç ve diğer tüm ek ödemeleri yönetin.</div>
+                    </div>
                 </div>
                 <div class="d-flex align-items-center gap-3">
 
@@ -129,7 +136,7 @@ foreach ($ek_odemeler as $k) {
                     </div>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <!-- Filtre Alanı -->
                 <?php
                 $is_ek_filter_open = $_GET['is_ek_filter_open'] ?? null;
@@ -416,12 +423,12 @@ foreach ($ek_odemeler as $k) {
                                                              <td>
                                                                  <?= htmlspecialchars($g_item->display_desc ?? $k->aciklama ?? '-') ?>
                                                              </td>
-                                                            <td>
+                                                             <td>
                                                                 <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                                                     <?php if (($k->aktif ?? 1) == 1): ?>
-                                                                        <span class="badge bg-success">Aktif</span>
+                                                                        <span class="badge bg-success"><i class="bx bx-check-circle me-1"></i>Aktif</span>
                                                                     <?php else: ?>
-                                                                        <span class="badge bg-secondary">Pasif</span>
+                                                                        <span class="badge bg-secondary"><i class="bx bx-minus-circle me-1"></i>Pasif</span>
                                                                     <?php endif; ?>
                                                                 <?php else: ?>
                                                                     <span class="badge bg-light text-muted">-</span>
@@ -465,15 +472,15 @@ foreach ($ek_odemeler as $k) {
                     <table class="table table-hover mb-0 datatable w-100 d-none" id="tblEkOdemelerListe">
                         <thead class="table-light">
                             <tr>
-                                <th>Tür</th>
-                                <th>Tekrar</th>
-                                <th>Hesaplama</th>
-                                <th>Tutar / Oran</th>
-                                <th>Kayıt Yapan / Kayıt Tarihi</th>
-                                <th>Tarih</th>
-                                <th>Dönem</th>
-                                <th>Açıklama</th>
-                                <th>Durum</th>
+                                <th data-filter="select">Tür</th>
+                                <th data-filter="select">Tekrar</th>
+                                <th data-filter="select">Hesaplama</th>
+                                <th data-filter="number">Tutar / Oran</th>
+                                <th data-filter="string">Kayıt Yapan / Kayıt Tarihi</th>
+                                <th data-filter="date">Tarih</th>
+                                <th data-filter="select">Dönem</th>
+                                <th data-filter="string">Açıklama</th>
+                                <th data-filter="select">Durum</th>
                                 <th class="text-center">İşlem</th>
                             </tr>
                         </thead>
@@ -547,9 +554,9 @@ foreach ($ek_odemeler as $k) {
                                     <td>
                                         <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                             <?php if (($k->aktif ?? 1) == 1): ?>
-                                                <span class="badge bg-success">Aktif</span>
+                                                <span class="badge bg-success"><i class="bx bx-check-circle me-1"></i>Aktif</span>
                                             <?php else: ?>
-                                                <span class="badge bg-secondary">Pasif</span>
+                                                <span class="badge bg-secondary"><i class="bx bx-minus-circle me-1"></i>Pasif</span>
                                             <?php endif; ?>
                                         <?php else: ?>
                                             <span class="badge bg-light text-muted">-</span>

@@ -227,7 +227,7 @@ sort($kategoriler);
                     </div>
                 </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-1">
                 <div class="table-responsive">
                     <!-- Gruplu Görünüm -->
                     <table id="tblZimmetlerGruplu" class="table table-hover mb-0 w-100">
@@ -341,13 +341,13 @@ sort($kategoriler);
                     <table id="tblZimmetlerListe" class="table datatable table-hover mb-0 w-100 d-none">
                         <thead class="table-light">
                             <tr>
-                                <th>Kategori</th>
-                                <th>Demirbaş Adı</th>
-                                <th>Marka/Model</th>
-                                <th class="text-center">Miktar</th>
-                                <th>Teslim Tarihi</th>
-                                <th>İade Tarihi</th>
-                                <th class="text-center">Durum</th>
+                                <th data-filter="select">Kategori</th>
+                                <th data-filter="string">Demirbaş Adı</th>
+                                <th data-filter="string">Marka/Model</th>
+                                <th class="text-center" data-filter="number">Miktar</th>
+                                <th data-filter="date">Teslim Tarihi</th>
+                                <th data-filter="date">İade Tarihi</th>
+                                <th class="text-center" data-filter="select">Durum</th>
                                 <th class="text-center">İşlem</th>
                             </tr>
                         </thead>

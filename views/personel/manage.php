@@ -57,26 +57,54 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
 
 $activeTab = $_GET['tab'] ?? 'home';
 
-$tabs = [
-    'home' => ['label' => 'Genel Bilgiler', 'icon' => 'fas fa-home'],
-    'calisma' => ['label' => 'Çalışma Bilgileri', 'icon' => 'far fa-user'],
-    'finansal' => ['label' => 'Maaş & Görev Bilgileri', 'icon' => 'fas fa-wallet'],
-    'diger' => ['label' => 'Diğer Bilgiler', 'icon' => 'far fa-envelope'],
+$tabCategories = [
+    'ozluk' => [
+        'title' => 'Özlük & Profil',
+        'icon' => 'bx bx-user-pin',
+        'tabs' => [
+            'home' => ['label' => 'Genel Bilgiler', 'icon' => 'bx bx-id-card'],
+            'calisma' => ['label' => 'Çalışma Bilgileri', 'icon' => 'bx bx-briefcase-alt-2'],
+            'finansal' => ['label' => 'Maaş & Görev', 'icon' => 'bx bx-wallet-alt'],
+            'diger' => ['label' => 'Diğer Bilgiler', 'icon' => 'bx bx-info-circle'],
+        ]
+    ]
 ];
 
 if ($id > 0) {
-    $tabs += [
-        'izinler' => ['label' => 'İzin/Rapor/Eksik Gün', 'icon' => 'bx bx-calendar-event'],
-        'zimmetler' => ['label' => 'Zimmetler', 'icon' => 'bx bx-devices'],
-        'kesintiler' => ['label' => 'Kesintiler', 'icon' => 'bx bx-minus-circle'],
-        'ek_odemeler' => ['label' => 'Ek Ödemeler', 'icon' => 'bx bx-plus-circle'],
-        'icralar' => ['label' => 'İcralar', 'icon' => 'bx bx-gavel'],
-        'vergi_matrahlari' => ['label' => 'Vergi Matrahları', 'icon' => 'bx bx-trending-up'],
-        'finansal_islemler' => ['label' => 'Hesap Hareketleri', 'icon' => 'bx bx-lira'],
-        'evraklar' => ['label' => 'Evraklar', 'icon' => 'bx bx-file'],
-        'puantaj' => ['label' => 'İş Takip', 'icon' => 'bx bx-time-five'],
-        'giris_loglari' => ['label' => 'Giriş Logları', 'icon' => 'bx bx-history'],
+    $tabCategories['finans'] = [
+        'title' => 'Finans & Haklar',
+        'icon' => 'bx bx-dollar-circle',
+        'tabs' => [
+            'kesintiler' => ['label' => 'Kesintiler', 'icon' => 'bx bx-minus-circle'],
+            'ek_odemeler' => ['label' => 'Ek Ödemeler', 'icon' => 'bx bx-plus-circle'],
+            'icralar' => ['label' => 'İcralar', 'icon' => 'bx bx-gavel'],
+            'vergi_matrahlari' => ['label' => 'Vergi Matrahları', 'icon' => 'bx bx-trending-up'],
+            'finansal_islemler' => ['label' => 'Hesap Hareketleri', 'icon' => 'bx bx-transfer-alt'],
+        ]
     ];
+
+    $tabCategories['operasyon'] = [
+        'title' => 'Kayıt & Operasyon',
+        'icon' => 'bx bx-folder',
+        'tabs' => [
+            'puantaj' => ['label' => 'İş Takip', 'icon' => 'bx bx-time-five'],
+            'izinler' => ['label' => 'İzin / Rapor / Eksik Gün', 'icon' => 'bx bx-calendar-event'],
+            'zimmetler' => ['label' => 'Zimmetler', 'icon' => 'bx bx-devices'],
+            'evraklar' => ['label' => 'Evraklar', 'icon' => 'bx bx-file'],
+            'giris_loglari' => ['label' => 'Giriş Logları', 'icon' => 'bx bx-history'],
+        ]
+    ];
+}
+
+$tabs = [];
+$activeCategory = 'ozluk';
+foreach ($tabCategories as $catKey => $cat) {
+    foreach ($cat['tabs'] as $tabKey => $tabVal) {
+        $tabs[$tabKey] = $tabVal;
+        if ($tabKey === $activeTab) {
+            $activeCategory = $catKey;
+        }
+    }
 }
 ?>
 <div class="container-fluid">
@@ -92,42 +120,45 @@ if ($id > 0) {
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header pb-3">
                     <div class="row align-items-center">
                         <div class="col-md-7">
                             <div class="d-flex align-items-center gap-3">
-
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="avatar-lg position-relative" title="Resmi Kayıtlı Fotoğraf">
-                                        <?php
-                                        $rootRoot = dirname(__DIR__, 2) . '/';
-                                        $resimYoluAdmin = 'assets/images/users/user-dummy-img.jpg';
-                                        if (!empty($personel->resim_yolu) && file_exists($rootRoot . $personel->resim_yolu)) {
-                                            $resimYoluAdmin = $personel->resim_yolu;
-                                        }
-                                        ?>
-                                        <img id="personelImage"
-                                            src="<?php echo $resimYoluAdmin; ?>"
-                                            alt="" class="img-thumbnail"
-                                            style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important; cursor: zoom-in;"
-                                            onclick="window.open(this.src, '_blank')">
-                                        <button type="button" class="btn btn-sm btn-light position-absolute bottom-0 end-0"
-                                            id="changePhotoButton" style="padding: 2px 6px;">
-                                            <i class="bx bx-camera"></i>
-                                        </button>
-                                        <input type="file" id="avatarInput" name="resim_yolu" accept="image/*"
-                                            style="display: none;">
-                                        <div class="text-center mt-1"><small class="text-primary fw-bold" style="font-size: 10px;">Resmi Kayıt</small></div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex flex-column align-items-center position-relative">
+                                        <div class="position-relative" style="width: 72px; height: 72px;">
+                                            <?php
+                                            $rootRoot = dirname(__DIR__, 2) . '/';
+                                            $resimYoluAdmin = 'assets/images/users/user-dummy-img.jpg';
+                                            if (!empty($personel->resim_yolu) && file_exists($rootRoot . $personel->resim_yolu)) {
+                                                $resimYoluAdmin = $personel->resim_yolu;
+                                            }
+                                            ?>
+                                            <img id="personelImage"
+                                                src="<?php echo $resimYoluAdmin; ?>"
+                                                alt="" class="img-thumbnail rounded-3 shadow-sm"
+                                                style="width: 72px; height: 72px; object-fit: cover; cursor: zoom-in;"
+                                                onclick="window.open(this.src, '_blank')">
+                                            <button type="button" class="btn btn-sm btn-primary position-absolute bottom-0 end-0 rounded-circle shadow-sm"
+                                                id="changePhotoButton" style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; transform: translate(15%, 15%);" title="Fotoğraf Değiştir">
+                                                <i class="bx bx-camera font-size-13"></i>
+                                            </button>
+                                            <input type="file" id="avatarInput" name="resim_yolu" accept="image/*"
+                                                style="display: none;">
+                                        </div>
+                                        <span class="badge bg-primary-subtle text-primary mt-1 px-2 py-0" style="font-size: 10px; font-weight: 600;">Resmi Kayıt</span>
                                     </div>
 
                                     <?php if (!empty($personel->personel_resim_yolu) && file_exists($rootRoot . $personel->personel_resim_yolu)): ?>
-                                        <div class="avatar-lg position-relative" title="PWA Profil Fotoğrafı">
-                                            <img id="personelPwaImage"
-                                                src="<?php echo $personel->personel_resim_yolu; ?>"
-                                                alt="" class="img-thumbnail"
-                                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important; cursor: zoom-in;"
-                                                onclick="window.open(this.src, '_blank')">
-                                            <div class="text-center mt-1"><small class="text-success fw-bold" style="font-size: 10px;">Mobil</small></div>
+                                        <div class="d-flex flex-column align-items-center position-relative">
+                                            <div class="position-relative" style="width: 72px; height: 72px;">
+                                                <img id="personelPwaImage"
+                                                    src="<?php echo $personel->personel_resim_yolu; ?>"
+                                                    alt="" class="img-thumbnail rounded-3 shadow-sm"
+                                                    style="width: 72px; height: 72px; object-fit: cover; cursor: zoom-in;"
+                                                    onclick="window.open(this.src, '_blank')">
+                                            </div>
+                                            <span class="badge bg-success-subtle text-success mt-1 px-2 py-0" style="font-size: 10px; font-weight: 600;">Mobil</span>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -188,13 +219,20 @@ if ($id > 0) {
                                             data-bs-toggle="dropdown" aria-expanded="false">
                                             <i class="bx bx-dots-horizontal-rounded"></i>
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end mobile-tabs-dropdown"
-                                            aria-labelledby="mobileTabsMenuBtn">
-                                            <?php foreach ($tabs as $key => $tab): ?>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === $key ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);"
-                                                        data-target="#<?php echo $key; ?>"><?php echo $tab['label']; ?></a>
+                                        <ul class="dropdown-menu dropdown-menu-end mobile-tabs-dropdown shadow-lg"
+                                            aria-labelledby="mobileTabsMenuBtn" style="max-height: 380px; overflow-y: auto;">
+                                            <?php foreach ($tabCategories as $catKey => $cat): ?>
+                                                <li class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1 mt-1">
+                                                    <i class="<?php echo $cat['icon']; ?> me-1"></i> <?php echo $cat['title']; ?>
                                                 </li>
+                                                <?php foreach ($cat['tabs'] as $key => $tab): ?>
+                                                    <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === $key ? 'active' : ''; ?> px-3 py-2"
+                                                            href="javascript:void(0);"
+                                                            data-target="#<?php echo $key; ?>"
+                                                            data-category="<?php echo $catKey; ?>"><i class="<?php echo $tab['icon']; ?> me-2"></i><?php echo $tab['label']; ?></a>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                                <li><hr class="dropdown-divider my-1"></li>
                                             <?php endforeach; ?>
                                         </ul>
                                     </div>
@@ -203,122 +241,150 @@ if ($id > 0) {
                         </div>
                     </div>
                 </div>
-                <div class="card-body pb-0">
-                    <!-- Nav tabs (Desktop Only) -->
-                    <div class="d-none d-md-flex align-items-center gap-2">
-                        <div class="calendar-nav d-flex gap-1">
-                            <button type="button"
-                                class="btn border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
-                                id="scrollTabsLeft" style="height: 38px; width: 38px; border-radius: 8px !important;">
-                                <i class="bx bx-chevron-left fs-4"></i>
-                            </button>
+                
+                <!-- Modern Categorized Tabs Navigation (Desktop Only) -->
+                <div class="card-body py-2 px-3 border-bottom bg-light-subtle d-none d-md-block">
+                    <?php if (count($tabCategories) > 1): ?>
+                        <!-- Kategori Başlıkları (Segmented Pills) -->
+                        <div class="personel-category-pills d-flex align-items-center gap-2 mb-2">
+                            <?php foreach ($tabCategories as $catKey => $cat): ?>
+                                <button type="button" 
+                                        class="btn btn-category-pill <?php echo $activeCategory === $catKey ? 'active' : ''; ?> d-inline-flex align-items-center gap-2" 
+                                        data-category-target="<?php echo $catKey; ?>">
+                                    <i class="<?php echo $cat['icon']; ?> font-size-16"></i>
+                                    <span class="fw-semibold font-size-13"><?php echo $cat['title']; ?></span>
+                                    <span class="badge rounded-pill <?php echo $activeCategory === $catKey ? 'bg-white text-primary' : 'bg-primary-subtle text-primary'; ?> category-badge ms-1"><?php echo count($cat['tabs']); ?></span>
+                                </button>
+                            <?php endforeach; ?>
                         </div>
+                    <?php endif; ?>
 
-                        <div class="flex-grow-1 border rounded shadow-sm p-1 overflow-hidden tab-nav-container"
-                            style="height: 48px;">
-                            <div class="d-flex align-items-center gap-1 overflow-auto no-scrollbar" id="desktopTabs"
-                                role="tablist" style="scroll-behavior: smooth; height: 100%;">
-                                <?php
-                                $count = count($tabs);
-                                $i = 0;
-                                foreach ($tabs as $key => $tab):
-                                    $i++;
-                                    $isActive = ($activeTab === $key);
-                                    ?>
-                                    <a class="nav-link btn <?php echo $isActive ? 'active' : ''; ?> d-flex align-items-center px-3"
-                                        style="white-space: nowrap; border-radius: 8px !important; transition: all 0.2s ease; height: 38px; flex-shrink: 0;"
-                                        data-bs-toggle="tab" href="#<?php echo $key; ?>" role="tab">
-                                        <?php echo $tab['label']; ?>
+                    <!-- Alt Sekmeler Grubu (Subtabs) -->
+                    <div class="personel-subtabs-container p-1 rounded-3 bg-white border shadow-sm" id="desktopTabs">
+                        <?php foreach ($tabCategories as $catKey => $cat): ?>
+                            <div class="subtab-group nav nav-pills gap-1 flex-wrap <?php echo $activeCategory === $catKey ? 'd-flex' : 'd-none'; ?>" 
+                                 id="subtabs-<?php echo $catKey; ?>" 
+                                 role="tablist">
+                                <?php foreach ($cat['tabs'] as $tabKey => $tab): 
+                                    $isActive = ($activeTab === $tabKey);
+                                ?>
+                                    <a class="nav-link subtab-nav-link <?php echo $isActive ? 'active' : ''; ?> d-inline-flex align-items-center gap-2 px-3 py-2" 
+                                       data-bs-toggle="tab" 
+                                       href="#<?php echo $tabKey; ?>" 
+                                       role="tab" 
+                                       data-category="<?php echo $catKey; ?>">
+                                        <i class="<?php echo $tab['icon']; ?> font-size-15"></i>
+                                        <span><?php echo $tab['label']; ?></span>
                                     </a>
-                                    <?php if ($i < $count): ?>
-                                        <div class="vr mx-1"
-                                            style="height: 25px; align-self: center; opacity: 0.15; flex-shrink: 0;">
-                                        </div>
-                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </div>
-                        </div>
-
-                        <div class="calendar-nav d-flex gap-1">
-                            <button type="button"
-                                class="btn border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
-                                id="scrollTabsRight" style="height: 38px; width: 38px; border-radius: 8px !important;">
-                                <i class="bx bx-chevron-right fs-4"></i>
-                            </button>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
                 <style>
-                    #personelTabContent>.tab-pane,
-                    #personelTabContent>form>.tab-pane {
-                        display: none;
+                    #personelTabContent > .tab-pane,
+                    #personelTabContent > form > .tab-pane {
+                        display: none !important;
                     }
 
-                    #personelTabContent>.tab-pane.active,
-                    #personelTabContent>form>.tab-pane.active {
-                        display: block;
+                    #personelTabContent > .tab-pane.active,
+                    #personelTabContent > form > .tab-pane.active {
+                        display: block !important;
                     }
 
-                    #desktopTabs .nav-link {
-                        border: none;
-                        background: transparent;
-                        color: #adb5bd;
-                        font-weight: 500;
+                    /* Modern Personel Category Pills */
+                    .personel-category-pills .btn-category-pill {
+                        background-color: #ffffff;
+                        border: 1px solid #d9e3ef;
+                        color: #495057;
+                        border-radius: 30px;
+                        padding: 5px 16px;
+                        transition: all 0.2s ease;
+                        cursor: pointer;
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
                     }
 
-                    #desktopTabs .nav-link.active {
+                    .personel-category-pills .btn-category-pill:hover {
+                        background-color: #f8f9fa;
+                        border-color: #cbd5e1;
+                        color: var(--bs-primary);
+                    }
+
+                    .personel-category-pills .btn-category-pill.active {
                         background-color: var(--bs-primary) !important;
-                        color: #fff !important;
-                        font-weight: 700 !important;
-                        box-shadow: 0 4px 10px rgba(var(--bs-primary-rgb), 0.3);
+                        border-color: var(--bs-primary) !important;
+                        color: #ffffff !important;
+                        box-shadow: 0 3px 10px rgba(var(--bs-primary-rgb), 0.28);
                     }
 
-                    #desktopTabs .nav-link:hover:not(.active) {
-                        background-color: rgba(255, 255, 255, 0.05) !important;
+                    .personel-category-pills .btn-category-pill.active .category-badge {
+                        background-color: #ffffff !important;
                         color: var(--bs-primary) !important;
                     }
 
-                    .tab-nav-container {
-                        background: #fff;
+                    .personel-subtabs-container {
+                        background-color: #ffffff;
+                        border: 1px solid #e2e8f0;
                     }
 
-                    .tab-scroll-btn {
-                        background: #fff;
+                    .subtab-nav-link {
+                        color: #556070;
+                        font-weight: 500;
+                        font-size: 13px;
+                        border-radius: 8px !important;
+                        border: 1px solid transparent;
+                        transition: all 0.15s ease;
+                        white-space: nowrap;
+                    }
+
+                    .subtab-nav-link:hover {
+                        color: var(--bs-primary);
+                        background-color: #f1f5f9;
+                    }
+
+                    .subtab-nav-link.active {
+                        color: var(--bs-primary) !important;
+                        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+                        border-color: rgba(var(--bs-primary-rgb), 0.25) !important;
+                        font-weight: 600 !important;
                     }
 
                     /* Dark Mode Overrides */
-                    html[data-bs-theme="dark"] .tab-nav-container {
-                        background: #2a3042 !important;
+                    html[data-bs-theme="dark"] .personel-category-pills .btn-category-pill {
+                        background-color: #2a3042;
+                        border-color: #32394e;
+                        color: #a6b0cf;
+                    }
+
+                    html[data-bs-theme="dark"] .personel-category-pills .btn-category-pill:hover {
+                        background-color: #32394e;
+                        color: #ffffff;
+                    }
+
+                    html[data-bs-theme="dark"] .personel-category-pills .btn-category-pill.active {
+                        background-color: var(--bs-primary) !important;
+                        border-color: var(--bs-primary) !important;
+                        color: #ffffff !important;
+                    }
+
+                    html[data-bs-theme="dark"] .personel-subtabs-container {
+                        background-color: #2a3042 !important;
                         border-color: #32394e !important;
                     }
 
-                    html[data-bs-theme="dark"] .tab-scroll-btn {
-                        background: #2a3042 !important;
-                        border-color: #32394e !important;
-                        color: #fff !important;
-                    }
-
-                    html[data-bs-theme="dark"] #desktopTabs .nav-link {
+                    html[data-bs-theme="dark"] .subtab-nav-link {
                         color: #9299af;
                     }
 
-                    html[data-bs-theme="dark"] #desktopTabs .nav-link.active {
-                        background-color: var(--bs-primary) !important;
-                        color: #fff !important;
+                    html[data-bs-theme="dark"] .subtab-nav-link:hover {
+                        background-color: rgba(255, 255, 255, 0.05);
+                        color: #ffffff;
                     }
 
-                    html[data-bs-theme="dark"] #desktopTabs .nav-link:hover:not(.active) {
-                        background-color: rgba(255, 255, 255, 0.1) !important;
-                        color: #fff !important;
-                    }
-
-                    .no-scrollbar::-webkit-scrollbar {
-                        display: none;
-                    }
-
-                    .no-scrollbar {
-                        -ms-overflow-style: none;
-                        scrollbar-width: none;
+                    html[data-bs-theme="dark"] .subtab-nav-link.active {
+                        background-color: rgba(var(--bs-primary-rgb), 0.2) !important;
+                        border-color: rgba(var(--bs-primary-rgb), 0.4) !important;
+                        color: #ffffff !important;
                     }
 
                     @media (max-width: 768px) {
@@ -365,18 +431,17 @@ if ($id > 0) {
                             border: none !important;
                             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
                             padding: 8px !important;
-                            min-width: 200px !important;
+                            min-width: 220px !important;
                             margin-bottom: 10px !important;
                         }
 
                         .mobile-tabs-dropdown .dropdown-item {
                             display: flex !important;
                             align-items: center;
-                            justify-content: flex-end;
-                            /* Right aligned text */
-                            padding: 10px 15px !important;
-                            border-radius: 10px !important;
-                            font-size: 14px;
+                            justify-content: flex-start;
+                            padding: 8px 14px !important;
+                            border-radius: 8px !important;
+                            font-size: 13px;
                             font-weight: 500;
                             color: #495057;
                             transition: all 0.2s ease;
@@ -385,11 +450,10 @@ if ($id > 0) {
                         .mobile-tabs-dropdown .dropdown-item i {
                             font-size: 16px;
                             width: 20px;
-                            text-align: center;
                         }
 
                         .mobile-tabs-dropdown .dropdown-item.active {
-                            background: #000000 !important;
+                            background: var(--bs-primary) !important;
                             color: #ffffff !important;
                         }
 
@@ -732,7 +796,7 @@ if ($id > 0) {
         // Personel seçimi değiştiğinde yönlendir
         $('#personel_select').on('change', function () {
             var selectedId = $(this).val();
-            var activeTab = $('.nav-link.active').attr('href');
+            var activeTab = $('.subtab-nav-link.active').attr('href') || $('.nav-link.active').attr('href');
             if (activeTab) {
                 activeTab = activeTab.replace('#', '');
             } else {
@@ -743,25 +807,72 @@ if ($id > 0) {
             }
         });
 
+        // Kategori butonlarına tıklandığında alt sekmeleri göster
+        $('.btn-category-pill').on('click', function(e) {
+            e.preventDefault();
+            var catKey = $(this).data('category-target');
+            
+            // Kategori butonlarını güncelle
+            $('.btn-category-pill').removeClass('active');
+            $(this).addClass('active');
+            
+            // Alt sekme gruplarını göster/gizle
+            $('.subtab-group').addClass('d-none').removeClass('d-flex');
+            var targetGroup = $('#subtabs-' + catKey);
+            targetGroup.removeClass('d-none').addClass('d-flex');
+            
+            // Eğer bu kategorideki sekmelerden biri zaten aktif değilse ilk sekmeyi aktif yap
+            var currentActiveInCat = targetGroup.find('.subtab-nav-link.active');
+            if (currentActiveInCat.length === 0) {
+                var firstTab = targetGroup.find('.subtab-nav-link').first();
+                if (firstTab.length) {
+                    var tab = new bootstrap.Tab(firstTab[0]);
+                    tab.show();
+                }
+            }
+        });
+
         // Tab değişikliklerini dinle
-        var triggerTabList = [].slice.call(document.querySelectorAll('#desktopTabs [data-bs-toggle="tab"]'))
+        var triggerTabList = [].slice.call(document.querySelectorAll('.subtab-nav-link[data-bs-toggle="tab"], #desktopTabs [data-bs-toggle="tab"]'));
         triggerTabList.forEach(function (triggerEl) {
+            triggerEl.addEventListener('show.bs.tab', function (event) {
+                var targetId = event.target.getAttribute('href');
+                // Form içi ve form dışı tüm üst düzey tab-pane elemanlarını gizle
+                $('#personelTabContent > .tab-pane, #personelTabContent > form > .tab-pane').removeClass('active show');
+                $(targetId).addClass('active show');
+            });
+
             triggerEl.addEventListener('shown.bs.tab', function (event) {
                 var targetId = event.target.getAttribute('href');
+                var catKey = event.target.getAttribute('data-category');
+                
+                // Eğer kategori aktif değilse senkronize et
+                if (catKey) {
+                    $('.btn-category-pill').removeClass('active');
+                    $('.btn-category-pill[data-category-target="' + catKey + '"]').addClass('active');
+                    
+                    $('.subtab-group').addClass('d-none').removeClass('d-flex');
+                    $('#subtabs-' + catKey).removeClass('d-none').addClass('d-flex');
+                }
+
+                // Hedef dışındakileri temizle, hedefi göster
+                $('#personelTabContent > .tab-pane, #personelTabContent > form > .tab-pane').not(targetId).removeClass('active show');
+                $(targetId).addClass('active show');
+                
                 var targetPane = document.querySelector(targetId);
                 loadTabContent(targetPane);
 
                 // Sync mobile dropdown active state
                 $('.mobile-tab-link').removeClass('active');
                 $('.mobile-tab-link[data-target="' + targetId + '"]').addClass('active');
-            })
-        })
+            });
+        });
 
         // Mobile Tab Click Handler
         $(document).on('click', '.mobile-tab-link', function (e) {
             e.preventDefault();
             var target = $(this).data('target');
-            var tabEl = document.querySelector('#desktopTabs a[href="' + target + '"]');
+            var tabEl = document.querySelector('.subtab-nav-link[href="' + target + '"]') || document.querySelector('#desktopTabs a[href="' + target + '"]');
             if (tabEl) {
                 var tab = new bootstrap.Tab(tabEl);
                 tab.show();
@@ -769,40 +880,11 @@ if ($id > 0) {
         });
 
         // Sayfa yüklendiğinde aktif tab eğer dinamik içerikliyse yükle
-        var activeTabLink = document.querySelector('.nav-link.active');
+        var activeTabLink = document.querySelector('.subtab-nav-link.active') || document.querySelector('.nav-link.active');
         if (activeTabLink) {
             var targetId = activeTabLink.getAttribute('href');
             var targetPane = document.querySelector(targetId);
             loadTabContent(targetPane);
-        }
-
-        // Tab Kaydırma İşlemleri
-        const scrollAmount = 300;
-        const tabsContainer = document.getElementById('desktopTabs');
-
-        if (tabsContainer) {
-            $('#scrollTabsLeft').on('click', function (e) {
-                e.preventDefault();
-                tabsContainer.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-            });
-
-            $('#scrollTabsRight').on('click', function (e) {
-                e.preventDefault();
-                tabsContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-            });
-
-            // Sayfa yüklendiğinde aktif tabı görünür yap
-            setTimeout(() => {
-                const activeTab = tabsContainer.querySelector('.nav-link.active');
-                if (activeTab) {
-                    const containerRect = tabsContainer.getBoundingClientRect();
-                    const tabRect = activeTab.getBoundingClientRect();
-
-                    if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
-                        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }
-                }
-            }, 300);
         }
     });
 </script>

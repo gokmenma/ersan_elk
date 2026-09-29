@@ -337,7 +337,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                         }
                     </style>
 
-                    <div class="card-body overflow-auto">
+                    <div class="card-body p-1 overflow-auto">
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
                             <div class="d-flex gap-3 align-items-center flex-wrap">
                               

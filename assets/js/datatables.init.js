@@ -240,6 +240,13 @@ function getDatatableOptions() {
       var $nTable = $(settings.nTable);
       var $thead = $nTable.find("thead");
 
+      // Merkezi premium görünüm kabuğu sınıfını uygula
+      var $premiumShell = $nTable.closest(".table-responsive, .responsive").first();
+      if (!$premiumShell.length) {
+        $premiumShell = $nTable.closest(".dataTables_wrapper");
+      }
+      $premiumShell.addClass("datatable-premium-shell");
+
       // Gelişmiş filtre var mı kontrol et (Daha sağlam kontrol)
       var hasAnyAdvancedFilter = $thead.find("th[data-filter]").length > 0;
 

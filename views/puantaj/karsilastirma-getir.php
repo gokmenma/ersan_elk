@@ -113,11 +113,11 @@ function calcChange($current, $previous)
 function trendBadge($change)
 {
     if ($change > 0) {
-        return '<span class="badge bg-success-subtle text-success"><i class="bx bx-trending-up me-1"></i>+' . $change . '%</span>';
+        return '<span class="badge trend-badge trend-up"><i class="bx bx-trending-up me-1"></i>+' . number_format($change, 1, ',', '.') . '%</span>';
     } elseif ($change < 0) {
-        return '<span class="badge bg-danger-subtle text-danger"><i class="bx bx-trending-down me-1"></i>' . $change . '%</span>';
+        return '<span class="badge trend-badge trend-down"><i class="bx bx-trending-down me-1"></i>' . number_format($change, 1, ',', '.') . '%</span>';
     }
-    return '<span class="badge bg-secondary-subtle text-secondary"><i class="bx bx-minus me-1"></i>0%</span>';
+    return '<span class="badge trend-badge trend-equal"><i class="bx bx-minus me-1"></i>0,0%</span>';
 }
 
 // Color palette for charts
@@ -141,6 +141,56 @@ $chartBorderColors = array_map(function ($c) {
 ?>
 
 <style>
+    .trend-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px 9px;
+        font-size: 11.5px;
+        font-weight: 700;
+        border-radius: 6px;
+        letter-spacing: 0.2px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .trend-badge.trend-up {
+        background-color: #d1fae5 !important;
+        color: #047857 !important;
+        border: 1px solid #6ee7b7 !important;
+    }
+
+    .trend-badge.trend-down {
+        background-color: #fee2e2 !important;
+        color: #b91c1c !important;
+        border: 1px solid #fca5a5 !important;
+    }
+
+    .trend-badge.trend-equal {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    [data-bs-theme="dark"] .trend-badge.trend-up,
+    [data-theme-mode="dark"] .trend-badge.trend-up {
+        background-color: rgba(16, 185, 129, 0.2) !important;
+        color: #34d399 !important;
+        border-color: rgba(52, 211, 153, 0.4) !important;
+    }
+
+    [data-bs-theme="dark"] .trend-badge.trend-down,
+    [data-theme-mode="dark"] .trend-badge.trend-down {
+        background-color: rgba(239, 68, 68, 0.2) !important;
+        color: #f87171 !important;
+        border-color: rgba(248, 113, 113, 0.4) !important;
+    }
+
+    [data-bs-theme="dark"] .trend-badge.trend-equal,
+    [data-theme-mode="dark"] .trend-badge.trend-equal {
+        background-color: rgba(148, 163, 184, 0.15) !important;
+        color: #94a3b8 !important;
+        border-color: rgba(148, 163, 184, 0.3) !important;
+    }
     .compare-summary-card {
         border-radius: 10px;
         padding: 16px 20px;
@@ -356,8 +406,8 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
                         </div>
                         <div class="filter-summary-badge">
                             <span class="badge-label">Değişim:</span>
-                            <span class="badge-value"><i
-                                    class="bx <?= $changeIcon ?> me-1"></i><?= ($totalChange > 0 ? '+' : '') . $totalChange ?>%</span>
+                            <span class="badge-value <?= $totalChange > 0 ? 'text-success' : ($totalChange < 0 ? 'text-danger' : 'text-muted') ?>"><i
+                                    class="bx <?= $changeIcon ?> me-1"></i><?= ($totalChange > 0 ? '+' : '') . number_format($totalChange, 1, ',', '.') ?>%</span>
                         </div>
                         <div class="filter-summary-badge">
                             <span class="badge-label">Toplam:</span>
