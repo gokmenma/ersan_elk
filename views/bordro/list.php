@@ -292,15 +292,48 @@ if (!empty($dbGelirler)) {
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
+        /* Tablo Çerçevesi ve Sığdırma Stilleri */
+        .bordro-table-responsive {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            overflow-x: auto;
+        }
+
+        #bordroTable {
+            margin-bottom: 0 !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            width: 100% !important;
+        }
+
+        #bordroTable th, 
+        #bordroTable td {
+            border: 1px solid #e2e8f0 !important;
+            padding: 5px 6px !important;
+            font-size: 0.8125rem;
+            vertical-align: middle !important;
+        }
+
+        #bordroTable thead th {
+            background-color: #f8fafc !important;
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.02em;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
         /* Tablo içindeki checkbox hücrelerini ortala */
         #bordroTable th:first-child, 
         #bordroTable td:first-child {
             text-align: center !important;
             vertical-align: middle !important;
             padding: 0 !important;
-            width: 50px !important;
-            min-width: 50px !important;
-            max-width: 50px !important;
+            width: 38px !important;
+            min-width: 38px !important;
+            max-width: 38px !important;
         }
 
         #bordroTable .form-check {
@@ -319,6 +352,49 @@ if (!empty($dbGelirler)) {
             float: none !important;
             position: relative !important;
             left: 0 !important;
+        }
+
+        /* Responsive toggle pseudo butonunun checkbox ile çakışmasını kesin engelle */
+        #bordroTable.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+        #bordroTable.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before,
+        #bordroTable.dataTable > tbody > tr > td:first-child:before,
+        #bordroTable.dataTable > tbody > tr > th:first-child:before {
+            display: none !important;
+            content: none !important;
+        }
+
+        /* SGK / Vergi Kesintisi Başlık ve Sütun Daraltma */
+        #bordroTable th.th-sgk-vergi {
+            white-space: normal !important;
+            line-height: 1.15 !important;
+            font-size: 0.72rem !important;
+            text-align: center !important;
+            padding-left: 2px !important;
+            padding-right: 22px !important;
+            width: 82px !important;
+            min-width: 78px !important;
+            max-width: 88px !important;
+        }
+
+        /* Kompakt filtre kontrolleri */
+        #bordroTable .dt-header-with-filter {
+            padding-right: 22px !important;
+        }
+        #bordroTable .dt-filter-mode-trigger {
+            width: 17px !important;
+            height: 17px !important;
+            right: 3px !important;
+            font-size: 10px !important;
+            border-radius: 4px !important;
+        }
+        .dt-filter-row > th {
+            padding: 3px 2px !important;
+        }
+        .dt-filter-control {
+            height: 28px !important;
+            padding: 2px 4px !important;
+            font-size: 11px !important;
+            border-radius: 5px !important;
         }
 
         /* Seçili satır rengi */
@@ -812,30 +888,30 @@ if (!empty($dbGelirler)) {
                                     <p class="text-muted small mb-0">Lütfen bekleyiniz...</p>
                                 </div>
                             </div>
-                            <div class="table-responsive">
-                                <table id="bordroTable" class="table table-hover table-bordered nowrap w-100">
+                            <div class="table-responsive bordro-table-responsive">
+                                <table id="bordroTable" class="table table-hover table-bordered w-100">
                                     <thead class="table-light sticky-top">
                                         <tr>
-                                            <th style="width: 40px;">
+                                            <th style="width: 38px; min-width: 38px; max-width: 38px;">
                                                 <div class="form-check">
                                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                                 </div>
                                             </th>
-                                            <th style="width: 40px;">#</th>
-                                            <th class="text-center" style="width: 80px;" data-filter="select">Birim</th>
-                                            <th style="min-width: 150px;" data-filter="select">Ekip / Bölge</th>
-                                            <th data-filter="string">Personel</th>
-                                            <th class="text-center" data-filter="select">Maaş Tipi</th>
-                                            <th class="text-center" data-filter="number">Gün</th>
-                                            <th class="text-end" data-filter="number">Toplam Alacağı</th>
-                                            <th class="text-end" data-filter="number">Kesinti Tutarı</th>
-                                            <th class="text-end" data-filter="number">Net Maaş</th>
-                                            <th class="text-end" data-filter="number">İcra Kesintisi</th>
-                                            <th class="text-end" data-filter="number">SGK/Vergi Kesintisi</th>
-                                            <th class="text-end" data-filter="number">Banka</th>
-                                            <th class="text-end" data-filter="number">Sodexo</th>
-                                            <th class="text-end" data-filter="number">Elden</th>
-                                            <th class="text-center">İşlemler</th>
+                                            <th class="text-center" style="width: 32px; min-width: 32px; max-width: 35px;">#</th>
+                                            <th class="text-center" style="width: 44px; min-width: 44px; max-width: 48px;" data-filter="select">Birim</th>
+                                            <th style="min-width: 110px; max-width: 135px;" data-filter="select">Ekip / Bölge</th>
+                                            <th style="min-width: 135px;" data-filter="string">Personel</th>
+                                            <th class="text-center" style="width: 70px; min-width: 65px;" data-filter="select">Maaş Tipi</th>
+                                            <th class="text-center" style="width: 38px; min-width: 38px;" data-filter="number">Gün</th>
+                                            <th class="text-end" style="min-width: 85px;" data-filter="number">Toplam Alacağı</th>
+                                            <th class="text-end" style="min-width: 80px;" data-filter="number">Kesinti Tutarı</th>
+                                            <th class="text-end" style="min-width: 85px;" data-filter="number">Net Maaş</th>
+                                            <th class="text-end" style="min-width: 75px;" data-filter="number">İcra Kesintisi</th>
+                                            <th class="text-end th-sgk-vergi" style="width: 82px; min-width: 78px; max-width: 88px;" data-filter="number">SGK / Vergi<br>Kesintisi</th>
+                                            <th class="text-end" style="min-width: 80px;" data-filter="number">Banka</th>
+                                            <th class="text-end" style="min-width: 80px; max-width: 95px;" data-filter="number">Sodexo</th>
+                                            <th class="text-end" style="min-width: 75px;" data-filter="number">Elden</th>
+                                            <th class="text-center" style="width: 42px; min-width: 42px; max-width: 45px;">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody>

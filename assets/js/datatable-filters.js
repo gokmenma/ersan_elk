@@ -305,6 +305,14 @@
   window.initAdvancedFilters = function (api, settings) {
     const tableId = settings.sTableId;
     const $thead = $("#" + tableId + " thead");
+    const $table = $(settings.nTable);
+
+    // data-filter kullanan tüm tablolar aynı merkezi görsel kabuğu alır.
+    let $premiumShell = $table.closest(".table-responsive, .responsive").first();
+    if (!$premiumShell.length) {
+      $premiumShell = $table.closest(".dataTables_wrapper");
+    }
+    $premiumShell.addClass("datatable-premium-shell");
 
     const hasAnyFilter = $thead.find("th[data-filter]").length > 0;
     if (!hasAnyFilter) return;

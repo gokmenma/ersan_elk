@@ -4430,6 +4430,316 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+if (isset($_GET['action']) && $_GET['action'] === 'export-okuma-comparison-excel') {
+    $periodsInput = $_GET['comparison_periods'] ?? $_GET['periods'] ?? [];
+    if (is_string($periodsInput)) {
+        $periodsReq = array_filter(explode(',', $periodsInput));
+    } else if (is_array($periodsInput)) {
+        $periodsReq = $periodsInput;
+    } else {
+        $periodsReq = [];
+    }
+    $periodsReq = array_values(array_unique(array_filter(array_map('trim', $periodsReq))));
+    sort($periodsReq);
+
+    $personelId = $_GET['personel_id'] ?? '';
+    $region = trim($_GET['region'] ?? '');
+    $defter = trim($_GET['defter'] ?? '');
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+    if (empty($periodsReq)) {
+        $periodsReq = [date('Y-m')];
+    }
+
+    $PersonelModel = new \App\Model\PersonelModel();
+    $personelName = 'Tüm Personeller';
+    if ($personelId) {
+        $pObj = $PersonelModel->find($personelId);
+        if ($pObj && isset($pObj->adi_soyadi)) {
+            $personelName = $pObj->adi_soyadi;
+        }
+    }
+
+    // Prepare period labels
+    $periodLabels = [];
+    foreach ($periodsReq as $p) {
+        $parts = explode('-', $p);
+        if (count($parts) === 2) {
+            $periodLabels[$p] = \App\Helper\Date::monthName($parts[1]) . ' ' . $parts[0];
+        } else {
+            $periodLabels[$p] = $p;
+        }
+    }
+
+    $Model = new \App\Model\EndeksOkumaModel();
+    $placeholders = implode(',', array_fill(0, count($periodsReq), '?'));
+
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+
+    // Helper closure to build a sheet
+    $buildSheet = function($sheet, $title, $sheetName, $types, $matrix) use ($periodsReq, $periodLabels, $personelName, $defter) {
+        // Sanitize sheet name for Excel (max 31 chars, no illegal chars: \ / ? * : [ ])
+        $cleanSheetName = preg_replace('/[\\\\\\/:\*\?\[\]]/', '_', $sheetName);
+        $cleanSheetName = mb_substr($cleanSheetName, 0, 31, 'UTF-8');
+        $sheet->setTitle($cleanSheetName);
+
+        // Header Title
+        $sheet->setCellValue('A1', 'BÖLGE BAZLI ENDEKS OKUMA İSTATİSTİKLERİ');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF1E293B'));
+
+        // Subtitle info
+        $infoText = 'Kapsam: ' . $title . ' | Dönem(ler): ' . implode(', ', $periodLabels) . ' | Personel: ' . $personelName;
+        if ($defter) {
+            $infoText .= ' | Defter: ' . $defter;
+        }
+        $infoText .= ' | Rapor Tarihi: ' . date('d.m.Y H:i');
+        $sheet->setCellValue('A2', $infoText);
+        $sheet->getStyle('A2')->getFont()->setSize(9.5)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF64748B'));
+
+        // Table column headers
+        $colIndex = 1;
+        $sheet->setCellValue([$colIndex++, 4], 'Sayaç Durumu / İş Türü');
+        foreach ($periodsReq as $p) {
+            $sheet->setCellValue([$colIndex++, 4], $periodLabels[$p] ?? $p);
+        }
+        $totalColIndex = $colIndex;
+        $sheet->setCellValue([$colIndex++, 4], 'Genel Toplam');
+
+        $highestColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalColIndex);
+
+        // Style header row 4
+        $sheet->getStyle("A4:{$highestColLetter}4")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10.5],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'wrapText' => true
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '2563EB']
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => '1D4ED8']
+                ]
+            ]
+        ]);
+        $sheet->getRowDimension(4)->setRowHeight(26);
+
+        // Populate data rows
+        $rowIdx = 5;
+        $colTotals = array_fill_keys($periodsReq, 0);
+        $grandTotalSum = 0;
+
+        foreach ($types as $type) {
+            $cIdx = 1;
+            $sheet->setCellValue([$cIdx++, $rowIdx], $type);
+            $rowSum = 0;
+
+            foreach ($periodsReq as $p) {
+                $val = (int)($matrix[$type][$p] ?? 0);
+                $sheet->setCellValue([$cIdx++, $rowIdx], $val);
+                $rowSum += $val;
+                $colTotals[$p] += $val;
+            }
+
+            $sheet->setCellValue([$cIdx++, $rowIdx], $rowSum);
+            $grandTotalSum += $rowSum;
+
+            // Row styling
+            $isEven = ($rowIdx % 2 === 0);
+            $rowBg = $isEven ? 'F8FAFC' : 'FFFFFF';
+            $sheet->getStyle("A{$rowIdx}:{$highestColLetter}{$rowIdx}")->applyFromArray([
+                'font' => ['size' => 10],
+                'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => $rowBg]
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['rgb' => 'E2E8F0']
+                    ]
+                ]
+            ]);
+
+            // Format numbers for period columns and total column
+            $sheet->getStyle("B{$rowIdx}:{$highestColLetter}{$rowIdx}")->applyFromArray([
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT],
+                'numberFormat' => ['formatCode' => '#,##0']
+            ]);
+            // Col A alignment & font
+            $sheet->getStyle("A{$rowIdx}")->applyFromArray([
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT],
+                'font' => ['bold' => false, 'color' => ['rgb' => '1E293B']]
+            ]);
+            // Row total column highlight
+            $sheet->getStyle("{$highestColLetter}{$rowIdx}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => '0F172A']],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => ($isEven ? 'EDF2F7' : 'F1F5F9')]
+                ]
+            ]);
+
+            $sheet->getRowDimension($rowIdx)->setRowHeight(20);
+            $rowIdx++;
+        }
+
+        // Summary / Total row
+        $cIdx = 1;
+        $sheet->setCellValue([$cIdx++, $rowIdx], 'GENEL TOPLAM');
+        foreach ($periodsReq as $p) {
+            $sheet->setCellValue([$cIdx++, $rowIdx], $colTotals[$p]);
+        }
+        $sheet->setCellValue([$cIdx++, $rowIdx], $grandTotalSum);
+
+        $sheet->getStyle("A{$rowIdx}:{$highestColLetter}{$rowIdx}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10.5, 'color' => ['rgb' => '0F172A']],
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'E2E8F0']
+            ],
+            'borders' => [
+                'top' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '94A3B8']],
+                'bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_DOUBLE, 'color' => ['rgb' => '475569']],
+                'left' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']],
+                'right' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']],
+            ]
+        ]);
+        $sheet->getStyle("A{$rowIdx}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+        $sheet->getStyle("B{$rowIdx}:{$highestColLetter}{$rowIdx}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getRowDimension($rowIdx)->setRowHeight(23);
+
+        // Column widths - NARROW / COMPACT formatting
+        $sheet->getColumnDimension('A')->setWidth(34);
+        for ($col = 2; $col <= $totalColIndex; $col++) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+            $sheet->getColumnDimension($colLetter)->setWidth(15.5);
+        }
+
+        // Freeze panes at row 5
+        $sheet->freezePane('A5');
+    };
+
+    if ($region !== '') {
+        // Specific region selected
+        $sql = "SELECT DATE_FORMAT(tarih, '%Y-%m') as period, 
+                       COALESCE(sayac_durum, 'Belirtilmemiş') as status, 
+                       IFNULL(SUM(okunan_abone_sayisi), 0) as adet
+                FROM endeks_okuma
+                WHERE firma_id = ? AND silinme_tarihi IS NULL 
+                AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)
+                AND bolge = ?";
+        $params = array_merge([$firmaId], $periodsReq, [$region]);
+        if ($personelId) {
+            $sql .= " AND personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($defter) {
+            $sql .= " AND defter = ?";
+            $params[] = $defter;
+        }
+        $sql .= " GROUP BY period, status ORDER BY status ASC";
+
+        $stmt = $Model->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $types = [];
+        $matrix = [];
+        foreach ($rows as $row) {
+            if (!in_array($row->status, $types)) $types[] = $row->status;
+            $matrix[$row->status][$row->period] = (int)$row->adet;
+        }
+        sort($types);
+
+        $sheet = $spreadsheet->getActiveSheet();
+        $buildSheet($sheet, "Bölge: {$region}", $region, $types, $matrix);
+
+        $filename = 'Okuma_Istatistikleri_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $region) . '_' . date('Ymd_His') . '.xlsx';
+    } else {
+        // All regions ("Tüm Bölgeler")
+        $sql = "SELECT COALESCE(bolge, 'Diğer') as bolge, 
+                       DATE_FORMAT(tarih, '%Y-%m') as period, 
+                       COALESCE(sayac_durum, 'Belirtilmemiş') as status, 
+                       IFNULL(SUM(okunan_abone_sayisi), 0) as adet
+                FROM endeks_okuma
+                WHERE firma_id = ? AND silinme_tarihi IS NULL 
+                AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)";
+        $params = array_merge([$firmaId], $periodsReq);
+        if ($personelId) {
+            $sql .= " AND personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($defter) {
+            $sql .= " AND defter = ?";
+            $params[] = $defter;
+        }
+        $sql .= " GROUP BY bolge, period, status ORDER BY bolge ASC, status ASC";
+
+        $stmt = $Model->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $allTypes = [];
+        $grandMatrix = [];
+        $regionTypes = [];
+        $regionMatrix = [];
+        $regions = [];
+
+        foreach ($rows as $row) {
+            $b = trim($row->bolge) ?: 'Diğer';
+            $s = $row->status;
+            $p = $row->period;
+            $cnt = (int)$row->adet;
+
+            if (!in_array($b, $regions)) $regions[] = $b;
+            if (!in_array($s, $allTypes)) $allTypes[] = $s;
+
+            if (!isset($regionTypes[$b])) $regionTypes[$b] = [];
+            if (!in_array($s, $regionTypes[$b])) $regionTypes[$b][] = $s;
+
+            $grandMatrix[$s][$p] = ($grandMatrix[$s][$p] ?? 0) + $cnt;
+            $regionMatrix[$b][$s][$p] = ($regionMatrix[$b][$s][$p] ?? 0) + $cnt;
+        }
+        sort($allTypes);
+        sort($regions);
+
+        // Sheet 1: Genel Toplam
+        $sheet = $spreadsheet->getActiveSheet();
+        $buildSheet($sheet, "Tüm Bölgeler (Genel Toplam)", "Genel Toplam", $allTypes, $grandMatrix);
+
+        // Sheet 2..N: Each region
+        foreach ($regions as $rName) {
+            $rTypes = $regionTypes[$rName] ?? [];
+            sort($rTypes);
+            $rMat = $regionMatrix[$rName] ?? [];
+            $newSheet = $spreadsheet->createSheet();
+            $buildSheet($newSheet, "Bölge: {$rName}", $rName, $rTypes, $rMat);
+        }
+
+        // Set active sheet to the first one (Genel Toplam)
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $filename = 'Okuma_Istatistikleri_Genel_Ve_Bolgeler_' . date('Ymd_His') . '.xlsx';
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
+
 if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
     $periodsInput = $_GET['comparison_periods'] ?? $_GET['periods'] ?? [];
     if (is_string($periodsInput)) {

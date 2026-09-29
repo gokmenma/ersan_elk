@@ -24,6 +24,12 @@
 - **Sayfa ve Tablo Yerleşimi**:
   - Sayfa başlığı card header içerisinde **yer almayacak**; `layouts/breadcrumb.php` standart yapısı üzerinden sunulacaktır.
   - Kartın üst kısmında durum filtreleri (`status-filter-group`) ve sağ tarafta aksiyon butonu (`personel-action-toolbar`) kullanılacaktır.
+- **Özet Kartlarını Açma/Kapama Standardı**:
+  - Özet kart bulunan masaüstü sayfalarda, aksiyon araç çubuğunun en sağında kartları gizleyip gösteren yukarı/aşağı ok butonu bulunacaktır.
+  - Kart grubu ani `display` değişimiyle değil, yükseklik ve opaklık geçişi (`transition`) ile açılıp kapanacaktır.
+  - Kullanıcının açık/kapalı tercihi sayfaya özgü bir `localStorage` anahtarıyla saklanacaktır.
+  - Kayıtlı durum, kart HTML'i çizilmeden önce okunup kök elemana durum sınıfı eklenerek uygulanacaktır; ilk yüklemede görünürlük sıçraması oluşturulmayacaktır.
+  - Butonun ikonu, `title`, erişilebilir etiketi ve `aria-expanded` değeri görünürlük durumuyla birlikte güncellenecektir.
 
 ## 4. Form ve Select2 Standartları
 - Masaüstü modüllerde select alanları doğrudan HTML `<select>` etiketi yazılarak oluşturulmayacak; `App\Helper\Form::FormSelect2()` kullanılacaktır.
@@ -45,4 +51,3 @@
 
 ## 7. Sistem ve Git İletişimi (SSH Port 443)
 - Geliştirme ortamındaki ağ kısıtlamaları nedeniyle GitHub SSH (Port 22) zaman aşımına uğrayabilmektedir. Git SSH işlemleri `~/.ssh/config` üzerinden `Host github.com -> Hostname ssh.github.com, Port 443` üzerinden yürütülmelidir.
-

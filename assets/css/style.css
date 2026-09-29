@@ -855,8 +855,14 @@ body[data-sidebar="brand"] .navbar-brand-box {
 
 .nav-tabs .nav-link.active,
 .nav-tabs-custom .nav-item .nav-link.active {
-  color: var(--bs-primary) !important;
-  border-bottom-color: var(--bs-primary) !important;
+  color: #ffffff !important;
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+.nav-tabs-custom .nav-item .nav-link.active *,
+.nav-tabs .nav-link.active * {
+  color: #ffffff !important;
 }
 
 .nav-pills .nav-link.active {
@@ -3885,22 +3891,44 @@ span.flatpickr-weekday {
 .active > .nav-link,
 .nav-link.active,
 .nav-pills .nav-link.active,
-.nav-tabs .nav-link.active {
+.nav-tabs .nav-link.active,
+.nav-tabs-custom .nav-link.active,
+.nav-tabs-custom .nav-item .nav-link.active {
   background-color: var(--bs-primary) !important;
   border-color: var(--bs-primary) !important;
   color: #fff !important;
   border-radius: 0.5rem !important;
 }
 
+.active > .nav-link *,
+.nav-link.active *,
+.nav-pills .nav-link.active *,
+.nav-tabs .nav-link.active *,
+.nav-tabs-custom .nav-link.active *,
+.nav-tabs-custom .nav-item .nav-link.active * {
+  color: #fff !important;
+}
+
 /* Dark mode specific active states */
 [data-bs-theme="dark"] .active > .nav-link,
 [data-bs-theme="dark"] .nav-link.active,
 [data-bs-theme="dark"] .nav-pills .nav-link.active,
-[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+[data-bs-theme="dark"] .nav-tabs .nav-link.active,
+[data-bs-theme="dark"] .nav-tabs-custom .nav-link.active,
+[data-bs-theme="dark"] .nav-tabs-custom .nav-item .nav-link.active {
   background-color: #f8fafc !important;
   color: #020817 !important;
   border-color: #f8fafc !important;
   border-radius: 0.5rem !important;
+}
+
+[data-bs-theme="dark"] .active > .nav-link *,
+[data-bs-theme="dark"] .nav-link.active *,
+[data-bs-theme="dark"] .nav-pills .nav-link.active *,
+[data-bs-theme="dark"] .nav-tabs .nav-link.active *,
+[data-bs-theme="dark"] .nav-tabs-custom .nav-link.active *,
+[data-bs-theme="dark"] .nav-tabs-custom .nav-item .nav-link.active * {
+  color: #020817 !important;
 }
 
 /* Validation Error Fix for Slate Theme */
@@ -5001,4 +5029,122 @@ button.note-btn.active {
   color: #f1f5f9 !important;
 }
 
+/* ==========================================================================
+   Merkezi İçerik Tasarımı — Premium Yönetim Panelleri
+   Sidebar ve topbar kapsam dışıdır.
+   ========================================================================== */
+:root {
+  --content-surface: #ffffff;
+  --content-canvas: #f1f5f9;
+  --content-border: #dbe4ef;
+  --content-border-soft: #e8eef5;
+  --content-shadow: 0 4px 14px rgba(15, 23, 42, 0.045);
+  --content-shadow-hover: 0 8px 22px rgba(15, 23, 42, 0.075);
+  --content-radius: 13px;
+  --content-accent: #e67800;
+  --content-accent-soft: #fff7df;
+}
 
+.main-content .page-content {
+  background: var(--content-canvas);
+}
+
+.main-content .page-content .card {
+  border: 1px solid var(--content-border) !important;
+  border-radius: var(--content-radius) !important;
+  background: var(--content-surface);
+  box-shadow: var(--content-shadow) !important;
+}
+
+.main-content .page-content .card:not(.modal-content) {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.main-content .page-content .card:not(.modal-content):hover {
+  border-color: #cdd9e7 !important;
+  box-shadow: var(--content-shadow-hover) !important;
+}
+
+.main-content .page-content .card > .card-header {
+  min-height: 58px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--content-border-soft) !important;
+  border-top-left-radius: calc(var(--content-radius) - 1px) !important;
+  border-top-right-radius: calc(var(--content-radius) - 1px) !important;
+  background: transparent !important;
+}
+
+.main-content .page-content .card-header .card-title,
+.main-content .page-content .card-header h4,
+.main-content .page-content .card-header h5,
+.main-content .page-content .card-header h6 {
+  color: #172033;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.main-content .page-content .card-header .card-title > i:not(.drag-handle),
+.main-content .page-content .card-header h4 > i:not(.drag-handle),
+.main-content .page-content .card-header h5 > i:not(.drag-handle) {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  border: 1px solid #fde19a;
+  border-radius: 9px;
+  background: var(--content-accent-soft);
+  color: var(--content-accent) !important;
+  font-size: 18px !important;
+  box-shadow: 0 2px 7px rgba(230, 120, 0, 0.09);
+}
+
+.main-content .page-content .card-body {
+  color: #334155;
+}
+
+.main-content .page-content .btn:not(.btn-link):not(.btn-close) {
+  border-radius: 8px !important;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.main-content .page-content .table:not(.dataTable) > thead > tr > th {
+  border-color: var(--content-border) !important;
+  background: #f7f9fc;
+  color: #53627a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.main-content .page-content .table > tbody > tr > td {
+  border-color: var(--content-border) !important;
+}
+
+.main-content .page-content .table-hover > tbody > tr:hover > * {
+  --bs-table-accent-bg: #f8fbff;
+}
+
+[data-bs-theme="dark"] {
+  --content-surface: #222830;
+  --content-canvas: #171d23;
+  --content-border: #36404a;
+  --content-border-soft: #303944;
+  --content-shadow: 0 5px 18px rgba(0, 0, 0, 0.22);
+  --content-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --content-accent-soft: rgba(230, 120, 0, 0.14);
+}
+
+[data-bs-theme="dark"] .main-content .page-content .card-header .card-title,
+[data-bs-theme="dark"] .main-content .page-content .card-header h4,
+[data-bs-theme="dark"] .main-content .page-content .card-header h5,
+[data-bs-theme="dark"] .main-content .page-content .card-header h6 {
+  color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .main-content .page-content .card-body {
+  color: #cbd5e1;
+}

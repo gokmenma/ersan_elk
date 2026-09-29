@@ -5,6 +5,7 @@ use App\Service\Gate;
 if (Gate::allows("log_kayitlari")) {
 
     $systemLogModel = new SystemLogModel();
+    $dashboardData = $systemLogModel->getActivityDashboardData();
     ?>
     <div class="container-fluid">
 
@@ -16,142 +17,124 @@ if (Gate::allows("log_kayitlari")) {
         <?php include 'layouts/breadcrumb.php'; ?>
         <!-- end page title -->
 
-        <div class="row">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm logs-page-card" style="border-radius: 12px; background: #fff;">
-                    <div class="card-header border-bottom-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-3" style="border-bottom: 1px solid rgba(226,232,240,0.6) !important;">
-                        <h5 class="card-title mb-0 d-flex align-items-center gap-2 mb-3 mt-1" style="font-family: 'Outfit', sans-serif;">
-                            <i class="bx bx-list-ul text-primary fs-4"></i> Sistem Kayıtları
-                        </h5>
-                        <ul class="nav nav-tabs card-header-tabs m-0" role="tablist">
-                            <li class="nav-item">
-                                <a class="nav-link active" data-bs-toggle="tab" href="#sistem-loglari-tab" role="tab">
-                                    <i class="bx bx-error-circle me-1"></i> Sistem Olayları
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#personel-giris-tab" role="tab">
-                                    <i class="bx bx-user me-1"></i> Personel Girişleri
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#kullanici-giris-tab" role="tab">
-                                    <i class="bx bx-shield-quarter me-1"></i> Yönetici Girişleri
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#sayfa-goruntulemeleri-tab" role="tab">
-                                    <i class="bx bx-search-alt me-1"></i> Sayfa Görüntülemeleri
-                                </a>
-                            </li>
-                            <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
-                            <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#ai-agent-logs-tab" role="tab">
-                                    <i class="bx bx-bot me-1"></i> Yapay Zeka Sorguları
-                                </a>
-                            </li>
-                            <?php endif; ?>
-                        </ul>
+        <style>
+            .activity-audit-page { --audit-primary:#3b82f6; --audit-orange:#e67800; --audit-border:#dbe4ef; --audit-muted:#64748b; }
+            .audit-hero,.audit-kpi,.audit-panel { background:var(--bs-card-bg,#fff); border:1px solid var(--audit-border); border-radius:14px; box-shadow:0 5px 18px rgba(15,23,42,.035); }
+            .audit-hero { padding:22px 28px 18px; margin-bottom:20px; }
+            .audit-eyebrow { display:flex; gap:8px; align-items:center; margin-bottom:9px; }
+            .audit-chip { border:1px solid #d9e3ee; border-radius:999px; padding:6px 12px; color:#475569; font-size:12px; background:#f8fafc; }
+            .audit-live { background:#16a34a; color:#fff; border-radius:999px; padding:4px 13px; font-size:11px; font-weight:700; }
+            .audit-title { font-size:22px; font-weight:750; color:#172033; margin:0 0 4px; }
+            .audit-subtitle { color:#64748b; margin:0; font-size:13px; }
+            .audit-view-switch { display:inline-flex; padding:4px; background:#f1f5f9; border-radius:10px; gap:3px; }
+            .audit-switch-btn { border:0; background:transparent; color:#64748b; padding:9px 14px; border-radius:8px; font-size:12px; font-weight:600; }
+            .audit-switch-btn.active { background:var(--audit-primary); color:#fff; box-shadow:0 4px 10px rgba(59,130,246,.28); }
+            .audit-quick { border-top:1px solid #edf1f6; margin-top:18px; padding-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+            .audit-quick-label { color:#64748b; font-size:12px; text-transform:uppercase; }
+            .audit-filter { border:1px solid #d8e2ee; background:#f8fafc; color:#334155; padding:8px 13px; border-radius:8px; font-size:12px; }
+            .audit-filter.active { background:var(--audit-orange); color:#fff; border-color:var(--audit-orange); }
+            .audit-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+            .audit-kpi { padding:20px 22px 14px; min-height:150px; }
+            .audit-kpi-top { display:flex; justify-content:space-between; gap:10px; }
+            .audit-kpi-label { color:#5f7190; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+            .audit-kpi-value { color:#172033; font-size:27px; line-height:1.2; font-weight:750; margin-top:8px; }
+            .audit-kpi-value.orange { color:var(--audit-orange); } .audit-kpi-value.green { color:#16a34a; }
+            .audit-kpi-icon { width:45px;height:45px;border-radius:12px;display:grid;place-items:center;font-size:21px;background:#eff6ff;color:#2563eb; }
+            .audit-kpi-icon.orange { background:#fff7df;color:#e67800; } .audit-kpi-icon.green { background:#e9fbf4;color:#059669; }
+            .audit-kpi-foot { border-top:1px solid #edf1f6; margin-top:20px; padding-top:11px; color:#6b7280; font-size:11px; }
+            .audit-panel { padding:20px 24px; margin-bottom:20px; }
+            .audit-panel-title { color:var(--audit-orange); font-size:15px; font-weight:700; }
+            #activityTrendChart { min-height:330px; }
+            .audit-log-area { display:none; }
+            .audit-log-area.active,.audit-dashboard-area.active { display:block; }
+            .audit-dashboard-area { display:none; }
+            .logs-page-card { overflow:hidden; }
+            .logs-page-card .card-header { padding:15px 20px 0; }
+            .audit-table-card { border:1px solid var(--audit-border) !important;border-radius:14px !important;background:#fff;box-shadow:0 5px 18px rgba(15,23,42,.035) !important; }
+            .audit-table-header { min-height:72px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #e6edf5; }
+            .audit-table-header h5 { margin:0;color:var(--audit-orange);font-size:15px;font-weight:750; }.audit-table-header small{color:#64748b;font-size:11px}
+            .audit-table-icon { width:38px;height:38px;border-radius:10px;background:#fff7df;color:var(--audit-orange);border:1px solid #fde19a;display:grid;place-items:center;font-size:20px; }
+            .audit-table-wrap { margin:0 14px 14px; }
+            #unifiedLogsTable { table-layout:auto; }
+            #unifiedLogsTable tbody td { border-color:#dbe4ef;padding:9px 10px;color:#334155;font-size:12px;vertical-align:middle; }
+            #unifiedLogsTable tbody tr:hover td { background:#f8fbff; }
+            .audit-date{display:flex;flex-direction:column;gap:2px;white-space:nowrap}.audit-date strong{font-size:11px;font-weight:600}.audit-date small{color:#7c8aa0;font-size:10px}
+            .audit-user{display:flex;align-items:center;gap:9px;white-space:nowrap}.audit-user strong{font-size:11px}.audit-avatar{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#e4e8ff;color:#4f46e5;font-size:10px;font-weight:700}
+            .audit-event-badge,.audit-module-badge,.audit-related-badge{display:inline-flex;align-items:center;gap:4px;border-radius:7px;padding:4px 8px;font-size:10px;font-weight:650;white-space:nowrap;border:1px solid transparent}
+            .audit-badge-view{background:#66758c;color:#fff}.audit-badge-login{background:#e8fbf3;color:#07875d;border-color:#c6f1df}.audit-badge-critical,.audit-badge-delete{background:#fff0f1;color:#dc3545;border-color:#ffd5d9}.audit-badge-ai{background:#f0ecff;color:#6941c6;border-color:#dfd5ff}.audit-badge-operation{background:#eaf2ff;color:#2563eb;border-color:#cfdef8}
+            .audit-module-badge{background:#f8fafc;color:#475569;border-color:#dbe4ef}.audit-related-badge{background:#f1f5f9;color:#475569;border-color:#dbe4ef;font-family:monospace;font-weight:500}
+            .audit-detail-btn{display:inline-flex;align-items:center;gap:4px;background:#fff;color:#0878ff;border:1px solid #1682ff;border-radius:6px;padding:4px 8px;font-size:10px;margin-right:8px}.audit-detail-text{font-size:11px;color:#334155}
+            @media(max-width:991px){.audit-kpi-grid{grid-template-columns:repeat(2,1fr)}.audit-view-switch{margin-top:14px}.audit-hero{text-align:left}}
+            @media(max-width:575px){.audit-kpi-grid{grid-template-columns:1fr}.audit-hero{padding:18px}.audit-switch-btn{padding:8px 9px}.audit-quick{align-items:stretch}.audit-filter{flex:1}}
+            [data-bs-theme="dark"] .audit-hero,[data-bs-theme="dark"] .audit-kpi,[data-bs-theme="dark"] .audit-panel { --audit-border:#36404a; }
+            [data-bs-theme="dark"] .audit-title,[data-bs-theme="dark"] .audit-kpi-value { color:#f1f5f9; }
+            [data-bs-theme="dark"] .audit-chip,[data-bs-theme="dark"] .audit-filter { background:#171d23;color:#cbd5e1;border-color:#36404a; }
+            [data-bs-theme="dark"] .audit-table-card { background:#222830;border-color:#36404a !important; }
+        </style>
+
+        <div class="activity-audit-page">
+            <section class="audit-hero">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <div class="audit-eyebrow"><span class="audit-chip"><i class="bx bx-shield-quarter me-1"></i> Güvenlik &amp; Denetim Merkezi</span><span class="audit-live">Canlı İzleme Aktif</span></div>
+                        <h2 class="audit-title">Sistem Aktiviteleri &amp; Denetim Paneli</h2>
+                        <p class="audit-subtitle">Kullanıcı hareketleri, sistem işlemleri, girişler ve kritik olaylar tek ekranda.</p>
                     </div>
-                    <div class="card-body">
-                        <div class="tab-content">
-                            <!-- Sistem Logları Tab'ı -->
-                            <div class="tab-pane active" id="sistem-loglari-tab" role="tabpanel">
-                                <div class="table-responsive">
-                                    <table class="table table-centered table-nowrap table-hover mb-0 align-middle w-100" id="logsTable">
-                                        <thead style="background: rgba(248,250,252,0.8);">
-                                            <tr>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Seviye</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İşlem Tipi</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İçerik</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
-                                                <th class="text-center" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İşlem</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- Personel Girişleri Tab'ı -->
-                            <div class="tab-pane" id="personel-giris-tab" role="tabpanel">
-                                <div class="table-responsive">
-                                    <table class="table table-borderless table-nowrap align-middle mb-0 w-100" id="personelLogsTable">
-                                        <thead style="background: rgba(248,250,252,0.8);">
-                                            <tr style="border-bottom: 2px solid #f1f5f9;">
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Ad Soyad</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Tarih</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Tarayıcı</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">IP</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            <!-- Yönetici Girişleri Tab'ı -->
-                            <div class="tab-pane" id="kullanici-giris-tab" role="tabpanel">
-                                <div class="table-responsive">
-                                    <table class="table table-borderless table-nowrap align-middle mb-0 w-100" id="kullaniciLogsTable">
-                                        <thead style="background: rgba(248,250,252,0.8);">
-                                            <tr style="border-bottom: 2px solid #f1f5f9;">
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Ad Soyad</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Tarih</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">IP</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            <!-- Sayfa Görüntülemeleri Tab'ı -->
-                            <div class="tab-pane" id="sayfa-goruntulemeleri-tab" role="tabpanel">
-                                <div class="table-responsive">
-                                    <table class="table table-centered table-nowrap table-hover mb-0 align-middle w-100" id="pageViewLogsTable">
-                                        <thead style="background: rgba(248,250,252,0.8);">
-                                            <tr>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İçerik</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
-                                                <th class="text-center" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İşlem</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- Yapay Zeka Sorguları Tab'ı -->
-                            <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
-                            <div class="tab-pane" id="ai-agent-logs-tab" role="tabpanel">
-                                <div class="table-responsive">
-                                    <table class="table table-centered table-hover mb-0 align-middle w-100 ai-agent-logs-table" id="aiAgentLogsTable">
-                                        <thead style="background: rgba(248,250,252,0.8);">
-                                            <tr>
-                                                <th style="width: 15%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
-                                                <th style="width: 24%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Sorgu (Prompt)</th>
-                                                <th style="width: 31%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Yapay Zeka Cevabı</th>
-                                                <th style="width: 10%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Model</th>
-                                                <th style="width: 12%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
-                                                <th style="width: 8%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Durum</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                        </div> <!-- end tab-content -->
+                    <div class="col-lg-4 text-lg-end">
+                        <div class="audit-view-switch" role="group" aria-label="Aktivite görünümü">
+                            <button type="button" class="audit-switch-btn active" data-audit-view="dashboard"><i class="bx bx-pie-chart-alt-2 me-1"></i> Aktivite Dashboard</button>
+                            <button type="button" class="audit-switch-btn" data-audit-view="logs"><i class="bx bx-list-ul me-1"></i> Aktivite Günlüğü</button>
+                        </div>
                     </div>
                 </div>
+                <div class="audit-quick">
+                    <span class="audit-quick-label"><i class="bx bx-bolt-circle me-1"></i> Hızlı filtreler:</span>
+                    <button type="button" class="audit-filter active" data-category=""><i class="bx bx-menu me-1"></i> Tüm Kayıtlar</button>
+                    <button type="button" class="audit-filter" data-category="operation"><i class="bx bx-pointer me-1"></i> Kullanıcı İşlemleri</button>
+                    <button type="button" class="audit-filter" data-category="login"><i class="bx bx-log-in me-1"></i> Girişler</button>
+                    <button type="button" class="audit-filter" data-category="delete"><i class="bx bx-trash me-1"></i> Silmeler</button>
+                    <button type="button" class="audit-filter" data-category="view"><i class="bx bx-show me-1"></i> Sayfa Ziyaretleri</button>
+                </div>
+            </section>
+
+            <div class="audit-kpi-grid">
+                <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Toplam Sistem Logu</div><div class="audit-kpi-value orange"><?= number_format($dashboardData['total'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon orange"><i class="bx bx-data"></i></span></div><div class="audit-kpi-foot"><i class="bx bx-server me-1"></i> Tüm zamanlar</div></div>
+                <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Bugünkü İşlemler</div><div class="audit-kpi-value"><?= number_format($dashboardData['today_operations'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon green"><i class="bx bx-bolt-circle"></i></span></div><div class="audit-kpi-foot"><i class="bx bx-time-five me-1"></i> İşlem ve aksiyonlar</div></div>
+                <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Bugünkü Girişler</div><div class="audit-kpi-value"><?= number_format($dashboardData['today_logins'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon orange"><i class="bx bx-log-in"></i></span></div><div class="audit-kpi-foot"><i class="bx bx-user-circle me-1"></i> Yönetici oturumları</div></div>
+                <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Kritik &amp; Hata Olayı</div><div class="audit-kpi-value green"><?= number_format($dashboardData['today_critical'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon green"><i class="bx bx-check-circle"></i></span></div><div class="audit-kpi-foot">Bugünkü kritik kayıtlar</div></div>
+            </div>
+
+            <div class="audit-dashboard-area active">
+                <section class="audit-panel">
+                    <div class="d-flex justify-content-between align-items-center mb-3"><div><div class="audit-panel-title"><i class="bx bx-line-chart me-1"></i> Son 14 Günlük Aktivite Trendi</div><small class="text-muted">Operasyonel işlemler, sayfa trafiği ve oturum açma hacmi</small></div><span class="badge bg-primary"><i class="bx bx-calendar me-1"></i> Son 14 Gün</span></div>
+                    <div id="activityTrendChart"></div>
+                </section>
+            </div>
+
+            <div class="audit-log-area">
+                <div class="card logs-page-card audit-table-card">
+                    <div class="audit-table-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="audit-table-icon"><i class="bx bx-list-ul"></i></span>
+                            <div><h5>Aktivite Listesi &amp; Filtreleme</h5><small>Anlık arama, sütun filtreleme ve tüm sistem işlem kayıtları</small></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="resetActivityFilters"><i class="bx bx-reset me-1"></i>Sıfırla</button>
+                    </div>
+                    <div class="table-responsive audit-table-wrap">
+                        <table class="table align-middle w-100 mb-0" id="unifiedLogsTable">
+                            <thead><tr>
+                                <th data-filter="date">Tarih / Saat</th>
+                                <th data-filter="string">Kullanıcı</th>
+                                <th data-filter="select">İşlem Türü</th>
+                                <th data-filter="select">Modül</th>
+                                <th data-filter="string">Yapılan İşlem / Detay</th>
+                                <th data-filter="string">İlgili Kayıt</th>
+                            </tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
             </div>
         </div>
 
@@ -380,10 +363,60 @@ if (Gate::allows("log_kayitlari")) {
     <!-- Load DataTables scripts directly in case they are not part of global layout -->
     <script src="assets/libs/datatables.net/js/jquery.dataTables.min.js"></script>
     <script src="assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js"></script>
-    <script src="assets/js/datatables.init.js"></script>
+    <link rel="stylesheet" href="assets/css/datatable-filters.css?v=<?= filemtime('assets/css/datatable-filters.css') ?>">
+    <script src="assets/js/datatable-filters.js?v=<?= filemtime('assets/js/datatable-filters.js') ?>"></script>
+    <script src="assets/js/datatables.init.js?v=<?= filemtime('assets/js/datatables.init.js') ?>"></script>
 
+    <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const dashboardData = <?= json_encode($dashboardData['trend'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            const dashboardArea = document.querySelector('.audit-dashboard-area');
+            const logArea = document.querySelector('.audit-log-area');
+
+            function setAuditView(view) {
+                document.querySelectorAll('[data-audit-view]').forEach(function (button) {
+                    button.classList.toggle('active', button.dataset.auditView === view);
+                });
+                dashboardArea.classList.toggle('active', view === 'dashboard');
+                logArea.classList.toggle('active', view === 'logs');
+                if (view === 'logs' && $.fn.DataTable) {
+                    setTimeout(function () { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); }, 50);
+                }
+            }
+
+            document.querySelectorAll('[data-audit-view]').forEach(function (button) {
+                button.addEventListener('click', function () { setAuditView(button.dataset.auditView); });
+            });
+
+            document.querySelectorAll('.audit-filter').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    document.querySelectorAll('.audit-filter').forEach(function (item) { item.classList.remove('active'); });
+                    button.classList.add('active');
+                    setAuditView('logs');
+                    if ($.fn.DataTable.isDataTable('#unifiedLogsTable')) {
+                        $('#unifiedLogsTable').DataTable().ajax.reload();
+                    }
+                });
+            });
+
+            if (typeof ApexCharts !== 'undefined') {
+                new ApexCharts(document.querySelector('#activityTrendChart'), {
+                    chart: { type: 'area', height: 330, toolbar: { show: false }, fontFamily: 'inherit' },
+                    series: [
+                        { name: 'Kullanıcı İşlemleri', data: dashboardData.operations },
+                        { name: 'Sayfa Görüntülemeleri', data: dashboardData.views },
+                        { name: 'Girişler', data: dashboardData.logins }
+                    ],
+                    colors: ['#3b82f6', '#94a3b8', '#10b981'],
+                    dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 },
+                    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: .22, opacityTo: .02, stops: [0, 95] } },
+                    xaxis: { categories: dashboardData.labels, axisBorder: { show: false }, axisTicks: { show: false } },
+                    yaxis: { min: 0, forceNiceScale: true }, grid: { borderColor: '#e9eef5', strokeDashArray: 4 },
+                    legend: { position: 'top', horizontalAlign: 'right' }, tooltip: { shared: true, intersect: false }
+                }).render();
+            }
+
             // Setup DataTables parameters
             const dtOptions = {
                 language: $.extend(true, {}, DT_LANG_TR),
@@ -392,103 +425,37 @@ if (Gate::allows("log_kayitlari")) {
             };
 
             if ($.fn.DataTable) {
-                // Initialize tables with server-side processing
-                $('#logsTable').DataTable($.extend({}, dtOptions, {
-                    processing: true,
-                    serverSide: true,
-                    ajax: {
-                        url: 'views/logs/api.php',
-                        type: 'POST',
-                        data: { action: 'get-system-logs' }
-                    },
-                    columns: [
-                        { data: 'level' },
-                        { data: 'user' },
-                        { data: 'action_type' },
-                        { data: 'description' },
-                        { data: 'date' },
-                        { data: 'actions', orderable: false }
-                    ],
-                    order: [[4, 'desc']]
-                }));
-
-                $('#personelLogsTable').DataTable($.extend({}, dtOptions, {
-                    processing: true,
-                    serverSide: true,
-                    ajax: {
-                        url: 'views/logs/api.php',
-                        type: 'POST',
-                        data: { action: 'get-personel-logs' }
-                    },
-                    columns: [
-                        { data: 'user' },
-                        { data: 'date' },
-                        { data: 'browser' },
-                        { data: 'ip' }
-                    ],
-                    order: [[1, 'desc']]
-                }));
-
-                $('#kullaniciLogsTable').DataTable($.extend({}, dtOptions, {
-                    processing: true,
-                    serverSide: true,
-                    ajax: {
-                        url: 'views/logs/api.php',
-                        type: 'POST',
-                        data: { action: 'get-user-logs' }
-                    },
-                    columns: [
-                        { data: 'user' },
-                        { data: 'date' },
-                        { data: 'ip' }
-                    ],
-                    order: [[1, 'desc']]
-                }));
-
-                $('#pageViewLogsTable').DataTable($.extend({}, dtOptions, {
-                    processing: true,
-                    serverSide: true,
-                    ajax: {
-                        url: 'views/logs/api.php',
-                        type: 'POST',
-                        data: { action: 'get-page-view-logs' }
-                    },
-                    columns: [
-                        { data: 'user' },
-                        { data: 'description' },
-                        { data: 'date' },
-                        { data: 'actions', orderable: false }
-                    ],
-                    order: [[2, 'desc']]
-                }));
-
-                $('#aiAgentLogsTable').DataTable(applyLengthStateSave({
-                    ...getDatatableOptions(),
-                    ...dtOptions,
+                const unifiedTable = $('#unifiedLogsTable').DataTable(applyLengthStateSave({ ...getDatatableOptions(), ...dtOptions,
                     processing: true,
                     serverSide: true,
                     autoWidth: false,
                     ajax: {
                         url: 'views/logs/api.php',
                         type: 'POST',
-                        data: { action: 'get-ai-agent-logs' }
+                        data: function (request) {
+                            request.action = 'get-unified-logs';
+                            request.category = document.querySelector('.audit-filter.active')?.dataset.category || '';
+                        }
                     },
                     columns: [
-                        { data: 0 },
-                        { data: 1 },
-                        { data: 2 },
-                        { data: 3 },
-                        { data: 4 },
-                        { data: 5 }
+                        { data: 'date' },
+                        { data: 'user' },
+                        { data: 'type' },
+                        { data: 'module' },
+                        { data: 'detail' },
+                        { data: 'related' }
                     ],
-                    order: [[4, 'desc']]
+                    order: [[0, 'desc']]
                 }));
-            }
 
-            // Tab change event: redraw DataTable to prevent layout issues on hidden tabs
-            $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
-            });
+                $('#resetActivityFilters').on('click', function () {
+                    localStorage.removeItem('dt_adv_filters_unifiedLogsTable');
+                    unifiedTable.search('');
+                    unifiedTable.columns().search('');
+                    unifiedTable.ajax.reload();
+                    window.location.reload();
+                });
+            }
 
             // Log Detay Modal JS logic
             $('body').on('click', '.btn-log-detay', function () {

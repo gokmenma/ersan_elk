@@ -249,28 +249,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         transform: translateY(-50%) rotate(-180deg);
     }
 
-    #filterAccordion .nav-tabs-custom .nav-link {
-        padding: 0.6rem 1.2rem;
-        font-weight: 600;
-        font-size: 0.85rem;
-        border: none;
-        color: var(--vz-body-color);
-        transition: all 0.2s ease;
-    }
 
-    #filterAccordion .nav-tabs-custom .nav-link:hover {
-        color: var(--vz-primary);
-    }
-
-    #filterAccordion .nav-tabs-custom .nav-link.active {
-        color: var(--vz-primary);
-        background-color: rgba(var(--vz-primary-rgb), 0.1);
-        border-radius: 6px;
-    }
-
-    [data-bs-theme="dark"] #filterAccordion .nav-tabs-custom .nav-link.active {
-        background-color: rgba(var(--vz-primary-rgb), 0.2);
-    }
 
     /* Ticker Tape Styles */
     .ticker-container {
@@ -358,22 +337,52 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        min-height: 40px;
-        padding: 9px 14px;
-        border-radius: 9px;
-        color: #475467;
+        min-height: 38px;
+        padding: 8px 14px;
+        border-radius: 8px;
+        color: #495057 !important;
+        font-weight: 500;
         white-space: nowrap;
+        background-color: transparent;
+        border: none !important;
+        transition: all 0.2s ease;
     }
 
     .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link i {
         font-size: 17px;
-        opacity: .8;
+        margin-right: 4px;
+        color: inherit !important;
     }
 
-    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link.active {
-        color: #fff;
-        background: #1f2937;
-        box-shadow: 0 4px 10px rgba(31, 41, 55, .16);
+    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link:hover {
+        background-color: rgba(var(--bs-primary-rgb, 81, 86, 190), 0.08);
+        color: var(--bs-primary, #5156be) !important;
+    }
+
+    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link.active,
+    .puantaj-workspace #puantajTabs .nav-link.active {
+        color: #ffffff !important;
+        background: var(--bs-primary, #5156be) !important;
+        box-shadow: 0 4px 10px rgba(var(--bs-primary-rgb, 81, 86, 190), 0.3) !important;
+    }
+
+    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link.active *,
+    .puantaj-workspace #puantajTabs .nav-link.active * {
+        color: #ffffff !important;
+    }
+
+    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link.text-warning:not(.active) {
+        color: #e59819 !important;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link {
+        color: #adb5bd !important;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link.active,
+    [data-bs-theme="dark"] .puantaj-workspace #puantajTabs .nav-link.active {
+        color: #ffffff !important;
+        background: var(--bs-primary, #5156be) !important;
     }
 
     .puantaj-workspace #collapseOne .accordion-body {
@@ -865,40 +874,35 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     id="filterAccordionHeader" aria-expanded="false" aria-controls="collapseOne" style="cursor: pointer;">
                                     
                                     <div class="d-flex align-items-center flex-grow-1">
-                                        <ul class="nav nav-tabs nav-tabs-custom nav-success border-bottom-0" role="tablist" id="puantajTabs">
+                                        <ul class="nav nav-tabs nav-tabs-custom border-bottom-0" role="tablist" id="puantajTabs">
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" data-bs-toggle="tab" href="#okuma"
                                                     role="tab" data-tab-name="okuma" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="bx bx-book-reader"></i></span>
-                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-book-reader"></i>Okuma İşlemleri</span>
+                                                    <i class="bx bx-book-reader me-1"></i><span class="tab-label">Okuma İşlemleri</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="bx bx-power-off"></i></span>
-                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-power-off"></i>Kesme/Açma</span>
+                                                    <i class="bx bx-power-off me-1"></i><span class="tab-label">Kesme/Açma</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="bx bx-reset"></i></span>
-                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-reset"></i>Sayaç Sökme Takma</span>
+                                                    <i class="bx bx-reset me-1"></i><span class="tab-label">Sayaç Sökme Takma</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#muhurleme" role="tab" data-tab-name="muhurleme" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="bx bx-lock-alt"></i></span>
-                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-lock-alt"></i>Mühürleme</span>
+                                                    <i class="bx bx-lock-alt me-1"></i><span class="tab-label">Mühürleme</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link text-warning <?= $activeTab === 'eslesmeyen' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#eslesmeyen" role="tab" data-tab-name="eslesmeyen" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="bx bx-error-circle"></i></span>
-                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-error-circle"></i>Eşleşmeyen <span id="unmatchedTabBadge" class="badge bg-warning-subtle text-warning ms-1 d-none">0</span></span>
+                                                    <i class="bx bx-error-circle me-1"></i><span class="tab-label">Eşleşmeyen</span> <span id="unmatchedTabBadge" class="badge bg-warning-subtle text-warning ms-1 d-none">0</span>
                                                 </a>
                                             </li>
                                         </ul>

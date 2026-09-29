@@ -6,7 +6,9 @@ $(document).ready(function () {
       serverSide: true,
       colReorder: true,
       stateSave: true,
-      responsive: true,
+      // Bu liste yatay kaydırma ve Sütunlar menüsü kullanır; Responsive eklentisinin
+      // eklediği "+" detay kontrolü fazladan kolon gibi göründüğü için kapalıdır.
+      responsive: false,
       stateSaveParams: function (settings, data) {
         // Global stateSaveParams'ı taklit et ama sıralama ve görünürlüğü KORU
         data.start = 0;

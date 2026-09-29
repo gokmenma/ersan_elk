@@ -28,8 +28,74 @@ if (!Gate::allows("log_kayitlari")) {
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $systemLogModel = new SystemLogModel();
 
+$getColumnFilter = static function (int $index): string {
+    $raw = trim((string) ($_POST['columns'][$index]['search']['value'] ?? ''));
+    if ($raw === '') {
+        return '';
+    }
+    $separator = strpos($raw, ':');
+    return $separator === false ? $raw : trim(substr($raw, $separator + 1));
+};
+
+$normalizeFilterDate = static function (string $value): string {
+    if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/', $value, $parts)) {
+        return sprintf('%04d-%02d-%02d', (int) $parts[3], (int) $parts[2], (int) $parts[1]);
+    }
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
+};
+
 try {
     switch ($action) {
+        case 'get-unified-logs':
+            $draw = (int) ($_POST['draw'] ?? 1);
+            $filters = [
+                'limit' => (int) ($_POST['length'] ?? 25),
+                'offset' => (int) ($_POST['start'] ?? 0),
+                'search' => trim((string) ($_POST['search']['value'] ?? '')),
+                'category' => trim((string) ($_POST['category'] ?? '')),
+                'date' => $normalizeFilterDate($getColumnFilter(0)),
+                'user' => $getColumnFilter(1),
+                'type' => $getColumnFilter(2),
+                'module' => $getColumnFilter(3),
+                'detail' => $getColumnFilter(4),
+                'related' => $getColumnFilter(5),
+                'include_ai' => Gate::allows('ai_is_ajani_arac_takip'),
+            ];
+            $logs = $systemLogModel->getUnifiedActivities($filters);
+            $totalRecords = $systemLogModel->getUnifiedActivitiesCount(['include_ai' => $filters['include_ai']]);
+            $filteredRecords = $systemLogModel->getUnifiedActivitiesCount($filters);
+            $badgeMap = [
+                'view' => ['bx-show', 'Sayfa Ziyareti', 'audit-badge-view'],
+                'login' => ['bx-log-in', 'Giriş', 'audit-badge-login'],
+                'critical' => ['bx-error-circle', 'Kritik Olay', 'audit-badge-critical'],
+                'delete' => ['bx-trash', 'Silme', 'audit-badge-delete'],
+                'ai' => ['bx-bot', 'Yapay Zeka', 'audit-badge-ai'],
+                'operation' => ['bx-pointer', 'İşlem', 'audit-badge-operation'],
+            ];
+            $data = [];
+            foreach ($logs as $log) {
+                $category = (string) ($log->category ?? 'operation');
+                [$icon, $fallbackLabel, $badgeClass] = $badgeMap[$category] ?? $badgeMap['operation'];
+                $dateValue = strtotime((string) $log->activity_date);
+                $userName = (string) ($log->user_name ?: 'Sistem');
+                $initial = htmlspecialchars(mb_substr($userName, 0, 1, 'UTF-8'), ENT_QUOTES, 'UTF-8');
+                $escapedUser = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
+                $eventType = htmlspecialchars((string) ($log->event_type ?: $fallbackLabel), ENT_QUOTES, 'UTF-8');
+                $module = htmlspecialchars((string) ($log->module_name ?: 'Sistem'), ENT_QUOTES, 'UTF-8');
+                $detail = htmlspecialchars((string) ($log->detail ?? ''), ENT_QUOTES, 'UTF-8');
+                $related = htmlspecialchars((string) ($log->related_record ?? '-'), ENT_QUOTES, 'UTF-8');
+                $data[] = [
+                    'date' => '<div class="audit-date" data-sort="'.date('YmdHis', $dateValue).'"><strong>'.date('d.m.Y H:i:s', $dateValue).'</strong><small>'.($dateValue >= time() - 60 ? 'Az önce' : date('H:i', $dateValue)).'</small></div>',
+                    'user' => '<div class="audit-user"><span class="audit-avatar">'.$initial.'</span><strong>'.$escapedUser.'</strong></div>',
+                    'type' => '<span class="audit-event-badge '.$badgeClass.'"><i class="bx '.$icon.'"></i>'.$eventType.'</span>',
+                    'module' => '<span class="audit-module-badge"><i class="bx bx-cube-alt"></i>'.$module.'</span>',
+                    'detail' => '<button type="button" class="audit-detail-btn btn-log-detay" data-title="'.$eventType.'" data-user="'.$escapedUser.'" data-date="'.date('d.m.Y H:i', $dateValue).'" data-content="'.$detail.'" data-changes="W10="><i class="bx bx-show"></i> Detay</button><span class="audit-detail-text">'.$detail.'</span>',
+                    'related' => '<span class="audit-related-badge">'.$related.'</span>',
+                ];
+            }
+            echo json_encode(['draw' => $draw, 'recordsTotal' => $totalRecords, 'recordsFiltered' => $filteredRecords, 'data' => $data]);
+            break;
+
         case 'get-system-logs':
             $draw = intval($_POST['draw'] ?? 1);
             $start = intval($_POST['start'] ?? 0);
@@ -40,8 +106,17 @@ try {
                 'limit' => $length,
                 'offset' => $start,
                 'search' => $search,
-                'max_level' => 2 // Page view hariç
+                'max_level' => 2, // Page view hariç
+                'column_user' => $getColumnFilter(1),
+                'column_action' => $getColumnFilter(2),
+                'column_description' => $getColumnFilter(3),
+                'column_date' => $normalizeFilterDate($getColumnFilter(4)),
             ];
+
+            $levelFilter = mb_strtolower($getColumnFilter(0), 'UTF-8');
+            if ($levelFilter !== '') {
+                $filters['level'] = str_contains($levelFilter, 'kritik') ? 2 : (str_contains($levelFilter, 'önemli') ? 1 : 0);
+            }
 
             $logs = $systemLogModel->getAllLogs($filters);
             $totalRecords = $systemLogModel->getLogsCount(['max_level' => 2]);
@@ -169,6 +244,9 @@ try {
             $start = intval($_POST['start'] ?? 0);
             $length = intval($_POST['length'] ?? 10);
             $search = $_POST['search']['value'] ?? '';
+            if ($search === '') {
+                $search = $getColumnFilter(0) ?: ($getColumnFilter(2) ?: $getColumnFilter(3));
+            }
 
             $logs = $systemLogModel->getPersonelLoginLogs($length, $start, $search);
             $totalRecords = $systemLogModel->getPersonelLoginLogsCount();
@@ -226,6 +304,9 @@ try {
             $start = intval($_POST['start'] ?? 0);
             $length = intval($_POST['length'] ?? 10);
             $search = $_POST['search']['value'] ?? '';
+            if ($search === '') {
+                $search = $getColumnFilter(0) ?: $getColumnFilter(2);
+            }
 
             $logs = $systemLogModel->getUserLoginLogs($length, $start, $search);
             $totalRecords = $systemLogModel->getUserLoginLogsCount();
@@ -282,6 +363,9 @@ try {
             $start = intval($_POST['start'] ?? 0);
             $length = intval($_POST['length'] ?? 10);
             $search = $_POST['search']['value'] ?? '';
+            if ($search === '') {
+                $search = $getColumnFilter(0) ?: ($getColumnFilter(1) ?: ($getColumnFilter(2) ?: ($getColumnFilter(3) ?: $getColumnFilter(5))));
+            }
 
             $logs = $systemLogModel->getAiAgentLogs($length, $start, $search);
             $totalRecords = $systemLogModel->getAiAgentLogsCount();
@@ -355,6 +439,9 @@ try {
             $start = intval($_POST['start'] ?? 0);
             $length = intval($_POST['length'] ?? 10);
             $search = $_POST['search']['value'] ?? '';
+            if ($search === '') {
+                $search = $getColumnFilter(0) ?: $getColumnFilter(1);
+            }
 
             $logs = $systemLogModel->getPageViewLogs($length, $start, $search);
             $totalRecords = $systemLogModel->getPageViewLogsCount();

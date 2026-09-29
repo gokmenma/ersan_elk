@@ -153,6 +153,23 @@ class SystemLogModel extends Model
             $params[] = $searchTerm;
         }
 
+        if (!empty($filters['column_user'])) {
+            $conditions[] = 'u.adi_soyadi LIKE ?';
+            $params[] = '%' . $filters['column_user'] . '%';
+        }
+        if (!empty($filters['column_action'])) {
+            $conditions[] = 'l.action_type LIKE ?';
+            $params[] = '%' . $filters['column_action'] . '%';
+        }
+        if (!empty($filters['column_description'])) {
+            $conditions[] = 'l.description LIKE ?';
+            $params[] = '%' . $filters['column_description'] . '%';
+        }
+        if (!empty($filters['column_date'])) {
+            $conditions[] = 'DATE(l.created_at) = ?';
+            $params[] = $filters['column_date'];
+        }
+
         $where = implode(' AND ', $conditions);
 
         $sql = "SELECT l.*, u.adi_soyadi 
@@ -211,6 +228,23 @@ class SystemLogModel extends Model
             $params[] = $searchTerm;
         }
 
+        if (!empty($filters['column_user'])) {
+            $conditions[] = 'u.adi_soyadi LIKE ?';
+            $params[] = '%' . $filters['column_user'] . '%';
+        }
+        if (!empty($filters['column_action'])) {
+            $conditions[] = 'l.action_type LIKE ?';
+            $params[] = '%' . $filters['column_action'] . '%';
+        }
+        if (!empty($filters['column_description'])) {
+            $conditions[] = 'l.description LIKE ?';
+            $params[] = '%' . $filters['column_description'] . '%';
+        }
+        if (!empty($filters['column_date'])) {
+            $conditions[] = 'DATE(l.created_at) = ?';
+            $params[] = $filters['column_date'];
+        }
+
         $where = implode(' AND ', $conditions);
 
         $sql = "SELECT COUNT(*) as total 
@@ -254,6 +288,245 @@ class SystemLogModel extends Model
         $stmt->bindValue(1, $_SESSION['firma_id'], PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Aktivite denetim ekranında kullanılan firma bazlı KPI ve trend verileri.
+     */
+    public function getActivityDashboardData(): array
+    {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+
+        $summarySql = "SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) <> :page_level_1 THEN 1 ELSE 0 END) AS today_operations,
+                SUM(CASE WHEN DATE(created_at) = CURDATE() AND action_type = 'Başarılı Giriş' THEN 1 ELSE 0 END) AS today_logins,
+                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :critical_level THEN 1 ELSE 0 END) AS today_critical
+            FROM {$this->table}
+            WHERE firma_id = :firma_id";
+        $summaryStmt = $this->db->prepare($summarySql);
+        $summaryStmt->execute([
+            ':page_level_1' => self::LEVEL_PAGE_VIEW,
+            ':critical_level' => self::LEVEL_CRITICAL,
+            ':firma_id' => $firmaId,
+        ]);
+        $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $trendSql = "SELECT DATE(created_at) AS log_date,
+                SUM(CASE WHEN COALESCE(level, 0) <> :page_level_1 THEN 1 ELSE 0 END) AS operation_count,
+                SUM(CASE WHEN COALESCE(level, 0) = :page_level_2 THEN 1 ELSE 0 END) AS page_count,
+                SUM(CASE WHEN action_type = 'Başarılı Giriş' THEN 1 ELSE 0 END) AS login_count
+            FROM {$this->table}
+            WHERE firma_id = :firma_id
+              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 13 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY log_date";
+        $trendStmt = $this->db->prepare($trendSql);
+        $trendStmt->execute([
+            ':page_level_1' => self::LEVEL_PAGE_VIEW,
+            ':page_level_2' => self::LEVEL_PAGE_VIEW,
+            ':firma_id' => $firmaId,
+        ]);
+        $trendMap = [];
+        foreach ($trendStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $trendMap[$row['log_date']] = $row;
+        }
+
+        $trend = ['labels' => [], 'operations' => [], 'views' => [], 'logins' => []];
+        for ($daysAgo = 13; $daysAgo >= 0; $daysAgo--) {
+            $date = date('Y-m-d', strtotime('-' . $daysAgo . ' days'));
+            $row = $trendMap[$date] ?? [];
+            $trend['labels'][] = date('d.m', strtotime($date));
+            $trend['operations'][] = (int) ($row['operation_count'] ?? 0);
+            $trend['views'][] = (int) ($row['page_count'] ?? 0);
+            $trend['logins'][] = (int) ($row['login_count'] ?? 0);
+        }
+
+        return [
+            'total' => (int) ($summary['total'] ?? 0),
+            'today_operations' => (int) ($summary['today_operations'] ?? 0),
+            'today_logins' => (int) ($summary['today_logins'] ?? 0),
+            'today_critical' => (int) ($summary['today_critical'] ?? 0),
+            'trend' => $trend,
+        ];
+    }
+
+    /**
+     * Farklı aktivite kaynaklarını denetim günlüğü için ortak bir yapıda listeler.
+     */
+    public function getUnifiedActivities(array $filters = []): array
+    {
+        [$sql, $params] = $this->buildUnifiedActivityQuery($filters, false);
+        $sql .= ' ORDER BY activity_date DESC LIMIT :limit OFFSET :offset';
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', max(1, (int) ($filters['limit'] ?? 25)), PDO::PARAM_INT);
+        $stmt->bindValue(':offset', max(0, (int) ($filters['offset'] ?? 0)), PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getUnifiedActivitiesCount(array $filters = []): int
+    {
+        $hasTextFilter = false;
+        foreach (['search', 'date', 'user', 'type', 'module', 'detail', 'related'] as $filterKey) {
+            if (!empty($filters[$filterKey])) {
+                $hasTextFilter = true;
+                break;
+            }
+        }
+        if (!$hasTextFilter) {
+            return $this->getUnifiedActivitiesFastCount($filters);
+        }
+        [$sql, $params] = $this->buildUnifiedActivityQuery($filters, true);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
+    }
+
+    private function getUnifiedActivitiesFastCount(array $filters): int
+    {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $category = (string) ($filters['category'] ?? '');
+        $queries = [];
+        $params = [];
+
+        if ($category !== 'ai') {
+            $systemWhere = 'firma_id = :firma_system_count';
+            if ($category === 'view') $systemWhere .= ' AND level = 3';
+            elseif ($category === 'login') $systemWhere .= " AND action_type = 'Başarılı Giriş'";
+            elseif ($category === 'critical') $systemWhere .= ' AND level = 2';
+            elseif ($category === 'delete') $systemWhere .= " AND action_type LIKE '%Sil%'";
+            elseif ($category === 'operation') $systemWhere .= " AND COALESCE(level, 0) <> 3 AND action_type <> 'Başarılı Giriş' AND level <> 2 AND action_type NOT LIKE '%Sil%'";
+            $queries[] = "SELECT COUNT(*) AS cnt FROM system_logs WHERE {$systemWhere}";
+            $params[':firma_system_count'] = $firmaId;
+        }
+        if (in_array($category, ['', 'login'], true)) {
+            $queries[] = 'SELECT COUNT(*) AS cnt FROM personel_giris_loglari pg INNER JOIN personel p ON p.id = pg.personel_id WHERE p.firma_id = :firma_personel_count';
+            $params[':firma_personel_count'] = $firmaId;
+        }
+        if (!empty($filters['include_ai']) && in_array($category, ['', 'ai'], true)) {
+            $queries[] = 'SELECT COUNT(*) AS cnt FROM ai_agent_logs WHERE firma_id = :firma_ai_count';
+            $params[':firma_ai_count'] = $firmaId;
+        }
+
+        $stmt = $this->db->prepare('SELECT COALESCE(SUM(counts.cnt), 0) FROM (' . implode(' UNION ALL ', $queries) . ') counts');
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
+    }
+
+    private function buildUnifiedActivityQuery(array $filters, bool $countOnly): array
+    {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $category = (string) ($filters['category'] ?? '');
+        $includeSystem = !in_array($category, ['ai'], true);
+        $includePersonnel = in_array($category, ['', 'login'], true);
+        $includeAi = !empty($filters['include_ai']) && in_array($category, ['', 'ai'], true);
+        $systemCategorySql = '';
+        if ($category === 'view') {
+            $systemCategorySql = ' AND l.level = 3';
+        } elseif ($category === 'login') {
+            $systemCategorySql = " AND l.action_type = 'Başarılı Giriş'";
+        } elseif ($category === 'critical') {
+            $systemCategorySql = ' AND l.level = 2';
+        } elseif ($category === 'delete') {
+            $systemCategorySql = " AND l.action_type LIKE '%Sil%'";
+        } elseif ($category === 'operation') {
+            $systemCategorySql = " AND COALESCE(l.level, 0) <> 3 AND l.action_type <> 'Başarılı Giriş' AND l.level <> 2 AND l.action_type NOT LIKE '%Sil%'";
+        }
+
+        $parts = [];
+        if ($includeSystem) {
+            $parts[] = "
+            SELECT l.id, l.created_at AS activity_date,
+                   COALESCE(NULLIF(u.adi_soyadi, ''), 'Sistem') AS user_name,
+                   CASE
+                       WHEN l.level = 3 THEN 'Sayfa Ziyareti'
+                       WHEN l.action_type = 'Başarılı Giriş' THEN 'Yönetici Girişi'
+                       WHEN l.level = 2 THEN 'Kritik Olay'
+                       ELSE COALESCE(NULLIF(l.action_type, ''), 'Sistem İşlemi')
+                   END AS event_type,
+                   CASE WHEN l.level = 3 THEN 'Navigasyon' WHEN l.action_type = 'Başarılı Giriş' THEN 'Oturum' ELSE 'Sistem' END AS module_name,
+                   l.description AS detail,
+                   CASE WHEN l.level = 3 THEN 'Sayfa' WHEN l.action_type = 'Başarılı Giriş' THEN 'Yönetici Oturumu' ELSE CONCAT('Log #', l.id) END AS related_record,
+                   CASE WHEN l.level = 3 THEN 'view' WHEN l.action_type = 'Başarılı Giriş' THEN 'login' WHEN l.level = 2 THEN 'critical' WHEN l.action_type LIKE '%Sil%' THEN 'delete' ELSE 'operation' END AS category,
+                   COALESCE(l.level, 0) AS severity
+            FROM system_logs l
+            LEFT JOIN users u ON u.id = l.user_id
+            WHERE l.firma_id = :firma_system{$systemCategorySql}";
+        }
+        if ($includePersonnel) {
+            $parts[] = "
+            SELECT pg.id, pg.giris_tarihi, p.adi_soyadi, 'Personel Girişi', 'Personel PWA',
+                   CONCAT('Personel uygulamasına giriş yapıldı', CASE WHEN pg.tarayici IS NOT NULL AND pg.tarayici <> '' THEN CONCAT(' · ', pg.tarayici) ELSE '' END),
+                   COALESCE(NULLIF(pg.ip_adresi, ''), 'Personel Oturumu'), 'login', 0
+            FROM personel_giris_loglari pg
+            INNER JOIN personel p ON p.id = pg.personel_id
+            WHERE p.firma_id = :firma_personel";
+        }
+
+        if ($includeAi) {
+            $parts[] = "
+            SELECT a.id, a.created_at, COALESCE(NULLIF(u.adi_soyadi, ''), NULLIF(u.user_name, ''), CONCAT('Kullanıcı #', a.user_id)),
+                   'Yapay Zeka Sorgusu', 'Yapay Zeka',
+                   CONCAT(COALESCE(a.prompt, ''), CASE WHEN a.status IS NOT NULL THEN CONCAT(' · Durum: ', a.status) ELSE '' END),
+                   COALESCE(NULLIF(a.model_used, ''), 'AI Agent'), 'ai', CASE WHEN a.status = 'error' THEN 2 ELSE 0 END
+            FROM ai_agent_logs a
+            LEFT JOIN users u ON u.id = a.user_id
+            WHERE a.firma_id = :firma_ai";
+        }
+        $hasOuterFilter = false;
+        foreach (['search', 'date', 'user', 'type', 'module', 'detail', 'related'] as $outerFilterKey) {
+            if (!empty($filters[$outerFilterKey])) {
+                $hasOuterFilter = true;
+                break;
+            }
+        }
+        if (!$countOnly && !$hasOuterFilter) {
+            $candidateLimit = max(1, (int) ($filters['offset'] ?? 0) + (int) ($filters['limit'] ?? 25));
+            $parts = array_map(
+                static fn(string $part): string => '(' . $part . ' ORDER BY 2 DESC LIMIT ' . $candidateLimit . ')',
+                $parts
+            );
+        }
+        $union = implode(' UNION ALL ', $parts);
+
+        $conditions = [];
+        $params = [
+        ];
+        if ($includeSystem) {
+            $params[':firma_system'] = $firmaId;
+        }
+        if ($includePersonnel) {
+            $params[':firma_personel'] = $firmaId;
+        }
+        if ($includeAi) {
+            $params[':firma_ai'] = $firmaId;
+        }
+        $searchColumns = ['date' => 'activity_date', 'user' => 'user_name', 'type' => 'event_type', 'module' => 'module_name', 'detail' => 'detail', 'related' => 'related_record'];
+        foreach ($searchColumns as $key => $column) {
+            if (!empty($filters[$key])) {
+                if ($key === 'date') {
+                    $conditions[] = 'DATE(activity.activity_date) = :filter_date';
+                    $params[':filter_date'] = $filters[$key];
+                } else {
+                    $conditions[] = "activity.{$column} LIKE :filter_{$key}";
+                    $params[":filter_{$key}"] = '%' . $filters[$key] . '%';
+                }
+            }
+        }
+        if (!empty($filters['search'])) {
+            $conditions[] = '(activity.user_name LIKE :global_search OR activity.event_type LIKE :global_search OR activity.module_name LIKE :global_search OR activity.detail LIKE :global_search OR activity.related_record LIKE :global_search)';
+            $params[':global_search'] = '%' . $filters['search'] . '%';
+        }
+
+        $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
+        $sql = $countOnly
+            ? "SELECT COUNT(*) FROM ({$union}) activity{$where}"
+            : "SELECT * FROM ({$union}) activity{$where}";
+        return [$sql, $params];
     }
 
     /**

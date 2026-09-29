@@ -3,6 +3,7 @@
 use App\Model\TalepModel;
 use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
+use App\Model\TalepDashboardModel;
 use App\Helper\Form;
 use App\Service\Gate;
 
@@ -23,7 +24,8 @@ if (!$canAvans && !$canIzin && !$canAriza && !$canTalepler) {
 
 // Hangi tabın aktif olacağını yetkilere göre zorunlu belirle
 $currentTab = $_GET['tab'] ?? '';
-if (empty($currentTab) || 
+if (empty($currentTab) ||
+    ($currentTab == 'dashboard' && !$canAvans && !$canIzin && !$canAriza) ||
     ($currentTab == 'avans' && !$canAvans) || 
     ($currentTab == 'izin' && !$canIzin) || 
     ($currentTab == 'talepler' && !$canAriza)) {
@@ -36,6 +38,8 @@ if (empty($currentTab) ||
 $talepModel = new TalepModel();
 $avansModel = new AvansModel();
 $izinModel = new PersonelIzinleriModel();
+$dashboardModel = new TalepDashboardModel();
+$dashboardData = $dashboardModel->getYoneticiOzeti($canAvans, $canIzin, $canAriza);
 
 // URL parametresi ile görünüm tipi
 $showApproved = isset($_GET['show']) && $_GET['show'] === 'approved';
@@ -94,6 +98,17 @@ $izinTurleri = [
 ];
 ?>
 <link rel="stylesheet" href="views/talepler/assets/style.css?v=<?= filemtime(__DIR__ . '/assets/style.css') ?>">
+<script>
+    (function () {
+        try {
+            if (localStorage.getItem('talepler_summary_cards_hidden') === '1') {
+                document.documentElement.classList.add('talepler-summary-hidden');
+            }
+        } catch (e) {
+            // localStorage kullanılamıyorsa kartlar varsayılan olarak görünür kalır.
+        }
+    })();
+</script>
 
 <div class="container-fluid">
     <?php
@@ -103,7 +118,8 @@ $izinTurleri = [
     <?php include 'layouts/breadcrumb.php'; ?>
 
     <!-- Özet Kartları -->
-    <div class="row mb-4 g-3">
+    <div class="summary-cards-collapse" id="taleplerSummaryCards">
+    <div class="row g-3 summary-cards-content">
         <?php if ($canAvans): ?>
         <div class="col-xl-3 col-md-6">
             <div class="stat-card"
@@ -183,11 +199,17 @@ $izinTurleri = [
             </div>
         </div>
     </div>
+    </div>
 
     <div class="card border-0 shadow-sm">
         <div
             class="card-header bg-transparent border-bottom-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <ul class="nav nav-tabs nav-tabs-custom" id="talepTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link <?= $currentTab == 'dashboard' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabDashboard" role="tab">
+                        <i class="bx bx-grid-alt"></i> Dashboard
+                    </a>
+                </li>
                 <?php if ($canAvans): ?>
                 <li class="nav-item">
                     <a class="nav-link <?= $currentTab == 'avans' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabAvans" role="tab">
@@ -225,24 +247,31 @@ $izinTurleri = [
             $approvedUrl = "index?p=talepler/list&show=approved&tab=" . $currentTabForUrl;
             $deletedUrl = "index?p=talepler/list&show=deleted&tab=" . $currentTabForUrl;
             ?>
-            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 mb-2">
+            <div class="request-toolbar mb-2 <?= $currentTab == 'dashboard' ? 'd-none' : '' ?>" id="requestToolbar" role="toolbar" aria-label="Talep görünüm ve dışa aktarma işlemleri">
                 <a href="<?= $pendingUrl ?>" id="btnShowPending"
-                    class="btn btn-sm px-3 rounded-pill <?= !$showApproved ? 'btn-warning text-dark shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
+                    class="btn request-toolbar-btn <?= !$showApproved && !$showDeleted ? 'is-active is-pending' : '' ?>">
                     <i class="bx bx-time me-1"></i>Bekleyenler
                 </a>
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                <span class="request-toolbar-divider" aria-hidden="true"></span>
                 <a href="<?= $approvedUrl ?>" id="btnShowApproved"
-                    class="btn btn-sm px-3 rounded-pill <?= $showApproved ? 'btn-success text-white shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
+                    class="btn request-toolbar-btn <?= $showApproved ? 'is-active is-approved' : '' ?>">
                     <i class="bx bx-check-circle me-1"></i>İşlem Yapılanlar
                 </a>
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                <span class="request-toolbar-divider" aria-hidden="true"></span>
                 <a href="<?= $deletedUrl ?>" id="btnShowDeleted"
-                    class="btn btn-sm px-3 rounded-pill <?= $showDeleted ? 'btn-danger text-white shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
+                    class="btn request-toolbar-btn <?= $showDeleted ? 'is-active is-deleted' : '' ?>">
                     <i class="bx bx-trash me-1"></i>Silinenler
                 </a>
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="btnExportExcel">
+                <span class="request-toolbar-divider" aria-hidden="true"></span>
+                <button type="button" class="btn request-toolbar-btn request-toolbar-export" id="btnExportExcel">
                     <i class="bx bx-file me-1"></i>Excel e Aktar
+                </button>
+                <span class="request-toolbar-divider" aria-hidden="true"></span>
+                <button type="button" class="btn summary-toggle-btn"
+                    id="btnToggleSummaryCards" aria-controls="taleplerSummaryCards" aria-expanded="true"
+                    title="Özet kartlarını gizle">
+                    <i class="bx bx-chevron-up" aria-hidden="true"></i>
+                    <span class="visually-hidden">Özet kartlarını gizle</span>
                 </button>
             </div>
         </div>
@@ -261,10 +290,130 @@ $izinTurleri = [
             <?php endif; ?>
 
             <div class="tab-content">
+                <div class="tab-pane fade <?= $currentTab == 'dashboard' ? 'show active' : '' ?>" id="tabDashboard" role="tabpanel">
+                    <div class="dashboard-metric-grid">
+                        <article class="dashboard-metric metric-blue">
+                            <div class="metric-icon"><i class="bx bx-layer"></i></div>
+                            <div><span>6 Aylık Toplam</span><strong><?= (int) $dashboardData['total'] ?></strong><small>Tüm talep türleri</small></div>
+                        </article>
+                        <article class="dashboard-metric metric-amber">
+                            <div class="metric-icon"><i class="bx bx-time-five"></i></div>
+                            <div><span>Bekleyen</span><strong><?= (int) $dashboardData['pending'] ?></strong><small>En eski: <?= (int) $dashboardData['oldest_pending_days'] ?> gün</small></div>
+                        </article>
+                        <article class="dashboard-metric metric-green">
+                            <div class="metric-icon"><i class="bx bx-check-shield"></i></div>
+                            <div><span>Olumlu Sonuç</span><strong>%<?= number_format((float) $dashboardData['approval_rate'], 1, ',', '.') ?></strong><small><?= (int) $dashboardData['completed'] ?> tamamlanan işlem</small></div>
+                        </article>
+                        <article class="dashboard-metric metric-purple">
+                            <div class="metric-icon"><i class="bx bx-stopwatch"></i></div>
+                            <div><span>Ort. Sonuçlanma</span><strong><?= number_format((float) $dashboardData['avg_resolution_hours'], 1, ',', '.') ?> sa.</strong><small>Tamamlanan talepler</small></div>
+                        </article>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-xl-8">
+                            <section class="dashboard-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Talep Trendi</h5><p>Son altı ayda açılan talepler</p></div><span class="dashboard-period"><i class="bx bx-calendar"></i> 6 Ay</span></div>
+                                <div id="requestTrendChart" class="dashboard-chart"></div>
+                            </section>
+                        </div>
+                        <div class="col-xl-4">
+                            <section class="dashboard-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Tür Dağılımı</h5><p>Talep hacminin dağılımı</p></div></div>
+                                <div id="requestTypeChart" class="dashboard-chart"></div>
+                            </section>
+                        </div>
+                        <div class="col-xl-7">
+                            <section class="dashboard-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Bekleyen İş Yükü</h5><p>En yoğun ilk beş departman</p></div></div>
+                                <div class="department-load-list">
+                                    <?php $maxDepartment = max(array_values($dashboardData['departments']) ?: [1]); ?>
+                                    <?php foreach ($dashboardData['departments'] as $department => $count): ?>
+                                        <div class="department-load-item">
+                                            <div><span><?= htmlspecialchars($department, ENT_QUOTES, 'UTF-8') ?></span><strong><?= (int) $count ?></strong></div>
+                                            <div class="department-load-track"><span style="width: <?= round(((int) $count / $maxDepartment) * 100, 1) ?>%"></span></div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?php if (!$dashboardData['departments']): ?><div class="dashboard-empty">Bekleyen departman yükü bulunmuyor.</div><?php endif; ?>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="col-xl-5">
+                            <section class="dashboard-panel dashboard-insight-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Yönetici Notları</h5><p>Hızlı değerlendirme göstergeleri</p></div></div>
+                                <div class="dashboard-insight"><i class="bx bx-wallet"></i><div><span>Bekleyen avans tutarı</span><strong><?= number_format((float) $dashboardData['pending_advance_amount'], 2, ',', '.') ?> ₺</strong></div></div>
+                                <div class="dashboard-insight"><i class="bx bx-alarm-exclamation"></i><div><span>En uzun bekleme</span><strong><?= (int) $dashboardData['oldest_pending_days'] ?> gün</strong></div></div>
+                                <div class="dashboard-insight"><i class="bx bx-check-double"></i><div><span>Sonuçlanan işlem</span><strong><?= (int) $dashboardData['completed'] ?> kayıt</strong></div></div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-xl-4">
+                            <section class="dashboard-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>En Çok Talep Oluşturanlar</h5><p>Son altı aylık personel sıralaması</p></div><i class="bx bx-group dashboard-head-icon"></i></div>
+                                <div class="requester-ranking">
+                                    <?php $rank = 0; foreach ($dashboardData['top_requesters'] as $person => $count): $rank++; ?>
+                                        <div class="requester-rank-item">
+                                            <span class="rank-number"><?= $rank ?></span>
+                                            <div class="rank-person"><strong><?= htmlspecialchars($person, ENT_QUOTES, 'UTF-8') ?></strong><small><?= (int) $count ?> talep</small></div>
+                                            <span class="rank-value"><?= (int) $count ?></span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?php if (!$dashboardData['top_requesters']): ?><div class="dashboard-empty">Personel talep verisi bulunmuyor.</div><?php endif; ?>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="col-xl-4">
+                            <section class="dashboard-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Talep Nedenleri</h5><p>Açıklamalardan çıkarılan konu kümeleri</p></div><span class="analysis-badge"><i class="bx bx-brain"></i> Akıllı analiz</span></div>
+                                <div id="requestThemeChart" class="dashboard-chart"></div>
+                            </section>
+                        </div>
+                        <div class="col-xl-4">
+                            <section class="dashboard-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Şikâyet Sinyalleri</h5><p>Metinlerde tekrarlanan sorun ifadeleri</p></div><i class="bx bx-message-square-error dashboard-head-icon text-danger"></i></div>
+                                <div class="complaint-cloud">
+                                    <?php foreach ($dashboardData['complaint_signals'] as $signal => $count): ?>
+                                        <span><b><?= htmlspecialchars(ucfirst($signal), ENT_QUOTES, 'UTF-8') ?></b><em><?= (int) $count ?></em></span>
+                                    <?php endforeach; ?>
+                                    <?php if (!$dashboardData['complaint_signals']): ?><div class="dashboard-empty">Belirgin şikâyet sinyali bulunmuyor.</div><?php endif; ?>
+                                </div>
+                                <div class="analysis-note"><i class="bx bx-info-circle"></i> Analiz, açıklama ve başlıklardaki Türkçe bağlam sözcüklerine dayanır; karar desteği amaçlıdır.</div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-xl-8">
+                            <section class="dashboard-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Talep Kategorileri</h5><p>En sık kullanılan kategori ve izin nedenleri</p></div></div>
+                                <div class="category-analysis-grid">
+                                    <?php $maxCategory = max(array_values($dashboardData['categories']) ?: [1]); ?>
+                                    <?php foreach ($dashboardData['categories'] as $category => $count): ?>
+                                        <div class="category-analysis-item">
+                                            <div><span><?= htmlspecialchars($category, ENT_QUOTES, 'UTF-8') ?></span><strong><?= (int) $count ?></strong></div>
+                                            <div class="category-analysis-track"><span style="width: <?= round(((int) $count / $maxCategory) * 100, 1) ?>%"></span></div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="col-xl-4">
+                            <section class="dashboard-panel dashboard-risk-panel h-100">
+                                <div class="dashboard-panel-head"><div><h5>Risk Göstergeleri</h5><p>Yönetici müdahalesi gerektirebilecek alanlar</p></div></div>
+                                <div class="risk-score"><span><?= (int) $dashboardData['high_priority'] ?></span><div><strong>Yüksek öncelikli talep</strong><small>Son altı ay</small></div></div>
+                                <div class="risk-score"><span><?= (int) $dashboardData['oldest_pending_days'] ?></span><div><strong>En uzun bekleme</strong><small>Gün</small></div></div>
+                                <div class="risk-score"><span><?= count($dashboardData['complaint_signals']) ?></span><div><strong>Farklı şikâyet sinyali</strong><small>Metin analizi</small></div></div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Avans Talepleri Tab -->
                 <?php if ($canAvans): ?>
                 <div class="tab-pane fade <?= $currentTab == 'avans' ? 'show active' : '' ?>" id="tabAvans" role="tabpanel">
-                    <div class="table-responsive d-none d-lg-block">
+                    <div class="table-responsive talep-table-shell d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="avansTable" data-order="[]">
                             <thead class="table-light">
@@ -458,17 +607,17 @@ $izinTurleri = [
                 <!-- İzin Talepleri Tab -->
                 <?php if ($canIzin): ?>
                 <div class="tab-pane fade <?= $currentTab == 'izin' ? 'show active' : '' ?>" id="tabIzin" role="tabpanel">
-                    <div class="table-responsive d-none d-lg-block">
+                    <div class="table-responsive talep-table-shell d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="izinTable" data-order="[]">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Personel</th>
-                                    <th>Talep Türü</th>
-                                    <th>İzin Türü</th>
-                                    <th>Tarih Aralığı</th>
-                                    <th>Gün Sayısı</th>
-                                    <th>Durum</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="select">Talep Türü</th>
+                                    <th data-filter="select">İzin Türü</th>
+                                    <th data-filter="date">Tarih Aralığı</th>
+                                    <th data-filter="number">Gün Sayısı</th>
+                                    <th data-filter="select">Durum</th>
                                     <th>Açıklama</th>
                                     <?php if ($showApproved || $showDeleted): ?>
                                         <th>İşlem Yapan</th>
@@ -670,17 +819,17 @@ $izinTurleri = [
                 <!-- Genel Talepler Tab -->
                 <?php if ($canAriza): ?>
                 <div class="tab-pane fade <?= $currentTab == 'talepler' ? 'show active' : '' ?>" id="tabTalepler" role="tabpanel">
-                    <div class="table-responsive d-none d-lg-block">
+                    <div class="table-responsive talep-table-shell d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="taleplerTable" data-order="[]">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Personel</th>
-                                    <th>Talep Türü</th>
-                                    <th>Başlık</th>
-                                    <th>Durum</th>
-                                    <th>Öncelik</th>
-                                    <th>Tarih</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="select">Talep Türü</th>
+                                    <th data-filter="string">Başlık</th>
+                                    <th data-filter="select">Durum</th>
+                                    <th data-filter="select">Öncelik</th>
+                                    <th data-filter="date">Tarih</th>
                                     <th>Açıklama</th>
                                     <?php if ($showApproved || $showDeleted): ?>
                                         <th>İşlem Yapan</th>
@@ -1245,9 +1394,120 @@ $izinTurleri = [
     document.addEventListener('DOMContentLoaded', function () {
         const API_URL = 'views/talepler/api.php';
 
-        // Tab değiştiğinde Datatable'ı yenile (responsive düzeltmesi için)
+        const summaryToggleButton = document.getElementById('btnToggleSummaryCards');
+        const summaryStorageKey = 'talepler_summary_cards_hidden';
+
+        function updateSummaryToggleButton() {
+            if (!summaryToggleButton) return;
+
+            const isHidden = document.documentElement.classList.contains('talepler-summary-hidden');
+            const label = isHidden ? 'Özet kartlarını göster' : 'Özet kartlarını gizle';
+            const icon = summaryToggleButton.querySelector('i');
+
+            summaryToggleButton.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+            summaryToggleButton.setAttribute('title', label);
+            summaryToggleButton.querySelector('.visually-hidden').textContent = label;
+            icon.className = isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+        }
+
+        updateSummaryToggleButton();
+
+        summaryToggleButton?.addEventListener('click', function () {
+            const isHidden = document.documentElement.classList.toggle('talepler-summary-hidden');
+
+            try {
+                localStorage.setItem(summaryStorageKey, isHidden ? '1' : '0');
+            } catch (e) {
+                // Depolama kapalı olsa da mevcut sayfadaki aç/kapat davranışı devam eder.
+            }
+
+            updateSummaryToggleButton();
+        });
+
+        let dashboardChartsInitialized = false;
+        const dashboardChartData = <?= json_encode($dashboardData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
+        function initializeDashboardCharts() {
+            if (dashboardChartsInitialized) return;
+            if (typeof ApexCharts === 'undefined') {
+                if (!document.getElementById('taleplerApexChartsLoader')) {
+                    const chartScript = document.createElement('script');
+                    chartScript.id = 'taleplerApexChartsLoader';
+                    chartScript.src = 'assets/libs/apexcharts/apexcharts.min.js';
+                    chartScript.onload = initializeDashboardCharts;
+                    document.head.appendChild(chartScript);
+                }
+                return;
+            }
+
+            const trendElement = document.querySelector('#requestTrendChart');
+            const typeElement = document.querySelector('#requestTypeChart');
+            const themeElement = document.querySelector('#requestThemeChart');
+            if (!trendElement || !typeElement || !themeElement) return;
+
+            const months = dashboardChartData.months || [];
+            const sharedOptions = {
+                chart: { toolbar: { show: false }, fontFamily: 'inherit', foreColor: '#64748b' },
+                dataLabels: { enabled: false },
+                grid: { borderColor: '#e7edf4', strokeDashArray: 4 },
+                tooltip: { theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light' }
+            };
+
+            new ApexCharts(trendElement, {
+                ...sharedOptions,
+                chart: { ...sharedOptions.chart, type: 'area', height: 310, stacked: false },
+                series: [
+                    { name: 'Avans', data: months.map(item => item.Avans) },
+                    { name: 'İzin', data: months.map(item => item['İzin']) },
+                    { name: 'Talep', data: months.map(item => item.Talep) }
+                ],
+                colors: ['#10b981', '#3b82f6', '#06b6d4'],
+                stroke: { curve: 'smooth', width: 3 },
+                fill: { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.03 } },
+                xaxis: { categories: months.map(item => item.label), axisBorder: { show: false }, axisTicks: { show: false } },
+                yaxis: { min: 0, forceNiceScale: true, labels: { formatter: value => Math.round(value) } },
+                legend: { position: 'top', horizontalAlign: 'right' }
+            }).render();
+
+            new ApexCharts(typeElement, {
+                ...sharedOptions,
+                chart: { ...sharedOptions.chart, type: 'donut', height: 310 },
+                series: ['Avans', 'İzin', 'Talep'].map(type => Number(dashboardChartData.types[type] || 0)),
+                labels: ['Avans', 'İzin', 'Talep'],
+                colors: ['#10b981', '#3b82f6', '#06b6d4'],
+                stroke: { width: 3, colors: ['var(--bs-card-bg, #fff)'] },
+                legend: { position: 'bottom' },
+                plotOptions: { pie: { donut: { size: '68%', labels: { show: true, total: { show: true, label: 'Toplam' } } } } },
+                noData: { text: 'Gösterilecek veri bulunamadı' }
+            }).render();
+
+            const themeLabels = Object.keys(dashboardChartData.themes || {});
+            new ApexCharts(themeElement, {
+                ...sharedOptions,
+                chart: { ...sharedOptions.chart, type: 'bar', height: 310 },
+                series: [{ name: 'Talep', data: themeLabels.map(label => Number(dashboardChartData.themes[label] || 0)) }],
+                colors: ['#8b5cf6'],
+                plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: '58%' } },
+                xaxis: { categories: themeLabels, min: 0, labels: { formatter: value => Math.round(value) } },
+                yaxis: { labels: { maxWidth: 125 } },
+                grid: { ...sharedOptions.grid, xaxis: { lines: { show: true } }, yaxis: { lines: { show: false } } },
+                noData: { text: 'Analiz edilecek açıklama bulunamadı' }
+            }).render();
+
+            dashboardChartsInitialized = true;
+        }
+
+        if (document.querySelector('#tabDashboard.show.active')) initializeDashboardCharts();
+
+        // Tab değiştiğinde DataTable ve dashboard yerleşimini yenile.
         $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-            $($.fn.dataTable.tables(true)).DataTable().columns.adjust().responsive.recalc();
+            const isDashboard = e.target.getAttribute('href') === '#tabDashboard';
+            document.getElementById('requestToolbar')?.classList.toggle('d-none', isDashboard);
+            if (isDashboard) {
+                initializeDashboardCharts();
+            } else {
+                $($.fn.dataTable.tables(true)).DataTable().columns.adjust().responsive.recalc();
+            }
         });
 
         // Excel Export

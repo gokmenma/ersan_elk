@@ -247,6 +247,17 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-bildirimler':
             ?>
+            <style>
+                #widget-bildirimler .summary-card { border:1px solid #dbe4ef !important; box-shadow:0 5px 18px rgba(15,23,42,.04) !important; }
+                #widget-bildirimler .notification-list { display:grid; gap:8px; background:#fbfcfe; }
+                #widget-bildirimler .notification-card { position:relative; background:#fff; border:1px solid #e5ebf3; border-left:3px solid var(--activity-accent,#3b82f6); border-radius:10px; transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease; }
+                #widget-bildirimler .notification-card:hover { border-color:#bfdbfe; box-shadow:0 6px 16px rgba(15,23,42,.07); transform:translateY(-1px); }
+                #widget-bildirimler .notification-card .icon-box { width:34px;height:34px;min-width:34px;border-radius:9px;display:grid;place-items:center; }
+                #widget-bildirimler .finder-tabs-nav .nav-link.active { background:#fff !important;color:#1d4ed8 !important;border-color:#bfdbfe !important;box-shadow:0 2px 7px rgba(37,99,235,.1) !important; }
+                #widget-bildirimler .tab-content { background:#fbfcfe; }
+                [data-bs-theme="dark"] #widget-bildirimler .notification-list,[data-bs-theme="dark"] #widget-bildirimler .tab-content { background:#171d23; }
+                [data-bs-theme="dark"] #widget-bildirimler .notification-card { background:#222830;border-color:#36404a; }
+            </style>
             <div class="<?php echo getWidgetWidthClass($widgetDomId, ($width ?? 'col-12')); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card summary-card" style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
                     <div class="card-body p-0" style="min-height: <?php echo ($height ?? 'auto'); ?>;">
@@ -314,11 +325,11 @@ function renderWidget(string $widgetId, array $data = []) {
                                             $iconBg = "rgba(".hexdec(substr($hex, 0, 2)).", ".hexdec(substr($hex, 2, 2)).", ".hexdec(substr($hex, 4, 2)).", 0.1)";
                                             $user_name = $log->adi_soyadi ?? 'Sistem';
                                             ?>
-                                            <div class="notification-card p-3 btn-log-detay" style="cursor: pointer;" data-title="<?php echo htmlspecialchars($log->action_type); ?>" data-user="<?php echo htmlspecialchars($user_name); ?>" data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>" data-content="<?php echo htmlspecialchars($log->description); ?>">
+                                            <div class="notification-card p-3 btn-log-detay" style="cursor:pointer;--activity-accent:<?php echo $renk; ?>;" data-title="<?php echo htmlspecialchars($log->action_type, ENT_QUOTES, 'UTF-8'); ?>" data-user="<?php echo htmlspecialchars($user_name, ENT_QUOTES, 'UTF-8'); ?>" data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>" data-content="<?php echo htmlspecialchars($log->description, ENT_QUOTES, 'UTF-8'); ?>">
                                                 <div class="d-flex align-items-center gap-3">
                                                     <div class="icon-box" style="background: <?php echo $iconBg; ?>;"><i class="bx <?php echo $icon; ?>" style="color: <?php echo $renk; ?>; font-size: 1.2rem;"></i></div>
-                                                    <div class="flex-grow-1 overflow-hidden"><h6 class="mb-1 text-truncate fw-semibold" style="font-size: 0.9rem; color: var(--bs-heading-color);"><?php echo htmlspecialchars($log->action_type); ?></h6><p class="text-muted mb-0 text-truncate" style="font-size: 0.8rem; opacity: 0.85;"><?php echo mb_strimwidth(htmlspecialchars($log->description), 0, 150, "..."); ?></p></div>
-                                                    <div class="flex-shrink-0 text-end d-flex flex-column align-items-end gap-1"><div class="text-dark fw-semibold" style="font-size: 0.8rem;"><i class="bx bx-user-circle me-1 text-muted" style="font-size: 0.9rem; vertical-align: middle;"></i><?php echo $user_name; ?></div><div class="text-muted d-flex align-items-center gap-2" style="font-size: 0.75rem; font-weight: 500;"><span><i class="bx bx-calendar me-1" style="font-size: 0.85rem; vertical-align: middle;"></i><?php echo date('d.m.Y', strtotime($log->created_at)); ?></span><span class="badge bg-light text-muted border px-1" style="font-size: 0.65rem; border-radius: 4px;"><?php echo date('H:i', strtotime($log->created_at)); ?></span></div></div>
+                                                    <div class="flex-grow-1 overflow-hidden"><div class="d-flex align-items-center gap-2 mb-1"><h6 class="mb-0 text-truncate fw-semibold" style="font-size:.84rem;color:var(--bs-heading-color);"><?php echo htmlspecialchars($log->action_type, ENT_QUOTES, 'UTF-8'); ?></h6><span class="badge rounded-pill" style="font-size:.62rem;background:<?php echo $iconBg; ?>;color:<?php echo $renk; ?>;">Sistem Olayı</span></div><p class="text-muted mb-0 text-truncate" style="font-size:.76rem;opacity:.9;"><?php echo mb_strimwidth(htmlspecialchars($log->description, ENT_QUOTES, 'UTF-8'), 0, 150, "..."); ?></p></div>
+                                                    <div class="flex-shrink-0 text-end d-flex flex-column align-items-end gap-1"><div class="fw-semibold" style="font-size:.76rem;color:var(--bs-heading-color);"><i class="bx bx-user-circle me-1 text-muted"></i><?php echo htmlspecialchars($user_name, ENT_QUOTES, 'UTF-8'); ?></div><div class="text-muted d-flex align-items-center gap-2" style="font-size:.7rem;font-weight:500;"><span><i class="bx bx-calendar me-1"></i><?php echo date('d.m.Y', strtotime($log->created_at)); ?></span><span class="badge bg-light text-muted border px-1"><?php echo date('H:i', strtotime($log->created_at)); ?></span></div></div>
                                                     <div class="flex-shrink-0 ms-1"><i class="bx bx-chevron-right text-muted opacity-50" style="font-size: 1.25rem;"></i></div>
                                                 </div>
                                             </div>

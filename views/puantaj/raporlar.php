@@ -251,20 +251,18 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         <div class="row mb-3">
             <div class="col-12">
                 <form method="GET" action="" id="filterForm">
-                    <div class="card">
-                        <div class="card-body p-2">
-                            <div class="accordion" id="filterAccordion">
-                                <div class="accordion-item border-0">
-                                    <h2 class="accordion-header position-relative" id="headingOne">
-                                        <button class="accordion-button collapsed py-2" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#collapseOne"
-                                            aria-expanded="false" aria-controls="collapseOne">
-                                            <i class="bx bx-filter-alt me-2 text-primary"></i> Filtreleme Seçenekleri
-                                        </button>
+                    <div class="card report-filter-card">
+                        <div class="report-filter-header" id="headingOne" role="button" tabindex="0"
+                            aria-expanded="false" aria-controls="collapseOne">
+                            <div class="report-filter-heading">
+                                <span class="report-filter-icon"><i class="bx bx-filter-alt"></i></span>
+                                <div>
+                                    <h5>Rapor Filtreleri</h5>
+                                    <small>Rapor kapsamını ve dönem seçimini belirleyin</small>
+                                </div>
+                            </div>
 
-                                        <div class="only-show-open animate__animated animate__fadeIn position-absolute"
-                                            style="left: 210px; top: 50%; transform: translateY(-50%); z-index: 5;">
-                                            <div class="filter-type-switcher">
+                            <div class="filter-type-switcher">
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="radio" name="filter_type"
                                                         id="typePeriod" value="period" <?= $filterType === 'period' ? 'checked' : '' ?>>
@@ -279,21 +277,21 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                                         <i class="bx bx-calendar-week"></i> Tarih Aralığı
                                                     </label>
                                                 </div>
-                                            </div>
-                                        </div>
-
-                                        <div id="filterSummary" class="d-none d-md-flex gap-2 position-absolute"
-                                            style="right: 60px; top: 50%; transform: translateY(-50%); z-index: 5;">
-                                            <!-- JS ile doldurulacak -->
-                                        </div>
-                                    </h2>
-                                </div>
                             </div>
 
-                            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
-                                data-bs-parent="#filterAccordion">
-                                <div class="accordion-body pt-3 pb-2">
-                                    <div class="row g-3">
+                            <div class="report-filter-header-actions">
+                                <div id="filterSummary" class="d-none d-lg-flex gap-2"><!-- JS ile doldurulacak --></div>
+                                <button class="report-filter-toggle" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne"
+                                    title="Filtreleri göster / gizle">
+                                    <i class="bx bx-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                            <div id="collapseOne" class="collapse" aria-labelledby="headingOne">
+                                <div class="report-filter-body">
+                                    <div class="row g-3 align-items-end">
                                         <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
                                             <?php echo Form::FormSelect2("year", $yearOptions, $year, "Yıl Seçiniz", "bx bx-calendar-event", "key", "", "form-select select2"); ?>
                                         </div>
@@ -325,17 +323,15 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                         </div>
 
                                         <div class="col-md-2 d-flex align-items-end">
-                                            <div
-                                                class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1 w-100 bg-white">
+                                            <div class="action-button-container d-flex align-items-center gap-2 w-100">
                                                 <button type="submit"
-                                                    class="btn btn-primary btn-sm flex-grow-1 fw-bold">
+                                                    class="btn btn-primary btn-sm flex-grow-1 fw-bold report-query-btn">
                                                     <i class="mdi mdi-magnify me-1"></i> Sorgula
                                                 </button>
-                                                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                                                 <button type="button"
-                                                    class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
-                                                    id="btnClearFilters">
-                                                    <i class="mdi mdi-filter-remove"></i>
+                                                    class="btn btn-outline-secondary btn-sm report-clear-btn"
+                                                    id="btnClearFilters" title="Filtreleri temizle">
+                                                    <i class="mdi mdi-filter-remove"></i><span class="d-none d-xl-inline">Temizle</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -343,14 +339,13 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <ul class="nav nav-tabs nav-tabs-custom nav-success mb-0" role="tablist" id="raporTabs">
+            <ul class="nav nav-tabs nav-tabs-custom mb-0" role="tablist" id="raporTabs">
                 <li class="nav-item">
                     <a class="nav-link <?= ($activeTab === 'okuma' || !in_array($activeTab, ['okuma', 'kesme', 'sokme_takma', 'muhurleme', 'kacakkontrol'])) ? 'active' : '' ?>"
                         href="javascript:void(0);" data-tab="okuma">
@@ -496,7 +491,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
 
         <!-- Karşılaştırma Alt Sekmeleri (altta - rapor sekmeleri gibi) -->
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <ul class="nav nav-tabs nav-tabs-custom nav-success mb-0" role="tablist" id="compareTabs">
+            <ul class="nav nav-tabs nav-tabs-custom mb-0" role="tablist" id="compareTabs">
                 <li class="nav-item">
                     <a class="nav-link active" href="javascript:void(0);" data-tab="okuma">
                         <span class="d-none d-sm-block">Endeks Okuma</span>
@@ -776,6 +771,32 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         // Adjust height when filter accordion is toggled
         $('#collapseOne').on('shown.bs.collapse hidden.bs.collapse', function () {
             adjustTableHeight();
+        });
+
+        const filterCollapseElement = document.getElementById('collapseOne');
+        const filterCollapse = bootstrap.Collapse.getOrCreateInstance(filterCollapseElement, { toggle: false });
+        const $filterHeader = $('.report-filter-header');
+
+        function toggleReportFilters() {
+            filterCollapse.toggle();
+        }
+
+        $filterHeader.on('click', function (event) {
+            if ($(event.target).closest('.filter-type-switcher, #filterSummary, .report-filter-toggle').length) {
+                return;
+            }
+            toggleReportFilters();
+        });
+
+        $filterHeader.on('keydown', function (event) {
+            if ((event.key === 'Enter' || event.key === ' ') && event.target === this) {
+                event.preventDefault();
+                toggleReportFilters();
+            }
+        });
+
+        $('#collapseOne').on('shown.bs.collapse hidden.bs.collapse', function () {
+            $filterHeader.attr('aria-expanded', this.classList.contains('show') ? 'true' : 'false');
         });
 
         // ========== ANA MOD VE SEKME YÖNETİMİ ==========
@@ -2351,6 +2372,82 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         color: #fff !important;
     }
 
+    /* Rapor filtre kontrol paneli */
+    #filterForm .report-filter-card {
+        overflow: visible;
+        border-radius: 14px !important;
+        border-color: #dbe4ef !important;
+        box-shadow: 0 5px 18px rgba(15, 23, 42, .045) !important;
+    }
+
+    #filterForm .report-filter-header {
+        min-height: 72px;
+        padding: 13px 16px;
+        display: grid;
+        grid-template-columns: minmax(230px, 1fr) auto minmax(230px, 1fr);
+        align-items: center;
+        gap: 18px;
+        border-bottom: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    #filterForm .report-filter-card:has(#collapseOne.show) .report-filter-header {
+        border-bottom-color: #e8eef5;
+    }
+
+    .report-filter-heading { display:flex;align-items:center;gap:11px;min-width:0;border-radius:10px; }
+    #filterForm .report-filter-header:hover .report-filter-heading h5 { color:#5156be; }
+    .report-filter-heading h5 { margin:0;color:#172033;font-size:14px;font-weight:750; }
+    .report-filter-heading small { display:block;margin-top:2px;color:#728096;font-size:10px; }
+    .report-filter-icon { width:38px;height:38px;display:grid;place-items:center;flex:0 0 38px;border:1px solid #d8ddff;border-radius:10px;background:#f0f1ff;color:#5156be;font-size:19px;box-shadow:0 2px 7px rgba(81,86,190,.1); }
+
+    #filterForm .filter-type-switcher { justify-self:center;padding:4px;border-color:#dce4ee;border-radius:10px;background:#f1f5f9; }
+    #filterForm .filter-type-switcher .form-check-label { min-height:30px;padding:6px 13px;border-radius:7px;color:#64748b;font-size:11px; }
+    #filterForm .filter-type-switcher .form-check-input:checked + .form-check-label { background:#fff;color:#5156be;box-shadow:0 2px 6px rgba(15,23,42,.09); }
+
+    .report-filter-header-actions { display:flex;align-items:center;justify-content:flex-end;gap:9px;min-width:0; }
+    #filterForm #filterSummary { min-width:0;overflow:hidden;justify-content:flex-end; }
+    #filterForm .filter-summary-badge { min-height:30px;padding:4px 9px;border:1px solid #d8ddff;border-radius:8px;background:#f0f1ff;color:#3f43a0;box-shadow:none;white-space:nowrap; }
+    #filterForm .filter-summary-badge .badge-label { color:#7176a9;font-size:10px; }
+    #filterForm .filter-summary-badge .badge-value { color:#3f43a0;font-size:11px; }
+    #filterForm .report-filter-toggle { width:34px;height:34px;display:grid;place-items:center;flex:0 0 34px;border:1px solid #d7e0eb;border-radius:9px;background:#fff;color:#64748b;font-size:18px;transition:.2s ease; }
+    #filterForm .report-filter-toggle:hover { border-color:#b8c5d5;background:#f8fafc;color:#5156be; }
+    #filterForm .report-filter-toggle[aria-expanded="true"] { background:#5156be;border-color:#5156be;color:#fff;box-shadow:0 3px 9px rgba(81,86,190,.22); }
+    #filterForm .report-filter-toggle[aria-expanded="true"] i { transform:rotate(180deg); }
+    #filterForm .report-filter-toggle i { transition:transform .2s ease; }
+
+    #filterForm .report-filter-body { padding:16px;background:linear-gradient(180deg,#fbfcfe 0%,#f8fafc 100%);border-radius:0 0 13px 13px; }
+    #filterForm .report-filter-body .form-control,
+    #filterForm .report-filter-body .form-select,
+    #filterForm .report-filter-body .select2-selection { min-height:44px !important;border-color:#dce4ee !important;background:#fff !important;box-shadow:none !important; }
+    #filterForm .report-filter-body .form-floating-custom .form-floating-icon { width:42px !important;height:44px !important;display:flex;align-items:center;justify-content:flex-start;padding-left:13px;color:#596a81; }
+    #filterForm .report-filter-body .form-floating-custom .form-floating-icon i { font-size:19px !important;line-height:1; }
+    #filterForm .report-filter-body .form-floating-custom .form-floating-icon svg { width:19px !important;height:19px !important;stroke-width:2.2; }
+    #filterForm .action-button-container { min-height:44px;padding:0;background:transparent !important;border:0 !important;box-shadow:none !important; }
+    #filterForm .report-query-btn { min-height:40px;border:0;background:linear-gradient(135deg,#6366d9,#5156be);box-shadow:0 4px 10px rgba(81,86,190,.2); }
+    #filterForm .report-clear-btn { min-height:40px;display:inline-flex;align-items:center;gap:5px;padding-inline:11px; }
+
+    @media (max-width: 991.98px) {
+        #filterForm .report-filter-header { grid-template-columns:1fr auto;gap:10px; }
+        #filterForm .filter-type-switcher { grid-column:1 / -1;grid-row:2;justify-self:start; }
+        .report-filter-header-actions { grid-column:2;grid-row:1; }
+    }
+
+    @media (max-width: 575.98px) {
+        #filterForm .report-filter-header { display:flex;align-items:flex-start;flex-wrap:wrap; }
+        #filterForm .filter-type-switcher { order:3;width:100%; }
+        #filterForm .filter-type-switcher .form-check { flex:1; }
+        #filterForm .filter-type-switcher .form-check-label { justify-content:center; }
+        .report-filter-header-actions { margin-left:auto; }
+    }
+
+    [data-bs-theme="dark"] #filterForm .report-filter-card { border-color:#36404a !important; }
+    [data-bs-theme="dark"] .report-filter-heading h5 { color:#f1f5f9; }
+    [data-bs-theme="dark"] #filterForm .report-filter-body { background:#191f26; }
+    [data-bs-theme="dark"] #filterForm .filter-type-switcher { background:#171d23;border-color:#36404a; }
+    [data-bs-theme="dark"] #filterForm .filter-type-switcher .form-check-input:checked + .form-check-label,
+    [data-bs-theme="dark"] #filterForm .report-filter-toggle { background:#29313c;color:#e2e8f0;border-color:#465363; }
+
 
 
     .accordion-button:not(.collapsed) {
@@ -2488,46 +2585,65 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         border-color: var(--bs-primary, #556ee6);
     }
 
-    #raporTabs.nav-tabs-custom {
+    #raporTabs.nav-tabs-custom,
+    #compareTabs.nav-tabs-custom {
         border-bottom: none !important;
         display: flex;
-        gap: 10px;
+        gap: 8px;
         margin-bottom: 15px;
     }
 
-    #raporTabs.nav-tabs-custom .nav-item {
+    #raporTabs.nav-tabs-custom .nav-item,
+    #compareTabs.nav-tabs-custom .nav-item {
         margin-bottom: 0 !important;
     }
 
-    #raporTabs.nav-tabs-custom .nav-link {
+    #raporTabs.nav-tabs-custom .nav-link,
+    #compareTabs.nav-tabs-custom .nav-link {
         border: none !important;
         text-decoration: none !important;
         box-shadow: none !important;
         padding: 8px 16px;
-        color: var(--bs-body-color, #74788d);
+        color: var(--bs-body-color, #74788d) !important;
         font-weight: 500;
         transition: all 0.2s ease;
         border-radius: 8px !important;
         background-color: transparent;
     }
 
-    #raporTabs.nav-tabs-custom .nav-link:hover {
-        background-color: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.05);
-        color: var(--bs-primary);
+    #raporTabs.nav-tabs-custom .nav-link::after,
+    #compareTabs.nav-tabs-custom .nav-link::after {
+        display: none !important;
+        content: none !important;
     }
 
-    #raporTabs.nav-tabs-custom .nav-link.active {
-        color: #fff !important;
-        background-color: #2a3042 !important;
-        /* Dason dark style background */
+    #raporTabs.nav-tabs-custom .nav-link:hover,
+    #compareTabs.nav-tabs-custom .nav-link:hover {
+        background-color: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.08);
+        color: var(--bs-primary, #5156be) !important;
+    }
+
+    #raporTabs.nav-tabs-custom .nav-link.active,
+    #compareTabs.nav-tabs-custom .nav-link.active {
+        color: #ffffff !important;
+        background-color: var(--bs-primary, #5156be) !important;
         border: none !important;
+        box-shadow: 0 4px 10px rgba(var(--bs-primary-rgb, 85, 110, 230), 0.3) !important;
     }
 
-    [data-bs-theme="dark"] #raporTabs.nav-tabs-custom .nav-link.active {
-        background-color: var(--bs-primary, #1c84ee) !important;
+    #raporTabs.nav-tabs-custom .nav-link.active *,
+    #compareTabs.nav-tabs-custom .nav-link.active * {
+        color: #ffffff !important;
     }
 
-    [data-bs-theme="dark"] #raporTabs.nav-tabs-custom .nav-link {
+    [data-bs-theme="dark"] #raporTabs.nav-tabs-custom .nav-link.active,
+    [data-bs-theme="dark"] #compareTabs.nav-tabs-custom .nav-link.active {
+        background-color: var(--bs-primary, #5156be) !important;
+        color: #ffffff !important;
+    }
+
+    [data-bs-theme="dark"] #raporTabs.nav-tabs-custom .nav-link,
+    [data-bs-theme="dark"] #compareTabs.nav-tabs-custom .nav-link {
         color: #adb5bd !important;
     }
 

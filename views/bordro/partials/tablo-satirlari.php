@@ -179,15 +179,15 @@
                                                     <td class="text-end text-primary">
                                                         <?= $bankaOdemesi > 0 ? number_format($bankaOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
                                                     </td>
-                                                    <td class="text-end text-info td-sodexo" style="width: 150px;">
+                                                    <td class="text-end text-info td-sodexo">
                                                         <div
-                                                            class="sodexo-wrapper d-flex align-items-center justify-content-end gap-2">
+                                                            class="sodexo-wrapper d-flex align-items-center justify-content-end gap-1">
                                                             <span class="sodexo-value fw-bold">
                                                                 <?= $sodexoOdemesi > 0 ? number_format($sodexoOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
                                                             </span>
                                                             <input type="text"
                                                                 class="form-control form-control-sm text-end update-sodexo money d-none"
-                                                                style="width: 100px;" data-id="<?= $personel->id ?>"
+                                                                style="width: 75px;" data-id="<?= $personel->id ?>"
                                                                 data-net="<?= number_format($netAlacagi, 2, '.', '') ?>"
                                                                 data-banka="<?= number_format($bankaOdemesi, 2, '.', '') ?>"
                                                                 data-diger="<?= number_format($personel->diger_odeme ?? 0, 2, '.', '') ?>"

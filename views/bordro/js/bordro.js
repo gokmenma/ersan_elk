@@ -158,6 +158,7 @@ $(document).ready(function () {
 
   // Bordro Tablosunu Başlat
   var bordroOpts = getDatatableOptions();
+  bordroOpts.responsive = false;
   var originalInitComplete = bordroOpts.initComplete;
   bordroOpts.columnDefs = [{ orderable: false, targets: [0, 15] }];
   bordroOpts.order = [[1, "asc"]];
