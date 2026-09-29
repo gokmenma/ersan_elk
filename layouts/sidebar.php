@@ -42,8 +42,8 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             --sidebar-border: #22292f;
             --sidebar-item-hover: #242b31;
             --sidebar-item-active: #242b31;
-            --sidebar-foreground: #adb5bd;
-            --sidebar-muted: #74788d;
+            --sidebar-foreground: #94a3b8;
+            --sidebar-muted: #64748b;
             --sidebar-accent: #1c84ee;
         }
 
@@ -52,8 +52,8 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             --sidebar-border: #303840;
             --sidebar-item-hover: #30373f;
             --sidebar-item-active: #30373f;
-            --sidebar-foreground: #f8fafc;
-            --sidebar-muted: #cbd5e1;
+            --sidebar-foreground: #94a3b8;
+            --sidebar-muted: #64748b;
             --sidebar-accent: #6d5dfc;
         }
 
@@ -74,12 +74,18 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     display: none !important;
                 }
 
-                #page-topbar {
+                body:not([data-topbar="light"]) #page-topbar {
                     left: 250px !important;
                     background-color: var(--sidebar-bg) !important;
                     background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
                     border-bottom: 1px solid var(--sidebar-border) !important;
                     box-shadow: none !important;
+                }
+
+                body[data-topbar="light"] #page-topbar {
+                    background-color: #ffffff !important;
+                    background-image: none !important;
+                    border-bottom: 1px solid #e2e8f0 !important;
                 }
 
                 body[data-topbar="dark"] #page-topbar {
@@ -93,46 +99,74 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     border-right-color: #22292f !important;
                 }
 
-                body[data-sidebar="dark"] #sidebar-menu a,
-                body[data-sidebar="dark"] #side-menu .menu-title,
+                body[data-sidebar="dark"] #sidebar-menu a {
+                    color: #94a3b8 !important;
+                }
+
+                body[data-sidebar="dark"] #side-menu .menu-title {
+                    color: #64748b !important;
+                    font-size: 11px !important;
+                    font-weight: 600 !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.5px !important;
+                }
+
                 body[data-sidebar="dark"] .brand-name {
-                    color: #f8fafc !important;
+                    color: #f1f5f9 !important;
                 }
 
                 body[data-sidebar="dark"] .brand-sub,
                 body[data-sidebar="dark"] #sidebar-menu ul.sub-menu li a {
-                    color: #cbd5e1 !important;
+                    color: #8291a5 !important;
                 }
 
                 body[data-sidebar="dark"] #sidebar-menu a i,
                 body[data-sidebar="dark"] #sidebar-menu a svg,
                 body[data-sidebar="dark"] .sidebar-search-container .search-icon {
-                    color: #cbd5e1 !important;
-                    stroke: #cbd5e1 !important;
+                    color: #8291a5 !important;
+                    stroke: #8291a5 !important;
                 }
 
                 body[data-sidebar="dark"] .sidebar-search {
-                    background-color: rgba(255, 255, 255, 0.12) !important;
-                    border-color: rgba(255, 255, 255, 0.18) !important;
-                    color: #ffffff !important;
+                    background-color: #262d35 !important;
+                    border-color: #333c46 !important;
+                    color: #e2e8f0 !important;
                 }
 
                 body[data-sidebar="dark"] .sidebar-search:focus {
-                    background-color: rgba(255, 255, 255, 0.18) !important;
-                    border-color: rgba(255, 255, 255, 0.35) !important;
+                    background-color: #2e3742 !important;
+                    border-color: rgba(255, 255, 255, 0.25) !important;
                     color: #ffffff !important;
                     box-shadow: none !important;
                 }
 
                 body[data-sidebar="dark"] .sidebar-search::placeholder {
-                    color: rgba(255, 255, 255, 0.5) !important;
+                    color: #64748b !important;
                 }
 
-                body[data-sidebar="dark"] #sidebar-menu ul li a:hover,
+                body[data-sidebar="dark"] #sidebar-menu ul li a:hover {
+                    background-color: rgba(255, 255, 255, 0.06) !important;
+                    color: #f1f5f9 !important;
+                }
+
+                body[data-sidebar="dark"] #sidebar-menu ul li a:hover i,
+                body[data-sidebar="dark"] #sidebar-menu ul li a:hover svg {
+                    color: #f1f5f9 !important;
+                    stroke: #f1f5f9 !important;
+                }
+
                 body[data-sidebar="dark"] #sidebar-menu ul li a.active,
                 body[data-sidebar="dark"] #sidebar-menu ul li.mm-active > a {
                     background-color: rgba(255, 255, 255, 0.1) !important;
                     color: #ffffff !important;
+                }
+
+                body[data-sidebar="dark"] #sidebar-menu ul li a.active i,
+                body[data-sidebar="dark"] #sidebar-menu ul li.mm-active > a i,
+                body[data-sidebar="dark"] #sidebar-menu ul li a.active svg,
+                body[data-sidebar="dark"] #sidebar-menu ul li.mm-active > a svg {
+                    color: var(--bs-primary, #38bdf8) !important;
+                    stroke: var(--bs-primary, #38bdf8) !important;
                 }
 
                 body[data-topbar="dark"] #page-topbar .header-item,
@@ -630,6 +664,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 #sidebar-menu #side-menu li a:hover,
                 #sidebar-menu ul li a:hover {
                     background-color: var(--sidebar-item-hover) !important;
+                    color: #f1f5f9 !important;
                     border-radius: 8px !important;
                 }
 
@@ -638,7 +673,8 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 #sidebar-menu ul li.mm-active > a,
                 #sidebar-menu ul li a.active {
                     background-color: var(--sidebar-item-active) !important;
-                    font-weight: 500;
+                    color: #ffffff !important;
+                    font-weight: 600;
                     border-radius: 8px !important;
                 }
 

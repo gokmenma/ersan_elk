@@ -77,11 +77,11 @@
             const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
             const dark = luminance < 0.42;
             return {
-                text: dark ? '#f8fafc' : '#1f2937',
-                muted: dark ? '#cbd5e1' : '#64748b',
-                subtle: dark ? '#94a3b8' : '#64748b',
-                surface: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.07)',
-                border: dark ? 'rgba(255,255,255,.16)' : 'rgba(15,23,42,.14)',
+                text: dark ? '#94a3b8' : '#1f2937',
+                muted: dark ? '#64748b' : '#64748b',
+                subtle: dark ? '#64748b' : '#64748b',
+                surface: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.07)',
+                border: dark ? 'rgba(255,255,255,.12)' : 'rgba(15,23,42,.14)',
                 dark
             };
         };
@@ -280,7 +280,7 @@ body:not(:has(#quick-favorites-bar)) .main-content .page-content {
 
 
 .main-content .card {
-    margin-bottom: 20px !important;
+    margin-bottom: 16px !important;
 }
 </style>
 

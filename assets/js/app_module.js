@@ -367,7 +367,10 @@ File: Main Js File
   }
 
   function updateRadio(radioId) {
-    if (radioId !== null) document.getElementById(radioId).checked = true;
+    if (radioId !== null) {
+      const el = document.getElementById(radioId);
+      if (el) el.checked = true;
+    }
   }
 
   function layoutSetting() {
@@ -688,6 +691,47 @@ File: Main Js File
       }
     });
 
+    // Reset theme settings to default
+    $("#reset-theme-btn").on("click", function (e) {
+      e.preventDefault();
+      
+      const themeKeys = [
+        "data-theme-preset", "data-bs-theme", "data-font-family", "data-theme-mode",
+        "custom-primary-color", "custom-topbar-color", "custom-sidebar-color",
+        "data-topbar", "data-sidebar", "data-layout", "data-orientation",
+        "data-layout-size", "data-layout-scrollable", "data-sidebar-size"
+      ];
+      themeKeys.forEach(key => localStorage.removeItem(key));
+
+      // Remove custom style elements
+      $("#custom-topbar-style, #custom-sidebar-style").remove();
+      
+      // Remove inline CSS custom properties
+      document.documentElement.style.removeProperty("--bs-primary");
+      document.documentElement.style.removeProperty("--bs-primary-rgb");
+      document.documentElement.style.removeProperty("--bs-link-color");
+      document.documentElement.style.removeProperty("--bs-link-hover-color");
+
+      // Apply default preset (Kode)
+      applyPresetTheme("kode", false);
+
+      // Reset layout & size to default
+      document.body.removeAttribute("data-layout");
+      document.body.removeAttribute("data-layout-size");
+      document.body.removeAttribute("data-layout-scrollable");
+      document.body.removeAttribute("data-sidebar-size");
+      document.documentElement.removeAttribute("data-orientation");
+
+      updateRadio("layout-vertical");
+      updateRadio("layout-width-fuild");
+      updateRadio("layout-position-fixed");
+      updateRadio("sidebar-size-default");
+
+      if (typeof showToast === "function") {
+        showToast("Tema ve görünüm ayarları varsayılana sıfırlandı.", "info");
+      }
+    });
+
     // right side-bar toggle
     $(".right-bar-toggle").on("click", function (e) {
       $("body").toggleClass("right-bar-enabled");
@@ -720,6 +764,10 @@ File: Main Js File
         updateRadio("topbar-color-dark");
         updateRadio("sidebar-color-dark");
       }
+    });
+
+    $(document).on("click", ".rightbar-overlay", function (e) {
+      $("body").removeClass("right-bar-enabled");
     });
 
     $(document).on("click", "body", function (e) {
@@ -1039,11 +1087,11 @@ File: Main Js File
       const isDark = luminance < 0.42;
 
       return {
-        text: isDark ? "#f8fafc" : "#1f2937",
-        muted: isDark ? "#cbd5e1" : "#64748b",
-        subtle: isDark ? "#94a3b8" : "#64748b",
-        surface: isDark ? "rgba(255,255,255,.10)" : "rgba(15,23,42,.07)",
-        border: isDark ? "rgba(255,255,255,.16)" : "rgba(15,23,42,.14)",
+        text: isDark ? "#94a3b8" : "#1f2937",
+        muted: isDark ? "#64748b" : "#64748b",
+        subtle: isDark ? "#64748b" : "#64748b",
+        surface: isDark ? "rgba(255,255,255,.08)" : "rgba(15,23,42,.07)",
+        border: isDark ? "rgba(255,255,255,.12)" : "rgba(15,23,42,.14)",
         dark: isDark,
       };
     }

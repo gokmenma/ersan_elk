@@ -524,6 +524,18 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     id="btnCompareFullScreen">
                     <i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran
                 </button>
+                <div class="dropdown ms-2">
+                    <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="compareIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                        <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="compareIslemlerDropdown">
+                        <li>
+                            <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnCompareExportExcel">
+                                <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
+                            </button>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -890,6 +902,25 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         $('#btnExportExcel').on('click', function () {
             const url = `views/puantaj/rapor-excel.php?tab=${currentTab}&year=${currentYear}&month=${currentMonth}&personel_id=${currentPersonelId}&region=${currentRegion}&defter=${currentDefter}&start_date=${currentStartDate}&end_date=${currentEndDate}&filter_type=${currentFilterType}`;
             window.location.href = url;
+        });
+
+        $('#btnCompareExportExcel').on('click', function () {
+            if (!comparisonPeriods || comparisonPeriods.length < 2) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Dönem Seçimi Gerekli',
+                    text: 'Karşılaştırma raporunu Excel\'e aktarmak için en az 2 dönem seçmelisiniz.'
+                });
+                return;
+            }
+            let params = `compare_tab=${currentCompareTab}&compare_mode=${currentCompareMode}`;
+            if (currentRegion) {
+                params += `&region=${encodeURIComponent(currentRegion)}`;
+            }
+            comparisonPeriods.forEach(function (p) {
+                params += `&periods[]=${encodeURIComponent(p)}`;
+            });
+            window.location.href = `views/puantaj/karsilastirma-excel.php?${params}`;
         });
 
         $('#btnFullScreen').on('click', function () {
