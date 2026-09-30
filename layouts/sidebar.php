@@ -67,9 +67,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
         :root {
             --sidebar-bg: #ffffff;
-            --sidebar-border: #f1f1f4;
-            --sidebar-item-hover: #f4f4f5;
-            --sidebar-item-active: #f4f4f5;
+            --sidebar-border: rgba(0, 0, 0, 0.06);
+            --sidebar-item-hover: rgba(0, 0, 0, 0.05);
+            --sidebar-item-active: rgba(0, 0, 0, 0.09);
             --sidebar-foreground: #3f3f46;
             --sidebar-muted: #71717a;
             --sidebar-accent: #18181b;
@@ -78,9 +78,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
         [data-bs-theme="dark"] {
             --sidebar-bg: #191e22;
-            --sidebar-border: #22292f;
-            --sidebar-item-hover: #242b31;
-            --sidebar-item-active: #242b31;
+            --sidebar-border: rgba(255, 255, 255, 0.08);
+            --sidebar-item-hover: rgba(255, 255, 255, 0.08);
+            --sidebar-item-active: rgba(255, 255, 255, 0.14);
             --sidebar-foreground: #94a3b8;
             --sidebar-muted: #64748b;
             --sidebar-accent: #1c84ee;
@@ -88,9 +88,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
         body[data-sidebar="dark"] {
             --sidebar-bg: #191e22;
-            --sidebar-border: #303840;
-            --sidebar-item-hover: #30373f;
-            --sidebar-item-active: #30373f;
+            --sidebar-border: rgba(255, 255, 255, 0.08);
+            --sidebar-item-hover: rgba(255, 255, 255, 0.08);
+            --sidebar-item-active: rgba(255, 255, 255, 0.14);
             --sidebar-foreground: #94a3b8;
             --sidebar-muted: #64748b;
             --sidebar-accent: #6d5dfc;
@@ -184,7 +184,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 body[data-sidebar="dark"] #sidebar-menu ul li a:hover {
-                    background-color: rgba(255, 255, 255, 0.06) !important;
+                    background-color: rgba(255, 255, 255, 0.08) !important;
+                    backdrop-filter: blur(3px);
+                    -webkit-backdrop-filter: blur(3px);
                     color: #f1f5f9 !important;
                 }
 
@@ -196,7 +198,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
                 body[data-sidebar="dark"] #sidebar-menu ul li a.active,
                 body[data-sidebar="dark"] #sidebar-menu ul li.mm-active > a {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
+                    background-color: rgba(255, 255, 255, 0.14) !important;
+                    backdrop-filter: blur(3px);
+                    -webkit-backdrop-filter: blur(3px);
                     color: #ffffff !important;
                 }
 
@@ -274,11 +278,11 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     position: relative;
                     z-index: 100;
                     flex-shrink: 0;
-                    background-color: var(--sidebar-bg);
-                    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
+                    background-color: transparent !important;
+                    background-image: none !important;
                     padding: 12px 8px 12px 8px;
                     margin: 0;
-                    border-bottom: 1px solid transparent;
+                    border-bottom: 1px solid var(--sidebar-border);
                     transition: all 0.2s ease;
                 }
 
@@ -289,19 +293,22 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     overflow-y: auto;
                 }
 
-                body[data-sidebar="red"] .sidebar-sticky-top { background-color: #f46a6a !important; }
-                body[data-sidebar="purple"] .sidebar-sticky-top { background-color: #5156be !important; }
-                body[data-sidebar="slate"] .sidebar-sticky-top { background-color: #252526 !important; }
-                body[data-sidebar="emerald"] .sidebar-sticky-top { background-color: #10b981 !important; }
-                body[data-sidebar="orange"] .sidebar-sticky-top { background-color: #f97316 !important; }
-                body[data-sidebar="rose"] .sidebar-sticky-top { background-color: #ec003f !important; }
-                body[data-sidebar="ersan"] .sidebar-sticky-top { background-color: #e2bd61 !important; }
-                body[data-sidebar="teal"] .sidebar-sticky-top { background-color: #0d9488 !important; }
-                body[data-sidebar="cyan"] .sidebar-sticky-top { background-color: #06b6d4 !important; }
-                body[data-sidebar="default"] .sidebar-sticky-top { background-color: #1c84ee !important; }
-                body[data-sidebar="brand"] .sidebar-sticky-top { background-color: var(--bs-primary) !important; }
-                body[data-sidebar="dark"] .sidebar-sticky-top { background-color: #191e22 !important; }
-                body[data-sidebar="light"] .sidebar-sticky-top { background-color: #ffffff !important; }
+                body[data-sidebar="red"] .sidebar-sticky-top,
+                body[data-sidebar="purple"] .sidebar-sticky-top,
+                body[data-sidebar="slate"] .sidebar-sticky-top,
+                body[data-sidebar="emerald"] .sidebar-sticky-top,
+                body[data-sidebar="orange"] .sidebar-sticky-top,
+                body[data-sidebar="rose"] .sidebar-sticky-top,
+                body[data-sidebar="ersan"] .sidebar-sticky-top,
+                body[data-sidebar="teal"] .sidebar-sticky-top,
+                body[data-sidebar="cyan"] .sidebar-sticky-top,
+                body[data-sidebar="default"] .sidebar-sticky-top,
+                body[data-sidebar="brand"] .sidebar-sticky-top,
+                body[data-sidebar="dark"] .sidebar-sticky-top,
+                body[data-sidebar="light"] .sidebar-sticky-top {
+                    background-color: transparent !important;
+                    background-image: none !important;
+                }
 
                 html[data-theme-mode="slate"][data-bs-theme="dark"] body .vertical-menu,
                 html[data-theme-mode="slate"][data-bs-theme="dark"] body .sidebar-sticky-top,
@@ -325,6 +332,8 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     padding-left: 36px !important;
                     height: 38px;
                     font-size: 13px;
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     transition: all 0.2s ease;
                     width: 100%;
                 }
@@ -360,6 +369,8 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     justify-content: center;
                     padding: 0 !important;
                     flex-shrink: 0;
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     transition: all 0.2s ease;
                 }
 
@@ -695,7 +706,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                    transition: background-color 0.2s ease, color 0.2s ease, padding 0.2s ease;
+                    transition: background-color 0.2s ease, color 0.2s ease, padding 0.2s ease, backdrop-filter 0.2s ease;
                     margin: 2px 12px 2px 4px;
                     position: relative;
                 }
@@ -703,6 +714,8 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 #sidebar-menu #side-menu li a:hover,
                 #sidebar-menu ul li a:hover {
                     background-color: var(--sidebar-item-hover) !important;
+                    backdrop-filter: blur(3px);
+                    -webkit-backdrop-filter: blur(3px);
                     color: #f1f5f9 !important;
                     border-radius: 8px !important;
                 }
@@ -712,6 +725,8 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 #sidebar-menu ul li.mm-active > a,
                 #sidebar-menu ul li a.active {
                     background-color: var(--sidebar-item-active) !important;
+                    backdrop-filter: blur(3px);
+                    -webkit-backdrop-filter: blur(3px);
                     color: #ffffff !important;
                     font-weight: 600;
                     border-radius: 8px !important;
@@ -772,6 +787,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 #sidebar-menu ul li ul.sub-menu li a:hover,
                 #sidebar-menu ul li ul.sub-menu li.mm-active > a,
                 #sidebar-menu ul li ul.sub-menu li a.active {
+                    background-color: var(--sidebar-item-hover) !important;
+                    backdrop-filter: blur(3px);
+                    -webkit-backdrop-filter: blur(3px);
                     padding-left: 1.2rem !important;
                     border-radius: 8px !important;
                 }
