@@ -2,10 +2,15 @@ $(document).ready(function () {
   // Select2 başlat (event delegation ile)
   function initEkOdemeSelect2() {
     if ($.fn.select2) {
-      $("#ek_odeme_parametre_id").select2({
+      var selectEl = $("#ek_odeme_parametre_id");
+      if (selectEl.hasClass("select2-hidden-accessible")) {
+        selectEl.select2("destroy");
+      }
+      selectEl.select2({
         dropdownParent: $("#modalPersonelEkOdemeEkle"),
         placeholder: "Ek ödeme türü seçiniz...",
         allowClear: true,
+        width: "100%",
       });
     }
   }
@@ -69,7 +74,10 @@ $(document).ready(function () {
   }
 
   function resetEkOdemeModal() {
-    var form = $("#formPersonelEkOdemeEkle");
+    var modal = $("#modalPersonelEkOdemeEkle");
+    var form = modal.find("#formPersonelEkOdemeEkle");
+    if (!form.length) form = $("#formPersonelEkOdemeEkle");
+
     if (form.length && form[0]) {
       form[0].reset();
     }
@@ -78,14 +86,17 @@ $(document).ready(function () {
     form.find('input[name="id"]').remove();
     
     // Modal başlığını ve buton metnini sıfırla
-    $("#modalPersonelEkOdemeEkle .modal-title").html('<i class="bx bx-plus-circle me-2"></i>Yeni Ek Ödeme Ekle');
-    $("#btnPersonelEkOdemeKaydet").html('<i class="bx bx-save me-1"></i>Kaydet');
+    modal.find(".modal-title").html('<i class="bx bx-plus-circle me-2"></i>Yeni Ek Ödeme Ekle');
+    modal.find("#btnPersonelEkOdemeKaydet").html('<i class="bx bx-save me-1"></i>Kaydet');
     
-    $("#ek_odeme_parametre_id").val("").trigger("change");
-    $("#param_info_bar").addClass("d-none").hide();
-    $("#ek_tekrar_tek_sefer").prop("checked", true);
-    $("#ek_hesaplama_sabit").prop("checked", true);
-    $("#ek_banka_matrah_evet").prop("checked", true);
+    var paramSelect = modal.find("#ek_odeme_parametre_id");
+    if (!paramSelect.length) paramSelect = $("#ek_odeme_parametre_id");
+    paramSelect.val("").trigger("change");
+
+    modal.find("#param_info_bar").addClass("d-none").hide();
+    modal.find("#ek_tekrar_tek_sefer").prop("checked", true);
+    modal.find("#ek_hesaplama_sabit").prop("checked", true);
+    modal.find("#ek_banka_matrah_evet").prop("checked", true);
     updateEkTekrarTipiUI();
     updateEkHesaplamaTipiUI();
     updateEkBankaMatrahiUI();
@@ -110,7 +121,9 @@ $(document).ready(function () {
 
   // Ek Ödeme Düzenle
   $(document).on("click", ".btn-personel-ek-odeme-duzenle", function () {
-    var id = $(this).data("id");
+    var btn = $(this);
+    var id = btn.data("id");
+    var personelId = btn.data("personel-id") || $('#formPersonelEkOdemeEkle input[name="personel_id"]').val() || $('input[name="personel_id"]').val() || '';
     
     $.ajax({
       url: "views/personel/ajax/ek-odeme-islemleri.php",
@@ -118,7 +131,7 @@ $(document).ready(function () {
       data: {
         action: "get_ek_odeme",
         id: id,
-        personel_id: $('#formPersonelEkOdemeEkle input[name="personel_id"]').val()
+        personel_id: personelId
       },
       dataType: "json",
       success: function (response) {
@@ -126,31 +139,46 @@ $(document).ready(function () {
           resetEkOdemeModal();
           initEkOdemeSelect2();
           
-          var form = $("#formPersonelEkOdemeEkle");
+          var modal = $("#modalPersonelEkOdemeEkle");
+          var form = modal.find("#formPersonelEkOdemeEkle");
+          if (!form.length) form = $("#formPersonelEkOdemeEkle");
           
           // ID ekle
+          form.find('input[name="id"]').remove();
           form.append('<input type="hidden" name="id" value="' + response.id + '">');
           
           // Modal başlığını güncelle
-          $("#modalPersonelEkOdemeEkle .modal-title").html('<i class="bx bx-edit me-2"></i>Ek Ödeme Düzenle');
-          $("#btnPersonelEkOdemeKaydet").html('<i class="bx bx-save me-1"></i>Güncelle');
+          modal.find(".modal-title").html('<i class="bx bx-edit me-2"></i>Ek Ödeme Düzenle');
+          modal.find("#btnPersonelEkOdemeKaydet").html('<i class="bx bx-save me-1"></i>Güncelle');
           
-          // Alanları doldur
-          if (response.parametre_id) {
-              $("#ek_odeme_parametre_id").val(response.parametre_id).trigger("change");
-          } else if (response.tur) {
-              // Parametre ID yoksa tür kodundan bulmaya çalış
-              var option = $("#ek_odeme_parametre_id option").filter(function() {
-                  return $(this).data("kod") == response.tur;
+          // Parametre seç
+          var paramSelect = modal.find("#ek_odeme_parametre_id");
+          if (!paramSelect.length) paramSelect = $("#ek_odeme_parametre_id");
+
+          var targetParamId = response.parametre_id;
+          if (!targetParamId && response.tur) {
+              var opt = paramSelect.find("option").filter(function() {
+                  return String($(this).data("kod")).toLowerCase() === String(response.tur).toLowerCase()
+                      || $(this).text().trim().toLowerCase() === String(response.tur).toLowerCase()
+                      || String($(this).val()) === String(response.tur);
               });
-              if (option.length > 0) {
-                  $("#ek_odeme_parametre_id").val(option.val()).trigger("change");
+              if (opt.length > 0) {
+                  targetParamId = opt.val();
               }
+          }
+          if (targetParamId) {
+              paramSelect.val(String(targetParamId)).trigger("change");
+              paramSelect.trigger({
+                  type: 'select2:select',
+                  params: {
+                      data: { id: String(targetParamId) }
+                  }
+              });
           }
           
           // Tekrar tipi
           if (response.tekrar_tipi === 'surekli') {
-            $("#ek_tekrar_surekli").prop("checked", true);
+            modal.find("#ek_tekrar_surekli").prop("checked", true);
             if (response.baslangic_donemi) {
                 var bparts = response.baslangic_donemi.split("-");
                 var bstr = "";
@@ -178,8 +206,8 @@ $(document).ready(function () {
                 }
             }
           } else {
-            $("#ek_tekrar_tek_sefer").prop("checked", true);
-            $("select[name='ek_odeme_donem']").val(response.donem_id).trigger('change');
+            modal.find("#ek_tekrar_tek_sefer").prop("checked", true);
+            modal.find("select[name='ek_odeme_donem']").val(response.donem_id).trigger('change');
           }
           updateEkTekrarTipiUI();
           
@@ -187,15 +215,15 @@ $(document).ready(function () {
           setTimeout(() => {
               var h_tipi = response.hesaplama_tipi || 'sabit';
               if (h_tipi === 'sabit') {
-                $("#ek_hesaplama_sabit").prop("checked", true);
-                $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val(response.tutar || 0);
-                $("#formPersonelEkOdemeEkle input[name='ek_odeme_resmi_tutar']").val(response.resmi_tutar || 0);
+                modal.find("#ek_hesaplama_sabit").prop("checked", true);
+                modal.find("input[name='ek_odeme_tutar']").val(response.tutar || 0);
+                modal.find("input[name='ek_odeme_resmi_tutar']").val(response.resmi_tutar || 0);
               } else if (h_tipi === 'oran_net') {
-                $("#ek_hesaplama_oran_net").prop("checked", true);
-                $("#formPersonelEkOdemeEkle input[name='oran']").val(response.oran);
+                modal.find("#ek_hesaplama_oran_net").prop("checked", true);
+                modal.find("input[name='oran']").val(response.oran);
               } else if (h_tipi === 'oran_brut') {
-                $("#ek_hesaplama_oran_brut").prop("checked", true);
-                $("#formPersonelEkOdemeEkle input[name='oran']").val(response.oran);
+                modal.find("#ek_hesaplama_oran_brut").prop("checked", true);
+                modal.find("input[name='oran']").val(response.oran);
               }
               updateEkHesaplamaTipiUI();
           }, 100);
@@ -208,18 +236,18 @@ $(document).ready(function () {
           }
           
           // Açıklama
-          $("#formPersonelEkOdemeEkle input[name='aciklama']").val(response.aciklama);
+          modal.find("input[name='aciklama']").val(response.aciklama);
           
           // Banka Matrahı Seçeneği
           if (response.banka_matrahina_ekle !== undefined && parseInt(response.banka_matrahina_ekle) === 0) {
-            $("#ek_banka_matrah_hayir").prop("checked", true);
+            modal.find("#ek_banka_matrah_hayir").prop("checked", true);
           } else {
-            $("#ek_banka_matrah_evet").prop("checked", true);
+            modal.find("#ek_banka_matrah_evet").prop("checked", true);
           }
           updateEkBankaMatrahiUI();
 
           // Modalı göster
-          $("#modalPersonelEkOdemeEkle").modal("show");
+          modal.modal("show");
         } else {
           Swal.fire("Hata", response.error || "Kayıt bulunamadı", "error");
         }
@@ -237,7 +265,12 @@ $(document).ready(function () {
 
   function updateEkTekrarTipiUI() {
     var modal = $("#modalPersonelEkOdemeEkle");
-    var container = modal.find('input[name="ek_tekrar_tipi"]').closest('.segmented-control-container');
+    var container = modal.length 
+      ? modal.find('input[name="ek_tekrar_tipi"]').closest('.segmented-control-container')
+      : $('input[name="ek_tekrar_tipi"]').closest('.segmented-control-container');
+    
+    if (!container.length) return;
+
     var checkedInput = container.find('input[name="ek_tekrar_tipi"]:checked');
     if (!checkedInput.length) {
       checkedInput = container.find("#ek_tekrar_tek_sefer").prop("checked", true);
@@ -246,19 +279,20 @@ $(document).ready(function () {
 
     container.find('.segmented-control-input').not(checkedInput).prop('checked', false).removeAttr('checked');
     container.find('.segmented-control-label').removeClass('active');
-    container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
-    console.log("Ek ödeme tekrar tipi değişti:", tekrarTipi); // Debug
+    if (checkedInput.attr('id')) {
+      container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
+    }
 
     if (tekrarTipi === "surekli") {
-      $("#ek_div_tek_sefer_donem").addClass("d-none").hide();
-      $("#ek_div_surekli_baslangic, #ek_div_surekli_bitis").removeClass("d-none").show();
-      $("select[name='ek_odeme_donem']").prop("required", false);
-      $("#ek_odeme_baslangic_donemi").prop("required", true);
+      modal.find("#ek_div_tek_sefer_donem").addClass("d-none").hide();
+      modal.find("#ek_div_surekli_baslangic, #ek_div_surekli_bitis").removeClass("d-none").show();
+      modal.find("select[name='ek_odeme_donem']").prop("required", false);
+      modal.find("#ek_odeme_baslangic_donemi").prop("required", true);
     } else {
-      $("#ek_div_tek_sefer_donem").removeClass("d-none").show();
-      $("#ek_div_surekli_baslangic, #ek_div_surekli_bitis").addClass("d-none").hide();
-      $("select[name='ek_odeme_donem']").prop("required", true);
-      $("#ek_odeme_baslangic_donemi").prop("required", false);
+      modal.find("#ek_div_tek_sefer_donem").removeClass("d-none").show();
+      modal.find("#ek_div_surekli_baslangic, #ek_div_surekli_bitis").addClass("d-none").hide();
+      modal.find("select[name='ek_odeme_donem']").prop("required", true);
+      modal.find("#ek_odeme_baslangic_donemi").prop("required", false);
     }
   }
 
@@ -269,7 +303,12 @@ $(document).ready(function () {
 
   function updateEkHesaplamaTipiUI() {
     var modal = $("#modalPersonelEkOdemeEkle");
-    var container = modal.find('input[name="ek_hesaplama_tipi"]').closest('.segmented-control-container');
+    var container = modal.length
+      ? modal.find('input[name="ek_hesaplama_tipi"]').closest('.segmented-control-container')
+      : $('input[name="ek_hesaplama_tipi"]').closest('.segmented-control-container');
+
+    if (!container.length) return;
+
     var checkedInput = container.find('input[name="ek_hesaplama_tipi"]:checked');
     if (!checkedInput.length) {
       checkedInput = container.find("#ek_hesaplama_sabit").prop("checked", true);
@@ -278,21 +317,22 @@ $(document).ready(function () {
 
     container.find('.segmented-control-input').not(checkedInput).prop('checked', false).removeAttr('checked');
     container.find('.segmented-control-label').removeClass('active');
-    container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
-    console.log("Ek ödeme hesaplama tipi değişti:", hesaplamaTipi); // Debug
+    if (checkedInput.attr('id')) {
+      container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
+    }
 
     if (hesaplamaTipi === "sabit") {
-      $("#ek_div_tutar").removeClass("d-none").show();
-      $("#ek_div_resmi_tutar").removeClass("d-none").show();
-      $("#ek_div_oran").addClass("d-none").hide();
-      $("#ek_odeme_tutar").prop("required", false);
-      $("#ek_odeme_oran").prop("required", false);
+      modal.find("#ek_div_tutar").removeClass("d-none").show();
+      modal.find("#ek_div_resmi_tutar").removeClass("d-none").show();
+      modal.find("#ek_div_oran").addClass("d-none").hide();
+      modal.find("#ek_odeme_tutar").prop("required", false);
+      modal.find("#ek_odeme_oran").prop("required", false);
     } else {
-      $("#ek_div_tutar").addClass("d-none").hide();
-      $("#ek_div_resmi_tutar").addClass("d-none").hide();
-      $("#ek_div_oran").removeClass("d-none").show();
-      $("#ek_odeme_tutar").prop("required", false);
-      $("#ek_odeme_oran").prop("required", true);
+      modal.find("#ek_div_tutar").addClass("d-none").hide();
+      modal.find("#ek_div_resmi_tutar").addClass("d-none").hide();
+      modal.find("#ek_div_oran").removeClass("d-none").show();
+      modal.find("#ek_odeme_tutar").prop("required", false);
+      modal.find("#ek_odeme_oran").prop("required", true);
     }
   }
 
@@ -302,7 +342,12 @@ $(document).ready(function () {
 
   function updateEkBankaMatrahiUI() {
     var modal = $("#modalPersonelEkOdemeEkle");
-    var container = modal.find('input[name="banka_matrahina_ekle"]').closest('.segmented-control-container');
+    var container = modal.length
+      ? modal.find('input[name="banka_matrahina_ekle"]').closest('.segmented-control-container')
+      : $('input[name="banka_matrahina_ekle"]').closest('.segmented-control-container');
+
+    if (!container.length) return;
+
     var checkedInput = container.find('input[name="banka_matrahina_ekle"]:checked');
     if (!checkedInput.length) {
       checkedInput = container.find("#ek_banka_matrah_evet").prop("checked", true);
@@ -310,12 +355,17 @@ $(document).ready(function () {
 
     container.find('.segmented-control-input').not(checkedInput).prop('checked', false).removeAttr('checked');
     container.find('.segmented-control-label').removeClass('active');
-    container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
+    if (checkedInput.attr('id')) {
+      container.find('label[for="' + checkedInput.attr('id') + '"]').addClass('active');
+    }
   }
 
   // Parametre seçilince - EVENT DELEGATION
   $(document).on("change", "#ek_odeme_parametre_id", function () {
     var selected = $(this).find("option:selected");
+    var modal = $(this).closest(".modal");
+    if (!modal.length) modal = $("#modalPersonelEkOdemeEkle");
+
     var hes_key = selected.data("hesaplama") || "";
     var hes_etiket = selected.data("hesaplama-etiket") || "Sabit Tutar";
     var oran = selected.data("oran") || 0;
@@ -324,44 +374,43 @@ $(document).ready(function () {
     var gv = selected.data("gv");
     var dv = selected.data("dv");
 
-    console.log("Ek ödeme parametre seçildi:", hes_key, hes_etiket, oran, tutar, sgk, gv, dv); // Debug
-
     if (selected.val() != "") {
-        $("#param_info_bar").removeClass("d-none").fadeIn();
+        modal.find("#param_info_bar").removeClass("d-none").fadeIn();
         
         var h_text = hes_etiket;
         var v_text = tutar + " ₺";
         
         if (hes_key.includes("oran_bazli_net") || hes_key === "oran_net") {
             v_text = "%" + oran;
-            $("#ek_hesaplama_oran_net").prop("checked", true);
-            $("#ek_odeme_oran").val(oran);
+            modal.find("#ek_hesaplama_oran_net").prop("checked", true);
+            modal.find("#ek_odeme_oran").val(oran);
         } else if (hes_key.includes("oran_bazli_brut") || hes_key === "oran_brut") {
             v_text = "%" + oran;
-            $("#ek_hesaplama_oran_brut").prop("checked", true);
-            $("#ek_odeme_oran").val(oran);
+            modal.find("#ek_hesaplama_oran_brut").prop("checked", true);
+            modal.find("#ek_odeme_oran").val(oran);
         } else {
-            $("#ek_hesaplama_sabit").prop("checked", true);
-            $("#ek_odeme_tutar").val(tutar);
+            modal.find("#ek_hesaplama_sabit").prop("checked", true);
+            modal.find("#ek_odeme_tutar").val(tutar);
         }
         
-        $("#info_hesaplama").text(h_text);
-        $("#info_deger").text(v_text);
+        modal.find("#info_hesaplama").text(h_text);
+        modal.find("#info_deger").text(v_text);
 
         // Vergi / SGK Ayarları
-        updateInfoBadge("#info_sgk", sgk, "SGK");
-        updateInfoBadge("#info_gv", gv, "GV");
-        updateInfoBadge("#info_dv", dv, "DV");
+        updateInfoBadge(modal.find("#info_sgk"), sgk, "SGK");
+        updateInfoBadge(modal.find("#info_gv"), gv, "GV");
+        updateInfoBadge(modal.find("#info_dv"), dv, "DV");
 
     } else {
-        $("#param_info_bar").addClass("d-none").hide();
+        modal.find("#param_info_bar").addClass("d-none").hide();
     }
     
     updateEkHesaplamaTipiUI();
   });
 
-  function updateInfoBadge(selector, value, label) {
-    var el = $(selector);
+  function updateInfoBadge(target, value, label) {
+    var el = $(target);
+    if (!el.length) return;
     if (value == 1) {
         el.removeClass("bg-light text-dark").addClass("bg-success text-white border-success");
         el.html('<i class="bx bx-check me-1"></i>' + label);
@@ -375,28 +424,69 @@ $(document).ready(function () {
 
   // Ek Ödeme Kaydet
   $(document).on("click", "#btnPersonelEkOdemeKaydet", function () {
-    var form = $("#formPersonelEkOdemeEkle");
+    var submitBtn = $(this);
+    var modal = submitBtn.closest(".modal");
+    if (!modal.length) modal = $("#modalPersonelEkOdemeEkle");
+    var form = submitBtn.closest("form");
+    if (!form.length) form = modal.find("#formPersonelEkOdemeEkle");
+    if (!form.length) form = $("#formPersonelEkOdemeEkle");
 
-    // Manuel validasyon
-    var parametreId = $("#ek_odeme_parametre_id").val();
+    // Parametre tespiti
+    var paramSelect = modal.find("#ek_odeme_parametre_id");
+    if (!paramSelect.length) paramSelect = form.find("#ek_odeme_parametre_id");
+    if (!paramSelect.length) paramSelect = $("#ek_odeme_parametre_id");
+
+    var parametreId = paramSelect.val();
+    if (!parametreId) {
+      parametreId = paramSelect.find("option:selected").val();
+    }
+    if (!parametreId && paramSelect.data("select2")) {
+      var s2Data = paramSelect.select2("data");
+      if (s2Data && s2Data.length && s2Data[0].id) {
+        parametreId = s2Data[0].id;
+      }
+    }
+    if (!parametreId) {
+      parametreId = form.find("select[name='parametre_id']").val();
+    }
+
+    // Güçlü Fallback: Görünür Select2 etiketinden option eşleme
+    if (!parametreId) {
+      var renderedEl = modal.find(".select2-selection__rendered");
+      var renderedText = (renderedEl.attr("title") || renderedEl.text() || "").trim();
+      renderedText = renderedText.replace(/^[×x]\s*/, '').replace(/\s*[×x]$/, '').trim();
+      if (renderedText && renderedText !== "Ek ödeme türü seçiniz...") {
+        paramSelect.find("option").each(function () {
+          var val = $(this).val();
+          var txt = $(this).text().trim();
+          var kod = $(this).data("kod");
+          if (val && (txt === renderedText || txt.indexOf(renderedText) !== -1 || kod === renderedText)) {
+            parametreId = val;
+            paramSelect.val(val);
+            return false;
+          }
+        });
+      }
+    }
+
     if (!parametreId) {
       Swal.fire("Hata", "Lütfen ek ödeme türü seçiniz.", "error");
       return;
     }
 
-    var tekrarTipi = $('input[name="ek_tekrar_tipi"]:checked').val();
-    var hesaplamaTipi = $('input[name="ek_hesaplama_tipi"]:checked').val();
+    var tekrarTipi = form.find('input[name="ek_tekrar_tipi"]:checked').val() || "tek_sefer";
+    var hesaplamaTipi = form.find('input[name="ek_hesaplama_tipi"]:checked').val() || "sabit";
 
     // Tek seferlik ise dönem zorunlu
     if (tekrarTipi === "tek_sefer") {
-      var donem = $("select[name='ek_odeme_donem']").val();
+      var donem = form.find("select[name='ek_odeme_donem']").val();
       if (!donem) {
         Swal.fire("Hata", "Lütfen dönem seçiniz.", "error");
         return;
       }
     } else {
       // Sürekli ise başlangıç dönemi zorunlu
-      var baslangicDonemi = ekOdemeGetTarih("#ek_odeme_baslangic_donemi");
+      var baslangicDonemi = ekOdemeGetTarih(form.find("#ek_odeme_baslangic_donemi"));
       if (!baslangicDonemi) {
         Swal.fire("Hata", "Lütfen başlangıç dönemini giriniz.", "error");
         return;
@@ -405,15 +495,15 @@ $(document).ready(function () {
 
     // Oran bazlı ise oran zorunlu; sabit tutarda en az bir alan dolu olmalı
     if (hesaplamaTipi === "sabit") {
-      var tutar = parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val()) || 0;
-      var resmiTutar = parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_resmi_tutar']").val()) || 0;
+      var tutar = parseFloat(form.find("input[name='ek_odeme_tutar']").val()) || 0;
+      var resmiTutar = parseFloat(form.find("input[name='ek_odeme_resmi_tutar']").val()) || 0;
       if (tutar <= 0 && resmiTutar <= 0) {
         Swal.fire("Hata", "Lütfen en az bir tutar giriniz (Maaşa Ek Tutar veya Resmi Alacağa Dahil Tutar).", "error");
         return;
       }
     } else {
       // Oran bazlı ise oran zorunlu
-      var oran = $("#formPersonelEkOdemeEkle input[name='oran']").val();
+      var oran = form.find("input[name='oran']").val();
       if (!oran || parseFloat(oran) <= 0) {
         Swal.fire("Hata", "Lütfen geçerli bir oran giriniz.", "error");
         return;
@@ -421,9 +511,11 @@ $(document).ready(function () {
     }
 
     // Tür kodunu al
-    var turKod =
-      $("#ek_odeme_parametre_id").find("option:selected").data("kod") ||
-      "diger";
+    var selectedOpt = paramSelect.find("option:selected");
+    if (!selectedOpt.val() && parametreId) {
+      selectedOpt = paramSelect.find("option[value='" + parametreId + "']");
+    }
+    var turKod = selectedOpt.data("kod") || "diger";
 
     // Güncelleme kontrolü
     var idInput = form.find('input[name="id"]');
@@ -432,25 +524,25 @@ $(document).ready(function () {
 
     var data = {
       action: action,
-      personel_id: form.find('input[name="personel_id"]').val(),
+      personel_id: form.find('input[name="personel_id"]').val() || $('input[name="personel_id"]').val(),
       parametre_id: parametreId,
       tur: turKod,
       tekrar_tipi: tekrarTipi,
       hesaplama_tipi: hesaplamaTipi,
       tutar:
         hesaplamaTipi === "sabit"
-          ? parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val()) || 0
+          ? parseFloat(form.find("input[name='ek_odeme_tutar']").val()) || 0
           : 0,
       resmi_tutar:
         hesaplamaTipi === "sabit"
-          ? parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_resmi_tutar']").val()) || 0
+          ? parseFloat(form.find("input[name='ek_odeme_resmi_tutar']").val()) || 0
           : 0,
       oran:
         hesaplamaTipi !== "sabit"
-          ? $("#formPersonelEkOdemeEkle input[name='oran']").val()
+          ? form.find("input[name='oran']").val()
           : 0,
-      tarih: ekOdemeGetTarih("#ek_odeme_tarih"),
-      aciklama: $("#formPersonelEkOdemeEkle input[name='aciklama']").val(),
+      tarih: ekOdemeGetTarih(form.find("#ek_odeme_tarih")),
+      aciklama: form.find("input[name='aciklama']").val() || "",
       banka_matrahina_ekle: bankaMatrahi !== undefined ? bankaMatrahi : 1,
     };
 
@@ -467,10 +559,10 @@ $(document).ready(function () {
 
     // Dönem bilgisi
     if (tekrarTipi === "tek_sefer") {
-      data.donem_id = $("select[name='ek_odeme_donem']").val();
+      data.donem_id = form.find("select[name='ek_odeme_donem']").val();
     } else {
-      data.baslangic_donemi = ekOdemeGetTarih("#ek_odeme_baslangic_donemi");
-      data.bitis_donemi = ekOdemeGetTarih("#ek_odeme_bitis_donemi") || null;
+      data.baslangic_donemi = ekOdemeGetTarih(form.find("#ek_odeme_baslangic_donemi"));
+      data.bitis_donemi = ekOdemeGetTarih(form.find("#ek_odeme_bitis_donemi")) || null;
     }
 
     $.ajax({

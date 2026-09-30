@@ -445,7 +445,9 @@ foreach ($ek_odemeler as $k) {
                                                                 <?php if (!($k->kapali_mi ?? 0)): ?>
                                                                     <button type="button"
                                                                         class="btn btn-sm btn-primary btn-personel-ek-odeme-duzenle"
-                                                                        data-id="<?= $k->id ?>" title="Düzenle">
+                                                                        data-id="<?= $k->id ?>"
+                                                                        data-personel-id="<?= $id ?>"
+                                                                        title="Düzenle">
                                                                         <i class="bx bx-edit"></i>
                                                                     </button>
                                                                     <button type="button"
@@ -571,7 +573,9 @@ foreach ($ek_odemeler as $k) {
                                         <?php endif; ?>
                                         <?php if (!($k->kapali_mi ?? 0)): ?>
                                             <button type="button" class="btn btn-sm btn-primary btn-personel-ek-odeme-duzenle"
-                                                data-id="<?= $k->id ?>" title="Düzenle">
+                                                data-id="<?= $k->id ?>"
+                                                data-personel-id="<?= $id ?>"
+                                                title="Düzenle">
                                                 <i class="bx bx-edit"></i>
                                             </button>
                                             <button type="button" class="btn btn-sm btn-danger btn-personel-ek-odeme-sil"
