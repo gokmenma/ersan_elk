@@ -23,9 +23,48 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
 ?>
 
-<div class="vertical-menu">
+<div class="vertical-menu" id="navbar">
+    <canvas id="sidebar-particles-canvas" class="sidebar-particles-canvas"></canvas>
 
     <style>
+        /* Sidebar Parçacık Ağı Tuvali */
+        .sidebar-particles-canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            pointer-events: none !important;
+            z-index: 0 !important;
+            opacity: 0.95;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Sidebar Kapsayıcısı */
+        .sidebar, #navbar, .vertical-menu {
+            position: fixed;
+            overflow: hidden !important;
+        }
+
+        /* İçerik katmanı */
+        .sidebar > .container-fluid,
+        .sidebar > .sidebar-content,
+        .sidebar-nav,
+        .sidebar-sticky-top,
+        .sidebar-menu-scroll,
+        #sidebar-menu,
+        #side-menu {
+            position: relative !important;
+            z-index: 1 !important;
+        }
+
+        .sidebar-menu-scroll,
+        #sidebar-menu,
+        #side-menu,
+        .metismenu {
+            background: transparent !important;
+        }
+
         :root {
             --sidebar-bg: #ffffff;
             --sidebar-border: #f1f1f4;

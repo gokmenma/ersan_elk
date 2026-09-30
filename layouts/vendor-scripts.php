@@ -238,6 +238,10 @@ if ($page == "hakedisler/hakedis-detay") {
     <script src="views/gorevler/js/gorevler.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
+<!-- Sidebar Particles / Constellation Animation -->
+<script src="assets/js/sidebar-particles.js?v=<?php echo file_exists(dirname(__DIR__) . '/assets/js/sidebar-particles.js') ? filemtime(dirname(__DIR__) . '/assets/js/sidebar-particles.js') : time(); ?>"></script>
+
 <?php if (($_SESSION['portal_scope'] ?? '') !== 'kaski'): ?>
     <?php include_once __DIR__ . '/destek-chat.php'; ?>
 <?php endif; ?>
+
