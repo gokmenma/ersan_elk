@@ -190,8 +190,9 @@ $(document).ready(function() {
                     // XML İndir
                     btns += `<a href="api/efatura-api.php?action=download_xml&invoice_id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-light border text-info table-action-btn" title="UBL (XML) İndir" download><i class="bx bx-code-alt font-size-15"></i></a>`;
                     
-                    // Taslak ise GİB'e Gönder Butonu
+                    // Taslak ise Düzenle & GİB'e Gönder Butonları
                     if (row.entegrator_durum_kodu === 'TASLAK') {
+                        btns += `<a href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-light border text-warning table-action-btn" title="Taslak Faturayı Düzenle"><i class="bx bx-edit font-size-15"></i></a>`;
                         btns += `<button type="button" class="btn btn-primary text-white table-action-btn btn-gonder" data-id="${row.encrypted_id}" title="EDM / GİB'e Gönder"><i class="bx bx-send font-size-14"></i></button>`;
                     } else if (row.entegrator_durum_kodu === 'GONDERILDI') {
                         btns += `<button type="button" class="btn btn-warning text-white table-action-btn btn-senkronize" data-id="${row.encrypted_id}" title="GİB Durumu Sorgula"><i class="bx bx-refresh font-size-14"></i></button>`;
@@ -202,22 +203,28 @@ $(document).ready(function() {
 
                     // Diğer İşlemler Dropdown
                     btns += `<div class="dropdown d-inline-block">
-                        <button type="button" class="btn btn-light border text-dark table-action-btn" data-bs-toggle="dropdown" data-bs-boundary="body" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Diğer İşlemler">
+                        <button type="button" class="btn btn-light border text-dark table-action-btn" data-bs-toggle="dropdown" data-bs-display="dynamic" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Diğer İşlemler">
                             <i class="bx bx-dots-vertical-rounded font-size-15"></i>
                         </button>
-                        <div class="dropdown-menu dropdown-menu-end shadow-lg border py-1" style="min-width: 180px; z-index: 99999;">
-                            <a class="dropdown-item py-1 font-size-12 btn-onizle" data-id="${row.encrypted_id}" href="javascript:void(0)"><i class="bx bx-show me-2 text-primary font-size-15"></i>Önizle & Yazdır</a>
-                            <a class="dropdown-item py-1 font-size-12" href="api/efatura-api.php?action=download_xml&invoice_id=${encodeURIComponent(row.encrypted_id)}" download><i class="bx bx-code-alt me-2 text-info font-size-15"></i>UBL XML İndir</a>
-                            <div class="dropdown-divider my-1"></div>
-                            <a class="dropdown-item py-1 font-size-12 btn-copy-no" data-no="${safeFaturaNo}" href="javascript:void(0)"><i class="bx bx-copy me-2 text-secondary font-size-15"></i>Fatura No Kopyala</a>
-                            <a class="dropdown-item py-1 font-size-12 btn-copy-ettn" data-ettn="${safeEttn}" href="javascript:void(0)"><i class="bx bx-key me-2 text-secondary font-size-15"></i>ETTN Kopyala</a>`;
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border py-1" style="min-width: 180px;">`;
+
+                    if (row.entegrator_durum_kodu === 'TASLAK') {
+                        btns += `<li><a class="dropdown-item py-1 font-size-12 text-warning" href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}"><i class="bx bx-edit me-2 font-size-15"></i>Faturayı Düzenle</a></li>
+                        <li><hr class="dropdown-divider my-1"></li>`;
+                    }
+
+                    btns += `<li><a class="dropdown-item py-1 font-size-12 btn-onizle" data-id="${row.encrypted_id}" href="javascript:void(0)"><i class="bx bx-show me-2 text-primary font-size-15"></i>Önizle & Yazdır</a></li>
+                            <li><a class="dropdown-item py-1 font-size-12" href="api/efatura-api.php?action=download_xml&invoice_id=${encodeURIComponent(row.encrypted_id)}" download><i class="bx bx-code-alt me-2 text-info font-size-15"></i>UBL XML İndir</a></li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li><a class="dropdown-item py-1 font-size-12 btn-copy-no" data-no="${safeFaturaNo}" href="javascript:void(0)"><i class="bx bx-copy me-2 text-secondary font-size-15"></i>Fatura No Kopyala</a></li>
+                            <li><a class="dropdown-item py-1 font-size-12 btn-copy-ettn" data-ettn="${safeEttn}" href="javascript:void(0)"><i class="bx bx-key me-2 text-secondary font-size-15"></i>ETTN Kopyala</a></li>`;
                     
                     if (row.entegrator_durum_kodu !== 'IPTAL') {
-                        btns += `<div class="dropdown-divider my-1"></div>
-                            <a class="dropdown-item py-1 font-size-12 text-danger btn-iptal" data-id="${row.encrypted_id}" href="javascript:void(0)"><i class="bx bx-x-circle me-2 font-size-15"></i>Faturayı İptal Et</a>`;
+                        btns += `<li><hr class="dropdown-divider my-1"></li>
+                            <li><a class="dropdown-item py-1 font-size-12 text-danger btn-iptal" data-id="${row.encrypted_id}" href="javascript:void(0)"><i class="bx bx-x-circle me-2 font-size-15"></i>Faturayı İptal Et</a></li>`;
                     }
                     
-                    btns += `</div></div></div>`;
+                    btns += `</ul></div></div>`;
                     return btns;
                 }
             }
@@ -251,6 +258,21 @@ $(document).ready(function() {
         if ($(e.target).closest('a, button, input, .dropdown-menu').length) return;
         $('#tblFaturalar tbody tr').removeClass('selected');
         $(this).addClass('selected');
+    });
+
+    // Tablo içindeki açılır menülerin kesilmesini engellemek için Fixed Popper desteği
+    $(document).on('show.bs.dropdown', '#tblFaturalar .dropdown', function() {
+        const btn = $(this).find('[data-bs-toggle="dropdown"]')[0];
+        if (btn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+            bootstrap.Dropdown.getOrCreateInstance(btn, {
+                popperConfig: function(defaultBsPopperConfig) {
+                    return {
+                        ...defaultBsPopperConfig,
+                        strategy: 'fixed'
+                    };
+                }
+            });
+        }
     });
 
     // 4. Hızlı Durum Filtreleme Rozetleri (Kartlardaki Tümü, Onaylı, İletilen)
@@ -595,10 +617,12 @@ $(document).ready(function() {
         $('#tblFaturalar tbody tr').removeClass('selected');
         $(this).addClass('selected');
 
-        // GİB'e Gönder / İptal görünürlüğü
+        // Taslak ise Düzenle & GİB'e Gönder butonları
         if (data.entegrator_durum_kodu === 'TASLAK') {
+            $('.cm-edit-action').show();
             $('.cm-send-action').show();
         } else {
+            $('.cm-edit-action').hide();
             $('.cm-send-action').hide();
         }
 
@@ -662,7 +686,9 @@ $(document).ready(function() {
         const action = $(this).data('action');
         const id = selectedRowData.encrypted_id;
 
-        if (action === 'preview') {
+        if (action === 'edit') {
+            window.location.href = `index.php?p=efatura/olustur&id=${encodeURIComponent(id)}`;
+        } else if (action === 'preview') {
             openInvoicePreview(id);
         } else if (action === 'print') {
             openInvoicePreview(id);

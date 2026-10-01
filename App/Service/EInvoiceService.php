@@ -57,6 +57,23 @@ class EInvoiceService
     }
 
     /**
+     * Taslak Fatura Güncelleme
+     */
+    public function updateDraft(int $invoiceId, int $firmId, array $header, array $lines, int $userId): array
+    {
+        $res = $this->invoiceModel->updateInvoice($invoiceId, $firmId, $header, $lines, $userId);
+        if (!$res) {
+            return ['success' => false, 'message' => 'Fatura taslağı güncellenemedi veya fatura artık taslak durumunda değil.'];
+        }
+
+        return [
+            'success'    => true,
+            'invoice_id' => $invoiceId,
+            'message'    => 'Fatura taslağı başarıyla güncellendi.'
+        ];
+    }
+
+    /**
      * Faturayı EDM / GİB Sistemine Gönderir
      */
     public function sendInvoice(int $invoiceId, int $firmId): array

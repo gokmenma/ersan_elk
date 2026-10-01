@@ -249,6 +249,9 @@ $title = 'Giden Faturalar';
 <!-- Özel Sağ Tık (Context Menu) Bileşeni -->
 <div id="faturaContextMenu" class="dropdown-menu shadow-lg border rounded-3 p-1" style="display: none; position: fixed; z-index: 99999; min-width: 220px;">
     <div class="dropdown-header text-muted font-size-11 text-uppercase fw-bold pb-1">Fatura İşlemleri</div>
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-edit-action text-warning" data-action="edit" href="javascript:void(0)">
+        <i class="bx bx-edit me-2 font-size-16"></i> Faturayı Düzenle
+    </a>
     <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action" data-action="preview" href="javascript:void(0)">
         <i class="bx bx-show me-2 text-primary font-size-16"></i> Görüntüle / Önizle
     </a>
@@ -422,17 +425,16 @@ $title = 'Giden Faturalar';
     font-weight: 600;
 }
 
-/* Tablo Açılır Liste Taşma (Overflow) Düzeltmesi */
+/* Tablo Sarmalayıcı */
 .table-responsive {
-    overflow-x: auto !important;
-    overflow-y: visible !important;
-    min-height: 250px;
+    overflow-x: auto;
+    margin-bottom: 0;
 }
 .card-body {
     overflow: visible !important;
 }
 .dropdown-menu {
-    z-index: 99999 !important;
+    z-index: 9999 !important;
 }
 .dropdown-item {
     color: #334155 !important;
@@ -444,6 +446,17 @@ $title = 'Giden Faturalar';
 .dropdown-item:hover {
     background-color: #f1f5f9 !important;
     color: #0f172a !important;
+}
+
+/* DataTables Alt Çubuk (Info & Paginate) Düzeni */
+#tblFaturalar_wrapper .row:last-child {
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
+}
+.dataTables_info,
+.dataTables_paginate,
+.dataTables_length {
+    font-size: 13px !important;
 }
 
 /* Muhasebe Butonları */

@@ -37,11 +37,16 @@ try {
             echo json_encode(['status' => 'success', 'data' => $result]);
             break;
 
-        // 2. Taslak Fatura Kaydet
+        // 2. Taslak Fatura Kaydet / Güncelle
         case 'save_draft':
             $payload = json_decode(file_get_contents('php://input'), true) ?: $_POST;
             $header = $payload['header'] ?? [];
             $lines = $payload['lines'] ?? [];
+            $rawId = $payload['invoice_id'] ?? $header['invoice_id'] ?? null;
+            $invoiceId = null;
+            if (!empty($rawId)) {
+                $invoiceId = is_numeric($rawId) ? (int)$rawId : (int)Security::decrypt($rawId);
+            }
 
             if (empty($header['alici_vkn_tckn']) || empty($header['alici_unvan'])) {
                 echo json_encode(['status' => 'error', 'message' => 'Alıcı VKN/TCKN ve Unvan alanları zorunludur.']);
@@ -53,13 +58,19 @@ try {
                 exit;
             }
 
-            $res = $invoiceService->createDraft($firmId, $header, $lines, $userId);
+            if ($invoiceId && $invoiceId > 0) {
+                $res = $invoiceService->updateDraft($invoiceId, $firmId, $header, $lines, $userId);
+            } else {
+                $res = $invoiceService->createDraft($firmId, $header, $lines, $userId);
+            }
+
             if ($res['success']) {
+                $finalId = $res['invoice_id'] ?? $invoiceId;
                 echo json_encode([
                     'status'       => 'success',
                     'message'      => $res['message'],
-                    'invoice_id'   => $res['invoice_id'],
-                    'encrypted_id' => Security::encrypt((string)$res['invoice_id'])
+                    'invoice_id'   => $finalId,
+                    'encrypted_id' => Security::encrypt((string)$finalId)
                 ]);
             } else {
                 echo json_encode(['status' => 'error', 'message' => $res['message']]);

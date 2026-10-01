@@ -174,6 +174,190 @@ class EInvoiceModel extends Model
     }
 
     /**
+     * Taslak Faturayı Günceller
+     */
+    public function updateInvoice(int $invoiceId, int $firmId, array $header, array $lines, int $userId): bool
+    {
+        $this->db->beginTransaction();
+        try {
+            // Kontrol: Fatura taslak mı?
+            $checkStmt = $this->db->prepare("SELECT entegrator_durum_kodu FROM faturalar WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL LIMIT 1");
+            $checkStmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+            $currentStatus = $checkStmt->fetchColumn();
+
+            if (!$currentStatus) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            if ($currentStatus !== 'TASLAK') {
+                $this->db->rollBack();
+                throw new \Exception("Sadece taslak durumundaki faturalar düzenlenebilir.");
+            }
+
+            // Alt Toplamları Hesapla
+            $satirToplami = 0.0;
+            $iskontoToplami = 0.0;
+            $kdvMatrahi = 0.0;
+            $hesaplananKdv = 0.0;
+            $tevkifatTutari = 0.0;
+            $odenecekTutar = 0.0;
+
+            foreach ($lines as $line) {
+                $miktar = (float)($line['miktar'] ?? 1);
+                $birimFiyat = (float)($line['birim_fiyat'] ?? 0);
+                $iskontoOrani = (float)($line['iskonto_orani'] ?? 0);
+                $kdvOrani = (float)($line['kdv_orani'] ?? 20);
+                $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
+
+                $hamTutar = round($miktar * $birimFiyat, 2);
+                $iskontoTutari = round($hamTutar * ($iskontoOrani / 100), 2);
+                $netMatrah = $hamTutar - $iskontoTutari;
+                $kdvTutari = round($netMatrah * ($kdvOrani / 100), 2);
+                $tevkifat = round($kdvTutari * ($tevkifatOrani / 100), 2);
+                $satirNet = $netMatrah + $kdvTutari - $tevkifat;
+
+                $satirToplami += $hamTutar;
+                $iskontoToplami += $iskontoTutari;
+                $kdvMatrahi += $netMatrah;
+                $hesaplananKdv += $kdvTutari;
+                $tevkifatTutari += $tevkifat;
+                $odenecekTutar += $satirNet;
+            }
+
+            $stmt = $this->db->prepare("
+                UPDATE faturalar SET
+                    cari_id = :cari_id,
+                    belge_turu = :belge_turu,
+                    fatura_profili = :fatura_profili,
+                    fatura_tipi = :fatura_tipi,
+                    fatura_tarihi = :fatura_tarihi,
+                    duzenleme_saati = :duzenleme_saati,
+                    vade_tarihi = :vade_tarihi,
+                    alici_vkn_tckn = :alici_vkn_tckn,
+                    alici_unvan = :alici_unvan,
+                    alici_vergi_dairesi = :alici_vergi_dairesi,
+                    alici_adres = :alici_adres,
+                    alici_il = :alici_il,
+                    alici_ilce = :alici_ilce,
+                    alici_ulke = :alici_ulke,
+                    alici_eposta = :alici_eposta,
+                    alici_telefon = :alici_telefon,
+                    alici_posta_kutusu = :alici_posta_kutusu,
+                    para_birimi = :para_birimi,
+                    doviz_kuru = :doviz_kuru,
+                    satir_toplami = :satir_toplami,
+                    iskonto_toplami = :iskonto_toplami,
+                    kdv_matrahi = :kdv_matrahi,
+                    hesaplanan_kdv = :hesaplanan_kdv,
+                    tevkifat_tutari = :tevkifat_tutari,
+                    odenecek_tutar = :odenecek_tutar,
+                    notlar = :notlar,
+                    siparis_no = :siparis_no,
+                    siparis_tarihi = :siparis_tarihi,
+                    irsaliye_no = :irsaliye_no,
+                    irsaliye_tarihi = :irsaliye_tarihi,
+                    updated_at = NOW()
+                WHERE id = :id AND firm_id = :firm_id
+            ");
+
+            $stmt->execute([
+                'id'                    => $invoiceId,
+                'firm_id'               => $firmId,
+                'cari_id'               => !empty($header['cari_id']) ? (int)$header['cari_id'] : null,
+                'belge_turu'            => $header['belge_turu'] ?? 'EFATURA',
+                'fatura_profili'        => $header['fatura_profili'] ?? 'TICARIFATURA',
+                'fatura_tipi'           => $header['fatura_tipi'] ?? 'SATIS',
+                'fatura_tarihi'         => $header['fatura_tarihi'] ?? date('Y-m-d'),
+                'duzenleme_saati'       => $header['duzenleme_saati'] ?? date('H:i:s'),
+                'vade_tarihi'           => !empty($header['vade_tarihi']) ? $header['vade_tarihi'] : null,
+                'alici_vkn_tckn'        => $header['alici_vkn_tckn'] ?? '',
+                'alici_unvan'           => $header['alici_unvan'] ?? '',
+                'alici_vergi_dairesi'   => $header['alici_vergi_dairesi'] ?? null,
+                'alici_adres'           => $header['alici_adres'] ?? null,
+                'alici_il'              => $header['alici_il'] ?? null,
+                'alici_ilce'            => $header['alici_ilce'] ?? null,
+                'alici_ulke'            => $header['alici_ulke'] ?? 'Türkiye',
+                'alici_eposta'          => $header['alici_eposta'] ?? null,
+                'alici_telefon'         => $header['alici_telefon'] ?? null,
+                'alici_posta_kutusu'    => $header['alici_posta_kutusu'] ?? null,
+                'para_birimi'           => $header['para_birimi'] ?? 'TRY',
+                'doviz_kuru'            => $header['doviz_kuru'] ?? 1.0000,
+                'satir_toplami'         => $satirToplami,
+                'iskonto_toplami'       => $iskontoToplami,
+                'kdv_matrahi'           => $kdvMatrahi,
+                'hesaplanan_kdv'        => $hesaplananKdv,
+                'tevkifat_tutari'       => $tevkifatTutari,
+                'odenecek_tutar'        => $odenecekTutar,
+                'notlar'                => $header['notlar'] ?? null,
+                'siparis_no'            => $header['siparis_no'] ?? null,
+                'siparis_tarihi'        => !empty($header['siparis_tarihi']) ? $header['siparis_tarihi'] : null,
+                'irsaliye_no'           => $header['irsaliye_no'] ?? null,
+                'irsaliye_tarihi'       => !empty($header['irsaliye_tarihi']) ? $header['irsaliye_tarihi'] : null
+            ]);
+
+            // Eski Satırları Sil
+            $delStmt = $this->db->prepare("DELETE FROM fatura_satirlari WHERE fatura_id = :fatura_id");
+            $delStmt->execute(['fatura_id' => $invoiceId]);
+
+            // Yeni Satırları Ekle
+            $lineStmt = $this->db->prepare("
+                INSERT INTO fatura_satirlari (
+                    fatura_id, sira_no, urun_hizmet_adi, urun_kodu, miktar, birim,
+                    birim_fiyat, iskonto_orani, iskonto_tutari, kdv_orani, kdv_tutari,
+                    tevkifat_kodu, tevkifat_orani, tevkifat_tutari, istisna_kodu, satir_toplami
+                ) VALUES (
+                    :fatura_id, :sira_no, :urun_hizmet_adi, :urun_kodu, :miktar, :birim,
+                    :birim_fiyat, :iskonto_orani, :iskonto_tutari, :kdv_orani, :kdv_tutari,
+                    :tevkifat_kodu, :tevkifat_orani, :tevkifat_tutari, :istisna_kodu, :satir_toplami
+                )
+            ");
+
+            $siraNo = 1;
+            foreach ($lines as $line) {
+                $miktar = (float)($line['miktar'] ?? 1);
+                $birimFiyat = (float)($line['birim_fiyat'] ?? 0);
+                $iskontoOrani = (float)($line['iskonto_orani'] ?? 0);
+                $kdvOrani = (float)($line['kdv_orani'] ?? 20);
+                $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
+
+                $hamTutar = round($miktar * $birimFiyat, 2);
+                $iskontoTutari = round($hamTutar * ($iskontoOrani / 100), 2);
+                $netMatrah = $hamTutar - $iskontoTutari;
+                $kdvTutari = round($netMatrah * ($kdvOrani / 100), 2);
+                $tevkifat = round($kdvTutari * ($tevkifatOrani / 100), 2);
+                $satirNet = $netMatrah + $kdvTutari - $tevkifat;
+
+                $lineStmt->execute([
+                    'fatura_id'       => $invoiceId,
+                    'sira_no'         => $siraNo++,
+                    'urun_hizmet_adi' => $line['urun_hizmet_adi'] ?? '',
+                    'urun_kodu'       => $line['urun_kodu'] ?? null,
+                    'miktar'          => $miktar,
+                    'birim'           => $line['birim'] ?? 'C62',
+                    'birim_fiyat'     => $birimFiyat,
+                    'iskonto_orani'   => $iskontoOrani,
+                    'iskonto_tutari'  => $iskontoTutari,
+                    'kdv_orani'       => $kdvOrani,
+                    'kdv_tutari'      => $kdvTutari,
+                    'tevkifat_kodu'   => $line['tevkifat_kodu'] ?? null,
+                    'tevkifat_orani'  => $tevkifatOrani > 0 ? $tevkifatOrani : null,
+                    'tevkifat_tutari' => $tevkifat,
+                    'istisna_kodu'    => $line['istisna_kodu'] ?? null,
+                    'satir_toplami'   => $satirNet
+                ]);
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            error_log("EInvoiceModel::updateInvoice Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Fatura ve Satır Detaylarını Getirir
      */
     public function getInvoiceById(int $invoiceId, int $firmId): ?array

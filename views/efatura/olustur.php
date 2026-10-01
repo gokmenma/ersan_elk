@@ -1,6 +1,8 @@
 <?php
 use App\Config\EdmConfig;
 use App\Core\Db;
+use App\Helper\Security;
+use App\Model\EInvoiceModel;
 
 $maintitle = 'E-Fatura & E-Arşiv';
 $title = 'Yeni Fatura Düzenle';
@@ -20,6 +22,19 @@ $kdvOranlari = [
     '1'  => '%1',
     '0'  => '%0'
 ];
+
+$editInvoice = null;
+$editInvoiceEncryptedId = $_GET['id'] ?? '';
+if (!empty($editInvoiceEncryptedId)) {
+    $decryptedId = is_numeric($editInvoiceEncryptedId) ? (int)$editInvoiceEncryptedId : (int)Security::decrypt($editInvoiceEncryptedId);
+    if ($decryptedId > 0) {
+        $invoiceModel = new EInvoiceModel();
+        $editInvoice = $invoiceModel->getInvoiceById($decryptedId, $firmId);
+        if ($editInvoice) {
+            $title = 'Taslak Faturayı Düzenle';
+        }
+    }
+}
 ?>
 
 <style>
@@ -198,8 +213,8 @@ $kdvOranlari = [
                 <i class="bx bx-arrow-back fs-5"></i>
             </a>
             <div>
-                <h4 class="mb-0 fw-bold text-dark">Yeni Fatura Düzenle</h4>
-                <small class="text-muted">E-Fatura & E-Arşiv Belgesi Oluşturma ve EDM İletimi</small>
+                <h4 class="mb-0 fw-bold text-dark"><?= !empty($editInvoice) ? 'Taslak Faturayı Düzenle' : 'Yeni Fatura Düzenle' ?></h4>
+                <small class="text-muted"><?= !empty($editInvoice) ? 'Taslak faturayı güncelleyip kaydedin veya doğrudan GİB\'e gönderin' : 'E-Fatura & E-Arşiv Belgesi Oluşturma ve EDM İletimi' ?></small>
             </div>
         </div>
 
@@ -210,7 +225,7 @@ $kdvOranlari = [
                 </span>
             </div>
             <button type="button" class="btn btn-light border px-3 fw-semibold" id="btnTaslakKaydet">
-                <i class="bx bx-save me-1"></i> Taslak Kaydet
+                <i class="bx bx-save me-1"></i> <?= !empty($editInvoice) ? 'Değişiklikleri Kaydet' : 'Taslak Kaydet' ?>
             </button>
             <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm" id="btnGonderDirect">
                 <i class="bx bx-send me-1"></i> Kaydet ve Gönder
@@ -219,6 +234,7 @@ $kdvOranlari = [
     </div>
 
     <form id="formFaturaOlustur">
+        <input type="hidden" id="editInvoiceId" value="<?= !empty($editInvoice) ? htmlspecialchars($editInvoiceEncryptedId, ENT_QUOTES, 'UTF-8') : '' ?>">
         <!-- 2 Sütunlu Üst Bilgiler -->
         <div class="row g-4 mb-4">
             <!-- 1. Sütun: Müşteri & Alıcı Bilgileri -->
@@ -515,8 +531,44 @@ document.addEventListener('DOMContentLoaded', function() {
         calculateTotals();
     }
 
-    // İlk satırı yükle
-    addRow();
+    const EDIT_DATA = <?= json_encode($editInvoice, JSON_UNESCAPED_UNICODE) ?>;
+
+    // Düzenleme modunda ise verileri forma yükle
+    if (EDIT_DATA) {
+        if (EDIT_DATA.cari_id) {
+            $('#selectCari').val(EDIT_DATA.cari_id).trigger('change');
+        }
+        $('#alici_vkn_tckn').val(EDIT_DATA.alici_vkn_tckn || '');
+        $('#alici_vergi_dairesi').val(EDIT_DATA.alici_vergi_dairesi || '');
+        $('#alici_unvan').val(EDIT_DATA.alici_unvan || '');
+        $('#alici_adres').val(EDIT_DATA.alici_adres || '');
+        $('#alici_ilce').val(EDIT_DATA.alici_ilce || '');
+        $('#alici_il').val(EDIT_DATA.alici_il || 'Kayseri');
+        $('#belge_turu').val(EDIT_DATA.belge_turu || 'EARSIV').trigger('change');
+        $('#fatura_profili').val(EDIT_DATA.fatura_profili || 'EARSIVFATURA').trigger('change');
+        $('#fatura_tipi').val(EDIT_DATA.fatura_tipi || 'SATIS').trigger('change');
+        $('#para_birimi').val(EDIT_DATA.para_birimi || 'TRY').trigger('change');
+        if (EDIT_DATA.fatura_tarihi) {
+            const parts = EDIT_DATA.fatura_tarihi.split('.');
+            if (parts.length === 3) {
+                $('#fatura_tarihi').val(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            } else {
+                $('#fatura_tarihi').val(EDIT_DATA.fatura_tarihi);
+            }
+        }
+        if (EDIT_DATA.vade_tarihi) $('#vade_tarihi').val(EDIT_DATA.vade_tarihi);
+        $('#notlar').val(EDIT_DATA.notlar || '');
+
+        $('#kalemlerContainer').empty();
+        if (EDIT_DATA.satirlar && EDIT_DATA.satirlar.length > 0) {
+            EDIT_DATA.satirlar.forEach(line => addRow(line));
+        } else {
+            addRow();
+        }
+    } else {
+        // İlk satırı yükle
+        addRow();
+    }
 
     $('#btnSatirEkle').on('click', function() { addRow(); });
 
@@ -711,7 +763,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        return { header, lines };
+        const invoice_id = $('#editInvoiceId').val() || null;
+        return { invoice_id, header, lines };
     }
 
     // Taslak Kaydet
