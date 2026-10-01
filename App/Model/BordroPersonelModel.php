@@ -26,6 +26,16 @@ class BordroPersonelModel extends Model
     private ?array $ozelCalismaCache = null;
     /** @var string|null ozelCalismaCache'in toplu doldurulduğu dönem aralığı (baslangic|bitis) */
     private ?string $ozelCalismaCacheRange = null;
+    /** @var array Dönem kesintileri toplu cache (donem_id => [personel_id => [kesintiler]]) */
+    private array $donemKesintileriCache = [];
+    /** @var array Çalışma geçmişi toplu cache (donemRange => [personel_id => [kayitlar]]) */
+    private array $calismaGecmisiBulkCache = [];
+    /** @var array Görev geçmişi toplu cache (donemRange => [personel_id => [kayitlar]]) */
+    private array $gorevGecmisiBulkCache = [];
+    /** @var array İzinler toplu cache (donemRange => [personel_id => [kayitlar]]) */
+    private array $izinlerBulkCache = [];
+    /** @var array Yemek parametre sayısı cache */
+    private array $mealParamCountCache = [];
     private array $isTuruIdMapCache = [];
     private array $isTuruUcretCache = [];
     private array $settingsCache = [];
@@ -40,6 +50,69 @@ class BordroPersonelModel extends Model
 
 
 
+
+    private ?string $listeCacheContext = null;
+    private array $sgkGecmisiCache = [];
+    private array $kumulatifMatrahCache = [];
+
+    /** İsteğe bağlı açılış profili; sadece SELECT sayacı, kayıt içeriği içermez. */
+    public function getPerformanceSelectCount(): int
+    {
+        $stmt = $this->db->prepare("SHOW SESSION STATUS LIKE 'Com_select'");
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (int) ($row['Value'] ?? 0);
+    }
+
+    private function resetListeCacheContext(string $context): void
+    {
+        // Her yeni liste okuması güncel kayıtları yükler; aynı dönem de yeniden okunabilir.
+        $this->listeCacheContext = $context;
+        $this->genelAyarlarCache = $this->parametrelerCache = null;
+        $this->ekOdemelerCache = $this->ozelCalismaCache = null;
+        $this->ozelCalismaCacheRange = null;
+        $this->donemKesintileriCache = $this->calismaGecmisiBulkCache = [];
+        $this->gorevGecmisiBulkCache = $this->izinlerBulkCache = [];
+        $this->sgkGecmisiCache = $this->kumulatifMatrahCache = [];
+        $this->mealParamCountCache = [];
+    }
+
+    /** Liste personellerinin tüm SGK geçmişi ve yıl içi matrahları; tarih sırası korunur. */
+    private function preloadListeHesapKaynaklari(array $personelIds, string $baslangic): void
+    {
+        $personelIds = array_values(array_unique(array_map('intval', $personelIds)));
+        if (!$personelIds) return;
+        $marks = implode(',', array_fill(0, count($personelIds), '?'));
+        $stmt = $this->db->prepare("SELECT personel_id, ise_giris_tarihi, isten_cikis_tarihi, sgk_yapilan_firma
+            FROM personel_calisma_gecmisi WHERE personel_id IN ($marks) ORDER BY ise_giris_tarihi ASC");
+        $stmt->execute($personelIds);
+        foreach ($personelIds as $id) $this->sgkGecmisiCache[($_SESSION['firma_id'] ?? 0) . '|' . $id] = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) $this->sgkGecmisiCache[($_SESSION['firma_id'] ?? 0) . '|' . $row['personel_id']][] = $row;
+
+        $yil = (int) date('Y', strtotime($baslangic));
+        $ay = (int) date('n', strtotime($baslangic));
+        $stmt = $this->db->prepare("SELECT id, kumulatif_matrah_devir FROM personel WHERE id IN ($marks)");
+        $stmt->execute($personelIds);
+        $devirler = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) $devirler[$row->id] = (float) ($row->kumulatif_matrah_devir ?? 0);
+        $stmt = $this->db->prepare("SELECT bp.personel_id, bp.hesaplama_detay, bp.brut_maas, bp.sgk_isci, bp.issizlik_isci, bd.baslangic_tarihi
+            FROM {$this->table} bp INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+            WHERE bp.personel_id IN ($marks) AND YEAR(bd.baslangic_tarihi) = ? AND MONTH(bd.baslangic_tarihi) < ?
+            AND bp.hesaplama_tarihi IS NOT NULL AND bp.silinme_tarihi IS NULL
+            ORDER BY bd.baslangic_tarihi ASC, bp.id DESC");
+        $stmt->execute(array_merge($personelIds, [$yil, $ay]));
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) $rows[$row->personel_id][] = $row;
+        foreach ($personelIds as $id) {
+            $this->kumulatifMatrahCache[$this->matrahCacheKey($id, $yil, $ay)] =
+                $this->sumKumulatifMatrah($devirler[$id] ?? 0.0, $rows[$id] ?? []);
+        }
+    }
+
+    private function matrahCacheKey($id, $yil, $ay): string
+    {
+        return ($_SESSION['firma_id'] ?? 0) . '|' . $id . '|' . $yil . '|' . $ay;
+    }
 
     /**
      * Parametre cache'ini kullanarak getByKod() işlevi görür.
@@ -199,16 +272,28 @@ class BordroPersonelModel extends Model
         return $aktifGunler === null ? null : count($aktifGunler);
     }
 
+    private function getCalismaGecmisiRows(int $personelId, string $donemBaslangic, string $donemBitis): array
+    {
+        $rangeKey = $donemBaslangic . '|' . $donemBitis;
+        if (!isset($this->calismaGecmisiBulkCache[$rangeKey])) {
+            $stmt = $this->db->prepare("SELECT id, personel_id, ise_giris_tarihi, isten_cikis_tarihi, personel_sinifi, saha_takibi, arac_kullanim, sgk_yapilan_firma, disardan_sigortali, gorunum_modulleri
+                FROM personel_calisma_gecmisi
+                WHERE ise_giris_tarihi <= ?
+                  AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+                ORDER BY ise_giris_tarihi ASC, id ASC");
+            $stmt->execute([$donemBitis, $donemBaslangic]);
+            $this->calismaGecmisiBulkCache[$rangeKey] = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $pId = !empty($row['personel_id']) ? (int)$row['personel_id'] : $personelId;
+                $this->calismaGecmisiBulkCache[$rangeKey][$pId][] = $row;
+            }
+        }
+        return $this->calismaGecmisiBulkCache[$rangeKey][$personelId] ?? [];
+    }
+
     private function getCalismaGecmisiAktifTarihleri(int $personelId, string $donemBaslangic, string $donemBitis): ?array
     {
-        $stmt = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi, sgk_yapilan_firma
-            FROM personel_calisma_gecmisi
-            WHERE personel_id = ?
-              AND ise_giris_tarihi <= ?
-              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
-            ORDER BY ise_giris_tarihi ASC, id ASC");
-        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
-        $araliklar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $araliklar = $this->getCalismaGecmisiRows($personelId, $donemBaslangic, $donemBitis);
 
         if (empty($araliklar)) {
             return null;
@@ -249,22 +334,35 @@ class BordroPersonelModel extends Model
         return $aktifGunler;
     }
 
+    private function getGorevGecmisiRows(int $personelId, string $donemBaslangic, string $donemBitis): array
+    {
+        $rangeKey = $donemBaslangic . '|' . $donemBitis;
+        if (!isset($this->gorevGecmisiBulkCache[$rangeKey])) {
+            $stmt = $this->db->prepare("SELECT id, personel_id, departman, gorev, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi 
+                FROM personel_gorev_gecmisi 
+                WHERE baslangic_tarihi <= ? 
+                  AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+                ORDER BY baslangic_tarihi ASC, id ASC");
+            $stmt->execute([$donemBitis, $donemBaslangic]);
+            $this->gorevGecmisiBulkCache[$rangeKey] = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+                $pId = !empty($row->personel_id) ? (int)$row->personel_id : $personelId;
+                $this->gorevGecmisiBulkCache[$rangeKey][$pId][] = $row;
+            }
+        }
+        return $this->gorevGecmisiBulkCache[$rangeKey][$personelId] ?? [];
+    }
+
     /** Prim usulü ile sabit maaşın aynı ayda bulunduğu geçişlerde sabit maaşı yalnız kendi günlerine uygular. */
     private function getKarisikMaasGecmisiOzeti(int $personelId, string $donemBaslangic, string $donemBitis): ?array
     {
-        $stmt = $this->db->prepare("SELECT maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi
-            FROM personel_gorev_gecmisi
-            WHERE personel_id = ? AND baslangic_tarihi <= ?
-              AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
-            ORDER BY baslangic_tarihi ASC, id ASC");
-        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
-        $kayitlar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $kayitlar = $this->getGorevGecmisiRows($personelId, $donemBaslangic, $donemBitis);
         if (count($kayitlar) < 2) return null;
 
         $hasPrim = false;
         $hasSabit = false;
         foreach ($kayitlar as $kayit) {
-            $prim = stripos((string) ($kayit['maas_durumu'] ?? ''), 'prim') !== false;
+            $prim = stripos((string) ($kayit->maas_durumu ?? ''), 'prim') !== false;
             $hasPrim = $hasPrim || $prim;
             $hasSabit = $hasSabit || !$prim;
         }
@@ -277,9 +375,9 @@ class BordroPersonelModel extends Model
         $atananGunler = [];
 
         foreach ($kayitlar as $kayit) {
-            if (stripos((string) ($kayit['maas_durumu'] ?? ''), 'prim') !== false) continue;
-            $basTs = strtotime(max($donemBaslangic, (string) $kayit['baslangic_tarihi']));
-            $bitisRaw = $kayit['bitis_tarihi'] ?? null;
+            if (stripos((string) ($kayit->maas_durumu ?? ''), 'prim') !== false) continue;
+            $basTs = strtotime(max($donemBaslangic, (string) $kayit->baslangic_tarihi));
+            $bitisRaw = $kayit->bitis_tarihi ?? null;
             $bitTs = strtotime($this->isValidDateValue($bitisRaw) ? min($donemBitis, (string) $bitisRaw) : $donemBitis);
             if ($basTs === false || $bitTs === false) continue;
 
@@ -288,27 +386,46 @@ class BordroPersonelModel extends Model
                 if (isset($atananGunler[$tarih]) || ($aktifGunler !== null && !isset($aktifGunler[$tarih])) || isset($ucretsizGunler[$tarih])) continue;
                 $atananGunler[$tarih] = true;
                 $sabitGun++;
-                $sabitHakedis += floatval($kayit['maas_tutari'] ?? 0) / 30;
+                $sabitHakedis += floatval($kayit->maas_tutari ?? 0) / 30;
             }
         }
 
         return ['sabit_hakedis' => round($sabitHakedis, 2), 'sabit_gun' => $sabitGun, 'has_prim' => true];
     }
 
+    private function getIzinlerRows(int $personelId, string $donemBaslangic, string $donemBitis): array
+    {
+        $rangeKey = $donemBaslangic . '|' . $donemBitis;
+        if (!isset($this->izinlerBulkCache[$rangeKey])) {
+            $stmt = $this->db->prepare("
+                SELECT pi.personel_id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.onay_durumu,
+                       t.id as izin_tipi_id, t.grup, t.ucretli_mi, t.kisa_kod, t.normal_mesai_sayilir
+                FROM personel_izinleri pi
+                INNER JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+                WHERE pi.silinme_tarihi IS NULL
+                  AND t.silinme_tarihi IS NULL
+                  AND pi.baslangic_tarihi <= ?
+                  AND pi.bitis_tarihi >= ?
+            ");
+            $stmt->execute([$donemBitis, $donemBaslangic]);
+            $this->izinlerBulkCache[$rangeKey] = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+                $this->izinlerBulkCache[$rangeKey][(int)$row->personel_id][] = $row;
+            }
+        }
+        return $this->izinlerBulkCache[$rangeKey][$personelId] ?? [];
+    }
+
     private function getUcretsizIzinTarihleri(int $personelId, string $donemBaslangic, string $donemBitis): array
     {
-        $stmt = $this->db->prepare("SELECT pi.baslangic_tarihi, pi.bitis_tarihi
-            FROM personel_izinleri pi
-            INNER JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.personel_id = ? AND pi.onay_durumu = 'Onaylandı'
-              AND pi.silinme_tarihi IS NULL AND t.silinme_tarihi IS NULL
-              AND t.grup = 'izin_turu' AND t.ucretli_mi = 0 AND t.kisa_kod NOT IN ('RP')
-              AND pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?");
-        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
+        $rows = $this->getIzinlerRows($personelId, $donemBaslangic, $donemBitis);
         $gunler = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $izin) {
-            $basTs = strtotime(max($donemBaslangic, (string) $izin['baslangic_tarihi']));
-            $bitTs = strtotime(min($donemBitis, (string) $izin['bitis_tarihi']));
+        foreach ($rows as $izin) {
+            if ($izin->onay_durumu !== 'Onaylandı' || $izin->grup !== 'izin_turu' || intval($izin->ucretli_mi) !== 0 || $izin->kisa_kod === 'RP') {
+                continue;
+            }
+            $basTs = strtotime(max($donemBaslangic, (string) $izin->baslangic_tarihi));
+            $bitTs = strtotime(min($donemBitis, (string) $izin->bitis_tarihi));
             for ($ts = $basTs; $ts !== false && $bitTs !== false && $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
                 $gunler[date('Y-m-d', $ts)] = true;
             }
@@ -319,19 +436,14 @@ class BordroPersonelModel extends Model
     /** Banka asgari ücret gününden düşülecek onaylı ücretsiz izin ve rapor tarihleri. */
     private function getMaasEksikGunTarihleri(int $personelId, string $donemBaslangic, string $donemBitis): array
     {
-        $stmt = $this->db->prepare("SELECT pi.baslangic_tarihi, pi.bitis_tarihi
-            FROM personel_izinleri pi
-            INNER JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.personel_id = ? AND pi.onay_durumu = 'Onaylandı'
-              AND pi.silinme_tarihi IS NULL AND t.silinme_tarihi IS NULL
-              AND t.grup = 'izin_turu' AND (t.ucretli_mi = 0 OR t.kisa_kod = 'RP')
-              AND pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?");
-        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
-
+        $rows = $this->getIzinlerRows($personelId, $donemBaslangic, $donemBitis);
         $gunler = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $izin) {
-            $basTs = strtotime(max($donemBaslangic, (string) $izin['baslangic_tarihi']));
-            $bitTs = strtotime(min($donemBitis, (string) $izin['bitis_tarihi']));
+        foreach ($rows as $izin) {
+            if ($izin->onay_durumu !== 'Onaylandı' || $izin->grup !== 'izin_turu' || (intval($izin->ucretli_mi) !== 0 && $izin->kisa_kod !== 'RP')) {
+                continue;
+            }
+            $basTs = strtotime(max($donemBaslangic, (string) $izin->baslangic_tarihi));
+            $bitTs = strtotime(min($donemBitis, (string) $izin->bitis_tarihi));
             for ($ts = $basTs; $ts !== false && $bitTs !== false && $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
                 $gunler[date('Y-m-d', $ts)] = true;
             }
@@ -388,10 +500,24 @@ class BordroPersonelModel extends Model
             }
         }
 
-        $sql = $this->db->prepare("\n            SELECT COUNT(*)\n            FROM bordro_parametreleri\n            WHERE kod = ?\n              AND aktif = 1\n              AND (gecerlilik_baslangic IS NULL OR gecerlilik_baslangic <= ?)\n              AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n        ");
+        $cacheKey = $kod . '|' . $baslangic . '|' . $bitis;
+        if (isset($this->mealParamCountCache[$cacheKey])) {
+            return $this->mealParamCountCache[$cacheKey];
+        }
+
+        $sql = $this->db->prepare("
+            SELECT COUNT(*)
+            FROM bordro_parametreleri
+            WHERE kod = ?
+              AND aktif = 1
+              AND (gecerlilik_baslangic IS NULL OR gecerlilik_baslangic <= ?)
+              AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
+        ");
         $sql->execute([$kod, $bitis, $baslangic]);
 
-        return intval($sql->fetchColumn()) > 1;
+        $hasMultiple = intval($sql->fetchColumn()) > 1;
+        $this->mealParamCountCache[$cacheKey] = $hasMultiple;
+        return $hasMultiple;
     }
 
     private function getParametreGunlukTutar(object $parametre): float
@@ -765,13 +891,15 @@ class BordroPersonelModel extends Model
 
     public function getSgkFirmaDagilimi($personel_id, $baslangic, $bitis, $defaultFirma = 'Yok', $iseGiris = null, $istenCikis = null, array $eksikGunler = [])
     {
-        $sql = "SELECT ise_giris_tarihi, isten_cikis_tarihi, sgk_yapilan_firma 
-                FROM personel_calisma_gecmisi 
-                WHERE personel_id = ? 
-                ORDER BY ise_giris_tarihi ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$personel_id]);
-        $segments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $cacheKey = ($_SESSION['firma_id'] ?? 0) . '|' . $personel_id;
+        if (array_key_exists($cacheKey, $this->sgkGecmisiCache)) {
+            $segments = $this->sgkGecmisiCache[$cacheKey];
+        } else {
+            $stmt = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi, sgk_yapilan_firma
+                FROM personel_calisma_gecmisi WHERE personel_id = ? ORDER BY ise_giris_tarihi ASC");
+            $stmt->execute([$personel_id]);
+            $segments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $kurDays = 0;
         $nonKurDays = 0;
@@ -836,6 +964,11 @@ class BordroPersonelModel extends Model
     {
         $donemBaslangic = $donemBilgi->baslangic_tarihi ?? date('Y-m-01');
         $donemBitis = $donemBilgi->bitis_tarihi ?? date('Y-m-t');
+        $context = ($_SESSION['firma_id'] ?? 0) . '|' . $p->donem_id . '|' . $donemBaslangic . '|' . $donemBitis;
+        if ($this->listeCacheContext !== null && $this->listeCacheContext !== $context) {
+            $this->resetListeCacheContext($context);
+        }
+
 
         $donemBasTs = strtotime($donemBaslangic);
         $donemBitTs = strtotime($donemBitis);
@@ -843,6 +976,11 @@ class BordroPersonelModel extends Model
             ? ((int) round(($donemBitTs - $donemBasTs) / 86400) + 1)
             : 30;
 
+        // Kayıt hesabı dönem içindeki çalışma/SGK firma geçmişini esas alır.
+        // Liste, rapor ve bordro yayını da aynı tarihsel kaynağı kullanmalıdır;
+        // aksi halde güncel `sgk_yapilan_firma` değeri eski dönemin banka
+        // dağılımını değiştirir (ör. dönem içinde yalnız KUR'da çalışan kişi).
+        $p = $this->overrideWithHistoricalCalismaGecmisi($p, $donemBaslangic, $donemBitis);
         $p = $this->overrideWithHistoricalGorevGecmisi($p, $donemBaslangic, $donemBitis);
 
         $rawEkOdeme = 0; 
@@ -872,6 +1010,7 @@ class BordroPersonelModel extends Model
         $toplamKesinti = floatval($p->guncel_toplam_kesinti ?? $p->kesinti_tutar ?? 0);
         
         $bankaKesintisiToplam = 0.0;
+        $bankaKesintiKalemleri = [];
         $eldenKesintisiToplam = 0.0;
         // Yalnızca puantaj gelirini mahsup etmek için oluşturulan özel kesinti,
         // maaşa dahil yemek tavanını azaltır. Malzeme zararı, ceza vb. normal
@@ -897,6 +1036,14 @@ class BordroPersonelModel extends Model
                     $eldenKesintisiToplam += $tutar;
                 } else {
                     $bankaKesintisiToplam += $tutar;
+                    $bankaKesintiKalemleri[] = [
+                        'etiket' => $param->etiket ?? match ((string) $kesintiSatiri->tur) {
+                            'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
+                            'nafaka' => 'Nafaka', 'ceza' => 'Ceza', 'izin_kesinti' => 'Ücretsiz izin',
+                            default => 'Personel kesintisi',
+                        },
+                        'tutar' => $tutar,
+                    ];
                 }
                 if (mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8') === 'diger_kesinti') {
                     $puantajMahsupKesintisi += $tutar;
@@ -1369,6 +1516,11 @@ class BordroPersonelModel extends Model
                 $toplamAlacagi = $sozlesmeHakedisi + $rawEkOdeme;
             } elseif ($isPrimUsulu) {
                 $toplamAlacagi = max($sozlesmeHakedisi + $rawEkOdeme, $asgariTabanVal);
+            } elseif ($isBrut && !empty($p->hesaplama_tarihi) && isset($p->net_maas)) {
+                // Brüt ücrette bordro kaydı SGK/vergi kesintileri uygulanmış net
+                // hakedişi içerir. Resmî ödeme dağılımı brüt sözleşme tutarından
+                // yeniden kurulursa kayıt hesabından daha yüksek banka tutarı çıkar.
+                $toplamAlacagi = floatval($p->net_maas);
             } elseif ($isNet || $isBrut) {
                 $toplamAlacagi = (($hesaplamayaEsasMaas / 30) * $calismaGunu) + $rawEkOdeme;
             } else {
@@ -1535,10 +1687,12 @@ class BordroPersonelModel extends Model
             'sabitMaasGun' => intval($karisikMaasOzeti['sabit_gun'] ?? 0),
             'manualDagitimVar' => $manualDagitimVar,
             'asgariYatacak' => $asgariYatacak,
+            'resmiNetTaban' => round(($asgariUcretNet / 30) * $nonKurUcretGunu, 2),
             'bankaMatrahi' => $bankaMatrahi,
             'bankaOncelikliKesinti' => $bankaOncelikliKesinti,
             'bankaAktarilanKesinti' => $bankaAktarilanKesinti,
             'bankaEkOdemeDetaylari' => $bankaEkOdemeDetaylari,
+            'bankaKesintiKalemleri' => $bankaKesintiKalemleri,
         ];
     }
 
@@ -1635,6 +1789,8 @@ class BordroPersonelModel extends Model
         $donemDates = $donemSql->fetch(PDO::FETCH_OBJ);
         $donemBitis = $donemDates->bitis_tarihi ?? date('Y-m-t');
         $donemBaslangic = $donemDates->baslangic_tarihi ?? date('Y-m-01');
+
+        $this->resetListeCacheContext($firma_id . '|' . $donem_id . '|' . $donemBaslangic . '|' . $donemBitis);
 
         if ($this->parametrelerCache === null) {
             $parametreModel = $this->cachedParametreModel ?? new BordroParametreModel();
@@ -1765,6 +1921,8 @@ class BordroPersonelModel extends Model
         $sql->execute($sqlParams);
         $results = $sql->fetchAll(PDO::FETCH_OBJ);
         
+        $this->preloadListeHesapKaynaklari(array_column($results, 'personel_id'), $donemBaslangic);
+
         foreach ($results as &$r) {
             $this->overrideWithHistoricalCalismaGecmisi($r, $donemBaslangic, $donemBitis);
             $this->overrideWithHistoricalGorevGecmisi($r, $donemBaslangic, $donemBitis);
@@ -1892,9 +2050,28 @@ class BordroPersonelModel extends Model
         return $eklenenSayisi;
     }
 
-    /**
-     * Personeli dönemden çıkarır (soft delete ve açıklama 'cikarildi' olarak işaretlenir)
-     */
+    /** Kapalı döneme doğrudan manuel dağılım yazılması yayın bütünlüğünü bozamaz. */
+    public function saveAcikDonemManuelDagilim(int $firmaId, int $id, array $tutarlar): void
+    {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare('SELECT donem_id FROM bordro_personel WHERE id = ? AND silinme_tarihi IS NULL');
+            $stmt->execute([$id]);
+            $donem = $stmt->fetchColumn();
+            $stmt = $this->db->prepare('SELECT kapali_mi FROM bordro_donemi WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL FOR UPDATE');
+            $stmt->execute([$donem, $firmaId]);
+            $kapali = $stmt->fetchColumn();
+            if ($kapali === false || (int) $kapali !== 0) throw new \DomainException('Kapalı veya yetkisiz dönemde ödeme dağılımı değiştirilemez.');
+            $stmt = $this->db->prepare('UPDATE bordro_personel SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?, sodexo_manuel = 1, dagitim_manuel = 1 WHERE id = ? AND silinme_tarihi IS NULL');
+            $stmt->execute([...$tutarlar, $id]);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Personeli dönemden çıkarır (soft delete ve açıklama 'cikarildi'). */
     public function removeFromDonem($id)
     {
         $sql = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), aciklama = 'cikarildi' WHERE id = ?");
@@ -3930,43 +4107,42 @@ class BordroPersonelModel extends Model
      */
     public function getPuantajXGunSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi)
     {
-        if ($this->personelModelCache === null) {
-            $this->personelModelCache = new \App\Model\PersonelModel();
-        }
-
-        $personel = $this->personelModelCache->find($personel_id);
-        if (!$personel) return 0;
-
+        $personel_id = (int)$personel_id;
         $aktifBaslangic = $baslangic_tarihi;
         $aktifBitis = $bitis_tarihi;
 
-        if (!empty($personel->ise_giris_tarihi) && $personel->ise_giris_tarihi !== '0000-00-00' && $personel->ise_giris_tarihi > $aktifBaslangic) {
-            $aktifBaslangic = $personel->ise_giris_tarihi;
-        }
-
-        if (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00' && $personel->isten_cikis_tarihi < $aktifBitis) {
-            $aktifBitis = $personel->isten_cikis_tarihi;
+        $calismaRows = $this->getCalismaGecmisiRows($personel_id, $baslangic_tarihi, $bitis_tarihi);
+        if (!empty($calismaRows)) {
+            $lastCalisma = end($calismaRows);
+            if (!empty($lastCalisma['ise_giris_tarihi']) && $lastCalisma['ise_giris_tarihi'] !== '0000-00-00' && $lastCalisma['ise_giris_tarihi'] > $aktifBaslangic) {
+                $aktifBaslangic = $lastCalisma['ise_giris_tarihi'];
+            }
+            if (!empty($lastCalisma['isten_cikis_tarihi']) && $lastCalisma['isten_cikis_tarihi'] !== '0000-00-00' && $lastCalisma['isten_cikis_tarihi'] < $aktifBitis) {
+                $aktifBitis = $lastCalisma['isten_cikis_tarihi'];
+            }
+        } else {
+            if ($this->personelModelCache === null) {
+                $this->personelModelCache = new \App\Model\PersonelModel();
+            }
+            $personel = $this->personelModelCache->find($personel_id);
+            if (!$personel) return 0;
+            if (!empty($personel->ise_giris_tarihi) && $personel->ise_giris_tarihi !== '0000-00-00' && $personel->ise_giris_tarihi > $aktifBaslangic) {
+                $aktifBaslangic = $personel->ise_giris_tarihi;
+            }
+            if (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00' && $personel->isten_cikis_tarihi < $aktifBitis) {
+                $aktifBitis = $personel->isten_cikis_tarihi;
+            }
         }
 
         if ($aktifBaslangic > $aktifBitis) {
             return 0;
         }
 
-        $sql = $this->db->prepare("
-            SELECT pi.baslangic_tarihi, pi.bitis_tarihi, t.kisa_kod, t.normal_mesai_sayilir
-            FROM personel_izinleri pi
-            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.personel_id = ?
-            AND pi.onay_durumu != 'Reddedildi'
-            AND pi.silinme_tarihi IS NULL
-            AND pi.baslangic_tarihi <= ?
-            AND pi.bitis_tarihi >= ?
-        ");
-        $sql->execute([$personel_id, $aktifBitis, $aktifBaslangic]);
-        $kayitlar = $sql->fetchAll(PDO::FETCH_OBJ);
+        $kayitlar = $this->getIzinlerRows($personel_id, $baslangic_tarihi, $bitis_tarihi);
 
         $gunluk_durum = [];
         foreach ($kayitlar as $k) {
+            if ($k->onay_durumu === 'Reddedildi') continue;
             $cur = strtotime($k->baslangic_tarihi);
             $end = strtotime($k->bitis_tarihi);
             while ($cur <= $end) {
@@ -4138,18 +4314,32 @@ class BordroPersonelModel extends Model
      */
     public function getUcretsizIzinGunuDirekt($personel_id, $donem_baslangic, $donem_bitis)
     {
-        $aktifGunler = $this->getCalismaGecmisiAktifTarihleri((int) $personel_id, $donem_baslangic, $donem_bitis);
+        $personel_id = (int) $personel_id;
+        $aktifGunler = $this->getCalismaGecmisiAktifTarihleri($personel_id, $donem_baslangic, $donem_bitis);
         $aktifBaslangic = $donem_baslangic;
         $aktifBitis = $donem_bitis;
         if ($aktifGunler === null) {
-            $personel = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
-            $personel->execute([$personel_id]);
-            $p = $personel->fetch(PDO::FETCH_OBJ);
-            if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi !== '0000-00-00') {
-                $aktifBaslangic = max($aktifBaslangic, $p->ise_giris_tarihi);
-            }
-            if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00') {
-                $aktifBitis = min($aktifBitis, $p->isten_cikis_tarihi);
+            $calismaRows = $this->getCalismaGecmisiRows($personel_id, $donem_baslangic, $donem_bitis);
+            if (!empty($calismaRows)) {
+                $lastCalisma = end($calismaRows);
+                if (!empty($lastCalisma['ise_giris_tarihi']) && $lastCalisma['ise_giris_tarihi'] !== '0000-00-00') {
+                    $aktifBaslangic = max($aktifBaslangic, $lastCalisma['ise_giris_tarihi']);
+                }
+                if (!empty($lastCalisma['isten_cikis_tarihi']) && $lastCalisma['isten_cikis_tarihi'] !== '0000-00-00') {
+                    $aktifBitis = min($aktifBitis, $lastCalisma['isten_cikis_tarihi']);
+                }
+            } else {
+                $personel = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
+                $personel->execute([$personel_id]);
+                $p = $personel->fetch(PDO::FETCH_OBJ);
+                if ($p) {
+                    if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi !== '0000-00-00') {
+                        $aktifBaslangic = max($aktifBaslangic, $p->ise_giris_tarihi);
+                    }
+                    if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00') {
+                        $aktifBitis = min($aktifBitis, $p->isten_cikis_tarihi);
+                    }
+                }
             }
         }
 
@@ -4157,43 +4347,13 @@ class BordroPersonelModel extends Model
             return 0;
         }
 
-        // Ücretsiz izin türlerini bul (tanimlamalar tablosundan ucretli_mi = 0 olanlar)
-        $izinTurleriSql = $this->db->prepare("
-            SELECT id FROM tanimlamalar 
-            WHERE grup = 'izin_turu' 
-            AND ucretli_mi = 0 
-            AND kisa_kod NOT IN ('RP')
-            AND silinme_tarihi IS NULL
-        ");
-        if ($this->ucretsizIzinTurIdsCache === null) {
-            $izinTurleriSql->execute();
-            $this->ucretsizIzinTurIdsCache = $izinTurleriSql->fetchAll(PDO::FETCH_COLUMN) ?: [];
-        }
-        $ucretsizIzinTurIds = $this->ucretsizIzinTurIdsCache;
-
-        if (empty($ucretsizIzinTurIds)) {
-            return 0;
-        }
-
-        $idPlaceholders = implode(',', array_fill(0, count($ucretsizIzinTurIds), '?'));
-        $izinSql = $this->db->prepare("
-            SELECT baslangic_tarihi, bitis_tarihi
-            FROM personel_izinleri
-            WHERE personel_id = ?
-            AND onay_durumu = 'Onaylandı'
-            AND izin_tipi_id IN ($idPlaceholders)
-            AND baslangic_tarihi <= ?
-            AND bitis_tarihi >= ?
-            AND silinme_tarihi IS NULL
-        ");
-
-        $params = array_merge([$personel_id], $ucretsizIzinTurIds, [$aktifBitis, $aktifBaslangic]);
-        $izinSql->execute($params);
-        $izinler = $izinSql->fetchAll(PDO::FETCH_OBJ);
-
+        $izinler = $this->getIzinlerRows($personel_id, $donem_baslangic, $donem_bitis);
         $izinGunleri = [];
 
         foreach ($izinler as $izin) {
+            if ($izin->onay_durumu !== 'Onaylandı' || $izin->grup !== 'izin_turu' || intval($izin->ucretli_mi) !== 0 || $izin->kisa_kod === 'RP') {
+                continue;
+            }
             $basTs = strtotime(max($aktifBaslangic, $izin->baslangic_tarihi));
             $bitTs = strtotime(min($aktifBitis, $izin->bitis_tarihi));
             for ($ts = $basTs; $ts !== false && $bitTs !== false && $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
@@ -4406,6 +4566,9 @@ class BordroPersonelModel extends Model
     public function hesaplaMaas($bordro_personel_id, $hesaplayan_id = null, $hesaplayan_ad_soyad = null)
 
     {
+        // Yazma akışında listeye ait kaynak görüntüsünü kullanma.
+        $this->sgkGecmisiCache = $this->kumulatifMatrahCache = [];
+
         // Enjektör: Eğer hesaplayan bilgisi gelmemişse oturumdan al
         if ($hesaplayan_id === null) {
             $hesaplayan_id = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
@@ -5978,17 +6141,6 @@ class BordroPersonelModel extends Model
             $netMaas = floatval($netMaas ?? $hakedisNetBeforeKesinti ?? 0);
             $netMaasIcinDagitim = $netMaas;
             $bankaHakedisTavani = $netMaasIcinDagitim;
-            if ($isNetMaas && $netMaasPuantajHakedisi > 0) {
-                $yemekSozlesmePayiLimitiHesap = max(0, round(
-                    $targetNetHakedis + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($yontemliOdemeler['banka'] ?? 0),
-                    2
-                ));
-                $puantajYemekPayiHesap = max(0.0, round($hesaplananYemekToplam - $yemekSozlesmePayiLimitiHesap, 2));
-                $puantajBankaKalaniHesap = max(0.0, round($netMaasPuantajHakedisi - $puantajYemekPayiHesap, 2));
-                if ($puantajBankaKalaniHesap > 0) {
-                    $yontemliOdemeler['banka'] += $puantajBankaKalaniHesap;
-                }
-            }
             $ekOdemeBankaNetiHesap = max(0.0, floatval($yontemliOdemeler['banka'] ?? 0) - floatval($rtcHtcBankaNetiHesap ?? 0));
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0) + $ekOdemeBankaNetiHesap);
             $dahilBankaDagilimi = $this->hesaplaDahilBankaDagilimi(
@@ -6036,9 +6188,9 @@ class BordroPersonelModel extends Model
 
             // Kalan net alacağı (tüm kesintiler düştükten sonra)
             $netAlacagi = max(0, $netMaas - $toplamKesinti);
+            $bankaYatacakMinimum = round(($asgariUcretNet / 30) * $nonKurUcretGunu, 2);
 
             if ($isPrimUsulu || $isNetMaas) {
-                $bankaYatacakMinimum = round(($asgariUcretNet / 30) * $nonKurUcretGunu, 2);
                 $normalDagilim = $this->hesaplaNormalBankaDagilimi(
                     $bankaYatacakMinimum, floatval($yontemliOdemeler['banka'] ?? 0), $bankaKesintisiToplam,
                     $netAlacagi, $sodexoOdemesi, floatval($kayit->diger_odeme ?? 0), $eldenKesintisiToplam
@@ -6046,7 +6198,10 @@ class BordroPersonelModel extends Model
                 $bankaOdemesi = $normalDagilim['banka'];
                 $eldenOdeme = $normalDagilim['elden'];
             } else {
-                $bankaBaz = min($asgariUcretYatacak + $yontemliBankaEki, max(0, $netAlacagi - $sodexoOdemesi));
+                $bankaBaz = min(
+                    $bankaYatacakMinimum + floatval($yontemliOdemeler['banka'] ?? 0),
+                    max(0, $netAlacagi - $sodexoOdemesi)
+                );
                 $eldenBrut = max(0.0, $netAlacagi + $bankaKesintisiToplam + $eldenKesintisiToplam - $bankaBaz - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
                 $dusulenElden_Elden = min($eldenBrut, $eldenKesintisiToplam);
                 $kalanEldenKesintisi = max(0.0, $eldenKesintisiToplam - $dusulenElden_Elden);
@@ -6157,6 +6312,8 @@ class BordroPersonelModel extends Model
      */
     private function getKumulatifMatrah($personel_id, $yil, $ay)
     {
+        $key = $this->matrahCacheKey($personel_id, $yil, $ay);
+        if (array_key_exists($key, $this->kumulatifMatrahCache)) return $this->kumulatifMatrahCache[$key];
         // Query the cumulative matrah transfer YTD starting value
         $stmt = $this->db->prepare("SELECT kumulatif_matrah_devir FROM personel WHERE id = ?");
         $stmt->execute([$personel_id]);
@@ -6178,6 +6335,11 @@ class BordroPersonelModel extends Model
         $sql->execute([$personel_id, $yil, $ay]);
         $rows = $sql->fetchAll(PDO::FETCH_OBJ);
 
+        return $this->sumKumulatifMatrah($toplamMatrah, $rows);
+    }
+
+    private function sumKumulatifMatrah(float $toplamMatrah, array $rows): float
+    {
         $processedMonths = [];
         foreach ($rows as $row) {
             $monthKey = date('Y-m', strtotime($row->baslangic_tarihi));
@@ -6256,12 +6418,33 @@ class BordroPersonelModel extends Model
             return [];
         }
 
-        $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
-        return $PersonelKesintileriModel->getPersonelKesintileri($personel_id, [
-            'filter_kesinti_mode' => 'donem',
-            'filter_kesinti_donem' => $donem_id,
-            'actual_only' => true
-        ]);
+        $donem_id = (int) $donem_id;
+        $personel_id = (int) $personel_id;
+
+        if (!isset($this->donemKesintileriCache[$donem_id])) {
+            $sql = $this->db->prepare("
+                SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi, bd.kapali_mi,
+                       COALESCE(pk.durum, 'beklemede') as durum,
+                       COALESCE(ky.adi_soyadi, ky.user_name) as kayit_yapan_ad_soyad
+                FROM personel_kesintileri pk
+                LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
+                LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
+                LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id
+                LEFT JOIN users ky ON pk.kayit_yapan = ky.id
+                WHERE pk.silinme_tarihi IS NULL 
+                  AND pk.tekrar_tipi = 'tek_sefer'
+                  AND pk.donem_id = ?
+                ORDER BY pk.tekrar_tipi DESC, pk.baslangic_donemi DESC, pk.donem_id DESC, pk.olusturma_tarihi DESC
+            ");
+            $sql->execute([$donem_id]);
+            $this->donemKesintileriCache[$donem_id] = [];
+            foreach ($sql->fetchAll(PDO::FETCH_OBJ) as $row) {
+                $pId = (int) ($row->personel_id ?? $personel_id);
+                $this->donemKesintileriCache[$donem_id][$pId][] = $row;
+            }
+        }
+
+        return $this->donemKesintileriCache[$donem_id][$personel_id] ?? [];
     }
 
     /**
@@ -6416,15 +6599,16 @@ class BordroPersonelModel extends Model
 
     public function getHistoricalCalismaGecmisi($personel_id, $baslangic, $bitis)
     {
-        $sql = "SELECT * FROM personel_calisma_gecmisi 
-                WHERE personel_id = ? 
-                AND ise_giris_tarihi <= ?
-                AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= ?)
-                ORDER BY ise_giris_tarihi DESC, id DESC 
-                LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$personel_id, $bitis, $baslangic]);
-        return $stmt->fetch(PDO::FETCH_OBJ);
+        $personel_id = (int)$personel_id;
+        if ($personel_id <= 0) return null;
+
+        $rows = $this->getCalismaGecmisiRows($personel_id, $baslangic, $bitis);
+        if (empty($rows)) {
+            return null;
+        }
+
+        $last = end($rows);
+        return (object) $last;
     }
 
     public function overrideWithHistoricalCalismaGecmisi($record, $baslangic, $bitis)
@@ -6474,33 +6658,12 @@ class BordroPersonelModel extends Model
         $donemBitTs = strtotime($bitis);
         if ($donemBasTs === false || $donemBitTs === false) return null;
 
-        // Donemle kesisenter tum gorev gecmisi kayitlarini al (kronolojik sira)
-        $sql = "SELECT id, personel_id, departman, gorev, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi 
-                FROM personel_gorev_gecmisi 
-                WHERE personel_id = ? 
-                AND baslangic_tarihi <= ? 
-                AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
-                ORDER BY baslangic_tarihi ASC, id ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$personel_id, $bitis, $baslangic]);
-        $kayitlar = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $kayitlar = $this->getGorevGecmisiRows($personel_id, $baslangic, $bitis);
 
-        // Eger dogrudan kesisenter kayit yoksa, donem basindan once baslayip sonlandirilmis en son kayda bak
+        // Dönemle kesişmeyen, bitmiş görev kaydı güncel döneme taşınamaz.
+        // Kesişim yoksa çağıran güncel personel görev/maaş kaydını kullanır.
         if (empty($kayitlar)) {
-            $sqlFallback = "SELECT id, personel_id, departman, gorev, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi 
-                            FROM personel_gorev_gecmisi 
-                            WHERE personel_id = ? 
-                            AND baslangic_tarihi <= ? 
-                            ORDER BY baslangic_tarihi DESC, id DESC 
-                            LIMIT 1";
-            $stmtFb = $this->db->prepare($sqlFallback);
-            $stmtFb->execute([$personel_id, $bitis]);
-            $fb = $stmtFb->fetch(PDO::FETCH_OBJ);
-            if ($fb) {
-                $kayitlar = [$fb];
-            } else {
-                return null;
-            }
+            return null;
         }
 
         if (count($kayitlar) === 1) {

@@ -196,6 +196,11 @@ final class BordroBankaDagilimiTest extends TestCase
         $this->assertKayitGosterim('Net', 1, 'Manuel prim', 500, false, true);
     }
 
+    public function testBrutUcretteKaydedilenNetHakedisBankaDagilimindaKullanilir(): void
+    {
+        $this->assertKayitGosterim('Brüt', 0, 'Manuel prim', 0);
+    }
+
     public function testTekYemekParametreliKarmaMaastaYemekHesaplanir(): void
     {
         $this->assertKayitGosterim('Prim Usülü', 1, '[Kaçak İhbar Primi] (6 adet x 100 ₺)', 500, false, false, true);
@@ -348,6 +353,8 @@ final class BordroBankaDagilimiTest extends TestCase
         $this->setProperty($model, 'ekOdemelerCache', [1 => $payments]);
 
         self::assertTrue($model->hesaplaMaas(1));
+        $record->net_maas = $saved['net_maas'];
+        $record->banka_odemesi = $saved['banka_odemesi'];
         $display = $model->hesaplaOrtakGosterimDegerleri(clone $record, $record, 28075.5);
         if ($karma) {
             self::assertTrue($display['karisikMaasGecmisi']);
@@ -356,6 +363,11 @@ final class BordroBankaDagilimiTest extends TestCase
         $inclusive = $inclusive || $karma;
         $expectedBank = $manuel ? 25000.0 : max(0.0, 28075.5 + ($hariciYemek ? 300 : 0) - ($eldenKesinti ? 0 : $kesinti));
         $expectedNet = 31800.0 + ($hariciYemek ? 300 : 0) - $kesinti;
+        if (mb_strtolower($maasTuru, 'UTF-8') === 'brüt') {
+            $expectedBank = (float) $saved['banka_odemesi'];
+            $expectedNet = (float) $saved['net_maas'] - $kesinti;
+            self::assertGreaterThan(0, $expectedBank);
+        }
         if ($inclusive) {
             $meal = $karma
                 ? ($bankaSecimi ? 2548.0 : 1950.0)

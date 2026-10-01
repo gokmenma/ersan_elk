@@ -23,6 +23,7 @@
         </div>
     </header>
 
+    <div id="ihbar-transfer-panel" class="px-4 py-3" aria-live="polite"></div>
     <!-- Tab Navigation -->
     <div
         class="px-4 py-2 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[108px] z-20">
@@ -269,6 +270,13 @@
     let ihbarMevcutFotograflar = [];
 
     document.addEventListener('DOMContentLoaded', function () {
+        if (window.OfflineQueue) OfflineQueue.mountPanel('ihbar', 'ihbar-transfer-panel', { onDelete: async uuid => {
+            const confirmed = await Alert.confirm('Cihazdan kaldır', 'Gönderilmemiş fotoğraf ve videolar cihazdan kaldırılacak. Sunucuya ulaşmış kayıtlar bu işlemle silinmez. Devam edilsin mi?', 'Kaldır', 'Vazgeç');
+            if (confirmed) await OfflineQueue.sil(uuid);
+        } });
+        window.addEventListener('kuyruk-degisti', function (e) {
+            if (e.detail && e.detail.sebep === 'gonderim' && e.detail.gonderildi) loadIhbarlar();
+        });
         loadIhbarlar().then(ihbarDerinBaglantiyiAc);
     });
 
@@ -290,19 +298,23 @@
     }
 
     async function loadIhbarlar() {
+        const cacheKey = 'ihbar-listeler';
         try {
-            const [bildirdiklerimRes, gelenRes] = await Promise.all([
-                API.request('listIhbarlarim'),
-                API.request('listGelenIhbarlar')
-            ]);
-
-            ihbarBildirdiklerimData = bildirdiklerimRes.success ? bildirdiklerimRes.data : [];
-            ihbarGelenData = gelenRes.success ? gelenRes.data : [];
-
+            const [own, incoming] = await Promise.all([API.request('listIhbarlarim'), API.request('listGelenIhbarlar')]);
+            if (!own.success || !incoming.success) throw new Error('İhbar listesi alınamadı.');
+            ihbarBildirdiklerimData = own.data || [];
+            ihbarGelenData = incoming.data || [];
+            if (window.OfflineQueue) await OfflineQueue.referansKaydet(cacheKey, { own: ihbarBildirdiklerimData, incoming: ihbarGelenData });
             renderIhbarlar();
         } catch (error) {
-            console.error('İhbar load error:', error);
-            document.getElementById('ihbar-list').innerHTML = '<p class="text-center text-slate-500 py-8">Veriler yüklenemedi</p>';
+            const cached = window.OfflineQueue ? await OfflineQueue.referansOku(cacheKey) : null;
+            if (cached) {
+                ihbarBildirdiklerimData = cached.own;
+                ihbarGelenData = cached.incoming;
+                renderIhbarlar();
+            } else {
+                document.getElementById('ihbar-list').textContent = 'Liste için bağlantı gerekiyor. Cihazdaki bildirimler üstte gösterilir.';
+            }
         }
     }
 
@@ -990,159 +1002,30 @@
         btnText.innerText = isEdit ? 'GÜNCELLENİYOR...' : 'GÖNDERİLİYOR...';
 
         try {
-            const formData = new FormData();
-            formData.append('action', isEdit ? 'updateIhbar' : 'createIhbar');
-            if (isEdit) {
-                formData.append('edit_token', ihbarEditToken);
-            }
-            formData.append('ilce', ilceVal);
-            formData.append('mahalle', mahalleVal);
-            formData.append('telefon', form.querySelector('[name=telefon]')?.value?.trim() || '');
-            formData.append('komsu_abone_no', form.querySelector('[name=komsu_abone_no]')?.value?.trim() || '');
-            formData.append('aciklama', aciklamaVal);
-            formData.append('konum_lat', latVal);
-            formData.append('konum_lng', lngVal);
-            formData.append('konum_dogruluk', form.querySelector('[name=konum_dogruluk]')?.value || '');
-
-            // Zayıf bağlantıda gönderilebilsin ve sunucuda az yer kaplasın diye küçültülür.
-            const gonderilecekFotolar = [];
-            for (const file of ihbarSeciliFotolar) {
-                const kucuk = window.OfflineQueue
-                    ? await window.OfflineQueue.fotografKucult(file, 1600, 0.75)
-                    : { blob: file, ad: file.name, tip: file.type };
-                gonderilecekFotolar.push(kucuk);
-                formData.append('fotograflar[]', kucuk.blob, kucuk.ad);
-            }
-
-            // Videolar seçim anında doğrulanmıştı; süre ve kapak karesi yanlarında gider.
-            ihbarSeciliVideolar.forEach(v => {
-                formData.append('videolar[]', v.dosya, v.dosya.name);
-                formData.append('video_sureleri[]', v.sure || '');
-                formData.append('video_kapaklari[]', v.kapak || '');
-            });
-
-            const requestSummary = {
-                action: isEdit ? 'updateIhbar' : 'createIhbar',
-                photoCount: gonderilecekFotolar.length,
-                totalPhotoBytes: gonderilecekFotolar.reduce((total, foto) => total + foto.blob.size, 0)
+            if (!window.OfflineQueue) throw new Error('Telefon kayıt altyapısı yüklenemedi. Sayfayı yeniden açın.');
+            const alanlar = {
+                ilce: ilceVal, mahalle: mahalleVal, aciklama: aciklamaVal,
+                telefon: form.querySelector('[name=telefon]')?.value?.trim() || '',
+                komsu_abone_no: form.querySelector('[name=komsu_abone_no]')?.value?.trim() || '',
+                konum_lat: latVal, konum_lng: lngVal,
+                konum_dogruluk: form.querySelector('[name=konum_dogruluk]')?.value || ''
             };
-            console.info('[İhbar] Gönderim başlatıldı', requestSummary);
-
-            function setIhbarProgress(percent, loadedMB, totalMB, fileName) {
-                const titleStr = `İhbar & Video Yükleniyor...`;
-                const percentStr = `${percent}%`;
-                const widthStr = `${percent}%`;
-                const detailStr = `${loadedMB} MB / ${totalMB} MB`;
-
-                const inlineBox = document.getElementById('ihbar-video-progress-container');
-                if (inlineBox) inlineBox.classList.remove('hidden');
-
-                const inlineText = document.getElementById('ihbar-video-progress-text');
-                if (inlineText) inlineText.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${titleStr}`;
-
-                const inlinePercent = document.getElementById('ihbar-video-progress-percent');
-                if (inlinePercent) inlinePercent.textContent = percentStr;
-
-                const inlineBar = document.getElementById('ihbar-video-progress-bar');
-                if (inlineBar) inlineBar.style.width = widthStr;
-
-                const inlineName = document.getElementById('ihbar-video-progress-name');
-                if (inlineName) inlineName.textContent = fileName;
-
-                const inlineDetail = document.getElementById('ihbar-video-progress-detail');
-                if (inlineDetail) inlineDetail.textContent = detailStr;
-
-                const modal = document.getElementById('video-progress-modal');
-                if (modal && ihbarSeciliVideolar.length > 0) modal.classList.remove('hidden');
-
-                const titleEl = document.getElementById('video-progress-title');
-                if (titleEl) titleEl.textContent = titleStr;
-
-                const fileInfoEl = document.getElementById('video-progress-file-info');
-                if (fileInfoEl) fileInfoEl.textContent = `${fileName} (${totalMB} MB)`;
-
-                const percentEl = document.getElementById('video-progress-percent');
-                if (percentEl) percentEl.textContent = percentStr;
-
-                const barEl = document.getElementById('video-progress-bar');
-                if (barEl) barEl.style.width = widthStr;
-
-                const detailEl = document.getElementById('video-progress-detail');
-                if (detailEl) detailEl.textContent = detailStr;
+            if (isEdit) alanlar.edit_token = ihbarEditToken;
+            const fotolar = [];
+            for (const file of ihbarSeciliFotolar) {
+                const foto = await OfflineQueue.fotografKucult(file, 1600, 0.75);
+                fotolar.push({ alan: 'fotograflar[]', ad: foto.ad, tip: foto.tip, blob: foto.blob, cekim: foto.cekim || '' });
             }
-
-            if (ihbarSeciliVideolar.length > 0) {
-                const sonAd = ihbarSeciliVideolar[0]?.dosya?.name || 'video.mp4';
-                setIhbarProgress(0, '0.0', '0.0', sonAd);
-            }
-
-            const { responseText, requestId } = await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', 'api.php', true);
-
-                if (ihbarSeciliVideolar.length > 0) {
-                    xhr.upload.onprogress = function (e) {
-                        if (e.lengthComputable) {
-                            const percent = Math.round((e.loaded / e.total) * 100);
-                            const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
-                            const totalMB = (e.total / (1024 * 1024)).toFixed(1);
-                            const sonAd = ihbarSeciliVideolar[0]?.dosya?.name || 'video.mp4';
-                            setIhbarProgress(percent, loadedMB, totalMB, sonAd);
-                        }
-                    };
-                }
-
-                xhr.onload = function () {
-                    const reqId = xhr.getResponseHeader('X-Request-Id');
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve({ responseText: xhr.responseText, requestId: reqId });
-                    } else {
-                        reject(new Error('HTTP Hata: ' + xhr.status));
-                    }
-                };
-
-                xhr.onerror = function () {
-                    reject(new Error('Ağ Hatası'));
-                };
-
-                xhr.send(formData);
-            });
-
-            const inlineBox = document.getElementById('ihbar-video-progress-container');
-            if (inlineBox) inlineBox.classList.add('hidden');
-            const modal = document.getElementById('video-progress-modal');
-            if (modal) modal.classList.add('hidden');
-            let result;
-
-            try {
-                result = JSON.parse(responseText);
-            } catch (parseError) {
-                console.error('[İhbar] API JSON olmayan yanıt döndürdü', {
-                    requestId,
-                    status: response.status,
-                    response: responseText.slice(0, 1000),
-                    request: requestSummary
-                });
-                throw new Error(`Sunucudan geçersiz yanıt alındı${requestId ? ` (Kod: ${requestId})` : ''}`);
-            }
-
-            if (result.success) {
-                console.info('[İhbar] Gönderim tamamlandı', { requestId, result });
-                closePwaFullModal();
-                await Alert.success('Başarılı', result.message || (isEdit ? 'İhbarınız güncellendi.' : 'İhbarınız kaydedildi.'));
-                loadIhbarlar();
-            } else {
-                console.error('[İhbar] API işlemi reddetti', {
-                    requestId,
-                    status: response.status,
-                    result,
-                    request: requestSummary
-                });
-                Alert.error('Hata', result.message || result.error || 'Bir hata oluştu.');
-            }
+            // New reports retain the mandatory first photo in the main request.
+            const anaFotolar = isEdit && mevcutFotoSayisi > 0 ? [] : fotolar.splice(0, 1);
+            await OfflineQueue.ekle(isEdit ? 'updateIhbar' : 'createIhbar', alanlar, anaFotolar,
+                { ilce: ilceVal, mahalle: mahalleVal }, { dosyalar: fotolar, videolar: ihbarSeciliVideolar });
+            closePwaFullModal();
+            OfflineQueue.flush().catch(() => {});
+            await Alert.success('Telefona kaydedildi', 'Bildirim, fotoğraf ve videolar cihazınıza kaydedildi. Gönderim durumunu bu sayfadan takip edebilirsiniz.');
         } catch (error) {
             console.error('İhbar gönderim hatası:', error);
-            Alert.error('Gönderim Hatası', error.message || 'Sunucuya ulaşılamadı.');
+            Alert.error('Kaydedilemedi', (error.message || 'Telefon depolamasına yazılamadı.') + ' Formunuz açık kaldı; telefonunuzda boş alan olduğunu kontrol edip tekrar deneyin.');
         } finally {
             btn.disabled = false;
             btnText.innerText = isEdit ? 'GÜNCELLE' : 'İHBARI GÖNDER';

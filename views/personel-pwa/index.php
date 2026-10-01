@@ -17,6 +17,11 @@ use App\Model\PersonelGirisLogModel;
 use App\Model\PersonelIcralariModel;
 use App\Model\AracZimmetModel;
 
+// Personel sayfaları HTTP önbelleğinde saklanmaz; service worker'ın saha sayfası
+// önbelleği ayrıca kendi allowlist/istisnalarını uygular.
+header('Cache-Control: no-store, private, max-age=0');
+header('Pragma: no-cache');
+
 // Oturum kontrolü öncesi beni hatırla kontrolü
 if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
     $pwaSecret = $_ENV['PWA_HMAC_SECRET'] ?? '';
@@ -73,6 +78,9 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
 
 // Oturum kontrolü
 if (!isset($_SESSION['personel_id'])) {
+    if (($_GET['page'] ?? '') === 'bordro' && is_string($_GET['dokum'] ?? null) && strlen($_GET['dokum']) <= 2048) {
+        $_SESSION['bordro_yayin_donus'] = $_GET['dokum'];
+    }
     header("Location: login.php");
     exit();
 }
@@ -149,7 +157,7 @@ $hasIcra = count($devamEdenIcralar) > 0;
 $isKaskiKacak = ($personel->personel_tipi ?? 'standart') === 'kaski_kacak';
 
 if ($isKaskiKacak) {
-    $allowed_pages = ['kacak', 'profil'];
+    $allowed_pages = ['kacak', 'profil', 'bordro'];
     $page = isset($_GET['page']) && in_array($_GET['page'], $allowed_pages, true) ? $_GET['page'] : 'kacak';
 } else {
     // Sayfa yönlendirmesi
@@ -360,6 +368,9 @@ if ($page === 'ihbar') {
             <span class="material-symbols-outlined <?php echo $page === 'kacak' ? 'filled' : ''; ?>">gpp_maybe</span>
             <span class="text-[11px] font-semibold">Kaçak İşlemleri</span>
         </a>
+        <a href="?page=bordro" class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl <?php echo $page === 'bordro' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined">receipt_long</span><span class="text-[11px] font-semibold">Bordrom</span>
+        </a>
         <a href="?page=profil"
             class="nav-item flex flex-col items-center gap-1 py-2 px-6 rounded-xl transition-all <?php echo $page === 'profil' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'profil' ? 'filled' : ''; ?>">person</span>
@@ -544,7 +555,7 @@ if ($page === 'ihbar') {
                         class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-emerald-600 text-lg">payments</span>
                     </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Avans</span>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">Bordrolar ve Avans</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
                 <a href="?page=izin"
@@ -719,8 +730,9 @@ if ($page === 'ihbar') {
 
     <!-- Scripts -->
     <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="assets/js/exif-cekim.js?v=<?= filemtime(__DIR__ . '/assets/js/exif-cekim.js') ?>"></script>
+    <script>window.PWA_ACCOUNT_KEY = <?= json_encode(hash('sha256', 'pwa:' . (int) $_SESSION['firma_id'] . ':' . (int) $personel_id)) ?>;</script>
     <script src="assets/js/pwa-offline-queue.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-offline-queue.js') ?>"></script>
     <script src="assets/js/pwa-app.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-app.js') ?>"></script>
     <script src="assets/js/notification-helper.js"></script>
@@ -821,8 +833,7 @@ if ($page === 'ihbar') {
             let bekleyenUyarisi = '';
             try {
                 if (window.OfflineQueue) {
-                    const bekleyen = (await OfflineQueue.listele())
-                        .filter(k => k.durum !== 'hata').length;
+                    const bekleyen = (await OfflineQueue.listele()).length;
                     if (bekleyen > 0) {
                         bekleyenUyarisi = `\n\nGönderilmeyi bekleyen ${bekleyen} kaydınız var. `
                             + 'Bu kayıtlar cihazda kalır, tekrar giriş yaptığınızda gönderilir.';

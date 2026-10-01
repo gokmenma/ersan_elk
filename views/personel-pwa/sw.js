@@ -7,9 +7,9 @@
 // temizlenir hem de importScripts URL'i değişir. Kayıt updateViaCache belirtmediği
 // için varsayılan "imports" geçerlidir ve sürümsüz import HTTP önbelleğinden
 // gelip service worker'ı eski kodla çalıştırır.
-const KUYRUK_SURUM = "19";
+const KUYRUK_SURUM = "22";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
-const SAYFA_CACHE = "personel-pwa-sayfa-v1";
+const SAYFA_CACHE = "personel-pwa-sayfa-v2";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar
@@ -19,6 +19,7 @@ const PRECACHE_ASSETS = [
   "./assets/js/pwa-app.js",
   "./assets/js/pwa-offline-queue.js",
   "./assets/js/exif-cekim.js",
+  "./assets/libs/sweetalert2/sweetalert2.all.min.js",
   "./manifest.json",
   "./offline.html",
   "./assets/icons/icon-144-new.png",
@@ -89,7 +90,13 @@ self.addEventListener("message", (event) => {
  * Tam eşleşme bulunamazsa aynı ?page= değerine sahip başka bir kopyayı,
  * o da yoksa çevrimdışı sayfasını döndürür.
  */
+function bordroOzelUrl(yol) {
+  const u = new URL(yol, self.location.href);
+  return u.searchParams.get("page") === "bordro" || u.pathname.includes("bordro-goster.php");
+}
+
 async function sayfaOnbellegindenBenzer(request) {
+  if (bordroOzelUrl(request.url)) return caches.match(OFFLINE_URL);
   try {
     const istenen = new URL(request.url).searchParams.get("page") || "ana-sayfa";
     const cache = await caches.open(SAYFA_CACHE);
@@ -118,6 +125,7 @@ async function sayfalariOnbellekle(sayfalar) {
   const cache = await caches.open(SAYFA_CACHE);
 
   for (const yol of sayfalar) {
+    if (bordroOzelUrl(yol)) continue;
     try {
       const ayirac = yol.indexOf("?") === -1 ? "?" : "&";
       const yanit = await fetch(yol + ayirac + "onbellek=1", {
@@ -134,6 +142,14 @@ async function sayfalariOnbellekle(sayfalar) {
   }
 }
 
+function sahaSayfasiniGetir(request) {
+  const page = new URL(request.url).searchParams.get("page");
+  if (page !== "kacak" && page !== "ihbar") return fetch(request);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 // Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
   const url = event.request.url;
@@ -144,6 +160,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (requestScheme !== "http:" && requestScheme !== "https:") {
+    return;
+  }
+
+  // Bordro sayfası/PDF için hiçbir önbellek veya benzer sayfa fallback'i kullanılmaz.
+  if (bordroOzelUrl(event.request.url)) {
+    event.respondWith(fetch(event.request, { cache: "no-store" }).catch(() =>
+      caches.match(OFFLINE_URL).then(r => r || new Response("Bordro için internet bağlantısı gerekiyor.", {status:503}))
+    ));
     return;
   }
 
@@ -177,7 +201,7 @@ self.addEventListener("fetch", (event) => {
   // en son görüntülenen sürümü göster (saha personeli formu açabilsin).
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
+      sahaSayfasiniGetir(event.request)
         .then((response) => {
           // login.php'ye yönlenmiş bir yanıt sayfa olarak saklanmamalı.
           // POST ile gelen navigasyonlar önbelleğe yazılamaz.
@@ -208,7 +232,10 @@ self.addEventListener("fetch", (event) => {
 
   // Diğer istekler - stale while revalidate
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, {
+      ignoreSearch: new URL(event.request.url).origin === self.location.origin &&
+        new URL(event.request.url).pathname.startsWith(new URL("./assets/", self.location.href).pathname),
+    }).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
           // Başarılı GET yanıtlarını önbelleğe al
@@ -342,7 +369,9 @@ self.addEventListener("notificationclick", (event) => {
 // Background sync - uygulama kapalıyken bağlantı gelince kuyruğu boşaltır
 self.addEventListener("sync", (event) => {
   if (event.tag === (self.OfflineQueue && self.OfflineQueue.SYNC_ETIKETI)) {
-    event.waitUntil(self.OfflineQueue.flush());
+    event.waitUntil(self.OfflineQueue.flush().then((result) => {
+      if (result.gecici || result.kalan > 0 || result.hata) throw new Error("Gönderilmeyi bekleyen kayıtlar var.");
+    }));
   }
 });
 

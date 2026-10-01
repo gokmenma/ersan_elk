@@ -113,6 +113,65 @@ function renderBordroDetailFooterSummary(summary) {
   }
 }
 
+// Satırlar çizildikten hemen sonra çağrılır; sayfanın sonundaki kütüphaneleri beklemez.
+function initBordroTable() {
+  if (!$("#bordroTable").length || $.fn.DataTable.isDataTable("#bordroTable")) return;
+  const start = performance.now();
+  const options = getDatatableOptions();
+  const originalInitComplete = options.initComplete;
+  Object.assign(options, {
+    responsive: false,
+    deferRender: true,
+    autoWidth: false,
+    deferAdvancedFilters: true,
+    columnDefs: [{ orderable: false, targets: [0, 15] }],
+    order: [[1, "asc"]],
+    pageLength: 25,
+    initComplete: function (settings, json) {
+      if (typeof originalInitComplete === "function") {
+        originalInitComplete.call(this, settings, json);
+      }
+      window.bordroClientTiming = {
+        datatable_ms: performance.now() - start,
+        table_ready_ms: performance.now(),
+        before_dom_ready: document.readyState === "loading",
+      };
+      $("#bordroTable").addClass("dt-ready");
+      $("#bordro-loader").hide();
+      const api = this.api();
+      const initFilters = function () {
+        const filterStart = performance.now();
+        if (typeof initAdvancedFilters === "function") initAdvancedFilters(api, settings);
+        window.bordroClientTiming.filters_ms = performance.now() - filterStart;
+        $("#bordroTable").trigger("bordro:filters-ready");
+      };
+      // İki çizim arası bırak: ilk sayfa, filtre işinden önce ekrana gelsin.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          if (typeof window.requestIdleCallback === "function") {
+            window.requestIdleCallback(initFilters, { timeout: 500 });
+          } else {
+            window.setTimeout(initFilters, 0);
+          }
+        });
+      });
+    },
+  });
+  $("#bordroTable").DataTable(applyLengthStateSave(options));
+  $("#bordroTable").on("draw.dt", function () {
+    bordroGorselleriYenile($("#bordroTable tbody"));
+  });
+}
+
+// Açıklamaların içeriği DOM'a ilk kez üzerine gelindiğinde girer.
+$(document).on("mouseenter focusin", "#bordroTable .hover-popover-trigger", function () {
+  const template = this.querySelector("template.bordro-row-popover");
+  if (template) {
+    this.appendChild(template.content.cloneNode(true));
+    template.remove();
+  }
+});
+
 $(document).ready(function () {
   // Özet Alanı Toggle Başlangıç Senkronizasyonu
   var isOzetCollapsed = localStorage.getItem('bordro_ozet_collapsed') === 'true';
@@ -149,37 +208,18 @@ $(document).ready(function () {
 
   // Flatpickr Başlat
   if (typeof flatpickr !== "undefined" || $.fn.flatpickr) {
-    $(".flatpickr").flatpickr({
+    $(".bordro-page .flatpickr").filter(function () {
+      return !this._flatpickr && !$(this).closest(".modal").length;
+    }).flatpickr({
       dateFormat: "d.m.Y",
       locale: "tr",
       allowInput: true
     });
   }
 
-  // Bordro Tablosunu Başlat
-  var bordroOpts = getDatatableOptions();
-  bordroOpts.responsive = false;
-  var originalInitComplete = bordroOpts.initComplete;
-  bordroOpts.columnDefs = [{ orderable: false, targets: [0, 15] }];
-  bordroOpts.order = [[1, "asc"]];
-  bordroOpts.pageLength = 25;
-  bordroOpts.initComplete = function (settings, json) {
-    // Önce orijinal initComplete'i çalıştır (filtreler, arama kutuları vb.)
-    if (typeof originalInitComplete === "function") {
-      originalInitComplete.call(this, settings, json);
-    }
-    // Tablo hazır - satırları göster ve preloader'ı kapat
-    $("#bordroTable").addClass("dt-ready");
-    $("#bordro-loader").fadeOut(300);
-
-   
-  };
-  $("#bordroTable").DataTable(applyLengthStateSave(bordroOpts));
-
-  // Sayfalama/siralama sonrasi DOM'a yeni giren satirlarin ikon ve tooltip'lerini tazele
-  $("#bordroTable").on("draw.dt", function () {
-    bordroGorselleriYenile($("#bordroTable tbody"));
-  });
+  // Erken başlatılamayan (ör. farklı yerleşimde kullanılan) sayfalar için yedek yol.
+  initBordroTable();
+  bordroGorselleriYenile($("#bordroTable tbody"));
 
   // Yıl değiştiğinde sayfayı yenile
   $("#yilSelect").on("change", function () {
@@ -893,6 +933,7 @@ $(document).ready(function () {
         action: action,
         donem_id: $("#donemSelect").val(),
         force_close: forceClose ? "1" : "0",
+        csrf_token: window.bordroYayinConfig?.csrf_token || "",
       },
       dataType: "json",
       success: function (response) {
@@ -963,79 +1004,7 @@ $(document).ready(function () {
     });
   }
 
-  // Personel Görsün Toggle (Açılır Menü)
-  $(document).on("click", "#btnPersonelGorsunToggle", function (e) {
-    e.preventDefault();
-    const currentGorsun = $(this).data("gorsun");
-    const newGorsun = currentGorsun == 1 ? 0 : 1;
-    const donemId = $("#donemSelect").val();
 
-    if (!donemId) return;
-
-    const actionText = newGorsun == 1
-      ? "Personeller bu dönemin bordrosunu görebilecek."
-      : "Personeller bu dönemin bordrosunu göremeyecek.";
-
-    Swal.fire({
-      title: newGorsun == 1 ? "Personel Görsün mü?" : "Personel Görmesin mi?",
-      text: actionText,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#6c757d",
-      confirmButtonText: "Evet",
-      cancelButtonText: "İptal",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        $.ajax({
-          url: "views/bordro/api.php",
-          type: "POST",
-          data: {
-            action: "donem-personel-gorsun-guncelle",
-            donem_id: donemId,
-            personel_gorsun: newGorsun,
-          },
-          dataType: "json",
-          beforeSend: function () {
-            Swal.fire({
-              title: "Güncelleniyor...",
-              allowOutsideClick: false,
-              didOpen: () => {
-                Swal.showLoading();
-              },
-            });
-          },
-          success: function (response) {
-            Swal.close();
-            if (response.status === "success") {
-              Swal.fire({
-                icon: "success",
-                title: "Başarılı!",
-                text: response.message,
-                confirmButtonText: "Tamam",
-              }).then(() => {
-                bordroTabloYenile();
-              });
-            } else {
-              Swal.fire({
-                icon: "error",
-                title: "Hata!",
-                text: response.message,
-              });
-            }
-          },
-          error: function () {
-            Swal.close();
-            Swal.fire({
-              icon: "error",
-              title: "Hata!",
-              text: "Bir hata oluştu.",
-            });
-          },
-        });
-      }
-    });
-  });
 
   // Gelir Ekle Form
   $("#formGelirEkle").on("submit", function (e) {
@@ -1066,6 +1035,11 @@ $(document).ready(function () {
 
   // Personel Resimi Tooltip Preview
   $(document).on("mouseenter", ".personel-img-zoom", function () {
+    const preview = $(this).siblings(".img-preview-tooltip").find("img")[0];
+    if (preview && preview.dataset.src) {
+      preview.src = preview.dataset.src;
+      delete preview.dataset.src;
+    }
     $(this).siblings(".img-preview-tooltip").stop().fadeIn(200);
   }).on("mouseleave", ".personel-img-zoom", function () {
     $(this).siblings(".img-preview-tooltip").stop().fadeOut(150);
@@ -2507,7 +2481,7 @@ function hideModal(modalId) {
 function bordroGorselleriYenile($kapsam) {
   if (!$kapsam || !$kapsam.length) return;
 
-  if (typeof feather !== "undefined") {
+  if (typeof feather !== "undefined" && $kapsam.find("[data-feather]").length > 0) {
     try {
       feather.replace();
     } catch (e) {
@@ -2517,9 +2491,9 @@ function bordroGorselleriYenile($kapsam) {
 
   if (window.bootstrap && bootstrap.Tooltip) {
     $kapsam.find('[data-bs-toggle="tooltip"]').each(function () {
-      const mevcut = bootstrap.Tooltip.getInstance(this);
-      if (mevcut) mevcut.dispose();
-      new bootstrap.Tooltip(this);
+      if (!bootstrap.Tooltip.getInstance(this)) {
+        new bootstrap.Tooltip(this);
+      }
     });
   }
 }
@@ -2549,23 +2523,6 @@ function bordroDonemDurumUygula(donemKapali, personelGorsun) {
           : "bg-success-subtle text-success") +
         ' ms-3" style="font-size: 10px;">' +
         (kapali ? "KAPALI" : "AÇIK") +
-        "</span>"
-    );
-  }
-
-  const $gorsunToggle = $("#btnPersonelGorsunToggle");
-  if ($gorsunToggle.length) {
-    $gorsunToggle.attr("data-gorsun", gorsun ? "1" : "0");
-    $gorsunToggle.data("gorsun", gorsun ? 1 : 0);
-    $gorsunToggle.html(
-      '<span><i class="mdi ' +
-        (gorsun ? "mdi-eye text-info" : "mdi-eye-off text-secondary") +
-        ' fs-5 me-2"></i>Personel Bordroyu Görsün</span><span class="badge ' +
-        (gorsun
-          ? "bg-success-subtle text-success"
-          : "bg-secondary-subtle text-secondary") +
-        ' ms-3" style="font-size: 10px;">' +
-        (gorsun ? "GÖRÜYOR" : "GÖRMÜYOR") +
         "</span>"
     );
   }

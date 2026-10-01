@@ -11,17 +11,26 @@
     "use strict";
 
     var DB_ADI = "ersan-pwa-offline";
-    var DB_SURUM = 1;
+    var DB_SURUM = 2;
+    var STORE_META = "transfer_meta";
+    var leaseOwner = uuidUret();
+    var accountKey = global.PWA_ACCOUNT_KEY || "";
+    var LEASE_MS = 150000;
     var STORE_KUYRUK = "kuyruk";
     var STORE_REFERANS = "referans";
     var SYNC_ETIKETI = "ersan-kuyruk-sync";
     var API_URL = "api.php";
     var BEKLEME_TABANI = 30000;
-    var BEKLEME_TAVANI = 1800000;
+    var BEKLEME_TAVANI = 300000;
 
     var pencerede = typeof window !== "undefined" && typeof document !== "undefined";
     var dbSozu = null;
     var calisiyor = false;
+    var flushStarting = false;
+    var leaseLost = false;
+    var mutationBusy = false;
+    var channel = typeof global.BroadcastChannel === "function" ? new global.BroadcastChannel("ersan-pwa-kuyruk") : null;
+    if (channel && pencerede) channel.onmessage = function (e) { window.dispatchEvent(new CustomEvent("kuyruk-degisti", { detail: e.data })); };
 
     // ---------- IndexedDB temeli ----------
 
@@ -38,12 +47,13 @@
                     s.createIndex("durum", "durum", { unique: false });
                     s.createIndex("olusturma", "olusturma", { unique: false });
                 }
+                if (!db.objectStoreNames.contains(STORE_META)) db.createObjectStore(STORE_META, { keyPath: "key" });
                 if (!db.objectStoreNames.contains(STORE_REFERANS)) {
                     db.createObjectStore(STORE_REFERANS, { keyPath: "anahtar" });
                 }
             };
 
-            istek.onsuccess = function () { resolve(istek.result); };
+            istek.onsuccess = function () { istek.result.onversionchange = function () { istek.result.close(); dbSozu = null; }; resolve(istek.result); };
             istek.onerror = function () { reject(istek.error); };
         });
 
@@ -87,14 +97,53 @@
 
     // ---------- Kuyruk işlemleri ----------
 
-    function listele() {
+    function tumKayitlar() {
         return islem(STORE_KUYRUK, "readonly", function (s) { return s.getAll(); })
             .then(function (kayitlar) {
                 return (kayitlar || []).sort(function (a, b) {
                     return a.olusturma < b.olusturma ? -1 : (a.olusturma > b.olusturma ? 1 : 0);
                 });
-            })
-            .catch(function () { return []; });
+            });
+    }
+
+    function listele() {
+        return tumKayitlar().then(function (items) {
+            return items.filter(function (k) { return !k.accountKey || k.accountKey === accountKey; });
+        });
+    }
+
+    function lease(mode) {
+        return dbAc().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var tx = db.transaction(STORE_META, "readwrite");
+                var store = tx.objectStore(STORE_META);
+                var get = store.get("sender");
+                var ok = false;
+                get.onsuccess = function () {
+                    var current = get.result;
+                    if (mode === "release") {
+                        if (current && current.owner === leaseOwner) store.delete("sender");
+                        ok = true;
+                    } else if ((mode === "acquire" && (!current || current.expires <= Date.now())) || (current && current.owner === leaseOwner)) {
+                        store.put({ key: "sender", owner: leaseOwner, expires: Date.now() + LEASE_MS });
+                        ok = true;
+                    }
+                };
+                tx.oncomplete = function () { resolve(ok); };
+                tx.onerror = tx.onabort = function () { reject(tx.error); };
+            });
+        });
+    }
+
+    async function claimLegacyUnlocked(uuid) {
+        var k = await oku(uuid);
+        if (!k || k.accountKey || !accountKey) return;
+        k.accountKey = accountKey;
+        k.reliable = true;
+        k.legacyTransfer = true;
+        k.videolar = k.videolar || [];
+        await yaz(k);
+        duyur({ sebep: "hesap-eslendi" });
     }
 
     function oku(uuid) {
@@ -102,12 +151,30 @@
     }
 
     function yaz(kayit) {
-        return islem(STORE_KUYRUK, "readwrite", function (s) { return s.put(kayit); })
-            .then(function () { return kayit; });
+        if (!flushStarting || !calisiyor) {
+            return islem(STORE_KUYRUK, "readwrite", function (s) { return s.put(kayit); }).then(function () { return kayit; });
+        }
+        return dbAc().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var tx = db.transaction([STORE_META, STORE_KUYRUK], "readwrite");
+                var get = tx.objectStore(STORE_META).get("sender");
+                get.onsuccess = function () {
+                    var lock = get.result;
+                    if (!lock || lock.owner !== leaseOwner || lock.expires <= Date.now()) { leaseLost = true; tx.abort(); return; }
+                    tx.objectStore(STORE_KUYRUK).put(kayit);
+                };
+                tx.oncomplete = function () { resolve(kayit); };
+                tx.onerror = tx.onabort = function () { reject(tx.error || new Error("Gönderim kilidi başka bir pencereye geçti.")); };
+            });
+        });
     }
 
-    function sil(uuid) {
-        return islem(STORE_KUYRUK, "readwrite", function (s) { return s.delete(uuid); })
+    function silUnlocked(uuid) {
+        return oku(uuid).then(function (k) {
+            if (!k || (k.accountKey && k.accountKey !== accountKey)) throw new Error("Kayıt bu hesaba ait değil.");
+            if (k.durum === "gonderiliyor") throw new Error("Gönderilen kayıt şu anda silinemez.");
+            return islem(STORE_KUYRUK, "readwrite", function (s) { return s.delete(uuid); });
+        })
             .then(function () { duyur({ sebep: "silindi", uuid: uuid }); });
     }
 
@@ -122,9 +189,14 @@
      */
     function ekle(action, alanlar, dosyalar, ozet, ek) {
         ek = ek || {};
+        if (!accountKey) return Promise.reject(new Error("Gönderim hesabı doğrulanamadı; sayfayı yeniden açın."));
 
+        if ((ek.videolar || []).some(function (v) { return !(v.dosya || v.blob) || !Number.isFinite(Number(v.sure)) || Number(v.sure) <= 0; })) return Promise.reject(new Error("Video süresi doğrulanamadı; videoyu yeniden seçin."));
         var kayit = {
             uuid: uuidUret(),
+            accountKey: accountKey,
+            reliable: ["saveKacakBildirim", "updateKacakBildirim", "createIhbar", "updateIhbar"].indexOf(action) >= 0,
+            videolar: (ek.videolar || []).map(function (v) { return { key: uuidUret(), blob: v.dosya || v.blob, ad: (v.dosya && v.dosya.name) || v.ad || "video.mp4", tip: (v.dosya && v.dosya.type) || v.tip, sure: v.sure, kapak: v.kapak || "", cekim: v.cekim || "", tamam: false }; }),
             action: action,
             alanlar: alanlar || {},
             dosyalar: dosyalar || [],
@@ -154,9 +226,11 @@
         });
     }
 
-    function guncelle(uuid, alanlar, yeniDosyalar, yeniOzet, ekDosyalar) {
+    function guncelleUnlocked(uuid, alanlar, yeniDosyalar, yeniOzet, ekDosyalar, videolar) {
         return oku(uuid).then(function (kayit) {
-            if (!kayit) return null;
+            if (!kayit || kayit.accountKey !== accountKey) throw new Error("Kayıt bu hesaba ait değil.");
+            if (kayit.anaGonderildi || (kayit.anaDenendi && !kayit.mainRejected) || kayit.durum === "gonderiliyor") throw new Error("Gönderimi başlamış kaydı sunucu listesinden düzenleyin.");
+            if (videolar && videolar.length) kayit.videolar = (kayit.videolar || []).concat(videolar.map(function (v) { return { key: uuidUret(), blob: v.dosya, ad: v.dosya.name, tip: v.dosya.type, sure: v.sure, kapak: v.kapak || "", cekim: v.cekim || "", tamam: false }; }));
             if (alanlar) {
                 Object.keys(alanlar).forEach(function (k) {
                     kayit.alanlar[k] = alanlar[k];
@@ -183,22 +257,43 @@
             kayit.deneme = 0;
             return yaz(kayit).then(function () {
                 duyur({ sebep: "guncellendi", uuid: uuid });
-                return flush({ elle: true });
+                return kayit;
             });
         });
     }
 
-    function tekrarDene(uuid) {
+    function tekrarDeneUnlocked(uuid) {
         return oku(uuid).then(function (kayit) {
-            if (!kayit) return null;
+            if (!kayit || kayit.accountKey !== accountKey) throw new Error("Kayıt bu hesaba ait değil.");
             kayit.durum = "bekliyor";
             kayit.hata = "";
             kayit.deneme = 0;
             return yaz(kayit).then(function () {
                 duyur({ sebep: "guncellendi", uuid: uuid });
-                return flush({ elle: true });
+                return kayit;
             });
         });
+    }
+
+    async function mutate(fn, args) {
+        if (calisiyor || flushStarting || mutationBusy) throw new Error("Gönderim sürüyor; tamamlanmasını bekleyip yeniden deneyin.");
+        mutationBusy = true;
+        var acquired = false;
+        try {
+            acquired = await lease("acquire");
+            if (!acquired) throw new Error("Gönderim başka bir pencerede sürüyor; yeniden deneyin.");
+            return await fn.apply(null, args);
+        } finally {
+            mutationBusy = false;
+            if (acquired) await lease("release");
+        }
+    }
+    function guncelle() { return mutate(guncelleUnlocked, arguments); }
+    function sil() { return mutate(silUnlocked, arguments); }
+    function claimLegacy() { return mutate(claimLegacyUnlocked, arguments); }
+    async function tekrarDene(uuid) {
+        await mutate(tekrarDeneUnlocked, [uuid]);
+        return flush({ elle: true });
     }
 
     // ---------- Gönderim ----------
@@ -209,7 +304,9 @@
      *  - bekle   : ağ/oturum kaynaklı geçici sorun, kayıt kuyrukta kalır
      *  - kalici  : sunucu kaydı reddetti (mükerrer, doğrulama), kullanıcı müdahalesi gerekir
      */
-    function istekGonder(action, alanlar, dosyalar, etiket) {
+    async function istekGonder(action, alanlar, dosyalar, etiket) {
+        if (flushStarting && action !== "pwaTransferIdentity" && !await lease("renew")) leaseLost = true;
+        if (leaseLost && action !== "pwaTransferIdentity") return Promise.resolve({ sonuc: "bekle", mesaj: "Gönderim başka bir pencerede devam ediyor." });
         var fd = new FormData();
         fd.append("action", action);
 
@@ -229,14 +326,19 @@
         // action hem gövdede hem adreste gönderilir: gövde ayrıştırılamazsa
         // sunucu isteği yine de doğru uca yönlendirebilir, ayrıca erişim
         // kayıtlarında hangi işlemin denendiği görünür.
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 120000);
         return fetch(API_URL + "?action=" + encodeURIComponent(action), {
+            signal: controller.signal,
             method: "POST",
             body: fd,
             credentials: "same-origin",
             cache: "no-store",
         }).then(function (yanit) {
+            if (yanit.redirected || /text\/html/i.test(yanit.headers.get("Content-Type") || "")) return { sonuc: "oturum", mesaj: "Oturumu yenilemek için yeniden giriş yapın." };
+            if (yanit.status === 401 || yanit.status === 403) return { sonuc: "oturum", mesaj: "Oturum veya kayıt yetkisi doğrulanamadı [" + etiket + "]" };
             if (!yanit.ok) {
-                return { sonuc: "bekle", mesaj: "Sunucu HTTP " + yanit.status + " döndü [" + etiket + "]" };
+                return { sonuc: yanit.status >= 400 && yanit.status < 500 && [408, 429].indexOf(yanit.status) < 0 ? "kalici" : "bekle", mesaj: "Sunucu HTTP " + yanit.status + " döndü [" + etiket + "]" };
             }
             return yanit.json().then(function (json) {
                 // Service worker çevrimdışıyken sahte yanıt üretiyor olabilir.
@@ -251,15 +353,15 @@
 
                 var mesaj = (json && (json.message || json.error)) || "Kayıt gönderilemedi.";
                 var oturumSorunu = (json && json.redirect) || /oturum/i.test(mesaj);
-                return { sonuc: oturumSorunu ? "bekle" : "kalici", mesaj: mesaj + " [" + etiket + "]" };
+                return { sonuc: oturumSorunu ? "oturum" : ((json.data && ["temporary", "expired"].indexOf(json.data.transfer_error) >= 0) ? "bekle" : "kalici"), mesaj: mesaj + " [" + etiket + "]" };
             }).catch(function () {
-                // JSON yerine login sayfası gibi bir HTML dönmüşse oturum düşmüştür.
-                return { sonuc: "bekle", mesaj: "Oturum doğrulanamadı [" + etiket + "]" };
+                // Eksik veya bozuk yanıt, sunucu kaydetmiş olsa da güvenilir onay sayılmaz.
+                return { sonuc: "bekle", mesaj: "Sunucu yanıtı doğrulanamadı [" + etiket + "]" };
             });
         }).catch(function (e) {
             var sebep = (e && e.message) || "bilinmeyen";
             return { sonuc: "bekle", mesaj: "Ağ hatası: " + sebep + " [" + etiket + "]" };
-        });
+        }).finally(function () { clearTimeout(timer); });
     }
 
     function mbMetni(blob) {
@@ -319,6 +421,7 @@
      * fotoğraftan devam edilir, tamamlananlar ikinci kez yüklenmez.
      */
     function gonderimeBasla(kayit) {
+        if (kayit.reliable) return reliableSend(kayit);
         var ilk = Promise.resolve({ sonuc: "tamam" });
 
         if (!kayit.anaGonderildi) {
@@ -469,7 +572,7 @@
     /**
      * Bekleyen kayıtları sırayla gönderir. Aynı anda tek gönderim çalışır.
      */
-    function flush(secenekler) {
+    function flushUnlocked(secenekler) {
         secenekler = secenekler || {};
 
         if (calisiyor) {
@@ -487,8 +590,10 @@
             .then(listele)
             .then(function (kayitlar) {
             var sira = kayitlar.filter(function (k) {
+                if (!k.accountKey || k.accountKey !== accountKey) return false;
                 if (backoffBekliyor(k, secenekler.elle)) return false;
                 if (k.durum === "bekliyor") return true;
+                if (secenekler.elle && k.durum === "oturum") return true;
                 return secenekler.elle && k.durum === "hata";
             });
 
@@ -504,12 +609,23 @@
 
                     kayit.durum = "gonderiliyor";
                     return yaz(kayit)
-                        .then(function () { return gonder(kayit); })
+                        .then(function () { duyur({ sebep: "ilerleme", uuid: kayit.uuid }); return gonder(kayit); })
                         .then(function (cevap) {
                             if (cevap.sonuc === "tamam") {
                                 gonderildi++;
-                                return islem(STORE_KUYRUK, "readwrite", function (s) {
-                                    return s.delete(kayit.uuid);
+                                return dbAc().then(function (db) {
+                                    return new Promise(function (resolve, reject) {
+                                        var tx = db.transaction([STORE_META, STORE_KUYRUK], "readwrite");
+                                        var get = tx.objectStore(STORE_META).get("sender");
+                                        get.onsuccess = function () {
+                                        var lock = get.result;
+                                        if (!lock || lock.owner !== leaseOwner || lock.expires <= Date.now()) { leaseLost = true; tx.abort(); return; }
+                                        tx.objectStore(STORE_META).put({ key: "done:" + kayit.uuid, accountKey: kayit.accountKey, action: kayit.action, ozet: kayit.ozet, completed: Date.now() });
+                                        tx.objectStore(STORE_KUYRUK).delete(kayit.uuid);
+                                        };
+                                        tx.oncomplete = function () { resolve(); };
+                                        tx.onerror = tx.onabort = function () { reject(tx.error); };
+                                    });
                                 });
                             }
 
@@ -519,14 +635,24 @@
 
                             // Ağ ve oturum sorunları süresiz yeniden denenir; kayıt yalnızca
                             // sunucu içeriği reddettiğinde kullanıcı müdahalesine bırakılır.
-                            if (cevap.sonuc === "kalici") {
+                            if (cevap.sonuc === "oturum") {
+                                kayit.durum = "oturum";
+                                agKesik = true;
+                            } else if (cevap.sonuc === "kalici") {
                                 kayit.durum = "hata";
                                 basarisiz++;
                             } else {
                                 kayit.durum = "bekliyor";
                                 agKesik = true;
                             }
-                            return yaz(kayit);
+                            return yaz(kayit).then(function () { duyur({ sebep: "ilerleme", uuid: kayit.uuid }); });
+                        }).catch(function (e) {
+                            kayit.durum = "bekliyor";
+                            kayit.deneme = (kayit.deneme || 0) + 1;
+                            kayit.sonDeneme = Date.now();
+                            kayit.hata = "Gönderim tamamlanamadı: " + (e.message || "cihaz depolama hatası");
+                            agKesik = true;
+                            return yaz(kayit).then(function () { duyur({ sebep: "ilerleme", uuid: kayit.uuid }); });
                         });
                 });
             }, Promise.resolve());
@@ -546,16 +672,208 @@
         });
     }
 
+    async function flush(options) {
+        if (calisiyor || flushStarting || mutationBusy || (typeof navigator !== "undefined" && navigator.onLine === false)) return { gonderildi: 0 };
+        flushStarting = true;
+        var heartbeat;
+        var acquired = false;
+        try {
+            acquired = await lease("acquire");
+            if (!acquired) return { gonderildi: 0, atlandi: true };
+            leaseLost = false;
+            heartbeat = setInterval(function () { lease("renew").then(function (ok) { if (!ok) leaseLost = true; }).catch(function () { leaseLost = true; }); }, 30000);
+            var identity = await istekGonder("pwaTransferIdentity", {}, [], "hesap");
+            if (identity.sonuc !== "tamam") return { gonderildi: 0, oturum: identity.sonuc === "oturum", gecici: identity.sonuc === "bekle" };
+            var serverKey = identity.veri.account_key;
+            if (pencerede && accountKey !== serverKey) return { gonderildi: 0, oturum: true };
+            accountKey = serverKey;
+            await islem(STORE_META, "readwrite", function (store) {
+                var request = store.openCursor();
+                request.onsuccess = function () {
+                    var cursor = request.result;
+                    if (!cursor) return;
+                    if (cursor.value.completed && cursor.value.completed < Date.now() - 86400000) cursor.delete();
+                    cursor.continue();
+                };
+                return request;
+            });
+            var result = await flushUnlocked(options);
+            result.kalan = (await listele()).filter(function (k) { return k.accountKey === accountKey && k.durum === "bekliyor"; }).length;
+            return result;
+        } finally {
+            clearInterval(heartbeat);
+            flushStarting = false;
+            if (acquired) await lease("release");
+        }
+    }
+
+    function targetFields(k) {
+        return { transfer_key: k.uuid, main_action: k.action, kind: /Ihbar/.test(k.action) ? "ihbar" : "kacak", account_key: k.accountKey, target_token: k.targetToken || k.alanlar.edit_token || "" };
+    }
+
+    async function hashBlob(blob) {
+        var bytes = await blob.arrayBuffer();
+        var hash = await global.crypto.subtle.digest("SHA-256", bytes);
+        return Array.from(new Uint8Array(hash)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+    }
+
+    async function reliableSend(k) {
+        var result;
+        if (!k.anaGonderildi) {
+            k.anaDenendi = true; k.mainRejected = false; await yaz(k);
+            var fields = Object.assign({}, k.alanlar, { reliable_transfer: "1", operation_key: k.uuid, account_key: k.accountKey });
+            result = await istekGonder(k.action, fields, k.dosyalar, "bildirim");
+            if (result.sonuc !== "tamam") { k.mainRejected = result.sonuc === "kalici"; return result; }
+            k.anaGonderildi = true;
+            k.targetToken = result.veri.target_token;
+            await yaz(k);
+            duyur({ sebep: "ilerleme", uuid: k.uuid });
+        }
+        if (!k.targetToken && !k.alanlar.edit_token) {
+            result = await istekGonder("pwaTransferResolve", { operation_key: k.uuid, account_key: k.accountKey, client_uuid: k.alanlar.client_uuid || k.uuid }, [], "eski kayıt");
+            if (result.sonuc !== "tamam") return result;
+            k.targetToken = result.veri.target_token;
+            await yaz(k);
+        }
+        var photos = k.ekDosyalar || [];
+        for (var i = k.ekGonderilen || 0; i < photos.length; i++) {
+            var d = photos[i];
+            var f = Object.assign(targetFields(k), { operation_key: k.uuid + "_photo_" + i, sira: i, legacy_transfer: k.legacyTransfer ? "1" : "" });
+            result = await istekGonder("pwaTransferPhoto", f, [{ alan: "foto", ad: d.ad, blob: d.blob, cekim: d.cekim || "" }], "fotoğraf " + (i + 1) + "/" + photos.length);
+            if (result.sonuc !== "tamam") return result;
+            k.ekGonderilen = i + 1;
+            await yaz(k);
+            duyur({ sebep: "ilerleme", uuid: k.uuid });
+        }
+        for (var v of (k.videolar || [])) {
+            if (v.tamam) continue;
+            if (!v.hash) { v.hash = await hashBlob(v.blob); await yaz(k); }
+            var vf = Object.assign(targetFields(k), { video_key: v.key });
+            result = await istekGonder("pwaVideoStart", Object.assign({}, vf, { size: v.blob.size, hash: v.hash, mime: v.tip, duration: v.sure, name: v.ad, cover: v.kapak, capture: v.cekim }), [], "video hazırlığı");
+            if (result.sonuc !== "tamam") return result;
+            if (result.veri.completed) { v.tamam = true; v.progress = 100; await yaz(k); continue; }
+            // Start returns the authoritative persisted status on every resume.
+            var received = result.veri.parts || [];
+            var count = Math.ceil(v.blob.size / 262144);
+            v.parts = received; v.progress = Math.floor(received.length * 100 / count);
+            await yaz(k); duyur({ sebep: "ilerleme", uuid: k.uuid });
+            for (var part = 0; part < count; part++) {
+                if (received.indexOf(part) >= 0) continue;
+                var blob = v.blob.slice(part * 262144, Math.min(v.blob.size, (part + 1) * 262144));
+                result = await istekGonder("pwaVideoChunk", Object.assign({}, vf, { index: part, chunk_hash: await hashBlob(blob) }), [{ alan: "chunk", ad: "part.bin", blob: blob }], "video parçası " + (part + 1) + "/" + count);
+                if (result.sonuc !== "tamam") return result;
+                received = result.veri.parts;
+                v.parts = received;
+                v.progress = Math.floor(received.length * 100 / count);
+                await yaz(k);
+                duyur({ sebep: "ilerleme", uuid: k.uuid });
+            }
+            result = await istekGonder("pwaVideoComplete", Object.assign({}, vf, { operation_key: v.key + "_complete" }), [], "video tamamlama");
+            if (result.sonuc !== "tamam") return result;
+            v.tamam = true;
+            v.progress = 100;
+            await yaz(k);
+        }
+        return { sonuc: "tamam" };
+    }
+
+    function statusText(k) {
+        if (!k.accountKey) return "Eski kayıt: hesap eşleştirmesi gerekiyor";
+        if (k.durum === "oturum") return "Oturum veya yetki doğrulaması gerekiyor";
+        if (k.durum === "hata") return "Gönderim hatası";
+        if (k.durum === "gonderiliyor") return "Gönderiliyor";
+        if (k.anaGonderildi) return "Dosyalar eksik";
+        return k.deneme ? "Bağlantı bekleniyor" : (typeof navigator !== "undefined" && navigator.onLine === false ? "Telefona kaydedildi · Bağlantı bekleniyor" : "Telefona kaydedildi");
+    }
+
+    function remainingText(k) {
+        var photos = Math.max(0, (k.ekDosyalar || []).length - (k.ekGonderilen || 0));
+        var videos = (k.videolar || []).filter(function (v) { return !v.tamam; });
+        return photos + " fotoğraf, " + videos.length + " video bekliyor" + (videos.length ? " · video %" + (videos[0].progress || 0) : "");
+    }
+
+    function mountPanel(kind, id, options) {
+        options = options || {};
+        if (!pencerede) return;
+        var generation = 0;
+        var matches = function (k) { return kind === "ihbar" ? /Ihbar/.test(k.action) : /Kacak/.test(k.action); };
+        async function render() {
+            var version = ++generation;
+            var host = document.getElementById(id);
+            if (!host) return;
+            var records = (await listele()).filter(matches);
+            var done = (await islem(STORE_META, "readonly", function (s) { return s.getAll(); }))
+                .filter(function (k) { return k.completed && k.accountKey === accountKey && matches(k) && k.completed > Date.now() - 86400000; })
+                .sort(function (a, b) { return b.completed - a.completed; }).slice(0, 5);
+            if (version !== generation) return;
+            host.replaceChildren();
+            function line(card, text, cls) {
+                var el = document.createElement("p");
+                el.className = cls || "text-xs text-slate-500 mt-1";
+                el.textContent = text;
+                card.appendChild(el);
+            }
+            records.concat(done).forEach(function (k) {
+                var card = document.createElement("div");
+                card.className = "bg-white dark:bg-card-dark p-3 rounded-xl border border-amber-200 mb-2";
+                var o = k.ozet || {};
+                line(card, [o.ilce, o.mahalle, o.tutanak_no].filter(Boolean).join(" · ") || "Bildirim", "text-sm font-bold");
+                if (o.abone_adi) line(card, o.abone_adi);
+                line(card, k.completed ? "Tamamlandı — sunucu tüm dosyaları onayladı" : statusText(k), "text-xs font-bold mt-1");
+                if (!k.completed) {
+                    line(card, remainingText(k));
+                    if (k.hata) line(card, k.hata);
+                    if (k.durum !== "gonderiliyor") {
+                        var btn = document.createElement("button");
+                        btn.type = "button";
+                        btn.className = "mt-2 px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold";
+                        btn.textContent = k.accountKey ? "Şimdi tekrar dene" : "Eski kaydı hesabımla eşleştir";
+                        btn.onclick = async function () {
+                            btn.disabled = true;
+                            try {
+                                if (!k.accountKey) {
+                                    if (!global.confirm("Bu eski bildirim size mi ait? Yalnızca kendi oluşturduğunuz kaydı hesabınızla eşleştirin.")) return;
+                                    await claimLegacy(k.uuid);
+                                }
+                                await tekrarDene(k.uuid);
+                            } catch (e) { global.alert(e.message || "İşlem tamamlanamadı."); }
+                            finally { btn.disabled = false; render().catch(function () {}); }
+                        };
+                        card.appendChild(btn);
+                        function actionButton(label, callback) {
+                            var action = document.createElement("button");
+                            action.type = "button";
+                            action.className = "mt-2 ml-2 px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold";
+                            action.textContent = label;
+                            action.onclick = async function () {
+                                action.disabled = true;
+                                try { await callback(k.uuid); }
+                                catch (e) { global.alert(e.message || "İşlem tamamlanamadı."); }
+                                finally { action.disabled = false; render().catch(function () {}); }
+                            };
+                            card.appendChild(action);
+                        }
+                        if (options.onEdit && k.accountKey && !k.anaGonderildi && (!k.anaDenendi || k.mainRejected)) actionButton("Düzenle", options.onEdit);
+                        if (options.onDelete) actionButton("Cihazdan kaldır", options.onDelete);
+                    }
+                }
+                host.appendChild(card);
+            });
+        }
+        window.addEventListener("kuyruk-degisti", function () { render().catch(function () {}); });
+        render().catch(function () {});
+    }
+
     // ---------- Referans (çevrimdışı görüntüleme) verisi ----------
 
     function referansKaydet(anahtar, veri) {
         return islem(STORE_REFERANS, "readwrite", function (s) {
-            return s.put({ anahtar: anahtar, veri: veri, guncelleme: new Date().toISOString() });
+            return s.put({ anahtar: accountKey + ":" + anahtar, veri: veri, guncelleme: new Date().toISOString() });
         }).catch(function () { return null; });
     }
 
     function referansOku(anahtar) {
-        return islem(STORE_REFERANS, "readonly", function (s) { return s.get(anahtar); })
+        return islem(STORE_REFERANS, "readonly", function (s) { return s.get(accountKey + ":" + anahtar); })
             .then(function (kayit) { return kayit ? kayit.veri : null; })
             .catch(function () { return null; });
     }
@@ -1018,6 +1336,7 @@
     // ---------- Bağlam yardımcıları ----------
 
     function duyur(detay) {
+        if (channel) channel.postMessage(detay);
         if (pencerede) {
             window.dispatchEvent(new CustomEvent("kuyruk-degisti", { detail: detay }));
             return;
@@ -1050,6 +1369,11 @@
 
     var Kuyruk = {
         SYNC_ETIKETI: SYNC_ETIKETI,
+        claimLegacy: claimLegacy,
+        mountPanel: mountPanel,
+        statusText: statusText,
+        remainingText: remainingText,
+        hashBlob: hashBlob,
         uuid: uuidUret,
         istekGonder: istekGonder,
         ekle: ekle,

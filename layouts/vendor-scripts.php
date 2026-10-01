@@ -168,6 +168,9 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "ihbar/list" ||
     $page == "kacak/list" ||
     $page == "kesme-acma/list" ||
+    $page == "efatura/giden-list" ||
+    $page == "efatura/gelen-list" ||
+    strpos($page, "efatura/") === 0 ||
     $page == "menu-yonetimi/list"
 ) { ?>
 
@@ -214,7 +217,7 @@ if ($page == "hakedisler/hakedis-detay") {
 <!-- App -General js -->
 <script src="assets/js/app_module.js?v=<?php echo filemtime('assets/js/app_module.js'); ?>"></script>
 
-<script src="assets/js/page.init.js"></script>
+<script src="assets/js/page.init.js?v=<?= filemtime('assets/js/page.init.js') ?>"></script>
 <!-- Functions and declarations-->
 <script src="assets/js/app.js?v=<?php echo filemtime('assets/js/app.js'); ?>"></script>
 
@@ -244,4 +247,3 @@ if ($page == "hakedisler/hakedis-detay") {
 <?php if (($_SESSION['portal_scope'] ?? '') !== 'kaski'): ?>
     <?php include_once __DIR__ . '/destek-chat.php'; ?>
 <?php endif; ?>
-

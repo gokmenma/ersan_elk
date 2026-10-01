@@ -54,9 +54,9 @@ class PushNotificationService
      * @param array $payload ['title' => '...', 'body' => '...', 'url' => '...']
      * @return bool
      */
-    public function sendToPersonel($personelId, $payload)
+    public function sendToPersonel($personelId, $payload, $skipEmail = false)
     {
-        return $this->sendNotification('personel', $personelId, $payload);
+        return $this->sendNotification('personel', $personelId, $payload, $skipEmail);
     }
 
     /**

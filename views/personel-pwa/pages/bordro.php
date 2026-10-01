@@ -3,18 +3,17 @@
  * Personel PWA - Bordro Sayfası
  * Bordro listesi ve avans talebi
  */
+if (!isset($personel_id) || !$personel_id) { http_response_code(403); return; }
+if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
+    echo '<div class="px-4 py-4">';
+    require dirname(__DIR__) . '/bordro-yayin-panel.php';
+    echo '</div>';
+    return;
+}
 ?>
 
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-    <header <?php
-    /**
-     * Personel PWA - Bordro Sayfası
-     * Bordro listesi ve avans talebi
-     */
-    ?> <div
-        class="flex flex-col min-h-screen">
-        <!-- Header -->
         <header
             class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
             <div class="flex items-center justify-between">
@@ -57,12 +56,9 @@
         <div
             class="px-4 py-2 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[73px] z-20">
             <div class="flex gap-2">
-                <!-- <button onclick="changeTab('bordro')" class="tab-btn active px-4 py-2 text-sm font-semibold rounded-lg"
-                    data-tab="bordro">
-                    Bordrolar
-                </button> -->
+                <button onclick="changeTab('bordro')" class="tab-btn active px-4 py-2 text-sm font-semibold rounded-lg" data-tab="bordro">Resmî Bordrolar</button>
                 <button onclick="changeTab('avans')"
-                    class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg active text-slate-500" data-tab="avans">
+                    class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-500" data-tab="avans">
                     Avans Talepleri
                 </button>
             </div>
@@ -71,17 +67,12 @@
         <!-- Content Area -->
         <div class="flex-1 px-4 py-4">
             <!-- Bordro List -->
-            <!--  <div id="bordro-tab" class="tab-content">
-                <div class="flex flex-col gap-3" id="bordro-list">
-                     Bordro items will be loaded here 
-                    <div class="shimmer h-20 rounded-xl"></div>
-                    <div class="shimmer h-20 rounded-xl"></div>
-                    <div class="shimmer h-20 rounded-xl"></div>
-                </div>
-            </div>-->
+            <div id="bordro-tab" class="tab-content">
+                <?php require dirname(__DIR__) . '/bordro-yayin-panel.php'; ?>
+            </div>
 
             <!-- Avans List -->
-            <div id="avans-tab" class="tab-content">
+            <div id="avans-tab" class="tab-content hidden">
                 <div id="avans-kisit-uyari"
                     class="hidden card p-4 mb-3 bg-orange-50 dark:bg-orange-900/20 flex items-center gap-3">
                     <span class="material-symbols-outlined text-orange-600 dark:text-orange-400">info</span>
@@ -160,36 +151,6 @@
     </div>
 </div>
 
-<!-- Bordro Detay Modal -->
-<div id="bordro-detay-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3">
-        <div class="modal-handle"></div>
-
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="bordro-modal-title">Bordro Detayı</h3>
-            <button onclick="Modal.close('bordro-detay-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
-            </button>
-        </div>
-
-        <div id="bordro-detay-content">
-            <!-- Content will be loaded dynamically -->
-        </div>
-
-        <div class="flex gap-3 mt-6">
-            <button onclick="downloadBordro()" class="flex-1 btn-secondary flex items-center justify-center gap-2 py-3">
-                <span class="material-symbols-outlined">download</span>
-                PDF İndir
-            </button>
-            <button onclick="Modal.close('bordro-detay-modal')"
-                class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                Kapat
-            </button>
-        </div>
-    </div>
-</div>
-
 <!-- Avans Detay Modal -->
 <div id="avans-detay-modal" class="modal-overlay">
     <div class="modal-content p-6 pt-3">
@@ -230,8 +191,7 @@
     let avansKisitMesaji = '';
 
     document.addEventListener('DOMContentLoaded', function () {
-        //Müşteri şimdiilik bordrolar görünmesin dedi
-        //loadBordrolar();
+
         loadAvansTalepleri();
         loadStats();
 
@@ -280,45 +240,6 @@
             }
         } catch (error) {
             console.error('Stats load error:', error);
-        }
-    }
-
-    async function loadBordrolar() {
-        const container = document.getElementById('bordro-list');
-
-        try {
-            const response = await API.request('getBordrolar');
-
-            if (response.success && response.data.length > 0) {
-                container.innerHTML = response.data.map(bordro => `
-                <div class="card p-4 flex items-center gap-4" onclick="showBordroDetay(${bordro.id})">
-                    <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-primary">description</span>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-bold text-sm text-slate-900 dark:text-white">${bordro.donem}</p>
-                        <p class="text-xs text-slate-500">Ödeme: ${bordro.odeme_tarihi}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-bold text-slate-900 dark:text-white">${Format.currency(bordro.net_tutar)}</p>
-                        <span class="badge ${bordro.durum === 'odendi' ? 'badge-success' : 'badge-warning'}">${bordro.durum === 'odendi' ? 'Ödendi' : 'Bekliyor'}</span>
-                    </div>
-                </div>
-            `).join('');
-            } else {
-                container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <span class="material-symbols-outlined">description</span>
-                    </div>
-                    <p class="text-slate-600 dark:text-slate-400 font-medium">Henüz bordro kaydı yok</p>
-                    <p class="text-sm text-slate-500">Bordrolarınız burada listelenecek.</p>
-                </div>
-            `;
-            }
-        } catch (error) {
-            console.error('Bordro load error:', error);
-            container.innerHTML = '<p class="text-center text-slate-500 py-8">Veriler yüklenemedi</p>';
         }
     }
 
@@ -380,41 +301,6 @@
             case 'beklemede': return 'badge-warning';
             case 'reddedildi': return 'badge-danger';
             default: return 'badge-gray';
-        }
-    }
-
-    async function showBordroDetay(id) {
-        // Load bordro details and show modal
-        Modal.open('bordro-detay-modal');
-
-        try {
-            const response = await API.request('getBordroDetay', { id: id });
-            if (response.success) {
-                const data = response.data;
-                document.getElementById('bordro-modal-title').textContent = data.donem;
-                document.getElementById('bordro-detay-content').innerHTML = `
-                <div class="flex flex-col gap-4">
-                    <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
-                        <span class="text-slate-500">Brüt Maaş</span>
-                        <span class="font-bold">${Format.currency(data.brut)}</span>
-                    </div>
-                    <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
-                        <span class="text-slate-500">SGK Primi</span>
-                        <span class="font-bold text-red-500">-${Format.currency(data.sgk)}</span>
-                    </div>
-                    <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
-                        <span class="text-slate-500">Gelir Vergisi</span>
-                        <span class="font-bold text-red-500">-${Format.currency(data.vergi)}</span>
-                    </div>
-                    <div class="flex justify-between items-center py-3 bg-primary/5 rounded-lg px-3">
-                        <span class="font-bold text-slate-700 dark:text-slate-300">Net Maaş</span>
-                        <span class="font-bold text-lg text-primary">${Format.currency(data.net)}</span>
-                    </div>
-                </div>
-            `;
-            }
-        } catch (error) {
-            console.error('Bordro detail error:', error);
         }
     }
 
@@ -576,8 +462,4 @@
         }
     }
 
-    function downloadBordro() {
-        Toast.show('PDF indiriliyor...', 'success');
-        // Implement PDF download
-    }
 </script>

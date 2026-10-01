@@ -11,6 +11,8 @@ use App\Helper\Security;
 $BordroDonem = new BordroDonemModel();
 $BordroPersonel = new BordroPersonelModel();
 $BordroParametre = new BordroParametreModel();
+$_bordroProfile = ($_ENV['BORDRO_PROFILE'] ?? getenv('BORDRO_PROFILE')) === '1';
+$_selectStart = $_bordroProfile ? $BordroPersonel->getPerformanceSelectCount() : null;
 
 
 
@@ -73,7 +75,7 @@ if ($selectedDonemId) {
     if ($selectedDonem) {
         $_sqlStart = microtime(true);
         $personeller = $BordroPersonel->getPersonellerByDonem($selectedDonemId);
-        $_sqlTime = round((microtime(true) - $_sqlStart) * 1000);
+        $_sqlTime = round((microtime(true) - $_sqlStart) * 1000, 2);
         $selectedAy = date('m', strtotime($selectedDonem->baslangic_tarihi));
         $selectedYil = date('Y', strtotime($selectedDonem->baslangic_tarihi));
     }
@@ -128,7 +130,7 @@ if (!empty($dbGelirler)) {
 }
 ?>
 
-<div class="container-fluid">
+<div class="container-fluid bordro-page">
     <?php
     $maintitle = "Bordro";
     $title = "Bordro Yönetimi";
@@ -653,6 +655,70 @@ if (!empty($dbGelirler)) {
             border: 0;
             flex: 0 0 10px;
         }
+        /* Bordro Header Toolbar & Dropdown Standartları */
+        .bordro-action-toolbar {
+            background-color: #ffffff;
+            border-color: #e2e8f0 !important;
+            height: 52px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .bordro-period-dropdown-btn {
+            background-color: #ffffff;
+            border: 1px solid #ced4da;
+            height: 52px;
+            border-radius: 8px;
+            color: #495057;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .bordro-period-dropdown-btn:hover,
+        .bordro-period-dropdown-btn:focus {
+            background-color: #f8fafc;
+            border-color: #3b82f6;
+            color: #1e293b;
+        }
+
+        .bordro-action-toolbar .btn-link {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            height: 34px;
+            border-radius: 6px;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .bordro-action-toolbar .btn-link:hover {
+            background-color: rgba(15, 23, 42, 0.05);
+            text-decoration: none;
+        }
+
+        [data-bs-theme="dark"] .bordro-action-toolbar {
+            background-color: #2a3042 !important;
+            border-color: #32394e !important;
+        }
+
+        [data-bs-theme="dark"] .bordro-period-dropdown-btn {
+            background-color: #2a3042 !important;
+            border-color: #32394e !important;
+            color: #ced4da !important;
+        }
+
+        [data-bs-theme="dark"] .bordro-period-dropdown-btn:hover {
+            background-color: #32394e !important;
+            border-color: #3b82f6 !important;
+            color: #ffffff !important;
+        }
+
+        [data-bs-theme="dark"] .bordro-action-toolbar .vr {
+            background-color: #3e4556 !important;
+            opacity: 0.8;
+        }
+
+        [data-bs-theme="dark"] .bordro-action-toolbar .btn-link:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
     </style>
 
 
@@ -660,9 +726,9 @@ if (!empty($dbGelirler)) {
         <div class="col-12">
             <div class="card bordro-card">
                 <div class="card-header bordro-sticky-header">
-                    <div class="d-flex flex-wrap align-items-center gap-3">
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
-                            <div style="min-width: 150px;">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <div style="min-width: 140px;">
                                 <?php echo Form::FormSelect2(
                                     name: 'yilSelect',
                                     options: $yil_option,
@@ -672,7 +738,6 @@ if (!empty($dbGelirler)) {
                                     class: 'form-control select2'
                                 ); ?>
                             </div>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                             <div style="min-width: 180px;">
                                 <?php echo Form::FormSelect2(
                                     name: 'donemSelect',
@@ -683,14 +748,12 @@ if (!empty($dbGelirler)) {
                                     class: 'form-control select2'
                                 ); ?>
                             </div>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                             <div class="dropdown">
-                                <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle"
-                                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="mdi mdi-menu me-1"></i> İşlemler
-                                    <i class="mdi mdi-chevron-down"></i>
+                                <button class="btn bordro-period-dropdown-btn px-3 d-flex align-items-center dropdown-toggle shadow-sm"
+                                    type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Dönem İşlemleri">
+                                    <i class="mdi mdi-calendar-cog-outline fs-5 me-1 text-primary"></i> <span class="d-none d-sm-inline">Dönem İşlemleri</span>
                                 </button>
-                                <ul class="dropdown-menu shadow-lg border-0">
+                                <ul class="dropdown-menu shadow-lg border-0" style="min-width: 250px;">
                                     <li>
                                         <a class="dropdown-item py-2 d-flex align-items-center" href="javascript:void(0);"
                                             data-bs-toggle="modal" data-bs-target="#yeniDonemModal">
@@ -711,15 +774,18 @@ if (!empty($dbGelirler)) {
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item py-2 d-flex align-items-center justify-content-between" href="javascript:void(0);"
-                                            id="btnPersonelGorsunToggle" data-gorsun="<?= ($selectedDonem->personel_gorsun == 1) ? '1' : '0' ?>">
-                                            <span>
-                                                <i class="mdi <?= ($selectedDonem->personel_gorsun == 1) ? 'mdi-eye text-info' : 'mdi-eye-off text-secondary' ?> fs-5 me-2"></i>
-                                                Personel Bordroyu Görsün
-                                            </span>
-                                            <span class="badge <?= ($selectedDonem->personel_gorsun == 1) ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' ?> ms-3" style="font-size: 10px;">
-                                                <?= ($selectedDonem->personel_gorsun == 1) ? 'GÖRÜYOR' : 'GÖRMÜYOR' ?>
-                                            </span>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center" href="javascript:void(0);"
+                                            id="bordroYayinAc" title="Resmî bordro yayını ve okuma beyanı takibi">
+                                            <i class="mdi mdi-bullhorn-outline text-info fs-5 me-2"></i> Bordro Yayını & Takip
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center" href="javascript:void(0);"
+                                            id="btnAiBordroAudit" title="Yapay Zeka Destekli Bordro Denetimi ve Risk Analizi">
+                                            <i class="mdi mdi-robot-outline fs-5 me-2" style="color: #7c3aed;"></i> AI Bordro Denetimi
                                         </a>
                                     </li>
                                     <?php endif; ?>
@@ -744,22 +810,21 @@ if (!empty($dbGelirler)) {
                             </div>
                         </div>
 
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto bordro-action-toolbar">
                             <?php if ($selectedDonem): ?>
                                 <button type="button"
-                                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
-                                    id="btnRefreshPersonel" <?= $donemKapali ? 'disabled' : '' ?>>
-                                    <i class="mdi mdi-refresh fs-5 me-1"></i> <span class="d-none d-xl-inline">Personel
-                                        Güncelle</span>
+                                    class="btn btn-link btn-sm text-primary text-decoration-none px-2.5 d-flex align-items-center"
+                                    id="btnRefreshPersonel" <?= $donemKapali ? 'disabled' : '' ?>
+                                    title="Dönem personel listesini güncelle">
+                                    <i class="mdi mdi-account-sync-outline fs-5 me-1"></i> <span class="d-none d-xl-inline">Personel Güncelle</span>
                                 </button>
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                 <div class="dropdown">
-                                    <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="mdi mdi-menu me-1"></i> İşlemler
-                                        <i class="mdi mdi-chevron-down"></i>
+                                    <button class="btn btn-link btn-sm text-secondary text-decoration-none px-2.5 d-flex align-items-center dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown" aria-expanded="false" title="Diğer İşlemler ve Excel Aktarımları">
+                                        <i class="mdi mdi-dots-vertical fs-5 me-1"></i> <span>İşlemler</span>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 250px;">
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);" id="btnExportExcel">
                                                 <i class="mdi mdi-file-excel me-2 text-success fs-5"></i> Excel'e İndir
@@ -823,28 +888,19 @@ if (!empty($dbGelirler)) {
                                         </li>
                                     </ul>
                                 </div>
-                                <button type="button"
-                                    class="btn btn-dark btn-sm text-white shadow-sm text-decoration-none px-2 d-flex align-items-center"
-                                    id="btnAiBordroAudit"
-                                    title="Yapay Zeka Destekli Bordro Denetimi ve Risk Analizi"
-                                    style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none;">
-                                    <i class="mdi mdi-robot fs-5 me-1"></i> <span class="d-none d-xl-inline">AI Denetim</span>
-                                </button>
-
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-
                                 <button type="button"
-                                    class="btn btn-primary btn-sm text-white shadow-primary text-decoration-none px-2 d-flex align-items-center"
-                                    id="btnHesapla" <?= $donemKapali ? 'disabled' : '' ?>>
-                                    <i class="mdi mdi-calculator fs-5 me-1"></i> <span class="d-none d-xl-inline">Maaş
-                                        Hesapla</span>
+                                    class="btn btn-primary btn-sm text-white shadow-sm px-3 d-flex align-items-center fw-semibold"
+                                    id="btnHesapla" <?= $donemKapali ? 'disabled' : '' ?>
+                                    title="Maaş Hesapla"
+                                    style="height: 34px; border-radius: 6px;">
+                                    <i class="mdi mdi-calculator fs-5 me-1"></i> <span class="d-none d-xl-inline">Maaş Hesapla</span>
                                 </button>
-
                                 <button type="button"
-                                    class="btn btn-outline-secondary btn-sm px-2 d-flex align-items-center justify-content-center ms-1"
+                                    class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center justify-content-center ms-1"
                                     id="btnToggleBordroOzet"
                                     title="Özet Kartları Gizle / Göster"
-                                    style="min-width: 32px; height: 31px;">
+                                    style="min-width: 32px; height: 34px; border-radius: 6px;">
                                     <i class="bx bx-chevron-up fs-4" id="iconToggleBordroOzet"></i>
                                 </button>
                                 <script>
@@ -871,7 +927,7 @@ if (!empty($dbGelirler)) {
                 </div>
                 <div class="card-body p-1">
                     <?php if ($selectedDonem): ?>
-                        <?php include __DIR__ . '/partials/hesaplama.php'; ?>
+                        <?php $_calcStart = microtime(true); include __DIR__ . '/partials/hesaplama.php'; $_calcTime = (microtime(true) - $_calcStart) * 1000; $_htmlStart = microtime(true); ?>
 
 
                         <div id="bordroOzetAlani">
@@ -920,6 +976,9 @@ if (!empty($dbGelirler)) {
                                     </tbody>
                                 </table>
                             </div>
+                            <?php require_once dirname(__DIR__, 2) . '/layouts/datatable-core.php'; ?>
+                            <script src="views/bordro/js/bordro.js?v=<?= filemtime(__DIR__ . '/js/bordro.js') ?>"></script>
+                            <script>initBordroTable();</script>
                         </div>
                     <?php else: ?>
                         <div class="text-center py-5">
@@ -1586,14 +1645,16 @@ if (!empty($dbGelirler)) {
 
 </div>
 
-<script src="views/bordro/js/bordro.js?v=<?= time() ?>"></script>
-<script src="views/bordro/js/bordro-ai-audit.js?v=<?= time() ?>"></script>
+<?php if (!$selectedDonem): ?>
+<script src="views/bordro/js/bordro.js?v=<?= filemtime(__DIR__ . '/js/bordro.js') ?>"></script>
+<?php endif; ?>
+<script src="views/bordro/js/bordro-ai-audit.js?v=<?= filemtime(__DIR__ . "/js/bordro-ai-audit.js") ?>"></script>
 
 <!-- AI Bordro Denetim Modalı -->
 <?php include __DIR__ . '/partials/modal-ai-audit.php'; ?>
+<?php include __DIR__ . '/partials/yayin-panel.php'; ?>
 
 <!-- Hatalı İşlemler Sayıları Modal -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <div class="modal fade" id="modalHataliIslemler" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
@@ -2152,6 +2213,27 @@ if (!empty($dbGelirler)) {
     }
 
     function exportHataliIslemlerToExcel() {
+        if (typeof XLSX === 'undefined') {
+            Swal.fire({
+                title: 'Yükleniyor...',
+                text: 'Excel aktarım modülü indiriliyor, lütfen bekleyiniz.',
+                allowOutsideClick: false,
+                didOpen: function() { Swal.showLoading(); }
+            });
+            $.getScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js')
+                .done(function() {
+                    Swal.close();
+                    doExportHataliIslemler();
+                })
+                .fail(function() {
+                    Swal.fire('Hata', 'Excel modülü yüklenemedi. Lütfen internet bağlantınızı kontrol ediniz.', 'error');
+                });
+            return;
+        }
+        doExportHataliIslemler();
+    }
+
+    function doExportHataliIslemler() {
         if (!hataliIslemlerRawData || hataliIslemlerRawData.length === 0) {
             Swal.fire('Hata', 'Aktarılacak veri bulunamadı.', 'error');
             return;
@@ -2224,3 +2306,20 @@ if (!empty($dbGelirler)) {
         cursor: pointer;
     }
 </style>
+
+<?php
+$_bordroTiming = [
+    'list_ms' => $_sqlTime ?? 0,
+    'calculation_ms' => round($_calcTime ?? 0, 2),
+    'html_ms' => isset($_htmlStart) ? round((microtime(true) - $_htmlStart) * 1000, 2) : 0,
+    'page_ms' => round((microtime(true) - $_pageStart) * 1000, 2),
+];
+if ($_bordroProfile) {
+    $_bordroTiming['select_queries'] = $BordroPersonel->getPerformanceSelectCount() - $_selectStart;
+    error_log('bordro-performance ' . json_encode($_bordroTiming));
+}
+\App\Service\RequestPerformanceProfiler::addMeta('bordro_timing', $_bordroTiming);
+?>
+<script>
+window.bordroServerTiming = <?= json_encode($_bordroTiming) ?>;
+</script>

@@ -13,8 +13,8 @@ final class BordroCalismaGecmisiGunSayisiTest extends TestCase
         $pdo->expects(self::once())->method('prepare')->willReturn($stmt);
         $stmt->method('execute')->willReturn(true);
         $stmt->method('fetchAll')->willReturn([
-            ['ise_giris_tarihi' => '2026-08-11', 'isten_cikis_tarihi' => '2026-08-25', 'sgk_yapilan_firma' => 'İŞKUR'],
-            ['ise_giris_tarihi' => '2026-08-26', 'isten_cikis_tarihi' => null, 'sgk_yapilan_firma' => 'Ersan Elektrik'],
+            ['personel_id' => 1, 'ise_giris_tarihi' => '2026-08-11', 'isten_cikis_tarihi' => '2026-08-25', 'sgk_yapilan_firma' => 'İŞKUR'],
+            ['personel_id' => 1, 'ise_giris_tarihi' => '2026-08-26', 'isten_cikis_tarihi' => null, 'sgk_yapilan_firma' => 'Ersan Elektrik'],
         ]);
         (new ReflectionProperty(BordroPersonelModel::class, 'db'))->setValue($model, $pdo);
 
@@ -36,7 +36,7 @@ final class BordroCalismaGecmisiGunSayisiTest extends TestCase
         $pdo->method('prepare')->willReturn($stmt);
         $stmt->method('execute')->willReturn(true);
         $stmt->method('fetchAll')->willReturn([
-            ['ise_giris_tarihi' => '2026-08-11', 'isten_cikis_tarihi' => '2026-08-31', 'sgk_yapilan_firma' => 'İŞKUR'],
+            ['personel_id' => 1, 'ise_giris_tarihi' => '2026-08-11', 'isten_cikis_tarihi' => '2026-08-31', 'sgk_yapilan_firma' => 'İŞKUR'],
         ]);
         (new ReflectionProperty(BordroPersonelModel::class, 'db'))->setValue($model, $pdo);
 

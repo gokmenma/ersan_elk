@@ -8,6 +8,26 @@ use App\Helper\Helper;
 ?>
 
 <div class="flex flex-col min-h-screen">
+    <a id="bordro-beyan-bekleyen" href="?page=bordro" class="hidden card p-4 m-4" role="status"></a>
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const body = new FormData();
+            body.append('action', 'bordro-yayin-liste');
+            body.append('csrf_token', <?= json_encode(\App\Helper\Security::csrf()) ?>);
+            const r = await fetch('api.php', {method:'POST', body, cache:'no-store'});
+            const j = await r.json();
+            if (!j.success) return;
+            const adet = j.data.filter(d => ['yayinda', 'test'].includes(d.durum) && !d.beyan_tarihi).length;
+            if (adet) {
+                const kart = document.getElementById('bordro-beyan-bekleyen');
+                kart.textContent = adet + ' resmî bordronuz okuma beyanınızı bekliyor. İncelemek için dokunun.';
+                kart.classList.remove('hidden');
+            }
+        } catch (e) { console.error('Bordro bekleyenler okunamadı'); }
+    });
+    </script>
+
     <!-- iOS PWA Kurulum Rehberi (Sadece iOS Safari'de görünür) -->
     <div id="ios-install-guide" class="hidden px-4 pt-3">
         <div class="bg-blue-600/10 dark:bg-blue-400/10 border border-blue-600/30 dark:border-blue-400/30 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-lg shadow-blue-500/10 active:scale-95 transition-transform" onclick="showInstallInstructions()">
@@ -633,6 +653,8 @@ use App\Helper\Helper;
     <script>
         // Global data
         var userIsSef = <?php echo json_encode($isSef ?? false); ?>;
+        var userHasSahaTakibi = <?php echo json_encode(($personel->saha_takibi ?? 0) == 1); ?>;
+        var userIsBuro = <?php echo json_encode($isBuro ?? false); ?>;
         var lastUpdateDate = "<?php echo Helper::getLastUpdateDate(['yapilan_isler', 'endeks_okuma']); ?>";
         var allActivitiesData = [];
         var allNotificationsData = [];
@@ -645,32 +667,37 @@ use App\Helper\Helper;
             // iOS Kurulum Rehberi Kontrolü
             checkIOSInstallGuide();
 
-            // Load görev durumu (öncelikli)
-            loadGorevDurumu();
+            // Load görev durumu (saha takibi olanlar için)
+            if (userHasSahaTakibi) {
+                loadGorevDurumu();
+            }
             // Load dashboard data
             loadDashboardData();
             // Load notification count
             loadNotificationCount();
             // Load events slider
             loadEtkinlikSlider();
-            // Load work stats
-            loadWorkStats();
+            // Load work stats (büro personeli olmayanlar için)
+            if (!userIsBuro) {
+                loadWorkStats();
+            }
             // Load çalışma bilgileri
             loadCalismaStats();
 
-            // --- ANLIK KONUM İSTEĞİ KONTROLÜ ---
-            // Yönlendirme ekranındaki 30 saniyelik bekleme penceresine yanıt verebilmek için sık kontrol et.
-            checkKonumIstegi();
-            setInterval(checkKonumIstegi, 10000);
-            setInterval(canliKonumGuncelle, 120000);
-            document.addEventListener('visibilitychange', function () {
-                if (document.visibilityState === 'visible') canliKonumGuncelle();
-            });
+            // --- ANLIK KONUM İSTEĞİ KONTROLÜ (Saha personeli için) ---
+            if (userHasSahaTakibi) {
+                checkKonumIstegi();
+                setInterval(checkKonumIstegi, 10000);
+                setInterval(canliKonumGuncelle, 120000);
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'visible') canliKonumGuncelle();
+                });
+            }
         });
 
         let konumIstegiKontrolEdiliyor = false;
         async function checkKonumIstegi() {
-            if (konumIstegiKontrolEdiliyor || document.visibilityState !== 'visible') return;
+            if (!userHasSahaTakibi || konumIstegiKontrolEdiliyor || document.visibilityState !== 'visible') return;
             konumIstegiKontrolEdiliyor = true;
             try {
                 // Bu işlem her 10 saniyede bir arka planda çalışır; tam ekran
@@ -700,7 +727,7 @@ use App\Helper\Helper;
 
         let canliKonumGuncelleniyor = false;
         async function canliKonumGuncelle() {
-            if (!gorevBaslangicZamani || canliKonumGuncelleniyor || document.visibilityState !== 'visible') return;
+            if (!userHasSahaTakibi || !gorevBaslangicZamani || canliKonumGuncelleniyor || document.visibilityState !== 'visible') return;
             canliKonumGuncelleniyor = true;
             try {
                 const konum = await getKonum();
@@ -721,8 +748,9 @@ use App\Helper\Helper;
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
-            if (isIOS && !isStandalone) {
-                document.getElementById('ios-install-guide').classList.remove('hidden');
+            const guideEl = document.getElementById('ios-install-guide');
+            if (guideEl && isIOS && !isStandalone) {
+                guideEl.classList.remove('hidden');
             }
         }
 
@@ -763,11 +791,15 @@ use App\Helper\Helper;
         // ===== GÖREV TAKİP FONKSİYONLARI =====
 
         async function loadGorevDurumu() {
+            var loadingEl = document.getElementById('gorev-loading');
+            var containerEl = document.getElementById('gorev-durumu-container');
+            if (!loadingEl && !containerEl) return;
+
             try {
                 var response = await API.request('getGorevDurumu');
 
-                document.getElementById('gorev-loading').classList.add('hidden');
-                document.getElementById('gorev-durumu-container').classList.remove('hidden');
+                if (loadingEl) loadingEl.classList.add('hidden');
+                if (containerEl) containerEl.classList.remove('hidden');
 
                 if (response.success && response.data) {
                     if (response.data.gorev_var) {
@@ -782,26 +814,31 @@ use App\Helper\Helper;
                 }
             } catch (error) {
                 console.error('Görev durumu yüklenemedi:', error);
-                document.getElementById('gorev-loading').classList.add('hidden');
-                document.getElementById('gorev-durumu-container').classList.remove('hidden');
+                if (loadingEl) loadingEl.classList.add('hidden');
+                if (containerEl) containerEl.classList.remove('hidden');
                 showGorevBaslaPanel();
             }
         }
 
         function showGorevBaslaPanel() {
-            document.getElementById('gorev-basla-panel').classList.remove('hidden');
-            document.getElementById('gorev-bitir-panel').classList.add('hidden');
+            var baslaPanel = document.getElementById('gorev-basla-panel');
+            var bitirPanel = document.getElementById('gorev-bitir-panel');
+            if (baslaPanel) baslaPanel.classList.remove('hidden');
+            if (bitirPanel) bitirPanel.classList.add('hidden');
 
             // Konum izni kontrolü
             checkKonumIzni();
         }
 
         function showGorevBitirPanel(data) {
-            document.getElementById('gorev-basla-panel').classList.add('hidden');
-            document.getElementById('gorev-bitir-panel').classList.remove('hidden');
+            var baslaPanel = document.getElementById('gorev-basla-panel');
+            var bitirPanel = document.getElementById('gorev-bitir-panel');
+            if (baslaPanel) baslaPanel.classList.add('hidden');
+            if (bitirPanel) bitirPanel.classList.remove('hidden');
 
             // Başlangıç saatini göster
-            document.getElementById('gorev-baslangic-saat').textContent = data.baslangic_saat || '--:--';
+            var saatEl = document.getElementById('gorev-baslangic-saat');
+            if (saatEl) saatEl.textContent = data.baslangic_saat || '--:--';
 
             // Süre takibini başlat
             // Safari ve bazı mobil tarayıcılar için ISO formatına (boşluk yerine T) dönüştür
@@ -812,18 +849,21 @@ use App\Helper\Helper;
             gorevBaslangicZamani = new Date(zamanStr);
             canliKonumGuncelle();
             updateGecenSure();
+            if (gorevSureInterval) clearInterval(gorevSureInterval);
             gorevSureInterval = setInterval(updateGecenSure, 60000); // Her dakika güncelle
         }
 
         function updateGecenSure() {
             if (!gorevBaslangicZamani) return;
+            var sureEl = document.getElementById('gorev-gecen-sure');
+            if (!sureEl) return;
 
             var simdi = new Date();
             // Safari uyumluluğu için NaN kontrolü ve güvenli tarih farkı hesaplama
             var diff = simdi.getTime() - gorevBaslangicZamani.getTime();
 
             if (isNaN(diff) || diff < 0) {
-                document.getElementById('gorev-gecen-sure').textContent = '...';
+                sureEl.textContent = '...';
                 return;
             }
 
@@ -838,7 +878,7 @@ use App\Helper\Helper;
                 sureText = dakika + ' dk';
             }
 
-            document.getElementById('gorev-gecen-sure').textContent = sureText;
+            sureEl.textContent = sureText;
         }
 
         async function checkKonumIzni() {
@@ -876,11 +916,13 @@ use App\Helper\Helper;
         }
 
         function showKonumUyari() {
-            document.getElementById('konum-izni-uyari').classList.remove('hidden');
+            var el = document.getElementById('konum-izni-uyari');
+            if (el) el.classList.remove('hidden');
         }
 
         function hideKonumUyari() {
-            document.getElementById('konum-izni-uyari').classList.add('hidden');
+            var el = document.getElementById('konum-izni-uyari');
+            if (el) el.classList.add('hidden');
         }
 
         async function requestKonumIzni() {
@@ -899,12 +941,14 @@ use App\Helper\Helper;
 
         function disableGorevButton() {
             var btn = document.getElementById('btn-gorev-basla');
+            if (!btn) return;
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
         }
 
         function enableGorevButton() {
             var btn = document.getElementById('btn-gorev-basla');
+            if (!btn) return;
             btn.disabled = false;
             btn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
@@ -965,6 +1009,7 @@ use App\Helper\Helper;
             // }
 
             var btn = document.getElementById('btn-gorev-basla');
+            if (!btn) return;
             var originalHtml = btn.innerHTML;
 
             // Butonu disable yap
@@ -1054,6 +1099,7 @@ use App\Helper\Helper;
             if (!confirmed) return;
 
             var btn = document.getElementById('btn-gorev-bitir');
+            if (!btn) return;
             var originalHtml = btn.innerHTML;
 
             try {
@@ -1108,6 +1154,8 @@ use App\Helper\Helper;
 
         async function loadWorkStats() {
             var container = document.getElementById('work-stats-container');
+            if (!container) return;
+
             // Show loading if container is empty or has items (to show refresh)
             if (container.children.length > 1 || container.querySelector('.animate-spin') === null) {
                 container.innerHTML = '<div class="col-span-2 py-8 flex justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';

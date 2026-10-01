@@ -94,16 +94,17 @@ Muhasebelestirme sirasi sabittir — once yemek, kalan puantaj kalemi olarak:
 1) asgariHakedis                                   -> banka
 2) yemek yardimi (gunluk limit dahilinde)          -> banka
    yemekTavanHedefi = sozlesmeHakedisi + puantajHakedisi
-3) yemege sigmayan puantaj bakiyesi                -> banka ("Puantaj Çalışması" kalemi)
+3) yemege sigmayan puantaj bakiyesi                -> elden
 
 yemekSozlesmePayi = max(0, sozlesmeHakedisi + htcHamTutar - asgariHakedis - esYardimi - rtcHtcBankaNeti)
 puantajYemekPayi  = max(0, yemekYardimiToplam - yemekSozlesmePayi)
-puantajBankaKalani = puantajHakedisi - puantajYemekPayi
+puantajEldenKalani = puantajHakedisi - puantajYemekPayi
 ```
 
-Banka hakedis tavani `toplamHakedis`tir; puantaj hakedisi bu tavani yukseltir. Normal kosullarda
-elden odeme kalmaz. Kesintiler once resmi banka tavanindan dusulur; banka tavanini asan kesinti
-kalirsa yalnizca bu bakiye elden tutardan mahsup edilir.
+Banka hakediş tavanı asgari net, eş yardımı, günlük yemek tavanına kadar olan yemek yardımı ve
+diğer doğal resmî banka kalemlerinden oluşur. Puantaj kazancının bu kapasiteyi aşan bölümü elden
+kalır. Kesintiler önce resmî banka tavanından düşülür; banka tavanını aşan kesinti kalırsa yalnızca
+bu bakiye elden tutardan mahsup edilir.
 
 Bu sıra yalnızca puantajlı personele özgü değildir; maaşa dahil yemek/eş yardımı bulunan bütün
 otomatik dağıtımlarda uygulanır. Önceden oluşmuş elden bakiye, banka matrahı kesintiyi karşılayabildiği
@@ -478,3 +479,11 @@ Bordro hesaplama etki alani:
 - Net maaşlı veya prim usulü personelde SGK, gelir vergisi ve damga vergisi net hedefe ulaşmak için brüte tamamlama hesabında zaten karşılanır. Detay ekranındaki `Kesintiler Toplamı`, ödenecek netten gerçekten mahsup edilen icra, avans ve diğer personel kesintilerini gösterir; brüte tamamlama içinde karşılanan yasal kesintiler bu özete ikinci kez eklenmez.
 - Eski bordro detayının `Kesintiler (Düşürücüler)` bölümünde yasal kesintiler ayrıca satır olarak gösterilmez. Bu bölüm ve bölüm toplamı yalnız net ödemeden gerçekten düşülen personel kesintilerinden oluşur.
 - Maaşa dahil yardım dağıtımında kesintinin kayıtlı ödeme kanalı korunur. Banka kesintisi önce resmî banka matrahından, `Elden / Harici` kesinti ise önce elden hakedişten düşülür; ilgili kanaldaki hakediş yetmezse kalan kesinti diğer kanaldan mahsup edilir.
+
+
+### Personel PWA resmî döküm yayını
+
+- Resmî döküm, ortak gösterim hesabı ve muhasebe ödeme özetinin resmî banka verilerini kullanır; hesap kuralları değişmez.
+- Kayıtlı banka neti ile ortak hesap ve döküm kalem toplamı kuruş bazında uyuşmadan yayın yapılamaz. Günlük yemek yuvarlama farkı ayrı gösterilir.
+- Yayınlanan içerik sabit sürüm olarak saklanır; personel ekranı ve PDF bu sürümü okur. Dönem revizyonu eski içeriği/beyanı değiştirmez.
+- Elden dağılım personel resmî dökümüne aktarılmaz. Uygulama/kurulum ayrıntıları: `docs/PERSONEL_BORDRO_YAYINI.md`.

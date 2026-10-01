@@ -91,6 +91,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     try {
+        if (str_starts_with($action, 'yayin-')) {
+            try {
+                require __DIR__ . '/partials/yayin-api.php';
+            } catch (\DomainException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            } catch (\Throwable $e) {
+                error_log('Bordro yayın yönetimi: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => 'Yayın işlemi tamamlanamadı.'], JSON_UNESCAPED_UNICODE);
+            }
+            exit;
+        }
         switch ($action) {
 
             // Toplu Kümülatif Matrah Düzeltme Betiği (2026 Ocak-Mayıs)
@@ -3145,8 +3157,9 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     throw new Exception('Geçersiz dönem.');
                 }
 
-                $sql = $BordroDonem->getDb()->prepare("UPDATE bordro_donemi SET kapali_mi = 0 WHERE id = ?");
-                $sql->execute([$donem_id]);
+                \App\Helper\BordroYayinGuvenlik::csrfDogrula();
+                if (!$MenuModel->userCanAccessMenuLink($userId, 'bordro/list')) throw new Exception('Bordro yönetim yetkisi bulunamadı.');
+                (new \App\Model\BordroYayinModel())->yenidenAc((int) ($_SESSION['firma_id'] ?? 0), $donem_id, (int) $userId);
 
                 echo json_encode([
                     'status' => 'success',
@@ -3209,13 +3222,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 }
                 $elden = max(0, $net - $banka - $sodexo - $icra - $diger);
 
-                // Güncelle
-                $sql = $BordroPersonel->getDb()->prepare("
-                    UPDATE bordro_personel 
-                    SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?, sodexo_manuel = 1, dagitim_manuel = 1
-                    WHERE id = ?
-                ");
-                $sql->execute([$banka, $sodexo, $diger, $elden, $id]);
+                $BordroPersonel->saveAcikDonemManuelDagilim((int) ($_SESSION['firma_id'] ?? 0), $id, [$banka, $sodexo, $diger, $elden]);
 
                 echo json_encode([
                     'status' => 'success',

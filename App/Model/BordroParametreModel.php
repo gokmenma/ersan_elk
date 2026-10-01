@@ -18,6 +18,9 @@ class BordroParametreModel extends Model
     private static $kodCache = [];
     private static $vergiDilimiCache = [];
     private static $idCache = [];
+    /** Aynı girdili gösterim ve popover hesaplarını istek boyunca paylaşır. */
+    private static array $grossUpCache = [];
+
 
     public function __construct()
     {
@@ -26,6 +29,7 @@ class BordroParametreModel extends Model
 
     public static function clearRequestCache(): void
     {
+        self::$grossUpCache = [];
         self::$genelAyarCache = [];
         self::$kodCache = [];
         self::$vergiDilimiCache = [];
@@ -565,6 +569,9 @@ class BordroParametreModel extends Model
         bool $gvMatrahBrutMu = false
     ): array {
         $yil = $yil ?? (int) date('Y');
+        $cacheKey = serialize([$_SESSION['firma_id'] ?? 0, $hedefNet, $kumulatifMatrahOncesi,
+            $sgkOrani, $issizlikOrani, $damgaOrani, $yil, $gvDahil, $gvMatrahBrutMu]);
+        if (isset(self::$grossUpCache[$cacheKey])) return self::$grossUpCache[$cacheKey];
 
         if ($hedefNet <= 0) {
             return ['brut' => 0.0, 'sgk' => 0.0, 'issizlik' => 0.0, 'gelir_vergisi' => 0.0, 'damga' => 0.0, 'matrah' => 0.0, 'net' => 0.0];
@@ -607,7 +614,7 @@ class BordroParametreModel extends Model
             $net = round($hedefNet, 2);
         }
 
-        return [
+        return self::$grossUpCache[$cacheKey] = [
             'brut' => $brut,
             'sgk' => $sgk,
             'issizlik' => $issizlik,

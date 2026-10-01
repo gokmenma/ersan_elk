@@ -31,8 +31,20 @@ class VideoUploadService
         ?string $kapakVerisi = null,
         int $kapakKenar = 320
     ): array {
+        return $this->storeInternal($file, $destinationDirectory, $filePrefix, $allowedMimes, $maxUploadBytes, $maxSureSaniye, $sureSaniye, $kapakVerisi, $kapakKenar, false);
+    }
+
+    /** Only server-assembled files in the private staging directory are trusted. */
+    public function storeAssembled(array $file, string $destinationDirectory, string $filePrefix, array $allowedMimes, int $maxUploadBytes, int $maxSureSaniye, ?int $sureSaniye = null, ?string $kapakVerisi = null, int $kapakKenar = 320): array
+    {
+        if (!PwaChunkUploadService::isStagedFile($file['tmp_name'] ?? '')) throw new Exception('Geçersiz geçici video.');
+        return $this->storeInternal($file, $destinationDirectory, $filePrefix, $allowedMimes, $maxUploadBytes, $maxSureSaniye, $sureSaniye, $kapakVerisi, $kapakKenar, true);
+    }
+
+    private function storeInternal(array $file, string $destinationDirectory, string $filePrefix, array $allowedMimes, int $maxUploadBytes, int $maxSureSaniye, ?int $sureSaniye, ?string $kapakVerisi, int $kapakKenar, bool $assembled): array
+    {
         $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
-        if ($error !== UPLOAD_ERR_OK || empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+        if ($error !== UPLOAD_ERR_OK || empty($file['tmp_name']) || (!$assembled && !is_uploaded_file($file['tmp_name']))) {
             throw new Exception(self::uploadErrorMessage($error, $maxUploadBytes));
         }
 
@@ -67,7 +79,7 @@ class VideoUploadService
         $fileName = $baseName . '.' . $extension;
         $destination = $destinationDirectory . DIRECTORY_SEPARATOR . $fileName;
 
-        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        if (!($assembled ? rename($file['tmp_name'], $destination) : move_uploaded_file($file['tmp_name'], $destination))) {
             throw new Exception('Video kaydedilemedi.');
         }
 

@@ -20,9 +20,17 @@ use App\Model\SettingsModel;
 use App\Model\MesajLogModel;
 use App\Model\PersonelGirisLogModel;
 
+function pwaGirisSonrasiAdres(): string
+{
+    $token = $_SESSION['bordro_yayin_donus'] ?? null;
+    unset($_SESSION['bordro_yayin_donus']);
+    return is_string($token) && strlen($token) <= 2048
+        ? 'index.php?page=bordro&dokum=' . rawurlencode($token) : 'index.php';
+}
+
 // Zaten giriş yapmışsa ana sayfaya yönlendir
 if (isset($_SESSION['personel_id'])) {
-    header("Location: index.php");
+    header("Location: " . pwaGirisSonrasiAdres());
     exit();
 }
 
@@ -225,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         setcookie('remember_token', $token, ['expires' => time() + (86400 * 30), 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
                     }
 
-                    header("Location: index.php");
+                    header("Location: " . pwaGirisSonrasiAdres());
                     exit();
                 } else {
                     $_SESSION[$pwaAttemptsKey] = ($_SESSION[$pwaAttemptsKey] ?? 0) + 1;

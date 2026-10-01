@@ -102,6 +102,9 @@ if ($personel_id > 0) {
             'login', 'logout', 'get_profile', 'update_profile', 'update_password', 'change_password',
             'get_theme', 'save_theme', 'subscribe_push', 'unsubscribe_push',
             'get_notifications', 'mark_notification_read', 'check_updates',
+            // Yalnız kendisine yayınlanan resmî döküm ve beyan/inceleme işlemleri.
+            'bordro-yayin-liste', 'bordro-yayin-detay', 'bordro-yayin-goruntule',
+            'bordro-yayin-beyan', 'bordro-yayin-talep',
             // Kaçak işlemleri
             'kacak_kaydet', 'kacak_foto_yukle', 'kacak_video_yukle', 'kacak_video_chunk',
             'kacak_kayitlar', 'kacak_ozet', 'kacak_detay', 'kacak_foto_sil', 'kacak_sil',
@@ -109,7 +112,8 @@ if ($personel_id > 0) {
             'kacak_sicil_duzeltme_talepleri', 'kacak_sicil_duzeltme_kaydet',
             'getKacakKayitlar', 'updateKacakBildirim', 'deleteKacakBildirim', 'deleteKacakFoto',
             'getKacakSahaFotoLimit', 'uploadKacakSahaFoto', 'uploadKacakVideo', 'uploadKacakVideoChunk',
-            'uploadKacakBildirim', 'getKacakSicilTalepleri', 'saveKacakSicilTalep'
+            'uploadKacakBildirim', 'getKacakSicilTalepleri', 'saveKacakSicilTalep',
+            'pwaTransferResolve', 'pwaTransferIdentity', 'pwaTransferPhoto', 'pwaVideoStart', 'pwaVideoStatus', 'pwaVideoChunk', 'pwaVideoComplete'
         ];
 
         if (!in_array($action, $allowedKaskiActions, true) && stripos($action, 'kacak') === false) {
@@ -122,6 +126,13 @@ if ($personel_id > 0) {
 // Response helper
 function response($success, $data = null, $message = '')
 {
+    if (isset($GLOBALS['pwaTransfer'])) {
+        if ($success && is_array($data) && !empty($data['id'])) {
+            $data['target_token'] = Security::encrypt((int) $data['id']);
+            unset($data['id']);
+        }
+        $GLOBALS['pwaTransfer']->finish(['success' => (bool) $success, 'data' => $data, 'message' => $message]);
+    }
     echo json_encode([
         'success' => $success,
         'data' => $data,
@@ -525,6 +536,10 @@ try {
         );
     }
 
+    if (str_starts_with($action, 'bordro-yayin-') || in_array($action, ['getBordrolar', 'getBordroDetay'], true)) {
+        require __DIR__ . '/bordro-yayin-api.php';
+    }
+    require __DIR__ . '/partials/reliable-transfer-api.php';
     switch ($action) {
         case 'debugSession':
             response(true, $_SESSION);
@@ -1320,77 +1335,21 @@ try {
 
             $limit = $AvansModel->getAvansLimiti($personel_id);
             $bekleyenler = $AvansModel->getBekleyenAvanslar($personel_id);
-            $ozet = $BordroModel->getPersonelFinansalOzet($personel_id);
+            $yayinlar = (new \App\Model\BordroYayinModel())->personelListe((int) $personel->firma_id, (int) $personel_id);
+            $yillikNet = 0;
+            foreach ($yayinlar as $yayin) {
+                if ($yayin['durum'] === 'arsiv') continue;
+                if (substr($yayin['baslangic'], 0, 4) === date('Y')) $yillikNet += $yayin['banka_net_kurus'];
+            }
             $talepDurumu = $AvansModel->avansTalepDurumu($personel_id);
 
             response(true, [
-                'yearly_net' => $ozet->toplam_hakedis ?? 0,
+                'yearly_net' => $yillikNet / 100,
                 'advance_limit' => $limit,
                 'pending_requests' => count($bekleyenler),
                 'avans_talep_edebilir' => $talepDurumu['izinli'],
                 'avans_talep_mesaji' => $talepDurumu['mesaj']
             ]);
-            break;
-
-        case 'getBordrolar':
-            $BordroModel = new BordroPersonelModel();
-            $bordrolar = $BordroModel->getPersonelBordrolari($personel_id);
-
-            // Sadece personel görsün olan dönemleri filtrele
-            $bordrolar = array_filter($bordrolar, function ($item) {
-                return isset($item->personel_gorsun) && $item->personel_gorsun == 1;
-            });
-
-            $data = array_map(function ($item) {
-                // Dönem adını belirle
-                $donem = $item->donem_adi ?? null;
-
-                // Eğer donem_adi yoksa baslangic_tarihi'nden oluştur
-                if (empty($donem) && !empty($item->baslangic_tarihi)) {
-                    $tarih = strtotime($item->baslangic_tarihi);
-                    $donem = date('Y', $tarih) . '/' . str_pad(date('m', $tarih), 2, '0', STR_PAD_LEFT);
-                } else if (empty($donem)) {
-                    $donem = 'Dönem ' . ($item->donem_id ?? '?');
-                }
-
-                return [
-                    'id' => $item->id,
-                    'donem' => $donem,
-                    'odeme_tarihi' => $item->odeme_tarihi ?? '-',
-                    'net_tutar' => $item->net_maas ?? 0,
-                    'durum' => 'odendi'
-                ];
-            }, array_values($bordrolar)); // array_values to reset keys after filter
-
-            response(true, $data);
-            break;
-
-        case 'getBordroDetay':
-            $id = $_POST['id'] ?? 0;
-            $BordroModel = new BordroPersonelModel();
-
-            // Bordro ve dönem bilgisini birlikte çek
-            $sql = $BordroModel->getDb()->prepare("
-                SELECT bp.*, bd.personel_gorsun 
-                FROM bordro_personel bp
-                INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
-                WHERE bp.id = ? AND bp.silinme_tarihi IS NULL
-            ");
-            $sql->execute([$id]);
-            $bordro = $sql->fetch(PDO::FETCH_OBJ);
-
-            if ($bordro && $bordro->personel_id == $personel_id && ($bordro->personel_gorsun ?? 0) == 1) {
-                response(true, [
-                    'id' => $bordro->id,
-                    'donem' => 'Dönem ' . $bordro->donem_id,
-                    'brut' => $bordro->brut_maas,
-                    'sgk' => $bordro->sgk_isci,
-                    'vergi' => $bordro->gelir_vergisi,
-                    'net' => $bordro->net_maas
-                ]);
-            } else {
-                response(false, null, 'Bordro bulunamadı veya henüz onaylanmadı');
-            }
             break;
 
         // ===== Avans İşlemleri =====
@@ -3331,18 +3290,7 @@ try {
                         LIMIT $limit";
 
             // Bordrolar
-            $bordroSql = "SELECT 
-                            'bordro' as type,
-                            bp.id,
-                            CONCAT('Bordro Hazırlandı - ', COALESCE(bd.donem_adi, CONCAT('Dönem ', bd.id))) as title,
-                            CONCAT(FORMAT(bp.net_maas, 2, 'tr_TR'), ' ₺ net ödeme') as description,
-                            'tamamlandi' as status,
-                            COALESCE(bp.hesaplama_tarihi, bp.olusturma_tarihi) as activity_date
-                        FROM bordro_personel bp
-                        JOIN bordro_donemi bd ON bp.donem_id = bd.id
-                        WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
-                        ORDER BY activity_date DESC
-                        LIMIT $limit";
+
 
             // Duyurular ve Etkinlikler
             $duyuruSql = "SELECT
@@ -3385,10 +3333,7 @@ try {
             $activities = array_merge($activities, $talepler);
 
             // Bordrolar
-            $stmt = $db->prepare($bordroSql);
-            $stmt->execute([$personel_id]);
-            $bordrolar = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $activities = array_merge($activities, $bordrolar);
+
 
             // Duyurular
             $stmt = $db->prepare($duyuruSql);
@@ -5720,7 +5665,7 @@ try {
             }
 
             $ihbarDb = $IhbarModel->getDb();
-            $ihbarDb->beginTransaction();
+            if (!isset($GLOBALS['pwaTransfer'])) $ihbarDb->beginTransaction();
 
             $ihbarId = $IhbarModel->create([
                 'ilce' => $ilce,
@@ -5783,7 +5728,11 @@ try {
 
             pwaIhbarVideoYukle($IhbarModel, $ihbarId);
 
-            $ihbarDb->commit();
+            if (isset($GLOBALS['pwaTransfer'])) {
+                $GLOBALS['pwaTransfer']->finish(['success' => true, 'data' => ['target_token' => Security::encrypt($ihbarId)], 'message' => 'İhbarınız kaydedildi.']);
+            } else {
+                $ihbarDb->commit();
+            }
 
             if ($atananPersonelId) {
                 try {
@@ -5920,6 +5869,7 @@ try {
 
                             $IhbarModel->addFotograf($id, $fotoSonuc['yol'], $fotoSonuc['kucuk']);
                         } catch (Throwable $e) {
+                            if (isset($GLOBALS['pwaTransfer'])) throw $e;
                             error_log('PWA ihbar fotoğrafı güncellemede yüklenemedi (ihbar ' . $id . '): ' . $e->getMessage());
                         }
                     }
@@ -6444,6 +6394,12 @@ try {
             response(false, ['request_id' => $pwaRequestId], 'Geçersiz veya tanınmayan işlem talebi. (Hata Kodu: ' . $pwaRequestId . ')');
     }
 } catch (Throwable $e) {
+    if (isset($GLOBALS['pwaTransfer']) || str_starts_with($action, 'pwaVideo') || $action === 'pwaTransferPhoto' || !empty($_POST['reliable_transfer'])) {
+        error_log('PWA transfer action=' . $action . ' operation=' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['operation_key'] ?? $_POST['video_key'] ?? '')) . ' request=' . $pwaRequestId . ' exception=' . get_class($e));
+        $temporary = $e instanceof PDOException || preg_match('/yazılam|kaydedilemedi|oluşturulamadı|kilidi|okunamadı|birleştirilemedi/u', $e->getMessage());
+        if ($temporary) http_response_code(503);
+        response(false, ['transfer_error' => $temporary ? 'temporary' : 'validation', 'request_id' => $pwaRequestId], $temporary ? 'Sunucu gönderimi tamamlayamadı; kayıt cihazda korunuyor.' : $e->getMessage());
+    }
     if (isset($ihbarDb) && $ihbarDb instanceof PDO && $ihbarDb->inTransaction()) {
         $ihbarDb->rollBack();
     }

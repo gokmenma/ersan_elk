@@ -11,10 +11,15 @@ if (typeof flatpickr == "undefined") {
 // APP START
 // -----------------------------------
 
+const deferBordroModalFields = $(".bordro-page").length > 0;
+
 if ($(".select2").length > 0) {
-  $(".select2").select2({});
+  $(".select2").filter(function () {
+    return !deferBordroModalFields || !$(this).closest(".modal").length;
+  }).select2({});
 
   $(".modal .select2").each(function () {
+    if (deferBordroModalFields) return;
     $(this).select2({
       dropdownParent: $(this).parent(),
       tags: true,
@@ -37,10 +42,24 @@ if ($(".flatpickr").length > 0) {
   });
 }
 
-$(".flatpickr:not(.time-input)").flatpickr({
+$(".flatpickr:not(.time-input)").filter(function () {
+  return !deferBordroModalFields || !$(this).closest(".modal").length;
+}).flatpickr({
   locale: "tr",
   dateFormat: "d.m.Y",
 });
+
+if (deferBordroModalFields) {
+  $(document).on("show.bs.modal.bordroFields", ".modal", function () {
+    const $modal = $(this);
+    $modal.find(".select2").not(".select2-hidden-accessible").each(function () {
+      $(this).select2({ dropdownParent: $modal, tags: true, language: "tr" });
+    });
+    $modal.find(".flatpickr:not(.time-input)").filter(function () {
+      return !this._flatpickr;
+    }).flatpickr({ locale: "tr", dateFormat: "d.m.Y", allowInput: true });
+  });
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   // Pattern (Money)

@@ -341,6 +341,7 @@
       });
 
       const isActionCol = [
+        "",
         "SEC",
         "SEÇ",
         "NO",
@@ -348,10 +349,19 @@
         "NOBET",
         "BİLDİRİM",
         "BILDIRIM",
-        "İŞLEM", // Added this here as requested for some cases
+        "İŞLEM",
+        "İŞLEMLER",
+        "ISLEM",
+        "ISLEMLER",
+        "AKSIYON",
+        "AKSIYONLAR",
+        "ACTION",
+        "ACTIONS",
       ].includes(title.toUpperCase().replace(/\s/g, ""));
 
-      if (filterType === "none" || (!filterType && isActionCol)) return;
+      const hasCheckbox = $header.find('input[type="checkbox"]').length > 0;
+
+      if (filterType === "none" || (!filterType && (isActionCol || !title || hasCheckbox))) return;
 
       let $modeTrigger = null;
       let $dropdown = null;

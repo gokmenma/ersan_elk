@@ -583,7 +583,7 @@ const Alert = {
 };
 
 // ===== Modal Functions =====
-const Modal = {
+const Modal = window.Modal = {
   open(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -613,6 +613,9 @@ const API = {
   baseUrl: "api.php",
 
   async request(action, data = {}, showLoading = true) {
+    const controller = new AbortController();
+    const readActions = ["listIhbarlarim", "listGelenIhbarlar", "getKacakBildirimlerim", "getKacakReferans"];
+    const timer = setTimeout(() => controller.abort(), readActions.includes(action) ? 15000 : 120000);
     try {
       if (showLoading) Loading.show();
 
@@ -624,6 +627,7 @@ const API = {
       }
 
       const response = await fetch(this.baseUrl, {
+        signal: controller.signal,
         method: "POST",
         body: formData,
       });
@@ -636,6 +640,7 @@ const API = {
       Toast.show("Bir hata oluştu", "error");
       return { success: false, error: error.message };
     } finally {
+      clearTimeout(timer);
       if (showLoading) Loading.hide();
     }
   },

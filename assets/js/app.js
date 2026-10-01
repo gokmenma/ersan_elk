@@ -216,6 +216,18 @@ $(document).ready(function () {
    * Premium Modal Header Auto-Upgrade & Global Backdrop/Z-Index Fix
    * Ensures every modal in the system is moved to <body> to prevent backdrop overlay issues.
    */
+  function syncStackedModals() {
+    const $modals = $(".modal.show");
+    $modals.each(function (idx) {
+      $(this).css("z-index", 1055 + idx * 20);
+    });
+
+    const $backdrops = $(".modal-backdrop");
+    $backdrops.each(function (idx) {
+      $(this).css("z-index", 1050 + idx * 20);
+    });
+  }
+
   $(document).on("show.bs.modal", ".modal", function () {
     const $modal = $(this);
 
@@ -226,16 +238,12 @@ $(document).ready(function () {
 
     // Üst üste açılan modallar (stacked modals) için dinamik z-index ayarı
     const openModals = $(".modal.show").length;
-    if (openModals > 0) {
-      const baseZIndex = 1055 + openModals * 10;
-      $modal.css("z-index", baseZIndex);
-      setTimeout(function () {
-        $(".modal-backdrop")
-          .not(".modal-stack")
-          .css("z-index", baseZIndex - 5)
-          .addClass("modal-stack");
-      }, 0);
-    }
+    const targetZ = 1055 + openModals * 20;
+    $modal.css("z-index", targetZ);
+
+    setTimeout(syncStackedModals, 10);
+    setTimeout(syncStackedModals, 50);
+    setTimeout(syncStackedModals, 150);
 
     const $header = $modal.find(".modal-header");
 
@@ -322,5 +330,17 @@ $(document).ready(function () {
 
     $header.append(premiumHeaderHtml);
     $header.append($closeBtn);
+  });
+
+  $(document).on("shown.bs.modal", ".modal", function () {
+    syncStackedModals();
+  });
+
+  $(document).on("hidden.bs.modal", ".modal", function () {
+    const $remainingModals = $(".modal.show");
+    if ($remainingModals.length > 0) {
+      $("body").addClass("modal-open");
+      syncStackedModals();
+    }
   });
 });

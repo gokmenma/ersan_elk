@@ -381,7 +381,12 @@ function getDatatableOptions() {
       }
 
       // Gelişmiş kolon filtreleri başlat (Sadece bir kez, initComplete sonunda)
-      if (typeof initAdvancedFilters === "function") {
+      // Büyük, DOM kaynaklı tablolarda filtre arayüzünün hazırlanması ilk görünür
+      // çizimi geciktirebilir. İsteyen sayfa filtreleri ilk çizimden sonra başlatır.
+      if (
+        typeof initAdvancedFilters === "function" &&
+        !settings.oInit.deferAdvancedFilters
+      ) {
         initAdvancedFilters(api, settings);
       }
     },

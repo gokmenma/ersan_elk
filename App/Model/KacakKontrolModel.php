@@ -1727,6 +1727,16 @@ class KacakKontrolModel extends Model
      */
     public function storeUploadedVideo(array $file, int $kacakId, ?int $sureSaniye, ?string $kapakVerisi): array
     {
+        return $this->storeVideo($file, $kacakId, $sureSaniye, $kapakVerisi, false);
+    }
+
+    public function storeAssembledVideo(array $file, int $kacakId, ?int $sureSaniye, ?string $kapakVerisi): array
+    {
+        return $this->storeVideo($file, $kacakId, $sureSaniye, $kapakVerisi, true);
+    }
+
+    private function storeVideo(array $file, int $kacakId, ?int $sureSaniye, ?string $kapakVerisi, bool $assembled): array
+    {
         if ($this->countVideos($kacakId) >= self::MAX_VIDEO) {
             throw new Exception('Bir kayda en fazla ' . self::MAX_VIDEO . ' video eklenebilir.');
         }
@@ -1734,12 +1744,14 @@ class KacakKontrolModel extends Model
         $altDizin = self::UPLOAD_DIR . '/' . date('Y/m');
         $hedefDizin = self::rootPath() . '/' . $altDizin;
 
-        $sonuc = (new VideoUploadService())->store(
+        $service = new VideoUploadService();
+        $method = $assembled ? 'storeAssembled' : 'store';
+        $sonuc = $service->$method(
             $file,
             $hedefDizin,
             'video_' . $kacakId,
             self::VIDEO_MIMES,
-            self::videoYuklemeSiniri(),
+            ($assembled ? self::VIDEO_MAX_BYTE : self::videoYuklemeSiniri()),
             self::VIDEO_MAX_SURE,
             $sureSaniye,
             $kapakVerisi,

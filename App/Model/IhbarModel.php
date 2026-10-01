@@ -217,6 +217,16 @@ class IhbarModel extends Model
      */
     public function storeUploadedVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi): array
     {
+        return $this->storeVideo($file, $ihbarId, $sureSaniye, $kapakVerisi, false);
+    }
+
+    public function storeAssembledVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi): array
+    {
+        return $this->storeVideo($file, $ihbarId, $sureSaniye, $kapakVerisi, true);
+    }
+
+    private function storeVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi, bool $assembled): array
+    {
         if ($this->countVideolar($ihbarId) >= self::MAX_VIDEO) {
             throw new \Exception('Bir ihbara en fazla ' . self::MAX_VIDEO . ' video eklenebilir.');
         }
@@ -224,7 +234,9 @@ class IhbarModel extends Model
         $altDizin = self::UPLOAD_DIR . '/' . date('Y/m');
         $hedefDizin = dirname(__DIR__, 2) . '/' . $altDizin;
 
-        $sonuc = (new VideoUploadService())->store(
+        $service = new VideoUploadService();
+        $method = $assembled ? 'storeAssembled' : 'store';
+        $sonuc = $service->$method(
             $file,
             $hedefDizin,
             'video_' . $ihbarId,

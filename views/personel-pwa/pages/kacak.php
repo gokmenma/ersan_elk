@@ -540,60 +540,6 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             </div>`;
         }
 
-        function kuyrukKartHtml(k) {
-            const o = k.ozet || {};
-            const hataMi = k.durum === 'hata';
-            const ekToplam = (k.ekDosyalar || []).length;
-            const rozet = hataMi
-                ? '<span class="text-xs font-bold text-red-600">Gönderilemedi</span>'
-                : (k.anaGonderildi
-                    ? `<span class="text-xs font-bold text-amber-700">Fotoğraflar yükleniyor · ${k.ekGonderilen || 0}/${ekToplam}</span>`
-                    : '<span class="text-xs font-bold text-slate-500">Gönderilmeyi bekliyor</span>');
-
-            const ilerlemeSatiri = (k.anaGonderildi && ekToplam > 0)
-                ? `<p class="text-xs text-slate-400 mt-1">Tutanak sunucuya ulaştı, kalan ${ekToplam - (k.ekGonderilen || 0)} fotoğraf gönderilecek.</p>`
-                : '';
-
-            const hataSatiri = hataMi
-                ? `<p class="text-xs text-red-600 mt-2">${esc(k.hata || 'Sunucu kaydı kabul etmedi.')}</p>`
-                : (k.hata
-                    ? `<p class="text-xs text-amber-700 mt-2">${esc(k.hata)}${k.deneme ? ` · ${k.deneme}. deneme` : ''}</p>`
-                    : '');
-
-            const duzenleBtn = `<button type="button" onclick="kacakKuyrukDuzenle('${esc(k.uuid)}')"
-                    class="flex-1 py-2 rounded-xl border border-primary text-primary text-xs font-bold active:scale-95 transition-transform flex items-center justify-center gap-1">
-                    <span class="material-symbols-outlined text-sm">edit</span> Düzenle
-                </button>`;
-
-            const tekrarBtn = hataMi
-                ? `<button type="button" onclick="kacakKuyrukTekrar('${esc(k.uuid)}')"
-                        class="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold active:scale-95 transition-transform">Tekrar Dene</button>`
-                : '';
-
-            const fotoSatiri = (o.foto_sayisi || 0) > 0
-                ? `<span class="text-xs text-slate-400">· ${o.foto_sayisi} belge</span>` : '';
-
-            return `
-            <div class="bg-white dark:bg-card-dark p-4 rounded-xl border border-amber-200 dark:border-slate-800 mb-3">
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-sm font-black text-slate-500">${esc(o.tur || 'Kaçak')}</span>
-                    ${rozet}
-                </div>
-                <p class="text-sm font-bold text-slate-800 dark:text-white mt-2">${esc(o.abone_adi || 'Abone belirtilmemiş')}</p>
-                <p class="text-xs text-slate-400 mt-1">
-                    ${esc(o.tarih_formatted || '-')} · ${esc(o.ilce || 'İlçe yok')} · No: ${esc(o.tutanak_no || '-')} ${fotoSatiri}
-                </p>
-                ${ilerlemeSatiri}
-                ${hataSatiri}
-                <div class="flex items-center gap-2 mt-3">
-                    ${duzenleBtn}
-                    ${tekrarBtn}
-                    <button type="button" onclick="kacakKuyrukSil('${esc(k.uuid)}')"
-                        class="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold active:scale-95 transition-transform">Sil</button>
-                </div>
-            </div>`;
-        }
-
         function listeyiCiz() {
             // Henüz sunucuya ulaşmamış kayıtlar en üstte, sadece ilgili sekmelerde.
             const kuyruk = (aktifFiltre === 'all' || aktifFiltre === 'beklemede') ? bekleyenKayitlar : [];
@@ -613,14 +559,21 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             const el = document.getElementById('kacak-list');
             el.innerHTML = (liste.length === 0 && kuyruk.length === 0)
                 ? '<div class="text-center py-10 text-sm text-slate-400">Kayıt bulunamadı</div>'
-                : kuyruk.map(kuyrukKartHtml).join('') + liste.map(kartHtml).join('');
+                : liste.map(kartHtml).join('');
         }
 
         async function kuyrugaBak() {
             if (!window.OfflineQueue) return;
 
+            if (!document.getElementById('kacak-transfer-panel')) {
+                const panel = document.createElement('div');
+                panel.id = 'kacak-transfer-panel';
+                panel.className = 'px-4 py-3';
+                document.getElementById('kacak-kuyruk-serit').before(panel);
+                OfflineQueue.mountPanel('kacak', panel.id, { onEdit: kacakKuyrukDuzenle, onDelete: kacakKuyrukSil });
+            }
             const tumu = await OfflineQueue.listele();
-            bekleyenKayitlar = tumu.filter(k => k.action === 'saveKacakBildirim');
+            bekleyenKayitlar = tumu.filter(k => k.action === 'saveKacakBildirim' || k.action === 'updateKacakBildirim');
 
             const bekleyen = bekleyenKayitlar.filter(k => k.durum !== 'hata').length;
             const hatali = bekleyenKayitlar.filter(k => k.durum === 'hata').length;
@@ -699,6 +652,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         window.kacakKuyrukDuzenle = function (uuid) {
             const k = bekleyenKayitlar.find(x => x.uuid === uuid);
             if (!k) return Alert.error('Hata', 'Kayıt bulunamadı.');
+            if (k.anaGonderildi || (k.anaDenendi && !k.mainRejected)) return Alert.warning('Önce gönderimi tamamlayın', 'Sunucu sonucu doğrulandıktan sonra kaydı sunucu listesinden düzenleyin.');
 
             openKacakBildirModal();
             kacakKuyrukEditUuid = uuid;
@@ -723,10 +677,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         window.kacakKuyrukSil = async function (uuid) {
             const kayit = bekleyenKayitlar.find(k => k.uuid === uuid);
-            const kalan = kayit ? (kayit.ekDosyalar || []).length - (kayit.ekGonderilen || 0) : 0;
+            const kalan = kayit ? OfflineQueue.remainingText(kayit) : '';
 
-            const mesaj = (kayit && kayit.anaGonderildi)
-                ? `Bu tutanak sunucuya ulaştı, silmek onu geri almaz. Sadece henüz gönderilmemiş ${kalan} fotoğraf kaybolur. Devam edilsin mi?`
+            const mesaj = (kayit && (kayit.anaGonderildi || kayit.anaDenendi))
+                ? `Tutanak sunucuya ulaşmış olabilir; cihazdan kaldırmak sunucu kaydını geri almaz. Henüz gönderilmemiş dosyalar kaybolur (${kalan}). Devam edilsin mi?`
                 : 'Bu tutanak henüz sunucuya gönderilmedi. Silerseniz fotoğraflarıyla birlikte kaybolur. Silmek istiyor musunuz?';
 
             const onay = await Alert.confirm('Kaydı Sil', mesaj, 'Sil', 'Vazgeç');
@@ -1375,12 +1329,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     fileToSend = await compressImageForAi(fileToSend);
                 }
 
-                const fd = new FormData();
-                fd.append('action', 'analyzeKacakTutanak');
-                fd.append('tutanak_file', fileToSend);
-                fd.append('tarih', document.querySelector('#kacak-bildir-form [name=tarih]')?.value || '');
-
-                const res = await (await fetch('api.php?action=analyzeKacakTutanak', { method: 'POST', body: fd })).json();
+                const res = await API.request('analyzeKacakTutanak', {
+                    tutanak_file: fileToSend,
+                    tarih: document.querySelector('#kacak-bildir-form [name=tarih]')?.value || ''
+                }, false);
                 if (!res.success) {
                     return Alert.error('Analiz Başarısız', res.message || 'Tutanak okunamadı.');
                 }
@@ -1454,176 +1406,6 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         // ulaştıktan sonra ayrı isteklerle gönderilir. Gönderilemeyen video sayısı döner.
         let videoGonderimHatalari = [];
 
-        function videoSebepMetni() {
-            return videoGonderimHatalari.length > 0
-                ? videoGonderimHatalari.join('\n')
-                : 'Bilinmeyen hata.';
-        }
-
-        async function videolariGonder(targetIdOrUuid) {
-            let eksik = 0;
-            videoGonderimHatalari = [];
-            if (!videoDosyalari || videoDosyalari.length === 0) return 0;
-
-            function guncelleProgress(percent, loadedMB, totalMB, fileName, fileIndex, totalFiles) {
-                const titleStr = `Video Yükleniyor... (${fileIndex}/${totalFiles})`;
-                const percentStr = `${percent}%`;
-                const widthStr = `${percent}%`;
-                const detailStr = `${loadedMB} MB / ${totalMB} MB`;
-                const fileStr = `${fileName} (${totalMB} MB)`;
-
-                // Inline form container (Kullanıcının işaret ettiği alan)
-                const inlineBox = document.getElementById('kacak-video-progress-container');
-                if (inlineBox) inlineBox.classList.remove('hidden');
-
-                const inlineText = document.getElementById('kacak-video-progress-text');
-                if (inlineText) inlineText.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${titleStr}`;
-
-                const inlinePercent = document.getElementById('kacak-video-progress-percent');
-                if (inlinePercent) inlinePercent.textContent = percentStr;
-
-                const inlineBar = document.getElementById('kacak-video-progress-bar');
-                if (inlineBar) inlineBar.style.width = widthStr;
-
-                const inlineName = document.getElementById('kacak-video-progress-name');
-                if (inlineName) inlineName.textContent = fileName;
-
-                const inlineDetail = document.getElementById('kacak-video-progress-detail');
-                if (inlineDetail) inlineDetail.textContent = detailStr;
-
-                // Overlay modal
-                const modal = document.getElementById('video-progress-modal');
-                if (modal) modal.classList.remove('hidden');
-
-                const titleEl = document.getElementById('video-progress-title');
-                if (titleEl) titleEl.textContent = titleStr;
-
-                const fileInfoEl = document.getElementById('video-progress-file-info');
-                if (fileInfoEl) fileInfoEl.textContent = fileStr;
-
-                const percentEl = document.getElementById('video-progress-percent');
-                if (percentEl) percentEl.textContent = percentStr;
-
-                const barEl = document.getElementById('video-progress-bar');
-                if (barEl) barEl.style.width = widthStr;
-
-                const detailEl = document.getElementById('video-progress-detail');
-                if (detailEl) detailEl.textContent = detailStr;
-            }
-
-            for (let i = 0; i < videoDosyalari.length; i++) {
-                const v = videoDosyalari[i];
-                const fileName = v.dosya ? v.dosya.name : `Video ${i + 1}`;
-                const fileSizeMB = v.dosya ? (v.dosya.size / (1024 * 1024)).toFixed(1) : '0.0';
-
-                guncelleProgress(0, '0.0', fileSizeMB, fileName, i + 1, videoDosyalari.length);
-
-                try {
-                    const fd = new FormData();
-                    fd.append('action', 'addKacakVideo');
-                    if (typeof targetIdOrUuid === 'string' && targetIdOrUuid.includes('-')) {
-                        fd.append('client_uuid', targetIdOrUuid);
-                    } else {
-                        fd.append('edit_token', targetIdOrUuid);
-                    }
-                    fd.append('video', v.dosya, v.dosya.name);
-                    if (v.sure) fd.append('sure', v.sure);
-                    if (v.kapak) fd.append('kapak', v.kapak);
-                    fd.append('video_cekim', v.cekim || '');
-
-                    const url = 'api.php?action=addKacakVideo' + (typeof targetIdOrUuid === 'string' && !targetIdOrUuid.includes('-') ? '&edit_token=' + encodeURIComponent(targetIdOrUuid) : '');
-
-                    const res = await new Promise((resolve, reject) => {
-                        const xhr = new XMLHttpRequest();
-                        xhr.open('POST', url, true);
-
-                        xhr.upload.onprogress = function (e) {
-                            if (e.lengthComputable) {
-                                const percent = Math.round((e.loaded / e.total) * 100);
-                                const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
-                                const totalMB = (e.total / (1024 * 1024)).toFixed(1);
-                                guncelleProgress(percent, loadedMB, totalMB, fileName, i + 1, videoDosyalari.length);
-                            }
-                        };
-
-                        xhr.onload = function () {
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                try {
-                                    resolve(JSON.parse(xhr.responseText));
-                                } catch (err) {
-                                    reject(err);
-                                }
-                            } else {
-                                reject(new Error('HTTP Hata: ' + xhr.status));
-                            }
-                        };
-
-                        xhr.onerror = function () {
-                            reject(new Error('Ağ Hatası'));
-                        };
-
-                        xhr.send(fd);
-                    });
-
-                    if (!res || !res.success) {
-                        eksik++;
-                        videoGonderimHatalari.push((res && res.message) || 'Bilinmeyen sunucu hatası');
-                        console.error('Video gönderilemedi:', res && res.message);
-                    }
-                } catch (hata) {
-                    eksik++;
-                    videoGonderimHatalari.push('Sunucuya ulaşılamadı: ' + (hata && hata.message ? hata.message : hata));
-                    console.error('Video gönderim hatası:', hata);
-                }
-            }
-
-            const inlineBox = document.getElementById('kacak-video-progress-container');
-            if (inlineBox) inlineBox.classList.add('hidden');
-            const modal = document.getElementById('video-progress-modal');
-            if (modal) modal.classList.add('hidden');
-
-            return eksik;
-        }
-
-        // Kuyruk yazması başarısız olduğunda (cihaz depolaması dolu, IndexedDB
-        // engelli vb.) kullanılan emniyet yolu. Kuyruktaki gibi parçalı gönderir:
-        // önce kayıt + tutanak, sonra saha fotoğrafları teker teker.
-        async function dogrudanGonder(alanlar, dosyalar, sahaFotolari) {
-            if (!alanlar.client_uuid) {
-                alanlar.client_uuid = OfflineQueue.uuid();
-            }
-            alanlar.beklenen_foto_sayisi = 1 + sahaFotolari.length;
-
-            const ana = await OfflineQueue.istekGonder('saveKacakBildirim', alanlar, dosyalar, 'kayıt');
-            if (ana.sonuc !== 'tamam') {
-                return { success: false, message: ana.mesaj };
-            }
-
-            let eksik = 0;
-            for (let i = 0; i < sahaFotolari.length; i++) {
-                const f = sahaFotolari[i];
-                const cevap = await OfflineQueue.istekGonder(
-                    'addKacakSahaFoto',
-                    { client_uuid: alanlar.client_uuid, sira: i, toplam: sahaFotolari.length },
-                    [{ alan: 'foto', ad: f.ad, tip: f.tip, blob: f.blob, cekim: f.cekim || '' }],
-                    `fotoğraf ${i + 1}/${sahaFotolari.length}`
-                );
-                if (cevap.sonuc !== 'tamam') eksik++;
-            }
-
-            return {
-                success: true,
-                eksik,
-                message: eksik > 0
-                    ? `Tutanak kaydedildi ancak ${eksik} fotoğraf gönderilemedi.`
-                    : 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.',
-            };
-        }
-
-        // ----- Form gönderimi -----
-        // Kayıt her durumda önce cihazdaki kuyruğa yazılır, sonra gönderilmeye çalışılır.
-        // Böylece bağlantı kopsa, sayfa kapansa ya da telefon kilitlense bile
-        // tutanak kaybolmaz; client_uuid sayesinde sunucuya iki kez düşmez.
         document.getElementById('kacak-bildir-form').addEventListener('submit', async function (e) {
             e.preventDefault();
 
@@ -1631,7 +1413,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             const tutanakCamInput = document.getElementById('kacak-tutanak-camera-input');
             const tutanakSelectedFile = (tutanakInput.files && tutanakInput.files[0]) || (tutanakCamInput.files && tutanakCamInput.files[0]);
 
-            if (!kacakEditToken && !tutanakSelectedFile) {
+            if (!kacakEditToken && !kacakKuyrukEditUuid && !tutanakSelectedFile) {
                 return Alert.warning('Resim Yükleme Zorunlu', 'Kaçak işlemi bildirirken tutanak fotoğrafı / resim yüklemek zorunludur. Lütfen fotoğraf çekin veya galeriden seçin.');
             }
             if (!window.OfflineQueue) {
@@ -1682,203 +1464,41 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             btnText.textContent = 'HAZIRLANIYOR...';
 
             try {
-                if (kacakEditToken) {
-                    if (!cevrimici()) return Alert.warning('Bağlantı Gerekli', 'Kayıt düzenleme işlemi çevrimiçi yapılabilir.');
-
-                    const mevcutTutanak = document.getElementById('mevcut-tutanak-card');
-                    if (!mevcutTutanak && !tutanakSelectedFile) {
-                        btn.disabled = false;
-                        btnText.textContent = 'DEĞİŞİKLİKLERİ KAYDET';
-                        return Alert.warning('Resim Yükleme Zorunlu', 'Kayıtta tutanak fotoğrafı bulunmuyor. Lütfen tutanak fotoğrafı yükleyin.');
-                    }
-
-                    const fd = new FormData(this);
-                    fd.append('action', 'updateKacakBildirim');
-                    fd.append('edit_token', kacakEditToken);
-                    btnText.textContent = 'HAZIRLANIYOR...';
-                    if (tutanakSelectedFile) {
-                        const tutanakKucuk = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
-                        fd.append('tutanak_foto', tutanakKucuk.blob, tutanakKucuk.ad);
-                        fd.append('tutanak_foto_cekim', tutanakKucuk.cekim || '');
-                    }
-                    for (const file of sahaDosyalari) {
-                        const sahaKucuk = await OfflineQueue.fotografKucult(file, 1600, 0.7);
-                        fd.append('saha_fotolari[]', sahaKucuk.blob, sahaKucuk.ad);
-                        fd.append('saha_fotolari_cekim[]', sahaKucuk.cekim || '');
-                    }
-                    btnText.textContent = 'GÜNCELLENİYOR...';
-                    const res = await (await fetch('api.php?action=updateKacakBildirim&edit_token=' + encodeURIComponent(kacakEditToken), {method:'POST', body:fd})).json();
-                    if (!res.success) return Alert.error('Güncellenemedi', res.message || 'İşlem başarısız.');
-
-                    let eksikVideo = 0;
-                    if (videoDosyalari.length > 0) {
-                        btnText.textContent = 'VİDEOLAR YÜKLENİYOR...';
-                        eksikVideo = await videolariGonder(kacakEditToken);
-                    }
-
-                    Modal.close('kacak-bildir-modal');
-                    await loadKacakKayitlar();
-                    if (eksikVideo > 0) {
-                        return Alert.warning('Video Gönderilemedi',
-                            `Tutanak güncellendi ancak ${eksikVideo} video gönderilemedi.\n\nSebep: ` + videoSebepMetni());
-                    }
-                    return Alert.success('Güncellendi', res.message || 'Kaçak bildirimi güncellendi.');
-                }
-
-                if (kacakKuyrukEditUuid) {
-                    const mevcuttan = bekleyenKayitlar.find(x => x.uuid === kacakKuyrukEditUuid);
-                    const eskiTutanakVar = mevcuttan && mevcuttan.dosyalar && mevcuttan.dosyalar.some(d => d.alan === 'tutanak_foto');
-                    if (!tutanakSelectedFile && !eskiTutanakVar) {
-                        btn.disabled = false;
-                        btnText.textContent = 'DEĞİŞİKLİKLERİ KAYDET';
-                        return Alert.warning('Resim Yükleme Zorunlu', 'Kaçak bildirimi için tutanak fotoğrafı yüklemek zorunludur.');
-                    }
-
-                    const alanlar = {};
-                    new FormData(this).forEach((deger, ad) => { alanlar[ad] = deger; });
-                    alanlar.client_uuid = kacakKuyrukEditUuid;
-
-                    let yeniDosyalar = null;
-                    if (tutanakSelectedFile) {
-                        const tutanak = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
-                        yeniDosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob, cekim: tutanak.cekim || '' }];
-                    }
-
-                    const eskiEkAdet = mevcuttan ? (mevcuttan.ekDosyalar || []).length : 0;
-
-                    // Düzenleme sırasında seçilen saha fotoğrafları kuyruğa eklenmezse
-                    // beklenen sayı artar ama fotoğraf hiç gitmez; sıraya yazılır.
-                    const yeniEkDosyalar = [];
-                    for (const dosya of sahaDosyalari) {
-                        const kucuk = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
-                        yeniEkDosyalar.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob, cekim: kucuk.cekim || '' });
-                    }
-
-                    const anaAdet = yeniDosyalar ? yeniDosyalar.length : (mevcuttan ? (mevcuttan.dosyalar || []).length : 1);
-                    const ozet = {
-                        tur: alanlar.tur,
-                        ilce: alanlar.ilce,
-                        tutanak_no: alanlar.tutanak_no,
-                        abone_adi: alanlar.abone_adi,
-                        tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
-                        foto_sayisi: anaAdet + eskiEkAdet + yeniEkDosyalar.length,
-                    };
-
-                    btnText.textContent = 'GÜNCELLENİYOR...';
-                    await OfflineQueue.guncelle(kacakKuyrukEditUuid, alanlar, yeniDosyalar, ozet, yeniEkDosyalar);
-
-                    Modal.close('kacak-bildir-modal');
-                    kacakKuyrukEditUuid = null;
-                    await kuyrugaBak();
-                    return Alert.success('Güncellendi', 'Kayıt güncellendi ve gönderim başlatıldı.');
-                }
-
+                if (!window.OfflineQueue) throw new Error('Telefon kayıt altyapısı yüklenemedi. Sayfayı yeniden açın.');
                 const alanlar = {};
-                new FormData(this).forEach((deger, ad) => { alanlar[ad] = deger; });
-
-                // Fotoğraflar zayıf bağlantıda gönderilebilsin ve cihazda az yer kaplasın
-                // diye küçültülür; tutanak okunabilirliği için daha yüksek çözünürlük kalır.
-                const tutanak = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
-                const dosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob, cekim: tutanak.cekim || '' }];
-
-                // Saha fotoğrafları ana istekle değil, her biri ayrı istekle gider.
+                new FormData(this).forEach((deger, ad) => { if (typeof deger === 'string') alanlar[ad] = deger; });
+                const mevcuttan = kacakKuyrukEditUuid ? await OfflineQueue.oku(kacakKuyrukEditUuid) : null;
+                const tutanakVar = tutanakSelectedFile || (mevcuttan && (mevcuttan.dosyalar || []).some(d => d.alan === 'tutanak_foto')) || (kacakEditToken && document.getElementById('mevcut-tutanak-card'));
+                if (!tutanakVar) throw new Error('Tutanak fotoğrafı zorunludur.');
+                const dosyalar = [];
+                if (tutanakSelectedFile) {
+                    const f = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
+                    dosyalar.push({ alan: 'tutanak_foto', ad: f.ad, tip: f.tip, blob: f.blob, cekim: f.cekim || '' });
+                }
                 const sahaFotolari = [];
-                for (const dosya of sahaDosyalari) {
-                    const kucuk = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
-                    sahaFotolari.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob, cekim: kucuk.cekim || '' });
+                for (const file of sahaDosyalari) {
+                    const f = await OfflineQueue.fotografKucult(file, 1600, 0.7);
+                    sahaFotolari.push({ ad: f.ad, tip: f.tip, blob: f.blob, cekim: f.cekim || '' });
                 }
-
-                const ozet = {
-                    tur: alanlar.tur,
-                    ilce: alanlar.ilce,
-                    tutanak_no: alanlar.tutanak_no,
-                    abone_adi: alanlar.abone_adi,
-                    tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
-                    foto_sayisi: dosyalar.length + sahaFotolari.length,
-                };
-                alanlar.beklenen_foto_sayisi = dosyalar.length + sahaFotolari.length;
-
-                btnText.textContent = 'GÖNDERİLİYOR...';
-
-                let kayit;
-                try {
-                    kayit = await OfflineQueue.ekle('saveKacakBildirim', alanlar, dosyalar, ozet, {
-                        action: 'addKacakSahaFoto',
-                        alan: 'foto',
-                        dosyalar: sahaFotolari,
-                    });
-                } catch (kuyrukHatasi) {
-                    console.error('Kuyruğa yazılamadı:', kuyrukHatasi);
-
-                    if (!cevrimici()) {
-                        return Alert.error('Kaydedilemedi',
-                            'Tutanak telefona kaydedilemedi ve bağlantı da yok. Telefonunuzda yer açıp tekrar deneyin.');
-                    }
-
-                    let res;
-                    try {
-                        res = await dogrudanGonder(alanlar, dosyalar, sahaFotolari);
-                    } catch (agHatasi) {
-                        console.error('Doğrudan gönderim hatası:', agHatasi);
-                        return Alert.error('Gönderilemedi',
-                            'Tutanak telefona kaydedilemedi ve sunucuya da ulaşılamadı. Telefonunuzda yer açıp tekrar deneyin.');
-                    }
-
-                    if (res && res.success) {
-                        const eksikVideo = await videolariGonder(alanlar.client_uuid);
-                        Modal.close('kacak-bildir-modal');
-                        tarihAraligiGenislet(alanlar.tarih);
-                        await loadKacakKayitlar();
-                        if (eksikVideo > 0) {
-                            return Alert.warning('Video Gönderilemedi',
-                                `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.\n\nSebep: ` + videoSebepMetni());
-                        }
-                        return Alert.success('Gönderildi', res.message || 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
-                    }
-
-                    return Alert.error('Gönderilemedi', (res && res.message) || 'Sunucu kaydı kabul etmedi.');
-                }
-
-                tarihAraligiGenislet(alanlar.tarih);
-                await kuyrugaBak();
-
-                if (!cevrimici()) {
-                    Modal.close('kacak-bildir-modal');
-                    return Alert.success('Cihaza Kaydedildi', videoDosyalari.length > 0
-                        ? 'Bağlantı olmadığı için tutanak telefonunuza kaydedildi ve internet geldiğinde otomatik gönderilecek. '
-                          + 'Videolar cihazda saklanamadığı için kaydı çevrimiçiyken açıp videoları tekrar eklemeniz gerekir.'
-                        : 'Bağlantı olmadığı için tutanak telefonunuza kaydedildi. İnternet geldiğinde otomatik gönderilecek.');
-                }
-
-                if (videoDosyalari.length > 0) {
-                    btnText.textContent = 'VİDEOLAR YÜKLENİYOR...';
-                }
-
-                await OfflineQueue.flush();
-                const kalan = await OfflineQueue.oku(kayit.uuid);
-                await kuyrugaBak();
-
-                if (!kalan) {
-                    const eksikVideo = await videolariGonder(kayit.uuid);
-                    Modal.close('kacak-bildir-modal');
-                    await loadKacakKayitlar();
-                    if (eksikVideo > 0) {
-                        return Alert.warning('Video Gönderilemedi',
-                            `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.\n\nSebep: ` + videoSebepMetni());
-                    }
-                    return Alert.success('Gönderildi', 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
+                const ozet = { tur: alanlar.tur, ilce: alanlar.ilce, tutanak_no: alanlar.tutanak_no,
+                    abone_adi: alanlar.abone_adi, tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
+                    foto_sayisi: dosyalar.length + sahaFotolari.length };
+                if (kacakKuyrukEditUuid) {
+                    await OfflineQueue.guncelle(kacakKuyrukEditUuid, alanlar, dosyalar, ozet, sahaFotolari, videoDosyalari);
+                    kacakKuyrukEditUuid = null;
+                } else {
+                    if (kacakEditToken) alanlar.edit_token = kacakEditToken;
+                    await OfflineQueue.ekle(kacakEditToken ? 'updateKacakBildirim' : 'saveKacakBildirim', alanlar, dosyalar, ozet,
+                        { action: 'addKacakSahaFoto', alan: 'foto', dosyalar: sahaFotolari, videolar: videoDosyalari });
                 }
                 Modal.close('kacak-bildir-modal');
-                if (kalan.durum === 'hata') {
-                    return Alert.error('Gönderilemedi', kalan.hata || 'Sunucu kaydı kabul etmedi.');
-                }
-                Alert.warning('Onay Alınamadı',
-                    'Tutanak telefonunuzda güvende. Sunucuya ulaştıysa birazdan listede görünecek, '
-                    + 'ulaşmadıysa otomatik olarak tekrar gönderilecek — tekrar doldurmanıza gerek yok.'
-                    + (kalan.hata ? '\n\nSebep: ' + kalan.hata : ''));
+                tarihAraligiGenislet(alanlar.tarih);
+                await kuyrugaBak();
+                OfflineQueue.flush().catch(() => {});
+                await Alert.success('Telefona kaydedildi', 'Bildirim, fotoğraf ve videolar cihazınıza kaydedildi. Gönderim durumunu bu sayfadan takip edebilirsiniz.');
             } catch (err) {
                 console.error('Kaçak bildirim hatası:', err);
-                Alert.error('Hata', 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');
+                Alert.error('Kaydedilemedi', (err.message || 'Telefon depolamasına yazılamadı.') + ' Formunuz açık kaldı; telefonunuzda boş alan olduğunu kontrol edip tekrar deneyin.');
             } finally {
                 btn.disabled = false;
                 btnText.textContent = 'BİLDİRİMİ GÖNDER';
