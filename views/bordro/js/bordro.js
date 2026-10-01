@@ -127,23 +127,46 @@ function initBordroTable() {
     columnDefs: [{ orderable: false, targets: [0, 15] }],
     order: [[1, "asc"]],
     pageLength: 25,
+    buttons: [],
     initComplete: function (settings, json) {
       if (typeof originalInitComplete === "function") {
         originalInitComplete.call(this, settings, json);
       }
       window.bordroClientTiming = {
         datatable_ms: performance.now() - start,
-        table_ready_ms: performance.now(),
         before_dom_ready: document.readyState === "loading",
       };
-      $("#bordroTable").addClass("dt-ready");
-      $("#bordro-loader").hide();
+      // Genel yerleşim preloader'ı window.load sonrasında ayrıca 350 ms bekler.
+      // DataTables çekirdeği hazır olduğunda bu katmana artık ihtiyaç yoktur.
+      $("#status, #preloader").stop(true, true).hide();
       const api = this.api();
       const initFilters = function () {
         const filterStart = performance.now();
-        if (typeof initAdvancedFilters === "function") initAdvancedFilters(api, settings);
-        window.bordroClientTiming.filters_ms = performance.now() - filterStart;
-        $("#bordroTable").trigger("bordro:filters-ready");
+        try {
+          if (typeof initAdvancedFilters === "function") initAdvancedFilters(api, settings);
+          api.columns.adjust();
+          bordroGorselleriYenile($("#bordroTable tbody"));
+          window.bordroClientTiming.filters_ms = performance.now() - filterStart;
+          $("#bordroTable").trigger("bordro:filters-ready");
+        } catch (error) {
+          window.bordroClientTiming.filters_error = String(error);
+          console.error("Bordro tablo hazırlığı tamamlanamadı:", error);
+        } finally {
+          // Filtreler ve son yerleşim tarayıcı tarafından çizildikten sonra tabloyu göster.
+          requestAnimationFrame(function () {
+            $("#bordroTable").addClass("dt-ready");
+            if (window.Pace && typeof window.Pace.stop === "function") {
+              window.Pace.stop();
+            }
+            $("#bordro-loader")
+              .attr("aria-busy", "false")
+              .stop(true, true)
+              .fadeOut(120);
+            $("#bordroTable").closest(".bordro-table-responsive").addClass("table-ready");
+            window.bordroClientTiming.table_ready_ms = performance.now();
+            $("#bordroTable").trigger("bordro:table-ready");
+          });
+        }
       };
       // İki çizim arası bırak: ilk sayfa, filtre işinden önce ekrana gelsin.
       requestAnimationFrame(function () {
@@ -2553,7 +2576,16 @@ function bordroTabloYenile(options) {
     return;
   }
 
-  $("#bordro-loader").stop(true, true).fadeIn(150);
+  if (window.Pace && typeof window.Pace.restart === "function") {
+    window.Pace.restart();
+  }
+  $("#bordroTable").closest(".bordro-table-responsive").removeClass("table-ready");
+  $("#bordro-loader")
+    .attr("aria-busy", "true")
+    .stop(true, true)
+    .css("display", "flex")
+    .hide()
+    .fadeIn(150);
 
   $.ajax({
     url: "views/bordro/api.php",
@@ -2604,7 +2636,11 @@ function bordroTabloYenile(options) {
       location.reload();
     },
     complete: function () {
-      $("#bordro-loader").fadeOut(200);
+      if (window.Pace && typeof window.Pace.stop === "function") {
+        window.Pace.stop();
+      }
+      $("#bordro-loader").attr("aria-busy", "false").fadeOut(200);
+      $("#bordroTable").closest(".bordro-table-responsive").addClass("table-ready");
     },
   });
 }

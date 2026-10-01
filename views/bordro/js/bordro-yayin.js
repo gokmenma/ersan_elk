@@ -448,41 +448,93 @@
     const govde = el('bordroYayinDetayGovde');
     if (!govde) return;
 
-    el('bordroYayinDetayBaslik').textContent = `${d.icerik?.personel || 'Personel'} · ${d.icerik?.donem || 'Dönem'}`;
-    el('bordroYayinDetayAltBaslik').textContent = `Sürüm ${d.surum} · ${d.durum === 'test' ? 'Bildirimsiz Test Yayını' : 'Resmî Bordro'}`;
+    const baslikEl = el('bordroYayinDetayBaslik');
+    if (baslikEl) baslikEl.textContent = `${d.icerik?.personel || 'Personel'} · ${d.icerik?.donem || 'Dönem'}`;
+    const altBaslikEl = el('bordroYayinDetayAltBaslik');
+    if (altBaslikEl) altBaslikEl.textContent = `Sürüm ${d.surum} · ${d.durum === 'test' ? 'Bildirimsiz Test Yayını' : 'Resmî Bordro'}`;
 
     const i = d.icerik || {};
     const taleplerHtml = (d.talepler || []).map((t, n) => `
-      <div class="card border rounded-3 p-3 mb-3 ${t.durum === 'acik' ? 'border-warning bg-warning-subtle bg-opacity-10' : 'border-light-subtle bg-light bg-opacity-40'}">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="badge ${t.durum === 'acik' ? 'bg-warning text-dark' : 'bg-success'} px-2 py-1">
-            ${t.durum === 'acik' ? '<i class="bx bx-time-five me-1"></i>Açık İnceleme Talebi' : '<i class="bx bx-check me-1"></i>Sonuçlandı'}
-          </span>
-          <small class="text-muted"><i class="bx bx-calendar me-1"></i>${esc(t.tarih)}</small>
-        </div>
-        <p class="text-dark fs-13 mb-2 fw-medium">${esc(t.mesaj)}</p>
-        
-        ${(t.yanitlar || []).map(y => `
-          <div class="rounded-3 bg-white border p-3 my-2 ms-3 shadow-none">
-            <div class="d-flex align-items-center gap-1 text-primary fw-bold fs-12 mb-1">
-              <i class="bx bx-reply"></i> Yetkili Yanıtı
-            </div>
-            <p class="mb-1 fs-13 text-secondary">${esc(y.mesaj)}</p>
-            <small class="text-muted fs-11"><i class="bx bx-time me-1"></i>${esc(y.tarih)}</small>
+      <div class="card border rounded-3 mb-4 overflow-hidden shadow-none bg-white" style="border: 1px solid #e2e8f0 !important;">
+        <!-- Talep Başlığı / Durum Barı -->
+        <div class="px-4 py-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2" style="border-color: #e2e8f0 !important; min-height: 48px;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary-subtle text-secondary border fs-11 fw-bold">Talep #${n + 1}</span>
+            <span class="badge ${t.durum === 'acik' ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-success-subtle text-success border border-success-subtle'} px-2.5 py-1 fs-11 fw-semibold">
+              <i class="bx ${t.durum === 'acik' ? 'bx-time-five' : 'bx-check-double'} me-1"></i>${t.durum === 'acik' ? 'Açık İnceleme Talebi' : 'Sonuçlandı'}
+            </span>
           </div>
-        `).join('')}
+          <span class="text-muted fs-11"><i class="bx bx-calendar me-1"></i>${esc(t.tarih)}</span>
+        </div>
 
-        ${t.durum === 'acik' ? `
-          <form data-talep="${n}" class="mt-3 pt-2 border-top">
-            <label for="yayinYanit${n}" class="form-label fs-12 fw-bold text-dark">Gerekçeli Sonuç Yanıtı</label>
-            <textarea id="yayinYanit${n}" name="mesaj" class="form-control form-control-sm" rows="3" minlength="10" maxlength="4000" placeholder="Personele iletilecek yanıtınızı yazın..." required></textarea>
-            <div class="d-flex justify-content-end mt-2">
-              <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" type="submit">
-                <i class="bx bx-send"></i> Yanıtla ve Sonuçlandır
-              </button>
+        <div class="p-4">
+          <!-- Modern Zaman Çizelgesi -->
+          <div class="talep-timeline">
+            
+            <!-- 1. Adım: Personel Talebi -->
+            <div class="talep-timeline-item">
+              <div class="talep-timeline-marker marker-personel" title="Personel Talebi">
+                <i class="bx bx-user"></i>
+              </div>
+              <div class="talep-bubble bubble-personel">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-bold text-dark fs-13">${esc(d.icerik?.personel || 'Personel')}</span>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted fs-11"><i class="bx bx-time-five me-1"></i>${esc(t.tarih)}</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-10 px-2 py-0.5 fw-bold">Personel</span>
+                  </div>
+                </div>
+                <p class="text-dark fs-13 mb-0 mt-0.5" style="line-height: 1.45; white-space: pre-wrap;">${esc(t.mesaj)}</p>
+              </div>
             </div>
-          </form>
-        ` : ''}
+
+            <!-- 2. Adım: Yetkili Yanıtları (Varsa) -->
+            ${(t.yanitlar || []).map(y => `
+              <div class="talep-timeline-item">
+                <div class="talep-timeline-marker marker-yetkili" title="Yetkili Yanıtı">
+                  <i class="bx bx-check-shield"></i>
+                </div>
+                <div class="talep-bubble bubble-yetkili">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-success-emphasis fs-13">${esc(y.kullanici || 'Yetkili')}</span>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="text-muted fs-11"><i class="bx bx-time me-1"></i>${esc(y.tarih)}</span>
+                      <span class="badge bg-success text-white fs-10 px-2 py-0.5 fw-bold"><i class="bx bx-check me-0.5"></i> Yetkili</span>
+                    </div>
+                  </div>
+                  <p class="text-dark fs-13 mb-0 mt-0.5 fw-medium" style="line-height: 1.45; white-space: pre-wrap;">${esc(y.mesaj)}</p>
+                </div>
+              </div>
+            `).join('')}
+
+            <!-- 3. Adım: Talep Açıksa Yanıt Formu -->
+            ${t.durum === 'acik' ? `
+              <div class="talep-timeline-item">
+                <div class="talep-timeline-marker marker-bekliyor" title="Yetkili Yanıtı Bekleniyor">
+                  <i class="bx bx-edit-alt"></i>
+                </div>
+                <div class="talep-bubble p-3" style="background: #fffdf5; border: 1px dashed #f59e0b;">
+                  <form data-talep="${n}">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <label for="yayinYanit${n}" class="form-label fs-12 fw-bold text-dark mb-0 d-flex align-items-center gap-1">
+                        <i class="bx bx-edit text-warning fs-5"></i> Gerekçeli Sonuç Yanıtı
+                      </label>
+                      <span class="badge bg-warning text-dark fs-10 px-2 py-0.5">Yanıt Bekliyor</span>
+                    </div>
+                    <textarea id="yayinYanit${n}" name="mesaj" class="form-control form-control-sm bg-white" rows="3" minlength="5" maxlength="4000" placeholder="Personele iletilecek inceleme sonucunuzu yazın..." required style="border: 1px solid #cbd5e1; font-size: 13px;"></textarea>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2.5">
+                      <small class="text-muted fs-11"><i class="bx bx-info-circle me-1 text-primary"></i>Yanıtınız personele PWA üzerinden gösterilir ve talep sonuçlandırılır.</small>
+                      <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-1.5 fw-semibold" type="submit" style="border-radius: 6px;">
+                        <i class="bx bx-send"></i> Yanıtla ve Sonuçlandır
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            ` : ''}
+
+          </div>
+        </div>
       </div>
     `).join('');
 
@@ -586,11 +638,21 @@
     govde.querySelectorAll('[data-talep]').forEach(f => {
       f.addEventListener('submit', e => {
         e.preventDefault();
+        const submitBtn = f.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
         calistir(async () => {
           const talepIndex = Number(f.dataset.talep);
           await api('yayin-yanitla', {
             talep_token: d.talepler[talepIndex].token,
             mesaj: f.elements.mesaj.value
+          });
+          await Swal.fire({
+            icon: 'success',
+            title: 'Yanıt Kaydedildi',
+            text: 'İnceleme talebi sonuçlandırıldı ve personele iletildi.',
+            timer: 2000,
+            showConfirmButton: true,
+            confirmButtonText: 'Tamam'
           });
           await detay(token);
           await yukle();

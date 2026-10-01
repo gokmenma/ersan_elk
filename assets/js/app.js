@@ -217,14 +217,14 @@ $(document).ready(function () {
    * Ensures every modal in the system is moved to <body> to prevent backdrop overlay issues.
    */
   function syncStackedModals() {
-    const $modals = $(".modal.show");
+    const $modals = $(".modal:visible, .modal.show");
     $modals.each(function (idx) {
-      $(this).css("z-index", 1055 + idx * 20);
+      this.style.setProperty("z-index", String(1055 + idx * 20), "important");
     });
 
     const $backdrops = $(".modal-backdrop");
     $backdrops.each(function (idx) {
-      $(this).css("z-index", 1050 + idx * 20);
+      this.style.setProperty("z-index", String(1050 + idx * 20), "important");
     });
   }
 
@@ -237,13 +237,14 @@ $(document).ready(function () {
     }
 
     // Üst üste açılan modallar (stacked modals) için dinamik z-index ayarı
-    const openModals = $(".modal.show").length;
+    const openModals = $(".modal:visible, .modal.show").length;
     const targetZ = 1055 + openModals * 20;
-    $modal.css("z-index", targetZ);
+    this.style.setProperty("z-index", String(targetZ), "important");
 
     setTimeout(syncStackedModals, 10);
     setTimeout(syncStackedModals, 50);
     setTimeout(syncStackedModals, 150);
+    setTimeout(syncStackedModals, 300);
 
     const $header = $modal.find(".modal-header");
 

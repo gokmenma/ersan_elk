@@ -13,6 +13,14 @@ foreach ($personeller as $personel):
     $eldenOdeme = $pc['eldenOdeme'];
     $bankaOdemesi = $pc['bankaOdemesi'];
     $sodexoOdemesi = $pc['sodexoOdemesi'];
+    // Eksik dosyanın URL'sini HTML'e koyma: onerror ilk 404 isteğini önleyemez.
+    $personelResimYolu = ltrim(trim((string) ($personel->resim_yolu ?? '')), '/');
+    $personelResimDosyasi = $personelResimYolu !== ''
+        ? realpath(dirname(__DIR__, 3) . '/' . $personelResimYolu)
+        : false;
+    $personelResimVar = $personelResimDosyasi !== false
+        && str_starts_with($personelResimDosyasi, dirname(__DIR__, 3) . DIRECTORY_SEPARATOR)
+        && is_file($personelResimDosyasi);
 ?>
 <tr data-id="<?= $personel->id ?>">
     <td>
@@ -83,15 +91,17 @@ foreach ($personeller as $personel):
     </td>
     <td>
         <div class="d-flex align-items-center">
+            <?php if ($personelResimVar): ?>
             <div class="personel-img-zoom-container">
-                <img src="<?= !empty($personel->resim_yolu) ? htmlspecialchars($personel->resim_yolu, ENT_QUOTES, 'UTF-8') : 'assets/images/users/user-dummy-img.jpg' ?>"
-                    onerror="this.src='assets/images/users/user-dummy-img.jpg'"
+                <img src="<?= htmlspecialchars($personelResimYolu, ENT_QUOTES, 'UTF-8') ?>"
+                    onerror="this.onerror=null;this.closest('.personel-img-zoom-container').remove();"
                     alt="" class="rounded-circle avatar-sm me-2 personel-img-zoom cursor-pointer" loading="lazy">
                 <div class="img-preview-tooltip">
-                    <img data-src="<?= !empty($personel->resim_yolu) ? htmlspecialchars($personel->resim_yolu, ENT_QUOTES, 'UTF-8') : 'assets/images/users/user-dummy-img.jpg' ?>"
-                        onerror="this.src='assets/images/users/user-dummy-img.jpg'" alt="" loading="lazy">
+                    <img data-src="<?= htmlspecialchars($personelResimYolu, ENT_QUOTES, 'UTF-8') ?>"
+                        onerror="this.onerror=null;this.closest('.img-preview-tooltip').remove();" alt="" loading="lazy">
                 </div>
             </div>
+            <?php endif; ?>
             <div>
                 <div class="fw-medium">
                     <a target="_blank" href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a>

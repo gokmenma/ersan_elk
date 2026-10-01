@@ -374,10 +374,80 @@ if (!$yayinUser || !(new \App\Model\MenuModel())->userCanAccessMenuLink($yayinUs
 .onizleme-item.active .personel-net {
   color: #4338ca !important;
 }
+
+/* Detay Modalı Modern Zaman Çizelgesi (Timeline) */
+.talep-timeline {
+  position: relative;
+  padding-left: 48px;
+  padding-right: 8px;
+  margin-left: 6px;
+}
+.talep-timeline::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 15px;
+  width: 2px;
+  background: #e2e8f0;
+}
+.talep-timeline-item {
+  position: relative;
+  margin-bottom: 20px;
+}
+.talep-timeline-item:last-child {
+  margin-bottom: 0;
+}
+.talep-timeline-marker {
+  position: absolute;
+  left: -48px;
+  top: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  z-index: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+.talep-timeline-marker.marker-personel {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #2563eb;
+}
+.talep-timeline-marker.marker-yetkili {
+  border-color: #10b981;
+  background: #ecfdf5;
+  color: #059669;
+}
+.talep-timeline-marker.marker-bekliyor {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #d97706;
+}
+.talep-bubble {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+.talep-bubble.bubble-personel {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+.talep-bubble.bubble-yetkili {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
 </style>
 
 <!-- Resmî Bordro Yayını Ana Modalı -->
-<div class="modal fade" id="bordroYayinModal" tabindex="-1" aria-labelledby="bordroYayinBaslik" aria-hidden="true" data-modal-icon="bx bx-broadcast" data-modal-subtitle="Dönem bordrolarının personel PWA yayını, önizleme kontrolleri, okuma beyanları ve inceleme talepleri">
+<div class="modal fade no-upgrade" id="bordroYayinModal" tabindex="-1" aria-labelledby="bordroYayinBaslik" aria-hidden="true" data-modal-icon="bx bx-broadcast" data-modal-subtitle="Dönem bordrolarının personel PWA yayını, önizleme kontrolleri, okuma beyanları ve inceleme talepleri">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content border-0">
       
@@ -674,7 +744,7 @@ if (!$yayinUser || !(new \App\Model\MenuModel())->userCanAccessMenuLink($yayinUs
 </div>
 
 <!-- Bordro Detay ve Talep Yanıtlama Modalı -->
-<div class="modal fade" id="bordroYayinDetayModal" tabindex="-1" aria-labelledby="bordroYayinDetayBaslik" aria-hidden="true" data-modal-icon="bx bx-receipt" data-modal-subtitle="Resmî bordro dökümü ve personel inceleme talebi detayları">
+<div class="modal fade no-upgrade" id="bordroYayinDetayModal" tabindex="-1" aria-labelledby="bordroYayinDetayBaslik" aria-hidden="true" data-modal-icon="bx bx-receipt" data-modal-subtitle="Resmî bordro dökümü ve personel inceleme talebi detayları">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content shadow-lg" style="border: 1px solid #cbd5e1; border-radius: 12px;">
       <div class="modal-header bg-light border-bottom py-2.5 px-3">
@@ -698,7 +768,7 @@ if (!$yayinUser || !(new \App\Model\MenuModel())->userCanAccessMenuLink($yayinUs
 </div>
 
 <!-- Dışlanan Personeller Geniş Modal -->
-<div class="modal fade" id="bordroYayinDislananlarModal" tabindex="-1" aria-labelledby="bordroYayinDislananlarBaslik" aria-hidden="true" data-modal-icon="bx bx-user-x" data-modal-subtitle="Dönem yayınına dahil edilmeyen pasif ve ayrılmış personeller">
+<div class="modal fade no-upgrade" id="bordroYayinDislananlarModal" tabindex="-1" aria-labelledby="bordroYayinDislananlarBaslik" aria-hidden="true" data-modal-icon="bx bx-user-x" data-modal-subtitle="Dönem yayınına dahil edilmeyen pasif ve ayrılmış personeller">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1080px;">
     <div class="modal-content shadow-lg" style="border: 1px solid #cbd5e1; border-radius: 12px;">
       <div class="modal-header bg-light border-bottom px-4 py-3">

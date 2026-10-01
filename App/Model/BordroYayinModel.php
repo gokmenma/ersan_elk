@@ -198,7 +198,14 @@ final class BordroYayinModel extends Model
         $r = $this->dokum($firma, $id, $personel);
         $talepler = $this->sorgu('SELECT id, mesaj, durum, tarih FROM bordro_yayin_talep WHERE dokum_id = ? AND is_active = 1 ORDER BY id', [$id])->fetchAll(PDO::FETCH_ASSOC);
         foreach ($talepler as &$t) {
-            $t['yanitlar'] = $this->sorgu('SELECT mesaj, tarih FROM bordro_yayin_yanit WHERE talep_id = ? AND is_active = 1 ORDER BY id', [$t['id']])->fetchAll(PDO::FETCH_ASSOC);
+            $t['yanitlar'] = $this->sorgu(
+                'SELECT y.mesaj, y.tarih, COALESCE(NULLIF(TRIM(u.adi_soyadi), \'\'), u.user_name, \'Yetkili\') AS kullanici ' .
+                'FROM bordro_yayin_yanit y ' .
+                'LEFT JOIN users u ON u.id = y.kullanici_id ' .
+                'WHERE y.talep_id = ? AND y.is_active = 1 ' .
+                'ORDER BY y.id',
+                [$t['id']]
+            )->fetchAll(PDO::FETCH_ASSOC);
             $t['token'] = Security::encrypt((int) $t['id']); unset($t['id']);
         }
         $olaylar = $personel === null ? $this->sorgu('SELECT tur, aktor_tipi, detay, tarih FROM bordro_yayin_olay WHERE dokum_id = ? AND is_active = 1 ORDER BY id', [$id])->fetchAll(PDO::FETCH_ASSOC) : [];

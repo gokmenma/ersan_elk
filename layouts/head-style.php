@@ -301,16 +301,37 @@ use App\Helper\Helper;
 
 ?>
 
+<?php $isBordroListPage = ($_GET['p'] ?? '') === 'bordro/list'; ?>
+
 <!-- Google Fonts: Modern UI Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
-    rel="stylesheet">
+    rel="stylesheet"<?= $isBordroListPage ? ' media="print" onload="this.media=\'all\'"' : '' ?>>
+<?php if ($isBordroListPage): ?>
+<noscript>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</noscript>
+<?php endif; ?>
 
 <!-- preloader css -->
 <link href="<?php echo Helper::base_url('assets/css/icons.min.css'); ?>" rel="stylesheet" type="text/css" />
 <link rel="stylesheet" href="<?php echo Helper::base_url("assets/css/preloader.min.css"); ?>" type="text/css" />
+<?php if ($isBordroListPage): ?>
+<script>
+    // Bordroda Pace yalnız ilk sayfa/tablo hazırlığını gösterir; AJAX istekleri
+    // çubuğu ikinci kez başlatmaz. Tablo hazır olduğunda bordro.js durdurur.
+    window.paceOptions = {
+        ajax: false,
+        elements: false,
+        eventLag: false,
+        restartOnPushState: false,
+        restartOnRequestAfter: false
+    };
+</script>
+<script src="assets/libs/pace-js/pace.min.js"></script>
+<?php endif; ?>
 
 <!-- Bootstrap Css -->
 <link href="<?php echo Helper::base_url('assets/css/bootstrap.min.css'); ?>" id="bootstrap-style" rel="stylesheet"
@@ -320,23 +341,22 @@ use App\Helper\Helper;
 <link href="<?php echo Helper::base_url('assets/css/app.min.css'); ?>" id="app-style" rel="stylesheet"
     type="text/css" />
 
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="<?= $isBordroListPage ? 'assets/libs/select2/css/select2.min.css' : 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css' ?>" rel="stylesheet" />
 <link href="<?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>"
     id="custom-style" rel="stylesheet" type="text/css" />
 <!-- jQuery -->
 <script src="<?php echo Helper::base_url('assets/libs/jquery/jquery.3.7.1.min.js'); ?>"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="<?= $isBordroListPage ? 'assets/libs/select2/js/select2.min.js' : 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js' ?>"></script>
 
 <!-- Flatpickr -->
 <link rel="stylesheet" href="<?php echo Helper::base_url('assets/libs/flatpickr/flatpickr.min.css'); ?>">
 
 <link href="assets/libs//summernote/summernote-lite.min.css" rel="stylesheet">
+<?php if (!$isBordroListPage): ?>
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
     integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
     crossorigin="anonymous"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<?php endif; ?>
+<link rel="stylesheet" type="text/css" href="<?= $isBordroListPage ? Helper::assetVersion('assets/libs/toastify/toastify.min.css') : 'https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css' ?>">
 <!-- Feather Icons (Immediate load for early render) -->
 <script src="<?php echo Helper::base_url('assets/libs/feather-icons/feather.min.js'); ?>"></script>
-
-
-

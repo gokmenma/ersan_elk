@@ -7,7 +7,7 @@ use App\Helper\Helper;
 $page = $_GET['p'] ?? 'home';
 
 ?>
-<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
+<script src="<?= $page === 'bordro/list' ? 'assets/libs/jquery-validation/jquery.validate.min.js' : 'https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js' ?>"></script>
 <script src="assets/libs/imask/imask.min.js"></script>
 
 <!-- Sayfalara Özel Scriptler -->
@@ -180,12 +180,11 @@ if ($page == "hakedisler/hakedis-detay") {
 
 <!-- Required Vendor Scripts -->
 <script src="assets/libs/moment/min/moment-with-locales.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?= $page === 'bordro/list' ? 'assets/libs/sweetalert2/sweetalert2.all.min.js' : 'https://cdn.jsdelivr.net/npm/sweetalert2@11' ?>"></script>
 
 <!-- Bootstrap Bundle JS -->
 <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"
-    onerror="(function(){var s=document.createElement('script');s.src='assets/libs/toastify/toastify.min.js';document.head.appendChild(s);})();"></script>
+<script type="text/javascript" src="assets/libs/toastify/toastify.min.js"></script>
 <!-- Menu Scripts -->
 <script src="assets/libs/metismenu/metisMenu.min.js"></script>
 
@@ -195,10 +194,14 @@ if ($page == "hakedisler/hakedis-detay") {
 <!-- Waves Animation -->
 <script src="assets/libs/node-waves/waves.min.js"></script>
 
-<!-- Feather Icons -->
+<!-- Feather Icons: bordro sayfasında ilk çizim için head-style.php içinde zaten yüklenir. -->
+<?php if ($page !== 'bordro/list'): ?>
 <script src="assets/libs/feather-icons/feather.min.js"></script>
-<!-- pace js -->
+<?php endif; ?>
+<!-- Bordroda Pace tablo hazırlanırken çalışması için head-style.php içinde yüklenir. -->
+<?php if ($page !== 'bordro/list'): ?>
 <script src="assets/libs/pace-js/pace.min.js"></script>
+<?php endif; ?>
 
 <!-- Flatpickr -->
 <script src="assets/libs/flatpickr/flatpickr.min.js"></script>

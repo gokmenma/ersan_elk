@@ -182,47 +182,44 @@ if (!empty($dbGelirler)) {
             font-size: 0.75rem;
         }
 
-        /* Bordro Preloader */
-        .bordro-preloader {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.82);
-            z-index: 1060;
-            border-radius: 4px;
-            backdrop-filter: blur(3px);
-        }
-
-        [data-bs-theme="dark"] .bordro-preloader {
-            background: rgba(25, 30, 34, 0.85);
-        }
-
-        .bordro-preloader .loader-content {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 2.5rem;
-            border-radius: 16px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-            text-align: center;
-            min-width: 250px;
-        }
-
-        [data-bs-theme="dark"] .bordro-preloader .loader-content {
-            background: #2a3042;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-        }
-
         /* Tablo ilk yüklemede gizli, DataTables hazır olunca görünür */
         #bordroTable:not(.dt-ready) tbody {
             visibility: hidden;
             opacity: 0;
             height: 0;
             overflow: hidden;
+        }
+
+        /* Pace ile aynı anda görünen, kayıt sayısını etkilemeyen tbody katmanı */
+        .bordro-table-loading-overlay {
+            position: absolute;
+            inset: 48px 0 0 0;
+            z-index: 1025;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            min-height: 170px;
+            padding-top: 42px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(2px);
+        }
+
+        .bordro-table-loading-overlay .loader-content {
+            padding: 18px 28px;
+            text-align: center;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        }
+
+        [data-bs-theme="dark"] .bordro-table-loading-overlay {
+            background: rgba(25, 30, 34, 0.92);
+        }
+
+        [data-bs-theme="dark"] .bordro-table-loading-overlay .loader-content {
+            background: #2a3042;
+            border-color: #334155;
         }
 
         .personel-img-zoom-container {
@@ -296,12 +293,18 @@ if (!empty($dbGelirler)) {
 
         /* Tablo Çerçevesi ve Sığdırma Stilleri */
         .bordro-table-responsive {
+            position: relative;
+            min-height: 220px;
             border: 1px solid #d9e3ef !important;
             border-radius: 12px !important;
             background-color: #ffffff;
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
             overflow-x: auto;
             margin: 4px 0 12px 0 !important;
+        }
+
+        .bordro-table-responsive.table-ready {
+            min-height: 0;
         }
 
         #bordroTable {
@@ -935,17 +938,15 @@ if (!empty($dbGelirler)) {
                         </div>
 
                         <div class="position-relative">
-                            <!-- Preloader -->
-                            <div class="bordro-preloader" id="bordro-loader">
-                                <div class="loader-content">
-                                    <div class="spinner-border text-primary m-1" role="status">
-                                        <span class="sr-only">Yükleniyor...</span>
-                                    </div>
-                                    <h5 class="mt-2 mb-0">Tablo Hazırlanıyor...</h5>
-                                    <p class="text-muted small mb-0">Lütfen bekleyiniz...</p>
-                                </div>
-                            </div>
                             <div class="table-responsive bordro-table-responsive">
+                                <div id="bordro-loader" class="bordro-table-loading-overlay" aria-live="polite" aria-busy="true">
+                                    <div class="loader-content">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Yükleniyor...</span>
+                                        </div>
+                                        <div class="fw-semibold mt-2">Tablo hazırlanıyor...</div>
+                                    </div>
+                                </div>
                                 <table id="bordroTable" class="table table-hover table-bordered w-100">
                                     <thead class="table-light sticky-top">
                                         <tr>

@@ -44,6 +44,7 @@ CREATE TABLE bordro_yayin_olay(id INTEGER PRIMARY KEY, dokum_id INT, tur TEXT, a
 CREATE TABLE bordro_yayin_talep(id INTEGER PRIMARY KEY, dokum_id INT, mesaj TEXT, durum TEXT DEFAULT 'acik', tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_yanit(id INTEGER PRIMARY KEY, talep_id INT, kullanici_id INT, mesaj TEXT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_kuyruk(id INTEGER PRIMARY KEY, dokum_id INT, gun INT, planlanan TEXT, durum TEXT DEFAULT 'bekliyor', deneme INT DEFAULT 0, kilit_token TEXT, son_hata TEXT, gonderim_tarihi TEXT, is_active INT DEFAULT 1);
+CREATE TABLE users(id INTEGER PRIMARY KEY, adi_soyadi TEXT, user_name TEXT);
 INSERT INTO personel(id, firma_id) VALUES (1,1),(2,1),(3,2);
 INSERT INTO bordro_donemi(id,firma_id,kapali_mi) VALUES (1,1,1),(2,2,1);
 INSERT INTO bordro_yayin(id,firma_id,donem_id,surum,durum,yayin_tarihi) VALUES (1,1,1,1,'yayinda','2026-09-30'),(2,2,2,1,'yayinda','2026-09-30');
