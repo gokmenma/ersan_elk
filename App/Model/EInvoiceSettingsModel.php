@@ -79,11 +79,11 @@ class EInvoiceSettingsModel extends Model
                 'api_username'               => $data['api_username'] ?? '',
                 'api_password'               => $encryptedPassword,
                 'environment'                => in_array($data['environment'] ?? '', ['TEST', 'LIVE']) ? $data['environment'] : 'TEST',
-                'test_wsdl_url'              => $data['test_wsdl_url'] ?? 'https://efaturatest.edmbilisim.com.tr/EFaturaEDM21/EFaturaEDM.svc?wsdl',
+                'test_wsdl_url'              => $data['test_wsdl_url'] ?? 'https://test.edmbilisim.com.tr/EFaturaEDM21ea/EFaturaEDM.svc?wsdl',
                 'live_wsdl_url'              => $data['live_wsdl_url'] ?? 'https://efatura.edmbilisim.com.tr/EFaturaEDM/EFaturaEDM.svc?wsdl',
                 'efatura_seri'               => strtoupper(substr(trim($data['efatura_seri'] ?? 'ERS'), 0, 3)),
                 'earsiv_seri'                => strtoupper(substr(trim($data['earsiv_seri'] ?? 'ERA'), 0, 3)),
-                'varsayilan_gonderici_alias' => $data['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb',
+                'varsayilan_gonderici_alias' => $data['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb@edmbilisim.com.tr',
                 'otomatik_gonder'            => !empty($data['otomatik_gonder']) ? 1 : 0
             ]);
         } catch (\PDOException $e) {

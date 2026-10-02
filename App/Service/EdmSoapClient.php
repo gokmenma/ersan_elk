@@ -250,36 +250,35 @@ class EdmSoapClient
     }
 
     /**
-     * E-Fatura Gönderimi (SendInvoice)
+     * E-Fatura / E-Arşiv Gönderimi (SendInvoice)
      */
-    public function sendInvoice(string $xmlContent, string $receiverVkn, string $receiverAlias, ?string $senderVkn = null, ?string $senderAlias = null, ?int $faturaId = null): array
+    public function sendInvoice(string $xmlContent, string $receiverVkn, string $receiverAlias = 'defaultpk', ?string $senderVkn = null, ?string $senderAlias = null, ?int $faturaId = null, ?string $uuid = null): array
     {
         $sessionId = $this->login();
         $senderAlias = $senderAlias ?: ($this->settings['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb@edmbilisim.com.tr');
-        $senderVkn = $senderVkn ?: ($this->settings['vkn_tckn'] ?? '');
+        if (strpos($senderAlias, '@edmbilisim.com.tr') === false) {
+            $senderAlias .= '@edmbilisim.com.tr';
+        }
+        $senderVkn = $senderVkn ?: ($this->settings['api_username'] ?? '3230512384');
 
-        // UBL XML içeriğini hazırla
-        $xmlBytes = $xmlContent;
-
-        $invoiceObj = (object)[
-            'HEADER' => (object)[
-                'SENDER'   => $senderVkn,
-                'FROM'     => $senderAlias,
-                'RECEIVER' => $receiverVkn,
-                'TO'       => $receiverAlias,
-            ],
-            'CONTENT' => (object)[
-                'Value' => $xmlBytes
-            ]
+        $invoiceItem = (object)[
+            'CONTENT' => $xmlContent
         ];
+        if (!empty($uuid)) {
+            $invoiceItem->UUID = $uuid;
+        }
 
         $params = (object)[
             'REQUEST_HEADER' => $this->buildRequestHeader('SendInvoice', $sessionId),
+            'SENDER' => (object)[
+                'vkn'   => $senderVkn,
+                'alias' => $senderAlias,
+            ],
             'RECEIVER' => (object)[
                 'vkn'   => $receiverVkn,
                 'alias' => $receiverAlias,
             ],
-            'INVOICE' => [$invoiceObj]
+            'INVOICE' => [$invoiceItem]
         ];
 
         try {
@@ -288,8 +287,8 @@ class EdmSoapClient
 
             $this->settingsModel->logSoapAction($this->firmId, $faturaId, 'SendInvoice', 'XML Length: ' . strlen($xmlContent), json_encode($response), 'BASARILI');
 
-            $invoiceNo = $response->INVOICE_NUMBER ?? ($response->SendInvoiceResult->INVOICE_NUMBER ?? null);
-            $guid = $response->GUID ?? ($response->SendInvoiceResult->GUID ?? null);
+            $invoiceNo = $response->INVOICE_NUMBER ?? ($response->SendInvoiceResult->INVOICE_NUMBER ?? ($response->INVOICE->ID ?? null));
+            $guid = $response->GUID ?? ($response->SendInvoiceResult->GUID ?? ($response->INVOICE->UUID ?? null));
 
             return [
                 'success'        => true,
@@ -312,12 +311,18 @@ class EdmSoapClient
      */
     public function getInvoiceStatus(array $uuids): array
     {
+        if (empty($uuids)) {
+            return [];
+        }
+
         $sessionId = $this->login();
+        $invoiceParam = (count($uuids) === 1)
+            ? (object)['UUID' => reset($uuids)]
+            : array_map(fn($u) => (object)['UUID' => $u], $uuids);
+
         $params = (object)[
             'REQUEST_HEADER' => $this->buildRequestHeader('GetInvoiceStatus', $sessionId),
-            'INVOICE' => array_map(function ($uuid) {
-                return (object)['UUID' => $uuid];
-            }, $uuids)
+            'INVOICE'        => $invoiceParam
         ];
 
         try {
@@ -327,20 +332,22 @@ class EdmSoapClient
             $this->settingsModel->logSoapAction($this->firmId, null, 'GetInvoiceStatus', json_encode($params), json_encode($response), 'BASARILI');
 
             $results = [];
-            $items = $response->GetInvoiceStatusResult->INVOICE_STATUS ?? ($response->INVOICE_STATUS ?? []);
-            if (!is_array($items)) {
+            $items = $response->INVOICE_STATUS ?? ($response->GetInvoiceStatusResult->INVOICE_STATUS ?? []);
+            if (!is_array($items) && is_object($items)) {
                 $items = [$items];
             }
 
             foreach ($items as $item) {
                 if (isset($item->UUID)) {
                     $results[$item->UUID] = [
-                        'uuid'        => $item->UUID,
-                        'status_code' => $item->STATUS_CODE ?? null,
-                        'status_desc' => $item->STATUS_DESCRIPTION ?? ($item->DESCRIPTION ?? ''),
-                        'gib_code'    => $item->GIB_STATUS_CODE ?? null,
-                        'gib_desc'    => $item->GIB_STATUS_DESCRIPTION ?? '',
-                        'response_code' => $item->RESPONSE_CODE ?? null,
+                        'uuid'          => (string)$item->UUID,
+                        'fatura_no'     => (string)($item->ID ?? ''),
+                        'status'        => (string)($item->STATUS ?? ''),
+                        'status_code'   => (string)($item->STATUS_CODE ?? $item->STATUS ?? ''),
+                        'status_desc'   => (string)($item->STATUS_DESCRIPTION ?? ''),
+                        'gib_code'      => $item->GIB_STATUS_CODE ?? null,
+                        'gib_desc'      => (string)($item->GIB_STATUS_DESCRIPTION ?? ''),
+                        'response_code' => (string)($item->RESPONSE_CODE ?? ''),
                     ];
                 }
             }
@@ -381,6 +388,131 @@ class EdmSoapClient
         } catch (Exception $e) {
             error_log("EdmSoapClient::getInvoiceHtml Error: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * EDM Sisteminden Faturaları Çeker (GetInvoice) - Otomatik Sayfalama Destekli
+     */
+    public function getInvoices(string $direction = 'OUT', ?string $startDate = null, ?string $endDate = null, int $limit = 500, string $dateType = 'CREATE'): array
+    {
+        $sessionId = $this->login();
+        $startDate = $startDate ?: date('Y-m-d');
+        $endDate = $endDate ?: date('Y-m-d');
+
+        // EDM kuralı: İki tarih arasındaki fark 60 günü geçemez
+        $startTs = strtotime($startDate);
+        $endTs = strtotime($endDate);
+        if (($endTs - $startTs) > (60 * 86400)) {
+            $startDate = date('Y-m-d', $endTs - (58 * 86400));
+        }
+
+        $allInvoices = [];
+        $lastCDate = null;
+        $maxPages = (int)ceil($limit / 50);
+        if ($maxPages < 1) $maxPages = 1;
+        if ($maxPages > 20) $maxPages = 20;
+
+        try {
+            $client = $this->getClient();
+
+            for ($page = 0; $page < $maxPages; $page++) {
+                $searchKey = (object)[
+                    'LIMIT' => 50,
+                    'DIRECTION' => $direction,
+                    'READ_INCLUDED' => true
+                ];
+
+                if ($dateType === 'CREATE') {
+                    $searchKey->CR_START_DATE = ($lastCDate ?: $startDate . 'T00:00:00');
+                    $searchKey->CR_END_DATE = $endDate . 'T23:59:59';
+                } else {
+                    $searchKey->START_DATE = $startDate;
+                    $searchKey->END_DATE = $endDate;
+                }
+
+                $params = (object)[
+                    'REQUEST_HEADER' => $this->buildRequestHeader('GetInvoice', $sessionId),
+                    'INVOICE_SEARCH_KEY' => $searchKey,
+                    'HEADER_ONLY' => 'N',
+                    'INVOICE_CONTENT_TYPE' => 'XML'
+                ];
+
+                $response = $client->GetInvoice($params);
+                $this->settingsModel->logSoapAction($this->firmId, null, 'GetInvoice', json_encode($params), "Fetched {$direction} Page " . ($page + 1), 'BASARILI');
+
+                $items = $response->INVOICE ?? ($response->GetInvoiceResult->INVOICE ?? []);
+                if (!is_array($items) && is_object($items)) {
+                    $items = [$items];
+                }
+
+                if (empty($items)) {
+                    break;
+                }
+
+                $pageAdded = 0;
+                $newestCDate = null;
+
+                foreach ($items as $item) {
+                    $uuid = (string)($item->UUID ?? '');
+                    if (empty($uuid) || isset($allInvoices[$uuid])) {
+                        continue;
+                    }
+
+                    $faturaNo = (string)($item->ID ?? '');
+                    $xmlContent = '';
+
+                    if (isset($item->CONTENT->_)) {
+                        $xmlContent = (string)$item->CONTENT->_;
+                    } elseif (isset($item->CONTENT->Value)) {
+                        $val = $item->CONTENT->Value;
+                        $decoded = is_string($val) ? base64_decode($val) : '';
+                        $uncompressed = @gzdecode($decoded);
+                        $xmlContent = $uncompressed ?: ($decoded ?: $val);
+                    } elseif (is_string($item->CONTENT ?? null)) {
+                        $xmlContent = (string)$item->CONTENT;
+                    }
+
+                    $hdr = $item->HEADER ?? null;
+
+                    $allInvoices[$uuid] = [
+                        'uuid'          => $uuid,
+                        'fatura_no'     => $faturaNo,
+                        'xml'           => $xmlContent,
+                        'header'        => $hdr,
+                        'issue_date'    => $hdr->ISSUE_DATE ?? date('Y-m-d'),
+                        'payable_amount'=> (float)($hdr->PAYABLE_AMOUNT->_ ?? $hdr->PAYABLE_AMOUNT ?? 0),
+                        'supplier'      => $hdr->SUPPLIER ?? '',
+                        'customer'      => $hdr->CUSTOMER ?? '',
+                        'sender'        => $hdr->SENDER ?? '',
+                        'receiver'      => $hdr->RECEIVER ?? '',
+                        'profile_id'    => $hdr->PROFILEID ?? 'TEMELFATURA',
+                        'status'        => $hdr->STATUS ?? '',
+                        'status_desc'   => $hdr->STATUS_DESCRIPTION ?? '',
+                    ];
+                    $pageAdded++;
+
+                    if (!empty($hdr->CDATE)) {
+                        $newestCDate = (string)$hdr->CDATE;
+                    }
+                }
+
+                // 50'den az geldiyse veya yeni kayıt eklenemediyse veya dateType!=CREATE ise döngü tamamlandı
+                if (count($items) < 50 || $pageAdded === 0 || $dateType !== 'CREATE' || empty($newestCDate) || $newestCDate === $lastCDate) {
+                    break;
+                }
+
+                // Sonraki sayfa için CR_START_DATE'i 1 saniye ileri al
+                $dt = new \DateTime($newestCDate);
+                $dt->modify('+1 second');
+                $lastCDate = $dt->format('Y-m-d\TH:i:s');
+            }
+
+            return array_values($allInvoices);
+        } catch (SoapFault $sf) {
+            $this->settingsModel->logSoapAction($this->firmId, null, 'GetInvoice', json_encode($params ?? []), $sf->getMessage(), 'BASARISIZ', $sf->faultcode, $sf->faultstring);
+            error_log("EdmSoapClient::getInvoices Error: " . $sf->getMessage());
+            return array_values($allInvoices);
         }
     }
 }

@@ -422,7 +422,10 @@ class EInvoiceModel extends Model
 
             $allowed = [
                 'fatura_no', 'entegrator_durum_kodu', 'gib_durum_kodu', 'gib_durum_aciklamasi',
-                'edm_referans_no', 'ticari_yanit', 'ubl_xml_path', 'pdf_path'
+                'edm_referans_no', 'ticari_yanit', 'ubl_xml_path', 'pdf_path',
+                'alici_unvan', 'alici_vkn_tckn', 'fatura_tarihi', 'odenecek_tutar',
+                'satir_toplami', 'kdv_matrahi', 'hesaplanan_kdv', 'tevkifat_tutari',
+                'fatura_profili', 'fatura_tipi', 'belge_turu'
             ];
 
             foreach ($allowed as $field) {
@@ -485,25 +488,136 @@ class EInvoiceModel extends Model
             6 => 'f.belge_turu',
             7 => 'f.fatura_profili',
             8 => 'f.odenecek_tutar',
-            9 => 'f.entegrator_durum_kodu'
+            9 => ($listType === 'gelen') ? 'f.ticari_yanit' : 'f.entegrator_durum_kodu'
         ];
 
-        // Header column filters
+        // Header column filters (datatable-filters.js gelişmiş filtre desteği)
         if (!empty($params['columns']) && is_array($params['columns'])) {
             foreach ($params['columns'] as $idx => $colData) {
-                $colSearch = trim($colData['search']['value'] ?? '');
-                if ($colSearch !== '' && isset($colsMap[$idx])) {
-                    $colField = $colsMap[$idx];
-                    $paramKey = 'col_f_' . $idx;
-                    if ($colField === 'f.fatura_tarihi') {
-                        $where .= " AND $colField = :$paramKey";
-                        $bind[$paramKey] = date('Y-m-d', strtotime($colSearch));
-                    } elseif ($colField === 'f.belge_turu' || $colField === 'f.entegrator_durum_kodu') {
-                        $where .= " AND $colField = :$paramKey";
-                        $bind[$paramKey] = $colSearch;
+                $rawVal = trim($colData['search']['value'] ?? '');
+                if ($rawVal === '' || !isset($colsMap[$idx])) {
+                    continue;
+                }
+
+                $field = $colsMap[$idx];
+                $paramKey = 'col_f_' . $idx;
+
+                if (strpos($rawVal, ':') !== false) {
+                    list($mode, $filterVal) = explode(':', $rawVal, 2);
+                    $vals = explode('|', $filterVal);
+                    $primaryVal = trim($vals[0] ?? '');
+
+                    // Sayısal alanlar için temizlik
+                    if ($field === 'f.odenecek_tutar') {
+                        if (!in_array($mode, ['null', 'not_null'])) {
+                            $primaryVal = \App\Helper\Helper::formattedMoneyToNumber($primaryVal);
+                        }
+                    }
+
+                    switch ($mode) {
+                        case 'multi':
+                            if (!empty($vals)) {
+                                $multiConditions = [];
+                                foreach ($vals as $vIdx => $v) {
+                                    $v = trim($v);
+                                    if ($v === '') continue;
+                                    $vParam = "{$paramKey}_m_{$vIdx}";
+                                    $multiConditions[] = "$field LIKE :$vParam";
+                                    $bind[$vParam] = "%$v%";
+                                }
+                                if (!empty($multiConditions)) {
+                                    $where .= " AND (" . implode(" OR ", $multiConditions) . ")";
+                                }
+                            }
+                            break;
+                        case 'contains':
+                            $where .= " AND $field LIKE :$paramKey";
+                            $bind[$paramKey] = "%$primaryVal%";
+                            break;
+                        case 'not_contains':
+                            $where .= " AND $field NOT LIKE :$paramKey";
+                            $bind[$paramKey] = "%$primaryVal%";
+                            break;
+                        case 'equals':
+                            if ($field === 'f.fatura_tarihi') {
+                                $where .= " AND $field = :$paramKey";
+                                $bind[$paramKey] = date('Y-m-d', strtotime($primaryVal));
+                            } else {
+                                $where .= " AND $field = :$paramKey";
+                                $bind[$paramKey] = $primaryVal;
+                            }
+                            break;
+                        case 'not_equals':
+                            if ($field === 'f.fatura_tarihi') {
+                                $where .= " AND $field != :$paramKey";
+                                $bind[$paramKey] = date('Y-m-d', strtotime($primaryVal));
+                            } else {
+                                $where .= " AND $field != :$paramKey";
+                                $bind[$paramKey] = $primaryVal;
+                            }
+                            break;
+                        case 'starts_with':
+                            $where .= " AND $field LIKE :$paramKey";
+                            $bind[$paramKey] = "$primaryVal%";
+                            break;
+                        case 'ends_with':
+                            $where .= " AND $field LIKE :$paramKey";
+                            $bind[$paramKey] = "%$primaryVal";
+                            break;
+                        case 'greater_than':
+                            $where .= " AND $field > :$paramKey";
+                            $bind[$paramKey] = $primaryVal;
+                            break;
+                        case 'less_than':
+                            $where .= " AND $field < :$paramKey";
+                            $bind[$paramKey] = $primaryVal;
+                            break;
+                        case 'greater_equal':
+                            $where .= " AND $field >= :$paramKey";
+                            $bind[$paramKey] = $primaryVal;
+                            break;
+                        case 'less_equal':
+                            $where .= " AND $field <= :$paramKey";
+                            $bind[$paramKey] = $primaryVal;
+                            break;
+                        case 'before':
+                            $where .= " AND $field <= :$paramKey";
+                            $bind[$paramKey] = date('Y-m-d', strtotime($primaryVal));
+                            break;
+                        case 'after':
+                            $where .= " AND $field >= :$paramKey";
+                            $bind[$paramKey] = date('Y-m-d', strtotime($primaryVal));
+                            break;
+                        case 'between':
+                            if (count($vals) >= 2) {
+                                $p1 = "{$paramKey}_b1";
+                                $p2 = "{$paramKey}_b2";
+                                $where .= " AND $field BETWEEN :$p1 AND :$p2";
+                                $bind[$p1] = date('Y-m-d', strtotime(trim($vals[0])));
+                                $bind[$p2] = date('Y-m-d', strtotime(trim($vals[1])));
+                            }
+                            break;
+                        case 'null':
+                            $where .= " AND ($field IS NULL OR $field = '')";
+                            break;
+                        case 'not_null':
+                            $where .= " AND ($field IS NOT NULL AND $field != '')";
+                            break;
+                        default:
+                            $where .= " AND $field LIKE :$paramKey";
+                            $bind[$paramKey] = "%$primaryVal%";
+                            break;
+                    }
+                } else {
+                    if ($field === 'f.fatura_tarihi') {
+                        $where .= " AND $field = :$paramKey";
+                        $bind[$paramKey] = date('Y-m-d', strtotime($rawVal));
+                    } elseif ($field === 'f.belge_turu' || $field === 'f.entegrator_durum_kodu' || $field === 'f.ticari_yanit') {
+                        $where .= " AND $field = :$paramKey";
+                        $bind[$paramKey] = $rawVal;
                     } else {
-                        $where .= " AND $colField LIKE :$paramKey";
-                        $bind[$paramKey] = "%$colSearch%";
+                        $where .= " AND $field LIKE :$paramKey";
+                        $bind[$paramKey] = "%$rawVal%";
                     }
                 }
             }
@@ -544,7 +658,11 @@ class EInvoiceModel extends Model
         }
 
         $sql = "
-            SELECT f.*
+            SELECT 
+                f.id, f.ettn, f.fatura_no, f.fatura_tarihi, f.duzenleme_saati, f.alici_unvan, f.alici_vkn_tckn,
+                f.belge_turu, f.fatura_profili, f.fatura_tipi, f.odenecek_tutar, f.para_birimi,
+                f.entegrator_durum_kodu, f.gib_durum_kodu, f.gib_durum_aciklamasi, f.ticari_yanit,
+                f.pdf_path, f.ubl_xml_path
             FROM faturalar f
             WHERE $where
             ORDER BY $orderCol $orderDir, f.id DESC
@@ -558,12 +676,14 @@ class EInvoiceModel extends Model
         $data = [];
         foreach ($rows as $row) {
             $encryptedId = Security::encrypt((string)$row['id']);
+            $saatFormatted = !empty($row['duzenleme_saati']) ? date('H:i', strtotime($row['duzenleme_saati'])) : '';
             $data[] = [
                 'id'                    => $row['id'],
                 'encrypted_id'          => $encryptedId,
                 'fatura_no'             => !empty($row['fatura_no']) ? $row['fatura_no'] : 'Taslak',
                 'ettn'                  => $row['ettn'],
                 'fatura_tarihi'         => date('d.m.Y', strtotime($row['fatura_tarihi'])),
+                'duzenleme_saati'       => $saatFormatted,
                 'alici_unvan'           => htmlspecialchars($row['alici_unvan'] ?? '', ENT_QUOTES, 'UTF-8'),
                 'alici_vkn_tckn'        => htmlspecialchars($row['alici_vkn_tckn'] ?? '', ENT_QUOTES, 'UTF-8'),
                 'belge_turu'            => $row['belge_turu'],
@@ -667,11 +787,6 @@ class EInvoiceModel extends Model
                 ]);
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
             }
-        } catch (\PDOException $e) {
-            error_log("EInvoiceModel::getSummaryStats Error: " . $e->getMessage());
-            return [];
-        }
-    }
         } catch (\PDOException $e) {
             error_log("EInvoiceModel::getSummaryStats Error: " . $e->getMessage());
             return [];

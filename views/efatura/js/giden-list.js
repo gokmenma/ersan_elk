@@ -78,6 +78,7 @@ $(document).ready(function() {
         ...baseOptions,
         serverSide: true,
         processing: true,
+        searchDelay: 400,
         responsive: false,
         order: [[3, 'desc']], // Tarihe göre sıralı
         language: $.extend(true, {}, (baseOptions.language || {}), {
@@ -133,7 +134,15 @@ $(document).ready(function() {
             },
             {
                 data: 'fatura_tarihi',
-                className: 'align-middle text-muted'
+                className: 'align-middle',
+                render: function(data, type, row) {
+                    const saat = row.duzenleme_saati ? `<span class="text-muted font-monospace" style="font-size: 11px;"><i class="bx bx-time-five me-1 font-size-11 align-middle"></i>${row.duzenleme_saati}</span>` : '';
+                    return `
+                    <div class="d-flex flex-column">
+                        <span class="fw-semibold text-dark font-size-12">${data || '-'}</span>
+                        ${saat}
+                    </div>`;
+                }
             },
             {
                 data: 'alici_unvan',
@@ -846,6 +855,55 @@ $(document).ready(function() {
             }
         });
     }
+
+    // EDM'den Giden Faturaları Çek
+    $('#btnSyncOutgoing').on('click', function() {
+        Swal.fire({
+            title: 'EDM Faturaları Çekilsin mi?',
+            text: 'EDM Bilişim portalında bulunan giden faturalar taranarak sisteme aktarılacaktır.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="bx bx-refresh me-1"></i> Evet, Çek',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Faturalar Taranıyor...',
+                    text: 'EDM servisi ile senkronizasyon yapılıyor, lütfen bekleyin.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: 'api/efatura-api.php',
+                    type: 'POST',
+                    data: { action: 'sync_outgoing_invoices' },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Senkronizasyon Tamamlandı',
+                                text: res.message
+                            }).then(() => {
+                                table.ajax.reload(null, false);
+                                loadStats();
+                            });
+                        } else {
+                            Swal.fire('Bilgi', res.message || 'Yeni fatura bulunamadı.', 'info');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Hata', 'EDM servisinden faturalar çekilirken hata oluştu.', 'error');
+                    }
+                });
+            }
+        });
+    });
 
     // Context Menu İşlem Tetikleyicileri
     $('.cm-action').on('click', function() {

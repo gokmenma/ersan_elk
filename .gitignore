@@ -28,6 +28,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+/storage/
 vendor/
 .phpunit.cache/
 mobile-app/

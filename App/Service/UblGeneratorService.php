@@ -51,6 +51,10 @@ class UblGeneratorService
         $currency = $invoice['para_birimi'] ?? 'TRY';
         $root->appendChild($dom->createElement('cbc:DocumentCurrencyCode', $currency));
 
+        // Satır Sayısı (LineCountNumeric)
+        $lineCount = max(1, count($lines));
+        $root->appendChild($dom->createElement('cbc:LineCountNumeric', (string)$lineCount));
+
         // Sipariş Referansı
         if (!empty($invoice['siparis_no'])) {
             $orderRef = $dom->createElement('cac:OrderReference');
@@ -70,6 +74,36 @@ class UblGeneratorService
             }
             $root->appendChild($despatchRef);
         }
+
+        // İmza Bloğu (Signature)
+        $signature = $dom->createElement('cac:Signature');
+        $sigId = $dom->createElement('cbc:ID', $supplier['vkn_tckn'] ?? '');
+        $sigId->setAttribute('schemeID', 'VKN_TCKN');
+        $signature->appendChild($sigId);
+
+        $signatoryParty = $dom->createElement('cac:SignatoryParty');
+        $sigPartyId = $dom->createElement('cac:PartyIdentification');
+        $sigIdElem = $dom->createElement('cbc:ID', $supplier['vkn_tckn'] ?? '');
+        $sigIdElem->setAttribute('schemeID', strlen($supplier['vkn_tckn'] ?? '') === 11 ? 'TCKN' : 'VKN');
+        $sigPartyId->appendChild($sigIdElem);
+        $signatoryParty->appendChild($sigPartyId);
+
+        $sigPostalAddress = $dom->createElement('cac:PostalAddress');
+        $sigPostalAddress->appendChild($dom->createElement('cbc:StreetName', htmlspecialchars($supplier['adres'] ?? '', ENT_XML1, 'UTF-8')));
+        $sigPostalAddress->appendChild($dom->createElement('cbc:CitySubdivisionName', htmlspecialchars($supplier['ilce'] ?? '', ENT_XML1, 'UTF-8')));
+        $sigPostalAddress->appendChild($dom->createElement('cbc:CityName', htmlspecialchars($supplier['il'] ?? '', ENT_XML1, 'UTF-8')));
+        $sigCountry = $dom->createElement('cac:Country');
+        $sigCountry->appendChild($dom->createElement('cbc:Name', 'Türkiye'));
+        $sigPostalAddress->appendChild($sigCountry);
+        $signatoryParty->appendChild($sigPostalAddress);
+        $signature->appendChild($signatoryParty);
+
+        $digitalSig = $dom->createElement('cac:DigitalSignatureAttachment');
+        $extRef = $dom->createElement('cac:ExternalReference');
+        $extRef->appendChild($dom->createElement('cbc:URI', '#Signature_' . ($invoice['fatura_no'] ?? '')));
+        $digitalSig->appendChild($extRef);
+        $signature->appendChild($digitalSig);
+        $root->appendChild($signature);
 
         // 1. Satıcı / Gönderici Firma (AccountingSupplierParty)
         $supplierParty = $dom->createElement('cac:AccountingSupplierParty');
@@ -115,14 +149,18 @@ class UblGeneratorService
         $cPartyId->appendChild($cIdElem);
         $cParty->appendChild($cPartyId);
 
-        $cPartyName = $dom->createElement('cac:PartyName');
-        $cPartyName->appendChild($dom->createElement('cbc:Name', htmlspecialchars($invoice['alici_unvan'] ?? '', ENT_XML1, 'UTF-8')));
-        $cParty->appendChild($cPartyName);
+        $isTckn = (strlen($invoice['alici_vkn_tckn'] ?? '') === 11);
+
+        if (!$isTckn) {
+            $cPartyName = $dom->createElement('cac:PartyName');
+            $cPartyName->appendChild($dom->createElement('cbc:Name', htmlspecialchars($invoice['alici_unvan'] ?? '', ENT_XML1, 'UTF-8')));
+            $cParty->appendChild($cPartyName);
+        }
 
         $cPostalAddress = $dom->createElement('cac:PostalAddress');
-        $cPostalAddress->appendChild($dom->createElement('cbc:StreetName', htmlspecialchars($invoice['alici_adres'] ?? '', ENT_XML1, 'UTF-8')));
-        $cPostalAddress->appendChild($dom->createElement('cbc:CitySubdivisionName', htmlspecialchars($invoice['alici_ilce'] ?? '', ENT_XML1, 'UTF-8')));
-        $cPostalAddress->appendChild($dom->createElement('cbc:CityName', htmlspecialchars($invoice['alici_il'] ?? '', ENT_XML1, 'UTF-8')));
+        $cPostalAddress->appendChild($dom->createElement('cbc:StreetName', htmlspecialchars($invoice['alici_adres'] ?? 'Merkez', ENT_XML1, 'UTF-8')));
+        $cPostalAddress->appendChild($dom->createElement('cbc:CitySubdivisionName', htmlspecialchars($invoice['alici_ilce'] ?? 'Merkez', ENT_XML1, 'UTF-8')));
+        $cPostalAddress->appendChild($dom->createElement('cbc:CityName', htmlspecialchars($invoice['alici_il'] ?? 'Kayseri', ENT_XML1, 'UTF-8')));
         $cCountry = $dom->createElement('cac:Country');
         $cCountry->appendChild($dom->createElement('cbc:Name', $invoice['alici_ulke'] ?? 'Türkiye'));
         $cPostalAddress->appendChild($cCountry);
@@ -134,6 +172,18 @@ class UblGeneratorService
             $cTaxScheme->appendChild($dom->createElement('cbc:Name', htmlspecialchars($invoice['alici_vergi_dairesi'], ENT_XML1, 'UTF-8')));
             $cPartyTaxScheme->appendChild($cTaxScheme);
             $cParty->appendChild($cPartyTaxScheme);
+        }
+
+        if ($isTckn) {
+            $fullName = trim($invoice['alici_unvan'] ?? '');
+            $parts = explode(' ', $fullName);
+            $family = (count($parts) > 1) ? array_pop($parts) : '.';
+            $first = implode(' ', $parts) ?: $fullName;
+
+            $cPerson = $dom->createElement('cac:Person');
+            $cPerson->appendChild($dom->createElement('cbc:FirstName', htmlspecialchars($first, ENT_XML1, 'UTF-8')));
+            $cPerson->appendChild($dom->createElement('cbc:FamilyName', htmlspecialchars($family, ENT_XML1, 'UTF-8')));
+            $cParty->appendChild($cPerson);
         }
 
         $customerParty->appendChild($cParty);

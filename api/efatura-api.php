@@ -216,7 +216,37 @@ try {
             }
             break;
 
-        // 10. UBL-TR XML İndir
+        // 10. EDM Gelen Faturaları Senkronize Et
+        case 'sync_incoming_invoices':
+            $res = $invoiceService->syncIncomingInvoices($firmId);
+            $res['status'] = (!empty($res['success'])) ? 'success' : 'error';
+            echo json_encode($res);
+            break;
+
+        // 10.1. EDM Giden ve Taslak Faturaları Senkronize Et
+        case 'sync_outgoing_invoices':
+            $res = $invoiceService->syncOutgoingInvoices($firmId);
+            $res['status'] = (!empty($res['success'])) ? 'success' : 'error';
+            echo json_encode($res);
+            break;
+
+        // 11. Ticari Faturaya Kabul / Red Yanıtı
+        case 'respond_commercial':
+            $encryptedId = $_POST['invoice_id'] ?? '';
+            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $responseType = strtoupper(trim($_POST['response_type'] ?? ''));
+            $reason = trim($_POST['reason'] ?? '');
+
+            if (!$invoiceId || !in_array($responseType, ['KABUL', 'RED'])) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz fatura veya yanıt türü.']);
+                exit;
+            }
+
+            $res = $invoiceService->respondToIncomingInvoice($invoiceId, $firmId, $responseType, $reason);
+            echo json_encode($res);
+            break;
+
+        // 12. UBL-TR XML İndir
         case 'download_xml':
             $encryptedId = $_GET['invoice_id'] ?? '';
             $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);

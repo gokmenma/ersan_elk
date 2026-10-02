@@ -30,11 +30,14 @@ $title = 'Giden Faturalar';
                     <i class="bx bx-cog font-size-16"></i> İşlemler
                 </button>
                 <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <button type="button" class="dropdown-item d-flex align-items-center text-success" id="btnSyncOutgoing">
+                        <i class="bx bx-refresh me-2 font-size-16"></i> EDM'den Faturaları Çek
+                    </button>
                     <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/ayarlar">
                         <i class="bx bx-slider-alt me-2 text-primary font-size-16"></i> Entegratör Ayarları
                     </a>
                     <div class="dropdown-divider"></div>
-                    <button type="button" class="dropdown-item d-flex align-items-center text-success" id="exportExcel">
+                    <button type="button" class="dropdown-item d-flex align-items-center text-secondary" id="exportExcel">
                         <i class="bx bx-file me-2 font-size-16"></i> Excel'e Aktar
                     </button>
                 </div>

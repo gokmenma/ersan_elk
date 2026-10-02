@@ -100,21 +100,34 @@ class EInvoiceService
             $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, ['fatura_no' => $faturaNo]);
         }
 
+        $projectRoot = defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2);
+
         // Satıcı / Firma Bilgilerini Getir
+        $firmaModel = new \App\Model\FirmaModel();
+        $firma = $firmaModel->getFirma($firmId);
+
+        $sellerVkn = (!empty($firma->vergi_no) && ctype_digit($firma->vergi_no)) ? $firma->vergi_no : ($settings['api_username'] ?? '');
+        if (!ctype_digit($sellerVkn)) {
+            $sellerVkn = '3230512384';
+        }
+
         $supplier = [
-            'vkn_tckn'      => $settings['api_username'] ?? '',
-            'unvan'         => $_SESSION['firma_adi'] ?? 'ERSAN ELEKTRİK LTD. ŞTİ.',
-            'adres'         => 'Merkez Mah.',
-            'ilce'          => 'Merkez',
-            'il'            => 'Kayseri',
-            'vergi_dairesi' => 'Erciyes Vergi Dairesi'
+            'vkn_tckn'      => $sellerVkn,
+            'unvan'         => !empty($firma->firma_unvan) ? $firma->firma_unvan : (!empty($firma->firma_adi) ? $firma->firma_adi : ($_SESSION['firma_adi'] ?? 'ERSAN ELEKTRİK LTD. ŞTİ.')),
+            'adres'         => !empty($firma->adres) ? $firma->adres : 'Merkez Mah.',
+            'ilce'          => !empty($firma->ilce) ? $firma->ilce : 'Merkez',
+            'il'            => !empty($firma->il) ? $firma->il : 'Kayseri',
+            'vergi_dairesi' => !empty($firma->vergi_dairesi) ? $firma->vergi_dairesi : 'Erciyes Vergi Dairesi',
+            'telefon'       => $firma->telefon ?? '',
+            'eposta'        => !empty($firma->email) ? $firma->email : (!empty($firma->kep_adresi) ? $firma->kep_adresi : ''),
+            'web'           => $firma->web_sitesi ?? ''
         ];
 
         // UBL-TR XML Üret
         $xmlContent = $this->ublService->generateInvoiceXml($invoice, $supplier, $invoice['satirlar'] ?? []);
 
         // XML Dosyasını Kaydet
-        $storageDir = PROJECT_ROOT . '/storage/invoices/' . $firmId . '/' . date('Y/m');
+        $storageDir = $projectRoot . '/storage/invoices/' . $firmId . '/' . date('Y/m');
         if (!is_dir($storageDir)) {
             mkdir($storageDir, 0775, true);
         }
@@ -124,13 +137,14 @@ class EInvoiceService
         // EDM Bilişim'e Gönder
         try {
             $edmClient = new EdmSoapClient($firmId);
+            $receiverVkn = $invoice['alici_vkn_tckn'] ?: '1111111111';
+            $receiverAlias = ($invoice['belge_turu'] === 'EFATURA')
+                ? ($invoice['alici_posta_kutusu'] ?: 'urn:mail:defaultpk')
+                : 'defaultpk';
+            $senderVkn = $sellerVkn;
+            $senderAlias = $settings['varsayilan_gonderici_alias'] ?: 'urn:mail:defaultgb@edmbilisim.com.tr';
 
-            if ($invoice['belge_turu'] === 'EFATURA') {
-                $receiverAlias = $invoice['alici_posta_kutusu'] ?: 'urn:mail:defaultpk';
-                $sendResult = $edmClient->sendInvoice($xmlContent, $receiverAlias, $settings['varsayilan_gonderici_alias'], $invoiceId);
-            } else {
-                $sendResult = $edmClient->archiveInvoice($xmlContent, $invoice['alici_eposta'], $invoiceId);
-            }
+            $sendResult = $edmClient->sendInvoice($xmlContent, $receiverVkn, $receiverAlias, $senderVkn, $senderAlias, $invoiceId, $invoice['ettn'] ?? null);
 
             if ($sendResult['success']) {
                 $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, [
@@ -189,11 +203,19 @@ class EInvoiceService
                     $newStatus = 'HATALI';
                 }
 
+                $ticariYanit = $invoice['ticari_yanit'] ?: 'BEKLIYOR';
+                if (!empty($st['response_code'])) {
+                    $respUpper = strtoupper(trim($st['response_code']));
+                    if (in_array($respUpper, ['KABUL', 'RED', 'BEKLIYOR'])) {
+                        $ticariYanit = $respUpper;
+                    }
+                }
+
                 $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, [
                     'entegrator_durum_kodu' => $newStatus,
                     'gib_durum_kodu'        => $st['gib_code'] ?? null,
                     'gib_durum_aciklamasi'  => $st['gib_desc'] ?: $st['status_desc'],
-                    'ticari_yanit'          => $st['response_code'] ?? $invoice['ticari_yanit']
+                    'ticari_yanit'          => $ticariYanit
                 ]);
 
                 return [
@@ -355,7 +377,7 @@ class EInvoiceService
 
         // GİB Logosu Base64
         $gibLogoBase64 = '';
-        $gibLogoPath = PROJECT_ROOT . '/assets/images/gib_logo.png';
+        $gibLogoPath = (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/assets/images/gib_logo.png';
         if (file_exists($gibLogoPath)) {
             $gibLogoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($gibLogoPath));
         }
@@ -703,22 +725,356 @@ class EInvoiceService
     /**
      * EDM'den Gelen Faturaları Çekme / Senkronize Etme
      */
-    public function syncIncomingInvoices(int $firmId): array
+    /**
+     * EDM'den Gelen Faturaları Çekme ve Senkronize Etme
+     */
+    public function syncIncomingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null): array
     {
         try {
-            // EDM SOAP istemcisi üzerinden gelen kutusunu tara
             $client = new EdmSoapClient($firmId);
-            $sessionId = $client->login();
+            $invoices = $client->getInvoices('IN', $startDate ?: date('Y-m-d', strtotime('-7 days')), $endDate ?: date('Y-m-d'), 100, 'CREATE');
+
+            $projectRoot = defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2);
+            $addedCount = 0;
+            $updatedCount = 0;
+
+            foreach ($invoices as $inv) {
+                $uuid = $inv['uuid'];
+                $faturaNo = $inv['fatura_no'];
+                $xml = $inv['xml'];
+
+                if (empty($uuid)) continue;
+
+                // Fatura sistemde var mı kontrol et
+                $existing = $this->invoiceModel->getInvoiceByEttn($uuid, $firmId);
+                if ($existing) {
+                    if (!empty($faturaNo) && ($existing['fatura_no'] !== $faturaNo || empty($existing['fatura_no']))) {
+                        $this->invoiceModel->updateInvoiceStatus((int)$existing['id'], $firmId, [
+                            'fatura_no' => $faturaNo,
+                            'entegrator_durum_kodu' => 'ONAYLANDI'
+                        ]);
+                        $updatedCount++;
+                    }
+                    continue;
+                }
+
+                // Gelen faturada düzenleyen (tedarikçi/satıcı) bilgileri
+                $tedarikciUnvan = $inv['supplier'] ?: 'Tedarikçi Firma';
+                $tedarikciVkn = $inv['sender'] ?: '';
+                $faturaTarihi = $inv['issue_date'] ?: date('Y-m-d');
+                $tutar = (float)($inv['payable_amount'] ?: 0.00);
+                $belgeTuru = (strpos($faturaNo, 'EAR') === 0) ? 'EARSIV' : 'EFATURA';
+                $faturaProfili = $inv['profile_id'] ?: 'TICARIFATURA';
+
+                if (!empty($xml)) {
+                    $xmlObj = @simplexml_load_string($xml);
+                    if ($xmlObj) {
+                        $faturaTarihi = (string)($xmlObj->xpath('//cbc:IssueDate')[0] ?? $faturaTarihi);
+                        $faturaProfili = (string)($xmlObj->xpath('//cbc:ProfileID')[0] ?? $faturaProfili);
+                        $payableAmt = (float)($xmlObj->xpath('//cac:LegalMonetaryTotal/cbc:PayableAmount')[0] ?? 0);
+                        if ($payableAmt > 0) $tutar = $payableAmt;
+
+                        $partyName = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:PartyName/cbc:Name')[0] ?? null;
+                        $personName = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:Person/cbc:FirstName')[0] ?? null;
+                        $personFamily = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:Person/cbc:FamilyName')[0] ?? null;
+
+                        if ($partyName) {
+                            $tedarikciUnvan = (string)$partyName;
+                        } elseif ($personName) {
+                            $tedarikciUnvan = trim((string)$personName . ' ' . (string)$personFamily);
+                        }
+
+                        $vknEl = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID')[0] ?? null;
+                        if ($vknEl) {
+                            $tedarikciVkn = (string)$vknEl;
+                        }
+                    }
+                }
+
+                // XML Dosyasını Kaydet
+                $xmlPath = null;
+                if (!empty($xml)) {
+                    $storageDir = $projectRoot . '/storage/invoices/' . $firmId . '/gelen/' . date('Y/m');
+                    if (!is_dir($storageDir)) {
+                        mkdir($storageDir, 0775, true);
+                    }
+                    $xmlPath = $storageDir . '/' . $uuid . '.xml';
+                    file_put_contents($xmlPath, $xml);
+                }
+
+                $header = [
+                    'cari_id'               => null,
+                    'ettn'                  => $uuid,
+                    'fatura_no'             => $faturaNo ?: 'Gelen Fatura',
+                    'yon'                   => 'GELEN',
+                    'belge_turu'            => $belgeTuru,
+                    'fatura_profili'        => $faturaProfili,
+                    'fatura_tipi'           => 'SATIS',
+                    'fatura_tarihi'         => $faturaTarihi,
+                    'duzenleme_saati'       => date('H:i:s'),
+                    'vade_tarihi'           => null,
+                    'alici_vkn_tckn'        => $tedarikciVkn,
+                    'alici_unvan'           => $tedarikciUnvan,
+                    'alici_vergi_dairesi'   => null,
+                    'alici_adres'           => null,
+                    'alici_il'              => null,
+                    'alici_ilce'            => null,
+                    'alici_ulke'            => 'Türkiye',
+                    'alici_eposta'          => null,
+                    'alici_telefon'         => null,
+                    'alici_posta_kutusu'    => null,
+                    'para_birimi'           => 'TRY',
+                    'doviz_kuru'            => 1.0000,
+                    'satir_toplami'         => $tutar,
+                    'iskonto_toplami'       => 0,
+                    'kdv_matrahi'           => $tutar,
+                    'hesaplanan_kdv'        => 0,
+                    'tevkifat_tutari'       => 0,
+                    'odenecek_tutar'        => $tutar,
+                    'notlar'                => 'EDM Gelen Fatura Senkronizasyonu',
+                    'entegrator_durum_kodu' => 'ONAYLANDI',
+                    'ticari_yanit'          => 'BEKLIYOR',
+                    'ubl_xml_path'          => $xmlPath,
+                    'olusturan_user_id'     => (int)($_SESSION['user_id'] ?? 1)
+                ];
+
+                $lines = [
+                    [
+                        'mal_hizmet_adi' => 'Gelen Fatura Kalemi (EDM)',
+                        'miktar'         => 1,
+                        'birim_kodu'     => 'C62',
+                        'birim_fiyat'    => $tutar,
+                        'iskonto_orani'  => 0,
+                        'kdv_orani'      => 0
+                    ]
+                ];
+
+                $newId = $this->invoiceModel->createInvoice($firmId, $header, $lines, (int)($_SESSION['user_id'] ?? 1));
+                if ($newId) {
+                    $addedCount++;
+                }
+            }
 
             return [
-                'success' => true,
-                'message' => 'Gelen faturalar başarıyla senkronize edildi. (Test ortamı gelen kutusu güncel)'
+                'success'       => true,
+                'message'       => "EDM Gelen Faturalar senkronize edildi: {$addedCount} yeni fatura sisteme eklendi, {$updatedCount} kayıt güncellendi.",
+                'added_count'   => $addedCount,
+                'updated_count' => $updatedCount
             ];
         } catch (Exception $e) {
             error_log("EInvoiceService::syncIncomingInvoices Error: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Gelen faturalar taranırken hata: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * EDM'den Giden / Taslak Faturaları Çekme ve Senkronize Etme
+     */
+    public function syncOutgoingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null): array
+    {
+        try {
+            $client = new EdmSoapClient($firmId);
+            $invoices = $client->getInvoices('OUT', $startDate ?: date('Y-m-d', strtotime('-3 days')), $endDate ?: date('Y-m-d'), 100, 'CREATE');
+
+            $projectRoot = defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2);
+            $addedCount = 0;
+            $updatedCount = 0;
+
+            foreach ($invoices as $inv) {
+                $uuid = $inv['uuid'];
+                $faturaNo = $inv['fatura_no'];
+                $xml = $inv['xml'];
+
+                if (empty($uuid)) continue;
+
+                // XML ve Header'dan temel bilgileri al
+                $aliciUnvan = $inv['customer'] ?: 'Alıcı Müşteri';
+                $aliciVkn = $inv['receiver'] ?: '';
+                $faturaTarihi = $inv['issue_date'] ?: date('Y-m-d');
+                $tutar = (float)($inv['payable_amount'] ?: 0.00);
+                $belgeTuru = (strpos($faturaNo, 'EAR') === 0) ? 'EARSIV' : 'EFATURA';
+                $faturaProfili = $inv['profile_id'] ?: 'TICARIFATURA';
+
+                if (!empty($xml)) {
+                    $xmlObj = @simplexml_load_string($xml);
+                    if ($xmlObj) {
+                        $faturaTarihi = (string)($xmlObj->xpath('//cbc:IssueDate')[0] ?? $faturaTarihi);
+                        $faturaProfili = (string)($xmlObj->xpath('//cbc:ProfileID')[0] ?? $faturaProfili);
+                        $payableAmt = (float)($xmlObj->xpath('//cac:LegalMonetaryTotal/cbc:PayableAmount')[0] ?? 0);
+                        if ($payableAmt > 0) $tutar = $payableAmt;
+                        
+                        $partyName = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:PartyName/cbc:Name')[0] ?? null;
+                        $personName = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:Person/cbc:FirstName')[0] ?? null;
+                        $personFamily = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:Person/cbc:FamilyName')[0] ?? null;
+
+                        if ($partyName) {
+                            $aliciUnvan = (string)$partyName;
+                        } elseif ($personName) {
+                            $aliciUnvan = trim((string)$personName . ' ' . (string)$personFamily);
+                        }
+
+                        $vknEl = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID')[0] ?? null;
+                        if ($vknEl) {
+                            $aliciVkn = (string)$vknEl;
+                        }
+                    }
+                }
+
+                // Belge Türü Normalizasyonu
+                $belgeTuru = 'EFATURA';
+                if (strpos($faturaNo, 'EAR') === 0 || strpos($faturaNo, 'VCA') === 0 || strpos($faturaNo, 'ERA') === 0) {
+                    $belgeTuru = 'EARSIV';
+                }
+                if (!empty($inv['header']->EARCHIVE) || !empty($inv['header']->INTERNETSALES)) {
+                    $belgeTuru = 'EARSIV';
+                }
+
+                // Profil Normalizasyonu (TICARIFATURA, TEMELFATURA, EARSIVFATURA, KAMU, IHRACAT)
+                $profUpper = strtoupper(str_replace([' ', '_', '-'], '', (string)$faturaProfili));
+                if (strpos($profUpper, 'EARSIV') !== false) {
+                    $faturaProfili = 'EARSIVFATURA';
+                } elseif (strpos($profUpper, 'TICARI') !== false) {
+                    $faturaProfili = 'TICARIFATURA';
+                } elseif (strpos($profUpper, 'KAMU') !== false) {
+                    $faturaProfili = 'KAMU';
+                } elseif (strpos($profUpper, 'IHRACAT') !== false) {
+                    $faturaProfili = 'IHRACAT';
+                } elseif (strpos($profUpper, 'TEMEL') !== false) {
+                    $faturaProfili = 'TEMELFATURA';
+                } else {
+                    $faturaProfili = ($belgeTuru === 'EARSIV') ? 'EARSIVFATURA' : 'TICARIFATURA';
+                }
+
+                // Fatura Tipi Normalizasyonu (SATIS, IADE, TEVKIFAT, ISTISNA, OZELMATRAH, IHRACKAYITLI)
+                $invTypeRaw = (string)($inv['header']->INVOICE_TYPE ?? 'SATIS');
+                $tipUpper = strtoupper(str_replace([' ', '_', '-'], '', $invTypeRaw));
+                $tipUpper = str_replace(['İ', 'I', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['I', 'I', 'S', 'G', 'U', 'O', 'C'], $tipUpper);
+                if (strpos($tipUpper, 'IADE') !== false) $faturaTipi = 'IADE';
+                elseif (strpos($tipUpper, 'TEVKIFAT') !== false) $faturaTipi = 'TEVKIFAT';
+                elseif (strpos($tipUpper, 'ISTISNA') !== false) $faturaTipi = 'ISTISNA';
+                elseif (strpos($tipUpper, 'OZELMATRAH') !== false) $faturaTipi = 'OZELMATRAH';
+                elseif (strpos($tipUpper, 'IHRACKAYITLI') !== false) $faturaTipi = 'IHRACKAYITLI';
+                else $faturaTipi = 'SATIS';
+
+                $isDraft = (empty($faturaNo) || $faturaNo === 'Taslak' || strpos($faturaNo, 'PSL') === 0);
+                $statusKodu = $isDraft ? 'TASLAK' : 'GONDERILDI';
+                $rawStatus = (string)($inv['header']->STATUS ?? '');
+                if (stripos($rawStatus, 'CANCEL') !== false || stripos($rawStatus, 'IPTAL') !== false) {
+                    $statusKodu = 'IPTAL';
+                } elseif (stripos($rawStatus, 'SUCCEED') !== false && !$isDraft) {
+                    $statusKodu = 'ONAYLANDI';
+                }
+
+                // XML Dosyasını Kaydet
+                $xmlPath = null;
+                if (!empty($xml)) {
+                    $storageDir = $projectRoot . '/storage/invoices/' . $firmId . '/giden/' . date('Y/m');
+                    if (!is_dir($storageDir)) {
+                        mkdir($storageDir, 0775, true);
+                    }
+                    $xmlPath = $storageDir . '/' . $uuid . '.xml';
+                    file_put_contents($xmlPath, $xml);
+                }
+
+                // Fatura sistemde var mı kontrol et (Güncelleme Kontrolü)
+                $existing = $this->invoiceModel->getInvoiceByEttn($uuid, $firmId);
+                if ($existing) {
+                    $updateData = [];
+                    if (!empty($faturaNo) && $faturaNo !== $existing['fatura_no']) {
+                        $updateData['fatura_no'] = $faturaNo;
+                    }
+                    if ($statusKodu !== $existing['entegrator_durum_kodu']) {
+                        $updateData['entegrator_durum_kodu'] = $statusKodu;
+                    }
+                    if (abs($tutar - (float)$existing['odenecek_tutar']) > 0.01) {
+                        $updateData['odenecek_tutar'] = $tutar;
+                        $updateData['satir_toplami'] = $tutar;
+                        $updateData['kdv_matrahi'] = $tutar;
+                    }
+                    if (!empty($aliciUnvan) && $aliciUnvan !== 'Alıcı Müşteri' && $aliciUnvan !== $existing['alici_unvan']) {
+                        $updateData['alici_unvan'] = $aliciUnvan;
+                    }
+                    if (!empty($aliciVkn) && $aliciVkn !== $existing['alici_vkn_tckn']) {
+                        $updateData['alici_vkn_tckn'] = $aliciVkn;
+                    }
+                    if (!empty($xmlPath) && empty($existing['ubl_xml_path'])) {
+                        $updateData['ubl_xml_path'] = $xmlPath;
+                    }
+
+                    if (!empty($updateData)) {
+                        $this->invoiceModel->updateInvoiceStatus((int)$existing['id'], $firmId, $updateData);
+                        $updatedCount++;
+                    }
+                    continue;
+                }
+
+                // Veritabanına kaydet
+                $header = [
+                    'cari_id'               => null,
+                    'ettn'                  => $uuid,
+                    'fatura_no'             => $faturaNo ?: 'Taslak',
+                    'yon'                   => 'GIDEN',
+                    'belge_turu'            => $belgeTuru,
+                    'fatura_profili'        => $faturaProfili,
+                    'fatura_tipi'           => $faturaTipi,
+                    'fatura_tarihi'         => $faturaTarihi,
+                    'duzenleme_saati'       => date('H:i:s'),
+                    'vade_tarihi'           => null,
+                    'alici_vkn_tckn'        => $aliciVkn,
+                    'alici_unvan'           => $aliciUnvan,
+                    'alici_vergi_dairesi'   => null,
+                    'alici_adres'           => null,
+                    'alici_il'              => null,
+                    'alici_ilce'            => null,
+                    'alici_ulke'            => 'Türkiye',
+                    'alici_eposta'          => null,
+                    'alici_telefon'         => null,
+                    'alici_posta_kutusu'    => null,
+                    'para_birimi'           => 'TRY',
+                    'doviz_kuru'            => 1.0000,
+                    'satir_toplami'         => $tutar,
+                    'iskonto_toplami'       => 0,
+                    'kdv_matrahi'           => $tutar,
+                    'hesaplanan_kdv'        => 0,
+                    'tevkifat_tutari'       => 0,
+                    'odenecek_tutar'        => $tutar,
+                    'notlar'                => 'EDM Sisteminden Senkronize Edildi',
+                    'entegrator_durum_kodu' => $isDraft ? 'TASLAK' : 'GONDERILDI',
+                    'ubl_xml_path'          => $xmlPath,
+                    'olusturan_user_id'     => (int)($_SESSION['user_id'] ?? 1)
+                ];
+
+                $lines = [
+                    [
+                        'mal_hizmet_adi' => 'Hizmet / Ürün Kalemi (EDM)',
+                        'miktar'         => 1,
+                        'birim_kodu'     => 'C62',
+                        'birim_fiyat'    => $tutar,
+                        'iskonto_orani'  => 0,
+                        'kdv_orani'      => 0
+                    ]
+                ];
+
+                $newId = $this->invoiceModel->createInvoice($firmId, $header, $lines, (int)($_SESSION['user_id'] ?? 1));
+                if ($newId) {
+                    $addedCount++;
+                }
+            }
+
+            return [
+                'success'       => true,
+                'message'       => "EDM senkronizasyonu tamamlandı: {$addedCount} yeni fatura sisteme eklendi, {$updatedCount} kayıt güncellendi.",
+                'added_count'   => $addedCount,
+                'updated_count' => $updatedCount
+            ];
+        } catch (Exception $e) {
+            error_log("EInvoiceService::syncOutgoingInvoices Error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Senkronizasyon sırasında hata oluştu: ' . $e->getMessage()
             ];
         }
     }
