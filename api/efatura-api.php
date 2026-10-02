@@ -127,20 +127,59 @@ try {
             echo json_encode(['status' => 'success', 'html' => $html]);
             break;
 
-        // 6. DataTables Sunucu Taraflı Giden Faturalar Listesi
+        // 6. DataTables Sunucu Taraflı Faturalar Listesi (Taslak, Giden, Gelen)
         case 'list_giden':
+        case 'list_invoices':
             $params = $_GET;
-            $list = $invoiceModel->ajaxList($params, $firmId, 'GIDEN');
+            $listType = $params['list_type'] ?? ($action === 'list_giden' ? 'giden' : 'giden');
+            $yon = ($listType === 'gelen') ? 'GELEN' : 'GIDEN';
+            $list = $invoiceModel->ajaxList($params, $firmId, $yon, $listType);
             echo json_encode($list);
             break;
 
         // 7. Özet Kart Sayıları ve Tutarları
         case 'summary_stats':
-            $stats = $invoiceModel->getSummaryStats($firmId, 'GIDEN');
+            $listType = $_GET['list_type'] ?? 'giden';
+            $yon = ($listType === 'gelen') ? 'GELEN' : 'GIDEN';
+            $stats = $invoiceModel->getSummaryStats($firmId, $yon, $listType);
             echo json_encode(['status' => 'success', 'data' => $stats]);
             break;
 
-        // 8. Faturayı İptal Et
+        // 8. Toplu Taslak Fatura Gönderimi
+        case 'bulk_send_invoices':
+            $ids = $_POST['invoice_ids'] ?? [];
+            if (empty($ids) || !is_array($ids)) {
+                echo json_encode(['status' => 'error', 'message' => 'Lütfen gönderilecek en az bir fatura seçin.']);
+                exit;
+            }
+
+            $successCount = 0;
+            $failCount = 0;
+            $errors = [];
+
+            foreach ($ids as $rawId) {
+                $invoiceId = is_numeric($rawId) ? (int)$rawId : (int)Security::decrypt($rawId);
+                if ($invoiceId > 0) {
+                    $sendRes = $invoiceService->sendInvoice($invoiceId, $firmId);
+                    if ($sendRes['success']) {
+                        $successCount++;
+                    } else {
+                        $failCount++;
+                        $errors[] = "#$invoiceId: " . $sendRes['message'];
+                    }
+                }
+            }
+
+            echo json_encode([
+                'status'        => $successCount > 0 ? 'success' : 'error',
+                'message'       => "Toplam {$successCount} fatura başarıyla EDM sistemine iletildi. " . ($failCount > 0 ? "({$failCount} adet başarısız)" : ""),
+                'success_count' => $successCount,
+                'fail_count'    => $failCount,
+                'errors'        => $errors
+            ]);
+            break;
+
+        // 9. Faturayı İptal Et
         case 'cancel_invoice':
             $encryptedId = $_POST['invoice_id'] ?? '';
             $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
@@ -156,6 +195,24 @@ try {
                 echo json_encode(['status' => 'success', 'message' => 'Fatura başarıyla iptal edildi.']);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Fatura iptal edilirken bir hata oluştu.']);
+            }
+            break;
+
+        // 9. Taslak Faturayı Sil (Soft Delete)
+        case 'delete_draft':
+            $encryptedId = $_POST['invoice_id'] ?? '';
+            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+
+            if (!$invoiceId) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz fatura kimliği.']);
+                exit;
+            }
+
+            $success = $invoiceModel->deleteDraftInvoice($invoiceId, $firmId);
+            if ($success) {
+                echo json_encode(['status' => 'success', 'message' => 'Taslak fatura başarıyla silindi.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Taslak fatura silinemedi. Sadece taslak durumundaki faturalar silinebilir.']);
             }
             break;
 

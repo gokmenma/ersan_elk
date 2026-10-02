@@ -408,4 +408,94 @@ class Helper
         $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
+
+    /**
+     * Sayıyı Türkçe metne çevirir (Örn: 1.18 -> Yalnız #BirTLOnSekizKR#)
+     */
+    public static function numberToWordsTr($number, string $currency = 'TL', string $subUnit = 'KR', string $prefix = 'Yalnız ', bool $wrapHash = true): string
+    {
+        $birlikler = ['', 'Bir', 'İki', 'Üç', 'Dört', 'Beş', 'Altı', 'Yedi', 'Sekiz', 'Dokuz'];
+        $onluklar = ['', 'On', 'Yirmi', 'Otuz', 'Kırk', 'Elli', 'Altmış', 'Yetmiş', 'Seksen', 'Doksan'];
+        $basamaklar = ['', 'Bin', 'Milyon', 'Milyar', 'Trilyon'];
+
+        $number = (float)$number;
+        $formatted = number_format(abs($number), 2, '.', '');
+        list($tam, $ondalik) = explode('.', $formatted);
+
+        $tamYazi = '';
+        $grupSayisi = 0;
+        $tam = (string)(int)$tam;
+
+        if ($tam == 0) {
+            $tamYazi = 'Sıfır';
+        } else {
+            while (strlen($tam) > 0) {
+                $sonUc = substr($tam, -3);
+                $tam = substr($tam, 0, -3);
+                $ucBasamak = (int)$sonUc;
+
+                if ($ucBasamak > 0) {
+                    $ucYazi = '';
+                    $yuzler = (int)($ucBasamak / 100);
+                    $onlar = (int)(($ucBasamak % 100) / 10);
+                    $birler = $ucBasamak % 10;
+
+                    if ($yuzler > 0) {
+                        $ucYazi .= ($yuzler == 1 ? '' : $birlikler[$yuzler]) . 'Yüz';
+                    }
+                    if ($onlar > 0) {
+                        $ucYazi .= $onluklar[$onlar];
+                    }
+                    if ($birler > 0) {
+                        if (!($grupSayisi == 1 && $ucBasamak == 1)) {
+                            $ucYazi .= $birlikler[$birler];
+                        }
+                    }
+                    $tamYazi = $ucYazi . $basamaklar[$grupSayisi] . $tamYazi;
+                }
+                $grupSayisi++;
+            }
+        }
+
+        $ondalikYazi = '';
+        $ondalikInt = (int)$ondalik;
+        if ($ondalikInt > 0) {
+            $onlar = (int)($ondalikInt / 10);
+            $birler = $ondalikInt % 10;
+            if ($onlar > 0) $ondalikYazi .= $onluklar[$onlar];
+            if ($birler > 0) $ondalikYazi .= $birlikler[$birler];
+        }
+
+        $metin = $tamYazi . $currency;
+        if (!empty($ondalikYazi)) {
+            $metin .= $ondalikYazi . $subUnit;
+        }
+
+        if ($wrapHash) {
+            $metin = '#' . $metin . '#';
+        }
+
+        return $prefix . $metin;
+    }
+
+    /**
+     * QR Kod Base64 Data URI Üretir
+     */
+    public static function generateQrCode(string $data, int $scale = 3): string
+    {
+        try {
+            $options = new \chillerlan\QRCode\QROptions([
+                'version'      => 5,
+                'outputType'   => \chillerlan\QRCode\QRCode::OUTPUT_IMAGE_PNG,
+                'eccLevel'     => \chillerlan\QRCode\QRCode::ECC_L,
+                'scale'        => $scale,
+                'imageBase64'  => true,
+            ]);
+            $qrcode = new \chillerlan\QRCode\QRCode($options);
+            return $qrcode->render($data);
+        } catch (\Throwable $e) {
+            error_log("Helper::generateQrCode Error: " . $e->getMessage());
+            return '';
+        }
+    }
 }

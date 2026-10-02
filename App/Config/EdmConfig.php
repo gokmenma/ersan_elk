@@ -4,7 +4,7 @@ namespace App\Config;
 class EdmConfig
 {
     // EDM SOAP WSDL Endpoints
-    const TEST_WSDL_URL = 'https://efaturatest.edmbilisim.com.tr/EFaturaEDM21/EFaturaEDM.svc?wsdl';
+    const TEST_WSDL_URL = 'https://test.edmbilisim.com.tr/EFaturaEDM21ea/EFaturaEDM.svc?wsdl';
     const LIVE_WSDL_URL = 'https://efatura.edmbilisim.com.tr/EFaturaEDM/EFaturaEDM.svc?wsdl';
 
     // Belge ve Profil Tipleri

@@ -8,7 +8,7 @@ $maintitle = 'E-Fatura & E-Arşiv';
 $title = 'Yeni Fatura Düzenle';
 
 $firmId = (int)($_SESSION['firm_id'] ?? 1);
-$db = (new Db())->getConnection();
+$db = (new Db())->db;
 
 // Aktif Cari Listesini Çek
 $cariStmt = $db->prepare("SELECT id, CariAdi, Telefon, Email, firma, Adres, notlar FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC");
@@ -788,9 +788,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     title: 'Taslak Kaydedildi',
                     text: 'Fatura başarıyla taslak olarak kaydedildi.',
                     icon: 'success',
-                    confirmButtonText: 'Fatura Listesine Git'
+                    confirmButtonText: 'Taslak Faturalara Git'
                 }).then(() => {
-                    window.location.href = 'index.php?p=efatura/giden-list';
+                    window.location.href = 'index.php?p=efatura/taslak-list';
                 });
             } else {
                 Swal.fire('Hata', res.message, 'error');

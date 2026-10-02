@@ -60,6 +60,29 @@ class EdmSoapClient
     }
 
     /**
+     * EDM İstek Başlığı Üretir
+     */
+    private function buildRequestHeader(string $reason = 'Islem', ?string $sessionId = null): object
+    {
+        return (object)[
+            'SESSION_ID'       => $sessionId ?? ($this->sessionId ?: '0'),
+            'CLIENT_TXN_ID'    => sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                mt_rand(0, 0xffff),
+                mt_rand(0, 0x0fff) | 0x4000,
+                mt_rand(0, 0x3fff) | 0x8000,
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            ),
+            'ACTION_DATE'      => date('Y-m-d\TH:i:s'),
+            'APPLICATION_NAME' => 'EDM MINI CONNECTOR v1.0',
+            'CHANNEL_NAME'     => (($this->settings['environment'] ?? 'TEST') === 'LIVE') ? 'PROD' : 'TEST',
+            'HOSTNAME'         => 'MDORA17',
+            'REASON'           => $reason,
+            'COMPRESSED'       => 'N',
+        ];
+    }
+
+    /**
      * EDM Sistemine Login Olur ve SESSION_ID Alır
      */
     public function login(): string
@@ -75,23 +98,22 @@ class EdmSoapClient
             throw new Exception("Firma EDM API kullanıcı adı veya şifresi tanımlanmamış.");
         }
 
-        $params = [
-            'REQUEST' => [
-                'USER_NAME' => $username,
-                'PASSWORD'  => $password,
-            ]
+        $params = (object)[
+            'REQUEST_HEADER' => $this->buildRequestHeader('Login', '0'),
+            'USER_NAME'      => $username,
+            'PASSWORD'       => $password,
         ];
 
         try {
             $client = $this->getClient();
             $response = $client->Login($params);
 
-            if (isset($response->LoginResult->SESSION_ID) && !empty($response->LoginResult->SESSION_ID)) {
-                $this->sessionId = (string)$response->LoginResult->SESSION_ID;
+            if (isset($response->SESSION_ID) && !empty($response->SESSION_ID)) {
+                $this->sessionId = (string)$response->SESSION_ID;
                 $this->settingsModel->logSoapAction($this->firmId, null, 'Login', json_encode($params), json_encode($response), 'BASARILI');
                 return $this->sessionId;
-            } elseif (isset($response->SESSION_ID)) {
-                $this->sessionId = (string)$response->SESSION_ID;
+            } elseif (isset($response->LoginResult->SESSION_ID) && !empty($response->LoginResult->SESSION_ID)) {
+                $this->sessionId = (string)$response->LoginResult->SESSION_ID;
                 $this->settingsModel->logSoapAction($this->firmId, null, 'Login', json_encode($params), json_encode($response), 'BASARILI');
                 return $this->sessionId;
             }
@@ -116,11 +138,10 @@ class EdmSoapClient
 
         try {
             $client = $this->getClient();
-            $client->Logout([
-                'REQUEST_HEADER' => [
-                    'SESSION_ID' => $this->sessionId,
-                ]
-            ]);
+            $params = (object)[
+                'REQUEST_HEADER' => $this->buildRequestHeader('Logout', $this->sessionId),
+            ];
+            $client->Logout($params);
             $this->sessionId = null;
             return true;
         } catch (Exception $e) {
@@ -131,16 +152,41 @@ class EdmSoapClient
     }
 
     /**
+     * Firma Bilgilerini Getirir (GetCompany)
+     */
+    public function getCompany(): ?object
+    {
+        $username = $this->settings['api_username'] ?? '';
+        $password = $this->settings['api_password_decrypted'] ?? '';
+
+        $params = (object)[
+            'USER_NAME'        => $username,
+            'PASSWORD'         => $password,
+            'TAXNUMBER'        => '',
+            'SETCOMPANYMM'     => false,
+            'DELETECOMPANYMM'  => false,
+            'KEY'              => '',
+            'ISHASH'           => false
+        ];
+
+        try {
+            $client = $this->getClient();
+            return $client->GetCompany($params);
+        } catch (Exception $e) {
+            error_log("EdmSoapClient::getCompany Error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * VKN / TCKN Mükellefiyet Kontrolü (CheckUser)
      */
     public function checkUser(string $vknTckn): array
     {
         $sessionId = $this->login();
-        $params = [
-            'REQUEST_HEADER' => [
-                'SESSION_ID' => $sessionId,
-            ],
-            'USER' => [
+        $params = (object)[
+            'REQUEST_HEADER' => $this->buildRequestHeader('CheckUser', $sessionId),
+            'USER' => (object)[
                 'IDENTIFIER' => trim($vknTckn),
             ]
         ];
@@ -156,7 +202,7 @@ class EdmSoapClient
             $title = '';
             $aliases = [];
 
-            $userResult = $response->CheckUserResult->USER ?? ($response->USER ?? null);
+            $userResult = is_array($response) ? $response : ($response->GIBUSER ?? ($response->CheckUserResult->USER ?? ($response->USER ?? null)));
 
             if ($userResult) {
                 $isEInvoiceUser = true;
@@ -164,14 +210,21 @@ class EdmSoapClient
                     $first = $userResult[0];
                     $title = $first->TITLE ?? ($first->NAME ?? '');
                     foreach ($userResult as $u) {
-                        if (!empty($u->ALIAS)) {
-                            $aliases[] = $u->ALIAS;
+                        if (!empty($u->ALIAS) && ($u->UNIT ?? 'PK') === 'PK') {
+                            $aliases[] = trim($u->ALIAS);
+                        }
+                    }
+                    if (empty($aliases)) {
+                        foreach ($userResult as $u) {
+                            if (!empty($u->ALIAS)) {
+                                $aliases[] = trim($u->ALIAS);
+                            }
                         }
                     }
                 } else {
                     $title = $userResult->TITLE ?? ($userResult->NAME ?? '');
                     if (!empty($userResult->ALIAS)) {
-                        $aliases[] = $userResult->ALIAS;
+                        $aliases[] = trim($userResult->ALIAS);
                     }
                 }
             }
@@ -180,8 +233,8 @@ class EdmSoapClient
                 'is_einvoice_user' => $isEInvoiceUser,
                 'vkn_tckn'         => $vknTckn,
                 'title'            => $title,
-                'aliases'          => array_unique($aliases),
-                'default_alias'    => !empty($aliases) ? $aliases[0] : 'urn:mail:defaultpk',
+                'aliases'          => array_values(array_unique($aliases)),
+                'default_alias'    => !empty($aliases) ? $aliases[0] : null,
             ];
         } catch (SoapFault $sf) {
             // Eğer kullanıcı bulunamadıysa SOAP fault dönebilir
@@ -199,28 +252,34 @@ class EdmSoapClient
     /**
      * E-Fatura Gönderimi (SendInvoice)
      */
-    public function sendInvoice(string $xmlContent, string $receiverAlias, ?string $senderAlias = null, ?int $faturaId = null): array
+    public function sendInvoice(string $xmlContent, string $receiverVkn, string $receiverAlias, ?string $senderVkn = null, ?string $senderAlias = null, ?int $faturaId = null): array
     {
         $sessionId = $this->login();
-        $senderAlias = $senderAlias ?: ($this->settings['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb');
+        $senderAlias = $senderAlias ?: ($this->settings['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb@edmbilisim.com.tr');
+        $senderVkn = $senderVkn ?: ($this->settings['vkn_tckn'] ?? '');
 
-        $compressedXml = base64_encode(gzencode($xmlContent, 9));
+        // UBL XML içeriğini hazırla
+        $xmlBytes = $xmlContent;
 
-        $params = [
-            'REQUEST_HEADER' => [
-                'SESSION_ID' => $sessionId,
+        $invoiceObj = (object)[
+            'HEADER' => (object)[
+                'SENDER'   => $senderVkn,
+                'FROM'     => $senderAlias,
+                'RECEIVER' => $receiverVkn,
+                'TO'       => $receiverAlias,
             ],
-            'INVOICE' => [
-                'HEADER' => [
-                    'SENDER'   => $senderAlias,
-                    'RECEIVER' => $receiverAlias,
-                    'SUPPLIER' => $this->settings['api_username'] ?? '',
-                ],
-                'CONTENT' => [
-                    '_' => $compressedXml,
-                    'contentType' => 'application/zip',
-                ]
+            'CONTENT' => (object)[
+                'Value' => $xmlBytes
             ]
+        ];
+
+        $params = (object)[
+            'REQUEST_HEADER' => $this->buildRequestHeader('SendInvoice', $sessionId),
+            'RECEIVER' => (object)[
+                'vkn'   => $receiverVkn,
+                'alias' => $receiverAlias,
+            ],
+            'INVOICE' => [$invoiceObj]
         ];
 
         try {
@@ -229,8 +288,8 @@ class EdmSoapClient
 
             $this->settingsModel->logSoapAction($this->firmId, $faturaId, 'SendInvoice', 'XML Length: ' . strlen($xmlContent), json_encode($response), 'BASARILI');
 
-            $invoiceNo = $response->SendInvoiceResult->INVOICE_NUMBER ?? ($response->INVOICE_NUMBER ?? null);
-            $guid = $response->SendInvoiceResult->GUID ?? ($response->GUID ?? null);
+            $invoiceNo = $response->INVOICE_NUMBER ?? ($response->SendInvoiceResult->INVOICE_NUMBER ?? null);
+            $guid = $response->GUID ?? ($response->SendInvoiceResult->GUID ?? null);
 
             return [
                 'success'        => true,
@@ -249,67 +308,15 @@ class EdmSoapClient
     }
 
     /**
-     * E-Arşiv Fatura Gönderimi (ArchiveInvoice)
-     */
-    public function archiveInvoice(string $xmlContent, ?string $email = null, ?int $faturaId = null): array
-    {
-        $sessionId = $this->login();
-        $compressedXml = base64_encode(gzencode($xmlContent, 9));
-
-        $params = [
-            'REQUEST_HEADER' => [
-                'SESSION_ID' => $sessionId,
-            ],
-            'ARCHIVE_INVOICE' => [
-                'HEADER' => [
-                    'SUPPLIER' => $this->settings['api_username'] ?? '',
-                    'SEND_TYPE' => !empty($email) ? 'ELEKTRONIK' : 'KAGIT',
-                    'EMAIL' => $email,
-                ],
-                'CONTENT' => [
-                    '_' => $compressedXml,
-                    'contentType' => 'application/zip',
-                ]
-            ]
-        ];
-
-        try {
-            $client = $this->getClient();
-            $response = $client->ArchiveInvoice($params);
-
-            $this->settingsModel->logSoapAction($this->firmId, $faturaId, 'ArchiveInvoice', 'XML Length: ' . strlen($xmlContent), json_encode($response), 'BASARILI');
-
-            $invoiceNo = $response->ArchiveInvoiceResult->INVOICE_NUMBER ?? ($response->INVOICE_NUMBER ?? null);
-            $guid = $response->ArchiveInvoiceResult->GUID ?? ($response->GUID ?? null);
-
-            return [
-                'success'      => true,
-                'fatura_no'    => $invoiceNo,
-                'guid'         => $guid,
-                'raw_response' => $response
-            ];
-        } catch (SoapFault $sf) {
-            $this->settingsModel->logSoapAction($this->firmId, $faturaId, 'ArchiveInvoice', 'XML Length: ' . strlen($xmlContent), $sf->getMessage(), 'BASARISIZ', $sf->faultcode, $sf->faultstring);
-            return [
-                'success' => false,
-                'error'   => $sf->getMessage(),
-                'code'    => $sf->faultcode ?? 'SOAP_FAULT'
-            ];
-        }
-    }
-
-    /**
      * Fatura Durumunu Sorgular (GetInvoiceStatus)
      */
     public function getInvoiceStatus(array $uuids): array
     {
         $sessionId = $this->login();
-        $params = [
-            'REQUEST_HEADER' => [
-                'SESSION_ID' => $sessionId,
-            ],
+        $params = (object)[
+            'REQUEST_HEADER' => $this->buildRequestHeader('GetInvoiceStatus', $sessionId),
             'INVOICE' => array_map(function ($uuid) {
-                return ['UUID' => $uuid];
+                return (object)['UUID' => $uuid];
             }, $uuids)
         ];
 
@@ -333,7 +340,7 @@ class EdmSoapClient
                         'status_desc' => $item->STATUS_DESCRIPTION ?? ($item->DESCRIPTION ?? ''),
                         'gib_code'    => $item->GIB_STATUS_CODE ?? null,
                         'gib_desc'    => $item->GIB_STATUS_DESCRIPTION ?? '',
-                        'response_code' => $item->RESPONSE_CODE ?? null, // KABUL / RED
+                        'response_code' => $item->RESPONSE_CODE ?? null,
                     ];
                 }
             }
@@ -351,11 +358,9 @@ class EdmSoapClient
     public function getInvoiceHtml(string $uuid): ?string
     {
         $sessionId = $this->login();
-        $params = [
-            'REQUEST_HEADER' => [
-                'SESSION_ID' => $sessionId,
-            ],
-            'INVOICE' => [
+        $params = (object)[
+            'REQUEST_HEADER' => $this->buildRequestHeader('GetInvoiceHtml', $sessionId),
+            'INVOICE' => (object)[
                 'UUID' => $uuid,
                 'FORMAT' => 'HTML',
             ]

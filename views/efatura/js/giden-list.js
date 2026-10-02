@@ -34,7 +34,7 @@ $(document).ready(function() {
 
     // 2. İstatistikleri Yükle
     function loadStats() {
-        fetch('api/efatura-api.php?action=summary_stats')
+        fetch('api/efatura-api.php?action=summary_stats&list_type=giden')
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success' && res.data) {
@@ -80,8 +80,17 @@ $(document).ready(function() {
         processing: true,
         responsive: false,
         order: [[3, 'desc']], // Tarihe göre sıralı
+        language: $.extend(true, {}, (baseOptions.language || {}), {
+            info: "Gösterilen _START_ - _END_ / _TOTAL_ kayıt",
+            infoEmpty: "Kayıt bulunamadı",
+            lengthMenu: "Sayfada _MENU_ kayıt göster",
+            paginate: {
+                previous: '<i class="bx bx-chevron-left font-size-14"></i>',
+                next: '<i class="bx bx-chevron-right font-size-14"></i>'
+            }
+        }),
         ajax: {
-            url: 'api/efatura-api.php?action=list_giden',
+            url: 'api/efatura-api.php?action=list_giden&list_type=giden',
             type: 'GET',
             data: function(d) {
                 if (currentStatusFilter) {
@@ -184,47 +193,22 @@ $(document).ready(function() {
                 render: function(data, type, row) {
                     let btns = `<div class="d-flex align-items-center justify-content-center gap-1">`;
                     
-                    // Görüntüle
-                    btns += `<button type="button" class="btn btn-light border text-primary table-action-btn btn-onizle" data-id="${row.encrypted_id}" title="Faturayı Görüntüle"><i class="bx bx-show font-size-15"></i></button>`;
-                    
-                    // XML İndir
-                    btns += `<a href="api/efatura-api.php?action=download_xml&invoice_id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-light border text-info table-action-btn" title="UBL (XML) İndir" download><i class="bx bx-code-alt font-size-15"></i></a>`;
-                    
-                    // Taslak ise Düzenle & GİB'e Gönder Butonları
+                    // 1. Düzenle Butonu (Sadece Taslak ise)
                     if (row.entegrator_durum_kodu === 'TASLAK') {
                         btns += `<a href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-light border text-warning table-action-btn" title="Taslak Faturayı Düzenle"><i class="bx bx-edit font-size-15"></i></a>`;
+                    }
+                    
+                    // 2. GİB'e Gönder (Taslak ise) veya GİB Durumunu Sorgula (Gönderildi ise)
+                    if (row.entegrator_durum_kodu === 'TASLAK') {
                         btns += `<button type="button" class="btn btn-primary text-white table-action-btn btn-gonder" data-id="${row.encrypted_id}" title="EDM / GİB'e Gönder"><i class="bx bx-send font-size-14"></i></button>`;
                     } else if (row.entegrator_durum_kodu === 'GONDERILDI') {
                         btns += `<button type="button" class="btn btn-warning text-white table-action-btn btn-senkronize" data-id="${row.encrypted_id}" title="GİB Durumu Sorgula"><i class="bx bx-refresh font-size-14"></i></button>`;
                     }
                     
-                    const safeFaturaNo = (row.fatura_no || '').toString().replace(/<[^>]*>?/gm, '').replace(/"/g, '&quot;').trim() || 'Taslak';
-                    const safeEttn = (row.ettn || '').toString().replace(/"/g, '&quot;').trim();
-
-                    // Diğer İşlemler Dropdown
-                    btns += `<div class="dropdown d-inline-block">
-                        <button type="button" class="btn btn-light border text-dark table-action-btn" data-bs-toggle="dropdown" data-bs-display="dynamic" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Diğer İşlemler">
-                            <i class="bx bx-dots-vertical-rounded font-size-15"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border py-1" style="min-width: 180px;">`;
-
-                    if (row.entegrator_durum_kodu === 'TASLAK') {
-                        btns += `<li><a class="dropdown-item py-1 font-size-12 text-warning" href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}"><i class="bx bx-edit me-2 font-size-15"></i>Faturayı Düzenle</a></li>
-                        <li><hr class="dropdown-divider my-1"></li>`;
-                    }
-
-                    btns += `<li><a class="dropdown-item py-1 font-size-12 btn-onizle" data-id="${row.encrypted_id}" href="javascript:void(0)"><i class="bx bx-show me-2 text-primary font-size-15"></i>Önizle & Yazdır</a></li>
-                            <li><a class="dropdown-item py-1 font-size-12" href="api/efatura-api.php?action=download_xml&invoice_id=${encodeURIComponent(row.encrypted_id)}" download><i class="bx bx-code-alt me-2 text-info font-size-15"></i>UBL XML İndir</a></li>
-                            <li><hr class="dropdown-divider my-1"></li>
-                            <li><a class="dropdown-item py-1 font-size-12 btn-copy-no" data-no="${safeFaturaNo}" href="javascript:void(0)"><i class="bx bx-copy me-2 text-secondary font-size-15"></i>Fatura No Kopyala</a></li>
-                            <li><a class="dropdown-item py-1 font-size-12 btn-copy-ettn" data-ettn="${safeEttn}" href="javascript:void(0)"><i class="bx bx-key me-2 text-secondary font-size-15"></i>ETTN Kopyala</a></li>`;
+                    // 3. Diğer İşlemler Açılır Menü Butonu (3 Nokta)
+                    btns += `<button type="button" class="btn btn-light border text-dark table-action-btn btn-row-menu" title="Diğer İşlemler"><i class="bx bx-dots-vertical-rounded font-size-15"></i></button>`;
                     
-                    if (row.entegrator_durum_kodu !== 'IPTAL') {
-                        btns += `<li><hr class="dropdown-divider my-1"></li>
-                            <li><a class="dropdown-item py-1 font-size-12 text-danger btn-iptal" data-id="${row.encrypted_id}" href="javascript:void(0)"><i class="bx bx-x-circle me-2 font-size-15"></i>Faturayı İptal Et</a></li>`;
-                    }
-                    
-                    btns += `</ul></div></div>`;
+                    btns += `</div>`;
                     return btns;
                 }
             }
@@ -258,21 +242,6 @@ $(document).ready(function() {
         if ($(e.target).closest('a, button, input, .dropdown-menu').length) return;
         $('#tblFaturalar tbody tr').removeClass('selected');
         $(this).addClass('selected');
-    });
-
-    // Tablo içindeki açılır menülerin kesilmesini engellemek için Fixed Popper desteği
-    $(document).on('show.bs.dropdown', '#tblFaturalar .dropdown', function() {
-        const btn = $(this).find('[data-bs-toggle="dropdown"]')[0];
-        if (btn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
-            bootstrap.Dropdown.getOrCreateInstance(btn, {
-                popperConfig: function(defaultBsPopperConfig) {
-                    return {
-                        ...defaultBsPopperConfig,
-                        strategy: 'fixed'
-                    };
-                }
-            });
-        }
     });
 
     // 4. Hızlı Durum Filtreleme Rozetleri (Kartlardaki Tümü, Onaylı, İletilen)
@@ -431,8 +400,9 @@ $(document).ready(function() {
         openInvoicePreview(id);
     });
 
-    function openInvoicePreview(id) {
-        const modal = new bootstrap.Modal(document.getElementById('modalFaturaOnizleme'));
+    function openInvoicePreview(id, autoPrint = false) {
+        const modalEl = document.getElementById('modalFaturaOnizleme');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
         $('#onizlemeModalContent').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Fatura yükleniyor...</div></div>');
 
@@ -441,6 +411,11 @@ $(document).ready(function() {
             .then(res => {
                 if (res.status === 'success') {
                     $('#onizlemeModalContent').html(res.html);
+                    if (autoPrint) {
+                        setTimeout(() => {
+                            printInvoiceHtml(res.html);
+                        }, 300);
+                    }
                 } else {
                     $('#onizlemeModalContent').html(`<div class="alert alert-danger m-3">${res.message}</div>`);
                 }
@@ -595,79 +570,226 @@ $(document).ready(function() {
         }
     });
 
+    function printInvoiceHtml(content) {
+        const win = window.open('', '_blank');
+        if (!win) {
+            Swal.fire('Uyarı', 'Açılır pencere engelleyici (pop-up) yazdırma sayfasını engelledi. Lütfen tarayıcı ayarlarından izin verin.', 'warning');
+            return;
+        }
+        win.document.open();
+        win.document.write(`
+            <!DOCTYPE html>
+            <html lang="tr">
+            <head>
+                <meta charset="utf-8">
+                <title>E-Fatura / E-Arşiv Yazdır</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 6mm 10mm;
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        background: #fff;
+                        color: #000;
+                        font-family: Arial, Helvetica, sans-serif;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    @media print {
+                        body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                ${content}
+            </body>
+            </html>
+        `);
+        win.document.close();
+        win.focus();
+        setTimeout(() => {
+            win.print();
+        }, 400);
+    }
+
     // 9. Yazdır Butonu
     $('#btnModalYazdir').on('click', function() {
         const printContent = document.getElementById('onizlemeModalContent').innerHTML;
-        const win = window.open('', '_blank');
-        win.document.write('<html><head><title>Fatura Yazdır</title><link rel="stylesheet" href="assets/css/bootstrap.min.css"></head><body>' + printContent + '</body></html>');
-        win.document.close();
-        setTimeout(() => { win.print(); }, 500);
+        printInvoiceHtml(printContent);
     });
 
-    // 10. SAĞ TIK MENÜSÜ (CONTEXT MENU) ENTEGRASYONU
+    // 10. SAĞ TIK & 3 NOKTA MENÜSÜ (CONTEXT MENU) ENTEGRASYONU
     const $contextMenu = $('#faturaContextMenu');
 
+    function showContextMenu(targetElement, data, e) {
+        selectedRowData = data;
+        const status = (data.entegrator_durum_kodu || '').toUpperCase();
+        const isRightClick = e && e.type === 'contextmenu';
+
+        // Menü Başlığı
+        $contextMenu.find('.dropdown-header').text(isRightClick ? 'Tüm Fatura İşlemleri' : 'Diğer İşlemler');
+
+        if (isRightClick) {
+            // SAĞ TIK: HEPSİ (Tüm işlemler) listelenir
+            $('.cm-preview-action').removeClass('d-none').show();
+            $('.cm-print-action').removeClass('d-none').show();
+            $('.cm-pdf-action').removeClass('d-none').show();
+            $('.cm-xml-action').removeClass('d-none').show();
+            $('.cm-copy-no').removeClass('d-none').show();
+            $('.cm-copy-ettn').removeClass('d-none').show();
+            $('.cm-div-1').removeClass('d-none').show();
+            $('.cm-div-2').removeClass('d-none').show();
+
+            if (status === 'TASLAK') {
+                $('.cm-edit-action').removeClass('d-none').show();
+                $('.cm-send-action').removeClass('d-none').show();
+                $('.cm-sync-action').addClass('d-none').hide();
+                $('.cm-delete-action').removeClass('d-none').show();
+                $('.cm-cancel-action').addClass('d-none').hide();
+                $('.cm-div-3').removeClass('d-none').show();
+            } else if (status === 'IPTAL') {
+                $('.cm-edit-action').addClass('d-none').hide();
+                $('.cm-send-action').addClass('d-none').hide();
+                $('.cm-sync-action').addClass('d-none').hide();
+                $('.cm-delete-action').addClass('d-none').hide();
+                $('.cm-cancel-action').addClass('d-none').hide();
+                $('.cm-div-3').addClass('d-none').hide();
+            } else {
+                // GONDERILDI, ONAYLANDI, HATALI
+                $('.cm-edit-action').addClass('d-none').hide();
+                $('.cm-send-action').addClass('d-none').hide();
+                if (status === 'GONDERILDI' || status === 'KUYRUKTA') {
+                    $('.cm-sync-action').removeClass('d-none').show();
+                } else {
+                    $('.cm-sync-action').addClass('d-none').hide();
+                }
+                $('.cm-delete-action').addClass('d-none').hide();
+                $('.cm-cancel-action').removeClass('d-none').show();
+                $('.cm-div-3').removeClass('d-none').show();
+            }
+        } else {
+            // 3 NOKTA (⋮) BUTONU: Satırda olan Düzenle ve GİB'e Gönder hariç diğer TÜM işlemler açılır listede olur
+            $('.cm-edit-action').addClass('d-none').hide();
+            $('.cm-send-action').addClass('d-none').hide();
+            $('.cm-sync-action').addClass('d-none').hide();
+
+            // Diğer tüm işlemler açılır listede mevcuttur:
+            $('.cm-preview-action').removeClass('d-none').show();
+            $('.cm-print-action').removeClass('d-none').show();
+            $('.cm-pdf-action').removeClass('d-none').show();
+            $('.cm-xml-action').removeClass('d-none').show();
+            $('.cm-div-1').removeClass('d-none').show();
+
+            $('.cm-copy-no').removeClass('d-none').show();
+            $('.cm-copy-ettn').removeClass('d-none').show();
+            $('.cm-div-2').removeClass('d-none').show();
+
+            // Taslak ise Sil, GİB'e iletildiyse İptal
+            if (status === 'TASLAK') {
+                $('.cm-delete-action').removeClass('d-none').show();
+                $('.cm-cancel-action').addClass('d-none').hide();
+                $('.cm-div-3').removeClass('d-none').show();
+            } else if (status === 'IPTAL') {
+                $('.cm-delete-action').addClass('d-none').hide();
+                $('.cm-cancel-action').addClass('d-none').hide();
+                $('.cm-div-3').addClass('d-none').hide();
+            } else {
+                $('.cm-delete-action').addClass('d-none').hide();
+                $('.cm-cancel-action').removeClass('d-none').show();
+                $('.cm-div-3').removeClass('d-none').show();
+            }
+        }
+
+        // Body'ye taşı
+        if (!$contextMenu.parent().is('body')) {
+            $contextMenu.appendTo('body');
+        }
+
+        let posX = 0;
+        let posY = 0;
+
+        if (e && e.type === 'contextmenu') {
+            posX = e.clientX;
+            posY = e.clientY;
+        } else if (targetElement) {
+            const rect = targetElement.getBoundingClientRect();
+            posX = rect.right - 220;
+            posY = rect.bottom + 4;
+        }
+
+        const menuWidth = $contextMenu.outerWidth() || 220;
+        const menuHeight = $contextMenu.outerHeight() || 320;
+
+        // Viewport sınır kontrolleri
+        if (posX + menuWidth > $(window).width()) {
+            posX = $(window).width() - menuWidth - 10;
+        }
+        if (posX < 10) posX = 10;
+
+        if (posY + menuHeight > $(window).height()) {
+            if (targetElement && e && e.type !== 'contextmenu') {
+                const rect = targetElement.getBoundingClientRect();
+                posY = rect.top - menuHeight - 4;
+            } else {
+                posY = posY - menuHeight;
+            }
+        }
+        if (posY < 10) posY = 10;
+
+        $contextMenu.css({
+            position: 'fixed',
+            top: posY + 'px',
+            left: posX + 'px',
+            zIndex: 99999
+        }).fadeIn(120);
+    }
+
+    // Doğrudan Satırdaki Sil Butonuna Tıklanınca
+    $('#tblFaturalar tbody').on('click', '.btn-direct-delete', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = $(this).data('id');
+        if (id) {
+            deleteDraftInvoice(id);
+        }
+    });
+
+    // 3 Nokta Butonuna Tıklanınca Menüyü Aç
+    $('#tblFaturalar tbody').on('click', '.btn-row-menu', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const tr = $(this).closest('tr');
+        const data = table.row(tr).data();
+        if (!data) return;
+
+        $('#tblFaturalar tbody tr').removeClass('selected');
+        tr.addClass('selected');
+        showContextMenu(this, data, e);
+    });
+
+    // Satıra Sağ Tıklanınca Menüyü Aç
     $('#tblFaturalar tbody').on('contextmenu', 'tr', function(e) {
         e.preventDefault();
         const row = table.row(this);
         const data = row.data();
         if (!data) return;
 
-        selectedRowData = data;
         $('#tblFaturalar tbody tr').removeClass('selected');
         $(this).addClass('selected');
-
-        // Taslak ise Düzenle & GİB'e Gönder butonları
-        if (data.entegrator_durum_kodu === 'TASLAK') {
-            $('.cm-edit-action').show();
-            $('.cm-send-action').show();
-        } else {
-            $('.cm-edit-action').hide();
-            $('.cm-send-action').hide();
-        }
-
-        if (data.entegrator_durum_kodu === 'GONDERILDI') {
-            $('.cm-sync-action').show();
-        } else {
-            $('.cm-sync-action').hide();
-        }
-
-        if (data.entegrator_durum_kodu === 'IPTAL') {
-            $('.cm-cancel-action').hide();
-        } else {
-            $('.cm-cancel-action').show();
-        }
-
-        // Body'ye taşı ve pozisyonla
-        if (!$contextMenu.parent().is('body')) {
-            $contextMenu.appendTo('body');
-        }
-
-        let clientX = e.clientX;
-        let clientY = e.clientY;
-        
-        // Ekran taşma kontrolü (Viewport bazlı)
-        const menuWidth = $contextMenu.outerWidth() || 220;
-        const menuHeight = $contextMenu.outerHeight() || 320;
-        
-        if (clientX + menuWidth > $(window).width()) {
-            clientX = $(window).width() - menuWidth - 10;
-        }
-        if (clientY + menuHeight > $(window).height()) {
-            clientY = clientY - menuHeight;
-        }
-
-        $contextMenu.css({
-            position: 'fixed',
-            top: clientY + 'px',
-            left: clientX + 'px',
-            zIndex: 99999
-        }).fadeIn(120);
+        showContextMenu(this, data, e);
     });
 
     // Context Menu Dışına Tıklanınca Kapat
     $(document).on('click', function(e) {
-        if (!$(e.target).closest('#faturaContextMenu').length) {
+        if (!$(e.target).closest('#faturaContextMenu, .btn-row-menu').length) {
             $contextMenu.fadeOut(100);
         }
     });
@@ -677,6 +799,53 @@ $(document).ready(function() {
             $contextMenu.fadeOut(100);
         }
     });
+
+    // Taslak Faturayı Sil Fonksiyonu
+    function deleteDraftInvoice(id) {
+        Swal.fire({
+            title: 'Taslak Faturayı Sil?',
+            text: 'Bu taslak fatura sistemden silinecektir. Bu işlem geri alınamaz.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="bx bx-trash me-1"></i> Evet, Sil',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Siliniyor...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: 'api/efatura-api.php',
+                    type: 'POST',
+                    data: { action: 'delete_draft', invoice_id: id },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Silindi!',
+                                text: res.message || 'Taslak fatura başarıyla silindi.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            table.ajax.reload(null, false);
+                            loadStats();
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'Hata!', text: res.message || 'Fatura silinemedi.' });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({ icon: 'error', title: 'Sunucu Hatası', text: 'İşlem sırasında bir hata oluştu.' });
+                    }
+                });
+            }
+        });
+    }
 
     // Context Menu İşlem Tetikleyicileri
     $('.cm-action').on('click', function() {
@@ -691,8 +860,7 @@ $(document).ready(function() {
         } else if (action === 'preview') {
             openInvoicePreview(id);
         } else if (action === 'print') {
-            openInvoicePreview(id);
-            setTimeout(() => { $('#btnModalYazdir').trigger('click'); }, 1000);
+            openInvoicePreview(id, true);
         } else if (action === 'download-pdf') {
             openInvoicePreview(id);
         } else if (action === 'download-xml') {
@@ -709,6 +877,8 @@ $(document).ready(function() {
             const ettn = selectedRowData.ettn;
             navigator.clipboard.writeText(ettn);
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'ETTN kopyalandı: ' + ettn, showConfirmButton: false, timer: 2000 });
+        } else if (action === 'delete') {
+            deleteDraftInvoice(id);
         } else if (action === 'cancel') {
             cancelInvoice(id);
         }

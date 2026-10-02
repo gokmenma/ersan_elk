@@ -135,16 +135,23 @@ $title = 'Giden Faturalar';
     </div>
 
     <!-- 3. Minimal DataTables Fatura Listesi Kartı -->
-    <div class="card summary-kpi-card mb-3">
-        <div class="card-header bg-transparent border-0 px-3 py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="card summary-kpi-card mb-3" id="faturaListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
-                <i class="bx bx-list-ul text-secondary font-size-22 d-inline-flex align-items-center"></i>
-                <span class="fw-bold text-dark font-size-15 d-inline-flex align-items-center" style="line-height: 1;">Fatura Listesi</span>
-                <span class="badge bg-dark rounded-pill font-size-11 px-2 py-1 d-inline-flex align-items-center" style="line-height: 1;" id="badgeTotalRecords">0</span>
+                <div class="p-2 bg-light rounded-3 border d-flex align-items-center justify-content-center text-secondary shadow-sm flex-shrink-0" style="width: 38px; height: 38px; border-color: #e2e8f0 !important;">
+                    <i class="bx bx-list-ul font-size-20"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="mb-0 fw-bold text-dark font-size-15" style="line-height: 1.2;">Fatura Listesi</h5>
+                        <span class="badge bg-dark rounded-pill font-size-11 px-2 py-0" id="badgeTotalRecords">0</span>
+                    </div>
+                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Anlık arama, sütun filtreleme ve fatura yönetimi</p>
+                </div>
             </div>
 
-            <!-- Muhasebe Standartları Hızlı Araç Çubuğu -->
-            <div class="d-flex align-items-center gap-1">
+            <!-- Sağ Araç Çubuğu: Dışa Aktarma Butonları -->
+            <div class="d-flex align-items-center gap-1 ms-auto">
                 <button type="button" class="btn btn-sm btn-light border px-2 py-1 text-success d-flex align-items-center gap-1 rounded-3" id="btnHeaderExportExcel" title="Excel'e Aktar">
                     <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12 fw-semibold">Excel</span>
                 </button>
@@ -169,14 +176,14 @@ $title = 'Giden Faturalar';
                                 </div>
                             </th>
                             <th data-filter="string" class="text-center" style="width: 50px;">SIRA</th>
-                            <th data-filter="string" style="width: 140px;">FATURA NO</th>
-                            <th data-filter="date" style="width: 110px;">TARİH</th>
+                            <th data-filter="string" style="width: 135px;">FATURA NO</th>
+                            <th data-filter="date" style="width: 105px;">TARİH</th>
                             <th data-filter="string">MÜŞTERİ / ALICI</th>
-                            <th data-filter="string" style="width: 120px;">VKN / TCKN</th>
-                            <th data-filter="select" style="width: 110px;">BELGE TÜRÜ</th>
-                            <th data-filter="select" style="width: 120px;">SENARYO</th>
-                            <th data-filter="string" class="text-end" style="width: 130px;">ÖDENECEK TUTAR</th>
-                            <th data-filter="select" class="text-center" style="width: 110px;">DURUM</th>
+                            <th data-filter="string" style="width: 115px;">VKN / TCKN</th>
+                            <th data-filter="select" style="width: 105px;">BELGE TÜRÜ</th>
+                            <th data-filter="select" style="width: 115px;">SENARYO</th>
+                            <th data-filter="string" class="text-end" style="width: 125px;">ÖDENECEK TUTAR</th>
+                            <th data-filter="select" class="text-center" style="width: 105px;">DURUM</th>
                             <th data-filter="none" style="width: 140px;" class="text-center">İŞLEMLER</th>
                         </tr>
                     </thead>
@@ -246,41 +253,44 @@ $title = 'Giden Faturalar';
     </div>
 </div>
 
-<!-- Özel Sağ Tık (Context Menu) Bileşeni -->
-<div id="faturaContextMenu" class="dropdown-menu shadow-lg border rounded-3 p-1" style="display: none; position: fixed; z-index: 99999; min-width: 220px;">
+<!-- Özel Sağ Tık (Context Menu) ve 3 Nokta Menüsü Bileşeni -->
+<div id="faturaContextMenu" class="dropdown-menu shadow-lg border rounded-3 p-1" style="display: none; position: fixed; z-index: 99999; min-width: 200px;">
     <div class="dropdown-header text-muted font-size-11 text-uppercase fw-bold pb-1">Fatura İşlemleri</div>
     <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-edit-action text-warning" data-action="edit" href="javascript:void(0)">
         <i class="bx bx-edit me-2 font-size-16"></i> Faturayı Düzenle
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action" data-action="preview" href="javascript:void(0)">
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-preview-action" data-action="preview" href="javascript:void(0)">
         <i class="bx bx-show me-2 text-primary font-size-16"></i> Görüntüle / Önizle
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action" data-action="print" href="javascript:void(0)">
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-print-action" data-action="print" href="javascript:void(0)">
         <i class="bx bx-printer me-2 text-dark font-size-16"></i> Yazdır
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action" data-action="download-pdf" href="javascript:void(0)">
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-pdf-action" data-action="download-pdf" href="javascript:void(0)">
         <i class="bx bxs-file-pdf me-2 text-danger font-size-16"></i> PDF İndir
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action" data-action="download-xml" href="javascript:void(0)">
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-xml-action" data-action="download-xml" href="javascript:void(0)">
         <i class="bx bx-code-alt me-2 text-info font-size-16"></i> UBL (XML) İndir
     </a>
-    <div class="dropdown-divider my-1"></div>
+    <div class="dropdown-divider my-1 cm-div-1"></div>
     <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-send-action" data-action="send" href="javascript:void(0)">
         <i class="bx bx-send me-2 text-success font-size-16"></i> GİB / EDM'ye Gönder
     </a>
     <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-sync-action" data-action="sync" href="javascript:void(0)">
         <i class="bx bx-refresh me-2 text-warning font-size-16"></i> GİB Durumunu Güncelle
     </a>
-    <div class="dropdown-divider my-1"></div>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action" data-action="copy-no" href="javascript:void(0)">
+    <div class="dropdown-divider my-1 cm-div-2"></div>
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-copy-no" data-action="copy-no" href="javascript:void(0)">
         <i class="bx bx-copy me-2 text-secondary font-size-16"></i> Fatura No Kopyala
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action" data-action="copy-ettn" href="javascript:void(0)">
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-copy-ettn" data-action="copy-ettn" href="javascript:void(0)">
         <i class="bx bx-key me-2 text-secondary font-size-16"></i> ETTN (UUID) Kopyala
     </a>
-    <div class="dropdown-divider my-1"></div>
+    <div class="dropdown-divider my-1 cm-div-3"></div>
+    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 text-danger cm-action cm-delete-action" data-action="delete" href="javascript:void(0)">
+        <i class="bx bx-trash me-2 font-size-16 text-danger" style="color: #ef4444 !important;"></i> <span style="color: #ef4444 !important; font-weight: 500;">Taslak Faturayı Sil</span>
+    </a>
     <a class="dropdown-item d-flex align-items-center py-1 font-size-13 text-danger cm-action cm-cancel-action" data-action="cancel" href="javascript:void(0)">
-        <i class="bx bx-x-circle me-2 font-size-16"></i> Faturayı İptal Et
+        <i class="bx bx-x-circle me-2 font-size-16 text-danger" style="color: #ef4444 !important;"></i> <span style="color: #ef4444 !important; font-weight: 500;">Faturayı İptal Et</span>
     </a>
 </div>
 
@@ -384,30 +394,58 @@ $title = 'Giden Faturalar';
 
 /* 2. Resimle Birebir Tablo ve Satır Çizgileri */
 #tblFaturalar {
-    border: 1px solid #eff2f7 !important;
+    border: 1px solid #eef2f6 !important;
     border-collapse: separate !important;
     border-spacing: 0;
 }
 #tblFaturalar thead th {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    font-size: 0.70rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.4px !important;
     text-transform: uppercase;
-    color: #495057;
-    background-color: #f8f9fa !important;
-    border: 1px solid #eff2f7 !important;
-    border-top: 1px solid #eff2f7 !important;
-    border-bottom: 1px solid #eff2f7 !important;
-    padding: 10px 12px;
-    vertical-align: middle;
+    color: #475569 !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #eef2f6 !important;
+    padding: 6px 8px !important;
+    vertical-align: middle !important;
 }
+
+#tblFaturalar thead .dt-filter-row th,
+.datatable-premium-shell table.dataTable thead .dt-filter-row th {
+    padding: 4px 5px !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #eef2f6 !important;
+}
+
+/* Sütun Filtre Kutuları (Input & Select) - Rahat ve Okunaklı Boyut */
+.dt-filter-control,
+#tblFaturalar thead .dt-filter-row input,
+#tblFaturalar thead .dt-filter-row select {
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+    color: #1e293b !important;
+}
+
+.dt-filter-control:focus,
+#tblFaturalar thead .dt-filter-row input:focus,
+#tblFaturalar thead .dt-filter-row select:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+    outline: none !important;
+}
+
 #tblFaturalar tbody tr td {
-    border: 1px solid #eff2f7 !important;
-    border-top: 1px solid #eff2f7 !important;
-    border-bottom: 1px solid #eff2f7 !important;
-    padding: 10px 12px;
+    border: 1px solid #eef2f6 !important;
+    padding: 7px 10px !important;
     vertical-align: middle;
-    font-size: 13px;
+    font-size: 12.5px;
 }
 #tblFaturalar tbody tr {
     cursor: pointer;
@@ -437,38 +475,95 @@ $title = 'Giden Faturalar';
     z-index: 9999 !important;
 }
 .dropdown-item {
-    color: #334155 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    white-space: nowrap !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
 }
-.dropdown-item:hover {
-    background-color: #f1f5f9 !important;
-    color: #0f172a !important;
+.dropdown-item.d-none,
+.dropdown-item[style*="display: none"] {
+    display: none !important;
+}
+.dropdown-item:not(.text-danger) {
+    color: #334155;
+}
+.dropdown-item:not(.text-danger):hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+.dropdown-item.text-danger,
+.dropdown-item.text-danger i,
+.dropdown-item.text-danger span {
+    color: #ef4444 !important;
+}
+.dropdown-item.text-danger:hover {
+    background-color: #fef2f2 !important;
+    color: #dc2626 !important;
 }
 
 /* DataTables Alt Çubuk (Info & Paginate) Düzeni */
-#tblFaturalar_wrapper .row:last-child {
-    margin-top: 10px !important;
+#tblFaturalar_wrapper > .row:last-child {
+    margin-top: 8px !important;
     margin-bottom: 0 !important;
+    padding: 4px 0 !important;
 }
-.dataTables_info,
-.dataTables_paginate,
+.dataTables_info {
+    font-size: 12.5px !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+    padding-top: 0 !important;
+}
 .dataTables_length {
-    font-size: 13px !important;
+    font-size: 12.5px !important;
+    color: #475569 !important;
+}
+.dataTables_length select {
+    padding: 2px 20px 2px 8px !important;
+    font-size: 12px !important;
+    height: 26px !important;
+    border-radius: 5px !important;
+    border: 1px solid #cbd5e1 !important;
+    background-color: #ffffff !important;
+}
+.dataTables_paginate .pagination {
+    margin: 0 !important;
+    gap: 3px !important;
+}
+.dataTables_paginate .pagination .page-item .page-link {
+    height: 26px !important;
+    min-width: 26px !important;
+    padding: 0 7px !important;
+    font-size: 12px !important;
+    border-radius: 5px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #475569 !important;
+    border: 1px solid #e2e8f0 !important;
+    background-color: #ffffff !important;
+}
+.dataTables_paginate .pagination .page-item.active .page-link {
+    background-color: #1e293b !important;
+    border-color: #1e293b !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+.dataTables_paginate .pagination .page-item.disabled .page-link {
+    color: #94a3b8 !important;
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
 }
 
 /* Muhasebe Butonları */
 .table-action-btn {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 /* 3. Profesyonel Yazdırma (Print) Standartları */

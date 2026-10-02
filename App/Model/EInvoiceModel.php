@@ -448,15 +448,24 @@ class EInvoiceModel extends Model
     /**
      * DataTables AJAX Sunucu Taraflı Liste Sorgusu
      */
-    public function ajaxList(array $params, int $firmId, string $yon = 'GIDEN'): array
+    public function ajaxList(array $params, int $firmId, string $yon = 'GIDEN', string $listType = 'giden'): array
     {
         $draw = (int)($params['draw'] ?? 1);
         $start = (int)($params['start'] ?? 0);
         $length = (int)($params['length'] ?? 10);
         $search = $params['search']['value'] ?? '';
 
-        $where = "f.firm_id = :firm_id AND f.yon = :yon AND f.deleted_at IS NULL";
-        $bind = ['firm_id' => $firmId, 'yon' => $yon];
+        $where = "f.firm_id = :firm_id AND f.deleted_at IS NULL";
+        $bind = ['firm_id' => $firmId];
+
+        if ($listType === 'taslak') {
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
+        } elseif ($listType === 'gelen') {
+            $where .= " AND f.yon = 'GELEN'";
+        } else {
+            // Giden (Gönderilmiş) Faturalar
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu != 'TASLAK'";
+        }
 
         if (!empty($params['durum_filtre']) && $params['durum_filtre'] !== 'all') {
             $where .= " AND f.entegrator_durum_kodu = :durum_filtre";
@@ -506,8 +515,16 @@ class EInvoiceModel extends Model
         }
 
         // Toplam Kayıt Sayısı
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM faturalar f WHERE f.firm_id = :firm_id AND f.yon = :yon AND f.deleted_at IS NULL");
-        $totalStmt->execute(['firm_id' => $firmId, 'yon' => $yon]);
+        $totalWhere = "f.firm_id = :firm_id AND f.deleted_at IS NULL";
+        if ($listType === 'taslak') {
+            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
+        } elseif ($listType === 'gelen') {
+            $totalWhere .= " AND f.yon = 'GELEN'";
+        } else {
+            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu != 'TASLAK'";
+        }
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM faturalar f WHERE $totalWhere");
+        $totalStmt->execute(['firm_id' => $firmId]);
         $recordsTotal = (int)$totalStmt->fetchColumn();
 
         // Filtrelenmiş Kayıt Sayısı
@@ -547,15 +564,16 @@ class EInvoiceModel extends Model
                 'fatura_no'             => !empty($row['fatura_no']) ? $row['fatura_no'] : 'Taslak',
                 'ettn'                  => $row['ettn'],
                 'fatura_tarihi'         => date('d.m.Y', strtotime($row['fatura_tarihi'])),
-                'alici_unvan'           => htmlspecialchars($row['alici_unvan'], ENT_QUOTES, 'UTF-8'),
-                'alici_vkn_tckn'        => htmlspecialchars($row['alici_vkn_tckn'], ENT_QUOTES, 'UTF-8'),
+                'alici_unvan'           => htmlspecialchars($row['alici_unvan'] ?? '', ENT_QUOTES, 'UTF-8'),
+                'alici_vkn_tckn'        => htmlspecialchars($row['alici_vkn_tckn'] ?? '', ENT_QUOTES, 'UTF-8'),
                 'belge_turu'            => $row['belge_turu'],
                 'fatura_profili'        => $row['fatura_profili'],
                 'fatura_tipi'           => $row['fatura_tipi'],
-                'odenecek_tutar'        => number_format($row['odenecek_tutar'], 2, ',', '.') . ' ' . $row['para_birimi'],
+                'odenecek_tutar'        => number_format((float)$row['odenecek_tutar'], 2, ',', '.') . ' ' . $row['para_birimi'],
                 'entegrator_durum_kodu' => $row['entegrator_durum_kodu'],
                 'gib_durum_kodu'        => $row['gib_durum_kodu'],
                 'gib_durum_aciklamasi'  => $row['gib_durum_aciklamasi'],
+                'ticari_yanit'          => $row['ticari_yanit'] ?? 'BEKLIYOR',
                 'pdf_path'              => $row['pdf_path'],
                 'ubl_xml_path'          => $row['ubl_xml_path']
             ];
@@ -572,42 +590,88 @@ class EInvoiceModel extends Model
     /**
      * Dashboard ve Özet Kartları İstatistikleri
      */
-    public function getSummaryStats(int $firmId, string $yon = 'GIDEN'): array
+    public function getSummaryStats(int $firmId, string $yon = 'GIDEN', string $listType = 'giden'): array
     {
         try {
             $currentMonthStart = date('Y-m-01');
             $currentMonthEnd = date('Y-m-t');
 
-            $stmt = $this->db->prepare("
-                SELECT 
-                    COUNT(*) as toplam_adet,
-                    COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
-                    COUNT(CASE WHEN belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
-                    COUNT(CASE WHEN belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
-                    
-                    COUNT(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) as onaylanan_adet,
-                    COALESCE(SUM(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
-                    
-                    COUNT(CASE WHEN entegrator_durum_kodu IN ('TASLAK', 'KUYRUKTA', 'GONDERILDI') THEN 1 END) as bekleyen_adet,
-                    COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('TASLAK', 'KUYRUKTA', 'GONDERILDI') THEN odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
-                    
-                    COUNT(CASE WHEN entegrator_durum_kodu = 'HATALI' THEN 1 END) as hatali_adet,
-                    COUNT(CASE WHEN entegrator_durum_kodu = 'IPTAL' THEN 1 END) as iptal_adet,
-
-                    COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
-                    COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
-                FROM faturalar 
-                WHERE firm_id = :firm_id 
-                  AND yon = :yon 
-                  AND deleted_at IS NULL
-            ");
-            $stmt->execute([
-                'firm_id' => $firmId,
-                'yon'     => $yon,
-                'start'   => $currentMonthStart,
-                'end'     => $currentMonthEnd
-            ]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            if ($listType === 'taslak') {
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        COUNT(*) as toplam_adet,
+                        COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
+                        COUNT(CASE WHEN belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
+                        COUNT(CASE WHEN belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
+                        COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
+                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                    FROM faturalar 
+                    WHERE firm_id = :firm_id 
+                      AND yon = 'GIDEN'
+                      AND entegrator_durum_kodu = 'TASLAK'
+                      AND deleted_at IS NULL
+                ");
+                $stmt->execute([
+                    'firm_id' => $firmId,
+                    'start'   => $currentMonthStart,
+                    'end'     => $currentMonthEnd
+                ]);
+                return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            } elseif ($listType === 'gelen') {
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        COUNT(*) as toplam_adet,
+                        COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
+                        COUNT(CASE WHEN ticari_yanit = 'KABUL' THEN 1 END) as kabul_adet,
+                        COUNT(CASE WHEN ticari_yanit = 'RED' THEN 1 END) as red_adet,
+                        COUNT(CASE WHEN ticari_yanit = 'BEKLIYOR' THEN 1 END) as bekleyen_adet,
+                        COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
+                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                    FROM faturalar 
+                    WHERE firm_id = :firm_id 
+                      AND yon = 'GELEN'
+                      AND deleted_at IS NULL
+                ");
+                $stmt->execute([
+                    'firm_id' => $firmId,
+                    'start'   => $currentMonthStart,
+                    'end'     => $currentMonthEnd
+                ]);
+                return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            } else {
+                // Giden (Gönderilen) Faturalar
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        COUNT(*) as toplam_adet,
+                        COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
+                        COUNT(CASE WHEN belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
+                        COUNT(CASE WHEN belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
+                        COUNT(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) as onaylanan_adet,
+                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
+                        COUNT(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI') THEN 1 END) as bekleyen_adet,
+                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI') THEN odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
+                        COUNT(CASE WHEN entegrator_durum_kodu = 'HATALI' THEN 1 END) as hatali_adet,
+                        COUNT(CASE WHEN entegrator_durum_kodu = 'IPTAL' THEN 1 END) as iptal_adet,
+                        COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
+                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                    FROM faturalar 
+                    WHERE firm_id = :firm_id 
+                      AND yon = 'GIDEN' 
+                      AND entegrator_durum_kodu != 'TASLAK'
+                      AND deleted_at IS NULL
+                ");
+                $stmt->execute([
+                    'firm_id' => $firmId,
+                    'start'   => $currentMonthStart,
+                    'end'     => $currentMonthEnd
+                ]);
+                return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+        } catch (\PDOException $e) {
+            error_log("EInvoiceModel::getSummaryStats Error: " . $e->getMessage());
+            return [];
+        }
+    }
         } catch (\PDOException $e) {
             error_log("EInvoiceModel::getSummaryStats Error: " . $e->getMessage());
             return [];
@@ -634,6 +698,42 @@ class EInvoiceModel extends Model
             ]);
         } catch (\PDOException $e) {
             error_log("EInvoiceModel::cancelInvoice Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Taslak Durumundaki Faturayı Siler (Soft Delete)
+     */
+    public function deleteDraftInvoice(int $invoiceId, int $firmId): bool
+    {
+        try {
+            // Kontrol: Sadece TASLAK durumundaki fatura silinebilir
+            $checkStmt = $this->db->prepare("SELECT entegrator_durum_kodu FROM faturalar WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL LIMIT 1");
+            $checkStmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+            $status = $checkStmt->fetchColumn();
+
+            if (!$status) {
+                return false;
+            }
+
+            if ($status !== 'TASLAK') {
+                throw new \Exception("Yalnızca taslak durumundaki faturalar silinebilir. GİB'e iletilen faturalar iptal edilmelidir.");
+            }
+
+            $stmt = $this->db->prepare("
+                UPDATE faturalar SET 
+                    deleted_at = NOW(),
+                    is_active = 0,
+                    updated_at = NOW()
+                WHERE id = :id AND firm_id = :firm_id AND entegrator_durum_kodu = 'TASLAK'
+            ");
+            return $stmt->execute([
+                'id'      => $invoiceId,
+                'firm_id' => $firmId
+            ]);
+        } catch (\Exception $e) {
+            error_log("EInvoiceModel::deleteDraftInvoice Error: " . $e->getMessage());
             return false;
         }
     }

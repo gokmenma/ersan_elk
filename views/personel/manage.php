@@ -242,45 +242,179 @@ foreach ($tabCategories as $catKey => $cat) {
                     </div>
                 </div>
                 
-                <!-- Modern Categorized Tabs Navigation (Desktop Only) -->
-                <div class="card-body py-2 px-3 border-bottom bg-light-subtle d-none d-md-block">
-                    <?php if (count($tabCategories) > 1): ?>
-                        <!-- Kategori Başlıkları (Segmented Pills) -->
-                        <div class="personel-category-pills d-flex align-items-center gap-2 mb-2">
-                            <?php foreach ($tabCategories as $catKey => $cat): ?>
-                                <button type="button" 
-                                        class="btn btn-category-pill <?php echo $activeCategory === $catKey ? 'active' : ''; ?> d-inline-flex align-items-center gap-2" 
-                                        data-category-target="<?php echo $catKey; ?>">
-                                    <i class="<?php echo $cat['icon']; ?> font-size-16"></i>
-                                    <span class="fw-semibold font-size-13"><?php echo $cat['title']; ?></span>
-                                    <span class="badge rounded-pill <?php echo $activeCategory === $catKey ? 'bg-white text-primary' : 'bg-primary-subtle text-primary'; ?> category-badge ms-1"><?php echo count($cat['tabs']); ?></span>
+                <!-- Modern Tabs Navigation (Desktop Only) -->
+                <div class="card-body py-2 px-3 border-bottom bg-light-subtle d-none d-md-block" id="personelTabNavigationWrapper">
+                    
+                    <!-- 1. GRUPLU GÖRÜNÜM (Grouped Layout) -->
+                    <div id="personelTabLayoutGrouped" class="personel-tab-layout-view">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <?php if (count($tabCategories) > 1): ?>
+                                <!-- Kategori Başlıkları (Segmented Pills) -->
+                                <div class="personel-category-pills d-flex align-items-center gap-2">
+                                    <?php foreach ($tabCategories as $catKey => $cat): ?>
+                                        <button type="button" 
+                                                class="btn btn-category-pill <?php echo $activeCategory === $catKey ? 'active' : ''; ?> d-inline-flex align-items-center gap-2" 
+                                                data-category-target="<?php echo $catKey; ?>">
+                                            <i class="<?php echo $cat['icon']; ?> font-size-16"></i>
+                                            <span class="fw-semibold font-size-13"><?php echo $cat['title']; ?></span>
+                                            <span class="badge rounded-pill <?php echo $activeCategory === $catKey ? 'bg-white text-primary' : 'bg-primary-subtle text-primary'; ?> category-badge ms-1"><?php echo count($cat['tabs']); ?></span>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div></div>
+                            <?php endif; ?>
+
+                            <!-- Ayarlar Dropdown (Gruplu) -->
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-tab-settings d-inline-flex align-items-center justify-content-center shadow-sm" type="button" id="tabLayoutDropdownGrouped" data-bs-toggle="dropdown" aria-expanded="false" title="Sekme Düzeni Ayarları" style="height: 34px; width: 34px; border-radius: 8px; padding: 0;">
+                                    <i class="bx bx-cog font-size-17"></i>
                                 </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" aria-labelledby="tabLayoutDropdownGrouped" style="min-width: 190px; border-radius: 10px; z-index: 1050;">
+                                    <li class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1">
+                                        Sekme Düzeni
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="grouped">
+                                            <span class="d-flex align-items-center gap-2 font-size-13">
+                                                <i class="bx bx-layer font-size-16 text-primary"></i>
+                                                <span>Gruplu</span>
+                                            </span>
+                                            <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="single">
+                                            <span class="d-flex align-items-center gap-2 font-size-13">
+                                                <i class="bx bx-list-ul font-size-16 text-primary"></i>
+                                                <span>Tek Sıra</span>
+                                            </span>
+                                            <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Alt Sekmeler Grubu (Subtabs) -->
+                        <div class="personel-subtabs-container p-1 rounded-3 bg-white border shadow-sm" id="desktopTabs">
+                            <?php foreach ($tabCategories as $catKey => $cat): ?>
+                                <div class="subtab-group nav nav-pills gap-1 flex-wrap <?php echo $activeCategory === $catKey ? 'd-flex' : 'd-none'; ?>" 
+                                     id="subtabs-<?php echo $catKey; ?>" 
+                                     role="tablist">
+                                    <?php foreach ($cat['tabs'] as $tabKey => $tab): 
+                                        $isActive = ($activeTab === $tabKey);
+                                    ?>
+                                        <a class="nav-link subtab-nav-link <?php echo $isActive ? 'active' : ''; ?> d-inline-flex align-items-center gap-2 px-3 py-2" 
+                                           data-bs-toggle="tab" 
+                                           href="#<?php echo $tabKey; ?>" 
+                                           role="tab" 
+                                           data-category="<?php echo $catKey; ?>">
+                                            <i class="<?php echo $tab['icon']; ?> font-size-15"></i>
+                                            <span><?php echo $tab['label']; ?></span>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
                             <?php endforeach; ?>
                         </div>
-                    <?php endif; ?>
+                    </div>
 
-                    <!-- Alt Sekmeler Grubu (Subtabs) -->
-                    <div class="personel-subtabs-container p-1 rounded-3 bg-white border shadow-sm" id="desktopTabs">
-                        <?php foreach ($tabCategories as $catKey => $cat): ?>
-                            <div class="subtab-group nav nav-pills gap-1 flex-wrap <?php echo $activeCategory === $catKey ? 'd-flex' : 'd-none'; ?>" 
-                                 id="subtabs-<?php echo $catKey; ?>" 
-                                 role="tablist">
-                                <?php foreach ($cat['tabs'] as $tabKey => $tab): 
-                                    $isActive = ($activeTab === $tabKey);
-                                ?>
-                                    <a class="nav-link subtab-nav-link <?php echo $isActive ? 'active' : ''; ?> d-inline-flex align-items-center gap-2 px-3 py-2" 
-                                       data-bs-toggle="tab" 
-                                       href="#<?php echo $tabKey; ?>" 
-                                       role="tab" 
-                                       data-category="<?php echo $catKey; ?>">
-                                        <i class="<?php echo $tab['icon']; ?> font-size-15"></i>
-                                        <span><?php echo $tab['label']; ?></span>
-                                    </a>
-                                <?php endforeach; ?>
+                    <!-- 2. TEK SIRA GÖRÜNÜM (Single Row Layout) -->
+                    <div id="personelTabLayoutSingle" class="personel-tab-layout-view d-none">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="calendar-nav d-flex gap-1 flex-shrink-0">
+                                <button type="button"
+                                    class="btn btn-sm btn-light border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
+                                    id="scrollTabsLeft" style="height: 38px; width: 38px; border-radius: 8px !important;">
+                                    <i class="bx bx-chevron-left fs-4"></i>
+                                </button>
                             </div>
-                        <?php endforeach; ?>
+
+                            <div class="flex-grow-1 border rounded-3 shadow-sm p-1 overflow-hidden tab-nav-container bg-white"
+                                style="height: 48px;">
+                                <div class="d-flex align-items-center gap-1 overflow-auto no-scrollbar" id="singleRowTabs"
+                                    role="tablist" style="scroll-behavior: smooth; height: 100%;">
+                                    <?php
+                                    $count = count($tabs);
+                                    $i = 0;
+                                    foreach ($tabs as $key => $tab):
+                                        $i++;
+                                        $isActive = ($activeTab === $key);
+                                        $parentCat = 'ozluk';
+                                        foreach ($tabCategories as $cKey => $cVal) {
+                                            if (isset($cVal['tabs'][$key])) {
+                                                $parentCat = $cKey;
+                                                break;
+                                            }
+                                        }
+                                        ?>
+                                        <a class="nav-link single-tab-link btn <?php echo $isActive ? 'active' : ''; ?> d-flex align-items-center gap-2 px-3"
+                                            style="white-space: nowrap; border-radius: 8px !important; transition: all 0.2s ease; height: 38px; flex-shrink: 0;"
+                                            data-bs-toggle="tab" href="#<?php echo $key; ?>" role="tab"
+                                            data-category="<?php echo $parentCat; ?>">
+                                            <i class="<?php echo $tab['icon']; ?> font-size-15"></i>
+                                            <span><?php echo $tab['label']; ?></span>
+                                        </a>
+                                        <?php if ($i < $count): ?>
+                                            <div class="vr mx-1"
+                                                style="height: 25px; align-self: center; opacity: 0.15; flex-shrink: 0;">
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+
+                            <div class="calendar-nav d-flex gap-1 flex-shrink-0">
+                                <button type="button"
+                                    class="btn btn-sm btn-light border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
+                                    id="scrollTabsRight" style="height: 38px; width: 38px; border-radius: 8px !important;">
+                                    <i class="bx bx-chevron-right fs-4"></i>
+                                </button>
+                            </div>
+
+                            <!-- Ayarlar Dropdown (Tek Sıra) -->
+                            <div class="dropdown flex-shrink-0">
+                                <button class="btn btn-sm btn-tab-settings d-inline-flex align-items-center justify-content-center shadow-sm" type="button" id="tabLayoutDropdownSingle" data-bs-toggle="dropdown" aria-expanded="false" title="Sekme Düzeni Ayarları" style="height: 38px; width: 38px; border-radius: 8px; padding: 0;">
+                                    <i class="bx bx-cog font-size-18"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" aria-labelledby="tabLayoutDropdownSingle" style="min-width: 190px; border-radius: 10px; z-index: 1050;">
+                                    <li class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1">
+                                        Sekme Düzeni
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="grouped">
+                                            <span class="d-flex align-items-center gap-2 font-size-13">
+                                                <i class="bx bx-layer font-size-16 text-primary"></i>
+                                                <span>Gruplu</span>
+                                            </span>
+                                            <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="single">
+                                            <span class="d-flex align-items-center gap-2 font-size-13">
+                                                <i class="bx bx-list-ul font-size-16 text-primary"></i>
+                                                <span>Tek Sıra</span>
+                                            </span>
+                                            <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                <script>
+                    (function() {
+                        try {
+                            var savedMode = localStorage.getItem('personel_tab_layout_mode');
+                            if (savedMode === 'single') {
+                                document.getElementById('personelTabLayoutGrouped').classList.add('d-none');
+                                document.getElementById('personelTabLayoutSingle').classList.remove('d-none');
+                            }
+                        } catch(e) {}
+                    })();
+                </script>
                 <style>
                     #personelTabContent > .tab-pane,
                     #personelTabContent > form > .tab-pane {
@@ -349,6 +483,73 @@ foreach ($tabCategories as $catKey => $cat) {
                         font-weight: 600 !important;
                     }
 
+                    /* Button Tab Settings */
+                    .btn-tab-settings {
+                        background-color: #ffffff;
+                        border: 1px solid #d9e3ef;
+                        color: #495057;
+                        transition: all 0.2s ease;
+                    }
+
+                    .btn-tab-settings::after {
+                        display: none !important;
+                    }
+
+                    .btn-tab-settings:hover,
+                    .btn-tab-settings:focus,
+                    .btn-tab-settings[aria-expanded="true"] {
+                        background-color: #f8f9fa;
+                        border-color: #cbd5e1;
+                        color: var(--bs-primary);
+                    }
+
+                    /* Scrollbar Gizleme */
+                    #singleRowTabs,
+                    .no-scrollbar {
+                        -ms-overflow-style: none !important;
+                        scrollbar-width: none !important;
+                    }
+
+                    #singleRowTabs::-webkit-scrollbar,
+                    .no-scrollbar::-webkit-scrollbar {
+                        display: none !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                        background: transparent !important;
+                    }
+
+                    /* Single Row Tabs */
+                    .single-tab-link {
+                        color: #556070;
+                        font-weight: 500;
+                        font-size: 13px;
+                        border-radius: 8px !important;
+                        border: 1px solid transparent;
+                        transition: all 0.15s ease;
+                        white-space: nowrap;
+                    }
+
+                    .single-tab-link:hover:not(.active) {
+                        color: var(--bs-primary);
+                        background-color: #f1f5f9;
+                    }
+
+                    .single-tab-link.active {
+                        background-color: var(--bs-primary) !important;
+                        color: #ffffff !important;
+                        font-weight: 600 !important;
+                        box-shadow: 0 3px 10px rgba(var(--bs-primary-rgb), 0.28);
+                    }
+
+                    .tab-nav-container {
+                        background: #ffffff;
+                    }
+
+                    .tab-scroll-btn {
+                        background: #ffffff;
+                        color: #495057;
+                    }
+
                     /* Dark Mode Overrides */
                     html[data-bs-theme="dark"] .personel-category-pills .btn-category-pill {
                         background-color: #2a3042;
@@ -384,6 +585,44 @@ foreach ($tabCategories as $catKey => $cat) {
                     html[data-bs-theme="dark"] .subtab-nav-link.active {
                         background-color: rgba(var(--bs-primary-rgb), 0.2) !important;
                         border-color: rgba(var(--bs-primary-rgb), 0.4) !important;
+                        color: #ffffff !important;
+                    }
+
+                    html[data-bs-theme="dark"] .btn-tab-settings {
+                        background-color: #2a3042;
+                        border-color: #32394e;
+                        color: #a6b0cf;
+                    }
+
+                    html[data-bs-theme="dark"] .btn-tab-settings:hover,
+                    html[data-bs-theme="dark"] .btn-tab-settings:focus,
+                    html[data-bs-theme="dark"] .btn-tab-settings[aria-expanded="true"] {
+                        background-color: #32394e;
+                        color: #ffffff;
+                    }
+
+                    html[data-bs-theme="dark"] .tab-nav-container {
+                        background: #2a3042 !important;
+                        border-color: #32394e !important;
+                    }
+
+                    html[data-bs-theme="dark"] .tab-scroll-btn {
+                        background: #2a3042 !important;
+                        border-color: #32394e !important;
+                        color: #ffffff !important;
+                    }
+
+                    html[data-bs-theme="dark"] .single-tab-link {
+                        color: #9299af;
+                    }
+
+                    html[data-bs-theme="dark"] .single-tab-link:hover:not(.active) {
+                        background-color: rgba(255, 255, 255, 0.05);
+                        color: #ffffff;
+                    }
+
+                    html[data-bs-theme="dark"] .single-tab-link.active {
+                        background-color: var(--bs-primary) !important;
                         color: #ffffff !important;
                     }
 
@@ -793,10 +1032,87 @@ foreach ($tabCategories as $catKey => $cat) {
     document.addEventListener("DOMContentLoaded", function () {
         initPlugins(document);
 
+        // Tab Düzeni (Layout Mode: 'grouped' veya 'single') Yönetimi
+        const TAB_LAYOUT_STORAGE_KEY = 'personel_tab_layout_mode';
+
+        function scrollSingleTabIntoView() {
+            var tabsContainer = document.getElementById('singleRowTabs');
+            if (tabsContainer) {
+                var activeTab = tabsContainer.querySelector('.single-tab-link.active');
+                if (activeTab) {
+                    var containerRect = tabsContainer.getBoundingClientRect();
+                    var tabRect = activeTab.getBoundingClientRect();
+                    if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+                        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                }
+            }
+        }
+
+        function applyTabLayout(mode, shouldScroll) {
+            if (mode === 'single') {
+                $('#personelTabLayoutGrouped').addClass('d-none');
+                $('#personelTabLayoutSingle').removeClass('d-none');
+                $('.mode-check-grouped').addClass('d-none');
+                $('.mode-check-single').removeClass('d-none');
+                if (shouldScroll) {
+                    setTimeout(scrollSingleTabIntoView, 100);
+                }
+            } else {
+                $('#personelTabLayoutSingle').addClass('d-none');
+                $('#personelTabLayoutGrouped').removeClass('d-none');
+                $('.mode-check-grouped').removeClass('d-none');
+                $('.mode-check-single').addClass('d-none');
+
+                // Gruplu görünümde aktif sekmenin kategorisini senkronize et
+                var activeLink = $('.single-tab-link.active, .subtab-nav-link.active').first();
+                if (activeLink.length) {
+                    var catKey = activeLink.data('category');
+                    if (catKey) {
+                        $('.btn-category-pill').removeClass('active');
+                        $('.btn-category-pill[data-category-target="' + catKey + '"]').addClass('active');
+                        $('.subtab-group').addClass('d-none').removeClass('d-flex');
+                        $('#subtabs-' + catKey).removeClass('d-none').addClass('d-flex');
+                    }
+                }
+            }
+            try {
+                localStorage.setItem(TAB_LAYOUT_STORAGE_KEY, mode);
+            } catch (e) {}
+        }
+
+        // Layout Değiştirici Butonları
+        $(document).on('click', '.tab-layout-switcher', function (e) {
+            e.preventDefault();
+            var targetMode = $(this).data('mode');
+            applyTabLayout(targetMode, true);
+        });
+
+        // Başlangıçta kayıtlı düzeni uygula
+        var initialLayoutMode = 'grouped';
+        try {
+            initialLayoutMode = localStorage.getItem(TAB_LAYOUT_STORAGE_KEY) || 'grouped';
+        } catch (e) {}
+        applyTabLayout(initialLayoutMode, true);
+
+        // Tek sıra tab kaydırma butonları
+        const scrollAmount = 250;
+        $('#scrollTabsLeft').on('click', function (e) {
+            e.preventDefault();
+            var container = document.getElementById('singleRowTabs');
+            if (container) container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        });
+
+        $('#scrollTabsRight').on('click', function (e) {
+            e.preventDefault();
+            var container = document.getElementById('singleRowTabs');
+            if (container) container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        });
+
         // Personel seçimi değiştiğinde yönlendir
         $('#personel_select').on('change', function () {
             var selectedId = $(this).val();
-            var activeTab = $('.subtab-nav-link.active').attr('href') || $('.nav-link.active').attr('href');
+            var activeTab = $('.subtab-nav-link.active, .single-tab-link.active').first().attr('href') || $('.nav-link.active').first().attr('href');
             if (activeTab) {
                 activeTab = activeTab.replace('#', '');
             } else {
@@ -832,14 +1148,18 @@ foreach ($tabCategories as $catKey => $cat) {
             }
         });
 
-        // Tab değişikliklerini dinle
-        var triggerTabList = [].slice.call(document.querySelectorAll('.subtab-nav-link[data-bs-toggle="tab"], #desktopTabs [data-bs-toggle="tab"]'));
+        // Tab değişikliklerini dinle (Gruplu ve Tek Sıra Senkronizasyonu)
+        var triggerTabList = [].slice.call(document.querySelectorAll('.subtab-nav-link[data-bs-toggle="tab"], .single-tab-link[data-bs-toggle="tab"]'));
         triggerTabList.forEach(function (triggerEl) {
             triggerEl.addEventListener('show.bs.tab', function (event) {
                 var targetId = event.target.getAttribute('href');
                 // Form içi ve form dışı tüm üst düzey tab-pane elemanlarını gizle
                 $('#personelTabContent > .tab-pane, #personelTabContent > form > .tab-pane').removeClass('active show');
                 $(targetId).addClass('active show');
+
+                // Hem gruplu hem tek sıra sekmelerde aktif sınıfını senkronize et
+                $('.subtab-nav-link, .single-tab-link').removeClass('active');
+                $('.subtab-nav-link[href="' + targetId + '"], .single-tab-link[href="' + targetId + '"]').addClass('active');
             });
 
             triggerEl.addEventListener('shown.bs.tab', function (event) {
@@ -865,6 +1185,9 @@ foreach ($tabCategories as $catKey => $cat) {
                 // Sync mobile dropdown active state
                 $('.mobile-tab-link').removeClass('active');
                 $('.mobile-tab-link[data-target="' + targetId + '"]').addClass('active');
+
+                // Tek sırada ise görünür alana kaydır
+                scrollSingleTabIntoView();
             });
         });
 
@@ -872,7 +1195,7 @@ foreach ($tabCategories as $catKey => $cat) {
         $(document).on('click', '.mobile-tab-link', function (e) {
             e.preventDefault();
             var target = $(this).data('target');
-            var tabEl = document.querySelector('.subtab-nav-link[href="' + target + '"]') || document.querySelector('#desktopTabs a[href="' + target + '"]');
+            var tabEl = document.querySelector('.subtab-nav-link[href="' + target + '"]') || document.querySelector('.single-tab-link[href="' + target + '"]');
             if (tabEl) {
                 var tab = new bootstrap.Tab(tabEl);
                 tab.show();
@@ -880,7 +1203,7 @@ foreach ($tabCategories as $catKey => $cat) {
         });
 
         // Sayfa yüklendiğinde aktif tab eğer dinamik içerikliyse yükle
-        var activeTabLink = document.querySelector('.subtab-nav-link.active') || document.querySelector('.nav-link.active');
+        var activeTabLink = document.querySelector('.subtab-nav-link.active') || document.querySelector('.single-tab-link.active') || document.querySelector('.nav-link.active');
         if (activeTabLink) {
             var targetId = activeTabLink.getAttribute('href');
             var targetPane = document.querySelector(targetId);
