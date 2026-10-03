@@ -706,14 +706,18 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         async function onbellektenCiz() {
             if (!window.OfflineQueue) return false;
+            try {
+                const saklanan = await OfflineQueue.referansOku(LISTE_ANAHTAR);
+                if (!saklanan) return false;
 
-            const saklanan = await OfflineQueue.referansOku(LISTE_ANAHTAR);
-            if (!saklanan) return false;
-
-            kacakKayitlar = saklanan.kayitlar || [];
-            ozetYaz(saklanan.istatistik || {}, 'Çevrimdışı');
-            listeyiCiz();
-            return true;
+                kacakKayitlar = saklanan.kayitlar || [];
+                ozetYaz(saklanan.istatistik || {}, 'Çevrimdışı');
+                listeyiCiz();
+                return true;
+            } catch (e) {
+                console.warn('Önbellekten çizilemedi:', e);
+                return false;
+            }
         }
 
         window.loadKacakKayitlar = async function () {
@@ -730,26 +734,37 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
             el.innerHTML = '<div class="text-center py-10 text-sm text-slate-400">Yükleniyor...</div>';
 
-            const res = await API.request('getKacakBildirimlerim', {
-                start_date: document.getElementById('kacak-bas').value,
-                end_date: document.getElementById('kacak-bit').value
-            }, false);
+            try {
+                const basVal = document.getElementById('kacak-bas')?.value || '';
+                const bitVal = document.getElementById('kacak-bit')?.value || '';
+                const res = await API.request('getKacakBildirimlerim', {
+                    start_date: basVal,
+                    end_date: bitVal
+                }, false);
 
-            if (!res || !res.success) {
+                if (!res || !res.success) {
+                    if (!(await onbellektenCiz())) {
+                        el.innerHTML = '<div class="text-center py-10 text-sm text-slate-400">Kayıtlar yüklenemedi</div>';
+                        document.getElementById('kacak-ozet-satiri').textContent = 'Kayıtlar yüklenemedi';
+                    }
+                    return;
+                }
+
+                kacakKayitlar = res.data.kayitlar || [];
+                const ist = res.data.istatistik || {};
+                ozetYaz(ist);
+                listeyiCiz();
+
+                // Bağlantı kesildiğinde liste boş kalmasın diye son görüntülenen hali saklanır.
+                if (window.OfflineQueue) {
+                    OfflineQueue.referansKaydet(LISTE_ANAHTAR, { kayitlar: kacakKayitlar, istatistik: ist }).catch(() => {});
+                }
+            } catch (err) {
+                console.error('loadKacakKayitlar hatası:', err);
                 if (!(await onbellektenCiz())) {
                     el.innerHTML = '<div class="text-center py-10 text-sm text-slate-400">Kayıtlar yüklenemedi</div>';
+                    document.getElementById('kacak-ozet-satiri').textContent = 'Kayıtlar yüklenemedi';
                 }
-                return;
-            }
-
-            kacakKayitlar = res.data.kayitlar || [];
-            const ist = res.data.istatistik || {};
-            ozetYaz(ist);
-            listeyiCiz();
-
-            // Bağlantı kesildiğinde liste boş kalmasın diye son görüntülenen hali saklanır.
-            if (window.OfflineQueue) {
-                OfflineQueue.referansKaydet(LISTE_ANAHTAR, { kayitlar: kacakKayitlar, istatistik: ist });
             }
         };
 
@@ -1613,53 +1628,86 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             }
         }
 
-        // pwa-app.js sayfa içeriğinden sonra yüklendiği için API/Alert/Modal
-        // ancak DOMContentLoaded anında hazır olur.
-        document.addEventListener('DOMContentLoaded', async function () {
+        async function kacakSayfayiBaslat() {
             const bugun = new Date();
             const bas = new Date();
             bas.setDate(bugun.getDate() - 29);
             const iso = d => d.toISOString().slice(0, 10);
 
-            document.getElementById('kacak-bas').value = iso(bas);
-            document.getElementById('kacak-bit').value = iso(bugun);
+            const basEl = document.getElementById('kacak-bas');
+            const bitEl = document.getElementById('kacak-bit');
+            if (basEl && !basEl.value) basEl.value = iso(bas);
+            if (bitEl && !bitEl.value) bitEl.value = iso(bugun);
 
-            await referansUygula();
             aiButonGuncelle();
-            await kuyrugaBak();
-            await loadKacakKayitlar();
-            await sicilTalepleriYukle();
+
+            // Kayıtları öncelikle yükle (kuyruk veya referans hatası listeyi engellemesin)
+            try {
+                await loadKacakKayitlar();
+            } catch (e) {
+                console.error('Kaçak kayıtları yüklenemedi:', e);
+            }
+
+            // Referans ve kuyruk işlemlerini paralel/güvenli olarak yürüt
+            try {
+                await referansUygula();
+            } catch (e) {
+                console.warn('Referans verisi uygulanamadı:', e);
+            }
+
+            try {
+                await kuyrugaBak();
+            } catch (e) {
+                console.warn('Kuyruk kontrolü yapılamadı:', e);
+            }
+
+            try {
+                await sicilTalepleriYukle();
+            } catch (e) {
+                console.warn('Sicil talepleri yüklenemedi:', e);
+            }
+
             referansTazele();
 
-            document.getElementById('sicil-duzeltme-form')
-                .addEventListener('submit', sicilDuzeltmeGonder);
+            const sicilForm = document.getElementById('sicil-duzeltme-form');
+            if (sicilForm && !sicilForm._bound) {
+                sicilForm._bound = true;
+                sicilForm.addEventListener('submit', sicilDuzeltmeGonder);
+            }
 
             const tcInput = document.getElementById('kacak-abone-tc');
-            if (tcInput) {
+            if (tcInput && !tcInput._bound) {
+                tcInput._bound = true;
                 tcInput.addEventListener('input', guncelleTcDogumZorunlulugu);
                 tcInput.addEventListener('change', guncelleTcDogumZorunlulugu);
             }
+        }
 
-            // Kuyruk hem bu sayfadan hem de arka plan senkronizasyonundan değişebilir.
-            window.addEventListener('kuyruk-degisti', async (e) => {
-                await kuyrugaBak();
-                if (e.detail && e.detail.gonderildi > 0) {
-                    await loadKacakKayitlar();
-                }
-            });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', kacakSayfayiBaslat);
+        } else {
+            kacakSayfayiBaslat();
+        }
 
-            window.addEventListener('online', async () => {
-                aiButonGuncelle();
-                await kuyrugaBak();
-                await loadKacakKayitlar();
-                await sicilTalepleriYukle();
-                referansTazele();
-            });
+        // Kuyruk hem bu sayfadan hem de arka plan senkronizasyonundan değişebilir.
+        window.addEventListener('kuyruk-degisti', async (e) => {
+            try { await kuyrugaBak(); } catch (err) {}
+            if (e.detail && e.detail.gonderildi > 0) {
+                try { await loadKacakKayitlar(); } catch (err) {}
+            }
+        });
 
-            window.addEventListener('offline', () => {
-                aiButonGuncelle();
-                kuyrugaBak();
-            });
+        window.addEventListener('online', async () => {
+            aiButonGuncelle();
+            try { await kuyrugaBak(); } catch (err) {}
+            try { await loadKacakKayitlar(); } catch (err) {}
+            try { await sicilTalepleriYukle(); } catch (err) {}
+            referansTazele();
+        });
+
+        window.addEventListener('offline', () => {
+            aiButonGuncelle();
+            try { kuyrugaBak(); } catch (err) {}
         });
     })();
 </script>

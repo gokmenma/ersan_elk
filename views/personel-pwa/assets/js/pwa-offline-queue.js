@@ -11,7 +11,6 @@
     "use strict";
 
     var DB_ADI = "ersan-pwa-offline";
-    var DB_SURUM = 2;
     var STORE_META = "transfer_meta";
     var leaseOwner = uuidUret();
     var accountKey = global.PWA_ACCOUNT_KEY || "";
@@ -54,25 +53,38 @@
                !db.objectStoreNames.contains(STORE_REFERANS);
     }
 
-    function openDbWithVersion(surum) {
+    function openRaw(surum) {
         return new Promise(function (resolve, reject) {
-            var istek = surum ? indexedDB.open(DB_ADI, surum) : indexedDB.open(DB_ADI);
+            var istek = (typeof surum === "number" && surum > 0)
+                ? indexedDB.open(DB_ADI, surum)
+                : indexedDB.open(DB_ADI);
+
+            var timer = setTimeout(function () {
+                reject(new Error("IndexedDB bağlantı zaman aşımı."));
+            }, 4000);
 
             istek.onupgradeneeded = function () {
                 semayiOlustur(istek.result);
             };
 
             istek.onsuccess = function () {
+                clearTimeout(timer);
                 var db = istek.result;
                 db.onversionchange = function () {
-                    db.close();
+                    try { db.close(); } catch (e) {}
                     dbSozu = null;
                 };
                 resolve(db);
             };
 
-            istek.onerror = function () {
-                reject(istek.error);
+            istek.onerror = function (e) {
+                clearTimeout(timer);
+                if (e && e.preventDefault) e.preventDefault();
+                reject(istek.error || new Error("IndexedDB açılamadı."));
+            };
+
+            istek.onblocked = function () {
+                console.warn("IndexedDB upgrade engellendi, diğer sekmelerin kapanması bekleniyor.");
             };
         });
     }
@@ -80,27 +92,12 @@
     function dbAc() {
         if (dbSozu) return dbSozu;
 
-        dbSozu = openDbWithVersion(DB_SURUM)
-            .catch(function (err) {
-                // Cihazdaki IndexedDB sürümü DB_SURUM'dan yüksekse VersionError alınır.
-                // Sürüm belirtmeden açarak mevcut sürümü kullanırız.
-                if (err && (err.name === "VersionError" || (err.message && err.message.indexOf("lower version") !== -1))) {
-                    return openDbWithVersion(null).then(function (db) {
-                        if (eksikStoreVarMi(db)) {
-                            var yeniSurum = (db.version || 1) + 1;
-                            db.close();
-                            return openDbWithVersion(yeniSurum);
-                        }
-                        return db;
-                    });
-                }
-                throw err;
-            })
+        dbSozu = openRaw()
             .then(function (db) {
                 if (eksikStoreVarMi(db)) {
-                    var yeniSurum = (db.version || 1) + 1;
-                    db.close();
-                    return openDbWithVersion(yeniSurum);
+                    var hedefSurum = (db.version || 1) + 1;
+                    try { db.close(); } catch (e) {}
+                    return openRaw(hedefSurum);
                 }
                 return db;
             })
@@ -114,12 +111,20 @@
 
     function islem(store, mod, fn) {
         return dbAc().then(function (db) {
+            if (!db || !db.objectStoreNames || !db.objectStoreNames.contains(store)) {
+                return undefined;
+            }
             return new Promise(function (resolve, reject) {
-                var t = db.transaction(store, mod);
-                var istek = fn(t.objectStore(store));
-                t.oncomplete = function () { resolve(istek ? istek.result : undefined); };
-                t.onerror = function () { reject(t.error); };
-                t.onabort = function () { reject(t.error); };
+                try {
+                    var t = db.transaction(store, mod);
+                    var s = t.objectStore(store);
+                    var istek = fn(s);
+                    t.oncomplete = function () { resolve(istek ? istek.result : undefined); };
+                    t.onerror = function () { reject(t.error); };
+                    t.onabort = function () { reject(t.error); };
+                } catch (e) {
+                    reject(e);
+                }
             });
         });
     }
@@ -853,12 +858,16 @@
             var version = ++generation;
             var host = document.getElementById(id);
             if (!host) return;
-            var records = (await listele()).filter(matches);
-            var done = (await islem(STORE_META, "readonly", function (s) { return s.getAll(); }))
-                .filter(function (k) { return k.completed && k.accountKey === accountKey && matches(k) && k.completed > Date.now() - 86400000; })
+            var records = (await listele().catch(function () { return []; })).filter(matches);
+            var done = (await islem(STORE_META, "readonly", function (s) { return s.getAll(); }).catch(function () { return []; }) || [])
+                .filter(function (k) { return k && k.completed && k.accountKey === accountKey && matches(k) && k.completed > Date.now() - 86400000; })
                 .sort(function (a, b) { return b.completed - a.completed; }).slice(0, 5);
             if (version !== generation) return;
-            host.replaceChildren();
+            if (typeof host.replaceChildren === "function") {
+                host.replaceChildren();
+            } else {
+                host.innerHTML = "";
+            }
             function line(card, text, cls) {
                 var el = document.createElement("p");
                 el.className = cls || "text-xs text-slate-500 mt-1";
