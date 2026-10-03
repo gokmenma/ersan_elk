@@ -34,28 +34,80 @@
 
     // ---------- IndexedDB temeli ----------
 
+    function semayiOlustur(db) {
+        if (!db.objectStoreNames.contains(STORE_KUYRUK)) {
+            var s = db.createObjectStore(STORE_KUYRUK, { keyPath: "uuid" });
+            s.createIndex("durum", "durum", { unique: false });
+            s.createIndex("olusturma", "olusturma", { unique: false });
+        }
+        if (!db.objectStoreNames.contains(STORE_META)) {
+            db.createObjectStore(STORE_META, { keyPath: "key" });
+        }
+        if (!db.objectStoreNames.contains(STORE_REFERANS)) {
+            db.createObjectStore(STORE_REFERANS, { keyPath: "anahtar" });
+        }
+    }
+
+    function eksikStoreVarMi(db) {
+        return !db.objectStoreNames.contains(STORE_KUYRUK) ||
+               !db.objectStoreNames.contains(STORE_META) ||
+               !db.objectStoreNames.contains(STORE_REFERANS);
+    }
+
+    function openDbWithVersion(surum) {
+        return new Promise(function (resolve, reject) {
+            var istek = surum ? indexedDB.open(DB_ADI, surum) : indexedDB.open(DB_ADI);
+
+            istek.onupgradeneeded = function () {
+                semayiOlustur(istek.result);
+            };
+
+            istek.onsuccess = function () {
+                var db = istek.result;
+                db.onversionchange = function () {
+                    db.close();
+                    dbSozu = null;
+                };
+                resolve(db);
+            };
+
+            istek.onerror = function () {
+                reject(istek.error);
+            };
+        });
+    }
+
     function dbAc() {
         if (dbSozu) return dbSozu;
 
-        dbSozu = new Promise(function (resolve, reject) {
-            var istek = indexedDB.open(DB_ADI, DB_SURUM);
-
-            istek.onupgradeneeded = function () {
-                var db = istek.result;
-                if (!db.objectStoreNames.contains(STORE_KUYRUK)) {
-                    var s = db.createObjectStore(STORE_KUYRUK, { keyPath: "uuid" });
-                    s.createIndex("durum", "durum", { unique: false });
-                    s.createIndex("olusturma", "olusturma", { unique: false });
+        dbSozu = openDbWithVersion(DB_SURUM)
+            .catch(function (err) {
+                // Cihazdaki IndexedDB sürümü DB_SURUM'dan yüksekse VersionError alınır.
+                // Sürüm belirtmeden açarak mevcut sürümü kullanırız.
+                if (err && (err.name === "VersionError" || (err.message && err.message.indexOf("lower version") !== -1))) {
+                    return openDbWithVersion(null).then(function (db) {
+                        if (eksikStoreVarMi(db)) {
+                            var yeniSurum = (db.version || 1) + 1;
+                            db.close();
+                            return openDbWithVersion(yeniSurum);
+                        }
+                        return db;
+                    });
                 }
-                if (!db.objectStoreNames.contains(STORE_META)) db.createObjectStore(STORE_META, { keyPath: "key" });
-                if (!db.objectStoreNames.contains(STORE_REFERANS)) {
-                    db.createObjectStore(STORE_REFERANS, { keyPath: "anahtar" });
+                throw err;
+            })
+            .then(function (db) {
+                if (eksikStoreVarMi(db)) {
+                    var yeniSurum = (db.version || 1) + 1;
+                    db.close();
+                    return openDbWithVersion(yeniSurum);
                 }
-            };
-
-            istek.onsuccess = function () { istek.result.onversionchange = function () { istek.result.close(); dbSozu = null; }; resolve(istek.result); };
-            istek.onerror = function () { reject(istek.error); };
-        });
+                return db;
+            })
+            .catch(function (err) {
+                dbSozu = null;
+                throw err;
+            });
 
         return dbSozu;
     }

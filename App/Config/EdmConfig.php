@@ -46,17 +46,13 @@ class EdmConfig
     // Yaygın KDV Tevkifat Kodları
     public static function getTevkifatCodes(): array
     {
-        return [
-            '601' => ['name' => 'Yapım İşleri ile Bu İşlerle Birlikte İfa Edilen Mühendislik-Mimarlık ve Etüt-Proje Hizmetleri', 'rate' => '4/10'],
-            '602' => ['name' => 'Etüt, Plan-Proje, Danışmanlık, Denetim ve Benzeri Hizmetler', 'rate' => '9/10'],
-            '603' => ['name' => 'Makine, Teçhizat, Demirbaş ve Taşıtlara Ait Tadil, Bakım ve Onarım Hizmetleri', 'rate' => '7/10'],
-            '604' => ['name' => 'Yemek Servis ve Organizasyon Hizmetleri', 'rate' => '5/10'],
-            '605' => ['name' => 'İşgücü Temin Hizmetleri', 'rate' => '9/10'],
-            '606' => ['name' => 'Özel Güvenlik Hizmeti', 'rate' => '9/10'],
-            '608' => ['name' => 'Temizlik Hizmeti', 'rate' => '7/10'],
-            '609' => ['name' => 'Taşımacılık Hizmetleri', 'rate' => '2/10'],
-            '624' => ['name' => 'Demir-Çelik Ürünlerinin Teslimi', 'rate' => '4/10'],
-        ];
+        $codes = [];
+        foreach (\App\Service\InvoiceValidationService::codes('WithholdingTaxTypeWithPercent') as $pair) {
+            $code = substr($pair, 0, 3);
+            if (!in_array($code, \App\Service\InvoiceValidationService::codes('WithholdingTaxType'), true)) continue;
+            $codes[$code . '|' . substr($pair, 3)] = ['name' => 'Tevkifat ' . $code, 'rate' => substr($pair, 3) . '/100'];
+        }
+        return $codes;
     }
 
     // Yaygın KDV İstisna Kodları

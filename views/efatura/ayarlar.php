@@ -1,11 +1,12 @@
 <?php
+\App\Service\Gate::authorizeOrDie('efatura/ayarlar');
 use App\Helper\Form;
 use App\Model\EInvoiceSettingsModel;
 
 $maintitle = 'E-Fatura & E-Arşiv';
 $title = 'Entegratör Ayarları';
 
-$firmId = (int)($_SESSION['firm_id'] ?? 1);
+$firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
 $settingsModel = new EInvoiceSettingsModel();
 $settings = $settingsModel->getSettings($firmId) ?: [];
 
@@ -14,6 +15,9 @@ $envOptions = [
     'LIVE' => 'CANLI / Production (Gerçek Gönderim)'
 ];
 ?>
+<meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
+<script src="views/efatura/js/transport.js"></script>
+
 
 <div class="container-fluid pb-5">
     <?php include 'layouts/breadcrumb.php'; ?>
@@ -27,7 +31,7 @@ $envOptions = [
                             <i class="bx bx-cog fs-4"></i>
                         </div>
                         <div>
-                            <h5 class="mb-0 fw-bold">EDM Bilişim API Yapılandırması</h5>
+                            <span class="fw-bold">EDM bağlantı bilgileri</span>
                             <small class="text-muted">Firma bazlı e-fatura/e-arşiv web servis erişim bilgileri.</small>
                         </div>
                     </div>
@@ -133,16 +137,19 @@ $envOptions = [
                                 <?= Form::FormFloatInput(
                                     'text',
                                     'varsayilan_gonderici_alias',
-                                    $settings['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb',
+                                    $settings['varsayilan_gonderici_alias'] ?? '',
                                     'urn:mail:defaultgb',
                                     'Varsayılan Gönderici Posta Kutusu (GB Alias)',
                                     'mail',
                                     'form-control'
                                 ) ?>
-                                <small class="text-muted ms-1">EDM Bilişim üzerinde tanımlı Gönderici Birim etiketi (Varsayılan: urn:mail:defaultgb)</small>
+                                <small class="text-muted ms-1">EDM hesabındaki aktif gönderici birim etiketini bağlantı kontrolünden doğrulayın.</small>
                             </div>
                         </div>
 
+                        <div class="mt-3"><label for="kontor_esik">Düşük kontör uyarı eşiği</label><input type="number" min="0" class="form-control" id="kontor_esik" name="kontor_esik" value="<?= htmlspecialchars((string)($settings['kontor_esik'] ?? 100), ENT_QUOTES, 'UTF-8') ?>"></div>
+                        <div class="mt-3"><button type="button" class="btn btn-outline-secondary" id="btnCounter">Kontör Sorgula</button><span id="counterResult" class="ms-2">Henüz sorgulanmadı</span></div>
+                        <div id="connectionResult" class="mt-3" role="status"></div>
                         <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
                             <button type="button" class="btn btn-outline-info" id="btnTestConnection">
                                 <i class="bx bx-broadcast me-1"></i> Bağlantıyı Test Et
@@ -186,37 +193,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Bağlantı Testi
-    $('#btnTestConnection').on('click', function() {
-        const username = $('input[name="api_username"]').val().trim();
-        if (!username) {
-            Swal.fire('Uyarı', 'Lütfen önce API kullanıcı adını girin.', 'warning');
-            return;
-        }
-
-        Swal.fire({
-            title: 'Bağlantı Test Ediliyor',
-            text: 'EDM Bilişim SOAP servisine erişim deneniyor...',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
-
-        fetch('api/efatura-api.php?action=check_taxpayer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `vkn_tckn=${encodeURIComponent(username)}`
-        })
-        .then(res => res.json())
-        .then(res => {
-            if (res.status === 'success') {
-                Swal.fire('Bağlantı Başarılı!', 'EDM Bilişim SOAP servisi ile başarıyla iletişim kuruldu.', 'success');
-            } else {
-                Swal.fire('Bağlantı Hatası', res.message || 'Servis yanıt vermedi.', 'error');
-            }
-        })
-        .catch(err => {
-            Swal.fire('Hata', 'İstek gönderilirken hata oluştu: ' + err.message, 'error');
-        });
+    $('#btnTestConnection').on('click', async function() {
+        Swal.fire({title: 'Kayıtlı EDM ayarları kontrol ediliyor', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+        try {
+            const result = await (await fetch('api/efatura-api.php?action=connection_info', {method: 'POST'})).json();
+            if (result.status !== 'success') throw new Error(result.message);
+            const c = result.data;
+            $('#connectionResult').empty().append($('<p>').text(c.UNVAN + ' / ' + c.VKN), $('<p>').text('GB: ' + (c.GB || 'Yok') + ' | PK: ' + (c.PK || 'Yok')), $('<p>').text('e-Fatura: ' + (c.EFATURA === 70 ? 'Aktif' : 'Pasif') + ' | e-Arşiv: ' + (c.EARSIV === 70 ? 'Aktif' : 'Pasif')));
+            c.SERIALS.forEach(serial => $('#connectionResult').append($('<p>').text(serial.series + ' / ' + serial.year + ' / ' + (serial.earchive ? 'e-Arşiv' : 'e-Fatura') + ' / son numara: ' + serial.last + ' / ' + (serial.active === 1 ? 'Aktif' : 'Pasif'))));
+            Swal.fire('Bağlantı başarılı', 'Kayıtlı firma ve seri bilgileri alındı.', 'success');
+        } catch (e) { Swal.fire('Bağlantı kontrolü', e.message, 'error'); }
+    });
+    $('#btnCounter').on('click', async function() {
+        $('#counterResult').text('Sorgulanıyor…');
+        try {
+            const result = await (await fetch('api/efatura-api.php?action=counter_info', {method: 'POST'})).json();
+            if (result.status !== 'success') throw new Error(result.message);
+            $('#counterResult').text(result.data.remaining === null ? 'Kontör bilgisi bulunmuyor' : 'Kalan: ' + result.data.remaining).toggleClass('text-danger', result.data.low);
+        } catch (e) { $('#counterResult').text(e.message); }
     });
 });
 </script>

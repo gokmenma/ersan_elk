@@ -7,45 +7,62 @@ $(document).ready(function() {
     let currentBelgeFilter = '';
     let currentPreviewInvoiceId = null;
 
-    // 1. Özet Kartları Açma/Kapatma Mantığı (AGENTS.md)
-    const toggleBtn = document.getElementById('btnToggleSummaryCards');
-    const container = document.getElementById('summaryCardsContainer');
-    const storageKey = 'efatura_taslak_summary_cards_state';
+    window.efaturaSetupSummary('efatura_taslak_summary_cards_state');
 
-    if (toggleBtn && container) {
-        const savedState = localStorage.getItem(storageKey);
-        const icon = toggleBtn.querySelector('i');
-        if (savedState === 'hidden') {
-            container.style.display = 'none';
-            toggleBtn.setAttribute('aria-expanded', 'false');
-            if (icon) icon.className = 'bx bx-chevron-down font-size-18';
-        }
+    let currentStartDate = '';
+    let currentEndDate = '';
 
-        toggleBtn.addEventListener('click', function() {
-            const currentIcon = toggleBtn.querySelector('i');
-            if (container.style.display === 'none') {
-                container.style.display = 'flex';
-                toggleBtn.setAttribute('aria-expanded', 'true');
-                if (currentIcon) currentIcon.className = 'bx bx-chevron-up font-size-18';
-                localStorage.setItem(storageKey, 'visible');
-            } else {
-                container.style.display = 'none';
-                toggleBtn.setAttribute('aria-expanded', 'false');
-                if (currentIcon) currentIcon.className = 'bx bx-chevron-down font-size-18';
-                localStorage.setItem(storageKey, 'hidden');
+    // Varsayılan: İçinde Bulunulan Ayın İlk ve Son Günü
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const formatDMY = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+
+    currentStartDate = formatYMD(firstDay);
+    currentEndDate = formatYMD(lastDay);
+
+    // Flatpickr Tarih Aralığı Seçici Başlat
+    if (typeof flatpickr !== 'undefined' && document.getElementById('filterDateRange')) {
+        flatpickr('#filterDateRange', {
+            mode: 'range',
+            locale: 'tr',
+            dateFormat: 'd.m.Y',
+            defaultDate: [firstDay, lastDay],
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) {
+                    currentStartDate = formatYMD(selectedDates[0]);
+                    currentEndDate = formatYMD(selectedDates[1]);
+                    table.ajax.reload();
+                    loadStats();
+                }
             }
         });
     }
 
+    // Tarih Filtresi Temizle Butonu
+    $('#btnClearDateRange').on('click', function(e) {
+        e.stopPropagation();
+        currentStartDate = '';
+        currentEndDate = '';
+        if (document.getElementById('filterDateRange') && document.getElementById('filterDateRange')._flatpickr) {
+            document.getElementById('filterDateRange')._flatpickr.clear();
+        }
+        $('#filterDateRange').val('');
+        table.ajax.reload();
+        loadStats();
+    });
+
     // 2. İstatistikleri Yükle
     function loadStats() {
-        fetch('api/efatura-api.php?action=summary_stats&list_type=taslak')
+        let url = 'api/efatura-api.php?action=summary_stats&list_type=taslak';
+        fetch(url)
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success' && res.data) {
                     const d = res.data;
                     const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
-                    
+
                     if (document.getElementById('stat_toplam_adet')) {
                         document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
                     }
@@ -72,7 +89,7 @@ $(document).ready(function() {
 
     // 3. DataTables Tablosunu Başlat (AGENTS.md getDatatableOptions() ve applyLengthStateSave())
     const baseOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
-    
+
     const tableOptions = {
         ...baseOptions,
         serverSide: true,
@@ -95,6 +112,12 @@ $(document).ready(function() {
             data: function(d) {
                 if (currentBelgeFilter) {
                     d.belge_turu_filtre = currentBelgeFilter;
+                }
+                if (currentStartDate) {
+                    d.baslangic_tarihi = currentStartDate;
+                }
+                if (currentEndDate) {
+                    d.bitis_tarihi = currentEndDate;
                 }
             }
         },
@@ -182,7 +205,10 @@ $(document).ready(function() {
             {
                 data: 'entegrator_durum_kodu',
                 className: 'align-middle text-center',
-                render: function() {
+                render: function(data, type, row) {
+                    if (data === 'GONDERILDI') {
+                        return '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 font-size-11"><i class="bx bx-loader-circle me-1"></i>İşleniyor</span>';
+                    }
                     return '<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 font-size-11"><i class="bx bx-time-five me-1"></i>Taslak</span>';
                 }
             },
@@ -192,21 +218,37 @@ $(document).ready(function() {
                 searchable: false,
                 className: 'align-middle text-center',
                 render: function(data, type, row) {
-                    return `
-                    <div class="d-flex align-items-center justify-content-center gap-1">
+                    let btns = `<div class="d-flex align-items-center justify-content-center gap-1">`;
+
+                    if (row.entegrator_durum_kodu === 'TASLAK') {
+                        btns += `
                         <button type="button" class="btn btn-success text-white table-action-btn btn-send-edm" data-id="${row.encrypted_id}" title="EDM / GİB'e Gönder">
                             <i class="bx bx-send font-size-14"></i>
                         </button>
                         <a href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-light border text-primary table-action-btn" title="Taslağı Düzenle">
                             <i class="bx bx-edit font-size-15"></i>
-                        </a>
+                        </a>`;
+                    } else {
+                        btns += `
+                        <button type="button" class="btn btn-primary text-white table-action-btn btn-sync-single" data-id="${row.encrypted_id}" title="GİB Durumunu Sorgula">
+                            <i class="bx bx-refresh font-size-15"></i>
+                        </button>`;
+                    }
+
+                    btns += `
                         <button type="button" class="btn btn-light border text-dark table-action-btn btn-preview" data-id="${row.encrypted_id}" title="Önizle">
                             <i class="bx bx-show font-size-15"></i>
-                        </button>
+                        </button>`;
+
+                    if (row.entegrator_durum_kodu === 'TASLAK') {
+                        btns += `
                         <button type="button" class="btn btn-light border text-danger table-action-btn btn-delete-draft" data-id="${row.encrypted_id}" title="Taslağı Sil">
                             <i class="bx bx-trash font-size-15"></i>
-                        </button>
-                    </div>`;
+                        </button>`;
+                    }
+
+                    btns += `</div>`;
+                    return btns;
                 }
             }
         ],
@@ -264,20 +306,88 @@ $(document).ready(function() {
 
     // EDM'den Taslakları / Faturaları Çek
     $('#btnSyncDrafts, #btnDropdownSyncDrafts').on('click', function() {
+        const todayStr = formatDMY(now);
+        const thisMonthStartStr = formatDMY(firstDay);
+        const thisMonthEndStr = formatDMY(lastDay);
+
         Swal.fire({
-            title: 'EDM Taslakları Çekilsin mi?',
-            text: 'EDM Bilişim portalında bulunan taslak ve faturalar taranarak sisteme aktarılacaktır.',
-            icon: 'question',
+            title: '<i class="bx bx-cloud-download text-primary me-1"></i> EDM Faturalarını Çek',
+            html: `
+                <div class="text-start font-size-13 text-muted mb-3">
+                    EDM portalında bulunan faturaları çekmek istediğiniz tarih aralığını belirleyin:
+                </div>
+                <div class="text-start mb-3">
+                    <label class="form-label font-size-12 fw-bold text-dark">Hızlı Tarih Seçimi:</label>
+                    <div class="d-flex gap-2 flex-wrap mb-2">
+                        <button type="button" class="btn btn-sm btn-light border quick-sync-date" data-type="today" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Bugün</button>
+                        <button type="button" class="btn btn-sm btn-primary text-white shadow-sm quick-sync-date" data-type="this_month" style="color: #ffffff !important; background-color: #135bec !important; border-color: #135bec !important; font-weight: 600;">Bu Ay (${todayStr.substring(3)})</button>
+                        <button type="button" class="btn btn-sm btn-light border quick-sync-date" data-type="last_7_days" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Son 7 Gün</button>
+                        <button type="button" class="btn btn-sm btn-light border quick-sync-date" data-type="last_30_days" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Son 30 Gün</button>
+                    </div>
+                </div>
+                <div class="row g-2 text-start">
+                    <div class="col-6">
+                        <label class="form-label font-size-12 fw-semibold text-muted mb-1"><i class="bx bx-calendar me-1 text-primary"></i>Başlangıç Tarihi</label>
+                        <input type="date" id="swalSyncStartDate" class="form-control form-control-sm border shadow-sm font-size-13 fw-semibold text-dark" value="${formatYMD(firstDay)}" style="border-radius: 6px; padding: 6px 10px;">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label font-size-12 fw-semibold text-muted mb-1"><i class="bx bx-calendar me-1 text-primary"></i>Bitiş Tarihi</label>
+                        <input type="date" id="swalSyncEndDate" class="form-control form-control-sm border shadow-sm font-size-13 fw-semibold text-dark" value="${formatYMD(now)}" style="border-radius: 6px; padding: 6px 10px;">
+                    </div>
+                </div>
+            `,
             showCancelButton: true,
             confirmButtonColor: '#10b981',
             cancelButtonColor: '#64748b',
-            confirmButtonText: '<i class="bx bx-refresh me-1"></i> Evet, Çek',
-            cancelButtonText: 'Vazgeç'
+            confirmButtonText: '<i class="bx bx-refresh me-1"></i> Faturaları Çek',
+            cancelButtonText: 'Vazgeç',
+            didOpen: () => {
+                $('.quick-sync-date').on('click', function() {
+                    $('.quick-sync-date')
+                        .removeClass('btn-primary text-white shadow-sm')
+                        .addClass('btn-light border')
+                        .attr('style', 'color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;');
+                    $(this)
+                        .removeClass('btn-light border')
+                        .addClass('btn-primary text-white shadow-sm')
+                        .attr('style', 'color: #ffffff !important; background-color: #135bec !important; border-color: #135bec !important; font-weight: 600;');
+
+                    const t = $(this).data('type');
+                    const cur = new Date();
+                    if (t === 'today') {
+                        $('#swalSyncStartDate').val(formatYMD(cur));
+                        $('#swalSyncEndDate').val(formatYMD(cur));
+                    } else if (t === 'this_month') {
+                        $('#swalSyncStartDate').val(formatYMD(firstDay));
+                        $('#swalSyncEndDate').val(formatYMD(cur));
+                    } else if (t === 'last_7_days') {
+                        const d7 = new Date();
+                        d7.setDate(d7.getDate() - 7);
+                        $('#swalSyncStartDate').val(formatYMD(d7));
+                        $('#swalSyncEndDate').val(formatYMD(cur));
+                    } else if (t === 'last_30_days') {
+                        const d30 = new Date();
+                        d30.setDate(d30.getDate() - 30);
+                        $('#swalSyncStartDate').val(formatYMD(d30));
+                        $('#swalSyncEndDate').val(formatYMD(cur));
+                    }
+                });
+            },
+            preConfirm: () => {
+                const s = $('#swalSyncStartDate').val();
+                const e = $('#swalSyncEndDate').val();
+                if (!s || !e) {
+                    Swal.showValidationMessage('Lütfen geçerli bir başlangıç ve bitiş tarihi seçin.');
+                    return false;
+                }
+                return { start_date: s, end_date: e };
+            }
         }).then((result) => {
-            if (result.isConfirmed) {
+            if (result.isConfirmed && result.value) {
+                const syncRange = result.value;
                 Swal.fire({
                     title: 'Faturalar Taranıyor...',
-                    text: 'EDM servisi ile senkronizasyon yapılıyor, lütfen bekleyin.',
+                    text: `${syncRange.start_date} ile ${syncRange.end_date} arasındaki faturalar taranıyor, lütfen bekleyin.`,
                     allowOutsideClick: false,
                     didOpen: () => {
                         Swal.showLoading();
@@ -287,24 +397,29 @@ $(document).ready(function() {
                 $.ajax({
                     url: 'api/efatura-api.php',
                     type: 'POST',
-                    data: { action: 'sync_outgoing_invoices' },
+                    data: {
+                        action: 'sync_outgoing_invoices',
+                        start_date: syncRange.start_date,
+                        end_date: syncRange.end_date
+                    },
                     dataType: 'json',
                     success: function(res) {
                         if (res.status === 'success') {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Senkronizasyon Tamamlandı',
-                                text: res.message
+                                text: res.message || 'Faturalar başarıyla güncellendi.'
                             }).then(() => {
                                 table.ajax.reload(null, false);
                                 loadStats();
                             });
                         } else {
-                            Swal.fire('Bilgi', res.message || 'Yeni fatura bulunamadı.', 'info');
+                            Swal.fire('Bilgi', res.message || 'Seçilen tarih aralığında yeni fatura bulunamadı.', 'info');
                         }
                     },
-                    error: function() {
-                        Swal.fire('Hata', 'EDM servisinden faturalar çekilirken hata oluştu.', 'error');
+                    error: function(xhr) {
+                        const errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'EDM servisinden faturalar çekilirken bir sorun oluştu.';
+                        Swal.fire('Bilgi', errMsg, 'warning');
                     }
                 });
             }
@@ -449,7 +564,7 @@ $(document).ready(function() {
     // Tekil EDM'ye Gönder Butonu
     $(document).on('click', '.btn-send-edm', function() {
         const invoiceId = $(this).data('id');
-        
+
         Swal.fire({
             title: 'Fatura Gönderilsin mi?',
             text: 'Taslak fatura EDM Bilişim (GİB) sistemine iletilecektir. Onay sonrası fatura "Giden Faturalar" modülünde listelenecektir.',
@@ -617,6 +732,43 @@ $(document).ready(function() {
                         }
                     }
                 });
+            }
+        });
+    });
+
+    // Tekil GİB Durumunu Sorgula
+    $(document).on('click', '.btn-sync-single', function() {
+        const invoiceId = $(this).data('id');
+        const $btn = $(this);
+        $btn.prop('disabled', true).find('i').addClass('bx-spin');
+
+        $.ajax({
+            url: 'api/efatura-api.php',
+            type: 'POST',
+            data: {
+                action: 'sync_status',
+                invoice_id: invoiceId
+            },
+            dataType: 'json',
+            success: function(res) {
+                $btn.prop('disabled', false).find('i').removeClass('bx-spin');
+                if (res.status === 'success') {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'GİB Durumu',
+                        text: res.data.aciklama || 'Durum güncellendi.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    table.ajax.reload(null, false);
+                    loadStats();
+                } else {
+                    Swal.fire('Hata', res.message || 'Durum sorgulanamadı.', 'error');
+                }
+            },
+            error: function() {
+                $btn.prop('disabled', false).find('i').removeClass('bx-spin');
+                Swal.fire('Hata', 'GİB durum sorgulama sırasında hata oluştu.', 'error');
             }
         });
     });

@@ -26,12 +26,12 @@ class EInvoiceModel extends Model
             $ettn = !empty($header['ettn']) ? $header['ettn'] : Helper::generateUuid();
 
             // Alt Toplamları Hesapla
-            $satirToplami = 0.0;
-            $iskontoToplami = 0.0;
-            $kdvMatrahi = 0.0;
-            $hesaplananKdv = 0.0;
-            $tevkifatTutari = 0.0;
-            $odenecekTutar = 0.0;
+            $satirToplami = '0.00';
+            $iskontoToplami = '0.00';
+            $kdvMatrahi = '0.00';
+            $hesaplananKdv = '0.00';
+            $tevkifatTutari = '0.00';
+            $odenecekTutar = '0.00';
 
             foreach ($lines as $line) {
                 $miktar = (float)($line['miktar'] ?? 1);
@@ -40,19 +40,21 @@ class EInvoiceModel extends Model
                 $kdvOrani = (float)($line['kdv_orani'] ?? 20);
                 $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
 
-                $hamTutar = round($miktar * $birimFiyat, 2);
-                $iskontoTutari = round($hamTutar * ($iskontoOrani / 100), 2);
-                $netMatrah = $hamTutar - $iskontoTutari;
-                $kdvTutari = round($netMatrah * ($kdvOrani / 100), 2);
-                $tevkifat = round($kdvTutari * ($tevkifatOrani / 100), 2);
-                $satirNet = $netMatrah + $kdvTutari - $tevkifat;
+                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
+                $line = $calculated['lines'][0];
+                $hamTutar = $calculated['header']['satir_toplami'];
+                $iskontoTutari = $line['iskonto_tutari'];
+                $netMatrah = $calculated['header']['kdv_matrahi'];
+                $kdvTutari = $line['kdv_tutari'];
+                $tevkifat = $line['tevkifat_tutari'];
+                $satirNet = $line['satir_toplami'];
 
-                $satirToplami += $hamTutar;
-                $iskontoToplami += $iskontoTutari;
-                $kdvMatrahi += $netMatrah;
-                $hesaplananKdv += $kdvTutari;
-                $tevkifatTutari += $tevkifat;
-                $odenecekTutar += $satirNet;
+                $satirToplami = bcadd($satirToplami, $hamTutar, 2);
+                $iskontoToplami = bcadd($iskontoToplami, $iskontoTutari, 2);
+                $kdvMatrahi = bcadd($kdvMatrahi, $netMatrah, 2);
+                $hesaplananKdv = bcadd($hesaplananKdv, $kdvTutari, 2);
+                $tevkifatTutari = bcadd($tevkifatTutari, $tevkifat, 2);
+                $odenecekTutar = bcadd($odenecekTutar, $satirNet, 2);
             }
 
             $stmt = $this->db->prepare("
@@ -62,7 +64,7 @@ class EInvoiceModel extends Model
                     alici_vergi_dairesi, alici_adres, alici_il, alici_ilce, alici_ulke,
                     alici_eposta, alici_telefon, alici_posta_kutusu, para_birimi, doviz_kuru,
                     satir_toplami, iskonto_toplami, kdv_matrahi, hesaplanan_kdv, tevkifat_tutari,
-                    odenecek_tutar, notlar, siparis_no, siparis_tarihi, irsaliye_no, irsaliye_tarihi,
+                    odenecek_tutar, notlar, iade_fatura_no, iade_fatura_tarihi, siparis_no, siparis_tarihi, irsaliye_no, irsaliye_tarihi,
                     entegrator_durum_kodu, olusturan_user_id, is_active, created_at
                 ) VALUES (
                     :firm_id, :cari_id, :yon, :belge_turu, :fatura_profili, :fatura_tipi, :ettn, :fatura_no,
@@ -70,7 +72,7 @@ class EInvoiceModel extends Model
                     :alici_vergi_dairesi, :alici_adres, :alici_il, :alici_ilce, :alici_ulke,
                     :alici_eposta, :alici_telefon, :alici_posta_kutusu, :para_birimi, :doviz_kuru,
                     :satir_toplami, :iskonto_toplami, :kdv_matrahi, :hesaplanan_kdv, :tevkifat_tutari,
-                    :odenecek_tutar, :notlar, :siparis_no, :siparis_tarihi, :irsaliye_no, :irsaliye_tarihi,
+                    :odenecek_tutar, :notlar, :iade_fatura_no, :iade_fatura_tarihi, :siparis_no, :siparis_tarihi, :irsaliye_no, :irsaliye_tarihi,
                     :entegrator_durum_kodu, :olusturan_user_id, 1, NOW()
                 )
             ");
@@ -106,6 +108,8 @@ class EInvoiceModel extends Model
                 'tevkifat_tutari'       => $tevkifatTutari,
                 'odenecek_tutar'        => $odenecekTutar,
                 'notlar'                => $header['notlar'] ?? null,
+                'iade_fatura_no' => $header['iade_fatura_no'] ?? null,
+                'iade_fatura_tarihi' => $header['iade_fatura_tarihi'] ?? null,
                 'siparis_no'            => $header['siparis_no'] ?? null,
                 'siparis_tarihi'        => !empty($header['siparis_tarihi']) ? $header['siparis_tarihi'] : null,
                 'irsaliye_no'           => $header['irsaliye_no'] ?? null,
@@ -121,11 +125,11 @@ class EInvoiceModel extends Model
                 INSERT INTO fatura_satirlari (
                     fatura_id, sira_no, urun_hizmet_adi, urun_kodu, miktar, birim,
                     birim_fiyat, iskonto_orani, iskonto_tutari, kdv_orani, kdv_tutari,
-                    tevkifat_kodu, tevkifat_orani, tevkifat_tutari, istisna_kodu, satir_toplami
+                    tevkifat_kodu, tevkifat_orani, tevkifat_tutari, istisna_kodu, istisna_aciklama, satir_toplami
                 ) VALUES (
                     :fatura_id, :sira_no, :urun_hizmet_adi, :urun_kodu, :miktar, :birim,
                     :birim_fiyat, :iskonto_orani, :iskonto_tutari, :kdv_orani, :kdv_tutari,
-                    :tevkifat_kodu, :tevkifat_orani, :tevkifat_tutari, :istisna_kodu, :satir_toplami
+                    :tevkifat_kodu, :tevkifat_orani, :tevkifat_tutari, :istisna_kodu, :istisna_aciklama, :satir_toplami
                 )
             ");
 
@@ -137,12 +141,14 @@ class EInvoiceModel extends Model
                 $kdvOrani = (float)($line['kdv_orani'] ?? 20);
                 $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
 
-                $hamTutar = round($miktar * $birimFiyat, 2);
-                $iskontoTutari = round($hamTutar * ($iskontoOrani / 100), 2);
-                $netMatrah = $hamTutar - $iskontoTutari;
-                $kdvTutari = round($netMatrah * ($kdvOrani / 100), 2);
-                $tevkifat = round($kdvTutari * ($tevkifatOrani / 100), 2);
-                $satirNet = $netMatrah + $kdvTutari - $tevkifat;
+                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
+                $line = $calculated['lines'][0];
+                $hamTutar = $calculated['header']['satir_toplami'];
+                $iskontoTutari = $line['iskonto_tutari'];
+                $netMatrah = $calculated['header']['kdv_matrahi'];
+                $kdvTutari = $line['kdv_tutari'];
+                $tevkifat = $line['tevkifat_tutari'];
+                $satirNet = $line['satir_toplami'];
 
                 $lineStmt->execute([
                     'fatura_id'       => $faturaId,
@@ -160,6 +166,7 @@ class EInvoiceModel extends Model
                     'tevkifat_orani'  => $tevkifatOrani > 0 ? $tevkifatOrani : null,
                     'tevkifat_tutari' => $tevkifat,
                     'istisna_kodu'    => $line['istisna_kodu'] ?? null,
+                    'istisna_aciklama' => $line['istisna_aciklama'] ?? null,
                     'satir_toplami'   => $satirNet
                 ]);
             }
@@ -181,7 +188,7 @@ class EInvoiceModel extends Model
         $this->db->beginTransaction();
         try {
             // Kontrol: Fatura taslak mı?
-            $checkStmt = $this->db->prepare("SELECT entegrator_durum_kodu FROM faturalar WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL LIMIT 1");
+            $checkStmt = $this->db->prepare("SELECT entegrator_durum_kodu FROM faturalar WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL AND yon = 'GIDEN' AND kaynak_xml IS NULL AND islem_belirsiz IS NULL LIMIT 1 FOR UPDATE");
             $checkStmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
             $currentStatus = $checkStmt->fetchColumn();
 
@@ -196,12 +203,12 @@ class EInvoiceModel extends Model
             }
 
             // Alt Toplamları Hesapla
-            $satirToplami = 0.0;
-            $iskontoToplami = 0.0;
-            $kdvMatrahi = 0.0;
-            $hesaplananKdv = 0.0;
-            $tevkifatTutari = 0.0;
-            $odenecekTutar = 0.0;
+            $satirToplami = '0.00';
+            $iskontoToplami = '0.00';
+            $kdvMatrahi = '0.00';
+            $hesaplananKdv = '0.00';
+            $tevkifatTutari = '0.00';
+            $odenecekTutar = '0.00';
 
             foreach ($lines as $line) {
                 $miktar = (float)($line['miktar'] ?? 1);
@@ -210,19 +217,21 @@ class EInvoiceModel extends Model
                 $kdvOrani = (float)($line['kdv_orani'] ?? 20);
                 $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
 
-                $hamTutar = round($miktar * $birimFiyat, 2);
-                $iskontoTutari = round($hamTutar * ($iskontoOrani / 100), 2);
-                $netMatrah = $hamTutar - $iskontoTutari;
-                $kdvTutari = round($netMatrah * ($kdvOrani / 100), 2);
-                $tevkifat = round($kdvTutari * ($tevkifatOrani / 100), 2);
-                $satirNet = $netMatrah + $kdvTutari - $tevkifat;
+                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
+                $line = $calculated['lines'][0];
+                $hamTutar = $calculated['header']['satir_toplami'];
+                $iskontoTutari = $line['iskonto_tutari'];
+                $netMatrah = $calculated['header']['kdv_matrahi'];
+                $kdvTutari = $line['kdv_tutari'];
+                $tevkifat = $line['tevkifat_tutari'];
+                $satirNet = $line['satir_toplami'];
 
-                $satirToplami += $hamTutar;
-                $iskontoToplami += $iskontoTutari;
-                $kdvMatrahi += $netMatrah;
-                $hesaplananKdv += $kdvTutari;
-                $tevkifatTutari += $tevkifat;
-                $odenecekTutar += $satirNet;
+                $satirToplami = bcadd($satirToplami, $hamTutar, 2);
+                $iskontoToplami = bcadd($iskontoToplami, $iskontoTutari, 2);
+                $kdvMatrahi = bcadd($kdvMatrahi, $netMatrah, 2);
+                $hesaplananKdv = bcadd($hesaplananKdv, $kdvTutari, 2);
+                $tevkifatTutari = bcadd($tevkifatTutari, $tevkifat, 2);
+                $odenecekTutar = bcadd($odenecekTutar, $satirNet, 2);
             }
 
             $stmt = $this->db->prepare("
@@ -252,7 +261,7 @@ class EInvoiceModel extends Model
                     hesaplanan_kdv = :hesaplanan_kdv,
                     tevkifat_tutari = :tevkifat_tutari,
                     odenecek_tutar = :odenecek_tutar,
-                    notlar = :notlar,
+                    notlar = :notlar, iade_fatura_no = :iade_fatura_no, iade_fatura_tarihi = :iade_fatura_tarihi,
                     siparis_no = :siparis_no,
                     siparis_tarihi = :siparis_tarihi,
                     irsaliye_no = :irsaliye_no,
@@ -290,6 +299,8 @@ class EInvoiceModel extends Model
                 'tevkifat_tutari'       => $tevkifatTutari,
                 'odenecek_tutar'        => $odenecekTutar,
                 'notlar'                => $header['notlar'] ?? null,
+                'iade_fatura_no' => $header['iade_fatura_no'] ?? null,
+                'iade_fatura_tarihi' => $header['iade_fatura_tarihi'] ?? null,
                 'siparis_no'            => $header['siparis_no'] ?? null,
                 'siparis_tarihi'        => !empty($header['siparis_tarihi']) ? $header['siparis_tarihi'] : null,
                 'irsaliye_no'           => $header['irsaliye_no'] ?? null,
@@ -297,7 +308,7 @@ class EInvoiceModel extends Model
             ]);
 
             // Eski Satırları Sil
-            $delStmt = $this->db->prepare("DELETE FROM fatura_satirlari WHERE fatura_id = :fatura_id");
+            $delStmt = $this->db->prepare("UPDATE fatura_satirlari SET deleted_at = NOW(), is_active = 0 WHERE fatura_id = :fatura_id AND deleted_at IS NULL");
             $delStmt->execute(['fatura_id' => $invoiceId]);
 
             // Yeni Satırları Ekle
@@ -305,11 +316,11 @@ class EInvoiceModel extends Model
                 INSERT INTO fatura_satirlari (
                     fatura_id, sira_no, urun_hizmet_adi, urun_kodu, miktar, birim,
                     birim_fiyat, iskonto_orani, iskonto_tutari, kdv_orani, kdv_tutari,
-                    tevkifat_kodu, tevkifat_orani, tevkifat_tutari, istisna_kodu, satir_toplami
+                    tevkifat_kodu, tevkifat_orani, tevkifat_tutari, istisna_kodu, istisna_aciklama, satir_toplami
                 ) VALUES (
                     :fatura_id, :sira_no, :urun_hizmet_adi, :urun_kodu, :miktar, :birim,
                     :birim_fiyat, :iskonto_orani, :iskonto_tutari, :kdv_orani, :kdv_tutari,
-                    :tevkifat_kodu, :tevkifat_orani, :tevkifat_tutari, :istisna_kodu, :satir_toplami
+                    :tevkifat_kodu, :tevkifat_orani, :tevkifat_tutari, :istisna_kodu, :istisna_aciklama, :satir_toplami
                 )
             ");
 
@@ -321,12 +332,14 @@ class EInvoiceModel extends Model
                 $kdvOrani = (float)($line['kdv_orani'] ?? 20);
                 $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
 
-                $hamTutar = round($miktar * $birimFiyat, 2);
-                $iskontoTutari = round($hamTutar * ($iskontoOrani / 100), 2);
-                $netMatrah = $hamTutar - $iskontoTutari;
-                $kdvTutari = round($netMatrah * ($kdvOrani / 100), 2);
-                $tevkifat = round($kdvTutari * ($tevkifatOrani / 100), 2);
-                $satirNet = $netMatrah + $kdvTutari - $tevkifat;
+                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
+                $line = $calculated['lines'][0];
+                $hamTutar = $calculated['header']['satir_toplami'];
+                $iskontoTutari = $line['iskonto_tutari'];
+                $netMatrah = $calculated['header']['kdv_matrahi'];
+                $kdvTutari = $line['kdv_tutari'];
+                $tevkifat = $line['tevkifat_tutari'];
+                $satirNet = $line['satir_toplami'];
 
                 $lineStmt->execute([
                     'fatura_id'       => $invoiceId,
@@ -344,6 +357,7 @@ class EInvoiceModel extends Model
                     'tevkifat_orani'  => $tevkifatOrani > 0 ? $tevkifatOrani : null,
                     'tevkifat_tutari' => $tevkifat,
                     'istisna_kodu'    => $line['istisna_kodu'] ?? null,
+                    'istisna_aciklama' => $line['istisna_aciklama'] ?? null,
                     'satir_toplami'   => $satirNet
                 ]);
             }
@@ -378,8 +392,8 @@ class EInvoiceModel extends Model
             }
 
             $linesStmt = $this->db->prepare("
-                SELECT * FROM fatura_satirlari 
-                WHERE fatura_id = :fatura_id 
+                SELECT * FROM fatura_satirlari
+                WHERE fatura_id = :fatura_id AND deleted_at IS NULL AND is_active = 1
                 ORDER BY sira_no ASC
             ");
             $linesStmt->execute(['fatura_id' => $invoiceId]);
@@ -425,7 +439,8 @@ class EInvoiceModel extends Model
                 'edm_referans_no', 'ticari_yanit', 'ubl_xml_path', 'pdf_path',
                 'alici_unvan', 'alici_vkn_tckn', 'fatura_tarihi', 'odenecek_tutar',
                 'satir_toplami', 'kdv_matrahi', 'hesaplanan_kdv', 'tevkifat_tutari',
-                'fatura_profili', 'fatura_tipi', 'belge_turu'
+                'fatura_profili', 'fatura_tipi', 'belge_turu', 'edm_durum', 'zarf_id',
+                'earsiv_rapor_durum', 'earsiv_rapor_aciklama', 'earsiv_iptal_rapor_durum', 'earsiv_iptal_rapor_aciklama', 'islem_belirsiz'
             ];
 
             foreach ($allowed as $field) {
@@ -440,7 +455,7 @@ class EInvoiceModel extends Model
             }
 
             $fieldsSql = implode(', ', $fields);
-            $stmt = $this->db->prepare("UPDATE faturalar SET $fieldsSql, updated_at = NOW() WHERE id = :id AND firm_id = :firm_id");
+            $stmt = $this->db->prepare("UPDATE faturalar SET $fieldsSql, updated_at = NOW() WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL");
             return $stmt->execute($params);
         } catch (\PDOException $e) {
             error_log("EInvoiceModel::updateInvoiceStatus Error: " . $e->getMessage());
@@ -462,12 +477,12 @@ class EInvoiceModel extends Model
         $bind = ['firm_id' => $firmId];
 
         if ($listType === 'taslak') {
-            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu IN ('TASLAK', 'GONDERILDI')";
         } elseif ($listType === 'gelen') {
             $where .= " AND f.yon = 'GELEN'";
         } else {
-            // Giden (Gönderilmiş) Faturalar
-            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu != 'TASLAK'";
+            // Giden Faturalar (Sadece Nihai Onaylı / Hatalı / İptal)
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu NOT IN ('TASLAK', 'GONDERILDI')";
         }
 
         if (!empty($params['durum_filtre']) && $params['durum_filtre'] !== 'all') {
@@ -478,6 +493,16 @@ class EInvoiceModel extends Model
         if (!empty($params['belge_turu_filtre']) && $params['belge_turu_filtre'] !== 'all') {
             $where .= " AND f.belge_turu = :belge_turu_filtre";
             $bind['belge_turu_filtre'] = $params['belge_turu_filtre'];
+        }
+
+        // Genel Tarih Aralığı Filtresi (Varsayılan: İçinde Bulunulan Ay)
+        if (!empty($params['baslangic_tarihi'])) {
+            $where .= " AND f.fatura_tarihi >= :range_start_date";
+            $bind['range_start_date'] = date('Y-m-d', strtotime($params['baslangic_tarihi']));
+        }
+        if (!empty($params['bitis_tarihi'])) {
+            $where .= " AND f.fatura_tarihi <= :range_end_date";
+            $bind['range_end_date'] = date('Y-m-d', strtotime($params['bitis_tarihi']));
         }
 
         $colsMap = [
@@ -631,11 +656,11 @@ class EInvoiceModel extends Model
         // Toplam Kayıt Sayısı
         $totalWhere = "f.firm_id = :firm_id AND f.deleted_at IS NULL";
         if ($listType === 'taslak') {
-            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
+            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu IN ('TASLAK', 'GONDERILDI')";
         } elseif ($listType === 'gelen') {
             $totalWhere .= " AND f.yon = 'GELEN'";
         } else {
-            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu != 'TASLAK'";
+            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu NOT IN ('TASLAK', 'GONDERILDI')";
         }
         $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM faturalar f WHERE $totalWhere");
         $totalStmt->execute(['firm_id' => $firmId]);
@@ -658,11 +683,11 @@ class EInvoiceModel extends Model
         }
 
         $sql = "
-            SELECT 
+            SELECT
                 f.id, f.ettn, f.fatura_no, f.fatura_tarihi, f.duzenleme_saati, f.alici_unvan, f.alici_vkn_tckn,
                 f.belge_turu, f.fatura_profili, f.fatura_tipi, f.odenecek_tutar, f.para_birimi,
                 f.entegrator_durum_kodu, f.gib_durum_kodu, f.gib_durum_aciklamasi, f.ticari_yanit,
-                f.pdf_path, f.ubl_xml_path
+                f.pdf_path, f.ubl_xml_path, f.earsiv_rapor_durum, f.earsiv_iptal_rapor_durum, f.islem_belirsiz
             FROM faturalar f
             WHERE $where
             ORDER BY $orderCol $orderDir, f.id DESC
@@ -678,7 +703,7 @@ class EInvoiceModel extends Model
             $encryptedId = Security::encrypt((string)$row['id']);
             $saatFormatted = !empty($row['duzenleme_saati']) ? date('H:i', strtotime($row['duzenleme_saati'])) : '';
             $data[] = [
-                'id'                    => $row['id'],
+                'id'                    => $encryptedId,
                 'encrypted_id'          => $encryptedId,
                 'fatura_no'             => !empty($row['fatura_no']) ? $row['fatura_no'] : 'Taslak',
                 'ettn'                  => $row['ettn'],
@@ -692,10 +717,12 @@ class EInvoiceModel extends Model
                 'odenecek_tutar'        => number_format((float)$row['odenecek_tutar'], 2, ',', '.') . ' ' . $row['para_birimi'],
                 'entegrator_durum_kodu' => $row['entegrator_durum_kodu'],
                 'gib_durum_kodu'        => $row['gib_durum_kodu'],
-                'gib_durum_aciklamasi'  => $row['gib_durum_aciklamasi'],
+                'gib_durum_aciklamasi'  => htmlspecialchars($row['gib_durum_aciklamasi'] ?? '', ENT_QUOTES, 'UTF-8'),
                 'ticari_yanit'          => $row['ticari_yanit'] ?? 'BEKLIYOR',
-                'pdf_path'              => $row['pdf_path'],
-                'ubl_xml_path'          => $row['ubl_xml_path']
+                'earsiv_rapor_durum' => $row['earsiv_rapor_durum'],
+                'earsiv_iptal_rapor_durum' => $row['earsiv_iptal_rapor_durum'],
+                'islem_belirsiz' => $row['islem_belirsiz'],
+                'pdf_path' => !empty($row['pdf_path']), 'ubl_xml_path' => !empty($row['ubl_xml_path'])
             ];
         }
 
@@ -718,17 +745,17 @@ class EInvoiceModel extends Model
 
             if ($listType === 'taslak') {
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         COUNT(*) as toplam_adet,
                         COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
                         COUNT(CASE WHEN belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
                         COUNT(CASE WHEN belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
                         COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
                         COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
-                    FROM faturalar 
-                    WHERE firm_id = :firm_id 
+                    FROM faturalar
+                    WHERE firm_id = :firm_id
                       AND yon = 'GIDEN'
-                      AND entegrator_durum_kodu = 'TASLAK'
+                      AND entegrator_durum_kodu IN ('TASLAK', 'GONDERILDI')
                       AND deleted_at IS NULL
                 ");
                 $stmt->execute([
@@ -739,7 +766,7 @@ class EInvoiceModel extends Model
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
             } elseif ($listType === 'gelen') {
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         COUNT(*) as toplam_adet,
                         COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
                         COUNT(CASE WHEN ticari_yanit = 'KABUL' THEN 1 END) as kabul_adet,
@@ -747,8 +774,8 @@ class EInvoiceModel extends Model
                         COUNT(CASE WHEN ticari_yanit = 'BEKLIYOR' THEN 1 END) as bekleyen_adet,
                         COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
                         COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
-                    FROM faturalar 
-                    WHERE firm_id = :firm_id 
+                    FROM faturalar
+                    WHERE firm_id = :firm_id
                       AND yon = 'GELEN'
                       AND deleted_at IS NULL
                 ");
@@ -759,9 +786,9 @@ class EInvoiceModel extends Model
                 ]);
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
             } else {
-                // Giden (Gönderilen) Faturalar
+                // Giden (Gönderilen & Onaylanan) Faturalar
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         COUNT(*) as toplam_adet,
                         COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
                         COUNT(CASE WHEN belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
@@ -774,10 +801,10 @@ class EInvoiceModel extends Model
                         COUNT(CASE WHEN entegrator_durum_kodu = 'IPTAL' THEN 1 END) as iptal_adet,
                         COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
                         COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
-                    FROM faturalar 
-                    WHERE firm_id = :firm_id 
-                      AND yon = 'GIDEN' 
-                      AND entegrator_durum_kodu != 'TASLAK'
+                    FROM faturalar
+                    WHERE firm_id = :firm_id
+                      AND yon = 'GIDEN'
+                      AND entegrator_durum_kodu NOT IN ('TASLAK', 'GONDERILDI')
                       AND deleted_at IS NULL
                 ");
                 $stmt->execute([
@@ -790,30 +817,6 @@ class EInvoiceModel extends Model
         } catch (\PDOException $e) {
             error_log("EInvoiceModel::getSummaryStats Error: " . $e->getMessage());
             return [];
-        }
-    }
-
-    /**
-     * Faturayı İptal Eder
-     */
-    public function cancelInvoice(int $invoiceId, int $firmId, string $reason = ''): bool
-    {
-        try {
-            $stmt = $this->db->prepare("
-                UPDATE faturalar SET 
-                    entegrator_durum_kodu = 'IPTAL',
-                    gib_durum_aciklamasi = CONCAT(COALESCE(gib_durum_aciklamasi, ''), ' [İPTAL: ', :reason, ']'),
-                    updated_at = NOW()
-                WHERE id = :id AND firm_id = :firm_id
-            ");
-            return $stmt->execute([
-                'id'      => $invoiceId,
-                'firm_id' => $firmId,
-                'reason'  => $reason
-            ]);
-        } catch (\PDOException $e) {
-            error_log("EInvoiceModel::cancelInvoice Error: " . $e->getMessage());
-            return false;
         }
     }
 
@@ -837,19 +840,110 @@ class EInvoiceModel extends Model
             }
 
             $stmt = $this->db->prepare("
-                UPDATE faturalar SET 
+                UPDATE faturalar SET
                     deleted_at = NOW(),
                     is_active = 0,
                     updated_at = NOW()
-                WHERE id = :id AND firm_id = :firm_id AND entegrator_durum_kodu = 'TASLAK'
+                WHERE id = :id AND firm_id = :firm_id AND entegrator_durum_kodu = 'TASLAK' AND yon = 'GIDEN' AND kaynak_xml IS NULL AND edm_referans_no IS NULL AND islem_belirsiz IS NULL
             ");
-            return $stmt->execute([
-                'id'      => $invoiceId,
-                'firm_id' => $firmId
-            ]);
+            $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+            return $stmt->rowCount() === 1;
         } catch (\Exception $e) {
             error_log("EInvoiceModel::deleteDraftInvoice Error: " . $e->getMessage());
             return false;
+        }
+    }
+    public function acquireInvoiceLock(int $invoiceId, int $firmId): bool
+    {
+        $stmt = $this->db->prepare('SELECT GET_LOCK(:lock_name, 0)');
+        $stmt->execute(['lock_name' => 'efatura:' . $firmId . ':' . $invoiceId]);
+        return (int)$stmt->fetchColumn() === 1;
+    }
+
+    public function releaseInvoiceLock(int $invoiceId, int $firmId): void
+    {
+        $stmt = $this->db->prepare('SELECT RELEASE_LOCK(:lock_name)');
+        $stmt->execute(['lock_name' => 'efatura:' . $firmId . ':' . $invoiceId]);
+    }
+
+    public function reserveSend(int $invoiceId, int $firmId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE faturalar SET entegrator_durum_kodu = 'GONDERILIYOR', islem_belirsiz = NULL, updated_at = NOW() WHERE id = :id AND firm_id = :firm_id AND yon = 'GIDEN' AND deleted_at IS NULL AND entegrator_durum_kodu IN ('TASLAK','HATALI') AND islem_belirsiz IS NULL");
+        $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+        return $stmt->rowCount() === 1;
+    }
+
+    public function recordEvent(int $invoiceId, int $firmId, string $action, string $result, string $description, ?string $occurredAt = null): void
+    {
+        $stmt = $this->db->prepare('INSERT INTO efatura_islem_gecmisi (firm_id, fatura_id, islem, sonuc, aciklama, user_id, olay_tarihi) SELECT :firm, id, :action, :result, :description, :user, :occurred FROM faturalar WHERE id = :id AND firm_id = :owner AND deleted_at IS NULL');
+        $stmt->execute(['firm' => $firmId, 'id' => $invoiceId, 'owner' => $firmId, 'action' => $action, 'result' => $result, 'description' => $description, 'user' => $_SESSION['user_id'] ?? $_SESSION['id'] ?? null, 'occurred' => $occurredAt ?? date('Y-m-d H:i:s')]);
+    }
+
+    public function history(int $invoiceId, int $firmId): array
+    {
+        $stmt = $this->db->prepare('SELECT h.islem, h.sonuc, h.aciklama, h.olay_tarihi FROM efatura_islem_gecmisi h JOIN faturalar f ON f.id = h.fatura_id AND f.firm_id = h.firm_id WHERE h.fatura_id = :id AND h.firm_id = :firm AND f.deleted_at IS NULL ORDER BY h.olay_tarihi DESC, h.id DESC');
+        $stmt->execute(['id' => $invoiceId, 'firm' => $firmId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function recordRemoteResponse(int $invoiceId, int $firmId, string $response, string $date): void
+    {
+        $stmt = $this->db->prepare("INSERT INTO efatura_islem_gecmisi (firm_id, fatura_id, islem, sonuc, aciklama, olay_tarihi) SELECT :firm, :invoice, 'TICARI_YANIT_EDM', :response, 'EDM yanıt tarihi', :date WHERE NOT EXISTS (SELECT 1 FROM efatura_islem_gecmisi WHERE firm_id = :owner AND fatura_id = :id AND islem = 'TICARI_YANIT_EDM' AND sonuc = :result AND olay_tarihi = :occurred)");
+        $stmt->execute(['firm' => $firmId, 'invoice' => $invoiceId, 'response' => $response, 'date' => $date, 'owner' => $firmId, 'id' => $invoiceId, 'result' => $response, 'occurred' => $date]);
+    }
+
+    public function recordSync(int $firmId, string $direction, string $start, string $end, array $result): void
+    {
+        $stmt = $this->db->prepare('INSERT INTO efatura_senkronizasyon (firm_id, yon, baslangic, bitis, tamamlandi, sonuc, created_at) VALUES (:firm, :direction, :start, :end, :complete, :result, NOW())');
+        $stmt->execute(['firm' => $firmId, 'direction' => $direction, 'start' => $start, 'end' => $end, 'complete' => (int)$result['complete'], 'result' => json_encode($result, JSON_UNESCAPED_UNICODE)]);
+    }
+
+    public function invoiceCustomers(int $firmId): array
+    {
+        // Cari uses the application's shared customer catalogue, with no firm_id column.
+        $stmt = $this->db->prepare('SELECT id, CariAdi, Telefon, Email, firma, Adres, notlar FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC');
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Trusted XML import: preserve source amounts instead of draft recalculation. */
+    public function importInvoice(int $firmId, array $header, array $lines, int $userId): int
+    {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare('SELECT id, deleted_at, yon, entegrator_durum_kodu, kaynak_xml, islem_belirsiz FROM faturalar WHERE ettn = :uuid AND firm_id = :firm FOR UPDATE');
+            $stmt->execute(['uuid' => $header['ettn'], 'firm' => $firmId]);
+            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($existing && ($existing['deleted_at'] || $existing['yon'] !== $header['yon'] || $existing['entegrator_durum_kodu'] === 'GONDERILIYOR' || !empty($existing['islem_belirsiz']))) throw new \RuntimeException('Fatura silinmiş, işlemde veya yönü uyuşmuyor.');
+            if ($existing && !empty($header['kaynak_xml']) && $existing['kaynak_xml'] === $header['kaynak_xml']) { $this->db->commit(); return (int)$existing['id']; }
+            $allowed = ['yon','belge_turu','fatura_profili','fatura_tipi','ettn','fatura_no','fatura_tarihi','duzenleme_saati','vade_tarihi','alici_vkn_tckn','alici_unvan','alici_vergi_dairesi','alici_adres','alici_il','alici_ilce','alici_ulke','alici_eposta','alici_telefon','para_birimi','doviz_kuru','satir_toplami','iskonto_toplami','kdv_matrahi','hesaplanan_kdv','tevkifat_tutari','odenecek_tutar','notlar','iade_fatura_no','iade_fatura_tarihi','ubl_xml_path','kaynak_xml','entegrator_durum_kodu','edm_durum'];
+            $data = array_intersect_key($header, array_flip($allowed));
+            if ($existing) {
+                // Imported content may refresh; confirmed local response/cancellation is preserved.
+                unset($data['entegrator_durum_kodu']);
+                $sets = implode(', ', array_map(static fn($key) => "$key = :$key", array_keys($data)));
+                $stmt = $this->db->prepare("UPDATE faturalar SET $sets, updated_at = NOW() WHERE id = :id AND firm_id = :firm");
+                $id = (int)$existing['id'];
+                $stmt->execute($data + ['id' => $id, 'firm' => $firmId]);
+                $stmt = $this->db->prepare('UPDATE fatura_satirlari SET deleted_at = NOW(), is_active = 0 WHERE fatura_id = :id AND deleted_at IS NULL');
+                $stmt->execute(['id' => $id]);
+            } else {
+                $data += ['firm_id' => $firmId, 'olusturan_user_id' => $userId];
+                $columns = implode(',', array_keys($data)); $values = ':' . implode(',:', array_keys($data));
+                $stmt = $this->db->prepare("INSERT INTO faturalar ($columns) VALUES ($values)");
+                $stmt->execute($data); $id = (int)$this->db->lastInsertId();
+            }
+            $allowedLines = ['urun_hizmet_adi','urun_kodu','miktar','birim','birim_fiyat','iskonto_orani','iskonto_tutari','kdv_orani','kdv_tutari','tevkifat_kodu','tevkifat_orani','tevkifat_tutari','istisna_kodu','istisna_aciklama','satir_toplami'];
+            foreach ($lines as $index => $line) {
+                $data = array_intersect_key($line, array_flip($allowedLines)) + ['fatura_id' => $id, 'sira_no' => $index + 1];
+                $columns = implode(',', array_keys($data)); $values = ':' . implode(',:', array_keys($data));
+                $stmt = $this->db->prepare("INSERT INTO fatura_satirlari ($columns) VALUES ($values)");
+                $stmt->execute($data);
+            }
+            $this->db->commit(); return $id;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
         }
     }
 }

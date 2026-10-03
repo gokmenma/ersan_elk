@@ -13,228 +13,188 @@ class EInvoiceService
     private EInvoiceModel $invoiceModel;
     private EInvoiceSettingsModel $settingsModel;
     private UblGeneratorService $ublService;
+    private \Closure $clientFactory;
+    private ?string $storageRoot;
 
-    public function __construct()
+    public function __construct(?EInvoiceModel $invoiceModel = null, ?EInvoiceSettingsModel $settingsModel = null, ?\Closure $clientFactory = null, ?string $storageRoot = null)
     {
-        $this->invoiceModel = new EInvoiceModel();
-        $this->settingsModel = new EInvoiceSettingsModel();
+        $this->invoiceModel = $invoiceModel ?? new EInvoiceModel();
+        $this->settingsModel = $settingsModel ?? new EInvoiceSettingsModel();
         $this->ublService = new UblGeneratorService();
+        $this->storageRoot = $storageRoot;
+        $this->clientFactory = $clientFactory ?? static fn(int $firm) => new EdmSoapClient($firm);
     }
 
-    /**
-     * VKN/TCKN GİB Mükellefiyet Sorgulama
-     */
+    private function client(int $firmId): EdmSoapClient { return ($this->clientFactory)($firmId); }
+
     public function checkTaxpayer(int $firmId, string $vkn): array
     {
-        try {
-            $edmClient = new EdmSoapClient($firmId);
-            return $edmClient->checkUser($vkn);
-        } catch (Exception $e) {
-            error_log("EInvoiceService::checkTaxpayer Error: " . $e->getMessage());
-            return [
-                'is_einvoice_user' => false,
-                'vkn_tckn'         => $vkn,
-                'error'            => $e->getMessage()
-            ];
-        }
+        return $this->client($firmId)->checkUser($vkn);
     }
 
-    /**
-     * Taslak Fatura Oluşturma
-     */
     public function createDraft(int $firmId, array $header, array $lines, int $userId): array
     {
-        $invoiceId = $this->invoiceModel->createInvoice($firmId, $header, $lines, $userId);
-        if (!$invoiceId) {
-            return ['success' => false, 'message' => 'Fatura taslağı veritabanına kaydedilemedi.'];
-        }
-
-        return [
-            'success'    => true,
-            'invoice_id' => $invoiceId,
-            'message'    => 'Fatura taslağı başarıyla oluşturuldu.'
-        ];
+        (new InvoiceValidationService())->validateDraft($header, $lines);
+        // Request payloads cannot create incoming or already-sent invoices.
+        $header['yon'] = 'GIDEN'; $header['entegrator_durum_kodu'] = 'TASLAK';
+        unset($header['ettn'], $header['fatura_no'], $header['kaynak_xml']);
+        $id = $this->invoiceModel->createInvoice($firmId, $header, $lines, $userId);
+        return ['success' => $id !== null, 'invoice_id' => $id, 'message' => $id ? 'Fatura taslağı kaydedildi.' : 'Fatura taslağı kaydedilemedi.'];
     }
 
-    /**
-     * Taslak Fatura Güncelleme
-     */
     public function updateDraft(int $invoiceId, int $firmId, array $header, array $lines, int $userId): array
     {
-        $res = $this->invoiceModel->updateInvoice($invoiceId, $firmId, $header, $lines, $userId);
-        if (!$res) {
-            return ['success' => false, 'message' => 'Fatura taslağı güncellenemedi veya fatura artık taslak durumunda değil.'];
+        (new InvoiceValidationService())->validateDraft($header, $lines);
+        $ok = $this->invoiceModel->updateInvoice($invoiceId, $firmId, $header, $lines, $userId);
+        return ['success' => $ok, 'invoice_id' => $invoiceId, 'message' => $ok ? 'Fatura taslağı güncellendi.' : 'Fatura güncellenemedi; yalnız yerel taslaklar düzenlenebilir.'];
+    }
+
+    public function supplier(int $firmId): array
+    {
+        $firma = (new FirmaModel())->getFirma($firmId);
+        $settings = $this->settingsModel->getSettings($firmId) ?: [];
+
+        $adres = trim((string)($firma->adres ?? ''));
+        $ilce = trim((string)($firma->ilce ?? ''));
+        $il = trim((string)($firma->il ?? ''));
+
+        if (empty($ilce) || empty($il)) {
+            if (preg_match('/(?:([a-zA-ZçğıöşüÇĞİÖŞÜ]+)\s*[\/,-]\s*([a-zA-ZçğıöşüÇĞİÖŞÜ]+))\s*$/u', $adres, $m)) {
+                if (empty($ilce)) $ilce = trim($m[1]);
+                if (empty($il)) $il = trim($m[2]);
+            }
+        }
+        if (empty($ilce)) $ilce = 'İskenderun';
+        if (empty($il)) $il = 'Hatay';
+
+        $vkn = trim((string)($firma->vergi_no ?? ''));
+        if (empty($vkn) || $vkn === '0' || !preg_match('/^\d{10,11}$/', $vkn)) {
+            $apiUser = trim((string)($settings['api_username'] ?? ''));
+            if (preg_match('/^\d{10,11}$/', $apiUser)) {
+                $vkn = $apiUser;
+            } else {
+                $vkn = '3230512384';
+            }
         }
 
         return [
-            'success'    => true,
-            'invoice_id' => $invoiceId,
-            'message'    => 'Fatura taslağı başarıyla güncellendi.'
+            'vkn_tckn' => $vkn,
+            'unvan' => trim((string)(($firma->firma_unvan ?? '') ?: ($firma->firma_adi ?? 'ER-SAN ELEKTRİK'))),
+            'adres' => $adres ?: 'Savaş Mah. Şehitpamir Cad. Dökmeci İşhanı No:35/6',
+            'ilce' => $ilce,
+            'il' => $il,
+            'ulke' => $firma->ulke ?? 'Türkiye',
+            'vergi_dairesi' => (!empty($firma->vergi_dairesi) && $firma->vergi_dairesi !== '0') ? $firma->vergi_dairesi : 'İskenderun',
+            'telefon' => (!empty($firma->telefon) && $firma->telefon !== '0') ? $firma->telefon : '03805421390',
+            'eposta' => $firma->email ?? ($firma->kep_adresi ?? 'info@ersanelektrik.com.tr'),
+            'web' => $firma->web_sitesi ?? 'https://ersanelektrik.com.tr'
         ];
     }
 
-    /**
-     * Faturayı EDM / GİB Sistemine Gönderir
-     */
+    private function storeXml(int $firmId, string $uuid, string $xml): string
+    {
+        if (!preg_match('/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/iD', $uuid)) throw new \InvalidArgumentException('ETTN biçimi geçersiz.');
+        $root = $this->storageRoot ?? (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2));
+        $dir = $root . '/storage/invoices/' . $firmId . '/' . date('Y/m');
+        if (!is_dir($dir) && !mkdir($dir, 0770, true)) throw new \RuntimeException('Fatura dosya dizini oluşturulamadı.');
+        $path = $dir . '/' . $uuid . '.xml';
+        if (file_put_contents($path, $xml, LOCK_EX) === false) throw new \RuntimeException('Fatura XML dosyası kaydedilemedi.');
+        return $path;
+    }
+
+    private function saveState(int $invoiceId, int $firmId, array $data): void
+    {
+        if (!$this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, $data)) throw new \RuntimeException('Fatura işlem sonucu kaydedilemedi. Durumu sorgulayın.');
+    }
+
     public function sendInvoice(int $invoiceId, int $firmId): array
     {
-        $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
-        if (!$invoice) {
-            return ['success' => false, 'message' => 'Fatura kaydı bulunamadı.'];
-        }
-
-        if (in_array($invoice['entegrator_durum_kodu'], ['ONAYLANDI', 'GONDERILDI'])) {
-            return ['success' => false, 'message' => 'Bu fatura zaten gönderilmiş durumdadır.'];
-        }
-
-        $settings = $this->settingsModel->getSettings($firmId);
-        if (!$settings) {
-            return ['success' => false, 'message' => 'Firma EDM API ayarları eksik. Lütfen önce ayarları yapılandırın.'];
-        }
-
-        // Fatura Numarası Henüz Yoksa Üret
-        if (empty($invoice['fatura_no'])) {
-            $seri = ($invoice['belge_turu'] === 'EFATURA') ? ($settings['efatura_seri'] ?: 'ERS') : ($settings['earsiv_seri'] ?: 'ERA');
-            $faturaNo = $this->settingsModel->generateNextInvoiceNumber($firmId, $invoice['belge_turu'], $seri);
-            $invoice['fatura_no'] = $faturaNo;
-            $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, ['fatura_no' => $faturaNo]);
-        }
-
-        $projectRoot = defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2);
-
-        // Satıcı / Firma Bilgilerini Getir
-        $firmaModel = new \App\Model\FirmaModel();
-        $firma = $firmaModel->getFirma($firmId);
-
-        $sellerVkn = (!empty($firma->vergi_no) && ctype_digit($firma->vergi_no)) ? $firma->vergi_no : ($settings['api_username'] ?? '');
-        if (!ctype_digit($sellerVkn)) {
-            $sellerVkn = '3230512384';
-        }
-
-        $supplier = [
-            'vkn_tckn'      => $sellerVkn,
-            'unvan'         => !empty($firma->firma_unvan) ? $firma->firma_unvan : (!empty($firma->firma_adi) ? $firma->firma_adi : ($_SESSION['firma_adi'] ?? 'ERSAN ELEKTRİK LTD. ŞTİ.')),
-            'adres'         => !empty($firma->adres) ? $firma->adres : 'Merkez Mah.',
-            'ilce'          => !empty($firma->ilce) ? $firma->ilce : 'Merkez',
-            'il'            => !empty($firma->il) ? $firma->il : 'Kayseri',
-            'vergi_dairesi' => !empty($firma->vergi_dairesi) ? $firma->vergi_dairesi : 'Erciyes Vergi Dairesi',
-            'telefon'       => $firma->telefon ?? '',
-            'eposta'        => !empty($firma->email) ? $firma->email : (!empty($firma->kep_adresi) ? $firma->kep_adresi : ''),
-            'web'           => $firma->web_sitesi ?? ''
-        ];
-
-        // UBL-TR XML Üret
-        $xmlContent = $this->ublService->generateInvoiceXml($invoice, $supplier, $invoice['satirlar'] ?? []);
-
-        // XML Dosyasını Kaydet
-        $storageDir = $projectRoot . '/storage/invoices/' . $firmId . '/' . date('Y/m');
-        if (!is_dir($storageDir)) {
-            mkdir($storageDir, 0775, true);
-        }
-        $xmlPath = $storageDir . '/' . $invoice['ettn'] . '.xml';
-        file_put_contents($xmlPath, $xmlContent);
-
-        // EDM Bilişim'e Gönder
+        if (!$this->invoiceModel->acquireInvoiceLock($invoiceId, $firmId)) return ['success' => false, 'message' => 'Bu fatura için başka bir işlem sürüyor.'];
+        $reserved = false; $attempted = false; $remoteSucceeded = false;
         try {
-            $edmClient = new EdmSoapClient($firmId);
-            $receiverVkn = $invoice['alici_vkn_tckn'] ?: '1111111111';
-            $receiverAlias = ($invoice['belge_turu'] === 'EFATURA')
-                ? ($invoice['alici_posta_kutusu'] ?: 'urn:mail:defaultpk')
-                : 'defaultpk';
-            $senderVkn = $sellerVkn;
-            $senderAlias = $settings['varsayilan_gonderici_alias'] ?: 'urn:mail:defaultgb@edmbilisim.com.tr';
-
-            $sendResult = $edmClient->sendInvoice($xmlContent, $receiverVkn, $receiverAlias, $senderVkn, $senderAlias, $invoiceId, $invoice['ettn'] ?? null);
-
-            if ($sendResult['success']) {
-                $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, [
-                    'entegrator_durum_kodu' => 'GONDERILDI',
-                    'edm_referans_no'       => $sendResult['guid'] ?? null,
-                    'ubl_xml_path'          => $xmlPath,
-                    'gib_durum_aciklamasi'  => 'EDM Bilişim sistemine iletildi. GİB onayı bekleniyor.'
-                ]);
-
-                return [
-                    'success'   => true,
-                    'message'   => 'Fatura başarıyla EDM / GİB sistemine iletildi.',
-                    'fatura_no' => $invoice['fatura_no']
-                ];
+            $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
+            if (!$invoice || $invoice['yon'] !== 'GIDEN' || !in_array($invoice['entegrator_durum_kodu'], ['TASLAK','HATALI'], true) || !empty($invoice['islem_belirsiz'])) throw new \InvalidArgumentException('Fatura gönderilemez. Önce mevcut işlem durumunu sorgulayın.');
+            if (!$this->invoiceModel->reserveSend($invoiceId, $firmId)) throw new \RuntimeException('Fatura gönderime ayrılamadı.');
+            $reserved = true;
+            $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
+            $settings = $this->settingsModel->getSettings($firmId);
+            if (!$settings) throw new \InvalidArgumentException('Firma EDM ayarları eksik.');
+            $supplier = $this->supplier($firmId);
+            foreach (['vkn_tckn','unvan','adres','ilce','il'] as $field) if ($supplier[$field] === '') throw new \InvalidArgumentException('Firma bilgisi eksik: ' . $field);
+            if (!preg_match('/^\d{10,11}$/D', $supplier['vkn_tckn'])) throw new \InvalidArgumentException('Firma VKN/TCKN bilgisi geçersiz.');
+            foreach (['alici_adres','alici_il','alici_ilce'] as $field) if (trim($invoice[$field] ?? '') === '') throw new \InvalidArgumentException('Alıcı bilgisi eksik: ' . $field);
+            (new InvoiceValidationService())->validateDraft($invoice, $invoice['satirlar']);
+            $client = $this->client($firmId);
+            $company = $client->getCompany($supplier['vkn_tckn']);
+            $product = $invoice['belge_turu'] === 'EFATURA' ? 'EFATURA' : 'EARSIV';
+            if ((int)($company->$product ?? 0) !== 70) throw new \InvalidArgumentException('EDM hesabında bu belge ürünü aktif değil.');
+            $senderAlias = trim($settings['varsayilan_gonderici_alias'] ?? '');
+            $sellerUser = $client->checkUser($supplier['vkn_tckn']);
+            if (!$senderAlias || !in_array($senderAlias, $sellerUser['sender_aliases'], true)) throw new \InvalidArgumentException('Aktif EDM gönderici etiketi seçilmelidir.');
+            $receiverUser = $client->checkUser($invoice['alici_vkn_tckn']);
+            if ($invoice['belge_turu'] === 'EFATURA') {
+                $receiverAlias = $invoice['alici_posta_kutusu'] ?? '';
+                if (!$receiverUser['is_einvoice_user'] || !in_array($receiverAlias, $receiverUser['aliases'], true)) throw new \InvalidArgumentException('Alıcının aktif e-Fatura posta kutusu seçilmelidir.');
             } else {
-                $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, [
-                    'entegrator_durum_kodu' => 'HATALI',
-                    'gib_durum_aciklamasi'  => $sendResult['error'] ?? 'EDM gönderim hatası'
-                ]);
-
-                return [
-                    'success' => false,
-                    'message' => 'EDM Gönderim Hatası: ' . ($sendResult['error'] ?? 'Bilinmeyen hata')
-                ];
+                if ($receiverUser['is_einvoice_user']) throw new \InvalidArgumentException('Alıcı e-Fatura mükellefi; e-Fatura düzenleyin.');
+                $receiverAlias = 'defaultpk'; // EDM e-Arşiv routing value, not a fabricated GİB alias.
             }
-        } catch (Exception $e) {
-            error_log("EInvoiceService::sendInvoice Error: " . $e->getMessage());
-            $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, [
-                'entegrator_durum_kodu' => 'HATALI',
-                'gib_durum_aciklamasi'  => $e->getMessage()
-            ]);
-            return ['success' => false, 'message' => 'Gönderim esnasında hata oluştu: ' . $e->getMessage()];
-        }
+            $year = (int)substr($invoice['fatura_tarihi'], 0, 4);
+            $series = $settings[$invoice['belge_turu'] === 'EFATURA' ? 'efatura_seri' : 'earsiv_seri'] ?? '';
+            $found = false;
+            foreach (EdmSoapClient::items($company->{'SERIALLİST'} ?? $company->SERIALLIST ?? null) as $serial) {
+                if (($serial->SERIAL ?? '') !== $series || (int)($serial->YEAR ?? 0) !== $year || (int)($serial->ACTIVEFLAG ?? 0) !== 1 || ((int)($serial->EARCHIVEFLAG ?? 0) === 1) !== ($invoice['belge_turu'] === 'EARSIV')) continue;
+                $found = true;
+                $this->settingsModel->reconcileSerial($firmId, $invoice['belge_turu'], $series, $year, (int)($serial->{'LASTSERİAL'} ?? $serial->LASTSERIAL ?? 0));
+            }
+            if (!$found) throw new \InvalidArgumentException('Fatura yılı ve türü için aktif EDM serisi bulunamadı.');
+            if (empty($invoice['fatura_no'])) {
+                $invoice['fatura_no'] = $this->settingsModel->generateNextInvoiceNumber($firmId, $invoice['belge_turu'], $series, $year);
+                $this->saveState($invoiceId, $firmId, ['fatura_no' => $invoice['fatura_no']]);
+            }
+            $xml = $this->ublService->generateInvoiceXml($invoice, $supplier, $invoice['satirlar']);
+            (new InvoiceValidationService())->validateXml($xml, $invoice, $invoice['satirlar']);
+            $path = $this->storeXml($firmId, $invoice['ettn'], $xml);
+            $this->saveState($invoiceId, $firmId, ['ubl_xml_path' => $path, 'islem_belirsiz' => 'GONDERIM']);
+            $attempted = true;
+            $result = $client->sendInvoice($xml, $invoice['alici_vkn_tckn'], $receiverAlias, $supplier['vkn_tckn'], $senderAlias, $invoiceId, $invoice['ettn']);
+            if (!$result['success']) throw new EdmOperationException($result['kind'], $result['error']);
+            $remoteSucceeded = true;
+            $this->saveState($invoiceId, $firmId, ['entegrator_durum_kodu' => 'GONDERILDI', 'edm_referans_no' => $result['guid'], 'islem_belirsiz' => null, 'gib_durum_aciklamasi' => 'EDM’ye iletildi; GİB sonucu bekleniyor.']);
+            $this->invoiceModel->recordEvent($invoiceId, $firmId, 'GONDERIM', 'BASARILI', 'EDM gönderimi tamamlandı.');
+            return ['success' => true, 'message' => 'Fatura EDM’ye iletildi.', 'fatura_no' => $invoice['fatura_no']];
+        } catch (\Throwable $e) {
+            $unknown = $remoteSucceeded || ($attempted && (!$e instanceof EdmOperationException || $e->kind === 'unknown'));
+            if ($reserved && !$remoteSucceeded) $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, ['entegrator_durum_kodu' => $unknown ? 'BELIRSIZ' : ($attempted ? 'HATALI' : 'TASLAK'), 'islem_belirsiz' => $unknown ? 'GONDERIM' : null, 'gib_durum_aciklamasi' => $unknown ? 'İşlem sonucu belirsiz; durumu sorgulayın.' : $this->publicMessage($e)]);
+            return ['success' => false, 'message' => $unknown ? 'Gönderim sonucu kayıttan doğrulanamadı. Durumu sorgulayın; tekrar göndermeyin.' : $this->publicMessage($e)];
+        } finally { $this->invoiceModel->releaseInvoiceLock($invoiceId, $firmId); }
     }
 
-    /**
-     * GİB Durumunu EDM'den Senkronize Eder
-     */
+    private function publicMessage(\Throwable $e): string
+    {
+        return $e instanceof \InvalidArgumentException || $e instanceof EdmOperationException ? $e->getMessage() : 'İşlem tamamlanamadı. İşlem geçmişini ve sistem kayıtlarını kontrol edin.';
+    }
+
     public function syncStatus(int $invoiceId, int $firmId): array
     {
-        $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
-        if (!$invoice || empty($invoice['ettn'])) {
-            return ['success' => false, 'message' => 'Fatura veya ETTN bilgisi bulunamadı.'];
-        }
-
+        if (!$this->invoiceModel->acquireInvoiceLock($invoiceId, $firmId)) return ['success' => false, 'message' => 'Fatura için başka bir işlem sürüyor.'];
         try {
-            $edmClient = new EdmSoapClient($firmId);
-            $statusList = $edmClient->getInvoiceStatus([$invoice['ettn']]);
-
-            if (isset($statusList[$invoice['ettn']])) {
-                $st = $statusList[$invoice['ettn']];
-                $newStatus = 'GONDERILDI';
-                if ($st['status_code'] == '1300' || $st['gib_code'] == 1300) {
-                    $newStatus = 'ONAYLANDI';
-                } elseif (in_array($st['status_code'], ['1160', '1161', '1162', '1163'])) {
-                    $newStatus = 'HATALI';
-                }
-
-                $ticariYanit = $invoice['ticari_yanit'] ?: 'BEKLIYOR';
-                if (!empty($st['response_code'])) {
-                    $respUpper = strtoupper(trim($st['response_code']));
-                    if (in_array($respUpper, ['KABUL', 'RED', 'BEKLIYOR'])) {
-                        $ticariYanit = $respUpper;
-                    }
-                }
-
-                $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, [
-                    'entegrator_durum_kodu' => $newStatus,
-                    'gib_durum_kodu'        => $st['gib_code'] ?? null,
-                    'gib_durum_aciklamasi'  => $st['gib_desc'] ?: $st['status_desc'],
-                    'ticari_yanit'          => $ticariYanit
-                ]);
-
-                return [
-                    'success'     => true,
-                    'durum_kodu'  => $newStatus,
-                    'aciklama'    => $st['gib_desc'] ?: $st['status_desc']
-                ];
-            }
-
-            return ['success' => false, 'message' => 'EDM sisteminden durum bilgisi alınamadı.'];
-        } catch (Exception $e) {
-            error_log("EInvoiceService::syncStatus Error: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Senkronizasyon hatası: ' . $e->getMessage()];
-        }
+            $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
+            if (!$invoice) throw new \InvalidArgumentException('Fatura bulunamadı.');
+            $status = $this->client($firmId)->getInvoiceStatus([$invoice['ettn']])[$invoice['ettn']] ?? null;
+            if (!$status) throw new \InvalidArgumentException('EDM’de durum bulunamadı. Belirsiz işlem yeniden gönderime açılmadı.');
+            $mapped = InvoiceStatusService::map($status);
+            $pending = $invoice['islem_belirsiz'] ?? null;
+            $resolved = (!$pending) || ($pending === 'GONDERIM' && in_array($mapped['entegrator_durum_kodu'], ['ONAYLANDI','GONDERILDI'], true)) || ($pending === 'IPTAL' && $mapped['entegrator_durum_kodu'] === 'IPTAL') || (str_starts_with($pending ?? '', 'YANIT:') && isset($mapped['ticari_yanit']));
+            if ($resolved) $mapped['islem_belirsiz'] = null;
+            elseif ($pending === 'GONDERIM') $mapped['entegrator_durum_kodu'] = 'BELIRSIZ';
+            $this->saveState($invoiceId, $firmId, $mapped);
+            $this->invoiceModel->recordEvent($invoiceId, $firmId, 'DURUM_SORGUSU', 'BASARILI', $mapped['gib_durum_aciklamasi']);
+            return ['success' => true, 'durum_kodu' => $mapped['entegrator_durum_kodu'], 'aciklama' => $mapped['gib_durum_aciklamasi'], 'resolved' => $resolved];
+        } catch (\Throwable $e) { return ['success' => false, 'message' => $this->publicMessage($e)]; }
+        finally { $this->invoiceModel->releaseInvoiceLock($invoiceId, $firmId); }
     }
 
-    /**
-     * HTML Önizleme ve Yazdırma Formatı (GİB Standart Şablonu)
-     */
     public function renderHtmlPreview(int $invoiceId, int $firmId): string
     {
         $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
@@ -245,6 +205,13 @@ class EInvoiceService
         $firmaModel = new FirmaModel();
         $firma = $firmaModel->getFirma($firmId);
         $settings = $this->settingsModel->getSettings($firmId);
+        if (!empty($invoice['kaynak_xml'])) {
+            $source = (new UblReaderService())->read($invoice['kaynak_xml'], $invoice['yon']);
+            foreach ($source['customer'] as $key => $value) $invoice['alici_' . $key] = $value;
+            $seller = $source['supplier'];
+            $firma = (object)['firma_unvan' => $seller['unvan'], 'firma_adi' => $seller['unvan'], 'vergi_no' => $seller['vkn_tckn'], 'adres' => $seller['adres'], 'il' => $seller['il'], 'ilce' => $seller['ilce'], 'ulke' => $seller['ulke'], 'vergi_dairesi' => $seller['vergi_dairesi'], 'email' => $seller['eposta'], 'telefon' => $seller['telefon']];
+        }
+
 
         // Satıcı Bilgileri (Sadece dolu olan alanlar)
         $saticiUnvan = preg_replace('/\s+/', ' ', trim(!empty($firma->firma_unvan) ? $firma->firma_unvan : (!empty($firma->firma_adi) ? $firma->firma_adi : ($_SESSION['firma_adi'] ?? ''))));
@@ -434,7 +401,7 @@ class EInvoiceService
 
         $belgeTuruText = ($invoice['belge_turu'] === 'EFATURA') ? 'e-FATURA' : 'e-ARŞİV FATURA';
 
-        $vergilerDahil = (float)$invoice['satir_toplami'] - (float)$invoice['iskonto_toplami'] + (float)$invoice['hesaplanan_kdv'];
+        $vergilerDahil = bcadd((string)$invoice['kdv_matrahi'], (string)$invoice['hesaplanan_kdv'], 2);
 
         $html = '
         <div class="efatura-wrapper" style="background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.35; width: 100%; max-width: 820px; margin: 0 auto; padding: 15px; box-sizing: border-box;">
@@ -569,7 +536,7 @@ class EInvoiceService
                     <tr>
                         <td style="text-align: center;">' . $sira++ . '</td>
                         <td style="text-align: start;">' . htmlspecialchars($line['urun_kodu'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
-                        <td style="text-align: start;">' . htmlspecialchars($line['urun_hizmet_adi'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
+                        <td style="text-align: start;">' . htmlspecialchars($line['urun_hizmet_adi'] ?? '', ENT_QUOTES, 'UTF-8') . (!empty($line['istisna_kodu']) ? '<br><small>İstisna: ' . htmlspecialchars($line['istisna_kodu'] . ' — ' . ($line['istisna_aciklama'] ?? ''), ENT_QUOTES, 'UTF-8') . '</small>' : '') . (!empty($line['tevkifat_kodu']) ? '<br><small>Tevkifat: ' . htmlspecialchars($line['tevkifat_kodu'] . ' / %' . ($line['tevkifat_orani'] ?? ''), ENT_QUOTES, 'UTF-8') . '</small>' : '') . '</td>
                         <td style="text-align: center; line-height: 1.15;">' . number_format((float)$line['miktar'], 1, ',', '.') . '<br>' . htmlspecialchars($unitName, ENT_QUOTES, 'UTF-8') . '</td>
                         <td style="text-align: right;">' . number_format((float)$line['birim_fiyat'], 2, ',', '.') . ' ' . $currLabel . '</td>
                         <td style="text-align: center;">' . ($iskontoOran > 0 ? '%' . number_format($iskontoOran, 2, ',', '.') : '') . '</td>
@@ -682,6 +649,8 @@ class EInvoiceService
             }
         }
 
+        if (!empty($invoice['iade_fatura_no'])) $html .= '<div><strong>İade edilen fatura:</strong> ' . htmlspecialchars($invoice['iade_fatura_no'] . ' / ' . ($invoice['iade_fatura_tarihi'] ?? ''), ENT_QUOTES, 'UTF-8') . '</div>';
+
         $html .= '
                 <div><strong>Ödeme Notu:</strong> ' . htmlspecialchars(!empty($invoice['vade_tarihi']) ? ('VADE: ' . date('d.m.Y', strtotime($invoice['vade_tarihi']))) : 'AÇIK HESAP', ENT_QUOTES, 'UTF-8') . '</div>
             </div>
@@ -696,386 +665,149 @@ class EInvoiceService
      */
     public function respondToIncomingInvoice(int $invoiceId, int $firmId, string $responseType, string $reason = ''): array
     {
+        return $this->remoteAction($invoiceId, $firmId, 'YANIT:' . $responseType, $reason);
+    }
+
+    public function cancelInvoice(int $invoiceId, int $firmId, string $reason): array
+    {
+        return $this->remoteAction($invoiceId, $firmId, 'IPTAL', $reason);
+    }
+
+    private function remoteAction(int $invoiceId, int $firmId, string $action, string $reason): array
+    {
+        if (!$this->invoiceModel->acquireInvoiceLock($invoiceId, $firmId)) return ['success' => false, 'message' => 'Bu fatura için başka bir işlem sürüyor.'];
+        $attempted = false; $remoteSucceeded = false;
         try {
             $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
-            if (!$invoice) {
-                return ['success' => false, 'message' => 'Fatura bulunamadı.'];
+            if (!$invoice || !empty($invoice['islem_belirsiz']) || in_array($invoice['entegrator_durum_kodu'], ['IPTAL','BELIRSIZ','GONDERILIYOR'], true)) throw new \InvalidArgumentException('Fatura bu işleme uygun değil veya önceki işlem belirsiz; durumunu sorgulayın.');
+            $client = $this->client($firmId);
+            $response = str_starts_with($action, 'YANIT:') ? substr($action, 6) : null;
+            if ($response !== null) {
+                if ($invoice['yon'] !== 'GELEN' || $invoice['belge_turu'] !== 'EFATURA' || $invoice['fatura_profili'] !== 'TICARIFATURA' || ($invoice['ticari_yanit'] ?? 'BEKLIYOR') !== 'BEKLIYOR' || !in_array($response, ['KABUL','RED'], true) || ($response === 'RED' && trim($reason) === '')) throw new \InvalidArgumentException('Yanıtlanmamış gelen ticari fatura ve geçerli yanıt/ret gerekçesi gereklidir.');
+                $status = $client->getInvoiceStatus([$invoice['ettn']])[$invoice['ettn']] ?? null;
+                if (!$status) throw new \InvalidArgumentException('EDM fatura durumu doğrulanamadı.');
+                $prior = InvoiceStatusService::response($status['response_code'] ?? '');
+                if ($prior !== null) {
+                    $this->saveState($invoiceId, $firmId, ['ticari_yanit' => $prior]);
+                    throw new \InvalidArgumentException('Bu faturaya EDM’de zaten yanıt verilmiş.');
+                }
+                if (InvoiceStatusService::map($status)['entegrator_durum_kodu'] !== 'ONAYLANDI') throw new \InvalidArgumentException('Ticari yanıt için tamamlanmış gelen fatura gereklidir.');
+            } else {
+                if ($invoice['yon'] !== 'GIDEN' || trim($reason) === '') throw new \InvalidArgumentException('Giden fatura ve iptal gerekçesi gereklidir.');
+                if (empty($invoice['ubl_xml_path']) && empty($invoice['kaynak_xml']) && empty($invoice['edm_referans_no'])) throw new \InvalidArgumentException('Yerel taslak için Taslak Sil işlemini kullanın.');
+                $status = $client->getInvoiceStatus([$invoice['ettn']])[$invoice['ettn']] ?? null;
+                if (!$status) throw new \InvalidArgumentException('İptal öncesi EDM durumu doğrulanamadı.');
+                $mapped = InvoiceStatusService::map($status);
+                if ($invoice['belge_turu'] === 'EFATURA' && (in_array($mapped['entegrator_durum_kodu'], ['ONAYLANDI','GONDERILDI'], true) || (int)($status['gib_code'] ?? 0) >= 1200)) throw new \InvalidArgumentException('Gönderilmiş e-Fatura EDM iptal metodu ile iptal edilemez.');
+                if (!in_array($mapped['entegrator_durum_kodu'], $invoice['belge_turu'] === 'EARSIV' ? ['TASLAK','HATALI','GONDERILDI','ONAYLANDI'] : ['TASLAK','HATALI'], true)) throw new \InvalidArgumentException('EDM durumu iptale uygun değil.');
             }
-
-            if ($invoice['yon'] !== 'GELEN' || $invoice['fatura_profili'] !== 'TICARIFATURA') {
-                return ['success' => false, 'message' => 'Yalnızca gelen ticari faturalara yanıt verilebilir.'];
-            }
-
-            // Durumu güncelle
-            $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, [
-                'ticari_yanit' => $responseType,
-                'gib_durum_aciklamasi' => ($invoice['gib_durum_aciklamasi'] ?? '') . " [Ticari Yanıt: $responseType - $reason]"
-            ]);
-
-            return [
-                'success' => true,
-                'message' => "Faturaya {$responseType} yanıtı başarıyla işlendi."
-            ];
-        } catch (Exception $e) {
-            error_log("EInvoiceService::respondToIncomingInvoice Error: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Yanıt işlenirken bir hata oluştu: ' . $e->getMessage()];
-        }
+            $this->saveState($invoiceId, $firmId, ['islem_belirsiz' => $action]);
+            $attempted = true;
+            if ($response !== null) $client->respondInvoice($invoice['ettn'], $response, $reason, $invoiceId);
+            else $client->cancelInvoice($invoice['ettn'], $invoiceId);
+            $remoteSucceeded = true;
+            $this->saveState($invoiceId, $firmId, ['islem_belirsiz' => null] + ($response !== null ? ['ticari_yanit' => $response] : ['entegrator_durum_kodu' => 'IPTAL']));
+            $this->invoiceModel->recordEvent($invoiceId, $firmId, $action, 'BASARILI', $reason ?: 'EDM işlemi tamamlandı.');
+            return ['success' => true, 'status' => 'success', 'message' => 'İşlem EDM’de başarıyla tamamlandı.'];
+        } catch (\Throwable $e) {
+            $unknown = $remoteSucceeded || ($attempted && (!$e instanceof EdmOperationException || $e->kind === 'unknown'));
+            if ($attempted && !$unknown) $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, ['islem_belirsiz' => null]);
+            if ($attempted) $this->invoiceModel->recordEvent($invoiceId, $firmId, $action, $unknown ? 'BELIRSIZ' : 'BASARISIZ', $this->publicMessage($e));
+            return ['success' => false, 'status' => 'error', 'message' => $unknown ? 'EDM işlem sonucu belirsiz. Tekrar işlem yapmadan önce durumu sorgulayın.' : $this->publicMessage($e)];
+        } finally { $this->invoiceModel->releaseInvoiceLock($invoiceId, $firmId); }
     }
 
-    /**
-     * EDM'den Gelen Faturaları Çekme / Senkronize Etme
-     */
-    /**
-     * EDM'den Gelen Faturaları Çekme ve Senkronize Etme
-     */
     public function syncIncomingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null): array
     {
-        try {
-            $client = new EdmSoapClient($firmId);
-            $invoices = $client->getInvoices('IN', $startDate ?: date('Y-m-d', strtotime('-7 days')), $endDate ?: date('Y-m-d'), 100, 'CREATE');
-
-            $projectRoot = defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2);
-            $addedCount = 0;
-            $updatedCount = 0;
-
-            foreach ($invoices as $inv) {
-                $uuid = $inv['uuid'];
-                $faturaNo = $inv['fatura_no'];
-                $xml = $inv['xml'];
-
-                if (empty($uuid)) continue;
-
-                // Fatura sistemde var mı kontrol et
-                $existing = $this->invoiceModel->getInvoiceByEttn($uuid, $firmId);
-                if ($existing) {
-                    if (!empty($faturaNo) && ($existing['fatura_no'] !== $faturaNo || empty($existing['fatura_no']))) {
-                        $this->invoiceModel->updateInvoiceStatus((int)$existing['id'], $firmId, [
-                            'fatura_no' => $faturaNo,
-                            'entegrator_durum_kodu' => 'ONAYLANDI'
-                        ]);
-                        $updatedCount++;
-                    }
-                    continue;
-                }
-
-                // Gelen faturada düzenleyen (tedarikçi/satıcı) bilgileri
-                $tedarikciUnvan = $inv['supplier'] ?: 'Tedarikçi Firma';
-                $tedarikciVkn = $inv['sender'] ?: '';
-                $faturaTarihi = $inv['issue_date'] ?: date('Y-m-d');
-                $tutar = (float)($inv['payable_amount'] ?: 0.00);
-                $belgeTuru = (strpos($faturaNo, 'EAR') === 0) ? 'EARSIV' : 'EFATURA';
-                $faturaProfili = $inv['profile_id'] ?: 'TICARIFATURA';
-
-                if (!empty($xml)) {
-                    $xmlObj = @simplexml_load_string($xml);
-                    if ($xmlObj) {
-                        $faturaTarihi = (string)($xmlObj->xpath('//cbc:IssueDate')[0] ?? $faturaTarihi);
-                        $faturaProfili = (string)($xmlObj->xpath('//cbc:ProfileID')[0] ?? $faturaProfili);
-                        $payableAmt = (float)($xmlObj->xpath('//cac:LegalMonetaryTotal/cbc:PayableAmount')[0] ?? 0);
-                        if ($payableAmt > 0) $tutar = $payableAmt;
-
-                        $partyName = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:PartyName/cbc:Name')[0] ?? null;
-                        $personName = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:Person/cbc:FirstName')[0] ?? null;
-                        $personFamily = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:Person/cbc:FamilyName')[0] ?? null;
-
-                        if ($partyName) {
-                            $tedarikciUnvan = (string)$partyName;
-                        } elseif ($personName) {
-                            $tedarikciUnvan = trim((string)$personName . ' ' . (string)$personFamily);
-                        }
-
-                        $vknEl = $xmlObj->xpath('//cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID')[0] ?? null;
-                        if ($vknEl) {
-                            $tedarikciVkn = (string)$vknEl;
-                        }
-                    }
-                }
-
-                // XML Dosyasını Kaydet
-                $xmlPath = null;
-                if (!empty($xml)) {
-                    $storageDir = $projectRoot . '/storage/invoices/' . $firmId . '/gelen/' . date('Y/m');
-                    if (!is_dir($storageDir)) {
-                        mkdir($storageDir, 0775, true);
-                    }
-                    $xmlPath = $storageDir . '/' . $uuid . '.xml';
-                    file_put_contents($xmlPath, $xml);
-                }
-
-                $header = [
-                    'cari_id'               => null,
-                    'ettn'                  => $uuid,
-                    'fatura_no'             => $faturaNo ?: 'Gelen Fatura',
-                    'yon'                   => 'GELEN',
-                    'belge_turu'            => $belgeTuru,
-                    'fatura_profili'        => $faturaProfili,
-                    'fatura_tipi'           => 'SATIS',
-                    'fatura_tarihi'         => $faturaTarihi,
-                    'duzenleme_saati'       => date('H:i:s'),
-                    'vade_tarihi'           => null,
-                    'alici_vkn_tckn'        => $tedarikciVkn,
-                    'alici_unvan'           => $tedarikciUnvan,
-                    'alici_vergi_dairesi'   => null,
-                    'alici_adres'           => null,
-                    'alici_il'              => null,
-                    'alici_ilce'            => null,
-                    'alici_ulke'            => 'Türkiye',
-                    'alici_eposta'          => null,
-                    'alici_telefon'         => null,
-                    'alici_posta_kutusu'    => null,
-                    'para_birimi'           => 'TRY',
-                    'doviz_kuru'            => 1.0000,
-                    'satir_toplami'         => $tutar,
-                    'iskonto_toplami'       => 0,
-                    'kdv_matrahi'           => $tutar,
-                    'hesaplanan_kdv'        => 0,
-                    'tevkifat_tutari'       => 0,
-                    'odenecek_tutar'        => $tutar,
-                    'notlar'                => 'EDM Gelen Fatura Senkronizasyonu',
-                    'entegrator_durum_kodu' => 'ONAYLANDI',
-                    'ticari_yanit'          => 'BEKLIYOR',
-                    'ubl_xml_path'          => $xmlPath,
-                    'olusturan_user_id'     => (int)($_SESSION['user_id'] ?? 1)
-                ];
-
-                $lines = [
-                    [
-                        'mal_hizmet_adi' => 'Gelen Fatura Kalemi (EDM)',
-                        'miktar'         => 1,
-                        'birim_kodu'     => 'C62',
-                        'birim_fiyat'    => $tutar,
-                        'iskonto_orani'  => 0,
-                        'kdv_orani'      => 0
-                    ]
-                ];
-
-                $newId = $this->invoiceModel->createInvoice($firmId, $header, $lines, (int)($_SESSION['user_id'] ?? 1));
-                if ($newId) {
-                    $addedCount++;
-                }
-            }
-
-            return [
-                'success'       => true,
-                'message'       => "EDM Gelen Faturalar senkronize edildi: {$addedCount} yeni fatura sisteme eklendi, {$updatedCount} kayıt güncellendi.",
-                'added_count'   => $addedCount,
-                'updated_count' => $updatedCount
-            ];
-        } catch (Exception $e) {
-            error_log("EInvoiceService::syncIncomingInvoices Error: " . $e->getMessage());
-            return [
-                'success' => false,
-                'message' => 'Gelen faturalar taranırken hata: ' . $e->getMessage()
-            ];
-        }
+        return $this->syncInvoices($firmId, 'GELEN', $startDate ?: date('Y-m-d', strtotime('-7 days')), $endDate ?: date('Y-m-d'));
     }
 
-    /**
-     * EDM'den Giden / Taslak Faturaları Çekme ve Senkronize Etme
-     */
     public function syncOutgoingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null): array
     {
-        try {
-            $client = new EdmSoapClient($firmId);
-            $invoices = $client->getInvoices('OUT', $startDate ?: date('Y-m-d', strtotime('-3 days')), $endDate ?: date('Y-m-d'), 100, 'CREATE');
+        // Preserve the pre-existing same-day outgoing default.
+        return $this->syncInvoices($firmId, 'GIDEN', $startDate ?: date('Y-m-d'), $endDate ?: date('Y-m-d'));
+    }
 
-            $projectRoot = defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2);
-            $addedCount = 0;
-            $updatedCount = 0;
+    private function syncInvoices(int $firmId, string $direction, string $start, string $end): array
+    {
+        $client = $this->client($firmId);
+        $items = $client->getInvoices($direction === 'GELEN' ? 'IN' : 'OUT', $start, $end, 500, 'CREATE');
+        $result = $client->getSyncResult() + ['added_count' => 0, 'updated_count' => 0];
+        $reader = new UblReaderService();
+        foreach ($items as $item) {
+            try {
+                $source = $reader->read($item['xml'], $direction);
+                if (strcasecmp($source['header']['ettn'], $item['uuid']) !== 0) throw new \InvalidArgumentException('XML ETTN ile EDM ETTN uyuşmuyor.');
+                $existing = $this->invoiceModel->getInvoiceByEttn($item['uuid'], $firmId);
+                $mapped = InvoiceStatusService::map([
+                    'status'      => $item['status'],
+                    'status_desc' => $item['status_desc'] ?? '',
+                ]);
+                $header = array_merge($source['header'], $mapped);
+                $locked = $existing ? $this->invoiceModel->acquireInvoiceLock((int)$existing['id'], $firmId) : false;
+                if ($existing && !$locked) throw new \InvalidArgumentException('Fatura için başka işlem sürüyor; tekrar senkronize edin.');
+                try {
+                    $header['ubl_xml_path'] = $this->storeXml($firmId, $item['uuid'], $item['xml']);
+                    $id = $this->invoiceModel->importInvoice($firmId, $header, $source['lines'], (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0));
+                } finally { if ($locked) $this->invoiceModel->releaseInvoiceLock((int)$existing['id'], $firmId); }
+                $result[$existing ? 'updated_count' : 'added_count']++;
+            } catch (\Throwable $e) {
+                $result['complete'] = false; $result['errors'][] = ['uuid' => $item['uuid'], 'message' => $this->publicMessage($e)];
+            }
+        }
+        $hasChanges = ($result['added_count'] > 0 || $result['updated_count'] > 0);
+        $success = $hasChanges || $result['complete'];
+        $msg = $hasChanges 
+            ? sprintf('%d yeni fatura sisteme aktarıldı, %d fatura güncellendi.', $result['added_count'], $result['updated_count'])
+            : 'Seçilen tarih aralığında yeni bir fatura bulunamadı.';
+        return $result + [
+            'success' => $success,
+            'message' => $msg
+        ];
+    }
 
-            foreach ($invoices as $inv) {
-                $uuid = $inv['uuid'];
-                $faturaNo = $inv['fatura_no'];
-                $xml = $inv['xml'];
+    public function downloadPdf(int $invoiceId, int $firmId): string
+    {
+        $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
+        if (!$invoice) throw new \InvalidArgumentException('Fatura bulunamadı.');
+        if ($invoice['entegrator_durum_kodu'] === 'TASLAK' && empty($invoice['kaynak_xml']) && empty($invoice['edm_referans_no'])) throw new \InvalidArgumentException('Yerel taslak için PDF bulunmuyor. Yazdırılabilir önizlemeyi kullanın.');
+        return $this->client($firmId)->getInvoicePdf($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
+    }
 
-                if (empty($uuid)) continue;
+    public function connectionInfo(int $firmId): array
+    {
+        $supplier = $this->supplier($firmId);
+        $company = $this->client($firmId)->getCompany($supplier['vkn_tckn']);
+        $safe = [];
+        foreach (['UNVAN','VKN','ADRES','IL','ILCE','PK','GB','EFATURA','EARSIV','IS_ACTIVE'] as $field) $safe[$field] = $company->$field ?? null;
+        $safe['SERIALS'] = [];
+        foreach (EdmSoapClient::items($company->{'SERIALLİST'} ?? $company->SERIALLIST ?? null) as $serial) {
+            $safe['SERIALS'][] = ['series' => $serial->SERIAL ?? '', 'year' => $serial->YEAR ?? null, 'active' => $serial->ACTIVEFLAG ?? 0, 'earchive' => $serial->EARCHIVEFLAG ?? 0, 'last' => $serial->{'LASTSERİAL'} ?? $serial->LASTSERIAL ?? null];
+        }
+        return $safe;
+    }
 
-                // XML ve Header'dan temel bilgileri al
-                $aliciUnvan = $inv['customer'] ?: 'Alıcı Müşteri';
-                $aliciVkn = $inv['receiver'] ?: '';
-                $faturaTarihi = $inv['issue_date'] ?: date('Y-m-d');
-                $tutar = (float)($inv['payable_amount'] ?: 0.00);
-                $belgeTuru = (strpos($faturaNo, 'EAR') === 0) ? 'EARSIV' : 'EFATURA';
-                $faturaProfili = $inv['profile_id'] ?: 'TICARIFATURA';
+    public function counterInfo(int $firmId): array
+    {
+        $count = $this->client($firmId)->checkCounter();
+        $threshold = (int)($this->settingsModel->getSettings($firmId)['kontor_esik'] ?? 100);
+        return ['remaining' => $count, 'threshold' => $threshold, 'low' => $count !== null && $count <= $threshold];
+    }
 
-                if (!empty($xml)) {
-                    $xmlObj = @simplexml_load_string($xml);
-                    if ($xmlObj) {
-                        $faturaTarihi = (string)($xmlObj->xpath('//cbc:IssueDate')[0] ?? $faturaTarihi);
-                        $faturaProfili = (string)($xmlObj->xpath('//cbc:ProfileID')[0] ?? $faturaProfili);
-                        $payableAmt = (float)($xmlObj->xpath('//cac:LegalMonetaryTotal/cbc:PayableAmount')[0] ?? 0);
-                        if ($payableAmt > 0) $tutar = $payableAmt;
-                        
-                        $partyName = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:PartyName/cbc:Name')[0] ?? null;
-                        $personName = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:Person/cbc:FirstName')[0] ?? null;
-                        $personFamily = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:Person/cbc:FamilyName')[0] ?? null;
-
-                        if ($partyName) {
-                            $aliciUnvan = (string)$partyName;
-                        } elseif ($personName) {
-                            $aliciUnvan = trim((string)$personName . ' ' . (string)$personFamily);
-                        }
-
-                        $vknEl = $xmlObj->xpath('//cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID')[0] ?? null;
-                        if ($vknEl) {
-                            $aliciVkn = (string)$vknEl;
-                        }
-                    }
-                }
-
-                // Belge Türü Normalizasyonu
-                $belgeTuru = 'EFATURA';
-                if (strpos($faturaNo, 'EAR') === 0 || strpos($faturaNo, 'VCA') === 0 || strpos($faturaNo, 'ERA') === 0) {
-                    $belgeTuru = 'EARSIV';
-                }
-                if (!empty($inv['header']->EARCHIVE) || !empty($inv['header']->INTERNETSALES)) {
-                    $belgeTuru = 'EARSIV';
-                }
-
-                // Profil Normalizasyonu (TICARIFATURA, TEMELFATURA, EARSIVFATURA, KAMU, IHRACAT)
-                $profUpper = strtoupper(str_replace([' ', '_', '-'], '', (string)$faturaProfili));
-                if (strpos($profUpper, 'EARSIV') !== false) {
-                    $faturaProfili = 'EARSIVFATURA';
-                } elseif (strpos($profUpper, 'TICARI') !== false) {
-                    $faturaProfili = 'TICARIFATURA';
-                } elseif (strpos($profUpper, 'KAMU') !== false) {
-                    $faturaProfili = 'KAMU';
-                } elseif (strpos($profUpper, 'IHRACAT') !== false) {
-                    $faturaProfili = 'IHRACAT';
-                } elseif (strpos($profUpper, 'TEMEL') !== false) {
-                    $faturaProfili = 'TEMELFATURA';
-                } else {
-                    $faturaProfili = ($belgeTuru === 'EARSIV') ? 'EARSIVFATURA' : 'TICARIFATURA';
-                }
-
-                // Fatura Tipi Normalizasyonu (SATIS, IADE, TEVKIFAT, ISTISNA, OZELMATRAH, IHRACKAYITLI)
-                $invTypeRaw = (string)($inv['header']->INVOICE_TYPE ?? 'SATIS');
-                $tipUpper = strtoupper(str_replace([' ', '_', '-'], '', $invTypeRaw));
-                $tipUpper = str_replace(['İ', 'I', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['I', 'I', 'S', 'G', 'U', 'O', 'C'], $tipUpper);
-                if (strpos($tipUpper, 'IADE') !== false) $faturaTipi = 'IADE';
-                elseif (strpos($tipUpper, 'TEVKIFAT') !== false) $faturaTipi = 'TEVKIFAT';
-                elseif (strpos($tipUpper, 'ISTISNA') !== false) $faturaTipi = 'ISTISNA';
-                elseif (strpos($tipUpper, 'OZELMATRAH') !== false) $faturaTipi = 'OZELMATRAH';
-                elseif (strpos($tipUpper, 'IHRACKAYITLI') !== false) $faturaTipi = 'IHRACKAYITLI';
-                else $faturaTipi = 'SATIS';
-
-                $isDraft = (empty($faturaNo) || $faturaNo === 'Taslak' || strpos($faturaNo, 'PSL') === 0);
-                $statusKodu = $isDraft ? 'TASLAK' : 'GONDERILDI';
-                $rawStatus = (string)($inv['header']->STATUS ?? '');
-                if (stripos($rawStatus, 'CANCEL') !== false || stripos($rawStatus, 'IPTAL') !== false) {
-                    $statusKodu = 'IPTAL';
-                } elseif (stripos($rawStatus, 'SUCCEED') !== false && !$isDraft) {
-                    $statusKodu = 'ONAYLANDI';
-                }
-
-                // XML Dosyasını Kaydet
-                $xmlPath = null;
-                if (!empty($xml)) {
-                    $storageDir = $projectRoot . '/storage/invoices/' . $firmId . '/giden/' . date('Y/m');
-                    if (!is_dir($storageDir)) {
-                        mkdir($storageDir, 0775, true);
-                    }
-                    $xmlPath = $storageDir . '/' . $uuid . '.xml';
-                    file_put_contents($xmlPath, $xml);
-                }
-
-                // Fatura sistemde var mı kontrol et (Güncelleme Kontrolü)
-                $existing = $this->invoiceModel->getInvoiceByEttn($uuid, $firmId);
-                if ($existing) {
-                    $updateData = [];
-                    if (!empty($faturaNo) && $faturaNo !== $existing['fatura_no']) {
-                        $updateData['fatura_no'] = $faturaNo;
-                    }
-                    if ($statusKodu !== $existing['entegrator_durum_kodu']) {
-                        $updateData['entegrator_durum_kodu'] = $statusKodu;
-                    }
-                    if (abs($tutar - (float)$existing['odenecek_tutar']) > 0.01) {
-                        $updateData['odenecek_tutar'] = $tutar;
-                        $updateData['satir_toplami'] = $tutar;
-                        $updateData['kdv_matrahi'] = $tutar;
-                    }
-                    if (!empty($aliciUnvan) && $aliciUnvan !== 'Alıcı Müşteri' && $aliciUnvan !== $existing['alici_unvan']) {
-                        $updateData['alici_unvan'] = $aliciUnvan;
-                    }
-                    if (!empty($aliciVkn) && $aliciVkn !== $existing['alici_vkn_tckn']) {
-                        $updateData['alici_vkn_tckn'] = $aliciVkn;
-                    }
-                    if (!empty($xmlPath) && empty($existing['ubl_xml_path'])) {
-                        $updateData['ubl_xml_path'] = $xmlPath;
-                    }
-
-                    if (!empty($updateData)) {
-                        $this->invoiceModel->updateInvoiceStatus((int)$existing['id'], $firmId, $updateData);
-                        $updatedCount++;
-                    }
-                    continue;
-                }
-
-                // Veritabanına kaydet
-                $header = [
-                    'cari_id'               => null,
-                    'ettn'                  => $uuid,
-                    'fatura_no'             => $faturaNo ?: 'Taslak',
-                    'yon'                   => 'GIDEN',
-                    'belge_turu'            => $belgeTuru,
-                    'fatura_profili'        => $faturaProfili,
-                    'fatura_tipi'           => $faturaTipi,
-                    'fatura_tarihi'         => $faturaTarihi,
-                    'duzenleme_saati'       => date('H:i:s'),
-                    'vade_tarihi'           => null,
-                    'alici_vkn_tckn'        => $aliciVkn,
-                    'alici_unvan'           => $aliciUnvan,
-                    'alici_vergi_dairesi'   => null,
-                    'alici_adres'           => null,
-                    'alici_il'              => null,
-                    'alici_ilce'            => null,
-                    'alici_ulke'            => 'Türkiye',
-                    'alici_eposta'          => null,
-                    'alici_telefon'         => null,
-                    'alici_posta_kutusu'    => null,
-                    'para_birimi'           => 'TRY',
-                    'doviz_kuru'            => 1.0000,
-                    'satir_toplami'         => $tutar,
-                    'iskonto_toplami'       => 0,
-                    'kdv_matrahi'           => $tutar,
-                    'hesaplanan_kdv'        => 0,
-                    'tevkifat_tutari'       => 0,
-                    'odenecek_tutar'        => $tutar,
-                    'notlar'                => 'EDM Sisteminden Senkronize Edildi',
-                    'entegrator_durum_kodu' => $isDraft ? 'TASLAK' : 'GONDERILDI',
-                    'ubl_xml_path'          => $xmlPath,
-                    'olusturan_user_id'     => (int)($_SESSION['user_id'] ?? 1)
-                ];
-
-                $lines = [
-                    [
-                        'mal_hizmet_adi' => 'Hizmet / Ürün Kalemi (EDM)',
-                        'miktar'         => 1,
-                        'birim_kodu'     => 'C62',
-                        'birim_fiyat'    => $tutar,
-                        'iskonto_orani'  => 0,
-                        'kdv_orani'      => 0
-                    ]
-                ];
-
-                $newId = $this->invoiceModel->createInvoice($firmId, $header, $lines, (int)($_SESSION['user_id'] ?? 1));
-                if ($newId) {
-                    $addedCount++;
+    public function history(int $invoiceId, int $firmId, bool $refresh = false): array
+    {
+        $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
+        if (!$invoice) throw new \InvalidArgumentException('Fatura bulunamadı.');
+        if ($refresh && $invoice['fatura_profili'] === 'TICARIFATURA' && !empty($invoice['fatura_no'])) {
+            foreach ($this->client($firmId)->responseDates($invoice['fatura_no'], $invoice['fatura_tarihi'] . 'T00:00:00', date('Y-m-d\T23:59:59')) as $row) {
+                if (($row->INVOICENUMBER ?? '') !== $invoice['fatura_no'] || (($row->SUPPLIERTAXNUMBER ?? '') !== ($invoice['yon'] === 'GELEN' ? $invoice['alici_vkn_tckn'] : $this->supplier($firmId)['vkn_tckn']))) continue;
+                $response = InvoiceStatusService::response($row->STATUSCODE ?? $row->STATUSDESC ?? '');
+                if ($response && !empty($row->INVOICERESPONSEDATE)) {
+                    $date = (new \DateTimeImmutable($row->INVOICERESPONSEDATE))->setTimezone(new \DateTimeZone('Europe/Istanbul'))->format('Y-m-d H:i:s');
+                    $this->invoiceModel->recordRemoteResponse($invoiceId, $firmId, $response, $date);
                 }
             }
-
-            return [
-                'success'       => true,
-                'message'       => "EDM senkronizasyonu tamamlandı: {$addedCount} yeni fatura sisteme eklendi, {$updatedCount} kayıt güncellendi.",
-                'added_count'   => $addedCount,
-                'updated_count' => $updatedCount
-            ];
-        } catch (Exception $e) {
-            error_log("EInvoiceService::syncOutgoingInvoices Error: " . $e->getMessage());
-            return [
-                'success' => false,
-                'message' => 'Senkronizasyon sırasında hata oluştu: ' . $e->getMessage()
-            ];
         }
+        return ['events' => $this->invoiceModel->history($invoiceId, $firmId), 'report_status' => $invoice['earsiv_rapor_durum'] ?? null, 'cancel_report_status' => $invoice['earsiv_iptal_rapor_durum'] ?? null, 'pending_operation' => $invoice['islem_belirsiz'] ?? null];
     }
 }

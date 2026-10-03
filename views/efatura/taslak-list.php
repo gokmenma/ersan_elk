@@ -1,10 +1,21 @@
 <?php
+\App\Service\Gate::authorizeOrDie('efatura/giden-list');
 use App\Service\Gate;
 
 $maintitle = 'E-Fatura & E-Arşiv';
 $title = 'Taslak Faturalar';
 ?>
+<script>try { document.documentElement.classList.toggle('efatura-summary-hidden', localStorage.getItem('efatura_taslak_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.efatura-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+</style>
+<meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
+<script src="views/efatura/js/transport.js"></script>
 
+
+<?php include 'layouts/breadcrumb.php'; ?>
 <div class="container-fluid">
     <!-- 1. Üst Başlık ve Aksiyon Araç Çubuğu -->
     <div class="row align-items-center mb-3">
@@ -18,7 +29,7 @@ $title = 'Taslak Faturalar';
             </div>
         </div>
         
-        <div class="col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
             <!-- 1. Yeni Fatura Kes Butonu (Primary Mavi) -->
             <a href="index.php?p=efatura/olustur" class="btn btn-primary top-action-btn shadow-sm text-white">
                 <i class="bx bx-plus font-size-16"></i> Yeni Fatura Kes
@@ -160,15 +171,24 @@ $title = 'Taslak Faturalar';
                 </div>
                 <div>
                     <div class="d-flex align-items-center gap-2">
-                        <h5 class="mb-0 fw-bold text-dark font-size-15" style="line-height: 1.2;">Taslak Fatura Listesi</h5>
+                        <div class="status-filter-group d-flex gap-1 flex-wrap"><button type="button" class="btn btn-sm btn-light border status-quick-filter" data-belge="">Tümü</button><button type="button" class="btn btn-sm btn-light border status-quick-filter" data-belge="EFATURA">e-Fatura</button><button type="button" class="btn btn-sm btn-light border status-quick-filter" data-belge="EARSIV">e-Arşiv</button></div>
                         <span class="badge bg-dark rounded-pill font-size-11 px-2 py-0" id="badgeTotalRecords">0</span>
                     </div>
                     <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Taslak faturalar EDM'ye gönderildiğinde otomatik olarak Giden Faturalar modülüne taşınır</p>
                 </div>
             </div>
 
-            <!-- Sağ Araç Çubuğu: Dışa Aktarma Butonları -->
-            <div class="d-flex align-items-center gap-1 ms-auto">
+            <!-- Sağ Araç Çubuğu: Tarih Aralığı ve Dışa Aktarma Butonları -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <!-- Tarih Aralığı Filtresi (Varsayılan: İçinde Bulunulan Ay) -->
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1" style="border-color: #e2e8f0 !important;">
+                    <i class="bx bx-calendar text-primary font-size-16"></i>
+                    <input type="text" id="filterDateRange" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 175px; cursor: pointer;" placeholder="Tarih Aralığı..." readonly>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted" id="btnClearDateRange" title="Filtreyi Temizle (Tüm Zamanlar)">
+                        <i class="bx bx-x font-size-14"></i>
+                    </button>
+                </div>
+
                 <button type="button" class="btn btn-sm btn-light border px-2 py-1 text-success d-flex align-items-center gap-1 rounded-3" id="btnHeaderExportExcel" title="Excel'e Aktar">
                     <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12 fw-semibold">Excel</span>
                 </button>

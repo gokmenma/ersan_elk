@@ -6,35 +6,7 @@
 $(document).ready(function() {
     let currentYanitFilter = '';
 
-    // 1. Özet Kartları Açma/Kapatma Mantığı (AGENTS.md)
-    const toggleBtn = document.getElementById('btnToggleSummaryCards');
-    const container = document.getElementById('summaryCardsContainer');
-    const storageKey = 'efatura_gelen_summary_cards_state';
-
-    if (toggleBtn && container) {
-        const savedState = localStorage.getItem(storageKey);
-        const icon = toggleBtn.querySelector('i');
-        if (savedState === 'hidden') {
-            container.style.display = 'none';
-            toggleBtn.setAttribute('aria-expanded', 'false');
-            if (icon) icon.className = 'bx bx-chevron-down font-size-18';
-        }
-
-        toggleBtn.addEventListener('click', function() {
-            const currentIcon = toggleBtn.querySelector('i');
-            if (container.style.display === 'none') {
-                container.style.display = 'flex';
-                toggleBtn.setAttribute('aria-expanded', 'true');
-                if (currentIcon) currentIcon.className = 'bx bx-chevron-up font-size-18';
-                localStorage.setItem(storageKey, 'visible');
-            } else {
-                container.style.display = 'none';
-                toggleBtn.setAttribute('aria-expanded', 'false');
-                if (currentIcon) currentIcon.className = 'bx bx-chevron-down font-size-18';
-                localStorage.setItem(storageKey, 'hidden');
-            }
-        });
-    }
+    window.efaturaSetupSummary('efatura_gelen_summary_cards_state');
 
     // 2. İstatistikleri Yükle
     function loadStats() {
@@ -94,6 +66,12 @@ $(document).ready(function() {
             data: function(d) {
                 if (currentYanitFilter) {
                     d.durum_filtre = currentYanitFilter;
+                }
+                if (currentStartDate) {
+                    d.baslangic_tarihi = currentStartDate;
+                }
+                if (currentEndDate) {
+                    d.bitis_tarihi = currentEndDate;
                 }
             }
         },
@@ -389,22 +367,84 @@ $(document).ready(function() {
         table.ajax.reload();
     });
 
-    // EDM'den Yeni Faturaları Çek
+    // EDM'den Yeni Faturaları Çek (Tarih Aralığı Seçimli)
     $('#btnSyncIncoming').on('click', function() {
+        const todayStr = formatDMY(now);
         Swal.fire({
-            title: 'Gelen Faturalar Çekilsin mi?',
-            text: 'EDM Bilişim e-Fatura gelen kutusu taranacak ve firmanıza kesilen yeni faturalar sisteme aktarılacaktır.',
-            icon: 'question',
+            title: 'EDM Gelen Faturaları Çek',
+            html: `
+                <div class="mb-3 text-start">
+                    <label class="form-label font-size-12 fw-semibold text-muted">Hızlı Tarih Seçimi:</label>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        <button type="button" class="btn btn-sm btn-light border quick-sync-date-gelen" data-type="today" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Bugün</button>
+                        <button type="button" class="btn btn-sm btn-primary text-white shadow-sm quick-sync-date-gelen" data-type="this_month" style="color: #ffffff !important; background-color: #135bec !important; border-color: #135bec !important; font-weight: 600;">Bu Ay (${todayStr.substring(3)})</button>
+                        <button type="button" class="btn btn-sm btn-light border quick-sync-date-gelen" data-type="last_7_days" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Son 7 Gün</button>
+                        <button type="button" class="btn btn-sm btn-light border quick-sync-date-gelen" data-type="last_30_days" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Son 30 Gün</button>
+                    </div>
+                </div>
+                <div class="row g-2 text-start">
+                    <div class="col-6">
+                        <label class="form-label font-size-12 fw-semibold text-muted mb-1"><i class="bx bx-calendar me-1 text-primary"></i>Başlangıç Tarihi</label>
+                        <input type="date" id="swalSyncStartDateGelen" class="form-control form-control-sm border shadow-sm font-size-13 fw-semibold text-dark" value="${formatYMD(firstDay)}" style="border-radius: 6px; padding: 6px 10px;">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label font-size-12 fw-semibold text-muted mb-1"><i class="bx bx-calendar me-1 text-primary"></i>Bitiş Tarihi</label>
+                        <input type="date" id="swalSyncEndDateGelen" class="form-control form-control-sm border shadow-sm font-size-13 fw-semibold text-dark" value="${formatYMD(now)}" style="border-radius: 6px; padding: 6px 10px;">
+                    </div>
+                </div>
+            `,
             showCancelButton: true,
             confirmButtonColor: '#10b981',
             cancelButtonColor: '#64748b',
-            confirmButtonText: '<i class="bx bx-refresh me-1"></i> Evet, Çek',
-            cancelButtonText: 'Vazgeç'
+            confirmButtonText: '<i class="bx bx-refresh me-1"></i> Faturaları Çek',
+            cancelButtonText: 'Vazgeç',
+            didOpen: () => {
+                $('.quick-sync-date-gelen').on('click', function() {
+                    $('.quick-sync-date-gelen')
+                        .removeClass('btn-primary text-white shadow-sm')
+                        .addClass('btn-light border')
+                        .attr('style', 'color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;');
+                    $(this)
+                        .removeClass('btn-light border')
+                        .addClass('btn-primary text-white shadow-sm')
+                        .attr('style', 'color: #ffffff !important; background-color: #135bec !important; border-color: #135bec !important; font-weight: 600;');
+
+                    const t = $(this).data('type');
+                    const cur = new Date();
+                    if (t === 'today') {
+                        $('#swalSyncStartDateGelen').val(formatYMD(cur));
+                        $('#swalSyncEndDateGelen').val(formatYMD(cur));
+                    } else if (t === 'this_month') {
+                        $('#swalSyncStartDateGelen').val(formatYMD(firstDay));
+                        $('#swalSyncEndDateGelen').val(formatYMD(cur));
+                    } else if (t === 'last_7_days') {
+                        const d7 = new Date();
+                        d7.setDate(d7.getDate() - 7);
+                        $('#swalSyncStartDateGelen').val(formatYMD(d7));
+                        $('#swalSyncEndDateGelen').val(formatYMD(cur));
+                    } else if (t === 'last_30_days') {
+                        const d30 = new Date();
+                        d30.setDate(d30.getDate() - 30);
+                        $('#swalSyncStartDateGelen').val(formatYMD(d30));
+                        $('#swalSyncEndDateGelen').val(formatYMD(cur));
+                    }
+                });
+            },
+            preConfirm: () => {
+                const s = $('#swalSyncStartDateGelen').val();
+                const e = $('#swalSyncEndDateGelen').val();
+                if (!s || !e) {
+                    Swal.showValidationMessage('Lütfen geçerli bir başlangıç ve bitiş tarihi seçin.');
+                    return false;
+                }
+                return { start_date: s, end_date: e };
+            }
         }).then((result) => {
-            if (result.isConfirmed) {
+            if (result.isConfirmed && result.value) {
+                const syncRange = result.value;
                 Swal.fire({
                     title: 'Faturalar Taranıyor...',
-                    text: 'EDM servisi ile senkronizasyon yapılıyor, lütfen bekleyin.',
+                    text: `${syncRange.start_date} ile ${syncRange.end_date} arasındaki gelen faturalar taranıyor, lütfen bekleyin.`,
                     allowOutsideClick: false,
                     didOpen: () => {
                         Swal.showLoading();
@@ -414,7 +454,11 @@ $(document).ready(function() {
                 $.ajax({
                     url: 'api/efatura-api.php',
                     type: 'POST',
-                    data: { action: 'sync_incoming_invoices' },
+                    data: {
+                        action: 'sync_incoming_invoices',
+                        start_date: syncRange.start_date,
+                        end_date: syncRange.end_date
+                    },
                     dataType: 'json',
                     success: function(res) {
                         if (res.status === 'success') {
@@ -430,12 +474,13 @@ $(document).ready(function() {
                             Swal.fire({
                                 icon: 'info',
                                 title: 'Bilgi',
-                                text: res.message || 'Yeni gelen fatura bulunamadı veya işlem tamamlandı.'
+                                text: res.message || 'Seçilen tarih aralığında yeni gelen fatura bulunamadı.'
                             });
                         }
                     },
-                    error: function() {
-                        Swal.fire('Hata', 'Gelen faturalar çekilirken bağlantı hatası oluştu.', 'error');
+                    error: function(xhr) {
+                        const errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Gelen faturalar çekilirken bağlantı hatası oluştu.';
+                        Swal.fire('Bilgi', errMsg, 'warning');
                     }
                 });
             }

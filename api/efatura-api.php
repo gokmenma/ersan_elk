@@ -5,8 +5,12 @@ use App\Service\EInvoiceService;
 use App\Model\EInvoiceModel;
 use App\Model\EInvoiceSettingsModel;
 use App\Helper\Security;
+use App\Helper\EInvoiceSecurity;
+use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: private, no-store');
+header('X-Content-Type-Options: nosniff');
 
 // Oturum ve Yetki Kontrolü
 $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
@@ -18,7 +22,22 @@ if ($userId <= 0 || $firmId <= 0) {
     exit;
 }
 
-$action = $_REQUEST['action'] ?? '';
+$action = is_string($_REQUEST['action'] ?? null) ? $_REQUEST['action'] : '';
+if (!EInvoiceSecurity::checkPermission($action)) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Bu işlem için yetkiniz bulunmuyor.']);
+    exit;
+}
+if (!EInvoiceSecurity::readOnly($action)) {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        http_response_code(405); header('Allow: POST');
+        echo json_encode(['status' => 'error', 'message' => 'Bu işlem POST isteği gerektirir.']); exit;
+    }
+    if (!EInvoiceSecurity::validCsrf($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? null)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Güvenlik doğrulaması başarısız. Sayfayı yenileyin.']); exit;
+    }
+}
 
 $invoiceService = new EInvoiceService();
 $invoiceModel = new EInvoiceModel();
@@ -26,6 +45,34 @@ $settingsModel = new EInvoiceSettingsModel();
 
 try {
     switch ($action) {
+        case 'calculate_invoice':
+            $payload = json_decode(file_get_contents('php://input'), true);
+            $lines = is_array($payload) && is_array($payload['lines'] ?? null) ? $payload['lines'] : [];
+            echo json_encode(['status' => 'success', 'data' => (new \App\Service\InvoiceCalculationService())->calculate($lines)]);
+            break;
+        case 'connection_info':
+            echo json_encode(['status' => 'success', 'data' => $invoiceService->connectionInfo($firmId)]);
+            break;
+        case 'counter_info':
+            echo json_encode(['status' => 'success', 'data' => $invoiceService->counterInfo($firmId)]);
+            break;
+        case 'invoice_history':
+        case 'refresh_history':
+            $invoiceId = EInvoiceSecurity::invoiceId($_GET['invoice_id'] ?? $_POST['invoice_id'] ?? '');
+            echo json_encode(['status' => 'success', 'data' => $invoiceService->history($invoiceId, $firmId, $action === 'refresh_history')]);
+            break;
+        case 'download_pdf':
+            $invoiceId = EInvoiceSecurity::invoiceId($_GET['invoice_id'] ?? '');
+            $pdf = $invoiceService->downloadPdf($invoiceId, $firmId);
+            $invoice = $invoiceModel->getInvoiceById($invoiceId, $firmId);
+            $filename = preg_replace('/[^A-Za-z0-9_-]/', '', $invoice['fatura_no'] ?: $invoice['ettn']) . '.pdf';
+            header('Content-Type: application/pdf');
+            header('X-Content-Type-Options: nosniff');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . strlen($pdf));
+            header('Cache-Control: private, no-store');
+            echo $pdf;
+            exit;
         // 1. Mükellef Kontrolü (CheckUser)
         case 'check_taxpayer':
             $vkn = trim($_POST['vkn_tckn'] ?? '');
@@ -41,11 +88,13 @@ try {
         case 'save_draft':
             $payload = json_decode(file_get_contents('php://input'), true) ?: $_POST;
             $header = $payload['header'] ?? [];
+            if (!is_array($header) || !is_array($payload['lines'] ?? null)) throw new \InvalidArgumentException('Geçersiz fatura verisi.');
+            if (!empty($header['cari_id'])) $header['cari_id'] = EInvoiceSecurity::invoiceId($header['cari_id']);
             $lines = $payload['lines'] ?? [];
             $rawId = $payload['invoice_id'] ?? $header['invoice_id'] ?? null;
             $invoiceId = null;
             if (!empty($rawId)) {
-                $invoiceId = is_numeric($rawId) ? (int)$rawId : (int)Security::decrypt($rawId);
+                $invoiceId = EInvoiceSecurity::invoiceId($rawId);
             }
 
             if (empty($header['alici_vkn_tckn']) || empty($header['alici_unvan'])) {
@@ -69,7 +118,7 @@ try {
                 echo json_encode([
                     'status'       => 'success',
                     'message'      => $res['message'],
-                    'invoice_id'   => $finalId,
+                    'invoice_id'   => Security::encrypt((string)$finalId),
                     'encrypted_id' => Security::encrypt((string)$finalId)
                 ]);
             } else {
@@ -80,7 +129,7 @@ try {
         // 3. Faturayı EDM / GİB Sistemine Gönder
         case 'send_invoice':
             $encryptedId = $_POST['invoice_id'] ?? '';
-            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
 
             if (!$invoiceId) {
                 echo json_encode(['status' => 'error', 'message' => 'Geçersiz fatura kimliği.']);
@@ -98,7 +147,7 @@ try {
         // 4. GİB Durum Senkronizasyonu
         case 'sync_status':
             $encryptedId = $_POST['invoice_id'] ?? '';
-            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
 
             if (!$invoiceId) {
                 echo json_encode(['status' => 'error', 'message' => 'Geçersiz fatura kimliği.']);
@@ -116,7 +165,7 @@ try {
         // 5. HTML Önizleme Render
         case 'preview_html':
             $encryptedId = $_GET['invoice_id'] ?? ($_POST['invoice_id'] ?? '');
-            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
 
             if (!$invoiceId) {
                 echo json_encode(['status' => 'error', 'message' => 'Geçersiz fatura kimliği.']);
@@ -158,14 +207,14 @@ try {
             $errors = [];
 
             foreach ($ids as $rawId) {
-                $invoiceId = is_numeric($rawId) ? (int)$rawId : (int)Security::decrypt($rawId);
+                $invoiceId = EInvoiceSecurity::invoiceId($rawId);
                 if ($invoiceId > 0) {
                     $sendRes = $invoiceService->sendInvoice($invoiceId, $firmId);
                     if ($sendRes['success']) {
                         $successCount++;
                     } else {
                         $failCount++;
-                        $errors[] = "#$invoiceId: " . $sendRes['message'];
+                        $errors[] = 'Fatura gönderilemedi: ' . $sendRes['message'];
                     }
                 }
             }
@@ -182,7 +231,7 @@ try {
         // 9. Faturayı İptal Et
         case 'cancel_invoice':
             $encryptedId = $_POST['invoice_id'] ?? '';
-            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
             $reason = trim($_POST['reason'] ?? 'Kullanıcı talebi');
 
             if (!$invoiceId) {
@@ -190,18 +239,19 @@ try {
                 exit;
             }
 
-            $success = $invoiceModel->cancelInvoice($invoiceId, $firmId, $reason);
+            $cancelResult = $invoiceService->cancelInvoice($invoiceId, $firmId, $reason);
+            $success = $cancelResult['success'];
             if ($success) {
                 echo json_encode(['status' => 'success', 'message' => 'Fatura başarıyla iptal edildi.']);
             } else {
-                echo json_encode(['status' => 'error', 'message' => 'Fatura iptal edilirken bir hata oluştu.']);
+                echo json_encode(['status' => 'error', 'message' => $cancelResult['message']]);
             }
             break;
 
         // 9. Taslak Faturayı Sil (Soft Delete)
         case 'delete_draft':
             $encryptedId = $_POST['invoice_id'] ?? '';
-            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
 
             if (!$invoiceId) {
                 echo json_encode(['status' => 'error', 'message' => 'Geçersiz fatura kimliği.']);
@@ -218,22 +268,26 @@ try {
 
         // 10. EDM Gelen Faturaları Senkronize Et
         case 'sync_incoming_invoices':
-            $res = $invoiceService->syncIncomingInvoices($firmId);
+            $start = !empty($_POST['start_date']) ? trim($_POST['start_date']) : (!empty($_GET['start_date']) ? trim($_GET['start_date']) : null);
+            $end = !empty($_POST['end_date']) ? trim($_POST['end_date']) : (!empty($_GET['end_date']) ? trim($_GET['end_date']) : null);
+            $res = $invoiceService->syncIncomingInvoices($firmId, $start, $end);
             $res['status'] = (!empty($res['success'])) ? 'success' : 'error';
-            echo json_encode($res);
+            echo json_encode($res + ['status' => $res['success'] ? 'success' : 'error']);
             break;
 
         // 10.1. EDM Giden ve Taslak Faturaları Senkronize Et
         case 'sync_outgoing_invoices':
-            $res = $invoiceService->syncOutgoingInvoices($firmId);
+            $start = !empty($_POST['start_date']) ? trim($_POST['start_date']) : (!empty($_GET['start_date']) ? trim($_GET['start_date']) : null);
+            $end = !empty($_POST['end_date']) ? trim($_POST['end_date']) : (!empty($_GET['end_date']) ? trim($_GET['end_date']) : null);
+            $res = $invoiceService->syncOutgoingInvoices($firmId, $start, $end);
             $res['status'] = (!empty($res['success'])) ? 'success' : 'error';
-            echo json_encode($res);
+            echo json_encode($res + ['status' => $res['success'] ? 'success' : 'error']);
             break;
 
         // 11. Ticari Faturaya Kabul / Red Yanıtı
         case 'respond_commercial':
             $encryptedId = $_POST['invoice_id'] ?? '';
-            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
             $responseType = strtoupper(trim($_POST['response_type'] ?? ''));
             $reason = trim($_POST['reason'] ?? '');
 
@@ -243,13 +297,13 @@ try {
             }
 
             $res = $invoiceService->respondToIncomingInvoice($invoiceId, $firmId, $responseType, $reason);
-            echo json_encode($res);
+            echo json_encode($res + ['status' => $res['success'] ? 'success' : 'error']);
             break;
 
         // 12. UBL-TR XML İndir
         case 'download_xml':
             $encryptedId = $_GET['invoice_id'] ?? '';
-            $invoiceId = is_numeric($encryptedId) ? (int)$encryptedId : (int)Security::decrypt($encryptedId);
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
             if (!$invoiceId) {
                 echo json_encode(['status' => 'error', 'message' => 'Geçersiz fatura kimliği.']);
                 exit;
@@ -263,20 +317,12 @@ try {
             if (!empty($inv['ubl_xml_path']) && file_exists($inv['ubl_xml_path'])) {
                 $xmlContent = file_get_contents($inv['ubl_xml_path']);
             } else {
-                $settings = $settingsModel->getSettings($firmId);
-                $supplier = [
-                    'vkn_tckn'      => $settings['api_username'] ?? '',
-                    'unvan'         => $_SESSION['firma_adi'] ?? 'ERSAN ELEKTRİK LTD. ŞTİ.',
-                    'adres'         => 'Merkez Mah.',
-                    'ilce'          => 'Merkez',
-                    'il'            => 'Kayseri',
-                    'vergi_dairesi' => 'Erciyes Vergi Dairesi'
-                ];
+                $supplier = $invoiceService->supplier($firmId);
                 $ublService = new \App\Service\UblGeneratorService();
                 $xmlContent = $ublService->generateInvoiceXml($inv, $supplier, $inv['satirlar'] ?? []);
             }
             header('Content-Type: application/xml; charset=utf-8');
-            $fileName = ($inv['fatura_no'] ?: $inv['ettn']) . '.xml';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $inv['fatura_no'] ?: $inv['ettn']) . '.xml';
             header('Content-Disposition: attachment; filename="' . $fileName . '"');
             echo $xmlContent;
             exit;
@@ -319,8 +365,9 @@ try {
                 'environment'                => trim($_POST['environment'] ?? 'TEST'),
                 'efatura_seri'               => trim($_POST['efatura_seri'] ?? 'ERS'),
                 'earsiv_seri'                => trim($_POST['earsiv_seri'] ?? 'ERA'),
-                'varsayilan_gonderici_alias' => trim($_POST['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb'),
-                'otomatik_gonder'            => !empty($_POST['otomatik_gonder']) ? 1 : 0
+                'varsayilan_gonderici_alias' => trim($_POST['varsayilan_gonderici_alias'] ?? ''),
+                'otomatik_gonder'            => !empty($_POST['otomatik_gonder']) ? 1 : 0,
+                'kontor_esik' => max(0, (int)($_POST['kontor_esik'] ?? 100))
             ];
 
             $saved = $settingsModel->saveSettings($firmId, $data);
@@ -336,8 +383,8 @@ try {
             echo json_encode(['status' => 'error', 'message' => 'Bilinmeyen veya desteklenmeyen işlem.']);
             break;
     }
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     error_log("efatura-api.php Exception: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Sunucu hatası: ' . $e->getMessage()]);
+    http_response_code($e instanceof \InvalidArgumentException ? 422 : 500);
+    echo json_encode(['status' => 'error', 'message' => ($e instanceof \InvalidArgumentException || $e instanceof \App\Service\EdmOperationException) ? $e->getMessage() : 'İşlem tamamlanamadı. Sistem kayıtlarını kontrol edin.']);
 }

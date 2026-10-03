@@ -101,7 +101,7 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 <?php
-if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "evrak-takip/list" || $page == "mail-sms/mail-gonder" || $page == "duyuru/list") {
+if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "evrak-takip/list" || $page == "mail-sms/mail-gonder" || $page == "duyuru/list" || $page == "efatura/olustur") {
     $summernoteVersion = filemtime(dirname(__DIR__) . '/assets/libs/summernote/summernote-lite.min.js');
     echo '<script src="assets/libs/summernote/summernote-lite.min.js?v=' . $summernoteVersion . '"></script>';
     echo '<script src="assets/libs/summernote/lang/summernote-tr-TR.min.js?v=' . $summernoteVersion . '"></script>';

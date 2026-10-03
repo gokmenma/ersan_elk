@@ -46,6 +46,10 @@ class EInvoiceSettingsModel extends Model
     {
         try {
             $existing = $this->getSettings($firmId);
+            if (!in_array($data['environment'] ?? '', ['TEST','LIVE'], true) || trim($data['api_username'] ?? '') === '') throw new \InvalidArgumentException('Geçerli EDM ortamı ve kullanıcı adı gereklidir.');
+            foreach (['efatura_seri','earsiv_seri'] as $field) if (!preg_match('/^[A-Z0-9]{3}$/D', strtoupper(trim($data[$field] ?? '')))) throw new \InvalidArgumentException('Fatura serileri üç harf/rakamdan oluşmalıdır.');
+            if (strtoupper(trim($data['efatura_seri'])) === strtoupper(trim($data['earsiv_seri']))) throw new \InvalidArgumentException('e-Fatura ve e-Arşiv serileri farklı olmalıdır.');
+
             $encryptedPassword = !empty($data['api_password']) ? Security::encrypt($data['api_password']) : ($existing['api_password'] ?? '');
 
             if ($existing) {
@@ -60,16 +64,16 @@ class EInvoiceSettingsModel extends Model
                         efatura_seri = :efatura_seri,
                         earsiv_seri = :earsiv_seri,
                         varsayilan_gonderici_alias = :varsayilan_gonderici_alias,
-                        otomatik_gonder = :otomatik_gonder,
+                        otomatik_gonder = :otomatik_gonder, kontor_esik = :kontor_esik,
                         updated_at = NOW()
                     WHERE firm_id = :firm_id
                 ");
             } else {
                 $stmt = $this->db->prepare("
                     INSERT INTO efatura_ayarlar 
-                        (firm_id, entegrator, api_username, api_password, environment, test_wsdl_url, live_wsdl_url, efatura_seri, earsiv_seri, varsayilan_gonderici_alias, otomatik_gonder, is_active, created_at)
+                        (firm_id, entegrator, api_username, api_password, environment, test_wsdl_url, live_wsdl_url, efatura_seri, earsiv_seri, varsayilan_gonderici_alias, otomatik_gonder, kontor_esik, is_active, created_at)
                     VALUES 
-                        (:firm_id, :entegrator, :api_username, :api_password, :environment, :test_wsdl_url, :live_wsdl_url, :efatura_seri, :earsiv_seri, :varsayilan_gonderici_alias, :otomatik_gonder, 1, NOW())
+                        (:firm_id, :entegrator, :api_username, :api_password, :environment, :test_wsdl_url, :live_wsdl_url, :efatura_seri, :earsiv_seri, :varsayilan_gonderici_alias, :otomatik_gonder, :kontor_esik, 1, NOW())
                 ");
             }
 
@@ -79,12 +83,13 @@ class EInvoiceSettingsModel extends Model
                 'api_username'               => $data['api_username'] ?? '',
                 'api_password'               => $encryptedPassword,
                 'environment'                => in_array($data['environment'] ?? '', ['TEST', 'LIVE']) ? $data['environment'] : 'TEST',
-                'test_wsdl_url'              => $data['test_wsdl_url'] ?? 'https://test.edmbilisim.com.tr/EFaturaEDM21ea/EFaturaEDM.svc?wsdl',
-                'live_wsdl_url'              => $data['live_wsdl_url'] ?? 'https://efatura.edmbilisim.com.tr/EFaturaEDM/EFaturaEDM.svc?wsdl',
+                'test_wsdl_url'              => $data['test_wsdl_url'] ?? $existing['test_wsdl_url'] ?? \App\Config\EdmConfig::TEST_WSDL_URL,
+                'live_wsdl_url'              => $data['live_wsdl_url'] ?? $existing['live_wsdl_url'] ?? \App\Config\EdmConfig::LIVE_WSDL_URL,
                 'efatura_seri'               => strtoupper(substr(trim($data['efatura_seri'] ?? 'ERS'), 0, 3)),
                 'earsiv_seri'                => strtoupper(substr(trim($data['earsiv_seri'] ?? 'ERA'), 0, 3)),
-                'varsayilan_gonderici_alias' => $data['varsayilan_gonderici_alias'] ?? 'urn:mail:defaultgb@edmbilisim.com.tr',
-                'otomatik_gonder'            => !empty($data['otomatik_gonder']) ? 1 : 0
+                'varsayilan_gonderici_alias' => $data['varsayilan_gonderici_alias'] ?? '',
+                'otomatik_gonder'            => !empty($data['otomatik_gonder']) ? 1 : 0,
+                'kontor_esik' => max(0, (int)($data['kontor_esik'] ?? 100))
             ]);
         } catch (\PDOException $e) {
             error_log("EInvoiceSettingsModel::saveSettings Error: " . $e->getMessage());
@@ -98,36 +103,37 @@ class EInvoiceSettingsModel extends Model
      */
     public function generateNextInvoiceNumber(int $firmId, string $belgeTuru, string $seri, ?int $yil = null): string
     {
-        $yil = $yil ?: (int) date('Y');
-        $seri = strtoupper(substr(trim($seri), 0, 3));
+        $yil = $yil ?: (int)date('Y');
+        $seri = strtoupper(trim($seri));
+        if (!preg_match('/^[A-Z0-9]{3}$/D', $seri) || $yil < 2000 || $yil > 2099) throw new \InvalidArgumentException('Fatura serisi veya yılı geçersiz.');
+        $this->db->beginTransaction();
+        try {
+            $params = ['firm' => $firmId, 'type' => $belgeTuru, 'year' => $yil, 'series' => $seri];
+            $stmt = $this->db->prepare('INSERT INTO efatura_numarator (firm_id, belge_turu, yil, seri, son_numara) VALUES (:firm, :type, :year, :series, 0) ON DUPLICATE KEY UPDATE id = id');
+            $stmt->execute($params);
+            $stmt = $this->db->prepare('SELECT son_numara FROM efatura_numarator WHERE firm_id = :firm AND belge_turu = :type AND yil = :year AND seri = :series FOR UPDATE');
+            $stmt->execute($params);
+            $previous = (int)$stmt->fetchColumn();
+            // Imported portal invoices may precede local counter creation.
+            $stmt = $this->db->prepare("SELECT COALESCE(MAX(CAST(RIGHT(fatura_no, 9) AS UNSIGNED)), 0) FROM faturalar WHERE firm_id = :firm AND yon = 'GIDEN' AND fatura_no LIKE :prefix AND CHAR_LENGTH(fatura_no) = 16");
+            $stmt->execute(['firm' => $firmId, 'prefix' => $seri . $yil . '%']);
+            $number = max($previous, (int)$stmt->fetchColumn()) + 1;
+            if ($number > 999999999) throw new \RuntimeException('Fatura serisi doldu.');
+            $stmt = $this->db->prepare('UPDATE efatura_numarator SET son_numara = :number, updated_at = NOW() WHERE firm_id = :firm AND belge_turu = :type AND yil = :year AND seri = :series');
+            $stmt->execute($params + ['number' => $number]);
+            $this->db->commit();
+            return sprintf('%s%04d%09d', $seri, $yil, $number);
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+    }
 
-        $stmt = $this->db->prepare("
-            INSERT INTO efatura_numarator (firm_id, belge_turu, yil, seri, son_numara, updated_at)
-            VALUES (:firm_id, :belge_turu, :yil, :seri, 1, NOW())
-            ON DUPLICATE KEY UPDATE son_numara = son_numara + 1, updated_at = NOW()
-        ");
-        $stmt->execute([
-            'firm_id'    => $firmId,
-            'belge_turu' => $belgeTuru,
-            'yil'        => $yil,
-            'seri'       => $seri
-        ]);
-
-        $fetchStmt = $this->db->prepare("
-            SELECT son_numara FROM efatura_numarator 
-            WHERE firm_id = :firm_id AND belge_turu = :belge_turu AND yil = :yil AND seri = :seri
-        ");
-        $fetchStmt->execute([
-            'firm_id'    => $firmId,
-            'belge_turu' => $belgeTuru,
-            'yil'        => $yil,
-            'seri'       => $seri
-        ]);
-        $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
-        $num = $row ? (int)$row['son_numara'] : 1;
-
-        // 3 hane Seri + 4 hane Yıl + 9 hane Sıra No (Toplam 16 Karakter)
-        return sprintf('%s%04d%09d', $seri, $yil, $num);
+    public function reconcileSerial(int $firmId, string $type, string $series, int $year, int $last): void
+    {
+        if (!preg_match('/^[A-Z0-9]{3}$/D', $series) || $last < 0 || $last > 999999999) throw new \InvalidArgumentException('EDM seri bilgisi geçersiz.');
+        $stmt = $this->db->prepare('INSERT INTO efatura_numarator (firm_id, belge_turu, yil, seri, son_numara) VALUES (:firm, :type, :year, :series, :last) ON DUPLICATE KEY UPDATE son_numara = GREATEST(son_numara, VALUES(son_numara))');
+        $stmt->execute(['firm' => $firmId, 'type' => $type, 'year' => $year, 'series' => $series, 'last' => $last]);
     }
 
     /**
@@ -146,8 +152,8 @@ class EInvoiceSettingsModel extends Model
                 'firm_id'     => $firmId,
                 'fatura_id'   => $faturaId,
                 'islem_turu'  => $islemTuru,
-                'istek'       => $istek,
-                'yanit'       => $yanit,
+                'istek'       => \App\Helper\EInvoiceSecurity::redact($istek),
+                'yanit'       => \App\Helper\EInvoiceSecurity::redact($yanit),
                 'durum'       => in_array($durum, ['BASARILI', 'BASARISIZ']) ? $durum : 'BASARILI',
                 'hata_kodu'   => $hataKodu,
                 'hata_mesaji' => $hataMesaji,

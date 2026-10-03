@@ -7,7 +7,7 @@
 // temizlenir hem de importScripts URL'i değişir. Kayıt updateViaCache belirtmediği
 // için varsayılan "imports" geçerlidir ve sürümsüz import HTTP önbelleğinden
 // gelip service worker'ı eski kodla çalıştırır.
-const KUYRUK_SURUM = "22";
+const KUYRUK_SURUM = "23";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v2";
 const OFFLINE_URL = "offline.html";

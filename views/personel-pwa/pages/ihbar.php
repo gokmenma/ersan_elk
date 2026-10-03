@@ -1025,7 +1025,10 @@
             await Alert.success('Telefona kaydedildi', 'Bildirim, fotoğraf ve videolar cihazınıza kaydedildi. Gönderim durumunu bu sayfadan takip edebilirsiniz.');
         } catch (error) {
             console.error('İhbar gönderim hatası:', error);
-            Alert.error('Kaydedilemedi', (error.message || 'Telefon depolamasına yazılamadı.') + ' Formunuz açık kaldı; telefonunuzda boş alan olduğunu kontrol edip tekrar deneyin.');
+            const mesaj = (error && error.name === 'QuotaExceededError')
+                ? 'Telefonunuzda yeterli depolama alanı bulunamadı. Lütfen cihazınızda yer açıp tekrar deneyin.'
+                : ((error && error.message) || 'Telefon depolamasına yazılamadı.') + ' Formunuz açık kaldı; lütfen tekrar deneyin.';
+            Alert.error('Kaydedilemedi', mesaj);
         } finally {
             btn.disabled = false;
             btnText.innerText = isEdit ? 'GÜNCELLE' : 'İHBARI GÖNDER';

@@ -1498,7 +1498,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 await Alert.success('Telefona kaydedildi', 'Bildirim, fotoğraf ve videolar cihazınıza kaydedildi. Gönderim durumunu bu sayfadan takip edebilirsiniz.');
             } catch (err) {
                 console.error('Kaçak bildirim hatası:', err);
-                Alert.error('Kaydedilemedi', (err.message || 'Telefon depolamasına yazılamadı.') + ' Formunuz açık kaldı; telefonunuzda boş alan olduğunu kontrol edip tekrar deneyin.');
+                const mesaj = (err && err.name === 'QuotaExceededError')
+                    ? 'Telefonunuzda yeterli depolama alanı bulunamadı. Lütfen cihazınızda yer açıp tekrar deneyin.'
+                    : ((err && err.message) || 'Telefon depolamasına yazılamadı.') + ' Formunuz açık kaldı; lütfen tekrar deneyin.';
+                Alert.error('Kaydedilemedi', mesaj);
             } finally {
                 btn.disabled = false;
                 btnText.textContent = 'BİLDİRİMİ GÖNDER';

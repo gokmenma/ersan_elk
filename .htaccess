@@ -1,5 +1,8 @@
 RewriteEngine on
 
+# Fatura dosyaları yalnız firma/yetki kontrolü yapan API üzerinden indirilir.
+RewriteRule ^storage/invoices/ - [F,L]
+
 # Arşiv dosyalarına web üzerinden doğrudan erişimi engelle; yalnızca yetkili indirme endpointi kullanılır.
 RewriteRule ^uploads/personel_evraklar/ - [F,L]
 

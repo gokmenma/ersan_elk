@@ -1,20 +1,29 @@
 <?php
+\App\Service\Gate::authorizeOrDie('efatura/olustur');
 use App\Config\EdmConfig;
-use App\Core\Db;
+use App\Helper\Form;
+use App\Helper\EInvoiceSecurity;
+use App\Service\InvoiceValidationService;
 use App\Helper\Security;
 use App\Model\EInvoiceModel;
 
 $maintitle = 'E-Fatura & E-Arşiv';
 $title = 'Yeni Fatura Düzenle';
 
-$firmId = (int)($_SESSION['firm_id'] ?? 1);
-$db = (new Db())->db;
-
-// Aktif Cari Listesini Çek
-$cariStmt = $db->prepare("SELECT id, CariAdi, Telefon, Email, firma, Adres, notlar FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC");
-$cariStmt->execute();
-$cariler = $cariStmt->fetchAll(PDO::FETCH_ASSOC);
-
+$firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
+$invoiceModel = new EInvoiceModel();
+$cariler = $invoiceModel->invoiceCustomers($firmId);
+foreach ($cariler as &$customer) $customer['id'] = Security::encrypt((string)$customer['id']);
+unset($customer);
+$cariOptions = ['' => '-- Cari seçin veya VKN girin --'];
+foreach ($cariler as $customer) $cariOptions[$customer['id']] = $customer['CariAdi'];
+$withholdingOptions = ['' => 'Tevkifat Yok'];
+foreach (InvoiceValidationService::codes('WithholdingTaxTypeWithPercent') as $entry) {
+    $code = substr($entry, 0, 3); $rate = substr($entry, 3);
+    if (in_array($code, InvoiceValidationService::codes('WithholdingTaxType'), true)) $withholdingOptions[$code . '|' . $rate] = $code . ' — %' . $rate;
+}
+$exemptionOptions = ['' => 'İstisna / İşlem Kodu Yok'];
+foreach (InvoiceValidationService::codes('TaxExemptionReasonCodeType') as $code) $exemptionOptions[$code] = $code;
 $unitCodes = EdmConfig::getUnitCodes();
 $kdvOranlari = [
     '20' => '%20',
@@ -26,148 +35,90 @@ $kdvOranlari = [
 $editInvoice = null;
 $editInvoiceEncryptedId = $_GET['id'] ?? '';
 if (!empty($editInvoiceEncryptedId)) {
-    $decryptedId = is_numeric($editInvoiceEncryptedId) ? (int)$editInvoiceEncryptedId : (int)Security::decrypt($editInvoiceEncryptedId);
+    $decryptedId = EInvoiceSecurity::invoiceId($editInvoiceEncryptedId);
     if ($decryptedId > 0) {
         $invoiceModel = new EInvoiceModel();
         $editInvoice = $invoiceModel->getInvoiceById($decryptedId, $firmId);
+        if ($editInvoice && ($editInvoice['yon'] !== 'GIDEN' || $editInvoice['entegrator_durum_kodu'] !== 'TASLAK' || !empty($editInvoice['kaynak_xml']) || !empty($editInvoice['islem_belirsiz']))) {
+            echo '<div class="alert alert-warning">Yalnız yerel taslaklar düzenlenebilir.</div>'; return;
+        }
         if ($editInvoice) {
+            if (!empty($editInvoice['cari_id'])) $editInvoice['cari_id'] = Security::encrypt((string)$editInvoice['cari_id']);
+            unset($editInvoice['id'], $editInvoice['olusturan_user_id']);
             $title = 'Taslak Faturayı Düzenle';
         }
     }
 }
+
+// Kalem tablosu için düz HTML select şablonları (Floating label olmadan, tablo içine uygun)
+$unitSelectHtml = '<select class="form-select form-select-sm select2-item kalem-birim">';
+foreach ($unitCodes as $k => $v) {
+    $unitSelectHtml .= '<option value="' . htmlspecialchars($k) . '"' . ($k === 'C62' ? ' selected' : '') . '>' . htmlspecialchars($v) . '</option>';
+}
+$unitSelectHtml .= '</select>';
+
+$vatSelectHtml = '<select class="form-select form-select-sm select2-item kalem-kdv">';
+foreach ($kdvOranlari as $k => $v) {
+    $vatSelectHtml .= '<option value="' . htmlspecialchars($k) . '"' . ($k === '20' ? ' selected' : '') . '>' . htmlspecialchars($v) . '</option>';
+}
+$vatSelectHtml .= '</select>';
+
+$withholdingSelectHtml = '<select class="form-select form-select-sm select2-item kalem-tevkifat mb-1">';
+foreach ($withholdingOptions as $k => $v) {
+    $withholdingSelectHtml .= '<option value="' . htmlspecialchars($k) . '">' . htmlspecialchars($v) . '</option>';
+}
+$withholdingSelectHtml .= '</select>';
+
+$exemptionSelectHtml = '<select class="form-select form-select-sm select2-item kalem-istisna mb-1">';
+foreach ($exemptionOptions as $k => $v) {
+    $exemptionSelectHtml .= '<option value="' . htmlspecialchars($k) . '">' . htmlspecialchars($v) . '</option>';
+}
+$exemptionSelectHtml .= '</select>';
 ?>
+<meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
+<script src="views/efatura/js/transport.js"></script>
 
 <style>
-/* Kurumsal E-Fatura Temiz Form Stilleri */
-.invoice-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-    margin-bottom: 1.5rem;
-}
-
-.invoice-card-header {
-    background-color: #fafbfc;
-    border-bottom: 1px solid #e2e8f0;
-    padding: 12px 20px;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.invoice-card-body {
-    padding: 20px;
-}
-
-.form-group-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #475569;
-    margin-bottom: 6px;
-    display: block;
-}
-
-.form-control-custom {
-    height: 40px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    padding: 8px 12px;
-    color: #1e293b;
-    background-color: #ffffff;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.form-control-custom:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-    outline: 0;
-}
-
-/* Select2 Standart Yükseklik ve Temiz Görünüm */
-.select2-container--default .select2-selection--single {
-    height: 40px !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 8px !important;
-    background-color: #ffffff !important;
-    display: flex !important;
-    align-items: center !important;
-}
-
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 40px !important;
-    padding-left: 12px !important;
-    color: #1e293b !important;
-    font-size: 0.875rem !important;
-    font-weight: 500 !important;
-}
-
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 38px !important;
-    right: 8px !important;
-}
-
-.select2-container--default.select2-container--focus .select2-selection--single,
-.select2-container--default.select2-container--open .select2-selection--single {
-    border-color: #2563eb !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
-}
-
-/* Kalemler Tablosu */
+/* Fatura Düzenleme Tablo ve Kart Stilleri */
 .items-table {
     margin-bottom: 0;
     width: 100%;
 }
-
+.invoice-items-table-wrap {
+    padding: 0.75rem 1rem 1rem;
+}
+.invoice-items-table-frame {
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    overflow: hidden;
+}
 .items-table thead th {
-    background-color: #f1f5f9;
+    background-color: #f8fafc;
     color: #475569;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 10px 12px;
-    border-bottom: 2px solid #cbd5e1;
+    padding: 12px 10px;
+    border-bottom: 2px solid #e2e8f0;
 }
-
 .items-table tbody td {
     padding: 8px 10px;
     vertical-align: middle;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #f1f5f9;
 }
-
-.items-table input.form-control-custom {
+.items-table .form-control-sm,
+.items-table .form-select-sm {
     height: 36px;
     font-size: 0.85rem;
-    padding: 6px 10px;
 }
-
-.items-table .select2-container--default .select2-selection--single {
-    height: 36px !important;
-}
-
-.items-table .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 36px !important;
-    font-size: 0.85rem !important;
-    padding-left: 8px !important;
-}
-
-.items-table .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 34px !important;
-}
-
-/* Finansal Özet Tablosu */
-.summary-box {
-    background: #f8fafc;
+.summary-card {
+    background-color: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    padding: 16px 20px;
+    padding: 18px 20px;
 }
-
-.summary-item {
+.summary-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -175,42 +126,47 @@ if (!empty($editInvoiceEncryptedId)) {
     font-size: 0.875rem;
     color: #475569;
 }
-
-.summary-item.grand-total {
+.summary-row.grand-total {
     border-top: 2px dashed #cbd5e1;
-    margin-top: 8px;
+    margin-top: 10px;
     padding-top: 12px;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: #0f172a;
 }
-
-/* VKN Sorgulama Butonu */
-.vkn-input-group {
+.drag-handle {
+    cursor: grab;
+}
+.drag-handle:active {
+    cursor: grabbing;
+}
+.tax-detail-fields {
+    display: none;
+}
+.tax-detail-fields.is-open {
+    display: block;
+}
+.invoice-item-actions {
     display: flex;
-    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
-
-.vkn-input-group input {
-    flex: 1;
-}
-
-.vkn-input-group button {
-    height: 40px;
-    padding: 0 16px;
-    font-weight: 600;
-    border-radius: 8px;
+.invoice-not-editor .note-editor {
+    margin-bottom: 0;
+    border-color: #cbd5e1;
 }
 </style>
 
 <div class="container-fluid pb-5">
     <?php include 'layouts/breadcrumb.php'; ?>
 
-    <!-- Üst Sayfa Başlığı ve Aksiyonlar -->
+    <!-- Üst Sayfa Başlığı ve Aksiyon Araç Çubuğu -->
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-3">
-            <a href="index.php?p=efatura/giden-list" class="btn btn-light border btn-sm p-2 rounded-circle" title="Geri Dön">
-                <i class="bx bx-arrow-back fs-5"></i>
+            <a href="index.php?p=efatura/giden-list" class="btn btn-outline-secondary btn-sm p-2 rounded-circle" title="Geri Dön">
+                <i class="bx bx-arrow-back font-size-18 align-middle"></i>
             </a>
             <div>
                 <h4 class="mb-0 fw-bold text-dark"><?= !empty($editInvoice) ? 'Taslak Faturayı Düzenle' : 'Yeni Fatura Düzenle' ?></h4>
@@ -224,77 +180,74 @@ if (!empty($editInvoiceEncryptedId)) {
                     <i class="bx bx-info-circle me-1"></i> Mükellefiyet Kontrolü Bekleniyor
                 </span>
             </div>
-            <button type="button" class="btn btn-light border px-3 fw-semibold" id="btnTaslakKaydet">
-                <i class="bx bx-save me-1"></i> <?= !empty($editInvoice) ? 'Değişiklikleri Kaydet' : 'Taslak Kaydet' ?>
+            <button type="button" class="btn btn-light border px-3 fw-semibold shadow-sm" id="btnTaslakKaydet">
+                <i class="bx bx-save me-1 font-size-16 align-middle"></i> <?= !empty($editInvoice) ? 'Değişiklikleri Kaydet' : 'Taslak Kaydet' ?>
             </button>
             <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm" id="btnGonderDirect">
-                <i class="bx bx-send me-1"></i> Kaydet ve Gönder
+                <i class="bx bx-send me-1 font-size-16 align-middle"></i> Kaydet ve Gönder
             </button>
         </div>
     </div>
 
     <form id="formFaturaOlustur">
         <input type="hidden" id="editInvoiceId" value="<?= !empty($editInvoice) ? htmlspecialchars($editInvoiceEncryptedId, ENT_QUOTES, 'UTF-8') : '' ?>">
+        
         <!-- 2 Sütunlu Üst Bilgiler -->
         <div class="row g-4 mb-4">
             <!-- 1. Sütun: Müşteri & Alıcı Bilgileri -->
             <div class="col-lg-6">
-                <div class="invoice-card h-100 mb-0">
-                    <div class="invoice-card-header">
-                        <span class="fw-bold text-dark"><i class="bx bx-user text-primary me-2"></i>Müşteri / Alıcı Bilgileri</span>
+                <div class="card shadow-sm border h-100 mb-0">
+                    <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
+                        <h5 class="card-title mb-0 fw-bold text-dark">
+                            <i class="bx bx-user text-primary me-2 font-size-18 align-middle"></i>Müşteri / Alıcı Bilgileri
+                        </h5>
                         <span class="text-muted small">Cari ve vergi detayları</span>
                     </div>
-                    <div class="invoice-card-body">
+                    <div class="card-body p-4">
                         <div class="row g-3">
                             <!-- Cari Seçimi -->
                             <div class="col-12">
-                                <label class="form-group-label">Kayıtlı Cari Hesap <span class="text-muted fw-normal">(Opsiyonel)</span></label>
-                                <select class="form-select select2" id="selectCari" style="width: 100%;">
-                                    <option value="">-- Kayıtlı Carilerden Seçin veya Doğrudan VKN Girin --</option>
-                                    <?php foreach ($cariler as $c): ?>
-                                        <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['CariAdi'] . (!empty($c['Telefon']) ? ' (' . $c['Telefon'] . ')' : ''), ENT_QUOTES, 'UTF-8') ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <?= Form::FormSelect2('selectCari', $cariOptions, '', 'Kayıtlı Cari Hesap (Opsiyonel)', 'users') ?>
                             </div>
 
-                            <!-- VKN / TCKN & Sorgula -->
+                            <!-- VKN / TCKN & Sorgula Butonu -->
                             <div class="col-md-6">
-                                <label class="form-group-label">VKN / TCKN <span class="text-danger">*</span></label>
-                                <div class="vkn-input-group">
-                                    <input type="text" class="form-control form-control-custom fw-bold" id="alici_vkn_tckn" maxlength="11" placeholder="10 veya 11 Haneli" required>
-                                    <button type="button" class="btn btn-outline-primary" id="btnSorgulaVkn" title="Mükellefiyet Sorgula">
-                                        <i class="bx bx-search"></i>
+                                <div class="input-group">
+                                    <div class="form-floating form-floating-custom flex-grow-1">
+                                        <input type="text" class="form-control fw-bold" id="alici_vkn_tckn" name="alici_vkn_tckn" maxlength="11" placeholder="10 veya 11 Haneli" required>
+                                        <label for="alici_vkn_tckn">VKN / TCKN <span class="text-danger">*</span></label>
+                                        <div class="form-floating-icon">
+                                            <i data-feather="hash"></i>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-primary px-3 d-flex align-items-center justify-content-center" id="btnSorgulaVkn" title="GİB Mükellefiyet Sorgula">
+                                        <i class="bx bx-search font-size-18"></i>
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Vergi Dairesi -->
                             <div class="col-md-6">
-                                <label class="form-group-label">Vergi Dairesi</label>
-                                <input type="text" class="form-control form-control-custom" id="alici_vergi_dairesi" placeholder="Vergi Dairesi">
+                                <?= Form::FormFloatInput('text', 'alici_vergi_dairesi', '', 'Vergi Dairesi', 'Vergi Dairesi', 'briefcase') ?>
                             </div>
 
                             <!-- Alıcı Ünvanı -->
                             <div class="col-12">
-                                <label class="form-group-label">Alıcı / Müşteri Ünvanı <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-custom fw-semibold" id="alici_unvan" placeholder="Firma Ünvanı veya Ad Soyad" required>
+                                <?= Form::FormFloatInput('text', 'alici_unvan', '', 'Firma Ünvanı veya Ad Soyad', 'Alıcı / Müşteri Ünvanı *', 'user', 'form-control fw-semibold', true) ?>
                             </div>
 
                             <!-- Adres -->
                             <div class="col-12">
-                                <label class="form-group-label">Adres</label>
-                                <input type="text" class="form-control form-control-custom" id="alici_adres" placeholder="Açık adres...">
+                                <?= Form::FormFloatInput('text', 'alici_adres', '', 'Açık adres...', 'Adres', 'map-pin') ?>
                             </div>
 
                             <!-- İlçe ve İl -->
                             <div class="col-md-6">
-                                <label class="form-group-label">İlçe</label>
-                                <input type="text" class="form-control form-control-custom" id="alici_ilce" placeholder="İlçe">
+                                <?= Form::FormFloatInput('text', 'alici_ilce', '', 'İlçe', 'İlçe', 'map') ?>
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-group-label">İl</label>
-                                <input type="text" class="form-control form-control-custom" id="alici_il" value="Kayseri" placeholder="İl">
+                                <?= Form::FormFloatInput('text', 'alici_il', 'Kayseri', 'İl', 'İl', 'map') ?>
                             </div>
                         </div>
                     </div>
@@ -303,74 +256,48 @@ if (!empty($editInvoiceEncryptedId)) {
 
             <!-- 2. Sütun: Belge & Fatura Bilgileri -->
             <div class="col-lg-6">
-                <div class="invoice-card h-100 mb-0">
-                    <div class="invoice-card-header">
-                        <span class="fw-bold text-dark"><i class="bx bx-file text-primary me-2"></i>Fatura & Belge Detayları</span>
+                <div class="card shadow-sm border h-100 mb-0">
+                    <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
+                        <h5 class="card-title mb-0 fw-bold text-dark">
+                            <i class="bx bx-file text-primary me-2 font-size-18 align-middle"></i>Fatura & Belge Detayları
+                        </h5>
                         <span class="text-muted small">Tarih, profil ve tip seçimi</span>
                     </div>
-                    <div class="invoice-card-body">
+                    <div class="card-body p-4">
                         <div class="row g-3">
                             <!-- Belge Türü -->
                             <div class="col-md-6">
-                                <label class="form-group-label">Belge Türü <span class="text-danger">*</span></label>
-                                <select class="form-select select2" id="belge_turu" style="width: 100%;">
-                                    <option value="EARSIV" selected>E-Arşiv Fatura</option>
-                                    <option value="EFATURA">E-Fatura</option>
-                                </select>
+                                <?= Form::FormSelect2('belge_turu', ['EARSIV'=>'E-Arşiv','EFATURA'=>'e-Fatura'], 'EARSIV', 'Belge Türü *', 'file-text') ?>
                             </div>
 
                             <!-- Fatura Profili -->
                             <div class="col-md-6">
-                                <label class="form-group-label">Fatura Senaryosu / Profil <span class="text-danger">*</span></label>
-                                <select class="form-select select2" id="fatura_profili" style="width: 100%;">
-                                    <option value="EARSIVFATURA" selected>E-Arşiv Fatura</option>
-                                    <option value="TICARIFATURA">Ticari Fatura</option>
-                                    <option value="TEMELFATURA">Temel Fatura</option>
-                                    <option value="KAMU">Kamu Faturası</option>
-                                    <option value="IHRACAT">İhracat Faturası</option>
-                                </select>
+                                <?= Form::FormSelect2('fatura_profili', ['EARSIVFATURA'=>'E-Arşiv','TICARIFATURA'=>'Ticari','TEMELFATURA'=>'Temel'], 'EARSIVFATURA', 'Fatura Senaryosu / Profil *', 'sliders') ?>
                             </div>
 
                             <!-- Fatura Tipi -->
                             <div class="col-md-6">
-                                <label class="form-group-label">Fatura Tipi <span class="text-danger">*</span></label>
-                                <select class="form-select select2" id="fatura_tipi" style="width: 100%;">
-                                    <option value="SATIS" selected>SATIS (Satış Faturası)</option>
-                                    <option value="IADE">IADE (İade Faturası)</option>
-                                    <option value="TEVKIFAT">TEVKIFAT (KDV Tevkifatlı)</option>
-                                    <option value="ISTISNA">ISTISNA (KDV İstisnalı)</option>
-                                    <option value="OZELMATRAH">OZELMATRAH (Özel Matrah)</option>
-                                </select>
+                                <?= Form::FormSelect2('fatura_tipi', ['SATIS'=>'Satış','IADE'=>'İade','TEVKIFAT'=>'Tevkifat','ISTISNA'=>'İstisna'], 'SATIS', 'Fatura Tipi *', 'tag') ?>
                             </div>
 
                             <!-- Para Birimi -->
                             <div class="col-md-6">
-                                <label class="form-group-label">Para Birimi</label>
-                                <select class="form-select select2" id="para_birimi" style="width: 100%;">
-                                    <option value="TRY" selected>TRY - Türk Lirası (₺)</option>
-                                    <option value="USD">USD - Amerikan Doları ($)</option>
-                                    <option value="EUR">EUR - Euro (€)</option>
-                                </select>
+                                <?= Form::FormSelect2('para_birimi', ['TRY'=>'TRY (₺)','USD'=>'USD ($)','EUR'=>'EUR (€)'], 'TRY', 'Para Birimi', 'dollar-sign') ?>
                             </div>
 
                             <!-- Fatura Tarihi -->
                             <div class="col-md-6">
-                                <label class="form-group-label">Fatura Tarihi <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control form-control-custom" id="fatura_tarihi" value="<?= date('Y-m-d') ?>" required>
+                                <?= Form::FormFloatInput('text', 'fatura_tarihi', date('d.m.Y'), '', 'Fatura Tarihi *', 'calendar', 'form-control flatpickr', true) ?>
                             </div>
 
                             <!-- Vade Tarihi -->
                             <div class="col-md-6">
-                                <label class="form-group-label">Vade Tarihi</label>
-                                <input type="date" class="form-control form-control-custom" id="vade_tarihi">
+                                <?= Form::FormFloatInput('text', 'vade_tarihi', '', '', 'Vade Tarihi', 'calendar', 'form-control flatpickr') ?>
                             </div>
 
                             <!-- Posta Kutusu Alias (e-Fatura ise görünür) -->
                             <div class="col-12" id="divPostaKutusu" style="display: none;">
-                                <label class="form-group-label">Alıcı GİB Posta Kutusu (PK Alias) <span class="text-danger">*</span></label>
-                                <select class="form-select select2" id="alici_posta_kutusu" style="width: 100%;">
-                                    <option value="urn:mail:defaultpk">urn:mail:defaultpk (Varsayılan)</option>
-                                </select>
+                                <?= Form::FormSelect2('alici_posta_kutusu', [''=>'Önce mükellef sorgulayın'], '', 'Alıcı GİB Posta Kutusu (PK Alias) *', 'mail') ?>
                             </div>
                         </div>
                     </div>
@@ -378,62 +305,93 @@ if (!empty($editInvoiceEncryptedId)) {
             </div>
         </div>
 
-        <!-- Mal ve Hizmet Kalemleri Kartı -->
-        <div class="invoice-card mb-4">
-            <div class="invoice-card-header">
-                <span class="fw-bold text-dark"><i class="bx bx-list-ul text-primary me-2"></i>Mal & Hizmet Kalemleri</span>
-                <button type="button" class="btn btn-sm btn-primary fw-semibold px-3" id="btnSatirEkle">
-                    <i class="bx bx-plus me-1"></i> Kalem Ekle
-                </button>
+        <!-- Ek Kur ve İade Bilgileri Kartı -->
+        <div class="card shadow-sm border mb-4">
+            <div class="card-body p-3">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <?= Form::FormFloatInput('number', 'doviz_kuru', '1', '', 'Döviz Kuru', 'trending-up', 'form-control', false, null, 'on', false, 'min="0.0001" step="0.0001"') ?>
+                    </div>
+                    <div class="col-md-4 iade-fields" style="display: none;">
+                        <?= Form::FormFloatInput('text', 'iade_fatura_no', '', '', 'İade Edilen Fatura No', 'file-text', 'form-control', false, 50) ?>
+                    </div>
+                    <div class="col-md-4 iade-fields" style="display: none;">
+                        <?= Form::FormFloatInput('text', 'iade_fatura_tarihi', '', '', 'İade Edilen Fatura Tarihi', 'calendar', 'form-control flatpickr') ?>
+                    </div>
+                </div>
             </div>
-            <div class="p-0 table-responsive">
-                <table class="table items-table" id="tblKalemler">
+        </div>
+
+        <!-- Mal ve Hizmet Kalemleri Kartı -->
+        <div class="card shadow-sm border mb-4">
+            <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bx bx-list-ul text-primary me-2 font-size-18 align-middle"></i>Mal & Hizmet Kalemleri
+                </h5>
+                <div class="invoice-item-actions" id="invoiceItemActions">
+                    <button type="button" class="btn btn-sm btn-primary fw-semibold px-3 shadow-sm" id="btnSatirEkle">
+                        <i class="bx bx-plus me-1 font-size-16 align-middle"></i> Kalem Ekle
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-responsive invoice-items-table-wrap">
+                <div class="invoice-items-table-frame">
+                <table class="table items-table align-middle table-hover" id="tblKalemler">
                     <thead>
                         <tr>
-                            <th style="width: 40px;" class="text-center">#</th>
-                            <th style="min-width: 260px;">Mal / Hizmet Açıklaması <span class="text-danger">*</span></th>
-                            <th style="width: 100px;" class="text-end">Miktar</th>
-                            <th style="width: 130px;">Birim</th>
-                            <th style="width: 130px;" class="text-end">Birim Fiyat</th>
+                            <th style="width: 45px;" class="text-center">#</th>
+                            <th style="min-width: 240px;">Mal / Hizmet Açıklaması <span class="text-danger">*</span></th>
+                            <th style="width: 95px;" class="text-end">Miktar</th>
+                            <th style="width: 125px;">Birim</th>
+                            <th style="width: 120px;" class="text-end">Birim Fiyat</th>
                             <th style="width: 90px;" class="text-end">İskonto %</th>
-                            <th style="width: 100px;">KDV %</th>
-                            <th style="width: 140px;" class="text-end">Satır Tutarı</th>
-                            <th style="width: 40px;" class="text-center"></th>
+                            <th style="width: 95px;">KDV %</th>
+                            <th style="min-width: 220px;">Tevkifat / İstisna</th>
+                            <th style="width: 130px;" class="text-end">Satır Tutarı</th>
+                            <th style="width: 45px;" class="text-center"></th>
                         </tr>
                     </thead>
                     <tbody id="kalemlerContainer">
                         <!-- JS ile Dinamik Satırlar -->
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <!-- Alt Toplamlar & Notlar Alanı -->
             <div class="p-4 bg-white border-top">
                 <div class="row g-4 justify-content-between">
                     <div class="col-lg-6">
-                        <label class="form-group-label">Fatura Notu / Açıklama</label>
-                        <textarea class="form-control form-control-custom" id="notlar" rows="4" style="height: auto;" placeholder="Fatura üzerinde basılacak banka IBAN bilgileri, sipariş/sözleşme referansları vb..."></textarea>
+                        <label class="form-label fw-semibold text-muted small mb-2">Fatura Notu / Açıklama</label>
+                        <div class="invoice-not-editor">
+                            <textarea class="form-control" id="notlar" rows="4" placeholder="Fatura üzerinde basılacak banka IBAN bilgileri, sipariş/sözleşme referansları vb..."></textarea>
+                        </div>
                     </div>
 
-                    <div class="col-lg-5">
-                        <div class="summary-box">
-                            <div class="summary-item">
+                    <div class="col-lg-5 col-xl-4">
+                        <div class="summary-card">
+                            <div class="summary-row">
                                 <span>Mal / Hizmet Toplamı:</span>
                                 <span class="fw-bold text-dark" id="lblSatirToplami">0,00 ₺</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-row">
                                 <span class="text-danger">İskonto Toplamı (-):</span>
                                 <span class="fw-bold text-danger" id="lblIskontoToplami">0,00 ₺</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-row">
                                 <span>KDV Matrahı:</span>
                                 <span class="fw-bold text-dark" id="lblKdvMatrahi">0,00 ₺</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-row">
                                 <span class="text-success">Hesaplanan KDV:</span>
                                 <span class="fw-bold text-success" id="lblHesaplananKdv">0,00 ₺</span>
                             </div>
-                            <div class="summary-item grand-total">
+                            <div class="summary-row">
+                                <span>Tevkifat Tutarı (-):</span>
+                                <span class="fw-bold text-dark" id="lblTevkifat">0,00 ₺</span>
+                            </div>
+                            <div class="summary-row grand-total">
                                 <span>ÖDENECEK TOPLAM:</span>
                                 <span class="text-primary" id="lblOdenecekTutar">0,00 ₺</span>
                             </div>
@@ -447,14 +405,32 @@ if (!empty($editInvoiceEncryptedId)) {
 
 <!-- SortableJS Kütüphanesi -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-
 <script>
-const CARI_DATA = <?= json_encode($cariler, JSON_UNESCAPED_UNICODE) ?>;
-const UNIT_OPTIONS = <?= json_encode($unitCodes, JSON_UNESCAPED_UNICODE) ?>;
-const KDV_OPTIONS = <?= json_encode($kdvOranlari, JSON_UNESCAPED_UNICODE) ?>;
+const CARI_DATA = <?= json_encode($cariler, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const UNIT_SELECT = <?= json_encode($unitSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const VAT_SELECT = <?= json_encode($vatSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const WITHHOLDING_SELECT = <?= json_encode($withholdingSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const EXEMPTION_SELECT = <?= json_encode($exemptionSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const EDIT_DATA = <?= json_encode($editInvoice, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
     let rowCounter = 0;
+    let calculationTimer;
+    let calculationVersion = 0;
+
+    // Feather ikonlarını render et
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+
+    // Flatpickr Başlatma
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr('.flatpickr', {
+            dateFormat: 'd.m.Y',
+            locale: 'tr',
+            allowInput: true
+        });
+    }
 
     // 1. Tüm Üst Select2 Elemanlarını Başlat
     $('.select2').select2({
@@ -474,55 +450,70 @@ document.addEventListener('DOMContentLoaded', function() {
     function addRow(data = {}) {
         rowCounter++;
 
-        let unitOptionsHtml = '';
-        for (const [code, name] of Object.entries(UNIT_OPTIONS)) {
-            const sel = (data.birim === code || (!data.birim && code === 'C62')) ? 'selected' : '';
-            unitOptionsHtml += `<option value="${code}" ${sel}>${name}</option>`;
-        }
-
-        let kdvOptionsHtml = '';
-        for (const [rate, label] of Object.entries(KDV_OPTIONS)) {
-            const sel = (data.kdv_orani == rate || (!data.kdv_orani && rate === '20')) ? 'selected' : '';
-            kdvOptionsHtml += `<option value="${rate}" ${sel}>${label}</option>`;
-        }
-
         const rowHtml = `
             <tr id="row_${rowCounter}" class="kalem-row">
-                <td class="text-center align-middle" style="width: 55px;">
+                <td class="text-center align-middle" style="width: 45px;">
                     <div class="d-flex align-items-center justify-content-center gap-1">
-                        <i class="bx bx-grid-vertical text-muted drag-handle fs-5" style="cursor: grab;" title="Sıralamak için sürükleyip bırakın"></i>
-                        <span class="row-number fw-bold text-dark"></span>
+                        <i class="bx bx-grid-vertical text-muted drag-handle font-size-18" title="Sıralamak için sürükleyin"></i>
+                        <span class="row-number fw-bold text-dark">${rowCounter}</span>
                     </div>
                 </td>
                 <td>
-                    <input type="text" class="form-control form-control-custom kalem-ad" value="${data.urun_hizmet_adi || ''}" placeholder="Ürün / Hizmet tanımı..." required>
+                    <input type="text" class="form-control form-control-sm kalem-ad" value="" placeholder="Ürün / Hizmet tanımı..." required>
                 </td>
                 <td>
-                    <input type="number" step="0.0001" min="0.0001" class="form-control form-control-custom kalem-miktar text-end fw-semibold" value="${data.miktar || 1}">
+                    <input type="number" step="0.0001" min="0.0001" class="form-control form-control-sm kalem-miktar text-end fw-semibold" value="1">
                 </td>
                 <td>
-                    <select class="form-select select2-item kalem-birim" style="width:100%">${unitOptionsHtml}</select>
+                    ${UNIT_SELECT}
                 </td>
                 <td>
-                    <input type="number" step="0.01" min="0" class="form-control form-control-custom kalem-fiyat text-end fw-semibold" value="${data.birim_fiyat || 0}">
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm kalem-fiyat text-end fw-semibold" value="0">
                 </td>
                 <td>
-                    <input type="number" step="0.1" min="0" max="100" class="form-control form-control-custom kalem-iskonto text-end" value="${data.iskonto_orani || 0}">
+                    <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm kalem-iskonto text-end" value="0">
                 </td>
                 <td>
-                    <select class="form-select select2-item kalem-kdv" style="width:100%">${kdvOptionsHtml}</select>
+                    ${VAT_SELECT}
+                </td>
+                <td>
+                    <div class="d-flex justify-content-end mb-2 kalem-tax-actions">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-tax-detail-toggle" aria-expanded="false">
+                            <i class="bx bx-receipt me-1"></i><span>Tevkifat / İstisna Ekle</span>
+                        </button>
+                    </div>
+                    <div class="tax-detail-fields">
+                        ${WITHHOLDING_SELECT}
+                        ${EXEMPTION_SELECT}
+                        <input type="text" class="form-control form-control-sm kalem-istisna-aciklama" placeholder="İstisna açıklaması">
+                    </div>
                 </td>
                 <td class="text-end fw-bold kalem-toplam text-dark">0,00 ₺</td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-satir-sil" title="Sil">
-                        <i class="bx bx-trash fs-5"></i>
+                    <button type="button" class="btn btn-sm btn-outline-danger p-1 border-0 btn-satir-sil" title="Satırı Sil">
+                        <i class="bx bx-trash font-size-18 align-middle"></i>
                     </button>
                 </td>
             </tr>
         `;
         $('#kalemlerContainer').append(rowHtml);
+        const row = $(`#row_${rowCounter}`);
+        
+        row.find('.kalem-ad').val(data.urun_hizmet_adi ?? '');
+        row.find('.kalem-miktar').val(data.miktar ?? '1');
+        row.find('.kalem-fiyat').val(data.birim_fiyat ?? '0');
+        row.find('.kalem-iskonto').val(data.iskonto_orani ?? '0');
+        row.find('.kalem-kdv').val(data.kdv_orani == null ? '20' : String(parseFloat(data.kdv_orani)));
+        row.find('.kalem-birim').val(data.birim ?? 'C62');
+        row.find('.kalem-tevkifat').val(data.tevkifat_kodu ? data.tevkifat_kodu + '|' + parseInt(data.tevkifat_orani, 10) : '');
+        row.find('.kalem-istisna').val(data.istisna_kodu ?? '');
+        row.find('.kalem-istisna-aciklama').val(data.istisna_aciklama ?? '');
 
-        $(`#row_${rowCounter} .select2-item`).select2({
+        if (data.tevkifat_kodu || data.istisna_kodu || data.istisna_aciklama) {
+            setTaxDetailVisibility(row, true);
+        }
+
+        row.find('.select2-item').select2({
             dropdownAutoWidth: true,
             width: '100%'
         });
@@ -531,7 +522,14 @@ document.addEventListener('DOMContentLoaded', function() {
         calculateTotals();
     }
 
-    const EDIT_DATA = <?= json_encode($editInvoice, JSON_UNESCAPED_UNICODE) ?>;
+    function setTaxDetailVisibility(row, visible) {
+        row.find('.tax-detail-fields').toggleClass('is-open', visible);
+        const button = row.find('.btn-tax-detail-toggle');
+        button.attr('aria-expanded', visible ? 'true' : 'false')
+            .toggleClass('btn-outline-primary', !visible)
+            .toggleClass('btn-outline-danger', visible);
+        button.find('span').text(visible ? 'Tevkifat / İstisnayı Kaldır' : 'Tevkifat / İstisna Ekle');
+    }
 
     // Düzenleme modunda ise verileri forma yükle
     if (EDIT_DATA) {
@@ -548,16 +546,34 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#fatura_profili').val(EDIT_DATA.fatura_profili || 'EARSIVFATURA').trigger('change');
         $('#fatura_tipi').val(EDIT_DATA.fatura_tipi || 'SATIS').trigger('change');
         $('#para_birimi').val(EDIT_DATA.para_birimi || 'TRY').trigger('change');
+        
         if (EDIT_DATA.fatura_tarihi) {
-            const parts = EDIT_DATA.fatura_tarihi.split('.');
+            const parts = EDIT_DATA.fatura_tarihi.split('-');
             if (parts.length === 3) {
-                $('#fatura_tarihi').val(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                $('#fatura_tarihi').val(`${parts[2]}.${parts[1]}.${parts[0]}`);
             } else {
                 $('#fatura_tarihi').val(EDIT_DATA.fatura_tarihi);
             }
         }
-        if (EDIT_DATA.vade_tarihi) $('#vade_tarihi').val(EDIT_DATA.vade_tarihi);
+        if (EDIT_DATA.vade_tarihi) {
+            const parts = EDIT_DATA.vade_tarihi.split('-');
+            if (parts.length === 3) {
+                $('#vade_tarihi').val(`${parts[2]}.${parts[1]}.${parts[0]}`);
+            } else {
+                $('#vade_tarihi').val(EDIT_DATA.vade_tarihi);
+            }
+        }
         $('#notlar').val(EDIT_DATA.notlar || '');
+        $('#doviz_kuru').val(EDIT_DATA.doviz_kuru ?? '1');
+        $('#iade_fatura_no').val(EDIT_DATA.iade_fatura_no ?? '');
+        if (EDIT_DATA.iade_fatura_tarihi) {
+            const parts = EDIT_DATA.iade_fatura_tarihi.split('-');
+            if (parts.length === 3) {
+                $('#iade_fatura_tarihi').val(`${parts[2]}.${parts[1]}.${parts[0]}`);
+            } else {
+                $('#iade_fatura_tarihi').val(EDIT_DATA.iade_fatura_tarihi);
+            }
+        }
 
         $('#kalemlerContainer').empty();
         if (EDIT_DATA.satirlar && EDIT_DATA.satirlar.length > 0) {
@@ -570,7 +586,45 @@ document.addEventListener('DOMContentLoaded', function() {
         addRow();
     }
 
+    if (typeof $.fn.summernote !== 'undefined') {
+        $('#notlar').summernote({
+            height: 220,
+            lang: 'tr-TR',
+            placeholder: 'Fatura üzerinde basılacak banka IBAN bilgileri, sipariş/sözleşme referansları vb...',
+            fontNames: ['Times New Roman', 'Arial'],
+            fontNamesIgnoreCheck: ['Times New Roman', 'Arial'],
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['fontname', 'fontsize', 'bold', 'italic', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link', 'table', 'hr']],
+                ['view', ['fullscreen', 'codeview']]
+            ],
+            callbacks: {
+                onInit: function() {
+                    $('.invoice-not-editor .note-editable').css({fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt'});
+                    if ($('#notlar').summernote('isEmpty')) {
+                        $('#notlar').summernote('fontName', 'Times New Roman');
+                        $('#notlar').summernote('fontSize', '12');
+                    }
+                }
+            }
+        });
+    }
+
     $('#btnSatirEkle').on('click', function() { addRow(); });
+
+    $('#kalemlerContainer').on('click', '.btn-tax-detail-toggle', function() {
+        const row = $(this).closest('.kalem-row');
+        const visible = !row.find('.tax-detail-fields').hasClass('is-open');
+        if (!visible) {
+            row.find('.kalem-tevkifat, .kalem-istisna').val('').trigger('change.select2');
+            row.find('.kalem-istisna-aciklama').val('');
+        }
+        setTaxDetailVisibility(row, visible);
+        calculateTotals();
+    });
 
     // Satır Silme
     $('#kalemlerContainer').on('click', '.btn-satir-sil', function() {
@@ -597,42 +651,62 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Tutar Hesaplama
     function calculateTotals() {
-        let satirToplami = 0;
-        let iskontoToplami = 0;
-        let kdvMatrahi = 0;
-        let hesaplananKdv = 0;
-
-        $('.kalem-row').each(function() {
-            const miktar = parseFloat($(this).find('.kalem-miktar').val()) || 0;
-            const fiyat = parseFloat($(this).find('.kalem-fiyat').val()) || 0;
-            const iskontoOrani = parseFloat($(this).find('.kalem-iskonto').val()) || 0;
-            const kdvOrani = parseFloat($(this).find('.kalem-kdv').val()) || 0;
-
-            const hamTutar = miktar * fiyat;
-            const iskonto = hamTutar * (iskontoOrani / 100);
-            const net = hamTutar - iskonto;
-            const kdv = net * (kdvOrani / 100);
-            const toplam = net + kdv;
-
-            satirToplami += hamTutar;
-            iskontoToplami += iskonto;
-            kdvMatrahi += net;
-            hesaplananKdv += kdv;
-
-            $(this).find('.kalem-toplam').text(toplam.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺');
-        });
-
-        const odenecek = kdvMatrahi + hesaplananKdv;
-
-        $('#lblSatirToplami').text(satirToplami.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺');
-        $('#lblIskontoToplami').text(iskontoToplami.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺');
-        $('#lblKdvMatrahi').text(kdvMatrahi.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺');
-        $('#lblHesaplananKdv').text(hesaplananKdv.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺');
-        $('#lblOdenecekTutar').text(odenecek.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺');
+        clearTimeout(calculationTimer);
+        const version = ++calculationVersion;
+        calculationTimer = setTimeout(async () => {
+            try {
+                const payload = getInvoicePayload();
+                const response = await fetch('api/efatura-api.php?action=calculate_invoice', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({lines: payload.lines})
+                });
+                const result = await response.json();
+                if (version !== calculationVersion) return;
+                
+                const currency = payload.header.para_birimi || 'TRY';
+                const symbol = currency === 'TRY' ? '₺' : currency;
+                const money = value => Number(value || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + symbol;
+                
+                if (result.status === 'success' && result.data && result.data.header) {
+                    const fields = {
+                        lblSatirToplami: 'satir_toplami',
+                        lblIskontoToplami: 'iskonto_toplami',
+                        lblKdvMatrahi: 'kdv_matrahi',
+                        lblHesaplananKdv: 'hesaplanan_kdv',
+                        lblTevkifat: 'tevkifat_tutari',
+                        lblOdenecekTutar: 'odenecek_tutar'
+                    };
+                    for (const [id, field] of Object.entries(fields)) {
+                        $('#' + id).text(money(result.data.header[field]));
+                    }
+                    if (Array.isArray(result.data.lines)) {
+                        $('.kalem-row').each(function(index) {
+                            if (result.data.lines[index]) {
+                                $(this).find('.kalem-toplam').text(money(result.data.lines[index].satir_toplami));
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('Hesaplama hatası:', e);
+            }
+        }, 150);
     }
 
+    $('#para_birimi').on('change', calculateTotals);
+    $('#belge_turu').on('change', function() {
+        $('#fatura_profili').val(this.value === 'EARSIV' ? 'EARSIVFATURA' : 'TICARIFATURA').trigger('change');
+    });
+    $('#fatura_tipi').on('change', function() {
+        $('.iade-fields').toggle(this.value === 'IADE');
+        if (this.value === 'IADE' && $('#belge_turu').val() === 'EFATURA') {
+            $('#fatura_profili').val('TEMELFATURA').trigger('change');
+        }
+    });
+    $('.iade-fields').toggle($('#fatura_tipi').val() === 'IADE');
+    
     $('#kalemlerContainer').on('input change', 'input, select', function() {
         calculateTotals();
     });
@@ -695,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             aliasSelect.append(new Option(a, a));
                         });
                     } else {
-                        aliasSelect.append(new Option('urn:mail:defaultpk', 'urn:mail:defaultpk'));
+                        aliasSelect.append(new Option('Aktif posta kutusu bulunamadı', ''));
                     }
                     aliasSelect.trigger('change');
                 } else {
@@ -732,6 +806,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    function parseDateForPayload(val) {
+        if (!val) return null;
+        val = val.trim();
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(val)) {
+            const p = val.split('.');
+            return `${p[2]}-${p[1]}-${p[0]}`;
+        }
+        return val;
+    }
+
     // Fatura Verisini Topla
     function getInvoicePayload() {
         const header = {
@@ -743,23 +827,31 @@ document.addEventListener('DOMContentLoaded', function() {
             fatura_tipi: $('#fatura_tipi').val(),
             alici_posta_kutusu: $('#alici_posta_kutusu').val() || null,
             alici_vergi_dairesi: $('#alici_vergi_dairesi').val().trim(),
-            fatura_tarihi: $('#fatura_tarihi').val(),
-            vade_tarihi: $('#vade_tarihi').val() || null,
+            fatura_tarihi: parseDateForPayload($('#fatura_tarihi').val()),
+            vade_tarihi: parseDateForPayload($('#vade_tarihi').val()),
             alici_adres: $('#alici_adres').val().trim(),
             alici_ilce: $('#alici_ilce').val().trim(),
             alici_il: $('#alici_il').val().trim(),
-            notlar: $('#notlar').val().trim()
+            para_birimi: $('#para_birimi').val(),
+            doviz_kuru: $('#doviz_kuru').val(),
+            iade_fatura_no: $('#iade_fatura_no').val().trim() || null,
+            iade_fatura_tarihi: parseDateForPayload($('#iade_fatura_tarihi').val()),
+            notlar: typeof $.fn.summernote !== 'undefined' ? $('#notlar').summernote('code').trim() : $('#notlar').val().trim()
         };
 
         const lines = [];
         $('.kalem-row').each(function() {
             lines.push({
                 urun_hizmet_adi: $(this).find('.kalem-ad').val().trim(),
-                miktar: parseFloat($(this).find('.kalem-miktar').val()) || 1,
-                birim: $(this).find('.kalem-birim').val(),
-                birim_fiyat: parseFloat($(this).find('.kalem-fiyat').val()) || 0,
-                iskonto_orani: parseFloat($(this).find('.kalem-iskonto').val()) || 0,
-                kdv_orani: parseFloat($(this).find('.kalem-kdv').val()) || 20
+                miktar: $(this).find('.kalem-miktar').val() || '1',
+                birim: $(this).find('.kalem-birim').val() || 'C62',
+                birim_fiyat: $(this).find('.kalem-fiyat').val() || '0',
+                iskonto_orani: $(this).find('.kalem-iskonto').val() || '0',
+                kdv_orani: $(this).find('.kalem-kdv').val() || '20',
+                tevkifat_kodu: ($(this).find('.kalem-tevkifat').val() || '').split('|')[0] || null,
+                tevkifat_orani: ($(this).find('.kalem-tevkifat').val() || '').split('|')[1] || '0',
+                istisna_kodu: $(this).find('.kalem-istisna').val() || null,
+                istisna_aciklama: $(this).find('.kalem-istisna-aciklama').val().trim() || null
             });
         });
 
