@@ -182,8 +182,18 @@ try {
             $params = $_GET;
             $listType = $params['list_type'] ?? ($action === 'list_giden' ? 'giden' : 'giden');
             $yon = ($listType === 'gelen') ? 'GELEN' : 'GIDEN';
-            $list = $invoiceModel->ajaxList($params, $firmId, $yon, $listType);
-            echo json_encode($list);
+            try {
+                $list = $invoiceModel->ajaxList($params, $firmId, $yon, $listType);
+                echo json_encode($list);
+            } catch (\Throwable $e) {
+                error_log("EInvoiceModel::ajaxList Error: " . $e->getMessage());
+                echo json_encode([
+                    'draw'            => (int)($params['draw'] ?? 1),
+                    'recordsTotal'    => 0,
+                    'recordsFiltered' => 0,
+                    'data'            => []
+                ]);
+            }
             break;
 
         // 7. Özet Kart Sayıları ve Tutarları

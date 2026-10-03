@@ -119,6 +119,12 @@ $(document).ready(function() {
                 if (currentEndDate) {
                     d.bitis_tarihi = currentEndDate;
                 }
+            },
+            dataSrc: function(json) {
+                return (json && Array.isArray(json.data)) ? json.data : [];
+            },
+            error: function(xhr, error, thrown) {
+                console.error("Gelen faturalar AJAX yükleme hatası:", error, thrown);
             }
         },
         columns: [
@@ -259,6 +265,8 @@ $(document).ready(function() {
         if (json) {
             const total = json.recordsTotal !== undefined ? json.recordsTotal : (json.data ? json.data.length : 0);
             $('#badgeTotalRecords').text(total);
+        } else {
+            $('#badgeTotalRecords').text(0);
         }
     });
 
