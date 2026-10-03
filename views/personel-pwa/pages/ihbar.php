@@ -269,16 +269,36 @@
     let ihbarEditToken = null;
     let ihbarMevcutFotograflar = [];
 
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.OfflineQueue) OfflineQueue.mountPanel('ihbar', 'ihbar-transfer-panel', { onDelete: async uuid => {
-            const confirmed = await Alert.confirm('Cihazdan kaldır', 'Gönderilmemiş fotoğraf ve videolar cihazdan kaldırılacak. Sunucuya ulaşmış kayıtlar bu işlemle silinmez. Devam edilsin mi?', 'Kaldır', 'Vazgeç');
-            if (confirmed) await OfflineQueue.sil(uuid);
-        } });
+    async function ihbarSayfayiBaslat() {
+        try {
+            if (window.OfflineQueue) {
+                OfflineQueue.mountPanel('ihbar', 'ihbar-transfer-panel', { onDelete: async uuid => {
+                    const confirmed = await Alert.confirm('Cihazdan kaldır', 'Gönderilmemiş fotoğraf ve videolar cihazdan kaldırılacak. Sunucuya ulaşmış kayıtlar bu işlemle silinmez. Devam edilsin mi?', 'Kaldır', 'Vazgeç');
+                    if (confirmed) await OfflineQueue.sil(uuid);
+                } });
+            }
+        } catch (e) {
+            console.warn('İhbar transfer panel başlatılamadı:', e);
+        }
+
         window.addEventListener('kuyruk-degisti', function (e) {
             if (e.detail && e.detail.sebep === 'gonderim' && e.detail.gonderildi) loadIhbarlar();
         });
-        loadIhbarlar().then(ihbarDerinBaglantiyiAc);
-    });
+
+        window.addEventListener('online', function () {
+            loadIhbarlar();
+        });
+
+        loadIhbarlar().then(ihbarDerinBaglantiyiAc).catch(function (err) {
+            console.error('İhbar yükleme hatası:', err);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ihbarSayfayiBaslat);
+    } else {
+        ihbarSayfayiBaslat();
+    }
 
     function ihbarDerinBaglantiyiAc() {
         const parametreler = new URLSearchParams(window.location.search);
@@ -300,20 +320,50 @@
     async function loadIhbarlar() {
         const cacheKey = 'ihbar-listeler';
         try {
-            const [own, incoming] = await Promise.all([API.request('listIhbarlarim'), API.request('listGelenIhbarlar')]);
-            if (!own.success || !incoming.success) throw new Error('İhbar listesi alınamadı.');
-            ihbarBildirdiklerimData = own.data || [];
-            ihbarGelenData = incoming.data || [];
-            if (window.OfflineQueue) await OfflineQueue.referansKaydet(cacheKey, { own: ihbarBildirdiklerimData, incoming: ihbarGelenData });
-            renderIhbarlar();
+            const [ownRes, incomingRes] = await Promise.allSettled([
+                API.request('listIhbarlarim'),
+                API.request('listGelenIhbarlar')
+            ]);
+
+            let fetchedAny = false;
+            if (ownRes.status === 'fulfilled' && ownRes.value && ownRes.value.success) {
+                ihbarBildirdiklerimData = ownRes.value.data || [];
+                fetchedAny = true;
+            }
+            if (incomingRes.status === 'fulfilled' && incomingRes.value && incomingRes.value.success) {
+                ihbarGelenData = incomingRes.value.data || [];
+                fetchedAny = true;
+            }
+
+            if (fetchedAny) {
+                if (window.OfflineQueue) {
+                    OfflineQueue.referansKaydet(cacheKey, { own: ihbarBildirdiklerimData, incoming: ihbarGelenData }).catch(() => {});
+                }
+                renderIhbarlar();
+                return;
+            }
+            throw new Error('İhbar listesi alınamadı.');
         } catch (error) {
-            const cached = window.OfflineQueue ? await OfflineQueue.referansOku(cacheKey) : null;
+            console.warn('İhbar listesi yüklenemedi, önbellek deneniyor:', error);
+            let cached = null;
+            try {
+                cached = window.OfflineQueue ? await OfflineQueue.referansOku(cacheKey) : null;
+            } catch (e) {}
+
             if (cached) {
-                ihbarBildirdiklerimData = cached.own;
-                ihbarGelenData = cached.incoming;
+                ihbarBildirdiklerimData = cached.own || [];
+                ihbarGelenData = cached.incoming || [];
                 renderIhbarlar();
             } else {
-                document.getElementById('ihbar-list').textContent = 'Liste için bağlantı gerekiyor. Cihazdaki bildirimler üstte gösterilir.';
+                const listEl = document.getElementById('ihbar-list');
+                if (listEl) {
+                    listEl.innerHTML = `
+                        <div class="p-8 text-center bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm my-2">
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">Liste Yüklenemedi</p>
+                            <p class="text-xs text-slate-400 mt-1 mb-3">İnternet bağlantınızı kontrol edip tekrar deneyin.</p>
+                            <button type="button" onclick="loadIhbarlar()" class="btn-primary px-4 py-2 text-xs">Tekrar Dene</button>
+                        </div>`;
+                }
             }
         }
     }

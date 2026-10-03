@@ -675,6 +675,10 @@ use App\Helper\Helper;
             loadDashboardData();
             // Load notification count
             loadNotificationCount();
+            setInterval(loadNotificationCount, 30000);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') loadNotificationCount();
+            });
             // Load events slider
             loadEtkinlikSlider();
             // Load work stats (büro personeli olmayanlar için)
@@ -1412,16 +1416,17 @@ use App\Helper\Helper;
 
         async function loadNotificationCount() {
             try {
-                var response = await API.request('getMyNotifications');
-                if (response.success && response.data) {
-                    // Sadece okunmamış bildirimleri say
+                var response = await API.request('getMyNotifications', {}, false);
+                if (response && response.success && Array.isArray(response.data)) {
                     var unreadCount = response.data.filter(function (n) { return !n.okundu; }).length;
                     var badge = document.getElementById('notification-badge');
                     if (badge) {
                         if (unreadCount > 0) {
+                            badge.classList.remove('hidden');
                             badge.style.display = 'flex';
-                            badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
                         } else {
+                            badge.classList.add('hidden');
                             badge.style.display = 'none';
                         }
                     }
@@ -1431,8 +1436,6 @@ use App\Helper\Helper;
             }
         }
 
-        // RecentActivities Removed
-
         async function loadEtkinlikSlider() {
             var container = document.getElementById('etkinlik-slider-container');
             var section = document.getElementById('etkinlik-slider-section');
@@ -1440,44 +1443,75 @@ use App\Helper\Helper;
             try {
                 var response = await API.request('getEtkinlikSlider');
 
-                if (response.success && response.data && response.data.length > 0) {
-                    section.style.display = 'block';
+                if (response && response.success && response.data && response.data.length > 0) {
+                    if (section) section.style.display = 'block';
+                    if (container) {
+                        container.innerHTML = response.data.map(function (duyuru) {
+                            var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
+                            var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
+                            var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
+                            var cursorClass = 'cursor-pointer';
 
-                    container.innerHTML = response.data.map(function (duyuru) {
-                        var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
+                            var kalan_gun_html = '';
+                            if (duyuru.kalan_gun !== null && duyuru.kalan_gun !== undefined) {
+                                kalan_gun_html = '<div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">' +
+                                    '<span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text">' + escapeHtml(duyuru.kalan_gun) + '</span>' +
+                                    '<span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>' +
+                                    '</div>';
+                            }
 
-                        var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
-                        var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
-                        var cursorClass = 'cursor-pointer';
-
-                        var kalan_gun_html = '';
-                        if (duyuru.kalan_gun !== null && duyuru.kalan_gun !== undefined) {
-                            kalan_gun_html = '<div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">' +
-                                '<span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text">' + escapeHtml(duyuru.kalan_gun) + '</span>' +
-                                '<span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>' +
+                            return '<div class="snap-center shrink-0 w-[85%] sm:w-[300px] rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + '" ' +
+                                'style="' + bgImg + '" onclick="' + onClick + '">' +
+                                kalan_gun_html +
+                                '<div class="relative z-10 pr-2">' +
+                                '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
+                                '<h3 class="font-bold text-lg leading-tight mb-1 text-white truncate max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
+                                '<p class="text-xs text-white/80 line-clamp-2 max-w-[85%]">' + escapeHtml(duyuru.icerik ? duyuru.icerik.replace(/<[^>]*>?/gm, '') : '') + '</p>' +
+                                '</div>' +
                                 '</div>';
-                        }
-
-                        return '<div class="snap-center shrink-0 w-[85%] sm:w-[300px] rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + '" ' +
-                            'style="' + bgImg + '" onclick="' + onClick + '">' +
-                            kalan_gun_html +
-                            '<div class="relative z-10 pr-2">' + // removed large pr-16 padding to let text flow
-                            '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
-                            '<h3 class="font-bold text-lg leading-tight mb-1 text-white truncate max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
-                            '<p class="text-xs text-white/80 line-clamp-2 max-w-[85%]">' + escapeHtml(duyuru.icerik ? duyuru.icerik.replace(/<[^>]*>?/gm, '') : '') + '</p>' +
-                            '</div>' +
-                            '</div>';
-                    }).join('');
+                        }).join('');
+                    }
                 } else {
-                    section.style.display = 'none';
+                    if (section) section.style.display = 'none';
                 }
             } catch (error) {
                 console.error('Slider load error:', error);
-                section.style.display = 'none';
+                if (section) section.style.display = 'none';
             }
         }
 
-        // RenderActivityItem Removed
+        function getNotificationIconMeta(notification) {
+            var t = ((notification.title || '') + ' ' + (notification.body || '')).toLowerCase();
+            var type = notification.type || '';
+            if (type === 'nobet_degisim') {
+                return { icon: 'swap_horiz', bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400' };
+            }
+            if (type === 'nobet_log' || t.includes('nöbet') || t.includes('nobet')) {
+                return { icon: 'calendar_month', bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400' };
+            }
+            if (t.includes('bordro') || t.includes('maaş') || t.includes('maas')) {
+                return { icon: 'receipt_long', bg: 'bg-emerald-100 dark:bg-emerald-900/30', color: 'text-emerald-600 dark:text-emerald-400' };
+            }
+            if (t.includes('avans')) {
+                return { icon: 'payments', bg: 'bg-green-100 dark:bg-green-900/30', color: 'text-green-600 dark:text-green-400' };
+            }
+            if (t.includes('izin')) {
+                return { icon: 'event_available', bg: 'bg-blue-100 dark:bg-blue-900/30', color: 'text-blue-600 dark:text-blue-400' };
+            }
+            if (t.includes('ihbar')) {
+                return { icon: 'campaign', bg: 'bg-red-100 dark:bg-red-900/30', color: 'text-red-600 dark:text-red-400' };
+            }
+            if (t.includes('kaçak') || t.includes('kacak') || t.includes('tutanak')) {
+                return { icon: 'shield', bg: 'bg-purple-100 dark:bg-purple-900/30', color: 'text-purple-600 dark:text-purple-400' };
+            }
+            if (t.includes('km') || t.includes('araç') || t.includes('arac')) {
+                return { icon: 'directions_car', bg: 'bg-cyan-100 dark:bg-cyan-900/30', color: 'text-cyan-600 dark:text-cyan-400' };
+            }
+            if (t.includes('destek') || t.includes('bilet') || t.includes('talep')) {
+                return { icon: 'assignment', bg: 'bg-indigo-100 dark:bg-indigo-900/30', color: 'text-indigo-600 dark:text-indigo-400' };
+            }
+            return { icon: 'notifications', bg: 'bg-blue-100 dark:bg-blue-900/30', color: 'text-primary' };
+        }
 
         function openNotificationModal() {
             Modal.open('notification-modal');
@@ -1486,47 +1520,57 @@ use App\Helper\Helper;
 
         async function loadNotifications() {
             var container = document.getElementById('notification-list');
+            if (!container) return;
             container.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
 
             try {
                 var response = await API.request('getMyNotifications');
 
-                if (response.success && response.data && response.data.length > 0) {
+                if (response && response.success && Array.isArray(response.data) && response.data.length > 0) {
                     allNotificationsData = response.data;
                     container.innerHTML = response.data.map(function (notification, index) {
-                        var unreadIndicator = notification.okundu ? '' : '<div class="absolute top-2 left-2 w-2 h-2 bg-primary rounded-full"></div>';
-                        var bgClass = notification.okundu ? 'bg-slate-50 dark:bg-slate-800' : 'bg-blue-50 dark:bg-blue-900/20 border border-primary/20';
+                        var isUnread = !notification.okundu;
+                        var unreadIndicator = isUnread ? '<span class="w-2.5 h-2.5 rounded-full bg-primary shrink-0 animate-pulse"></span>' : '';
+                        var bgClass = isUnread 
+                            ? 'bg-blue-50/80 dark:bg-blue-950/30 border border-primary/30 shadow-sm' 
+                            : 'bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 opacity-90';
                         
-                        var isNobet = notification.type === 'nobet_degisim';
-                        var icon = isNobet ? 'swap_horiz' : 'notifications';
-                        var iconBg = isNobet ? 'bg-amber-100' : 'bg-blue-100';
-                        var iconColor = isNobet ? 'text-amber-600' : 'text-blue-600';
+                        var meta = getNotificationIconMeta(notification);
+                        var icon = meta.icon;
+                        var iconBg = meta.bg;
+                        var iconColor = meta.color;
 
                         // Resim varsa küçük thumbnail göster
                         var thumbnailHtml = notification.image
                             ? '<img src="' + escapeHtml(notification.image) + '" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'">'
                             : '';
 
-                        return '<div class="relative flex items-start gap-3 p-3 ' + bgClass + ' rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="showNotificationDetail(' + index + ')">' +
-                            unreadIndicator +
-                            '<div class="w-8 h-8 rounded-full ' + iconBg + ' flex items-center justify-center flex-shrink-0">' +
-                            '<span class="material-symbols-outlined ' + iconColor + ' text-lg">' + icon + '</span>' +
+                        var urlBadge = notification.url 
+                            ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-semibold text-primary/80 bg-primary/10 px-1.5 py-0.5 rounded"><span class="material-symbols-outlined text-[11px]">link</span>Link</span>' 
+                            : '';
+
+                        return '<div class="relative flex items-start gap-3 p-3 ' + bgClass + ' rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 active:scale-[0.99] transition-all" onclick="showNotificationDetail(' + index + ')">' +
+                            '<div class="w-9 h-9 rounded-full ' + iconBg + ' flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">' +
+                            '<span class="material-symbols-outlined ' + iconColor + ' text-xl">' + icon + '</span>' +
                             '</div>' +
                             '<div class="flex-1 min-w-0">' +
-                            '<p class="text-sm font-medium text-slate-900 dark:text-white ' + (notification.okundu ? '' : 'font-bold') + '">' + escapeHtml(notification.title) + '</p>' +
-                            '<p class="text-xs text-slate-500 line-clamp-2">' + escapeHtml(notification.body) + '</p>' +
-                            '<p class="text-[10px] text-primary mt-1">' + notification.time_ago + '</p>' +
+                            '<div class="flex items-center justify-between gap-1 mb-0.5">' +
+                            '<p class="text-[13px] text-slate-900 dark:text-white truncate ' + (isUnread ? 'font-bold' : 'font-medium text-slate-700 dark:text-slate-300') + '">' + escapeHtml(notification.title) + '</p>' +
+                            '<div class="flex items-center gap-1 shrink-0">' + unreadIndicator + '<span class="text-[10px] text-slate-400">' + escapeHtml(notification.time_ago) + '</span></div>' +
+                            '</div>' +
+                            '<p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">' + escapeHtml(notification.body) + '</p>' +
+                            (urlBadge ? '<div class="mt-1.5 flex items-center gap-2">' + urlBadge + '</div>' : '') +
                             '</div>' +
                             thumbnailHtml +
-                            '<span class="material-symbols-outlined text-slate-400 text-lg self-center">chevron_right</span>' +
+                            '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-lg self-center shrink-0">chevron_right</span>' +
                             '</div>';
                     }).join('');
                 } else {
-                    container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-slate-300 mb-2">notifications_off</span><p class="text-sm text-slate-500">Henüz bildirim yok</p></div>';
+                    container.innerHTML = '<div class="flex flex-col items-center justify-center py-10 text-center"><span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">notifications_off</span><p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Henüz bir bildiriminiz bulunmuyor</p></div>';
                 }
             } catch (error) {
                 console.error('Notifications load error:', error);
-                container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span><p class="text-sm text-slate-500">Bildirimler yüklenemedi</p></div>';
+                container.innerHTML = '<div class="flex flex-col items-center justify-center py-10 text-center"><span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span><p class="text-sm text-slate-500 font-medium">Bildirimler yüklenemedi</p></div>';
             }
         }
 
@@ -1536,22 +1580,27 @@ use App\Helper\Helper;
 
             currentNotificationIndex = index;
 
-            // Bildirimi okundu olarak işaretle (Sadece push tipi için)
-            if (!notification.okundu && notification.type === 'push') {
-                await API.request('markNotificationRead', { notification_id: notification.id });
-                allNotificationsData[index].okundu = true;
-                loadNotificationCount(); // Badge'i güncelle
+            // Bildirimi okundu olarak işaretle
+            if (!notification.okundu) {
+                try {
+                    await API.request('markNotificationRead', { notification_id: notification.id }, false);
+                    allNotificationsData[index].okundu = true;
+                    loadNotificationCount(); // Badge'i güncelle
+                } catch (e) {
+                    console.error('Mark read error:', e);
+                }
             }
 
             const isNobet = notification.type === 'nobet_degisim';
+            const meta = getNotificationIconMeta(notification);
             const bgImg = isNobet 
-                ? `background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);` // Amber for shift requests
-                : `background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);`; // Dark slate for notifications
+                ? `background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);`
+                : `background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);`;
             
             let imageHtml = '';
             if (notification.image) {
                 imageHtml = `
-                    <div class="mt-8">
+                    <div class="mt-6">
                         <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 pl-1">EKLİ GÖRSEL</p>
                         <div class="rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 relative bg-slate-100 dark:bg-slate-800">
                             <img src="${escapeHtml(notification.image)}" class="w-full h-auto object-cover max-h-[400px]" alt="Bildirim Görseli">
@@ -1560,11 +1609,23 @@ use App\Helper\Helper;
                 `;
             }
 
+            let targetLinkHtml = '';
+            if (notification.url) {
+                targetLinkHtml = `
+                    <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <a href="${escapeHtml(notification.url)}" class="w-full py-3.5 bg-primary text-white font-semibold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-95 transition-all">
+                            <span>İlgili Sayfayı Aç</span>
+                            <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                        </a>
+                    </div>
+                `;
+            }
+
             let actionsHtml = '';
             if (isNobet) {
                 actionsHtml = `
                     <div class="flex items-center gap-3">
-                        <button onclick="reddetNotificationTalep('${notification.talep_id}')" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform">
+                        <button onclick="reddetNotificationTalep('${notification.talep_id}')" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform" title="Talebi Reddet">
                             <span class="material-symbols-outlined">close</span>
                         </button>
                         <button onclick="onaylaNotificationTalep('${notification.talep_id}')" class="px-6 h-10 rounded-full bg-white text-amber-600 font-bold text-sm flex items-center justify-center pointer-events-auto active:scale-95 transition-transform shadow-lg">
@@ -1574,7 +1635,7 @@ use App\Helper\Helper;
                 `;
             } else {
                 actionsHtml = `
-                    <button onclick="deleteCurrentNotification()" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform">
+                    <button onclick="deleteCurrentNotification()" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform" title="Bildirimi Sil">
                         <span class="material-symbols-outlined">delete</span>
                     </button>
                 `;
@@ -1583,7 +1644,7 @@ use App\Helper\Helper;
             const html = `
                 <div class="header-main relative px-6 pt-12 pb-8 flex flex-col items-start shadow-xl rounded-b-[2.5rem] safe-area-top shrink-0 overflow-hidden" style="${bgImg}">
                     <div class="absolute inset-0 opacity-10 overflow-hidden rounded-b-[2.5rem] pointer-events-none">
-                        <span class="material-symbols-outlined absolute -right-4 -top-4 text-[10rem] text-white opacity-10">${isNobet ? 'swap_horiz' : 'notifications'}</span>
+                        <span class="material-symbols-outlined absolute -right-4 -top-4 text-[10rem] text-white opacity-10">${meta.icon}</span>
                     </div>
                     
                     <div class="relative w-full z-10 flex flex-col h-full">
@@ -1607,6 +1668,7 @@ use App\Helper\Helper;
                                 <p class="text-xs text-amber-700 dark:text-amber-400 font-medium">Bu talebi onayladığınızda, ilgili tarihteki nöbet sizin üzerinize atanacak ve bir amirin onayına sunulacaktır.</p>
                             </div>
                         ` : ''}
+                        ${targetLinkHtml}
                     </div>
                 </div>
             `;
@@ -1668,7 +1730,7 @@ use App\Helper\Helper;
             var notification = allNotificationsData[currentNotificationIndex];
             if (!notification) return;
 
-            var confirmed = await Alert.confirm('Bildirimi Sil', 'Bu bildirimi silmek istediğinize emin misiniz?', 'Evet, Sil', 'Vazgeç');
+            var confirmed = await Alert.confirmDelete('Bildirimi Sil', 'Bu bildirimi silmek istediğinize emin misiniz?', 'Evet, Sil', 'Vazgeç');
             if (!confirmed) return;
 
             try {
@@ -1692,6 +1754,26 @@ use App\Helper\Helper;
                 var response = await API.request('markAllNotificationsRead');
                 if (response.success) {
                     Toast.show('Tüm bildirimler okundu olarak işaretlendi', 'success');
+                    loadNotifications();
+                    loadNotificationCount();
+                } else {
+                    Toast.show(response.message || 'Bir hata oluştu', 'error');
+                }
+            } catch (error) {
+                Toast.show('Bir hata oluştu', 'error');
+            }
+        }
+
+        async function deleteAllNotifications() {
+            const confirmed = await Alert.confirmDelete('Tümünü Sil', 'Tüm bildirimlerinizi silmek istediğinize emin misiniz?', 'Evet, Tümünü Sil', 'Vazgeç');
+            if (!confirmed) return;
+
+            try {
+                var response = await API.request('deleteAllNotifications');
+                if (response.success) {
+                    Toast.show('Tüm bildirimler silindi', 'success');
+                    allNotificationsData = [];
+                    currentNotificationIndex = -1;
                     loadNotifications();
                     loadNotificationCount();
                 } else {

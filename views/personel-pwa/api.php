@@ -2528,10 +2528,11 @@ try {
             break;
 
         case 'getMyNotifications':
-            // Personele gönderilen push bildirimlerini getir
+            // Personele gönderilen tüm bildirimleri getir
             $PersonelModel = new PersonelModel();
             $personelData = $PersonelModel->find($personel_id);
-            $personelAdi = $personelData->adi_soyadi ?? '';
+            $personelAdi = trim($personelData->adi_soyadi ?? '');
+            $personelEmail = trim($personelData->email_adresi ?? '');
 
             $db = $PersonelModel->getDb();
 
@@ -2547,33 +2548,22 @@ try {
                 UNIQUE KEY unique_personel_mesaj (personel_id, mesaj_log_id)
             )");
 
-            // 1. Normal Bildirimleri Çek
-            $sql = "SELECT m.*, 
-                    COALESCE(pbd.okundu, 0) as okundu,
-                    pbd.okunma_tarihi
-                    FROM mesaj_log m
-                    LEFT JOIN personel_bildirim_durumu pbd ON m.id = pbd.mesaj_log_id AND pbd.personel_id = :personel_id
-                    WHERE m.type = 'push' 
-                    AND (
-                        m.recipients LIKE :personel_adi 
-                        OR m.recipients LIKE '%Tüm Aboneler%'
-                        OR m.recipients LIKE '%Test Kullanıcısı%'
-                    )
-                    AND (pbd.silindi IS NULL OR pbd.silindi = 0)
-                    ORDER BY m.created_at DESC 
-                    LIMIT 40";
+            // İlişkili user hesabı varsa bul
+            $associatedUserId = (int) ($_SESSION['user_id'] ?? 0);
+            if ($associatedUserId <= 0 && (!empty($personelAdi) || !empty($personelEmail))) {
+                $userStmt = $db->prepare("SELECT id FROM users WHERE (adi_soyadi = :adi AND adi_soyadi != '') OR (email_adresi = :email AND email_adresi != '') LIMIT 1");
+                $userStmt->execute([':adi' => $personelAdi, ':email' => $personelEmail]);
+                $uRow = $userStmt->fetch(PDO::FETCH_OBJ);
+                if ($uRow) {
+                    $associatedUserId = (int) $uRow->id;
+                }
+            }
 
-            $stmt = $db->prepare($sql);
-            $stmt->execute([
-                ':personel_id' => $personel_id,
-                ':personel_adi' => '%' . $personelAdi . '%'
-            ]);
-            $notifications = $stmt->fetchAll(PDO::FETCH_OBJ);
-
-            $data = [];
-            
             // Helper function for time ago
             $getTimeAgo = function($datetime) {
+                if (empty($datetime) || $datetime === '0000-00-00 00:00:00') {
+                    return 'Bilinmiyor';
+                }
                 $created = new DateTime($datetime);
                 $now = new DateTime();
                 $diff = $now->diff($created);
@@ -2591,53 +2581,164 @@ try {
                 } elseif ($diff->days < 7) {
                     return $diff->days . ' gün önce';
                 }
-                return date('d M', strtotime($datetime));
+                return date('d.m.Y H:i', strtotime($datetime));
             };
+
+            $data = [];
+            $seenSignatures = [];
+
+            // 1. mesaj_log bildirimlerini çek (Push / Otomatik / Manuel)
+            $sql = "SELECT m.*, 
+                    COALESCE(pbd.okundu, 0) as okundu,
+                    pbd.okunma_tarihi
+                    FROM mesaj_log m
+                    LEFT JOIN personel_bildirim_durumu pbd ON m.id = pbd.mesaj_log_id AND pbd.personel_id = :personel_id
+                    WHERE m.type = 'push' 
+                    AND (
+                        m.recipients LIKE :rec_personel_id
+                        OR (:rec_user_id != '' AND m.recipients LIKE :rec_user_id)
+                        OR (:personel_adi != '' AND m.recipients LIKE :rec_personel_adi)
+                        OR m.recipients LIKE '%Tüm Aboneler%'
+                        OR m.recipients LIKE '%Tüm Personel%'
+                        OR m.recipients LIKE '%Herkes%'
+                        OR m.recipients LIKE '%\"all\"%'
+                        OR m.recipients LIKE '%\"tum_personel\"%'
+                        OR m.recipients LIKE '%\"tum_aboneler\"%'
+                        OR m.recipients LIKE '%Test Kullanıcısı%'
+                    )
+                    AND (pbd.silindi IS NULL OR pbd.silindi = 0)
+                    ORDER BY m.created_at DESC 
+                    LIMIT 50";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([
+                ':personel_id' => $personel_id,
+                ':rec_personel_id' => '%personel:' . $personel_id . '%',
+                ':rec_user_id' => $associatedUserId > 0 ? ('%user:' . $associatedUserId . '%') : '',
+                ':personel_adi' => !empty($personelAdi) ? $personelAdi : '',
+                ':rec_personel_adi' => !empty($personelAdi) ? ('%' . $personelAdi . '%') : ''
+            ]);
+            $notifications = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             foreach ($notifications as $item) {
                 $imageUrl = null;
+                $targetUrl = null;
                 if (!empty($item->attachments)) {
                     $payload = json_decode($item->attachments, true);
-                    if ($payload && isset($payload['image'])) {
-                        $imageUrl = $payload['image'];
+                    if (is_array($payload)) {
+                        if (!empty($payload['image'])) {
+                            $imageUrl = $payload['image'];
+                        }
+                        if (!empty($payload['url'])) {
+                            $targetUrl = $payload['url'];
+                        } elseif (!empty($payload['link'])) {
+                            $targetUrl = $payload['link'];
+                        }
                     }
                 }
 
+                $sig = md5(($item->subject ?? '') . '_' . substr($item->created_at ?? '', 0, 16));
+                $seenSignatures[$sig] = true;
+
                 $data[] = [
-                    'id' => $item->id,
+                    'id' => (int) $item->id,
                     'type' => 'push',
-                    'title' => $item->subject,
-                    'body' => $item->message,
+                    'title' => $item->subject ?: 'Bildirim',
+                    'body' => $item->message ?: '',
                     'image' => $imageUrl,
+                    'url' => $targetUrl,
                     'time_ago' => $getTimeAgo($item->created_at),
                     'created_at' => $item->created_at,
                     'okundu' => (bool) $item->okundu
                 ];
             }
 
-            // 2. Nöbet Değişim Taleplerini Çek (Gelen & Beklemede)
-            $NobetModel = new \App\Model\NobetModel();
-            $talepler = $NobetModel->getPersonelDegisimTalepleri($personel_id, 'gelen');
-            
-            foreach ($talepler as $talep) {
-                if ($talep->durum !== 'beklemede') continue;
+            // 2. nobet_bildirim_loglari tablosunu çek
+            try {
+                $nStmt = $db->prepare("SELECT nbl.*, COALESCE(pbd.okundu, 0) as okundu 
+                                       FROM nobet_bildirim_loglari nbl
+                                       LEFT JOIN personel_bildirim_durumu pbd ON pbd.mesaj_log_id = -(nbl.id) AND pbd.personel_id = :personel_id
+                                       WHERE nbl.personel_id = :personel_id 
+                                       AND (pbd.silindi IS NULL OR pbd.silindi = 0)
+                                       ORDER BY nbl.id DESC LIMIT 30");
+                $nStmt->execute([':personel_id' => $personel_id]);
+                $nobetLogs = $nStmt->fetchAll(PDO::FETCH_OBJ);
+                foreach ($nobetLogs as $nl) {
+                    $createdAt = !empty($nl->gonderim_tarihi) && $nl->gonderim_tarihi !== '0000-00-00 00:00:00' ? $nl->gonderim_tarihi : ($nl->bildirim_zamani ?? date('Y-m-d H:i:s'));
+                    $sig = md5(($nl->baslik ?? '') . '_' . substr($createdAt, 0, 16));
+                    if (isset($seenSignatures[$sig])) {
+                        continue;
+                    }
+                    $seenSignatures[$sig] = true;
 
-                $tarihFormatli = date('d.m.Y', strtotime($talep->nobet_tarihi));
+                    $data[] = [
+                        'id' => 'nobet_log_' . $nl->id,
+                        'type' => 'nobet_log',
+                        'title' => $nl->baslik ?: 'Nöbet Bildirimi',
+                        'body' => $nl->mesaj ?: '',
+                        'image' => null,
+                        'url' => '?page=nobet',
+                        'time_ago' => $getTimeAgo($createdAt),
+                        'created_at' => $createdAt,
+                        'okundu' => (bool) $nl->okundu
+                    ];
+                }
+            } catch (\Throwable $e) {}
+
+            // 3. Nöbet Değişim Taleplerini Çek (Gelen & Beklemede)
+            try {
+                $NobetModel = new \App\Model\NobetModel();
+                $talepler = $NobetModel->getPersonelDegisimTalepleri($personel_id, 'gelen');
                 
-                $data[] = [
-                    'id' => 'nobet_' . $talep->id,
-                    'talep_id' => $talep->id,
-                    'type' => 'nobet_degisim',
-                    'title' => '🔄 Nöbet Değişim Talebi',
-                    'body' => "{$talep->talep_eden_adi}, {$tarihFormatli} tarihli nöbetini sizinle değiştirmek istiyor.",
-                    'image' => null,
-                    'time_ago' => $getTimeAgo($talep->talep_tarihi),
-                    'created_at' => $talep->talep_tarihi,
-                    'okundu' => false // Talepler her zaman "okunmamış" gibi görünsün (işlem bekliyor)
-                ];
+                foreach ($talepler as $talep) {
+                    if ($talep->durum !== 'beklemede') continue;
+
+                    $tarihFormatli = date('d.m.Y', strtotime($talep->nobet_tarihi));
+                    
+                    $data[] = [
+                        'id' => 'nobet_' . $talep->id,
+                        'talep_id' => $talep->id,
+                        'type' => 'nobet_degisim',
+                        'title' => '🔄 Nöbet Değişim Talebi',
+                        'body' => "{$talep->talep_eden_adi}, {$tarihFormatli} tarihli nöbetini sizinle değiştirmek istiyor.",
+                        'image' => null,
+                        'url' => '?page=nobet',
+                        'time_ago' => $getTimeAgo($talep->talep_tarihi),
+                        'created_at' => $talep->talep_tarihi,
+                        'okundu' => false
+                    ];
+                }
+            } catch (\Throwable $e) {}
+
+            // 4. İlişkili kullanıcı varsa bildirimler tablosundan al
+            if ($associatedUserId > 0) {
+                try {
+                    $bStmt = $db->prepare("SELECT * FROM bildirimler WHERE user_id = :user_id ORDER BY created_at DESC LIMIT 20");
+                    $bStmt->execute([':user_id' => $associatedUserId]);
+                    $userBildirimler = $bStmt->fetchAll(PDO::FETCH_OBJ);
+                    foreach ($userBildirimler as $ub) {
+                        $sig = md5(($ub->title ?? '') . '_' . substr($ub->created_at ?? '', 0, 16));
+                        if (isset($seenSignatures[$sig])) {
+                            continue;
+                        }
+                        $seenSignatures[$sig] = true;
+
+                        $data[] = [
+                            'id' => 'sys_' . $ub->id,
+                            'type' => 'system',
+                            'title' => $ub->title ?: 'Sistem Bildirimi',
+                            'body' => $ub->message ?: '',
+                            'image' => null,
+                            'url' => $ub->link ?: null,
+                            'time_ago' => $getTimeAgo($ub->created_at),
+                            'created_at' => $ub->created_at,
+                            'okundu' => (bool) $ub->is_read
+                        ];
+                    }
+                } catch (\Throwable $e) {}
             }
 
-            // 3. Tarihe Göre Sırala (Azalan)
+            // 5. Tarihe Göre Sırala (En yeniden eskiye)
             usort($data, function($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
             });
@@ -2646,57 +2747,83 @@ try {
             break;
 
         case 'markNotificationRead':
-            $mesaj_log_id = $_POST['notification_id'] ?? null;
+            $rawId = (string) ($_POST['notification_id'] ?? '');
 
-            if (!$mesaj_log_id) {
+            if ($rawId === '') {
                 response(false, null, 'Bildirim ID gerekli');
             }
 
             $PersonelModel = new PersonelModel();
             $db = $PersonelModel->getDb();
 
-            // Upsert - varsa güncelle, yoksa ekle
-            $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, okundu, okunma_tarihi)
-                    VALUES (:personel_id, :mesaj_log_id, 1, NOW())
-                    ON DUPLICATE KEY UPDATE okundu = 1, okunma_tarihi = NOW()";
-
-            $stmt = $db->prepare($sql);
-            $result = $stmt->execute([
-                ':personel_id' => $personel_id,
-                ':mesaj_log_id' => $mesaj_log_id
-            ]);
-
-            if ($result) {
-                response(true, null, 'Bildirim okundu olarak işaretlendi');
+            if (strpos($rawId, 'nobet_log_') === 0) {
+                $nId = (int) str_replace('nobet_log_', '', $rawId);
+                $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, okundu, okunma_tarihi)
+                        VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                        ON DUPLICATE KEY UPDATE okundu = 1, okunma_tarihi = NOW()";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([':personel_id' => $personel_id, ':mesaj_log_id' => -$nId]);
+            } elseif (strpos($rawId, 'sys_') === 0) {
+                $sId = (int) str_replace('sys_', '', $rawId);
+                $stmt = $db->prepare("UPDATE bildirimler SET is_read = 1 WHERE id = :id");
+                $stmt->execute([':id' => $sId]);
             } else {
-                response(false, null, 'İşlem başarısız');
+                $mesaj_log_id = (int) $rawId;
+                $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, okundu, okunma_tarihi)
+                        VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                        ON DUPLICATE KEY UPDATE okundu = 1, okunma_tarihi = NOW()";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([':personel_id' => $personel_id, ':mesaj_log_id' => $mesaj_log_id]);
             }
+
+            response(true, null, 'Bildirim okundu olarak işaretlendi');
             break;
 
         case 'markAllNotificationsRead':
             $PersonelModel = new PersonelModel();
             $personelData = $PersonelModel->find($personel_id);
-            $personelAdi = $personelData->adi_soyadi ?? '';
+            $personelAdi = trim($personelData->adi_soyadi ?? '');
+            $personelEmail = trim($personelData->email_adresi ?? '');
             $db = $PersonelModel->getDb();
+
+            $associatedUserId = (int) ($_SESSION['user_id'] ?? 0);
+            if ($associatedUserId <= 0 && (!empty($personelAdi) || !empty($personelEmail))) {
+                $userStmt = $db->prepare("SELECT id FROM users WHERE (adi_soyadi = :adi AND adi_soyadi != '') OR (email_adresi = :email AND email_adresi != '') LIMIT 1");
+                $userStmt->execute([':adi' => $personelAdi, ':email' => $personelEmail]);
+                $uRow = $userStmt->fetch(PDO::FETCH_OBJ);
+                if ($uRow) {
+                    $associatedUserId = (int) $uRow->id;
+                }
+            }
 
             // Personele ait tüm bildirimleri bul
             $sql = "SELECT id FROM mesaj_log 
                     WHERE type = 'push' 
                     AND (
-                        recipients LIKE :personel_adi 
+                        recipients LIKE :rec_personel_id
+                        OR (:rec_user_id != '' AND recipients LIKE :rec_user_id)
+                        OR (:personel_adi != '' AND recipients LIKE :rec_personel_adi)
                         OR recipients LIKE '%Tüm Aboneler%'
+                        OR recipients LIKE '%Tüm Personel%'
+                        OR recipients LIKE '%Herkes%'
+                        OR recipients LIKE '%\"all\"%'
+                        OR recipients LIKE '%\"tum_personel\"%'
+                        OR recipients LIKE '%\"tum_aboneler\"%'
                         OR recipients LIKE '%Test Kullanıcısı%'
                     )";
 
             $stmt = $db->prepare($sql);
-            $stmt->execute([':personel_adi' => '%' . $personelAdi . '%']);
+            $stmt->execute([
+                ':rec_personel_id' => '%personel:' . $personel_id . '%',
+                ':rec_user_id' => $associatedUserId > 0 ? ('%user:' . $associatedUserId . '%') : '',
+                ':personel_adi' => !empty($personelAdi) ? $personelAdi : '',
+                ':rec_personel_adi' => !empty($personelAdi) ? ('%' . $personelAdi . '%') : ''
+            ]);
             $notifications = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // Her birini okundu olarak işaretle
             $insertSql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, okundu, okunma_tarihi)
                           VALUES (:personel_id, :mesaj_log_id, 1, NOW())
                           ON DUPLICATE KEY UPDATE okundu = 1, okunma_tarihi = NOW()";
-
             $insertStmt = $db->prepare($insertSql);
 
             foreach ($notifications as $notifId) {
@@ -2704,63 +2831,106 @@ try {
                     ':personel_id' => $personel_id,
                     ':mesaj_log_id' => $notifId
                 ]);
+            }
+
+            try {
+                $nStmt = $db->prepare("SELECT id FROM nobet_bildirim_loglari WHERE personel_id = :personel_id");
+                $nStmt->execute([':personel_id' => $personel_id]);
+                $nIds = $nStmt->fetchAll(PDO::FETCH_COLUMN);
+                foreach ($nIds as $nid) {
+                    $insertStmt->execute([
+                        ':personel_id' => $personel_id,
+                        ':mesaj_log_id' => -$nid
+                    ]);
+                }
+            } catch (\Throwable $e) {}
+
+            if ($associatedUserId > 0) {
+                try {
+                    $db->prepare("UPDATE bildirimler SET is_read = 1 WHERE user_id = :user_id")->execute([':user_id' => $associatedUserId]);
+                } catch (\Throwable $e) {}
             }
 
             response(true, null, 'Tüm bildirimler okundu olarak işaretlendi');
             break;
 
         case 'deleteNotification':
-            $mesaj_log_id = $_POST['notification_id'] ?? null;
+            $rawId = (string) ($_POST['notification_id'] ?? '');
 
-            if (!$mesaj_log_id) {
+            if ($rawId === '') {
                 response(false, null, 'Bildirim ID gerekli');
             }
 
             $PersonelModel = new PersonelModel();
             $db = $PersonelModel->getDb();
 
-            // Upsert - varsa güncelle, yoksa ekle (silindi olarak işaretle)
-            $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, silindi, silme_tarihi)
-                    VALUES (:personel_id, :mesaj_log_id, 1, NOW())
-                    ON DUPLICATE KEY UPDATE silindi = 1, silme_tarihi = NOW()";
-
-            $stmt = $db->prepare($sql);
-            $result = $stmt->execute([
-                ':personel_id' => $personel_id,
-                ':mesaj_log_id' => $mesaj_log_id
-            ]);
-
-            if ($result) {
-                response(true, null, 'Bildirim silindi');
+            if (strpos($rawId, 'nobet_log_') === 0) {
+                $nId = (int) str_replace('nobet_log_', '', $rawId);
+                $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, silindi, silme_tarihi)
+                        VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                        ON DUPLICATE KEY UPDATE silindi = 1, silme_tarihi = NOW()";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([':personel_id' => $personel_id, ':mesaj_log_id' => -$nId]);
+            } elseif (strpos($rawId, 'sys_') === 0) {
+                $sId = (int) str_replace('sys_', '', $rawId);
+                $stmt = $db->prepare("DELETE FROM bildirimler WHERE id = :id");
+                $stmt->execute([':id' => $sId]);
             } else {
-                response(false, null, 'İşlem başarısız');
+                $mesaj_log_id = (int) $rawId;
+                $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, silindi, silme_tarihi)
+                        VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                        ON DUPLICATE KEY UPDATE silindi = 1, silme_tarihi = NOW()";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([':personel_id' => $personel_id, ':mesaj_log_id' => $mesaj_log_id]);
             }
+
+            response(true, null, 'Bildirim silindi');
             break;
 
         case 'deleteAllNotifications':
             $PersonelModel = new PersonelModel();
             $personelData = $PersonelModel->find($personel_id);
-            $personelAdi = $personelData->adi_soyadi ?? '';
+            $personelAdi = trim($personelData->adi_soyadi ?? '');
+            $personelEmail = trim($personelData->email_adresi ?? '');
             $db = $PersonelModel->getDb();
 
-            // Personele ait tüm bildirimleri bul
+            $associatedUserId = (int) ($_SESSION['user_id'] ?? 0);
+            if ($associatedUserId <= 0 && (!empty($personelAdi) || !empty($personelEmail))) {
+                $userStmt = $db->prepare("SELECT id FROM users WHERE (adi_soyadi = :adi AND adi_soyadi != '') OR (email_adresi = :email AND email_adresi != '') LIMIT 1");
+                $userStmt->execute([':adi' => $personelAdi, ':email' => $personelEmail]);
+                $uRow = $userStmt->fetch(PDO::FETCH_OBJ);
+                if ($uRow) {
+                    $associatedUserId = (int) $uRow->id;
+                }
+            }
+
             $sql = "SELECT id FROM mesaj_log 
                     WHERE type = 'push' 
                     AND (
-                        recipients LIKE :personel_adi 
+                        recipients LIKE :rec_personel_id
+                        OR (:rec_user_id != '' AND recipients LIKE :rec_user_id)
+                        OR (:personel_adi != '' AND recipients LIKE :rec_personel_adi)
                         OR recipients LIKE '%Tüm Aboneler%'
+                        OR recipients LIKE '%Tüm Personel%'
+                        OR recipients LIKE '%Herkes%'
+                        OR recipients LIKE '%\"all\"%'
+                        OR recipients LIKE '%\"tum_personel\"%'
+                        OR recipients LIKE '%\"tum_aboneler\"%'
                         OR recipients LIKE '%Test Kullanıcısı%'
                     )";
 
             $stmt = $db->prepare($sql);
-            $stmt->execute([':personel_adi' => '%' . $personelAdi . '%']);
+            $stmt->execute([
+                ':rec_personel_id' => '%personel:' . $personel_id . '%',
+                ':rec_user_id' => $associatedUserId > 0 ? ('%user:' . $associatedUserId . '%') : '',
+                ':personel_adi' => !empty($personelAdi) ? $personelAdi : '',
+                ':rec_personel_adi' => !empty($personelAdi) ? ('%' . $personelAdi . '%') : ''
+            ]);
             $notifications = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // Her birini silindi olarak işaretle
             $insertSql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, silindi, silme_tarihi)
                           VALUES (:personel_id, :mesaj_log_id, 1, NOW())
                           ON DUPLICATE KEY UPDATE silindi = 1, silme_tarihi = NOW()";
-
             $insertStmt = $db->prepare($insertSql);
 
             foreach ($notifications as $notifId) {
@@ -2769,6 +2939,18 @@ try {
                     ':mesaj_log_id' => $notifId
                 ]);
             }
+
+            try {
+                $nStmt = $db->prepare("SELECT id FROM nobet_bildirim_loglari WHERE personel_id = :personel_id");
+                $nStmt->execute([':personel_id' => $personel_id]);
+                $nIds = $nStmt->fetchAll(PDO::FETCH_COLUMN);
+                foreach ($nIds as $nid) {
+                    $insertStmt->execute([
+                        ':personel_id' => $personel_id,
+                        ':mesaj_log_id' => -$nid
+                    ]);
+                }
+            } catch (\Throwable $e) {}
 
             response(true, null, 'Tüm bildirimler silindi');
             break;
