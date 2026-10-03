@@ -96,9 +96,13 @@ class EInvoiceService
         if (!preg_match('/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/iD', $uuid)) throw new \InvalidArgumentException('ETTN biçimi geçersiz.');
         $root = $this->storageRoot ?? (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2));
         $dir = $root . '/storage/invoices/' . $firmId . '/' . date('Y/m');
-        if (!is_dir($dir) && !mkdir($dir, 0770, true)) throw new \RuntimeException('Fatura dosya dizini oluşturulamadı.');
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0777, true) && !is_dir($dir)) throw new \RuntimeException('Fatura dosya dizini oluşturulamadı.');
+            @chmod($dir, 0777);
+        }
         $path = $dir . '/' . $uuid . '.xml';
         if (file_put_contents($path, $xml, LOCK_EX) === false) throw new \RuntimeException('Fatura XML dosyası kaydedilemedi.');
+        @chmod($path, 0666);
         return $path;
     }
 

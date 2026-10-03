@@ -18,8 +18,10 @@ final class EInvoiceSecurity
                 => ['efatura/giden-list', 'efatura/taslak-list', 'efatura/olustur'],
             'sync_incoming_invoices', 'respond_commercial' 
                 => ['efatura/gelen-list', 'efatura/giden-list'],
-            'save_settings', 'connection_info', 'counter_info' 
+            'save_settings', 'counter_info' 
                 => ['efatura/ayarlar'],
+            'connection_info'
+                => ['efatura/ayarlar', 'efatura/olustur'],
             default => null,
         };
 
@@ -40,19 +42,19 @@ final class EInvoiceSecurity
     {
         return match ($action) {
             'list_giden', 'list_invoices', 'summary_stats', 'preview_html', 'download_xml', 'download_pdf', 'export_excel', 'invoice_history' => 'efatura/giden-list',
-            'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft' => 'efatura/olustur',
+            'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'connection_info' => 'efatura/olustur',
             'send_invoice', 'bulk_send_invoices' => 'efatura/taslak-list',
             'sync_status', 'sync_outgoing_invoices', 'refresh_history' => 'efatura/giden-list',
             'sync_incoming_invoices', 'respond_commercial' => 'efatura/gelen-list',
             'cancel_invoice' => 'efatura/giden-list',
-            'save_settings', 'connection_info', 'counter_info' => 'efatura/ayarlar',
+            'save_settings', 'counter_info' => 'efatura/ayarlar',
             default => null,
         };
     }
 
     public static function readOnly(string $action): bool
     {
-        return in_array($action, ['list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer'], true);
+        return in_array($action, ['list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info'], true);
     }
 
     public static function invoiceId(mixed $encrypted): int

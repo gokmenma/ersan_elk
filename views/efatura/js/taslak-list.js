@@ -218,31 +218,31 @@ $(document).ready(function() {
                 searchable: false,
                 className: 'align-middle text-center',
                 render: function(data, type, row) {
-                    let btns = `<div class="d-flex align-items-center justify-content-center gap-1">`;
+                    let btns = `<div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">`;
 
                     if (row.entegrator_durum_kodu === 'TASLAK') {
                         btns += `
-                        <button type="button" class="btn btn-success text-white table-action-btn btn-send-edm" data-id="${row.encrypted_id}" title="EDM / GİB'e Gönder">
-                            <i class="bx bx-send font-size-14"></i>
+                        <button type="button" class="btn btn-subtle-success table-action-btn btn-send-edm" data-id="${row.encrypted_id}" title="EDM / GİB'e Gönder">
+                            <i class="bx bx-send font-size-15"></i>
                         </button>
-                        <a href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-light border text-primary table-action-btn" title="Taslağı Düzenle">
+                        <a href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-subtle-warning table-action-btn" title="Taslağı Düzenle">
                             <i class="bx bx-edit font-size-15"></i>
                         </a>`;
                     } else {
                         btns += `
-                        <button type="button" class="btn btn-primary text-white table-action-btn btn-sync-single" data-id="${row.encrypted_id}" title="GİB Durumunu Sorgula">
+                        <button type="button" class="btn btn-subtle-info table-action-btn btn-sync-single" data-id="${row.encrypted_id}" title="GİB Durumunu Sorgula">
                             <i class="bx bx-refresh font-size-15"></i>
                         </button>`;
                     }
 
                     btns += `
-                        <button type="button" class="btn btn-light border text-dark table-action-btn btn-preview" data-id="${row.encrypted_id}" title="Önizle">
+                        <button type="button" class="btn btn-subtle-primary table-action-btn btn-preview" data-id="${row.encrypted_id}" title="Önizle">
                             <i class="bx bx-show font-size-15"></i>
                         </button>`;
 
                     if (row.entegrator_durum_kodu === 'TASLAK') {
                         btns += `
-                        <button type="button" class="btn btn-light border text-danger table-action-btn btn-delete-draft" data-id="${row.encrypted_id}" title="Taslağı Sil">
+                        <button type="button" class="btn btn-subtle-danger table-action-btn btn-delete-draft" data-id="${row.encrypted_id}" title="Taslağı Sil">
                             <i class="bx bx-trash font-size-15"></i>
                         </button>`;
                     }
@@ -557,7 +557,10 @@ $(document).ready(function() {
     // Hızlı Filtre Butonları (Kartlardaki rozetler)
     $('.status-quick-filter').on('click', function(e) {
         e.preventDefault();
-        currentBelgeFilter = $(this).data('belge') || '';
+        const belge = $(this).data('belge') || '';
+        currentBelgeFilter = belge;
+        $('.status-quick-filter').removeClass('active');
+        $(`.status-quick-filter[data-belge="${belge}"]`).addClass('active');
         table.ajax.reload();
     });
 

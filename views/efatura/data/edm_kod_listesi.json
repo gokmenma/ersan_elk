@@ -1,0 +1,2494 @@
+{
+    "cities": [
+        "Adana",
+        "Adıyaman",
+        "Afyon",
+        "Aksaray",
+        "Amasya",
+        "Ankara",
+        "Antalya",
+        "Ardahan",
+        "Artvin",
+        "Aydın",
+        "Ağrı",
+        "Balıkesir",
+        "Bartın",
+        "Batman",
+        "Bayburt",
+        "Bilecik",
+        "Bingöl",
+        "Bitlis",
+        "Bolu",
+        "Burdur",
+        "Bursa",
+        "Denizli",
+        "Diyarbakır",
+        "Düzce",
+        "Edirne",
+        "Elazığ",
+        "Erzincan",
+        "Erzurum",
+        "Eskişehir",
+        "Gaziantep",
+        "Giresun",
+        "Gümüşhane",
+        "Hakkari",
+        "Hatay",
+        "Isparta",
+        "Iğdır",
+        "Kahramanmaraş",
+        "Karabük",
+        "Karaman",
+        "Kars",
+        "Kastamonu",
+        "Kayseri",
+        "Kilis",
+        "Kocaeli",
+        "Konya",
+        "Kütahya",
+        "Kırklareli",
+        "Kırıkkale",
+        "Kırşehir",
+        "Malatya",
+        "Manisa",
+        "Mardin",
+        "Mersin (İçel)",
+        "Muğla",
+        "Muş",
+        "Nevşehir",
+        "Niğde",
+        "Ordu",
+        "Osmaniye",
+        "Rize",
+        "Sakarya",
+        "Samsun",
+        "Siirt",
+        "Sinop",
+        "Sivas",
+        "Tekirdağ",
+        "Tokat",
+        "Trabzon",
+        "Tunceli",
+        "Uşak",
+        "Van",
+        "Yalova",
+        "Yozgat",
+        "Zonguldak",
+        "Çanakkale",
+        "Çankırı",
+        "Çorum",
+        "İstanbul",
+        "İzmir",
+        "şanlıurfa",
+        "şırnak"
+    ],
+    "districts": {
+        "Adana": [
+            "Aladağ",
+            "Ceyhan",
+            "Feke",
+            "Karaisalı",
+            "Karataş",
+            "Kozan",
+            "Pozantı",
+            "Saimbeyli",
+            "Sarıçam",
+            "Seyhan",
+            "Tufanbeyli",
+            "Yumurtalık",
+            "Yüreğir",
+            "Çukurova",
+            "İmamoğlu"
+        ],
+        "Adıyaman": [
+            "Adıyaman Merkez",
+            "Besni",
+            "Gerger",
+            "Gölbaşı \/ Adıyaman",
+            "Kahta",
+            "Samsat",
+            "Sincik",
+            "Tut",
+            "Çelikhan"
+        ],
+        "Afyonkarahisar": [
+            "Afyonkarahisar Merkez",
+            "Bayat \/ Afyonkarahisar",
+            "Başmakçı",
+            "Bolvadin",
+            "Dazkırı",
+            "Dinar",
+            "Emirdağ",
+            "Evciler",
+            "Hocalar",
+            "Kızılören",
+            "Sandıklı",
+            "Sinanpaşa",
+            "Sultandağı",
+            "Çay",
+            "Çobanlar",
+            "İhsaniye",
+            "İscehisar",
+            "Şuhut"
+        ],
+        "Ağrı": [
+            "Ağrı Merkez",
+            "Diyadin",
+            "Doğubayazıt",
+            "Eleşkirt",
+            "Hamur",
+            "Patnos",
+            "Taşlıçay",
+            "Tutak"
+        ],
+        "Aksaray": [
+            "Aksaray Merkez",
+            "Ağaçören",
+            "Eskil",
+            "Gülağaç",
+            "Güzelyurt",
+            "Ortaköy",
+            "Sarıyahşi"
+        ],
+        "Amasya": [
+            "Amasya Merkez",
+            "Göynücek",
+            "Gümüşhacıköy",
+            "Hamamözü",
+            "Merzifon",
+            "Suluova",
+            "Taşova"
+        ],
+        "Ankara": [
+            "Akyurt",
+            "Altındağ",
+            "Ayaş",
+            "Bala",
+            "Beypazarı",
+            "Elmadağ",
+            "Etimesgut",
+            "Evren",
+            "Gölbaşı \/ Ankara",
+            "Güdül",
+            "Haymana",
+            "Kalecik",
+            "Kazan",
+            "Keçiören",
+            "Kızılcahamam",
+            "Mamak",
+            "Nallıhan",
+            "Polatlı",
+            "Pursaklar",
+            "Sincan",
+            "Yenimahalle",
+            "Çamlıdere",
+            "Çankaya",
+            "Çubuk",
+            "Şereflikoçhisar"
+        ],
+        "Antalya": [
+            "Akseki",
+            "Aksu \/ Antalya",
+            "Alanya",
+            "Demre",
+            "Döşemealtı",
+            "Elmalı",
+            "Finike",
+            "Gazipaşa",
+            "Gündoğmuş",
+            "Kaş",
+            "Kemer \/ Antalya",
+            "Kepez",
+            "Konyaaltı",
+            "Korkuteli",
+            "Kumluca",
+            "Manavgat",
+            "Muratpaşa",
+            "Serik",
+            "İbradı"
+        ],
+        "Ardahan": [
+            "Ardahan Merkez",
+            "Damal",
+            "Göle",
+            "Hanak",
+            "Posof",
+            "Çıldır"
+        ],
+        "Artvin": [
+            "Ardanuç",
+            "Arhavi",
+            "Artvin Merkez",
+            "Borçka",
+            "Hopa",
+            "Murgul",
+            "Yusufeli",
+            "Şavşat"
+        ],
+        "Aydın": [
+            "Aydın Merkez",
+            "Bozdoğan",
+            "Buharkent",
+            "Didim",
+            "Germencik",
+            "Karacasu",
+            "Karpuzlu",
+            "Koçarlı",
+            "Kuyucak",
+            "Kuşadası",
+            "Köşk",
+            "Nazilli",
+            "Sultanhisar",
+            "Söke",
+            "Yenipazar \/ Aydın",
+            "Çine",
+            "İncirliova"
+        ],
+        "Balıkesir": [
+            "Ayvalık",
+            "Balya",
+            "Balıkesir Merkez",
+            "Bandırma",
+            "Bigadiç",
+            "Burhaniye",
+            "Dursunbey",
+            "Edremit \/ Balıkesir",
+            "Erdek",
+            "Gömeç",
+            "Gönen \/ Balıkesir",
+            "Havran",
+            "Kepsut",
+            "Manyas",
+            "Marmara",
+            "Savaştepe",
+            "Susurluk",
+            "Sındırgı",
+            "İvrindi"
+        ],
+        "Bartın": [
+            "Amasra",
+            "Bartın Merkez",
+            "Kurucaşile",
+            "Ulus"
+        ],
+        "Batman": [
+            "Batman Merkez",
+            "Beşiri",
+            "Gercüş",
+            "Hasankeyf",
+            "Kozluk",
+            "Sason"
+        ],
+        "Bayburt": [
+            "Aydıntepe",
+            "Bayburt Merkez",
+            "Demirözü"
+        ],
+        "Bilecik": [
+            "Bilecik Merkez",
+            "Bozüyük",
+            "Gölpazarı",
+            "Osmaneli",
+            "Pazaryeri",
+            "Söğüt",
+            "Yenipazar \/ Bilecik",
+            "İnhisar"
+        ],
+        "Bingöl": [
+            "Adaklı",
+            "Bingöl Merkez",
+            "Genç",
+            "Karlıova",
+            "Kiğı",
+            "Solhan",
+            "Yayladere",
+            "Yedisu"
+        ],
+        "Bitlis": [
+            "Adilcevaz",
+            "Ahlat",
+            "Bitlis Merkez",
+            "Güroymak",
+            "Hizan",
+            "Mutki",
+            "Tatvan"
+        ],
+        "Bolu": [
+            "Bolu Merkez",
+            "Dörtdivan",
+            "Gerede",
+            "Göynük",
+            "Kıbrıscık",
+            "Mengen",
+            "Mudurnu",
+            "Seben",
+            "Yeniçağa"
+        ],
+        "Burdur": [
+            "Altınyayla \/ Burdur",
+            "Ağlasun",
+            "Bucak",
+            "Burdur Merkez",
+            "Gölhisar",
+            "Karamanlı",
+            "Kemer \/ Burdur",
+            "Tefenni",
+            "Yeşilova",
+            "Çavdır",
+            "Çeltikçi"
+        ],
+        "Bursa": [
+            "Büyükorhan",
+            "Gemlik",
+            "Gürsu",
+            "Harmancık",
+            "Karacabey",
+            "Keles",
+            "Kestel",
+            "Mudanya",
+            "Mustafakemalpaşa",
+            "Nilüfer",
+            "Orhaneli",
+            "Orhangazi",
+            "Osmangazi",
+            "Yenişehir \/ Bursa",
+            "Yıldırım",
+            "İnegöl",
+            "İznik"
+        ],
+        "Çanakkale": [
+            "Ayvacık \/ Çanakkale",
+            "Bayramiç",
+            "Biga",
+            "Bozcaada",
+            "Eceabat",
+            "Ezine",
+            "Gelibolu",
+            "Gökçeada",
+            "Lapseki",
+            "Yenice \/ Çanakkale",
+            "Çan",
+            "Çanakkale Merkez"
+        ],
+        "Çankırı": [
+            "Atkaracalar",
+            "Bayramören",
+            "Eldivan",
+            "Ilgaz",
+            "Korgun",
+            "Kurşunlu",
+            "Kızılırmak",
+            "Orta",
+            "Yapraklı",
+            "Çankırı Merkez",
+            "Çerkeş",
+            "Şabanözü"
+        ],
+        "Çorum": [
+            "Alaca",
+            "Bayat \/ Çorum",
+            "Boğazkale",
+            "Dodurga",
+            "Kargı",
+            "Laçin",
+            "Mecitözü",
+            "Ortaköy \/ Çorum",
+            "Osmancık",
+            "Oğuzlar",
+            "Sungurlu",
+            "Uğurludağ",
+            "Çorum Merkez",
+            "İskilip"
+        ],
+        "Denizli": [
+            "Acıpayam",
+            "Akköy",
+            "Babadağ",
+            "Baklan",
+            "Bekilli",
+            "Beyağaç",
+            "Bozkurt \/ Denizli",
+            "Buldan",
+            "Denizli Merkez",
+            "Güney",
+            "Honaz",
+            "Kale \/ Denizli",
+            "Sarayköy",
+            "Serinhisar",
+            "Tavas",
+            "Çal",
+            "Çameli",
+            "Çardak",
+            "Çivril"
+        ],
+        "Diyarbakır": [
+            "Bağlar",
+            "Bismil",
+            "Dicle",
+            "Ergani",
+            "Eğil",
+            "Hani",
+            "Hazro",
+            "Kayapınar",
+            "Kocaköy",
+            "Kulp",
+            "Lice",
+            "Silvan",
+            "Sur",
+            "Yenişehir \/ Diyarbakır",
+            "Çermik",
+            "Çüngüş",
+            "Çınar"
+        ],
+        "Düzce": [
+            "Akçakoca",
+            "Cumayeri",
+            "Düzce Merkez",
+            "Gölyaka",
+            "Gümüşova",
+            "Kaynaşlı",
+            "Yığılca",
+            "Çilimli"
+        ],
+        "Edirne": [
+            "Edirne Merkez",
+            "Enez",
+            "Havsa",
+            "Keşan",
+            "Lalapaşa",
+            "Meriç",
+            "Süloğlu",
+            "Uzunköprü",
+            "İpsala"
+        ],
+        "Elazığ": [
+            "Alacakaya",
+            "Arıcak",
+            "Ağın",
+            "Baskil",
+            "Elazığ Merkez",
+            "Karakoçan",
+            "Keban",
+            "Kovancılar",
+            "Maden",
+            "Palu",
+            "Sivrice"
+        ],
+        "Erzincan": [
+            "Erzincan Merkez",
+            "Kemah",
+            "Kemaliye",
+            "Otlukbeli",
+            "Refahiye",
+            "Tercan",
+            "Çayırlı",
+            "Üzümlü",
+            "İliç"
+        ],
+        "Erzurum": [
+            "Aziziye",
+            "Aşkale",
+            "Horasan",
+            "Hınıs",
+            "Karayazı",
+            "Karaçoban",
+            "Köprüköy",
+            "Narman",
+            "Oltu",
+            "Olur",
+            "Palandöken",
+            "Pasinler",
+            "Pazaryolu",
+            "Tekman",
+            "Tortum",
+            "Uzundere",
+            "Yakutiye",
+            "Çat",
+            "İspir",
+            "Şenkaya"
+        ],
+        "Eskişehir": [
+            "Alpu",
+            "Beylikova",
+            "Günyüzü",
+            "Han",
+            "Mahmudiye",
+            "Mihalgazi",
+            "Mihalıççık",
+            "Odunpazarı",
+            "Sarıcakaya",
+            "Seyitgazi",
+            "Sivrihisar",
+            "Tepebaşı",
+            "Çifteler",
+            "İnönü"
+        ],
+        "Gaziantep": [
+            "Araban",
+            "Karkamış",
+            "Nizip",
+            "Nurdağı",
+            "Oğuzeli",
+            "Yavuzeli",
+            "İslahiye",
+            "Şahinbey",
+            "Şehitkamil"
+        ],
+        "Giresun": [
+            "Alucra",
+            "Bulancak",
+            "Dereli",
+            "Doğankent",
+            "Espiye",
+            "Eynesil",
+            "Giresun Merkez",
+            "Görele",
+            "Güce",
+            "Keşap",
+            "Piraziz",
+            "Tirebolu",
+            "Yağlıdere",
+            "Çamoluk",
+            "Çanakçı",
+            "Şebinkarahisar"
+        ],
+        "Gümüşhane": [
+            "Gümüşhane Merkez",
+            "Kelkit",
+            "Köse",
+            "Kürtün",
+            "Torul",
+            "Şiran"
+        ],
+        "Hakkari": [
+            "Hakkari Merkez",
+            "Yüksekova",
+            "Çukurca",
+            "Şemdinli"
+        ],
+        "Hatay": [
+            "Altınözü",
+            "Belen",
+            "Dörtyol",
+            "Erzin",
+            "Hassa",
+            "Hatay Merkez",
+            "Kumlu",
+            "Kırıkhan",
+            "Reyhanlı",
+            "Samandağ",
+            "Yayladağı",
+            "İskenderun"
+        ],
+        "Iğdır": [
+            "Aralık",
+            "Iğdır Merkez",
+            "Karakoyunlu",
+            "Tuzluca"
+        ],
+        "Isparta": [
+            "Aksu \/ Isparta",
+            "Atabey",
+            "Eğirdir",
+            "Gelendost",
+            "Gönen \/ Isparta",
+            "Isparta Merkez",
+            "Keçiborlu",
+            "Senirkent",
+            "Sütçüler",
+            "Uluborlu",
+            "Yalvaç",
+            "Yenişarbademli",
+            "Şarkikaraağaç"
+        ],
+        "İstanbul": [
+            "Adalar",
+            "Arnavutköy",
+            "Ataşehir",
+            "Avcılar",
+            "Bahçelievler",
+            "Bakırköy",
+            "Bayrampaşa",
+            "Bağcılar",
+            "Başakşehir",
+            "Beykoz",
+            "Beylikdüzü",
+            "Beyoğlu",
+            "Beşiktaş",
+            "Büyükçekmece",
+            "Esenler",
+            "Esenyurt",
+            "Eyüp",
+            "Fatih",
+            "Gaziosmanpaşa",
+            "Güngören",
+            "Kadıköy",
+            "Kartal",
+            "Kağıthane",
+            "Küçükçekmece",
+            "Maltepe",
+            "Pendik",
+            "Sancaktepe",
+            "Sarıyer",
+            "Silivri",
+            "Sultanbeyli",
+            "Sultangazi",
+            "Tuzla",
+            "Zeytinburnu",
+            "Çatalca",
+            "Çekmeköy",
+            "Ümraniye",
+            "Üsküdar",
+            "Şile",
+            "Şişli"
+        ],
+        "İzmir": [
+            "Aliağa",
+            "Balçova",
+            "Bayraklı",
+            "Bayındır",
+            "Bergama",
+            "Beydağ",
+            "Bornova",
+            "Buca",
+            "Dikili",
+            "Foça",
+            "Gaziemir",
+            "Güzelbahçe",
+            "Karabağlar",
+            "Karaburun",
+            "Karşıyaka",
+            "Kemalpaşa",
+            "Kiraz",
+            "Konak",
+            "Kınık",
+            "Menderes",
+            "Menemen",
+            "Narlıdere",
+            "Seferihisar",
+            "Selçuk",
+            "Tire",
+            "Torbalı",
+            "Urla",
+            "Çeşme",
+            "Çiğli",
+            "Ödemiş"
+        ],
+        "Kahramanmaraş": [
+            "Afşin",
+            "Andırın",
+            "Ekinözü",
+            "Elbistan",
+            "Göksun",
+            "Kahramanmaraş Merkez",
+            "Nurhak",
+            "Pazarcık",
+            "Türkoğlu",
+            "Çağlıyancerit"
+        ],
+        "Karabük": [
+            "Eflani",
+            "Eskipazar",
+            "Karabük Merkez",
+            "Ovacık \/ Karabük",
+            "Safranbolu",
+            "Yenice \/ Karabük"
+        ],
+        "Karaman": [
+            "Ayrancı",
+            "Başyayla",
+            "Ermenek",
+            "Karaman Merkez",
+            "Kazımkarabekir",
+            "Sarıveliler"
+        ],
+        "Kars": [
+            "Akyaka",
+            "Arpaçay",
+            "Digor",
+            "Kars Merkez",
+            "Kağızman",
+            "Sarıkamış",
+            "Selim",
+            "Susuz"
+        ],
+        "Kastamonu": [
+            "Abana",
+            "Araç",
+            "Azdavay",
+            "Ağlı",
+            "Bozkurt \/ Kastamonu",
+            "Cide",
+            "Daday",
+            "Devrekani",
+            "Doğanyurt",
+            "Hanönü",
+            "Kastamonu Merkez",
+            "Küre",
+            "Pınarbaşı \/ Kastamonu",
+            "Seydiler",
+            "Taşköprü",
+            "Tosya",
+            "Çatalzeytin",
+            "İhsangazi",
+            "İnebolu",
+            "Şenpazar"
+        ],
+        "Kayseri": [
+            "Akkışla",
+            "Bünyan",
+            "Develi",
+            "Felahiye",
+            "Hacılar",
+            "Kocasinan",
+            "Melikgazi",
+            "Pınarbaşı \/ Kayseri",
+            "Sarıoğlan",
+            "Sarız",
+            "Talas",
+            "Tomarza",
+            "Yahyalı",
+            "Yeşilhisar",
+            "Özvatan",
+            "İncesu"
+        ],
+        "Kırıkkale": [
+            "Bahşili",
+            "Balışeyh",
+            "Delice",
+            "Karakeçili",
+            "Keskin",
+            "Kırıkkale Merkez",
+            "Sulakyurt",
+            "Yahşihan",
+            "Çelebi"
+        ],
+        "Kırklareli": [
+            "Babaeski",
+            "Demirköy",
+            "Kofçaz",
+            "Kırklareli Merkez",
+            "Lüleburgaz",
+            "Pehlivanköy",
+            "Pınarhisar",
+            "Vize"
+        ],
+        "Kırşehir": [
+            "Akpınar",
+            "Akçakent",
+            "Boztepe",
+            "Kaman",
+            "Kırşehir Merkez",
+            "Mucur",
+            "Çiçekdağı"
+        ],
+        "Kilis": [
+            "Elbeyli",
+            "Kilis Merkez",
+            "Musabeyli",
+            "Polateli"
+        ],
+        "Kocaeli": [
+            "Başiskele",
+            "Darıca",
+            "Derince",
+            "Dilovası",
+            "Gebze",
+            "Gölcük",
+            "Kandıra",
+            "Karamürsel",
+            "Kartepe",
+            "Körfez",
+            "Çayırova",
+            "İzmit"
+        ],
+        "Konya": [
+            "Ahırlı",
+            "Akören",
+            "Akşehir",
+            "Altınekin",
+            "Beyşehir",
+            "Bozkır",
+            "Cihanbeyli",
+            "Derbent",
+            "Derebucak",
+            "Doğanhisar",
+            "Emirgazi",
+            "Ereğli \/ Konya",
+            "Güneysınır",
+            "Hadim",
+            "Halkapınar",
+            "Hüyük",
+            "Ilgın",
+            "Kadınhanı",
+            "Karapınar",
+            "Karatay",
+            "Kulu",
+            "Meram",
+            "Sarayönü",
+            "Selçuklu",
+            "Seydişehir",
+            "Taşkent",
+            "Tuzlukçu",
+            "Yalıhüyük",
+            "Yunak",
+            "Çeltik",
+            "Çumra"
+        ],
+        "Kütahya": [
+            "Altıntaş",
+            "Aslanapa",
+            "Domaniç",
+            "Dumlupınar",
+            "Emet",
+            "Gediz",
+            "Hisarcık",
+            "Kütahya Merkez",
+            "Pazarlar",
+            "Simav",
+            "Tavşanlı",
+            "Çavdarhisar",
+            "Şaphane"
+        ],
+        "Malatya": [
+            "Akçadağ",
+            "Arapgir",
+            "Arguvan",
+            "Battalgazi",
+            "Darende",
+            "Doğanyol",
+            "Doğanşehir",
+            "Hekimhan",
+            "Kale \/ Malatya",
+            "Kuluncak",
+            "Malatya Merkez",
+            "Pütürge",
+            "Yazıhan",
+            "Yeşilyurt \/ Malatya"
+        ],
+        "Manisa": [
+            "Ahmetli",
+            "Akhisar",
+            "Alaşehir",
+            "Demirci",
+            "Gölmarmara",
+            "Gördes",
+            "Kula",
+            "Köprübaşı \/ Manisa",
+            "Kırkağaç",
+            "Manisa Merkez",
+            "Salihli",
+            "Saruhanlı",
+            "Sarıgöl",
+            "Selendi",
+            "Soma",
+            "Turgutlu"
+        ],
+        "Mardin": [
+            "Dargeçit",
+            "Derik",
+            "Kızıltepe",
+            "Mardin Merkez",
+            "Mazıdağı",
+            "Midyat",
+            "Nusaybin",
+            "Savur",
+            "Yeşilli",
+            "Ömerli"
+        ],
+        "Mersin": [
+            "Akdeniz",
+            "Anamur",
+            "Aydıncık \/ Mersin",
+            "Bozyazı",
+            "Erdemli",
+            "Gülnar",
+            "Mezitli",
+            "Mut",
+            "Silifke",
+            "Tarsus",
+            "Toroslar",
+            "Yenişehir \/ Mersin",
+            "Çamlıyayla"
+        ],
+        "Muğla": [
+            "Bodrum",
+            "Dalaman",
+            "Datça",
+            "Fethiye",
+            "Kavaklıdere",
+            "Köyceğiz",
+            "Marmaris",
+            "Milas",
+            "Muğla Merkez",
+            "Ortaca",
+            "Ula",
+            "Yatağan"
+        ],
+        "Muş": [
+            "Bulanık",
+            "Hasköy",
+            "Korkut",
+            "Malazgirt",
+            "Muş Merkez",
+            "Varto"
+        ],
+        "Nevşehir": [
+            "Acıgöl",
+            "Avanos",
+            "Derinkuyu",
+            "Gülşehir",
+            "Hacıbektaş",
+            "Kozaklı",
+            "Nevşehir Merkez",
+            "Ürgüp"
+        ],
+        "Niğde": [
+            "Altunhisar",
+            "Bor",
+            "Niğde Merkez",
+            "Ulukışla",
+            "Çamardı",
+            "Çiftlik"
+        ],
+        "Ordu": [
+            "Akkuş",
+            "Aybastı",
+            "Fatsa",
+            "Gölköy",
+            "Gülyalı",
+            "Gürgentepe",
+            "Kabadüz",
+            "Kabataş",
+            "Korgan",
+            "Kumru",
+            "Mesudiye",
+            "Ordu Merkez",
+            "Perşembe",
+            "Ulubey \/ Ordu",
+            "Çamaş",
+            "Çatalpınar",
+            "Çaybaşı",
+            "Ünye",
+            "İkizce"
+        ],
+        "Osmaniye": [
+            "Bahçe",
+            "Düziçi",
+            "Hasanbeyli",
+            "Kadirli",
+            "Osmaniye Merkez",
+            "Sumbas",
+            "Toprakkale"
+        ],
+        "Rize": [
+            "Ardeşen",
+            "Derepazarı",
+            "Fındıklı",
+            "Güneysu",
+            "Hemşin",
+            "Kalkandere",
+            "Pazar \/ Rize",
+            "Rize Merkez",
+            "Çamlıhemşin",
+            "Çayeli",
+            "İkizdere",
+            "İyidere"
+        ],
+        "Sakarya": [
+            "Adapazarı",
+            "Akyazı",
+            "Arifiye",
+            "Erenler",
+            "Ferizli",
+            "Geyve",
+            "Hendek",
+            "Karapürçek",
+            "Karasu",
+            "Kaynarca",
+            "Kocaali",
+            "Pamukova",
+            "Sapanca",
+            "Serdivan",
+            "Söğütlü",
+            "Taraklı"
+        ],
+        "Samsun": [
+            "Alaçam",
+            "Asarcık",
+            "Atakum",
+            "Ayvacık \/ Samsun",
+            "Bafra",
+            "Canik",
+            "Havza",
+            "Kavak",
+            "Ladik",
+            "Ondokuzmayıs",
+            "Salıpazarı",
+            "Tekkeköy",
+            "Terme",
+            "Vezirköprü",
+            "Yakakent",
+            "Çarşamba",
+            "İlkadım"
+        ],
+        "Siirt": [
+            "Aydınlar",
+            "Baykan",
+            "Eruh",
+            "Kurtalan",
+            "Pervari",
+            "Siirt Merkez",
+            "Şirvan"
+        ],
+        "Sinop": [
+            "Ayancık",
+            "Boyabat",
+            "Dikmen",
+            "Durağan",
+            "Erfelek",
+            "Gerze",
+            "Saraydüzü",
+            "Sinop Merkez",
+            "Türkeli"
+        ],
+        "Sivas": [
+            "Akıncılar",
+            "Altınyayla \/ Sivas",
+            "Divriği",
+            "Doğanşar",
+            "Gemerek",
+            "Gölova",
+            "Gürün",
+            "Hafik",
+            "Kangal",
+            "Koyulhisar",
+            "Sivas Merkez",
+            "Suşehri",
+            "Ulaş",
+            "Yıldızeli",
+            "Zara",
+            "İmranlı",
+            "Şarkışla"
+        ],
+        "Şanlıurfa": [
+            "Akçakale",
+            "Birecik",
+            "Bozova",
+            "Ceylanpınar",
+            "Halfeti",
+            "Harran",
+            "Hilvan",
+            "Siverek",
+            "Suruç",
+            "Viranşehir",
+            "Şanlıurfa Merkez"
+        ],
+        "Şırnak": [
+            "Beytüşşebap",
+            "Cizre",
+            "Güçlükonak",
+            "Silopi",
+            "Uludere",
+            "İdil",
+            "Şırnak Merkez"
+        ],
+        "Tekirdağ": [
+            "Hayrabolu",
+            "Malkara",
+            "Marmaraereğlisi",
+            "Muratlı",
+            "Saray \/ Tekirdağ",
+            "Tekirdağ Merkez",
+            "Çerkezköy",
+            "Çorlu",
+            "Şarköy"
+        ],
+        "Tokat": [
+            "Almus",
+            "Artova",
+            "Başçiftlik",
+            "Erbaa",
+            "Niksar",
+            "Pazar \/ Tokat",
+            "Reşadiye",
+            "Sulusaray",
+            "Tokat Merkez",
+            "Turhal",
+            "Yeşilyurt \/ Tokat",
+            "Zile"
+        ],
+        "Trabzon": [
+            "Akçaabat",
+            "Araklı",
+            "Arsin",
+            "Beşikdüzü",
+            "Dernekpazarı",
+            "Düzköy",
+            "Hayrat",
+            "Köprübaşı \/ Trabzon",
+            "Maçka",
+            "Of",
+            "Sürmene",
+            "Tonya",
+            "Trabzon Merkez",
+            "Vakfıkebir",
+            "Yomra",
+            "Çarşıbaşı",
+            "Çaykara",
+            "Şalpazarı"
+        ],
+        "Tunceli": [
+            "Hozat",
+            "Mazgirt",
+            "Nazımiye",
+            "Ovacık \/ Tunceli",
+            "Pertek",
+            "Pülümür",
+            "Tunceli Merkez",
+            "Çemişgezek"
+        ],
+        "Uşak": [
+            "Banaz",
+            "Eşme",
+            "Karahallı",
+            "Sivaslı",
+            "Ulubey \/ Uşak",
+            "Uşak Merkez"
+        ],
+        "Van": [
+            "Bahçesaray",
+            "Başkale",
+            "Edremit \/ Van",
+            "Erciş",
+            "Gevaş",
+            "Gürpınar",
+            "Muradiye",
+            "Saray \/ Van",
+            "Van Merkez",
+            "Çaldıran",
+            "Çatak",
+            "Özalp"
+        ],
+        "Yalova": [
+            "Altınova",
+            "Armutlu",
+            "Termal",
+            "Yalova Merkez",
+            "Çiftlikköy",
+            "Çınarcık"
+        ],
+        "Yozgat": [
+            "Akdağmadeni",
+            "Aydıncık \/ Yozgat",
+            "Boğazlıyan",
+            "Kadışehri",
+            "Saraykent",
+            "Sarıkaya",
+            "Sorgun",
+            "Yenifakılı",
+            "Yerköy",
+            "Yozgat Merkez",
+            "Çandır",
+            "Çayıralan",
+            "Çekerek",
+            "Şefaatli"
+        ],
+        "Zonguldak": [
+            "Alaplı",
+            "Devrek",
+            "Ereğli \/ Zonguldak",
+            "Gökçebey",
+            "Zonguldak Merkez",
+            "Çaycuma"
+        ]
+    },
+    "payments": [
+        {
+            "code": "1",
+            "name": "Tanımsız İşlemler"
+        },
+        {
+            "code": "2",
+            "name": "Alacak takas işlemi"
+        },
+        {
+            "code": "3",
+            "name": "Borç takas işlemi"
+        },
+        {
+            "code": "4",
+            "name": "Alacak takas işlem iptali"
+        },
+        {
+            "code": "5",
+            "name": "Borç takas işlem iptali"
+        },
+        {
+            "code": "6",
+            "name": "Alacak takas işlem talimatı"
+        },
+        {
+            "code": "7",
+            "name": "Borç takas işlemi talimatı"
+        },
+        {
+            "code": "8",
+            "name": "Bankada ayrılan para"
+        },
+        {
+            "code": "9",
+            "name": "Ulusal ya da bölgesel takas"
+        },
+        {
+            "code": "10",
+            "name": "Nakit ödeme"
+        },
+        {
+            "code": "11",
+            "name": "Tasarruf hesabına alacak takas işlem iptali"
+        },
+        {
+            "code": "12",
+            "name": "Tasarruf hesabından borç takas işlem iptali"
+        },
+        {
+            "code": "13",
+            "name": "Tasarruf hesabına alacak takas işlemi"
+        },
+        {
+            "code": "14",
+            "name": "Tasarruf hesabından borç takas işlemi"
+        },
+        {
+            "code": "15",
+            "name": "Açılış alacak fişi"
+        },
+        {
+            "code": "16",
+            "name": "Açılış borç fişi"
+        },
+        {
+            "code": "17",
+            "name": "Faktoring tahsilat talimatı"
+        },
+        {
+            "code": "18",
+            "name": "Leasing ödeme talimatı"
+        },
+        {
+            "code": "19",
+            "name": "CTP alacak takas işlemi"
+        },
+        {
+            "code": "20",
+            "name": "Çek"
+        },
+        {
+            "code": "21",
+            "name": "Banka ödeme emri"
+        },
+        {
+            "code": "22",
+            "name": "Onaylanmış banka ödeme emri"
+        },
+        {
+            "code": "23",
+            "name": "Banka çeki"
+        },
+        {
+            "code": "25",
+            "name": "Onaylanmış banka çeki"
+        },
+        {
+            "code": "26",
+            "name": "Yerel çek"
+        },
+        {
+            "code": "27",
+            "name": "CTP borç takas işlem talimatı"
+        },
+        {
+            "code": "28",
+            "name": "CTX alacak takas işlem talimatı"
+        },
+        {
+            "code": "29",
+            "name": "CTX borç takas işlem talimatı"
+        },
+        {
+            "code": "30",
+            "name": "Alacak virman transferi"
+        },
+        {
+            "code": "31",
+            "name": "Borç virman transferi"
+        },
+        {
+            "code": "32",
+            "name": "CCD+ metoduyla faktoring tahsilat talimatı"
+        },
+        {
+            "code": "33",
+            "name": "CCD+ metoduyla leasing ödeme talimatı"
+        },
+        {
+            "code": "34",
+            "name": "Önceden ayrılan ödeme"
+        },
+        {
+            "code": "35",
+            "name": "Faktoring tahsilat işlemi"
+        },
+        {
+            "code": "36",
+            "name": "Leasing ödeme işlemi"
+        },
+        {
+            "code": "37",
+            "name": "CTP alacak takas işlemi"
+        },
+        {
+            "code": "38",
+            "name": "CTP borç takas işlemi"
+        },
+        {
+            "code": "39",
+            "name": "CTX alacak takas işlemi"
+        },
+        {
+            "code": "40",
+            "name": "CTX borç takas işlemi"
+        },
+        {
+            "code": "41",
+            "name": "CCD+ metoduyla faktoring tahsilat işlemi"
+        },
+        {
+            "code": "42",
+            "name": "Banka hesabına ödeme"
+        },
+        {
+            "code": "43",
+            "name": "CCD+ metoduyla leasing ödeme işlemi"
+        },
+        {
+            "code": "44",
+            "name": "Kabul edilen kambiyo senedi"
+        },
+        {
+            "code": "45",
+            "name": "Kendi hesapları arasında alacak transferi"
+        },
+        {
+            "code": "46",
+            "name": "Bankalararası havale"
+        },
+        {
+            "code": "47",
+            "name": "Kendi hesapları arasında borç transferi"
+        },
+        {
+            "code": "48",
+            "name": "Banka kartı"
+        },
+        {
+            "code": "49",
+            "name": "Otomatik ödeme"
+        },
+        {
+            "code": "50",
+            "name": "Şartlı yurtdışı ödeme"
+        },
+        {
+            "code": "60",
+            "name": "Borç senedi"
+        },
+        {
+            "code": "61",
+            "name": "Borçlu tarafından imzalanan borç senedi"
+        },
+        {
+            "code": "62",
+            "name": "Borçlu tarafından imzalanan banka onaylı borç senedi"
+        },
+        {
+            "code": "63",
+            "name": "Borçlu tarafından imzalanan referanslı borç senedi"
+        },
+        {
+            "code": "64",
+            "name": "Banka tarafından imzalanan borç senedi"
+        },
+        {
+            "code": "65",
+            "name": "Banka tarafından imzalanan referanslı borç senedi"
+        },
+        {
+            "code": "66",
+            "name": "Kefilli borç senedi"
+        },
+        {
+            "code": "67",
+            "name": "Borçlu tarafından imzalanan kefilli ve referanslı borç senedi"
+        },
+        {
+            "code": "70",
+            "name": "Borçlunun alacaklı namına poliçesi"
+        },
+        {
+            "code": "74",
+            "name": "Borçlunun bankasının alacaklı namına poliçesi"
+        },
+        {
+            "code": "75",
+            "name": "Borçlunun alacaklı namına banka referanslı poliçesi"
+        },
+        {
+            "code": "76",
+            "name": "Borçlunun bankasının alacaklı namına referanslı poliçesi"
+        },
+        {
+            "code": "77",
+            "name": "Borçlunun alacaklı namına kefilli poliçesi"
+        },
+        {
+            "code": "78",
+            "name": "Borçlunun alacaklı namına kefil tarafından ödeme onaylı poliçesi"
+        },
+        {
+            "code": "91",
+            "name": "Devredilemez banka ödeme emri"
+        },
+        {
+            "code": "92",
+            "name": "Devredilemez yerel çek"
+        },
+        {
+            "code": "93",
+            "name": "Yurtdışına kayıtlı ödeme"
+        },
+        {
+            "code": "94",
+            "name": "Yurtdışına hızlı ödeme"
+        },
+        {
+            "code": "95",
+            "name": "Yurtdışına serbest ödeme"
+        },
+        {
+            "code": "96",
+            "name": "Uygunsuz ödeme yöntemi"
+        },
+        {
+            "code": "97",
+            "name": "Ortaklar arasında takas"
+        },
+        {
+            "code": "ZZZ",
+            "name": "Karşılıklı anlaşmayla serbest ödeme \/ tahsilat"
+        }
+    ],
+    "countries": [
+        {
+            "code": "AF",
+            "name": "Afghanistan"
+        },
+        {
+            "code": "AX",
+            "name": "Aland islands"
+        },
+        {
+            "code": "AL",
+            "name": "Albania"
+        },
+        {
+            "code": "DZ",
+            "name": "Algeria"
+        },
+        {
+            "code": "AS",
+            "name": "American samoa"
+        },
+        {
+            "code": "AD",
+            "name": "Andorra"
+        },
+        {
+            "code": "AO",
+            "name": "Angola"
+        },
+        {
+            "code": "AI",
+            "name": "Anguilla"
+        },
+        {
+            "code": "AQ",
+            "name": "Antarctica"
+        },
+        {
+            "code": "AG",
+            "name": "Antigua and barbuda"
+        },
+        {
+            "code": "AR",
+            "name": "Argentina"
+        },
+        {
+            "code": "AM",
+            "name": "Armenia"
+        },
+        {
+            "code": "AW",
+            "name": "Aruba"
+        },
+        {
+            "code": "AU",
+            "name": "Australia"
+        },
+        {
+            "code": "AT",
+            "name": "Austria"
+        },
+        {
+            "code": "AZ",
+            "name": "Azerbaijan"
+        },
+        {
+            "code": "BS",
+            "name": "Bahamas"
+        },
+        {
+            "code": "BH",
+            "name": "Bahrain"
+        },
+        {
+            "code": "BD",
+            "name": "Bangladesh"
+        },
+        {
+            "code": "BB",
+            "name": "Barbados"
+        },
+        {
+            "code": "BY",
+            "name": "Belarus"
+        },
+        {
+            "code": "BE",
+            "name": "Belgium"
+        },
+        {
+            "code": "BZ",
+            "name": "Belize"
+        },
+        {
+            "code": "BJ",
+            "name": "Benin"
+        },
+        {
+            "code": "BM",
+            "name": "Bermuda"
+        },
+        {
+            "code": "BT",
+            "name": "Bhutan"
+        },
+        {
+            "code": "BO",
+            "name": "Bolivia, plurinational state of"
+        },
+        {
+            "code": "BQ",
+            "name": "Bonaire, sint eustatius and saba"
+        },
+        {
+            "code": "BA",
+            "name": "Bosnia and herzegovina"
+        },
+        {
+            "code": "BW",
+            "name": "Botswana"
+        },
+        {
+            "code": "BV",
+            "name": "Bouvet island"
+        },
+        {
+            "code": "BR",
+            "name": "Brazil"
+        },
+        {
+            "code": "IO",
+            "name": "British indian ocean territory"
+        },
+        {
+            "code": "BN",
+            "name": "Brunei darussalam"
+        },
+        {
+            "code": "BG",
+            "name": "Bulgaria"
+        },
+        {
+            "code": "BF",
+            "name": "Burkina faso"
+        },
+        {
+            "code": "BI",
+            "name": "Burundi"
+        },
+        {
+            "code": "CI",
+            "name": "Cã?te d'ivoire"
+        },
+        {
+            "code": "KH",
+            "name": "Cambodia"
+        },
+        {
+            "code": "CM",
+            "name": "Cameroon"
+        },
+        {
+            "code": "CA",
+            "name": "Canada"
+        },
+        {
+            "code": "CV",
+            "name": "Cape verde"
+        },
+        {
+            "code": "KY",
+            "name": "Cayman islands"
+        },
+        {
+            "code": "CF",
+            "name": "Central african republic"
+        },
+        {
+            "code": "TD",
+            "name": "Chad"
+        },
+        {
+            "code": "CL",
+            "name": "Chile"
+        },
+        {
+            "code": "CN",
+            "name": "China"
+        },
+        {
+            "code": "CX",
+            "name": "Christmas island"
+        },
+        {
+            "code": "CC",
+            "name": "Cocos (keeling) islands"
+        },
+        {
+            "code": "CO",
+            "name": "Colombia"
+        },
+        {
+            "code": "KM",
+            "name": "Comoros"
+        },
+        {
+            "code": "CG",
+            "name": "Congo"
+        },
+        {
+            "code": "CD",
+            "name": "Congo, the democratic republic of the"
+        },
+        {
+            "code": "CK",
+            "name": "Cook islands"
+        },
+        {
+            "code": "CR",
+            "name": "Costa rica"
+        },
+        {
+            "code": "HR",
+            "name": "Croatia"
+        },
+        {
+            "code": "CU",
+            "name": "Cuba"
+        },
+        {
+            "code": "CW",
+            "name": "Curaã?ao"
+        },
+        {
+            "code": "CZ",
+            "name": "Czech republic"
+        },
+        {
+            "code": "DK",
+            "name": "Denmark"
+        },
+        {
+            "code": "DJ",
+            "name": "Djibouti"
+        },
+        {
+            "code": "DM",
+            "name": "Dominica"
+        },
+        {
+            "code": "DO",
+            "name": "Dominican republic"
+        },
+        {
+            "code": "EC",
+            "name": "Ecuador"
+        },
+        {
+            "code": "EG",
+            "name": "Egypt"
+        },
+        {
+            "code": "SV",
+            "name": "El salvador"
+        },
+        {
+            "code": "GQ",
+            "name": "Equatorial guinea"
+        },
+        {
+            "code": "ER",
+            "name": "Eritrea"
+        },
+        {
+            "code": "EE",
+            "name": "Estonia"
+        },
+        {
+            "code": "ET",
+            "name": "Ethiopia"
+        },
+        {
+            "code": "FK",
+            "name": "Falkland islands (malvinas)"
+        },
+        {
+            "code": "FO",
+            "name": "Faroe islands"
+        },
+        {
+            "code": "FJ",
+            "name": "Fiji"
+        },
+        {
+            "code": "FI",
+            "name": "Finland"
+        },
+        {
+            "code": "FR",
+            "name": "France"
+        },
+        {
+            "code": "GF",
+            "name": "French guiana"
+        },
+        {
+            "code": "PF",
+            "name": "French polynesia"
+        },
+        {
+            "code": "TF",
+            "name": "French southern territories"
+        },
+        {
+            "code": "GA",
+            "name": "Gabon"
+        },
+        {
+            "code": "GM",
+            "name": "Gambia"
+        },
+        {
+            "code": "GE",
+            "name": "Georgia"
+        },
+        {
+            "code": "DE",
+            "name": "Germany"
+        },
+        {
+            "code": "GH",
+            "name": "Ghana"
+        },
+        {
+            "code": "GI",
+            "name": "Gibraltar"
+        },
+        {
+            "code": "GR",
+            "name": "Greece"
+        },
+        {
+            "code": "GL",
+            "name": "Greenland"
+        },
+        {
+            "code": "GD",
+            "name": "Grenada"
+        },
+        {
+            "code": "GP",
+            "name": "Guadeloupe"
+        },
+        {
+            "code": "GU",
+            "name": "Guam"
+        },
+        {
+            "code": "GT",
+            "name": "Guatemala"
+        },
+        {
+            "code": "GG",
+            "name": "Guernsey"
+        },
+        {
+            "code": "GN",
+            "name": "Guinea"
+        },
+        {
+            "code": "GW",
+            "name": "Guinea-bissau"
+        },
+        {
+            "code": "GY",
+            "name": "Guyana"
+        },
+        {
+            "code": "HT",
+            "name": "Haiti"
+        },
+        {
+            "code": "HM",
+            "name": "Heard island and mcdonald islands"
+        },
+        {
+            "code": "VA",
+            "name": "Holy see (vatican city state)"
+        },
+        {
+            "code": "HN",
+            "name": "Honduras"
+        },
+        {
+            "code": "HK",
+            "name": "Hong kong"
+        },
+        {
+            "code": "HU",
+            "name": "Hungary"
+        },
+        {
+            "code": "IS",
+            "name": "Iceland"
+        },
+        {
+            "code": "IN",
+            "name": "India"
+        },
+        {
+            "code": "ID",
+            "name": "Indonesia"
+        },
+        {
+            "code": "IR",
+            "name": "Iran, islamic republic of"
+        },
+        {
+            "code": "IQ",
+            "name": "Iraq"
+        },
+        {
+            "code": "IE",
+            "name": "Ireland"
+        },
+        {
+            "code": "IM",
+            "name": "Isle of man"
+        },
+        {
+            "code": "IL",
+            "name": "Israel"
+        },
+        {
+            "code": "IT",
+            "name": "Italy"
+        },
+        {
+            "code": "JM",
+            "name": "Jamaica"
+        },
+        {
+            "code": "JP",
+            "name": "Japan"
+        },
+        {
+            "code": "JE",
+            "name": "Jersey"
+        },
+        {
+            "code": "JO",
+            "name": "Jordan"
+        },
+        {
+            "code": "CY",
+            "name": "K.K.T.C."
+        },
+        {
+            "code": "KZ",
+            "name": "Kazakhstan"
+        },
+        {
+            "code": "KE",
+            "name": "Kenya"
+        },
+        {
+            "code": "KI",
+            "name": "Kiribati"
+        },
+        {
+            "code": "KP",
+            "name": "Korea, democratic people's republic of"
+        },
+        {
+            "code": "KR",
+            "name": "Korea, republic of"
+        },
+        {
+            "code": "XK",
+            "name": "Kosova"
+        },
+        {
+            "code": "KW",
+            "name": "Kuwait"
+        },
+        {
+            "code": "KG",
+            "name": "Kyrgyzstan"
+        },
+        {
+            "code": "LA",
+            "name": "Lao people's democratic republic"
+        },
+        {
+            "code": "LV",
+            "name": "Latvia"
+        },
+        {
+            "code": "LB",
+            "name": "Lebanon"
+        },
+        {
+            "code": "LS",
+            "name": "Lesotho"
+        },
+        {
+            "code": "LR",
+            "name": "Liberia"
+        },
+        {
+            "code": "LY",
+            "name": "Libya"
+        },
+        {
+            "code": "LI",
+            "name": "Liechtenstein"
+        },
+        {
+            "code": "LT",
+            "name": "Lithuania"
+        },
+        {
+            "code": "LU",
+            "name": "Luxembourg"
+        },
+        {
+            "code": "MO",
+            "name": "Macao"
+        },
+        {
+            "code": "MK",
+            "name": "Macedonia, the former yugoslav republic of"
+        },
+        {
+            "code": "MG",
+            "name": "Madagascar"
+        },
+        {
+            "code": "MW",
+            "name": "Malawi"
+        },
+        {
+            "code": "MY",
+            "name": "Malaysia"
+        },
+        {
+            "code": "MV",
+            "name": "Maldives"
+        },
+        {
+            "code": "ML",
+            "name": "Mali"
+        },
+        {
+            "code": "MT",
+            "name": "Malta"
+        },
+        {
+            "code": "MH",
+            "name": "Marshall islands"
+        },
+        {
+            "code": "MQ",
+            "name": "Martinique"
+        },
+        {
+            "code": "MR",
+            "name": "Mauritania"
+        },
+        {
+            "code": "MU",
+            "name": "Mauritius"
+        },
+        {
+            "code": "YT",
+            "name": "Mayotte"
+        },
+        {
+            "code": "MX",
+            "name": "Mexico"
+        },
+        {
+            "code": "FM",
+            "name": "Micronesia, federated states of"
+        },
+        {
+            "code": "MD",
+            "name": "Moldova, republic of"
+        },
+        {
+            "code": "MC",
+            "name": "Monaco"
+        },
+        {
+            "code": "MN",
+            "name": "Mongolia"
+        },
+        {
+            "code": "ME",
+            "name": "Montenegro"
+        },
+        {
+            "code": "MS",
+            "name": "Montserrat"
+        },
+        {
+            "code": "MA",
+            "name": "Morocco"
+        },
+        {
+            "code": "MZ",
+            "name": "Mozambique"
+        },
+        {
+            "code": "MM",
+            "name": "Myanmar"
+        },
+        {
+            "code": "NA",
+            "name": "Namibia"
+        },
+        {
+            "code": "NR",
+            "name": "Nauru"
+        },
+        {
+            "code": "NP",
+            "name": "Nepal"
+        },
+        {
+            "code": "NL",
+            "name": "Netherlands"
+        },
+        {
+            "code": "NC",
+            "name": "New caledonia"
+        },
+        {
+            "code": "NZ",
+            "name": "New zealand"
+        },
+        {
+            "code": "NI",
+            "name": "Nicaragua"
+        },
+        {
+            "code": "NE",
+            "name": "Niger"
+        },
+        {
+            "code": "NG",
+            "name": "Nigeria"
+        },
+        {
+            "code": "NU",
+            "name": "Niue"
+        },
+        {
+            "code": "NF",
+            "name": "Norfolk island"
+        },
+        {
+            "code": "MP",
+            "name": "Northern mariana islands"
+        },
+        {
+            "code": "NO",
+            "name": "Norway"
+        },
+        {
+            "code": "OM",
+            "name": "Oman"
+        },
+        {
+            "code": "PK",
+            "name": "Pakistan"
+        },
+        {
+            "code": "PW",
+            "name": "Palau"
+        },
+        {
+            "code": "PS",
+            "name": "Palestine, state of"
+        },
+        {
+            "code": "PA",
+            "name": "Panama"
+        },
+        {
+            "code": "PG",
+            "name": "Papua new guinea"
+        },
+        {
+            "code": "PY",
+            "name": "Paraguay"
+        },
+        {
+            "code": "PE",
+            "name": "Peru"
+        },
+        {
+            "code": "PH",
+            "name": "Philippines"
+        },
+        {
+            "code": "PN",
+            "name": "Pitcairn"
+        },
+        {
+            "code": "PL",
+            "name": "Poland"
+        },
+        {
+            "code": "PT",
+            "name": "Portugal"
+        },
+        {
+            "code": "PR",
+            "name": "Puerto rico"
+        },
+        {
+            "code": "QA",
+            "name": "Qatar"
+        },
+        {
+            "code": "RE",
+            "name": "Rã?union"
+        },
+        {
+            "code": "RO",
+            "name": "Romania"
+        },
+        {
+            "code": "RU",
+            "name": "Russian federation"
+        },
+        {
+            "code": "RW",
+            "name": "Rwanda"
+        },
+        {
+            "code": "BL",
+            "name": "Saint barthã?lemy"
+        },
+        {
+            "code": "SH",
+            "name": "Saint helena, ascension and tristan da cunha"
+        },
+        {
+            "code": "KN",
+            "name": "Saint kitts and nevis"
+        },
+        {
+            "code": "LC",
+            "name": "Saint lucia"
+        },
+        {
+            "code": "MF",
+            "name": "Saint martin (french part)"
+        },
+        {
+            "code": "PM",
+            "name": "Saint pierre and miquelon"
+        },
+        {
+            "code": "VC",
+            "name": "Saint vincent and the grenadines"
+        },
+        {
+            "code": "WS",
+            "name": "Samoa"
+        },
+        {
+            "code": "SM",
+            "name": "San marino"
+        },
+        {
+            "code": "ST",
+            "name": "Sao tome and principe"
+        },
+        {
+            "code": "SA",
+            "name": "Saudi arabia"
+        },
+        {
+            "code": "SN",
+            "name": "Senegal"
+        },
+        {
+            "code": "RS",
+            "name": "Serbia"
+        },
+        {
+            "code": "SC",
+            "name": "Seychelles"
+        },
+        {
+            "code": "SL",
+            "name": "Sierra leone"
+        },
+        {
+            "code": "SG",
+            "name": "Singapore"
+        },
+        {
+            "code": "SX",
+            "name": "Sint maarten (dutch part)"
+        },
+        {
+            "code": "SK",
+            "name": "Slovakia"
+        },
+        {
+            "code": "SI",
+            "name": "Slovenia"
+        },
+        {
+            "code": "SB",
+            "name": "Solomon islands"
+        },
+        {
+            "code": "SO",
+            "name": "Somalia"
+        },
+        {
+            "code": "ZA",
+            "name": "South africa"
+        },
+        {
+            "code": "GS",
+            "name": "South georgia and the south sandwich islands"
+        },
+        {
+            "code": "SS",
+            "name": "South sudan"
+        },
+        {
+            "code": "ES",
+            "name": "Spain"
+        },
+        {
+            "code": "LK",
+            "name": "Sri lanka"
+        },
+        {
+            "code": "SD",
+            "name": "Sudan"
+        },
+        {
+            "code": "SR",
+            "name": "Suriname"
+        },
+        {
+            "code": "SJ",
+            "name": "Svalbard and jan mayen"
+        },
+        {
+            "code": "SZ",
+            "name": "Swaziland"
+        },
+        {
+            "code": "SE",
+            "name": "Sweden"
+        },
+        {
+            "code": "CH",
+            "name": "Switzerland"
+        },
+        {
+            "code": "SY",
+            "name": "Syrian arab republic"
+        },
+        {
+            "code": "TW",
+            "name": "Taiwan, province of china"
+        },
+        {
+            "code": "TJ",
+            "name": "Tajikistan"
+        },
+        {
+            "code": "TZ",
+            "name": "Tanzania, united republic of"
+        },
+        {
+            "code": "TH",
+            "name": "Thailand"
+        },
+        {
+            "code": "TL",
+            "name": "Timor-leste"
+        },
+        {
+            "code": "TG",
+            "name": "Togo"
+        },
+        {
+            "code": "TK",
+            "name": "Tokelau"
+        },
+        {
+            "code": "TO",
+            "name": "Tonga"
+        },
+        {
+            "code": "TT",
+            "name": "Trinidad and tobago"
+        },
+        {
+            "code": "TN",
+            "name": "Tunisia"
+        },
+        {
+            "code": "TM",
+            "name": "Turkmenistan"
+        },
+        {
+            "code": "TC",
+            "name": "Turks and caicos islands"
+        },
+        {
+            "code": "TV",
+            "name": "Tuvalu"
+        },
+        {
+            "code": "TR",
+            "name": "Türkiye"
+        },
+        {
+            "code": "UG",
+            "name": "Uganda"
+        },
+        {
+            "code": "UA",
+            "name": "Ukraine"
+        },
+        {
+            "code": "AE",
+            "name": "United arab emirates"
+        },
+        {
+            "code": "GB",
+            "name": "United kingdom"
+        },
+        {
+            "code": "US",
+            "name": "United states"
+        },
+        {
+            "code": "UM",
+            "name": "United states minor outlying islands"
+        },
+        {
+            "code": "UY",
+            "name": "Uruguay"
+        },
+        {
+            "code": "UZ",
+            "name": "Uzbekistan"
+        },
+        {
+            "code": "VU",
+            "name": "Vanuatu"
+        },
+        {
+            "code": "VE",
+            "name": "Venezuela, bolivarian republic of"
+        },
+        {
+            "code": "VN",
+            "name": "Viet nam"
+        },
+        {
+            "code": "VG",
+            "name": "Virgin islands, british"
+        },
+        {
+            "code": "VI",
+            "name": "Virgin islands, u.s."
+        },
+        {
+            "code": "WF",
+            "name": "Wallis and futuna"
+        },
+        {
+            "code": "EH",
+            "name": "Western sahara"
+        },
+        {
+            "code": "YE",
+            "name": "Yemen"
+        },
+        {
+            "code": "ZM",
+            "name": "Zambia"
+        },
+        {
+            "code": "ZW",
+            "name": "Zimbabwe"
+        }
+    ]
+}

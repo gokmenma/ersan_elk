@@ -56,15 +56,17 @@
             const statusIndex = sources.indexOf('entegrator_durum_kodu') >= 0 ? sources.indexOf('entegrator_durum_kodu') : sources.indexOf('ticari_yanit');
             table.rows({page: 'current'}).every(function () {
                 const row = this.data(); const cells = $(this.node()).children('td');
-                cells.find('.efatura-history,.efatura-pdf,.efatura-reports').remove();
-                const history = $('<button type="button" class="btn btn-sm btn-light efatura-history" title="İşlem geçmişi"><i class="bx bx-history"></i></button>').attr('data-id', row.encrypted_id);
-                const pdf = $('<button type="button" class="btn btn-sm btn-light efatura-pdf" title="PDF indir"><i class="bx bxs-file-pdf"></i></button>').attr('data-id', row.encrypted_id);
-                cells.last().append(history, pdf);
-                const reports = $('<div class="efatura-reports small text-muted">');
-                if (row.earsiv_rapor_durum) reports.append($('<div>').text('Rapor: ' + row.earsiv_rapor_durum));
-                if (row.earsiv_iptal_rapor_durum) reports.append($('<div>').text('İptal raporu: ' + row.earsiv_iptal_rapor_durum));
-                if (row.islem_belirsiz) reports.append($('<div class="text-warning">').text('Durumu sorgulayın: ' + row.islem_belirsiz));
-                if (statusIndex >= 0) cells.eq(statusIndex).append(reports);
+                cells.find('.efatura-reports').remove();
+                if (cells.last().find('.action-btn-group').length === 0 && cells.last().find('.efatura-history').length === 0) {
+                    const history = $('<button type="button" class="btn btn-sm btn-subtle-info table-action-btn efatura-history" title="İşlem geçmişi"><i class="bx bx-history"></i></button>').attr('data-id', row.encrypted_id);
+                    const pdf = $('<button type="button" class="btn btn-sm btn-subtle-danger table-action-btn efatura-pdf" title="PDF indir"><i class="bx bxs-file-pdf"></i></button>').attr('data-id', row.encrypted_id);
+                    cells.last().append(history, pdf);
+                }
+                const reports = $('<div class="efatura-reports small mt-1">');
+                if (row.earsiv_rapor_durum) reports.append($('<div class="badge bg-light text-muted border font-size-10 me-1">').text('Rapor: ' + row.earsiv_rapor_durum));
+                if (row.earsiv_iptal_rapor_durum) reports.append($('<div class="badge bg-danger-subtle text-danger border font-size-10 me-1">').text('İptal: ' + row.earsiv_iptal_rapor_durum));
+                if (row.islem_belirsiz) reports.append($('<div class="badge bg-warning-subtle text-warning border font-size-10">').text('Sorgula: ' + row.islem_belirsiz));
+                if (statusIndex >= 0 && (row.earsiv_rapor_durum || row.earsiv_iptal_rapor_durum || row.islem_belirsiz)) cells.eq(statusIndex).append(reports);
             });
         });
     });

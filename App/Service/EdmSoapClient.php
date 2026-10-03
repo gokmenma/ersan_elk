@@ -87,8 +87,17 @@ class EdmSoapClient
             }
             $business = $e instanceof SoapFault && !empty($e->detail);
             $kind = $business ? 'business' : ($mutation ? 'unknown' : 'connection');
+            $detailObj = $business ? $e->detail : null;
+            $faultMsg = null;
+            if ($detailObj && isset($detailObj->RequestFault->ERROR_SHORT_DES) && !empty($detailObj->RequestFault->ERROR_SHORT_DES)) {
+                $faultMsg = (string)$detailObj->RequestFault->ERROR_SHORT_DES;
+            } elseif ($detailObj && isset($detailObj->RequestFault->ERROR_LONG_DES) && !empty($detailObj->RequestFault->ERROR_LONG_DES)) {
+                $faultMsg = (string)$detailObj->RequestFault->ERROR_LONG_DES;
+            } elseif ($e instanceof SoapFault && !empty($e->getMessage())) {
+                $faultMsg = $e->getMessage();
+            }
             $this->log($method, $invoiceId, $params, $business ? $e->detail : ['kind' => $kind], 'BASARISIZ', $e instanceof SoapFault ? (string)$e->faultcode : $kind);
-            throw new EdmOperationException($kind, $business ? 'EDM işlemi reddetti. İşlem geçmişini kontrol edin.' : ($mutation ? 'EDM işlem sonucu belirsiz. Yeniden denemeden önce durumu sorgulayın.' : 'EDM servisine erişilemedi.'), $e);
+            throw new EdmOperationException($kind, $faultMsg ?? ($business ? 'EDM işlemi reddetti. İşlem geçmişini kontrol edin.' : ($mutation ? 'EDM işlem sonucu belirsiz. Yeniden denemeden önce durumu sorgulayın.' : 'EDM servisine erişilemedi.')), $e);
         }
     }
 
@@ -203,17 +212,22 @@ class EdmSoapClient
         $results = [];
         // The WSDL accepts one INVOICE, not an array.
         foreach ($uuids as $uuid) {
-            $result = $this->call('GetInvoiceStatus', ['INVOICE' => (object)['UUID' => $uuid]]);
-            foreach (self::items($result->INVOICE_STATUS ?? null) as $item) {
-                if ((string)($item->UUID ?? '') !== $uuid) continue;
-                $results[$uuid] = [
-                    'uuid' => $uuid, 'fatura_no' => $item->ID ?? '', 'status' => $item->STATUS ?? '',
-                    'status_code' => $item->STATUS ?? '', 'status_desc' => $item->STATUS_DESCRIPTION ?? '',
-                    'gib_code' => $item->GIB_STATUS_CODE ?? null, 'gib_desc' => $item->GIB_STATUS_DESCRIPTION ?? '',
-                    'response_code' => $item->RESPONSE_CODE ?? '', 'envelope_id' => $item->ENVELOPE_IDENTIFIER ?? null,
-                    'report_status' => $item->EARCHIVE_REPORT_STATUS ?? null, 'report_desc' => $item->EARCHIVE_REPORT_STATUS_DESC ?? null,
-                    'cancel_report_status' => $item->EARCHIVE_CANCEL_REPORT_STATUS ?? null, 'cancel_report_desc' => $item->EARCHIVE_CANCEL_REPORT_STATUS_DESC ?? null,
-                ];
+            try {
+                $result = $this->call('GetInvoiceStatus', ['INVOICE' => (object)['UUID' => $uuid]]);
+                foreach (self::items($result->INVOICE_STATUS ?? null) as $item) {
+                    if ((string)($item->UUID ?? '') !== $uuid) continue;
+                    $results[$uuid] = [
+                        'uuid' => $uuid, 'fatura_no' => $item->ID ?? '', 'status' => $item->STATUS ?? '',
+                        'status_code' => $item->STATUS ?? '', 'status_desc' => $item->STATUS_DESCRIPTION ?? '',
+                        'gib_code' => $item->GIB_STATUS_CODE ?? null, 'gib_desc' => $item->GIB_STATUS_DESCRIPTION ?? '',
+                        'response_code' => $item->RESPONSE_CODE ?? '', 'envelope_id' => $item->ENVELOPE_IDENTIFIER ?? null,
+                        'report_status' => $item->EARCHIVE_REPORT_STATUS ?? null, 'report_desc' => $item->EARCHIVE_REPORT_STATUS_DESC ?? null,
+                        'cancel_report_status' => $item->EARCHIVE_CANCEL_REPORT_STATUS ?? null, 'cancel_report_desc' => $item->EARCHIVE_CANCEL_REPORT_STATUS_DESC ?? null,
+                    ];
+                }
+            } catch (\Throwable $e) {
+                // Fatura EDM'de henüz kayıtlı değilse veya sorgu hata verirse atla
+                continue;
             }
         }
         return $results;
@@ -255,51 +269,88 @@ class EdmSoapClient
 
         $all = [];
         $seen = [];
+        $pageSize = max(1, min(100, $limit));
 
-        $key = [
-            'LIMIT'         => 100,
-            'DIRECTION'     => $direction,
-            'READ_INCLUDED' => true
-        ];
-        if ($dateType === 'CREATE') {
-            $key += [
-                'CR_START_DATE' => $start->format('Y-m-d\T00:00:00'),
-                'CR_END_DATE'   => $end->format('Y-m-d\T23:59:59')
-            ];
-        } else {
-            $key += [
-                'START_DATE' => $start->format('Y-m-d'),
-                'END_DATE'   => $end->format('Y-m-d')
-            ];
-        }
+        // EDM en fazla 100 kayıt döndürüyor. Aralığı günlere bölüp OFFSET ile
+        // ilerlemek, yoğun günlerde listenin ilk sayfasından sonrasını kaçırmayı önler.
+        for ($day = $start; $day <= $end; $day = $day->modify('+1 day')) {
+            $offset = 0;
+            $previousPageSignature = null;
+            $effectivePageSize = null;
 
-        try {
-            $response = $this->call('GetInvoice', ['INVOICE_SEARCH_KEY' => (object)$key, 'HEADER_ONLY' => 'N', 'INVOICE_CONTENT_TYPE' => 'XML']);
-            $items = self::items($response->INVOICE ?? null);
-            foreach ($items as $item) {
-                $uuid = (string)($item->UUID ?? '');
-                if (!$uuid || isset($seen[$uuid])) continue;
-                $seen[$uuid] = true;
-                $hdr = $item->HEADER ?? (object)[];
-                $all[$uuid] = [
-                    'uuid'           => $uuid,
-                    'fatura_no'      => $item->ID ?? '',
-                    'xml'            => self::decodeContent($item->CONTENT ?? null),
-                    'header'         => $hdr,
-                    'status'         => $hdr->STATUS ?? '',
-                    'status_desc'    => $hdr->STATUS_DESCRIPTION ?? '',
-                    'issue_date'     => $hdr->ISSUE_DATE ?? '',
-                    'profile_id'     => $hdr->PROFILEID ?? '',
-                    'payable_amount' => $hdr->PAYABLE_AMOUNT->_ ?? 0,
-                    'supplier'       => $hdr->SUPPLIER ?? '',
-                    'customer'       => $hdr->CUSTOMER ?? '',
-                    'sender'         => $hdr->SENDER ?? '',
-                    'receiver'       => $hdr->RECEIVER ?? ''
+            while (true) {
+                $key = [
+                    'LIMIT'         => $pageSize,
+                    'OFFSET'        => $offset,
+                    'DIRECTION'     => $direction,
+                    'READ_INCLUDED' => true
                 ];
+                if ($dateType === 'CREATE') {
+                    $key += [
+                        'CR_START_DATE' => $day->format('Y-m-d\T00:00:00'),
+                        'CR_END_DATE'   => $day->format('Y-m-d\T23:59:59')
+                    ];
+                } else {
+                    $key += [
+                        'START_DATE' => $day->format('Y-m-d'),
+                        'END_DATE'   => $day->format('Y-m-d')
+                    ];
+                }
+
+                try {
+                    $response = $this->call('GetInvoice', ['INVOICE_SEARCH_KEY' => (object)$key, 'HEADER_ONLY' => 'N', 'INVOICE_CONTENT_TYPE' => 'XML']);
+                    $items = self::items($response->INVOICE ?? null);
+                } catch (EdmOperationException $e) {
+                    $this->syncResult['complete'] = false;
+                    $this->syncResult['errors'][] = ['date' => $day->format('Y-m-d'), 'message' => $e->getMessage()];
+                    break;
+                }
+
+                $pageUuids = [];
+                foreach ($items as $item) {
+                    $uuid = trim((string)($item->UUID ?? ''));
+                    if (!$uuid) continue;
+                    $pageUuids[] = $uuid;
+                    if (isset($seen[$uuid])) continue;
+                    $seen[$uuid] = true;
+                    $hdr = $item->HEADER ?? (object)[];
+                    $all[$uuid] = [
+                        'uuid'           => $uuid,
+                        'fatura_no'      => $item->ID ?? '',
+                        'xml'            => self::decodeContent($item->CONTENT ?? null),
+                        'header'         => $hdr,
+                        'status'         => $hdr->STATUS ?? '',
+                        'status_desc'    => $hdr->STATUS_DESCRIPTION ?? '',
+                        'issue_date'     => $hdr->ISSUE_DATE ?? '',
+                        'profile_id'     => $hdr->PROFILEID ?? '',
+                        'payable_amount' => $hdr->PAYABLE_AMOUNT->_ ?? 0,
+                        'supplier'       => $hdr->SUPPLIER ?? '',
+                        'customer'       => $hdr->CUSTOMER ?? '',
+                        'sender'         => $hdr->SENDER ?? '',
+                        'receiver'       => $hdr->RECEIVER ?? ''
+                    ];
+                }
+
+                if (!$items) break;
+
+                // EDM bazı hesaplarda istenen LIMIT'ten daha düşük (ör. 50)
+                // sabit bir sunucu sayfa boyutu uyguluyor. İlk sayfa bu gerçek
+                // boyutu belirler; yalnızca bundan kısa bir sayfa son sayfadır.
+                $effectivePageSize ??= count($items);
+                if (count($items) < $effectivePageSize) break;
+
+                $pageSignature = hash('sha256', implode("\n", $pageUuids));
+                if (!$pageUuids || $pageSignature === $previousPageSignature) {
+                    $this->syncResult['complete'] = false;
+                    $this->syncResult['errors'][] = [
+                        'date' => $day->format('Y-m-d'),
+                        'message' => 'EDM sayfalaması ilerlemedi; aynı kayıtlar tekrar döndü.'
+                    ];
+                    break;
+                }
+                $previousPageSignature = $pageSignature;
+                $offset += count($items);
             }
-        } catch (EdmOperationException $e) {
-            $this->syncResult['complete'] = false;
-            $this->syncResult['errors'][] = ['date' => "$startStr - $endStr", 'message' => $e->getMessage()];
         }
 
         return array_values($all);

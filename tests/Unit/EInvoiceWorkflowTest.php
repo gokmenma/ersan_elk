@@ -177,6 +177,21 @@ final class EInvoiceWorkflowTest extends TestCase
         self::assertFalse($client->getSyncResult()['complete']);
         self::assertCount(1,$client->getSyncResult()['errors']);
     }
+    public function testPagingContinuesWhenEdmCapsResponsesBelowRequestedLimit(): void
+    {
+        $transport=new InvoiceOfflineTransport(function($method,$request) {
+            $key=$request->INVOICE_SEARCH_KEY; $items=[];
+            for($i=$key->OFFSET;$i<min($key->OFFSET+50,125);$i++) {
+                $items[]=(object)['UUID'=>'capped-'.$i,'ID'=>'no-'.$i,'CONTENT'=>'<Invoice/>','HEADER'=>(object)[]];
+            }
+            return (object)['INVOICE'=>$items];
+        });
+        $client=new EdmSoapClient(2,$transport,$this->settings());
+        self::assertCount(125,$client->getInvoices('OUT','2026-10-03','2026-10-03',100));
+        self::assertSame(50,$transport->requests[2][1]->INVOICE_SEARCH_KEY->OFFSET);
+        self::assertSame(100,$transport->requests[3][1]->INVOICE_SEARCH_KEY->OFFSET);
+        self::assertTrue($client->getSyncResult()['complete']);
+    }
     public function testPdfBinaryAndCounterUnavailableAreHandled(): void
     {
         $transport=new InvoiceOfflineTransport(fn($method)=>$method==='GetInvoice' ? (object)['INVOICE'=>(object)['UUID'=>'uuid','CONTENT'=>base64_encode('%PDF-1.7 offline')]] : (object)[]);

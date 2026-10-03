@@ -5,12 +5,58 @@
 
 $(document).ready(function() {
     let currentYanitFilter = '';
+    let currentStartDate = '';
+    let currentEndDate = '';
+
+    // Varsayılan: İçinde Bulunulan Ayın İlk ve Son Günü
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const formatDMY = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+
+    currentStartDate = formatYMD(firstDay);
+    currentEndDate = formatYMD(lastDay);
 
     window.efaturaSetupSummary('efatura_gelen_summary_cards_state');
 
+    // Flatpickr Tarih Aralığı Seçici Başlat
+    if (typeof flatpickr !== 'undefined' && document.getElementById('filterDateRange')) {
+        flatpickr('#filterDateRange', {
+            mode: 'range',
+            locale: 'tr',
+            dateFormat: 'd.m.Y',
+            defaultDate: [firstDay, lastDay],
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) {
+                    currentStartDate = formatYMD(selectedDates[0]);
+                    currentEndDate = formatYMD(selectedDates[1]);
+                    table.ajax.reload();
+                    loadStats();
+                }
+            }
+        });
+    }
+
+    // Tarih Filtresi Temizle Butonu
+    $('#btnClearDateRange').on('click', function(e) {
+        e.stopPropagation();
+        currentStartDate = '';
+        currentEndDate = '';
+        if (document.getElementById('filterDateRange') && document.getElementById('filterDateRange')._flatpickr) {
+            document.getElementById('filterDateRange')._flatpickr.clear();
+        }
+        $('#filterDateRange').val('');
+        table.ajax.reload();
+        loadStats();
+    });
+
     // 2. İstatistikleri Yükle
     function loadStats() {
-        fetch('api/efatura-api.php?action=summary_stats&list_type=gelen')
+        let url = 'api/efatura-api.php?action=summary_stats&list_type=gelen';
+        if (currentStartDate) url += `&baslangic_tarihi=${currentStartDate}`;
+        if (currentEndDate) url += `&bitis_tarihi=${currentEndDate}`;
+        fetch(url)
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success' && res.data) {
@@ -176,14 +222,22 @@ $(document).ready(function() {
                 searchable: false,
                 className: 'align-middle text-center',
                 render: function(data, type, row) {
-                    let btns = `<div class="d-flex align-items-center justify-content-center gap-1">`;
+                    let btns = `<div class="action-btn-group justify-content-center">`;
                     
-                    btns += `<button type="button" class="btn btn-light border text-primary table-action-btn btn-preview" data-id="${row.encrypted_id}" title="Önizle / İncele"><i class="bx bx-show font-size-15"></i></button>`;
+                    // 1. Önizle
+                    btns += `<button type="button" class="btn btn-sm btn-subtle-primary table-action-btn btn-preview" data-id="${row.encrypted_id}" title="Önizle / İncele"><i class="bx bx-show font-size-15"></i></button>`;
 
+                    // 2. PDF İndir
+                    btns += `<a href="api/efatura-api.php?action=download_pdf&invoice_id=${row.encrypted_id}" class="btn btn-sm btn-subtle-danger table-action-btn" title="PDF İndir" target="_blank"><i class="bx bxs-file-pdf font-size-15"></i></a>`;
+
+                    // 3. Ticari Kabul / Red Butonları
                     if (row.fatura_profili === 'TICARIFATURA' && row.ticari_yanit === 'BEKLIYOR') {
-                        btns += `<button type="button" class="btn btn-success text-white table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="KABUL" title="Kabul Et"><i class="bx bx-check font-size-14"></i></button>`;
-                        btns += `<button type="button" class="btn btn-danger text-white table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="RED" title="Reddet"><i class="bx bx-x font-size-14"></i></button>`;
+                        btns += `<button type="button" class="btn btn-sm btn-subtle-success table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="KABUL" title="Kabul Et"><i class="bx bx-check font-size-15"></i></button>`;
+                        btns += `<button type="button" class="btn btn-sm btn-subtle-danger table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="RED" title="Reddet"><i class="bx bx-x font-size-15"></i></button>`;
                     }
+
+                    // 4. Tarihçe
+                    btns += `<button type="button" class="btn btn-sm btn-subtle-info table-action-btn btn-history efatura-history" data-id="${row.encrypted_id}" title="Geçmiş / Loglar"><i class="bx bx-history font-size-15"></i></button>`;
 
                     btns += `</div>`;
                     return btns;

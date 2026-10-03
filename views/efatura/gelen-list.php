@@ -20,7 +20,7 @@ $title = 'Gelen Faturalar';
     <!-- 1. Üst Başlık ve Aksiyon Araç Çubuğu -->
     <div class="row align-items-center mb-3">
         <div class="col-md-6 col-12 d-flex align-items-center gap-3">
-            <div class="p-2 bg-white rounded-3 border d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 40px; height: 40px; border-color: #e2e8f0 !important;">
+            <div class="p-2 bg-success-subtle text-success rounded-3 border border-success-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
                 <i class="bx bx-download fs-4 text-success"></i>
             </div>
             <div>
@@ -38,7 +38,7 @@ $title = 'Gelen Faturalar';
             <!-- 2. İşlemler Dropdown -->
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="bx bx-cog font-size-16"></i> İşlemler
+                    <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
                 </button>
                 <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
                     <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/taslak-list">
@@ -69,14 +69,14 @@ $title = 'Gelen Faturalar';
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">TOPLAM GELEN FATURA</span>
-                        <div class="summary-kpi-icon bg-light border text-success">
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-download"></i>
                         </div>
                     </div>
                     <h3 class="summary-kpi-value my-1" id="stat_toplam_adet">0</h3>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_bu_ay_adet_text">Bu Ay: 0 Adet</span>
-                        <button type="button" class="btn btn-sm btn-light border rounded-pill px-2 py-0 text-muted status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="">
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-yanit="">
                             <i class="bx bx-filter"></i> Tümü
                         </button>
                     </div>
@@ -90,14 +90,14 @@ $title = 'Gelen Faturalar';
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">KABUL EDİLENLER</span>
-                        <div class="summary-kpi-icon" style="background: #f0fdf4; border: 1px solid #dcfce7; color: #10b981;">
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-check-circle"></i>
                         </div>
                     </div>
                     <h3 class="summary-kpi-value my-1" id="stat_kabul_adet">0</h3>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Onaylanan Faturalar</span>
-                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-yanit="KABUL">
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-yanit="KABUL">
                             <i class="bx bx-check"></i> Kabul
                         </button>
                     </div>
@@ -111,14 +111,14 @@ $title = 'Gelen Faturalar';
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">YANIT BEKLEYENLER</span>
-                        <div class="summary-kpi-icon" style="background: #fffbeb; border: 1px solid #fef3c7; color: #f59e0b;">
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-time"></i>
                         </div>
                     </div>
                     <h3 class="summary-kpi-value my-1" id="stat_bekleyen_adet">0</h3>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-warning fw-semibold">Ticari Fatura Yanıtı</span>
-                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-yanit="BEKLIYOR">
+                        <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-yanit="BEKLIYOR">
                             <i class="bx bx-time-five"></i> Bekleyen
                         </button>
                     </div>
@@ -132,14 +132,14 @@ $title = 'Gelen Faturalar';
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">TOPLAM GELEN TUTARI</span>
-                        <div class="summary-kpi-icon" style="background: #eff6ff; border: 1px solid #dbeafe; color: #2563eb;">
+                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-wallet"></i>
                         </div>
                     </div>
                     <h3 class="summary-kpi-value my-1" id="stat_toplam_tutar">0,00 ₺</h3>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-muted">Bu Ay: <strong id="stat_bu_ay_tutar" class="text-dark">0,00 ₺</strong></span>
-                        <span class="badge bg-light text-primary border rounded-pill px-2 py-1 font-size-11 fw-semibold">
+                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">
                             <?= date('m/Y') ?> Dönemi
                         </span>
                     </div>
@@ -152,13 +152,18 @@ $title = 'Gelen Faturalar';
     <div class="card summary-kpi-card mb-3" id="faturaListCard">
         <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
-                <div class="p-2 bg-light rounded-3 border d-flex align-items-center justify-content-center text-secondary shadow-sm flex-shrink-0" style="width: 38px; height: 38px; border-color: #e2e8f0 !important;">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
                     <i class="bx bx-list-ul font-size-20"></i>
                 </div>
                 <div>
                     <div class="d-flex align-items-center gap-2">
-                        <div class="status-filter-group d-flex gap-1 flex-wrap"><button type="button" class="btn btn-sm btn-light border status-quick-filter" data-yanit="">Tümü</button><button type="button" class="btn btn-sm btn-light border status-quick-filter" data-yanit="BEKLIYOR">Bekliyor</button><button type="button" class="btn btn-sm btn-light border status-quick-filter" data-yanit="KABUL">Kabul</button><button type="button" class="btn btn-sm btn-light border status-quick-filter" data-yanit="RED">Ret</button></div>
-                        <span class="badge bg-dark rounded-pill font-size-11 px-2 py-0" id="badgeTotalRecords">0</span>
+                        <div class="status-filter-group d-flex gap-1 flex-wrap">
+                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-all active" data-yanit="">Tümü</button>
+                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-warning" data-yanit="BEKLIYOR"><i class="bx bx-time-five me-1"></i>Bekliyor</button>
+                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-success" data-yanit="KABUL"><i class="bx bx-check me-1"></i>Kabul</button>
+                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-danger" data-yanit="RED"><i class="bx bx-x me-1"></i>Ret</button>
+                        </div>
+                        <span class="badge bg-primary rounded-pill font-size-11 px-2 py-1" id="badgeTotalRecords">0</span>
                     </div>
                     <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Tedarikçilerden gelen faturalar ve ticari yanıt işlemleri</p>
                 </div>
@@ -166,23 +171,23 @@ $title = 'Gelen Faturalar';
 
             <!-- Sağ Araç Çubuğu: Tarih Aralığı ve Dışa Aktarma Butonları -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-                <!-- Tarih Aralığı Filtresi (Varsayılan: İçinde Bulunulan Ay) -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1" style="border-color: #e2e8f0 !important;">
+                <!-- Tarih Aralığı Filtresi -->
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;">
                     <i class="bx bx-calendar text-primary font-size-16"></i>
                     <input type="text" id="filterDateRange" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 175px; cursor: pointer;" placeholder="Tarih Aralığı..." readonly>
-                    <button type="button" class="btn btn-sm btn-link p-0 text-muted" id="btnClearDateRange" title="Filtreyi Temizle (Tüm Zamanlar)">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearDateRange" title="Filtreyi Temizle (Tüm Zamanlar)">
                         <i class="bx bx-x font-size-14"></i>
                     </button>
                 </div>
 
-                <button type="button" class="btn btn-sm btn-light border px-2 py-1 text-success d-flex align-items-center gap-1 rounded-3" id="btnHeaderExportExcel" title="Excel'e Aktar">
-                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12 fw-semibold">Excel</span>
+                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
+                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
                 </button>
-                <button type="button" class="btn btn-sm btn-light border px-2 py-1 text-dark d-flex align-items-center gap-1 rounded-3" id="btnHeaderPrint" title="Tabloyu Yazdır">
-                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12 fw-semibold">Yazdır</span>
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
                 </button>
-                <button type="button" class="btn btn-sm btn-light border px-2 py-1 text-primary d-flex align-items-center gap-1 rounded-3" id="btnHeaderRefresh" title="Listeyi Yenile">
-                    <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12 fw-semibold">Yenile</span>
+                <button type="button" class="btn btn-sm btn-subtle-primary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderRefresh" title="Listeyi Yenile">
+                    <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yenile</span>
                 </button>
             </div>
         </div>
@@ -254,87 +259,298 @@ $title = 'Gelen Faturalar';
 
 /* Üst Araç Çubuğu Butonları */
 .top-action-btn {
-    height: 36px;
-    padding: 0 14px;
+    height: 38px;
+    padding: 0 16px;
     font-size: 13px;
     font-weight: 600;
-    border-radius: 8px;
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    border: 1px solid #e2e8f0;
+    gap: 7px;
+    border: 1px solid #cbd5e1;
     line-height: normal;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .top-icon-btn {
-    height: 36px;
-    width: 36px;
+    height: 38px;
+    width: 38px;
     padding: 0;
     font-size: 18px;
-    border-radius: 8px;
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
+    transition: all 0.2s ease;
 }
 .top-action-btn.btn-primary {
-    background-color: var(--bs-primary, #135bec) !important;
-    border-color: var(--bs-primary, #135bec) !important;
+    background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%) !important;
+    border: none !important;
     color: #ffffff !important;
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3) !important;
+}
+.top-action-btn.btn-primary:hover {
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+}
+.top-action-btn.btn-success {
+    background: linear-gradient(135deg, #15803d 0%, #22c55e 100%) !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 8px rgba(34, 197, 94, 0.3) !important;
+}
+.top-action-btn.btn-success:hover {
+    background: linear-gradient(135deg, #166534 0%, #16a34a 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4) !important;
 }
 .top-action-btn.btn-outline-secondary,
 .top-icon-btn.btn-outline-secondary {
-    color: #475569 !important;
-    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+    background-color: #ffffff !important;
 }
 .top-action-btn.btn-outline-secondary:hover,
 .top-icon-btn.btn-outline-secondary:hover {
-    background-color: #f8fafc !important;
-    color: #1e293b !important;
-    border-color: #cbd5e1 !important;
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+    transform: translateY(-1px);
 }
 
 /* Minimal KPI Kart Standartları */
 .summary-kpi-card {
     background: #ffffff;
     border: 1px solid #e2e8f0 !important;
-    border-radius: 10px !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.summary-kpi-card:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05) !important;
 }
 .summary-kpi-label {
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 700;
     color: #64748b;
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 .summary-kpi-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1;
 }
 .summary-kpi-value {
-    font-size: 1.35rem;
+    font-size: 1.45rem;
     font-weight: 700;
     color: #0f172a;
     line-height: 1.2;
 }
 .summary-kpi-subtext {
-    font-size: 11px;
+    font-size: 11.5px;
     color: #64748b;
     font-weight: 500;
 }
 .summary-pill-btn {
-    font-size: 10.5px !important;
-    height: 22px !important;
+    font-size: 11px !important;
+    height: 24px !important;
     line-height: 1 !important;
-    padding: 0 8px !important;
+    padding: 0 10px !important;
+    font-weight: 600 !important;
+    border-radius: 20px !important;
+    transition: all 0.2s ease;
+}
+
+/* Renkli ve Şık Durum Filtre Hapları */
+.filter-pill-all {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+.filter-pill-all:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+.filter-pill-all.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35) !important;
+}
+
+.filter-pill-warning {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+.filter-pill-warning:hover {
+    background: #fef3c7;
+    color: #92400e;
+}
+.filter-pill-warning.active {
+    background: #f59e0b !important;
+    color: #ffffff !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35) !important;
+}
+
+.filter-pill-success {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+.filter-pill-success:hover {
+    background: #dcfce7;
+    color: #166534;
+}
+.filter-pill-success.active {
+    background: #16a34a !important;
+    color: #ffffff !important;
+    border-color: #16a34a !important;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.35) !important;
+}
+
+.filter-pill-danger {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+.filter-pill-danger:hover {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.filter-pill-danger.active {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35) !important;
+}
+
+/* Modern Renkli Butonlar (Subtle Buttons) */
+.btn-subtle-primary {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    transition: all 0.18s ease;
+}
+.btn-subtle-primary:hover, .btn-subtle-primary:focus {
+    background-color: #2563eb;
+    color: #ffffff !important;
+    border-color: #2563eb;
+    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+}
+
+.btn-subtle-success {
+    background-color: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    transition: all 0.18s ease;
+}
+.btn-subtle-success:hover, .btn-subtle-success:focus {
+    background-color: #16a34a;
+    color: #ffffff !important;
+    border-color: #16a34a;
+    box-shadow: 0 2px 5px rgba(22, 163, 74, 0.25);
+}
+
+.btn-subtle-danger {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    transition: all 0.18s ease;
+}
+.btn-subtle-danger:hover, .btn-subtle-danger:focus {
+    background-color: #dc2626;
+    color: #ffffff !important;
+    border-color: #dc2626;
+    box-shadow: 0 2px 5px rgba(220, 38, 38, 0.25);
+}
+
+.btn-subtle-warning {
+    background-color: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+    transition: all 0.18s ease;
+}
+.btn-subtle-warning:hover, .btn-subtle-warning:focus {
+    background-color: #d97706;
+    color: #ffffff !important;
+    border-color: #d97706;
+    box-shadow: 0 2px 5px rgba(217, 119, 6, 0.25);
+}
+
+.btn-subtle-info {
+    background-color: #f5f3ff;
+    color: #7c3aed;
+    border: 1px solid #ddd6fe;
+    transition: all 0.18s ease;
+}
+.btn-subtle-info:hover, .btn-subtle-info:focus {
+    background-color: #7c3aed;
+    color: #ffffff !important;
+    border-color: #7c3aed;
+    box-shadow: 0 2px 5px rgba(124, 58, 237, 0.25);
+}
+
+.btn-subtle-secondary {
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    transition: all 0.18s ease;
+}
+.btn-subtle-secondary:hover, .btn-subtle-secondary:focus {
+    background-color: #475569;
+    color: #ffffff !important;
+    border-color: #475569;
+    box-shadow: 0 2px 5px rgba(71, 85, 105, 0.25);
+}
+
+/* Muhasebe ve Tablo Satır Butonları */
+.table-action-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.action-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .summary-cards-group {
@@ -355,7 +571,7 @@ $title = 'Gelen Faturalar';
     color: #475569 !important;
     background-color: #f8fafc !important;
     border: 1px solid #eef2f6 !important;
-    padding: 6px 8px !important;
+    padding: 8px 10px !important;
     vertical-align: middle !important;
 }
 
@@ -366,7 +582,7 @@ $title = 'Gelen Faturalar';
     border: 1px solid #eef2f6 !important;
 }
 
-/* Sütun Filtre Kutuları (Input & Select) - Rahat ve Okunaklı Boyut */
+/* Sütun Filtre Kutuları (Input & Select) */
 .dt-filter-control,
 #tblGelenFaturalar thead .dt-filter-row input,
 #tblGelenFaturalar thead .dt-filter-row select {
@@ -392,7 +608,7 @@ $title = 'Gelen Faturalar';
 
 #tblGelenFaturalar tbody tr td {
     border: 1px solid #eef2f6 !important;
-    padding: 7px 10px !important;
+    padding: 8px 10px !important;
     vertical-align: middle;
     font-size: 12.5px;
 }
@@ -423,9 +639,9 @@ $title = 'Gelen Faturalar';
 
 /* DataTables Alt Çubuk (Info & Paginate) Düzeni */
 #tblGelenFaturalar_wrapper > .row:last-child {
-    margin-top: 8px !important;
+    margin-top: 10px !important;
     margin-bottom: 0 !important;
-    padding: 4px 0 !important;
+    padding: 6px 0 !important;
 }
 .dataTables_info {
     font-size: 12.5px !important;
@@ -440,50 +656,40 @@ $title = 'Gelen Faturalar';
 .dataTables_length select {
     padding: 2px 20px 2px 8px !important;
     font-size: 12px !important;
-    height: 26px !important;
-    border-radius: 5px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
     border: 1px solid #cbd5e1 !important;
     background-color: #ffffff !important;
 }
 .dataTables_paginate .pagination {
     margin: 0 !important;
-    gap: 3px !important;
+    gap: 4px !important;
 }
 .dataTables_paginate .pagination .page-item .page-link {
-    height: 26px !important;
-    min-width: 26px !important;
-    padding: 0 7px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    padding: 0 8px !important;
     font-size: 12px !important;
-    border-radius: 5px !important;
+    border-radius: 6px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     color: #475569 !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
     background-color: #ffffff !important;
+    transition: all 0.2s ease;
 }
 .dataTables_paginate .pagination .page-item.active .page-link {
-    background-color: #1e293b !important;
-    border-color: #1e293b !important;
+    background-color: #2563eb !important;
+    border-color: #2563eb !important;
     color: #ffffff !important;
     font-weight: 600 !important;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3) !important;
 }
 .dataTables_paginate .pagination .page-item.disabled .page-link {
     color: #94a3b8 !important;
     background-color: #f8fafc !important;
     border-color: #e2e8f0 !important;
-}
-
-/* Muhasebe Butonları */
-.table-action-btn {
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    font-size: 13px;
 }
 </style>
 

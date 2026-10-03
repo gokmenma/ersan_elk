@@ -223,22 +223,31 @@ $(document).ready(function() {
                 searchable: false,
                 className: 'align-middle text-center',
                 render: function(data, type, row) {
-                    let btns = `<div class="d-flex align-items-center justify-content-center gap-1">`;
+                    let btns = `<div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">`;
                     
-                    // 1. Düzenle Butonu (Sadece Taslak ise)
+                    // 1. Görüntüle / Önizle Butonu (Mavi Soft)
+                    btns += `<button type="button" class="btn btn-subtle-primary table-action-btn btn-onizle" data-id="${row.encrypted_id}" title="Fatura Önizle"><i class="bx bx-show font-size-15"></i></button>`;
+
+                    // 2. PDF İndir Butonu (Kırmızı Soft)
+                    btns += `<button type="button" class="btn btn-subtle-danger table-action-btn efatura-pdf" data-id="${row.encrypted_id}" title="PDF İndir"><i class="bx bxs-file-pdf font-size-15"></i></button>`;
+                    
+                    // 3. Düzenle Butonu (Sadece Taslak ise - Amber/Warning)
                     if (row.entegrator_durum_kodu === 'TASLAK') {
-                        btns += `<a href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-light border text-warning table-action-btn" title="Taslak Faturayı Düzenle"><i class="bx bx-edit font-size-15"></i></a>`;
+                        btns += `<a href="index.php?p=efatura/olustur&id=${encodeURIComponent(row.encrypted_id)}" class="btn btn-subtle-warning table-action-btn" title="Taslak Faturayı Düzenle"><i class="bx bx-edit font-size-15"></i></a>`;
                     }
                     
-                    // 2. GİB'e Gönder (Taslak ise) veya GİB Durumunu Sorgula (Gönderildi ise)
+                    // 4. GİB'e Gönder (Taslak ise - Yeşil) veya GİB Durumunu Sorgula (Gönderildi/Bekliyor ise - Amber/Warning)
                     if (row.entegrator_durum_kodu === 'TASLAK') {
-                        btns += `<button type="button" class="btn btn-primary text-white table-action-btn btn-gonder" data-id="${row.encrypted_id}" title="EDM / GİB'e Gönder"><i class="bx bx-send font-size-14"></i></button>`;
-                    } else if (row.entegrator_durum_kodu === 'GONDERILDI') {
-                        btns += `<button type="button" class="btn btn-warning text-white table-action-btn btn-senkronize" data-id="${row.encrypted_id}" title="GİB Durumu Sorgula"><i class="bx bx-refresh font-size-14"></i></button>`;
+                        btns += `<button type="button" class="btn btn-subtle-success table-action-btn btn-gonder" data-id="${row.encrypted_id}" title="EDM / GİB'e Gönder"><i class="bx bx-send font-size-14"></i></button>`;
+                    } else if (row.entegrator_durum_kodu === 'GONDERILDI' || row.entegrator_durum_kodu === 'BEKLIYOR') {
+                        btns += `<button type="button" class="btn btn-subtle-warning table-action-btn btn-senkronize" data-id="${row.encrypted_id}" title="GİB Durumu Sorgula"><i class="bx bx-refresh font-size-15"></i></button>`;
                     }
                     
-                    // 3. Diğer İşlemler Açılır Menü Butonu (3 Nokta)
-                    btns += `<button type="button" class="btn btn-light border text-dark table-action-btn btn-row-menu" title="Diğer İşlemler"><i class="bx bx-dots-vertical-rounded font-size-15"></i></button>`;
+                    // 5. İşlem Geçmişi (Mor Soft)
+                    btns += `<button type="button" class="btn btn-subtle-info table-action-btn efatura-history" data-id="${row.encrypted_id}" title="İşlem Geçmişi"><i class="bx bx-history font-size-15"></i></button>`;
+
+                    // 6. Diğer İşlemler Açılır Menü Butonu (3 Nokta - Slate Soft)
+                    btns += `<button type="button" class="btn btn-subtle-secondary table-action-btn btn-row-menu" title="Diğer İşlemler"><i class="bx bx-dots-vertical-rounded font-size-15"></i></button>`;
                     
                     btns += `</div>`;
                     return btns;
@@ -281,6 +290,8 @@ $(document).ready(function() {
         e.preventDefault();
         const status = $(this).data('status');
         currentStatusFilter = status;
+        $('.status-quick-filter').removeClass('active');
+        $(`.status-quick-filter[data-status="${status}"]`).addClass('active');
         table.ajax.reload();
     });
 
