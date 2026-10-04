@@ -386,6 +386,51 @@ class SystemLogModel extends Model
         return (int) $stmt->fetchColumn();
     }
 
+    /** Arşiv ve zaman kapsamı tüm kaynaklarda sayım/liste için aynıdır. */
+    private function activityScope(array $filters, string $alias, string $dateColumn, string $key, array &$params): string
+    {
+        $scope = $filters['scope'] ?? '30';
+        $prefix = $alias === '' ? '' : $alias . '.';
+        if ($scope === 'archive') {
+            return " AND {$prefix}archived_at IS NOT NULL";
+        }
+        if ($scope === 'all') {
+            return '';
+        }
+        $days = $scope === '90' ? 90 : 30;
+        $params[':since_' . $key] = date('Y-m-d H:i:s', strtotime('-' . $days . ' days'));
+        return " AND {$prefix}archived_at IS NULL AND {$prefix}{$dateColumn} >= :since_{$key}";
+    }
+
+    /** CLI görevi: kalıcı silme yapmadan, sınırlı partilerle arşivler. */
+    public function archiveExpiredActivities(int $batchSize = 1000): array
+    {
+        $batchSize = max(1, min(5000, $batchSize));
+        $policies = [
+            'system_logs' => ['created_at', "CASE
+                WHEN level IN (1, 2) OR action_type LIKE '%Sil%' OR action_type LIKE '%Giriş%' OR action_type LIKE '%Çıkış%' OR description LIKE 'AUTH_FAIL%' THEN :important
+                WHEN level = 3 THEN :views ELSE :routine END"],
+            'personel_giris_loglari' => ['giris_tarihi', ':important'],
+            'ai_agent_logs' => ['created_at', "CASE WHEN status = 'error' THEN :important ELSE :routine END"],
+        ];
+        $result = [];
+        foreach ($policies as $table => [$date, $cutoff]) {
+            $params = [];
+            foreach (['important' => '-1 year', 'views' => '-30 days', 'routine' => '-90 days'] as $key => $interval) {
+                if (strpos($cutoff, ':' . $key) !== false) {
+                    $params[':' . $key] = date('Y-m-d H:i:s', strtotime($interval));
+                }
+            }
+            $stmt = $this->db->prepare("UPDATE {$table} SET archived_at = NOW()
+                WHERE archived_at IS NULL AND {$date} < ({$cutoff}) ORDER BY {$date}, id LIMIT :batch");
+            foreach ($params as $key => $value) $stmt->bindValue($key, $value);
+            $stmt->bindValue(':batch', $batchSize, PDO::PARAM_INT);
+            $stmt->execute();
+            $result[$table] = $stmt->rowCount();
+        }
+        return $result;
+    }
+
     private function getUnifiedActivitiesFastCount(array $filters): int
     {
         $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
@@ -400,15 +445,16 @@ class SystemLogModel extends Model
             elseif ($category === 'critical') $systemWhere .= ' AND level = 2';
             elseif ($category === 'delete') $systemWhere .= " AND action_type LIKE '%Sil%'";
             elseif ($category === 'operation') $systemWhere .= " AND COALESCE(level, 0) <> 3 AND action_type <> 'Başarılı Giriş' AND level <> 2 AND action_type NOT LIKE '%Sil%'";
+            $systemWhere .= $this->activityScope($filters, '', 'created_at', 'system_count', $params);
             $queries[] = "SELECT COUNT(*) AS cnt FROM system_logs WHERE {$systemWhere}";
             $params[':firma_system_count'] = $firmaId;
         }
         if (in_array($category, ['', 'login'], true)) {
-            $queries[] = 'SELECT COUNT(*) AS cnt FROM personel_giris_loglari pg INNER JOIN personel p ON p.id = pg.personel_id WHERE p.firma_id = :firma_personel_count';
+            $queries[] = 'SELECT COUNT(*) AS cnt FROM personel_giris_loglari pg INNER JOIN personel p ON p.id = pg.personel_id WHERE p.firma_id = :firma_personel_count' . $this->activityScope($filters, 'pg', 'giris_tarihi', 'personel_count', $params);
             $params[':firma_personel_count'] = $firmaId;
         }
         if (!empty($filters['include_ai']) && in_array($category, ['', 'ai'], true)) {
-            $queries[] = 'SELECT COUNT(*) AS cnt FROM ai_agent_logs WHERE firma_id = :firma_ai_count';
+            $queries[] = 'SELECT COUNT(*) AS cnt FROM ai_agent_logs WHERE firma_id = :firma_ai_count' . $this->activityScope($filters, '', 'created_at', 'ai_count', $params);
             $params[':firma_ai_count'] = $firmaId;
         }
 
@@ -438,6 +484,10 @@ class SystemLogModel extends Model
         }
 
         $parts = [];
+        $params = [];
+        $systemScope = $includeSystem ? $this->activityScope($filters, 'l', 'created_at', 'system', $params) : '';
+        $personnelScope = $includePersonnel ? $this->activityScope($filters, 'pg', 'giris_tarihi', 'personel', $params) : '';
+        $aiScope = $includeAi ? $this->activityScope($filters, 'a', 'created_at', 'ai', $params) : '';
         if ($includeSystem) {
             $parts[] = "
             SELECT l.id, l.created_at AS activity_date,
@@ -455,7 +505,7 @@ class SystemLogModel extends Model
                    COALESCE(l.level, 0) AS severity
             FROM system_logs l
             LEFT JOIN users u ON u.id = l.user_id
-            WHERE l.firma_id = :firma_system{$systemCategorySql}";
+            WHERE l.firma_id = :firma_system{$systemCategorySql}{$systemScope}";
         }
         if ($includePersonnel) {
             $parts[] = "
@@ -464,7 +514,7 @@ class SystemLogModel extends Model
                    COALESCE(NULLIF(pg.ip_adresi, ''), 'Personel Oturumu'), 'login', 0
             FROM personel_giris_loglari pg
             INNER JOIN personel p ON p.id = pg.personel_id
-            WHERE p.firma_id = :firma_personel";
+            WHERE p.firma_id = :firma_personel{$personnelScope}";
         }
 
         if ($includeAi) {
@@ -475,7 +525,7 @@ class SystemLogModel extends Model
                    COALESCE(NULLIF(a.model_used, ''), 'AI Agent'), 'ai', CASE WHEN a.status = 'error' THEN 2 ELSE 0 END
             FROM ai_agent_logs a
             LEFT JOIN users u ON u.id = a.user_id
-            WHERE a.firma_id = :firma_ai";
+            WHERE a.firma_id = :firma_ai{$aiScope}";
         }
         $hasOuterFilter = false;
         foreach (['search', 'date', 'user', 'type', 'module', 'detail', 'related'] as $outerFilterKey) {
@@ -494,9 +544,7 @@ class SystemLogModel extends Model
         $union = implode(' UNION ALL ', $parts);
 
         $conditions = [];
-        $params = [
-        ];
-        if ($includeSystem) {
+                if ($includeSystem) {
             $params[':firma_system'] = $firmaId;
         }
         if ($includePersonnel) {

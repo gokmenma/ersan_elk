@@ -25,6 +25,10 @@
 - İşçi beklenmedik biçimde kapanırsa, sayfadaki durum kontrolü 180 saniyedir ilerlemeyen işi yeniden başlatmayı dener. Üç başlatma girişimine rağmen ilerlemeyen iş duraklatılır. Sayfa tamamen kapalıyken sunucu/işçi yeniden başlatılması sonrası otomatik kurtarma yapılmaz; sayfa yeniden açılınca kurtarma devreye girer.
 - Devam edilecek sayfanın içeriği değişmişse veya EDM aynı sayfayı tekrar döndürüyorsa kayıt atlamak yerine iş duraklatılır. Aktarımı kapatıp aynı tarih aralığını tekrar başlatın; mevcut faturalar ETTN üzerinden güncellenir.
 
+## Sunucuda aktarım durursa
+
+Bağlantı testi web PHP ortamında çalışır; aktarım ise ayrı PHP CLI ortamında ayar okuma, EDM sorgusu, XML dosyası yazma ve veritabanına kayıt adımlarını yürütür. Bağlantı testinin başarılı olması bu adımların tamamını doğrulamaz. Duraklayan aktarım mesajı veritabanı hatalarında SQLSTATE ve sayısal hata kodunu, XML yazma hatalarında dizin/izin kontrolünü ve hatanın aşamasını gösterir. Ham SQL, bağlantı bilgileri ve hata içindeki özel veriler kullanıcıya iletilmez. PHP hata günlüğündeki `EDM background sync stopped` kaydı hata türü, aşama, dosya ve satır bilgisini içerir. Düzeltmeden sonra **Devam et** aynı konumdan yeniden dener.
+
 ## Doğrulama
 
 - `/opt/lampp/bin/php vendor/bin/phpunit tests/Unit/EInvoiceSyncWorkerTest.php tests/Unit/EInvoiceWorkflowTest.php tests/Unit/EInvoicePersistenceTest.php`

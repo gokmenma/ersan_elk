@@ -97,6 +97,13 @@ if (Gate::allows("log_kayitlari")) {
                 </div>
             </section>
 
+            <div class="d-flex gap-2 flex-wrap mb-3" role="group" aria-label="Log kayıt kapsamı">
+                <button type="button" class="btn btn-primary log-scope" data-scope="30" aria-pressed="true">Son 30 gün</button>
+                <button type="button" class="btn btn-outline-secondary log-scope" data-scope="90" aria-pressed="false">Son 90 gün</button>
+                <button type="button" class="btn btn-outline-secondary log-scope" data-scope="all" aria-pressed="false">Tüm kayıtlar</button>
+                <button type="button" class="btn btn-outline-secondary log-scope" data-scope="archive" aria-pressed="false"><i class="bx bx-archive me-1"></i>Arşiv</button>
+            </div>
+            <p class="text-muted font-size-12" id="logScopeDescription">Arşivlenmemiş son 30 günlük kayıtlar gösterilir.</p>
             <div class="audit-kpi-grid">
                 <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Toplam Sistem Logu</div><div class="audit-kpi-value orange"><?= number_format($dashboardData['total'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon orange"><i class="bx bx-data"></i></span></div><div class="audit-kpi-foot"><i class="bx bx-server me-1"></i> Tüm zamanlar</div></div>
                 <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Bugünkü İşlemler</div><div class="audit-kpi-value"><?= number_format($dashboardData['today_operations'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon green"><i class="bx bx-bolt-circle"></i></span></div><div class="audit-kpi-foot"><i class="bx bx-time-five me-1"></i> İşlem ve aksiyonlar</div></div>
@@ -434,6 +441,7 @@ if (Gate::allows("log_kayitlari")) {
                         type: 'POST',
                         data: function (request) {
                             request.action = 'get-unified-logs';
+                            request.scope = document.querySelector('.log-scope[aria-pressed="true"]')?.dataset.scope || '30';
                             request.category = document.querySelector('.audit-filter.active')?.dataset.category || '';
                         }
                     },
@@ -447,6 +455,15 @@ if (Gate::allows("log_kayitlari")) {
                     ],
                     order: [[0, 'desc']]
                 }));
+
+                $('.log-scope').on('click', function () {
+                    $('.log-scope').removeClass('btn-primary').addClass('btn-outline-secondary').attr('aria-pressed', 'false');
+                    $(this).removeClass('btn-outline-secondary').addClass('btn-primary').attr('aria-pressed', 'true');
+                    const descriptions = { '30': 'Arşivlenmemiş son 30 günlük kayıtlar gösterilir.', '90': 'Arşivlenmemiş son 90 günlük kayıtlar gösterilir.', all: 'Aktif ve arşivlenmiş tüm kayıtlar gösterilir.', archive: 'Yalnızca arşivlenmiş kayıtlar gösterilir.' };
+                    $('#logScopeDescription').text(descriptions[this.dataset.scope]);
+                    setAuditView('logs');
+                    unifiedTable.ajax.reload();
+                });
 
                 $('#resetActivityFilters').on('click', function () {
                     localStorage.removeItem('dt_adv_filters_unifiedLogsTable');

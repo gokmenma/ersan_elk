@@ -16,6 +16,7 @@ class EInvoiceSyncWorker
     {
         if (!$this->model->lock($id)) return;
         $job = null;
+        $stage = 'job';
         try {
             $job = $this->model->findJob($id);
             if (!$job || !in_array($job['status'], ['queued','running'], true)) return;
@@ -25,9 +26,11 @@ class EInvoiceSyncWorker
             unset($job['state']['last_error']);
             $job['state']['message'] = 'Faturalar arka planda aktarılıyor. Bu sayfayı kapatabilirsiniz.';
             $this->model->saveJob($job);
+            $stage = 'settings';
             $client = ($this->clientFactory)((int)$job['firm_id']);
             while (true) {
                 $state = &$job['state'];
+                $stage = 'fetch';
                 $items = $this->retry(function () use ($client, &$state) {
                     return $client->getInvoicePage('OUT', $state['start_date'], $state['end_date'], $state['offset'], 50, $state['created_before'] ?? null, $state['list_type'] ?? null);
                 }, $job);
@@ -50,8 +53,10 @@ class EInvoiceSyncWorker
                         }
                         if ($listType === 'taslak' && $mapped['entegrator_durum_kodu'] !== 'TASLAK') throw new \InvalidArgumentException('EDM taslak filtresi beklenmeyen bir durum döndürdü.');
                         if ($listType === 'giden') {
+                            $stage = 'fetch';
                             $items[$i]['xml'] = $this->retry(fn() => ['xml' => $client->getInvoiceXml($items[$i]['uuid'], 'OUT')], $job)['xml'];
                         }
+                        $stage = 'import';
                         $kind = $this->invoices->importSyncedInvoice((int)$job['firm_id'], $items[$i], (int)$job['user_id']);
                         $state[$kind]++;
                         $state['processed_count']++;
@@ -85,11 +90,17 @@ class EInvoiceSyncWorker
                 unset($state, $items);
             }
         } catch (\Throwable $e) {
-            $diagnostic = ['type' => get_class($e), 'file' => basename($e->getFile()), 'line' => $e->getLine()];
+            $diagnostic = ['type' => get_class($e), 'stage' => $stage, 'file' => basename($e->getFile()), 'line' => $e->getLine()];
             $databaseMessage = null;
             if ($e instanceof \PDOException) {
                 $diagnostic['sqlstate'] = $e->errorInfo[0] ?? $e->getCode();
                 $diagnostic['db_code'] = $e->errorInfo[1] ?? null;
+                $databaseMessage = match ((int)($diagnostic['db_code'] ?? 0)) {
+                    1054, 1146 => 'E-fatura veritabanında gerekli tablo veya alan eksik. E-fatura SQL güncellemelerini kontrol edin.',
+                    1044, 1045, 1142 => 'Arka plan işçisinin veritabanı erişim yetkisi yetersiz. PHP CLI veritabanı ayarlarını kontrol edin.',
+                    2002, 2003, 2006, 2013 => 'Arka plan işçisinin veritabanı bağlantısı kurulamadı veya kesildi. PHP CLI veritabanı bağlantısını kontrol edin.',
+                    default => 'Aktarım sırasında veritabanı işlemi başarısız oldu.',
+                };
                 if (preg_match("/for column '([a-z_]+)'/i", $e->getMessage(), $match)) {
                     $diagnostic['column'] = $match[1];
                     $field = match ($match[1]) {
@@ -97,13 +108,24 @@ class EInvoiceSyncWorker
                     };
                     $databaseMessage = 'Veritabanındaki ' . $field . ' alanı EDM verisiyle uyumsuz. İlgili veritabanı güncellemesi kontrol edilmeli.';
                 }
+                $databaseMessage .= ' (SQLSTATE: ' . preg_replace('/[^A-Z0-9]/i', '', (string)$diagnostic['sqlstate'])
+                    . ', kod: ' . (int)($diagnostic['db_code'] ?? 0) . ')';
             }
+            $systemMessage = match ($e->getMessage()) {
+                'Fatura dosya dizini oluşturulamadı.', 'Fatura XML dosyası kaydedilemedi.' => 'Fatura XML dosyası kaydedilemedi. Sunucuda storage/invoices dizininin yazma izinlerini ve boş disk alanını kontrol edin.',
+                default => null,
+            };
             if ($job) {
+                $stageLabel = match ($stage) {
+                    'settings' => 'EDM ayarlarını okuma', 'fetch' => 'EDM fatura listesini/XML içeriğini alma',
+                    'import' => 'faturayı kaydetme', default => 'aktarım işini okuma/kaydetme',
+                };
                 $job['status'] = 'paused';
                 $job['state']['last_error'] = $diagnostic;
                 $job['state']['message'] = ($e instanceof EdmOperationException || $e instanceof \InvalidArgumentException)
                     ? $e->getMessage() . ' Aktarılan kayıtlar korundu.'
-                    : ($databaseMessage ?? 'Aktarım durdu. Aktarılan kayıtlar korundu; Devam et ile yeniden deneyin.');
+                    : (($databaseMessage ?? $systemMessage ?? 'Aktarım durdu. Sunucunun PHP hata günlüğündeki EDM background sync stopped kaydını kontrol edin.')
+                        . ' Aşama: ' . $stageLabel . '. Aktarılan kayıtlar korundu; Devam et ile yeniden deneyin.');
                 $this->model->saveJob($job);
             }
             error_log('EDM background sync stopped: ' . json_encode($diagnostic, JSON_UNESCAPED_UNICODE));

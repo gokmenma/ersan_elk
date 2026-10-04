@@ -30,15 +30,7 @@ $pdo = $db->getConnection();
 
 $deleted = [];
 
-// system_logs: 2 yıldan eski bilgi/sayfa görüntüleme kayıtları temizle
-$stmt = $pdo->prepare("DELETE FROM system_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 2 YEAR) AND level IN (0, 3)");
-$stmt->execute();
-$deleted['system_logs_info'] = $stmt->rowCount();
-
-// personel_giris_loglari: 1 yıldan eski kayıtlar
-$stmt = $pdo->prepare("DELETE FROM personel_giris_loglari WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 YEAR)");
-$stmt->execute();
-$deleted['personel_giris_loglari'] = $stmt->rowCount();
+// Aktivite kayıtları artık kalıcı silinmez; archive_logs.php tarafından arşivlenir.
 
 // personel_hareketleri (GPS): 6 aydan eski kayıtlar
 $stmt = $pdo->prepare("DELETE FROM personel_hareketleri WHERE kayit_tarihi < DATE_SUB(NOW(), INTERVAL 6 MONTH)");

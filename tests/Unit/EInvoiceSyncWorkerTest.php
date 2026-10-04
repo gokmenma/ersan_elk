@@ -44,11 +44,13 @@ final class SyncOfflineImporter extends EInvoiceService
     public array $imported = [];
     public ?string $failUuid = null;
     public ?PDOException $dbError = null;
+    public ?RuntimeException $systemError = null;
     public ?string $invalidUuid = null;
     public function __construct() {}
     public function importSyncedInvoice(int $firmId, array $item, int $userId): string
     {
         if ($this->dbError) throw $this->dbError;
+        if ($this->systemError) throw $this->systemError;
         if ($item['uuid'] === $this->invalidUuid) throw new InvalidArgumentException('XML fatura numarası geçersiz.');
         if ($item['uuid'] === $this->failUuid) throw new RuntimeException('Temporary record lock');
         $this->imported[] = [$item['uuid'], $firmId, $userId];
@@ -156,6 +158,33 @@ final class EInvoiceSyncWorkerTest extends TestCase
         self::assertSame(1265, $jobs->job['state']['last_error']['db_code']);
         self::assertStringContainsString('fatura profili', $jobs->job['state']['message']);
     }
+    public function testMissingSettingsColumnReportsSafeDatabaseCodeAndStage(): void
+    {
+        $jobs = new SyncMemoryJobs();
+        $error = new PDOException("Unknown column 'private_column' in secret_database");
+        $error->errorInfo = ['42S22', 1054, 'private details'];
+        $worker = new EInvoiceSyncWorker($jobs, new SyncOfflineImporter(), function() use ($error) { throw $error; });
+        $worker->run($jobs->job['id']);
+        self::assertSame('paused', $jobs->job['status']);
+        self::assertSame('settings', $jobs->job['state']['last_error']['stage']);
+        self::assertStringContainsString('SQLSTATE: 42S22, kod: 1054', $jobs->job['state']['message']);
+        self::assertStringContainsString('EDM ayarlarını okuma', $jobs->job['state']['message']);
+        self::assertStringNotContainsString('secret_database', $jobs->job['state']['message']);
+        self::assertStringNotContainsString('private_column', $jobs->job['state']['message']);
+    }
+
+    public function testXmlWriteFailureReportsStoragePermissionsAndKeepsCursor(): void
+    {
+        $jobs = new SyncMemoryJobs(); $importer = new SyncOfflineImporter();
+        $importer->systemError = new RuntimeException('Fatura XML dosyası kaydedilemedi.');
+        $pages = new SyncOfflinePages(fn() => $this->items(0, 2));
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('paused', $jobs->job['status']);
+        self::assertSame(0, $jobs->job['state']['cursor']);
+        self::assertStringContainsString('storage/invoices', $jobs->job['state']['message']);
+        self::assertStringContainsString('faturayı kaydetme', $jobs->job['state']['message']);
+    }
+
     public function testInvalidInvoiceIsReportedAndRemainingPagesContinue(): void
     {
         $jobs = new SyncMemoryJobs(); $importer = new SyncOfflineImporter(); $importer->invalidUuid = 'uuid-1';

@@ -53,6 +53,7 @@ try {
                 'offset' => (int) ($_POST['start'] ?? 0),
                 'search' => trim((string) ($_POST['search']['value'] ?? '')),
                 'category' => trim((string) ($_POST['category'] ?? '')),
+                'scope' => in_array($_POST['scope'] ?? '30', ['30', '90', 'all', 'archive'], true) ? ($_POST['scope'] ?? '30') : '30',
                 'date' => $normalizeFilterDate($getColumnFilter(0)),
                 'user' => $getColumnFilter(1),
                 'type' => $getColumnFilter(2),
@@ -62,7 +63,7 @@ try {
                 'include_ai' => Gate::allows('ai_is_ajani_arac_takip'),
             ];
             $logs = $systemLogModel->getUnifiedActivities($filters);
-            $totalRecords = $systemLogModel->getUnifiedActivitiesCount(['include_ai' => $filters['include_ai']]);
+            $totalRecords = $systemLogModel->getUnifiedActivitiesCount(['include_ai' => $filters['include_ai'], 'scope' => $filters['scope']]);
             $filteredRecords = $systemLogModel->getUnifiedActivitiesCount($filters);
             $badgeMap = [
                 'view' => ['bx-show', 'Sayfa Ziyareti', 'audit-badge-view'],
