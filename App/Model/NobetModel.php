@@ -1315,6 +1315,44 @@ class NobetModel extends Model
     }
 
     /**
+     * Onay bekleyen nöbet istatistiklerini getirir
+     */
+    public function getOnayStats($firma_id = null, $ay = null, $yil = null)
+    {
+        if (!$firma_id) {
+            $firma_id = $_SESSION['firma_id'] ?? null;
+        }
+        $params = [':firma_id' => $firma_id];
+        $where = "WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL AND (n.yonetici_onayi = 0 OR n.yonetici_onayi IS NULL) AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal'))";
+
+        if ($ay > 0 && $yil > 0) {
+            $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";
+            $params[':ay'] = $ay;
+            $params[':yil'] = $yil;
+        } else if ($yil > 0) {
+            $where .= " AND YEAR(n.nobet_tarihi) = :yil";
+            $params[':yil'] = $yil;
+        }
+
+        $sql = "SELECT 
+                    COUNT(*) as total_bekleyen,
+                    SUM(CASE WHEN n.nobet_tipi = 'hafta_sonu' THEN 1 ELSE 0 END) as hafta_sonu_bekleyen,
+                    SUM(CASE WHEN n.nobet_tipi = 'resmi_tatil' THEN 1 ELSE 0 END) as resmi_tatil_bekleyen,
+                    SUM(CASE WHEN n.nobet_tipi NOT IN ('hafta_sonu', 'resmi_tatil') OR n.nobet_tipi IS NULL THEN 1 ELSE 0 END) as hafta_ici_bekleyen
+                FROM {$this->table} n
+                $where";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: (object)[
+            'total_bekleyen' => 0,
+            'hafta_sonu_bekleyen' => 0,
+            'resmi_tatil_bekleyen' => 0,
+            'hafta_ici_bekleyen' => 0
+        ];
+    }
+
+    /**
      * Nöbeti onaylar
      */
     public function onaylaNobet($id)

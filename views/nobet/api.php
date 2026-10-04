@@ -1010,11 +1010,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $ay = $_POST['ay'] ?? null;
                 $yil = $_POST['yil'] ?? null;
                 $results = $Nobet->getOnayBekleyenNobetler($ay, $yil);
+                $stats = $Nobet->getOnayStats($_SESSION['firma_id'] ?? null, $ay, $yil);
                 foreach ($results as &$r) {
                     $r->id = Security::encrypt($r->id);
                     $r->personel_id = Security::encrypt($r->personel_id);
                 }
-                echo json_encode(['success' => true, 'data' => $results]);
+                echo json_encode(['success' => true, 'data' => $results, 'stats' => $stats]);
+                break;
+
+            case 'get-onay-stats':
+                $ay = $_POST['ay'] ?? null;
+                $yil = $_POST['yil'] ?? null;
+                $stats = $Nobet->getOnayStats($_SESSION['firma_id'] ?? null, $ay, $yil);
+                echo json_encode(['success' => true, 'data' => $stats]);
                 break;
 
             case 'onayla-nobet':

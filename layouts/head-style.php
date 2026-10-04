@@ -18,12 +18,34 @@
             }
         };
 
+        // Comprehensive Theme Presets Definitions for Instant Zero-Flicker Apply
+        const THEME_PRESETS_CONFIG = {
+            'kode': { primary: '#399bff', topbar: '#399bff', sidebar: '#282e38', themeMode: 'default', layoutMode: 'light', font: 'Inter' },
+            'ersan': { primary: '#e2bd61', topbar: 'light', sidebar: 'dark', themeMode: 'ersan', layoutMode: 'light', font: 'Outfit' },
+            'midnight-emerald': { primary: '#10b981', topbar: '#10b981', sidebar: '#15241f', themeMode: 'emerald', layoutMode: 'light', font: 'Plus Jakarta Sans' },
+            'royal-purple': { primary: '#5156be', topbar: '#5156be', sidebar: '#1e1b2e', themeMode: 'purple', layoutMode: 'light', font: 'Outfit' },
+            'crimson-rose': { primary: '#ec003f', topbar: '#ec003f', sidebar: '#232125', themeMode: 'rose', layoutMode: 'light', font: 'Poppins' },
+            'minimalist': { primary: '#18181b', topbar: 'light', sidebar: 'light', themeMode: 'slate', layoutMode: 'light', font: 'Geist' },
+            'dark-pro': { primary: '#06b6d4', topbar: 'dark', sidebar: 'dark', themeMode: 'cyan', layoutMode: 'dark', font: 'Inter' },
+            'ocean-deep': { primary: '#0284c7', topbar: '#0284c7', sidebar: '#0f172a', themeMode: 'cyan', layoutMode: 'light', font: 'Plus Jakarta Sans' },
+            'sunset-amber': { primary: '#f97316', topbar: '#f59e0b', sidebar: '#1c1917', themeMode: 'orange', layoutMode: 'light', font: 'Montserrat' },
+            'forest-moss': { primary: '#10b981', topbar: '#059669', sidebar: '#064e3b', themeMode: 'emerald', layoutMode: 'light', font: 'Manrope' },
+            'cyber-violet': { primary: '#8b5cf6', topbar: '#7c3aed', sidebar: '#180d38', themeMode: 'purple', layoutMode: 'light', font: 'Space Grotesk' },
+            'nordic-slate': { primary: '#64748b', topbar: '#475569', sidebar: '#1e293b', themeMode: 'slate', layoutMode: 'light', font: 'DM Sans' },
+            'ruby-dark': { primary: '#e11d48', topbar: '#9f1239', sidebar: '#1f0a10', themeMode: 'rose', layoutMode: 'light', font: 'Roboto' },
+            'mint-fresh': { primary: '#0d9488', topbar: '#0d9488', sidebar: '#132a26', themeMode: 'teal', layoutMode: 'light', font: 'Lexend' },
+            'mocha-gold': { primary: '#d97706', topbar: '#78350f', sidebar: '#271406', themeMode: 'ersan', layoutMode: 'light', font: 'Nunito' }
+        };
+
+        const savedPresetKey = localStorage.getItem('data-theme-preset') || 'ersan';
+        const activePreset = THEME_PRESETS_CONFIG[savedPresetKey] || THEME_PRESETS_CONFIG['ersan'];
+
         htmlAttributes.forEach(attr => {
             let value = localStorage.getItem(attr.name);
-            if (!value && attr.name === 'data-font-family') value = 'Outfit';
-            if (!value && attr.name === 'data-theme-preset') value = 'ersan';
-            if (!value && attr.name === 'data-theme-mode') value = 'ersan';
-            if (!value && attr.name === 'data-bs-theme') value = 'light';
+            if (!value && attr.name === 'data-font-family') value = activePreset.font || 'Outfit';
+            if (!value && attr.name === 'data-theme-preset') value = savedPresetKey;
+            if (!value && attr.name === 'data-theme-mode') value = activePreset.themeMode || 'ersan';
+            if (!value && attr.name === 'data-bs-theme') value = activePreset.layoutMode || 'light';
             if (value) applyAttribute(attr, value);
         });
 
@@ -34,29 +56,9 @@
             }
         } catch (e) {}
 
-        // Theme Presets Color Map for Instant Zero-Flicker Apply
-        const PRESET_COLORS = {
-            'kode': '#399bff',
-            'ersan': '#e2bd61',
-            'midnight-emerald': '#10b981',
-            'royal-purple': '#5156be',
-            'crimson-rose': '#ec003f',
-            'minimalist': '#18181b',
-            'dark-pro': '#06b6d4',
-            'ocean-deep': '#0284c7',
-            'sunset-amber': '#f59e0b',
-            'forest-moss': '#059669',
-            'cyber-violet': '#7c3aed',
-            'nordic-slate': '#475569',
-            'ruby-dark': '#e11d48',
-            'mint-fresh': '#0d9488',
-            'mocha-gold': '#d97706'
-        };
-
-        const savedPresetKey = localStorage.getItem('data-theme-preset') || 'ersan';
         let customPrimary = localStorage.getItem('custom-primary-color');
-        if (!customPrimary && savedPresetKey && PRESET_COLORS[savedPresetKey]) {
-            customPrimary = PRESET_COLORS[savedPresetKey];
+        if (!customPrimary && activePreset && activePreset.primary) {
+            customPrimary = activePreset.primary;
         }
 
         // Synchronously apply custom primary color CSS variables
@@ -90,22 +92,28 @@
         };
 
         // Synchronously apply custom topbar color style tag
-        const customTopbar = localStorage.getItem('custom-topbar-color');
-        if (customTopbar) {
+        let customTopbar = localStorage.getItem('custom-topbar-color');
+        if (!customTopbar && activePreset && activePreset.topbar && activePreset.topbar.startsWith('#')) {
+            customTopbar = activePreset.topbar;
+        }
+        if (customTopbar && customTopbar.startsWith('#')) {
             const contrast = getAdaptiveColors(customTopbar);
             const style = document.createElement('style');
             style.id = 'custom-topbar-style';
-            style.innerHTML = `body #page-topbar, body .navbar-brand-box { background-color: ${customTopbar} !important; border-color: ${customTopbar} !important; } body #page-topbar .header-item, body #page-topbar .logo-txt, body #page-topbar #topbar-page-title { color: ${contrast.text} !important; } body #page-topbar #topbar-page-desc { color: ${contrast.muted} !important; } body #page-topbar .header-item svg { color: ${contrast.text} !important; stroke: currentColor !important; } body #page-topbar .logo-dark { display: ${contrast.dark ? 'none' : 'block'} !important; } body #page-topbar .logo-light { display: ${contrast.dark ? 'block' : 'none'} !important; }`;
+            style.innerHTML = `html body #page-topbar, html body .navbar-brand-box, body[data-topbar] #page-topbar, body[data-topbar] .navbar-brand-box { background-color: ${customTopbar} !important; border-color: ${customTopbar} !important; } html body #page-topbar .header-item, html body #page-topbar .logo-txt, html body #page-topbar #topbar-page-title, html body #page-topbar .topbar-page-title, body[data-topbar] #page-topbar .header-item, body[data-topbar] #page-topbar .logo-txt, body[data-topbar] #page-topbar #topbar-page-title, body[data-topbar] #page-topbar .topbar-page-title { color: ${contrast.text} !important; } html body #page-topbar #topbar-page-desc, html body #page-topbar .topbar-page-desc, body[data-topbar] #page-topbar #topbar-page-desc, body[data-topbar] #page-topbar .topbar-page-desc { color: ${contrast.muted} !important; } html body #page-topbar .header-item svg, html body #page-topbar .header-item i, body[data-topbar] #page-topbar .header-item svg, body[data-topbar] #page-topbar .header-item i { color: ${contrast.text} !important; stroke: currentColor !important; } html body #page-topbar .logo-dark, body[data-topbar] #page-topbar .logo-dark { display: ${contrast.dark ? 'none' : 'block'} !important; } html body #page-topbar .logo-light, body[data-topbar] #page-topbar .logo-light { display: ${contrast.dark ? 'block' : 'none'} !important; } html body #page-topbar .global-search-input-box, body[data-topbar] #page-topbar .global-search-input-box { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; box-shadow: none !important; } html body #page-topbar .global-search-input-box:focus-within, body[data-topbar] #page-topbar .global-search-input-box:focus-within { background-color: ${contrast.dark ? 'rgba(255,255,255,0.12)' : '#ffffff'} !important; border-color: ${contrast.dark ? 'rgba(255,255,255,0.3)' : 'var(--bs-primary, #3b82f6)'} !important; box-shadow: 0 0 0 3px ${contrast.dark ? 'rgba(255,255,255,0.12)' : 'rgba(59,130,246,0.15)'} !important; } html body #page-topbar .global-search-input, body[data-topbar] #page-topbar .global-search-input { color: ${contrast.text} !important; } html body #page-topbar .global-search-input::placeholder, body[data-topbar] #page-topbar .global-search-input::placeholder { color: ${contrast.subtle} !important; } html body #page-topbar .global-search-icon, body[data-topbar] #page-topbar .global-search-icon { color: ${contrast.muted} !important; } html body #page-topbar .global-search-kbd-badge kbd, body[data-topbar] #page-topbar .global-search-kbd-badge kbd { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.muted} !important; box-shadow: none !important; } html body #page-topbar .global-search-clear-btn, body[data-topbar] #page-topbar .global-search-clear-btn { color: ${contrast.muted} !important; }`;
             document.head.appendChild(style);
         }
 
         // Synchronously apply custom sidebar color style tag
-        const customSidebar = localStorage.getItem('custom-sidebar-color');
-        if (customSidebar) {
+        let customSidebar = localStorage.getItem('custom-sidebar-color');
+        if (!customSidebar && activePreset && activePreset.sidebar && activePreset.sidebar.startsWith('#')) {
+            customSidebar = activePreset.sidebar;
+        }
+        if (customSidebar && customSidebar.startsWith('#')) {
             const contrast = getAdaptiveColors(customSidebar);
             const style = document.createElement('style');
             style.id = 'custom-sidebar-style';
-            style.innerHTML = `body { --sidebar-bg: ${customSidebar}; --sidebar-border: ${contrast.border}; --sidebar-item-hover: ${contrast.surface}; --sidebar-item-active: ${contrast.surface}; --sidebar-foreground: ${contrast.text}; --sidebar-muted: ${contrast.muted}; } body .vertical-menu, body .sidebar-sticky-top { background-color: ${customSidebar} !important; } body .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; } body .sidebar-search:focus { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; } body .sidebar-search::placeholder { color: ${contrast.subtle} !important; } body .sidebar-search-container .search-icon, body #sidebar-menu ul li a i, body #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; } body #sidebar-menu ul li a, body #sidebar-menu ul li ul.sub-menu li a, body .brand-name { color: ${contrast.text} !important; } body #sidebar-menu .menu-title, body .brand-sub { color: ${contrast.muted} !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { background-color: ${contrast.surface} !important; color: ${contrast.text} !important; } body .vertical-menu .logo-dark { display: ${contrast.dark ? 'none' : 'block'} !important; } body .vertical-menu .logo-light { display: ${contrast.dark ? 'block' : 'none'} !important; }`;
+            style.innerHTML = `body { --sidebar-bg: ${customSidebar}; --sidebar-border: ${contrast.border}; --sidebar-item-hover: ${contrast.surface}; --sidebar-item-active: ${contrast.surface}; --sidebar-foreground: ${contrast.text}; --sidebar-muted: ${contrast.muted}; } html body .vertical-menu, html body .sidebar-sticky-top, body[data-sidebar] .vertical-menu, body[data-sidebar] .sidebar-sticky-top { background-color: ${customSidebar} !important; border-color: ${contrast.border} !important; } html body .sidebar-search, body[data-sidebar] .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; } html body .sidebar-search:focus, body[data-sidebar] .sidebar-search:focus { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; } html body .sidebar-search::placeholder, body[data-sidebar] .sidebar-search::placeholder { color: ${contrast.subtle} !important; } html body .sidebar-search-container .search-icon, html body #sidebar-menu ul li a i, html body #sidebar-menu ul li a svg, body[data-sidebar] .sidebar-search-container .search-icon, body[data-sidebar] #sidebar-menu ul li a i, body[data-sidebar] #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; } html body #sidebar-menu ul li a, html body #sidebar-menu ul li ul.sub-menu li a, html body .brand-name, body[data-sidebar] #sidebar-menu ul li a, body[data-sidebar] #sidebar-menu ul li ul.sub-menu li a, body[data-sidebar] .brand-name { color: ${contrast.text} !important; } html body #sidebar-menu .menu-title, html body .brand-sub, body[data-sidebar] #sidebar-menu .menu-title, body[data-sidebar] .brand-sub { color: ${contrast.muted} !important; } html body #sidebar-menu ul li a:hover, html body #sidebar-menu ul li a.active, html body #sidebar-menu ul li.mm-active > a, body[data-sidebar] #sidebar-menu ul li a:hover, body[data-sidebar] #sidebar-menu ul li a.active, body[data-sidebar] #sidebar-menu ul li.mm-active > a { background-color: ${contrast.surface} !important; color: ${contrast.text} !important; } html body .vertical-menu .logo-dark, body[data-sidebar] .vertical-menu .logo-dark { display: ${contrast.dark ? 'none' : 'block'} !important; } html body .vertical-menu .logo-light, body[data-sidebar] .vertical-menu .logo-light { display: ${contrast.dark ? 'block' : 'none'} !important; }`;
             document.head.appendChild(style);
         }
         // Synchronously apply critical layout width/left position styles

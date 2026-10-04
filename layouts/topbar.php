@@ -1198,34 +1198,106 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
    DARK MODE ADAPTATIONS FOR GLOBAL SEARCH
    ============================================================== */
 [data-bs-theme="dark"] .global-search-input-box,
-body[data-topbar="dark"] .global-search-input-box {
-    background: #1e293b;
-    border-color: #334155;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+body[data-topbar="dark"] .global-search-input-box,
+body[data-topbar="brand"] .global-search-input-box,
+body[data-topbar="red"] .global-search-input-box,
+body[data-topbar="purple"] .global-search-input-box,
+body[data-topbar="slate"] .global-search-input-box,
+body[data-topbar="emerald"] .global-search-input-box,
+body[data-topbar="orange"] .global-search-input-box,
+body[data-topbar="rose"] .global-search-input-box,
+body[data-topbar="ersan"] .global-search-input-box,
+body[data-topbar="teal"] .global-search-input-box,
+body[data-topbar="cyan"] .global-search-input-box,
+body[data-topbar="default"] .global-search-input-box {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow: none !important;
 }
 
 [data-bs-theme="dark"] .global-search-input-box:focus-within,
-body[data-topbar="dark"] .global-search-input-box:focus-within {
-    background: #0f172a;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+body[data-topbar="dark"] .global-search-input-box:focus-within,
+body[data-topbar="brand"] .global-search-input-box:focus-within,
+body[data-topbar="red"] .global-search-input-box:focus-within,
+body[data-topbar="purple"] .global-search-input-box:focus-within,
+body[data-topbar="slate"] .global-search-input-box:focus-within,
+body[data-topbar="emerald"] .global-search-input-box:focus-within,
+body[data-topbar="orange"] .global-search-input-box:focus-within,
+body[data-topbar="rose"] .global-search-input-box:focus-within,
+body[data-topbar="ersan"] .global-search-input-box:focus-within,
+body[data-topbar="teal"] .global-search-input-box:focus-within,
+body[data-topbar="cyan"] .global-search-input-box:focus-within,
+body[data-topbar="default"] .global-search-input-box:focus-within {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12) !important;
 }
 
 [data-bs-theme="dark"] .global-search-input,
-body[data-topbar="dark"] .global-search-input {
-    color: #f8fafc;
+body[data-topbar="dark"] .global-search-input,
+body[data-topbar="brand"] .global-search-input,
+body[data-topbar="red"] .global-search-input,
+body[data-topbar="purple"] .global-search-input,
+body[data-topbar="slate"] .global-search-input,
+body[data-topbar="emerald"] .global-search-input,
+body[data-topbar="orange"] .global-search-input,
+body[data-topbar="rose"] .global-search-input,
+body[data-topbar="ersan"] .global-search-input,
+body[data-topbar="teal"] .global-search-input,
+body[data-topbar="cyan"] .global-search-input,
+body[data-topbar="default"] .global-search-input {
+    color: #f1f5f9 !important;
 }
 
 [data-bs-theme="dark"] .global-search-input::placeholder,
-body[data-topbar="dark"] .global-search-input::placeholder {
-    color: #64748b;
+body[data-topbar="dark"] .global-search-input::placeholder,
+body[data-topbar="brand"] .global-search-input::placeholder,
+body[data-topbar="red"] .global-search-input::placeholder,
+body[data-topbar="purple"] .global-search-input::placeholder,
+body[data-topbar="slate"] .global-search-input::placeholder,
+body[data-topbar="emerald"] .global-search-input::placeholder,
+body[data-topbar="orange"] .global-search-input::placeholder,
+body[data-topbar="rose"] .global-search-input::placeholder,
+body[data-topbar="ersan"] .global-search-input::placeholder,
+body[data-topbar="teal"] .global-search-input::placeholder,
+body[data-topbar="cyan"] .global-search-input::placeholder,
+body[data-topbar="default"] .global-search-input::placeholder {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .global-search-icon,
+body[data-topbar="dark"] .global-search-icon,
+body[data-topbar="brand"] .global-search-icon,
+body[data-topbar="red"] .global-search-icon,
+body[data-topbar="purple"] .global-search-icon,
+body[data-topbar="slate"] .global-search-icon,
+body[data-topbar="emerald"] .global-search-icon,
+body[data-topbar="orange"] .global-search-icon,
+body[data-topbar="rose"] .global-search-icon,
+body[data-topbar="ersan"] .global-search-icon,
+body[data-topbar="teal"] .global-search-icon,
+body[data-topbar="cyan"] .global-search-icon,
+body[data-topbar="default"] .global-search-icon {
+    color: #94a3b8 !important;
 }
 
 [data-bs-theme="dark"] .global-search-kbd-badge kbd,
-body[data-topbar="dark"] .global-search-kbd-badge kbd {
-    background: #0f172a;
-    border-color: #334155;
-    color: #94a3b8;
+body[data-topbar="dark"] .global-search-kbd-badge kbd,
+body[data-topbar="brand"] .global-search-kbd-badge kbd,
+body[data-topbar="red"] .global-search-kbd-badge kbd,
+body[data-topbar="purple"] .global-search-kbd-badge kbd,
+body[data-topbar="slate"] .global-search-kbd-badge kbd,
+body[data-topbar="emerald"] .global-search-kbd-badge kbd,
+body[data-topbar="orange"] .global-search-kbd-badge kbd,
+body[data-topbar="rose"] .global-search-kbd-badge kbd,
+body[data-topbar="ersan"] .global-search-kbd-badge kbd,
+body[data-topbar="teal"] .global-search-kbd-badge kbd,
+body[data-topbar="cyan"] .global-search-kbd-badge kbd,
+body[data-topbar="default"] .global-search-kbd-badge kbd {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
 }
 
 [data-bs-theme="dark"] .global-search-dropdown,

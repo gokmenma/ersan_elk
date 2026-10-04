@@ -24,13 +24,15 @@ class UblGeneratorService
         foreach (['UBLVersionID' => '2.1', 'CustomizationID' => 'TR1.2', 'ProfileID' => $invoice['fatura_profili'], 'ID' => $invoice['fatura_no'] ?? '', 'CopyIndicator' => 'false', 'UUID' => $invoice['ettn'], 'IssueDate' => $invoice['fatura_tarihi'], 'IssueTime' => $invoice['duzenleme_saati'] ?? '00:00:00', 'InvoiceTypeCode' => $invoice['fatura_tipi']] as $tag => $value) $add($root, 'cbc:' . $tag, $value);
         if (!empty($invoice['notlar'])) {
             $rawNotes = html_entity_decode((string)$invoice['notlar'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $rawNotes = preg_replace('/<\/(p|div)>/i', "\n", $rawNotes);
+            // Tablo hücreleri arasına ayırıcı koy
+            $rawNotes = preg_replace('/<\/t[hd]>\s*<t[hd][^>]*>/i', ' | ', $rawNotes);
+            $rawNotes = preg_replace('/<\/(tr|li|p|div)>/i', "\n", $rawNotes);
             $rawNotes = preg_replace('/<br\s*\/?>/i', "\n", $rawNotes);
             $cleanNotes = trim(strip_tags($rawNotes));
             if ($cleanNotes !== '') {
                 $linesNotes = explode("\n", $cleanNotes);
                 foreach ($linesNotes as $ln) {
-                    $ln = trim($ln);
+                    $ln = trim($ln, " \t\n\r\0\x0B|");
                     if ($ln !== '') {
                         $add($root, 'cbc:Note', $ln);
                     }

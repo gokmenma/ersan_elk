@@ -34,4 +34,25 @@ class FormlarModel extends Model
         $res = $stmt->fetch(PDO::FETCH_OBJ);
         return $res ? $res : null;
     }
+
+    public function getStats(int $firma_id): object
+    {
+        $stmt = $this->db->prepare("
+            SELECT 
+                COUNT(*) as toplam,
+                SUM(CASE WHEN LOWER(dosya_adi) LIKE '%.docx' OR LOWER(dosya_adi) LIKE '%.doc' THEN 1 ELSE 0 END) as word_sayisi,
+                SUM(CASE WHEN LOWER(dosya_adi) LIKE '%.xlsx' OR LOWER(dosya_adi) LIKE '%.xls' THEN 1 ELSE 0 END) as excel_sayisi,
+                SUM(CASE WHEN LOWER(dosya_adi) LIKE '%.pdf' THEN 1 ELSE 0 END) as pdf_sayisi
+            FROM {$this->table}
+            WHERE firma_id = ?
+        ");
+        $stmt->execute([$firma_id]);
+        $row = $stmt->fetch(PDO::FETCH_OBJ);
+        return (object) [
+            'toplam' => (int) ($row->toplam ?? 0),
+            'word' => (int) ($row->word_sayisi ?? 0),
+            'excel' => (int) ($row->excel_sayisi ?? 0),
+            'pdf' => (int) ($row->pdf_sayisi ?? 0)
+        ];
+    }
 }

@@ -4599,13 +4599,29 @@ table.dataTable,
 
 /* Table with border */
 .table-bordered {
-  border: 1px solid #d9e3ef !important;
+  border: 1px solid #eaedf1 !important;
   border-radius: 12px !important;
 }
 
-/* Hücre kenarlıklarını koru */
+/* Tek çizgili ultra ince kenarlık standardı (Hairline 1px) - Çift çizgi oluşmasını engeller */
 .table-bordered > :not(caption) > * > * {
-  border: 1px solid #dbe4ef !important;
+  border: 0 !important;
+  border-right: 1px solid #eff2f7 !important;
+  border-bottom: 1px solid #eff2f7 !important;
+}
+
+.table-bordered thead th,
+.table-bordered thead td {
+  border-right: 1px solid #eaedf1 !important;
+  border-bottom: 1px solid #eaedf1 !important;
+}
+
+.table-bordered > :not(caption) > * > *:last-child {
+  border-right: 0 !important;
+}
+
+.table-bordered > tbody > tr:last-child > * {
+  border-bottom: 0 !important;
 }
 
 /* First row - top corners */
@@ -4680,7 +4696,7 @@ table tfoot tr:last-child td:last-child,
 
 .dataTables_wrapper .table-responsive {
   border-radius: 12px !important;
-  border: 1px solid #d9e3ef;
+  border: 1px solid #eaedf1;
   margin: 4px 0 6px 0 !important;
   overflow-x: auto;
   overflow-y: hidden;

@@ -598,19 +598,21 @@ try {
 
         // 22. Şablon Sil
         case 'delete_note_template':
-            $templateId = (int)($_POST['id'] ?? 0);
+            $rawInput = file_get_contents('php://input');
+            $jsonInput = json_decode($rawInput, true) ?? [];
+            $templateId = (int)($_POST['id'] ?? $jsonInput['id'] ?? 0);
             if ($templateId <= 0) {
                 http_response_code(422);
-                echo json_encode(['status' => 'error', 'message' => 'Geçersiz şablon ID.']);
+                echo json_encode(['status' => 'error', 'success' => false, 'message' => 'Geçersiz şablon ID.']);
                 exit;
             }
             $sablonModel = new \App\Model\EFaturaNotSablonModel();
             $ok = $sablonModel->deleteTemplate($templateId, $firmId, $userId);
             if ($ok) {
-                echo json_encode(['status' => 'success', 'message' => 'Şablon başarıyla silindi.']);
+                echo json_encode(['status' => 'success', 'success' => true, 'message' => 'Şablon başarıyla silindi.']);
             } else {
                 http_response_code(422);
-                echo json_encode(['status' => 'error', 'message' => 'Şablon silinemedi.']);
+                echo json_encode(['status' => 'error', 'success' => false, 'message' => 'Şablon silinemedi.']);
             }
             break;
 

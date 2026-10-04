@@ -648,7 +648,7 @@ File: Main Js File
         updateRadio("sidebar-color-" + preset.sidebarColor);
       }
 
-      // 6. Active state on preset card
+      // Active state on preset card
       $(".theme-preset-card").removeClass("active");
       $(`.theme-preset-card[data-preset="${presetKey}"]`).addClass("active");
       localStorage.setItem("data-theme-preset", presetKey);
@@ -678,13 +678,14 @@ File: Main Js File
     // Check saved preset on load
     const savedPreset = localStorage.getItem("data-theme-preset") || "ersan";
     if (savedPreset && THEME_PRESETS[savedPreset]) {
+      $(".theme-preset-card").removeClass("active");
       $(`.theme-preset-card[data-preset="${savedPreset}"]`).addClass("active");
       document.documentElement.setAttribute("data-theme-preset", savedPreset);
     }
 
-    // Clear preset selection when manual customizer settings are altered
+    // Clear preset selection ONLY when manual customizer settings are altered BY DIRECT USER INTERACTION
     $(document).on("change input", "input[name='theme-mode'], input[name='font-family'], input[name='layout-mode'], input[name='topbar-color'], input[name='sidebar-color'], #custom-theme-picker, #custom-topbar-picker, #custom-sidebar-picker", function (e) {
-      if (!$(e.target).closest(".theme-preset-card").length) {
+      if (e.originalEvent && !$(e.target).closest(".theme-preset-card").length) {
         $(".theme-preset-card").removeClass("active");
         localStorage.removeItem("data-theme-preset");
         document.documentElement.removeAttribute("data-theme-preset");
@@ -815,7 +816,10 @@ File: Main Js File
       ? updateRadio("layout-position-scrollable")
       : updateRadio("layout-position-fixed");
 
-    if (body.getAttribute("data-topbar") == "light") {
+    const customTopbarSaved = localStorage.getItem("custom-topbar-color");
+    if (customTopbarSaved && customTopbarSaved.startsWith("#")) {
+      $("input[name='topbar-color']").prop("checked", false);
+    } else if (body.getAttribute("data-topbar") == "light") {
       updateRadio("topbar-color-light");
     } else if (body.getAttribute("data-topbar") == "dark") {
       updateRadio("topbar-color-dark");
@@ -852,43 +856,37 @@ File: Main Js File
           body.getAttribute("data-sidebar-size") == "md"
         ? updateRadio("sidebar-size-compact")
         : updateRadio("sidebar-size-default");
-    body.hasAttribute("data-sidebar") &&
-    body.getAttribute("data-sidebar") == "brand"
-      ? updateRadio("sidebar-color-brand")
-      : body.hasAttribute("data-sidebar") &&
-          body.getAttribute("data-sidebar") == "dark"
-        ? updateRadio("sidebar-color-dark")
-        : body.hasAttribute("data-sidebar") &&
-            body.getAttribute("data-sidebar") == "red"
-          ? updateRadio("sidebar-red")
-          : body.hasAttribute("data-sidebar") &&
-              body.getAttribute("data-sidebar") == "purple"
-            ? updateRadio("sidebar-purple")
-            : body.hasAttribute("data-sidebar") &&
-                body.getAttribute("data-sidebar") == "slate"
-              ? updateRadio("sidebar-slate")
-              : body.hasAttribute("data-sidebar") &&
-                  body.getAttribute("data-sidebar") == "emerald"
-                ? updateRadio("sidebar-emerald")
-                : body.hasAttribute("data-sidebar") &&
-                    body.getAttribute("data-sidebar") == "orange"
-                  ? updateRadio("sidebar-orange")
-                  : body.hasAttribute("data-sidebar") &&
-                      body.getAttribute("data-sidebar") == "rose"
-                    ? updateRadio("sidebar-rose")
-                    : body.hasAttribute("data-sidebar") &&
-                        body.getAttribute("data-sidebar") == "ersan"
-                      ? updateRadio("sidebar-ersan")
-                      : body.hasAttribute("data-sidebar") &&
-                          body.getAttribute("data-sidebar") == "teal"
-                        ? updateRadio("sidebar-teal")
-                        : body.hasAttribute("data-sidebar") &&
-                            body.getAttribute("data-sidebar") == "cyan"
-                          ? updateRadio("sidebar-cyan")
-                          : body.hasAttribute("data-sidebar") &&
-                              body.getAttribute("data-sidebar") == "default"
-                            ? updateRadio("sidebar-default")
-                            : updateRadio("sidebar-color-light");
+
+    const customSidebarSaved = localStorage.getItem("custom-sidebar-color");
+    if (customSidebarSaved && customSidebarSaved.startsWith("#")) {
+      $("input[name='sidebar-color']").prop("checked", false);
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "brand") {
+      updateRadio("sidebar-color-brand");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "dark") {
+      updateRadio("sidebar-color-dark");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "red") {
+      updateRadio("sidebar-red");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "purple") {
+      updateRadio("sidebar-purple");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "slate") {
+      updateRadio("sidebar-slate");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "emerald") {
+      updateRadio("sidebar-emerald");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "orange") {
+      updateRadio("sidebar-orange");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "rose") {
+      updateRadio("sidebar-rose");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "ersan") {
+      updateRadio("sidebar-ersan");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "teal") {
+      updateRadio("sidebar-teal");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "cyan") {
+      updateRadio("sidebar-cyan");
+    } else if (body.hasAttribute("data-sidebar") && body.getAttribute("data-sidebar") == "default") {
+      updateRadio("sidebar-default");
+    } else {
+      updateRadio("sidebar-color-light");
+    }
     document.getElementsByTagName("html")[0].hasAttribute("dir") &&
     document.getElementsByTagName("html")[0].getAttribute("dir") == "rtl"
       ? updateRadio("layout-direction-rtl")
@@ -1100,12 +1098,19 @@ File: Main Js File
       const contrast = getAdaptiveColors(color);
       $("#custom-topbar-style").remove();
       $(`<style id="custom-topbar-style">
-        body #page-topbar, body .navbar-brand-box { background-color: ${color} !important; border-color: ${color} !important; }
-        body #page-topbar .header-item, body #page-topbar .logo-txt, body #page-topbar #topbar-page-title { color: ${contrast.text} !important; }
-        body #page-topbar #topbar-page-desc { color: ${contrast.muted} !important; }
-        body #page-topbar .header-item svg { color: ${contrast.text} !important; stroke: currentColor !important; }
-        body #page-topbar .logo-dark { display: ${contrast.dark ? "none" : "block"} !important; }
-        body #page-topbar .logo-light { display: ${contrast.dark ? "block" : "none"} !important; }
+        html body #page-topbar, html body .navbar-brand-box, body[data-topbar] #page-topbar, body[data-topbar] .navbar-brand-box { background-color: ${color} !important; border-color: ${color} !important; }
+        html body #page-topbar .header-item, html body #page-topbar .logo-txt, html body #page-topbar #topbar-page-title, html body #page-topbar .topbar-page-title, body[data-topbar] #page-topbar .header-item, body[data-topbar] #page-topbar .logo-txt, body[data-topbar] #page-topbar #topbar-page-title, body[data-topbar] #page-topbar .topbar-page-title { color: ${contrast.text} !important; }
+        html body #page-topbar #topbar-page-desc, html body #page-topbar .topbar-page-desc, body[data-topbar] #page-topbar #topbar-page-desc, body[data-topbar] #page-topbar .topbar-page-desc { color: ${contrast.muted} !important; }
+        html body #page-topbar .header-item svg, html body #page-topbar .header-item i, body[data-topbar] #page-topbar .header-item svg, body[data-topbar] #page-topbar .header-item i { color: ${contrast.text} !important; stroke: currentColor !important; }
+        html body #page-topbar .logo-dark, body[data-topbar] #page-topbar .logo-dark { display: ${contrast.dark ? "none" : "block"} !important; }
+        html body #page-topbar .logo-light, body[data-topbar] #page-topbar .logo-light { display: ${contrast.dark ? "block" : "none"} !important; }
+        html body #page-topbar .global-search-input-box, body[data-topbar] #page-topbar .global-search-input-box { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; box-shadow: none !important; }
+        html body #page-topbar .global-search-input-box:focus-within, body[data-topbar] #page-topbar .global-search-input-box:focus-within { background-color: ${contrast.dark ? "rgba(255,255,255,0.12)" : "#ffffff"} !important; border-color: ${contrast.dark ? "rgba(255,255,255,0.3)" : "var(--bs-primary, #3b82f6)"} !important; box-shadow: 0 0 0 3px ${contrast.dark ? "rgba(255,255,255,0.12)" : "rgba(59,130,246,0.15)"} !important; }
+        html body #page-topbar .global-search-input, body[data-topbar] #page-topbar .global-search-input { color: ${contrast.text} !important; }
+        html body #page-topbar .global-search-input::placeholder, body[data-topbar] #page-topbar .global-search-input::placeholder { color: ${contrast.subtle} !important; }
+        html body #page-topbar .global-search-icon, body[data-topbar] #page-topbar .global-search-icon { color: ${contrast.muted} !important; }
+        html body #page-topbar .global-search-kbd-badge kbd, body[data-topbar] #page-topbar .global-search-kbd-badge kbd { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.muted} !important; box-shadow: none !important; }
+        html body #page-topbar .global-search-clear-btn, body[data-topbar] #page-topbar .global-search-clear-btn { color: ${contrast.muted} !important; }
       </style>`).appendTo("head");
     }
 
@@ -1114,15 +1119,16 @@ File: Main Js File
       $("#custom-sidebar-style").remove();
       $(`<style id="custom-sidebar-style">
         body { --sidebar-bg: ${color}; --sidebar-border: ${contrast.border}; --sidebar-item-hover: ${contrast.surface}; --sidebar-item-active: ${contrast.surface}; --sidebar-foreground: ${contrast.text}; --sidebar-muted: ${contrast.muted}; }
-        body .vertical-menu, body .sidebar-sticky-top { background-color: ${color} !important; }
-        body .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; }
-        body .sidebar-search::placeholder { color: ${contrast.subtle} !important; }
-        body .sidebar-search-container .search-icon, body #sidebar-menu ul li a i, body #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; }
-        body #sidebar-menu ul li a, body #sidebar-menu ul li ul.sub-menu li a, body .brand-name { color: ${contrast.text} !important; }
-        body #sidebar-menu .menu-title, body .brand-sub { color: ${contrast.muted} !important; }
-        body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { background-color: ${contrast.surface} !important; color: ${contrast.text} !important; }
-        body .vertical-menu .logo-dark { display: ${contrast.dark ? "none" : "block"} !important; }
-        body .vertical-menu .logo-light { display: ${contrast.dark ? "block" : "none"} !important; }
+        html body .vertical-menu, html body .sidebar-sticky-top, body[data-sidebar] .vertical-menu, body[data-sidebar] .sidebar-sticky-top { background-color: ${color} !important; border-color: ${contrast.border} !important; }
+        html body .sidebar-search, body[data-sidebar] .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; }
+        html body .sidebar-search:focus, body[data-sidebar] .sidebar-search:focus { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; }
+        html body .sidebar-search::placeholder, body[data-sidebar] .sidebar-search::placeholder { color: ${contrast.subtle} !important; }
+        html body .sidebar-search-container .search-icon, html body #sidebar-menu ul li a i, html body #sidebar-menu ul li a svg, body[data-sidebar] .sidebar-search-container .search-icon, body[data-sidebar] #sidebar-menu ul li a i, body[data-sidebar] #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; }
+        html body #sidebar-menu ul li a, html body #sidebar-menu ul li ul.sub-menu li a, html body .brand-name, body[data-sidebar] #sidebar-menu ul li a, body[data-sidebar] #sidebar-menu ul li ul.sub-menu li a, body[data-sidebar] .brand-name { color: ${contrast.text} !important; }
+        html body #sidebar-menu .menu-title, html body .brand-sub, body[data-sidebar] #sidebar-menu .menu-title, body[data-sidebar] .brand-sub { color: ${contrast.muted} !important; }
+        html body #sidebar-menu ul li a:hover, html body #sidebar-menu ul li a.active, html body #sidebar-menu ul li.mm-active > a, body[data-sidebar] #sidebar-menu ul li a:hover, body[data-sidebar] #sidebar-menu ul li a.active, body[data-sidebar] #sidebar-menu ul li.mm-active > a { background-color: ${contrast.surface} !important; color: ${contrast.text} !important; }
+        html body .vertical-menu .logo-dark, body[data-sidebar] .vertical-menu .logo-dark { display: ${contrast.dark ? "none" : "block"} !important; }
+        html body .vertical-menu .logo-light, body[data-sidebar] .vertical-menu .logo-light { display: ${contrast.dark ? "block" : "none"} !important; }
       </style>`).appendTo("head");
     }
 

@@ -62,112 +62,128 @@ try {
 <link rel="stylesheet" href="assets/libs/leaflet/leaflet.css" />
 <link rel="stylesheet" href="assets/libs/apexcharts/apexcharts.css" />
 
+<script>try { document.documentElement.classList.toggle('personel-takip-summary-hidden', localStorage.getItem('personel_takip_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.personel-takip-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+</style>
+
+<?php include 'layouts/breadcrumb.php'; ?>
+
 <div class="container-fluid">
-    <?php include 'layouts/breadcrumb.php'; ?>
+    <!-- 1. Üst Başlık ve Aksiyon Araç Çubuğu (Yeni Standart) -->
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-map-pin fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Saha Personel Takibi</h4>
+                <p class="text-muted mb-0 font-size-12">Saha personellerinin konum bazlı giriş-çıkış, mesai ve anlık görev takibi</p>
+            </div>
+        </div>
+        
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <!-- 1. Yenile Butonu -->
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" onclick="yenile()">
+                <i class="bx bx-refresh font-size-16"></i> Yenile
+            </button>
 
-    <!-- Özet Kartları Sarmalayıcı -->
-    <script>
-        (function() {
-            try {
-                if (localStorage.getItem('personel_takip_summary_collapsed') === 'true') {
-                    document.write('<style>#personelTakipOzetAlani { display: none !important; }</style>');
-                }
-            } catch(e) {}
-        })();
-    </script>
-    <div id="personelTakipOzetAlani" class="takip-summary-wrapper">
-        <div class="row g-3 mb-4">
-            <div class="col-xl col-md-6">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                    style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body p-3">
-                        <div class="icon-label-container">
-                            <div class="icon-box" style="background: rgba(52, 195, 143, 0.1);">
-                                <i class="bx bx-run fs-4 text-success"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAHA</span>
+            <!-- 2. Özet Kartları Açma/Kapama Butonu -->
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 5 Adet Minimal Özet KPI Kartı -->
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <!-- Kart 1: ŞU AN GÖREVDE -->
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">ŞU AN GÖREVDE</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-run"></i>
                         </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">ŞU AN GÖREVDE
-                        </p>
-                        <h4 class="mb-0 fw-bold bordro-text-heading">
-                            <span class="counter-value" id="stat-gorevde">0</span>
-                        </h4>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-success"><span class="counter-value" id="stat-gorevde">0</span></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-success fw-semibold">Aktif Saha Görevi</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-xl col-md-6">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                    style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body p-3">
-                        <div class="icon-label-container">
-                            <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
-                                <i class="bx bx-check-circle fs-4 text-primary"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BAŞARI</span>
+        <!-- Kart 2: GÖREVİ TAMAMLADI -->
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">GÖREVİ TAMAMLADI</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bx bx-check-circle"></i>
                         </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÖREVİ
-                            TAMAMLADI</p>
-                        <h4 class="mb-0 fw-bold bordro-text-heading">
-                            <span class="counter-value" id="stat-tamamladi">0</span>
-                        </h4>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-primary"><span class="counter-value" id="stat-tamamladi">0</span></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-primary fw-semibold">Görevi Bitenler</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-xl col-md-6">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                    style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body p-3">
-                        <div class="icon-label-container">
-                            <div class="icon-box" style="background: rgba(241, 180, 76, 0.1);">
-                                <i class="bx bx-time fs-4 text-warning"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BEKLEYEN</span>
+        <!-- Kart 3: HENÜZ BAŞLAMADI -->
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">HENÜZ BAŞLAMADI</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-time-five"></i>
                         </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">HENÜZ
-                            BAŞLAMADI</p>
-                        <h4 class="mb-0 fw-bold bordro-text-heading">
-                            <span class="counter-value" id="stat-baslamadi">0</span>
-                        </h4>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-warning"><span class="counter-value" id="stat-baslamadi">0</span></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-warning fw-semibold">Giriş Yapmayanlar</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-xl col-md-6">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                    style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body p-3">
-                        <div class="icon-label-container">
-                            <div class="icon-box" style="background: rgba(80, 165, 241, 0.1);">
-                                <i class="bx bx-calendar-minus fs-4 text-info"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İSTATİSTİK</span>
+        <!-- Kart 4: BUGÜN İZİNLİ -->
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">BUGÜN İZİNLİ</span>
+                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                            <i class="bx bx-calendar-minus"></i>
                         </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜN İZİNLİ
-                        </p>
-                        <h4 class="mb-0 fw-bold bordro-text-heading">
-                            <span class="counter-value" id="stat-izinli">0</span>
-                        </h4>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-info"><span class="counter-value" id="stat-izinli">0</span></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-info fw-semibold">İzinli Personeller</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-xl col-md-6">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                    style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body p-3">
-                        <div class="icon-label-container">
-                            <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
-                                <i class="bx bx-alarm-exclamation fs-4 text-danger"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+        <!-- Kart 5: GEÇ KALANLAR -->
+        <div class="col-12 col-sm-6 col-xl">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">GEÇ KALANLAR</span>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bx bx-alarm-exclamation"></i>
                         </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR
-                        </p>
-                        <h4 class="mb-0 fw-bold bordro-text-heading">
-                            <span class="counter-value text-danger" id="stat-gec-kalan">0</span>
-                        </h4>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-danger"><span class="counter-value text-danger" id="stat-gec-kalan">0</span></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-danger fw-semibold">Mesaiye Geç Kalan</span>
                     </div>
                 </div>
             </div>
@@ -177,94 +193,82 @@ try {
     <!-- Tab Navigation -->
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <div class="card summary-kpi-card mb-3" id="personelTakipListCard">
+                <div class="card-header bg-transparent border-0 px-3 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <ul class="nav nav-pills p-1 bg-light rounded-3 gap-1 flex-wrap" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#tabListe" role="tab">
+                            <a class="nav-link active px-3 py-2 fw-semibold font-size-13 rounded-3" data-bs-toggle="tab" href="#tabListe" role="tab">
                                 <i class="bx bx-list-ul me-1"></i> Personel Listesi
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#tabHarita" role="tab"
+                            <a class="nav-link px-3 py-2 fw-semibold font-size-13 rounded-3" data-bs-toggle="tab" href="#tabHarita" role="tab"
                                 onclick="setTimeout(initHarita, 200)">
                                 <i class="bx bx-map me-1"></i> Harita Görünümü
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#tabRapor" role="tab"
+                            <a class="nav-link px-3 py-2 fw-semibold font-size-13 rounded-3" data-bs-toggle="tab" href="#tabRapor" role="tab"
                                 onclick="loadCalismaRaporu()">
                                 <i class="bx bx-bar-chart-alt-2 me-1"></i> Çalışma Süreleri
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#tabGecKalanlar" role="tab"
+                            <a class="nav-link px-3 py-2 fw-semibold font-size-13 rounded-3" data-bs-toggle="tab" href="#tabGecKalanlar" role="tab"
                                 onclick="loadGecKalanlar()">
                                 <i class="bx bx-alarm-exclamation me-1"></i> Geç Kalanlar
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#tabDashboard" role="tab"
+                            <a class="nav-link px-3 py-2 fw-semibold font-size-13 rounded-3" data-bs-toggle="tab" href="#tabDashboard" role="tab"
                                 onclick="initDashboardTab()">
                                 <i class="bx bx-pie-chart-alt-2 me-1"></i> Analiz & Dashboard
                             </a>
                         </li>
                     </ul>
-                    <div class="ms-auto d-flex align-items-center">
-                        <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-none" 
-                                id="btnToggleTakipOzet" 
-                                onclick="toggleTakipSummary()" 
-                                title="Özet kartlarını gizle / göster">
-                            <i class="bx bx-chevron-up fs-5" id="iconToggleTakipOzet"></i>
-                            <span class="small d-none d-md-inline" id="txtToggleTakipOzet">Özeti Gizle</span>
-                        </button>
-                    </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-3 pt-0">
                     <div class="tab-content">
                         <!-- PERSONEL LİSTESİ TAB -->
                         <div class="tab-pane fade show active" id="tabListe" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">Bugünkü Personel Durumları</h5>
-                                <div class="d-flex align-items-center gap-2">
-                                    <div style="width: 250px;">
-                                        <?= Form::FormSelect2("mainDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="yenile()"') ?>
-                                    </div>
-                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
-                                        <button type="button"
-                                            class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
-                                            onclick="yenile()">
-                                            <i class="mdi mdi-refresh fs-5 me-1"></i> Yenile
-                                        </button>
-                                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                        <button type="button"
-                                            class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
-                                            id="exportExcel">
-                                            <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
-                                        </button>
-                                        <?php if (\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")): ?>
-                                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                        <button type="button"
-                                            class="btn btn-link btn-sm text-dark text-decoration-none px-2 d-flex align-items-center"
-                                            onclick="openMesaiSettings()">
-                                            <i class="bx bx-cog fs-5 me-1"></i> Ayarlar
-                                        </button>
-                                        <?php endif; ?>
-                                    </div>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 mt-3">
+                                <div style="min-width: 250px;">
+                                    <?= Form::FormSelect2("mainDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="yenile()"') ?>
+                                </div>
+                                <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
+                                    <button type="button"
+                                        class="btn btn-link btn-sm text-primary text-decoration-none px-3 d-flex align-items-center fw-medium"
+                                        onclick="yenile()">
+                                        <i class="bx bx-refresh fs-5 me-1"></i> Yenile
+                                    </button>
+                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                    <button type="button"
+                                        class="btn btn-link btn-sm text-success text-decoration-none px-3 d-flex align-items-center fw-medium"
+                                        id="exportExcel">
+                                        <i class="bx bxs-file-export fs-5 me-1"></i> Excel
+                                    </button>
+                                    <?php if (\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")): ?>
+                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                    <button type="button"
+                                        class="btn btn-link btn-sm text-dark text-decoration-none px-3 d-flex align-items-center fw-medium"
+                                        onclick="openMesaiSettings()">
+                                        <i class="bx bx-cog fs-5 me-1"></i> Ayarlar
+                                    </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <div class="table-responsive">
-                                <table id="personelTakipTable" class="table table-bordered table-hover nowrap w-100">
+                            <div class="table-responsive" style="overflow-x: auto !important;">
+                                <table id="personelTakipTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 50px;">Foto</th>
-                                            <th>Personel Adı</th>
-                                            <th>Departman</th>
-                                            <th style="width: 120px;">Durum</th>
-                                            <th style="width: 100px;">Başlama</th>
-                                            <th style="width: 100px;">Bitiş</th>
-                                            <th style="width: 100px;">Konum</th>
-                                            <th style="width: 100px;">İşlemler</th>
+                                            <th style="width: 50px;" class="text-center" data-filter="none">Foto</th>
+                                            <th data-filter="string">Personel Adı</th>
+                                            <th data-filter="select">Departman</th>
+                                            <th style="width: 120px;" class="text-center" data-filter="select">Durum</th>
+                                            <th style="width: 100px;" class="text-center" data-filter="string">Başlama</th>
+                                            <th style="width: 100px;" class="text-center" data-filter="string">Bitiş</th>
+                                            <th style="width: 100px;" class="text-center" data-filter="none">Konum</th>
+                                            <th style="width: 100px;" class="text-center" data-filter="none">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody id="personelTakipBody">
@@ -276,29 +280,32 @@ try {
                         <!-- HARİTA TAB -->
                         <div class="tab-pane fade" id="tabHarita" role="tabpanel">
                             <div id="mapFullWrapper" class="d-flex flex-column h-100">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <h5 class="mb-0">Personel Konum Haritası</h5>
-                                        <div class="d-flex gap-2" id="mapLegendFilters">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 mt-3">
+                                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                                        <div>
+                                            <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Personel Konum Haritası</h5>
+                                            <p class="text-muted mb-0 font-size-12">Saha personellerinin anlık ve görev konumları</p>
+                                        </div>
+                                        <div class="d-flex gap-1.5" id="mapLegendFilters">
                                             <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('aktif', this)">
-                                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="bx bxs-circle me-1"></i> Görevde</span>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bxs-circle me-1"></i> Görevde</span>
                                             </div>
                                             <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('bitti', this)">
-                                                <span class="badge bg-dark-subtle text-dark border border-dark px-2 py-1"><i class="bx bxs-circle me-1"></i> Tamamladı</span>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bxs-circle me-1"></i> Tamamladı</span>
                                             </div>
                                             <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('baslamadi', this)">
-                                                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="bx bxs-circle me-1"></i> Başlamadı</span>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bxs-circle me-1"></i> Başlamadı</span>
                                             </div>
                                             <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('izinli', this)">
-                                                <span class="badge bg-info-subtle text-info border border-info px-2 py-1"><i class="bx bxs-circle me-1"></i> İzinli</span>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bxs-circle me-1"></i> İzinli</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div style="width: 200px;">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <div style="width: 180px;">
                                             <?= Form::FormFloatInput("text", "mapSearchInput", "", "Personel ara...", "Personel Ara", "bx bx-search", "form-control form-control-sm", false, null, "on", false, 'onkeyup="filterMapMarkers()"') ?>
                                         </div>
-                                        <div style="width: 200px;">
+                                        <div style="width: 180px;">
                                             <?= Form::FormSelect2("mapDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="loadHaritaVerileri()"') ?>
                                         </div>
                                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
@@ -316,9 +323,9 @@ try {
                                                 </label>
                                             </div>
                                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                            <button type="button" class="btn btn-soft-dark border-0 rounded d-flex align-items-center px-3 h-100" 
+                                            <button type="button" class="btn btn-subtle-dark table-action-btn border-0 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;"
                                                     onclick="toggleMapFullscreen()" title="Tam Ekran">
-                                                <i class="bx bx-fullscreen fs-4"></i>
+                                                <i class="bx bx-fullscreen fs-5"></i>
                                             </button>
                                         </div>
                                     </div>
@@ -329,42 +336,43 @@ try {
 
                         <!-- ÇALIŞMA SÜRELERİ TAB -->
                         <div class="tab-pane fade" id="tabRapor" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">Haftalık Çalışma Süreleri</h5>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <div style="width: 160px;">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 mt-3">
+                                <div>
+                                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Haftalık Çalışma Süreleri</h5>
+                                    <p class="text-muted mb-0 font-size-12">Personellerin tarih aralığına göre toplam mesai ve çalışma saatleri</p>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <div style="width: 150px;">
                                         <?= Form::FormFloatInput("text", "raporBaslangic", Date::dmY('-7 days'), "", "Başlangıç", "calendar", 'form-control flatpickr') ?>
                                     </div>
-                                    <div style="width: 160px;">
+                                    <div style="width: 150px;">
                                         <?= Form::FormFloatInput("text", "raporBitis", Date::today(), "", "Bitiş", "calendar", 'form-control flatpickr') ?>
                                     </div>
-                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1"
-                                        style="height: 56px; width: 160px;">
+                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
                                         <button type="button"
-                                            class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center w-50 h-100"
-                                            onclick="raporExcelIndir()" title="Excel İndir">
-                                            <i class="bx bxs-file-export fs-4"></i>
+                                            class="btn btn-link btn-sm text-primary text-decoration-none px-3 d-flex align-items-center fw-medium"
+                                            onclick="loadCalismaRaporu()" title="Filtrele">
+                                            <i class="bx bx-filter-alt fs-5 me-1"></i> Filtrele
                                         </button>
                                         <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                         <button type="button"
-                                            class="btn btn-primary btn-sm px-2 fw-bold shadow-primary w-50 h-100"
-                                            onclick="loadCalismaRaporu()" title="Filtrele">
-                                            <i class="bx bx-filter-alt"></i>
+                                            class="btn btn-link btn-sm text-success text-decoration-none px-3 d-flex align-items-center fw-medium"
+                                            onclick="raporExcelIndir()" title="Excel İndir">
+                                            <i class="bx bxs-file-export fs-5 me-1"></i> Excel
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-striped dt-responsive nowrap"
-                                    id="calismaRaporuTable" style="width: 100%;">
-                                    <thead>
+                            <div class="table-responsive" style="overflow-x: auto !important;">
+                                <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="calismaRaporuTable">
+                                    <thead class="table-light">
                                         <tr>
-                                            <th>Personel</th>
-                                            <th class="text-center">Toplam Gün</th>
-                                            <th class="text-center">Toplam Saat</th>
-                                            <th class="text-center">Ort. Başlama</th>
-                                            <th class="text-center">Ort. Bitiş</th>
-                                            <th class="text-center">Geç Kalma</th>
+                                            <th data-filter="string">Personel</th>
+                                            <th class="text-center" data-filter="number">Toplam Gün</th>
+                                            <th class="text-center" data-filter="number">Toplam Saat</th>
+                                            <th class="text-center" data-filter="string">Ort. Başlama</th>
+                                            <th class="text-center" data-filter="string">Ort. Bitiş</th>
+                                            <th class="text-center" data-filter="number">Geç Kalma</th>
                                         </tr>
                                     </thead>
                                     <tbody id="calismaRaporuBody">
@@ -375,56 +383,52 @@ try {
 
                         <!-- GEÇ KALANLAR TAB -->
                         <div class="tab-pane fade" id="tabGecKalanlar" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0" id="gecKalanlarBaslik">
-                                    <i class="bx bx-alarm-exclamation text-danger me-1"></i>
-                                    Geç Kalan Personeller
-                                </h5>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <div style="width: 160px;">
-                                        <?= Form::FormFloatInput("text", "gecKalmaTarih", Date::today(), "", "Tarih", "calendar", 'form-control flatpickr', ) ?>
-                                    </div>
-                                    <?php if (\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")): ?>
-                                    <div style="width: 160px;">
-                                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1" style="height: 56px;">
-                                            <button type="button" class="btn btn-link text-dark text-decoration-none w-100 h-100 d-flex align-items-center justify-content-center" onclick="openMesaiSettings()">
-                                                <i class="bx bx-cog fs-5 me-1"></i> Ayarlar
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <?php endif; ?>
-                                    <div style="width: 160px;" class="ms-2">
-                                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1"
-                                            style="height: 56px;">
-                                            <button type="button"
-                                                class="btn btn-primary w-100 h-100 fw-bold shadow-primary d-flex align-items-center justify-content-center"
-                                                onclick="loadGecKalanlar()">
-                                                <i class="bx bx-filter-alt me-1"></i> Filtrele
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="alert alert-warning d-flex align-items-center" role="alert">
-                                <i class="bx bx-info-circle me-2 fs-4"></i>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 mt-3">
                                 <div>
-                                    Belirtilen saatten sonra göreve başlayan veya hiç başlamayan personeller
-                                    listelenmektedir.
+                                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark" id="gecKalanlarBaslik">
+                                        <i class="bx bx-alarm-exclamation text-danger me-1"></i> Geç Kalan Personeller
+                                    </h5>
+                                    <p class="text-muted mb-0 font-size-12">Mesai başlangıç saatine göre geciken veya göreve başlamayan personeller</p>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <div style="width: 160px;">
+                                        <?= Form::FormFloatInput("text", "gecKalmaTarih", Date::today(), "", "Tarih", "calendar", 'form-control flatpickr') ?>
+                                    </div>
+                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
+                                        <button type="button"
+                                            class="btn btn-link btn-sm text-primary text-decoration-none px-3 d-flex align-items-center fw-medium"
+                                            onclick="loadGecKalanlar()">
+                                            <i class="bx bx-filter-alt fs-5 me-1"></i> Filtrele
+                                        </button>
+                                        <?php if (\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")): ?>
+                                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                        <button type="button"
+                                            class="btn btn-link btn-sm text-dark text-decoration-none px-3 d-flex align-items-center fw-medium"
+                                            onclick="openMesaiSettings()">
+                                            <i class="bx bx-cog fs-5 me-1"></i> Ayarlar
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-striped dt-responsive nowrap"
-                                    id="gecKalanlarTable" style="width: 100%;">
-                                    <thead>
+                            <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center rounded-3 mb-3" role="alert">
+                                <i class="bx bx-info-circle me-2 fs-4 text-warning"></i>
+                                <div class="font-size-12 text-dark">
+                                    Belirtilen saatten sonra göreve başlayan veya hiç başlamayan personeller listelenmektedir.
+                                </div>
+                            </div>
+                            <div class="table-responsive" style="overflow-x: auto !important;">
+                                <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="gecKalanlarTable">
+                                    <thead class="table-light">
                                         <tr>
-                                            <th>Personel</th>
-                                            <th>Departman</th>
-                                            <th class="text-center">Limit</th>
-                                            <th class="text-center">Başlama Saati</th>
-                                            <th class="text-center">Gecikme Süresi</th>
-                                            <th class="text-center">Durum</th>
-                                            <th>Açıklama / Bilgi</th>
-                                            <th class="text-center">İşlem</th>
+                                            <th data-filter="string">Personel</th>
+                                            <th data-filter="select">Departman</th>
+                                            <th class="text-center" data-filter="string">Limit</th>
+                                            <th class="text-center" data-filter="string">Başlama Saati</th>
+                                            <th class="text-center" data-filter="string">Gecikme Süresi</th>
+                                            <th class="text-center" data-filter="select">Durum</th>
+                                            <th data-filter="string">Açıklama / Bilgi</th>
+                                            <th class="text-center" data-filter="none" style="width: 100px;">İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody id="gecKalanlarBody">
@@ -853,6 +857,39 @@ try {
 </div>
 
 <style>
+    /* Tablo Tipografi ve Okunabilirlik İyileştirmeleri */
+    #personelTakipTable, #calismaRaporuTable, #gecKalanlarTable, #dashPersonelPerformansTable {
+        font-size: 13px !important;
+    }
+    #personelTakipTable thead th, #calismaRaporuTable thead th, #gecKalanlarTable thead th, #dashPersonelPerformansTable thead th {
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        color: #334155 !important;
+        letter-spacing: 0.3px;
+        background-color: #f8fafc !important;
+        vertical-align: middle !important;
+    }
+    #personelTakipTable tbody td, #calismaRaporuTable tbody td, #gecKalanlarTable tbody td, #dashPersonelPerformansTable tbody td {
+        padding: 8px 12px !important;
+        vertical-align: middle !important;
+        color: #0f172a !important;
+    }
+
+    /* Tablo Butonları Standartları */
+    .table-action-btn {
+        width: 27px;
+        height: 27px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+    }
+
     .avatar-sm {
         width: 40px;
         height: 40px;
@@ -1835,28 +1872,33 @@ try {
     }
 
     // ==========================================
-    // ÖZET KARTLARI TOGGLE
+    // ÖZET KARTLARI TOGGLE (STANDART)
     // ==========================================
-    function toggleTakipSummary() {
-        const ozet = document.getElementById('personelTakipOzetAlani');
-        const icon = document.getElementById('iconToggleTakipOzet');
-        const txt = document.getElementById('txtToggleTakipOzet');
-        if (!ozet) return;
+    const SUMMARY_STATE_KEY = "personel_takip_summary_cards_state";
 
-        const isCurrentlyHidden = $(ozet).is(':hidden') || ozet.style.display === 'none';
-        
-        if (isCurrentlyHidden) {
-            $(ozet).slideDown(250);
-            localStorage.setItem('personel_takip_summary_collapsed', 'false');
-            if (icon) icon.className = 'bx bx-chevron-up fs-5';
-            if (txt) txt.textContent = 'Özeti Gizle';
-        } else {
-            $(ozet).slideUp(250);
-            localStorage.setItem('personel_takip_summary_collapsed', 'true');
-            if (icon) icon.className = 'bx bx-chevron-down fs-5';
-            if (txt) txt.textContent = 'Özeti Göster';
-        }
+    function setSummaryCardsVisibility(visible) {
+        document.documentElement.classList.toggle("personel-takip-summary-hidden", !visible);
+        $("#btnToggleSummaryCards")
+            .attr("aria-expanded", visible ? "true" : "false")
+            .attr("title", visible ? "Özet Kartları Gizle" : "Özet Kartları Göster")
+            .find("i")
+            .attr("class", visible ? "bx bx-chevron-up" : "bx bx-chevron-down");
     }
+
+    $("#btnToggleSummaryCards").on("click", function (e) {
+        e.preventDefault();
+        const isCurrentlyHidden = document.documentElement.classList.contains("personel-takip-summary-hidden");
+        const shouldShow = isCurrentlyHidden;
+        setSummaryCardsVisibility(shouldShow);
+        try {
+            localStorage.setItem(SUMMARY_STATE_KEY, shouldShow ? "visible" : "hidden");
+        } catch (e) {}
+    });
+
+    (function initSummaryCardsState() {
+        const isHidden = localStorage.getItem(SUMMARY_STATE_KEY) === "hidden";
+        setSummaryCardsVisibility(!isHidden);
+    })();
 
     // ==========================================
     // ANALİZ & DASHBOARD MODÜLÜ

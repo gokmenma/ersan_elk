@@ -458,22 +458,8 @@ class EInvoiceService
         $belgeTuruText = ($invoice['belge_turu'] === 'EFATURA') ? 'e-FATURA' : 'e-ARŞİV FATURA';
         $vergilerDahil = bcadd((string)$invoice['kdv_matrahi'], (string)$invoice['hesaplanan_kdv'], 2);
 
-        // Notların temizlenmesi (HTML etiketlerinden ve entitylerden arındırma)
-        $notSatirlari = [];
-        if (!empty($invoice['notlar'])) {
-            $rawNotes = html_entity_decode((string)$invoice['notlar'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            // <p>, <br>, <div> satır sonlarına çevir
-            $rawNotes = preg_replace('/<\/(p|div)>/i', "\n", $rawNotes);
-            $rawNotes = preg_replace('/<br\s*\/?>/i', "\n", $rawNotes);
-            $cleanNotes = strip_tags($rawNotes);
-            $lines = explode("\n", $cleanNotes);
-            foreach ($lines as $ln) {
-                $ln = trim($ln);
-                if ($ln !== '') {
-                    $notSatirlari[] = htmlspecialchars($ln, ENT_QUOTES, 'UTF-8');
-                }
-            }
-        }
+        // Notların temizlenmesi ve güvenli HTML olarak hazırlanması
+        $userNotesHtml = !empty($invoice['notlar']) ? self::sanitizeInvoiceNoteHtml($invoice['notlar']) : '';
 
         $html = '
         <div class="efatura-wrapper" style="background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; line-height: 1.35; width: 100%; max-width: 820px; margin: 0 auto; padding: 15px; box-sizing: border-box;">
@@ -487,6 +473,15 @@ class EInvoiceService
                 .efatura-meta-table td { border: 1px solid #777; padding: 2.5px 5px; }
                 .efatura-totals-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; font-size: 10px; }
                 .efatura-totals-table td { border: 1px solid #000; padding: 3px 6px; }
+                .efatura-custom-notes { margin-top: 4px; margin-bottom: 4px; font-size: 10px; line-height: 1.35; color: #000; }
+                .efatura-custom-notes table { width: 100% !important; border-collapse: collapse !important; margin: 4px 0 !important; font-size: 9.5px !important; }
+                .efatura-custom-notes table th, .efatura-custom-notes table td { border: 1px solid #000 !important; padding: 3px 5px !important; }
+                .efatura-custom-notes table.table-borderless, .efatura-custom-notes table.table-borderless th, .efatura-custom-notes table.table-borderless td,
+                .efatura-custom-notes table.border-0, .efatura-custom-notes table.border-0 th, .efatura-custom-notes table.border-0 td { border: none !important; }
+                .efatura-custom-notes table.table-underline th, .efatura-custom-notes table.table-underline td { border: none !important; border-bottom: 1px solid #000 !important; }
+                .efatura-custom-notes table th { background: #f8f9fa; font-weight: bold; text-align: left; }
+                .efatura-custom-notes p { margin: 0 0 3px 0; }
+                .efatura-custom-notes ul, .efatura-custom-notes ol { margin: 0 0 4px 0; padding-left: 18px; }
                 @media print {
                     @page { size: A4 portrait; margin: 6mm 8mm; }
                     body { background: #fff !important; color: #000 !important; margin: 0 !important; padding: 0 !important; }
@@ -714,12 +709,14 @@ class EInvoiceService
             $html .= '<div><strong>Not:</strong> İrsaliye No: ' . htmlspecialchars($invoice['irsaliye_no'], ENT_QUOTES, 'UTF-8') . (!empty($invoice['irsaliye_tarihi']) ? (' Tarih: ' . date('d.m.Y', strtotime($invoice['irsaliye_tarihi']))) : '') . '</div>';
         }
 
-        if (!empty($firmaIban)) {
+        $cleanFirmaIban = preg_replace('/\s+/', '', (string)$firmaIban);
+        $userNotesStripped = preg_replace('/\s+/', '', strip_tags($userNotesHtml));
+        if (!empty($firmaIban) && ($userNotesStripped === '' || !str_contains($userNotesStripped, $cleanFirmaIban))) {
             $html .= '<div><strong>Not:</strong> ' . htmlspecialchars($firmaIban, ENT_QUOTES, 'UTF-8') . '</div>';
         }
 
-        foreach ($notSatirlari as $nLine) {
-            $html .= '<div><strong>Not:</strong> ' . $nLine . '</div>';
+        if ($userNotesHtml !== '') {
+            $html .= '<div class="efatura-custom-notes">' . $userNotesHtml . '</div>';
         }
 
         if (!empty($invoice['iade_fatura_no'])) {
@@ -944,5 +941,37 @@ class EInvoiceService
             }
         }
         return ['events' => $this->invoiceModel->history($invoiceId, $firmId), 'report_status' => $invoice['earsiv_rapor_durum'] ?? null, 'cancel_report_status' => $invoice['earsiv_iptal_rapor_durum'] ?? null, 'pending_operation' => $invoice['islem_belirsiz'] ?? null];
+    }
+
+    /**
+     * Fatura alt bilgi / notlar alanındaki HTML'i güvenli şekilde sanitize eder.
+     */
+    public static function sanitizeInvoiceNoteHtml(?string $html): string
+    {
+        if ($html === null || trim($html) === '') {
+            return '';
+        }
+
+        $decoded = html_entity_decode((string)$html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        
+        // Düz metinse satır sonlarını <br>'e çevirip güvenli dön
+        if (strip_tags($decoded) === $decoded) {
+            return nl2br(htmlspecialchars($decoded, ENT_QUOTES, 'UTF-8'));
+        }
+
+        // Güvensiz etiketleri ve olay dinleyicilerini (inline JS) kaldır
+        $cleaned = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $decoded);
+        $cleaned = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $cleaned);
+        $cleaned = preg_replace('/<iframe\b[^>]*>(.*?)<\/iframe>/is', '', $cleaned);
+        $cleaned = preg_replace('/<object\b[^>]*>(.*?)<\/object>/is', '', $cleaned);
+        $cleaned = preg_replace('/<embed\b[^>]*>(.*?)<\/embed>/is', '', $cleaned);
+        $cleaned = preg_replace('/on[a-z]+\s*=\s*(["\']).*?\1/is', '', $cleaned);
+        $cleaned = preg_replace('/on[a-z]+\s*=\s*[^ >]+/is', '', $cleaned);
+        $cleaned = preg_replace('/javascript:/is', '', $cleaned);
+
+        $allowedTags = '<table><thead><tbody><tfoot><tr><th><td><colgroup><col><p><div><span><br><hr><strong><b><em><i><u><s><strike><sub><sup><small><big><font><ul><ol><li><blockquote><a>';
+        $cleaned = strip_tags($cleaned, $allowedTags);
+
+        return trim($cleaned);
     }
 }

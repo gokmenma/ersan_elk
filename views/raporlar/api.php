@@ -63,6 +63,107 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             exit;
         }
 
+        if ($action === 'get-summary') {
+            header('Content-Type: application/json; charset=utf-8');
+            $start_date_raw = $_POST['start_date'] ?? date('01.m.Y');
+            $end_date_raw = $_POST['end_date'] ?? date('d.m.Y');
+
+            $s_time = strtotime(str_replace('.', '-', $start_date_raw));
+            $e_time = strtotime(str_replace('.', '-', $end_date_raw));
+
+            $start_date = $s_time ? date('Y-m-d', $s_time) : date('Y-m-01');
+            $end_date = $e_time ? date('Y-m-d', $e_time) : date('Y-m-d');
+            $end_date_full = $end_date . ' 23:59:59';
+            $start_date_full = $start_date . ' 00:00:00';
+
+            // 1. İzinler
+            $stmtIzin = $db->prepare("SELECT 
+                COUNT(*) as toplam, 
+                SUM(CASE WHEN pi.onay_durumu = 'Onaylandı' THEN 1 ELSE 0 END) as onayli, 
+                SUM(CASE WHEN pi.onay_durumu = 'Bekliyor' OR pi.onay_durumu IS NULL THEN 1 ELSE 0 END) as bekleyen 
+                FROM personel_izinleri pi 
+                JOIN personel p ON pi.personel_id = p.id 
+                WHERE pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)");
+            $stmtIzin->execute([$firmaId, $end_date, $start_date]);
+            $izinSummary = $stmtIzin->fetch(PDO::FETCH_ASSOC) ?: ['toplam' => 0, 'onayli' => 0, 'bekleyen' => 0];
+
+            // 2. Kesinti / Ek Ödemeler
+            $stmtKesinti = $db->prepare("SELECT COUNT(*) as adet, COALESCE(SUM(pk.tutar), 0) as tutar FROM personel_kesintileri pk JOIN personel p ON pk.personel_id = p.id WHERE pk.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pk.olusturma_tarihi BETWEEN ? AND ? AND pk.tekrar_tipi = 'tek_sefer'");
+            $stmtKesinti->execute([$firmaId, $start_date_full, $end_date_full]);
+            $kesintiData = $stmtKesinti->fetch(PDO::FETCH_ASSOC) ?: ['adet' => 0, 'tutar' => 0];
+
+            $stmtEk = $db->prepare("SELECT COUNT(*) as adet, COALESCE(SUM(pe.tutar), 0) as tutar FROM personel_ek_odemeler pe JOIN personel p ON pe.personel_id = p.id WHERE pe.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pe.created_at BETWEEN ? AND ?");
+            $stmtEk->execute([$firmaId, $start_date_full, $end_date_full]);
+            $ekData = $stmtEk->fetch(PDO::FETCH_ASSOC) ?: ['adet' => 0, 'tutar' => 0];
+
+            $kesintiEkToplamAdet = (int)($kesintiData['adet'] ?? 0) + (int)($ekData['adet'] ?? 0);
+            $kesintiEkNetTutar = (float)($ekData['tutar'] ?? 0) - (float)($kesintiData['tutar'] ?? 0);
+
+            // 3. Talepler
+            $stmtTalep = $db->prepare("SELECT 
+                COUNT(*) as toplam,
+                SUM(CASE WHEN pt.durum = 'Beklemede' OR pt.durum IS NULL THEN 1 ELSE 0 END) as bekleyen,
+                SUM(CASE WHEN pt.durum = 'Tamamlandı' OR pt.durum = 'Onaylandı' THEN 1 ELSE 0 END) as cozuldu
+                FROM personel_talepleri pt
+                JOIN personel p ON pt.personel_id = p.id
+                WHERE pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pt.olusturma_tarihi BETWEEN ? AND ?");
+            $stmtTalep->execute([$firmaId, $start_date_full, $end_date_full]);
+            $talepSummary = $stmtTalep->fetch(PDO::FETCH_ASSOC) ?: ['toplam' => 0, 'bekleyen' => 0, 'cozuldu' => 0];
+
+            // 4. İcralar
+            $icraDateCondition = "(
+                pi.created_at BETWEEN ? AND ?
+                OR EXISTS (
+                    SELECT 1
+                    FROM personel_kesintileri pk_period
+                    INNER JOIN bordro_donemi bd_period ON bd_period.id = pk_period.donem_id
+                    WHERE pk_period.icra_id = pi.id
+                      AND pk_period.tur = 'icra'
+                      AND pk_period.durum = 'onaylandi'
+                      AND pk_period.silinme_tarihi IS NULL
+                      AND bd_period.baslangic_tarihi <= ?
+                      AND bd_period.bitis_tarihi >= ?
+                )
+            )";
+            $stmtIcra = $db->prepare("SELECT 
+                COUNT(*) as toplam,
+                COALESCE(SUM(pi.toplam_borc), 0) as toplam_borc
+                FROM personel_icralari pi
+                JOIN personel p ON pi.personel_id = p.id
+                WHERE pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND {$icraDateCondition}");
+            $stmtIcra->execute([$firmaId, $start_date_full, $end_date_full, $end_date, $start_date]);
+            $icraSummary = $stmtIcra->fetch(PDO::FETCH_ASSOC) ?: ['toplam' => 0, 'toplam_borc' => 0];
+
+            echo json_encode([
+                'status' => 'success',
+                'data' => [
+                    'izin' => [
+                        'toplam' => (int)($izinSummary['toplam'] ?? 0),
+                        'onayli' => (int)($izinSummary['onayli'] ?? 0),
+                        'bekleyen' => (int)($izinSummary['bekleyen'] ?? 0)
+                    ],
+                    'kesinti_ek' => [
+                        'toplam' => $kesintiEkToplamAdet,
+                        'kesinti_adet' => (int)($kesintiData['adet'] ?? 0),
+                        'ek_adet' => (int)($ekData['adet'] ?? 0),
+                        'kesinti_tutar' => (float)($kesintiData['tutar'] ?? 0),
+                        'ek_tutar' => (float)($ekData['tutar'] ?? 0),
+                        'net_tutar' => $kesintiEkNetTutar
+                    ],
+                    'talep' => [
+                        'toplam' => (int)($talepSummary['toplam'] ?? 0),
+                        'bekleyen' => (int)($talepSummary['bekleyen'] ?? 0),
+                        'cozuldu' => (int)($talepSummary['cozuldu'] ?? 0)
+                    ],
+                    'icra' => [
+                        'toplam' => (int)($icraSummary['toplam'] ?? 0),
+                        'toplam_borc' => (float)($icraSummary['toplam_borc'] ?? 0)
+                    ]
+                ]
+            ]);
+            exit;
+        }
+
         if ($action === 'get-rapor' || $action === 'export-rapor') {
             $isExport = ($action === 'export-rapor');
             if (!$isExport) {
@@ -533,27 +634,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     ]);
 }
 
-/**
- * HTML tablosu formatında Excel çıktısı üretir (Excel bu formatı açabilir).
- */
-function renderExcel($data, $headers, $filename = "rapor.xls") {
-    header("Content-Type: application/vnd.ms-excel; charset=utf-8");
-    header("Content-Disposition: attachment; filename=$filename");
-    echo "\xEF\xBB\xBF"; // UTF-8 BOM
-    echo '<table border="1">';
-    echo '<thead><tr>';
-    foreach ($headers as $header) {
-        echo '<th style="background-color: #f2f2f2;">' . htmlspecialchars($header) . '</th>';
-    }
-    echo '</tr></thead>';
-    echo '<tbody>';
-    foreach ($data as $row) {
-        echo '<tr>';
-        foreach ($row as $cell) {
-            echo '<td>' . htmlspecialchars($cell) . '</td>';
+if (!function_exists('renderExcel')) {
+    /**
+     * HTML tablosu formatında Excel çıktısı üretir (Excel bu formatı açabilir).
+     */
+    function renderExcel($data, $headers, $filename = "rapor.xls") {
+        header("Content-Type: application/vnd.ms-excel; charset=utf-8");
+        header("Content-Disposition: attachment; filename=$filename");
+        echo "\xEF\xBB\xBF"; // UTF-8 BOM
+        echo '<table border="1">';
+        echo '<thead><tr>';
+        foreach ($headers as $header) {
+            echo '<th style="background-color: #f2f2f2;">' . htmlspecialchars($header) . '</th>';
         }
-        echo '</tr>';
+        echo '</tr></thead>';
+        echo '<tbody>';
+        foreach ($data as $row) {
+            echo '<tr>';
+            foreach ($row as $cell) {
+                echo '<td>' . htmlspecialchars($cell) . '</td>';
+            }
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
+        exit;
     }
-    echo '</tbody></table>';
-    exit;
 }

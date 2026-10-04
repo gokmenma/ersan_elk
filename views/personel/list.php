@@ -433,7 +433,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                                 </div>
                             </div>
 
-<div class="responsive" style="overflow-x: auto !important;">
+<div class="table-responsive">
 
                             <table id="membersTable" class="table table-selected table-bordered nowrap w-100">
                                 <thead>

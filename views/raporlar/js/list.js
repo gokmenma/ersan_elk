@@ -3,9 +3,51 @@ $(document).ready(function() {
     // Değişkenler
     var reportTables = {};
     var currentTableId = 1;
+    var SUMMARY_STORAGE_KEY = 'raporlar_summary_cards_state';
 
+    // Select2 Başlatma
     if ($.fn.select2) {
         $('#rapor_turu').select2({ width: '100%' });
+    }
+
+    // Flatpickr Başlatma (varsa)
+    if (typeof flatpickr !== 'undefined') {
+        $('.flatpickr').flatpickr({
+            dateFormat: 'd.m.Y',
+            allowInput: true,
+            locale: 'tr'
+        });
+    }
+
+    // Özet Kartları Açma/Kapama Standardı
+    function updateToggleIcon(isHidden) {
+        var $btn = $('#btnToggleSummaryCards');
+        var $icon = $btn.find('i');
+        if (isHidden) {
+            $icon.removeClass('bx-chevron-up').addClass('bx-chevron-down');
+            $btn.attr('title', 'Özet Kartları Göster').attr('aria-expanded', 'false');
+        } else {
+            $icon.removeClass('bx-chevron-down').addClass('bx-chevron-up');
+            $btn.attr('title', 'Özet Kartları Gizle').attr('aria-expanded', 'true');
+        }
+    }
+    updateToggleIcon(document.documentElement.classList.contains('raporlar-summary-hidden'));
+
+    $('#btnToggleSummaryCards').on('click', function() {
+        var isHidden = document.documentElement.classList.toggle('raporlar-summary-hidden');
+        try {
+            localStorage.setItem(SUMMARY_STORAGE_KEY, isHidden ? 'hidden' : 'visible');
+        } catch (e) {}
+        updateToggleIcon(isHidden);
+    });
+
+    // Sayı ve Para Formatlama Fonksiyonları
+    function formatNumber(num) {
+        return new Intl.NumberFormat('tr-TR').format(num || 0);
+    }
+
+    function formatMoney(num) {
+        return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0) + ' ₺';
     }
 
     function escapeHtml(value) {
@@ -53,7 +95,59 @@ $(document).ready(function() {
         return '<span class="report-badge report-badge-' + badgeClass + '"><i class="bx ' + icon + '"></i>' + escapeHtml(data) + '</span>';
     }
 
-    // DataTable yükleme fonksiyonu
+    // Başlık ve Açıklama Güncelleme
+    var reportMetadata = {
+        1: { title: 'İzin / Rapor Listesi', subtitle: 'Filtrelenen tarih aralığındaki personel izin ve istirahat kayıtları' },
+        2: { title: 'Personel Kesinti / Ek Ödeme Listesi', subtitle: 'Filtrelenen tarih aralığındaki tek seferlik kesinti ve ek ödeme kayıtları' },
+        3: { title: 'Personel Talepleri Listesi', subtitle: 'Filtrelenen tarih aralığındaki personel avans, izin, destek talepleri' },
+        4: { title: 'Personel İcra Listesi', subtitle: 'Filtrelenen tarih aralığındaki aktif icra ve nafaka dosyaları' }
+    };
+
+    function updateReportHeader(rapor_turu) {
+        var meta = reportMetadata[rapor_turu] || reportMetadata[1];
+        $('#reportCardTitle').text(meta.title);
+        $('#reportCardSubtitle').text(meta.subtitle);
+
+        // Hızlı filtre butonlarında aktifliği güncelle
+        $('.status-quick-filter[data-report]').removeClass('active');
+        $('.status-quick-filter[data-report="' + rapor_turu + '"]').addClass('active');
+    }
+
+    // Özet KPI Kartlarını Yükleme
+    function loadSummary(start_date, end_date) {
+        $.ajax({
+            url: 'views/raporlar/api.php',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'get-summary',
+                start_date: start_date,
+                end_date: end_date
+            },
+            success: function(res) {
+                if (res.status === 'success' && res.data) {
+                    var d = res.data;
+                    // 1. İzinler
+                    $('#stat_toplam_izin').text(formatNumber(d.izin.toplam));
+                    $('#stat_sub_izin').text('Onaylı: ' + formatNumber(d.izin.onayli) + ' | Bekleyen: ' + formatNumber(d.izin.bekleyen));
+
+                    // 2. Kesinti / Ek Ödemeler
+                    $('#stat_toplam_kesinti_ek').text(formatNumber(d.kesinti_ek.toplam));
+                    $('#stat_sub_kesinti_ek').text('Ek: ' + formatNumber(d.kesinti_ek.ek_adet) + ' | Kesinti: ' + formatNumber(d.kesinti_ek.kesinti_adet));
+
+                    // 3. Talepler
+                    $('#stat_toplam_talep').text(formatNumber(d.talep.toplam));
+                    $('#stat_sub_talep').text('Bekleyen: ' + formatNumber(d.talep.bekleyen) + ' | Çözülen: ' + formatNumber(d.talep.cozuldu));
+
+                    // 4. İcralar
+                    $('#stat_toplam_icra').text(formatNumber(d.icra.toplam));
+                    $('#stat_sub_icra').text(formatMoney(d.icra.toplam_borc) + ' Borç');
+                }
+            }
+        });
+    }
+
+    // DataTable Yükleme Fonksiyonu
     function loadTable(rapor_turu, start_date, end_date) {
         // Preloader'ı göster
         $('#rapor-loader').fadeIn('fast');
@@ -65,26 +159,19 @@ $(document).ready(function() {
         
         // Seçilen tablo container'ını göster
         $(containerId).show();
-        
+        updateReportHeader(rapor_turu);
+
         // Merkezi ayarlardan başlangıç yap
-        var options = getDatatableOptions();
+        var options = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
         
         // Raporlara özel ayarları ekle/ez
         $.extend(true, options, {
             serverSide: true,
             processing: true,
             destroy: true,
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar',
-                    className: 'btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center',
-                    title: "Rapor_" + start_date + "_" + end_date,
-                    exportOptions: {
-                        columns: ':visible'
-                    }
-                }
-            ],
+            language: {
+                emptyTable: "Seçilen filtre kriterlerine uygun rapor verisi bulunamadı."
+            },
             ajax: {
                 url: 'views/raporlar/api.php',
                 type: 'POST',
@@ -111,10 +198,14 @@ $(document).ready(function() {
         });
 
         var islemColumnRender = function(data, type, row) {
-            if(typeof canDeleteTableRow !== 'undefined' && canDeleteTableRow) {
+            if (typeof canDeleteTableRow !== 'undefined' && canDeleteTableRow) {
                 var delType = rapor_turu;
                 if (rapor_turu == 2) delType = row.islem_tipi;
-                return '<button type="button" class="btn btn-sm btn-soft-danger btn-delete-row" data-id="' + row.id + '" data-type="' + delType + '" data-bs-toggle="tooltip" title="Kaydı Sil"><i class="mdi mdi-delete"></i></button>';
+                return '<div class="action-btn-group d-flex align-items-center justify-content-center gap-1">' +
+                       '<button type="button" class="btn btn-subtle-danger table-action-btn btn-delete-row" data-id="' + row.id + '" data-type="' + delType + '" data-bs-toggle="tooltip" title="Kaydı Sil">' +
+                       '<i class="bx bx-trash font-size-14"></i>' +
+                       '</button>' +
+                       '</div>';
             }
             return '-';
         };
@@ -131,7 +222,7 @@ $(document).ready(function() {
                 { data: 'durum', defaultContent: '-', render: badgeRender },
                 { data: 'onaylayan', defaultContent: '-' },
                 { data: 'aciklama', defaultContent: '-', render: descriptionRender },
-                { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
+                { data: null, orderable: false, searchable: false, className: 'text-center', render: islemColumnRender }
             ];
         } else if (rapor_turu == 2) {
             options.columns = [
@@ -147,7 +238,7 @@ $(document).ready(function() {
                 { data: 'tarih', defaultContent: '-', render: dateRender },
                 { data: 'durum', defaultContent: '-', render: badgeRender },
                 { data: 'aciklama', defaultContent: '-', render: descriptionRender },
-                { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
+                { data: null, orderable: false, searchable: false, className: 'text-center', render: islemColumnRender }
             ];
         } else if (rapor_turu == 3) {
             options.columns = [
@@ -161,7 +252,7 @@ $(document).ready(function() {
                 { data: 'cozum_tarihi', defaultContent: '-', render: dateRender },
                 { data: 'cozum_aciklama', defaultContent: '-' },
                 { data: 'aciklama', defaultContent: '-', render: descriptionRender },
-                { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
+                { data: null, orderable: false, searchable: false, className: 'text-center', render: islemColumnRender }
             ];
         } else if (rapor_turu == 4) {
             options.columns = [
@@ -196,7 +287,7 @@ $(document).ready(function() {
                 }},
                 { data: 'tarih', defaultContent: '-', render: dateRender },
                 { data: 'aciklama', defaultContent: '-', render: descriptionRender },
-                { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
+                { data: null, orderable: false, searchable: false, className: 'text-center', render: islemColumnRender }
             ];
         }
 
@@ -204,33 +295,60 @@ $(document).ready(function() {
         if (typeof applyLengthStateSave === 'function') {
             options = applyLengthStateSave(options);
         }
-        reportTables[rapor_turu] = destroyAndInitDataTable('#table' + rapor_turu, options);
+        
+        if (typeof destroyAndInitDataTable === 'function') {
+            reportTables[rapor_turu] = destroyAndInitDataTable(tableId, options);
+        } else {
+            if ($.fn.DataTable.isDataTable(tableId)) {
+                $(tableId).DataTable().destroy();
+            }
+            reportTables[rapor_turu] = $(tableId).DataTable(options);
+        }
         currentTableId = rapor_turu;
     }
 
-    // Buton tıklanmasını dinle
+    // Buton Tıklanması: Raporu Getir
     $('#btnRaporGetir').on('click', function(e) {
         e.preventDefault();
         
-        var rapor_turu = $('#rapor_turu').val();
+        var rapor_turu = parseInt($('#rapor_turu').val(), 10) || 1;
         var start_date = $('#baslangic_tarihi').val();
         var end_date = $('#bitis_tarihi').val();
 
-        if(!start_date || !end_date) {
+        if (!start_date || !end_date) {
             Swal.fire('Uyarı!', 'Lütfen tarih aralığı seçiniz.', 'warning');
             return;
         }
 
+        loadSummary(start_date, end_date);
         loadTable(rapor_turu, start_date, end_date);
     });
 
-    // Sayfa ilk açıldığında tabloyu yükle (isteğe bağlı)
-    // loadTable(1, $('#baslangic_tarihi').val(), $('#bitis_tarihi').val());
+    // KPI Kartlarındaki Hızlı Filtre Butonları Tıklaması
+    $(document).on('click', '.status-quick-filter[data-report]', function(e) {
+        e.preventDefault();
+        var reportType = parseInt($(this).data('report'), 10) || 1;
+        
+        if ($('#rapor_turu').length) {
+            $('#rapor_turu').val(reportType).trigger('change');
+        }
+        
+        var start_date = $('#baslangic_tarihi').val();
+        var end_date = $('#bitis_tarihi').val();
+        loadTable(reportType, start_date, end_date);
+    });
+
+    // Rapor Türü Select değiştiğinde başlığı güncelle
+    $('#rapor_turu').on('change', function() {
+        var val = parseInt($(this).val(), 10) || 1;
+        updateReportHeader(val);
+    });
 
     // Excel Dışa Aktarma Butonu (Sunucu Taraflı - Tüm Filtreli Veriler)
     $('#exportExcelBtn').on('click', function(e) {
         e.preventDefault();
-        var dt = $('#table' + currentTableId).DataTable();
+        var tableId = '#table' + currentTableId;
+        var dt = $(tableId).DataTable();
         
         if (!dt || !dt.data().any()) {
             Swal.fire('Uyarı!', 'Dışa aktarılacak tablo verisi bulunamadı.', 'warning');
@@ -241,14 +359,13 @@ $(document).ready(function() {
         var params = dt.ajax.params();
         params.action = 'export-rapor';
         
-        // Bir form oluşturalım ve POST olarak gönderelim (Büyük parametre setleri için GET yerine POST güvenlidir)
+        // Form oluşturalım ve POST olarak gönderelim
         var form = $('<form>', {
             action: 'views/raporlar/api.php',
             method: 'POST',
-            target: '_blank' // Yeni sekmede indir
+            target: '_blank'
         });
         
-        // İç içe geçmiş objeleri form inputuna çeviren yardımcı fonksiyon
         function appendInputs(obj, prefix) {
             $.each(obj, function(k, v) {
                 var name = prefix ? prefix + '[' + k + ']' : k;
@@ -268,6 +385,34 @@ $(document).ready(function() {
         $('body').append(form);
         form.submit();
         form.remove();
+    });
+
+    // Yazdır Butonu
+    $('#btnHeaderPrint').on('click', function(e) {
+        e.preventDefault();
+        var currentTable = document.querySelector('#tableContainer' + currentTableId);
+        if (!currentTable) {
+            window.print();
+            return;
+        }
+
+        var printWindow = window.open('', '_blank');
+        var reportTitle = $('#reportCardTitle').text() + ' (' + $('#baslangic_tarihi').val() + ' - ' + $('#bitis_tarihi').val() + ')';
+        var tableHtml = currentTable.innerHTML;
+
+        printWindow.document.write('<!DOCTYPE html><html><head><title>' + reportTitle + '</title>');
+        printWindow.document.write('<link rel="stylesheet" href="assets/css/bootstrap.min.css">');
+        printWindow.document.write('<style>body { font-family: sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; margin-top: 15px; } th, td { border: 1px solid #dee2e6; padding: 6px 8px; font-size: 11px; text-align: left; } th { background-color: #f8f9fa !important; font-weight: bold; } th:last-child, td:last-child { display: none; } .report-person-avatar { display: none; } .report-badge { border: 1px solid #ccc; padding: 2px 4px; border-radius: 4px; font-size: 10px; }</style>');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write('<h4 style="margin-bottom: 5px;">' + reportTitle + '</h4>');
+        printWindow.document.write('<p style="font-size: 12px; color: #666; margin-bottom: 15px;">Oluşturulma Tarihi: ' + new Date().toLocaleString('tr-TR') + '</p>');
+        printWindow.document.write(tableHtml);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(function() {
+            printWindow.print();
+        }, 500);
     });
 
     // Satır Silme İşlemleri
@@ -291,10 +436,9 @@ $(document).ready(function() {
             return;
         }
 
-        // Butonu disabled yapalım ki çift tıklanmasın
         var $btn = $(this);
-        var originalText = $btn.text();
-        $btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin"></i> İşleniyor...');
+        var originalText = $btn.html();
+        $btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> İşleniyor...');
 
         $.ajax({
             url: 'views/raporlar/api.php',
@@ -310,7 +454,6 @@ $(document).ready(function() {
                 if (res.status === 'success') {
                     $('#deleteRowModal').modal('hide');
                     Swal.fire('Başarılı!', res.message, 'success');
-                    // Yeniden yükle
                     $('#btnRaporGetir').click();
                 } else {
                     Swal.fire('Hata!', res.message || 'Silme işlemi başarısız', 'error');
@@ -324,5 +467,13 @@ $(document).ready(function() {
             }
         });
     });
+
+    // Sayfa ilk açıldığında özetleri ve ilk rapor tablosunu yükle
+    var initialStart = $('#baslangic_tarihi').val();
+    var initialEnd = $('#bitis_tarihi').val();
+    var initialType = parseInt($('#rapor_turu').val(), 10) || 1;
+
+    loadSummary(initialStart, initialEnd);
+    loadTable(initialType, initialStart, initialEnd);
 
 });

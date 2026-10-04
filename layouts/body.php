@@ -25,6 +25,10 @@
                 localStorage.setItem('data-layout-size', 'fluid');
             }
 
+            const customTopbar = localStorage.getItem('custom-topbar-color');
+            const customSidebar = localStorage.getItem('custom-sidebar-color');
+            const savedPreset = localStorage.getItem('data-theme-preset');
+
             const bodyAttrs = [
                 'data-layout',
                 'data-layout-size',
@@ -36,8 +40,8 @@
             ];
             bodyAttrs.forEach(name => {
                 let value = localStorage.getItem(name);
-                if (!value && name === 'data-topbar') value = 'light';
-                if (!value && name === 'data-sidebar') value = 'dark';
+                if (!value && name === 'data-topbar' && !customTopbar && (!savedPreset || savedPreset === 'ersan' || savedPreset === 'minimalist')) value = 'light';
+                if (!value && name === 'data-sidebar' && !customSidebar && (!savedPreset || savedPreset === 'ersan' || savedPreset === 'minimalist' || savedPreset === 'dark-pro')) value = 'dark';
                 if (!value && name === 'data-theme-mode') value = 'ersan';
                 if (name === 'data-layout-size' && value === 'boxed') {
                     value = 'fluid';

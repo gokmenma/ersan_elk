@@ -75,6 +75,42 @@ final class EInvoiceSyncWorkerTest extends TestCase
         self::assertSame('completed', $jobs->job['status']);
         self::assertSame(5, $jobs->job['state']['processed_count']);
     }
+    public function testShortDraftPageCompletesWithoutRequestingRepeatedPage(): void
+    {
+        $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'taslak';
+        $importer = new SyncOfflineImporter();
+        $pages = new SyncOfflinePages(fn() => $this->items(0, 3));
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame([0], $pages->offsets);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertCount(3, $importer->imported);
+    }
+
+    public function testDraftResumeReplacesOldShortPageSize(): void
+    {
+        $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'taslak';
+        $jobs->job['state']['page_size'] = 3;
+        $jobs->job['state']['cursor'] = 1;
+        $items = $this->items(0, 3);
+        $jobs->job['state']['pending_signature'] = hash('sha256', implode("\n", array_column($items, 'uuid')));
+        $importer = new SyncOfflineImporter(); $pages = new SyncOfflinePages(fn() => $items);
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame([0], $pages->offsets);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertSame(['uuid-1', 'uuid-2'], array_column($importer->imported, 0));
+    }
+
+    public function testFullDraftPageContinuesToShortFinalPage(): void
+    {
+        $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'taslak';
+        $importer = new SyncOfflineImporter();
+        $pages = new SyncOfflinePages(fn($offset) => $this->items($offset, $offset === 0 ? 50 : 3));
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame([0, 50], $pages->offsets);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertCount(53, $importer->imported);
+    }
+
     public function testOutgoingSkipsDraftXmlAndAdvancesRawPageOffset(): void
     {
         $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'giden';

@@ -3042,8 +3042,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Modal İçi: Şablon Sil
-    $('#btnModalDeleteTemplate, .btn-delete-direct').on('click', function(e) {
+    // Modal İçi & Kart Üzeri: Şablon Sil
+    $(document).on('click', '.btn-delete-direct, #btnModalDeleteTemplate', function(e) {
+        e.preventDefault();
         e.stopPropagation();
         const id = $(this).data('id') || $('#tpl_id').val();
         if (!id) return;

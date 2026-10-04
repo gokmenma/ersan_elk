@@ -40,7 +40,11 @@ class EInvoiceSyncWorker
                 }
                 if ($state['cursor'] > count($items)) throw new \InvalidArgumentException('EDM sayfa içeriği değişti. Aktarımı yeniden başlatın.');
                 $state['pending_signature'] = $signature;
-                $state['page_size'] ??= count($items);
+                // EDM draft searches repeat a short final page even with a larger OFFSET.
+                // LIMIT is honored: a draft page below the requested 50 is the final page.
+                // Also replace old checkpoints that used the first short page as page size.
+                if (($state['list_type'] ?? null) === 'taslak') $state['page_size'] = 50;
+                else $state['page_size'] ??= count($items);
                 $this->model->saveJob($job);
                 for ($i = $state['cursor']; $i < count($items); $i++) {
                     try {

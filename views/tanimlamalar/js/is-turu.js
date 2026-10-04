@@ -137,7 +137,7 @@ function loadUcretGecmisi(isTuruId) {
       if (!res.data || res.data.length === 0) {
         const colspan = canManageUcretGecmisi ? 6 : 5;
         tbody.append(
-          `<tr><td colspan="${colspan}" class="text-center text-muted">Kayıt bulunamadı</td></tr>`,
+          `<tr><td colspan="${colspan}" class="text-center text-muted py-4"><i class="bx bx-info-circle font-size-20 d-block mb-1"></i>Kayıt bulunamadı.</td></tr>`,
         );
         return;
       }
@@ -145,33 +145,30 @@ function loadUcretGecmisi(isTuruId) {
       res.data.forEach((item) => {
         const islemBtn = canManageUcretGecmisi
           ? `<td class="text-center">
-                <button type="button" class="btn btn-sm btn-outline-primary px-2 py-1 gecmis-duzenle"
+                <button type="button" class="btn btn-sm btn-subtle-primary table-action-btn gecmis-duzenle"
                     data-id="${item.encrypted_id}"
                     data-baslangic="${item.gecerlilik_baslangic || ""}"
                     data-bitis="${item.gecerlilik_bitis || ""}"
                     data-ucret="${item.ucret || 0}"
                     data-aracli-ucret="${item.aracli_ucret || 0}"
-                    data-okuma-ucret="${item.okuma_ucret || 0}">
-                  <i data-feather="edit-2" style="width:14px;height:14px;"></i> Düzenle
+                    data-okuma-ucret="${item.okuma_ucret || 0}"
+                    title="Düzenle">
+                  <i class="bx bx-edit font-size-14"></i>
                 </button>
              </td>`
           : "";
 
         tbody.append(`
           <tr>
-            <td>${formatDateToTr(item.gecerlilik_baslangic)}</td>
-            <td>${item.gecerlilik_bitis ? formatDateToTr(item.gecerlilik_bitis) : "Aktif"}</td>
-            <td>${formatMoneyTr(item.ucret)}</td>
-            <td>${formatMoneyTr(item.aracli_ucret)}</td>
-            <td>${formatMoneyTr(item.okuma_ucret)}</td>
+            <td class="text-center font-size-12">${formatDateToTr(item.gecerlilik_baslangic)}</td>
+            <td class="text-center font-size-12">${item.gecerlilik_bitis ? formatDateToTr(item.gecerlilik_bitis) : '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 font-size-11">Aktif</span>'}</td>
+            <td class="text-end font-size-13 fw-semibold text-dark">${formatMoneyTr(item.ucret)}</td>
+            <td class="text-end font-size-13 fw-semibold text-dark">${formatMoneyTr(item.aracli_ucret)}</td>
+            <td class="text-end font-size-13 fw-semibold text-dark">${formatMoneyTr(item.okuma_ucret)}</td>
             ${islemBtn}
           </tr>
         `);
       });
-
-      if (typeof feather !== "undefined" && typeof feather.replace === "function") {
-        feather.replace();
-      }
     })
     .catch((error) => {
       swal.fire("Hata", "Ücret geçmişi yüklenirken hata: " + error.message, "error");
@@ -188,22 +185,86 @@ $(document).on("click", "#actionEkle", function () {
   $("#okuma_is_turu_ucret").val("");
   setFlatpickrValue("#ucret_gecerlilik_baslangic", getTodayTr());
   $("#rapor_sekmesi").val("").trigger("change");
-  $("#actionModalLabel").text("İş Türü Ekle");
+  $("#actionModalLabel").text("Yeni İş Türü Ekle");
 });
 
 $(document).ready(function () {
-  // Bu tabloyu burada başlatarak ortak DataTable kolon filtrelerinin
-  // sayfa her yüklendiğinde güvenilir şekilde oluşturulmasını sağla.
-  if (!$.fn.DataTable.isDataTable("#actionTable")) {
-    const options =
-      typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
-    isTuruTable = $("#actionTable").DataTable(options);
-  } else {
+  // 1. Özet Kartları Açma/Kapama (AGENTS.md Standardı)
+  const toggleBtn = $("#btnToggleSummaryCards");
+  const updateToggleState = () => {
+    const isHidden = $("html").hasClass("isturu-summary-hidden");
+    if (toggleBtn.length) {
+      toggleBtn.attr("aria-expanded", !isHidden);
+      toggleBtn
+        .find("i")
+        .attr("class", isHidden ? "bx bx-chevron-down" : "bx bx-chevron-up");
+    }
+  };
+  updateToggleState();
+
+  toggleBtn.on("click", function () {
+    const willHide = !$("html").hasClass("isturu-summary-hidden");
+    $("html").toggleClass("isturu-summary-hidden", willHide);
+    localStorage.setItem(
+      "isturu_summary_cards_state",
+      willHide ? "hidden" : "visible"
+    );
+    updateToggleState();
+  });
+
+  // 2. DataTables Tablosunu Başlat
+  if ($.fn.DataTable.isDataTable("#actionTable")) {
     isTuruTable = $("#actionTable").DataTable();
+  } else {
+    const baseOptions =
+      typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
+    const tableOptions =
+      typeof applyLengthStateSave === "function"
+        ? applyLengthStateSave({
+            ...baseOptions,
+            order: [[1, "asc"]],
+            pageLength: 25,
+          })
+        : {
+            ...baseOptions,
+            order: [[1, "asc"]],
+            pageLength: 25,
+          };
+
+    isTuruTable = $("#actionTable").DataTable(tableOptions);
   }
+
+  // 3. Hızlı Filtre Butonları (Özet Kartlar İçi Butonlar)
+  $(".status-quick-filter").on("click", function () {
+    const rapor = $(this).data("rapor") || "all";
+    $(".status-quick-filter").removeClass("active");
+    $(this).addClass("active");
+
+    if (isTuruTable) {
+      if (rapor === "okuma") {
+        isTuruTable.column(6).search("Okuma").draw();
+      } else if (rapor === "kesme") {
+        isTuruTable.column(6).search("Kesme").draw();
+      } else if (rapor === "sokme") {
+        isTuruTable.column(6).search("Sökme|Mühürleme|Kaçak", true, false).draw();
+      } else {
+        isTuruTable.column(6).search("").draw();
+      }
+    }
+  });
+
+  // 4. Yazdır ve Yenile Butonları
+  $("#btnHeaderPrint, #btnDropdownPrint").on("click", function () {
+    window.print();
+  });
+
+  $("#btnHeaderRefresh, #btnDropdownRefresh").on("click", function () {
+    location.reload();
+  });
 
   canManageUcretGecmisi = $("#ucretGecmisYetki").val() === "1";
 
+  // 5. Select2 Başlatma
   $("#is_turu").select2({
     dropdownParent: $("#actionModal"),
     tags: true,
@@ -221,10 +282,6 @@ $(document).ready(function () {
 
   if (canManageUcretGecmisi) {
     resetUcretGecmisiForm();
-  }
-
-  if (typeof feather !== "undefined" && typeof feather.replace === "function") {
-    feather.replace();
   }
 });
 
@@ -350,18 +407,7 @@ $(document).on("click", "#actionKaydet", function () {
   })
     .then((response) => response.json())
     .then((data) => {
-      title = data.status == "success" ? "Başarılı" : "Hata";
-
-      if (data.status == "success") {
-        var table = $("#actionTable").DataTable();
-        // If update, remove old row first
-        if (data.is_update) {
-          table
-            .row($("#row_" + data.id))
-            .remove()
-            .draw(false);
-        }
-      }
+      const title = data.status == "success" ? "Başarılı" : "Hata";
 
       swal
         .fire({
@@ -393,7 +439,6 @@ $(document).on("click", ".duzenle", function (e) {
     .then((response) => response.json())
     .then((data) => {
       if (data.status == "success") {
-        // We need to set the hidden input to the ENCRYPTED id so save works
         $("#is_turu_id").val(id);
         $("#is_turu").val(data.data.is_turu).trigger("change");
 
@@ -442,11 +487,14 @@ $(document).on("click", ".sil", function (e) {
           .then((response) => response.json())
           .then((data) => {
             if (data.status == "success") {
-              var table = $("#actionTable").DataTable();
-              table
-                .row($("#row_" + data.deleted_id))
-                .remove()
-                .draw(false);
+              if (isTuruTable) {
+                isTuruTable
+                  .row($("#row_" + data.deleted_id))
+                  .remove()
+                  .draw(false);
+              } else {
+                $("#row_" + data.deleted_id).remove();
+              }
 
               swal.fire("Silindi!", data.message, "success");
             } else {
