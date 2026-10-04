@@ -509,9 +509,9 @@ class SystemLogModel extends Model
         }
         if ($includePersonnel) {
             $parts[] = "
-            SELECT pg.id, pg.giris_tarihi, p.adi_soyadi, 'Personel Girişi', 'Personel PWA',
-                   CONCAT('Personel uygulamasına giriş yapıldı', CASE WHEN pg.tarayici IS NOT NULL AND pg.tarayici <> '' THEN CONCAT(' · ', pg.tarayici) ELSE '' END),
-                   COALESCE(NULLIF(pg.ip_adresi, ''), 'Personel Oturumu'), 'login', 0
+            SELECT pg.id, pg.giris_tarihi AS activity_date, p.adi_soyadi AS user_name, 'Personel Girişi' AS event_type, 'Personel PWA' AS module_name,
+                   CONCAT('Personel uygulamasına giriş yapıldı', CASE WHEN pg.tarayici IS NOT NULL AND pg.tarayici <> '' THEN CONCAT(' · ', pg.tarayici) ELSE '' END) AS detail,
+                   COALESCE(NULLIF(pg.ip_adresi, ''), 'Personel Oturumu') AS related_record, 'login' AS category, 0 AS severity
             FROM personel_giris_loglari pg
             INNER JOIN personel p ON p.id = pg.personel_id
             WHERE p.firma_id = :firma_personel{$personnelScope}";
@@ -519,10 +519,10 @@ class SystemLogModel extends Model
 
         if ($includeAi) {
             $parts[] = "
-            SELECT a.id, a.created_at, COALESCE(NULLIF(u.adi_soyadi, ''), NULLIF(u.user_name, ''), CONCAT('Kullanıcı #', a.user_id)),
-                   'Yapay Zeka Sorgusu', 'Yapay Zeka',
-                   CONCAT(COALESCE(a.prompt, ''), CASE WHEN a.status IS NOT NULL THEN CONCAT(' · Durum: ', a.status) ELSE '' END),
-                   COALESCE(NULLIF(a.model_used, ''), 'AI Agent'), 'ai', CASE WHEN a.status = 'error' THEN 2 ELSE 0 END
+            SELECT a.id, a.created_at AS activity_date, COALESCE(NULLIF(u.adi_soyadi, ''), NULLIF(u.user_name, ''), CONCAT('Kullanıcı #', a.user_id)) AS user_name,
+                   'Yapay Zeka Sorgusu' AS event_type, 'Yapay Zeka' AS module_name,
+                   CONCAT(COALESCE(a.prompt, ''), CASE WHEN a.status IS NOT NULL THEN CONCAT(' · Durum: ', a.status) ELSE '' END) AS detail,
+                   COALESCE(NULLIF(a.model_used, ''), 'AI Agent') AS related_record, 'ai' AS category, CASE WHEN a.status = 'error' THEN 2 ELSE 0 END AS severity
             FROM ai_agent_logs a
             LEFT JOIN users u ON u.id = a.user_id
             WHERE a.firma_id = :firma_ai{$aiScope}";
@@ -544,7 +544,7 @@ class SystemLogModel extends Model
         $union = implode(' UNION ALL ', $parts);
 
         $conditions = [];
-                if ($includeSystem) {
+        if ($includeSystem) {
             $params[':firma_system'] = $firmaId;
         }
         if ($includePersonnel) {

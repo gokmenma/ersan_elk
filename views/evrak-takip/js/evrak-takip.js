@@ -36,7 +36,7 @@ $(document).ready(function () {
     gelenDosyalar.forEach((item, index) => {
       const card = $("<div>").addClass("border rounded-3 p-2 bg-light d-flex align-items-center gap-2");
       const icon = $("<span>").addClass("badge bg-info-subtle text-info p-2 rounded-circle")
-        .append($("<i>").attr("data-feather", "file-text").css({width: "15px", height: "15px"}));
+        .append($("<i>").addClass("bx bx-file font-size-16"));
       const info = $("<div>").addClass("flex-grow-1 min-w-0");
       $("<div>").addClass("fw-bold small text-truncate").text(item.name).appendTo(info);
       const detail = item.type === "existing"
@@ -46,11 +46,11 @@ $(document).ready(function () {
         .text(detail.filter(Boolean).join(" • ") + " • " + formatGelenDosyaBoyutu(item.size)).appendTo(info);
       const actions = $("<div>").addClass("d-flex gap-1 flex-shrink-0");
       if (item.type === "existing" && item.path) {
-        $("<a>").addClass("btn btn-sm btn-soft-info").attr({href: item.path, target: "_blank", title: "Görüntüle"})
-          .append($("<i>").attr("data-feather", "eye").css({width: "14px", height: "14px"})).appendTo(actions);
+        $("<a>").addClass("btn btn-sm btn-subtle-info").attr({href: item.path, target: "_blank", title: "Görüntüle"})
+          .append($("<i>").addClass("bx bx-show font-size-14")).appendTo(actions);
       }
-      $("<button type='button'>").addClass("btn btn-sm btn-soft-danger").attr("title", "Listeden kaldır")
-        .append($("<i>").attr("data-feather", "trash-2").css({width: "14px", height: "14px"}))
+      $("<button type='button'>").addClass("btn btn-sm btn-subtle-danger").attr("title", "Listeden kaldır")
+        .append($("<i>").addClass("bx bx-trash font-size-14"))
         .on("click", function () {
           if (item.type === "existing") silinenGelenDosyaIds.push(item.id);
           gelenDosyalar.splice(index, 1);
@@ -59,7 +59,6 @@ $(document).ready(function () {
       card.append(icon, info, actions).appendTo(list);
     });
     gelenDosyaAlanlariniGuncelle();
-    if (typeof feather !== "undefined") feather.replace();
   }
 
   $("#gelenEkDosyalari").on("change", function () {
@@ -122,9 +121,6 @@ $(document).ready(function () {
     $("#evrakPdfFrame").attr("src", "about:blank").hide();
     $("#evrakPdfYeniSekme").addClass("d-none").attr("href", "#");
   }
-
-  // Feather Icons
-  if (typeof feather !== 'undefined') feather.replace();
 
   // Deleted konular helpers
   function getDeletedKonular() {
@@ -191,9 +187,6 @@ $(document).ready(function () {
 
   // Select2 Initialization Function
   function initEvrakSelect2() {
-    console.log("Initializing Select2...");
-    
-    // Normal Select2 (evrak-select2)
     $("#evrakModal .evrak-select2").each(function() {
         if (!$(this).hasClass('select2-hidden-accessible')) {
             $(this).select2({
@@ -215,7 +208,6 @@ $(document).ready(function () {
       }
     });
 
-    // Tags Select2 (evrak-select2-tags)
     $("#evrakModal .evrak-select2-tags").each(function() {
         if (!$(this).hasClass('select2-hidden-accessible')) {
             $(this).select2({
@@ -248,13 +240,11 @@ $(document).ready(function () {
                         return false;
                     });
 
-                    var $el = $(
+                    return $(
                         '<div class="d-flex align-items-center justify-content-between w-100 py-0" style="font-size: 12.5px; line-height: 1.3;">' +
                             '<span>' + safeText + '</span>' +
                         '</div>'
                     ).append($deleteBtn);
-
-                    return $el;
                 }
             });
         }
@@ -263,11 +253,10 @@ $(document).ready(function () {
     removeDeletedOptions();
   }
 
-  // Handle Select2 in Modals (Bootstrap 5 fix)
+  // Handle Select2 in Modals
   $('#evrakModal').on('shown.bs.modal', function () {
     initEvrakSummernote();
     initEvrakSelect2();
-    if (typeof feather !== 'undefined') feather.replace();
     checkSectionVisibility();
   });
 
@@ -370,8 +359,7 @@ $(document).ready(function () {
       }, function(response) {
         if (response.status === "success" && response.personel_id) {
           $("#ilgili_personel_id").val(response.personel_id).trigger("change");
-          $("#plakaFeedback").html(`<span class="text-success"><i data-feather="check-circle" style="width:12px; height:12px;" class="me-1"></i>✓ Bu tarihte plakaya zimmetli personel otomatik seçildi: <strong>${response.personel_adi}</strong></span>`);
-          if (typeof feather !== 'undefined') feather.replace();
+          $("#plakaFeedback").html(`<span class="text-success"><i class="bx bx-check-circle me-1"></i>✓ Bu tarihte plakaya zimmetli personel otomatik seçildi: <strong>${response.personel_adi}</strong></span>`);
           
           const selectContainer = $("#ilgili_personel_id").next('.select2-container');
           selectContainer.addClass('border border-success rounded-3');
@@ -379,8 +367,7 @@ $(document).ready(function () {
             selectContainer.removeClass('border border-success');
           }, 2000);
         } else {
-          $("#plakaFeedback").html(`<span class="text-warning"><i data-feather="alert-triangle" style="width:12px; height:12px;" class="me-1"></i>⚠ Bu tarihte zimmetli personel bulunamadı.</span>`);
-          if (typeof feather !== 'undefined') feather.replace();
+          $("#plakaFeedback").html(`<span class="text-warning"><i class="bx bx-error me-1"></i>⚠ Bu tarihte zimmetli personel bulunamadı.</span>`);
         }
       }, "json").fail(function() {
         $("#plakaFeedback").html(`<span class="text-danger">Sorgulama başarısız oldu.</span>`);
@@ -435,39 +422,6 @@ $(document).ready(function () {
 
   $(document).on("change", "#yazi_tipi", updateEditorFont);
 
-  $(document).on("change", "#firma_logo", function () {
-    const file = this.files && this.files[0];
-    if (!file) return;
-    if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 2 * 1024 * 1024) {
-      this.value = '';
-      Swal.fire('Geçersiz Logo', 'Logo PNG veya JPG formatında ve en fazla 2 MB olmalıdır.', 'warning');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = e => {
-      $("#mevcutFirmaLogo").attr("src", e.target.result).show();
-      $("#firmaLogoYok").addClass("d-none");
-    };
-    reader.readAsDataURL(file);
-  });
-
-  // Handle option deletion from Evrak Konusu (prevent Select2 option selection on mousedown/mouseup/click)
-  $(document).on("mousedown mouseup click touchstart touchend", ".btn-delete-konu", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.stopImmediatePropagation) {
-      e.stopImmediatePropagation();
-    }
-
-    if (e.type === "click" || e.type === "touchend") {
-      const konuVal = $(this).attr("data-konu") || $(this).data("konu");
-      if (konuVal) {
-        handleDeleteKonu(konuVal);
-      }
-    }
-    return false;
-  });
-
   // API Functions
   function loadKonular() {
     removeDeletedOptions();
@@ -499,7 +453,7 @@ $(document).ready(function () {
     });
   }
 
-  // Buttons
+  // Yeni Evrak Butonu
   $("#btnYeniEvrak").on("click", function () {
     $("#evrakModalLabel").text('Yeni Gelen Evrak Kaydı');
     $("#evrakForm")[0].reset();
@@ -529,6 +483,7 @@ $(document).ready(function () {
     $("#evrakModal").modal("show");
   });
 
+  // Evrak Form Submit
   $("#evrakForm").on("submit", function (e) {
     e.preventDefault();
     syncEvrakContent();
@@ -570,6 +525,7 @@ $(document).ready(function () {
     });
   });
 
+  // Evrak Düzenle
   $(document).on("click", ".evrak-duzenle", function () {
     const id = $(this).data("id");
     $.post(api_url, { action: "evrak-detay", id: id }, function (response) {
@@ -588,7 +544,6 @@ $(document).ready(function () {
         $('input[name="evrak_no"]').val(data.evrak_no);
         $('input[name="kurum_adi"]').val(data.kurum_adi);
         
-        // Tags check
         if (data.konu && $("#konu option[value='" + data.konu + "']").length === 0) {
             $("#konu").append(new Option(data.konu, data.konu));
         }
@@ -635,6 +590,7 @@ $(document).ready(function () {
     });
   });
 
+  // Manuel Bildirim Gönder
   $(document).on("click", ".evrak-bildir-manuel", function () {
     const id = $(this).data("id");
     const personId = $(this).data("personel-id");
@@ -645,7 +601,6 @@ $(document).ready(function () {
 
     let text = "Seçili personele evrak bilgileri bildirim ve mail olarak gönderilecektir.";
     if (lastNotified && lastNotified !== "" && lastNotified !== "0000-00-00 00:00:00" && lastNotified !== "null") {
-        // Tarihi daha şık formatla (Y-m-d H:i:s -> d.m.Y H:i)
         let formattedDate = lastNotified;
         try {
             const dateParts = lastNotified.split(' ');
@@ -690,6 +645,7 @@ $(document).ready(function () {
     });
   });
 
+  // Evrak Sil
   $(document).on("click", ".evrak-sil", function () {
     const id = $(this).data("id");
     Swal.fire({
@@ -714,6 +670,7 @@ $(document).ready(function () {
     });
   });
 
+  // E-İmza Onayla
   $(document).on("click", ".evrak-e-imza-onayla", function () {
     const id = $(this).data("id");
     Swal.fire({
@@ -738,6 +695,7 @@ $(document).ready(function () {
     });
   });
 
+  // E-İmza Geri Al
   $(document).on("click", ".evrak-e-imza-geri-al", function () {
     const id = $(this).data("id");
     Swal.fire({
@@ -762,6 +720,7 @@ $(document).ready(function () {
     });
   });
 
+  // E-İmza İade Et
   $(document).on("click", ".evrak-e-imza-iade", function () {
     const button = $(this);
     Swal.fire({
@@ -789,6 +748,7 @@ $(document).ready(function () {
     });
   });
 
+  // Popover E-İmza Akışı
   document.querySelectorAll("#evrakTable [data-onay-akis]").forEach(function (rozet) {
     new bootstrap.Popover(rozet, {
       container: "body",
@@ -801,25 +761,102 @@ $(document).ready(function () {
     });
   });
 
+  // DataTables Özel Filtreleri
   let imzaFiltresiAktif = false;
+  let activeQuickFilter = "all";
+
   $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-    if (!imzaFiltresiAktif || settings.nTable.id !== "evrakTable") return true;
-    return $(settings.aoData[dataIndex].nTr).attr("data-imza-bekliyor") === "1";
+    if (settings.nTable.id !== "evrakTable") return true;
+    
+    const row = $(settings.aoData[dataIndex].nTr);
+
+    // İmzamı bekleyen filtresi
+    if (imzaFiltresiAktif && row.attr("data-imza-bekliyor") !== "1") {
+      return false;
+    }
+
+    // KPI Hızlı Filtreleri
+    if (activeQuickFilter === "gelen") {
+      return row.attr("data-tip") === "gelen";
+    }
+    if (activeQuickFilter === "giden") {
+      return row.attr("data-tip") === "giden";
+    }
+    if (activeQuickFilter === "cevap_bekleyen") {
+      return row.attr("data-tip") === "gelen" && row.attr("data-cevap") === "BEKLEMEDE";
+    }
+
+    return true;
   });
 
+  // DataTable Başlatma
+  let evrakDataTable = null;
+  if ($("#evrakTable").length > 0) {
+    const baseOptions = typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
+    const dtOptions = typeof applyLengthStateSave === "function" ? applyLengthStateSave({
+      ...baseOptions,
+      order: [[2, "desc"]],
+      columnDefs: [
+        { targets: [0, 1, 7, 8, 9, 10], orderable: false }
+      ]
+    }) : {
+      order: [[2, "desc"]],
+      language: { url: "assets/libs/datatables.net/js/tr.json" }
+    };
+
+    evrakDataTable = $("#evrakTable").DataTable(dtOptions);
+  }
+
+  // KPI Hızlı Filtre Butonları
+  $(".status-quick-filter").on("click", function () {
+    $(".status-quick-filter").removeClass("active");
+    $(this).addClass("active");
+    activeQuickFilter = $(this).data("filter-tip") || "all";
+    if (evrakDataTable) {
+      evrakDataTable.draw();
+    }
+  });
+
+  // İmza Filtresi Butonu
   $("#btnImzaFiltre").on("click", function () {
     imzaFiltresiAktif = !imzaFiltresiAktif;
     $(this)
       .toggleClass("btn-warning btn-outline-dark")
       .html(imzaFiltresiAktif
-        ? '<i data-feather="x" class="icon-xs me-1"></i> Filtreyi Kaldır'
-        : '<i data-feather="filter" class="icon-xs me-1"></i> Sadece Bunları Göster');
-    if ($.fn.DataTable.isDataTable("#evrakTable")) {
-      $("#evrakTable").DataTable().draw();
+        ? '<i class="bx bx-x me-1"></i> Filtreyi Kaldır'
+        : '<i class="bx bx-filter-alt me-1"></i> Sadece Bunları Göster');
+    if (evrakDataTable) {
+      evrakDataTable.draw();
     }
-    if (typeof feather !== "undefined") feather.replace();
   });
 
+  // Excel ve Yazdır Butonları
+  $("#btnHeaderExportExcel, #btnDropdownExportExcel").on("click", function () {
+    // Basit ve güvenli HTML tablosundan Excel indirme
+    const table = document.getElementById("evrakTable");
+    if (!table) return;
+    
+    // Geçici klon oluşturarak işlem sütununu çıkart
+    const clone = table.cloneNode(true);
+    $(clone).find("th:last-child, td:last-child").remove();
+    
+    const html = clone.outerHTML;
+    const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "evrak_listesi_" + new Date().toISOString().slice(0, 10) + ".xls";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  $("#btnHeaderPrint").on("click", function () {
+    window.print();
+  });
+
+  // PDF Önizleme İşlemleri
   function showPdfFromRequest(request) {
     clearPdfObjectUrl();
     $("#evrakPdfLoader").removeClass("d-none");
@@ -855,11 +892,6 @@ $(document).ready(function () {
     });
   }
 
-  $("#btnPdfOnizle").on("click", function () {
-    syncEvrakContent();
-    showPdfFromRequest({ type: "POST", data: new FormData($("#evrakForm")[0]), contentType: false, processData: false });
-  });
-
   $(document).on("click", ".evrak-pdf-goruntule", function () {
     showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } });
   });
@@ -890,42 +922,31 @@ $(document).ready(function () {
 
   $(document).on("hidden.bs.modal", "#evrakPdfModal", resetPdfModalState);
 
-  // ---------- Özet kartlarını gizle/göster ----------
-  const EVRAK_OZET_SAKLI_ANAHTAR = "evrak_ozet_kapali";
+  // ---------- Özet kartlarını gizle/göster (Standardized) ----------
+  const SUMMARY_STATE_KEY = "evrak_summary_cards_state";
 
-  function evrakOzetGorunumUygula(kapali, animasyonlu) {
-    const satir = $("#evrakOzetSatir");
-    const dugme = $("#btnEvrakOzetToggle");
-    if (!satir.length) return;
-    if (!animasyonlu) satir.css("transition", "none");
-    satir.toggleClass("evrak-ozet-kapali", kapali);
-    if (!animasyonlu && satir[0]) {
-      void satir[0].offsetHeight;
-      satir.css("transition", "");
-    }
-    dugme.toggleClass("evrak-donuk", kapali)
-      .attr("title", kapali ? "Özet kartlarını göster" : "Özet kartlarını gizle");
-
-    // Sayfa başındaki erken gizleme sınıfını kaldırarak kontrolü kalıcı CSS sınıflarına devret
-    document.documentElement.classList.remove("evrak-ozet-baslangic-kapali");
+  function setSummaryCardsVisibility(visible) {
+    document.documentElement.classList.toggle("evrak-summary-hidden", !visible);
+    $("#btnToggleSummaryCards")
+      .attr("aria-expanded", visible ? "true" : "false")
+      .attr("title", visible ? "Özet Kartları Gizle" : "Özet Kartları Göster")
+      .find("i")
+      .attr("class", visible ? "bx bx-chevron-up" : "bx bx-chevron-down");
   }
 
-  $(document).on("click", "#btnEvrakOzetToggle", function (e) {
+  $("#btnToggleSummaryCards").on("click", function (e) {
     e.preventDefault();
-    const kapaliOlacak = !$("#evrakOzetSatir").hasClass("evrak-ozet-kapali");
-    evrakOzetGorunumUygula(kapaliOlacak, true);
+    const isCurrentlyHidden = document.documentElement.classList.contains("evrak-summary-hidden");
+    const shouldShow = isCurrentlyHidden;
+    setSummaryCardsVisibility(shouldShow);
     try {
-      localStorage.setItem(EVRAK_OZET_SAKLI_ANAHTAR, kapaliOlacak ? "1" : "0");
-    } catch (e) { /* yoksay */ }
+      localStorage.setItem(SUMMARY_STATE_KEY, shouldShow ? "visible" : "hidden");
+    } catch (e) {}
   });
 
-  (function evrakOzetBaslangicDurumu() {
-    let kapali = false;
-    try {
-      kapali = localStorage.getItem(EVRAK_OZET_SAKLI_ANAHTAR) === "1";
-    } catch (e) { /* yoksay */ }
-    evrakOzetGorunumUygula(kapali, false);
+  // İlk yüklemedeki buton ikonu senkronizasyonu
+  (function initSummaryCardsState() {
+    const isHidden = localStorage.getItem(SUMMARY_STATE_KEY) === "hidden";
+    setSummaryCardsVisibility(!isHidden);
   })();
-
-  $("#btnRefresh").on("click", function () { location.reload(); });
 });
