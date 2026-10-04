@@ -12,7 +12,7 @@ $title = 'Gelen Faturalar';
 @media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
 </style>
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
-<script src="views/efatura/js/transport.js"></script>
+<script src="views/efatura/js/transport.js?v=<?= filemtime(__DIR__ . '/js/transport.js') ?>"></script>
 
 
 <?php include 'layouts/breadcrumb.php'; ?>
@@ -195,7 +195,7 @@ $title = 'Gelen Faturalar';
                                     <label class="form-check-label" for="checkAll"></label>
                                 </div>
                             </th>
-                            <th data-filter="string" class="text-center" style="width: 50px;">SIRA</th>
+                            <th data-filter="none" class="text-center" style="width: 50px;">SIRA</th>
                             <th data-filter="string" style="width: 135px;">FATURA NO</th>
                             <th data-filter="date" style="width: 105px;">TARİH</th>
                             <th data-filter="string">GÖNDERİCİ / TEDARİKÇİ</th>
@@ -563,7 +563,8 @@ $title = 'Gelen Faturalar';
     color: #475569 !important;
     background-color: #f8fafc !important;
     border: 1px solid #eef2f6 !important;
-    padding: 8px 10px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
     vertical-align: middle !important;
 }
 

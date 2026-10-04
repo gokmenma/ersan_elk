@@ -156,6 +156,25 @@ class EInvoiceService
                 $invoice['fatura_no'] = $this->settingsModel->generateNextInvoiceNumber($firmId, $invoice['belge_turu'], $series, $year);
                 $this->saveState($invoiceId, $firmId, ['fatura_no' => $invoice['fatura_no']]);
             }
+            $remoteNumber = $client->findOutgoingInvoiceByNumber($invoice['fatura_no']);
+            $numberChanges = 0;
+            while ($remoteNumber && strcasecmp($remoteNumber['uuid'], $invoice['ettn']) !== 0) {
+                if (++$numberChanges > 10) throw new \InvalidArgumentException('EDM’de boş fatura numarası bulunamadı. Seri sayacını kontrol edin.');
+                $previousNumber = $invoice['fatura_no'];
+                // Advance the configured series past collisions even if the portal counter is stale.
+                if (substr($previousNumber, 0, 7) === $series . $year) {
+                    $this->settingsModel->reconcileSerial($firmId, $invoice['belge_turu'], $series, $year, (int)substr($previousNumber, -9));
+                }
+                $invoice['fatura_no'] = $this->settingsModel->generateNextInvoiceNumber($firmId, $invoice['belge_turu'], $series, $year);
+                $this->saveState($invoiceId, $firmId, ['fatura_no' => $invoice['fatura_no']]);
+                $this->invoiceModel->recordEvent($invoiceId, $firmId, 'NUMARA_DUZELTME', 'BASARILI', 'EDM numara çakışması: ' . $previousNumber . ' yerine ' . $invoice['fatura_no'] . ' ayrıldı.');
+                $remoteNumber = $client->findOutgoingInvoiceByNumber($invoice['fatura_no']);
+            }
+            if ($remoteNumber && InvoiceStatusService::map(['status' => $remoteNumber['status']])['entegrator_durum_kodu'] !== 'TASLAK') {
+                $this->saveState($invoiceId, $firmId, InvoiceStatusService::map(['status' => $remoteNumber['status']]) + ['islem_belirsiz' => null]);
+                $reserved = false;
+                return ['success' => true, 'message' => 'Fatura EDM’de zaten kayıtlı. Durumu güncellendi; yeniden gönderilmedi.', 'fatura_no' => $invoice['fatura_no']];
+            }
             $xml = $this->ublService->generateInvoiceXml($invoice, $supplier, $invoice['satirlar']);
             (new InvoiceValidationService())->validateXml($xml, $invoice, $invoice['satirlar']);
             $path = $this->storeXml($firmId, $invoice['ettn'], $xml);
@@ -792,23 +811,48 @@ class EInvoiceService
     private function syncInvoices(int $firmId, string $direction, string $start, string $end): array
     {
         $client = $this->client($firmId);
-        $items = $client->getInvoices($direction === 'GELEN' ? 'IN' : 'OUT', $start, $end, 500, 'CREATE');
+        // 1. Aşama: HEADER_ONLY = 'Y' ile sadece başlık ve durum listesini hızlıca çek
+        $items = $client->getInvoices($direction === 'GELEN' ? 'IN' : 'OUT', $start, $end, 500, 'CREATE', 'Y');
         $result = $client->getSyncResult() + ['added_count' => 0, 'updated_count' => 0];
         $reader = new UblReaderService();
         foreach ($items as $item) {
             try {
-                $source = $reader->read($item['xml'], $direction);
-                if (strcasecmp($source['header']['ettn'], $item['uuid']) !== 0) throw new \InvalidArgumentException('XML ETTN ile EDM ETTN uyuşmuyor.');
                 $existing = $this->invoiceModel->getInvoiceByEttn($item['uuid'], $firmId);
                 $mapped = InvoiceStatusService::map([
                     'status'      => $item['status'],
                     'status_desc' => $item['status_desc'] ?? '',
                 ]);
+
+                // Mevcut fatura kontrolü: Eğer fatura yerelde zaten kayıtlıysa ve XML'i mevcutsa
+                if ($existing && !empty($existing['ubl_xml_path']) && file_exists($existing['ubl_xml_path'])) {
+                    $statusChanged = (($existing['entegrator_durum_kodu'] ?? '') !== ($mapped['entegrator_durum_kodu'] ?? ''))
+                        || (($existing['gib_durum_aciklamasi'] ?? '') !== ($mapped['gib_durum_aciklamasi'] ?? ''));
+
+                    if ($statusChanged) {
+                        $locked = $this->invoiceModel->acquireInvoiceLock((int)$existing['id'], $firmId);
+                        if ($locked) {
+                            try {
+                                $this->saveState((int)$existing['id'], $firmId, $mapped);
+                                $result['updated_count']++;
+                            } finally {
+                                $this->invoiceModel->releaseInvoiceLock((int)$existing['id'], $firmId);
+                            }
+                        }
+                    }
+                    // Zaten tam kayıtlı; XML indirmeyi ve yeniden ayrıştırmayı atla
+                    continue;
+                }
+
+                // 2. Aşama: Yalnızca yeni veya XML'i eksik olan faturaların tam UBL XML'ini indir
+                $xml = !empty($item['xml']) ? $item['xml'] : $client->getInvoiceXml($item['uuid'], $direction === 'GELEN' ? 'IN' : 'OUT');
+                $source = $reader->read($xml, $direction, $direction === 'GIDEN' && $mapped['entegrator_durum_kodu'] === 'TASLAK');
+                if (strcasecmp($source['header']['ettn'], $item['uuid']) !== 0) throw new \InvalidArgumentException('XML ETTN ile EDM ETTN uyuşmuyor.');
+
                 $header = array_merge($source['header'], $mapped);
                 $locked = $existing ? $this->invoiceModel->acquireInvoiceLock((int)$existing['id'], $firmId) : false;
                 if ($existing && !$locked) throw new \InvalidArgumentException('Fatura için başka işlem sürüyor; tekrar senkronize edin.');
                 try {
-                    $header['ubl_xml_path'] = $this->storeXml($firmId, $item['uuid'], $item['xml']);
+                    $header['ubl_xml_path'] = $this->storeXml($firmId, $item['uuid'], $xml);
                     $id = $this->invoiceModel->importInvoice($firmId, $header, $source['lines'], (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0));
                 } finally { if ($locked) $this->invoiceModel->releaseInvoiceLock((int)$existing['id'], $firmId); }
                 $result[$existing ? 'updated_count' : 'added_count']++;
@@ -825,6 +869,36 @@ class EInvoiceService
             'success' => $success,
             'message' => $msg
         ];
+    }
+
+    /** Worker imports a single invoice; caller checkpoints only after this succeeds. */
+    public function importSyncedInvoice(int $firmId, array $item, int $userId): string
+    {
+        $mapped = InvoiceStatusService::map(['status' => $item['status'], 'status_desc' => $item['status_desc'] ?? '']);
+        $source = (new UblReaderService())->read($item['xml'], 'GIDEN', $mapped['entegrator_durum_kodu'] === 'TASLAK');
+        if (strcasecmp($source['header']['ettn'], $item['uuid']) !== 0) {
+            throw new \InvalidArgumentException('XML ETTN ile EDM ETTN uyuşmuyor.');
+        }
+        $existing = $this->invoiceModel->getInvoiceByEttn($item['uuid'], $firmId);
+        $locked = $existing ? $this->invoiceModel->acquireInvoiceLock((int)$existing['id'], $firmId) : false;
+        if ($existing && !$locked) throw new \RuntimeException('Fatura için başka işlem sürüyor; tekrar deneyin.');
+        try {
+            $header = array_merge($source['header'], $mapped);
+            $header['ubl_xml_path'] = $this->storeXml($firmId, $item['uuid'], $item['xml']);
+            $id = $this->invoiceModel->importInvoice($firmId, $header, $source['lines'], $userId);
+            // Existing imports preserve local status; refresh the remote status separately.
+            if ($existing) {
+                $mapped = array_filter($mapped, static fn($value) => $value !== null);
+                $current = $existing['entegrator_durum_kodu'] ?? '';
+                if ($current === 'IPTAL' || $mapped['entegrator_durum_kodu'] === 'BEKLIYOR' || ($current === 'ONAYLANDI' && $mapped['entegrator_durum_kodu'] !== 'IPTAL')) {
+                    unset($mapped['entegrator_durum_kodu']);
+                }
+                $this->saveState($id, $firmId, $mapped);
+            }
+            return $existing ? 'updated_count' : 'added_count';
+        } finally {
+            if ($locked) $this->invoiceModel->releaseInvoiceLock((int)$existing['id'], $firmId);
+        }
     }
 
     public function downloadPdf(int $invoiceId, int $firmId): string

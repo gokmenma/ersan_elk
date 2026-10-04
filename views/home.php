@@ -1243,13 +1243,21 @@ if (Gate::allows("ana_sayfa")) {
                 [data-bs-theme="dark"] .drag-handle-indicator {
                     color: #74788d !important;
                 }
+                [data-bs-theme="dark"] .finder-tabs-nav .nav-link.active,
+                [data-bs-theme="dark"] .finder-tabs-nav .nav-link.active * {
+                    color: #f6f6f6 !important;
+                }
                 [data-bs-theme="dark"] .finder-tabs-nav .nav-link.active {
                     background: linear-gradient(180deg, #2e3548 0%, #222736 100%) !important;
-                    color: #f6f6f6 !important;
                     border-color: rgba(255,255,255,0.1) !important;
                     box-shadow: none !important;
                 }
-                [data-bs-theme="dark"] .finder-tabs-nav .nav-link:not(.active):hover {
+                [data-bs-theme="dark"] .finder-tabs-nav .nav-link.active .badge {
+                    background: #32394e !important;
+                    color: #cbd5e1 !important;
+                }
+                [data-bs-theme="dark"] .finder-tabs-nav .nav-link:not(.active):hover,
+                [data-bs-theme="dark"] .finder-tabs-nav .nav-link:not(.active):hover * {
                     background: rgba(255,255,255,0.05) !important;
                     color: #ffffff !important;
                 }
@@ -1442,13 +1450,21 @@ if (Gate::allows("ana_sayfa")) {
                 .finder-tabs-nav .nav-link {
                     transition: all 0.18s ease !important;
                 }
+                .finder-tabs-nav .nav-link.active,
+                .finder-tabs-nav .nav-link.active * {
+                    color: #0f172a !important;
+                }
                 .finder-tabs-nav .nav-link.active {
                     background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
-                    color: #0f172a !important;
                     border-color: rgba(148,163,184,0.32) !important;
                     box-shadow: 0 8px 20px -14px rgba(15,23,42,0.45), inset 0 1px 0 rgba(255,255,255,0.95) !important;
                 }
-                .finder-tabs-nav .nav-link:not(.active):hover {
+                .finder-tabs-nav .nav-link.active .badge {
+                    background: #e2e8f0 !important;
+                    color: #334155 !important;
+                }
+                .finder-tabs-nav .nav-link:not(.active):hover,
+                .finder-tabs-nav .nav-link:not(.active):hover * {
                     background: rgba(255,255,255,0.78) !important;
                     color: #1e293b !important;
                 }
@@ -3798,77 +3814,132 @@ if (Gate::allows("ana_sayfa")) {
                     }, 300);
                 });
 
-                // Log Detay Modal
-                document.querySelectorAll('.btn-log-detay').forEach(function (btn) {
-                    btn.addEventListener('click', function () {
-                        var title = this.dataset.title;
-                        var user = this.dataset.user;
-                        var date = this.dataset.date;
-                        var content = this.dataset.content;
-                        document.getElementById('logDetayTitle').textContent = title;
-                        document.getElementById('logDetayUser').textContent = user;
-                        document.getElementById('logDetayDate').textContent = date;
+                // Log Detay Modal (Delegated handler for dynamic widgets)
+                $(document).on('click', '.btn-log-detay', function () {
+                    var title = this.dataset.title;
+                    var user = this.dataset.user;
+                    var date = this.dataset.date;
+                    var content = this.dataset.content;
+                    document.getElementById('logDetayTitle').textContent = title;
+                    document.getElementById('logDetayUser').textContent = user;
+                    document.getElementById('logDetayDate').textContent = date;
 
-                        if (content.includes('(Güncellenen veriler: {')) {
-                            try {
-                                let parts = content.split(' (Güncellenen veriler: { ');
-                                let mainText = parts[0];
-                                let changesPart = parts[1].replace(/ ?\}\)?$/, '');
-                                let changes = changesPart.split(', ');
+                    if (title.includes('Yapay Zeka')) {
+                        // AI Sorgusu Gösterimi
+                        let mainPrompt = content;
+                        let jsonPart = null;
+                        let responseText = this.dataset.response || '';
 
-                                let formattedContent = `<div class="d-flex align-items-start gap-2 mb-3">
-                                <i class='bx bx-edit-alt text-primary mt-1' style='font-size:1.1rem;flex-shrink:0;'></i>
-                                <span style='font-size:0.875rem;color:#374151;line-height:1.55;'>${mainText}</span>
-                            </div>`;
-
-                                if (changes.some(c => c.includes(': '))) {
-                                    formattedContent += `<div class="change-table">
-                                    <table class="table table-sm mb-0">
-                                        <thead><tr><th>Alan</th><th>Değişim</th></tr></thead>
-                                        <tbody>`;
-                                    changes.forEach(change => {
-                                        if (change.includes(': ')) {
-                                            let sepIdx = change.indexOf(': ');
-                                            let key = change.substring(0, sepIdx).trim();
-                                            let val = change.substring(sepIdx + 2).trim();
-                                            let displayVal = val;
-                                            if (val.includes(' -> ')) {
-                                                let [from, to] = val.split(' -> ');
-                                                displayVal = `<span class="change-arrow">
-                                                <span class="from-val">${from || 'Boş'}</span>
-                                                <i class='bx bx-right-arrow-alt arrow-icon'></i>
-                                                <span class="to-val">${to || 'Boş'}</span>
-                                            </span>`;
-                                            } else if (val.includes(' → ')) {
-                                                let [from, to] = val.split(' → ');
-                                                displayVal = `<span class="change-arrow">
-                                                <span class="from-val">${from || 'Boş'}</span>
-                                                <i class='bx bx-right-arrow-alt arrow-icon'></i>
-                                                <span class="to-val">${to || 'Boş'}</span>
-                                            </span>`;
-                                            }
-                                            formattedContent += `<tr>
-                                            <td class="field-cell">${key}</td>
-                                            <td>${displayVal}</td>
-                                        </tr>`;
-                                        }
-                                    });
-                                    formattedContent += `</tbody></table></div>`;
-                                }
-                                document.getElementById('logDetayContent').innerHTML = formattedContent;
-                                document.getElementById('logDetayContent').style.whiteSpace = 'normal';
-                            } catch (e) {
-                                document.getElementById('logDetayContent').textContent = content;
-                            }
+                        let match = content.match(/^(.*?)(?:\s*(?:Bordro Bağlamı|Bağlam|Context|Veri Seti|Veri|JSON|Payload)\s*:\s*|\s+)(\{.*)$/s);
+                        if (match) {
+                            mainPrompt = match[1].trim();
+                            jsonPart = match[2].trim();
                         } else {
-                            // Düz metin — satır sonlarını <br> ile göster
-                            document.getElementById('logDetayContent').innerHTML =
-                                '<i class="bx bx-info-circle text-primary me-2" style="font-size:1rem;vertical-align:middle;"></i>' +
-                                content.replace(/\n/g, '<br>');
-                            document.getElementById('logDetayContent').style.whiteSpace = 'normal';
+                            let match2 = content.match(/^(.*?)(?:\n\s*|\s+)(\{.*)$/s);
+                            if (match2) {
+                                mainPrompt = match2[1].trim();
+                                jsonPart = match2[2].trim();
+                            }
                         }
-                        new bootstrap.Modal(document.getElementById('modalLogDetay')).show();
-                    });
+
+                        let aiHtml = `<div class="ai-prompt-box p-3 rounded-3 mb-3" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 font-size-11">
+                                    <i class="bx bx-bot me-1"></i>Sorgu Metni (Prompt)
+                                </span>
+                            </div>
+                            <div class="font-size-13 text-dark fw-medium" style="line-height:1.6;white-space:pre-wrap;">${mainPrompt}</div>
+                        </div>`;
+
+                        if (jsonPart) {
+                            let formattedJson = jsonPart;
+                            try {
+                                formattedJson = JSON.stringify(JSON.parse(jsonPart), null, 2);
+                            } catch (e) {}
+
+                            aiHtml += `<div class="ai-payload-box rounded-3 overflow-hidden mb-3" style="border:1px solid #e2e8f0;">
+                                <div class="d-flex align-items-center justify-content-between px-3 py-2 bg-light border-bottom">
+                                    <span class="font-size-12 fw-semibold text-secondary">
+                                        <i class="bx bx-data me-1 text-primary"></i>Bağlam Veri Seti (JSON Payload)
+                                    </span>
+                                    <span class="badge bg-light text-muted border font-size-10">JSON</span>
+                                </div>
+                                <pre class="m-0 p-3 bg-dark text-light font-monospace font-size-11" style="max-height:260px;overflow:auto;border-radius:0 0 6px 6px;"><code>${formattedJson}</code></pre>
+                            </div>`;
+                        }
+
+                        if (responseText && responseText.trim() !== '') {
+                            aiHtml += `<div class="ai-response-box p-3 rounded-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 font-size-11">
+                                        <i class="bx bx-check-circle me-1"></i>Model Yanıtı
+                                    </span>
+                                </div>
+                                <div class="font-size-13 text-dark" style="line-height:1.6;white-space:pre-wrap;">${responseText}</div>
+                            </div>`;
+                        }
+
+                        document.getElementById('logDetayContent').innerHTML = aiHtml;
+                        document.getElementById('logDetayContent').style.whiteSpace = 'normal';
+                    } else if (content.includes('(Güncellenen veriler: {')) {
+                        try {
+                            let parts = content.split(' (Güncellenen veriler: { ');
+                            let mainText = parts[0];
+                            let changesPart = parts[1].replace(/ ?\}\)?$/, '');
+                            let changes = changesPart.split(', ');
+
+                            let formattedContent = `<div class="d-flex align-items-start gap-2 mb-3">
+                            <i class='bx bx-edit-alt text-primary mt-1' style='font-size:1.1rem;flex-shrink:0;'></i>
+                            <span style='font-size:0.875rem;color:#374151;line-height:1.55;'>${mainText}</span>
+                        </div>`;
+
+                            if (changes.some(c => c.includes(': '))) {
+                                formattedContent += `<div class="change-table">
+                                <table class="table table-sm mb-0">
+                                    <thead><tr><th>Alan</th><th>Değişim</th></tr></thead>
+                                    <tbody>`;
+                                changes.forEach(change => {
+                                    if (change.includes(': ')) {
+                                        let sepIdx = change.indexOf(': ');
+                                        let key = change.substring(0, sepIdx).trim();
+                                        let val = change.substring(sepIdx + 2).trim();
+                                        let displayVal = val;
+                                        if (val.includes(' -> ')) {
+                                            let [from, to] = val.split(' -> ');
+                                            displayVal = `<span class="change-arrow">
+                                            <span class="from-val">${from || 'Boş'}</span>
+                                            <i class='bx bx-right-arrow-alt arrow-icon'></i>
+                                            <span class="to-val">${to || 'Boş'}</span>
+                                        </span>`;
+                                        } else if (val.includes(' → ')) {
+                                            let [from, to] = val.split(' → ');
+                                            displayVal = `<span class="change-arrow">
+                                            <span class="from-val">${from || 'Boş'}</span>
+                                            <i class='bx bx-right-arrow-alt arrow-icon'></i>
+                                            <span class="to-val">${to || 'Boş'}</span>
+                                        </span>`;
+                                        }
+                                        formattedContent += `<tr>
+                                        <td class="field-cell">${key}</td>
+                                        <td>${displayVal}</td>
+                                    </tr>`;
+                                    }
+                                });
+                                formattedContent += `</tbody></table></div>`;
+                            }
+                            document.getElementById('logDetayContent').innerHTML = formattedContent;
+                            document.getElementById('logDetayContent').style.whiteSpace = 'normal';
+                        } catch (e) {
+                            document.getElementById('logDetayContent').textContent = content;
+                        }
+                    } else {
+                        // Düz metin — satır sonlarını <br> ile göster
+                        document.getElementById('logDetayContent').innerHTML =
+                            '<i class="bx bx-info-circle text-primary me-2" style="font-size:1rem;vertical-align:middle;"></i>' +
+                            content.replace(/\n/g, '<br>');
+                        document.getElementById('logDetayContent').style.whiteSpace = 'normal';
+                    }
+                    new bootstrap.Modal(document.getElementById('modalLogDetay')).show();
                 });
 
                 // Detay Modal - API'den detay çekiyor

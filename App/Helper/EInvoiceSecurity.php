@@ -8,17 +8,17 @@ final class EInvoiceSecurity
     public static function checkPermission(string $action): bool
     {
         $perms = match ($action) {
-            'list_giden', 'list_invoices', 'summary_stats', 'preview_html', 'download_xml', 'download_pdf', 'export_excel', 'invoice_history' 
-                => ['efatura/giden-list', 'efatura/taslak-list', 'efatura/gelen-list', 'efatura/olustur'],
-            'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft' 
-                => ['efatura/olustur', 'efatura/taslak-list', 'efatura/giden-list'],
-            'send_invoice', 'bulk_send_invoices', 'cancel_invoice' 
+            'list_giden', 'list_invoices', 'summary_stats', 'preview_html', 'download_xml', 'download_pdf', 'export_excel', 'invoice_history', 'get-unique-values', 'get_unique_values', 'get_invoice_payment_info', 'get_kasa_list', 'list_note_templates', 'get_note_template'
+                => ['efatura/giden-list', 'efatura/taslak-list', 'efatura/gelen-list', 'efatura/olustur', 'efatura/ayarlar'],
+            'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'save_invoice_payment', 'delete_invoice_payment', 'save_note_template', 'delete_note_template', 'set_default_note_template'
+                => ['efatura/olustur', 'efatura/ayarlar', 'efatura/taslak-list', 'efatura/giden-list'],
+            'send_invoice', 'bulk_send_invoices', 'cancel_invoice'
                 => ['efatura/taslak-list', 'efatura/giden-list', 'efatura/olustur'],
-            'sync_status', 'sync_outgoing_invoices', 'refresh_history' 
+            'sync_status', 'sync_outgoing_invoices', 'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'refresh_history'
                 => ['efatura/giden-list', 'efatura/taslak-list', 'efatura/olustur'],
-            'sync_incoming_invoices', 'respond_commercial' 
+            'sync_incoming_invoices', 'respond_commercial'
                 => ['efatura/gelen-list', 'efatura/giden-list'],
-            'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials' 
+            'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials'
                 => ['efatura/ayarlar'],
             'connection_info'
                 => ['efatura/ayarlar', 'efatura/olustur'],
@@ -41,10 +41,10 @@ final class EInvoiceSecurity
     public static function permission(string $action): ?string
     {
         return match ($action) {
-            'list_giden', 'list_invoices', 'summary_stats', 'preview_html', 'download_xml', 'download_pdf', 'export_excel', 'invoice_history' => 'efatura/giden-list',
-            'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'connection_info' => 'efatura/olustur',
+            'list_giden', 'list_invoices', 'summary_stats', 'preview_html', 'download_xml', 'download_pdf', 'export_excel', 'invoice_history', 'get-unique-values', 'get_unique_values', 'get_invoice_payment_info', 'get_kasa_list' => 'efatura/giden-list',
+            'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'connection_info', 'save_invoice_payment', 'delete_invoice_payment', 'list_note_templates', 'get_note_template', 'save_note_template', 'delete_note_template', 'set_default_note_template' => 'efatura/olustur',
             'send_invoice', 'bulk_send_invoices' => 'efatura/taslak-list',
-            'sync_status', 'sync_outgoing_invoices', 'refresh_history' => 'efatura/giden-list',
+            'sync_status', 'sync_outgoing_invoices', 'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'refresh_history' => 'efatura/giden-list',
             'sync_incoming_invoices', 'respond_commercial' => 'efatura/gelen-list',
             'cancel_invoice' => 'efatura/giden-list',
             'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials' => 'efatura/ayarlar',
@@ -54,7 +54,7 @@ final class EInvoiceSecurity
 
     public static function readOnly(string $action): bool
     {
-        return in_array($action, ['list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info','list_numarators'], true);
+        return in_array($action, ['list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info','list_numarators','get-unique-values','get_unique_values','get_invoice_payment_info','get_kasa_list','list_note_templates','get_note_template'], true);
     }
 
     public static function invoiceId(mixed $encrypted): int

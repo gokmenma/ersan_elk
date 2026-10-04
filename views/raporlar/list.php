@@ -1,4 +1,5 @@
 <?php use App\Helper\Form; ?>
+<div class="container-fluid">
 <div class="row">
     <div class="col-12">
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
@@ -257,6 +258,7 @@
         </div>
     </div>
 </div>
+</div> <!-- end container-fluid -->
 
 <script>
     var canDeleteTableRow = <?= \App\Service\Gate::allows("toplu_raporlar_satir_silme") ? 'true' : 'false' ?>;

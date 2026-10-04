@@ -22,7 +22,24 @@ class UblGeneratorService
         // Empty extension is reserved for EDM server signing; no fabricated signature.
         $add($add($add($root, 'ext:UBLExtensions'), 'ext:UBLExtension'), 'ext:ExtensionContent');
         foreach (['UBLVersionID' => '2.1', 'CustomizationID' => 'TR1.2', 'ProfileID' => $invoice['fatura_profili'], 'ID' => $invoice['fatura_no'] ?? '', 'CopyIndicator' => 'false', 'UUID' => $invoice['ettn'], 'IssueDate' => $invoice['fatura_tarihi'], 'IssueTime' => $invoice['duzenleme_saati'] ?? '00:00:00', 'InvoiceTypeCode' => $invoice['fatura_tipi']] as $tag => $value) $add($root, 'cbc:' . $tag, $value);
-        foreach (array_filter([$invoice['notlar'] ?? '', $invoice['yaziyla_tutar'] ?? '']) as $note) $add($root, 'cbc:Note', $note);
+        if (!empty($invoice['notlar'])) {
+            $rawNotes = html_entity_decode((string)$invoice['notlar'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $rawNotes = preg_replace('/<\/(p|div)>/i', "\n", $rawNotes);
+            $rawNotes = preg_replace('/<br\s*\/?>/i', "\n", $rawNotes);
+            $cleanNotes = trim(strip_tags($rawNotes));
+            if ($cleanNotes !== '') {
+                $linesNotes = explode("\n", $cleanNotes);
+                foreach ($linesNotes as $ln) {
+                    $ln = trim($ln);
+                    if ($ln !== '') {
+                        $add($root, 'cbc:Note', $ln);
+                    }
+                }
+            }
+        }
+        if (!empty($invoice['yaziyla_tutar'])) {
+            $add($root, 'cbc:Note', $invoice['yaziyla_tutar']);
+        }
         $add($root, 'cbc:DocumentCurrencyCode', $currency); $add($root, 'cbc:LineCountNumeric', count($lines));
         if (!empty($invoice['siparis_no'])) {
             $ref = $add($root, 'cac:OrderReference'); $add($ref, 'cbc:ID', $invoice['siparis_no']);

@@ -80,19 +80,20 @@ $aylar = [
     12 => 'Aralık'
 ];
 ?>
-<div class="row">
-    <div class="col-12">
-        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-            <h4 class="mb-sm-0 font-size-18">Sözleşme Detayı : <?= htmlspecialchars($sozlesme->idare_adi) ?></h4>
-            <div class="page-title-right">
-                <ol class="breadcrumb m-0">
-                    <li class="breadcrumb-item"><a href="?p=hakedisler/index">Sözleşmeler</a></li>
-                    <li class="breadcrumb-item active">Detay</li>
-                </ol>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0 font-size-18">Sözleşme Detayı : <?= htmlspecialchars($sozlesme->idare_adi) ?></h4>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="?p=hakedisler/index">Sözleşmeler</a></li>
+                        <li class="breadcrumb-item active">Detay</li>
+                    </ol>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 <div class="row">
     <div class="col-xl-4">
@@ -251,35 +252,41 @@ $aylar = [
     </div>
 
     <div class="col-xl-8">
-        <!-- Hakediş Dönemleri Listesi -->
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="card-title">Hakediş Dönemleri</h4>
-                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                        <a href="?p=hakedisler/index"
-                            class="btn btn-link btn-sm text-secondary text-decoration-none px-3 fw-bold border-end rounded-0">
-                            <i class="bx bx-arrow-back me-1"></i> Sözleşmelere Dön
-                        </a>
-                        <button
-                            class="btn btn-primary btn-sm text-white shadow-primary px-3 fw-bold d-flex align-items-center"
-                            data-bs-toggle="modal" data-bs-target="#yeniHakedisModal">
-                            <i class="bx bx-plus fs-5 me-1"></i> Yeni Hakediş Ekle
-                        </button>
+        <!-- Hakediş Dönemleri Listesi Kartı -->
+        <div class="card summary-kpi-card mb-3" id="hakedisListCard">
+            <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                        <i class="bx bx-list-ol font-size-20"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Hakediş Dönemleri</h5>
+                        <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Dönem bazlı imalat tutarları, endeksler ve fiyat farkı takibi</p>
                     </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table id="hakedisTable" class="table table-bordered table-striped align-middle w-100 table-hover">
+                <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                    <a href="?p=hakedisler/index" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm btn-sm">
+                        <i class="bx bx-arrow-back me-1"></i> Sözleşmelere Dön
+                    </a>
+                    <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white btn-sm" data-bs-toggle="modal" data-bs-target="#yeniHakedisModal">
+                        <i class="bx bx-plus font-size-16"></i> Yeni Hakediş Ekle
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body p-3 pt-0">
+                <div class="table-responsive" style="overflow-x: auto !important;">
+                    <table id="hakedisTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Hakediş No</th>
-                                <th>Dönem (Ay/Yıl)</th>
-                                <th>Uygulanan Endeks (T/G)</th>
-                                <th>Tutanak Tasdik Tarihi</th>
-                                <th>Tutar (İmalat)</th>
-                                <th>Durum</th>
-                                <th>İşlemler</th>
+                                <th data-filter="string" style="width: 90px;" class="text-center">HAKEDİŞ NO</th>
+                                <th data-filter="string" style="width: 140px;">DÖNEM (AY/YIL)</th>
+                                <th data-filter="string">UYGULANAN ENDEKS (T/G)</th>
+                                <th data-filter="date" class="text-center" style="width: 140px;">TUTANAK TASDİK TARİHİ</th>
+                                <th data-filter="number" class="text-end" style="width: 160px;">TUTAR (İMALAT)</th>
+                                <th data-filter="select" class="text-center" style="width: 120px;">DURUM</th>
+                                <th data-filter="none" style="width: 110px;" class="text-center">İŞLEMLER</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -287,8 +294,8 @@ $aylar = [
                         </tbody>
                         <tfoot class="table-light">
                             <tr>
-                                <th colspan="4" class="text-end align-middle font-size-14">Sayfa Toplamı:</th>
-                                <th id="tableSayfaToplam"></th>
+                                <th colspan="4" class="text-end align-middle font-size-13 fw-bold">Sayfa Toplamı:</th>
+                                <th id="tableSayfaToplam" class="text-end font-size-13 fw-bold"></th>
                                 <th colspan="2"></th>
                             </tr>
                         </tfoot>
@@ -414,6 +421,7 @@ $aylar = [
         </form>
     </div>
 </div>
+</div> <!-- end container-fluid -->
 
 <script>
     var currentSozlesmeId = <?= $sozlesme->id ?>;

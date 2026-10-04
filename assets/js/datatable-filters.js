@@ -428,14 +428,25 @@
 
       if (filterType === "select") {
         let uniqueVals = [];
-        const isServerSide = settings.oFeatures.bServerSide;
+        const isServerSide = !!settings.oFeatures.bServerSide;
 
         const populateOptions = (vals) => {
+          const currentChecked = Array.isArray(cellInfo.value)
+            ? cellInfo.value
+            : cellInfo.value
+              ? [cellInfo.value]
+              : [];
           $list.find(".option-item:not(.select-all)").remove();
-          vals.sort((a, b) => a.localeCompare(b, "tr")).forEach((v) => {
+
+          const cleanVals = [];
+          vals.forEach((v) => {
+            const t = extractTextWithSpaces(v);
+            if (t && !cleanVals.includes(t)) cleanVals.push(t);
+          });
+
+          cleanVals.sort((a, b) => a.localeCompare(b, "tr")).forEach((v) => {
             const isChecked =
-              !cellInfo.value ||
-              (Array.isArray(cellInfo.value) && cellInfo.value.includes(v));
+              currentChecked.length === 0 || currentChecked.includes(v);
             $list.append(
               `<label class="option-item"><input type="checkbox" value="${v}" ${isChecked ? "checked" : ""}> <span>${v}</span></label>`,
             );
@@ -451,10 +462,18 @@
             if (t && !currentUnique.includes(t)) currentUnique.push(t);
           };
 
-          column
-            .data()
-            .unique()
-            .each(processVal);
+          try {
+            api
+              .column(colIdx, { search: "none" })
+              .data()
+              .unique()
+              .each(processVal);
+          } catch (e) {
+            column
+              .data()
+              .unique()
+              .each(processVal);
+          }
 
           if (column.nodes) {
             try {
@@ -467,13 +486,24 @@
           populateOptions(currentUnique);
         };
 
-        column
-          .data()
-          .unique()
-          .each(function (v) {
-            const t = extractTextWithSpaces(v);
-            if (t && !uniqueVals.includes(t)) uniqueVals.push(t);
-          });
+        try {
+          api
+            .column(colIdx, { search: "none" })
+            .data()
+            .unique()
+            .each(function (v) {
+              const t = extractTextWithSpaces(v);
+              if (t && !uniqueVals.includes(t)) uniqueVals.push(t);
+            });
+        } catch (e) {
+          column
+            .data()
+            .unique()
+            .each(function (v) {
+              const t = extractTextWithSpaces(v);
+              if (t && !uniqueVals.includes(t)) uniqueVals.push(t);
+            });
+        }
         uniqueVals.sort((a, b) => a.localeCompare(b, "tr"));
 
         const $excelDpy = $('<div class="dt-filter-excel-dropdown"></div>').attr(
@@ -506,18 +536,29 @@
 
         cellInfo.$excelDropdown = $excelDpy;
 
-        // Server-side lazy load
+        // Server-side lazy load for entire table unique values
         let hasLoadedFullList = !isServerSide;
         const loadFullList = () => {
           if (hasLoadedFullList) return;
           const ajaxUrl =
             typeof settings.ajax === "string"
               ? settings.ajax
-              : settings.ajax.url;
+              : settings.ajax
+                ? settings.ajax.url
+                : null;
           if (!ajaxUrl) return;
 
-          const colData = column.dataSrc();
-          if (!colData) return;
+          let colData = column.dataSrc();
+          if (typeof colData !== "string" || !colData) {
+            colData =
+              $th.attr("data-column") ||
+              $th.attr("data-field") ||
+              $th.attr("data-name") ||
+              (settings.aoColumns &&
+                settings.aoColumns[colIdx] &&
+                settings.aoColumns[colIdx].name) ||
+              $th.text().trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+          }
 
           $list.append(
             '<div class="loading-info p-2 text-center text-muted"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>',
@@ -525,7 +566,9 @@
 
           const filterData = {
             action: "get-unique-values",
+            action_type: "get-unique-values",
             column: colData,
+            col: colData,
             columns: [],
           };
 
@@ -533,10 +576,12 @@
             const d = {};
             settings.ajax.data(d);
             Object.assign(filterData, d);
-            filterData.action = "get-unique-values"; // Keep our action
+            filterData.action = "get-unique-values";
+            filterData.action_type = "get-unique-values";
           } else if (settings.ajax && typeof settings.ajax.data === "object") {
             Object.assign(filterData, settings.ajax.data);
             filterData.action = "get-unique-values";
+            filterData.action_type = "get-unique-values";
           }
 
           api.columns().every(function () {
@@ -545,16 +590,28 @@
             });
           });
 
+          const reqMethod =
+            (settings.ajax && (settings.ajax.type || settings.ajax.method)) ||
+            "GET";
+
           $.ajax({
             url: ajaxUrl,
-            type: "POST",
+            type: reqMethod,
             data: filterData,
             dataType: "json",
             success: function (res) {
               $list.find(".loading-info").remove();
-              if (res.status === "success" && Array.isArray(res.data)) {
+              let vals = [];
+              if (res && res.status === "success" && Array.isArray(res.data)) {
+                vals = res.data;
+              } else if (Array.isArray(res)) {
+                vals = res;
+              } else if (res && Array.isArray(res.data)) {
+                vals = res.data;
+              }
+              if (vals.length > 0) {
                 hasLoadedFullList = true;
-                populateOptions(res.data);
+                populateOptions(vals);
               }
             },
             error: function () {

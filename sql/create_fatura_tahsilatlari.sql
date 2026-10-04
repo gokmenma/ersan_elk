@@ -1,0 +1,25 @@
+-- E-Fatura ve Taslak Faturalar İçin Tahsilat / Ödeme Tablosu
+CREATE TABLE IF NOT EXISTS `fatura_tahsilatlari` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `firm_id` INT NOT NULL,
+  `fatura_id` INT NOT NULL,
+  `cari_id` INT NULL,
+  `kasa_id` INT NOT NULL,
+  `tahsilat_tipi` VARCHAR(30) NOT NULL DEFAULT 'nakit',
+  `islem_tarihi` DATE NOT NULL,
+  `tutar` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `para_birimi` VARCHAR(3) NOT NULL DEFAULT 'TRY',
+  `aciklama` TEXT NULL,
+  `kasa_hareket_id` INT NULL,
+  `cari_hareket_id` INT NULL,
+  `olusturan_user_id` INT NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `deleted_at` DATETIME NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_ft_firm_fatura` (`firm_id`, `fatura_id`),
+  INDEX `idx_ft_fatura_id` (`fatura_id`),
+  INDEX `idx_ft_kasa_id` (`kasa_id`),
+  INDEX `idx_ft_cari_id` (`cari_id`),
+  INDEX `idx_ft_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

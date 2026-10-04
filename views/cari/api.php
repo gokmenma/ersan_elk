@@ -36,6 +36,19 @@ $cariPdfYetkiKontrol = function (): int {
     return $kullanici_id;
 };
 
+// Kolon Filtreleri İçin Benzersiz Değerler (DataTable Select Filters)
+if ($action == "get-unique-values" || $action == "get_unique_values") {
+    try {
+        $column = $_POST['column'] ?? ($_GET['column'] ?? '');
+        $values = $Cari->getUniqueValues($column, $_REQUEST);
+        echo json_encode(['status' => 'success', 'data' => $values]);
+        exit;
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        exit;
+    }
+}
+
 // Cari Listesi (DataTable)
 if ($action == "cari-ajax-list") {
     try {

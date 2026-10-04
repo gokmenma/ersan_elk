@@ -464,6 +464,66 @@ class EInvoiceModel extends Model
     }
 
     /**
+     * Kolon Filtreleri İçin Tablodaki Tüm Benzersiz Değerleri Döndürür
+     */
+    public function getUniqueValues(string $column, int $firmId, string $yon = 'GIDEN', string $listType = 'giden'): array
+    {
+        $columnMap = [
+            'belge_turu'            => 'f.belge_turu',
+            'fatura_profili'        => 'f.fatura_profili',
+            'senaryo'               => 'f.fatura_profili',
+            'fatura_tipi'           => 'f.fatura_tipi',
+            'durum'                 => ($listType === 'gelen') ? 'f.ticari_yanit' : 'f.entegrator_durum_kodu',
+            'entegrator_durum_kodu' => 'f.entegrator_durum_kodu',
+            'ticari_yanit'          => 'f.ticari_yanit',
+            'alici_unvan'           => 'f.alici_unvan',
+            'gonderici_unvan'       => 'f.alici_unvan',
+            'para_birimi'           => 'f.para_birimi',
+            'edm_durum'             => 'f.edm_durum'
+        ];
+
+        $dbCol = $columnMap[$column] ?? null;
+        if (!$dbCol) {
+            $safeCol = preg_replace('/[^a-zA-Z0-9_]/', '', $column);
+            if (in_array($safeCol, ['belge_turu', 'fatura_profili', 'fatura_tipi', 'entegrator_durum_kodu', 'alici_unvan', 'para_birimi', 'ticari_yanit', 'edm_durum'], true)) {
+                $dbCol = "f.$safeCol";
+            }
+        }
+
+        if (!$dbCol) {
+            return [];
+        }
+
+        $where = "f.firm_id = :firm_id AND f.deleted_at IS NULL AND $dbCol IS NOT NULL AND $dbCol <> ''";
+        $bind = ['firm_id' => $firmId];
+
+        if ($listType === 'taslak') {
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
+        } elseif ($listType === 'gelen') {
+            $where .= " AND f.yon = 'GELEN'";
+        } else {
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'";
+        }
+
+        try {
+            $stmt = $this->db->prepare("SELECT DISTINCT $dbCol as val FROM faturalar f WHERE $where ORDER BY val ASC");
+            $stmt->execute($bind);
+            $rawVals = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $formatted = [];
+            foreach ($rawVals as $v) {
+                if ($v === null || $v === '') continue;
+                $formatted[] = (string)$v;
+            }
+
+            return $formatted;
+        } catch (\PDOException $e) {
+            error_log("EInvoiceModel::getUniqueValues Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * DataTables AJAX Sunucu Taraflı Liste Sorgusu
      */
     public function ajaxList(array $params, int $firmId, string $yon = 'GIDEN', string $listType = 'giden'): array
@@ -477,17 +537,22 @@ class EInvoiceModel extends Model
         $bind = ['firm_id' => $firmId];
 
         if ($listType === 'taslak') {
-            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu IN ('TASLAK', 'GONDERILDI')";
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
         } elseif ($listType === 'gelen') {
             $where .= " AND f.yon = 'GELEN'";
         } else {
-            // Giden Faturalar (Sadece Nihai Onaylı / Hatalı / İptal)
-            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu NOT IN ('TASLAK', 'GONDERILDI')";
+            // Gönderilmiş ve süreçteki faturalar taslak listesine dahil edilmez.
+            $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'";
         }
 
         if (!empty($params['durum_filtre']) && $params['durum_filtre'] !== 'all') {
-            $where .= " AND f.entegrator_durum_kodu = :durum_filtre";
-            $bind['durum_filtre'] = $params['durum_filtre'];
+            if ($listType === 'giden' && $params['durum_filtre'] === 'BEKLEYEN_ILETILEN') {
+                $where .= " AND f.entegrator_durum_kodu IN (:pending_queue, :pending_sent, :pending_wait)";
+                $bind += ['pending_queue' => 'KUYRUKTA', 'pending_sent' => 'GONDERILDI', 'pending_wait' => 'BEKLIYOR'];
+            } else {
+                $where .= " AND f.entegrator_durum_kodu = :durum_filtre";
+                $bind['durum_filtre'] = $params['durum_filtre'];
+            }
         }
 
         if (!empty($params['belge_turu_filtre']) && $params['belge_turu_filtre'] !== 'all') {
@@ -505,16 +570,30 @@ class EInvoiceModel extends Model
             $bind['range_end_date'] = date('Y-m-d', strtotime($params['bitis_tarihi']));
         }
 
-        $colsMap = [
-            2 => 'f.fatura_no',
-            3 => 'f.fatura_tarihi',
-            4 => 'f.alici_unvan',
-            5 => 'f.alici_vkn_tckn',
-            6 => 'f.belge_turu',
-            7 => 'f.fatura_profili',
-            8 => 'f.odenecek_tutar',
-            9 => ($listType === 'gelen') ? 'f.ticari_yanit' : 'f.entegrator_durum_kodu'
-        ];
+        if ($listType === 'gelen') {
+            $colsMap = [
+                2 => 'f.fatura_no',
+                3 => 'f.fatura_tarihi',
+                4 => 'f.alici_unvan',
+                5 => 'f.alici_vkn_tckn',
+                6 => 'f.belge_turu',
+                7 => 'f.fatura_profili',
+                8 => 'f.odenecek_tutar',
+                9 => 'f.ticari_yanit'
+            ];
+        } else {
+            $colsMap = [
+                2 => 'f.fatura_no',
+                3 => 'f.fatura_tarihi',
+                4 => 'f.alici_unvan',
+                5 => 'f.alici_vkn_tckn',
+                6 => 'f.belge_turu',
+                7 => 'f.fatura_profili',
+                8 => 'f.odenecek_tutar',
+                10 => 't.toplam_tahsilat',
+                11 => 'f.entegrator_durum_kodu'
+            ];
+        }
 
         // Header column filters (datatable-filters.js gelişmiş filtre desteği)
         if (!empty($params['columns']) && is_array($params['columns'])) {
@@ -666,20 +745,40 @@ class EInvoiceModel extends Model
         // Toplam Kayıt Sayısı
         $totalWhere = "f.firm_id = :firm_id AND f.deleted_at IS NULL";
         if ($listType === 'taslak') {
-            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu IN ('TASLAK', 'GONDERILDI')";
+            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
         } elseif ($listType === 'gelen') {
             $totalWhere .= " AND f.yon = 'GELEN'";
         } else {
-            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu NOT IN ('TASLAK', 'GONDERILDI')";
+            $totalWhere .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'";
         }
         $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM faturalar f WHERE $totalWhere");
         $totalStmt->execute(['firm_id' => $firmId]);
         $recordsTotal = (int)$totalStmt->fetchColumn();
 
         // Filtrelenmiş Kayıt Sayısı
-        $filteredStmt = $this->db->prepare("SELECT COUNT(*) FROM faturalar f WHERE $where");
-        $filteredStmt->execute($bind);
-        $recordsFiltered = (int)$filteredStmt->fetchColumn();
+        $summary = null;
+        if ($listType === 'giden') {
+            // Aggregate using the exact WHERE/bind set used by the table, before pagination.
+            $filteredStmt = $this->db->prepare("SELECT
+                COUNT(*) AS toplam_adet,
+                COALESCE(SUM(f.odenecek_tutar), 0) AS toplam_tutar,
+                COUNT(CASE WHEN f.belge_turu = 'EFATURA' THEN 1 END) AS efatura_adet,
+                COUNT(CASE WHEN f.belge_turu = 'EARSIV' THEN 1 END) AS earsiv_adet,
+                COUNT(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) AS onaylanan_adet,
+                COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN f.odenecek_tutar ELSE 0 END), 0) AS onaylanan_tutar,
+                COUNT(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA','GONDERILDI','BEKLIYOR') THEN 1 END) AS bekleyen_adet,
+                COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA','GONDERILDI','BEKLIYOR') THEN f.odenecek_tutar ELSE 0 END), 0) AS bekleyen_tutar,
+                COUNT(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN 1 END) AS bu_ay_adet,
+                COALESCE(SUM(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN f.odenecek_tutar ELSE 0 END), 0) AS bu_ay_tutar
+                FROM faturalar f WHERE $where");
+            $filteredStmt->execute($bind + ['summary_month_start' => date('Y-m-01'), 'summary_month_end' => date('Y-m-t')]);
+            $summary = $filteredStmt->fetch(PDO::FETCH_ASSOC);
+            $recordsFiltered = (int)$summary['toplam_adet'];
+        } else {
+            $filteredStmt = $this->db->prepare("SELECT COUNT(*) FROM faturalar f WHERE $where");
+            $filteredStmt->execute($bind);
+            $recordsFiltered = (int)$filteredStmt->fetchColumn();
+        }
 
         // Veri Listesi Sıralama
         $orderCol = 'f.fatura_tarihi';
@@ -702,8 +801,16 @@ class EInvoiceModel extends Model
                 f.id, f.ettn, f.fatura_no, f.fatura_tarihi, f.duzenleme_saati, f.alici_unvan, f.alici_vkn_tckn,
                 f.belge_turu, f.fatura_profili, f.fatura_tipi, f.odenecek_tutar, f.para_birimi,
                 f.entegrator_durum_kodu, f.gib_durum_kodu, f.gib_durum_aciklamasi, f.ticari_yanit,
-                f.pdf_path, f.ubl_xml_path, f.earsiv_rapor_durum, f.earsiv_iptal_rapor_durum, f.islem_belirsiz
+                f.pdf_path, f.ubl_xml_path, f.earsiv_rapor_durum, f.earsiv_iptal_rapor_durum, f.islem_belirsiz,
+                COALESCE(t.toplam_tahsilat, 0) AS toplam_tahsilat,
+                COALESCE(t.tahsilat_adedi, 0) AS tahsilat_adedi
             FROM faturalar f
+            LEFT JOIN (
+                SELECT fatura_id, SUM(tutar) AS toplam_tahsilat, COUNT(*) AS tahsilat_adedi
+                FROM fatura_tahsilatlari
+                WHERE deleted_at IS NULL AND is_active = 1
+                GROUP BY fatura_id
+            ) t ON t.fatura_id = f.id
             WHERE $where
             ORDER BY $orderCol $orderDir, f.id DESC
             $limitClause
@@ -718,9 +825,15 @@ class EInvoiceModel extends Model
             foreach ($rows as $row) {
                 $encryptedId = Security::encrypt((string)$row['id']);
                 $saatFormatted = !empty($row['duzenleme_saati']) ? date('H:i', strtotime($row['duzenleme_saati'])) : '';
+                $odenecekTutar = (float)$row['odenecek_tutar'];
+                $toplamTahsilat = (float)$row['toplam_tahsilat'];
+                $kalanTutar = max(0, $odenecekTutar - $toplamTahsilat);
+                $tahsilatDurumu = ($toplamTahsilat <= 0.0001) ? 'ODENMEDI' : (($toplamTahsilat >= $odenecekTutar - 0.0001) ? 'ODENDI' : 'KISMI_ODENDI');
+
                 $data[] = [
                     'id'                    => $encryptedId,
                     'encrypted_id'          => $encryptedId,
+                    'raw_id'                => (int)$row['id'],
                     'fatura_no'             => !empty($row['fatura_no']) ? $row['fatura_no'] : 'Taslak',
                     'ettn'                  => $row['ettn'],
                     'fatura_tarihi'         => date('d.m.Y', strtotime($row['fatura_tarihi'])),
@@ -730,15 +843,23 @@ class EInvoiceModel extends Model
                     'belge_turu'            => $row['belge_turu'],
                     'fatura_profili'        => $row['fatura_profili'],
                     'fatura_tipi'           => $row['fatura_tipi'],
-                    'odenecek_tutar'        => number_format((float)$row['odenecek_tutar'], 2, ',', '.') . ' ' . $row['para_birimi'],
+                    'odenecek_tutar'        => number_format($odenecekTutar, 2, ',', '.') . ' ' . $row['para_birimi'],
+                    'odenecek_tutar_raw'    => $odenecekTutar,
+                    'tahsil_edilen_tutar'   => number_format($toplamTahsilat, 2, ',', '.') . ' ' . $row['para_birimi'],
+                    'tahsil_edilen_tutar_raw' => $toplamTahsilat,
+                    'kalan_tutar'           => number_format($kalanTutar, 2, ',', '.') . ' ' . $row['para_birimi'],
+                    'kalan_tutar_raw'       => $kalanTutar,
+                    'tahsilat_durumu'       => $tahsilatDurumu,
+                    'tahsilat_adedi'        => (int)$row['tahsilat_adedi'],
                     'entegrator_durum_kodu' => $row['entegrator_durum_kodu'],
                     'gib_durum_kodu'        => $row['gib_durum_kodu'],
                     'gib_durum_aciklamasi'  => htmlspecialchars($row['gib_durum_aciklamasi'] ?? '', ENT_QUOTES, 'UTF-8'),
                     'ticari_yanit'          => $row['ticari_yanit'] ?? 'BEKLIYOR',
-                    'earsiv_rapor_durum' => $row['earsiv_rapor_durum'],
+                    'earsiv_rapor_durum'    => $row['earsiv_rapor_durum'],
                     'earsiv_iptal_rapor_durum' => $row['earsiv_iptal_rapor_durum'],
-                    'islem_belirsiz' => $row['islem_belirsiz'],
-                    'pdf_path' => !empty($row['pdf_path']), 'ubl_xml_path' => !empty($row['ubl_xml_path'])
+                    'islem_belirsiz'        => $row['islem_belirsiz'],
+                    'pdf_path'              => !empty($row['pdf_path']),
+                    'ubl_xml_path'          => !empty($row['ubl_xml_path'])
                 ];
             }
         }
@@ -748,7 +869,7 @@ class EInvoiceModel extends Model
             'recordsTotal'    => $recordsTotal,
             'recordsFiltered' => $recordsFiltered,
             'data'            => $data
-        ];
+        ] + ($summary !== null ? ['summary' => $summary] : []);
     }
 
     /**
@@ -791,7 +912,7 @@ class EInvoiceModel extends Model
                     FROM faturalar
                     WHERE firm_id = :firm_id
                       AND yon = 'GIDEN'
-                      AND entegrator_durum_kodu IN ('TASLAK', 'GONDERILDI')
+                      AND entegrator_durum_kodu = 'TASLAK'
                       AND deleted_at IS NULL
                       {$dateWhere}
                 ");
@@ -825,8 +946,8 @@ class EInvoiceModel extends Model
                         COUNT(CASE WHEN belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
                         COUNT(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) as onaylanan_adet,
                         COALESCE(SUM(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
-                        COUNT(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI') THEN 1 END) as bekleyen_adet,
-                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI') THEN odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
+                        COUNT(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN 1 END) as bekleyen_adet,
+                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
                         COUNT(CASE WHEN entegrator_durum_kodu = 'HATALI' THEN 1 END) as hatali_adet,
                         COUNT(CASE WHEN entegrator_durum_kodu = 'IPTAL' THEN 1 END) as iptal_adet,
                         COUNT(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN 1 END) as bu_ay_adet,
@@ -834,7 +955,7 @@ class EInvoiceModel extends Model
                     FROM faturalar
                     WHERE firm_id = :firm_id
                       AND yon = 'GIDEN'
-                      AND entegrator_durum_kodu NOT IN ('TASLAK', 'GONDERILDI')
+                      AND entegrator_durum_kodu <> 'TASLAK'
                       AND deleted_at IS NULL
                       {$dateWhere}
                 ");

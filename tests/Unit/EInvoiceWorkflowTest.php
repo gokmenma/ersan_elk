@@ -41,10 +41,11 @@ final class InvoiceMemoryModel extends EInvoiceModel
 final class InvoiceMemorySettings extends EInvoiceSettingsModel
 {
     public array $numberYears = [];
+    private int $lastNumber = 0;
     public function __construct() {}
     public function getSettings(int $firm): ?array { return ['efatura_seri' => 'ERS', 'earsiv_seri' => 'ERA', 'varsayilan_gonderici_alias' => 'urn:mail:gb']; }
-    public function reconcileSerial(int $firmId, string $type, string $series, int $year, int $last): void {}
-    public function generateNextInvoiceNumber(int $firm, string $type, string $series, ?int $year = null): string { $this->numberYears[] = $year; return sprintf('%s%04d%09d', $series, $year, 1); }
+    public function reconcileSerial(int $firmId, string $type, string $series, int $year, int $last): void { $this->lastNumber = max($this->lastNumber, $last); }
+    public function generateNextInvoiceNumber(int $firm, string $type, string $series, ?int $year = null): string { $this->numberYears[] = $year; return sprintf('%s%04d%09d', $series, $year, ++$this->lastNumber); }
 }
 
 class InvoiceOfflineService extends EInvoiceService
@@ -95,6 +96,28 @@ final class EInvoiceWorkflowTest extends TestCase
         self::assertSame('Ürün & Test',$source['lines'][0]['urun_hizmet_adi']);
         self::assertSame('20.00',$source['lines'][0]['iskonto_tutari']);
         self::assertStringNotContainsString('validation:Unsigned', $xml);
+    }
+    public function testUnnumberedEdmDraftRequiresExplicitOutgoingDraftAllowance(): void
+    {
+        [$xml] = $this->xml();
+        $xml = str_replace('<cbc:ID>ERS2026000000001</cbc:ID>', '<cbc:ID/>', $xml);
+        $reader = new UblReaderService();
+        self::assertNull($reader->read($xml, 'GIDEN', true)['header']['fatura_no']);
+        foreach ([['GIDEN', false], ['GELEN', true]] as [$direction, $allow]) {
+            try { $reader->read($xml, $direction, $allow); self::fail('Unnumbered non-draft was accepted'); }
+            catch (InvalidArgumentException $e) { self::assertSame('XML fatura numarası geçersiz.', $e->getMessage()); }
+        }
+        $invalid = str_replace('<cbc:ID/>', '<cbc:ID>invalid</cbc:ID>', $xml);
+        $this->expectException(InvalidArgumentException::class);
+        $reader->read($invalid, 'GIDEN', true);
+    }
+    public function testImportedQuantityPrecisionDoesNotRecalculateTotals(): void
+    {
+        [$xml] = $this->xml();
+        $xml = preg_replace('/(<cbc:InvoicedQuantity[^>]*>).*?(<\/cbc:InvoicedQuantity>)/', '${1}12.123456789012345${2}', $xml);
+        $source = (new UblReaderService())->read($xml, 'GIDEN');
+        self::assertSame('12.123456789012345', $source['lines'][0]['miktar']);
+        self::assertSame('216.00', $source['header']['odenecek_tutar']);
     }
     public function testExemptionAndReturnReference(): void
     {
@@ -164,9 +187,32 @@ final class EInvoiceWorkflowTest extends TestCase
         $client=new EdmSoapClient(2,$transport,$this->settings());
         self::assertCount(205,$client->getInvoices('OUT','2026-01-01','2026-03-15',100));
         self::assertTrue($client->getSyncResult()['complete']);
-        self::assertGreaterThan(70,count($transport->requests));
+        self::assertCount(4,$transport->requests); // Login + three pages for the entire range.
+        self::assertSame('2026-03-15T23:59:59',$transport->requests[1][1]->INVOICE_SEARCH_KEY->CR_END_DATE);
         self::assertSame('2026-01-01T00:00:00',$transport->requests[1][1]->INVOICE_SEARCH_KEY->CR_START_DATE);
         self::assertSame(100,$transport->requests[2][1]->INVOICE_SEARCH_KEY->OFFSET);
+    }
+    public function testEmptyLongRangeNeedsOnlyOneInvoiceRequest(): void
+    {
+        $transport = new InvoiceOfflineTransport(fn() => (object)['INVOICE' => []]);
+        $client = new EdmSoapClient(2, $transport, $this->settings());
+        self::assertSame([], $client->getInvoices('OUT', '2026-01-01', '2026-03-31', 100, 'ISSUE'));
+        self::assertCount(2, $transport->requests);
+        $key = $transport->requests[1][1]->INVOICE_SEARCH_KEY;
+        self::assertSame('2026-01-01', $key->START_DATE);
+        self::assertSame('2026-03-31', $key->END_DATE);
+        self::assertTrue($client->getSyncResult()['complete']);
+    }
+    public function testLaterPageFailurePreservesEarlierInvoices(): void
+    {
+        $transport = new InvoiceOfflineTransport(function($method, $request) {
+            if ($request->INVOICE_SEARCH_KEY->OFFSET > 0) throw new SoapFault('HTTP', 'timeout');
+            return (object)['INVOICE' => [(object)['UUID' => 'saved-page', 'CONTENT' => '<Invoice/>']]];
+        });
+        $client = new EdmSoapClient(2, $transport, $this->settings());
+        self::assertCount(1, $client->getInvoices('OUT', '2026-01-01', '2026-03-31'));
+        self::assertFalse($client->getSyncResult()['complete']);
+        self::assertSame('2026-03-31', $client->getSyncResult()['errors'][0]['end_date']);
     }
     public function testStalledAndPartiallyFailedPagingIsReported(): void
     {
@@ -191,6 +237,39 @@ final class EInvoiceWorkflowTest extends TestCase
         self::assertSame(50,$transport->requests[2][1]->INVOICE_SEARCH_KEY->OFFSET);
         self::assertSame(100,$transport->requests[3][1]->INVOICE_SEARCH_KEY->OFFSET);
         self::assertTrue($client->getSyncResult()['complete']);
+    }
+    public function testSingleSyncPageUsesOffsetAndFullXml(): void
+    {
+        $transport = new InvoiceOfflineTransport(fn() => (object)['INVOICE' => (object)[
+            'UUID' => 'uuid-page', 'CONTENT' => base64_encode('<Invoice/>'),
+            'HEADER' => (object)['STATUS' => 'LOAD - SUCCEED'],
+        ]]);
+        $items = (new EdmSoapClient(2, $transport, $this->settings()))->getInvoicePage('OUT', '2026-10-01', '2026-10-04', 50, 100);
+        self::assertSame('<Invoice/>', $items[0]['xml']);
+        $request = $transport->requests[1][1];
+        self::assertSame(50, $request->INVOICE_SEARCH_KEY->OFFSET);
+        self::assertSame(50, $request->INVOICE_SEARCH_KEY->LIMIT);
+        self::assertSame('2026-10-04T23:59:59', $request->INVOICE_SEARCH_KEY->CR_END_DATE);
+        self::assertSame('N', $request->HEADER_ONLY);
+    }
+    public function testDraftPageFiltersAtEdmAndOutgoingRequestsHeadersOnly(): void
+    {
+        $transport = new InvoiceOfflineTransport(fn() => (object)['INVOICE' => []]);
+        $client = new EdmSoapClient(2, $transport, $this->settings());
+        $client->getInvoicePage('OUT', '2026-10-01', '2026-10-04', 0, 50, null, 'taslak');
+        self::assertSame('LOAD - SUCCEED', $transport->requests[1][1]->INVOICE_SEARCH_KEY->CONNECTORSTATUSDESCRIPTION);
+        self::assertSame('N', $transport->requests[1][1]->HEADER_ONLY);
+        $client->getInvoicePage('OUT', '2026-10-01', '2026-10-04', 0, 50, null, 'giden');
+        self::assertSame('Y', $transport->requests[2][1]->HEADER_ONLY);
+        self::assertFalse(isset($transport->requests[2][1]->INVOICE_SEARCH_KEY->CONNECTORSTATUSDESCRIPTION));
+    }
+
+    public function testSyncPagePinsCreationTimeToJobStart(): void
+    {
+        $transport = new InvoiceOfflineTransport(fn() => (object)['INVOICE' => []]);
+        $client = new EdmSoapClient(2, $transport, $this->settings());
+        $client->getInvoicePage('OUT', '2026-10-01', '2026-10-04', 0, 50, '2026-10-04T14:25:00');
+        self::assertSame('2026-10-04T14:25:00', $transport->requests[1][1]->INVOICE_SEARCH_KEY->CR_END_DATE);
     }
     public function testPdfBinaryAndCounterUnavailableAreHandled(): void
     {
@@ -266,5 +345,53 @@ final class EInvoiceWorkflowTest extends TestCase
         $count=count($transport->requests); self::assertFalse($service->sendInvoice(1,2)['success']); self::assertCount($count,$transport->requests);
         foreach (glob($temporaryRoot . '/storage/invoices/2/*/*/*.xml') ?: [] as $file) unlink($file);
         foreach ([$temporaryRoot . '/storage/invoices/2/' . date('Y/m'), $temporaryRoot . '/storage/invoices/2/' . date('Y'), $temporaryRoot . '/storage/invoices/2', $temporaryRoot . '/storage/invoices', $temporaryRoot . '/storage', $temporaryRoot] as $dir) if (is_dir($dir)) rmdir($dir);
+    }
+    public function testNumberCollisionAllocatesNextNumberAndAlreadySentIsNotResent(): void
+    {
+        foreach ([false, true] as $sameUuid) {
+            [$xml, $invoice, $lines] = $this->xml(['fatura_tarihi' => '2025-12-31', 'fatura_no' => 'ERS2025000000001']);
+            $model = new InvoiceMemoryModel($invoice + ['satirlar' => $lines]);
+            $transport = new InvoiceOfflineTransport(function($method, $request) use ($invoice, $sameUuid) {
+                if ($method === 'GetCompany') return (object)['GetCompanyList' => (object)['VKN'=>'1234567890', 'EFATURA'=>70, 'SERIALLİST'=>(object)['SERIAL'=>'ERS','YEAR'=>2025,'ACTIVEFLAG'=>1,'EARCHIVEFLAG'=>0,'LASTSERİAL'=>0]]];
+                if ($method === 'CheckUser') return (object)['USER'=>[(object)['UNIT'=>'GB','ALIAS'=>'urn:mail:gb'],(object)['UNIT'=>'PK','ALIAS'=>'urn:mail:pk']]];
+                if ($method === 'GetInvoice' && $request->INVOICE_SEARCH_KEY->ID === 'ERS2025000000001') return (object)['INVOICE'=>(object)['ID'=>'ERS2025000000001','UUID'=>$sameUuid ? $invoice['ettn'] : 'different-uuid','HEADER'=>(object)['STATUS'=>'SEND - SUCCEED']]];
+                if ($method === 'SendInvoice') return (object)['REQUEST_RETURN'=>(object)['RETURN_CODE'=>0]];
+                return (object)[];
+            });
+            $temporaryRoot = sys_get_temp_dir() . '/ersan-efatura-unit-' . bin2hex(random_bytes(6));
+            $service = new InvoiceOfflineService($model, new InvoiceMemorySettings(), fn() => new EdmSoapClient(2, $transport, $this->settings()), $temporaryRoot);
+            $result = $service->sendInvoice(1, 2);
+            self::assertTrue($result['success']);
+            if ($sameUuid) {
+                self::assertNotContains('SendInvoice', array_column($transport->requests, 0));
+                self::assertSame('ERS2025000000001', $model->invoice['fatura_no']);
+            } else {
+                self::assertSame(1, count(array_filter($transport->requests, fn($r) => $r[0] === 'SendInvoice')));
+                self::assertSame('ERS2025000000002', $model->invoice['fatura_no']);
+                $send = array_values(array_filter($transport->requests, fn($r) => $r[0] === 'SendInvoice'))[0][1];
+                self::assertStringContainsString('ERS2025000000002', $send->INVOICE[0]->CONTENT);
+            }
+            self::assertSame('GONDERILDI', $model->invoice['entegrator_durum_kodu']);
+            foreach (glob($temporaryRoot . '/storage/invoices/2/*/*/*.xml') ?: [] as $file) unlink($file);
+            foreach ([$temporaryRoot . '/storage/invoices/2/' . date('Y/m'), $temporaryRoot . '/storage/invoices/2/' . date('Y'), $temporaryRoot . '/storage/invoices/2', $temporaryRoot . '/storage/invoices', $temporaryRoot . '/storage', $temporaryRoot] as $dir) if (is_dir($dir)) rmdir($dir);
+        }
+    }
+
+    public function testTwoStepIncrementalSyncAndXmlFetch(): void
+    {
+        $transport = new InvoiceOfflineTransport(function($method, $request) {
+            if ($method === 'GetInvoice') {
+                if (($request->HEADER_ONLY ?? 'N') === 'Y') {
+                    return (object)['INVOICE' => [(object)['UUID' => 'test-uuid-1', 'ID' => 'ERS2026000000099', 'HEADER' => (object)['STATUS' => 'SEND - SUCCEED']]]];
+                }
+                return (object)['INVOICE' => [(object)['UUID' => 'test-uuid-1', 'CONTENT' => base64_encode('<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>')]]];
+            }
+            return (object)[];
+        });
+        $client = new EdmSoapClient(2, $transport, $this->settings());
+        $headers = $client->getInvoices('OUT', '2026-10-01', '2026-10-04', 100, 'CREATE', 'Y');
+        self::assertCount(1, $headers);
+        self::assertSame('Y', $transport->requests[1][1]->HEADER_ONLY);
+        self::assertSame('<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>', $client->getInvoiceXml('test-uuid-1', 'OUT'));
     }
 }

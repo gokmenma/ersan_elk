@@ -1,5 +1,22 @@
+function escapeHtml(text) {
+  if (text == null) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 $(document).ready(function () {
   initHakedisTable();
+
+  // Satır Tıklama (Detaya Git) - İşlem Sütunu Hariç
+  $('#hakedisTable tbody').on('click', 'tr td:not(:last-child)', function (e) {
+    if ($(e.target).closest('a, button, .dropdown-menu, input, select').length > 0) return;
+    const href = $(this).closest('tr').find('a.hakedis-detay').attr('href');
+    if (href) window.location.href = href;
+  });
 
   $("#btnHakedisSave").on("click", function (e) {
     e.preventDefault();
@@ -20,143 +37,151 @@ $(document).ready(function () {
 let hakedisTable;
 
 function initHakedisTable() {
-  let options =
-    typeof getDatatableOptions === "function"
-      ? getDatatableOptions()
-      : {
-          language: {
-            url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json",
-          },
-          processing: true,
-          serverSide: true,
-        };
+  const options = applyLengthStateSave({
+    ...getDatatableOptions(),
+    processing: true,
+    serverSide: true,
+    ajax: {
+      url: "views/hakedisler/online-api.php?type=getHakedisler",
+      type: "POST",
+      data: function (d) {
+        d.sozlesme_id = currentSozlesmeId;
+      },
+    },
+    columns: [
+      {
+        data: "hakedis_no",
+        className: "text-center align-middle",
+        width: "90px",
+        render: function (data) {
+          return `<span class="fw-bold text-dark font-size-13">#${escapeHtml(data)}</span>`;
+        },
+      },
+      {
+        data: null,
+        className: "align-middle",
+        width: "140px",
+        render: function (data, type, row) {
+          const aylar = {
+            1: "Ocak",
+            2: "Şubat",
+            3: "Mart",
+            4: "Nisan",
+            5: "Mayıs",
+            6: "Haziran",
+            7: "Temmuz",
+            8: "Ağustos",
+            9: "Eylül",
+            10: "Ekim",
+            11: "Kasım",
+            12: "Aralık",
+          };
+          const ayStr = aylar[row.hakedis_tarihi_ay] || '';
+          return `<span class="fw-semibold text-dark font-size-13">${escapeHtml(ayStr)} ${escapeHtml(row.hakedis_tarihi_yil)}</span>`;
+        },
+      },
+      {
+        data: null,
+        className: "align-middle",
+        render: function (data, type, row) {
+          let temel = row.temel_endeks_ayi || "-";
+          let guncel = row.guncel_endeks_ayi || "-";
+          return `<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${escapeHtml(temel)}</span>` +
+            ` <i class="bx bx-right-arrow-alt text-muted mx-1"></i> ` +
+            `<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${escapeHtml(guncel)}</span>`;
+        },
+      },
+      {
+        data: "tutanak_tasdik_tarihi",
+        className: "text-center align-middle",
+        width: "140px",
+        render: function (data) {
+          if (!data || data === "0000-00-00") return '<span class="text-muted font-size-12">-</span>';
+          const parts = data.split("-");
+          if (parts.length !== 3) return `<span class="font-size-12">${escapeHtml(data)}</span>`;
+          return `<span class="fw-medium text-dark font-size-12">${parts[2]}.${parts[1]}.${parts[0]}</span>`;
+        },
+      },
+      {
+        data: "imalat_donem",
+        className: "text-end align-middle",
+        width: "160px",
+        render: function (data, type, row) {
+          let manufacture = parseFloat(data || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺";
+          let ff = parseFloat(row.fiyat_farki || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺";
 
-  options.processing = true;
-  options.serverSide = true;
-  options.ajax = {
-    url: "views/hakedisler/online-api.php?type=getHakedisler",
-    type: "POST",
-    data: function (d) {
-      d.sozlesme_id = currentSozlesmeId;
-    },
-  };
-  ((options.columns = [
-    {
-      data: "hakedis_no",
-      render: function (data) {
-        return `<strong>#${data}</strong>`;
+          return `<div><strong class="font-size-13 text-dark">${manufacture}</strong></div>
+                  <div class="text-success font-size-11" style="line-height: 1.2;">
+                      <i class="bx bx-plus-circle me-1"></i>FF: ${ff}
+                  </div>`;
+        },
       },
-    },
-    {
-      data: null,
-      render: function (data, type, row) {
-        const aylar = {
-          1: "Ocak",
-          2: "Şubat",
-          3: "Mart",
-          4: "Nisan",
-          5: "Mayıs",
-          6: "Haziran",
-          7: "Temmuz",
-          8: "Ağustos",
-          9: "Eylül",
-          10: "Ekim",
-          11: "Kasım",
-          12: "Aralık",
-        };
-        return `${aylar[row.hakedis_tarihi_ay]} ${row.hakedis_tarihi_yil}`;
+      {
+        data: "durum",
+        className: "text-center align-middle",
+        width: "120px",
+        render: function (data) {
+          const durumMap = {
+            taslak: { badge: "bg-secondary-subtle text-secondary border-secondary-subtle", label: "Taslak" },
+            hazirlandi: { badge: "bg-info-subtle text-info border-info-subtle", label: "Hazırlandı" },
+            tamamlandi: { badge: "bg-success-subtle text-success border-success-subtle", label: "Tamamlandı" },
+            onaylandi: { badge: "bg-primary-subtle text-primary border-primary-subtle", label: "Onaylandı" },
+          };
+          let d = durumMap[data] || { badge: "bg-secondary-subtle text-secondary border-secondary-subtle", label: data || "Taslak" };
+          return `<span class="badge ${d.badge} border rounded-pill px-2 py-1 font-size-11 fw-semibold">${escapeHtml(d.label)}</span>`;
+        },
       },
-    },
-    {
-      data: null,
-      render: function (data, type, row) {
-        let temel = row.temel_endeks_ayi || "-";
-        let guncel = row.guncel_endeks_ayi || "-";
-        return `<span class="badge bg-info">${temel}</span> <i class="bx bx-right-arrow-alt"></i> <span class="badge bg-warning">${guncel}</span>`;
-      },
-    },
-    {
-      data: "tutanak_tasdik_tarihi",
-      render: function (data) {
-        if (!data || data === '0000-00-00') return '<span class="text-muted">-</span>';
-        const parts = data.split('-');
-        if (parts.length !== 3) return data;
-        return `${parts[2]}.${parts[1]}.${parts[0]}`;
-      },
-    },
-    {
-      data: "imalat_donem",
-      render: function (data, type, row) {
-        let manufacture = parseFloat(data || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
-        let ff = parseFloat(row.fiyat_farki || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
-        
-        return `<div><strong>${manufacture}</strong></div>
-                <div class="text-success" style="font-size: 11px;">
-                    <i class="bx bx-plus-circle me-1"></i>FF: ${ff}
-                </div>`;
-      },
-    },
-    {
-      data: "durum",
-      render: function (data) {
-        const durumMap = {
-          taslak: { badge: "bg-secondary", label: "Taslak" },
-          hazirlandi: { badge: "bg-info", label: "Hazırlandı" },
-          tamamlandi: { badge: "bg-success", label: "Tamamlandı" },
-          onaylandi: { badge: "bg-primary", label: "Onaylandı" },
-        };
-        let d = durumMap[data] || { badge: "bg-secondary", label: data };
-        return `<span class="badge ${d.badge}">${d.label}</span>`;
-      },
-    },
-    {
-      data: "id",
-      orderable: false,
-      render: function (data, type, row) {
-        let deleteBtn = row.durum === 'tamamlandi' ? '' : `
-            <button class="btn btn-sm btn-danger" onclick="deleteHakedis(${data})" title="Sil">
-                <i class="bx bx-trash"></i>
-            </button>`;
-        
-        return `
-                        <div class="d-flex gap-2">
-                            <a href="?p=hakedisler/hakedis-detay&id=${data}" class="btn btn-sm btn-primary" title="Miktarlar ve Fiyat Farkı">
-                                <i class="bx bx-list-ol"></i> İçerik
-                            </a>
-                            <button class="btn btn-sm btn-warning" onclick="editHakedis(${data})" title="Düzenle">
-                                <i class="bx bx-edit"></i>
-                            </button>
-                            ${deleteBtn}
-                        </div>
-                    `;
-      },
-    },
-  ]),
-    (options.order = [[0, "asc"]]));
+      {
+        data: "id",
+        className: "text-center align-middle",
+        width: "110px",
+        orderable: false,
+        searchable: false,
+        render: function (data, type, row) {
+          let deleteBtn = row.durum === "tamamlandi" ? "" : `
+              <button type="button" class="btn btn-subtle-danger table-action-btn" onclick="deleteHakedis(${data})" title="Sil">
+                  <i class="bx bx-trash font-size-14"></i>
+              </button>`;
 
-  options.drawCallback = function (settings) {
-    let api = this.api();
-    let json = api.ajax.json();
+          return `
+              <div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">
+                  <a href="?p=hakedisler/hakedis-detay&id=${data}" class="btn btn-subtle-primary table-action-btn hakedis-detay" title="İçerik ve Miktarlar">
+                      <i class="bx bx-list-ol font-size-14"></i>
+                  </a>
+                  <button type="button" class="btn btn-subtle-warning table-action-btn" onclick="editHakedis(${data})" title="Düzenle">
+                      <i class="bx bx-edit-alt font-size-14"></i>
+                  </button>
+                  ${deleteBtn}
+              </div>
+          `;
+        },
+      },
+    ],
+    order: [[0, "asc"]],
+    drawCallback: function (settings) {
+      let api = this.api();
+      let json = api.ajax.json();
 
-    if (json && json.data) {
+      if (json && json.data) {
         let totalImalat = 0;
         let totalFf = 0;
 
         json.data.forEach(function (row) {
-            totalImalat += parseFloat(row.imalat_donem || 0);
-            totalFf += parseFloat(row.fiyat_farki || 0);
+          totalImalat += parseFloat(row.imalat_donem || 0);
+          totalFf += parseFloat(row.fiyat_farki || 0);
         });
 
-        let tImalatFmt = totalImalat.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
-        let tFfFmt = totalFf.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
+        let tImalatFmt = totalImalat.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺";
+        let tFfFmt = totalFf.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺";
 
-        let html = `<div><strong>${tImalatFmt}</strong></div>
-            <div class="text-success" style="font-size: 11px;">
+        let html = `<div><strong class="font-size-13 text-dark">${tImalatFmt}</strong></div>
+            <div class="text-success font-size-11" style="line-height: 1.2;">
                 <i class="bx bx-plus-circle me-1"></i>FF: ${tFfFmt}
             </div>`;
         $("#tableSayfaToplam").html(html);
+      }
     }
-  };
+  });
 
   hakedisTable = $("#hakedisTable").DataTable(options);
 }

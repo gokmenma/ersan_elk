@@ -97,6 +97,14 @@ try {
                 $invoiceId = EInvoiceSecurity::invoiceId($rawId);
             }
 
+            if (isset($header['notlar'])) {
+                $rawNotes = html_entity_decode((string)$header['notlar'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $stripped = trim(strip_tags(str_replace(['&nbsp;', '<br>', '<br/>', '<br />'], ' ', $rawNotes)));
+                if ($stripped === '') {
+                    $header['notlar'] = null;
+                }
+            }
+
             if (empty($header['alici_vkn_tckn']) || empty($header['alici_unvan'])) {
                 echo json_encode(['status' => 'error', 'message' => 'Alıcı VKN/TCKN ve Unvan alanları zorunludur.']);
                 exit;
@@ -179,6 +187,16 @@ try {
         // 6. DataTables Sunucu Taraflı Faturalar Listesi (Taslak, Giden, Gelen)
         case 'list_giden':
         case 'list_invoices':
+            // Eğer istek get-unique-values parametresi içeriyorsa benzersiz değerleri dön
+            if (isset($_REQUEST['action_type']) && in_array($_REQUEST['action_type'], ['get-unique-values', 'get_unique_values'], true)) {
+                $col = (string)($_REQUEST['column'] ?? $_REQUEST['col'] ?? '');
+                $listType = (string)($_REQUEST['list_type'] ?? 'giden');
+                $yon = ($listType === 'gelen') ? 'GELEN' : 'GIDEN';
+                $uniqueValues = $invoiceModel->getUniqueValues($col, $firmId, $yon, $listType);
+                echo json_encode(['status' => 'success', 'data' => $uniqueValues]);
+                break;
+            }
+
             $params = $_GET;
             $listType = $params['list_type'] ?? ($action === 'list_giden' ? 'giden' : 'giden');
             $yon = ($listType === 'gelen') ? 'GELEN' : 'GIDEN';
@@ -194,6 +212,15 @@ try {
                     'data'            => []
                 ]);
             }
+            break;
+
+        case 'get-unique-values':
+        case 'get_unique_values':
+            $col = (string)($_REQUEST['column'] ?? $_REQUEST['col'] ?? '');
+            $listType = (string)($_REQUEST['list_type'] ?? 'giden');
+            $yon = ($listType === 'gelen') ? 'GELEN' : 'GIDEN';
+            $uniqueValues = $invoiceModel->getUniqueValues($col, $firmId, $yon, $listType);
+            echo json_encode(['status' => 'success', 'data' => $uniqueValues]);
             break;
 
         // 7. Özet Kart Sayıları ve Tutarları
@@ -278,6 +305,22 @@ try {
             }
             break;
 
+        case 'sync_job_start':
+        case 'sync_job_status':
+        case 'sync_job_resume':
+        case 'sync_job_cancel':
+            session_write_close();
+            $jobs = new \App\Service\EInvoiceSyncJobService();
+            $token = is_string($_POST['job_token'] ?? null) ? $_POST['job_token'] : '';
+            $data = match ($action) {
+                'sync_job_start' => $jobs->start($firmId, $userId, trim((string)($_POST['start_date'] ?? '')), trim((string)($_POST['end_date'] ?? '')), (string)($_POST['list_type'] ?? 'taslak')),
+                'sync_job_resume' => $jobs->resume($firmId, $userId, $token),
+                'sync_job_cancel' => $jobs->cancel($firmId, $userId, $token),
+                default => $jobs->status($firmId, $userId, $token ?: null, isset($_POST['list_type']) ? (string)$_POST['list_type'] : null),
+            };
+            echo json_encode(['status' => 'success', 'data' => $data]);
+            break;
+
         // 10. EDM Gelen Faturaları Senkronize Et
         case 'sync_incoming_invoices':
             $start = !empty($_POST['start_date']) ? trim($_POST['start_date']) : (!empty($_GET['start_date']) ? trim($_GET['start_date']) : null);
@@ -344,8 +387,10 @@ try {
             $params = $_GET;
             $params['start'] = 0;
             $params['length'] = 10000;
-            $list = $invoiceModel->ajaxList($params, $firmId, 'GIDEN');
-            $fileName = 'giden_faturalar_' . date('Y-m-d_H-i') . '.csv';
+            $listType = is_string($params['list_type'] ?? null) ? $params['list_type'] : 'giden';
+            if (!in_array($listType, ['taslak', 'giden', 'gelen'], true)) throw new \InvalidArgumentException('Geçersiz liste türü.');
+            $list = $invoiceModel->ajaxList($params, $firmId, $listType === 'gelen' ? 'GELEN' : 'GIDEN', $listType);
+            $fileName = $listType . '_faturalar_' . date('Y-m-d_H-i') . '.csv';
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $fileName . '"');
             $out = fopen('php://output', 'w');
@@ -435,6 +480,156 @@ try {
                     'numarators' => $settingsModel->getNumarators($firmId)
                 ]
             ]);
+            break;
+
+        // 16. Fatura Tahsilat / Ödeme Bilgisi Getir
+        case 'get_invoice_payment_info':
+            $invoiceId = EInvoiceSecurity::invoiceId($_GET['invoice_id'] ?? $_POST['invoice_id'] ?? '');
+            $tahsilatModel = new \App\Model\FaturaTahsilatModel();
+            $paymentInfo = $tahsilatModel->getInvoicePaymentInfo($invoiceId, $firmId);
+            if (!$paymentInfo) {
+                http_response_code(404);
+                echo json_encode(['status' => 'error', 'message' => 'Fatura veya tahsilat bilgisi bulunamadı.']);
+                exit;
+            }
+            echo json_encode(['status' => 'success', 'data' => $paymentInfo]);
+            break;
+
+        // 17. Faturaya Tahsilat Ekle
+        case 'save_invoice_payment':
+            $invoiceId = EInvoiceSecurity::invoiceId($_POST['invoice_id'] ?? '');
+            $tutarRaw = $_POST['tutar'] ?? '0';
+            $tutar = is_numeric($tutarRaw) ? (float)$tutarRaw : \App\Helper\Helper::formattedMoneyToNumber($tutarRaw);
+            $kasaId = (int)($_POST['kasa_id'] ?? 0);
+            $tahsilatTipi = trim($_POST['tahsilat_tipi'] ?? 'nakit');
+            $islemTarihi = trim($_POST['islem_tarihi'] ?? date('Y-m-d'));
+            $aciklama = trim($_POST['aciklama'] ?? '');
+            $paraBirimi = trim($_POST['para_birimi'] ?? 'TRY');
+
+            if ($kasaId <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Lütfen geçerli bir Kasa/Banka hesabı seçin.']);
+                exit;
+            }
+            if ($tutar <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Tahsilat tutarı 0\'dan büyük olmalıdır.']);
+                exit;
+            }
+
+            $tahsilatModel = new \App\Model\FaturaTahsilatModel();
+            $res = $tahsilatModel->addPayment($firmId, $invoiceId, [
+                'kasa_id'       => $kasaId,
+                'tutar'         => $tutar,
+                'islem_tarihi'  => $islemTarihi,
+                'tahsilat_tipi' => $tahsilatTipi,
+                'aciklama'      => $aciklama,
+                'para_birimi'   => $paraBirimi
+            ], $userId);
+
+            if ($res['status'] === 'success') {
+                $res['data'] = $tahsilatModel->getInvoicePaymentInfo($invoiceId, $firmId);
+            }
+            echo json_encode($res);
+            break;
+
+        // 18. Fatura Tahsilatını Sil
+        case 'delete_invoice_payment':
+            $rawPaymentId = $_POST['payment_id'] ?? '';
+            $paymentId = (int)Security::decrypt($rawPaymentId);
+            if ($paymentId <= 0) {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz tahsilat ID.']);
+                exit;
+            }
+            $rawInvoiceId = $_POST['invoice_id'] ?? '';
+            $invoiceId = !empty($rawInvoiceId) ? EInvoiceSecurity::invoiceId($rawInvoiceId) : 0;
+
+            $tahsilatModel = new \App\Model\FaturaTahsilatModel();
+            $ok = $tahsilatModel->deletePayment($paymentId, $firmId, $userId);
+            if ($ok) {
+                $updatedInfo = ($invoiceId > 0) ? $tahsilatModel->getInvoicePaymentInfo($invoiceId, $firmId) : null;
+                echo json_encode(['status' => 'success', 'message' => 'Tahsilat kaydı başarıyla silindi.', 'data' => $updatedInfo]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Tahsilat silinemedi.']);
+            }
+            break;
+
+        // 19. Alt Bilgi / Not Şablonlarını Listele
+        case 'list_note_templates':
+            $sablonModel = new \App\Model\EFaturaNotSablonModel();
+            $list = $sablonModel->getAll($firmId);
+            echo json_encode(['status' => 'success', 'data' => $list]);
+            break;
+
+        // 20. Tekil Şablon Getir
+        case 'get_note_template':
+            $templateId = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
+            $sablonModel = new \App\Model\EFaturaNotSablonModel();
+            $template = $sablonModel->getById($templateId, $firmId);
+            if (!$template) {
+                http_response_code(404);
+                echo json_encode(['status' => 'error', 'message' => 'Şablon bulunamadı.']);
+                exit;
+            }
+            echo json_encode(['status' => 'success', 'data' => $template]);
+            break;
+
+        // 21. Şablon Kaydet / Güncelle
+        case 'save_note_template':
+            $payload = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+            $templateId = !empty($payload['id']) ? (int)$payload['id'] : null;
+            $baslik = trim((string)($payload['baslik'] ?? ''));
+            $icerik = (string)($payload['icerik'] ?? '');
+            $varsayilanMi = !empty($payload['varsayilan_mi']) ? 1 : 0;
+
+            if ($baslik === '') {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Lütfen şablon için bir başlık girin.']);
+                exit;
+            }
+
+            $sablonModel = new \App\Model\EFaturaNotSablonModel();
+            $res = $sablonModel->saveTemplate($firmId, $templateId, $baslik, $icerik, $varsayilanMi, $userId);
+            $res['status'] = $res['success'] ? 'success' : 'error';
+            if (!$res['success']) {
+                http_response_code(422);
+            }
+            echo json_encode($res);
+            break;
+
+        // 22. Şablon Sil
+        case 'delete_note_template':
+            $templateId = (int)($_POST['id'] ?? 0);
+            if ($templateId <= 0) {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz şablon ID.']);
+                exit;
+            }
+            $sablonModel = new \App\Model\EFaturaNotSablonModel();
+            $ok = $sablonModel->deleteTemplate($templateId, $firmId, $userId);
+            if ($ok) {
+                echo json_encode(['status' => 'success', 'message' => 'Şablon başarıyla silindi.']);
+            } else {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Şablon silinemedi.']);
+            }
+            break;
+
+        // 23. Varsayılan Şablon Olarak Belirle
+        case 'set_default_note_template':
+            $templateId = (int)($_POST['id'] ?? 0);
+            if ($templateId <= 0) {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz şablon ID.']);
+                exit;
+            }
+            $sablonModel = new \App\Model\EFaturaNotSablonModel();
+            $ok = $sablonModel->setDefault($templateId, $firmId);
+            if ($ok) {
+                echo json_encode(['status' => 'success', 'message' => 'Varsayılan şablon güncellendi.']);
+            } else {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Güncelleme başarısız.']);
+            }
             break;
 
         default:

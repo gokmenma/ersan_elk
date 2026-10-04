@@ -226,4 +226,37 @@ class CariModel extends Model
 
         return $summary;
     }
+
+    /**
+     * Sütun için benzersiz değerleri getirir (Filtreleme için)
+     */
+    public function getUniqueValues($column, $params = []): array
+    {
+        $allowed = [
+            'CariAdi' => 'c.CariAdi',
+            'FirmaUnvan' => 'c.FirmaUnvan',
+            'il' => 'c.il',
+            'ilce' => 'c.ilce',
+            'durum' => 'c.durum',
+        ];
+        $field = $allowed[$column] ?? (preg_match('/^[a-zA-Z0-9_]+$/', (string)$column) ? "c.$column" : null);
+        if (!$field) return [];
+
+        $firma_id = $_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? null;
+        $where = "c.silinme_tarihi IS NULL AND $field IS NOT NULL AND $field != ''";
+        $bind = [];
+        if ($firma_id) {
+            $where .= " AND c.firma_id = :firma_id";
+            $bind['firma_id'] = $firma_id;
+        }
+
+        try {
+            $stmt = $this->db->prepare("SELECT DISTINCT $field as val FROM cari c WHERE $where ORDER BY val ASC");
+            $stmt->execute($bind);
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (\PDOException $e) {
+            error_log("CariModel::getUniqueValues Error: " . $e->getMessage());
+            return [];
+        }
+    }
 }

@@ -38,6 +38,14 @@ $children = [];
 try {
     $db = $connect($name);
     $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_modulu.sql');
+    // Real installations can still have the original ENUM columns.
+    $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_profil_tip_uyumlulugu.sql');
+    $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_profil_tip_uyumlulugu.sql');
+    $types = $db->prepare("SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :table AND COLUMN_NAME IN (:profile, :type)");
+    $types->execute(['schema' => $name, 'table' => 'faturalar', 'profile' => 'fatura_profili', 'type' => 'fatura_tipi']);
+    $columnTypes = $types->fetchAll(PDO::FETCH_KEY_PAIR);
+    $assert($columnTypes['fatura_profili'] === 'varchar(40)' && $columnTypes['fatura_tipi'] === 'varchar(40)', 'Legacy ENUM columns must support the current EDM code lists');
+
     $db->exec('CREATE TABLE permissions (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), description TEXT, auth_name VARCHAR(100), group_name VARCHAR(100), permission_level INT, is_required INT, is_active INT)');
     $db->exec('CREATE TABLE user_roles (id INT AUTO_INCREMENT PRIMARY KEY, role_name VARCHAR(100))');
     $db->exec('CREATE TABLE user_role_permissions (role_id INT, permission_id INT, created_by INT)');
@@ -45,6 +53,57 @@ try {
     $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_tamamlama.sql');
     $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_tamamlama.sql');
     $assert((int)$db->query('SELECT COUNT(*) FROM permissions')->fetchColumn() === 4, 'Migration permissions must be idempotent');
+    $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_sync_jobs.sql');
+    $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_sync_jobs.sql');
+    $_ENV['ENCRYPTION_KEY'] = str_repeat('ab', 32);
+    $jobs = new \App\Model\EInvoiceSyncJobModel($db);
+    $jobService = new \App\Service\EInvoiceSyncJobService($jobs, fn() => true);
+    $firstJob = $jobService->start(2, 3, '2026-10-01', '2026-10-04');
+    $sameJob = $jobService->start(2, 3, '2026-10-02', '2026-10-03');
+    $jobId = \App\Helper\Security::decrypt($firstJob['job_token']);
+    $assert($jobId === \App\Helper\Security::decrypt($sameJob['job_token']), 'Concurrent starts should reuse the active job');
+    $assert($jobs->latest(99, 3) === null, 'Job leaked across firm boundaries');
+    $assert($jobs->latest(2, 99) === null, 'Job leaked across user boundaries');
+    $assert($jobService->status(2, 3, null, 'taslak')['list_type'] === 'taslak', 'Draft status must return draft job');
+    $assert($jobService->status(2, 3, null, 'giden') === null, 'Outgoing page must not show draft job');
+    try {
+        $jobService->start(2, 3, '2026-10-01', '2026-10-04', 'giden');
+        throw new RuntimeException('Different job kinds must not reuse the active job');
+    } catch (InvalidArgumentException $expected) {}
+    $otherJobModel = new \App\Model\EInvoiceSyncJobModel($connect($name));
+    $assert($jobs->lock($jobId), 'Worker should acquire lock');
+    $assert(!$otherJobModel->lock($jobId), 'Second worker should not acquire lock');
+    $jobs->unlock($jobId);
+    $job = $jobs->findJob($jobId); $job['status'] = 'paused'; $job['state']['offset'] = 50; $job['state']['cursor'] = 12;
+    $jobs->saveJob($job);
+    $jobService->resume(2, 3, $firstJob['job_token']);
+    $recovered = $jobs->findJob($jobId);
+    $assert($recovered['status'] === 'queued' && $recovered['state']['offset'] === 50 && $recovered['state']['cursor'] === 12, 'Resume must preserve the durable checkpoint');
+    $jobService->cancel(2, 3, $firstJob['job_token']);
+    $nextJob = $jobService->start(2, 3, '2026-10-02', '2026-10-03');
+    $assert(\App\Helper\Security::decrypt($nextJob['job_token']) !== $jobId, 'Closed job must allow a new job');
+    $assert($jobs->latest(2, 3)['id'] === \App\Helper\Security::decrypt($nextJob['job_token']), 'Latest job ordering must be stable');
+    $jobService->cancel(2, 3, $nextJob['job_token']);
+    $outgoingJob = $jobService->start(2, 3, '2026-10-01', '2026-10-04', 'giden');
+    $assert($jobService->status(2, 3, null, 'giden')['list_type'] === 'giden', 'Outgoing job must keep its query kind');
+    $assert($jobService->status(2, 3, null, 'taslak')['list_type'] === 'taslak', 'Draft history must stay separate from outgoing');
+    $jobService->cancel(2, 3, $outgoingJob['job_token']);
+    $detached = new \App\Service\EInvoiceSyncJobService($jobs, function($id) use ($name) {
+        $script = dirname(__DIR__) . '/Fixtures/efatura/sync-worker.php';
+        exec('nohup ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($name) . ' ' . escapeshellarg($id) . ' > /dev/null 2>&1 < /dev/null &', $output, $code);
+        return $code === 0;
+    });
+    $backgroundJob = $detached->start(2, 3, '2026-10-01', '2026-10-04');
+    $backgroundId = \App\Helper\Security::decrypt($backgroundJob['job_token']);
+    $detached = null; // Worker continues after the initiating service/request is gone.
+    for ($attempt = 0; $attempt < 80; $attempt++) {
+        $backgroundState = $jobs->findJob($backgroundId);
+        if ($backgroundState['status'] === 'completed') break;
+        usleep(100000);
+    }
+    $assert($backgroundState['status'] === 'completed' && $backgroundState['state']['processed_count'] === 3, 'Detached worker must persist progress independently of the request');
+    $jobs = $otherJobModel = $jobService = null;
+
     $db->exec('CREATE TABLE efatura_test_numbers (worker INT, number VARCHAR(16) UNIQUE)');
     $db = null; $admin = null;
     for ($worker = 0; $worker < 8; $worker++) {
@@ -81,7 +140,7 @@ try {
     $db->exec("INSERT INTO efatura_loglari (firm_id,islem_turu,istek_payload,yanit_payload,durum) VALUES (2,'Login','{\"PASSWORD\":\"old-secret\"}','{\"SESSION_ID\":\"old-session\"}','BASARILI')");
     $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_log_hassas_veri_temizleme.sql');
     $assert(!str_contains(json_encode($db->query('SELECT * FROM efatura_loglari')->fetchAll()), 'old-secret'), 'Historic secret remains');
-    echo 'OK: migration twice, 120 concurrent numbers, year/reconciliation, cross-connection invoice locks, historic log masking.' . PHP_EOL;
+    echo 'OK: migration twice, 120 concurrent numbers, year/reconciliation, cross-connection invoice locks, historic log masking, durable sync jobs, detached background worker.' . PHP_EOL;
 } finally {
     foreach ($children as $pid) pcntl_waitpid($pid, $status);
     ($admin ?? $connect())->exec("DROP DATABASE IF EXISTS `$name`");

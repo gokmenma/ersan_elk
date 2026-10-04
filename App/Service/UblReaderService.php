@@ -6,7 +6,7 @@ use DOMXPath;
 
 final class UblReaderService
 {
-    public function read(string $xml, string $direction): array
+    public function read(string $xml, string $direction, bool $allowUnnumberedDraft = false): array
     {
         if ($xml === '' || preg_match('/<!DOCTYPE|<!ENTITY/i', $xml)) throw new \InvalidArgumentException('Fatura XML içeriği boş veya güvenli değil.');
         $previous = libxml_use_internal_errors(true);
@@ -20,7 +20,7 @@ final class UblReaderService
             $text = static fn(string $path, ?\DOMNode $node = null): string => trim((string)$xp->evaluate('string(' . $path . ')', $node));
             $decimal = static function (string $value, string $default = '0'): string {
                 if ($value === '') return $default;
-                if (!preg_match('/^-?\d{1,12}(?:\.\d{1,6})?$/D', $value)) throw new \InvalidArgumentException('XML parasal alanı geçersiz.');
+                if (!preg_match('/^-?\d{1,12}(?:\.\d{1,18})?$/D', $value)) throw new \InvalidArgumentException('XML parasal alanı geçersiz.');
                 return $value;
             };
             $party = static function(string $name) use ($text): array {
@@ -38,8 +38,11 @@ final class UblReaderService
             $uuid = $text('/i:Invoice/cbc:UUID');
             if (!preg_match('/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/iD', $uuid) || !$other['vkn_tckn'] || !$other['unvan']) throw new \InvalidArgumentException('XML ETTN veya taraf bilgileri eksik.');
             if (!in_array($profile, array_merge(InvoiceValidationService::codes('ProfileIDType'), ['EARSIVFATURA']), true) || !in_array($text('/i:Invoice/cbc:InvoiceTypeCode'), InvoiceValidationService::codes('InvoiceTypeCodeList'), true) || !in_array($text('/i:Invoice/cbc:DocumentCurrencyCode'), InvoiceValidationService::codes('CurrencyCodeList'), true)) throw new \InvalidArgumentException('XML profil, fatura tipi veya para birimi kodu geçersiz.');
-            if (!preg_match('/^[A-Z0-9]{3}20\d{2}\d{9}$/D', $text('/i:Invoice/cbc:ID'))) throw new \InvalidArgumentException('XML fatura numarası geçersiz.');
-            $header = ['yon' => $direction, 'ettn' => $uuid, 'fatura_no' => $text('/i:Invoice/cbc:ID'),
+            $number = $text('/i:Invoice/cbc:ID');
+            if (!(($allowUnnumberedDraft && $direction === 'GIDEN') && $number === '') && !preg_match('/^[A-Z0-9]{3}20\d{2}\d{9}$/D', $number)) {
+                throw new \InvalidArgumentException('XML fatura numarası geçersiz.');
+            }
+            $header = ['yon' => $direction, 'ettn' => $uuid, 'fatura_no' => $number !== '' ? $number : null,
                 'fatura_profili' => $profile, 'belge_turu' => $profile === 'EARSIVFATURA' ? 'EARSIV' : 'EFATURA',
                 'fatura_tipi' => $text('/i:Invoice/cbc:InvoiceTypeCode'), 'fatura_tarihi' => $text('/i:Invoice/cbc:IssueDate'),
                 'duzenleme_saati' => substr($text('/i:Invoice/cbc:IssueTime') ?: '00:00:00', 0, 8),

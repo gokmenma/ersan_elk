@@ -17,7 +17,7 @@ $envOptions = [
 ];
 ?>
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
-<script src="views/efatura/js/transport.js"></script>
+<script src="views/efatura/js/transport.js?v=<?= filemtime(__DIR__ . '/js/transport.js') ?>"></script>
 
 <style>
 .nav-pills-custom .nav-link {
@@ -135,6 +135,11 @@ $envOptions = [
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="tab-rehber-btn" data-bs-toggle="pill" data-bs-target="#tab-rehber" type="button" role="tab" aria-controls="tab-rehber" aria-selected="false">
                                 <i class="bx bx-help-circle fs-5"></i> 3. Numaralandırma & Sistem Rehberi
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-sablonlar-btn" data-bs-toggle="pill" data-bs-target="#tab-sablonlar" type="button" role="tab" aria-controls="tab-sablonlar" aria-selected="false">
+                                <i class="bx bx-bookmark-alt fs-5"></i> 4. Alt Bilgi / Not Şablonları
                             </button>
                         </li>
                     </ul>
@@ -389,10 +394,83 @@ $envOptions = [
                             </div>
                         </div>
 
+                        <!-- SEKME 4: ALT BİLGİ / NOT ŞABLONLARI -->
+                        <div class="tab-pane fade" id="tab-sablonlar" role="tabpanel" aria-labelledby="tab-sablonlar-btn">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark font-size-14 mb-1">Fatura Alt Bilgi & Not Hazır Şablonları</h6>
+                                    <p class="text-muted font-size-12 mb-0">Faturalarınızda otomatik veya tek tıkla eklenebilen banka hesapları, teslimat notları ve standart açıklamalar.</p>
+                                </div>
+                                <button type="button" class="btn btn-primary rounded-3 font-size-12 fw-semibold px-3 shadow-xs" id="btnSettingsNewTemplate">
+                                    <i class="bx bx-plus me-1"></i> Yeni Şablon Tanımla
+                                </button>
+                            </div>
+
+                            <div class="table-responsive border rounded-3">
+                                <table class="table table-hover align-middle mb-0" id="tblSettingsNoteTemplates">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 50px;" class="text-center">#</th>
+                                            <th style="width: 220px;">Şablon Başlığı</th>
+                                            <th>Şablon İçeriği</th>
+                                            <th style="width: 140px;" class="text-center">Varsayılan Durum</th>
+                                            <th style="width: 120px;" class="text-center">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tblSettingsNoteTemplatesBody">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4 font-size-12">
+                                                <span class="spinner-border spinner-border-sm me-2"></span> Şablonlar yükleniyor...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ayarlar Sayfası Şablon Ekle / Düzenle Modalı -->
+<div class="modal fade" id="modalSettingsNoteTemplate" tabindex="-1" aria-labelledby="modalSettingsNoteTemplateLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom">
+                <h6 class="modal-title fw-bold text-dark" id="modalSettingsNoteTemplateLabel">
+                    <i class="bx bx-bookmark-alt text-primary me-1"></i> Şablon Tanımla
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <form id="formSettingsNoteTemplate" onsubmit="return false;">
+                <input type="hidden" id="stpl_id" value="">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label font-size-12 fw-bold text-dark mb-1" for="stpl_baslik">Şablon Başlığı *</label>
+                        <input type="text" class="form-control rounded-3 font-size-13" id="stpl_baslik" placeholder="Örn: Garanti BBVA IBAN & Ödeme Şartları" required maxlength="150">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-size-12 fw-bold text-dark mb-1" for="stpl_icerik">Şablon Metni / Açıklama *</label>
+                        <textarea class="form-control rounded-3 font-monospace font-size-12" id="stpl_icerik" rows="7" placeholder="Fatura alt bilgi alanında basılacak açıklama..." required></textarea>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input cursor-pointer" type="checkbox" id="stpl_varsayilan_mi" value="1">
+                        <label class="form-check-label font-size-12 fw-semibold cursor-pointer text-dark" for="stpl_varsayilan_mi">
+                            Yeni faturalarda varsayılan olarak otomatik yüklensin
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary rounded-3 font-size-12" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary rounded-3 font-size-12 fw-semibold px-4" id="btnSettingsSaveTemplate">
+                        <i class="bx bx-save me-1"></i> Kaydet
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -699,6 +777,411 @@ document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire('Hata', res.message, 'error');
             }
         });
+    });
+
+    // ==========================================
+    // SEKME 4: ALT BİLGİ / NOT ŞABLONLARI YÖNETİMİ
+    // ==========================================
+    let settingsTemplates = [];
+
+    function loadSettingsTemplates() {
+        fetch('api/efatura-api.php?action=list_note_templates')
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success' && Array.isArray(res.data)) {
+                    settingsTemplates = res.data;
+                    renderSettingsTemplatesTable();
+                }
+            })
+            .catch(() => {
+                $('#tblSettingsNoteTemplatesBody').html('<tr><td colspan="5" class="text-center text-danger py-3 font-size-12">Şablonlar yüklenirken bir hata oluştu.</td></tr>');
+            });
+    }
+
+    function renderSettingsTemplatesTable() {
+        const tbody = $('#tblSettingsNoteTemplatesBody');
+        tbody.empty();
+
+        if (settingsTemplates.length === 0) {
+            tbody.append(`
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        <i class="bx bx-info-circle fs-4 d-block mb-1 text-secondary"></i>
+                        Henüz kayıtlı bir alt bilgi / not şablonu bulunmuyor.
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+
+        settingsTemplates.forEach((tpl, idx) => {
+            const isDef = parseInt(tpl.varsayilan_mi, 10) === 1;
+            const previewText = $('<div>').html(tpl.icerik || '').text().substring(0, 100);
+
+            tbody.append(`
+                <tr>
+                    <td class="text-center text-muted font-monospace font-size-12">${idx + 1}</td>
+                    <td><strong class="text-dark font-size-13">${$('<div>').text(tpl.baslik).html()}</strong></td>
+                    <td class="font-size-12 text-muted font-monospace">${$('<div>').text(previewText).html()}</td>
+                    <td class="text-center">
+                        ${isDef ? '<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill font-size-11 px-2 py-1"><i class="bx bx-star me-1"></i>Varsayılan</span>' : `
+                            <button type="button" class="btn btn-xs btn-outline-warning btn-set-default-settings py-1 px-2 font-size-11" data-id="${tpl.id}" title="Varsayılan Yap">
+                                <i class="bx bx-star me-1"></i>Varsayılan Yap
+                            </button>
+                        `}
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary btn-edit-tpl-settings py-1 px-2 font-size-11" data-id="${tpl.id}" title="Düzenle">
+                                <i class="bx bx-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-delete-tpl-settings py-1 px-2 font-size-11" data-id="${tpl.id}" title="Sil">
+                                <i class="bx bx-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    function handleSettingsTableCommand(context, cmd) {
+        const editable = context.layoutInfo.editable;
+        let targetTable = null;
+
+        const selection = window.getSelection();
+        if (selection && selection.anchorNode) {
+            targetTable = $(selection.anchorNode).closest('table');
+            if (!targetTable.length) {
+                targetTable = $(selection.anchorNode).find('table');
+            }
+        }
+
+        if (!targetTable || !targetTable.length) {
+            targetTable = editable.find('table:focus, table:hover');
+            if (!targetTable.length) {
+                targetTable = editable.find('table').last();
+            }
+        }
+
+        if (cmd === 'insert_iban_table') {
+            const ibanHtml = `
+                <table class="table-borderless" style="width: 100%; border-collapse: collapse; border: none; margin: 8px 0;">
+                    <tbody>
+                        <tr>
+                            <td style="width: 32%; border: none; padding: 4px 6px; font-weight: bold; color: #1e293b;">Garanti BBVA (TL):</td>
+                            <td style="border: none; padding: 4px 6px; font-family: monospace; color: #0f172a;">TR00 0000 0000 0000 0000 0000 00</td>
+                        </tr>
+                        <tr>
+                            <td style="width: 32%; border: none; padding: 4px 6px; font-weight: bold; color: #1e293b;">İş Bankası (TL):</td>
+                            <td style="border: none; padding: 4px 6px; font-family: monospace; color: #0f172a;">TR00 0000 0000 0000 0000 0000 00</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p><br></p>
+            `;
+            context.invoke('editor.pasteHTML', ibanHtml);
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Banka & IBAN tablosu eklendi.', timer: 2000, showConfirmButton: false });
+            return;
+        }
+
+        if (!targetTable || !targetTable.length) {
+            Swal.fire('Bilgi', 'Lütfen önce tablonun içine tıklayın veya yeni bir tablo ekleyin.', 'info');
+            return;
+        }
+
+        if (cmd === 'borderless') {
+            targetTable.removeClass('table-bordered table-striped').addClass('table-borderless');
+            targetTable.attr('border', '0');
+            targetTable.css({
+                'border': 'none',
+                'border-collapse': 'collapse',
+                'width': targetTable.css('width') || '100%'
+            });
+            targetTable.find('th, td, tr, thead, tbody').css({
+                'border': 'none',
+                'border-top': 'none',
+                'border-bottom': 'none',
+                'border-left': 'none',
+                'border-right': 'none'
+            });
+            context.invoke('editor.afterCommand');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Tablo kenarlıkları kaldırıldı (Şeffaf Tablo).', timer: 2000, showConfirmButton: false });
+        } else if (cmd === 'bordered') {
+            targetTable.removeClass('table-borderless').addClass('table table-bordered');
+            targetTable.css({
+                'border': '1px solid #cbd5e1',
+                'border-collapse': 'collapse',
+                'width': targetTable.css('width') || '100%'
+            });
+            targetTable.find('th, td').css({
+                'border': '1px solid #cbd5e1',
+                'padding': '6px 10px'
+            });
+            context.invoke('editor.afterCommand');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'İnce ızgara kenarlık uygulandı.', timer: 2000, showConfirmButton: false });
+        } else if (cmd === 'underline') {
+            targetTable.removeClass('table-bordered').addClass('table');
+            targetTable.css({
+                'border': 'none',
+                'border-collapse': 'collapse',
+                'width': targetTable.css('width') || '100%'
+            });
+            targetTable.find('th, td').css({
+                'border': 'none',
+                'border-bottom': '1px solid #e2e8f0',
+                'padding': '6px 10px'
+            });
+            context.invoke('editor.afterCommand');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yalnızca alt çizgili tablo uygulandı.', timer: 2000, showConfirmButton: false });
+        } else if (cmd === 'compact') {
+            targetTable.find('th, td').css({
+                'padding': '3px 6px',
+                'line-height': '1.3'
+            });
+            context.invoke('editor.afterCommand');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Kompakt hücre boşluğu uygulandı.', timer: 2000, showConfirmButton: false });
+        } else if (cmd === 'full_width') {
+            targetTable.css({ 'width': '100%' });
+            context.invoke('editor.afterCommand');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Tablo genişliği %100 olarak ayarlandı.', timer: 2000, showConfirmButton: false });
+        }
+    }
+
+    // Summernote Başlat (Ayarlar Sayfası Şablon Modalı)
+    if (typeof $.fn.summernote !== 'undefined') {
+        const customSettingsTableButtons = {
+            tableStyles: function(context) {
+                const ui = $.summernote.ui;
+                return ui.buttonGroup([
+                    ui.button({
+                        className: 'dropdown-toggle btn-table-custom-style',
+                        contents: '<i class="bx bx-table text-primary me-1 font-size-14 align-middle"></i><span class="font-size-12">Tablo Stili</span> <span class="caret"></span>',
+                        tooltip: 'Tablo Kenarlık ve Biçimlendirme',
+                        data: { toggle: 'dropdown' }
+                    }),
+                    ui.dropdown({
+                        className: 'dropdown-menu-end shadow-sm py-1',
+                        items: [
+                            '<div class="dropdown-item py-1.5 px-3 font-size-12 cursor-pointer" data-table-cmd="borderless"><i class="bx bx-border-none text-danger me-2 font-size-15 align-middle"></i>Kenarlıkları Kaldır (Şeffaf Tablo)</div>',
+                            '<div class="dropdown-item py-1.5 px-3 font-size-12 cursor-pointer" data-table-cmd="bordered"><i class="bx bx-grid text-primary me-2 font-size-15 align-middle"></i>İnce Izgara Kenarlık Ekle</div>',
+                            '<div class="dropdown-item py-1.5 px-3 font-size-12 cursor-pointer" data-table-cmd="underline"><i class="bx bx-border-bottom text-warning me-2 font-size-15 align-middle"></i>Yalnızca Alt Çizgili Tablo</div>',
+                            '<div class="dropdown-divider my-1"></div>',
+                            '<div class="dropdown-item py-1.5 px-3 font-size-12 cursor-pointer" data-table-cmd="compact"><i class="bx bx-collapse-vertical text-info me-2 font-size-15 align-middle"></i>Sıkı / Kompakt Hücre Boşluğu</div>',
+                            '<div class="dropdown-item py-1.5 px-3 font-size-12 cursor-pointer" data-table-cmd="full_width"><i class="bx bx-expand-horizontal text-success me-2 font-size-15 align-middle"></i>Genişlik: %100 Yap</div>',
+                            '<div class="dropdown-divider my-1"></div>',
+                            '<div class="dropdown-item py-1.5 px-3 font-size-12 cursor-pointer" data-table-cmd="insert_iban_table"><i class="bx bx-credit-card text-success me-2 font-size-15 align-middle"></i>Hazır Banka & IBAN Tablosu Ekle</div>'
+                        ],
+                        callback: function($dropdown) {
+                            $dropdown.find('[data-table-cmd]').on('click', function(e) {
+                                e.preventDefault();
+                                const cmd = $(this).data('table-cmd');
+                                handleSettingsTableCommand(context, cmd);
+                            });
+                        }
+                    })
+                ]).render();
+            }
+        };
+
+        $('#stpl_icerik').addClass('summernote').summernote({
+            height: 180,
+            lang: 'tr-TR',
+            placeholder: 'Fatura alt bilgi alanında basılacak açıklama...',
+            fontNames: ['Times New Roman', 'Arial'],
+            fontNamesIgnoreCheck: ['Times New Roman', 'Arial'],
+            buttons: customSettingsTableButtons,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['fontname', 'fontsize', 'bold', 'italic', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link', 'table', 'hr']],
+                ['view', ['fullscreen', 'codeview']]
+            ],
+            popover: {
+                table: [
+                    ['custom', ['tableStyles']],
+                    ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+                    ['delete', ['deleteRow', 'deleteCol', 'deleteTable']]
+                ]
+            }
+        });
+    }
+
+    function getSettingsTplContent() {
+        const el = $('#stpl_icerik');
+        if (typeof $.fn.summernote !== 'undefined' && (el.hasClass('summernote') || el.next('.note-editor').length > 0 || !!el.data('summernote'))) {
+            try {
+                if (el.summernote('isEmpty')) return '';
+                const code = el.summernote('code');
+                const text = $('<div>').html(code).text().trim();
+                return (text !== '' || /<img|<table|<hr/i.test(code)) ? code.trim() : '';
+            } catch (e) {
+                return (el.val() || '').trim();
+            }
+        }
+        return (el.val() || '').trim();
+    }
+
+    function setSettingsTplContent(content) {
+        const el = $('#stpl_icerik');
+        const formatted = (typeof content === 'string') ? content : '';
+        if (typeof $.fn.summernote !== 'undefined' && (el.hasClass('summernote') || el.next('.note-editor').length > 0 || !!el.data('summernote'))) {
+            try {
+                el.summernote('code', formatted);
+            } catch (e) {
+                el.val(formatted);
+            }
+        } else {
+            el.val(formatted);
+        }
+        try {
+            el.val(formatted);
+        } catch (e) {}
+    }
+
+    // Yeni Şablon Modalı Aç
+    $('#btnSettingsNewTemplate').on('click', function() {
+        $('#formSettingsNoteTemplate')[0].reset();
+        $('#stpl_id').val('');
+        setSettingsTplContent('');
+        $('#modalSettingsNoteTemplateLabel').html('<i class="bx bx-plus text-primary me-1"></i> Yeni Not Şablonu Tanımla');
+        const modal = new bootstrap.Modal(document.getElementById('modalSettingsNoteTemplate'));
+        modal.show();
+    });
+
+    // Şablon Düzenle Modalı Aç
+    $(document).on('click', '.btn-edit-tpl-settings', function() {
+        const id = $(this).data('id');
+        const tpl = settingsTemplates.find(t => parseInt(t.id, 10) === parseInt(id, 10));
+        if (!tpl) return;
+
+        $('#stpl_id').val(tpl.id);
+        $('#stpl_baslik').val(tpl.baslik);
+        setSettingsTplContent(tpl.icerik || '');
+        $('#stpl_varsayilan_mi').prop('checked', parseInt(tpl.varsayilan_mi, 10) === 1);
+        $('#modalSettingsNoteTemplateLabel').html('<i class="bx bx-edit text-primary me-1"></i> Şablonu Düzenle: ' + $('<div>').text(tpl.baslik).html());
+
+        const modal = new bootstrap.Modal(document.getElementById('modalSettingsNoteTemplate'));
+        modal.show();
+    });
+
+    // Şablon Formunu Kaydet
+    $('#btnSettingsSaveTemplate').on('click', function() {
+        const id = $('#stpl_id').val();
+        const baslik = $('#stpl_baslik').val().trim();
+        const icerik = getSettingsTplContent();
+        const varsayilanMi = $('#stpl_varsayilan_mi').is(':checked') ? 1 : 0;
+
+        if (!baslik) {
+            Swal.fire('Uyarı', 'Lütfen şablon başlığı girin.', 'warning');
+            $('#stpl_baslik').focus();
+            return;
+        }
+
+        if (!icerik) {
+            Swal.fire('Uyarı', 'Lütfen şablon içeriğini doldurun.', 'warning');
+            if (typeof $.fn.summernote !== 'undefined' && $('#stpl_icerik').data('summernote')) {
+                $('#stpl_icerik').summernote('focus');
+            } else {
+                $('#stpl_icerik').focus();
+            }
+            return;
+        }
+
+        const csrfToken = $('meta[name="efatura-csrf"]').attr('content') || '';
+        fetch('api/efatura-api.php?action=save_note_template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({
+                id: id ? parseInt(id, 10) : null,
+                baslik: baslik,
+                icerik: icerik,
+                varsayilan_mi: varsayilanMi,
+                csrf_token: csrfToken
+            })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success' || res.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalSettingsNoteTemplate')).hide();
+                loadSettingsTemplates();
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: res.message || 'Şablon kaydedildi.', timer: 2000, showConfirmButton: false });
+            } else {
+                Swal.fire('Hata', res.message || 'Kaydetme başarısız.', 'error');
+            }
+        });
+    });
+
+    // Şablon Varsayılan Yap
+    $(document).on('click', '.btn-set-default-settings', function() {
+        const id = $(this).data('id');
+        if (!id) return;
+
+        const csrfToken = $('meta[name="efatura-csrf"]').attr('content') || '';
+        fetch('api/efatura-api.php?action=set_default_note_template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: `id=${encodeURIComponent(id)}&csrf_token=${encodeURIComponent(csrfToken)}`
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success' || res.success) {
+                loadSettingsTemplates();
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: res.message || 'Varsayılan şablon güncellendi.', timer: 2000, showConfirmButton: false });
+            } else {
+                Swal.fire('Hata', res.message || 'İşlem başarısız.', 'error');
+            }
+        });
+    });
+
+    // Şablon Sil
+    $(document).on('click', '.btn-delete-tpl-settings', function() {
+        const id = $(this).data('id');
+        if (!id) return;
+
+        Swal.fire({
+            title: 'Şablon Silinsin mi?',
+            text: 'Bu şablon silinecektir.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#dc2626'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const csrfToken = $('meta[name="efatura-csrf"]').attr('content') || '';
+                fetch('api/efatura-api.php?action=delete_note_template', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: `id=${encodeURIComponent(id)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success' || res.success) {
+                        loadSettingsTemplates();
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: res.message || 'Şablon silindi.', timer: 2000, showConfirmButton: false });
+                    } else {
+                        Swal.fire('Hata', res.message || 'Silme başarısız.', 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    // Sekme açıldığında şablonları yükle
+    $('#tab-sablonlar-btn').on('shown.bs.tab', function() {
+        loadSettingsTemplates();
     });
 });
 </script>

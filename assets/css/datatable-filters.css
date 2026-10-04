@@ -569,31 +569,49 @@ table.dataTable thead .dt-filter-row th:after {
   content: "" !important;
 }
 
+/* Ana Başlık Hücreleri Word-Wrap & Tipografi Düzeni */
+table.dataTable thead tr:first-child > th,
+table[id].dataTable thead tr:first-child > th,
+table[id] thead tr:first-child > th,
+.dataTables_wrapper table.dataTable thead tr:first-child > th {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.25 !important;
+  vertical-align: middle !important;
+}
+
 /* 1. Tüm Sıralanabilir Başlıklar (Yalnızca 1. Satır / Ana Başlıklar - Light Mode Nötr Durum) */
 table.dataTable thead tr:first-child > th.sorting,
 table.dataTable thead tr:first-child > td.sorting,
-table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort):not(.dt-actions-header),
+table[id].dataTable thead tr:first-child > th.sorting,
+table[id].dataTable thead tr:first-child > td.sorting,
+table[id] thead tr:first-child > th.sorting,
+table[id] thead tr:first-child > td.sorting,
 .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting,
 .datatable-premium-shell table.dataTable thead tr:first-child > td.sorting,
-.datatable-premium-shell table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort),
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting,
-.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort),
 .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting,
-.dataTables_wrapper table.dataTable thead tr:first-child > td.sorting,
-.dataTables_wrapper table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort) {
+.dataTables_wrapper table.dataTable thead tr:first-child > td.sorting {
   cursor: pointer !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
-  padding-left: 30px !important;
-  padding-right: 14px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
+  padding-right: 12px !important;
+  text-align: left !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.25 !important;
 }
 
 /* Hover Durumu (Daha Koyu Vurgulu) */
 table.dataTable thead tr:first-child > th.sorting:hover,
 table.dataTable thead tr:first-child > td.sorting:hover,
-table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort):hover,
+table[id].dataTable thead tr:first-child > th.sorting:hover,
+table[id] thead tr:first-child > th.sorting:hover,
 .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting:hover,
 .datatable-premium-shell table.dataTable thead tr:first-child > td.sorting:hover,
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting:hover,
@@ -602,14 +620,16 @@ table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filte
   cursor: pointer !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
-  padding-left: 30px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
 }
 
 /* 2. Artan Sıralama (Ascending - Yukarı Ok Mavi ve Kalın, Aşağı Ok Silik Gri) */
 table.dataTable thead tr:first-child > th.sorting_asc,
 table.dataTable thead tr:first-child > td.sorting_asc,
+table[id].dataTable thead tr:first-child > th.sorting_asc,
+table[id] thead tr:first-child > th.sorting_asc,
 .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_asc,
 .datatable-premium-shell table.dataTable thead tr:first-child > td.sorting_asc,
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_asc,
@@ -618,15 +638,18 @@ table.dataTable thead tr:first-child > td.sorting_asc,
   cursor: pointer !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%232563eb' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2394a3b8' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
-  padding-left: 30px !important;
-  padding-right: 14px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
+  padding-right: 12px !important;
+  text-align: left !important;
 }
 
 /* 3. Azalan Sıralama (Descending - Aşağı Ok Mavi ve Kalın, Yukarı Ok Silik Gri) */
 table.dataTable thead tr:first-child > th.sorting_desc,
 table.dataTable thead tr:first-child > td.sorting_desc,
+table[id].dataTable thead tr:first-child > th.sorting_desc,
+table[id] thead tr:first-child > th.sorting_desc,
 .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_desc,
 .datatable-premium-shell table.dataTable thead tr:first-child > td.sorting_desc,
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_desc,
@@ -635,75 +658,101 @@ table.dataTable thead tr:first-child > td.sorting_desc,
   cursor: pointer !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2394a3b8' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%232563eb' stroke-width='2.8'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
-  padding-left: 30px !important;
-  padding-right: 14px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
+  padding-right: 12px !important;
+  text-align: left !important;
 }
 
 /* 4. Gelişmiş Filtre Butonu Olan Başlıklar (Sağda Huni Butonu Alanı) */
 table.dataTable thead tr:first-child > th.dt-header-with-filter,
+table[id].dataTable thead tr:first-child > th.dt-header-with-filter,
+table[id] thead tr:first-child > th.dt-header-with-filter,
 table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]),
+table[id].dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]),
+table[id] thead tr:first-child > th[data-filter]:not([data-filter="none"]),
 .datatable-premium-shell table.dataTable thead tr:first-child > th.dt-header-with-filter,
 .datatable-premium-shell table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]),
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.dt-header-with-filter,
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]),
 .dataTables_wrapper table.dataTable thead tr:first-child > th.dt-header-with-filter,
 .dataTables_wrapper table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]) {
-  padding-right: 36px !important;
+  padding-right: 34px !important;
 }
 
 /* 5. Dark Mode Sıralama İkonları */
 [data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting,
-[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting,
-[data-bs-theme="dark"] table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort),
+[data-bs-theme="dark"] table[id].dataTable thead tr:first-child > th.sorting,
+[data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting,
 [data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
+  text-align: left !important;
 }
 
 [data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting:hover,
-[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting:hover,
+[data-bs-theme="dark"] table[id].dataTable thead tr:first-child > th.sorting:hover,
+[data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting:hover,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting:hover,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting:hover,
 [data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting:hover {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
 }
 
 [data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting_asc,
-[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting_asc,
+[data-bs-theme="dark"] table[id].dataTable thead tr:first-child > th.sorting_asc,
+[data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting_asc,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_asc,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_asc,
 [data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_asc {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2360a5fa' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
+  padding-right: 12px !important;
+  text-align: left !important;
 }
 
 [data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting_desc,
-[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting_desc,
+[data-bs-theme="dark"] table[id].dataTable thead tr:first-child > th.sorting_desc,
+[data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting_desc,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_desc,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_desc,
 [data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_desc {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2360a5fa' stroke-width='2.8'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: left 10px center !important;
-  background-size: 14px 14px !important;
+  background-position: left 8px center !important;
+  background-size: 13px 13px !important;
+  padding-left: 27px !important;
+  padding-right: 12px !important;
+  text-align: left !important;
 }
 
 /* 6. Sıralama Kapalı Kolonlar ve 2. Satır (Filtre Satırı) - ASLA İKON ÇIKMAZ */
 table.dataTable thead tr:first-child > th.sorting_disabled,
 table.dataTable thead tr:first-child > td.sorting_disabled,
+table[id].dataTable thead tr:first-child > th.sorting_disabled,
+table[id] thead tr:first-child > th.sorting_disabled,
 table.dataTable thead tr:first-child > th[data-filter="none"],
+table[id].dataTable thead tr:first-child > th[data-filter="none"],
+table[id] thead tr:first-child > th[data-filter="none"],
 table.dataTable thead tr:first-child > th.no-sort,
+table[id].dataTable thead tr:first-child > th.no-sort,
+table[id] thead tr:first-child > th.no-sort,
+table.dataTable thead tr:first-child > th.dt-actions-header,
+table[id].dataTable thead tr:first-child > th.dt-actions-header,
+table[id] thead tr:first-child > th.dt-actions-header,
 table.dataTable thead tr.dt-filter-row th,
 table.dataTable thead tr.search-input-row th,
 table.dataTable thead tr:not(:first-child) th,
@@ -729,7 +778,7 @@ table.dataTable thead tr:not(:first-child) th,
 .dataTables_wrapper table.dataTable thead tr:not(:first-child) th {
   background-image: none !important;
   cursor: default !important;
-  padding-left: 10px !important;
+  padding-left: 8px !important;
 }
 
 /* 2. Satır Filtre Hücreleri Düzeni */
@@ -1084,5 +1133,72 @@ tr.context-menu-active > td {
 [data-bs-theme="dark"] tr.context-menu-active,
 [data-bs-theme="dark"] tr.context-menu-active > td {
   background-color: #334155 !important;
+}
+
+/* ===================================================
+   Drag & Drop to Hide Column Overlay (puantoryeni Standard)
+   =================================================== */
+.table-responsive {
+  position: relative !important;
+}
+
+.dt-hide-dropzone-overlay {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(254, 242, 242, 0.94);
+  border: 2px dashed #dc2626;
+  border-radius: 8px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  box-shadow: inset 0 0 24px rgba(220, 38, 38, 0.12);
+}
+
+[data-bs-theme="dark"] .dt-hide-dropzone-overlay {
+  background: rgba(45, 10, 10, 0.95);
+  border-color: #f87171;
+  color: #f87171;
+  box-shadow: inset 0 0 24px rgba(248, 113, 113, 0.2);
+}
+
+.dt-hide-dropzone-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: all;
+}
+
+.dt-hide-dropzone-overlay i {
+  font-size: 36px;
+  animation: dtPulse 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes dtPulse {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.15);
+  }
+}
+
+th.dt-draggable-header {
+  cursor: grab;
+}
+
+th.dt-draggable-header:active {
+  cursor: grabbing;
 }
 

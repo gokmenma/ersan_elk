@@ -12,9 +12,9 @@ $(document).ready(function() {
     let currentStartDate = '';
     let currentEndDate = '';
 
-    // Varsayılan: Yılın Başından Ayın Sonuna Kadar
+    // Varsayılan: İçinde Bulunulan Ayın Başı - Sonu (Hızlı Yükleme)
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), 0, 1);
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const formatDMY = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
@@ -98,6 +98,7 @@ $(document).ready(function() {
         processing: true,
         searchDelay: 400,
         responsive: false,
+        colReorder: true,
         order: [[3, 'desc']], // Tarihe göre sıralı
         language: $.extend(true, {}, (baseOptions.language || {}), {
             info: "Gösterilen _START_ - _END_ / _TOTAL_ kayıt",
@@ -211,6 +212,40 @@ $(document).ready(function() {
                 className: 'align-middle text-end fw-bold text-dark font-monospace'
             },
             {
+                data: null,
+                orderable: false,
+                searchable: false,
+                className: 'align-middle text-center',
+                render: function(data, type, row) {
+                    return `<a href="javascript:void(0)" class="btn-tahsilat-ekle text-primary fw-semibold text-decoration-none d-inline-flex align-items-center gap-1 font-size-12 px-2 py-1 rounded-2 hover-bg-light" data-id="${row.encrypted_id}"><i class="bx bx-plus-circle font-size-14 text-success"></i> Tahsilat Ekle</a>`;
+                }
+            },
+            {
+                data: 'tahsil_edilen_tutar',
+                className: 'align-middle text-end font-monospace',
+                render: function(data, type, row) {
+                    const durum = row.tahsilat_durumu;
+                    const odenen = data || '0,00 TRY';
+                    const rawOdenen = Number(row.tahsil_edilen_tutar_raw || 0);
+
+                    if (rawOdenen <= 0.0001) {
+                        return `<span class="text-muted font-size-12">${odenen}</span>`;
+                    } else if (durum === 'ODENDI') {
+                        return `
+                        <div class="d-flex flex-column align-items-end">
+                            <span class="fw-bold text-success font-size-12">${odenen}</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle font-size-10 px-1.5 py-0.5 mt-0.5">Tamamı Ödendi</span>
+                        </div>`;
+                    } else {
+                        return `
+                        <div class="d-flex flex-column align-items-end">
+                            <span class="fw-bold text-primary font-size-12">${odenen}</span>
+                            <small class="text-danger font-size-10">Kalan: ${row.kalan_tutar || ''}</small>
+                        </div>`;
+                    }
+                }
+            },
+            {
                 data: 'entegrator_durum_kodu',
                 className: 'align-middle text-center',
                 render: function(data, type, row) {
@@ -270,6 +305,15 @@ $(document).ready(function() {
     const finalOptions = typeof applyLengthStateSave === 'function' ? applyLengthStateSave(tableOptions) : tableOptions;
     const table = $('#tblTaslakFaturalar').DataTable(finalOptions);
 
+    // Gelişmiş Sütun Yönetimi (ColReorder, ColVis & Sürükle-Bırak Gizleme)
+    if (typeof window.efaturaInitColumnManagement === 'function') {
+        window.efaturaInitColumnManagement({
+            table: table,
+            tableId: '#tblTaslakFaturalar',
+            storageKey: 'efatura_taslak_col_state'
+        });
+    }
+
     // Check All Kutusu
     $('#checkAll').on('change', function() {
         const isChecked = $(this).is(':checked');
@@ -305,6 +349,12 @@ $(document).ready(function() {
     });
 
     // EDM'den Taslakları / Faturaları Çek
+    const backgroundSync = window.efaturaBackgroundSync({
+        listCard: '#faturaListCard', buttonSelector: '#btnSyncDrafts, #btnDropdownSyncDrafts',
+        storageKey: 'efatura_taslak_sync_dismissed_result', listType: 'taslak',
+        onRefresh: () => { table.ajax.reload(null, false); loadStats(); }
+    });
+
     $('#btnSyncDrafts, #btnDropdownSyncDrafts').on('click', function() {
         const todayStr = formatDMY(now);
         const thisMonthStartStr = formatDMY(firstDay);
@@ -320,9 +370,10 @@ $(document).ready(function() {
                     <label class="form-label font-size-12 fw-bold text-dark">Hızlı Tarih Seçimi:</label>
                     <div class="d-flex gap-2 flex-wrap mb-2">
                         <button type="button" class="btn btn-sm btn-light border quick-sync-date" data-type="today" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Bugün</button>
-                        <button type="button" class="btn btn-sm btn-primary text-white shadow-sm quick-sync-date" data-type="this_month" style="color: #ffffff !important; background-color: #135bec !important; border-color: #135bec !important; font-weight: 600;">Bu Ay (${todayStr.substring(3)})</button>
                         <button type="button" class="btn btn-sm btn-light border quick-sync-date" data-type="last_7_days" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Son 7 Gün</button>
+                        <button type="button" class="btn btn-sm btn-primary text-white shadow-sm quick-sync-date" data-type="this_month" style="color: #ffffff !important; background-color: #135bec !important; border-color: #135bec !important; font-weight: 600;">Bu Ay (${todayStr.substring(3)})</button>
                         <button type="button" class="btn btn-sm btn-light border quick-sync-date" data-type="last_30_days" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Son 30 Gün</button>
+                        <button type="button" class="btn btn-sm btn-light border quick-sync-date" data-type="this_year" style="color: #334155 !important; background-color: #f8fafc !important; border-color: #cbd5e1 !important; font-weight: 500;">Bu Yıl (${now.getFullYear()})</button>
                     </div>
                 </div>
                 <div class="row g-2 text-start">
@@ -357,18 +408,22 @@ $(document).ready(function() {
                     if (t === 'today') {
                         $('#swalSyncStartDate').val(formatYMD(cur));
                         $('#swalSyncEndDate').val(formatYMD(cur));
-                    } else if (t === 'this_month') {
-                        $('#swalSyncStartDate').val(formatYMD(firstDay));
-                        $('#swalSyncEndDate').val(formatYMD(cur));
                     } else if (t === 'last_7_days') {
                         const d7 = new Date();
                         d7.setDate(d7.getDate() - 7);
                         $('#swalSyncStartDate').val(formatYMD(d7));
                         $('#swalSyncEndDate').val(formatYMD(cur));
+                    } else if (t === 'this_month') {
+                        $('#swalSyncStartDate').val(formatYMD(firstDay));
+                        $('#swalSyncEndDate').val(formatYMD(cur));
                     } else if (t === 'last_30_days') {
                         const d30 = new Date();
                         d30.setDate(d30.getDate() - 30);
                         $('#swalSyncStartDate').val(formatYMD(d30));
+                        $('#swalSyncEndDate').val(formatYMD(cur));
+                    } else if (t === 'this_year') {
+                        const dYear = new Date(cur.getFullYear(), 0, 1);
+                        $('#swalSyncStartDate').val(formatYMD(dYear));
                         $('#swalSyncEndDate').val(formatYMD(cur));
                     }
                 });
@@ -384,44 +439,7 @@ $(document).ready(function() {
             }
         }).then((result) => {
             if (result.isConfirmed && result.value) {
-                const syncRange = result.value;
-                Swal.fire({
-                    title: 'Faturalar Taranıyor...',
-                    text: `${syncRange.start_date} ile ${syncRange.end_date} arasındaki faturalar taranıyor, lütfen bekleyin.`,
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                $.ajax({
-                    url: 'api/efatura-api.php',
-                    type: 'POST',
-                    data: {
-                        action: 'sync_outgoing_invoices',
-                        start_date: syncRange.start_date,
-                        end_date: syncRange.end_date
-                    },
-                    dataType: 'json',
-                    success: function(res) {
-                        if (res.status === 'success') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Senkronizasyon Tamamlandı',
-                                text: res.message || 'Faturalar başarıyla güncellendi.'
-                            }).then(() => {
-                                table.ajax.reload(null, false);
-                                loadStats();
-                            });
-                        } else {
-                            Swal.fire('Bilgi', res.message || 'Seçilen tarih aralığında yeni fatura bulunamadı.', 'info');
-                        }
-                    },
-                    error: function(xhr) {
-                        const errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'EDM servisinden faturalar çekilirken bir sorun oluştu.';
-                        Swal.fire('Bilgi', errMsg, 'warning');
-                    }
-                });
+                backgroundSync.start(result.value);
             }
         });
     });
@@ -855,5 +873,18 @@ $(document).ready(function() {
         setTimeout(() => {
             win.print();
         }, 400);
+    });
+
+    // Doğrudan Tablodaki "Tahsilat Ekle" Linkine Tıklanınca
+    $(document).on('click', '.btn-tahsilat-ekle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = $(this).data('id');
+        if (id) {
+            window.efaturaOpenTahsilatModal(id, () => {
+                table.ajax.reload(null, false);
+                loadStats();
+            });
+        }
     });
 });

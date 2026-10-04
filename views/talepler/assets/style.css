@@ -218,9 +218,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    border-bottom: 2px solid #f1f5f9;
-    padding: 4px 0 10px 0;
-    margin-bottom: 12px;
+    border-bottom: none !important;
+    padding: 0;
+    margin-bottom: 0 !important;
 }
 
 .talep-nav-pills .nav-item {

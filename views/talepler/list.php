@@ -221,48 +221,8 @@ $title = "Talep Yönetimi";
     <!-- 3. Minimal DataTables Talep Listesi & Tab Kartı -->
     <div class="card summary-kpi-card mb-3" id="taleplerListCard">
         <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2">
-                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
-                    <i class="bx bx-list-ul font-size-20"></i>
-                </div>
-                <div>
-                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Talep Listesi ve Süreç Yönetimi</h5>
-                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Personel talepleri, onay/red aksiyonları ve detaylı filtreleme</p>
-                </div>
-            </div>
-
-            <!-- Sağ Araç Çubuğu: Durum Filtreleri (Bekleyen/İşlem/Silinen) + Excel + Yazdır -->
-            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-                <?php
-                $currentTabForUrl = $currentTab;
-                $pendingUrl = "index.php?p=talepler/list&tab=" . $currentTabForUrl;
-                $approvedUrl = "index.php?p=talepler/list&show=approved&tab=" . $currentTabForUrl;
-                $deletedUrl = "index.php?p=talepler/list&show=deleted&tab=" . $currentTabForUrl;
-                ?>
-                <div class="view-status-pills shadow-xs me-1">
-                    <a href="<?= $pendingUrl ?>" id="btnShowPending" class="view-status-btn is-pending <?= !$showApproved && !$showDeleted ? 'active' : '' ?>" title="Bekleyen Talepler">
-                        <i class="bx bx-time me-1"></i><span>Bekleyenler</span>
-                    </a>
-                    <a href="<?= $approvedUrl ?>" id="btnShowApproved" class="view-status-btn is-approved <?= $showApproved ? 'active' : '' ?>" title="İşlem Yapılanlar">
-                        <i class="bx bx-check-circle me-1"></i><span>İşlem Yapılanlar</span>
-                    </a>
-                    <a href="<?= $deletedUrl ?>" id="btnShowDeleted" class="view-status-btn is-deleted <?= $showDeleted ? 'active' : '' ?>" title="Silinen Talepler">
-                        <i class="bx bx-trash me-1"></i><span>Silinenler</span>
-                    </a>
-                </div>
-
-                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Aktif Tabloyu Excel'e Aktar">
-                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
-                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Renkli ve Net Okunur Tab Menüsü -->
-        <div class="px-3">
-            <ul class="nav nav-pills talep-nav-pills" id="talepTabs" role="tablist">
+            <!-- Sol: Renkli ve Net Okunur Tab Menüsü -->
+            <ul class="nav nav-pills talep-nav-pills mb-0" id="talepTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <a class="nav-link tab-dashboard <?= $currentTab == 'dashboard' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabDashboard" role="tab">
                         <i class="bx bx-grid-alt font-size-16"></i> <span>Dashboard</span>
@@ -299,9 +259,37 @@ $title = "Talep Yönetimi";
                 </li>
                 <?php endif; ?>
             </ul>
+
+            <!-- Sağ Araç Çubuğu: Durum Filtreleri (Bekleyen/İşlem/Silinen) + Excel + Yazdır -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <?php
+                $currentTabForUrl = $currentTab;
+                $pendingUrl = "index.php?p=talepler/list&tab=" . $currentTabForUrl;
+                $approvedUrl = "index.php?p=talepler/list&show=approved&tab=" . $currentTabForUrl;
+                $deletedUrl = "index.php?p=talepler/list&show=deleted&tab=" . $currentTabForUrl;
+                ?>
+                <div class="view-status-pills shadow-xs me-1">
+                    <a href="<?= $pendingUrl ?>" id="btnShowPending" class="view-status-btn is-pending <?= !$showApproved && !$showDeleted ? 'active' : '' ?>" title="Bekleyen Talepler">
+                        <i class="bx bx-time me-1"></i><span>Bekleyenler</span>
+                    </a>
+                    <a href="<?= $approvedUrl ?>" id="btnShowApproved" class="view-status-btn is-approved <?= $showApproved ? 'active' : '' ?>" title="İşlem Yapılanlar">
+                        <i class="bx bx-check-circle me-1"></i><span>İşlem Yapılanlar</span>
+                    </a>
+                    <a href="<?= $deletedUrl ?>" id="btnShowDeleted" class="view-status-btn is-deleted <?= $showDeleted ? 'active' : '' ?>" title="Silinen Talepler">
+                        <i class="bx bx-trash me-1"></i><span>Silinenler</span>
+                    </a>
+                </div>
+
+                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Aktif Tabloyu Excel'e Aktar">
+                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
+                </button>
+            </div>
         </div>
 
-        <div class="card-body p-3 pt-2">
+        <div class="card-body p-3 pt-0">
             <?php if ($showApproved): ?>
                 <div class="alert alert-success d-flex align-items-center gap-2 mb-3 rounded-3 py-2 px-3">
                     <i class="bx bx-check-circle font-size-18"></i>

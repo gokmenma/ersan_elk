@@ -12,7 +12,7 @@ $title = 'Taslak Faturalar';
 @media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
 </style>
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
-<script src="views/efatura/js/transport.js"></script>
+<script src="views/efatura/js/transport.js?v=<?= filemtime(__DIR__ . '/js/transport.js') ?>"></script>
 
 
 <?php include 'layouts/breadcrumb.php'; ?>
@@ -192,14 +192,25 @@ $title = 'Taslak Faturalar';
                 <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
                     <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
                 </button>
-                <button type="button" class="btn btn-sm btn-subtle-primary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderRefresh" title="Listeyi Yenile">
-                    <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yenile</span>
-                </button>
+
+                <!-- Sütunlar Butonu (ColVis & Drag-Drop Yönetimi) -->
+                <div class="dropdown d-inline-block">
+                    <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="btnHeaderColVis" title="Sütunları Yönet">
+                        <i class="bx bx-columns font-size-15 text-primary"></i> <span class="d-none d-sm-inline font-size-12">Sütunlar</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg border p-2" style="min-width: 230px; max-height: 400px; overflow-y: auto;" id="columnListContainer">
+                        <div class="d-flex align-items-center justify-content-between px-2 pb-1.5 border-bottom mb-1">
+                            <span class="font-size-11 fw-bold text-uppercase text-muted">Sütun Görünürlüğü</span>
+                            <button type="button" class="btn btn-link p-0 font-size-11 text-primary text-decoration-none" id="btnResetColumns">Sıfırla</button>
+                        </div>
+                        <div id="columnList" class="d-flex flex-column gap-1"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="card-body p-3 pt-0">
-            <div class="table-responsive" style="overflow-x: auto !important;">
+            <div class="table-responsive position-relative" style="overflow-x: auto !important; min-height: 200px;">
                 <table id="tblTaslakFaturalar" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
                     <thead class="table-light">
                         <tr>
@@ -209,7 +220,7 @@ $title = 'Taslak Faturalar';
                                     <label class="form-check-label" for="checkAll"></label>
                                 </div>
                             </th>
-                            <th data-filter="string" class="text-center" style="width: 50px;">SIRA</th>
+                            <th data-filter="none" class="text-center" style="width: 50px;">SIRA</th>
                             <th data-filter="string" style="width: 135px;">FATURA NO</th>
                             <th data-filter="date" style="width: 105px;">TARİH</th>
                             <th data-filter="string">MÜŞTERİ / ALICI</th>
@@ -217,6 +228,8 @@ $title = 'Taslak Faturalar';
                             <th data-filter="select" style="width: 105px;">BELGE TÜRÜ</th>
                             <th data-filter="select" style="width: 115px;">SENARYO</th>
                             <th data-filter="string" class="text-end" style="width: 125px;">ÖDENECEK TUTAR</th>
+                            <th data-filter="none" class="text-center" style="width: 115px;">TAHSİLAT EKLE</th>
+                            <th data-filter="string" class="text-end" style="width: 130px;">TAHSİL EDİLEN TUTAR</th>
                             <th data-filter="select" class="text-center" style="width: 105px;">DURUM</th>
                             <th data-filter="none" style="width: 140px;" class="text-center">İŞLEMLER</th>
                         </tr>
@@ -227,6 +240,8 @@ $title = 'Taslak Faturalar';
         </div>
     </div>
 </div>
+
+<?php include __DIR__ . '/modal-tahsilat.php'; ?>
 
 <!-- Fatura Önizleme Modalı -->
 <div class="modal fade" id="modalInvoicePreview" tabindex="-1" aria-hidden="true">
@@ -548,7 +563,8 @@ $title = 'Taslak Faturalar';
     color: #475569 !important;
     background-color: #f8fafc !important;
     border: 1px solid #eef2f6 !important;
-    padding: 8px 10px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
     vertical-align: middle !important;
 }
 

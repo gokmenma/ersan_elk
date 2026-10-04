@@ -29,7 +29,6 @@ $(document).ready(function() {
                     currentStartDate = formatYMD(selectedDates[0]);
                     currentEndDate = formatYMD(selectedDates[1]);
                     table.ajax.reload();
-                    loadStats();
                 }
             }
         });
@@ -45,50 +44,40 @@ $(document).ready(function() {
         }
         $('#filterDateRange').val('');
         table.ajax.reload();
-        loadStats();
     });
 
-    // 2. İstatistikleri Yükle
-    function loadStats() {
-        let url = 'api/efatura-api.php?action=summary_stats&list_type=giden';
-        if (currentStartDate) url += `&baslangic_tarihi=${currentStartDate}`;
-        if (currentEndDate) url += `&bitis_tarihi=${currentEndDate}`;
-        fetch(url)
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === 'success' && res.data) {
-                    const d = res.data;
-                    const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
-                    
-                    if (document.getElementById('stat_toplam_adet')) {
-                        document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
-                    }
-                    if (document.getElementById('stat_sub_efatura_earsiv')) {
-                        document.getElementById('stat_sub_efatura_earsiv').textContent = `E-Fatura: ${d.efatura_adet || 0} | E-Arşiv: ${d.earsiv_adet || 0}`;
-                    }
-                    if (document.getElementById('stat_onaylanan_adet')) {
-                        document.getElementById('stat_onaylanan_adet').textContent = d.onaylanan_adet || 0;
-                    }
-                    if (document.getElementById('stat_onaylanan_tutar')) {
-                        document.getElementById('stat_onaylanan_tutar').textContent = formatMoney(d.onaylanan_tutar);
-                    }
-                    if (document.getElementById('stat_bekleyen_adet')) {
-                        document.getElementById('stat_bekleyen_adet').textContent = d.bekleyen_adet || 0;
-                    }
-                    if (document.getElementById('stat_bekleyen_tutar')) {
-                        document.getElementById('stat_bekleyen_tutar').textContent = formatMoney(d.bekleyen_tutar);
-                    }
-                    if (document.getElementById('stat_bu_ay_adet')) {
-                        document.getElementById('stat_bu_ay_adet').textContent = d.bu_ay_adet || 0;
-                    }
-                    if (document.getElementById('stat_bu_ay_tutar')) {
-                        document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
-                    }
-                }
-            })
-            .catch(err => console.error("Summary stats error:", err));
+    // Cards reflect the table's filters and update with its response.
+    function renderStats(d) {
+        const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+
+        if (document.getElementById('stat_toplam_adet')) {
+            document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
+        }
+        if (document.getElementById('stat_sub_efatura_earsiv')) {
+            document.getElementById('stat_sub_efatura_earsiv').textContent = `E-Fatura: ${d.efatura_adet || 0} | E-Arşiv: ${d.earsiv_adet || 0}`;
+        }
+        if (document.getElementById('stat_onaylanan_adet')) {
+            document.getElementById('stat_onaylanan_adet').textContent = d.onaylanan_adet || 0;
+        }
+        if (document.getElementById('stat_onaylanan_tutar')) {
+            document.getElementById('stat_onaylanan_tutar').textContent = formatMoney(d.onaylanan_tutar);
+        }
+        if (document.getElementById('stat_bekleyen_adet')) {
+            document.getElementById('stat_bekleyen_adet').textContent = d.bekleyen_adet || 0;
+        }
+        if (document.getElementById('stat_bekleyen_tutar')) {
+            document.getElementById('stat_bekleyen_tutar').textContent = formatMoney(d.bekleyen_tutar);
+        }
+        if (document.getElementById('stat_bu_ay_adet')) {
+            document.getElementById('stat_bu_ay_adet').textContent = d.bu_ay_adet || 0;
+        }
+        if (document.getElementById('stat_bu_ay_tutar')) {
+            document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
+        }
     }
-    loadStats();
+
+
+    let latestSummaryDraw = 0;
 
     // 3. DataTables Tablosunu Başlat
     const baseOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
@@ -99,6 +88,7 @@ $(document).ready(function() {
         processing: true,
         searchDelay: 400,
         responsive: false,
+        colReorder: true,
         order: [[3, 'desc']], // Tarihe göre sıralı
         language: $.extend(true, {}, (baseOptions.language || {}), {
             info: "Gösterilen _START_ - _END_ / _TOTAL_ kayıt",
@@ -113,6 +103,7 @@ $(document).ready(function() {
             url: 'api/efatura-api.php?action=list_giden&list_type=giden',
             type: 'GET',
             data: function(d) {
+                latestSummaryDraw = Number(d.draw);
                 if (currentStatusFilter) {
                     d.durum_filtre = currentStatusFilter;
                 }
@@ -124,6 +115,7 @@ $(document).ready(function() {
                 }
             },
             dataSrc: function(json) {
+                if (json?.summary && Number(json.draw) === latestSummaryDraw) renderStats(json.summary);
                 return (json && Array.isArray(json.data)) ? json.data : [];
             },
             error: function(xhr, error, thrown) {
@@ -208,6 +200,40 @@ $(document).ready(function() {
                 className: 'align-middle text-end fw-bold text-dark font-monospace'
             },
             {
+                data: null,
+                orderable: false,
+                searchable: false,
+                className: 'align-middle text-center',
+                render: function(data, type, row) {
+                    return `<a href="javascript:void(0)" class="btn-tahsilat-ekle text-primary fw-semibold text-decoration-none d-inline-flex align-items-center gap-1 font-size-12 px-2 py-1 rounded-2 hover-bg-light" data-id="${row.encrypted_id}"><i class="bx bx-plus-circle font-size-14 text-success"></i> Tahsilat Ekle</a>`;
+                }
+            },
+            {
+                data: 'tahsil_edilen_tutar',
+                className: 'align-middle text-end font-monospace',
+                render: function(data, type, row) {
+                    const durum = row.tahsilat_durumu;
+                    const odenen = data || '0,00 TRY';
+                    const rawOdenen = Number(row.tahsil_edilen_tutar_raw || 0);
+
+                    if (rawOdenen <= 0.0001) {
+                        return `<span class="text-muted font-size-12">${odenen}</span>`;
+                    } else if (durum === 'ODENDI') {
+                        return `
+                        <div class="d-flex flex-column align-items-end">
+                            <span class="fw-bold text-success font-size-12">${odenen}</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle font-size-10 px-1.5 py-0.5 mt-0.5">Tamamı Ödendi</span>
+                        </div>`;
+                    } else {
+                        return `
+                        <div class="d-flex flex-column align-items-end">
+                            <span class="fw-bold text-primary font-size-12">${odenen}</span>
+                            <small class="text-danger font-size-10">Kalan: ${row.kalan_tutar || ''}</small>
+                        </div>`;
+                    }
+                }
+            },
+            {
                 data: 'entegrator_durum_kodu',
                 className: 'align-middle text-center',
                 render: function(data, type, row) {
@@ -272,6 +298,15 @@ $(document).ready(function() {
     const finalOptions = typeof applyLengthStateSave === 'function' ? applyLengthStateSave(tableOptions) : tableOptions;
     const table = $('#tblFaturalar').DataTable(finalOptions);
 
+    // Gelişmiş Sütun Yönetimi (ColReorder, ColVis & Sürükle-Bırak Gizleme)
+    if (typeof window.efaturaInitColumnManagement === 'function') {
+        window.efaturaInitColumnManagement({
+            table: table,
+            tableId: '#tblFaturalar',
+            storageKey: 'efatura_giden_col_state'
+        });
+    }
+
     // Check All Kutusu
     $('#checkAll').on('change', function() {
         const isChecked = $(this).is(':checked');
@@ -302,7 +337,6 @@ $(document).ready(function() {
 
     $('#btnHeaderRefresh').on('click', function() {
         table.ajax.reload(null, false);
-        loadStats();
     });
 
     $('#btnHeaderPrint').on('click', function() {
@@ -497,7 +531,6 @@ $(document).ready(function() {
                     if (res.status === 'success') {
                         Swal.fire('Başarılı', res.message + (res.fatura_no ? ' (No: ' + res.fatura_no + ')' : ''), 'success');
                         table.ajax.reload(null, false);
-                        loadStats();
                     } else {
                         Swal.fire('Hata', res.message, 'error');
                     }
@@ -527,7 +560,6 @@ $(document).ready(function() {
             if (res.status === 'success') {
                 Swal.fire('Güncellendi', 'Fatura durumu senkronize edildi: ' + (res.data.durum_kodu || ''), 'success');
                 table.ajax.reload(null, false);
-                loadStats();
             } else {
                 Swal.fire('Hata', res.message, 'error');
             }
@@ -585,7 +617,6 @@ $(document).ready(function() {
                     showConfirmButton: false
                 });
                 table.ajax.reload(null, false);
-                loadStats();
             } else {
                 Swal.fire('Hata', res.message, 'error');
             }
@@ -877,7 +908,6 @@ $(document).ready(function() {
                                 showConfirmButton: false
                             });
                             table.ajax.reload(null, false);
-                            loadStats();
                         } else {
                             Swal.fire({ icon: 'error', title: 'Hata!', text: res.message || 'Fatura silinemedi.' });
                         }
@@ -891,6 +921,12 @@ $(document).ready(function() {
     }
 
     // EDM'den Giden Faturaları Çek
+    const backgroundSync = window.efaturaBackgroundSync({
+        listCard: '#faturaListCard', buttonSelector: '#btnSyncOutgoing',
+        storageKey: 'efatura_giden_sync_dismissed_result', listType: 'giden',
+        onRefresh: () => table.ajax.reload(null, false)
+    });
+
     $('#btnSyncOutgoing').on('click', function() {
         const todayStr = formatDMY(now);
 
@@ -968,44 +1004,7 @@ $(document).ready(function() {
             }
         }).then((result) => {
             if (result.isConfirmed && result.value) {
-                const syncRange = result.value;
-                Swal.fire({
-                    title: 'Faturalar Taranıyor...',
-                    text: `${syncRange.start_date} ile ${syncRange.end_date} arasındaki faturalar taranıyor, lütfen bekleyin.`,
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                $.ajax({
-                    url: 'api/efatura-api.php',
-                    type: 'POST',
-                    data: {
-                        action: 'sync_outgoing_invoices',
-                        start_date: syncRange.start_date,
-                        end_date: syncRange.end_date
-                    },
-                    dataType: 'json',
-                    success: function(res) {
-                        if (res.status === 'success') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Senkronizasyon Tamamlandı',
-                                text: res.message || 'Faturalar başarıyla güncellendi.'
-                            }).then(() => {
-                                table.ajax.reload(null, false);
-                                loadStats();
-                            });
-                        } else {
-                            Swal.fire('Bilgi', res.message || 'Seçilen tarih aralığında yeni fatura bulunamadı.', 'info');
-                        }
-                    },
-                    error: function(xhr) {
-                        const errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'EDM servisinden faturalar çekilirken bir sorun oluştu.';
-                        Swal.fire('Bilgi', errMsg, 'warning');
-                    }
-                });
+                backgroundSync.start(result.value);
             }
         });
     });
@@ -1018,7 +1017,9 @@ $(document).ready(function() {
         const action = $(this).data('action');
         const id = selectedRowData.encrypted_id;
 
-        if (action === 'edit') {
+        if (action === 'tahsilat') {
+            window.efaturaOpenTahsilatModal(id, () => table.ajax.reload(null, false));
+        } else if (action === 'edit') {
             window.location.href = `index.php?p=efatura/olustur&id=${encodeURIComponent(id)}`;
         } else if (action === 'preview') {
             openInvoicePreview(id);
@@ -1046,6 +1047,16 @@ $(document).ready(function() {
             deleteDraftInvoice(id);
         } else if (action === 'cancel') {
             cancelInvoice(id);
+        }
+    });
+
+    // Doğrudan Tablodaki "Tahsilat Ekle" Linkine Tıklanınca
+    $(document).on('click', '.btn-tahsilat-ekle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = $(this).data('id');
+        if (id) {
+            window.efaturaOpenTahsilatModal(id, () => table.ajax.reload(null, false));
         }
     });
 });

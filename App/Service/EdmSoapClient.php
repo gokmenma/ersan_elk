@@ -242,6 +242,37 @@ class EdmSoapClient
         return str_starts_with($raw, "\x1f\x8b") ? (@gzdecode($raw) ?: '') : $raw;
     }
 
+    public function findOutgoingInvoiceByNumber(string $number): ?array
+    {
+        if (!preg_match('/^[A-Z0-9]{3}[0-9]{13}$/D', $number)) throw new EdmOperationException('validation', 'Fatura numarası geçersiz.');
+        $response = $this->call('GetInvoice', [
+            'INVOICE_SEARCH_KEY' => (object)['ID' => $number, 'DIRECTION' => 'OUT', 'READ_INCLUDED' => true, 'LIMIT' => 50],
+            'HEADER_ONLY' => 'Y', 'INVOICE_CONTENT_TYPE' => 'XML',
+        ]);
+        if (isset($response->REQUEST_RETURN->RETURN_CODE) && (string)$response->REQUEST_RETURN->RETURN_CODE !== '0') throw new EdmOperationException('business', 'EDM fatura numarası kontrolü başarısız.');
+        foreach (self::items($response->INVOICE ?? null) as $item) {
+            if ((string)($item->ID ?? '') !== $number) continue;
+            $uuid = trim((string)($item->UUID ?? ''));
+            if ($uuid === '') throw new EdmOperationException('business', 'EDM fatura kimliği doğrulanamadı.');
+            return ['uuid' => $uuid, 'status' => (string)($item->HEADER->STATUS ?? '')];
+        }
+        return null;
+    }
+
+    public function getInvoiceXml(string $uuid, string $direction = 'OUT'): string
+    {
+        $result = $this->call('GetInvoice', [
+            'INVOICE_SEARCH_KEY' => (object)['UUID' => $uuid, 'DIRECTION' => $direction, 'READ_INCLUDED' => true, 'LIMIT' => 1],
+            'HEADER_ONLY' => 'N', 'INVOICE_CONTENT_TYPE' => 'XML',
+        ]);
+        $item = self::items($result->INVOICE ?? null)[0] ?? null;
+        $xml = self::decodeContent($item->CONTENT ?? null);
+        if (!$item || (string)($item->UUID ?? '') !== $uuid || empty($xml)) {
+            throw new EdmOperationException('business', 'Bu faturanın XML içeriği EDM’den alınamadı.');
+        }
+        return $xml;
+    }
+
     public function getInvoicePdf(string $uuid, string $direction): string
     {
         $result = $this->call('GetInvoice', [
@@ -254,9 +285,51 @@ class EdmSoapClient
         return $pdf;
     }
 
+    /** Fetch one page without holding the entire date range in memory. */
+    public function getInvoicePage(string $direction, string $startDate, string $endDate, int $offset = 0, int $limit = 50, ?string $createdBefore = null, ?string $listType = null): array
+    {
+        $start = \DateTimeImmutable::createFromFormat('!Y-m-d', $startDate);
+        $end = \DateTimeImmutable::createFromFormat('!Y-m-d', $endDate);
+        if (!$start || !$end || $start->format('Y-m-d') !== $startDate || $end->format('Y-m-d') !== $endDate || $start > $end || $offset < 0 || !in_array($direction, ['IN', 'OUT'], true)) {
+            throw new EdmOperationException('validation', 'Geçersiz tarih aralığı, yön veya sayfa.');
+        }
+        $endTime = $end->format('Y-m-d\T23:59:59');
+        if ($createdBefore !== null) {
+            $cutoff = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s', $createdBefore);
+            if (!$cutoff || $cutoff->format('Y-m-d\TH:i:s') !== $createdBefore) throw new EdmOperationException('validation', 'Geçersiz aktarım üst tarihi.');
+            $endTime = min($endTime, $createdBefore);
+            if ($endTime < $start->format('Y-m-d\T00:00:00')) return [];
+        }
+        if ($listType !== null && !in_array($listType, ['taslak', 'giden'], true)) throw new EdmOperationException('validation', 'Geçersiz aktarım türü.');
+        $response = $this->call('GetInvoice', [
+            'INVOICE_SEARCH_KEY' => (object)(($listType === 'taslak' ? ['CONNECTORSTATUSDESCRIPTION' => 'LOAD - SUCCEED'] : []) + [
+                'LIMIT' => max(1, min(50, $limit)), 'OFFSET' => $offset,
+                'DIRECTION' => $direction, 'READ_INCLUDED' => true,
+                'CR_START_DATE' => $start->format('Y-m-d\T00:00:00'),
+                'CR_END_DATE' => $endTime,
+            ]),
+            'HEADER_ONLY' => $listType === 'giden' ? 'Y' : 'N', 'INVOICE_CONTENT_TYPE' => 'XML',
+        ]);
+        if (isset($response->REQUEST_RETURN->RETURN_CODE) && (string)$response->REQUEST_RETURN->RETURN_CODE !== '0') {
+            throw new EdmOperationException('business', 'EDM fatura listesini döndürmedi. Servis işlem sonucunu kontrol edin.');
+        }
+        $items = self::items($response->INVOICE ?? null);
+        $result = [];
+        foreach ($items as $item) {
+            $uuid = trim((string)($item->UUID ?? ''));
+            if ($uuid === '') throw new EdmOperationException('business', 'EDM sayfasında ETTN bilgisi eksik.');
+            $header = $item->HEADER ?? (object)[];
+            $result[] = [
+                'uuid' => $uuid, 'xml' => self::decodeContent($item->CONTENT ?? null),
+                'status' => $header->STATUS ?? '', 'status_desc' => $header->STATUS_DESCRIPTION ?? '',
+            ];
+        }
+        return $result;
+    }
+
     public function getSyncResult(): array { return $this->syncResult; }
 
-    public function getInvoices(string $direction = 'OUT', ?string $startDate = null, ?string $endDate = null, int $limit = 500, string $dateType = 'CREATE'): array
+    public function getInvoices(string $direction = 'OUT', ?string $startDate = null, ?string $endDate = null, int $limit = 500, string $dateType = 'CREATE', string $headerOnly = 'N'): array
     {
         $this->syncResult = ['complete' => true, 'errors' => []];
         $startStr = $startDate ?: date('Y-m-d');
@@ -271,86 +344,84 @@ class EdmSoapClient
         $seen = [];
         $pageSize = max(1, min(100, $limit));
 
-        // EDM en fazla 100 kayıt döndürüyor. Aralığı günlere bölüp OFFSET ile
-        // ilerlemek, yoğun günlerde listenin ilk sayfasından sonrasını kaçırmayı önler.
-        for ($day = $start; $day <= $end; $day = $day->modify('+1 day')) {
-            $offset = 0;
-            $previousPageSignature = null;
-            $effectivePageSize = null;
+        // Tarih aralığını tek sorguda sayfala; boş günler için ayrı SOAP çağrısı yapma.
+        // OFFSET aynı saniyede oluşturulan ve sunucu limitini aşan kayıtları da korur.
+        $offset = 0;
+        $previousPageSignature = null;
+        $effectivePageSize = null;
 
-            while (true) {
-                $key = [
-                    'LIMIT'         => $pageSize,
-                    'OFFSET'        => $offset,
-                    'DIRECTION'     => $direction,
-                    'READ_INCLUDED' => true
+        while (true) {
+            $key = [
+                'LIMIT'         => $pageSize,
+                'OFFSET'        => $offset,
+                'DIRECTION'     => $direction,
+                'READ_INCLUDED' => true
+            ];
+            if ($dateType === 'CREATE') {
+                $key += [
+                    'CR_START_DATE' => $start->format('Y-m-d\T00:00:00'),
+                    'CR_END_DATE'   => $end->format('Y-m-d\T23:59:59')
                 ];
-                if ($dateType === 'CREATE') {
-                    $key += [
-                        'CR_START_DATE' => $day->format('Y-m-d\T00:00:00'),
-                        'CR_END_DATE'   => $day->format('Y-m-d\T23:59:59')
-                    ];
-                } else {
-                    $key += [
-                        'START_DATE' => $day->format('Y-m-d'),
-                        'END_DATE'   => $day->format('Y-m-d')
-                    ];
-                }
-
-                try {
-                    $response = $this->call('GetInvoice', ['INVOICE_SEARCH_KEY' => (object)$key, 'HEADER_ONLY' => 'N', 'INVOICE_CONTENT_TYPE' => 'XML']);
-                    $items = self::items($response->INVOICE ?? null);
-                } catch (EdmOperationException $e) {
-                    $this->syncResult['complete'] = false;
-                    $this->syncResult['errors'][] = ['date' => $day->format('Y-m-d'), 'message' => $e->getMessage()];
-                    break;
-                }
-
-                $pageUuids = [];
-                foreach ($items as $item) {
-                    $uuid = trim((string)($item->UUID ?? ''));
-                    if (!$uuid) continue;
-                    $pageUuids[] = $uuid;
-                    if (isset($seen[$uuid])) continue;
-                    $seen[$uuid] = true;
-                    $hdr = $item->HEADER ?? (object)[];
-                    $all[$uuid] = [
-                        'uuid'           => $uuid,
-                        'fatura_no'      => $item->ID ?? '',
-                        'xml'            => self::decodeContent($item->CONTENT ?? null),
-                        'header'         => $hdr,
-                        'status'         => $hdr->STATUS ?? '',
-                        'status_desc'    => $hdr->STATUS_DESCRIPTION ?? '',
-                        'issue_date'     => $hdr->ISSUE_DATE ?? '',
-                        'profile_id'     => $hdr->PROFILEID ?? '',
-                        'payable_amount' => $hdr->PAYABLE_AMOUNT->_ ?? 0,
-                        'supplier'       => $hdr->SUPPLIER ?? '',
-                        'customer'       => $hdr->CUSTOMER ?? '',
-                        'sender'         => $hdr->SENDER ?? '',
-                        'receiver'       => $hdr->RECEIVER ?? ''
-                    ];
-                }
-
-                if (!$items) break;
-
-                // EDM bazı hesaplarda istenen LIMIT'ten daha düşük (ör. 50)
-                // sabit bir sunucu sayfa boyutu uyguluyor. İlk sayfa bu gerçek
-                // boyutu belirler; yalnızca bundan kısa bir sayfa son sayfadır.
-                $effectivePageSize ??= count($items);
-                if (count($items) < $effectivePageSize) break;
-
-                $pageSignature = hash('sha256', implode("\n", $pageUuids));
-                if (!$pageUuids || $pageSignature === $previousPageSignature) {
-                    $this->syncResult['complete'] = false;
-                    $this->syncResult['errors'][] = [
-                        'date' => $day->format('Y-m-d'),
-                        'message' => 'EDM sayfalaması ilerlemedi; aynı kayıtlar tekrar döndü.'
-                    ];
-                    break;
-                }
-                $previousPageSignature = $pageSignature;
-                $offset += count($items);
+            } else {
+                $key += [
+                    'START_DATE' => $start->format('Y-m-d'),
+                    'END_DATE'   => $end->format('Y-m-d')
+                ];
             }
+
+            try {
+                $response = $this->call('GetInvoice', ['INVOICE_SEARCH_KEY' => (object)$key, 'HEADER_ONLY' => $headerOnly, 'INVOICE_CONTENT_TYPE' => 'XML']);
+                $items = self::items($response->INVOICE ?? null);
+            } catch (EdmOperationException $e) {
+                $this->syncResult['complete'] = false;
+                $this->syncResult['errors'][] = ['date' => $startStr, 'end_date' => $endStr, 'message' => $e->getMessage()];
+                break;
+            }
+
+            $pageUuids = [];
+            foreach ($items as $item) {
+                $uuid = trim((string)($item->UUID ?? ''));
+                if (!$uuid) continue;
+                $pageUuids[] = $uuid;
+                if (isset($seen[$uuid])) continue;
+                $seen[$uuid] = true;
+                $hdr = $item->HEADER ?? (object)[];
+                $all[$uuid] = [
+                    'uuid'           => $uuid,
+                    'fatura_no'      => $item->ID ?? '',
+                    'xml'            => isset($item->CONTENT) ? self::decodeContent($item->CONTENT) : '',
+                    'header'         => $hdr,
+                    'status'         => $hdr->STATUS ?? '',
+                    'status_desc'    => $hdr->STATUS_DESCRIPTION ?? '',
+                    'issue_date'     => $hdr->ISSUE_DATE ?? '',
+                    'profile_id'     => $hdr->PROFILEID ?? '',
+                    'payable_amount' => $hdr->PAYABLE_AMOUNT->_ ?? ($hdr->PAYABLE_AMOUNT ?? 0),
+                    'supplier'       => $hdr->SUPPLIER ?? '',
+                    'customer'       => $hdr->CUSTOMER ?? '',
+                    'sender'         => $hdr->SENDER ?? '',
+                    'receiver'       => $hdr->RECEIVER ?? ''
+                ];
+            }
+
+            if (!$items) break;
+
+            // EDM bazı hesaplarda istenen LIMIT'ten daha düşük (ör. 50)
+            // sabit bir sunucu sayfa boyutu uyguluyor. İlk sayfa bu gerçek
+            // boyutu belirler; yalnızca bundan kısa bir sayfa son sayfadır.
+            $effectivePageSize ??= count($items);
+            if (count($items) < $effectivePageSize) break;
+
+            $pageSignature = hash('sha256', implode("\n", $pageUuids));
+            if (!$pageUuids || $pageSignature === $previousPageSignature) {
+                $this->syncResult['complete'] = false;
+                $this->syncResult['errors'][] = [
+                    'date' => $startStr, 'end_date' => $endStr,
+                    'message' => 'EDM sayfalaması ilerlemedi; aynı kayıtlar tekrar döndü.'
+                ];
+                break;
+            }
+            $previousPageSignature = $pageSignature;
+            $offset += count($items);
         }
 
         return array_values($all);

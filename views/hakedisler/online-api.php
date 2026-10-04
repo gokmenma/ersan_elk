@@ -589,20 +589,22 @@ try {
             $model = new HakedisDonemModel();
             $db = $model->getDb();
 
-            $start = $_POST['start'] ?? 0;
-            $length = $_POST['length'] ?? 10;
-            $sozlesme_id = $_POST['sozlesme_id'] ?? 0;
-            $orderColIdx = $_POST['order'][0]['column'] ?? 0;
-            $orderDir = $_POST['order'][0]['dir'] ?? 'desc';
+            $start = intval($_POST['start'] ?? 0);
+            $length = intval($_POST['length'] ?? 10);
+            $sozlesme_id = intval($_POST['sozlesme_id'] ?? 0);
+            $orderColIdx = intval($_POST['order'][0]['column'] ?? 0);
+            $orderDir = strtolower($_POST['order'][0]['dir'] ?? 'asc') === 'desc' ? 'DESC' : 'ASC';
 
             $columns = [
-                0 => 'hakedis_no',
-                1 => 'hakedis_tarihi_yil', // sort logic simplified since ay/yil split
-                2 => 'temel_endeks_ayi',
-                3 => 'durum',
-                4 => 'id'
+                0 => 'hd.hakedis_no',
+                1 => 'hd.hakedis_tarihi_yil',
+                2 => 'hd.temel_endeks_ayi',
+                3 => 'hd.tutanak_tasdik_tarihi',
+                4 => 'imalat_donem',
+                5 => 'hd.durum',
+                6 => 'hd.id'
             ];
-            $orderCol = $columns[$orderColIdx] ?? 'id';
+            $orderCol = $columns[$orderColIdx] ?? 'hd.hakedis_no';
 
             // Validate Sozlesme Ownership
             $stmt = $db->prepare("SELECT id FROM hakedis_sozlesmeler WHERE id = ? AND firma_id = ?");
@@ -612,12 +614,50 @@ try {
                 exit;
             }
 
-            $where = "sozlesme_id = :sozlesme_id AND silinme_tarihi IS NULL";
+            $where = "hd.sozlesme_id = :sozlesme_id AND hd.silinme_tarihi IS NULL";
             $params = [':sozlesme_id' => $sozlesme_id];
 
-            $stmt = $db->prepare("SELECT COUNT(*) FROM hakedis_donemleri WHERE $where");
+            // Genel Arama
+            $searchValue = trim($_POST['search']['value'] ?? '');
+            if ($searchValue !== '') {
+                $where .= " AND (hd.hakedis_no LIKE :search_genel OR hd.temel_endeks_ayi LIKE :search_genel OR hd.guncel_endeks_ayi LIKE :search_genel OR hd.durum LIKE :search_genel OR hd.tutanak_tasdik_tarihi LIKE :search_genel)";
+                $params[':search_genel'] = "%$searchValue%";
+            }
+
+            // Sütun Bazlı Filtreler
+            if (!empty($_POST['columns']) && is_array($_POST['columns'])) {
+                foreach ($_POST['columns'] as $idx => $col) {
+                    $colSearch = trim($col['search']['value'] ?? '');
+                    if ($colSearch !== '') {
+                        $paramName = ":col_search_{$idx}";
+                        if ($idx === 0) {
+                            $where .= " AND hd.hakedis_no LIKE {$paramName}";
+                            $params[$paramName] = "%$colSearch%";
+                        } elseif ($idx === 2) {
+                            $where .= " AND (hd.temel_endeks_ayi LIKE {$paramName} OR hd.guncel_endeks_ayi LIKE {$paramName})";
+                            $params[$paramName] = "%$colSearch%";
+                        } elseif ($idx === 3) {
+                            $where .= " AND hd.tutanak_tasdik_tarihi LIKE {$paramName}";
+                            $params[$paramName] = "%$colSearch%";
+                        } elseif ($idx === 5) {
+                            $where .= " AND hd.durum = {$paramName}";
+                            $params[$paramName] = $colSearch;
+                        }
+                    }
+                }
+            }
+
+            $stmt = $db->prepare("SELECT COUNT(*) FROM hakedis_donemleri hd WHERE $where");
             $stmt->execute($params);
-            $totalRecords = $stmt->fetchColumn();
+            $filteredRecords = $stmt->fetchColumn();
+
+            $stmtTotal = $db->prepare("SELECT COUNT(*) FROM hakedis_donemleri WHERE sozlesme_id = ? AND silinme_tarihi IS NULL");
+            $stmtTotal->execute([$sozlesme_id]);
+            $totalRecords = $stmtTotal->fetchColumn();
+
+            $orderByClause = ($orderColIdx === 1)
+                ? "hd.hakedis_tarihi_yil $orderDir, hd.hakedis_tarihi_ay $orderDir"
+                : "$orderCol $orderDir";
 
             $sql = "SELECT hd.*, 
                 (SELECT SUM(m.miktar * k.teklif_edilen_birim_fiyat) 
@@ -626,14 +666,20 @@ try {
                  WHERE m.hakedis_donem_id = hd.id) as imalat_donem 
                 FROM hakedis_donemleri hd 
                 WHERE $where 
-                ORDER BY hakedis_tarihi_yil $orderDir, hakedis_tarihi_ay $orderDir 
-                LIMIT :start, :length";
+                ORDER BY $orderByClause";
+
+            if ($length > 0) {
+                $sql .= " LIMIT :start, :length";
+            }
+
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $val) {
                 $stmt->bindValue($key, $val);
             }
-            $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-            $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+            if ($length > 0) {
+                $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+                $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+            }
             $stmt->execute();
 
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -669,8 +715,8 @@ try {
 
             echo json_encode([
                 "draw" => intval($_POST['draw'] ?? 0),
-                "recordsTotal" => $totalRecords,
-                "recordsFiltered" => $totalRecords,
+                "recordsTotal" => intval($totalRecords),
+                "recordsFiltered" => intval($filteredRecords),
                 "data" => $data
             ]);
             break;

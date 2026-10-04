@@ -124,8 +124,8 @@ function initBordroTable() {
     deferRender: true,
     autoWidth: false,
     deferAdvancedFilters: true,
-    columnDefs: [{ orderable: false, targets: [0, 15] }],
-    order: [[1, "asc"]],
+    columnDefs: [{ orderable: false, targets: [0, 1, 15] }],
+    order: [[4, "asc"]],
     pageLength: 25,
     buttons: [],
     initComplete: function (settings, json) {

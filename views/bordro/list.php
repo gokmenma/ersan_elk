@@ -314,7 +314,6 @@ if (!empty($dbGelirler)) {
             width: 100% !important;
         }
 
-        #bordroTable th, 
         #bordroTable td {
             border: 1px solid #e2e8f0 !important;
             padding: 5px 6px !important;
@@ -323,12 +322,16 @@ if (!empty($dbGelirler)) {
         }
 
         #bordroTable thead th {
+            border: 1px solid #e2e8f0 !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
             background-color: #f8fafc !important;
             color: #475569;
             font-weight: 600;
             font-size: 0.75rem;
             letter-spacing: 0.02em;
             border-bottom: 1px solid #cbd5e1 !important;
+            vertical-align: middle !important;
         }
 
         /* Tablo içindeki checkbox hücrelerini ortala */
@@ -369,27 +372,20 @@ if (!empty($dbGelirler)) {
             content: none !important;
         }
 
-        /* SGK / Vergi Kesintisi Başlık ve Sütun Daraltma */
+        /* SGK / Vergi Kesintisi Başlık Stili */
         #bordroTable th.th-sgk-vergi {
-            white-space: normal !important;
-            line-height: 1.15 !important;
             font-size: 0.72rem !important;
-            text-align: center !important;
-            padding-left: 2px !important;
-            padding-right: 22px !important;
-            width: 82px !important;
-            min-width: 78px !important;
-            max-width: 88px !important;
+            min-width: 95px !important;
         }
 
         /* Kompakt filtre kontrolleri */
         #bordroTable .dt-header-with-filter {
-            padding-right: 22px !important;
+            padding-right: 24px !important;
         }
         #bordroTable .dt-filter-mode-trigger {
             width: 17px !important;
             height: 17px !important;
-            right: 3px !important;
+            right: 4px !important;
             font-size: 10px !important;
             border-radius: 4px !important;
         }
@@ -950,26 +946,26 @@ if (!empty($dbGelirler)) {
                                 <table id="bordroTable" class="table table-hover table-bordered w-100">
                                     <thead class="table-light sticky-top">
                                         <tr>
-                                            <th style="width: 38px; min-width: 38px; max-width: 38px;">
+                                            <th data-filter="none" class="sorting_disabled text-center" style="width: 38px; min-width: 38px; max-width: 38px;">
                                                 <div class="form-check">
                                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                                 </div>
                                             </th>
-                                            <th class="text-center" style="width: 32px; min-width: 32px; max-width: 35px;">#</th>
-                                            <th class="text-center" style="width: 44px; min-width: 44px; max-width: 48px;" data-filter="select">Birim</th>
-                                            <th style="min-width: 110px; max-width: 135px;" data-filter="select">Ekip / Bölge</th>
+                                            <th data-filter="none" class="sorting_disabled text-center" style="width: 35px; min-width: 35px; max-width: 40px;">#</th>
+                                            <th style="min-width: 65px;" data-filter="select">Birim</th>
+                                            <th style="min-width: 110px;" data-filter="select">Ekip / Bölge</th>
                                             <th style="min-width: 135px;" data-filter="string">Personel</th>
-                                            <th class="text-center" style="width: 70px; min-width: 65px;" data-filter="select">Maaş Tipi</th>
-                                            <th class="text-center" style="width: 38px; min-width: 38px;" data-filter="number">Gün</th>
-                                            <th class="text-end" style="min-width: 85px;" data-filter="number">Toplam Alacağı</th>
-                                            <th class="text-end" style="min-width: 80px;" data-filter="number">Kesinti Tutarı</th>
-                                            <th class="text-end" style="min-width: 85px;" data-filter="number">Net Maaş</th>
-                                            <th class="text-end" style="min-width: 75px;" data-filter="number">İcra Kesintisi</th>
-                                            <th class="text-end th-sgk-vergi" style="width: 82px; min-width: 78px; max-width: 88px;" data-filter="number">SGK / Vergi<br>Kesintisi</th>
-                                            <th class="text-end" style="min-width: 80px;" data-filter="number">Banka</th>
-                                            <th class="text-end" style="min-width: 80px; max-width: 95px;" data-filter="number">Sodexo</th>
-                                            <th class="text-end" style="min-width: 75px;" data-filter="number">Elden</th>
-                                            <th class="text-center" style="width: 42px; min-width: 42px; max-width: 45px;">İşlemler</th>
+                                            <th style="min-width: 75px;" data-filter="select">Maaş Tipi</th>
+                                            <th style="min-width: 60px;" data-filter="number">Gün</th>
+                                            <th style="min-width: 95px;" data-filter="number">Toplam Alacağı</th>
+                                            <th style="min-width: 90px;" data-filter="number">Kesinti Tutarı</th>
+                                            <th style="min-width: 90px;" data-filter="number">Net Maaş</th>
+                                            <th style="min-width: 90px;" data-filter="number">İcra Kesintisi</th>
+                                            <th class="th-sgk-vergi" style="min-width: 95px;" data-filter="number">SGK / Vergi Kesintisi</th>
+                                            <th style="min-width: 85px;" data-filter="number">Banka</th>
+                                            <th style="min-width: 85px;" data-filter="number">Sodexo</th>
+                                            <th style="min-width: 80px;" data-filter="number">Elden</th>
+                                            <th data-filter="none" class="sorting_disabled text-center" style="width: 50px; min-width: 50px;">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody>

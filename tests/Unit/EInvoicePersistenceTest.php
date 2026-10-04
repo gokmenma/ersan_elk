@@ -17,6 +17,11 @@ final class InvoiceSqliteModel extends EInvoiceModel
     public function __construct(PDO $db) { $this->db = $db; }
 }
 
+final class SyncPersistenceSettings extends \App\Model\EInvoiceSettingsModel
+{
+    public function __construct() {}
+}
+
 final class EInvoicePersistenceTest extends TestCase
 {
     private PDO $db;
@@ -69,6 +74,89 @@ final class EInvoicePersistenceTest extends TestCase
         $stored=$this->model->getInvoiceById($id,2); self::assertCount(1,$stored['satirlar']); self::assertSame('KABUL',$stored['ticari_yanit']); self::assertSame('ONAYLANDI',$stored['entegrator_durum_kodu']);
         self::assertSame(1,(int)$this->db->query('SELECT COUNT(*) FROM faturalar')->fetchColumn());
         $other=$this->model->importInvoice(4,$source['header'],$source['lines'],3); self::assertNotSame($id,$other);
+    }
+    public function testBackgroundImporterUpdatesStatusWithoutDuplicatingApprovedInvoice(): void
+    {
+        $this->db->sqliteCreateFunction('GET_LOCK', fn() => 1);
+        $this->db->sqliteCreateFunction('RELEASE_LOCK', fn() => 1);
+        $root = sys_get_temp_dir() . '/efatura-sync-' . bin2hex(random_bytes(8));
+        $calculated = (new InvoiceCalculationService())->calculate($this->lines());
+        $xml = (new UblGeneratorService())->generateInvoiceXml($this->header() + $calculated['header'], [
+            'vkn_tckn' => '1234567890', 'unvan' => 'Satıcı', 'adres' => 'Adres', 'il' => 'İstanbul', 'ilce' => 'Şişli', 'ulke' => 'Türkiye',
+        ], $calculated['lines']);
+        $item = ['uuid' => $this->header()['ettn'], 'xml' => $xml, 'status' => 'LOAD - SUCCEED', 'status_desc' => 'Taslak'];
+        $service = new \App\Service\EInvoiceService($this->model, new SyncPersistenceSettings(), fn() => throw new RuntimeException('No network expected'), $root);
+        try {
+            self::assertSame('added_count', $service->importSyncedInvoice(2, $item, 3));
+            $invoice = $this->model->getInvoiceByEttn($item['uuid'], 2);
+            self::assertSame(3, (int)$invoice['olusturan_user_id']);
+            self::assertFileExists($invoice['ubl_xml_path']);
+            $item['status'] = 'SEND - SUCCEED';
+            self::assertSame('updated_count', $service->importSyncedInvoice(2, $item, 3));
+            self::assertSame('GONDERILDI', $this->model->getInvoiceByEttn($item['uuid'], 2)['entegrator_durum_kodu']);
+            $this->model->updateInvoiceStatus((int)$invoice['id'], 2, ['entegrator_durum_kodu' => 'ONAYLANDI', 'ticari_yanit' => 'KABUL']);
+            $item['status'] = 'LOAD - SUCCEED';
+            $service->importSyncedInvoice(2, $item, 3);
+            $stored = $this->model->getInvoiceByEttn($item['uuid'], 2);
+            self::assertSame('ONAYLANDI', $stored['entegrator_durum_kodu']);
+            self::assertSame('KABUL', $stored['ticari_yanit']);
+            self::assertSame(1, (int)$this->db->query('SELECT COUNT(*) FROM faturalar')->fetchColumn());
+        } finally {
+            $path = $root . '/storage/invoices/2/' . date('Y/m') . '/' . $item['uuid'] . '.xml';
+            if (is_file($path)) unlink($path);
+            for ($dir = dirname($path); str_starts_with($dir, $root); $dir = dirname($dir)) if (is_dir($dir)) rmdir($dir);
+        }
+    }
+    public function testDraftAndOutgoingListsAndSummariesSeparateSentInvoices(): void
+    {
+        $_ENV['ENCRYPTION_KEY'] ??= str_repeat('ab', 32);
+        foreach (['TASLAK', 'GONDERILDI', 'ONAYLANDI'] as $index => $status) {
+            $header = $this->header();
+            $header['ettn'] = ($index + 1) . '2345678-1234-4234-8234-123456789012';
+            $header['fatura_no'] = 'ERS202600000000' . ($index + 1);
+            $id = $this->model->createInvoice(2, $header, $this->lines(), 3);
+            $this->model->updateInvoiceStatus($id, 2, ['entegrator_durum_kodu' => $status]);
+        }
+        $draft = $this->model->ajaxList([], 2, 'GIDEN', 'taslak');
+        self::assertSame(1, $draft['recordsTotal']);
+        self::assertSame(1, $draft['recordsFiltered']);
+        self::assertSame(['TASLAK'], array_column($draft['data'], 'entegrator_durum_kodu'));
+        $outgoing = $this->model->ajaxList([], 2, 'GIDEN', 'giden');
+        self::assertSame(2, $outgoing['recordsTotal']);
+        self::assertSame(2, $outgoing['recordsFiltered']);
+        $statuses = array_column($outgoing['data'], 'entegrator_durum_kodu'); sort($statuses);
+        self::assertSame(['GONDERILDI', 'ONAYLANDI'], $statuses);
+        self::assertSame(1, (int)$this->model->getSummaryStats(2, 'GIDEN', 'taslak', '2026-10-01', '2026-10-31')['toplam_adet']);
+        self::assertSame(2, (int)$this->model->getSummaryStats(2, 'GIDEN', 'giden', '2026-10-01', '2026-10-31')['toplam_adet']);
+    }
+    public function testOutgoingSummaryUsesTableFiltersBeforePagination(): void
+    {
+        $_ENV['ENCRYPTION_KEY'] ??= str_repeat('ab', 32);
+        foreach (['TASLAK', 'GONDERILDI', 'BEKLIYOR', 'KUYRUKTA', 'ONAYLANDI'] as $index => $status) {
+            $header = $this->header();
+            $header['ettn'] = ($index + 1) . '2345678-1234-4234-8234-123456789012';
+            $header['fatura_no'] = 'ERS202600000000' . ($index + 1);
+            $header['alici_unvan'] = $index === 1 ? 'Hedef firma' : 'Başka firma';
+            if ($status === 'ONAYLANDI') $header['fatura_tarihi'] = '2026-09-30';
+            $id = $this->model->createInvoice(2, $header, $this->lines(), 3);
+            $this->model->updateInvoiceStatus($id, 2, ['entegrator_durum_kodu' => $status]);
+        }
+        $params = ['baslangic_tarihi' => '2026-10-01', 'bitis_tarihi' => '2026-10-31', 'length' => 1];
+        $all = $this->model->ajaxList($params, 2, 'GIDEN', 'giden');
+        self::assertCount(1, $all['data']);
+        self::assertSame(3, $all['recordsFiltered']);
+        self::assertSame(3, (int)$all['summary']['toplam_adet']);
+        self::assertSame(3, (int)$all['summary']['bekleyen_adet']);
+        self::assertSame(648.0, (float)$all['summary']['bekleyen_tutar']);
+        $group = $this->model->ajaxList($params + ['durum_filtre' => 'BEKLEYEN_ILETILEN'], 2, 'GIDEN', 'giden');
+        self::assertSame(3, $group['recordsFiltered']);
+        $searched = $this->model->ajaxList($params + ['search' => ['value' => 'Hedef']], 2, 'GIDEN', 'giden');
+        self::assertSame(1, $searched['recordsFiltered']);
+        self::assertSame(1, (int)$searched['summary']['toplam_adet']);
+        self::assertSame(216.0, (float)$searched['summary']['bekleyen_tutar']);
+        $column = $this->model->ajaxList($params + ['columns' => [4 => ['search' => ['value' => 'Hedef']]]], 2, 'GIDEN', 'giden');
+        self::assertSame(1, $column['recordsFiltered']);
+        self::assertSame(1, (int)$column['summary']['toplam_adet']);
     }
     public function testImportedAndPendingDraftsCannotEditOrDelete(): void
     {
