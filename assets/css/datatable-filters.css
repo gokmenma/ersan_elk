@@ -9,7 +9,7 @@
 /* Header Trigger Position */
 .dt-header-with-filter {
   position: relative;
-  padding-right: 35px !important;
+  padding-right: 36px !important;
   vertical-align: middle !important;
 }
 
@@ -49,6 +49,7 @@
 .dt-filter-row > th {
   padding: 4px 3px !important;
   background-color: #fff !important;
+  background-image: none !important;
   border-bottom: 1px solid #eff2f7 !important;
   vertical-align: middle !important;
 }
@@ -372,6 +373,7 @@
   color: #a6b0cf !important;
 }
 
+
 /* =============================================================
    Merkezi Premium DataTable Görünümü
    Tüm datatable tabloları bu standart görünümü kullanır.
@@ -437,8 +439,22 @@
 
 .datatable-premium-shell table.dataTable > tbody:last-child > tr:last-child > td,
 .table-responsive:has(> table.dataTable) table.dataTable > tbody:last-child > tr:last-child > td,
-.dataTables_wrapper > .table-responsive table.dataTable > tbody:last-child > tr:last-child > td {
-  border-bottom: 0 !important;
+.dataTables_wrapper > .table-responsive table.dataTable > tbody:last-child > tr:last-child > td,
+table.dataTable > tbody > tr:last-child > td,
+table.table-bordered > tbody > tr:last-child > td {
+  border-bottom: 1px solid #dbe4ef !important;
+}
+
+table.dataTable.table-bordered,
+table.table-bordered {
+  border-bottom: 1px solid #dbe4ef !important;
+}
+
+[data-bs-theme="dark"] table.dataTable > tbody > tr:last-child > td,
+[data-bs-theme="dark"] table.table-bordered > tbody > tr:last-child > td,
+[data-bs-theme="dark"] table.dataTable.table-bordered,
+[data-bs-theme="dark"] table.table-bordered {
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 .datatable-premium-shell .dataTables_scroll,
@@ -452,8 +468,11 @@
 .table-responsive:has(> table.dataTable) table.dataTable thead th,
 .dataTables_wrapper > .table-responsive table.dataTable thead th {
   position: relative;
-  padding: 13px 34px 13px 12px !important;
-  background: #f7f9fc !important;
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  background-color: #f7f9fc !important;
   border-color: #d6e0ec !important;
   color: #475569 !important;
   font-size: 11px !important;
@@ -525,18 +544,201 @@
   color: #fff !important;
 }
 
-.datatable-premium-shell table.dataTable thead .sorting::before,
-.datatable-premium-shell table.dataTable thead .sorting::after,
-.datatable-premium-shell table.dataTable thead .sorting_asc::before,
-.datatable-premium-shell table.dataTable thead .sorting_desc::after {
-  color: #52657d !important;
-  font-size: 12px !important;
-  opacity: 0.8 !important;
+/* =============================================================
+   Merkezi DataTables Sıralama (Sorting) İkonları
+   ============================================================= */
+
+/* Eski DataTables pseudo sıralama oklarını tamamen sıfırla */
+table.dataTable thead th:before,
+table.dataTable thead th:after,
+table.dataTable thead td:before,
+table.dataTable thead td:after,
+table.dataTable thead th.sorting:before,
+table.dataTable thead th.sorting:after,
+table.dataTable thead th.sorting_asc:before,
+table.dataTable thead th.sorting_asc:after,
+table.dataTable thead th.sorting_desc:before,
+table.dataTable thead th.sorting_desc:after,
+table.dataTable thead th.sorting_asc_disabled:before,
+table.dataTable thead th.sorting_asc_disabled:after,
+table.dataTable thead th.sorting_desc_disabled:before,
+table.dataTable thead th.sorting_desc_disabled:after,
+table.dataTable thead .dt-filter-row th:before,
+table.dataTable thead .dt-filter-row th:after {
+  display: none !important;
+  content: "" !important;
 }
 
-.datatable-premium-shell table.dataTable thead .dt-filter-row th {
-  padding: 7px 8px !important;
+/* 1. Tüm Sıralanabilir Başlıklar (Yalnızca 1. Satır / Ana Başlıklar - Light Mode Nötr Durum) */
+table.dataTable thead tr:first-child > th.sorting,
+table.dataTable thead tr:first-child > td.sorting,
+table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort):not(.dt-actions-header),
+.datatable-premium-shell table.dataTable thead tr:first-child > th.sorting,
+.datatable-premium-shell table.dataTable thead tr:first-child > td.sorting,
+.datatable-premium-shell table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort),
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort),
+.dataTables_wrapper table.dataTable thead tr:first-child > th.sorting,
+.dataTables_wrapper table.dataTable thead tr:first-child > td.sorting,
+.dataTables_wrapper table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort) {
+  cursor: pointer !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+  padding-left: 30px !important;
+  padding-right: 14px !important;
+}
+
+/* Hover Durumu (Daha Koyu Vurgulu) */
+table.dataTable thead tr:first-child > th.sorting:hover,
+table.dataTable thead tr:first-child > td.sorting:hover,
+table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort):hover,
+.datatable-premium-shell table.dataTable thead tr:first-child > th.sorting:hover,
+.datatable-premium-shell table.dataTable thead tr:first-child > td.sorting:hover,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting:hover,
+.dataTables_wrapper table.dataTable thead tr:first-child > th.sorting:hover,
+.dataTables_wrapper table.dataTable thead tr:first-child > td.sorting:hover {
+  cursor: pointer !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+  padding-left: 30px !important;
+}
+
+/* 2. Artan Sıralama (Ascending - Yukarı Ok Mavi ve Kalın, Aşağı Ok Silik Gri) */
+table.dataTable thead tr:first-child > th.sorting_asc,
+table.dataTable thead tr:first-child > td.sorting_asc,
+.datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_asc,
+.datatable-premium-shell table.dataTable thead tr:first-child > td.sorting_asc,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_asc,
+.dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_asc,
+.dataTables_wrapper table.dataTable thead tr:first-child > td.sorting_asc {
+  cursor: pointer !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%232563eb' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2394a3b8' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+  padding-left: 30px !important;
+  padding-right: 14px !important;
+}
+
+/* 3. Azalan Sıralama (Descending - Aşağı Ok Mavi ve Kalın, Yukarı Ok Silik Gri) */
+table.dataTable thead tr:first-child > th.sorting_desc,
+table.dataTable thead tr:first-child > td.sorting_desc,
+.datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_desc,
+.datatable-premium-shell table.dataTable thead tr:first-child > td.sorting_desc,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_desc,
+.dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_desc,
+.dataTables_wrapper table.dataTable thead tr:first-child > td.sorting_desc {
+  cursor: pointer !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2394a3b8' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%232563eb' stroke-width='2.8'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+  padding-left: 30px !important;
+  padding-right: 14px !important;
+}
+
+/* 4. Gelişmiş Filtre Butonu Olan Başlıklar (Sağda Huni Butonu Alanı) */
+table.dataTable thead tr:first-child > th.dt-header-with-filter,
+table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]),
+.datatable-premium-shell table.dataTable thead tr:first-child > th.dt-header-with-filter,
+.datatable-premium-shell table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]),
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.dt-header-with-filter,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]),
+.dataTables_wrapper table.dataTable thead tr:first-child > th.dt-header-with-filter,
+.dataTables_wrapper table.dataTable thead tr:first-child > th[data-filter]:not([data-filter="none"]) {
+  padding-right: 36px !important;
+}
+
+/* 5. Dark Mode Sıralama İkonları */
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting,
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting,
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > th:not(.sorting_disabled):not([data-filter="none"]):not(.no-sort),
+[data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting,
+[data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting,
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+}
+
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting:hover,
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting:hover,
+[data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting:hover,
+[data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting:hover,
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting:hover {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+}
+
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting_asc,
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting_asc,
+[data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_asc,
+[data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_asc,
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_asc {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2360a5fa' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+}
+
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > th.sorting_desc,
+[data-bs-theme="dark"] table.dataTable thead tr:first-child > td.sorting_desc,
+[data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_desc,
+[data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_desc,
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_desc {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2360a5fa' stroke-width='2.8'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  background-size: 14px 14px !important;
+}
+
+/* 6. Sıralama Kapalı Kolonlar ve 2. Satır (Filtre Satırı) - ASLA İKON ÇIKMAZ */
+table.dataTable thead tr:first-child > th.sorting_disabled,
+table.dataTable thead tr:first-child > td.sorting_disabled,
+table.dataTable thead tr:first-child > th[data-filter="none"],
+table.dataTable thead tr:first-child > th.no-sort,
+table.dataTable thead tr.dt-filter-row th,
+table.dataTable thead tr.search-input-row th,
+table.dataTable thead tr:not(:first-child) th,
+.datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_disabled,
+.datatable-premium-shell table.dataTable thead tr:first-child > td.sorting_disabled,
+.datatable-premium-shell table.dataTable thead tr:first-child > th[data-filter="none"],
+.datatable-premium-shell table.dataTable thead tr:first-child > th.no-sort,
+.datatable-premium-shell table.dataTable thead tr.dt-filter-row th,
+.datatable-premium-shell table.dataTable thead tr.search-input-row th,
+.datatable-premium-shell table.dataTable thead tr:not(:first-child) th,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_disabled,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th[data-filter="none"],
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.no-sort,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr.dt-filter-row th,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr.search-input-row th,
+.table-responsive:has(> table.dataTable) table.dataTable thead tr:not(:first-child) th,
+.dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_disabled,
+.dataTables_wrapper table.dataTable thead tr:first-child > td.sorting_disabled,
+.dataTables_wrapper table.dataTable thead tr:first-child > th[data-filter="none"],
+.dataTables_wrapper table.dataTable thead tr:first-child > th.no-sort,
+.dataTables_wrapper table.dataTable thead tr.dt-filter-row th,
+.dataTables_wrapper table.dataTable thead tr.search-input-row th,
+.dataTables_wrapper table.dataTable thead tr:not(:first-child) th {
+  background-image: none !important;
+  cursor: default !important;
+  padding-left: 10px !important;
+}
+
+/* 2. Satır Filtre Hücreleri Düzeni */
+.dt-filter-row > th,
+table.dataTable thead tr.dt-filter-row > th,
+.datatable-premium-shell table.dataTable thead tr.dt-filter-row th {
+  padding: 5px 4px !important;
   background: #fbfcfe !important;
+  background-image: none !important;
 }
 
 .datatable-premium-shell .dt-filter-control {
@@ -634,7 +836,7 @@
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead th,
 [data-bs-theme="dark"] .dataTables_wrapper > .table-responsive table.dataTable thead th {
   border-color: #3b4652 !important;
-  background: #29313c !important;
+  background-color: #29313c !important;
   color: #e2e8f0 !important;
 }
 
@@ -685,5 +887,202 @@
   background-color: #1a2026;
   border-color: #36404a;
   color: #e2e8f0;
+}
+
+/* ===================================================
+   ColReorder Sürüklenen Başlık Kutusu (Dragged Header)
+   =================================================== */
+table.DTCR_clonedTable,
+table.DTCR_clonedTable.dataTable,
+table.DTCR_clonedTable.w-100 {
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: fit-content !important;
+  display: inline-table !important;
+  table-layout: auto !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.22) !important;
+  background-color: #ffffff !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+  opacity: 0.95 !important;
+}
+
+table.DTCR_clonedTable thead,
+table.DTCR_clonedTable tbody,
+table.DTCR_clonedTable tr {
+  width: auto !important;
+}
+
+table.DTCR_clonedTable th {
+  white-space: nowrap !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 8px 16px !important;
+  text-align: left !important;
+  vertical-align: middle !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  color: #495057 !important;
+  background-color: #f8fafc !important;
+  border: none !important;
+}
+
+div.DTCR_pointer {
+  width: 2px !important;
+  background-color: var(--bs-primary, #556ee6) !important;
+  z-index: 99998 !important;
+}
+
+[data-bs-theme="dark"] table.DTCR_clonedTable,
+[data-bs-theme="dark"] table.DTCR_clonedTable.dataTable,
+[data-bs-theme="dark"] table.DTCR_clonedTable.w-100 {
+  background-color: #2a3042 !important;
+  border-color: #3e4556 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-bs-theme="dark"] table.DTCR_clonedTable th {
+  background-color: #2a3042 !important;
+  color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] div.DTCR_pointer {
+  background-color: #60a5fa !important;
+}
+
+/* ===================================================
+   Global DataTables Context Menu (Sağ Tık Menüsü)
+   =================================================== */
+.custom-context-menu {
+  display: none;
+  position: fixed;
+  z-index: 999999;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 8px 0;
+  min-width: 220px;
+  max-width: 320px;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.custom-context-menu .cm-header {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.custom-context-menu a,
+.custom-context-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  background: transparent;
+  border: none;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  line-height: 1.4;
+}
+
+.custom-context-menu a:hover,
+.custom-context-menu button:hover {
+  background: #f1f5f9;
+  color: var(--bs-primary, #2563eb);
+}
+
+.custom-context-menu a.cm-danger,
+.custom-context-menu button.cm-danger {
+  color: #ef4444;
+}
+
+.custom-context-menu a.cm-danger:hover,
+.custom-context-menu button.cm-danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.custom-context-menu i,
+.custom-context-menu svg {
+  width: 20px;
+  font-size: 15px;
+  margin-right: 10px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.custom-context-menu .cm-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0;
+}
+
+tr.context-menu-active,
+tr.context-menu-active > td {
+  background-color: #f1f5f9 !important;
+}
+
+/* Dark Mode Context Menu */
+[data-bs-theme="dark"] .custom-context-menu {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu .cm-header {
+  color: #94a3b8 !important;
+  border-bottom-color: #334155 !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu a,
+[data-bs-theme="dark"] .custom-context-menu button {
+  color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu a:hover,
+[data-bs-theme="dark"] .custom-context-menu button:hover {
+  background: #334155 !important;
+  color: #818cf8 !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu a.cm-danger,
+[data-bs-theme="dark"] .custom-context-menu button.cm-danger {
+  color: #f87171 !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu a.cm-danger:hover,
+[data-bs-theme="dark"] .custom-context-menu button.cm-danger:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu .cm-divider {
+  background: #334155 !important;
+}
+
+[data-bs-theme="dark"] tr.context-menu-active,
+[data-bs-theme="dark"] tr.context-menu-active > td {
+  background-color: #334155 !important;
 }
 

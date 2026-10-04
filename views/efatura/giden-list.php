@@ -156,15 +156,7 @@ $title = 'Giden Faturalar';
                     <i class="bx bx-list-ul font-size-20"></i>
                 </div>
                 <div>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="status-filter-group d-flex gap-1 flex-wrap">
-                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-all active" data-status="">Tümü</button>
-                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-success" data-status="ONAYLANDI"><i class="bx bx-check-double me-1"></i>Onaylı</button>
-                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-danger" data-status="HATALI"><i class="bx bx-error me-1"></i>Hatalı</button>
-                            <button type="button" class="btn btn-sm status-quick-filter filter-pill-warning" data-status="BELIRSIZ"><i class="bx bx-time-five me-1"></i>Belirsiz</button>
-                        </div>
-                        <span class="badge bg-primary rounded-pill font-size-11 px-2 py-1" id="badgeTotalRecords">0</span>
-                    </div>
+                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Giden Fatura Listesi</h5>
                     <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Anlık arama, sütun filtreleme ve fatura yönetimi</p>
                 </div>
             </div>
@@ -526,10 +518,10 @@ $title = 'Giden Faturalar';
     border: 1px solid #bfdbfe;
     transition: all 0.18s ease;
 }
-.btn-subtle-primary:hover, .btn-subtle-primary:focus {
-    background-color: #2563eb;
+.btn-subtle-primary:hover, .btn-subtle-primary:focus, .btn-subtle-primary.active {
+    background-color: #2563eb !important;
     color: #ffffff !important;
-    border-color: #2563eb;
+    border-color: #2563eb !important;
     box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
 }
 
@@ -539,10 +531,10 @@ $title = 'Giden Faturalar';
     border: 1px solid #bbf7d0;
     transition: all 0.18s ease;
 }
-.btn-subtle-success:hover, .btn-subtle-success:focus {
-    background-color: #16a34a;
+.btn-subtle-success:hover, .btn-subtle-success:focus, .btn-subtle-success.active {
+    background-color: #16a34a !important;
     color: #ffffff !important;
-    border-color: #16a34a;
+    border-color: #16a34a !important;
     box-shadow: 0 2px 5px rgba(22, 163, 74, 0.25);
 }
 
@@ -552,10 +544,10 @@ $title = 'Giden Faturalar';
     border: 1px solid #fecaca;
     transition: all 0.18s ease;
 }
-.btn-subtle-danger:hover, .btn-subtle-danger:focus {
-    background-color: #dc2626;
+.btn-subtle-danger:hover, .btn-subtle-danger:focus, .btn-subtle-danger.active {
+    background-color: #dc2626 !important;
     color: #ffffff !important;
-    border-color: #dc2626;
+    border-color: #dc2626 !important;
     box-shadow: 0 2px 5px rgba(220, 38, 38, 0.25);
 }
 
@@ -565,10 +557,10 @@ $title = 'Giden Faturalar';
     border: 1px solid #fde68a;
     transition: all 0.18s ease;
 }
-.btn-subtle-warning:hover, .btn-subtle-warning:focus {
-    background-color: #d97706;
+.btn-subtle-warning:hover, .btn-subtle-warning:focus, .btn-subtle-warning.active {
+    background-color: #d97706 !important;
     color: #ffffff !important;
-    border-color: #d97706;
+    border-color: #d97706 !important;
     box-shadow: 0 2px 5px rgba(217, 119, 6, 0.25);
 }
 
@@ -578,10 +570,10 @@ $title = 'Giden Faturalar';
     border: 1px solid #ddd6fe;
     transition: all 0.18s ease;
 }
-.btn-subtle-info:hover, .btn-subtle-info:focus {
-    background-color: #7c3aed;
+.btn-subtle-info:hover, .btn-subtle-info:focus, .btn-subtle-info.active {
+    background-color: #7c3aed !important;
     color: #ffffff !important;
-    border-color: #7c3aed;
+    border-color: #7c3aed !important;
     box-shadow: 0 2px 5px rgba(124, 58, 237, 0.25);
 }
 

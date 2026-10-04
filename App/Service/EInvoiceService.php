@@ -346,6 +346,17 @@ class EInvoiceService
             $aliciHtmlLines[] = '<div>' . $aliciVknLabel . ': ' . htmlspecialchars($aliciVkn, ENT_QUOTES, 'UTF-8') . '</div>';
         }
 
+        // Banner SVG Base64
+        // Banner PNG / SVG Base64
+        $bannerBase64 = '';
+        $bannerPathPng = (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/assets/images/yesili_birlikte_yasatalim.png';
+        $bannerPathSvg = (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/assets/images/fatura_yesil_banner.svg';
+        if (file_exists($bannerPathPng)) {
+            $bannerBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($bannerPathPng));
+        } elseif (file_exists($bannerPathSvg)) {
+            $bannerBase64 = 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($bannerPathSvg));
+        }
+
         // GİB Logosu Base64
         $gibLogoBase64 = '';
         $gibLogoPath = (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/assets/images/gib_logo.png';
@@ -353,7 +364,33 @@ class EInvoiceService
             $gibLogoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($gibLogoPath));
         }
 
+        // Firma Logosu Base64 (Öncelik: ersan_fatura_logo.png -> firma logo_yolu -> logo.png)
+        $companyLogoBase64 = '';
+        $logoCandidates = [
+            (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/assets/images/ersan_fatura_logo.png',
+            !empty($firma->logo_yolu) ? ((defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/' . ltrim($firma->logo_yolu, '/')) : '',
+            (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/assets/images/logo.png'
+        ];
+        foreach ($logoCandidates as $cand) {
+            if ($cand && file_exists($cand)) {
+                $ext = pathinfo($cand, PATHINFO_EXTENSION);
+                $mime = ($ext === 'svg') ? 'image/svg+xml' : 'image/png';
+                $companyLogoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($cand));
+                break;
+            }
+        }
+
+        // Kaşe / İmza Base64
+        $kaseBase64 = '';
+        $kasePath = (defined('PROJECT_ROOT') ? PROJECT_ROOT : dirname(__DIR__, 2)) . '/assets/images/ersan_kase_imza.png';
+        if (file_exists($kasePath)) {
+            $kaseBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($kasePath));
+        }
+
         // QR Kod (Karekod) Verisi ve Base64
+        $curr = strtoupper($invoice['para_birimi'] ?? 'TRY');
+        $currLabel = ($curr === 'TRY' || $curr === 'TL') ? 'TL' : $curr;
+
         $qrDataParts = [];
         if (!empty($saticiVkn)) $qrDataParts[] = 'VKN:' . $saticiVkn;
         if (!empty($aliciVkn)) $qrDataParts[] = 'AVKN:' . $aliciVkn;
@@ -363,11 +400,7 @@ class EInvoiceService
         if (!empty($invoice['ettn'])) $qrDataParts[] = 'ETTN:' . $invoice['ettn'];
         $qrDataString = implode(';', $qrDataParts);
 
-        $qrCodeBase64 = \App\Helper\Helper::generateQrCode($qrDataString, 3);
-
-        // Para Birimi Sembolü / Kodu
-        $curr = strtoupper($invoice['para_birimi'] ?? 'TRY');
-        $currLabel = ($curr === 'TRY' || $curr === 'TL') ? 'TL' : $curr;
+        $qrCodeBase64 = \App\Helper\Helper::generateQrCode($qrDataString, 4);
 
         // Birim Eşleştirmeleri
         $birimMap = [
@@ -404,74 +437,104 @@ class EInvoiceService
         $tutarYaziylaDoviz = ($curr !== 'TRY' && $curr !== 'TL') ? \App\Helper\Helper::numberToWordsTr($invoice['odenecek_tutar'], $curr, 'CENT') : '';
 
         $belgeTuruText = ($invoice['belge_turu'] === 'EFATURA') ? 'e-FATURA' : 'e-ARŞİV FATURA';
-
         $vergilerDahil = bcadd((string)$invoice['kdv_matrahi'], (string)$invoice['hesaplanan_kdv'], 2);
 
+        // Notların temizlenmesi (HTML etiketlerinden ve entitylerden arındırma)
+        $notSatirlari = [];
+        if (!empty($invoice['notlar'])) {
+            $rawNotes = html_entity_decode((string)$invoice['notlar'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // <p>, <br>, <div> satır sonlarına çevir
+            $rawNotes = preg_replace('/<\/(p|div)>/i', "\n", $rawNotes);
+            $rawNotes = preg_replace('/<br\s*\/?>/i', "\n", $rawNotes);
+            $cleanNotes = strip_tags($rawNotes);
+            $lines = explode("\n", $cleanNotes);
+            foreach ($lines as $ln) {
+                $ln = trim($ln);
+                if ($ln !== '') {
+                    $notSatirlari[] = htmlspecialchars($ln, ENT_QUOTES, 'UTF-8');
+                }
+            }
+        }
+
         $html = '
-        <div class="efatura-wrapper" style="background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.35; width: 100%; max-width: 820px; margin: 0 auto; padding: 15px; box-sizing: border-box;">
+        <div class="efatura-wrapper" style="background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; line-height: 1.35; width: 100%; max-width: 820px; margin: 0 auto; padding: 15px; box-sizing: border-box;">
             
             <style>
                 .efatura-wrapper * { box-sizing: border-box; }
-                .efatura-table { width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 10px; margin-bottom: 0; }
-                .efatura-table th { border: 1px solid #000; padding: 4px 2px; text-align: center; font-weight: bold; background: #fff; color: #000; }
-                .efatura-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; }
-                .efatura-meta-table { width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10.5px; }
-                .efatura-meta-table td { border: 1px solid #000; padding: 2px 5px; }
-                .efatura-totals-table { width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 10.5px; }
-                .efatura-totals-table td { border: 1px solid #000; padding: 2px 6px; }
+                .efatura-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; font-size: 9.5px; margin-bottom: 0; }
+                .efatura-table th { border: 1px solid #000; padding: 4px 2px; text-align: center; font-weight: bold; background: #fff; color: #000; font-size: 9.5px; }
+                .efatura-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 9.5px; }
+                .efatura-meta-table { width: 100%; border-collapse: collapse; border: 1px solid #777; font-size: 10px; }
+                .efatura-meta-table td { border: 1px solid #777; padding: 2.5px 5px; }
+                .efatura-totals-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; font-size: 10px; }
+                .efatura-totals-table td { border: 1px solid #000; padding: 3px 6px; }
                 @media print {
-                    @page { size: A4 portrait; margin: 8mm 10mm; }
+                    @page { size: A4 portrait; margin: 6mm 8mm; }
                     body { background: #fff !important; color: #000 !important; margin: 0 !important; padding: 0 !important; }
                     .efatura-wrapper { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
                 }
             </style>
 
-            <!-- 1. ÜST BÖLÜM: SATICI BİLGİLERİ (SOL), GİB LOGO (ORTA) VE QR KOD (SAĞ) -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+            <!-- 1. EN ÜST BÖLÜM: YEŞİL BANNER (SOLA YASLI) VE KAREKOD (SAĞA YASLI) -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
                 <tr>
-                    <!-- SOL: SATICI BİLGİLERİ -->
-                    <td style="width: 48%; vertical-align: top; padding-right: 10px;">
-                        <div style="font-weight: bold; font-size: 13px; text-transform: uppercase; margin-bottom: 3px;">
-                            ' . htmlspecialchars($saticiUnvan, ENT_QUOTES, 'UTF-8') . '
-                        </div>
-                        <div style="font-size: 11px; line-height: 1.4;">
-                            ' . implode("\n", $saticiHtmlLines) . '
-                        </div>
+                    <td style="width: 75%; vertical-align: top; text-align: left; padding: 0;">
+                        ' . ($bannerBase64 ? '<img src="' . $bannerBase64 . '" style="width: 100%; max-height: 130px; object-fit: contain; object-position: left center; display: block;" alt="Yeşili Birlikte Yaşatalım">' : '') . '
                     </td>
-
-                    <!-- ORTA: GİB LOGOSU VE BELGE BAŞLIĞI -->
-                    <td style="width: 28%; vertical-align: top; text-align: center; padding: 0 5px;">
-                        ' . ($gibLogoBase64 ? '<img src="' . $gibLogoBase64 . '" style="width: 76px; height: 76px; display: inline-block; margin-bottom: 3px;" alt="GİB Logo"><br>' : '') . '
-                        <span style="font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">' . $belgeTuruText . '</span>
-                    </td>
-
-                    <!-- SAĞ: QR KOD (KAREKOD) -->
-                    <td style="width: 24%; vertical-align: top; text-align: right; padding-left: 5px;">
-                        ' . ($qrCodeBase64 ? '
-                        <div style="display: inline-block; text-align: center;">
-                            <img src="' . $qrCodeBase64 . '" style="width: 78px; height: 78px; border: 1px solid #000; padding: 2px; background: #fff;" alt="Karekod"><br>
-                            <span style="font-size: 8.5px; color: #333; display: block; margin-top: 2px; font-weight: 600;">KAREKOD</span>
-                        </div>' : '') . '
+                    <td style="width: 25%; vertical-align: middle; text-align: right; padding-left: 10px;">
+                        ' . ($qrCodeBase64 ? '<img src="' . $qrCodeBase64 . '" style="width: 110px; height: 110px; display: inline-block;" alt="Karekod">' : '') . '
                     </td>
                 </tr>
             </table>
 
-            <!-- ÜST AYIRICI ÇİFT ÇİZGİ -->
-            <div style="border-top: 3px solid #000; border-bottom: 1px solid #000; height: 2px; margin: 4px 0 12px 0;"></div>
-
-            <!-- 2. ORTA BÖLÜM: SAYIN (ALICI) VE FATURA METADATA -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+            <!-- 2. SATICI BİLGİLERİ (SOL) VE GİB LOGOSU / BELGE TÜRÜ (ORTA) -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
                 <tr>
-                    <!-- ALICI BİLGİLERİ -->
-                    <td style="width: 55%; vertical-align: top; padding-right: 15px;">
-                        <div style="font-weight: bold; font-size: 12px; margin-bottom: 3px;">SAYIN</div>
-                        <div style="font-size: 11px; line-height: 1.4;">
-                            ' . implode("\n", $aliciHtmlLines) . '
+                    <!-- SOL: SATICI BİLGİLERİ (ÇİFT ÇİZGİLİ ÇERÇEVE) -->
+                    <td style="width: 40%; vertical-align: top; padding-right: 15px;">
+                        <div style="border-top: 3px double #000; border-bottom: 3px double #000; padding: 4px 0; min-height: 110px;">
+                            <div style="font-weight: bold; font-size: 10.5px; text-transform: uppercase; margin-bottom: 2px; color: #000;">
+                                ' . htmlspecialchars($saticiUnvan, ENT_QUOTES, 'UTF-8') . '
+                            </div>
+                            <div style="font-size: 9.5px; line-height: 1.35; color: #111;">
+                                ' . implode("\n", $saticiHtmlLines) . '
+                            </div>
                         </div>
                     </td>
 
-                    <!-- FATURA BİLGİLERİ TABLOSU -->
-                    <td style="width: 45%; vertical-align: top;">
+                    <!-- ORTA: GİB LOGOSU VE BELGE BAŞLIĞI (SAYFA ORTASI) -->
+                    <td style="width: 30%; vertical-align: middle; text-align: center; padding: 0 10px;">
+                        ' . ($gibLogoBase64 ? '<img src="' . $gibLogoBase64 . '" style="width: 70px; height: 70px; display: inline-block; margin-bottom: 4px;" alt="GİB Logo"><br>' : '') . '
+                        <div style="font-size: 13px; font-weight: bold; letter-spacing: 0.5px; color: #000;">' . $belgeTuruText . '</div>
+                    </td>
+
+                    <!-- SAĞ: BOŞ ALAN -->
+                    <td style="width: 30%; vertical-align: top;">
+                        &nbsp;
+                    </td>
+                </tr>
+            </table>
+
+            <!-- 3. SAYIN (ALICI) VE FATURA METADATA TABLOSU -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+                <tr>
+                    <!-- ALICI BİLGİLERİ (ÇİFT ÇİZGİ ÜST VE ALT) -->
+                    <td style="width: 40%; vertical-align: top; padding-right: 15px;">
+                        <div style="border-top: 3px double #000; border-bottom: 3px double #000; padding: 4px 0; min-height: 110px;">
+                            <div style="font-weight: bold; font-size: 10.5px; margin-bottom: 1px;">SAYIN</div>
+                            <div style="font-size: 9.5px; line-height: 1.35; color: #111;">
+                                ' . implode("\n", $aliciHtmlLines) . '
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- ORTA: BOŞ ALAN -->
+                    <td style="width: 30%; vertical-align: top;">
+                        &nbsp;
+                    </td>
+
+                    <!-- SAĞ: FATURA METADATA TABLOSU -->
+                    <td style="width: 30%; vertical-align: bottom;">
                         <table class="efatura-meta-table">
                             <tr>
                                 <td style="font-weight: bold; width: 44%;">Özelleştirme No:</td>
@@ -495,15 +558,15 @@ class EInvoiceService
                             </tr>
                             <tr>
                                 <td style="font-weight: bold;">Fatura Saati:</td>
-                                <td>' . htmlspecialchars($invoice['duzenleme_saati'] ?? date('H:i:s'), ENT_QUOTES, 'UTF-8') . '</td>
+                                <td>' . (!empty($invoice['duzenleme_saati']) ? htmlspecialchars($invoice['duzenleme_saati'], ENT_QUOTES, 'UTF-8') : date('H:i:s')) . '</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
             </table>
 
-            <!-- 3. ETTN SATIRI -->
-            <div style="font-size: 11px; margin-bottom: 6px; font-weight: normal;">
+            <!-- ETTN VE ÇİZGİ -->
+            <div style="font-size: 10.5px; margin-top: 6px; margin-bottom: 6px; font-weight: normal;">
                 <strong>ETTN:</strong> ' . htmlspecialchars($invoice['ettn'] ?? '', ENT_QUOTES, 'UTF-8') . '
             </div>
 
@@ -511,17 +574,16 @@ class EInvoiceService
             <table class="efatura-table">
                 <thead>
                     <tr>
-                        <th style="width: 26px;">SN</th>
-                        <th style="width: 75px;">Ürün Kodu</th>
+                        <th style="width: 32px;">Sıra<br>No</th>
                         <th>Mal Hizmet</th>
-                        <th style="width: 50px;">Miktar</th>
-                        <th style="width: 65px;">Birim Fiyat</th>
-                        <th style="width: 50px;">İskonto<br>Oranı</th>
-                        <th style="width: 55px;">İskonto<br>Tutarı</th>
-                        <th style="width: 55px;">KDV Oranı</th>
-                        <th style="width: 65px;">KDV Tutarı</th>
+                        <th style="width: 60px;">Miktar</th>
+                        <th style="width: 80px;">Birim Fiyat</th>
+                        <th style="width: 55px;">İskonto<br>Oranı</th>
+                        <th style="width: 60px;">İskonto<br>Tutarı</th>
+                        <th style="width: 55px;">KDV<br>Oranı</th>
+                        <th style="width: 80px;">KDV Tutarı</th>
                         <th style="width: 75px;">Diğer Vergiler</th>
-                        <th style="width: 80px;">Mal Hizmet<br>Tutarı</th>
+                        <th style="width: 85px;">Mal Hizmet<br>Tutarı</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -539,27 +601,25 @@ class EInvoiceService
                 $html .= '
                     <tr>
                         <td style="text-align: center;">' . $sira++ . '</td>
-                        <td style="text-align: start;">' . htmlspecialchars($line['urun_kodu'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>
                         <td style="text-align: start;">' . htmlspecialchars($line['urun_hizmet_adi'] ?? '', ENT_QUOTES, 'UTF-8') . (!empty($line['istisna_kodu']) ? '<br><small>İstisna: ' . htmlspecialchars($line['istisna_kodu'] . ' — ' . ($line['istisna_aciklama'] ?? ''), ENT_QUOTES, 'UTF-8') . '</small>' : '') . (!empty($line['tevkifat_kodu']) ? '<br><small>Tevkifat: ' . htmlspecialchars($line['tevkifat_kodu'] . ' / %' . ($line['tevkifat_orani'] ?? ''), ENT_QUOTES, 'UTF-8') . '</small>' : '') . '</td>
-                        <td style="text-align: center; line-height: 1.15;">' . number_format((float)$line['miktar'], 1, ',', '.') . '<br>' . htmlspecialchars($unitName, ENT_QUOTES, 'UTF-8') . '</td>
-                        <td style="text-align: right;">' . number_format((float)$line['birim_fiyat'], 2, ',', '.') . ' ' . $currLabel . '</td>
+                        <td style="text-align: center; line-height: 1.15;">' . number_format((float)$line['miktar'], 0, ',', '.') . ' ' . htmlspecialchars($unitName, ENT_QUOTES, 'UTF-8') . '</td>
+                        <td style="text-align: right; line-height: 1.15;">' . number_format((float)$line['birim_fiyat'], 2, ',', '.') . '<br>' . $currLabel . '</td>
                         <td style="text-align: center;">' . ($iskontoOran > 0 ? '%' . number_format($iskontoOran, 2, ',', '.') : '') . '</td>
-                        <td style="text-align: right;">' . ($iskontoTutar > 0 ? number_format($iskontoTutar, 2, ',', '.') : '') . '</td>
+                        <td style="text-align: right;">' . ($iskontoTutar > 0 ? number_format($iskontoTutar, 2, ',', '.') . '<br>' . $currLabel : '') . '</td>
                         <td style="text-align: center;">%' . number_format((float)$line['kdv_orani'], 2, ',', '.') . '</td>
-                        <td style="text-align: right;">' . number_format((float)$line['kdv_tutari'], 2, ',', '.') . ' ' . $currLabel . '</td>
-                        <td style="text-align: right;">' . ($tevkifatTutar > 0 ? number_format($tevkifatTutar, 2, ',', '.') . ' ' . $currLabel : '') . '</td>
-                        <td style="text-align: right;">' . number_format((float)($line['miktar'] * $line['birim_fiyat']), 2, ',', '.') . ' ' . $currLabel . '</td>
+                        <td style="text-align: right; line-height: 1.15;">' . number_format((float)$line['kdv_tutari'], 2, ',', '.') . '<br>' . $currLabel . '</td>
+                        <td style="text-align: right;">' . ($tevkifatTutar > 0 ? number_format($tevkifatTutar, 2, ',', '.') . '<br>' . $currLabel : '') . '</td>
+                        <td style="text-align: right; line-height: 1.15;">' . number_format((float)($line['miktar'] * $line['birim_fiyat']), 2, ',', '.') . '<br>' . $currLabel . '</td>
                     </tr>';
             }
         }
 
-        // Fatura Form Yüksekliği İçin Boş Çizgi Satırları (En az 16 satır grid)
-        $emptyRowsToDraw = max(0, 16 - $totalLinesCount);
+        // Fatura Form Yüksekliği İçin Boş Çizgi Satırları (12 satıra tamamla)
+        $emptyRowsToDraw = max(0, 12 - $totalLinesCount);
         for ($i = 0; $i < $emptyRowsToDraw; $i++) {
             $html .= '
                 <tr>
                     <td style="height: 18px;">&nbsp;</td>
-                    <td></td>
                     <td></td>
                     <td></td>
                     <td></td>
@@ -577,24 +637,20 @@ class EInvoiceService
             </table>
 
             <!-- 5. ALT TOPLAMLAR BÖLÜMÜ -->
-            <table style="width: 100%; border-collapse: collapse; margin-top: -1px; margin-bottom: 8px;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: -1px; margin-bottom: 6px;">
                 <tr>
-                    <td style="width: 55%; vertical-align: top; padding-right: 15px;">
-                        <!-- Sol taraf boş veya denge -->
+                    <td style="width: 50%; vertical-align: top; padding-right: 15px;">
+                        <!-- Sol boş alan -->
                     </td>
-                    <td style="width: 45%; vertical-align: top; padding: 0;">
+                    <td style="width: 50%; vertical-align: top; padding: 0;">
                         <table class="efatura-totals-table">
                             <tr>
-                                <td style="text-align: right; font-weight: bold; width: 62%;">Mal Hizmet Toplam Tutarı</td>
-                                <td style="text-align: right; width: 38%;">' . number_format((float)$invoice['satir_toplami'], 2, ',', '.') . ' ' . $currLabel . '</td>
+                                <td style="text-align: right; font-weight: bold; width: 60%;">Mal Hizmet Toplam Tutarı</td>
+                                <td style="text-align: right; width: 40%;">' . number_format((float)$invoice['satir_toplami'], 2, ',', '.') . ' ' . $currLabel . '</td>
                             </tr>
                             <tr>
                                 <td style="text-align: right; font-weight: bold;">Toplam İskonto</td>
-                                <td style="text-align: right;">' . number_format((float)$invoice['iskonto_toplami'], 2, ',', '.') . ' ' . $currLabel . '</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: right; font-weight: bold;">Toplam Masraf</td>
-                                <td style="text-align: right;">0,00 ' . $currLabel . '</td>
+                                <td style="text-align: right;">' . ((float)$invoice['iskonto_toplami'] > 0 ? number_format((float)$invoice['iskonto_toplami'], 2, ',', '.') . ' ' . $currLabel : '') . '</td>
                             </tr>
                             <tr>
                                 <td style="text-align: right; font-weight: bold;">Hesaplanan KDV' . $kdvOranText . '</td>
@@ -615,16 +671,16 @@ class EInvoiceService
                                 <td style="text-align: right;">' . number_format($vergilerDahil, 2, ',', '.') . ' ' . $currLabel . '</td>
                             </tr>
                             <tr>
-                                <td style="text-align: right; font-weight: bold; font-size: 11px;">Ödenecek Tutar</td>
-                                <td style="text-align: right; font-weight: bold; font-size: 11px;">' . number_format((float)$invoice['odenecek_tutar'], 2, ',', '.') . ' ' . $currLabel . '</td>
+                                <td style="text-align: right; font-weight: bold; font-size: 10.5px;">Ödenecek Tutar</td>
+                                <td style="text-align: right; font-weight: bold; font-size: 10.5px;">' . number_format((float)$invoice['odenecek_tutar'], 2, ',', '.') . ' ' . $currLabel . '</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
             </table>
 
-            <!-- 6. NOTLAR VE AÇIKLAMA KUTUSU -->
-            <div style="border: 2px solid #000; padding: 6px 10px; font-size: 10.5px; line-height: 1.45; margin-top: 4px;">
+            <!-- 6. ÇERÇEVELİ NOTLAR VE AÇIKLAMA KUTUSU -->
+            <div style="border: 1px solid #000; padding: 6px 10px; font-size: 10px; line-height: 1.45; margin-top: 6px; min-height: 50px;">
                 <div><strong>Not:</strong> TLDOVIZ: ' . $tutarYaziylaTl . '</div>';
 
         if ($curr !== 'TRY' && $curr !== 'TL' && !empty($tutarYaziylaDoviz)) {
@@ -643,20 +699,21 @@ class EInvoiceService
             $html .= '<div><strong>Not:</strong> ' . htmlspecialchars($firmaIban, ENT_QUOTES, 'UTF-8') . '</div>';
         }
 
-        if (!empty($invoice['notlar'])) {
-            $lines = explode("\n", trim($invoice['notlar']));
-            foreach ($lines as $nLine) {
-                $nLine = trim($nLine);
-                if ($nLine !== '') {
-                    $html .= '<div><strong>Not:</strong> ' . htmlspecialchars($nLine, ENT_QUOTES, 'UTF-8') . '</div>';
-                }
-            }
+        foreach ($notSatirlari as $nLine) {
+            $html .= '<div><strong>Not:</strong> ' . $nLine . '</div>';
         }
 
-        if (!empty($invoice['iade_fatura_no'])) $html .= '<div><strong>İade edilen fatura:</strong> ' . htmlspecialchars($invoice['iade_fatura_no'] . ' / ' . ($invoice['iade_fatura_tarihi'] ?? ''), ENT_QUOTES, 'UTF-8') . '</div>';
+        if (!empty($invoice['iade_fatura_no'])) {
+            $html .= '<div><strong>İade edilen fatura:</strong> ' . htmlspecialchars($invoice['iade_fatura_no'] . ' / ' . ($invoice['iade_fatura_tarihi'] ?? ''), ENT_QUOTES, 'UTF-8') . '</div>';
+        }
 
         $html .= '
                 <div><strong>Ödeme Notu:</strong> ' . htmlspecialchars(!empty($invoice['vade_tarihi']) ? ('VADE: ' . date('d.m.Y', strtotime($invoice['vade_tarihi']))) : 'AÇIK HESAP', ENT_QUOTES, 'UTF-8') . '</div>
+            </div>
+
+            <!-- 7. EN ALT EDM DİPNOTU -->
+            <div style="text-align: center; color: #1e70bf; font-size: 10px; margin-top: 8px; font-weight: 500;">
+                Bu Fatura E-Dönüşüm Merkezi EDM Teknolojileri ile Üretilmiştir
             </div>
 
         </div>';

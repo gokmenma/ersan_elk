@@ -1,7 +1,25 @@
 $(document).ready(function () {
     let currentBalanceFilter = 'all';
 
-    const table = $('#cariTable').DataTable({
+    // Özet Kartları Açma/Kapama (AGENTS.md Standardı)
+    const toggleBtn = $('#btnToggleSummaryCards');
+    const updateToggleState = () => {
+        const isHidden = $('html').hasClass('cari-summary-hidden');
+        if (toggleBtn.length) {
+            toggleBtn.attr('aria-expanded', !isHidden);
+            toggleBtn.find('i').attr('class', isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+        }
+    };
+    updateToggleState();
+
+    toggleBtn.on('click', function () {
+        const willHide = !$('html').hasClass('cari-summary-hidden');
+        $('html').toggleClass('cari-summary-hidden', willHide);
+        localStorage.setItem('cari_summary_cards_state', willHide ? 'hidden' : 'visible');
+        updateToggleState();
+    });
+
+    const table = $('#cariTable').DataTable(applyLengthStateSave({
         ...getDatatableOptions(),
         processing: true,
         serverSide: true,
@@ -19,41 +37,58 @@ $(document).ready(function () {
                         return parseFloat(val || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     };
 
-                    $('#toplam_borc').text(formatMoney(json.summary.toplam_borc));
-                    $('#toplam_alacak').text(formatMoney(json.summary.toplam_alacak));
+                    // 1. Kart: Toplam Cari
+                    $('#stat_toplam_cari').text(json.summary.toplam_cari || 0);
+                    $('#stat_sub_borclu_alacakli').text(`Borçlu: ${json.summary.borclu_sayisi || 0} | Alacaklı: ${json.summary.alacakli_sayisi || 0}`);
+
+                    // 2. Kart: Toplam Alacak (Verdim)
+                    $('#toplam_alacak').text(formatMoney(json.summary.toplam_alacak) + ' ₺');
+                    $('#stat_sub_alacakli_sayi').text(`${json.summary.alacakli_sayisi || 0} Alacaklı Hesap`);
+
+                    // 3. Kart: Toplam Borç (Aldım)
+                    $('#toplam_borc').text(formatMoney(json.summary.toplam_borc) + ' ₺');
+                    $('#stat_sub_borclu_sayi').text(`${json.summary.borclu_sayisi || 0} Borçlu Hesap`);
                     
+                    // 4. Kart: Genel Bakiye (Net)
                     const bakiyeVal = parseFloat(json.summary.genel_bakiye || 0);
-                    $('#genel_bakiye').parent().removeClass('text-danger text-success');
+                    $('#genel_bakiye').parent().removeClass('text-danger text-success text-dark');
                     if (bakiyeVal < 0) $('#genel_bakiye').parent().addClass('text-danger');
                     else if (bakiyeVal > 0) $('#genel_bakiye').parent().addClass('text-success');
                     
-                    // Gösterimi de abs yapalım
-                    $('#genel_bakiye').text(formatMoney(Math.abs(bakiyeVal)));
-                    const label = bakiyeVal < 0 ? '(Borçlu)' : (bakiyeVal > 0 ? '(Alacaklı)' : '');
-                    if ($('#bakiye_bilgi').length === 0) {
-                        $('#genel_bakiye').after(`<small id="bakiye_bilgi" style="font-size: 0.6rem; display: block;">${label}</small>`);
-                    } else {
-                        $('#bakiye_bilgi').text(label);
+                    $('#genel_bakiye').text(formatMoney(Math.abs(bakiyeVal)) + ' ₺');
+                    
+                    let bakiyeLabel = '0,00 ₺ (Dengede)';
+                    let bakiyeBadgeClass = 'bg-secondary-subtle text-secondary border border-secondary-subtle';
+                    if (bakiyeVal < 0) {
+                        bakiyeLabel = 'Borçluyuz (Net)';
+                        bakiyeBadgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
+                    } else if (bakiyeVal > 0) {
+                        bakiyeLabel = 'Alacaklıyız (Net)';
+                        bakiyeBadgeClass = 'bg-success-subtle text-success border border-success-subtle';
                     }
+
+                    $('#bakiye_bilgi')
+                        .attr('class', `badge ${bakiyeBadgeClass} rounded-pill px-2 py-1 font-size-11 fw-semibold`)
+                        .text(bakiyeLabel);
                 }
                 return json.data;
             }
         },
         columns: [
-            { data: "id", className: "text-center" },
+            { data: "id", className: "text-center", width: "50px" },
             { data: "CariAdi" },
             { data: "firma" },
-            { data: "Telefon", className: "text-center" },
-            { data: "Email" },
-            { data: "Adres" },
-            { data: "bakiye", className: "text-end" },
-            { data: "actions", orderable: false, searchable: false }
+            { data: "vkn_tckn", className: "text-center", width: "120px" },
+            { data: "Telefon", className: "text-center", width: "120px" },
+            { data: "il_ilce", width: "140px" },
+            { data: "bakiye", className: "text-end", width: "130px" },
+            { data: "actions", className: "text-center", width: "130px", orderable: false, searchable: false }
         ],
         createdRow: function(row, data, dataIndex) {
             $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
         },
         order: [[1, 'asc']]
-    });
+    }));
  
     // Satır Tıklama (Hareketlere Git) - Komple Satır (İşlem Sütunu Hariç)
     $('#cariTable tbody').on('click', 'tr td:not(:last-child)', function (e) {
@@ -62,59 +97,79 @@ $(document).ready(function () {
         if (href) window.location.href = href;
     });
 
-    // Excel Aktar Butonu
-    $('#btnExportExcel').on('click', function () {
+    // Excel Aktar Butonları
+    $('#btnExportExcel, #btnHeaderExportExcel, #btnDropdownExportExcel').on('click', function () {
         const searchVal = table.search();
         const url = `views/cari/export-excel.php?balance_filter=${currentBalanceFilter}&search=${encodeURIComponent(searchVal)}`;
         window.open(url, '_blank');
+    });
+
+    // Yenile Butonu
+    $('#btnHeaderRefresh').on('click', function () {
+        table.ajax.reload(null, false);
+    });
+
+    // Yazdır Butonu
+    $('#btnHeaderPrint').on('click', function () {
+        window.print();
+    });
+
+    // Hızlı Filtre Butonları (Özet Kartlar İçi Butonlar)
+    $('.status-quick-filter').on('click', function () {
+        const filter = $(this).data('balance') || 'all';
+        currentBalanceFilter = filter;
+        $('.status-quick-filter').removeClass('active');
+        $(this).addClass('active');
+        table.ajax.reload();
+    });
+
+    // Select2 Başlatma (Modal içi)
+    function initCariModalSelect2() {
+        $('#cariModal .select2').select2({
+            dropdownParent: $('#cariModal'),
+            width: '100%'
+        });
+    }
+
+    // İl değiştiğinde ilçeleri yükle
+    $('#il').on('change', function () {
+        const selectedIl = $(this).val();
+        const ilceSelect = $('#ilce');
+        ilceSelect.empty().append('<option value="">İlçe Seçiniz...</option>');
+
+        if (selectedIl && typeof EDM_DISTRICTS !== 'undefined' && EDM_DISTRICTS[selectedIl]) {
+            EDM_DISTRICTS[selectedIl].forEach(function (ilce) {
+                ilceSelect.append(new Option(ilce, ilce));
+            });
+        }
+        ilceSelect.trigger('change.select2');
     });
 
     // Yeni Cari Butonu
     $('#btnYeniCari, #btnYeniCariMobile, #btnYeniCariMobileTop').on('click', function () {
         $('#cariForm')[0].reset();
         $('#cari_id').val('');
+        $('#alici_turu').val('KURUMSAL').trigger('change.select2');
+        $('#belge_turu').val('OTOMATIK').trigger('change.select2');
+        $('#ulke').val('Türkiye').trigger('change.select2');
+        $('#il').val('').trigger('change.select2');
+        $('#ilce').empty().append('<option value="">İlçe Seçiniz...</option>').trigger('change.select2');
+        $('#cariMukellefBadge').html(`
+            <span class="badge bg-light text-muted border px-3 py-2 rounded-pill font-size-12 w-100 d-flex align-items-center justify-content-center gap-1">
+                <i class="bx bx-info-circle"></i> VKN sorgulayabilirsiniz
+            </span>
+        `);
+        $('#tab-genel-btn').tab('show');
         $('#cariModalLabel').text('Yeni Cari Ekle');
-        // Feather icon logic if needed on edit:
         $('.modal-header .bg-success-subtle').html('<i data-feather="plus-circle" style="width: 24px; height: 24px; color: #10b981;"></i>');
         if (typeof feather !== 'undefined') feather.replace();
+        initCariModalSelect2();
         $('#cariModal').modal('show');
     });
 
     // Mobil Arama
     $('#mobileSearch').on('keyup', function () {
         table.search(this.value).draw();
-    });
-
-    // Kart Tıklama Filtreleri
-    $('#card_toplam_aldim').on('click', function() {
-        currentBalanceFilter = 'borclu';
-        table.ajax.reload();
-        // Mobilde listeye kaydır
-        if(window.innerWidth < 768) {
-            $('html, body').animate({
-                scrollTop: $("#cariMobileContainer").offset().top - 20
-            }, 500);
-        }
-    });
-
-    $('#card_toplam_verdim').on('click', function() {
-        currentBalanceFilter = 'alacakli';
-        table.ajax.reload();
-        if(window.innerWidth < 768) {
-            $('html, body').animate({
-                scrollTop: $("#cariMobileContainer").offset().top - 20
-            }, 500);
-        }
-    });
-
-    $('#card_bakiye').on('click', function() {
-        currentBalanceFilter = 'all';
-        table.ajax.reload();
-        if(window.innerWidth < 768) {
-            $('html, body').animate({
-                scrollTop: $("#cariMobileContainer").offset().top - 20
-            }, 500);
-        }
     });
 
     function renderMobileList(data) {
@@ -197,18 +252,130 @@ $(document).ready(function () {
             success: function (res) {
                 $('#cariForm')[0].reset();
                 $('#cari_id').val(id);
-                $('#CariAdi').val(res.CariAdi);
-                $('#firma').val(res.firma);
-                $('#Telefon').val(res.Telefon);
-                $('#Email').val(res.Email);
-                $('#Adres').val(res.Adres);
+                $('#CariAdi').val(res.CariAdi || '');
+                $('#firma').val(res.firma || '');
+                $('#alici_turu').val(res.alici_turu || 'KURUMSAL').trigger('change.select2');
+                $('#notlar').val(res.notlar || '');
+                
+                $('#vkn_tckn').val(res.vkn_tckn || '');
+                $('#vergi_dairesi').val(res.vergi_dairesi || '');
+                $('#belge_turu').val(res.belge_turu || 'OTOMATIK').trigger('change.select2');
+                $('#posta_kutusu').val(res.posta_kutusu || '');
+                $('#ticaret_sicil_no').val(res.ticaret_sicil_no || '');
+                $('#mersis_no').val(res.mersis_no || '');
+
+                $('#Telefon').val(res.Telefon || '');
+                $('#Email').val(res.Email || '');
+                $('#web_sitesi').val(res.web_sitesi || '');
+                $('#ulke').val(res.ulke || 'Türkiye').trigger('change.select2');
+                
+                // İl & İlçe Doldurma
+                const ilVal = res.il || '';
+                $('#il').val(ilVal).trigger('change.select2');
+                
+                const ilceSelect = $('#ilce');
+                ilceSelect.empty().append('<option value="">İlçe Seçiniz...</option>');
+                if (ilVal && typeof EDM_DISTRICTS !== 'undefined' && EDM_DISTRICTS[ilVal]) {
+                    EDM_DISTRICTS[ilVal].forEach(function (ilce) {
+                        ilceSelect.append(new Option(ilce, ilce));
+                    });
+                }
+                ilceSelect.val(res.ilce || '').trigger('change.select2');
+
+                $('#posta_kodu').val(res.posta_kodu || '');
+                $('#Adres').val(res.Adres || '');
+
+                if (res.vkn_tckn) {
+                    checkCariTaxpayer(res.vkn_tckn);
+                } else {
+                    $('#cariMukellefBadge').html(`
+                        <span class="badge bg-light text-muted border px-3 py-2 rounded-pill font-size-12 w-100 d-flex align-items-center justify-content-center gap-1">
+                            <i class="bx bx-info-circle"></i> VKN sorgulayabilirsiniz
+                        </span>
+                    `);
+                }
+
+                $('#tab-genel-btn').tab('show');
                 $('#cariModalLabel').text('Cariyi Düzenle');
                 $('.modal-header .bg-success-subtle').html('<i data-feather="edit" style="width: 24px; height: 24px; color: #10b981;"></i>');
                 if (typeof feather !== 'undefined') feather.replace();
+                initCariModalSelect2();
                 $('#cariModal').modal('show');
             }
         });
     });
+
+    // VKN Mükellef Sorgula Butonu
+    $('#btnCariVknSorgula').on('click', function () {
+        const vkn = $('#vkn_tckn').val().trim();
+        if (!vkn) {
+            Swal.fire('Uyarı', 'Lütfen 10 haneli VKN veya 11 haneli TCKN girin.', 'warning');
+            return;
+        }
+        checkCariTaxpayer(vkn, true);
+    });
+
+    // GİB / EDM Mükellef Kontrol Fonksiyonu
+    function checkCariTaxpayer(vkn, autoFill = false) {
+        if (!vkn || (vkn.length !== 10 && vkn.length !== 11)) return;
+
+        $('#cariMukellefBadge').html(`
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill font-size-12 w-100 d-flex align-items-center justify-content-center gap-1">
+                <i class="bx bx-loader-alt bx-spin"></i> GİB Sorgulanıyor...
+            </span>
+        `);
+
+        $.ajax({
+            url: "views/cari/api.php",
+            type: "POST",
+            data: { action: "vkn-sorgula", vkn_tckn: vkn },
+            dataType: "json",
+            success: function (res) {
+                if (res.status === 'success' && res.data) {
+                    const d = res.data;
+                    if (d.is_taxpayer) {
+                        $('#cariMukellefBadge').html(`
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill font-size-12 w-100 d-flex align-items-center justify-content-center gap-1">
+                                <i class="bx bx-check-circle"></i> GİB E-Fatura Mükellefi
+                            </span>
+                        `);
+                        $('#belge_turu').val('EFATURA').trigger('change.select2');
+                        
+                        if (d.alias && !$('#posta_kutusu').val()) {
+                            $('#posta_kutusu').val(d.alias);
+                        }
+                    } else {
+                        $('#cariMukellefBadge').html(`
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 rounded-pill font-size-12 w-100 d-flex align-items-center justify-content-center gap-1">
+                                <i class="bx bx-user-check"></i> E-Arşiv Mükellefi
+                            </span>
+                        `);
+                        $('#belge_turu').val('EARSIV').trigger('change.select2');
+                    }
+
+                    if (autoFill && d.title) {
+                        if (!$('#firma').val()) $('#firma').val(d.title);
+                        if (!$('#CariAdi').val()) $('#CariAdi').val(d.title);
+                        if (d.tax_office && !$('#vergi_dairesi').val()) $('#vergi_dairesi').val(d.tax_office);
+                        if (d.city && !$('#il').val()) $('#il').val(d.city).trigger('change');
+                    }
+                } else {
+                    $('#cariMukellefBadge').html(`
+                        <span class="badge bg-secondary-subtle text-muted border px-3 py-2 rounded-pill font-size-12 w-100 d-flex align-items-center justify-content-center gap-1">
+                            <i class="bx bx-help-circle"></i> E-Arşiv (GİB Kaydı Yok)
+                        </span>
+                    `);
+                }
+            },
+            error: function () {
+                $('#cariMukellefBadge').html(`
+                    <span class="badge bg-light text-muted border px-3 py-2 rounded-pill font-size-12 w-100">
+                        Sorgulanamadı
+                    </span>
+                `);
+            }
+        });
+    }
 
     // Cari Sil
     $('#cariTable').on('click', '.cari-sil', function (e) {

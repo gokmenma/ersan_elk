@@ -754,11 +754,30 @@ class EInvoiceModel extends Model
     /**
      * Dashboard ve Özet Kartları İstatistikleri
      */
-    public function getSummaryStats(int $firmId, string $yon = 'GIDEN', string $listType = 'giden'): array
+    public function getSummaryStats(int $firmId, string $yon = 'GIDEN', string $listType = 'giden', ?string $startDate = null, ?string $endDate = null): array
     {
         try {
             $currentMonthStart = date('Y-m-01');
             $currentMonthEnd = date('Y-m-t');
+
+            $dateWhere = "";
+            $params = [
+                'firm_id'     => $firmId,
+                'month_start' => $currentMonthStart,
+                'month_end'   => $currentMonthEnd
+            ];
+
+            if (!empty($startDate) && !empty($endDate)) {
+                $dateWhere = " AND fatura_tarihi BETWEEN :start_date AND :end_date";
+                $params['start_date'] = $startDate;
+                $params['end_date'] = $endDate;
+            } elseif (!empty($startDate)) {
+                $dateWhere = " AND fatura_tarihi >= :start_date";
+                $params['start_date'] = $startDate;
+            } elseif (!empty($endDate)) {
+                $dateWhere = " AND fatura_tarihi <= :end_date";
+                $params['end_date'] = $endDate;
+            }
 
             if ($listType === 'taslak') {
                 $stmt = $this->db->prepare("
@@ -767,19 +786,16 @@ class EInvoiceModel extends Model
                         COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
                         COUNT(CASE WHEN belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
                         COUNT(CASE WHEN belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
-                        COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
-                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                        COUNT(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN 1 END) as bu_ay_adet,
+                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
                     FROM faturalar
                     WHERE firm_id = :firm_id
                       AND yon = 'GIDEN'
                       AND entegrator_durum_kodu IN ('TASLAK', 'GONDERILDI')
                       AND deleted_at IS NULL
+                      {$dateWhere}
                 ");
-                $stmt->execute([
-                    'firm_id' => $firmId,
-                    'start'   => $currentMonthStart,
-                    'end'     => $currentMonthEnd
-                ]);
+                $stmt->execute($params);
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
             } elseif ($listType === 'gelen') {
                 $stmt = $this->db->prepare("
@@ -789,18 +805,15 @@ class EInvoiceModel extends Model
                         COUNT(CASE WHEN ticari_yanit = 'KABUL' THEN 1 END) as kabul_adet,
                         COUNT(CASE WHEN ticari_yanit = 'RED' THEN 1 END) as red_adet,
                         COUNT(CASE WHEN ticari_yanit = 'BEKLIYOR' THEN 1 END) as bekleyen_adet,
-                        COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
-                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                        COUNT(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN 1 END) as bu_ay_adet,
+                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
                     FROM faturalar
                     WHERE firm_id = :firm_id
                       AND yon = 'GELEN'
                       AND deleted_at IS NULL
+                      {$dateWhere}
                 ");
-                $stmt->execute([
-                    'firm_id' => $firmId,
-                    'start'   => $currentMonthStart,
-                    'end'     => $currentMonthEnd
-                ]);
+                $stmt->execute($params);
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
             } else {
                 // Giden (Gönderilen & Onaylanan) Faturalar
@@ -816,19 +829,16 @@ class EInvoiceModel extends Model
                         COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI') THEN odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
                         COUNT(CASE WHEN entegrator_durum_kodu = 'HATALI' THEN 1 END) as hatali_adet,
                         COUNT(CASE WHEN entegrator_durum_kodu = 'IPTAL' THEN 1 END) as iptal_adet,
-                        COUNT(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN 1 END) as bu_ay_adet,
-                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :start AND :end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                        COUNT(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN 1 END) as bu_ay_adet,
+                        COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
                     FROM faturalar
                     WHERE firm_id = :firm_id
                       AND yon = 'GIDEN'
                       AND entegrator_durum_kodu NOT IN ('TASLAK', 'GONDERILDI')
                       AND deleted_at IS NULL
+                      {$dateWhere}
                 ");
-                $stmt->execute([
-                    'firm_id' => $firmId,
-                    'start'   => $currentMonthStart,
-                    'end'     => $currentMonthEnd
-                ]);
+                $stmt->execute($params);
                 return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
             }
         } catch (\PDOException $e) {
@@ -918,7 +928,7 @@ class EInvoiceModel extends Model
     public function invoiceCustomers(int $firmId): array
     {
         // Cari uses the application's shared customer catalogue, with no firm_id column.
-        $stmt = $this->db->prepare('SELECT id, CariAdi, Telefon, Email, firma, Adres, notlar FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC');
+        $stmt = $this->db->prepare('SELECT id, CariAdi, Telefon, Email, web_sitesi, firma, vkn_tckn, vergi_dairesi, alici_turu, belge_turu, posta_kutusu, ulke, il, ilce, posta_kodu, Adres, notlar, ticaret_sicil_no, mersis_no FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC');
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

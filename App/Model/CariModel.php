@@ -35,7 +35,7 @@ class CariModel extends Model
         }
 
         if (!empty($search)) {
-            $where .= " AND (c.CariAdi LIKE :search OR c.firma LIKE :search OR c.Telefon LIKE :search OR c.Email LIKE :search)";
+            $where .= " AND (c.CariAdi LIKE :search OR c.firma LIKE :search OR c.vkn_tckn LIKE :search OR c.vergi_dairesi LIKE :search OR c.Telefon LIKE :search OR c.Email LIKE :search OR c.il LIKE :search OR c.ilce LIKE :search OR c.Adres LIKE :search)";
             $bindParams['search'] = "%$search%";
         }
 
@@ -44,9 +44,10 @@ class CariModel extends Model
             $colMap = [
                 1 => 'c.CariAdi',
                 2 => 'c.firma',
-                3 => 'c.Telefon',
-                4 => 'c.Email',
-                5 => 'c.Adres'
+                3 => 'c.vkn_tckn',
+                4 => 'c.Telefon',
+                5 => "CONCAT_WS(' / ', c.il, c.ilce)",
+                6 => '(SELECT IFNULL(ROUND(SUM(alacak) - SUM(borc), 2), 0) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL)'
             ];
             foreach ($params['columns'] as $i => $column) {
                 if (!empty($column['search']['value']) && isset($colMap[$i])) {
@@ -62,6 +63,12 @@ class CariModel extends Model
                         $vals = explode('|', $filterVal);
                         $filterVal = $vals[0];
 
+                        // Sayısal değerler için temizleme
+                        $cleanNumVal = str_replace(['.', ','], ['', '.'], $filterVal);
+                        if (!is_numeric($cleanNumVal)) {
+                            $cleanNumVal = (float)$filterVal;
+                        }
+
                         switch ($mode) {
                             case 'multi':
                                 if (!empty($vals)) {
@@ -74,6 +81,22 @@ class CariModel extends Model
                                     $where .= " AND (" . implode(" OR ", $multiConditions) . ")";
                                 }
                                 break;
+                            case 'greater_than':
+                                $where .= " AND $field > :$paramName";
+                                $bindParams[$paramName] = (float)$cleanNumVal;
+                                break;
+                            case 'less_than':
+                                $where .= " AND $field < :$paramName";
+                                $bindParams[$paramName] = (float)$cleanNumVal;
+                                break;
+                            case 'greater_equal':
+                                $where .= " AND $field >= :$paramName";
+                                $bindParams[$paramName] = (float)$cleanNumVal;
+                                break;
+                            case 'less_equal':
+                                $where .= " AND $field <= :$paramName";
+                                $bindParams[$paramName] = (float)$cleanNumVal;
+                                break;
                             case 'contains':
                                 $where .= " AND $field LIKE :$paramName";
                                 $bindParams[$paramName] = "%$filterVal%";
@@ -83,12 +106,22 @@ class CariModel extends Model
                                 $bindParams[$paramName] = "%$filterVal%";
                                 break;
                             case 'equals':
-                                $where .= " AND $field = :$paramName";
-                                $bindParams[$paramName] = $filterVal;
+                                if ($i === 6 && is_numeric($cleanNumVal)) {
+                                    $where .= " AND $field = :$paramName";
+                                    $bindParams[$paramName] = (float)$cleanNumVal;
+                                } else {
+                                    $where .= " AND $field = :$paramName";
+                                    $bindParams[$paramName] = $filterVal;
+                                }
                                 break;
                             case 'not_equals':
-                                $where .= " AND $field != :$paramName";
-                                $bindParams[$paramName] = $filterVal;
+                                if ($i === 6 && is_numeric($cleanNumVal)) {
+                                    $where .= " AND $field != :$paramName";
+                                    $bindParams[$paramName] = (float)$cleanNumVal;
+                                } else {
+                                    $where .= " AND $field != :$paramName";
+                                    $bindParams[$paramName] = $filterVal;
+                                }
                                 break;
                             case 'starts_with':
                                 $where .= " AND $field LIKE :$paramName";
@@ -99,10 +132,10 @@ class CariModel extends Model
                                 $bindParams[$paramName] = "%$filterVal";
                                 break;
                             case 'null':
-                                $where .= " AND ($field IS NULL OR $field = '')";
+                                $where .= " AND ($field IS NULL OR $field = '' OR $field = 0)";
                                 break;
                             case 'not_null':
-                                $where .= " AND ($field IS NOT NULL AND $field != '')";
+                                $where .= " AND ($field IS NOT NULL AND $field != '' AND $field != 0)";
                                 break;
                         }
                     } else {
@@ -131,7 +164,9 @@ class CariModel extends Model
                 $colDir = $order['dir'];
                 $colName = $columns[$colIdx]['data'] ?: $columns[$colIdx]['name'];
                 
-                if ($colName && $colName != "actions" && $colName != "bakiye") {
+                if ($colName == "bakiye") {
+                    $orderArr[] = "bakiye $colDir";
+                } elseif ($colName && $colName != "actions") {
                     $orderArr[] = "c.$colName $colDir";
                 }
             }
@@ -166,12 +201,29 @@ class CariModel extends Model
     public function summary()
     {
         $sql = "SELECT 
-                ROUND(SUM(ch.borc), 2) as toplam_borc,
-                ROUND(SUM(ch.alacak), 2) as toplam_alacak,
-                ROUND(SUM(ch.alacak) - SUM(ch.borc), 2) as genel_bakiye
-                FROM cari_hareketleri ch
-                INNER JOIN cari c ON ch.cari_id = c.id
-                WHERE ch.silinme_tarihi IS NULL AND c.silinme_tarihi IS NULL";
-        return $this->db->query($sql)->fetch(PDO::FETCH_OBJ);
+                COUNT(DISTINCT c.id) as toplam_cari,
+                ROUND(COALESCE(SUM(ch.borc), 0), 2) as toplam_borc,
+                ROUND(COALESCE(SUM(ch.alacak), 0), 2) as toplam_alacak,
+                ROUND(COALESCE(SUM(ch.alacak), 0) - COALESCE(SUM(ch.borc), 0), 2) as genel_bakiye
+                FROM cari c
+                LEFT JOIN cari_hareketleri ch ON ch.cari_id = c.id AND ch.silinme_tarihi IS NULL
+                WHERE c.silinme_tarihi IS NULL";
+        $summary = $this->db->query($sql)->fetch(PDO::FETCH_OBJ);
+
+        $countsSql = "SELECT 
+            SUM(CASE WHEN bakiye < 0 THEN 1 ELSE 0 END) as borclu_cari_sayisi,
+            SUM(CASE WHEN bakiye > 0 THEN 1 ELSE 0 END) as alacakli_cari_sayisi
+            FROM (
+                SELECT c.id, (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as bakiye
+                FROM cari c WHERE c.silinme_tarihi IS NULL
+            ) t";
+        $counts = $this->db->query($countsSql)->fetch(PDO::FETCH_OBJ);
+
+        if ($summary) {
+            $summary->borclu_cari_sayisi = (int)($counts->borclu_cari_sayisi ?? 0);
+            $summary->alacakli_cari_sayisi = (int)($counts->alacakli_cari_sayisi ?? 0);
+        }
+
+        return $summary;
     }
 }

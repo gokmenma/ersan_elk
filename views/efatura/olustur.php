@@ -742,6 +742,9 @@ $exemptionSelectHtml .= '</select>';
                             </div>
                             <div class="col-md-6">
                                 <?= Form::FormFloatInput('text', 'fatura_no', $editInvoice['fatura_no'] ?? '', 'Fatura No (Gönderimde üretilir)', 'Fatura No', 'file-text') ?>
+                                <div id="faturaNoHelpText" class="field-help-text text-muted">
+                                    <i class="bx bx-info-circle me-1"></i>Gönderimde otomatik üretilir.
+                                </div>
                             </div>
 
                             <!-- Fatura Tipi * -->
@@ -1173,6 +1176,49 @@ document.addEventListener('DOMContentLoaded', function() {
         width: '100%'
     });
 
+    // Sıradaki Fatura Numarası Tahmin ve Önizleme Fonksiyonu
+    function updateNextInvoiceNoPreview() {
+        const seriVal = $('#seri_no').val();
+        const belgeTuru = $('#belge_turu').val() || 'EARSIV';
+        const isEarchiveTarget = (belgeTuru === 'EFATURA') ? 0 : 1;
+        const faturaTarihiVal = $('#fatura_tarihi').val();
+        let currentYear = new Date().getFullYear();
+        if (faturaTarihiVal && /^\d{2}\.\d{2}\.\d{4}$/.test(faturaTarihiVal)) {
+            currentYear = parseInt(faturaTarihiVal.split('.')[2], 10);
+        }
+
+        let targetSerialObj = null;
+        if (Array.isArray(EDM_SERIALS) && EDM_SERIALS.length > 0) {
+            if (seriVal) {
+                targetSerialObj = EDM_SERIALS.find(s => s.series === seriVal && parseInt(s.active, 10) === 1 && parseInt(s.earchive, 10) === isEarchiveTarget);
+                if (!targetSerialObj) {
+                    targetSerialObj = EDM_SERIALS.find(s => s.series === seriVal);
+                }
+            } else {
+                targetSerialObj = EDM_SERIALS.find(s => parseInt(s.active, 10) === 1 && parseInt(s.earchive, 10) === isEarchiveTarget);
+            }
+        }
+
+        if (targetSerialObj) {
+            const year = targetSerialObj.year || currentYear;
+            const lastNo = parseInt(targetSerialObj.last, 10) || 0;
+            const nextNo = lastNo + 1;
+            const formattedNext = targetSerialObj.series + String(year) + String(nextNo).padStart(9, '0');
+
+            if (!$('#fatura_no').val()) {
+                $('#fatura_no').attr('placeholder', 'Sıradaki: ' + formattedNext);
+            }
+            $('#faturaNoHelpText').html(`<i class="bx bx-check-circle text-success me-1"></i>Sıradaki tahmini no: <strong class="text-primary font-monospace">${formattedNext}</strong> (Gönderimde kesinleşir)`);
+        } else {
+            const defaultPrefix = (belgeTuru === 'EFATURA' ? 'ERS' : 'ERA');
+            const fallbackNext = defaultPrefix + String(currentYear) + '000000001';
+            if (!$('#fatura_no').val()) {
+                $('#fatura_no').attr('placeholder', 'Sıradaki: ' + fallbackNext);
+            }
+            $('#faturaNoHelpText').html(`<i class="bx bx-info-circle me-1"></i>Gönderimde otomatik üretilir.`);
+        }
+    }
+
     // Seri No Doldurma Fonksiyonu (EDM Entegrasyonu)
     function populateSeriOptions(belgeTuru, selectedSeri = '') {
         const seriSelect = $('#seri_no');
@@ -1196,6 +1242,7 @@ document.addEventListener('DOMContentLoaded', function() {
             seriSelect.val(currentVal);
         }
         seriSelect.trigger('change.select2');
+        updateNextInvoiceNoPreview();
     }
 
     // İlçe Doldurma Fonksiyonu
@@ -1217,6 +1264,14 @@ document.addEventListener('DOMContentLoaded', function() {
         populateDistricts($(this).val());
     });
 
+    $('#seri_no').on('change', function() {
+        updateNextInvoiceNoPreview();
+    });
+
+    $('#fatura_tarihi').on('change', function() {
+        updateNextInvoiceNoPreview();
+    });
+
     // İlk yüklemede mevcut il için ilçeleri yükle
     const initialCity = $('#alici_il').val() || (EDIT_DATA ? EDIT_DATA.alici_il : 'Kayseri');
     const initialDistrict = EDIT_DATA ? (EDIT_DATA.alici_ilce || '') : '';
@@ -1226,6 +1281,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const initialBelgeTuru = $('input[name="gonderim_sekli"]:checked').val() || $('#belge_turu').val() || 'EARSIV';
     const initialSeri = EDIT_DATA ? (EDIT_DATA.seri_no || '') : '';
     populateSeriOptions(initialBelgeTuru, initialSeri);
+    updateNextInvoiceNoPreview();
 
     // ETTN Kopyalama ve Yenileme
     $('#btnCopyEttn').on('click', function() {
@@ -1273,6 +1329,7 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#divPostaKutusu').slideUp(200);
             populateSeriOptions('EARSIV');
         }
+        updateNextInvoiceNoPreview();
     });
 
     // Tevkifat / İstisna Kolonunu Aç/Kapat Fonksiyonu
@@ -1795,22 +1852,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const selected = CARI_DATA.find(c => c.id == cariId);
         if (selected) {
-            $('#alici_unvan').val(selected.CariAdi || selected.firma || '');
+            $('#alici_unvan').val(selected.firma || selected.CariAdi || '');
             if (selected.Adres) $('#alici_adres').val(selected.Adres);
-            if (selected.Ilce) {
-                $('#alici_ilce').val(selected.Ilce).trigger('change.select2');
+            if (selected.il || selected.Il) {
+                const ilVal = selected.il || selected.Il;
+                $('#alici_il').val(ilVal).trigger('change.select2');
             }
-            if (selected.Il) {
-                $('#alici_il').val(selected.Il).trigger('change.select2');
+            if (selected.ilce || selected.Ilce) {
+                const ilceVal = selected.ilce || selected.Ilce;
+                setTimeout(() => {
+                    $('#alici_ilce').val(ilceVal).trigger('change.select2');
+                }, 100);
             }
-            if (selected.VergiDairesi) $('#alici_vergi_dairesi').val(selected.VergiDairesi);
-            if (selected.Eposta) $('#alici_eposta').val(selected.Eposta);
+            if (selected.ulke) {
+                $('#alici_ulke').val(selected.ulke).trigger('change.select2');
+            }
+            if (selected.vergi_dairesi || selected.VergiDairesi) $('#alici_vergi_dairesi').val(selected.vergi_dairesi || selected.VergiDairesi);
+            if (selected.Email || selected.Eposta) $('#alici_eposta').val(selected.Email || selected.Eposta);
             if (selected.Telefon) $('#alici_telefon').val(selected.Telefon);
+            if (selected.web_sitesi) $('#alici_web').val(selected.web_sitesi);
             
-            const vknMatch = (selected.notlar || selected.CariAdi || '').match(/\b\d{10,11}\b/);
-            if (vknMatch) {
-                $('#alici_vkn_tckn').val(vknMatch[0]);
-                checkTaxpayer(vknMatch[0]);
+            const vkn = selected.vkn_tckn || (selected.notlar || selected.CariAdi || '').match(/\b\d{10,11}\b/)?.[0];
+            if (vkn) {
+                $('#alici_vkn_tckn').val(vkn);
+                checkTaxpayer(vkn);
+            }
+            if (selected.posta_kutusu) {
+                setTimeout(() => {
+                    if ($('#alici_posta_kutusu').length && selected.posta_kutusu) {
+                        if ($('#alici_posta_kutusu option[value="' + selected.posta_kutusu + '"]').length === 0) {
+                            $('#alici_posta_kutusu').append(new Option(selected.posta_kutusu, selected.posta_kutusu, true, true));
+                        }
+                        $('#alici_posta_kutusu').val(selected.posta_kutusu).trigger('change.select2');
+                    }
+                }, 400);
             }
         }
     });
@@ -1899,7 +1974,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function parseDateForPayload(val) {
-        if (!val) return null;
+        if (!val || typeof val !== 'string') return null;
         val = val.trim();
         if (/^\d{2}\.\d{2}\.\d{4}$/.test(val)) {
             const p = val.split('.');
@@ -1910,39 +1985,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fatura Verisini Topla
     function getInvoicePayload() {
+        const getValTrim = (selector) => {
+            const el = $(selector);
+            if (!el.length) return null;
+            const v = el.val();
+            return (typeof v === 'string') ? (v.trim() || null) : (v ? (String(v).trim() || null) : null);
+        };
+        const getVal = (selector) => {
+            const el = $(selector);
+            if (!el.length) return null;
+            return el.val() || null;
+        };
+
         const header = {
-            ettn: $('#ettn').val() || null,
-            fatura_no: $('#fatura_no').val().trim() || null,
-            seri_no: $('#seri_no').val() || null,
-            cari_id: $('#selectCari').val() || null,
-            alici_vkn_tckn: $('#alici_vkn_tckn').val().trim(),
-            alici_unvan: $('#alici_unvan').val().trim(),
-            belge_turu: $('#belge_turu').val(),
-            fatura_profili: $('#fatura_profili').val(),
-            fatura_tipi: $('#fatura_tipi').val(),
-            alici_posta_kutusu: $('#alici_posta_kutusu').val() || null,
-            alici_vergi_dairesi: $('#alici_vergi_dairesi').val().trim(),
-            fatura_tarihi: parseDateForPayload($('#fatura_tarihi').val()),
-            duzenleme_saati: $('#duzenleme_saati').val().trim() || null,
-            vade_tarihi: parseDateForPayload($('#vade_tarihi').val()),
-            alici_adres: $('#alici_adres').val().trim(),
-            alici_ilce: $('#alici_ilce').val() || '',
-            alici_il: $('#alici_il').val() || '',
-            alici_ulke: $('#alici_ulke').val() || 'Türkiye',
-            alici_eposta: $('#alici_eposta').val().trim() || null,
-            alici_telefon: $('#alici_telefon').val().trim() || null,
-            alici_web: $('#alici_web').val().trim() || null,
-            alici_tapdk_no: $('#alici_tapdk_no').val().trim() || null,
-            tapdk_no_gonderen: $('#tapdk_no_gonderen').val().trim() || null,
-            ozel_alan_1: $('#ozel_alan_1').val().trim() || null,
-            odeme_sekli: $('#odeme_sekli').val() || null,
-            odeme_kanali: $('#odeme_kanali').val().trim() || null,
-            odeme_hesap_no: $('#odeme_hesap_no').val().trim() || null,
-            para_birimi: $('#para_birimi').val(),
-            doviz_kuru: $('#doviz_kuru').val(),
-            iade_fatura_no: $('#iade_fatura_no').val().trim() || null,
-            iade_fatura_tarihi: parseDateForPayload($('#iade_fatura_tarihi').val()),
-            notlar: typeof $.fn.summernote !== 'undefined' ? $('#notlar').summernote('code').trim() : $('#notlar').val().trim()
+            ettn: getVal('#ettn'),
+            fatura_no: getValTrim('#fatura_no'),
+            seri_no: getVal('#seri_no'),
+            cari_id: getVal('#selectCari'),
+            alici_vkn_tckn: getValTrim('#alici_vkn_tckn') || '',
+            alici_unvan: getValTrim('#alici_unvan') || '',
+            belge_turu: getVal('#belge_turu') || 'EARSIV',
+            fatura_profili: getVal('#fatura_profili') || 'EARSIVFATURA',
+            fatura_tipi: getVal('#fatura_tipi') || 'SATIS',
+            alici_posta_kutusu: getVal('#alici_posta_kutusu'),
+            alici_vergi_dairesi: getValTrim('#alici_vergi_dairesi') || '',
+            fatura_tarihi: parseDateForPayload(getVal('#fatura_tarihi')),
+            duzenleme_saati: getValTrim('#duzenleme_saati'),
+            vade_tarihi: parseDateForPayload(getVal('#vade_tarihi')),
+            alici_adres: getValTrim('#alici_adres') || '',
+            alici_ilce: getVal('#alici_ilce') || '',
+            alici_il: getVal('#alici_il') || '',
+            alici_ulke: getVal('#alici_ulke') || 'Türkiye',
+            alici_eposta: getValTrim('#alici_eposta'),
+            alici_telefon: getValTrim('#alici_telefon'),
+            alici_web: getValTrim('#alici_web'),
+            alici_tapdk_no: getValTrim('#alici_tapdk_no'),
+            tapdk_no_gonderen: getValTrim('#tapdk_no_gonderen'),
+            ozel_alan_1: getValTrim('#ozel_alan_1'),
+            odeme_sekli: getVal('#odeme_sekli'),
+            odeme_kanali: getValTrim('#odeme_kanali'),
+            odeme_hesap_no: getValTrim('#odeme_hesap_no'),
+            para_birimi: getVal('#para_birimi') || 'TRY',
+            doviz_kuru: getVal('#doviz_kuru') || '1.0000',
+            iade_fatura_no: getValTrim('#iade_fatura_no'),
+            iade_fatura_tarihi: parseDateForPayload(getVal('#iade_fatura_tarihi')),
+            notlar: (function() {
+                const notlarEl = $('#notlar');
+                if (!notlarEl.length) return '';
+                if (typeof $.fn.summernote !== 'undefined' && notlarEl.hasClass('summernote')) {
+                    try {
+                        const code = notlarEl.summernote('code');
+                        return (typeof code === 'string') ? code.trim() : '';
+                    } catch (e) {
+                        return (notlarEl.val() || '').trim();
+                    }
+                }
+                return (notlarEl.val() || '').trim();
+            })()
         };
 
         const lines = [];
@@ -1957,8 +2056,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            const adVal = row.find('.kalem-ad').val();
+            const istisnaAciklamaVal = row.find('.kalem-istisna-aciklama').val();
+
             lines.push({
-                urun_hizmet_adi: row.find('.kalem-ad').val().trim(),
+                urun_hizmet_adi: (typeof adVal === 'string') ? adVal.trim() : (adVal ? String(adVal).trim() : ''),
                 miktar: row.find('.kalem-miktar').val() || '1',
                 birim: row.find('.kalem-birim').val() || 'C62',
                 birim_fiyat: row.find('.kalem-fiyat').val() || '0',
@@ -1967,7 +2069,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tevkifat_kodu: (row.find('.kalem-tevkifat').val() || '').split('|')[0] || null,
                 tevkifat_orani: (row.find('.kalem-tevkifat').val() || '').split('|')[1] || '0',
                 istisna_kodu: row.find('.kalem-istisna').val() || null,
-                istisna_aciklama: row.find('.kalem-istisna-aciklama').val().trim() || null,
+                istisna_aciklama: (typeof istisnaAciklamaVal === 'string' && istisnaAciklamaVal.trim()) ? istisnaAciklamaVal.trim() : null,
                 ek_vergiler: ekVergiler
             });
         });

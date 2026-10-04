@@ -485,7 +485,7 @@ class Helper
     {
         try {
             $options = new \chillerlan\QRCode\QROptions([
-                'version'      => 5,
+                'version'      => \chillerlan\QRCode\QRCode::VERSION_AUTO,
                 'outputType'   => \chillerlan\QRCode\QRCode::OUTPUT_IMAGE_PNG,
                 'eccLevel'     => \chillerlan\QRCode\QRCode::ECC_L,
                 'scale'        => $scale,

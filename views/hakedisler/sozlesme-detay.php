@@ -406,8 +406,10 @@ $aylar = [
             <div class="modal-footer border-top-0">
                 <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3"
                     data-bs-dismiss="modal">İptal</button>
-                <button type="submit" class="btn btn-success px-4 fw-bold rounded-3 shadow-success"
-                    id="btnHakedisSave">Kaydet ve Detaya Git</button>
+                <button type="button" class="btn btn-primary px-4 fw-bold rounded-3"
+                    id="btnHakedisSave">Kaydet</button>
+                <button type="button" class="btn btn-success px-4 fw-bold rounded-3 shadow-success"
+                    id="btnHakedisSaveAndGo">Kaydet ve Detaya Git</button>
             </div>
         </form>
     </div>

@@ -47,8 +47,11 @@ class EInvoiceSettingsModel extends Model
         try {
             $existing = $this->getSettings($firmId);
             if (!in_array($data['environment'] ?? '', ['TEST','LIVE'], true) || trim($data['api_username'] ?? '') === '') throw new \InvalidArgumentException('Geçerli EDM ortamı ve kullanıcı adı gereklidir.');
-            foreach (['efatura_seri','earsiv_seri'] as $field) if (!preg_match('/^[A-Z0-9]{3}$/D', strtoupper(trim($data[$field] ?? '')))) throw new \InvalidArgumentException('Fatura serileri üç harf/rakamdan oluşmalıdır.');
-            if (strtoupper(trim($data['efatura_seri'])) === strtoupper(trim($data['earsiv_seri']))) throw new \InvalidArgumentException('e-Fatura ve e-Arşiv serileri farklı olmalıdır.');
+            
+            $efaturaSeri = strtoupper(substr(trim($data['efatura_seri'] ?? ($existing['efatura_seri'] ?? 'ERS')), 0, 3));
+            $earsivSeri = strtoupper(substr(trim($data['earsiv_seri'] ?? ($existing['earsiv_seri'] ?? 'ERA')), 0, 3));
+            if (!preg_match('/^[A-Z0-9]{3}$/D', $efaturaSeri) || !preg_match('/^[A-Z0-9]{3}$/D', $earsivSeri)) throw new \InvalidArgumentException('Fatura serileri üç harf/rakamdan oluşmalıdır.');
+            if ($efaturaSeri === $earsivSeri) throw new \InvalidArgumentException('e-Fatura ve e-Arşiv serileri farklı olmalıdır.');
 
             $encryptedPassword = !empty($data['api_password']) ? Security::encrypt($data['api_password']) : ($existing['api_password'] ?? '');
 
@@ -85,8 +88,8 @@ class EInvoiceSettingsModel extends Model
                 'environment'                => in_array($data['environment'] ?? '', ['TEST', 'LIVE']) ? $data['environment'] : 'TEST',
                 'test_wsdl_url'              => $data['test_wsdl_url'] ?? $existing['test_wsdl_url'] ?? \App\Config\EdmConfig::TEST_WSDL_URL,
                 'live_wsdl_url'              => $data['live_wsdl_url'] ?? $existing['live_wsdl_url'] ?? \App\Config\EdmConfig::LIVE_WSDL_URL,
-                'efatura_seri'               => strtoupper(substr(trim($data['efatura_seri'] ?? 'ERS'), 0, 3)),
-                'earsiv_seri'                => strtoupper(substr(trim($data['earsiv_seri'] ?? 'ERA'), 0, 3)),
+                'efatura_seri'               => $efaturaSeri,
+                'earsiv_seri'                => $earsivSeri,
                 'varsayilan_gonderici_alias' => $data['varsayilan_gonderici_alias'] ?? '',
                 'otomatik_gonder'            => !empty($data['otomatik_gonder']) ? 1 : 0,
                 'kontor_esik' => max(0, (int)($data['kontor_esik'] ?? 100))
@@ -132,8 +135,51 @@ class EInvoiceSettingsModel extends Model
     public function reconcileSerial(int $firmId, string $type, string $series, int $year, int $last): void
     {
         if (!preg_match('/^[A-Z0-9]{3}$/D', $series) || $last < 0 || $last > 999999999) throw new \InvalidArgumentException('EDM seri bilgisi geçersiz.');
-        $stmt = $this->db->prepare('INSERT INTO efatura_numarator (firm_id, belge_turu, yil, seri, son_numara) VALUES (:firm, :type, :year, :series, :last) ON DUPLICATE KEY UPDATE son_numara = GREATEST(son_numara, VALUES(son_numara))');
+        $stmt = $this->db->prepare('INSERT INTO efatura_numarator (firm_id, belge_turu, yil, seri, son_numara, updated_at) VALUES (:firm, :type, :year, :series, :last, NOW()) ON DUPLICATE KEY UPDATE son_numara = GREATEST(son_numara, VALUES(son_numara)), updated_at = NOW()');
         $stmt->execute(['firm' => $firmId, 'type' => $type, 'year' => $year, 'series' => $series, 'last' => $last]);
+    }
+
+    /**
+     * Firmanın tüm kayıtlı sayaçlarını getirir
+     */
+    public function getNumarators(int $firmId): array
+    {
+        try {
+            $stmt = $this->db->prepare("SELECT * FROM efatura_numarator WHERE firm_id = :firm ORDER BY yil DESC, belge_turu ASC, seri ASC");
+            $stmt->execute(['firm' => $firmId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) {
+            error_log("EInvoiceSettingsModel::getNumarators Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Sayaç / Numaratör kaydını günceller veya ekler
+     */
+    public function saveNumarator(int $firmId, string $type, string $series, int $year, int $lastNumber): bool
+    {
+        $series = strtoupper(trim($series));
+        if (!preg_match('/^[A-Z0-9]{3}$/D', $series) || $year < 2000 || $year > 2099 || $lastNumber < 0 || $lastNumber > 999999999) {
+            throw new \InvalidArgumentException('Geçersiz seri, yıl veya numara.');
+        }
+        if (!in_array($type, ['EFATURA', 'EARSIV', 'EIRSALIYE', 'ESMM'], true)) {
+            throw new \InvalidArgumentException('Geçersiz belge türü.');
+        }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO efatura_numarator (firm_id, belge_turu, yil, seri, son_numara, updated_at)
+            VALUES (:firm, :type, :year, :series, :last, NOW())
+            ON DUPLICATE KEY UPDATE son_numara = :last_update, updated_at = NOW()
+        ");
+        return $stmt->execute([
+            'firm' => $firmId,
+            'type' => $type,
+            'year' => $year,
+            'series' => $series,
+            'last' => $lastNumber,
+            'last_update' => $lastNumber
+        ]);
     }
 
     /**

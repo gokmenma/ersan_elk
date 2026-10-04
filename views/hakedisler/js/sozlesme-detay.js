@@ -1,9 +1,19 @@
 $(document).ready(function () {
   initHakedisTable();
 
+  $("#btnHakedisSave").on("click", function (e) {
+    e.preventDefault();
+    handleHakedisSubmit("save");
+  });
+
+  $("#btnHakedisSaveAndGo").on("click", function (e) {
+    e.preventDefault();
+    handleHakedisSubmit("saveAndGo");
+  });
+
   $("#yeniHakedisForm").on("submit", function (e) {
     e.preventDefault();
-    saveHakedis(this);
+    handleHakedisSubmit("saveAndGo");
   });
 });
 
@@ -151,7 +161,55 @@ function initHakedisTable() {
   hakedisTable = $("#hakedisTable").DataTable(options);
 }
 
-function saveHakedis(form) {
+function handleHakedisSubmit(actionType) {
+  const form = document.getElementById("yeniHakedisForm");
+  const $form = $(form);
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+
+  const durum = $form.find('[name="durum"]').val();
+  const hakedisNo = $form.find('[name="hakedis_no"]').val() || "";
+  const hasDraftInvoice = $form.data("fatura-id") && $form.data("fatura-durum-kodu") === "TASLAK";
+
+  if (durum === "tamamlandi") {
+    let swalTitle = "E-Fatura Kesmek İstiyor Musunuz?";
+    let swalHtml = `Hakediş durumu <b>'Tamamlandı'</b> olarak kaydedilecek.<br><br><b>#${hakedisNo} nolu hakediş</b> için otomatik e-fatura taslağı oluşturulsun mu?`;
+    let confirmBtn = '<i class="bx bx-file me-1"></i> Evet, Fatura Taslağı Oluştur';
+
+    if (hasDraftInvoice) {
+      swalTitle = "Fatura Taslağı Güncellensin mi?";
+      swalHtml = `Hakediş durumu <b>'Tamamlandı'</b> olarak kaydedilecek.<br><br>Bu hakedişe ait mevcut <b>e-fatura taslağı</b> güncel tutarlarla güncellensin mi?`;
+      confirmBtn = '<i class="bx bx-refresh me-1"></i> Evet, Taslağı Güncelle';
+    }
+
+    Swal.fire({
+      title: swalTitle,
+      html: swalHtml,
+      icon: "question",
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: confirmBtn,
+      denyButtonText: '<i class="bx bx-check me-1"></i> Hayır, Sadece Kaydet',
+      cancelButtonText: "Vazgeç",
+      confirmButtonColor: "#34c38f",
+      denyButtonColor: "#556ee6",
+      cancelButtonColor: "#74788d",
+      allowOutsideClick: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        executeSaveHakedis(form, actionType, 1);
+      } else if (result.isDenied) {
+        executeSaveHakedis(form, actionType, 0);
+      }
+    });
+  } else {
+    executeSaveHakedis(form, actionType, 0);
+  }
+}
+
+function executeSaveHakedis(form, actionType, createInvoice) {
   // Endeks label'larını hidden inputlara yaz
   if (typeof updateEndeksLabels === "function") {
     updateEndeksLabels();
@@ -159,6 +217,12 @@ function saveHakedis(form) {
 
   const formData = $(form).serializeArray();
   formData.push({ name: "type", value: "saveHakedis" });
+  formData.push({ name: "create_invoice_draft", value: createInvoice });
+
+  // If durum select is disabled, serializeArray won't include it, so manually append if missing
+  if (!formData.some(item => item.name === "durum")) {
+    formData.push({ name: "durum", value: $(form).find('[name="durum"]').val() });
+  }
 
   Swal.fire({
     title: "Kaydediliyor...",
@@ -174,11 +238,37 @@ function saveHakedis(form) {
     formData,
     function (response) {
       if (response.status === "success") {
-        Swal.fire("Başarılı!", "Hakediş kaydedildi.", "success").then(() => {
-          $("#yeniHakedisModal").modal("hide");
-          hakedisTable.ajax.reload();
-          // window.location.href = "?p=hakedisler/hakedis-detay&id=" + response.hakedis_id;
-        });
+        if ((response.invoice_created || response.invoice_updated) && response.invoice_id) {
+          const invoiceLink = `index.php?p=efatura/olustur&id=${response.invoice_id}`;
+          const isUpdated = response.invoice_updated;
+          const successMsg = isUpdated
+            ? "Hakediş kaydedildi ve <b>fatura taslağı güncellendi</b>."
+            : "Hakediş kaydedildi ve <b>fatura taslağı oluşturuldu</b>.";
+
+          Swal.fire({
+            title: "Başarılı!",
+            html: `${successMsg}<br><br>
+                   <a href="${invoiceLink}" class="btn btn-sm btn-outline-primary mt-2" target="_blank">
+                       <i class="bx bx-edit me-1"></i> Fatura Taslağını Görüntüle
+                   </a>`,
+            icon: "success",
+            confirmButtonText: actionType === "saveAndGo" ? "Hakediş Detayına Git" : "Tamam",
+          }).then(() => {
+            $("#yeniHakedisModal").modal("hide");
+            hakedisTable.ajax.reload();
+            if (actionType === "saveAndGo") {
+              window.location.href = "?p=hakedisler/hakedis-detay&id=" + response.hakedis_id;
+            }
+          });
+        } else {
+          Swal.fire("Başarılı!", "Hakediş kaydedildi.", "success").then(() => {
+            $("#yeniHakedisModal").modal("hide");
+            hakedisTable.ajax.reload();
+            if (actionType === "saveAndGo") {
+              window.location.href = "?p=hakedisler/hakedis-detay&id=" + response.hakedis_id;
+            }
+          });
+        }
       } else {
         Swal.fire("Hata!", response.message || "Bir hata oluştu.", "error");
       }
@@ -207,6 +297,9 @@ function editHakedis(id) {
         const $form = $("#yeniHakedisForm");
 
         $("#hakedis_id").val(data.id);
+        $form.data("fatura-id", data.fatura_id || null);
+        $form.data("fatura-durum-kodu", data.fatura_durum_kodu || null);
+
         $form.find('[name="hakedis_no"]').val(data.hakedis_no);
 
         // Hakediş Ayı ve Yılı - trigger change for Select2 and labels
@@ -243,10 +336,27 @@ function editHakedis(id) {
             $tutanakInput.val(tutanakVal);
         }
 
-        $form
-          .find('[name="durum"]')
-          .val(data.durum || "taslak")
-          .trigger("change");
+        // Fatura durumuna göre kilit veya bilgilendirme kontrolü
+        $("#faturaDurumInfo").remove();
+        const $durumSelect = $form.find('[name="durum"]');
+
+        if (data.fatura_durum_kodu && data.fatura_durum_kodu !== "TASLAK") {
+          $durumSelect.prop("disabled", true).val(data.durum || "tamamlandi").trigger("change");
+          $durumSelect.closest(".col-md-6").prepend(`
+            <div id="faturaDurumInfo" class="alert alert-warning py-1 px-2 mb-2 small">
+                <i class="bx bx-lock-alt me-1"></i> Fatura GİB'e iletilmiştir (<b>${data.fatura_durum_kodu}</b>${data.fatura_fatura_no ? ' - ' + data.fatura_fatura_no : ''}). Durum değiştirilemez.
+            </div>
+          `);
+        } else {
+          $durumSelect.prop("disabled", false).val(data.durum || "taslak").trigger("change");
+          if (data.fatura_durum_kodu === "TASLAK") {
+            $durumSelect.closest(".col-md-6").prepend(`
+              <div id="faturaDurumInfo" class="alert alert-info py-1 px-2 mb-2 small">
+                  <i class="bx bx-info-circle me-1"></i> Bu hakedişe bağlı <b>TASLAK</b> fatura mevcuttur.
+              </div>
+            `);
+          }
+        }
 
         $form.find('[name="onceki_hakedis_tutari"]').val(data.onceki_hakedis_tutari || 0);
 
@@ -286,9 +396,11 @@ $(document).on("click", '[data-bs-target="#yeniHakedisModal"]', function () {
   const $form = $("#yeniHakedisForm");
   $form[0].reset();
   $("#hakedis_id").val("");
+  $form.removeData("fatura-id").removeData("fatura-durum-kodu");
+  $("#faturaDurumInfo").remove();
 
-  // Reset durum to taslak
-  $form.find('[name="durum"]').val("taslak").trigger("change");
+  // Reset durum to taslak and enable it
+  $form.find('[name="durum"]').prop("disabled", false).val("taslak").trigger("change");
 
   // Reset date to current month's last day
   const now = new Date();

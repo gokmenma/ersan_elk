@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 1) . '/../Autoloader.php';
 use App\Helper\Security;
+use App\Helper\Form;
 use App\Model\CariModel;
 
 $maintitle = 'Cari Yönetimi';
@@ -13,413 +14,474 @@ $Cari = new CariModel();
 $cariData = $Cari->find($cari_id);
 
 if (!$cariData) {
-    echo '<div class="alert alert-danger">Cari bulunamadı!</div>';
+    echo '<div class="alert alert-danger m-4">Cari bulunamadı!</div>';
     exit;
 }
 
 // Cari Özet Bilgileri
-// Cari Özet Bilgileri
-$stmt = $Cari->getDb()->prepare("SELECT SUM(borc) as toplam_borc, SUM(alacak) as toplam_alacak, SUM(alacak - borc) as bakiye FROM cari_hareketleri WHERE cari_id = :cari_id AND silinme_tarihi IS NULL");
+$stmt = $Cari->getDb()->prepare("SELECT COUNT(*) as toplam_islem, SUM(borc) as toplam_borc, SUM(alacak) as toplam_alacak, SUM(alacak - borc) as bakiye FROM cari_hareketleri WHERE cari_id = :cari_id AND silinme_tarihi IS NULL");
 $stmt->execute(['cari_id' => $cari_id]);
 $ozet = $stmt->fetch(PDO::FETCH_OBJ);
-$toplam_borc = $ozet->toplam_borc ?? 0;
-$toplam_alacak = $ozet->toplam_alacak ?? 0;
-$bakiye = $ozet->bakiye ?? 0;
+$toplam_islem = (int)($ozet->toplam_islem ?? 0);
+$toplam_borc = (float)($ozet->toplam_borc ?? 0);
+$toplam_alacak = (float)($ozet->toplam_alacak ?? 0);
+$bakiye = (float)($ozet->bakiye ?? 0);
 ?>
+<script>try { document.documentElement.classList.toggle('cari-hareket-summary-hidden', localStorage.getItem('cari_hareket_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.cari-hareket-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+</style>
+
+<?php include 'layouts/breadcrumb.php'; ?>
 
 <div class="container-fluid">
-    <?php include 'layouts/breadcrumb.php'; ?>
-
-    <!-- Cari Bilgi Çubuğu (Bordro Stili) -->
-    <div class="card border-0 shadow-sm mb-4 bordro-info-bar"
-        style="border-radius: 20px; background: rgba(19, 91, 236, 0.03); border: 1px solid rgba(19, 91, 236, 0.1) !important;">
-        <div class="card-body p-3 d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center">
-                <div class="bg-white rounded-3 shadow-sm p-2 me-3 d-flex align-items-center justify-content-center"
-                    style="width: 45px; height: 45px;">
-                    <i data-feather="user" class="text-primary"></i>
-                </div>
-                <div>
-                    <h5 class="mb-0 fw-bold bordro-text-heading"><?php echo htmlspecialchars($cariData->CariAdi); ?></h5>
-                    <small class="text-muted fw-medium">
-                        <i data-feather="phone" class="me-1" style="width: 14px; height: 14px;"></i><?php echo htmlspecialchars($cariData->Telefon ?: 'Belirtilmemiş'); ?> 
-                        <span class="mx-2">|</span> 
-                        <i data-feather="mail" class="me-1" style="width: 14px; height: 14px;"></i><?php echo htmlspecialchars($cariData->Email ?: 'Belirtilmemiş'); ?>
-                    </small>
-                </div>
+    <!-- 1. Üst Başlık ve Aksiyon Araç Çubuğu (Fatura Sayfası Formatı) -->
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-history fs-4 text-primary"></i>
             </div>
-            
+            <div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h4 class="mb-0 fw-bold text-dark font-size-16"><?= htmlspecialchars($cariData->CariAdi) ?></h4>
+                    <?php if (!empty($cariData->vkn_tckn)): ?>
+                        <span class="badge bg-light text-muted border font-monospace font-size-11"><?= htmlspecialchars($cariData->vkn_tckn) ?></span>
+                    <?php endif; ?>
+                </div>
+                <p class="text-muted mb-0 font-size-12">
+                    <?= !empty($cariData->firma) ? htmlspecialchars($cariData->firma) . ' &bull; ' : '' ?>
+                    <i class="bx bx-phone me-1"></i><?= htmlspecialchars($cariData->Telefon ?: 'Telefon Yok') ?>
+                    <?php if (!empty($cariData->Email)): ?>
+                        &bull; <i class="bx bx-envelope me-1"></i><?= htmlspecialchars($cariData->Email) ?>
+                    <?php endif; ?>
+                </p>
+            </div>
+        </div>
         
-            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 d-none d-md-flex">
-             <a href="index.php?p=cari/list" class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center">
-                    <i data-feather="arrow-left" class="me-1" style="width: 18px; height: 18px;"></i> <span class="d-none d-sm-inline">Listeye Dön</span>
-                </a>   
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0 flex-wrap">
+            <!-- 1. Listeye Dön Butonu -->
+            <a href="index.php?p=cari/list" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm">
+                <i class="bx bx-arrow-back font-size-16"></i> <span class="d-none d-sm-inline">Listeye Dön</span>
+            </a>
 
-            <button type="button" id="btnExportExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                    <i data-feather="file-text" class="me-1" style="width: 18px; height: 18px;"></i> Excel
+            <!-- 2. Aldım (+) Butonu -->
+            <button type="button" class="btn btn-success top-action-btn shadow-sm text-white" id="btnAldimDesktop">
+                <i class="bx bx-plus-circle font-size-16"></i> Aldım (+)
+            </button>
+
+            <!-- 3. Verdim (-) Butonu -->
+            <button type="button" class="btn btn-danger top-action-btn shadow-sm text-white" id="btnVerdimDesktop">
+                <i class="bx bx-minus-circle font-size-16"></i> Verdim (-)
+            </button>
+
+            <!-- 4. İşlemler Dropdown -->
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
                 </button>
-               
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-
-                <a href="views/cari/export-ekstre-pdf.php?id=<?= urlencode($cari_id_enc) ?>" target="_blank" class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center">
-                    <i data-feather="file" class="me-1" style="width: 18px; height: 18px;"></i> PDF Ekstre
-                </a>
-
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-
-                <button type="button" id="btnPdfYukle" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center">
-                    <i data-feather="upload-cloud" class="me-1" style="width: 18px; height: 18px;"></i> PDF Yükle
-                </button>
-
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-
-                <button type="button" onclick="editCariNoteDesktop()" class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
-                    <i data-feather="edit-2" class="me-1" style="width: 18px; height: 18px;"></i> Cari Notu
-                </button>
-               
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                 <button type="button" class="btn  btn-outline-success btn-sm fw-semibold px-3 d-flex align-items-center" id="btnAldimDesktop">
-                    <i data-feather="plus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Aldım
-                </button>
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-
-                <button type="button" class="btn btn-outline-danger btn-sm fw-semibold px-3 d-flex align-items-center" id="btnVerdimDesktop">
-                    <i data-feather="minus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Verdim
-                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnExportExcel">
+                        <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
+                    </button>
+                    <a class="dropdown-item d-flex align-items-center" href="views/cari/export-ekstre-pdf.php?id=<?= urlencode($cari_id_enc) ?>" target="_blank">
+                        <i class="bx bx-file-blank me-2 font-size-16 text-danger"></i> PDF Ekstre İndir
+                    </a>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnPdfYukle">
+                        <i class="bx bx-cloud-upload me-2 font-size-16 text-primary"></i> PDF Ekstre Yükle
+                    </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" onclick="editCariNoteDesktop()">
+                        <i class="bx bx-notepad me-2 font-size-16 text-warning"></i> Cari Notu Ekle/Düzenle
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/olustur">
+                        <i class="bx bx-receipt me-2 text-primary font-size-16"></i> Yeni Fatura Kes
+                    </a>
+                </div>
             </div>
-            
-            <!-- Mobile actions wrapper (only visible on mobile to keep structure tidy) -->
-            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto d-md-none">
-                <button type="button" class="btn btn-link btn-sm text-success text-decoration-none px-2" id="btnExportExcelMobileTop" title="Excel'e Aktar">
-                    <i data-feather="printer"></i>
-                </button>
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2" id="btnPdfYukleMobile" title="PDF'ten Hareket Yükle">
-                    <i data-feather="upload-cloud"></i>
-                </button>
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                <a href="index.php?p=cari/list" class="btn btn-link btn-sm text-secondary text-decoration-none px-3 d-flex align-items-center">
-                    <i data-feather="arrow-left" class="me-1" style="width: 18px; height: 18px;"></i>
-                </a>
-            </div>
+
+            <!-- 5. Özet Kartları Açma/Kapama Butonu -->
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
         </div>
     </div>
 
-    <!-- Özet Kartları (Minimal Mobil ve Desktop) -->
-    <div class="row g-2 mb-4 summary-cards-container">
-        <div class="col-4 col-md-4">
-            <div id="card_toplam_aldim" class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #2a9d8f; border-bottom: 2px solid var(--card-color) !important; cursor: pointer;">
-                <div class="card-body p-2 text-center text-md-start">
-                    <div class="icon-label-container d-none d-md-flex">
-                        <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
-                            <i data-feather="trending-down" style="color: #2a9d8f;"></i>
+    <!-- 2. 4 Adet Minimal Özet KPI Kartı (Fatura Formatı) -->
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <!-- Kart 1: TOPLAM GİRİŞ (ALD.') -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM GİRİŞ (ALD.")</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-trending-down"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. GİRİŞ (ALD.")</p>
-                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. GİRİŞ</p>
-                    <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
-                        <span id="toplam_borc_kart" style="font-size: 0.9rem;"><?php echo number_format($toplam_borc, 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
-                    </h5>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-4 col-md-4">
-            <div id="card_toplam_verdim" class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #f43f5e; border-bottom: 2px solid var(--card-color) !important; cursor: pointer;">
-                <div class="card-body p-2 text-center text-md-start">
-                    <div class="icon-label-container d-none d-md-flex">
-                        <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
-                            <i data-feather="trending-up" class="text-danger"></i>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. ÇIKIŞ (VERD.")</p>
-                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. ÇIKIŞ</p>
-                    <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
-                        <span id="toplam_alacak_kart" style="font-size: 0.9rem;"><?php echo number_format($toplam_alacak, 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
-                    </h5>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-4 col-md-4">
-            <div id="card_bakiye" class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #135bec; border-bottom: 2px solid var(--card-color) !important; cursor: pointer;">
-                <div class="card-body p-2 text-center text-md-start">
-                    <div class="icon-label-container d-none d-md-flex">
-                        <div class="icon-box" style="background: rgba(19, 91, 236, 0.1);">
-                            <i data-feather="briefcase" id="bakiye_icon_color" class="<?php echo $bakiye < 0 ? 'text-danger' : 'text-success'; ?>"></i>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">BENİM DURUMUM</p>
-                    <p class="text-primary mb-0 small fw-bold d-md-none" id="mobile_bakiye_title" style="font-size: 10px; color: <?php echo $bakiye < 0 ? '#f43f5e' : '#2a9d8f'; ?> !important;"><?php echo $bakiye < 0 ? 'BENİM BORCUM' : 'BENİM ALACAĞIM'; ?></p>
-                    <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1 <?php echo $bakiye < 0 ? 'text-danger' : 'text-success'; ?>" id="bakiye_label_container">
-                        <span id="genel_bakiye_kart" style="font-size: 0.9rem;"><?php echo number_format(abs($bakiye), 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
-                        <small id="bakiye_status_text" style="font-size: 0.6rem; display: block;"><?php echo $bakiye < 0 ? '(B. Borçlu)' : ($bakiye > 0 ? '(B. Alacaklı)' : ''); ?></small>
-                    </h5>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-3 mt-n2">
-        <div class="col-12 d-flex justify-content-end">
-            <div class="btn-group shadow-sm bg-white p-1" role="group" aria-label="Hareket Filtresi" style="border-radius: 12px; border: 1px solid #e2e8f0;">
-                <input type="radio" class="btn-check" name="filter_type" id="filter_all" value="all" checked>
-                <label class="btn btn-outline-primary border-0 px-3 py-1 fw-bold filter-type-label" for="filter_all" style="border-radius: 8px !important; font-size: 13px;">Tümü</label>
-
-                <input type="radio" class="btn-check" name="filter_type" id="filter_in" value="aldim">
-                <label class="btn btn-outline-success border-0 px-3 py-1 fw-bold filter-type-label" for="filter_in" style="border-radius: 8px !important; font-size: 13px;">Girişler (+)</label>
-
-                <input type="radio" class="btn-check" name="filter_type" id="filter_out" value="verdim">
-                <label class="btn btn-outline-danger border-0 px-3 py-1 fw-bold filter-type-label" for="filter_out" style="border-radius: 8px !important; font-size: 13px;">Çıkışlar (-)</label>
-            </div>
-        </div>
-    </div>
-
-    <style>
-        .filter-type-label { color: #64748b; background: transparent; transition: all 0.2s; border: none !important; }
-        .btn-check:checked + .btn-outline-primary { background-color: rgba(19, 91, 236, 0.1) !important; color: #135bec !important; }
-        .btn-check:checked + .btn-outline-success { background-color: rgba(16, 185, 129, 0.1) !important; color: #10b981 !important; }
-        .btn-check:checked + .btn-outline-danger { background-color: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; }
-        .bordro-summary-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important; transition: all 0.3s ease; }
-        .bordro-summary-card:active { transform: translateY(-1px); }
-        @media (max-width: 767.98px) {
-            .btn-group { width: 100%; display: flex; }
-            .filter-type-label { flex: 1; text-align: center; }
-        }
-    </style>
-
-    <?php if($cariData->notlar): ?>
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm" style="border-radius: 15px; background: #fffbeb; border: 1px solid #fef3c7 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="d-flex align-items-center">
-                            <i data-feather="bookmark" class="text-warning me-2" style="width: 18px;"></i>
-                            <h6 class="mb-0 fw-bold text-warning-emphasis">Cari Notu</h6>
-                        </div>
-                        <button type="button" onclick="editCariNoteDesktop()" class="btn btn-sm btn-light-warning">
-                            <i data-feather="edit-2" style="width: 14px;"></i> Düzenle
+                    <h3 class="summary-kpi-value my-1 text-success" id="toplam_borc_kart"><?= number_format($toplam_borc, 2, ',', '.') ?> ₺</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-success fw-semibold">Giriş Hareketleri</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="aldim">
+                            <i class="bx bx-plus-circle"></i> Girişler (+)
                         </button>
                     </div>
-                    <p class="mb-0 text-muted small italic"><?= nl2br(htmlspecialchars($cariData->notlar)) ?></p>
                 </div>
             </div>
+        </div>
+
+        <!-- Kart 2: TOPLAM ÇIKIŞ (VERD.') -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM ÇIKIŞ (VERD.")</span>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bx bx-trending-up"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-danger" id="toplam_alacak_kart"><?= number_format($toplam_alacak, 2, ',', '.') ?> ₺</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-danger fw-semibold">Çıkış Hareketleri</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="verdim">
+                            <i class="bx bx-minus-circle"></i> Çıkışlar (-)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 3: BENİM DURUMUM (NET BAKİYE) -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">BENİM DURUMUM (NET)</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-wallet"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 <?= $bakiye < 0 ? 'text-danger' : ($bakiye > 0 ? 'text-success' : 'text-dark') ?>" id="genel_bakiye_kart">
+                        <?= number_format(abs($bakiye), 2, ',', '.') ?> ₺
+                    </h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-muted" id="stat_bakiye_durum_metni">Bakiye Durumu</span>
+                        <span class="badge <?= $bakiye < 0 ? 'bg-danger-subtle text-danger border border-danger-subtle' : ($bakiye > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle') ?> rounded-pill px-2 py-1 font-size-11 fw-semibold" id="bakiye_status_text">
+                            <?= $bakiye < 0 ? 'Borçluyum (Net)' : ($bakiye > 0 ? 'Alacaklıyım (Net)' : '0,00 ₺ (Dengede)') ?>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 4: TOPLAM İŞLEM SAYISI -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM HAREKET ADEDİ</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bx bx-list-check"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1" id="toplam_islem_kart"><?= $toplam_islem ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-muted" id="op_count"><?= $toplam_islem ?> Kayıtlı İşlem</span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-filter="all">
+                            <i class="bx bx-layer"></i> Tümü
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cari Notu Varsa Şık Bildirim Kartı -->
+    <?php if(!empty($cariData->notlar)): ?>
+    <div class="card summary-kpi-card mb-3 border-warning-subtle" style="background: #fffdf5;">
+        <div class="card-body p-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-start gap-2">
+                <div class="p-1.5 bg-warning-subtle text-warning rounded-2 border border-warning-subtle d-flex align-items-center justify-content-center flex-shrink-0 mt-0.5" style="width: 28px; height: 28px;">
+                    <i class="bx bx-bookmark font-size-15"></i>
+                </div>
+                <div>
+                    <h6 class="mb-1 fw-bold text-dark font-size-13">Cari Özel Notu</h6>
+                    <p class="mb-0 text-muted font-size-12 fst-italic"><?= nl2br(htmlspecialchars($cariData->notlar)) ?></p>
+                </div>
+            </div>
+            <button type="button" onclick="editCariNoteDesktop()" class="btn btn-sm btn-subtle-warning px-2.5 py-1 rounded-3 font-size-12 fw-semibold">
+                <i class="bx bx-edit-alt me-1"></i> Düzenle
+            </button>
         </div>
     </div>
     <?php endif; ?>
 
-    <style>
-        /* Mobil Tasarım İyileştirmeleri - Desktop Uyumluluğu */
-        @media (max-width: 767.98px) {
-            /* Mobilde uygulamanın main footer'ını gizle */
-            footer, .footer, #footer { display: none !important; }
-            body { padding-bottom: 70px; } /* Alt butonlar için alan */
-            
-            .bordro-info-bar { border-radius: 10px !important; margin-bottom: 1rem !important; border: 1px solid #dee2e6 !important; background: #fff !important; }
-            
-            .hareket-desktop-table { display: none !important; }
-            .hareket-mobile-list { display: block !important; padding: 0 5px; }
-            
-            /* Genel Bakiye Kartı - Desktop ile aynı minimal tarz */
-            /* Genel Bakiye Kartı - Desktop ile aynı minimal tarz */
-            .minimal-card { 
-                padding: 10px 5px !important; 
-                min-height: 70px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .minimal-card .card-body { padding: 5px !important; }
-            .minimal-card h5 { font-size: 0.85rem !important; margin-top: 2px !important; }
-            .minimal-card p.small { font-size: 8px !important; margin-bottom: 0 !important; }
-            
-            .mobile-balance-card {
-                background: #fff;
-                border: 1px solid #e9ecef;
-                border-radius: 10px;
-                padding: 15px;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-                text-align: center;
-            }
-            .mobile-balance-card .label { color: #495057; font-weight: 600; font-size: 12px; margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
-            .mobile-balance-card .amount { font-size: 22px; font-weight: 700; color: #343a40; }
-            
-            /* Hızlı Aksiyonlar - Minimal Butonlar */
-            .mobile-quick-actions { 
-                display: flex; 
-                justify-content: space-around; 
-                margin-bottom: 25px; 
-            }
-            .quick-action-btn { 
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                text-decoration: none; 
-                color: #495057; 
-                font-size: 11px; 
-                font-weight: 500; 
-                padding: 8px;
-                background: transparent;
-                border-radius: 8px;
-                transition: background-color 0.2s;
-            }
-            .quick-action-btn:active { background: #f8f9fa; }
-            .quick-action-icon { width: 35px; height: 35px; border-radius: 8px; background: rgba(19, 91, 236, 0.05); color: #135bec; display: flex; align-items: center; justify-content: center; margin-bottom: 5px; }
-
-            /* Operasyon Listesi */
-            .op-header { font-weight: 600; color: #343a40; font-size: 14px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e9ecef; }
-            
-            .op-card {
-                background: #fff;
-                border: 1px solid #e9ecef;
-                border-radius: 8px;
-                padding: 8px 12px;
-                margin-bottom: 6px;
-                display: flex;
-                align-items: center;
-            }
-            .op-icon {
-                width: 28px;
-                height: 28px;
-                border-radius: 6px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin-right: 10px;
-                flex-shrink: 0;
-            }
-            .op-icon i { font-size: 14px; }
-            .op-icon.up { color: #dc3545; background: rgba(220, 53, 69, 0.1); }
-            .op-icon.down { color: #198754; background: rgba(25, 135, 84, 0.1); }
-            
-            .op-info { flex-grow: 1; }
-            .op-date { font-weight: 600; font-size: 11px; color: #495057; margin-bottom: 1px; }
-            .op-desc { font-size: 10px; color: #6c757d; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-            
-            .op-value { text-align: right; }
-            .op-amt { font-weight: 700; font-size: 12px; display: block; color: #212529; }
-            .op-type { font-size: 8px; font-weight: 600; text-transform: uppercase; color: #adb5bd; }
-
-            .btn-light-primary { background: #e0e7ff; color: #135bec; border: none; }
-            .btn-light-danger { background: #fee2e2; color: #ef4444; border: none; }
-
-            /* Sabit Alt Butonlar - Bootstrap Outline Buton Stili (Desktop-like) */
-            .bottom-actions {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                background: #fff;
-                padding: 10px 15px;
-                display: flex;
-                gap: 10px;
-                box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-                z-index: 1000;
-                border-top: 1px solid #e9ecef;
-            }
-            .btn-aldim { background: transparent; color: #198754; flex: 1; border: 1px solid #198754; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-            .btn-aldim:active { background: #198754; color: #fff; }
-            
-            .btn-verdim { background: transparent; color: #dc3545; flex: 1; border: 1px solid #dc3545; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-            .btn-verdim:active { background: #dc3545; color: #fff; }
-
-            /* Flatpickr Time input fix */
-            .flatpickr-time input {
-                -webkit-appearance: none;
-                -moz-appearance: textfield;
-                appearance: none;
-            }
-            .flatpickr-time input::-webkit-outer-spin-button,
-            .flatpickr-time input::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                appearance: none;
-                margin: 0;
-            }
-        }
-        @media (min-width: 768px) {
-            .hareket-mobile-list { display: none !important; }
-            .bottom-actions { display: none !important; }
-            .container-fluid { padding-bottom: 20px; }
-            #hareketTable tbody tr { cursor: pointer; }
-        }
-    </style>
-
-    <div class="row hareket-desktop-table">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <table id="hareketTable" class="table table-hover table-bordered nowrap w-100 datatable-deferred">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th class="text-center" style="width: 120px;" data-filter="date">Tarih</th>
-                                <th style="width: 120px;" data-filter="string">Belge No</th>
-                                <th data-filter="string">Açıklama</th>
-                                <th class="text-end" style="width: 150px;" data-filter="number">Aldım (+)</th>
-                                <th class="text-end" style="width: 150px;" data-filter="number">Verdim (-)</th>
-                                <th class="text-end" style="width: 150px;" data-filter="number">Yürüyen Bakiye</th>
-                                <th class="text-center" style="width: 80px;">İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+    <!-- 3. Standart DataTables Hareket Tablosu Kartı (Fatura Formatı) -->
+    <div class="card summary-kpi-card mb-3" id="hareketListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                    <i class="bx bx-list-ul font-size-20"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Hesap Hareketleri Dökümü</h5>
+                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Tarih, belge, işlem tutarları ve yürüyen bakiye takibi</p>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Mobil Hareket Görünümü -->
-    <div class="hareket-mobile-list">
-
-        <div class="mobile-quick-actions">
-            <a href="javascript:void(0)" onclick="editCariNoteDesktop()" class="quick-action-btn"><div class="quick-action-icon"><i data-feather="edit-2" style="width: 18px; height: 18px;"></i></div><span>Not</span></a>
-            <a href="tel:<?php echo $cariData->Telefon; ?>" class="quick-action-btn"><div class="quick-action-icon"><i data-feather="phone" style="width: 18px; height: 18px;"></i></div><span>Ara</span></a>
-            <a href="#" class="quick-action-btn"><div class="quick-action-icon"><i data-feather="share-2" style="width: 18px; height: 18px;"></i></div><span>Paylaş</span></a>
-            <a href="#" class="quick-action-btn" id="btnExportExcelMobile"><div class="quick-action-icon"><i data-feather="file-text" style="width: 18px; height: 18px;"></i></div><span>Raporlar</span></a>
-        </div>
-
-        <div class="op-header">
-            Kayıtlı İşlemler 
-            <span class="float-end text-muted small fw-normal" id="op_count" style="margin-top: 2px;">(0)</span>
+            <!-- Sağ Araç Çubuğu -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
+                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-subtle-primary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderRefresh" title="Listeyi Yenile">
+                    <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yenile</span>
+                </button>
+            </div>
         </div>
 
-        <div id="hareketMobileContainer">
-            <div class="text-center py-5 text-muted">
-                <div class="spinner-border spinner-border-sm me-2 text-primary"></div>
-                Veriler yükleniyor...
+        <div class="card-body p-3 pt-0">
+            <div class="table-responsive" style="overflow-x: auto !important;">
+                <table id="hareketTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th data-filter="date" style="width: 130px;" class="text-center">TARİH</th>
+                            <th data-filter="string" style="width: 120px;">BELGE NO</th>
+                            <th data-filter="string">AÇIKLAMA</th>
+                            <th data-filter="number" class="text-end" style="width: 140px;">GİRİŞ (ALD.)</th>
+                            <th data-filter="number" class="text-end" style="width: 140px;">ÇIKIŞ (VERD.)</th>
+                            <th data-filter="number" class="text-end" style="width: 150px;">YÜRÜYEN BAKİYE</th>
+                            <th data-filter="none" style="width: 90px;" class="text-center">İŞLEMLER</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- Sabit Alt Butonlar -->
-    <div class="bottom-actions">
-        <button class="btn-aldim" id="btnAldimMobile"><i data-feather="minus-circle" class="me-2" style="width: 16px;"></i>Aldım</button>
-        <button class="btn-verdim" id="btnVerdimMobile"><i data-feather="plus-circle" class="me-2" style="width: 16px;"></i>Verdim</button>
+    <!-- Mobil Liste Görünümü (Mobilde DataTables yerine gösterilir) -->
+    <div class="hareket-mobile-list d-md-none mt-2">
+        <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+            <span class="fw-bold font-size-13 text-dark">Kayıtlı İşlemler</span>
+            <span class="text-muted font-size-11" id="mobile_op_count">(<?= $toplam_islem ?> İşlem)</span>
+        </div>
+        <div id="hareketMobileContainer"></div>
     </div>
 </div>
 
-<script>
-    const global_cari_id = '<?php echo $cari_id_enc; ?>';
+<style>
+/* Tablo Tipografi ve Okunabilirlik İyileştirmeleri */
+#hareketTable {
+    font-size: 13px !important;
+}
+#hareketTable thead th {
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    letter-spacing: 0.3px;
+    background-color: #f8fafc !important;
+    vertical-align: middle !important;
+}
+#hareketTable tbody td {
+    padding: 8px 12px !important;
+    vertical-align: middle !important;
+    color: #0f172a !important;
+}
+/* Muhasebe ve Tablo Satır Butonları */
+.table-action-btn {
+    width: 27px;
+    height: 27px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+.table-action-btn:hover {
+    transform: translateY(-1px);
+}
+.action-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
 
-</script>
-<script src="views/cari/js/hareketler.js?v=<?php echo time(); ?>"></script>
+/* Modern KPI Kart Stilleri */
+.summary-kpi-card {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.summary-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05) !important;
+}
+.summary-kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.summary-kpi-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1;
+}
+.summary-kpi-value {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+.summary-kpi-subtext {
+    font-size: 11.5px;
+    color: #64748b;
+    font-weight: 500;
+}
+.summary-pill-btn {
+    font-size: 11px !important;
+    height: 24px !important;
+    line-height: 1 !important;
+    padding: 0 10px !important;
+    font-weight: 600 !important;
+    border-radius: 20px !important;
+    transition: all 0.2s ease;
+}
 
-<!-- Hızlı İşlem Modalı -->
+/* Modern Subtle Renkli Butonlar */
+.btn-subtle-primary {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    transition: all 0.18s ease;
+}
+.btn-subtle-primary:hover, .btn-subtle-primary:focus, .btn-subtle-primary.active {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+}
+
+.btn-subtle-success {
+    background-color: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    transition: all 0.18s ease;
+}
+.btn-subtle-success:hover, .btn-subtle-success:focus, .btn-subtle-success.active {
+    background-color: #16a34a !important;
+    color: #ffffff !important;
+    border-color: #16a34a !important;
+    box-shadow: 0 2px 5px rgba(22, 163, 74, 0.25);
+}
+
+.btn-subtle-danger {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    transition: all 0.18s ease;
+}
+.btn-subtle-danger:hover, .btn-subtle-danger:focus, .btn-subtle-danger.active {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 2px 5px rgba(220, 38, 38, 0.25);
+}
+
+.btn-subtle-warning {
+    background-color: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+    transition: all 0.18s ease;
+}
+.btn-subtle-warning:hover, .btn-subtle-warning:focus, .btn-subtle-warning.active {
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 2px 5px rgba(217, 119, 6, 0.25);
+}
+
+.btn-subtle-secondary {
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    transition: all 0.18s ease;
+}
+.btn-subtle-secondary:hover, .btn-subtle-secondary:focus {
+    background-color: #475569;
+    color: #ffffff !important;
+    border-color: #475569;
+    box-shadow: 0 2px 5px rgba(71, 85, 105, 0.25);
+}
+
+.top-action-btn {
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.top-icon-btn {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 1.15rem;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    transition: all 0.2s ease;
+}
+.top-icon-btn:hover {
+    background-color: #f1f5f9;
+    color: #1e293b;
+    border-color: #94a3b8;
+}
+
+/* Mobil Kart Stilleri */
+.op-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+</style>
+
+<!-- Hızlı İşlem Modalı (Aldım/Verdim) -->
 <div class="modal fade" id="hizliIslemModal" tabindex="-1" aria-labelledby="hizliIslemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-start">
-                <div class="d-flex align-items-center">
-                    <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: #e0e7ff;">
-                        <!-- Icon will be injected by JS depending on type (aldi/verdi) -->
-                        <div id="hizliIslemModalIcon"><i data-feather="plus-circle" style="width: 24px; height: 24px; color: #135bec;"></i></div>
+                <div class="d-flex align-items-center w-100">
+                    <div class="bg-primary-subtle rounded-circle d-flex align-items-center justify-content-center me-3" id="hizliIslemIconBg" style="width: 48px; height: 48px;">
+                        <i class="bx bx-transfer font-size-24 text-primary" id="hizliIslemIcon"></i>
                     </div>
-                    <div>
+                    <div class="flex-grow-1">
                         <h5 class="modal-title fw-bold mb-1" id="hizliIslemModalLabel" style="color: #1a1a1a;">Yeni İşlem</h5>
                         <p class="text-muted small mb-0" id="hizliIslemModalDesc">İşlem bilgilerini doldurun.</p>
                     </div>
@@ -428,25 +490,23 @@ $bakiye = $ozet->bakiye ?? 0;
             </div>
             <form id="hizliIslemForm">
                 <input type="hidden" name="action" value="hizli-hareket-kaydet">
-                <input type="hidden" name="cari_id" value="<?php echo $cari_id_enc; ?>">
+                <input type="hidden" name="cari_id" value="<?= htmlspecialchars($cari_id_enc) ?>">
+                <input type="hidden" name="hareket_id" id="hizli_hareket_id" value="">
                 <input type="hidden" name="type" id="hizli_islem_type" value="">
                 
                 <div class="modal-body px-4 pt-4 pb-2">
                     <div class="mb-3">
-                        <?php 
-                        use App\Helper\Form;
-                        echo Form::FormFloatInput("text", "islem_tarihi", "", "Tarih", "Tarih", "calendar", "form-control flatpickr-time-input", true, null, "off", false); 
-                        ?>
+                        <?= Form::FormFloatInput("text", "islem_tarihi", date('Y-m-d H:i'), "Tarih", "Tarih", "calendar", "form-control flatpickr-time-input", true, null, "off", false) ?>
                     </div>
                     <div class="mb-3">
                         <label id="hizli_islem_amt_label" class="form-label small fw-bold text-muted mb-1">Tutar</label>
-                        <?php echo Form::FormFloatInput("text", "tutar", "", "0.00", "İşlem Tutarı", "dollar-sign", "form-control money", true, null, "off", false, 'step="0.01" min="0.01"'); ?>
+                        <?= Form::FormFloatInput("text", "tutar", "", "0.00", "İşlem Tutarı", "dollar-sign", "form-control money", true, null, "off", false, 'step="0.01" min="0.01"') ?>
                     </div>
                     <div class="mb-3">
-                        <?php echo Form::FormFloatInput("text", "belge_no", "", "Belge No", "Belge No", "hash", "form-control"); ?>
+                        <?= Form::FormFloatInput("text", "belge_no", "", "Belge No", "Belge No", "hash", "form-control") ?>
                     </div>
                     <div class="mb-3">
-                        <?php echo Form::FormFloatTextarea("aciklama", "", "Açıklama giriniz...", "Açıklama", "list", "form-control", false, "80px"); ?>
+                        <?= Form::FormFloatTextarea("aciklama", "", "Açıklama giriniz...", "Açıklama", "list", "form-control", false, "80px") ?>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted mb-1">Dosya (Resim veya PDF)</label>
@@ -455,7 +515,9 @@ $bakiye = $ozet->bakiye ?? 0;
                 </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end">
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
-                    <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
+                    <button type="submit" class="btn btn-dark px-4 shadow-sm" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">
+                        <i class="bx bx-save me-1"></i> Kaydet
+                    </button>
                 </div>
             </form>
         </div>
@@ -468,8 +530,8 @@ $bakiye = $ozet->bakiye ?? 0;
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-start">
                 <div class="d-flex align-items-center">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: #e0e7ff;">
-                        <i data-feather="upload-cloud" style="width: 24px; height: 24px; color: #135bec;"></i>
+                    <div class="p-2 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                        <i class="bx bx-cloud-upload font-size-24 text-primary"></i>
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold mb-1" style="color: #1a1a1a;">PDF'ten Hareket Yükle</h5>
@@ -488,7 +550,7 @@ $bakiye = $ozet->bakiye ?? 0;
                     </div>
                     <div class="text-end">
                         <button type="button" class="btn btn-dark px-4" id="btnPdfAnaliz" style="border-radius: 10px; font-weight: 600;">
-                            <i data-feather="search" class="me-1" style="width: 16px; height: 16px;"></i> Analiz Et
+                            <i class="bx bx-search me-1 font-size-16"></i> Analiz Et
                         </button>
                     </div>
                 </div>
@@ -496,27 +558,27 @@ $bakiye = $ozet->bakiye ?? 0;
                 <div id="pdfAdim2" class="d-none">
                     <div class="row g-2 mb-3">
                         <div class="col-6 col-md-3">
-                            <div class="border rounded-3 p-2 text-center h-100">
-                                <div class="small text-muted fw-bold">OKUNAN SATIR</div>
-                                <div class="fw-bold" id="pdfSatirSayisi">0</div>
+                            <div class="border rounded-3 p-2 text-center h-100 bg-light">
+                                <div class="small text-muted fw-bold font-size-11">OKUNAN SATIR</div>
+                                <div class="fw-bold font-size-16" id="pdfSatirSayisi">0</div>
                             </div>
                         </div>
                         <div class="col-6 col-md-3">
-                            <div class="border rounded-3 p-2 text-center h-100">
-                                <div class="small text-muted fw-bold">SEÇİLİ</div>
-                                <div class="fw-bold text-primary" id="pdfSecilenSayisi">0</div>
+                            <div class="border rounded-3 p-2 text-center h-100 bg-light">
+                                <div class="small text-muted fw-bold font-size-11">SEÇİLİ</div>
+                                <div class="fw-bold text-primary font-size-16" id="pdfSecilenSayisi">0</div>
                             </div>
                         </div>
                         <div class="col-6 col-md-3">
-                            <div class="border rounded-3 p-2 text-center h-100">
-                                <div class="small text-muted fw-bold">TOP. ALDIM</div>
-                                <div class="fw-bold text-success" id="pdfToplamAldim">0,00</div>
+                            <div class="border rounded-3 p-2 text-center h-100 bg-light">
+                                <div class="small text-muted fw-bold font-size-11">TOP. ALDIM</div>
+                                <div class="fw-bold text-success font-size-16" id="pdfToplamAldim">0,00 ₺</div>
                             </div>
                         </div>
                         <div class="col-6 col-md-3">
-                            <div class="border rounded-3 p-2 text-center h-100">
-                                <div class="small text-muted fw-bold">TOP. VERDİM</div>
-                                <div class="fw-bold text-danger" id="pdfToplamVerdim">0,00</div>
+                            <div class="border rounded-3 p-2 text-center h-100 bg-light">
+                                <div class="small text-muted fw-bold font-size-11">TOP. VERDİM</div>
+                                <div class="fw-bold text-danger font-size-16" id="pdfToplamVerdim">0,00 ₺</div>
                             </div>
                         </div>
                     </div>
@@ -568,22 +630,29 @@ $bakiye = $ozet->bakiye ?? 0;
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-center">
-                <i data-feather="bookmark" class="text-warning me-2" style="width: 22px; height: 22px;"></i>
+                <i class="bx bx-bookmark font-size-22 text-warning me-2"></i>
                 <h5 class="modal-title fw-bold mb-0" style="color: #1a1a1a;">Cari Notu Düzenle</h5>
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
             <form id="cariNotuForm">
+                <input type="hidden" name="action" value="cari-not-kaydet">
+                <input type="hidden" name="cari_id" value="<?= htmlspecialchars($cari_id_enc) ?>">
                 <div class="modal-body px-4 pt-4">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted mb-1">Notlar</label>
+                        <label class="form-label small fw-bold text-muted mb-1">Notlar / Özel Açıklama</label>
                         <textarea name="notlar" class="form-control" rows="6" style="border-radius: 12px; border: 1px solid #e2e8f0;" placeholder="Cari ile ilgili notu buraya yazın..."><?= htmlspecialchars($cariData->notlar ?: '') ?></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end gap-2">
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
-                    <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
+                    <button type="submit" class="btn btn-dark px-4 shadow-sm" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    const global_cari_id = '<?= htmlspecialchars($cari_id_enc, ENT_QUOTES, 'UTF-8') ?>';
+</script>
+<script src="views/cari/js/hareketler.js?v=<?= time() ?>"></script>

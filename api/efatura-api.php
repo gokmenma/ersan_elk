@@ -200,7 +200,9 @@ try {
         case 'summary_stats':
             $listType = $_GET['list_type'] ?? 'giden';
             $yon = ($listType === 'gelen') ? 'GELEN' : 'GIDEN';
-            $stats = $invoiceModel->getSummaryStats($firmId, $yon, $listType);
+            $startDate = !empty($_GET['baslangic_tarihi']) ? trim($_GET['baslangic_tarihi']) : null;
+            $endDate = !empty($_GET['bitis_tarihi']) ? trim($_GET['bitis_tarihi']) : null;
+            $stats = $invoiceModel->getSummaryStats($firmId, $yon, $listType, $startDate, $endDate);
             echo json_encode(['status' => 'success', 'data' => $stats]);
             break;
 
@@ -373,12 +375,12 @@ try {
                 'api_username'               => trim($_POST['api_username'] ?? ''),
                 'api_password'               => trim($_POST['api_password'] ?? ''),
                 'environment'                => trim($_POST['environment'] ?? 'TEST'),
-                'efatura_seri'               => trim($_POST['efatura_seri'] ?? 'ERS'),
-                'earsiv_seri'                => trim($_POST['earsiv_seri'] ?? 'ERA'),
                 'varsayilan_gonderici_alias' => trim($_POST['varsayilan_gonderici_alias'] ?? ''),
                 'otomatik_gonder'            => !empty($_POST['otomatik_gonder']) ? 1 : 0,
                 'kontor_esik' => max(0, (int)($_POST['kontor_esik'] ?? 100))
             ];
+            if (!empty($_POST['efatura_seri'])) $data['efatura_seri'] = trim($_POST['efatura_seri']);
+            if (!empty($_POST['earsiv_seri'])) $data['earsiv_seri'] = trim($_POST['earsiv_seri']);
 
             $saved = $settingsModel->saveSettings($firmId, $data);
             if ($saved) {
@@ -386,6 +388,53 @@ try {
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Ayarlar kaydedilirken bir hata oluştu.']);
             }
+            break;
+
+        // 13. Kayıtlı Numaratör Sayaçlarını Getir
+        case 'list_numarators':
+            $list = $settingsModel->getNumarators($firmId);
+            echo json_encode(['status' => 'success', 'data' => $list]);
+            break;
+
+        // 14. Numaratör Sayacı Ekle / Güncelle
+        case 'save_numarator':
+            $type = trim($_POST['belge_turu'] ?? 'EFATURA');
+            $series = trim($_POST['seri'] ?? '');
+            $year = (int)($_POST['yil'] ?? date('Y'));
+            $lastNo = (int)($_POST['son_numara'] ?? 0);
+
+            $ok = $settingsModel->saveNumarator($firmId, $type, $series, $year, $lastNo);
+            if ($ok) {
+                echo json_encode(['status' => 'success', 'message' => 'Seri sayacı başarıyla kaydedildi.', 'data' => $settingsModel->getNumarators($firmId)]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Sayaç kaydedilemedi.']);
+            }
+            break;
+
+        // 15. EDM Serilerini Numaratöre Senkronize Et
+        case 'sync_serials':
+            $info = $invoiceService->connectionInfo($firmId);
+            $syncedCount = 0;
+            if (!empty($info['SERIALS']) && is_array($info['SERIALS'])) {
+                foreach ($info['SERIALS'] as $s) {
+                    $sYear = (int)($s['year'] ?? date('Y'));
+                    $sType = ((int)($s['earchive'] ?? 0) === 1) ? 'EARSIV' : 'EFATURA';
+                    $sSeries = strtoupper(trim($s['series'] ?? ''));
+                    $sLast = (int)($s['last'] ?? 0);
+                    if (!empty($sSeries)) {
+                        $settingsModel->reconcileSerial($firmId, $sType, $sSeries, $sYear, $sLast);
+                        $syncedCount++;
+                    }
+                }
+            }
+            echo json_encode([
+                'status' => 'success',
+                'message' => "EDM üzerinden {$syncedCount} adet seri bilgisi ve sayacı senkronize edildi.",
+                'data' => [
+                    'edm_serials' => $info['SERIALS'] ?? [],
+                    'numarators' => $settingsModel->getNumarators($firmId)
+                ]
+            ]);
             break;
 
         default:

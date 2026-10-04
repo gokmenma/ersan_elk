@@ -1095,4 +1095,22 @@
       });
     });
   };
+
+  // ColReorder sürükleme esnasında kopyalanan tablodan w-100 sınıfını temizleme
+  if (typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
+    const dtcrObserver = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1 && node.classList && node.classList.contains("DTCR_clonedTable")) {
+            node.classList.remove("w-100");
+          }
+        });
+      });
+    });
+    $(function () {
+      if (document.body) {
+        dtcrObserver.observe(document.body, { childList: true });
+      }
+    });
+  }
 })(jQuery);

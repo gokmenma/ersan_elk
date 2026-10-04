@@ -1,5 +1,65 @@
+let sozlesmeTable;
+let currentStatusFilter = 'all';
+
+function escapeHtml(text) {
+  if (text == null) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 $(document).ready(function () {
+  // Özet Kartları Açma/Kapama (AGENTS.md Standardı)
+  const toggleBtn = $('#btnToggleSummaryCards');
+  const updateToggleState = () => {
+    const isHidden = $('html').hasClass('sozlesme-summary-hidden');
+    if (toggleBtn.length) {
+      toggleBtn.attr('aria-expanded', !isHidden);
+      toggleBtn.find('i').attr('class', isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+    }
+  };
+  updateToggleState();
+
+  toggleBtn.on('click', function () {
+    const willHide = !$('html').hasClass('sozlesme-summary-hidden');
+    $('html').toggleClass('sozlesme-summary-hidden', willHide);
+    localStorage.setItem('sozlesme_summary_cards_state', willHide ? 'hidden' : 'visible');
+    updateToggleState();
+  });
+
+  // Hızlı Filtre Butonları (Özet Kartlar İçi Butonlar)
+  $('.status-quick-filter').on('click', function () {
+    const filter = $(this).data('status') || 'all';
+    currentStatusFilter = filter;
+    $('.status-quick-filter').removeClass('active');
+    $(this).addClass('active');
+    if (sozlesmeTable) {
+      sozlesmeTable.ajax.reload();
+    }
+  });
+
+  // Yazdır ve Yenile Butonları
+  $('#btnHeaderPrint').on('click', function () {
+    window.print();
+  });
+
+  $('#btnHeaderRefresh').on('click', function () {
+    if (sozlesmeTable) {
+      sozlesmeTable.ajax.reload(null, false);
+    }
+  });
+
   initSozlesmelerTable();
+
+  // Satır Tıklama (Detaya Git) - İşlem Sütunu Hariç
+  $('#sozlesmeTable tbody').on('click', 'tr td:not(:last-child)', function (e) {
+    if ($(e.target).closest('a, button, .dropdown-menu').length > 0) return;
+    const href = $(this).closest('tr').find('a.sozlesme-detay').attr('href');
+    if (href) window.location.href = href;
+  });
 
   $("#yeniSozlesmeForm").on("submit", function (e) {
     e.preventDefault();
@@ -7,87 +67,147 @@ $(document).ready(function () {
   });
 });
 
-let sozlesmeTable;
-
 function initSozlesmelerTable() {
-  let options =
-    typeof getDatatableOptions === "function"
-      ? getDatatableOptions()
-      : {
-          language: {
-            url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json",
-          },
-          processing: true,
-          serverSide: true,
-        };
+  const options = applyLengthStateSave({
+    ...getDatatableOptions(),
+    processing: true,
+    serverSide: true,
+    ajax: {
+      url: "views/hakedisler/online-api.php",
+      type: "POST",
+      data: function (d) {
+        d.type = "getSozlesmeler";
+        d.status_filter = currentStatusFilter;
+      },
+      dataSrc: function (json) {
+        if (json.summary) {
+          const formatMoney = (val) => {
+            return parseFloat(val || 0).toLocaleString('tr-TR', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+          };
 
-  options.processing = true;
-  options.serverSide = true;
-  options.ajax = {
-    url: "views/hakedisler/online-api.php?type=getSozlesmeler",
-    type: "POST",
-  };
-  ((options.columns = [
-    { data: "idare_adi" },
-    {
-      data: "isin_adi",
-      render: function (data, type, row) {
-        return data.length > 50 ? data.substr(0, 50) + "..." : data;
-      },
+          const s = json.summary;
+          // Kart 1: Toplam Sözleşme
+          $('#stat_toplam_sozlesme').text(s.toplam_sozlesme || 0);
+          $('#stat_sub_durum').text(`Aktif: ${s.aktif_sayisi || 0} | Tamamlanan: ${s.tamamlanan_sayisi || 0}`);
+
+          // Kart 2: Aktif Sözleşmeler
+          $('#stat_aktif_bedel').text(formatMoney(s.aktif_bedel) + ' ₺');
+          $('#stat_sub_aktif_sayi').text(`${s.aktif_sayisi || 0} Aktif Sözleşme`);
+
+          // Kart 3: Tamamlananlar
+          $('#stat_tamamlanan_bedel').text(formatMoney(s.tamamlanan_bedel) + ' ₺');
+          $('#stat_sub_tamamlanan_sayi').text(`${s.tamamlanan_sayisi || 0} Tamamlanan Sözleşme`);
+
+          // Kart 4: Toplam Sözleşme Hacmi
+          $('#stat_toplam_bedel').text(formatMoney(s.toplam_bedel) + ' ₺');
+          $('#stat_sozlesme_bilgi').text(`${s.toplam_sozlesme || 0} Sözleşme`);
+        }
+        return json.data;
+      }
     },
-    {
-      data: "sozlesme_tarihi",
-      render: function (data) {
-        return data ? moment(data).format("DD.MM.YYYY") : "-";
+    columns: [
+      {
+        data: "id",
+        className: "text-center",
+        width: "50px",
+        render: function (data) {
+          return `<span class="fw-semibold text-muted font-size-12">${data}</span>`;
+        }
       },
-    },
-    {
-      data: "isin_bitecegi_tarih",
-      render: function (data) {
-        return data ? moment(data).format("DD.MM.YYYY") : "-";
+      {
+        data: "idare_adi",
+        render: function (data) {
+          return `<span class="fw-bold text-dark font-size-13">${escapeHtml(data || '-')}</span>`;
+        }
       },
-    },
-    {
-      data: "sozlesme_bedeli",
-      render: function (data) {
-        return data
-          ? parseFloat(data).toLocaleString("tr-TR", {
-              style: "currency",
-              currency: "TRY",
-            })
-          : "-";
+      {
+        data: "isin_adi",
+        render: function (data) {
+          if (!data) return '<span class="text-muted">-</span>';
+          const truncated = data.length > 55 ? data.substr(0, 55) + '...' : data;
+          return `<span class="fw-medium text-secondary font-size-12" title="${escapeHtml(data)}">${escapeHtml(truncated)}</span>`;
+        }
       },
-    },
-    {
-      data: "durum",
-      render: function (data) {
-        let badge = "bg-primary";
-        if (data == "tamamlandi") badge = "bg-success";
-        if (data == "pasif") badge = "bg-danger";
-        return `<span class="badge ${badge}">${data.toUpperCase()}</span>`;
+      {
+        data: "sozlesme_tarihi",
+        className: "text-center",
+        width: "130px",
+        render: function (data) {
+          return data && data !== '0000-00-00'
+            ? `<span class="fw-medium text-dark font-size-12">${moment(data).format("DD.MM.YYYY")}</span>`
+            : '<span class="text-muted">-</span>';
+        }
       },
-    },
-    {
-      data: "id",
-      orderable: false,
-      render: function (data) {
-        return `
-                        <div class="d-flex gap-2">
-                            <a href="?p=hakedisler/sozlesme-detay&id=${data}" class="btn btn-sm btn-info" title="Detaya Git">
-                                <i class="bx bx-file-find"></i> Detay/Hakedişler
-                            </a>
-                            <button class="btn btn-sm btn-warning" onclick="editSozlesme(${data})" title="Düzenle">
-                                <i class="bx bx-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteSozlesme(${data})" title="Sil">
-                                <i class="bx bx-trash"></i>
-                            </button>
-                        </div>
-                    `;
+      {
+        data: "isin_bitecegi_tarih",
+        className: "text-center",
+        width: "130px",
+        render: function (data) {
+          return data && data !== '0000-00-00'
+            ? `<span class="fw-medium text-dark font-size-12">${moment(data).format("DD.MM.YYYY")}</span>`
+            : '<span class="text-muted">-</span>';
+        }
       },
+      {
+        data: "sozlesme_bedeli",
+        className: "text-end",
+        width: "150px",
+        render: function (data) {
+          return data
+            ? `<span class="fw-bold text-dark font-size-13">${parseFloat(data).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</span>`
+            : '<span class="text-muted">-</span>';
+        }
+      },
+      {
+        data: "durum",
+        className: "text-center",
+        width: "120px",
+        render: function (data) {
+          const d = (data || '').toLowerCase();
+          if (d === 'aktif') {
+            return '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Aktif</span>';
+          }
+          if (d === 'tamamlandi') {
+            return '<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Tamamlandı</span>';
+          }
+          if (d === 'pasif') {
+            return '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Pasif</span>';
+          }
+          return `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${escapeHtml(data || '-')}</span>`;
+        }
+      },
+      {
+        data: "id",
+        className: "text-center",
+        width: "120px",
+        orderable: false,
+        searchable: false,
+        render: function (data) {
+          return `
+            <div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">
+              <a href="?p=hakedisler/sozlesme-detay&id=${data}" class="btn btn-subtle-primary table-action-btn sozlesme-detay" title="Sözleşme & Hakediş Detayı">
+                <i class="bx bx-file-find font-size-14"></i>
+              </a>
+              <button type="button" class="btn btn-subtle-warning table-action-btn sozlesme-duzenle" data-id="${data}" onclick="editSozlesme(${data})" title="Düzenle">
+                <i class="bx bx-edit-alt font-size-14"></i>
+              </button>
+              <button type="button" class="btn btn-subtle-danger table-action-btn sozlesme-sil" data-id="${data}" onclick="deleteSozlesme(${data})" title="Sil">
+                <i class="bx bx-trash font-size-14"></i>
+              </button>
+            </div>
+          `;
+        }
+      }
+    ],
+    createdRow: function (row, data, dataIndex) {
+      $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
     },
-  ]),
-    (options.order = [[2, "desc"]]));
+    order: [[0, "desc"]]
+  });
+
   sozlesmeTable = $("#sozlesmeTable").DataTable(options);
 }
 

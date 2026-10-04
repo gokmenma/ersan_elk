@@ -1,6 +1,9 @@
 <?php
 use App\Helper\Form;
 
+$maintitle = 'Ana Sayfa';
+$title = 'Sözleşme & Hakediş';
+
 $aylar = [
     1 => 'Ocak',
     2 => 'Şubat',
@@ -16,58 +19,324 @@ $aylar = [
     12 => 'Aralık'
 ];
 ?>
-<div class="row">
-    <div class="col-12">
-        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-            <h4 class="mb-sm-0 font-size-18">Sözleşmeler ve Hakedişler</h4>
-            <div class="page-title-right">
-                <ol class="breadcrumb m-0">
-                    <li class="breadcrumb-item"><a href="?p=home">Ana Sayfa</a></li>
-                    <li class="breadcrumb-item active">Sözleşmeler</li>
-                </ol>
+<script>try { document.documentElement.classList.toggle('sozlesme-summary-hidden', localStorage.getItem('sozlesme_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.sozlesme-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+</style>
+
+<?php include 'layouts/breadcrumb.php'; ?>
+
+<div class="container-fluid">
+    <!-- 1. Üst Başlık ve Aksiyon Araç Çubuğu (Cari Sayfası Standardı) -->
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-briefcase fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Sözleşmeler</h4>
+                <p class="text-muted mb-0 font-size-12">Firma sözleşme listesi, keşif, hakediş ve süre yönetimi</p>
             </div>
         </div>
-    </div>
-</div>
+        
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <!-- 1. Yeni Sözleşme Ekle Butonu -->
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnYeniSozlesme" data-bs-toggle="modal" data-bs-target="#yeniSozlesmeModal">
+                <i class="bx bx-plus font-size-16"></i> Yeni Sözleşme
+            </button>
 
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="card-title">Sözleşme Listesi</h4>
-                    <div>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                            data-bs-target="#yeniSozlesmeModal">
-                            <i class="bx bx-plus me-1"></i> Yeni Sözleşme
+            <!-- 2. Özet Kartları Açma/Kapama Butonu -->
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 4 Adet Minimal Özet KPI Kartı -->
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <!-- Kart 1: TOPLAM SÖZLEŞME -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM SÖZLEŞME</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bx bx-briefcase"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1" id="stat_toplam_sozlesme">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="stat_sub_durum">Aktif: 0 | Tamamlanan: 0</span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
+                            <i class="bx bx-layer"></i> Tümü
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="table-responsive">
-                    <table id="sozlesmeTable"
-                        class="table table-bordered dt-responsive nowrap w-100 table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>İdare Adı</th>
-                                <th>İşin Adı</th>
-                                <th>Sözleşme Tarihi</th>
-                                <th>Bitiş Tarihi</th>
-                                <th>Sözleşme Bedeli</th>
-                                <th>Durum</th>
-                                <th>İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Data will be loaded via DataTables AJAX -->
-                        </tbody>
-                    </table>
+        <!-- Kart 2: AKTİF SÖZLEŞMELER -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">AKTİF SÖZLEŞMELER</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-trending-up"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-success" id="stat_aktif_bedel">0,00 ₺</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_aktif_sayi">0 Aktif Sözleşme</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="aktif">
+                            <i class="bx bx-check-circle"></i> Aktif
+                        </button>
+                    </div>
                 </div>
+            </div>
+        </div>
 
+        <!-- Kart 3: TAMAMLANANLAR -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TAMAMLANANLAR</span>
+                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                            <i class="bx bx-task"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-info" id="stat_tamamlanan_bedel">0,00 ₺</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-info fw-semibold" id="stat_sub_tamamlanan_sayi">0 Tamamlanan Sözleşme</span>
+                        <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="tamamlandi">
+                            <i class="bx bx-check-double"></i> Tamamlanan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 4: TOPLAM SÖZLEŞME HACMİ -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM SÖZLEŞME HACMİ</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-wallet"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1" id="stat_toplam_bedel">0,00 ₺</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-muted" id="stat_bedel_durum_metni">Genel Sözleşme Hacmi</span>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" id="stat_sozlesme_bilgi">
+                            0 Sözleşme
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Standart DataTables Sözleşme Listesi Kartı -->
+    <div class="card summary-kpi-card mb-3" id="sozlesmeListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                    <i class="bx bx-list-ul font-size-20"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Sözleşme Listesi</h5>
+                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Anlık arama, sütun filtreleme ve hakediş yönetimi</p>
+                </div>
+            </div>
+
+            <!-- Sağ Araç Çubuğu -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-3 pt-0">
+            <div class="table-responsive" style="overflow-x: auto !important;">
+                <table id="sozlesmeTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th data-filter="none" style="width: 50px;" class="text-center">SIRA</th>
+                            <th data-filter="string">İDARE ADI</th>
+                            <th data-filter="string">İŞİN ADI</th>
+                            <th data-filter="date" class="text-center" style="width: 130px;">SÖZLEŞME TARİHİ</th>
+                            <th data-filter="date" class="text-center" style="width: 130px;">BİTİŞ TARİHİ</th>
+                            <th data-filter="number" class="text-end" style="width: 150px;">SÖZLEŞME BEDELİ</th>
+                            <th data-filter="select" class="text-center" style="width: 120px;">DURUM</th>
+                            <th data-filter="none" style="width: 120px;" class="text-center">İŞLEMLER</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+/* Muhasebe ve Tablo Satır Butonları */
+.table-action-btn {
+    width: 27px;
+    height: 27px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+.table-action-btn:hover {
+    transform: translateY(-1px);
+}
+.action-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+/* Modern Kart ve Tablo Stilleri */
+.summary-kpi-card {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.summary-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05) !important;
+}
+.summary-kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.summary-kpi-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1;
+}
+.summary-kpi-value {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+.summary-kpi-subtext {
+    font-size: 11.5px;
+    color: #64748b;
+    font-weight: 500;
+}
+.summary-pill-btn {
+    font-size: 11px !important;
+    height: 24px !important;
+    line-height: 1 !important;
+    padding: 0 10px !important;
+    font-weight: 600 !important;
+    border-radius: 20px !important;
+    transition: all 0.2s ease;
+}
+
+/* Modern Subtle Renkli Butonlar */
+.btn-subtle-primary {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    transition: all 0.18s ease;
+}
+.btn-subtle-primary:hover, .btn-subtle-primary:focus, .btn-subtle-primary.active {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+}
+
+.btn-subtle-success {
+    background-color: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    transition: all 0.18s ease;
+}
+.btn-subtle-success:hover, .btn-subtle-success:focus, .btn-subtle-success.active {
+    background-color: #16a34a !important;
+    color: #ffffff !important;
+    border-color: #16a34a !important;
+    box-shadow: 0 2px 5px rgba(22, 163, 74, 0.25);
+}
+
+.btn-subtle-danger {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    transition: all 0.18s ease;
+}
+.btn-subtle-danger:hover, .btn-subtle-danger:focus, .btn-subtle-danger.active {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 2px 5px rgba(220, 38, 38, 0.25);
+}
+
+.btn-subtle-warning {
+    background-color: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+    transition: all 0.18s ease;
+}
+.btn-subtle-warning:hover, .btn-subtle-warning:focus, .btn-subtle-warning.active {
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 2px 5px rgba(217, 119, 6, 0.25);
+}
+
+.btn-subtle-info {
+    background-color: #f0f9ff;
+    color: #0284c7;
+    border: 1px solid #bae6fd;
+    transition: all 0.18s ease;
+}
+.btn-subtle-info:hover, .btn-subtle-info:focus, .btn-subtle-info.active {
+    background-color: #0284c7 !important;
+    color: #ffffff !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25);
+}
+
+.btn-subtle-secondary {
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    transition: all 0.18s ease;
+}
+.btn-subtle-secondary:hover, .btn-subtle-secondary:focus {
+    background-color: #475569;
+    color: #ffffff !important;
+    border-color: #475569;
+    box-shadow: 0 2px 5px rgba(71, 85, 105, 0.25);
+}
+</style>
 
 <!-- Yeni Sözleşme Modal -->
 <div class="modal fade" id="yeniSozlesmeModal" tabindex="-1" aria-labelledby="yeniSozlesmeModalLabel"

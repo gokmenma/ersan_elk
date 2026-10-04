@@ -21,7 +21,7 @@ $(document).ready(function () {
         type: "POST",
         data: function (d) {
           d.action = "personel-list";
-          d.status = $('input[name="status-filter"]:checked').val() || "";
+          d.status = $('input[name="status-filter"]:checked').val() || "Aktif";
         },
       },
       drawCallback: function () {
@@ -207,22 +207,6 @@ $(document).ready(function () {
   });
 
   table.on('init.dt', function (e, settings, json) {
-      // İlk açılışta eğer state'de filtre yoksa Aktif personelleri göster
-      let state = table.state();
-      if (state && (!state.columns || !state.columns[12] || !state.columns[12].search || !state.columns[12].search.search)) {
-          // Varsayılan olarak Aktif seçili başlasın (eğer state'de bir şey yoksa)
-          if (!$('input[name="status-filter"]:checked').val()) {
-              updateActiveBadge("Aktif");
-          }
-          table.draw();
-      } else if (state && state.columns && state.columns[12] && state.columns[12].search && state.columns[12].search.search) {
-          let s = state.columns[12].search.search;
-          if (s.includes("Aktif")) updateActiveBadge("Aktif");
-          else if (s.includes("Pasif")) updateActiveBadge("Pasif");
-          else updateActiveBadge("");
-          table.draw();
-      }
-      
       initColumnToggle();
       initImageHover();
       

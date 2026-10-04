@@ -12,9 +12,9 @@ $(document).ready(function() {
     let currentStartDate = '';
     let currentEndDate = '';
 
-    // Varsayılan: İçinde Bulunulan Ayın İlk ve Son Günü
+    // Varsayılan: Yılın Başından Ayın Sonuna Kadar
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDay = new Date(now.getFullYear(), 0, 1);
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const formatDMY = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
@@ -56,6 +56,8 @@ $(document).ready(function() {
     // 2. İstatistikleri Yükle
     function loadStats() {
         let url = 'api/efatura-api.php?action=summary_stats&list_type=taslak';
+        if (currentStartDate) url += `&baslangic_tarihi=${currentStartDate}`;
+        if (currentEndDate) url += `&bitis_tarihi=${currentEndDate}`;
         fetch(url)
             .then(res => res.json())
             .then(res => {
@@ -267,16 +269,6 @@ $(document).ready(function() {
 
     const finalOptions = typeof applyLengthStateSave === 'function' ? applyLengthStateSave(tableOptions) : tableOptions;
     const table = $('#tblTaslakFaturalar').DataTable(finalOptions);
-
-    // Tablo yüklendiğinde ve çizildiğinde toplam kayıt sayacını güncelle
-    table.on('xhr.dt', function(e, settings, json) {
-        if (json) {
-            const total = json.recordsTotal !== undefined ? json.recordsTotal : (json.data ? json.data.length : 0);
-            $('#badgeTotalRecords').text(total);
-        } else {
-            $('#badgeTotalRecords').text(0);
-        }
-    });
 
     // Check All Kutusu
     $('#checkAll').on('change', function() {

@@ -1,17 +1,105 @@
 let url = "views/tanimlamalar/api.php";
+let actionTable;
 
 // Bölge kuralları cache
 let bolgeKurallari = {};
 
+function escapeHtml(text) {
+  if (text == null) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Sayfa yüklendiğinde kuralları al
 $(document).ready(function () {
+  // 1. Özet Kartları Açma/Kapama (AGENTS.md Standardı)
+  const toggleBtn = $("#btnToggleSummaryCards");
+  const updateToggleState = () => {
+    const isHidden = $("html").hasClass("ekipkodu-summary-hidden");
+    if (toggleBtn.length) {
+      toggleBtn.attr("aria-expanded", !isHidden);
+      toggleBtn
+        .find("i")
+        .attr("class", isHidden ? "bx bx-chevron-down" : "bx bx-chevron-up");
+    }
+  };
+  updateToggleState();
+
+  toggleBtn.on("click", function () {
+    const willHide = !$("html").hasClass("ekipkodu-summary-hidden");
+    $("html").toggleClass("ekipkodu-summary-hidden", willHide);
+    localStorage.setItem(
+      "ekipkodu_summary_cards_state",
+      willHide ? "hidden" : "visible"
+    );
+    updateToggleState();
+  });
+
+  // 2. DataTables Tablosunu Başlat
+  if ($.fn.DataTable.isDataTable("#actionTable")) {
+    actionTable = $("#actionTable").DataTable();
+  } else {
+    const baseOptions = typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
+    const tableOptions = typeof applyLengthStateSave === "function" 
+      ? applyLengthStateSave({
+          ...baseOptions,
+          order: [[2, "asc"]],
+          pageLength: 25,
+        })
+      : {
+          ...baseOptions,
+          order: [[2, "asc"]],
+          pageLength: 25,
+        };
+
+    actionTable = $("#actionTable").DataTable(tableOptions);
+  }
+
+  // 3. Hızlı Filtre Butonları (Özet Kartlar İçi Butonlar)
+  $(".status-quick-filter").on("click", function () {
+    const status = $(this).data("status") || "all";
+    $(".status-quick-filter").removeClass("active");
+    $(this).addClass("active");
+
+    if (actionTable) {
+      if (status === "dolu") {
+        actionTable.column(5).search("Dolu").draw();
+      } else if (status === "bosta") {
+        actionTable.column(5).search("Boşta").draw();
+      } else {
+        actionTable.column(5).search("").draw();
+      }
+    }
+  });
+
+  // 4. Yazdır ve Yenile Butonları
+  $("#btnHeaderPrint, #btnDropdownPrint").on("click", function () {
+    window.print();
+  });
+
+  $("#btnHeaderRefresh, #btnDropdownRefresh").on("click", function () {
+    location.reload();
+  });
+
+  // 5. İşlemler Dropdown'dan Bölge Kurallarını Doğrudan Açma
+  $("#btnOpenBolgeKurallari").on("click", function () {
+    $("#actionModal").modal("show");
+    setTimeout(function () {
+      $("#bolgeKurallari-tab").tab("show");
+    }, 200);
+  });
+
+  // 6. Select2 Başlatma
   $("#ekip_bolge").select2({
     dropdownParent: $("#actionModal"),
     tags: true,
     width: "100%",
   });
 
-  // yeniBolge select2 initialize (eğer varsa)
   if ($("#yeniBolge").length) {
     $("#yeniBolge").select2({
       dropdownParent: $("#actionModal"),
@@ -21,33 +109,22 @@ $(document).ready(function () {
     });
   }
 
-  // Bölge kurallarını yükle
+  // 7. Bölge kurallarını yükle
   loadBolgeKurallari();
 
-  // Sekme değişikliğinde butonları güncelle
+  // 8. Sekme değişikliğinde butonları güncelle
   $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
     const targetTab = $(e.target).attr("data-bs-target");
     if (targetTab === "#bolgeKurallariContent") {
       $("#actionKaydet").hide();
       $("#kuralKaydet").show();
-      // Feather icons'ları yeniden render et
-      if (typeof feather !== "undefined") {
-        feather.replace();
-      }
     } else {
       $("#actionKaydet").show();
       $("#kuralKaydet").hide();
     }
   });
 
-  // Modal açıldığında feather icons'ları render et
-  $("#actionModal").on("shown.bs.modal", function () {
-    if (typeof feather !== "undefined") {
-      feather.replace();
-    }
-  });
-
-  // Bölge değiştiğinde kural bilgisini göster
+  // 9. Bölge değiştiğinde kural bilgisini göster
   $("#ekip_bolge").on("change", function () {
     updateEkipKoduInfo();
   });
@@ -80,12 +157,10 @@ function updateEkipKoduInfo() {
     const kural = bolgeKurallari[bolge];
     infoEl
       .html(
-        `<i class="bx bx-info-circle"></i> Bu bölge için ekip numarası <strong>${kural.min}</strong> ile <strong>${kural.max}</strong> arasında olmalıdır.`,
-      )
-      .removeClass("text-muted")
-      .addClass("text-warning");
+        `<span class="text-warning fw-semibold"><i class="bx bx-info-circle me-1"></i>Bu bölge için ekip numarası <strong>${kural.min}</strong> ile <strong>${kural.max}</strong> arasında olmalıdır.</span>`
+      );
   } else {
-    infoEl.html("").removeClass("text-warning").addClass("text-muted");
+    infoEl.html("");
   }
 }
 
@@ -126,11 +201,13 @@ $(document).on("click", "#actionEkle", function () {
   $("#ekip_bolge").val("").trigger("change");
   $("#ekip_id").val(0);
   $("#ekipKoduInfo").html("");
-  $("#actionModalLabel").text("Ekip Kodu Ekle");
+  $("#actionModalLabel").text("Yeni Ekip Kodu Ekle");
   $("#birden_fazla_personel_kullanabilir").prop("checked", false);
 
   // İlk sekmeye dön
-  $("#ekipKodu-tab").tab("show");
+  if ($("#ekipKodu-tab").length) {
+    $("#ekipKodu-tab").tab("show");
+  }
   $("#actionKaydet").show();
   $("#kuralKaydet").hide();
 });
@@ -183,7 +260,7 @@ $(document).on("click", "#actionKaydet", function () {
   })
     .then((response) => response.json())
     .then((data) => {
-      title = data.status == "success" ? "Başarılı" : "Hata";
+      const title = data.status === "success" ? "Başarılı" : "Hata";
 
       swal
         .fire({
@@ -214,18 +291,22 @@ $(document).on("click", ".duzenle", function (e) {
   })
     .then((response) => response.json())
     .then((data) => {
-      if (data.status == "success") {
-        // We need to set the hidden input to the ENCRYPTED id so save works
+      if (data.status === "success") {
         $("#ekip_id").val(id);
         $("#ekip_bolge").val(data.data.ekip_bolge).trigger("change");
 
         $("#ekip_kodu").val(data.data.ekip_kodu);
         $("#aciklama").val(data.data.aciklama);
-        $("#birden_fazla_personel_kullanabilir").prop("checked", data.data.birden_fazla_personel_kullanabilir == 1);
+        $("#birden_fazla_personel_kullanabilir").prop(
+          "checked",
+          data.data.birden_fazla_personel_kullanabilir == 1
+        );
         $("#actionModalLabel").text("Ekip Kodu Düzenle");
 
         // İlk sekmeye dön
-        $("#ekipKodu-tab").tab("show");
+        if ($("#ekipKodu-tab").length) {
+          $("#ekipKodu-tab").tab("show");
+        }
         $("#actionKaydet").show();
         $("#kuralKaydet").hide();
 
@@ -245,7 +326,7 @@ $(document).on("click", ".sil", function (e) {
   swal
     .fire({
       title: "Emin misiniz?",
-      text: "Bu kaydı silmek istediğinize emin misiniz?",
+      text: "Bu ekip kodunu silmek istediğinize emin misiniz?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
@@ -265,12 +346,15 @@ $(document).on("click", ".sil", function (e) {
         })
           .then((response) => response.json())
           .then((data) => {
-            if (data.status == "success") {
-              var table = $("#actionTable").DataTable();
-              table
-                .row($("#row_" + data.deleted_id))
-                .remove()
-                .draw(false);
+            if (data.status === "success") {
+              if (actionTable) {
+                actionTable
+                  .row($("#row_" + data.deleted_id))
+                  .remove()
+                  .draw(false);
+              } else {
+                $("#row_" + data.deleted_id).remove();
+              }
 
               swal.fire("Silindi!", "Kayıt başarıyla silindi.", "success");
             } else {
@@ -306,30 +390,25 @@ $(document).on("click", "#kuralEkle", function () {
 
   // Tabloya ekle
   const newRow = `
-    <tr data-bolge="${bolge}">
+    <tr data-bolge="${escapeHtml(bolge)}">
       <td>
-        <input type="text" class="form-control form-control-sm bolge-input" value="${bolge}" readonly>
+        <input type="text" class="form-control form-control-sm bolge-input bg-light fw-medium font-size-12" value="${escapeHtml(bolge)}" readonly>
       </td>
       <td>
-        <input type="number" class="form-control form-control-sm min-input" value="${min}" min="0">
+        <input type="number" class="form-control form-control-sm min-input text-center font-size-12" value="${min}" min="0">
       </td>
       <td>
-        <input type="number" class="form-control form-control-sm max-input" value="${max}" min="0">
+        <input type="number" class="form-control form-control-sm max-input text-center font-size-12" value="${max}" min="0">
       </td>
       <td class="text-center">
-        <button type="button" class="btn btn-sm btn-danger kural-sil d-inline-flex align-items-center justify-content-center">
-          <i data-feather="trash-2" style="width:14px;height:14px;"></i>
+        <button type="button" class="btn btn-sm btn-subtle-danger table-action-btn kural-sil" title="Kuralı Sil">
+          <i class="bx bx-trash font-size-14"></i>
         </button>
       </td>
     </tr>
   `;
 
   $("#bolgeKurallariBody").append(newRow);
-
-  // Feather icons'ları yeniden render et
-  if (typeof feather !== "undefined") {
-    feather.replace();
-  }
 
   // Dropdown'dan seçeneği kaldır
   $(`#yeniBolge option[value="${bolge}"]`).remove();
@@ -346,7 +425,7 @@ $(document).on("click", ".kural-sil", function () {
   const bolge = row.data("bolge");
 
   // Dropdown'a geri ekle
-  $("#yeniBolge").append(`<option value="${bolge}">${bolge}</option>`);
+  $("#yeniBolge").append(`<option value="${escapeHtml(bolge)}">${escapeHtml(bolge)}</option>`);
 
   row.remove();
 });
@@ -389,6 +468,7 @@ $(document).on("click", "#kuralKaydet", function () {
     });
 });
 
+// ========== EKİP GEÇMİŞİ İŞLEMLERİ ==========
 $(document).on("click", ".gecmis", function (e) {
   e.preventDefault();
   var id = $(this).data("id");
@@ -403,23 +483,25 @@ $(document).on("click", ".gecmis", function (e) {
   })
     .then((response) => response.json())
     .then((data) => {
-      if (data.status == "success") {
+      if (data.status === "success") {
         var html = "";
         data.data.forEach(function (item) {
+          const isOngoing = !item.bitis_tarihi || item.bitis_tarihi === "0000-00-00";
+          const statusBadge = isOngoing
+            ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-check-circle me-1"></i>Devam Ediyor</span>'
+            : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-time me-1"></i>Tamamlandı</span>';
+
           html += `<tr>
-            <td>${item.adi_soyadi}</td>
-            <td>${item.baslangic_tarihi || "-"}</td>
-            <td>${
-              item.bitis_tarihi && item.bitis_tarihi != "0000-00-00"
-                ? item.bitis_tarihi
-                : "Devam Ediyor"
-            }</td>
+            <td class="fw-semibold text-dark"><i class="bx bx-user text-primary me-1"></i>${escapeHtml(item.adi_soyadi)}</td>
+            <td class="text-center font-size-12">${item.baslangic_tarihi || "-"}</td>
+            <td class="text-center font-size-12">${isOngoing ? "-" : item.bitis_tarihi}</td>
+            <td class="text-center">${statusBadge}</td>
           </tr>`;
         });
 
         if (data.data.length === 0) {
           html =
-            '<tr><td colspan="3" class="text-center">Geçmiş kayıt bulunamadı.</td></tr>';
+            '<tr><td colspan="4" class="text-center text-muted py-4"><i class="bx bx-info-circle font-size-20 d-block mb-1"></i>Bu ekip koduna ait geçmiş atama kaydı bulunamadı.</td></tr>';
         }
 
         $("#gecmisBody").html(html);

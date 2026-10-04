@@ -18,7 +18,7 @@ final class EInvoiceSecurity
                 => ['efatura/giden-list', 'efatura/taslak-list', 'efatura/olustur'],
             'sync_incoming_invoices', 'respond_commercial' 
                 => ['efatura/gelen-list', 'efatura/giden-list'],
-            'save_settings', 'counter_info' 
+            'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials' 
                 => ['efatura/ayarlar'],
             'connection_info'
                 => ['efatura/ayarlar', 'efatura/olustur'],
@@ -47,14 +47,14 @@ final class EInvoiceSecurity
             'sync_status', 'sync_outgoing_invoices', 'refresh_history' => 'efatura/giden-list',
             'sync_incoming_invoices', 'respond_commercial' => 'efatura/gelen-list',
             'cancel_invoice' => 'efatura/giden-list',
-            'save_settings', 'counter_info' => 'efatura/ayarlar',
+            'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials' => 'efatura/ayarlar',
             default => null,
         };
     }
 
     public static function readOnly(string $action): bool
     {
-        return in_array($action, ['list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info'], true);
+        return in_array($action, ['list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info','list_numarators'], true);
     }
 
     public static function invoiceId(mixed $encrypted): int

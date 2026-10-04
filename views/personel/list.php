@@ -8,8 +8,6 @@ use App\Service\Gate;
 $Personel = new PersonelModel();
 
 if (Gate::canWithMessage("personel_listesi")) {
-
-    $personeller = $Personel->all();
     ?>
     <div class="container-fluid">
 
@@ -342,13 +340,13 @@ if (Gate::canWithMessage("personel_listesi")) {
                             <div class="d-flex gap-3 align-items-center flex-wrap">
                               
                                 <div class="status-filter-group" role="group">
-                                    <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="" checked>
+                                    <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="">
                                     <label class="btn" for="filter-all">
                                         <i class="bx bx-grid-alt"></i> Tümü 
                                         <span class="count-tag ms-1" id="count-all">0</span>
                                     </label>
                                     
-                                    <input type="radio" class="btn-check" name="status-filter" id="filter-aktif" value="Aktif">
+                                    <input type="radio" class="btn-check" name="status-filter" id="filter-aktif" value="Aktif" checked>
                                     <label class="btn" for="filter-aktif">
                                         <i class="bx bx-user-check"></i> Aktif 
                                         <span class="count-tag ms-1" id="count-aktif">0</span>

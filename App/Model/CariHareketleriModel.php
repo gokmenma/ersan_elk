@@ -130,7 +130,8 @@ class CariHareketleriModel extends Model
                 1 => 'h.belge_no',
                 2 => 'h.aciklama',
                 3 => 'h.borc',
-                4 => 'h.alacak'
+                4 => 'h.alacak',
+                5 => '(SELECT SUM(alacak - borc) FROM cari_hareketleri WHERE cari_id = h.cari_id AND silinme_tarihi IS NULL AND (islem_tarihi < h.islem_tarihi OR (islem_tarihi = h.islem_tarihi AND id <= h.id)))'
             ];
             foreach ($columns as $i => $column) {
                 if (!empty($column['search']['value']) && isset($colMap[$i])) {
@@ -144,7 +145,7 @@ class CariHareketleriModel extends Model
                         $filterVal = $vals[0];
 
                         // Sayısal alanlar için temizlik yap
-                        if ($field === 'h.borc' || $field === 'h.alacak') {
+                        if ($field === 'h.borc' || $field === 'h.alacak' || $i === 5) {
                             if (!in_array($mode, ['null', 'not_null'])) {
                                 $filterVal = \App\Helper\Helper::formattedMoneyToNumber($filterVal);
                             }

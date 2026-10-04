@@ -1,6 +1,8 @@
 <?php
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 use App\Helper\Date;
 use App\Model\HakedisSozlesmeModel;
@@ -8,6 +10,9 @@ use App\Model\HakedisDonemModel;
 use App\Model\HakedisKalemModel;
 use App\Model\HakedisMiktarModel;
 use App\Helper\Helper;
+use App\Service\EInvoiceService;
+use App\Model\EInvoiceModel;
+use App\Helper\Security;
 
 header('Content-Type: application/json');
 
@@ -58,57 +63,8 @@ try {
     switch ($type) {
         case 'getSozlesmeler':
             $model = new HakedisSozlesmeModel();
-
-            // Standard datatable parameters
-            $start = $_POST['start'] ?? 0;
-            $length = $_POST['length'] ?? 10;
-            $search = $_POST['search']['value'] ?? '';
-            $orderColIdx = $_POST['order'][0]['column'] ?? 0;
-            $orderDir = $_POST['order'][0]['dir'] ?? 'desc';
-
-            $columns = [
-                0 => 'idare_adi',
-                1 => 'isin_adi',
-                2 => 'sozlesme_tarihi',
-                3 => 'isin_bitecegi_tarih',
-                4 => 'sozlesme_bedeli',
-                5 => 'durum',
-                6 => 'id'
-            ];
-            $orderCol = $columns[$orderColIdx] ?? 'id';
-
-            $db = $model->getDb();
-
-            // Query builder
-            $where = "firma_id = :firma_id AND silinme_tarihi IS NULL";
-            $params = [':firma_id' => $firma_id];
-
-            if ($search) {
-                $where .= " AND (idare_adi LIKE :srch OR isin_adi LIKE :srch)";
-                $params[':srch'] = "%$search%";
-            }
-
-            $stmt = $db->prepare("SELECT COUNT(*) FROM hakedis_sozlesmeler WHERE $where");
-            $stmt->execute($params);
-            $totalRecords = $stmt->fetchColumn();
-
-            $sql = "SELECT * FROM hakedis_sozlesmeler WHERE $where ORDER BY $orderCol $orderDir LIMIT :start, :length";
-            $stmt = $db->prepare($sql);
-            foreach ($params as $key => $val) {
-                $stmt->bindValue($key, $val);
-            }
-            $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-            $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-            $stmt->execute();
-
-            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            echo json_encode([
-                "draw" => intval($_POST['draw'] ?? 0),
-                "recordsTotal" => $totalRecords,
-                "recordsFiltered" => $totalRecords,
-                "data" => $data
-            ]);
+            $result = $model->ajaxList($_POST, (int) $firma_id);
+            echo json_encode($result);
             break;
 
         case 'saveSozlesme':
@@ -804,6 +760,29 @@ try {
             }
 
             if ($hakedis_id) {
+                // Mevcut hakediş ve bağlı faturanın kontrolü
+                $stmtCheckInv = $db->prepare("
+                    SELECT hd.durum, hd.fatura_id, f.entegrator_durum_kodu as fatura_durum_kodu, f.fatura_no as fatura_fatura_no
+                    FROM hakedis_donemleri hd
+                    LEFT JOIN faturalar f ON hd.fatura_id = f.id AND f.deleted_at IS NULL
+                    WHERE hd.id = ?
+                ");
+                $stmtCheckInv->execute([$hakedis_id]);
+                $currHkd = $stmtCheckInv->fetch(PDO::FETCH_ASSOC);
+
+                if ($currHkd && !empty($currHkd['fatura_id']) && !empty($currHkd['fatura_durum_kodu'])) {
+                    // Eğer fatura taslak durumundan çıktıysa (gönderildi, onaylandı vb.)
+                    if ($currHkd['fatura_durum_kodu'] !== 'TASLAK') {
+                        if ($currHkd['durum'] !== $data['durum']) {
+                            echo json_encode([
+                                'status' => 'error',
+                                'message' => "Bu hakedişe ait resmi fatura GİB / EDM sistemine iletilmiştir (Durum: {$currHkd['fatura_durum_kodu']}). Hakediş durumu değiştirilemez."
+                            ]);
+                            exit;
+                        }
+                    }
+                }
+
                 // Tarih değiştiyse veya endekslerde eksiklik varsa, açıklandığı varsayımıyla verileri API'den otomatik çek/güncelle
                 $stmtCheckDate = $db->prepare("SELECT hakedis_tarihi_ay, hakedis_tarihi_yil, asgari_ucret_guncel, motorin_guncel, ufe_genel_guncel, makine_ekipman_guncel FROM hakedis_donemleri WHERE id = ?");
                 $stmtCheckDate->execute([$hakedis_id]);
@@ -879,7 +858,141 @@ try {
                 }
             }
 
-            echo json_encode(['status' => 'success', 'hakedis_id' => $resultId]);
+            $invoiceCreated = false;
+            $invoiceUpdated = false;
+            $createdInvoiceEncryptedId = null;
+            $invoiceMessage = null;
+
+            // Fatura Taslağı Oluşturma veya Güncelleme İsteği
+            if (!empty($_POST['create_invoice_draft']) && $data['durum'] === 'tamamlandi') {
+                try {
+                    // Sözleşme bilgilerini çek
+                    $stmtSozlesme = $db->prepare("SELECT * FROM hakedis_sozlesmeler WHERE id = ? AND firma_id = ?");
+                    $stmtSozlesme->execute([$sozlesme_id, $firma_id]);
+                    $sozlesme = $stmtSozlesme->fetch(PDO::FETCH_ASSOC);
+
+                    if ($sozlesme) {
+                        // Hakediş dönem tutarı ve fiyat farkı toplamını al
+                        $totals = $model->calculateTotals($resultId);
+                        $imalatDonem = floatval($totals['imalat_donem'] ?? 0);
+                        $fiyatFarki = floatval($totals['fiyat_farki'] ?? 0);
+                        $donemToplami = round($imalatDonem + $fiyatFarki, 2);
+
+                        // Eğer dönem toplamı 0 ise kümülatif veya önceki hakediş farkı üzerinden kontrol
+                        if ($donemToplami <= 0 && !empty($totals['imalat_kumulatif'])) {
+                            $donemToplami = round(floatval($totals['imalat_kumulatif']) - floatval($data['onceki_hakedis_tutari'] ?? 0) + $fiyatFarki, 2);
+                        }
+                        if ($donemToplami < 0) {
+                            $donemToplami = 0;
+                        }
+
+                        // Cari eşleştirmesi (İdare adına göre)
+                        $cariId = null;
+                        $aliciUnvan = trim($sozlesme['idare_adi'] ?? 'İdare');
+                        $aliciAdres = trim($sozlesme['yuklenici_adres'] ?? $aliciUnvan);
+                        $aliciVkn = '1111111111'; // Standart E-Arşiv VKN
+
+                        $stmtCari = $db->prepare("SELECT id, CariAdi, Adres, Telefon, Email FROM cari WHERE Aktif = 1 AND (CariAdi = ? OR firma = ? OR CariAdi LIKE ?) LIMIT 1");
+                        $stmtCari->execute([$aliciUnvan, $aliciUnvan, '%' . $aliciUnvan . '%']);
+                        if ($cariRow = $stmtCari->fetch(PDO::FETCH_ASSOC)) {
+                            $cariId = (int)$cariRow['id'];
+                            $aliciUnvan = $cariRow['CariAdi'];
+                            if (!empty($cariRow['Adres'])) {
+                                $aliciAdres = $cariRow['Adres'];
+                            }
+                        }
+
+                        $faturaTarihi = date('Y-m-d');
+                        $notlar = "İşin Adı: " . ($sozlesme['isin_adi'] ?? '') . "\n" . $data['hakedis_no'] . " nolu hakediş bedeli";
+                        if (!empty($data['tutanak_tasdik_tarihi'])) {
+                            $notlar .= "\nTutanak Tasdik Tarihi: " . date('d.m.Y', strtotime($data['tutanak_tasdik_tarihi']));
+                        }
+
+                        $invoiceHeader = [
+                            'cari_id'               => $cariId,
+                            'yon'                   => 'GIDEN',
+                            'belge_turu'            => 'EARSIV',
+                            'fatura_profili'        => 'EARSIVFATURA',
+                            'fatura_tipi'           => 'SATIS',
+                            'fatura_tarihi'         => $faturaTarihi,
+                            'duzenleme_saati'       => date('H:i:s'),
+                            'alici_vkn_tckn'        => $aliciVkn,
+                            'alici_unvan'           => $aliciUnvan,
+                            'alici_adres'           => $aliciAdres ?: 'Türkiye',
+                            'alici_ulke'            => 'Türkiye',
+                            'para_birimi'           => 'TRY',
+                            'doviz_kuru'            => 1.0000,
+                            'notlar'                => $notlar,
+                            'entegrator_durum_kodu' => 'TASLAK'
+                        ];
+
+                        $hNo = $data['hakedis_no'];
+                        $invoiceLines = [
+                            [
+                                'urun_hizmet_adi' => "{$hNo} nolu hakediş bedeli",
+                                'miktar'          => 1.0000,
+                                'birim'           => 'C62',
+                                'birim_fiyat'     => $donemToplami,
+                                'iskonto_orani'   => 0.00,
+                                'kdv_orani'       => 20.00,
+                                'tevkifat_orani'  => 0.00
+                            ]
+                        ];
+
+                        $eInvoiceService = new EInvoiceService();
+
+                        // Hakedişin mevcut bağlı bir faturası var mı kontrol et
+                        $stmtCheckExisting = $db->prepare("
+                            SELECT hd.fatura_id, f.entegrator_durum_kodu
+                            FROM hakedis_donemleri hd
+                            JOIN faturalar f ON hd.fatura_id = f.id
+                            WHERE hd.id = ? AND f.deleted_at IS NULL
+                        ");
+                        $stmtCheckExisting->execute([$resultId]);
+                        $existingInvoice = $stmtCheckExisting->fetch(PDO::FETCH_ASSOC);
+
+                        if ($existingInvoice && !empty($existingInvoice['fatura_id']) && $existingInvoice['entegrator_durum_kodu'] === 'TASLAK') {
+                            // Mevcut taslak faturayı güncelle
+                            $existingInvId = (int)$existingInvoice['fatura_id'];
+                            $updateResult = $eInvoiceService->updateDraft($existingInvId, $firma_id, $invoiceHeader, $invoiceLines, $_SESSION['id']);
+                            if (!empty($updateResult['success'])) {
+                                $invoiceUpdated = true;
+                                $createdInvoiceEncryptedId = Security::encrypt((string)$existingInvId);
+                                $invoiceMessage = 'Mevcut fatura taslağı güncel tutarlarla güncellendi.';
+                            } else {
+                                $invoiceMessage = $updateResult['message'] ?? 'Fatura taslağı güncellenemedi.';
+                            }
+                        } else {
+                            // Yeni taslak oluştur
+                            $draftResult = $eInvoiceService->createDraft($firma_id, $invoiceHeader, $invoiceLines, $_SESSION['id']);
+                            if (!empty($draftResult['success']) && !empty($draftResult['invoice_id'])) {
+                                $invoiceCreated = true;
+                                $newInvId = (int)$draftResult['invoice_id'];
+                                $createdInvoiceEncryptedId = Security::encrypt((string)$newInvId);
+                                $invoiceMessage = 'Fatura taslağı başarıyla oluşturuldu.';
+
+                                // Hakediş kaydına fatura_id bağla
+                                $stmtLink = $db->prepare("UPDATE hakedis_donemleri SET fatura_id = ? WHERE id = ?");
+                                $stmtLink->execute([$newInvId, $resultId]);
+                            } else {
+                                $invoiceMessage = $draftResult['message'] ?? 'Fatura taslağı oluşturulamadı.';
+                            }
+                        }
+                    }
+                } catch (\Throwable $eInv) {
+                    error_log("saveHakedis invoice draft error: " . $eInv->getMessage());
+                    $invoiceMessage = $eInv->getMessage();
+                }
+            }
+
+            echo json_encode([
+                'status'          => 'success',
+                'hakedis_id'      => $resultId,
+                'invoice_created' => $invoiceCreated,
+                'invoice_updated' => $invoiceUpdated,
+                'invoice_id'      => $createdInvoiceEncryptedId,
+                'invoice_message' => $invoiceMessage
+            ]);
             break;
 
         case 'getHakedis':
@@ -887,8 +1000,10 @@ try {
             if ($id) {
                 $db = (new HakedisDonemModel())->getDb();
                 $stmt = $db->prepare("
-                    SELECT hd.* FROM hakedis_donemleri hd
+                    SELECT hd.*, f.entegrator_durum_kodu as fatura_durum_kodu, f.fatura_no as fatura_fatura_no
+                    FROM hakedis_donemleri hd
                     JOIN hakedis_sozlesmeler hs ON hd.sozlesme_id = hs.id
+                    LEFT JOIN faturalar f ON hd.fatura_id = f.id AND f.deleted_at IS NULL
                     WHERE hd.id = ? AND hs.firma_id = ?
                 ");
                 $stmt->execute([$id, $firma_id]);
@@ -1262,6 +1377,7 @@ try {
             echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem tipi.']);
             break;
     }
-} catch (\Exception $e) {
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+} catch (\Throwable $e) {
+    error_log("Hakedis online-api error: " . $e->getMessage());
+    echo json_encode(['status' => 'error', 'message' => ($e instanceof \InvalidArgumentException) ? $e->getMessage() : 'İşlem sırasında bir hata oluştu.']);
 }

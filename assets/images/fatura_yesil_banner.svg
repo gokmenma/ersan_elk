@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 130" width="100%" height="100%">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <linearGradient id="hillGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+    <linearGradient id="hillBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#86efac"/>
+      <stop offset="100%" stop-color="#4ade80"/>
+    </linearGradient>
+    <linearGradient id="treeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="100%" stop-color="#166534"/>
+    </linearGradient>
+    <linearGradient id="treeLight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Sky & Clouds -->
+  <rect width="600" height="130" rx="8" fill="url(#skyGrad)"/>
+  <path d="M120,35 Q140,20 160,35 Q180,25 200,35 Q220,25 240,35 L240,50 L120,50 Z" fill="#ffffff" opacity="0.6"/>
+  <path d="M380,25 Q400,10 420,25 Q440,15 460,25 Q480,15 500,25 L500,45 L380,45 Z" fill="#ffffff" opacity="0.5"/>
+
+  <!-- Back Hills -->
+  <path d="M0,110 Q150,75 320,100 Q460,70 600,95 L600,130 L0,130 Z" fill="url(#hillBack)"/>
+
+  <!-- Front Green Hills -->
+  <path d="M0,120 Q120,88 280,108 Q450,85 600,112 L600,130 L0,130 Z" fill="url(#hillGrad)"/>
+
+  <!-- Trees (Right side) -->
+  <!-- Tree 1 -->
+  <rect x="520" y="80" width="10" height="35" rx="3" fill="#78350f"/>
+  <circle cx="525" cy="72" r="28" fill="url(#treeGrad)"/>
+  <circle cx="505" cy="76" r="20" fill="url(#treeLight)"/>
+  <circle cx="545" cy="76" r="20" fill="url(#treeGrad)"/>
+  
+  <!-- Tree 2 -->
+  <rect x="460" y="85" width="8" height="30" rx="3" fill="#92400e"/>
+  <ellipse cx="464" cy="75" rx="22" ry="26" fill="url(#treeLight)"/>
+  <ellipse cx="450" cy="80" rx="16" ry="18" fill="url(#treeGrad)"/>
+  <ellipse cx="478" cy="80" rx="16" ry="18" fill="url(#treeLight)"/>
+
+  <!-- Tree 3 -->
+  <rect x="400" y="90" width="7" height="25" rx="2" fill="#78350f"/>
+  <circle cx="403" cy="82" r="18" fill="url(#treeGrad)"/>
+  <circle cx="390" cy="86" r="14" fill="url(#treeLight)"/>
+  <circle cx="416" cy="86" r="14" fill="url(#treeGrad)"/>
+
+  <!-- Small Shrubs & Flowers -->
+  <ellipse cx="360" cy="115" rx="14" ry="9" fill="#15803d"/>
+  <ellipse cx="435" cy="116" rx="12" ry="8" fill="#166534"/>
+  <ellipse cx="560" cy="118" rx="15" ry="9" fill="#15803d"/>
+  <ellipse cx="30" cy="120" rx="16" ry="8" fill="#166534"/>
+
+  <!-- People Illustration (Walking & Sitting under nature) -->
+  <!-- Person 1 & 2 (Left) -->
+  <circle cx="28" cy="78" r="4" fill="#fbbf24"/> <!-- Head -->
+  <rect x="25" y="83" width="6" height="14" rx="2" fill="#0284c7"/> <!-- Body -->
+  <line x1="26" y1="97" x2="25" y2="114" stroke="#1e293b" stroke-width="2"/> <!-- Leg -->
+  <line x1="29" y1="97" x2="31" y2="114" stroke="#1e293b" stroke-width="2"/> <!-- Leg -->
+
+  <circle cx="38" cy="80" r="3.5" fill="#f472b6"/> <!-- Head 2 -->
+  <rect x="35" y="84" width="6" height="13" rx="2" fill="#e11d48"/> <!-- Body 2 -->
+  <line x1="36" y1="97" x2="35" y2="114" stroke="#1e293b" stroke-width="1.8"/> <!-- Leg -->
+  <line x1="39" y1="97" x2="41" y2="114" stroke="#1e293b" stroke-width="1.8"/> <!-- Leg -->
+
+  <!-- Person 3 (Walking with dog) -->
+  <circle cx="270" cy="92" r="3.5" fill="#fbbf24"/>
+  <rect x="267" y="96" width="6" height="11" rx="2" fill="#0284c7"/>
+  <line x1="268" y1="107" x2="266" y2="119" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="271" y1="107" x2="273" y2="119" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- Dog -->
+  <ellipse cx="290" cy="114" rx="5" ry="3.5" fill="#d97706"/>
+  <circle cx="295" cy="111" r="2.5" fill="#d97706"/>
+  <line x1="273" y1="100" x2="288" y2="112" stroke="#94a3b8" stroke-width="0.8"/> <!-- Leash -->
+
+  <!-- Person 4 (Sitting reading book) -->
+  <circle cx="340" cy="94" r="3.5" fill="#fbbf24"/>
+  <rect x="337" y="98" width="7" height="10" rx="2" fill="#ea580c"/>
+  <ellipse cx="340" cy="111" rx="6" ry="3" fill="#1e293b"/>
+  <rect x="336" y="102" width="5" height="4" fill="#38bdf8"/> <!-- Book -->
+
+  <!-- Text Slogan: "Yeşili birlikte yaşatalım" -->
+  <text x="48" y="72" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#0f172a" letter-spacing="0.2">Yeşili birlikte yaşatalım</text>
+</svg>

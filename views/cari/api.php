@@ -48,34 +48,38 @@ if ($action == "cari-ajax-list") {
             $color = $bakiye < 0 ? 'danger' : ($bakiye > 0 ? 'success' : 'dark');
             
             $actions = '
-                <div class="dropdown text-center">
-                    <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i data-feather="more-vertical" class="text-dark" style="width: 20px; height: 20px;"></i>
+                <div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">
+                    <a href="index.php?p=cari/hesap-hareketleri&id=' . $enc_id . '" class="btn btn-subtle-primary table-action-btn hesap-hareketleri" data-id="' . $enc_id . '" title="Hesap Hareketleri">
+                        <i class="bx bx-history font-size-14"></i>
                     </a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item hesap-hareketleri" href="index.php?p=cari/hesap-hareketleri&id=' . $enc_id . '" data-id="' . $enc_id . '">
-                            <i data-feather="list" class="font-size-16 me-1" style="width: 14px; height: 14px;"></i> Hareketler
-                        </a>
-                        <a class="dropdown-item hareket-ekle" href="#" data-id="' . $enc_id . '">
-                            <i data-feather="plus-circle" class="font-size-16 me-1 text-success" style="width: 14px; height: 14px;"></i> Hareket Ekle
-                        </a>
-                        <a class="dropdown-item duzenle" href="#" data-id="' . $enc_id . '">
-                            <i data-feather="edit" class="font-size-16 me-1" style="width: 14px; height: 14px;"></i> Düzenle
-                        </a>
-                        <a class="dropdown-item cari-sil" href="#" data-id="' . $enc_id . '">
-                            <i data-feather="trash" class="font-size-16 me-1 text-danger" style="width: 14px; height: 14px;"></i> Sil
-                        </a>
-                    </div>
+                    <button type="button" class="btn btn-subtle-success table-action-btn hareket-ekle" data-id="' . $enc_id . '" title="Hareket Ekle">
+                        <i class="bx bx-plus-circle font-size-14"></i>
+                    </button>
+                    <button type="button" class="btn btn-subtle-warning table-action-btn duzenle" data-id="' . $enc_id . '" title="Düzenle">
+                        <i class="bx bx-edit-alt font-size-14"></i>
+                    </button>
+                    <button type="button" class="btn btn-subtle-danger table-action-btn cari-sil" data-id="' . $enc_id . '" title="Sil">
+                        <i class="bx bx-trash font-size-14"></i>
+                    </button>
                 </div>';
 
+            $il_ilce = [];
+            if (!empty($row->il)) $il_ilce[] = $row->il;
+            if (!empty($row->ilce)) $il_ilce[] = $row->ilce;
+            $il_ilce_str = !empty($il_ilce) ? implode(' / ', $il_ilce) : '-';
+
+            $vknBadge = !empty($row->vkn_tckn) 
+                ? '<span class="font-monospace fw-semibold text-dark">' . htmlspecialchars($row->vkn_tckn, ENT_QUOTES, 'UTF-8') . '</span>' 
+                : '<span class="text-muted">-</span>';
+
             $formattedData[] = [
-                "id" => $row->id,
-                "CariAdi" => $row->CariAdi,
-                "firma" => $row->firma ?: '-',
-                "Telefon" => $row->Telefon ?: '-',
-                "Email" => $row->Email ?: '-',
-                "Adres" => $row->Adres ?: '-',
-                "bakiye" => '<span class="fw-bold text-' . $color . '">' . Helper::formattedMoney(abs($bakiye)) . 
+                "id" => '<span class="fw-semibold text-muted font-size-12">' . $row->id . '</span>',
+                "CariAdi" => '<span class="fw-bold text-dark font-size-13" style="color: #0f172a;">' . htmlspecialchars($row->CariAdi, ENT_QUOTES, 'UTF-8') . '</span>',
+                "firma" => $row->firma ? '<span class="fw-medium text-secondary font-size-12">' . htmlspecialchars($row->firma, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
+                "vkn_tckn" => !empty($row->vkn_tckn) ? '<span class="fw-semibold text-dark font-size-12">' . htmlspecialchars($row->vkn_tckn, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
+                "Telefon" => $row->Telefon ? '<span class="fw-medium text-dark font-size-12">' . htmlspecialchars($row->Telefon, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
+                "il_ilce" => '<span class="fw-medium text-secondary font-size-12">' . $il_ilce_str . '</span>',
+                "bakiye" => '<span class="fw-bold font-size-13" style="' . ($bakiye < 0 ? 'color: #dc2626 !important;' : ($bakiye > 0 ? 'color: #16a34a !important;' : 'color: #0f172a !important;')) . '">' . Helper::formattedMoney(abs($bakiye)) . 
                             ($bakiye < 0 ? ' (B)' : ($bakiye > 0 ? ' (A)' : '')) . '</span>',
                 "actions" => $actions
             ];
@@ -97,12 +101,24 @@ if ($action == "cari-kaydet") {
     try {
         $data = [
             "id" => $id ?: 0,
-            "CariAdi" => $_POST["CariAdi"],
-            "firma" => $_POST["firma"] ?? null,
-            "Telefon" => $_POST["Telefon"],
-            "Email" => $_POST["Email"],
-            "Adres" => $_POST["Adres"],
-            "notlar" => $_POST["notlar"] ?? null,
+            "CariAdi" => trim($_POST["CariAdi"] ?? ""),
+            "firma" => trim($_POST["firma"] ?? "") ?: null,
+            "vkn_tckn" => trim($_POST["vkn_tckn"] ?? "") ?: null,
+            "vergi_dairesi" => trim($_POST["vergi_dairesi"] ?? "") ?: null,
+            "alici_turu" => in_array($_POST["alici_turu"] ?? '', ['KURUMSAL', 'BIREYSEL']) ? $_POST["alici_turu"] : 'KURUMSAL',
+            "belge_turu" => in_array($_POST["belge_turu"] ?? '', ['OTOMATIK', 'EFATURA', 'EARSIV']) ? $_POST["belge_turu"] : 'OTOMATIK',
+            "posta_kutusu" => trim($_POST["posta_kutusu"] ?? "") ?: null,
+            "Telefon" => trim($_POST["Telefon"] ?? "") ?: null,
+            "Email" => trim($_POST["Email"] ?? "") ?: null,
+            "web_sitesi" => trim($_POST["web_sitesi"] ?? "") ?: null,
+            "ticaret_sicil_no" => trim($_POST["ticaret_sicil_no"] ?? "") ?: null,
+            "mersis_no" => trim($_POST["mersis_no"] ?? "") ?: null,
+            "ulke" => trim($_POST["ulke"] ?? "") ?: 'Türkiye',
+            "il" => trim($_POST["il"] ?? "") ?: null,
+            "ilce" => trim($_POST["ilce"] ?? "") ?: null,
+            "posta_kodu" => trim($_POST["posta_kodu"] ?? "") ?: null,
+            "Adres" => trim($_POST["Adres"] ?? "") ?: null,
+            "notlar" => trim($_POST["notlar"] ?? "") ?: null,
             "Aktif" => 1
         ];
 
@@ -132,6 +148,24 @@ if ($action == "cari-getir") {
     $id = Security::decrypt($_POST["cari_id"]);
     $data = $Cari->find($id);
     echo json_encode($data);
+    exit;
+}
+
+// VKN / TCKN Mükellef Sorgula (GİB / EDM)
+if ($action == "vkn-sorgula") {
+    $vkn = trim($_POST["vkn_tckn"] ?? "");
+    if (empty($vkn)) {
+        echo json_encode(["status" => "error", "message" => "Lütfen geçerli bir VKN veya TCKN girin."]);
+        exit;
+    }
+    try {
+        $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 1);
+        $invoiceService = new \App\Service\EInvoiceService();
+        $result = $invoiceService->checkTaxpayer($firmId, $vkn);
+        echo json_encode(["status" => "success", "data" => $result]);
+    } catch (Exception $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
     exit;
 }
 
@@ -165,28 +199,31 @@ if ($action == "hesap-hareketleri-ajax-list") {
         foreach ($res['data'] as $row) {
             $enc_hareket_id = Security::encrypt($row->id);
             $actions = '
-                <div class="dropdown text-center">
-                    <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i data-feather="more-vertical" class="text-dark" style="width: 20px; height: 20px;"></i>
-                    </a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item hareket-duzenle" href="#" data-id="' . $enc_hareket_id . '">
-                            <i data-feather="edit" class="me-1" style="width: 14px; height: 14px;"></i> Düzenle
-                        </a>
-                        <a class="dropdown-item hareket-sil" href="#" data-id="' . $enc_hareket_id . '">
-                            <i data-feather="trash" class="me-1 text-danger" style="width: 14px; height: 14px;"></i> Sil
-                        </a>
-                    </div>
+                <div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">
+                    <button type="button" class="btn btn-subtle-warning table-action-btn hareket-duzenle" data-id="' . $enc_hareket_id . '" title="Düzenle">
+                        <i class="bx bx-edit-alt font-size-14"></i>
+                    </button>
+                    <button type="button" class="btn btn-subtle-danger table-action-btn hareket-sil" data-id="' . $enc_hareket_id . '" title="Sil">
+                        <i class="bx bx-trash font-size-14"></i>
+                    </button>
                 </div>';
             
+            $belgeNoHtml = '<span class="text-muted">-</span>';
+            if (!empty($row->belge_no)) {
+                $belgeNoHtml = '<span class="fw-semibold text-secondary font-size-13">' . htmlspecialchars($row->belge_no, ENT_QUOTES, 'UTF-8') . '</span>';
+            }
+            if ($row->dosya) {
+                $belgeNoHtml .= ' <a href="uploads/cari_belgeler/' . htmlspecialchars($row->dosya, ENT_QUOTES, 'UTF-8') . '" target="_blank" class="btn btn-subtle-primary p-0 rounded-1 ms-1" style="width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;" title="Belgeyi Görüntüle"><i class="bx bx-paperclip font-size-13"></i></a>';
+            }
+
             $formattedData[] = [
-                "islem_tarihi" => date('d.m.Y H:i', strtotime($row->islem_tarihi)),
-                "belge_no" => $row->belge_no ?: '-',
-                "aciklama" => $row->aciklama ?: '-',
+                "islem_tarihi" => '<span class="fw-semibold text-dark font-size-13">' . date('d.m.Y H:i', strtotime($row->islem_tarihi)) . '</span>',
+                "belge_no" => $belgeNoHtml,
+                "aciklama" => '<span class="fw-medium text-dark font-size-13" style="color: #0f172a;">' . htmlspecialchars($row->aciklama ?: '-', ENT_QUOTES, 'UTF-8') . '</span>',
                 "dosya" => $row->dosya ?: null,
-                "borc" => $row->borc > 0 ? Helper::formattedMoney($row->borc) : '-',
-                "alacak" => $row->alacak > 0 ? Helper::formattedMoney($row->alacak) : '-',
-                "yuruyen_bakiye" => '<span class="fw-bold ' . ($row->yuruyen_bakiye < 0 ? 'text-danger' : ($row->yuruyen_bakiye > 0 ? 'text-success' : '')) . '">' . 
+                "borc" => $row->borc > 0 ? '<span class="fw-bold font-size-13 text-success" style="color: #16a34a !important;">' . Helper::formattedMoney($row->borc) . '</span>' : '<span class="text-muted">-</span>',
+                "alacak" => $row->alacak > 0 ? '<span class="fw-bold font-size-13 text-danger" style="color: #dc2626 !important;">' . Helper::formattedMoney($row->alacak) . '</span>' : '<span class="text-muted">-</span>',
+                "yuruyen_bakiye" => '<span class="fw-bold font-size-13 ' . ($row->yuruyen_bakiye < 0 ? 'text-danger' : ($row->yuruyen_bakiye > 0 ? 'text-success' : 'text-dark')) . '" style="' . ($row->yuruyen_bakiye < 0 ? 'color: #dc2626 !important;' : ($row->yuruyen_bakiye > 0 ? 'color: #16a34a !important;' : 'color: #0f172a !important;')) . '">' . 
                                     Helper::formattedMoney(abs($row->yuruyen_bakiye)) . 
                                     ($row->yuruyen_bakiye < 0 ? ' (B)' : ($row->yuruyen_bakiye > 0 ? ' (A)' : '')) . '</span>',
                 "actions" => $actions
@@ -194,6 +231,19 @@ if ($action == "hesap-hareketleri-ajax-list") {
         }
         
         $res['data'] = $formattedData;
+
+        // Anlık Özet
+        $stmtOzet = $Cari->getDb()->prepare("SELECT COUNT(*) as toplam_islem, SUM(borc) as toplam_borc, SUM(alacak) as toplam_alacak, SUM(alacak - borc) as bakiye FROM cari_hareketleri WHERE cari_id = :cari_id AND silinme_tarihi IS NULL");
+        $stmtOzet->execute(['cari_id' => $cari_id]);
+        $ozet = $stmtOzet->fetch(PDO::FETCH_OBJ);
+        
+        $res['summary'] = [
+            'toplam_islem' => (int)($ozet->toplam_islem ?? 0),
+            'toplam_borc' => (float)($ozet->toplam_borc ?? 0),
+            'toplam_alacak' => (float)($ozet->toplam_alacak ?? 0),
+            'bakiye' => (float)($ozet->bakiye ?? 0)
+        ];
+
         echo json_encode($res);
     } catch (Exception $e) {
         echo json_encode(['error' => $e->getMessage(), 'data' => []]);

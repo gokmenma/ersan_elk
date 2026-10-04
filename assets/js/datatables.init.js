@@ -120,6 +120,216 @@ $(document).ready(function () {
       }
     }
   }
+
+  // ===================================================
+  // Global DataTables Sağ Tık (Context Menu) Mekanizması
+  // ===================================================
+  function dtEscapeHtml(text) {
+    if (text == null) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  $(document).on('contextmenu', 'table.dataTable tbody tr, .table-hover tbody tr', function(e) {
+    const $tr = $(this);
+    
+    // Boş satır, yükleniyor uyarısı veya çocuk satır ise engelleme
+    if ($tr.hasClass('dataTables_empty') || $tr.find('td').length <= 1) return;
+    if ($tr.closest('table').hasClass('no-context-menu')) return;
+
+    e.preventDefault();
+
+    $('table.dataTable tbody tr, .table-hover tbody tr').removeClass('context-menu-active');
+    $tr.addClass('context-menu-active');
+
+    // 1. Satır Başlığı Belirleme (Kayıt No, Ad vb.)
+    let rowTitle = '';
+    const $firstBadge = $tr.find('.badge, strong, b, h6, .fw-bold').first();
+    if ($firstBadge.length && $firstBadge.text().trim()) {
+      rowTitle = $firstBadge.text().trim();
+    } else {
+      const $secondCol = $tr.find('td:nth-child(2)');
+      if ($secondCol.length && $secondCol.text().trim()) {
+        rowTitle = $secondCol.text().trim();
+      } else {
+        rowTitle = $tr.find('td:first-child').text().trim() || 'İşlemler';
+      }
+    }
+    if (rowTitle.length > 35) {
+      rowTitle = rowTitle.substring(0, 35) + '...';
+    }
+
+    // 2. Aksiyon Butonlarını ve Linkleri Tara (Son sütun veya .action-btn-group)
+    const $actionTd = $tr.find('td:last-child');
+    const $actionButtons = $actionTd.find('a, button, .dropdown-item');
+
+    let menuItemsHtml = '';
+    let hasDangerAction = false;
+    let dangerItemHtml = '';
+
+    // Varsa Özel PDF/Önizleme Butonları (Satır içi data butonları)
+    const $pdfBtn = $tr.find('.btn-offer-pdf, .btn-pdf-preview, [data-pdf-url]');
+    if ($pdfBtn.length) {
+      menuItemsHtml += `<button type="button" class="cm-action-item" data-target-ref="pdf-preview"><i class="bx bxs-file-pdf text-danger"></i> <span>PDF Önizle</span></button>`;
+    }
+
+    $actionButtons.each(function(index) {
+      const $btn = $(this);
+      
+      // Dropdown toggle ana butonunu atla
+      if ($btn.hasClass('dropdown-toggle') && $btn.siblings('.dropdown-menu').length) {
+        return;
+      }
+
+      // Buton başlığı/açıklaması
+      let text = $btn.attr('title') || $btn.attr('data-bs-original-title') || $btn.attr('data-original-title') || $btn.attr('aria-label') || $btn.text().trim();
+      
+      // İkon bulma
+      let iconHtml = '';
+      const $icon = $btn.find('i, svg').first();
+      if ($icon.length) {
+        iconHtml = $icon[0].outerHTML;
+      } else {
+        iconHtml = '<i class="bx bx-chevron-right"></i>';
+      }
+
+      // Varsayılan metin yoksa buton sınıfına göre anlamlı başlık ver
+      if (!text) {
+        if ($btn.hasClass('btn-subtle-primary') || $btn.hasClass('btn-info') || $btn.hasClass('hesap-hareketleri') || $btn.hasClass('sozlesme-detay') || $btn.find('.bx-file-find, .bx-history, .bx-show').length) {
+          text = 'Detay / Görüntüle';
+        } else if ($btn.hasClass('btn-subtle-warning') || $btn.hasClass('btn-warning') || $btn.hasClass('duzenle') || $btn.hasClass('sozlesme-duzenle') || $btn.find('.bx-edit, .bx-edit-alt').length) {
+          text = 'Düzenle';
+        } else if ($btn.hasClass('btn-subtle-danger') || $btn.hasClass('btn-danger') || $btn.hasClass('cari-sil') || $btn.hasClass('sozlesme-sil') || $btn.find('.bx-trash').length) {
+          text = 'Sil';
+        } else if ($btn.hasClass('hareket-ekle') || $btn.find('.bx-plus-circle').length) {
+          text = 'Hareket Ekle';
+        } else {
+          text = 'İşlem ' + (index + 1);
+        }
+      }
+
+      const isDanger = $btn.hasClass('btn-danger') || $btn.hasClass('btn-subtle-danger') || $btn.hasClass('cari-sil') || $btn.hasClass('sozlesme-sil') || $btn.hasClass('cm-danger') || text.toLowerCase().includes('sil') || text.toLowerCase().includes('delete');
+
+      // Butona benzersiz bir referans ata
+      const btnRefId = 'cm-btn-ref-' + Math.random().toString(36).substr(2, 9);
+      $btn.attr('data-cm-ref', btnRefId);
+
+      const itemHtml = `<button type="button" class="cm-action-item ${isDanger ? 'cm-danger' : ''}" data-target-ref="${btnRefId}">${iconHtml} <span>${dtEscapeHtml(text)}</span></button>`;
+
+      if (isDanger) {
+        hasDangerAction = true;
+        dangerItemHtml += itemHtml;
+      } else {
+        menuItemsHtml += itemHtml;
+      }
+    });
+
+    if (hasDangerAction) {
+      if (menuItemsHtml !== '') {
+        menuItemsHtml += '<div class="cm-divider"></div>';
+      }
+      menuItemsHtml += dangerItemHtml;
+    }
+
+    // Eğer hiç buton bulunamadıysa ama satır tıklanabilirse
+    if (menuItemsHtml === '') {
+      menuItemsHtml = `<button type="button" class="cm-row-click"><i class="bx bx-right-arrow-alt text-primary"></i> <span>Detaya Git</span></button>`;
+    }
+
+    const menuHeader = `<div class="cm-header"><i class="bx bx-layer text-primary me-2 font-size-15"></i> <span class="text-truncate">${dtEscapeHtml(rowTitle)}</span></div>`;
+    const fullMenuHtml = menuHeader + menuItemsHtml;
+
+    let $contextMenu = $('#customContextMenu');
+    if (!$contextMenu.length) {
+      $contextMenu = $('<div id="customContextMenu" class="custom-context-menu"></div>').appendTo('body');
+    }
+
+    $contextMenu.html(fullMenuHtml);
+
+    let mouseX = e.clientX;
+    let mouseY = e.clientY;
+
+    $contextMenu.css({ display: 'block', visibility: 'hidden', opacity: '0' });
+    const menuWidth = $contextMenu.outerWidth();
+    const menuHeight = $contextMenu.outerHeight();
+    const windowWidth = $(window).width();
+    const windowHeight = $(window).height();
+
+    if (mouseX + menuWidth > windowWidth) {
+      mouseX = windowWidth - menuWidth - 10;
+    }
+    if (mouseY + menuHeight > windowHeight) {
+      mouseY = windowHeight - menuHeight - 10;
+    }
+
+    $contextMenu.css({
+      top: mouseY + 'px',
+      left: mouseX + 'px',
+      visibility: 'visible',
+      opacity: '1'
+    });
+  });
+
+  // Context Menu Elemanına Tıklama
+  $(document).on('click', '#customContextMenu .cm-action-item', function(e) {
+    e.stopPropagation();
+    const targetRef = $(this).data('target-ref');
+    $('#customContextMenu').hide();
+    $('table.dataTable tbody tr, .table-hover tbody tr').removeClass('context-menu-active');
+
+    if (targetRef === 'pdf-preview') {
+      const $activeTr = $('tr.context-menu-active');
+      $activeTr.find('.btn-offer-pdf, .btn-pdf-preview, [data-pdf-url]').first().trigger('click');
+      return;
+    }
+
+    if (targetRef) {
+      const $targetBtn = $('[data-cm-ref="' + targetRef + '"]');
+      if ($targetBtn.length) {
+        if ($targetBtn.is('a') && $targetBtn.attr('href') && $targetBtn.attr('href') !== '#') {
+          const href = $targetBtn.attr('href');
+          const target = $targetBtn.attr('target');
+          if (target === '_blank') {
+            window.open(href, '_blank');
+          } else {
+            window.location.href = href;
+          }
+        } else {
+          $targetBtn.trigger('click');
+        }
+      }
+    }
+  });
+
+  // Satır Tıklama Menü Elemanı
+  $(document).on('click', '#customContextMenu .cm-row-click', function(e) {
+    e.stopPropagation();
+    $('#customContextMenu').hide();
+    const $activeTr = $('tr.context-menu-active');
+    $activeTr.removeClass('context-menu-active');
+    if ($activeTr.length) {
+      $activeTr.find('td:not(:last-child)').first().trigger('click');
+    }
+  });
+
+  // Menü Kapatma (Dışarı tıklama, scroll veya Escape)
+  $(document).on('click scroll', function(e) {
+    if (!$(e.target).closest('#customContextMenu').length) {
+      $('#customContextMenu').hide();
+      $('table.dataTable tbody tr, .table-hover tbody tr').removeClass('context-menu-active');
+    }
+  });
+
+  $(document).on('keydown', function(e) {
+    if (e.key === 'Escape') {
+      $('#customContextMenu').hide();
+      $('table.dataTable tbody tr, .table-hover tbody tr').removeClass('context-menu-active');
+    }
+  });
 });
 
 /**

@@ -260,16 +260,6 @@ $(document).ready(function() {
     const finalOptions = typeof applyLengthStateSave === 'function' ? applyLengthStateSave(tableOptions) : tableOptions;
     const table = $('#tblGelenFaturalar').DataTable(finalOptions);
 
-    // Tablo yüklendiğinde ve çizildiğinde toplam kayıt sayacını güncelle
-    table.on('xhr.dt', function(e, settings, json) {
-        if (json) {
-            const total = json.recordsTotal !== undefined ? json.recordsTotal : (json.data ? json.data.length : 0);
-            $('#badgeTotalRecords').text(total);
-        } else {
-            $('#badgeTotalRecords').text(0);
-        }
-    });
-
     // Check All Kutusu
     $('#checkAll').on('change', function() {
         const isChecked = $(this).is(':checked');
