@@ -101,6 +101,27 @@ class EInvoiceSettingsModel extends Model
     }
 
     /**
+     * EDM Serilerini Önbelleğe Kaydeder
+     */
+    public function updateSerialsCache(int $firmId, array $serials): bool
+    {
+        try {
+            $stmt = $this->db->prepare("
+                UPDATE efatura_ayarlar 
+                SET serials_cache = :serials_cache, serials_cached_at = NOW() 
+                WHERE firm_id = :firm_id
+            ");
+            return $stmt->execute([
+                'firm_id'       => $firmId,
+                'serials_cache' => json_encode($serials, JSON_UNESCAPED_UNICODE)
+            ]);
+        } catch (\PDOException $e) {
+            error_log("EInvoiceSettingsModel::updateSerialsCache Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Sıradaki fatura numarasını üretir (Örn: ERS2026000000001)
      * Atomik transaction ile kilitler ve mükerrer oluşumunu önler
      */

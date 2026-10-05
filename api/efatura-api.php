@@ -66,6 +66,11 @@ try {
             }
             echo json_encode(['status' => 'success', 'data' => $invoiceService->connectionInfo($firmId, $overrideSettings)]);
             break;
+        case 'get_serials':
+            $refresh = !empty($_GET['refresh']) || !empty($_POST['refresh']);
+            $serials = $invoiceService->getSerialsFast($firmId, $refresh);
+            echo json_encode(['status' => 'success', 'data' => $serials]);
+            break;
         case 'counter_info':
             echo json_encode(['status' => 'success', 'data' => $invoiceService->counterInfo($firmId)]);
             break;

@@ -1176,13 +1176,13 @@ class EInvoiceModel extends Model
 
     public function invoiceCustomers(int $firmId): array
     {
-        // 1. E-Fatura modülüne özel cariler (firmaya özel)
-        $efaturaCariler = [];
         try {
             $stmt = $this->db->prepare('
                 SELECT 
                     id, 
+                    cari_kodu,
                     unvan AS CariAdi, 
+                    kisa_ad,
                     unvan AS firma,
                     telefon AS Telefon, 
                     eposta AS Email, 
@@ -1206,86 +1206,11 @@ class EInvoiceModel extends Model
                 ORDER BY unvan ASC
             ');
             $stmt->execute(['firm_id' => $firmId]);
-            $efaturaCariler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             error_log('EFatura cariler fetch error: ' . $e->getMessage());
+            return [];
         }
-
-        // 2. Genel cari tablosundaki cariler
-        $genelCariler = [];
-        try {
-            $stmt = $this->db->prepare('
-                SELECT 
-                    id, 
-                    CariAdi, 
-                    Telefon, 
-                    Email, 
-                    web_sitesi, 
-                    firma, 
-                    vkn_tckn, 
-                    vergi_dairesi, 
-                    alici_turu, 
-                    belge_turu, 
-                    posta_kutusu, 
-                    ulke, 
-                    il, 
-                    ilce, 
-                    posta_kodu, 
-                    Adres, 
-                    notlar, 
-                    ticaret_sicil_no, 
-                    mersis_no,
-                    "genel_cari" AS kaynak
-                FROM cari 
-                WHERE silinme_tarihi IS NULL 
-                ORDER BY CariAdi ASC
-            ');
-            $stmt->execute();
-            $genelCariler = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Throwable $e) {
-            error_log('Genel cariler fetch error: ' . $e->getMessage());
-        }
-
-        if (empty($efaturaCariler)) {
-            return $genelCariler;
-        }
-
-        // E-fatura carilerini öncelikli birleştir (aynı VKN veya isim olanlarda efatura_cariler kalır)
-        $existingKeys = [];
-        $result = [];
-        foreach ($efaturaCariler as $c) {
-            $vkn = preg_replace('/\D/', '', $c['vkn_tckn'] ?? '');
-            if ($vkn !== '') {
-                $existingKeys['vkn_' . $vkn] = true;
-            }
-            $nameKey = mb_strtolower(trim($c['CariAdi'] ?: $c['firma']), 'UTF-8');
-            if ($nameKey !== '') {
-                $existingKeys['name_' . $nameKey] = true;
-            }
-            if (!empty($c['kisa_ad'])) {
-                $existingKeys['name_' . mb_strtolower(trim($c['kisa_ad']), 'UTF-8')] = true;
-            }
-            $result[] = $c;
-        }
-
-        foreach ($genelCariler as $c) {
-            $vkn = preg_replace('/\D/', '', $c['vkn_tckn'] ?? '');
-            if ($vkn !== '' && isset($existingKeys['vkn_' . $vkn])) {
-                continue;
-            }
-            $nameKey = mb_strtolower(trim($c['CariAdi'] ?: $c['firma']), 'UTF-8');
-            $firmaKey = mb_strtolower(trim($c['firma'] ?: $c['CariAdi']), 'UTF-8');
-            if (($nameKey !== '' && isset($existingKeys['name_' . $nameKey])) || ($firmaKey !== '' && isset($existingKeys['name_' . $firmaKey]))) {
-                continue;
-            }
-            $result[] = $c;
-        }
-
-        usort($result, static function ($a, $b) {
-            return strcasecmp($a['CariAdi'] ?? '', $b['CariAdi'] ?? '');
-        });
-
-        return $result;
     }
 
     /** Trusted XML import: preserve source amounts instead of draft recalculation. */

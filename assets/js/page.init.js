@@ -14,11 +14,11 @@ if (typeof flatpickr == "undefined") {
 const deferBordroModalFields = $(".bordro-page").length > 0;
 
 if ($(".select2").length > 0) {
-  $(".select2").filter(function () {
+  $(".select2").not(".select2-hidden-accessible").filter(function () {
     return !deferBordroModalFields || !$(this).closest(".modal").length;
   }).select2({});
 
-  $(".modal .select2").each(function () {
+  $(".modal .select2").not(".select2-hidden-accessible").each(function () {
     if (deferBordroModalFields) return;
     $(this).select2({
       dropdownParent: $(this).parent(),

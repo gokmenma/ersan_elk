@@ -934,7 +934,62 @@ class EInvoiceService
         foreach (EdmSoapClient::items($company->{'SERIALLİST'} ?? $company->SERIALLIST ?? null) as $serial) {
             $safe['SERIALS'][] = ['series' => $serial->SERIAL ?? '', 'year' => $serial->YEAR ?? null, 'active' => $serial->ACTIVEFLAG ?? 0, 'earchive' => $serial->EARCHIVEFLAG ?? 0, 'last' => $serial->{'LASTSERİAL'} ?? $serial->LASTSERIAL ?? null];
         }
+
+        // Serileri veritabanı ve session önbelleğine kaydet
+        if (!empty($safe['SERIALS']) && !$overrideSettings) {
+            $this->settingsModel->updateSerialsCache($firmId, $safe['SERIALS']);
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['edm_serials_' . $firmId] = $safe['SERIALS'];
+                $_SESSION['edm_serials_time_' . $firmId] = time();
+            }
+        }
+
         return $safe;
+    }
+
+    /**
+     * EDM Serilerini önbellekten hızlıca getirir (SOAP çağrısı yapmadan)
+     * Sayfa açılışlarının anında (0ms) yüklenmesini sağlar.
+     */
+    public function getSerialsFast(int $firmId, bool $forceRefresh = false): array
+    {
+        $cacheKey = 'edm_serials_' . $firmId;
+        $cacheTimeKey = 'edm_serials_time_' . $firmId;
+
+        if (!$forceRefresh && session_status() === PHP_SESSION_ACTIVE && isset($_SESSION[$cacheKey]) && is_array($_SESSION[$cacheKey]) && !empty($_SESSION[$cacheKey])) {
+            return $_SESSION[$cacheKey];
+        }
+
+        $settings = $this->settingsModel->getSettings($firmId);
+        if (!$forceRefresh && !empty($settings['serials_cache'])) {
+            $cached = json_decode($settings['serials_cache'], true);
+            if (is_array($cached) && !empty($cached)) {
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $_SESSION[$cacheKey] = $cached;
+                    $_SESSION[$cacheTimeKey] = time();
+                }
+                return $cached;
+            }
+        }
+
+        if ($forceRefresh) {
+            try {
+                $info = $this->connectionInfo($firmId);
+                return $info['SERIALS'] ?? [];
+            } catch (\Throwable $e) {
+                error_log('getSerialsFast forceRefresh error: ' . $e->getMessage());
+            }
+        }
+
+        // Önbellek yoksa ve forceRefresh değilse, ayarlardaki varsayılan serileri fallback olarak dön
+        $fallback = [];
+        if (!empty($settings['efatura_seri'])) {
+            $fallback[] = ['series' => $settings['efatura_seri'], 'year' => (int)date('Y'), 'active' => 1, 'earchive' => 0, 'last' => null];
+        }
+        if (!empty($settings['earsiv_seri'])) {
+            $fallback[] = ['series' => $settings['earsiv_seri'], 'year' => (int)date('Y'), 'active' => 1, 'earchive' => 1, 'last' => null];
+        }
+        return $fallback;
     }
 
     public function counterInfo(int $firmId): array

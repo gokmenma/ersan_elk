@@ -195,9 +195,8 @@ $seriOptions = [
 
 try {
     $eInvoiceService = new \App\Service\EInvoiceService();
-    $connInfo = $eInvoiceService->connectionInfo($firmId);
-    if (!empty($connInfo['SERIALS']) && is_array($connInfo['SERIALS'])) {
-        $edmSerials = $connInfo['SERIALS'];
+    $edmSerials = $eInvoiceService->getSerialsFast($firmId);
+    if (!empty($edmSerials) && is_array($edmSerials)) {
         $initialBelgeTuru = !empty($editInvoice['belge_turu']) ? $editInvoice['belge_turu'] : 'EARSIV';
         $isEarchiveTarget = ($initialBelgeTuru === 'EFATURA') ? 0 : 1;
         foreach ($edmSerials as $s) {
@@ -310,6 +309,8 @@ $malHizmetSelectHtml .= '</select>';
 .select2-results__option:last-child {
     border-bottom: none;
 }
+
+
 
 /* Fatura Düzenleme Tablo ve Kart Stilleri */
 .summary-kpi-card {
@@ -958,7 +959,7 @@ $malHizmetSelectHtml .= '</select>';
 
                             <!-- Fatura No / Seri No -->
                             <div class="col-md-6">
-                                <?= Form::FormSelect2('seri_no', $seriOptions, '', 'Seri No', 'hash') ?>
+                                <?= Form::FormSelect2('seri_no', $seriOptions, '', 'Seri No', 'hash', 'key', '', 'form-select select2-efatura') ?>
                                 <div class="field-help-text text-muted">
                                     <i class="bx bx-info-circle me-1"></i>Seçilmezse gönderimde otomatik seri atanır.
                                 </div>
@@ -972,17 +973,17 @@ $malHizmetSelectHtml .= '</select>';
 
                             <!-- Fatura Tipi * -->
                             <div class="col-md-6">
-                                <?= Form::FormSelect2('fatura_tipi', $faturaTipleri, $editInvoice['fatura_tipi'] ?? 'SATIS', 'Fatura Tipi *', 'tag') ?>
+                                <?= Form::FormSelect2('fatura_tipi', $faturaTipleri, $editInvoice['fatura_tipi'] ?? 'SATIS', 'Fatura Tipi *', 'tag', 'key', '', 'form-select select2-efatura') ?>
                             </div>
 
                             <!-- Fatura Senaryo * -->
                             <div class="col-md-6">
-                                <?= Form::FormSelect2('fatura_profili', $faturaSenaryolari, $editInvoice['fatura_profili'] ?? 'EARSIVFATURA', 'Fatura Senaryo *', 'sliders') ?>
+                                <?= Form::FormSelect2('fatura_profili', $faturaSenaryolari, $editInvoice['fatura_profili'] ?? 'EARSIVFATURA', 'Fatura Senaryo *', 'sliders', 'key', '', 'form-select select2-efatura') ?>
                             </div>
 
                             <!-- Para Birimi & Döviz Kuru -->
                             <div class="col-md-6">
-                                <?= Form::FormSelect2('para_birimi', $paraBirimleri, $editInvoice['para_birimi'] ?? 'TRY', 'Para Birimi *', 'dollar-sign') ?>
+                                <?= Form::FormSelect2('para_birimi', $paraBirimleri, $editInvoice['para_birimi'] ?? 'TRY', 'Para Birimi *', 'dollar-sign', 'key', '', 'form-select select2-efatura') ?>
                             </div>
                             <div class="col-md-6">
                                 <?= Form::FormFloatInput('number', 'doviz_kuru', $editInvoice['doviz_kuru'] ?? '1.0000', '', 'Döviz Kuru', 'trending-up', 'form-control', false, null, 'on', false, 'min="0.0001" step="0.0001"') ?>
@@ -1025,7 +1026,7 @@ $malHizmetSelectHtml .= '</select>';
                             
                             <!-- Alıcı * (Cari Seçimi) -->
                             <div class="col-12">
-                                <?= Form::FormSelect2('selectCari', $cariOptions, $editInvoice['cari_id'] ?? '', 'Alıcı *', 'users') ?>
+                                <?= Form::FormSelect2('selectCari', $cariOptions, $editInvoice['cari_id'] ?? '', 'Alıcı *', 'users', 'key', '', 'form-select select2-cari') ?>
                             </div>
 
                             <!-- Vergi No * (VKN / TCKN) & GİB'de Sorgula -->
@@ -1054,7 +1055,7 @@ $malHizmetSelectHtml .= '</select>';
 
                             <!-- GİB Postakutusu * (e-Fatura ise görünür) -->
                             <div class="col-12" id="divPostaKutusu" style="display: none;">
-                                <?= Form::FormSelect2('alici_posta_kutusu', ['' => 'Önce mükellef sorgulayın'], '', 'GİB Postakutusu *', 'mail') ?>
+                                <?= Form::FormSelect2('alici_posta_kutusu', ['' => 'Önce mükellef sorgulayın'], '', 'GİB Postakutusu *', 'mail', 'key', '', 'form-select select2-efatura') ?>
                             </div>
 
                             <!-- Alıcı Ünvanı * -->
@@ -1064,13 +1065,13 @@ $malHizmetSelectHtml .= '</select>';
 
                             <!-- Ülke *, İl * (Select2) & İlçe * (Select2) -->
                             <div class="col-md-4">
-                                <?= Form::FormSelect2('alici_ulke', $ulkeOptions, $editInvoice['alici_ulke'] ?? 'Türkiye', 'Ülke *', 'globe') ?>
+                                <?= Form::FormSelect2('alici_ulke', $ulkeOptions, $editInvoice['alici_ulke'] ?? 'Türkiye', 'Ülke *', 'globe', 'key', '', 'form-select select2-location') ?>
                             </div>
                             <div class="col-md-4">
-                                <?= Form::FormSelect2('alici_il', $ilOptions, $editInvoice['alici_il'] ?? 'Kayseri', 'İl *', 'map') ?>
+                                <?= Form::FormSelect2('alici_il', $ilOptions, $editInvoice['alici_il'] ?? 'Kayseri', 'İl *', 'map', 'key', '', 'form-select select2-location') ?>
                             </div>
                             <div class="col-md-4">
-                                <?= Form::FormSelect2('alici_ilce', ['' => 'İlçe Seçiniz...'], $editInvoice['alici_ilce'] ?? '', 'İlçe *', 'map-pin') ?>
+                                <?= Form::FormSelect2('alici_ilce', ['' => 'İlçe Seçiniz...'], $editInvoice['alici_ilce'] ?? '', 'İlçe *', 'map-pin', 'key', '', 'form-select select2-location') ?>
                             </div>
 
                             <!-- Adres * -->
@@ -1095,7 +1096,7 @@ $malHizmetSelectHtml .= '</select>';
                                     <div class="col-md-6">
                                         <div class="form-check custom-invoice-checkbox">
                                             <input class="form-check-input" type="checkbox" id="giden_earsiv_sms" name="giden_earsiv_sms" value="1">
-                                            <label class="form-check-label" for="giden_earsiv_sms">Giden E-Arşiv Fatura SMS Bildirimi</label>
+                                             <label class="form-check-label" for="giden_earsiv_sms">Giden E-Arşiv Fatura SMS Bildirimi</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -1149,7 +1150,7 @@ $malHizmetSelectHtml .= '</select>';
 
                     <!-- Ödeme Şekli -->
                     <div class="col-md-3">
-                        <?= Form::FormSelect2('odeme_sekli', $odemeSekliOptions, '', 'Ödeme Şekli', 'credit-card') ?>
+                        <?= Form::FormSelect2('odeme_sekli', $odemeSekliOptions, '', 'Ödeme Şekli', 'credit-card', 'key', '', 'form-select select2-efatura') ?>
                     </div>
 
                     <!-- Ödeme Kanalı -->
@@ -1508,7 +1509,7 @@ $malHizmetSelectHtml .= '</select>';
 </div>
 
 <!-- SortableJS Kütüphanesi -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="assets/libs/sortablejs/sortable.min.js"></script>
 <script>
 const CARI_DATA = <?= json_encode($cariler, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const MAL_HIZMET_DATA = <?= json_encode($malHizmetListesi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -1685,12 +1686,20 @@ document.addEventListener('DOMContentLoaded', function() {
         return $('<span><strong class="text-dark">' + escapeHtml(urunAdi) + '</strong></span>');
     }
 
-    // 1. Tüm Üst Select2 Elemanlarını Başlat
-    $('.select2:not(#selectCari)').select2({
-        dropdownAutoWidth: true,
-        width: '100%'
+    // 1. Tüm Fatura Standart Select2 Elemanlarını Başlat
+    $('.select2-efatura').each(function() {
+        if ($(this).hasClass('select2-hidden-accessible')) {
+            $(this).select2('destroy');
+        }
+        $(this).select2({
+            dropdownAutoWidth: true,
+            width: '100%'
+        });
     });
 
+    if ($('#selectCari').hasClass('select2-hidden-accessible')) {
+        $('#selectCari').select2('destroy');
+    }
     $('#selectCari').select2({
         dropdownAutoWidth: true,
         width: '100%',
@@ -1770,20 +1779,128 @@ document.addEventListener('DOMContentLoaded', function() {
         updateNextInvoiceNoPreview();
     }
 
+    // Türkçe Küçük Harf Çevirici (İ/I/Ş/Ğ/Ü/Ö/Ç duyarlı)
+    function trLower(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/İ/g, 'i')
+            .replace(/I/g, 'ı')
+            .replace(/Ş/g, 'ş')
+            .replace(/Ğ/g, 'ğ')
+            .replace(/Ü/g, 'ü')
+            .replace(/Ö/g, 'ö')
+            .replace(/Ç/g, 'ç')
+            .toLowerCase();
+    }
+
+    // Adresten veya metinden Akıllı İl & İlçe Çıkarıcı
+    function findCityAndDistrict(cityInput, districtInput, addressText) {
+        let foundCity = cityInput || '';
+        let foundDistrict = districtInput || '';
+        const allCities = EDM_DATA && EDM_DATA.districts ? Object.keys(EDM_DATA.districts) : [];
+
+        if (foundCity) {
+            const lowerCity = trLower(foundCity);
+            const matched = allCities.find(c => trLower(c) === lowerCity);
+            if (matched) foundCity = matched;
+        }
+
+        if (!foundCity && addressText) {
+            const lowerAddress = trLower(addressText);
+            for (const city of allCities) {
+                const lowerCity = trLower(city);
+                if (lowerAddress.indexOf(lowerCity) > -1) {
+                    foundCity = city;
+                    break;
+                }
+            }
+        }
+
+        if (foundCity && EDM_DATA && EDM_DATA.districts) {
+            const lowerCity = trLower(foundCity);
+            const matchedCityKey = allCities.find(c => trLower(c) === lowerCity) || foundCity;
+            const cityDistricts = EDM_DATA.districts[matchedCityKey] || [];
+
+            if (foundDistrict) {
+                const lowerDistrict = trLower(foundDistrict);
+                const matchedD = cityDistricts.find(d => trLower(d) === lowerDistrict);
+                if (matchedD) foundDistrict = matchedD;
+            }
+            if (!foundDistrict && addressText) {
+                const lowerAddress = trLower(addressText);
+                for (const district of cityDistricts) {
+                    if (district.length > 2) {
+                        const lowerDistrict = trLower(district);
+                        if (lowerAddress.indexOf(lowerDistrict) > -1) {
+                            foundDistrict = district;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return { city: foundCity, district: foundDistrict };
+    }
+
     // İlçe Doldurma Fonksiyonu
     function populateDistricts(selectedCity, selectedDistrict = '') {
         const districtSelect = $('#alici_ilce');
         districtSelect.empty().append(new Option('İlçe Seçiniz...', ''));
-        
-        if (selectedCity && EDM_DATA.districts && EDM_DATA.districts[selectedCity]) {
-            EDM_DATA.districts[selectedCity].forEach(d => {
-                const isSelected = (d === selectedDistrict);
-                const opt = new Option(d, d, false, isSelected);
-                districtSelect.append(opt);
+
+        if (selectedCity && EDM_DATA && EDM_DATA.districts) {
+            const allCities = Object.keys(EDM_DATA.districts);
+            const lowerCity = trLower(selectedCity);
+            const matchedCityKey = allCities.find(c => trLower(c) === lowerCity) || selectedCity;
+            const districtList = EDM_DATA.districts[matchedCityKey] || [];
+
+            districtList.forEach(d => {
+                const isSelected = selectedDistrict ? (trLower(d) === trLower(selectedDistrict)) : false;
+                districtSelect.append(new Option(d, d, false, isSelected));
             });
+
+            if (selectedDistrict) {
+                const matchedD = districtList.find(d => trLower(d) === trLower(selectedDistrict));
+                if (matchedD) {
+                    districtSelect.val(matchedD);
+                } else {
+                    districtSelect.append(new Option(selectedDistrict, selectedDistrict, true, true));
+                }
+            }
         }
-        districtSelect.trigger('change.select2');
+        districtSelect.trigger('change');
     }
+
+    // Ülke, İl ve İlçe için Select2 başlat (Manuel yazma ve seçim: tags=true)
+    if ($('#alici_ulke').hasClass('select2-hidden-accessible')) {
+        $('#alici_ulke').select2('destroy');
+    }
+    $('#alici_ulke').select2({
+        tags: true,
+        dropdownAutoWidth: true,
+        width: '100%',
+        placeholder: 'Ülke seçin veya yazın...'
+    });
+
+    if ($('#alici_il').hasClass('select2-hidden-accessible')) {
+        $('#alici_il').select2('destroy');
+    }
+    $('#alici_il').select2({
+        tags: true,
+        dropdownAutoWidth: true,
+        width: '100%',
+        placeholder: 'İl seçin veya yazın...'
+    });
+
+    if ($('#alici_ilce').hasClass('select2-hidden-accessible')) {
+        $('#alici_ilce').select2('destroy');
+    }
+    $('#alici_ilce').select2({
+        tags: true,
+        dropdownAutoWidth: true,
+        width: '100%',
+        placeholder: 'İlçe seçin veya yazın...'
+    });
 
     $('#alici_il').on('change', function() {
         populateDistricts($(this).val());
@@ -1797,10 +1914,16 @@ document.addEventListener('DOMContentLoaded', function() {
         updateNextInvoiceNoPreview();
     });
 
-    // İlk yüklemede mevcut il için ilçeleri yükle
+    // İlk yüklemede varsayılan Ülke & İl / İlçe
+    if (!$('#alici_ulke').val()) {
+        $('#alici_ulke').val('Türkiye').trigger('change');
+    }
     const initialCity = $('#alici_il').val() || (EDIT_DATA ? EDIT_DATA.alici_il : 'Kayseri');
     const initialDistrict = EDIT_DATA ? (EDIT_DATA.alici_ilce || '') : '';
-    populateDistricts(initialCity, initialDistrict);
+    if (initialCity) {
+        $('#alici_il').val(initialCity).trigger('change');
+        populateDistricts(initialCity, initialDistrict);
+    }
 
     // İlk yüklemede seri numaralarını filtrele
     const initialBelgeTuru = $('input[name="gonderim_sekli"]:checked').val() || $('#belge_turu').val() || 'EARSIV';
@@ -2094,13 +2217,11 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#alici_vergi_dairesi').val(EDIT_DATA.alici_vergi_dairesi || '');
         $('#alici_unvan').val(EDIT_DATA.alici_unvan || '');
         $('#alici_adres').val(EDIT_DATA.alici_adres || '');
-        $('#alici_il').val(EDIT_DATA.alici_il || 'Kayseri').trigger('change.select2');
-        if (EDIT_DATA.alici_ilce) {
-            setTimeout(() => {
-                $('#alici_ilce').val(EDIT_DATA.alici_ilce).trigger('change.select2');
-            }, 100);
-        }
-        $('#alici_ulke').val(EDIT_DATA.alici_ulke || 'Türkiye').trigger('change.select2');
+        const editCity = EDIT_DATA.alici_il || 'Kayseri';
+        const editDistrict = EDIT_DATA.alici_ilce || '';
+        $('#alici_il').val(editCity).trigger('change');
+        populateDistricts(editCity, editDistrict);
+        $('#alici_ulke').val(EDIT_DATA.alici_ulke || 'Türkiye').trigger('change');
         $('#alici_eposta').val(EDIT_DATA.alici_eposta || '');
         $('#alici_telefon').val(EDIT_DATA.alici_telefon || '');
         $('#fatura_no').val(EDIT_DATA.fatura_no || '');
@@ -2683,19 +2804,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selected) {
             $('#alici_unvan').val(selected.firma || selected.CariAdi || '');
             if (selected.Adres) $('#alici_adres').val(selected.Adres);
-            if (selected.il || selected.Il) {
-                const ilVal = selected.il || selected.Il;
-                $('#alici_il').val(ilVal).trigger('change.select2');
+
+            // Ülke Belirle
+            const targetCountry = selected.ulke || 'Türkiye';
+            $('#alici_ulke').val(targetCountry).trigger('change');
+
+            // İl ve İlçe Belirle (Akıllı Adres Parser ile)
+            const loc = findCityAndDistrict(selected.il || selected.Il, selected.ilce || selected.Ilce, selected.Adres || '');
+            if (loc.city) {
+                $('#alici_il').val(loc.city).trigger('change');
+                populateDistricts(loc.city, loc.district);
+            } else {
+                $('#alici_il').val('Kayseri').trigger('change');
+                populateDistricts('Kayseri', '');
             }
-            if (selected.ilce || selected.Ilce) {
-                const ilceVal = selected.ilce || selected.Ilce;
-                setTimeout(() => {
-                    $('#alici_ilce').val(ilceVal).trigger('change.select2');
-                }, 100);
-            }
-            if (selected.ulke) {
-                $('#alici_ulke').val(selected.ulke).trigger('change.select2');
-            }
+
             if (selected.vergi_dairesi || selected.VergiDairesi) $('#alici_vergi_dairesi').val(selected.vergi_dairesi || selected.VergiDairesi);
             if (selected.Email || selected.Eposta) $('#alici_eposta').val(selected.Email || selected.Eposta);
             if (selected.Telefon) $('#alici_telefon').val(selected.Telefon);

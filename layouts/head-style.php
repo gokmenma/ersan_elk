@@ -349,12 +349,12 @@ use App\Helper\Helper;
 <link href="<?php echo Helper::base_url('assets/css/app.min.css'); ?>" id="app-style" rel="stylesheet"
     type="text/css" />
 
-<link href="<?= $isBordroListPage ? 'assets/libs/select2/css/select2.min.css' : 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css' ?>" rel="stylesheet" />
+<link href="<?php echo Helper::base_url('assets/libs/select2/css/select2.min.css'); ?>" rel="stylesheet" />
 <link href="<?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>"
     id="custom-style" rel="stylesheet" type="text/css" />
 <!-- jQuery -->
 <script src="<?php echo Helper::base_url('assets/libs/jquery/jquery.3.7.1.min.js'); ?>"></script>
-<script src="<?= $isBordroListPage ? 'assets/libs/select2/js/select2.min.js' : 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js' ?>"></script>
+<script src="<?php echo Helper::base_url('assets/libs/select2/js/select2.min.js'); ?>"></script>
 
 <!-- Flatpickr -->
 <link rel="stylesheet" href="<?php echo Helper::base_url('assets/libs/flatpickr/flatpickr.min.css'); ?>">
@@ -365,6 +365,6 @@ use App\Helper\Helper;
     integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
     crossorigin="anonymous"></script>
 <?php endif; ?>
-<link rel="stylesheet" type="text/css" href="<?= $isBordroListPage ? Helper::assetVersion('assets/libs/toastify/toastify.min.css') : 'https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css' ?>">
+<link rel="stylesheet" type="text/css" href="<?php echo Helper::base_url('assets/libs/toastify/toastify.min.css'); ?>">
 <!-- Feather Icons (Immediate load for early render) -->
 <script src="<?php echo Helper::base_url('assets/libs/feather-icons/feather.min.js'); ?>"></script>
