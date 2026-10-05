@@ -309,14 +309,7 @@ $envOptions = [
                                         </tr>
                                     </thead>
                                     <tbody id="numaratorTableBody">
-                                        <?php if (empty($numaratorList)): ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center py-4 text-muted">
-                                                    <i class="bx bx-info-circle fs-4 d-block mb-1 text-secondary"></i>
-                                                    Kayıtlı sayaç bulunmuyor. EDM'den serileri çekmek için <strong>"EDM'den Senkronize Et"</strong> butonuna tıklayın.
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
+                                        <?php if (!empty($numaratorList)): ?>
                                             <?php foreach ($numaratorList as $num): ?>
                                                 <?php
                                                 $nextNo = ((int)$num['son_numara']) + 1;
@@ -649,7 +642,12 @@ document.addEventListener('DOMContentLoaded', function() {
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tümü"]],
             order: [[0, 'desc'], [1, 'asc'], [2, 'asc']],
             responsive: true,
-            autoWidth: false
+            autoWidth: false,
+            language: {
+                ...(baseOptions.language || {}),
+                emptyTable: '<div class="py-3 text-muted"><i class="bx bx-info-circle fs-4 d-block mb-1 text-secondary"></i>Kayıtlı sayaç bulunmuyor. EDM\'den serileri çekmek için <strong>"EDM\'den Senkronize Et"</strong> butonuna tıklayın.</div>',
+                zeroRecords: 'Eşleşen sayaç kaydı bulunamadı.'
+            }
         };
         if (typeof applyLengthStateSave === 'function') {
             options = applyLengthStateSave(options);
@@ -681,36 +679,31 @@ document.addEventListener('DOMContentLoaded', function() {
         const tbody = $('#numaratorTableBody');
         tbody.empty();
 
-        if (!list || list.length === 0) {
-            tbody.append(`
-                <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">
-                        <i class="bx bx-info-circle fs-4 d-block mb-1 text-secondary"></i>
-                        Kayıtlı sayaç bulunmuyor.
-                    </td>
-                </tr>
-            `);
-        } else {
+        if (Array.isArray(list) && list.length > 0) {
             list.forEach(num => {
                 const nextNo = parseInt(num.son_numara, 10) + 1;
                 const padNext = String(nextNo).padStart(9, '0');
-                const formattedNext = num.seri + String(num.yil) + padNext;
+                const formattedNext = (num.seri || '') + String(num.yil || '') + padNext;
                 const isEarsiv = num.belge_turu === 'EARSIV';
+
+                const escSeri = $('<div>').text(num.seri || '').html();
+                const escBelgeTuru = $('<div>').text(num.belge_turu || '').html();
+                const escUpdated = $('<div>').text(num.updated_at || '-').html();
 
                 tbody.append(`
                     <tr>
-                        <td><span class="badge bg-light text-dark font-monospace fw-bold">${num.yil}</span></td>
+                        <td><span class="badge bg-light text-dark font-monospace fw-bold">${parseInt(num.yil, 10)}</span></td>
                         <td>${isEarsiv ? '<span class="badge bg-primary-subtle text-primary">e-Arşiv</span>' : '<span class="badge bg-success-subtle text-success">e-Fatura</span>'}</td>
-                        <td><strong class="font-monospace text-dark font-size-14">${num.seri}</strong></td>
-                        <td><span class="font-monospace fw-bold text-dark font-size-13">${num.son_numara}</span></td>
+                        <td><strong class="font-monospace text-dark font-size-14">${escSeri}</strong></td>
+                        <td><span class="font-monospace fw-bold text-dark font-size-13">${parseInt(num.son_numara, 10) || 0}</span></td>
                         <td><span class="badge bg-light text-primary font-monospace font-size-12 border border-primary-subtle">${formattedNext}</span></td>
-                        <td><small class="text-muted">${num.updated_at || '-'}</small></td>
+                        <td><small class="text-muted">${escUpdated}</small></td>
                         <td class="text-end">
                             <button type="button" class="btn btn-outline-secondary btn-sm btn-edit-numarator" 
-                                data-type="${num.belge_turu}"
-                                data-year="${num.yil}"
-                                data-series="${num.seri}"
-                                data-last="${num.son_numara}"
+                                data-type="${escBelgeTuru}"
+                                data-year="${parseInt(num.yil, 10)}"
+                                data-series="${escSeri}"
+                                data-last="${parseInt(num.son_numara, 10) || 0}"
                                 title="Sayacı Düzenle">
                                 <i class="bx bx-edit"></i> Düzenle
                             </button>
@@ -721,7 +714,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         initNumaratorTable();
-        $('#kpiSeriSayisi').text(list ? list.length : 0);
+        $('#kpiSeriSayisi').text(Array.isArray(list) ? list.length : 0);
     }
 
     // Modal Önizleme Hesaplama
