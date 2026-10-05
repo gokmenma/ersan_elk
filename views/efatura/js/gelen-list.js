@@ -20,46 +20,64 @@ $(document).ready(function() {
 
     window.efaturaSetupSummary('efatura_gelen_summary_cards_state');
 
-    // Flatpickr Tarih Aralığı Seçici Başlat
-    if (typeof flatpickr !== 'undefined' && document.getElementById('filterDateRange')) {
-        flatpickr('#filterDateRange', {
-            mode: 'range',
-            locale: 'tr',
-            dateFormat: 'd.m.Y',
-            defaultDate: [firstDay, lastDay],
-            onClose: function(selectedDates) {
-                if (selectedDates.length === 1) {
-                    currentStartDate = formatYMD(selectedDates[0]);
-                    currentEndDate = formatYMD(selectedDates[0]);
-                    table.ajax.reload();
-                    loadStats();
-                } else if (selectedDates.length === 2) {
-                    currentStartDate = formatYMD(selectedDates[0]);
-                    currentEndDate = formatYMD(selectedDates[1]);
-                    table.ajax.reload();
-                    loadStats();
-                }
-            },
+    // Başlangıç Tarihi Seçici Başlat
+    if (typeof window.initFlatpickrWithYearSelect === 'function' && document.getElementById('filterStartDate')) {
+        window.initFlatpickrWithYearSelect('#filterStartDate', {
+            defaultDate: firstDay,
             onChange: function(selectedDates) {
-                if (selectedDates.length === 2) {
+                if (selectedDates.length > 0) {
                     currentStartDate = formatYMD(selectedDates[0]);
-                    currentEndDate = formatYMD(selectedDates[1]);
-                    table.ajax.reload();
-                    loadStats();
+                    $('#btnClearStartDate').show();
+                } else {
+                    currentStartDate = '';
+                    $('#btnClearStartDate').hide();
                 }
+                table.ajax.reload();
+                loadStats();
             }
         });
     }
 
-    // Tarih Filtresi Temizle Butonu
-    $('#btnClearDateRange').on('click', function(e) {
+    // Bitiş Tarihi Seçici Başlat
+    if (typeof window.initFlatpickrWithYearSelect === 'function' && document.getElementById('filterEndDate')) {
+        window.initFlatpickrWithYearSelect('#filterEndDate', {
+            defaultDate: lastDay,
+            onChange: function(selectedDates) {
+                if (selectedDates.length > 0) {
+                    currentEndDate = formatYMD(selectedDates[0]);
+                    $('#btnClearEndDate').show();
+                } else {
+                    currentEndDate = '';
+                    $('#btnClearEndDate').hide();
+                }
+                table.ajax.reload();
+                loadStats();
+            }
+        });
+    }
+
+    // Başlangıç Tarihi Temizle Butonu
+    $('#btnClearStartDate').on('click', function(e) {
         e.stopPropagation();
         currentStartDate = '';
-        currentEndDate = '';
-        if (document.getElementById('filterDateRange') && document.getElementById('filterDateRange')._flatpickr) {
-            document.getElementById('filterDateRange')._flatpickr.clear();
+        if (document.getElementById('filterStartDate') && document.getElementById('filterStartDate')._flatpickr) {
+            document.getElementById('filterStartDate')._flatpickr.clear();
         }
-        $('#filterDateRange').val('');
+        $('#filterStartDate').val('');
+        $(this).hide();
+        table.ajax.reload();
+        loadStats();
+    });
+
+    // Bitiş Tarihi Temizle Butonu
+    $('#btnClearEndDate').on('click', function(e) {
+        e.stopPropagation();
+        currentEndDate = '';
+        if (document.getElementById('filterEndDate') && document.getElementById('filterEndDate')._flatpickr) {
+            document.getElementById('filterEndDate')._flatpickr.clear();
+        }
+        $('#filterEndDate').val('');
+        $(this).hide();
         table.ajax.reload();
         loadStats();
     });
@@ -590,12 +608,17 @@ $(document).ready(function() {
                             }).then(() => {
                                 currentStartDate = syncRange.start_date;
                                 currentEndDate = syncRange.end_date;
-                                if (document.getElementById('filterDateRange') && document.getElementById('filterDateRange')._flatpickr) {
+                                if (document.getElementById('filterStartDate') && document.getElementById('filterStartDate')._flatpickr) {
                                     const sParts = syncRange.start_date.split('-');
-                                    const eParts = syncRange.end_date.split('-');
                                     const sDate = new Date(parseInt(sParts[0], 10), parseInt(sParts[1], 10) - 1, parseInt(sParts[2], 10));
+                                    document.getElementById('filterStartDate')._flatpickr.setDate(sDate, false);
+                                    $('#btnClearStartDate').show();
+                                }
+                                if (document.getElementById('filterEndDate') && document.getElementById('filterEndDate')._flatpickr) {
+                                    const eParts = syncRange.end_date.split('-');
                                     const eDate = new Date(parseInt(eParts[0], 10), parseInt(eParts[1], 10) - 1, parseInt(eParts[2], 10));
-                                    document.getElementById('filterDateRange')._flatpickr.setDate([sDate, eDate], false);
+                                    document.getElementById('filterEndDate')._flatpickr.setDate(eDate, false);
+                                    $('#btnClearEndDate').show();
                                 }
                                 table.ajax.reload(null, false);
                                 loadStats();

@@ -2897,8 +2897,103 @@ Select group
 }
 
 .form-floating-custom .form-floating-icon {
-  width: 40px !important;
+  width: 44px !important;
   height: 56px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 4;
+}
+
+.form-floating-custom .form-floating-icon i,
+.form-floating-custom .form-floating-icon svg {
+  font-size: 20px !important;
+  color: #64748b;
+  line-height: 1;
+}
+
+.form-floating-custom:focus-within .form-floating-icon i,
+.form-floating-custom:focus-within .form-floating-icon svg {
+  color: var(--bs-primary) !important;
+}
+
+/* Hide native select when Select2 is applied to prevent double select boxes */
+.form-floating > select.select2-hidden-accessible,
+.form-floating-custom > select.select2-hidden-accessible,
+select.select2-hidden-accessible {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  border: 0 !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.form-floating-custom .select2-container {
+  width: 100% !important;
+  display: block !important;
+}
+
+.form-floating-custom .select2-container--default .select2-selection--single {
+  height: 56px !important;
+  min-height: 56px !important;
+  border: 1px solid var(--bs-border-color, #d8dde6) !important;
+  border-radius: var(--bs-border-radius, 8px) !important;
+  background-color: var(--bs-body-bg, #fff) !important;
+  padding-left: 45px !important;
+  padding-top: 18px !important;
+  padding-bottom: 2px !important;
+  padding-right: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.form-floating-custom .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: normal !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--bs-body-color, #1e293b) !important;
+  width: 100% !important;
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.form-floating-custom .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 54px !important;
+  top: 1px !important;
+  right: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.form-floating-custom:has(.select2-container) > label,
+.form-floating-custom > select.select2-hidden-accessible ~ label,
+.form-floating-custom > .select2-container ~ label {
+  position: absolute !important;
+  top: 0 !important;
+  left: 32px !important;
+  height: auto !important;
+  padding: 0.65rem 0.75rem !important;
+  transform: scale(0.78) translateY(-0.35rem) translateX(0.15rem) !important;
+  transform-origin: 0 0 !important;
+  opacity: 0.75 !important;
+  color: #64748b !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
 }
 
 .form-floating-custom > label {

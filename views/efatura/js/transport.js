@@ -24,6 +24,84 @@
     }
     installAjaxHeader();
     document.addEventListener('DOMContentLoaded', installAjaxHeader);
+    window.initFlatpickrWithYearSelect = function (selector, userOptions = {}) {
+        if (typeof flatpickr === 'undefined') return null;
+        const el = (typeof selector === 'string') ? document.querySelector(selector) : selector;
+        if (!el) return null;
+
+        const updateYearDropdown = function (instance) {
+            if (!instance || !instance.calendarContainer) return;
+            const monthNav = instance.calendarContainer.querySelector('.flatpickr-current-month');
+            if (!monthNav) return;
+
+            const numInput = monthNav.querySelector('.numInputWrapper');
+            if (numInput) {
+                numInput.style.display = 'none';
+            }
+
+            let yearSelect = monthNav.querySelector('.flatpickr-yearDropdown-years');
+            if (!yearSelect) {
+                yearSelect = document.createElement('select');
+                yearSelect.className = 'flatpickr-monthDropdown-months flatpickr-yearDropdown-years';
+                yearSelect.setAttribute('aria-label', 'Yıl');
+
+                const curYear = new Date().getFullYear();
+                const startY = userOptions.minYear || (curYear - 15);
+                const endY = userOptions.maxYear || curYear;
+
+                for (let y = startY; y <= endY; y++) {
+                    const opt = document.createElement('option');
+                    opt.value = y;
+                    opt.textContent = y;
+                    yearSelect.appendChild(opt);
+                }
+
+                yearSelect.addEventListener('change', function (e) {
+                    e.stopPropagation();
+                    const newYear = parseInt(this.value, 10);
+                    if (!isNaN(newYear)) {
+                        if (typeof instance.changeYear === 'function') {
+                            instance.changeYear(newYear);
+                        } else {
+                            instance.currentYear = newYear;
+                            instance.redraw();
+                        }
+                    }
+                });
+
+                monthNav.appendChild(yearSelect);
+            }
+
+            if (yearSelect && instance.currentYear) {
+                yearSelect.value = instance.currentYear;
+            }
+        };
+
+        const config = {
+            locale: 'tr',
+            dateFormat: 'd.m.Y',
+            ...userOptions,
+            onReady: function (selectedDates, dateStr, instance) {
+                updateYearDropdown(instance);
+                if (typeof userOptions.onReady === 'function') userOptions.onReady(selectedDates, dateStr, instance);
+            },
+            onOpen: function (selectedDates, dateStr, instance) {
+                updateYearDropdown(instance);
+                if (typeof userOptions.onOpen === 'function') userOptions.onOpen(selectedDates, dateStr, instance);
+            },
+            onMonthChange: function (selectedDates, dateStr, instance) {
+                updateYearDropdown(instance);
+                if (typeof userOptions.onMonthChange === 'function') userOptions.onMonthChange(selectedDates, dateStr, instance);
+            },
+            onYearChange: function (selectedDates, dateStr, instance) {
+                updateYearDropdown(instance);
+                if (typeof userOptions.onYearChange === 'function') userOptions.onYearChange(selectedDates, dateStr, instance);
+            }
+        };
+
+        return flatpickr(el, config);
+    };
+
     window.efaturaSetupSummary = function (key) {
         const button = document.getElementById('btnToggleSummaryCards');
         const group = document.getElementById('summaryCardsContainer');

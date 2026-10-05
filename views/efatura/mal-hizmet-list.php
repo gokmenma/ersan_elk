@@ -42,23 +42,6 @@ $kdvOptions = [
 #efaturaMalHizmetTable { border-bottom: 1px solid #e2e8f0 !important; }
 #efaturaMalHizmetTable tbody tr:last-child td { border-bottom: 1px solid #e2e8f0 !important; }
 .table-responsive { border-bottom: 1px solid #e2e8f0 !important; }
-
-/* Modal Nav Pills (Segmented Tabs) */
-#modalMalHizmet .nav-pills .nav-link {
-    color: #64748b;
-    border-radius: 8px;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-#modalMalHizmet .nav-pills .nav-link:hover:not(.active) {
-    background: #e2e8f0;
-    color: #1e293b;
-}
-#modalMalHizmet .nav-pills .nav-link.active {
-    background-color: #344054 !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 6px rgba(52, 64, 84, 0.25);
-}
 </style>
 <meta name="csrf-token" content="<?= htmlspecialchars(Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
 
@@ -392,10 +375,29 @@ $(document).ready(function() {
         $('#btnToggleSummaryCards').attr('aria-expanded', 'false');
     }
 
-    // Modal içi Select2 başlatma
-    $('#modalMalHizmet .select2').select2({
-        dropdownParent: $('#modalMalHizmet'),
-        width: '100%'
+    // Modal içi Select2 başlatma fonksiyonu (Çift eleman oluşmasını önler)
+    function initModalMalHizmetSelect2() {
+        $('#modalMalHizmet select.select2').each(function() {
+            const $select = $(this);
+            if ($select.data('select2')) {
+                $select.select2('destroy');
+            }
+            $select.siblings('.select2-container').remove();
+            $select.select2({
+                dropdownParent: $('#modalMalHizmet'),
+                width: '100%'
+            });
+        });
+    }
+
+    // Modal açıldığında Select2 başlat
+    $('#modalMalHizmet').on('shown.bs.modal', function() {
+        initModalMalHizmetSelect2();
+    });
+
+    // Sekmeler arasında geçiş yapıldığında aktif sekmedeki Select2'leri tazele
+    $('#malHizmetModalTabs button[data-bs-toggle="pill"]').on('shown.bs.tab', function() {
+        initModalMalHizmetSelect2();
     });
 
     // 2. DataTables Başlatma
@@ -534,6 +536,7 @@ $(document).ready(function() {
         $('#item_enc_id').val('');
         $('#modalMalHizmetLabel').text('Yeni Mal / Hizmet Ekle');
         $('#tab-mh-genel-btn').tab('show');
+        initModalMalHizmetSelect2();
         $('#tur').val('MAL').trigger('change.select2');
         $('#birim').val('C62').trigger('change.select2');
         $('#para_birimi').val('TRY').trigger('change.select2');
@@ -575,6 +578,7 @@ $(document).ready(function() {
                 $('#item_enc_id').val(d.enc_id);
                 $('#modalMalHizmetLabel').text('Mal / Hizmeti Düzenle: ' + d.urun_adi);
                 $('#tab-mh-genel-btn').tab('show');
+                initModalMalHizmetSelect2();
 
                 $('#stok_kodu').val(d.stok_kodu || '');
                 $('#urun_adi').val(d.urun_adi || '');
@@ -584,10 +588,10 @@ $(document).ready(function() {
                 $('#satis_fiyati').val(d.satis_fiyati || '0.00');
                 $('#aciklama').val(d.aciklama || '');
 
-                $('#tur').val(d.tur || 'MAL').trigger('change');
-                $('#birim').val(d.birim || 'C62').trigger('change');
-                $('#para_birimi').val(d.para_birimi || 'TRY').trigger('change');
-                $('#kdv_orani').val(parseFloat(d.kdv_orani || 20).toFixed(2)).trigger('change');
+                $('#tur').val(d.tur || 'MAL').trigger('change.select2');
+                $('#birim').val(d.birim || 'C62').trigger('change.select2');
+                $('#para_birimi').val(d.para_birimi || 'TRY').trigger('change.select2');
+                $('#kdv_orani').val(parseFloat(d.kdv_orani || 20).toFixed(2)).trigger('change.select2');
 
                 $('#kdv_dahil_mi').prop('checked', parseInt(d.kdv_dahil_mi) === 1);
                 $('#is_active').prop('checked', parseInt(d.is_active) === 1);

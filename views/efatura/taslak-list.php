@@ -10,6 +10,52 @@ $title = 'Taslak Faturalar';
 #summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
 .efatura-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+
+/* Focus durumunda inner input border/outline kaldır, dış kutuyu temiz vurgula */
+.date-filter-box,
+.product-search-box {
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+.date-filter-box input,
+.date-filter-box input:focus,
+.date-filter-box input:active,
+.date-filter-box input.form-control,
+.date-filter-box input.form-control:focus,
+.date-filter-box input.form-control:active,
+.product-search-box input,
+.product-search-box input:focus,
+.product-search-box input:active,
+.product-search-box input.form-control,
+.product-search-box input.form-control:focus,
+.product-search-box input.form-control:active {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+}
+.date-filter-box:focus-within,
+.product-search-box:focus-within {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Flatpickr Year Dropdown Select */
+.flatpickr-current-month .flatpickr-yearDropdown-years {
+    font-weight: 700 !important;
+    font-size: inherit !important;
+    margin-left: 4px !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    color: inherit !important;
+    padding: 0 4px !important;
+    border-radius: 4px !important;
+}
+.flatpickr-current-month .flatpickr-yearDropdown-years:focus,
+.flatpickr-current-month .flatpickr-yearDropdown-years:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+    outline: none !important;
+}
 </style>
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
 <script src="views/efatura/js/transport.js?v=<?= filemtime(__DIR__ . '/js/transport.js') ?>"></script>
@@ -186,11 +232,20 @@ $title = 'Taslak Faturalar';
                     </button>
                 </div>
 
-                <!-- Tarih Aralığı Filtresi -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;">
-                    <i class="bx bx-calendar text-primary font-size-16"></i>
-                    <input type="text" id="filterDateRange" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 175px; cursor: pointer;" placeholder="Tarih Aralığı..." readonly>
-                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearDateRange" title="Filtreyi Temizle (Tüm Zamanlar)">
+                <!-- Başlangıç Tarihi Filtresi -->
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;" title="Başlangıç Tarihi">
+                    <i class="bx bx-calendar text-primary font-size-15"></i>
+                    <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer;" placeholder="Başlangıç" readonly>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearStartDate" title="Başlangıç Tarihini Temizle">
+                        <i class="bx bx-x font-size-14"></i>
+                    </button>
+                </div>
+
+                <!-- Bitiş Tarihi Filtresi -->
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;" title="Bitiş Tarihi">
+                    <i class="bx bx-calendar text-primary font-size-15"></i>
+                    <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer;" placeholder="Bitiş" readonly>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearEndDate" title="Bitiş Tarihini Temizle">
                         <i class="bx bx-x font-size-14"></i>
                     </button>
                 </div>

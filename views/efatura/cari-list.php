@@ -46,23 +46,6 @@ $belgeTuruOptions = [
 #efaturaCariTable { border-bottom: 1px solid #e2e8f0 !important; }
 #efaturaCariTable tbody tr:last-child td { border-bottom: 1px solid #e2e8f0 !important; }
 .table-responsive { border-bottom: 1px solid #e2e8f0 !important; }
-
-/* Modal Nav Pills (Segmented Tabs) */
-#modalCari .nav-pills .nav-link {
-    color: #64748b;
-    border-radius: 8px;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-#modalCari .nav-pills .nav-link:hover:not(.active) {
-    background: #e2e8f0;
-    color: #1e293b;
-}
-#modalCari .nav-pills .nav-link.active {
-    background-color: #344054 !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 6px rgba(52, 64, 84, 0.25);
-}
 </style>
 <script>
     const EDM_DISTRICTS = <?= json_encode($ilceler, JSON_UNESCAPED_UNICODE) ?>;
@@ -447,10 +430,29 @@ $(document).ready(function() {
         $('#btnToggleSummaryCards').attr('aria-expanded', 'false');
     }
 
-    // Modal içi Select2 başlatma
-    $('#modalCari .select2').select2({
-        dropdownParent: $('#modalCari'),
-        width: '100%'
+    // Modal içi Select2 başlatma fonksiyonu (Çift eleman oluşmasını önler)
+    function initCariModalSelect2() {
+        $('#modalCari select.select2').each(function() {
+            const $select = $(this);
+            if ($select.data('select2')) {
+                $select.select2('destroy');
+            }
+            $select.siblings('.select2-container').remove();
+            $select.select2({
+                dropdownParent: $('#modalCari'),
+                width: '100%'
+            });
+        });
+    }
+
+    // Modal açıldığında Select2 başlat
+    $('#modalCari').on('shown.bs.modal', function() {
+        initCariModalSelect2();
+    });
+
+    // Sekmeler arasında geçiş yapıldığında aktif sekmedeki Select2'leri tazele
+    $('#cariModalTabs button[data-bs-toggle="pill"]').on('shown.bs.tab', function() {
+        initCariModalSelect2();
     });
 
     // İl seçildiğinde ilçeleri dinamik doldurma
@@ -597,6 +599,7 @@ $(document).ready(function() {
         $('#modalCariLabel').text('Yeni E-Fatura Carisi Ekle');
         $('#modalCariHeaderIcon').attr('class', 'bx bx-user-plus fs-3 text-success');
         $('#tab-cari-genel-btn').tab('show');
+        initCariModalSelect2();
         $('#alici_turu').val('KURUMSAL').trigger('change.select2');
         $('#belge_turu').val('OTOMATIK').trigger('change.select2');
         $('#ulke').val('Türkiye').trigger('change.select2');
@@ -644,6 +647,7 @@ $(document).ready(function() {
                 $('#modalCariLabel').text('Cariyi Düzenle: ' + d.unvan);
                 $('#modalCariHeaderIcon').attr('class', 'bx bx-edit fs-3 text-primary');
                 $('#tab-cari-genel-btn').tab('show');
+                initCariModalSelect2();
 
                 $('#vkn_tckn').val(d.vkn_tckn || '');
                 $('#cari_kodu').val(d.cari_kodu || '');

@@ -185,33 +185,4 @@ $tahsilatTipleri = [
     color: #2563eb !important;
     transform: scale(1.1);
 }
-
-#modalTahsilatEkle .form-floating-custom > .form-control {
-    padding-left: 48px !important;
-}
-
-#modalTahsilatEkle .form-floating-custom > label {
-    left: 36px !important;
-}
-
-#modalTahsilatEkle .select2-container--default .select2-selection--single {
-    height: 56px !important;
-    padding-left: 44px !important;
-    padding-top: 18px !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 8px !important;
-}
-
-#modalTahsilatEkle .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: normal !important;
-    padding-left: 0 !important;
-    font-weight: 600;
-    color: #1e293b;
-    font-size: 13px;
-}
-
-#modalTahsilatEkle .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 54px !important;
-    right: 8px !important;
-}
 </style>

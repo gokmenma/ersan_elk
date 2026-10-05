@@ -642,6 +642,8 @@ $malHizmetSelectHtml .= '</select>';
 .invoice-not-editor .note-editor .note-editable {
     flex: 1;
     min-height: 200px;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 12pt !important;
 }
 
 /* Büyük ve Belirgin Onay Kutuları */
@@ -2472,8 +2474,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof $.fn.summernote !== 'undefined') {
         const customTableButtons = getSummernoteTableButtons();
 
-        $('#notlar').addClass('summernote').summernote({
+        $('#notlar').summernote({
             height: 220,
+            focus: false,
             lang: 'tr-TR',
             placeholder: 'Fatura üzerinde basılacak banka IBAN bilgileri, sipariş/sözleşme referansları vb...',
             fontNames: ['Times New Roman', 'Arial'],
@@ -2497,17 +2500,14 @@ document.addEventListener('DOMContentLoaded', function() {
             callbacks: {
                 onInit: function() {
                     $('.invoice-not-editor .note-editable').css({fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt'});
-                    if ($('#notlar').summernote('isEmpty')) {
-                        $('#notlar').summernote('fontName', 'Times New Roman');
-                        $('#notlar').summernote('fontSize', '12');
-                    }
                     loadNoteTemplates();
                 }
             }
         });
 
-        $('#tpl_icerik').addClass('summernote').summernote({
+        $('#tpl_icerik').summernote({
             height: 180,
+            focus: false,
             lang: 'tr-TR',
             placeholder: 'Fatura üzerinde basılacak banka hesapları, irsaliye/sipariş referansları veya özel ödeme notları...',
             fontNames: ['Times New Roman', 'Arial'],
