@@ -188,7 +188,7 @@ class EInvoiceModel extends Model
         $this->db->beginTransaction();
         try {
             // Kontrol: Fatura taslak mı?
-            $checkStmt = $this->db->prepare("SELECT entegrator_durum_kodu FROM faturalar WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL AND yon = 'GIDEN' AND kaynak_xml IS NULL AND islem_belirsiz IS NULL LIMIT 1 FOR UPDATE");
+            $checkStmt = $this->db->prepare("SELECT entegrator_durum_kodu FROM faturalar WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL AND yon = 'GIDEN' AND ubl_xml_path IS NULL AND (kaynak_xml IS NULL OR kaynak_xml = '') AND edm_referans_no IS NULL AND islem_belirsiz IS NULL LIMIT 1 FOR UPDATE");
             $checkStmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
             $currentStatus = $checkStmt->fetchColumn();
 
@@ -482,6 +482,32 @@ class EInvoiceModel extends Model
             'edm_durum'             => 'f.edm_durum'
         ];
 
+        if ($column === 'kalemler_ozet' || $column === 'urun_hizmet_adi') {
+            $where = "f.firm_id = :firm_id AND f.deleted_at IS NULL";
+            $bind = ['firm_id' => $firmId];
+            if ($listType === 'taslak') {
+                $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu = 'TASLAK'";
+            } elseif ($listType === 'gelen') {
+                $where .= " AND f.yon = 'GELEN'";
+            } else {
+                $where .= " AND f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'";
+            }
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT DISTINCT TRIM(fs.urun_hizmet_adi) as val 
+                    FROM fatura_satirlari fs 
+                    JOIN faturalar f ON f.id = fs.fatura_id 
+                    WHERE $where AND fs.deleted_at IS NULL AND fs.urun_hizmet_adi IS NOT NULL AND TRIM(fs.urun_hizmet_adi) <> '' 
+                    ORDER BY val ASC
+                ");
+                $stmt->execute($bind);
+                return array_values(array_filter($stmt->fetchAll(PDO::FETCH_COLUMN)));
+            } catch (\PDOException $e) {
+                error_log("EInvoiceModel::getUniqueValues Error: " . $e->getMessage());
+                return [];
+            }
+        }
+
         $dbCol = $columnMap[$column] ?? null;
         if (!$dbCol) {
             $safeCol = preg_replace('/[^a-zA-Z0-9_]/', '', $column);
@@ -570,46 +596,86 @@ class EInvoiceModel extends Model
             $bind['range_end_date'] = date('Y-m-d', strtotime($params['bitis_tarihi']));
         }
 
-        if ($listType === 'gelen') {
-            $colsMap = [
-                2 => 'f.fatura_no',
-                3 => 'f.fatura_tarihi',
-                4 => 'f.alici_unvan',
-                5 => 'f.alici_vkn_tckn',
-                6 => 'f.belge_turu',
-                7 => 'f.fatura_profili',
-                8 => 'f.odenecek_tutar',
-                9 => 'f.ticari_yanit'
-            ];
-        } else {
-            $colsMap = [
-                2 => 'f.fatura_no',
-                3 => 'f.fatura_tarihi',
-                4 => 'f.alici_unvan',
-                5 => 'f.alici_vkn_tckn',
-                6 => 'f.belge_turu',
-                7 => 'f.fatura_profili',
-                8 => 'f.odenecek_tutar',
-                10 => 't.toplam_tahsilat',
-                11 => 'f.entegrator_durum_kodu'
-            ];
-        }
+        $fieldMapByData = [
+            'fatura_no'             => 'f.fatura_no',
+            'fatura_tarihi'         => 'f.fatura_tarihi',
+            'alici_unvan'           => 'f.alici_unvan',
+            'alici_vkn_tckn'        => 'f.alici_vkn_tckn',
+            'belge_turu'            => 'f.belge_turu',
+            'fatura_profili'        => 'f.fatura_profili',
+            'kalemler_ozet'         => 'kalemler_ozet',
+            'urun_hizmet_adi'       => 'kalemler_ozet',
+            'odenecek_tutar'        => 'f.odenecek_tutar',
+            'toplam_tahsilat'       => 't.toplam_tahsilat',
+            'tahsil_edilen_tutar'   => 't.toplam_tahsilat',
+            'entegrator_durum_kodu' => 'f.entegrator_durum_kodu',
+            'durum'                 => ($listType === 'gelen') ? 'f.ticari_yanit' : 'f.entegrator_durum_kodu',
+            'ticari_yanit'          => 'f.ticari_yanit'
+        ];
 
         // Header column filters (datatable-filters.js gelişmiş filtre desteği)
         if (!empty($params['columns']) && is_array($params['columns'])) {
             foreach ($params['columns'] as $idx => $colData) {
                 $rawVal = trim($colData['search']['value'] ?? '');
-                if ($rawVal === '' || !isset($colsMap[$idx])) {
+                if ($rawVal === '') {
                     continue;
                 }
 
-                $field = $colsMap[$idx];
+                $colName = trim($colData['data'] ?? '');
+                $field = $fieldMapByData[$colName] ?? null;
+                if (!$field) {
+                    // Indeks bazlı fallback
+                    if ($listType === 'gelen') {
+                        $legacyIdxMap = [
+                            2 => 'f.fatura_no', 3 => 'f.fatura_tarihi', 4 => 'f.alici_unvan',
+                            5 => 'f.alici_vkn_tckn', 6 => 'f.belge_turu', 7 => 'f.fatura_profili',
+                            8 => 'kalemler_ozet', 9 => 'f.odenecek_tutar', 10 => 'f.ticari_yanit'
+                        ];
+                    } else {
+                        $legacyIdxMap = [
+                            2 => 'f.fatura_no', 3 => 'f.fatura_tarihi', 4 => 'f.alici_unvan',
+                            5 => 'f.alici_vkn_tckn', 6 => 'f.belge_turu', 7 => 'f.fatura_profili',
+                            8 => 'kalemler_ozet', 9 => 'f.odenecek_tutar', 11 => 't.toplam_tahsilat',
+                            12 => 'f.entegrator_durum_kodu'
+                        ];
+                    }
+                    $field = $legacyIdxMap[$idx] ?? null;
+                }
+
+                if (!$field) {
+                    continue;
+                }
+
                 $paramKey = 'col_f_' . $idx;
 
                 if (strpos($rawVal, ':') !== false) {
                     list($mode, $filterVal) = explode(':', $rawVal, 2);
                     $vals = explode('|', $filterVal);
                     $primaryVal = trim($vals[0] ?? '');
+
+                    if ($field === 'kalemler_ozet') {
+                        // Kalemler / Ürün adı bazlı özel filtre
+                        if ($mode === 'multi') {
+                            $mConds = [];
+                            foreach ($vals as $vIdx => $v) {
+                                $v = trim($v);
+                                if ($v === '') continue;
+                                $vParam = "{$paramKey}_m_{$vIdx}";
+                                $mConds[] = "(fs.urun_hizmet_adi LIKE :$vParam OR fs.urun_kodu LIKE :$vParam)";
+                                $bind[$vParam] = "%$v%";
+                            }
+                            if (!empty($mConds)) {
+                                $where .= " AND EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (" . implode(" OR ", $mConds) . "))";
+                            }
+                        } elseif ($mode === 'not_contains') {
+                            $where .= " AND NOT EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey))";
+                            $bind[$paramKey] = "%$primaryVal%";
+                        } else {
+                            $where .= " AND EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey OR fs.istisna_aciklama LIKE :$paramKey))";
+                            $bind[$paramKey] = "%$primaryVal%";
+                        }
+                        continue;
+                    }
 
                     // Sayısal alanlar için temizlik
                     if ($field === 'f.odenecek_tutar') {
@@ -723,7 +789,10 @@ class EInvoiceModel extends Model
                             break;
                     }
                 } else {
-                    if ($field === 'f.fatura_tarihi') {
+                    if ($field === 'kalemler_ozet') {
+                        $where .= " AND EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey OR fs.istisna_aciklama LIKE :$paramKey))";
+                        $bind[$paramKey] = "%$rawVal%";
+                    } elseif ($field === 'f.fatura_tarihi') {
                         $where .= " AND $field = :$paramKey";
                         $bind[$paramKey] = date('Y-m-d', strtotime($rawVal));
                     } elseif ($field === 'f.belge_turu' || $field === 'f.entegrator_durum_kodu' || $field === 'f.ticari_yanit') {
@@ -737,8 +806,41 @@ class EInvoiceModel extends Model
             }
         }
 
+        if (!empty($params['urun_ara'])) {
+            $itemTerm = trim((string)$params['urun_ara']);
+            $where .= " AND EXISTS (
+                SELECT 1 FROM fatura_satirlari fs 
+                WHERE fs.fatura_id = f.id 
+                  AND fs.deleted_at IS NULL 
+                  AND (
+                      fs.urun_hizmet_adi LIKE :item_term 
+                      OR fs.urun_kodu LIKE :item_term 
+                      OR fs.istisna_aciklama LIKE :item_term
+                  )
+            )";
+            $bind['item_term'] = "%$itemTerm%";
+        }
+
         if (!empty($search)) {
-            $where .= " AND (f.fatura_no LIKE :s OR f.alici_unvan LIKE :s OR f.alici_vkn_tckn LIKE :s OR f.ettn LIKE :s)";
+            $where .= " AND (
+                f.fatura_no LIKE :s 
+                OR f.alici_unvan LIKE :s 
+                OR f.alici_vkn_tckn LIKE :s 
+                OR f.ettn LIKE :s
+                OR f.notlar LIKE :s
+                OR f.siparis_no LIKE :s
+                OR f.irsaliye_no LIKE :s
+                OR EXISTS (
+                    SELECT 1 FROM fatura_satirlari fs 
+                    WHERE fs.fatura_id = f.id 
+                      AND fs.deleted_at IS NULL 
+                      AND (
+                          fs.urun_hizmet_adi LIKE :s 
+                          OR fs.urun_kodu LIKE :s 
+                          OR fs.istisna_aciklama LIKE :s
+                      )
+                )
+            )";
             $bind['s'] = "%$search%";
         }
 
@@ -785,8 +887,9 @@ class EInvoiceModel extends Model
         $orderDir = 'DESC';
         if (!empty($params['order'][0]['column'])) {
             $colIdx = (int)$params['order'][0]['column'];
-            if (isset($colsMap[$colIdx])) {
-                $orderCol = $colsMap[$colIdx];
+            $colName = trim($params['columns'][$colIdx]['data'] ?? '');
+            if (isset($fieldMapByData[$colName]) && $fieldMapByData[$colName] !== 'kalemler_ozet') {
+                $orderCol = $fieldMapByData[$colName];
                 $orderDir = strtoupper($params['order'][0]['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
             }
         }
@@ -796,6 +899,15 @@ class EInvoiceModel extends Model
             $limitClause = "LIMIT $start, $length";
         }
 
+        $isSqlite = false;
+        try {
+            $isSqlite = ($this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite');
+        } catch (\Throwable $e) {}
+
+        $groupConcatSql = $isSqlite
+            ? "GROUP_CONCAT(TRIM(fs_sub.urun_hizmet_adi), ', ')"
+            : "GROUP_CONCAT(DISTINCT TRIM(fs_sub.urun_hizmet_adi) SEPARATOR ', ')";
+
         $sql = "
             SELECT
                 f.id, f.ettn, f.fatura_no, f.fatura_tarihi, f.duzenleme_saati, f.alici_unvan, f.alici_vkn_tckn,
@@ -803,7 +915,21 @@ class EInvoiceModel extends Model
                 f.entegrator_durum_kodu, f.gib_durum_kodu, f.gib_durum_aciklamasi, f.ticari_yanit,
                 f.pdf_path, f.ubl_xml_path, f.earsiv_rapor_durum, f.earsiv_iptal_rapor_durum, f.islem_belirsiz,
                 COALESCE(t.toplam_tahsilat, 0) AS toplam_tahsilat,
-                COALESCE(t.tahsilat_adedi, 0) AS tahsilat_adedi
+                COALESCE(t.tahsilat_adedi, 0) AS tahsilat_adedi,
+                (
+                    SELECT {$groupConcatSql}
+                    FROM fatura_satirlari fs_sub
+                    WHERE fs_sub.fatura_id = f.id
+                      AND fs_sub.deleted_at IS NULL
+                      AND fs_sub.urun_hizmet_adi IS NOT NULL
+                      AND TRIM(fs_sub.urun_hizmet_adi) != ''
+                ) AS kalemler_ozet,
+                (
+                    SELECT COUNT(*)
+                    FROM fatura_satirlari fs_sub
+                    WHERE fs_sub.fatura_id = f.id
+                      AND fs_sub.deleted_at IS NULL
+                ) AS kalem_sayisi
             FROM faturalar f
             LEFT JOIN (
                 SELECT fatura_id, SUM(tutar) AS toplam_tahsilat, COUNT(*) AS tahsilat_adedi
@@ -843,6 +969,8 @@ class EInvoiceModel extends Model
                     'belge_turu'            => $row['belge_turu'],
                     'fatura_profili'        => $row['fatura_profili'],
                     'fatura_tipi'           => $row['fatura_tipi'],
+                    'kalemler_ozet'         => htmlspecialchars($row['kalemler_ozet'] ?? '', ENT_QUOTES, 'UTF-8'),
+                    'kalem_sayisi'          => (int)($row['kalem_sayisi'] ?? 0),
                     'odenecek_tutar'        => number_format($odenecekTutar, 2, ',', '.') . ' ' . $row['para_birimi'],
                     'odenecek_tutar_raw'    => $odenecekTutar,
                     'tahsil_edilen_tutar'   => number_format($toplamTahsilat, 2, ',', '.') . ' ' . $row['para_birimi'],
@@ -992,7 +1120,7 @@ class EInvoiceModel extends Model
                     deleted_at = NOW(),
                     is_active = 0,
                     updated_at = NOW()
-                WHERE id = :id AND firm_id = :firm_id AND entegrator_durum_kodu = 'TASLAK' AND yon = 'GIDEN' AND kaynak_xml IS NULL AND edm_referans_no IS NULL AND islem_belirsiz IS NULL
+                WHERE id = :id AND firm_id = :firm_id AND entegrator_durum_kodu = 'TASLAK' AND yon = 'GIDEN' AND ubl_xml_path IS NULL AND (kaynak_xml IS NULL OR kaynak_xml = '') AND edm_referans_no IS NULL AND islem_belirsiz IS NULL
             ");
             $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
             return $stmt->rowCount() === 1;
@@ -1048,10 +1176,116 @@ class EInvoiceModel extends Model
 
     public function invoiceCustomers(int $firmId): array
     {
-        // Cari uses the application's shared customer catalogue, with no firm_id column.
-        $stmt = $this->db->prepare('SELECT id, CariAdi, Telefon, Email, web_sitesi, firma, vkn_tckn, vergi_dairesi, alici_turu, belge_turu, posta_kutusu, ulke, il, ilce, posta_kodu, Adres, notlar, ticaret_sicil_no, mersis_no FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC');
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // 1. E-Fatura modülüne özel cariler (firmaya özel)
+        $efaturaCariler = [];
+        try {
+            $stmt = $this->db->prepare('
+                SELECT 
+                    id, 
+                    unvan AS CariAdi, 
+                    unvan AS firma,
+                    telefon AS Telefon, 
+                    eposta AS Email, 
+                    web_sitesi, 
+                    vkn_tckn, 
+                    vergi_dairesi, 
+                    alici_turu, 
+                    belge_turu, 
+                    posta_kutusu, 
+                    ulke, 
+                    il, 
+                    ilce, 
+                    posta_kodu, 
+                    adres AS Adres, 
+                    notlar, 
+                    ticaret_sicil_no, 
+                    mersis_no,
+                    "efatura_cari" AS kaynak
+                FROM efatura_cariler 
+                WHERE firm_id = :firm_id AND is_active = 1 AND deleted_at IS NULL 
+                ORDER BY unvan ASC
+            ');
+            $stmt->execute(['firm_id' => $firmId]);
+            $efaturaCariler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('EFatura cariler fetch error: ' . $e->getMessage());
+        }
+
+        // 2. Genel cari tablosundaki cariler
+        $genelCariler = [];
+        try {
+            $stmt = $this->db->prepare('
+                SELECT 
+                    id, 
+                    CariAdi, 
+                    Telefon, 
+                    Email, 
+                    web_sitesi, 
+                    firma, 
+                    vkn_tckn, 
+                    vergi_dairesi, 
+                    alici_turu, 
+                    belge_turu, 
+                    posta_kutusu, 
+                    ulke, 
+                    il, 
+                    ilce, 
+                    posta_kodu, 
+                    Adres, 
+                    notlar, 
+                    ticaret_sicil_no, 
+                    mersis_no,
+                    "genel_cari" AS kaynak
+                FROM cari 
+                WHERE silinme_tarihi IS NULL 
+                ORDER BY CariAdi ASC
+            ');
+            $stmt->execute();
+            $genelCariler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('Genel cariler fetch error: ' . $e->getMessage());
+        }
+
+        if (empty($efaturaCariler)) {
+            return $genelCariler;
+        }
+
+        // E-fatura carilerini öncelikli birleştir (aynı VKN veya isim olanlarda efatura_cariler kalır)
+        $existingKeys = [];
+        $result = [];
+        foreach ($efaturaCariler as $c) {
+            $vkn = preg_replace('/\D/', '', $c['vkn_tckn'] ?? '');
+            if ($vkn !== '') {
+                $existingKeys['vkn_' . $vkn] = true;
+            }
+            $nameKey = mb_strtolower(trim($c['CariAdi'] ?: $c['firma']), 'UTF-8');
+            if ($nameKey !== '') {
+                $existingKeys['name_' . $nameKey] = true;
+            }
+            if (!empty($c['kisa_ad'])) {
+                $existingKeys['name_' . mb_strtolower(trim($c['kisa_ad']), 'UTF-8')] = true;
+            }
+            $result[] = $c;
+        }
+
+        foreach ($genelCariler as $c) {
+            $vkn = preg_replace('/\D/', '', $c['vkn_tckn'] ?? '');
+            if ($vkn !== '' && isset($existingKeys['vkn_' . $vkn])) {
+                continue;
+            }
+            $nameKey = mb_strtolower(trim($c['CariAdi'] ?: $c['firma']), 'UTF-8');
+            $firmaKey = mb_strtolower(trim($c['firma'] ?: $c['CariAdi']), 'UTF-8');
+            if (($nameKey !== '' && isset($existingKeys['name_' . $nameKey])) || ($firmaKey !== '' && isset($existingKeys['name_' . $firmaKey]))) {
+                continue;
+            }
+            $result[] = $c;
+        }
+
+        usort($result, static function ($a, $b) {
+            return strcasecmp($a['CariAdi'] ?? '', $b['CariAdi'] ?? '');
+        });
+
+        return $result;
     }
 
     /** Trusted XML import: preserve source amounts instead of draft recalculation. */
@@ -1059,11 +1293,12 @@ class EInvoiceModel extends Model
     {
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare('SELECT id, deleted_at, yon, entegrator_durum_kodu, kaynak_xml, islem_belirsiz FROM faturalar WHERE ettn = :uuid AND firm_id = :firm FOR UPDATE');
+            $stmt = $this->db->prepare('SELECT id, deleted_at, yon, entegrator_durum_kodu, ubl_xml_path, kaynak_xml, islem_belirsiz FROM faturalar WHERE ettn = :uuid AND firm_id = :firm FOR UPDATE');
             $stmt->execute(['uuid' => $header['ettn'], 'firm' => $firmId]);
             $existing = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($existing && ($existing['deleted_at'] || $existing['yon'] !== $header['yon'] || $existing['entegrator_durum_kodu'] === 'GONDERILIYOR' || !empty($existing['islem_belirsiz']))) throw new \RuntimeException('Fatura silinmiş, işlemde veya yönü uyuşmuyor.');
-            if ($existing && !empty($header['kaynak_xml']) && $existing['kaynak_xml'] === $header['kaynak_xml']) { $this->db->commit(); return (int)$existing['id']; }
+            if ($existing && !empty($header['ubl_xml_path']) && !empty($existing['ubl_xml_path']) && $existing['ubl_xml_path'] === $header['ubl_xml_path']) { $this->db->commit(); return (int)$existing['id']; }
+            if ($existing && !empty($header['kaynak_xml']) && !empty($existing['kaynak_xml']) && $existing['kaynak_xml'] === $header['kaynak_xml']) { $this->db->commit(); return (int)$existing['id']; }
             $allowed = ['yon','belge_turu','fatura_profili','fatura_tipi','ettn','fatura_no','fatura_tarihi','duzenleme_saati','vade_tarihi','alici_vkn_tckn','alici_unvan','alici_vergi_dairesi','alici_adres','alici_il','alici_ilce','alici_ulke','alici_eposta','alici_telefon','para_birimi','doviz_kuru','satir_toplami','iskonto_toplami','kdv_matrahi','hesaplanan_kdv','tevkifat_tutari','odenecek_tutar','notlar','iade_fatura_no','iade_fatura_tarihi','ubl_xml_path','kaynak_xml','entegrator_durum_kodu','edm_durum'];
             $data = array_intersect_key($header, array_flip($allowed));
             if ($existing) {

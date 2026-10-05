@@ -12,6 +12,10 @@ final class EInvoiceSecurity
                 => ['efatura/giden-list', 'efatura/taslak-list', 'efatura/gelen-list', 'efatura/olustur', 'efatura/ayarlar'],
             'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'save_invoice_payment', 'delete_invoice_payment', 'save_note_template', 'delete_note_template', 'set_default_note_template'
                 => ['efatura/olustur', 'efatura/ayarlar', 'efatura/taslak-list', 'efatura/giden-list'],
+            'list_cariler', 'get_cari', 'save_cari', 'delete_cari', 'search_cariler', 'summary_cariler'
+                => ['efatura/cari-list', 'efatura/olustur', 'efatura/giden-list', 'efatura/taslak-list'],
+            'list_mal_hizmet', 'get_mal_hizmet', 'save_mal_hizmet', 'delete_mal_hizmet', 'search_mal_hizmet', 'summary_mal_hizmet'
+                => ['efatura/mal-hizmet-list', 'efatura/olustur', 'efatura/giden-list', 'efatura/taslak-list'],
             'send_invoice', 'bulk_send_invoices', 'cancel_invoice'
                 => ['efatura/taslak-list', 'efatura/giden-list', 'efatura/olustur'],
             'sync_status', 'sync_outgoing_invoices', 'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'refresh_history'
@@ -42,6 +46,8 @@ final class EInvoiceSecurity
     {
         return match ($action) {
             'list_giden', 'list_invoices', 'summary_stats', 'preview_html', 'download_xml', 'download_pdf', 'export_excel', 'invoice_history', 'get-unique-values', 'get_unique_values', 'get_invoice_payment_info', 'get_kasa_list' => 'efatura/giden-list',
+            'list_cariler', 'get_cari', 'save_cari', 'delete_cari', 'search_cariler', 'summary_cariler' => 'efatura/cari-list',
+            'list_mal_hizmet', 'get_mal_hizmet', 'save_mal_hizmet', 'delete_mal_hizmet', 'search_mal_hizmet', 'summary_mal_hizmet' => 'efatura/mal-hizmet-list',
             'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'connection_info', 'save_invoice_payment', 'delete_invoice_payment', 'list_note_templates', 'get_note_template', 'save_note_template', 'delete_note_template', 'set_default_note_template' => 'efatura/olustur',
             'send_invoice', 'bulk_send_invoices' => 'efatura/taslak-list',
             'sync_status', 'sync_outgoing_invoices', 'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'refresh_history' => 'efatura/giden-list',
@@ -54,7 +60,11 @@ final class EInvoiceSecurity
 
     public static function readOnly(string $action): bool
     {
-        return in_array($action, ['list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info','list_numarators','get-unique-values','get_unique_values','get_invoice_payment_info','get_kasa_list','list_note_templates','get_note_template'], true);
+        return in_array($action, [
+            'list_giden','list_invoices','summary_stats','preview_html','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info','list_numarators','get-unique-values','get_unique_values','get_invoice_payment_info','get_kasa_list','list_note_templates','get_note_template',
+            'list_cariler','get_cari','search_cariler','summary_cariler',
+            'list_mal_hizmet','get_mal_hizmet','search_mal_hizmet','summary_mal_hizmet'
+        ], true);
     }
 
     public static function invoiceId(mixed $encrypted): int

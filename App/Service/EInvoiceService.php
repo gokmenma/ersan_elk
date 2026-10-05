@@ -228,8 +228,14 @@ class EInvoiceService
         $firmaModel = new FirmaModel();
         $firma = $firmaModel->getFirma($firmId);
         $settings = $this->settingsModel->getSettings($firmId);
+        $xmlContent = null;
         if (!empty($invoice['kaynak_xml'])) {
-            $source = (new UblReaderService())->read($invoice['kaynak_xml'], $invoice['yon']);
+            $xmlContent = $invoice['kaynak_xml'];
+        } elseif (!empty($invoice['ubl_xml_path']) && file_exists($invoice['ubl_xml_path'])) {
+            $xmlContent = file_get_contents($invoice['ubl_xml_path']);
+        }
+        if ($xmlContent) {
+            $source = (new UblReaderService())->read($xmlContent, $invoice['yon']);
             foreach ($source['customer'] as $key => $value) $invoice['alici_' . $key] = $value;
             $seller = $source['supplier'];
             $firma = (object)['firma_unvan' => $seller['unvan'], 'firma_adi' => $seller['unvan'], 'vergi_no' => $seller['vkn_tckn'], 'adres' => $seller['adres'], 'il' => $seller['il'], 'ilce' => $seller['ilce'], 'ulke' => $seller['ulke'], 'vergi_dairesi' => $seller['vergi_dairesi'], 'email' => $seller['eposta'], 'telefon' => $seller['telefon']];
@@ -794,26 +800,32 @@ class EInvoiceService
         } finally { $this->invoiceModel->releaseInvoiceLock($invoiceId, $firmId); }
     }
 
-    public function syncIncomingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null): array
+    public function syncIncomingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null, string $dateType = 'ISSUE'): array
     {
-        return $this->syncInvoices($firmId, 'GELEN', $startDate ?: date('Y-m-d', strtotime('-7 days')), $endDate ?: date('Y-m-d'));
+        return $this->syncInvoices($firmId, 'GELEN', $startDate ?: date('Y-m-d'), $endDate ?: date('Y-m-d'), $dateType);
     }
 
-    public function syncOutgoingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null): array
+    public function syncOutgoingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null, string $dateType = 'CREATE'): array
     {
         // Preserve the pre-existing same-day outgoing default.
-        return $this->syncInvoices($firmId, 'GIDEN', $startDate ?: date('Y-m-d'), $endDate ?: date('Y-m-d'));
+        return $this->syncInvoices($firmId, 'GIDEN', $startDate ?: date('Y-m-d'), $endDate ?: date('Y-m-d'), $dateType);
     }
 
-    private function syncInvoices(int $firmId, string $direction, string $start, string $end): array
+    private function syncInvoices(int $firmId, string $direction, string $start, string $end, string $dateType = 'ISSUE'): array
     {
         $client = $this->client($firmId);
         // 1. Aşama: HEADER_ONLY = 'Y' ile sadece başlık ve durum listesini hızlıca çek
-        $items = $client->getInvoices($direction === 'GELEN' ? 'IN' : 'OUT', $start, $end, 500, 'CREATE', 'Y');
+        $items = $client->getInvoices($direction === 'GELEN' ? 'IN' : 'OUT', $start, $end, 500, $dateType, 'Y');
         $result = $client->getSyncResult() + ['added_count' => 0, 'updated_count' => 0];
         $reader = new UblReaderService();
         foreach ($items as $item) {
             try {
+                if ($dateType === 'ISSUE' && !empty($item['issue_date'])) {
+                    $itemDateOnly = substr((string)$item['issue_date'], 0, 10);
+                    if ($itemDateOnly < $start || $itemDateOnly > $end) {
+                        continue;
+                    }
+                }
                 $existing = $this->invoiceModel->getInvoiceByEttn($item['uuid'], $firmId);
                 $mapped = InvoiceStatusService::map([
                     'status'      => $item['status'],
@@ -850,6 +862,7 @@ class EInvoiceService
                 if ($existing && !$locked) throw new \InvalidArgumentException('Fatura için başka işlem sürüyor; tekrar senkronize edin.');
                 try {
                     $header['ubl_xml_path'] = $this->storeXml($firmId, $item['uuid'], $xml);
+                    unset($header['kaynak_xml']);
                     $id = $this->invoiceModel->importInvoice($firmId, $header, $source['lines'], (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0));
                 } finally { if ($locked) $this->invoiceModel->releaseInvoiceLock((int)$existing['id'], $firmId); }
                 $result[$existing ? 'updated_count' : 'added_count']++;
@@ -882,6 +895,7 @@ class EInvoiceService
         try {
             $header = array_merge($source['header'], $mapped);
             $header['ubl_xml_path'] = $this->storeXml($firmId, $item['uuid'], $item['xml']);
+            unset($header['kaynak_xml']);
             $id = $this->invoiceModel->importInvoice($firmId, $header, $source['lines'], $userId);
             // Existing imports preserve local status; refresh the remote status separately.
             if ($existing) {
@@ -902,14 +916,18 @@ class EInvoiceService
     {
         $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
         if (!$invoice) throw new \InvalidArgumentException('Fatura bulunamadı.');
-        if ($invoice['entegrator_durum_kodu'] === 'TASLAK' && empty($invoice['kaynak_xml']) && empty($invoice['edm_referans_no'])) throw new \InvalidArgumentException('Yerel taslak için PDF bulunmuyor. Yazdırılabilir önizlemeyi kullanın.');
+        if ($invoice['entegrator_durum_kodu'] === 'TASLAK' && empty($invoice['ubl_xml_path']) && empty($invoice['kaynak_xml']) && empty($invoice['edm_referans_no'])) throw new \InvalidArgumentException('Yerel taslak için PDF bulunmuyor. Yazdırılabilir önizlemeyi kullanın.');
         return $this->client($firmId)->getInvoicePdf($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
     }
 
-    public function connectionInfo(int $firmId): array
+    public function connectionInfo(int $firmId, ?array $overrideSettings = null): array
     {
         $supplier = $this->supplier($firmId);
-        $company = $this->client($firmId)->getCompany($supplier['vkn_tckn']);
+        $client = $overrideSettings ? new EdmSoapClient($firmId, null, $overrideSettings, $this->settingsModel) : $this->client($firmId);
+        $vkn = !empty($overrideSettings['api_username']) && preg_match('/^\d{10,11}$/', (string)$overrideSettings['api_username'])
+            ? (string)$overrideSettings['api_username']
+            : $supplier['vkn_tckn'];
+        $company = $client->getCompany($vkn);
         $safe = [];
         foreach (['UNVAN','VKN','ADRES','IL','ILCE','PK','GB','EFATURA','EARSIV','IS_ACTIVE'] as $field) $safe[$field] = $company->$field ?? null;
         $safe['SERIALS'] = [];

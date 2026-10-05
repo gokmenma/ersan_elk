@@ -38,6 +38,7 @@ final class EInvoicePersistenceTest extends TestCase
         $columns = ['id INTEGER PRIMARY KEY AUTOINCREMENT','fatura_id INT','sira_no INT','is_active INT DEFAULT 1','deleted_at TEXT'];
         foreach (['urun_hizmet_adi','urun_kodu','miktar','birim','birim_fiyat','iskonto_orani','iskonto_tutari','kdv_orani','kdv_tutari','tevkifat_kodu','tevkifat_orani','tevkifat_tutari','istisna_kodu','istisna_aciklama','satir_toplami'] as $name) $columns[] = "$name TEXT";
         $this->db->exec('CREATE TABLE fatura_satirlari(' . implode(',', $columns) . ')');
+        $this->db->exec('CREATE TABLE IF NOT EXISTS fatura_tahsilatlari(id INTEGER PRIMARY KEY AUTOINCREMENT, firm_id INT, fatura_id INT, kasa_id INT, tutar REAL, islem_tarihi TEXT, tahsilat_tipi TEXT, aciklama TEXT, para_birimi TEXT, is_active INT DEFAULT 1, deleted_at TEXT, created_by INT, created_at TEXT)');
         $this->model = new InvoiceSqliteModel($this->db);
     }
     private function header(): array

@@ -167,8 +167,22 @@ class Form
             if (is_array($text)) {
                 $text = '';
             }
+
+            $optAttrs = '';
+            if (is_array($option)) {
+                if (!empty($option['data']) && is_array($option['data'])) {
+                    foreach ($option['data'] as $dKey => $dVal) {
+                        $attrName = (strpos($dKey, 'data-') === 0) ? $dKey : 'data-' . $dKey;
+                        $optAttrs .= ' ' . htmlspecialchars($attrName, ENT_QUOTES, 'UTF-8') . '="' . htmlspecialchars((string)$dVal, ENT_QUOTES, 'UTF-8') . '"';
+                    }
+                }
+                if (!empty($option['attributes']) && is_string($option['attributes'])) {
+                    $optAttrs .= ' ' . $option['attributes'];
+                }
+            }
+
             $selected = (($value) == $selectedValue) ? ' selected' : '';
-            $html .= '<option value="' . htmlspecialchars($value ?? '') . '"' . $selected . '>' . htmlspecialchars($text ?? '') . '</option>';
+            $html .= '<option value="' . htmlspecialchars($value ?? '') . '"' . $optAttrs . $selected . '>' . htmlspecialchars($text ?? '') . '</option>';
         }
 
         $html .= '</select>

@@ -559,9 +559,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Bağlantı Testi
     $('#btnTestConnection').on('click', async function() {
-        Swal.fire({title: 'Kayıtlı EDM ayarları kontrol ediliyor', text: 'Lütfen bekleyin...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+        Swal.fire({title: 'EDM bağlantısı kontrol ediliyor', text: 'Lütfen bekleyin...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
         try {
-            const result = await (await fetch('api/efatura-api.php?action=connection_info', {method: 'POST'})).json();
+            const formData = $('#formEfaturaAyarlar').serialize();
+            const response = await fetch('api/efatura-api.php?action=connection_info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+            const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message);
             const c = result.data;
             
@@ -583,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
 
             $('#connectionResult').html(html);
-            Swal.fire('Bağlantı Başarılı', 'Kayıtlı EDM firma bilgileri başarıyla alındı.', 'success');
+            Swal.fire('Bağlantı Başarılı', 'EDM firma ve hesap bilgileri başarıyla doğrulandı.', 'success');
         } catch (e) { 
             $('#connectionResult').html(`<div class="alert alert-danger mt-3 mb-0 font-size-13"><i class="bx bx-error-circle me-1"></i>${e.message}</div>`);
             Swal.fire('Bağlantı Hatası', e.message, 'error'); 

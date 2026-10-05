@@ -382,10 +382,17 @@ class EdmSoapClient
             foreach ($items as $item) {
                 $uuid = trim((string)($item->UUID ?? ''));
                 if (!$uuid) continue;
+                $hdr = $item->HEADER ?? (object)[];
+                $issueDate = (string)($hdr->ISSUE_DATE ?? '');
+                if ($dateType === 'ISSUE' && $issueDate !== '') {
+                    $itemDateOnly = substr($issueDate, 0, 10);
+                    if ($itemDateOnly < $startStr || $itemDateOnly > $endStr) {
+                        continue;
+                    }
+                }
                 $pageUuids[] = $uuid;
                 if (isset($seen[$uuid])) continue;
                 $seen[$uuid] = true;
-                $hdr = $item->HEADER ?? (object)[];
                 $all[$uuid] = [
                     'uuid'           => $uuid,
                     'fatura_no'      => $item->ID ?? '',
@@ -393,7 +400,7 @@ class EdmSoapClient
                     'header'         => $hdr,
                     'status'         => $hdr->STATUS ?? '',
                     'status_desc'    => $hdr->STATUS_DESCRIPTION ?? '',
-                    'issue_date'     => $hdr->ISSUE_DATE ?? '',
+                    'issue_date'     => $issueDate,
                     'profile_id'     => $hdr->PROFILEID ?? '',
                     'payable_amount' => $hdr->PAYABLE_AMOUNT->_ ?? ($hdr->PAYABLE_AMOUNT ?? 0),
                     'supplier'       => $hdr->SUPPLIER ?? '',

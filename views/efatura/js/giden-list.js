@@ -24,6 +24,17 @@ $(document).ready(function() {
             locale: 'tr',
             dateFormat: 'd.m.Y',
             defaultDate: [firstDay, lastDay],
+            onClose: function(selectedDates) {
+                if (selectedDates.length === 1) {
+                    currentStartDate = formatYMD(selectedDates[0]);
+                    currentEndDate = formatYMD(selectedDates[0]);
+                    table.ajax.reload();
+                } else if (selectedDates.length === 2) {
+                    currentStartDate = formatYMD(selectedDates[0]);
+                    currentEndDate = formatYMD(selectedDates[1]);
+                    table.ajax.reload();
+                }
+            },
             onChange: function(selectedDates) {
                 if (selectedDates.length === 2) {
                     currentStartDate = formatYMD(selectedDates[0]);
@@ -43,6 +54,28 @@ $(document).ready(function() {
             document.getElementById('filterDateRange')._flatpickr.clear();
         }
         $('#filterDateRange').val('');
+        table.ajax.reload();
+    });
+
+    // Ürün / Marka / Kalem Arama Dinleyicisi
+    let gidenProductSearchTimer = null;
+    $('#filterProductSearch').on('input keyup', function() {
+        const val = $(this).val().trim();
+        if (val.length > 0) {
+            $('#btnClearProductSearch').show();
+        } else {
+            $('#btnClearProductSearch').hide();
+        }
+        clearTimeout(gidenProductSearchTimer);
+        gidenProductSearchTimer = setTimeout(function() {
+            table.ajax.reload();
+        }, 350);
+    });
+
+    $('#btnClearProductSearch').on('click', function(e) {
+        e.stopPropagation();
+        $('#filterProductSearch').val('');
+        $(this).hide();
         table.ajax.reload();
     });
 
@@ -113,6 +146,10 @@ $(document).ready(function() {
                 if (currentEndDate) {
                     d.bitis_tarihi = currentEndDate;
                 }
+                const prodSearch = $('#filterProductSearch').val();
+                if (prodSearch && prodSearch.trim()) {
+                    d.urun_ara = prodSearch.trim();
+                }
             },
             dataSrc: function(json) {
                 if (json?.summary && Number(json.draw) === latestSummaryDraw) renderStats(json.summary);
@@ -171,7 +208,24 @@ $(document).ready(function() {
                 data: 'alici_unvan',
                 className: 'align-middle',
                 render: function(data, type, row) {
-                    return `<div class="fw-semibold text-dark text-truncate" style="max-width: 240px;" title="${data}">${data}</div>`;
+                    const unvan = data || '-';
+                    let itemsHtml = '';
+                    if (row.kalemler_ozet && row.kalemler_ozet.trim() !== '') {
+                        const countBadge = (row.kalem_sayisi && row.kalem_sayisi > 1) 
+                            ? `<span class="badge bg-light text-primary border me-1 font-size-10 px-1 py-0.5 flex-shrink-0">${row.kalem_sayisi} Kalem</span>` 
+                            : '';
+                        itemsHtml = `
+                        <div class="d-flex align-items-center gap-1 mt-0.5 text-muted font-size-11" title="Kalemler: ${row.kalemler_ozet}">
+                            <i class="bx bx-package text-primary font-size-12 flex-shrink-0"></i>
+                            ${countBadge}
+                            <span class="text-truncate" style="max-width: 260px;">${row.kalemler_ozet}</span>
+                        </div>`;
+                    }
+                    return `
+                    <div class="d-flex flex-column">
+                        <div class="fw-semibold text-dark text-truncate" style="max-width: 280px;" title="${unvan}">${unvan}</div>
+                        ${itemsHtml}
+                    </div>`;
                 }
             },
             {
@@ -373,6 +427,7 @@ $(document).ready(function() {
 
             const cleanFaturaNo = row.fatura_no ? row.fatura_no.replace(/<[^>]*>?/gm, '') : 'Taslak';
             const cleanAlici = row.alici_unvan ? row.alici_unvan.replace(/<[^>]*>?/gm, '') : '-';
+            const cleanKalemler = row.kalemler_ozet ? row.kalemler_ozet.replace(/<[^>]*>?/gm, '') : '-';
 
             rowsHtml += `
                 <tr>
@@ -383,6 +438,7 @@ $(document).ready(function() {
                     <td style="font-family: monospace; color: #475569;">${row.alici_vkn_tckn || '-'}</td>
                     <td style="text-align: center;">${row.belge_turu === 'EFATURA' ? 'E-Fatura' : 'E-Arşiv'}</td>
                     <td style="text-align: center; color: #64748b;">${row.fatura_profili || 'TEMEL'}</td>
+                    <td style="color: #334155; font-size: 10px;">${cleanKalemler}</td>
                     <td style="text-align: right; font-weight: bold; font-family: monospace; color: #0f172a;">${row.odenecek_tutar || '0,00 TRY'}</td>
                     <td style="text-align: center;">${durumLabel}</td>
                 </tr>
@@ -435,23 +491,24 @@ $(document).ready(function() {
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 40px; text-align: center;">SIRA</th>
-                            <th style="width: 140px;">FATURA NO</th>
-                            <th style="width: 85px;">TARİH</th>
+                            <th style="width: 35px; text-align: center;">SIRA</th>
+                            <th style="width: 130px;">FATURA NO</th>
+                            <th style="width: 80px;">TARİH</th>
                             <th>MÜŞTERİ / ALICI</th>
-                            <th style="width: 110px;">VKN / TCKN</th>
-                            <th style="width: 80px; text-align: center;">TÜR</th>
-                            <th style="width: 80px; text-align: center;">SENARYO</th>
-                            <th style="width: 130px; text-align: right;">ÖDENECEK TUTAR</th>
-                            <th style="width: 95px; text-align: center;">DURUM</th>
+                            <th style="width: 100px;">VKN / TCKN</th>
+                            <th style="width: 75px; text-align: center;">TÜR</th>
+                            <th style="width: 75px; text-align: center;">SENARYO</th>
+                            <th style="width: 200px;">FATURA İÇERİĞİ / KALEMLER</th>
+                            <th style="width: 120px; text-align: right;">ÖDENECEK TUTAR</th>
+                            <th style="width: 90px; text-align: center;">DURUM</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${rowsHtml || '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #94a3b8;">Listelenecek fatura kaydı bulunamadı.</td></tr>'}
+                        ${rowsHtml || '<tr><td colspan="10" style="text-align: center; padding: 25px; color: #94a3b8;">Listelenecek fatura kaydı bulunamadı.</td></tr>'}
                     </tbody>
                     <tfoot>
                         <tr class="total-row">
-                            <td colspan="7" style="text-align: right; padding-right: 12px;">GENEL TOPLAM:</td>
+                            <td colspan="8" style="text-align: right; padding-right: 12px;">GENEL TOPLAM:</td>
                             <td style="text-align: right; font-family: monospace; font-size: 11.5px;">${totalFormatted}</td>
                             <td></td>
                         </tr>

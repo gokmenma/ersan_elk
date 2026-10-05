@@ -175,8 +175,17 @@ $title = 'Taslak Faturalar';
                 </div>
             </div>
 
-            <!-- Sağ Araç Çubuğu: Tarih Aralığı ve Dışa Aktarma Butonları -->
+            <!-- Sağ Araç Çubuğu: Ürün Arama, Tarih Aralığı ve Dışa Aktarma Butonları -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <!-- Ürün / Marka / İçerik Arama Alanı -->
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" style="border-color: #cbd5e1 !important;" title="Fatura içeriğindeki ürün adı, marka, ürün kodu veya açıklamaya göre filtrele">
+                    <i class="bx bx-package text-primary font-size-16"></i>
+                    <input type="text" id="filterProductSearch" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 195px;" placeholder="Ürün / Marka / Kalem Ara..." autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearProductSearch" title="Ürün Aramasını Temizle" style="display: none;">
+                        <i class="bx bx-x font-size-14"></i>
+                    </button>
+                </div>
+
                 <!-- Tarih Aralığı Filtresi -->
                 <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;">
                     <i class="bx bx-calendar text-primary font-size-16"></i>

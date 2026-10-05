@@ -51,7 +51,20 @@ try {
             echo json_encode(['status' => 'success', 'data' => (new \App\Service\InvoiceCalculationService())->calculate($lines)]);
             break;
         case 'connection_info':
-            echo json_encode(['status' => 'success', 'data' => $invoiceService->connectionInfo($firmId)]);
+            $overrideSettings = null;
+            if (!empty($_POST['api_username']) || !empty($_POST['environment'])) {
+                $existing = $settingsModel->getSettings($firmId) ?: [];
+                $pwd = !empty($_POST['api_password']) ? trim((string)$_POST['api_password']) : ($existing['api_password_decrypted'] ?? '');
+                $env = in_array($_POST['environment'] ?? '', ['TEST', 'LIVE'], true) ? (string)$_POST['environment'] : ($existing['environment'] ?? 'TEST');
+                $overrideSettings = [
+                    'environment'            => $env,
+                    'api_username'           => trim((string)($_POST['api_username'] ?? ($existing['api_username'] ?? ''))),
+                    'api_password_decrypted' => $pwd,
+                    'live_wsdl_url'          => \App\Config\EdmConfig::LIVE_WSDL_URL,
+                    'test_wsdl_url'          => \App\Config\EdmConfig::TEST_WSDL_URL,
+                ];
+            }
+            echo json_encode(['status' => 'success', 'data' => $invoiceService->connectionInfo($firmId, $overrideSettings)]);
             break;
         case 'counter_info':
             echo json_encode(['status' => 'success', 'data' => $invoiceService->counterInfo($firmId)]);
@@ -325,7 +338,8 @@ try {
         case 'sync_incoming_invoices':
             $start = !empty($_POST['start_date']) ? trim($_POST['start_date']) : (!empty($_GET['start_date']) ? trim($_GET['start_date']) : null);
             $end = !empty($_POST['end_date']) ? trim($_POST['end_date']) : (!empty($_GET['end_date']) ? trim($_GET['end_date']) : null);
-            $res = $invoiceService->syncIncomingInvoices($firmId, $start, $end);
+            $dateType = !empty($_POST['date_type']) ? trim($_POST['date_type']) : 'ISSUE';
+            $res = $invoiceService->syncIncomingInvoices($firmId, $start, $end, $dateType);
             $res['status'] = (!empty($res['success'])) ? 'success' : 'error';
             echo json_encode($res + ['status' => $res['success'] ? 'success' : 'error']);
             break;
@@ -395,7 +409,7 @@ try {
             header('Content-Disposition: attachment; filename="' . $fileName . '"');
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
-            fputcsv($out, ['Fatura No', 'ETTN', 'Tarih', 'Alıcı Unvan', 'VKN/TCKN', 'Belge Türü', 'Senaryo', 'Ödenecek Tutar', 'Durum', 'GİB Durum Açıklaması'], ';');
+            fputcsv($out, ['Fatura No', 'ETTN', 'Tarih', 'Alıcı / Tedarikçi Unvan', 'VKN/TCKN', 'Belge Türü', 'Senaryo', 'Fatura İçeriği / Kalemler', 'Ödenecek Tutar', 'Durum', 'GİB Durum Açıklaması'], ';');
             foreach ($list['data'] as $r) {
                 fputcsv($out, [
                     strip_tags($r['fatura_no']),
@@ -405,6 +419,7 @@ try {
                     $r['alici_vkn_tckn'],
                     $r['belge_turu'],
                     $r['fatura_profili'],
+                    $r['kalemler_ozet'] ?? '',
                     $r['odenecek_tutar'],
                     $r['entegrator_durum_kodu'],
                     $r['gib_durum_aciklamasi']

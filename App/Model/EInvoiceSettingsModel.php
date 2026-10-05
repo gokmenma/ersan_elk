@@ -87,7 +87,7 @@ class EInvoiceSettingsModel extends Model
                 'api_password'               => $encryptedPassword,
                 'environment'                => in_array($data['environment'] ?? '', ['TEST', 'LIVE']) ? $data['environment'] : 'TEST',
                 'test_wsdl_url'              => $data['test_wsdl_url'] ?? $existing['test_wsdl_url'] ?? \App\Config\EdmConfig::TEST_WSDL_URL,
-                'live_wsdl_url'              => $data['live_wsdl_url'] ?? $existing['live_wsdl_url'] ?? \App\Config\EdmConfig::LIVE_WSDL_URL,
+                'live_wsdl_url'              => !empty($data['live_wsdl_url']) && !str_contains($data['live_wsdl_url'], 'efatura.edmbilisim.com.tr') ? $data['live_wsdl_url'] : \App\Config\EdmConfig::LIVE_WSDL_URL,
                 'efatura_seri'               => $efaturaSeri,
                 'earsiv_seri'                => $earsivSeri,
                 'varsayilan_gonderici_alias' => $data['varsayilan_gonderici_alias'] ?? '',

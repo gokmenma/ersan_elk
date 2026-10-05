@@ -17,8 +17,43 @@ $cariler = $invoiceModel->invoiceCustomers($firmId);
 foreach ($cariler as &$customer) $customer['id'] = Security::encrypt((string)$customer['id']);
 unset($customer);
 
-$cariOptions = ['' => '-- Cari seçin veya VKN girin --'];
-foreach ($cariler as $customer) $cariOptions[$customer['id']] = $customer['CariAdi'];
+$unitCodes = EdmConfig::getUnitCodes();
+
+$cariOptions = [
+    '' => [
+        'id' => '',
+        'name' => 'Firma adı veya yetkili yazarak arayın...',
+        'data' => []
+    ]
+];
+foreach ($cariler as $customer) {
+    $unvan = !empty($customer['firma']) ? $customer['firma'] : (!empty($customer['unvan']) ? $customer['unvan'] : $customer['CariAdi']);
+    $kisaAd = $customer['kisa_ad'] ?? ($customer['CariAdi'] ?? '');
+    $vkn = $customer['vkn_tckn'] ?? '';
+    $tel = $customer['Telefon'] ?? ($customer['telefon'] ?? '');
+    $email = $customer['Email'] ?? ($customer['eposta'] ?? '');
+    $sehir = !empty($customer['ilce']) ? ($customer['ilce'] . (!empty($customer['il']) ? ' / ' . $customer['il'] : '')) : ($customer['il'] ?? '');
+
+    $cariOptions[$customer['id']] = [
+        'id' => $customer['id'],
+        'name' => $unvan,
+        'data' => [
+            'unvan' => $unvan,
+            'kisa-ad' => $kisaAd,
+            'vkn' => $vkn,
+            'tel' => $tel,
+            'email' => $email,
+            'sehir' => $sehir,
+            'vergi-dairesi' => $customer['vergi_dairesi'] ?? '',
+            'adres' => $customer['Adres'] ?? ($customer['adres'] ?? ''),
+            'il' => $customer['il'] ?? '',
+            'ilce' => $customer['ilce'] ?? '',
+            'posta-kutusu' => $customer['posta_kutusu'] ?? '',
+            'belge-turu' => $customer['belge_turu'] ?? 'OTOMATIK',
+            'alici-turu' => $customer['alici_turu'] ?? 'KURUMSAL'
+        ]
+    ];
+}
 
 $withholdingOptions = ['' => 'Tevkifat Yok'];
 foreach (InvoiceValidationService::codes('WithholdingTaxTypeWithPercent') as $entry) {
@@ -140,7 +175,7 @@ if (!empty($editInvoiceEncryptedId)) {
     if ($decryptedId > 0) {
         $invoiceModel = new EInvoiceModel();
         $editInvoice = $invoiceModel->getInvoiceById($decryptedId, $firmId);
-        if ($editInvoice && ($editInvoice['yon'] !== 'GIDEN' || $editInvoice['entegrator_durum_kodu'] !== 'TASLAK' || !empty($editInvoice['kaynak_xml']) || !empty($editInvoice['islem_belirsiz']))) {
+        if ($editInvoice && ($editInvoice['yon'] !== 'GIDEN' || $editInvoice['entegrator_durum_kodu'] !== 'TASLAK' || !empty($editInvoice['ubl_xml_path']) || !empty($editInvoice['edm_referans_no']) || !empty($editInvoice['kaynak_xml']) || !empty($editInvoice['islem_belirsiz']))) {
             echo '<div class="alert alert-warning">Yalnız yerel taslaklar düzenlenebilir.</div>'; return;
         }
         if ($editInvoice) {
@@ -215,11 +250,67 @@ foreach ($exemptionOptions as $k => $v) {
     $exemptionSelectHtml .= '<option value="' . htmlspecialchars($k, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($v, ENT_QUOTES, 'UTF-8') . '</option>';
 }
 $exemptionSelectHtml .= '</select>';
+
+// Mal / Hizmet Tanımları Select Şablonu
+$malHizmetModel = new \App\Model\EFaturaMalHizmetModel();
+$malHizmetListesi = $malHizmetModel->getAllActive($firmId);
+
+$malHizmetSelectHtml = '<select class="form-select form-select-sm select2-mal-hizmet kalem-ad" style="width: 100%;">';
+$malHizmetSelectHtml .= '<option value="">Ürün adı yazarak arayın veya seçin...</option>';
+if (!empty($malHizmetListesi)) {
+    foreach ($malHizmetListesi as $mh) {
+        $birimKey = $mh['birim'] ?? 'C62';
+        $birimAd = $unitCodes[$birimKey] ?? $birimKey;
+        $malHizmetSelectHtml .= '<option value="' . htmlspecialchars($mh['urun_adi'], ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-id="' . htmlspecialchars((string)$mh['id'], ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-urun-adi="' . htmlspecialchars($mh['urun_adi'], ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-kod="' . htmlspecialchars($mh['stok_kodu'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-fiyat="' . htmlspecialchars((string)$mh['satis_fiyati'], ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-alis-fiyat="' . htmlspecialchars((string)($mh['alis_fiyati'] ?? '0'), ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-birim="' . htmlspecialchars($birimKey, ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-birim-ad="' . htmlspecialchars($birimAd, ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-pb="' . htmlspecialchars($mh['para_birimi'] ?? 'TRY', ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-kdv="' . htmlspecialchars((string)($mh['kdv_orani'] ?? '20'), ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-tevkifat-kod="' . htmlspecialchars($mh['tevkifat_kodu'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-tevkifat-oran="' . htmlspecialchars((string)($mh['tevkifat_orani'] ?? '0'), ENT_QUOTES, 'UTF-8') . '"'
+            . '>' . htmlspecialchars($mh['urun_adi'], ENT_QUOTES, 'UTF-8') . '</option>';
+    }
+}
+$malHizmetSelectHtml .= '</select>';
 ?>
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
 <script src="views/efatura/js/transport.js?v=<?= filemtime(__DIR__ . '/js/transport.js') ?>"></script>
 
 <style>
+/* Select2 Zengin Seçenek Formatları */
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #344054 !important;
+    color: #ffffff !important;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] .text-dark,
+.select2-container--default .select2-results__option--highlighted[aria-selected] .text-muted,
+.select2-container--default .select2-results__option--highlighted[aria-selected] strong {
+    color: #ffffff !important;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] .text-success {
+    color: #4ade80 !important;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] .badge {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] i {
+    color: #93c5fd !important;
+}
+.select2-results__option {
+    border-bottom: 1px solid #f1f5f9;
+    padding: 6px 10px !important;
+}
+.select2-results__option:last-child {
+    border-bottom: none;
+}
+
 /* Fatura Düzenleme Tablo ve Kart Stilleri */
 .summary-kpi-card {
     background: #ffffff;
@@ -432,6 +523,23 @@ $exemptionSelectHtml .= '</select>';
 .items-table .form-select-sm:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+.items-table .select2-container--default .select2-selection--single {
+    height: 34px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 8px !important;
+}
+.items-table .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 32px !important;
+    padding-left: 0 !important;
+    font-size: 0.82rem !important;
+    color: #1e293b !important;
+}
+.items-table .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 32px !important;
 }
 .summary-card {
     background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
@@ -1111,6 +1219,14 @@ $exemptionSelectHtml .= '</select>';
                 </table>
                 </div>
 
+                <datalist id="efaturaMalHizmetDatalist">
+                    <?php if (!empty($malHizmetListesi)): ?>
+                        <?php foreach ($malHizmetListesi as $mh): ?>
+                            <option value="<?= htmlspecialchars($mh['urun_adi'], ENT_QUOTES, 'UTF-8') ?>" label="<?= htmlspecialchars(($mh['stok_kodu'] ? $mh['stok_kodu'] . ' - ' : '') . number_format((float)$mh['satis_fiyati'], 2, ',', '.') . ' ' . $mh['para_birimi'], ENT_QUOTES, 'UTF-8') ?>"></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </datalist>
+
                 <!-- Tablo Altı: Satır Ekle Butonu & Kalem Sayacı -->
                 <div class="d-flex align-items-center justify-content-between pt-2.5 px-1 mt-1">
                     <button type="button" class="btn btn-sm btn-subtle-primary top-action-btn shadow-xs" id="btnSatirEkle" style="height: 36px; padding: 0 16px;">
@@ -1395,6 +1511,8 @@ $exemptionSelectHtml .= '</select>';
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 const CARI_DATA = <?= json_encode($cariler, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const MAL_HIZMET_DATA = <?= json_encode($malHizmetListesi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const MAL_HIZMET_SELECT = <?= json_encode($malHizmetSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const UNIT_SELECT = <?= json_encode($unitSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const VAT_SELECT = <?= json_encode($vatSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const WITHHOLDING_SELECT = <?= json_encode($withholdingSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -1427,10 +1545,160 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function escapeHtml(text) {
+        if (!text && text !== 0) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function formatMoney(amount) {
+        return Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function select2CustomMatcher(params, data) {
+        if ($.trim(params.term) === '') {
+            return data;
+        }
+        if (typeof data.text === 'undefined') {
+            return null;
+        }
+        const term = params.term.toLowerCase();
+        const text = data.text.toLowerCase();
+        const $el = $(data.element);
+        
+        if (text.indexOf(term) > -1) {
+            return data;
+        }
+        
+        if ($el.length) {
+            const dataset = $el.data();
+            for (let k in dataset) {
+                if (typeof dataset[k] === 'string' || typeof dataset[k] === 'number') {
+                    if (String(dataset[k]).toLowerCase().indexOf(term) > -1) {
+                        return data;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    function formatCariOption(state) {
+        if (!state.id) return state.text;
+        const $el = $(state.element);
+        if (!$el.length) return state.text;
+
+        const unvan = $el.data('unvan') || state.text;
+        const kisaAd = $el.data('kisa-ad') || '';
+        const vkn = $el.data('vkn') || '';
+        const tel = $el.data('tel') || '';
+        const email = $el.data('email') || '';
+        const sehir = $el.data('sehir') || '';
+
+        let metaParts = [];
+        if (kisaAd && kisaAd !== unvan) {
+            metaParts.push(`<span><i class="bx bx-user me-1 text-muted"></i>${escapeHtml(kisaAd)}</span>`);
+        }
+        if (vkn) {
+            metaParts.push(`<span><i class="bx bx-id-card me-1 text-muted"></i>${escapeHtml(vkn)}</span>`);
+        }
+        if (tel) {
+            metaParts.push(`<span><i class="bx bx-phone me-1 text-muted"></i>${escapeHtml(tel)}</span>`);
+        }
+        if (email) {
+            metaParts.push(`<span><i class="bx bx-envelope me-1 text-muted"></i>${escapeHtml(email)}</span>`);
+        }
+        if (sehir) {
+            metaParts.push(`<span><i class="bx bx-map-pin me-1 text-muted"></i>${escapeHtml(sehir)}</span>`);
+        }
+
+        const metaHtml = metaParts.length > 0
+            ? `<div class="d-flex align-items-center flex-wrap gap-2 text-muted font-size-11 mt-1 ps-4 ms-1">${metaParts.join('<span class="text-muted opacity-50">•</span>')}</div>`
+            : '';
+
+        const html = `
+            <div class="py-1 px-1">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bx bx-buildings text-primary font-size-16 flex-shrink-0"></i>
+                    <span class="fw-bold text-dark font-size-13">${escapeHtml(unvan)}</span>
+                </div>
+                ${metaHtml}
+            </div>
+        `;
+        return $(html);
+    }
+
+    function formatCariSelection(state) {
+        if (!state.id) return state.text;
+        const $el = $(state.element);
+        const unvan = $el.data('unvan') || state.text;
+        const vkn = $el.data('vkn') || '';
+        return $('<span><i class="bx bx-buildings text-primary me-1"></i> <strong class="text-dark">' + escapeHtml(unvan) + '</strong>' + (vkn ? ' <span class="text-muted font-size-11">[' + escapeHtml(vkn) + ']</span>' : '') + '</span>');
+    }
+
+    function formatMalHizmetOption(state) {
+        if (!state.id) return state.text;
+        const $el = $(state.element);
+        if (!$el.length || !$el.data('id')) {
+            return $('<span><i class="bx bx-plus-circle text-primary me-1"></i> ' + escapeHtml(state.text) + '</span>');
+        }
+        const kod = $el.data('kod') || '';
+        const urunAdi = $el.data('urun-adi') || state.text;
+        const fiyat = parseFloat($el.data('fiyat') || 0);
+        const alisFiyat = parseFloat($el.data('alis-fiyat') || 0);
+        const birim = $el.data('birim-ad') || $el.data('birim') || 'Adet';
+        const pb = $el.data('pb') || 'TRY';
+        const kdv = $el.data('kdv');
+
+        const badgeKod = kod ? `<span class="badge bg-light text-secondary border font-size-11 px-2 py-0.5">${escapeHtml(kod)}</span>` : '';
+        const satisStr = fiyat > 0 ? `<span class="text-success fw-bold">${formatMoney(fiyat)} ${escapeHtml(pb)}</span>` : `<span class="text-muted fw-bold">0.00 ${escapeHtml(pb)}</span>`;
+        const alisStr = alisFiyat > 0 ? `<span class="text-dark fw-semibold">${formatMoney(alisFiyat)} ${escapeHtml(pb)}</span>` : `<span class="text-muted fw-semibold">0.00 ${escapeHtml(pb)}</span>`;
+
+        const html = `
+            <div class="py-1 px-1">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                        <i class="bx bx-package text-secondary flex-shrink-0 font-size-16"></i>
+                        <span class="fw-bold text-dark font-size-13 text-truncate">${escapeHtml(urunAdi)}</span>
+                    </div>
+                    ${badgeKod}
+                </div>
+                <div class="d-flex align-items-center flex-wrap gap-3 mt-1 font-size-11 text-muted ps-4 ms-1">
+                    <span>Birim: <strong class="text-dark">${escapeHtml(birim)}</strong></span>
+                    <span>Satış: ${satisStr}</span>
+                    <span>Alış: ${alisStr}</span>
+                    ${kdv !== undefined && kdv !== '' ? `<span>KDV: <strong class="text-dark">%${escapeHtml(kdv)}</strong></span>` : ''}
+                </div>
+            </div>
+        `;
+        return $(html);
+    }
+
+    function formatMalHizmetSelection(state) {
+        if (!state.id) return state.text;
+        const $el = $(state.element);
+        const kod = $el.data('kod') || '';
+        const urunAdi = $el.data('urun-adi') || state.text;
+        if (kod) {
+            return $('<span><span class="badge bg-light text-secondary border font-size-11 me-1">' + escapeHtml(kod) + '</span> <strong class="text-dark">' + escapeHtml(urunAdi) + '</strong></span>');
+        }
+        return $('<span><strong class="text-dark">' + escapeHtml(urunAdi) + '</strong></span>');
+    }
+
     // 1. Tüm Üst Select2 Elemanlarını Başlat
-    $('.select2').select2({
+    $('.select2:not(#selectCari)').select2({
         dropdownAutoWidth: true,
         width: '100%'
+    });
+
+    $('#selectCari').select2({
+        dropdownAutoWidth: true,
+        width: '100%',
+        placeholder: 'Firma adı veya yetkili yazarak arayın...',
+        matcher: select2CustomMatcher,
+        templateResult: formatCariOption,
+        templateSelection: formatCariSelection,
+        escapeMarkup: function(m) { return m; }
     });
 
     // Sıradaki Fatura Numarası Tahmin ve Önizleme Fonksiyonu
@@ -1731,8 +1999,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill row-number font-size-11 fw-bold">${rowCounter}</span>
                     </div>
                 </td>
-                <td>
-                    <input type="text" class="form-control form-control-sm kalem-ad" value="" placeholder="Ürün / Hizmet tanımı..." required>
+                <td style="min-width: 240px;">
+                    ${MAL_HIZMET_SELECT}
                 </td>
                 <td style="width: 85px;">
                     <input type="number" step="0.0001" min="0.0001" class="form-control form-control-sm kalem-miktar text-end fw-semibold" value="1">
@@ -1773,7 +2041,28 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#kalemlerContainer').append(rowHtml);
         const row = $(`#row_${rowCounter}`);
         
-        row.find('.kalem-ad').val(data.urun_hizmet_adi ?? '');
+        const $malHizmetSelect = row.find('.select2-mal-hizmet');
+        $malHizmetSelect.select2({
+            tags: true,
+            dropdownAutoWidth: true,
+            width: '100%',
+            placeholder: 'Ürün adı yazarak arayın veya seçin...',
+            matcher: select2CustomMatcher,
+            templateResult: formatMalHizmetOption,
+            templateSelection: formatMalHizmetSelection,
+            escapeMarkup: function(m) { return m; }
+        });
+
+        if (data.urun_hizmet_adi) {
+            const currentVal = data.urun_hizmet_adi;
+            if ($malHizmetSelect.find('option').filter(function() { return $(this).val() === currentVal; }).length === 0) {
+                $malHizmetSelect.append(new Option(currentVal, currentVal, true, true));
+            }
+            $malHizmetSelect.val(currentVal).trigger('change.select2');
+        } else {
+            $malHizmetSelect.val('').trigger('change.select2');
+        }
+
         row.find('.kalem-miktar').val(data.miktar ?? '1');
         row.find('.kalem-fiyat').val(data.birim_fiyat ?? '0');
         row.find('.kalem-iskonto').val(data.iskonto_orani ?? '0');
@@ -2328,6 +2617,60 @@ document.addEventListener('DOMContentLoaded', function() {
     $('.iade-fields').toggle($('#fatura_tipi').val() === 'IADE');
     
     $('#kalemlerContainer').on('input change', 'input, select', function() {
+        calculateTotals();
+    });
+
+    // Mal / Hizmet Seçildiğinde Otomatik Doldur
+    $('#kalemlerContainer').on('change', '.select2-mal-hizmet', function() {
+        const row = $(this).closest('tr');
+        const selectedOpt = $(this).find('option:selected');
+        const val = ($(this).val() || '').trim();
+        if (!val) return;
+
+        const dataFiyat = selectedOpt.data('fiyat');
+        const dataBirim = selectedOpt.data('birim');
+        const dataKdv = selectedOpt.data('kdv');
+        const dataTevkifatKod = selectedOpt.data('tevkifat-kod');
+        const dataTevkifatOran = selectedOpt.data('tevkifat-oran');
+
+        if (dataFiyat !== undefined && parseFloat(dataFiyat) > 0) {
+            row.find('.kalem-fiyat').val(parseFloat(dataFiyat));
+        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
+            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
+            if (found && parseFloat(found.satis_fiyati) > 0) {
+                row.find('.kalem-fiyat').val(parseFloat(found.satis_fiyati));
+            }
+        }
+
+        if (dataBirim) {
+            row.find('.kalem-birim').val(dataBirim).trigger('change.select2');
+        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
+            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
+            if (found && found.birim) {
+                row.find('.kalem-birim').val(found.birim).trigger('change.select2');
+            }
+        }
+
+        if (dataKdv !== undefined && dataKdv !== null && dataKdv !== '') {
+            row.find('.kalem-kdv').val(String(parseFloat(dataKdv))).trigger('change.select2');
+        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
+            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
+            if (found && found.kdv_orani !== undefined && found.kdv_orani !== null) {
+                row.find('.kalem-kdv').val(String(parseFloat(found.kdv_orani))).trigger('change.select2');
+            }
+        }
+
+        if (dataTevkifatKod) {
+            row.find('.kalem-tevkifat').val(dataTevkifatKod + '|' + parseInt(dataTevkifatOran || 0, 10)).trigger('change.select2');
+            toggleTevkifatColumn(true);
+        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
+            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
+            if (found && found.tevkifat_kodu) {
+                row.find('.kalem-tevkifat').val(found.tevkifat_kodu + '|' + parseInt(found.tevkifat_orani || 0, 10)).trigger('change.select2');
+                toggleTevkifatColumn(true);
+            }
+        }
+
         calculateTotals();
     });
 

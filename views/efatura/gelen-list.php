@@ -161,8 +161,17 @@ $title = 'Gelen Faturalar';
                 </div>
             </div>
 
-            <!-- Sağ Araç Çubuğu: Tarih Aralığı ve Dışa Aktarma Butonları -->
+            <!-- Sağ Araç Çubuğu: Ürün Arama, Tarih Aralığı ve Dışa Aktarma Butonları -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <!-- Ürün / Marka / İçerik Arama Alanı -->
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" style="border-color: #cbd5e1 !important;" title="Fatura içeriğindeki ürün adı, marka, ürün kodu veya açıklamaya göre filtrele">
+                    <i class="bx bx-package text-primary font-size-16"></i>
+                    <input type="text" id="filterProductSearch" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 195px;" placeholder="Ürün / Marka / Kalem Ara..." autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearProductSearch" title="Ürün Aramasını Temizle" style="display: none;">
+                        <i class="bx bx-x font-size-14"></i>
+                    </button>
+                </div>
+
                 <!-- Tarih Aralığı Filtresi -->
                 <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;">
                     <i class="bx bx-calendar text-primary font-size-16"></i>
@@ -181,6 +190,20 @@ $title = 'Gelen Faturalar';
                 <button type="button" class="btn btn-sm btn-subtle-primary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderRefresh" title="Listeyi Yenile">
                     <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yenile</span>
                 </button>
+
+                <!-- Sütunlar Butonu (ColVis & Drag-Drop Yönetimi) -->
+                <div class="dropdown d-inline-block">
+                    <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="btnHeaderColVis" title="Sütunları Yönet">
+                        <i class="bx bx-columns font-size-15 text-primary"></i> <span class="d-none d-sm-inline font-size-12">Sütunlar</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg border p-2" style="min-width: 230px; max-height: 400px; overflow-y: auto;" id="columnListContainer">
+                        <div class="d-flex align-items-center justify-content-between px-2 pb-1.5 border-bottom mb-1">
+                            <span class="font-size-11 fw-bold text-uppercase text-muted">Sütun Görünürlüğü</span>
+                            <button type="button" class="btn btn-link p-0 font-size-11 text-primary text-decoration-none" id="btnResetColumns">Sıfırla</button>
+                        </div>
+                        <div id="columnList" class="d-flex flex-column gap-1"></div>
+                    </div>
+                </div>
             </div>
         </div>
 

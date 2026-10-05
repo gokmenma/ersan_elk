@@ -5,7 +5,7 @@ class EdmConfig
 {
     // EDM SOAP WSDL Endpoints
     const TEST_WSDL_URL = 'https://test.edmbilisim.com.tr/EFaturaEDM21ea/EFaturaEDM.svc?wsdl';
-    const LIVE_WSDL_URL = 'https://efatura.edmbilisim.com.tr/EFaturaEDM/EFaturaEDM.svc?wsdl';
+    const LIVE_WSDL_URL = 'https://portal2.edmbilisim.com.tr/EFaturaEDM/EFaturaEDM.svc?wsdl';
 
     // Belge ve Profil Tipleri
     const PROFILE_TICARIFATURA = 'TICARIFATURA';

@@ -62,7 +62,9 @@ final class UblReaderService
                 $base = $decimal($text('cbc:LineExtensionAmount', $node));
                 $vat = $decimal($text('cac:TaxTotal/cbc:TaxAmount', $node));
                 $withheld = $decimal($text('cac:WithholdingTaxTotal/cbc:TaxAmount', $node));
-                $lines[] = ['urun_hizmet_adi' => $text('cac:Item/cbc:Name', $node), 'urun_kodu' => $text('cac:Item/cac:SellersItemIdentification/cbc:ID', $node),
+                $itemName = $text('cac:Item/cbc:Name', $node) ?: $text('cac:Item/cbc:Description', $node) ?: $text('cac:Item/cbc:Keyword', $node);
+                $itemCode = $text('cac:Item/cac:SellersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:BuyersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:StandardItemIdentification/cbc:ID', $node);
+                $lines[] = ['urun_hizmet_adi' => $itemName, 'urun_kodu' => $itemCode,
                     'miktar' => $decimal($text('cbc:InvoicedQuantity', $node)), 'birim' => $text('cbc:InvoicedQuantity/@unitCode', $node),
                     'birim_fiyat' => $decimal($text('cac:Price/cbc:PriceAmount', $node)),
                     'iskonto_tutari' => bcadd((string)$xp->evaluate('sum(cac:AllowanceCharge[cbc:ChargeIndicator="false"]/cbc:Amount)', $node), '0', 2),
