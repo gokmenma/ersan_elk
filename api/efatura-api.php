@@ -202,6 +202,22 @@ try {
             echo json_encode(['status' => 'success', 'html' => $html]);
             break;
 
+        // 5.1 Doğrudan Fatura HTML Görünümü
+        case 'show_invoice':
+        case 'view_invoice':
+            $encryptedId = $_GET['invoice_id'] ?? ($_GET['id'] ?? ($_POST['invoice_id'] ?? ($_POST['id'] ?? '')));
+            $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
+
+            if (!$invoiceId) {
+                http_response_code(400);
+                exit('Geçersiz fatura kimliği.');
+            }
+
+            $html = $invoiceService->renderHtmlPreview($invoiceId, $firmId);
+            header('Content-Type: text/html; charset=utf-8');
+            echo $html;
+            exit;
+
         // 6. DataTables Sunucu Taraflı Faturalar Listesi (Taslak, Giden, Gelen)
         case 'list_giden':
         case 'list_invoices':

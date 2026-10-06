@@ -102,17 +102,23 @@ $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
 
 <!-- Fatura PDF Önizleme Modalı -->
 <div id="mobPdfModal" class="fixed inset-0 z-[110] bg-slate-900/80 backdrop-blur-xs flex flex-col justify-end hidden opacity-0 transition-opacity duration-300">
-    <div class="bg-white dark:bg-card-dark rounded-t-[28px] w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden transform translate-y-full transition-transform duration-300" id="mobPdfSheet">
+    <div class="bg-white dark:bg-card-dark rounded-t-[28px] w-full h-[95vh] flex flex-col shadow-2xl overflow-hidden transform translate-y-full transition-transform duration-300" id="mobPdfSheet">
         <div class="p-3.5 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary text-[22px]">description</span>
                 <span class="text-sm font-black text-slate-900 dark:text-white" id="mobPdfTitle">Fatura Önizleme</span>
             </div>
-            <div class="flex items-center gap-2">
-                <a href="#" id="mobPdfDownloadBtn" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <div class="flex items-center gap-1.5">
+                <a href="#" id="mobPdfNewTabBtn" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="Yeni Sekmede Aç">
+                    <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+                </a>
+                <button type="button" onclick="printMobileInvoice()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="Yazdır">
+                    <span class="material-symbols-outlined text-[18px]">print</span>
+                </button>
+                <a href="#" id="mobPdfDownloadBtn" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="PDF İndir">
                     <span class="material-symbols-outlined text-[18px]">download</span>
                 </a>
-                <button type="button" onclick="closeInvoicePreview()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                <button type="button" onclick="closeInvoicePreview()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="Kapat">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -318,9 +324,11 @@ function openInvoicePreview(encId, faturaNo) {
     const frame = document.getElementById('mobPdfFrame');
     const title = document.getElementById('mobPdfTitle');
     const dlBtn = document.getElementById('mobPdfDownloadBtn');
+    const newTabBtn = document.getElementById('mobPdfNewTabBtn');
 
     title.textContent = faturaNo || 'Fatura Önizleme';
-    dlBtn.href = `../api/efatura-api.php?action=download_pdf&invoice_id=${encodeURIComponent(encId)}`;
+    if (dlBtn) dlBtn.href = `../api/efatura-api.php?action=download_pdf&invoice_id=${encodeURIComponent(encId)}`;
+    if (newTabBtn) newTabBtn.href = `../api/efatura-api.php?action=show_invoice&invoice_id=${encodeURIComponent(encId)}`;
 
     frame.srcdoc = `
         <!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;display:flex;align-items:center;justify-content:center;height:80vh;color:#64748b;margin:0;}</style></head>
@@ -339,9 +347,9 @@ function openInvoicePreview(encId, faturaNo) {
             if (res.status === 'success' && res.html) {
                 let htmlContent = res.html;
                 if (!htmlContent.includes('<html') && !htmlContent.includes('<!DOCTYPE')) {
-                    htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes"><style>body { margin: 0; padding: 12px; background: #fff; font-family: sans-serif; -webkit-text-size-adjust: 100%; } table { max-width: 100% !important; }</style></head><body>${htmlContent}</body></html>`;
+                    htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=850, initial-scale=0.45, minimum-scale=0.25, maximum-scale=3.0, user-scalable=yes"><style>body { margin: 0; padding: 12px; background: #fff; font-family: sans-serif; -webkit-text-size-adjust: 100%; }</style></head><body>${htmlContent}</body></html>`;
                 } else if (!htmlContent.includes('name="viewport"')) {
-                    htmlContent = htmlContent.replace('<head>', '<head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">');
+                    htmlContent = htmlContent.replace(/<head>/i, '<head><meta name="viewport" content="width=850, initial-scale=0.45, minimum-scale=0.25, maximum-scale=3.0, user-scalable=yes">');
                 }
                 frame.srcdoc = htmlContent;
             } else {
@@ -351,6 +359,14 @@ function openInvoicePreview(encId, faturaNo) {
         .catch(err => {
             frame.srcdoc = `<div style="padding:20px;color:#dc2626;font-family:sans-serif;font-weight:bold;">Fatura yüklenirken sunucu hatası oluştu.</div>`;
         });
+}
+
+function printMobileInvoice() {
+    const frame = document.getElementById('mobPdfFrame');
+    if (frame && frame.contentWindow) {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    }
 }
 </script>
 

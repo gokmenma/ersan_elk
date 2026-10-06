@@ -297,7 +297,29 @@ class EInvoiceService
             }
         }
 
-        // 2. Öncelik: EDM'de kayıtlı ise EDM SOAP servisinden orijinal HTML çıktısını çek
+        // 1.1 Öncelik: Yerel XML yoksa ama fatura EDM'de varsa, orijinal XML'i çekip XSLT ile render et
+        if (empty($xmlContent) && !empty($invoice['ettn']) && $invoice['entegrator_durum_kodu'] !== 'TASLAK') {
+            try {
+                $edmXml = $this->client($firmId)->getInvoiceXml($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
+                if (!empty($edmXml)) {
+                    $xmlContent = $edmXml;
+                    try {
+                        $storedPath = $this->storeXml($firmId, $invoice['ettn'], $edmXml);
+                        $this->invoiceModel->updateInvoiceStatus($invoiceId, $firmId, ['ubl_xml_path' => $storedPath]);
+                    } catch (\Throwable $e) {
+                        // ignore storage error
+                    }
+                    $xsltHtml = self::renderUblXmlToHtml($xmlContent);
+                    if (!empty($xsltHtml)) {
+                        return $xsltHtml;
+                    }
+                }
+            } catch (\Throwable $e) {
+                error_log('EDM getInvoiceXml fallback in preview: ' . $e->getMessage());
+            }
+        }
+
+        // 2. Öncelik: EDM SOAP servisinden orijinal HTML çıktısını çek
         if (!empty($invoice['ettn']) && $invoice['entegrator_durum_kodu'] !== 'TASLAK') {
             try {
                 $edmHtml = $this->client($firmId)->getInvoiceHtml($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
