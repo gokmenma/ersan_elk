@@ -139,7 +139,8 @@ class MenuModel extends Model
             $permissionHash = md5($permissionList);
         }
 
-        return $rolePart . '_' . $permissionHash;
+        // Menü-yetki eşleştirme kuralı değiştiğinde eski ağaç cache'ini kullanma.
+        return 'v2_' . $rolePart . '_' . $permissionHash;
     }
 
     // Veritabanından menüyü çekip oluşturan yardımcı fonksiyon
@@ -175,9 +176,10 @@ class MenuModel extends Model
                         INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                         WHERE urp.role_id IN ({$rolePlaceholders})
                           AND (
-                              p.auth_name = m.menu_link 
-                              OR p.name = m.menu_link 
-                              OR (p.id = m.id AND (p.auth_name = m.menu_link OR m.menu_link IS NULL OR m.menu_link = ''))
+                              p.id = m.id
+                              OR p.auth_name = m.menu_link
+                              OR p.name = m.menu_link
+                              OR p.name = m.menu_name
                               OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme')
                           )
                           {$superadminFilter}
@@ -406,14 +408,14 @@ class MenuModel extends Model
                                                 FROM permissions p
                                                 INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                                                 WHERE urp.role_id IN ({$placeholders})
-                                                    AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
+                                                    AND (p.id = m.id OR p.name = m.menu_link OR p.name = m.menu_name OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
                                                     {$superadminFilter}
                                         )
                                         OR (
                                                 NOT EXISTS (
                                                         SELECT 1
                                                         FROM permissions p0
-                                                        WHERE (p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme'))
+                                                        WHERE (p0.id = m.id OR p0.name = m.menu_link OR p0.name = m.menu_name OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme'))
                                                           {$superadminFilter0}
                                                 )
                                                 AND EXISTS (
