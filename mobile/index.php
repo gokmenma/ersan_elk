@@ -142,7 +142,7 @@ foreach ($all_mobile_menus as $pKey => $mData) {
             $hasAccess = true;
         } elseif ($pKey === 'aparat' && (\App\Service\Gate::allows('aparat_takip') || in_array('aparat-takip/list', $permitted_links))) {
             $hasAccess = true;
-        } elseif ($pKey === 'efatura' && (\App\Service\Gate::allows('efatura/giden-list') || \App\Service\Gate::allows('efatura/dashboard') || \App\Service\Gate::allows('efatura/olustur') || \App\Service\Gate::allows('efatura/gelen-list'))) {
+        } elseif ($pKey === 'efatura' && (\App\Service\Gate::allows('efatura/giden-list') || \App\Service\Gate::allows('efatura/dashboard') || \App\Service\Gate::allows('efatura/olustur') || \App\Service\Gate::allows('efatura/gelen-list') || \App\Service\Gate::allows('efatura/taslak-list') || \App\Service\Gate::allows('efatura/cari-list') || in_array('efatura/gelen-list', $permitted_links) || in_array('efatura/dashboard', $permitted_links) || in_array('efatura/taslak-list', $permitted_links) || in_array('efatura/giden-list', $permitted_links))) {
             $hasAccess = true;
         } elseif (($pKey === 'puantaj' || $pKey === 'raporlar')) {
             $db = (new \App\Core\Db())->getConnection();

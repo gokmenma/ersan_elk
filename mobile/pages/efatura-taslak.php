@@ -1,5 +1,7 @@
 <?php
-\App\Service\Gate::authorizeOrDie('efatura/taslak-list');
+if (!\App\Service\Gate::allows('efatura/taslak-list') && !\App\Service\Gate::allows('efatura/giden-list') && !\App\Service\Gate::allows('efatura/dashboard') && !\App\Service\Gate::allows('efatura/gelen-list')) {
+    \App\Service\Gate::authorizeOrDie('efatura/taslak-list');
+}
 use App\Model\EInvoiceModel;
 use App\Helper\Security;
 

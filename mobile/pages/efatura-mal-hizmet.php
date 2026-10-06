@@ -1,5 +1,7 @@
 <?php
-\App\Service\Gate::authorizeOrDie('efatura/mal-hizmet-list');
+if (!\App\Service\Gate::allows('efatura/mal-hizmet-list') && !\App\Service\Gate::allows('efatura/giden-list') && !\App\Service\Gate::allows('efatura/dashboard') && !\App\Service\Gate::allows('efatura/olustur') && !\App\Service\Gate::allows('efatura/gelen-list')) {
+    \App\Service\Gate::authorizeOrDie('efatura/mal-hizmet-list');
+}
 use App\Model\EFaturaMalHizmetModel;
 use App\Helper\Security;
 use App\Config\EdmConfig;
