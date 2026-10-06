@@ -259,7 +259,7 @@ class EInvoiceService
                             libxml_clear_errors();
                             libxml_use_internal_errors($prevErrorHandling);
                             if (!empty($transformedHtml)) {
-                                return $transformedHtml;
+                                return self::decodeEmbeddedHtmlTags($transformedHtml);
                             }
                         }
                     }
@@ -324,7 +324,7 @@ class EInvoiceService
             try {
                 $edmHtml = $this->client($firmId)->getInvoiceHtml($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
                 if (!empty($edmHtml) && (str_contains($edmHtml, '<html') || str_contains($edmHtml, '<table') || str_contains($edmHtml, '<div'))) {
-                    return $edmHtml;
+                    return self::decodeEmbeddedHtmlTags($edmHtml);
                 }
             } catch (\Throwable $e) {
                 // EDM'den alınamazsa yerel kurumsal şablon ile devam et
@@ -842,7 +842,7 @@ class EInvoiceService
 
         </div>';
 
-        return $html;
+        return self::decodeEmbeddedHtmlTags($html);
     }
 
     /**
@@ -976,7 +976,7 @@ class EInvoiceService
         $success = $hasChanges || $result['complete'];
         $msg = $hasChanges 
             ? sprintf('%d yeni fatura sisteme aktarıldı, %d fatura güncellendi.', $result['added_count'], $result['updated_count'])
-            : 'Seçilen tarih aralığında yeni bir fatura bulunamadı.';
+            : ($result['complete'] ? 'Seçilen tarih aralığında yeni bir fatura bulunamadı.' : 'Aktarım tamamlanamadı: ' . ($result['errors'][0]['message'] ?? 'EDM verileri alınamadı.'));
         return $result + [
             'success' => $success,
             'message' => $msg
@@ -987,7 +987,9 @@ class EInvoiceService
     public function importSyncedInvoice(int $firmId, array $item, int $userId): string
     {
         $mapped = InvoiceStatusService::map(['status' => $item['status'], 'status_desc' => $item['status_desc'] ?? '']);
-        $source = (new UblReaderService())->read($item['xml'], 'GIDEN', $mapped['entegrator_durum_kodu'] === 'TASLAK');
+        $direction = $item['direction'] ?? 'GIDEN';
+        if (!in_array($direction, ['GELEN', 'GIDEN'], true)) throw new \InvalidArgumentException('Geçersiz fatura yönü.');
+        $source = (new UblReaderService())->read($item['xml'], $direction, $direction === 'GIDEN' && $mapped['entegrator_durum_kodu'] === 'TASLAK');
         if (strcasecmp($source['header']['ettn'], $item['uuid']) !== 0) {
             throw new \InvalidArgumentException('XML ETTN ile EDM ETTN uyuşmuyor.');
         }
@@ -1144,9 +1146,53 @@ class EInvoiceService
         $cleaned = preg_replace('/on[a-z]+\s*=\s*[^ >]+/is', '', $cleaned);
         $cleaned = preg_replace('/javascript:/is', '', $cleaned);
 
-        $allowedTags = '<table><thead><tbody><tfoot><tr><th><td><colgroup><col><p><div><span><br><hr><strong><b><em><i><u><s><strike><sub><sup><small><big><font><ul><ol><li><blockquote><a>';
+        $allowedTags = '<table><thead><tbody><tfoot><tr><th><td><colgroup><col><p><div><span><br><hr><strong><b><em><i><u><s><strike><sub><sup><small><big><font><ul><ol><li><blockquote><a><img>';
         $cleaned = strip_tags($cleaned, $allowedTags);
 
         return trim($cleaned);
+    }
+
+    /**
+     * UBL XML ve XSLT çıktılarında veya fatura notlarında entity-encode edilmiş güvenli HTML etiketlerini
+     * (&lt;table&gt;, &lt;img src="..."&gt;, &lt;strong&gt;, &lt;br&gt; vb.) gerçek HTML etiketlerine dönüştürür.
+     */
+    public static function decodeEmbeddedHtmlTags(?string $html): string
+    {
+        if ($html === null || trim($html) === '') {
+            return '';
+        }
+
+        $safeTags = 'img|\/img|table|\/table|thead|\/thead|tbody|\/tbody|tfoot|\/tfoot|tr|\/tr|th|\/th|td|\/td|colgroup|\/colgroup|col|\/col|p|\/p|div|\/div|span|\/span|br|\/br|hr|\/hr|strong|\/strong|b|\/b|em|\/em|i|\/i|u|\/u|s|\/s|small|\/small|font|\/font|ul|\/ul|ol|\/ol|li|\/li|a|\/a|center|\/center';
+
+        // 1. Çift escape edilmiş entity'leri tek escape'e indirge (&amp;lt; -> &lt;)
+        $decoded = preg_replace('/&amp;(lt|gt|quot|apos|#39;|#34;|#59;|amp);/is', '&$1;', $html);
+
+        // 2. &lt;tag ...&gt; veya &lt;/tag&gt; biçimindeki güvenli HTML etiketlerini çöz
+        $decoded = preg_replace_callback('/&lt;((\/)?(' . $safeTags . ')(\s+.*?)?(\/)?)&gt;/is', function ($matches) {
+            $tag = html_entity_decode($matches[0], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if (preg_match('/^<\s*\/\s*br\s*>/is', $tag)) {
+                return '<br>';
+            }
+            return $tag;
+        }, $decoded);
+
+        // 3. Tekrar kalan &lt; etiketleri varsa (iç içe veya çoklu) bir tur daha kontrol et
+        if (preg_match('/&lt;(\/)?(' . $safeTags . ')/is', $decoded)) {
+            $decoded = preg_replace_callback('/&lt;((\/)?(' . $safeTags . ')(\s+.*?)?(\/)?)&gt;/is', function ($matches) {
+                $tag = html_entity_decode($matches[0], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                if (preg_match('/^<\s*\/\s*br\s*>/is', $tag)) {
+                    return '<br>';
+                }
+                return $tag;
+            }, $decoded);
+        }
+
+        // 4. Raw </br> etiketlerini <br>'e çevir
+        $decoded = preg_replace('/<\s*\/\s*br\s*>/is', '<br>', $decoded);
+
+        // 5. data:image içindeki bozuk noktalı virgülleri düzelt
+        $decoded = preg_replace('/data:image\/([a-zA-Z0-9\+\-]+)(&amp;|#59;|;|%3B|&#59;)+base64,/is', 'data:image/$1;base64,', $decoded);
+
+        return $decoded;
     }
 }

@@ -58,11 +58,14 @@ function fmtMobMoney($val) {
     <div class="grid grid-cols-2 gap-2.5">
         <!-- Kart 1: Giden Faturalar (Satış) -->
         <a href="?p=efatura-giden" class="bg-white dark:bg-card-dark rounded-2xl p-3.5 border border-slate-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden block active:scale-[0.98] transition-transform">
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">GİDEN (SATIŞ)</span>
                 <span class="material-symbols-outlined text-emerald-500 text-[20px] bg-emerald-50 dark:bg-emerald-900/30 w-7 h-7 rounded-lg flex items-center justify-center">upload</span>
             </div>
-            <div class="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate" id="mob_giden_tutar"><?= fmtMobMoney($giden['toplam_tutar'] ?? 0) ?></div>
+            <div class="flex items-baseline justify-between gap-1">
+                <div class="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate" id="mob_giden_tutar"><?= fmtMobMoney($giden['toplam_tutar'] ?? 0) ?></div>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50 shrink-0" id="mob_giden_adet"><?= (int)($giden['toplam_adet'] ?? 0) ?> Fatura</span>
+            </div>
             <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[11px]">
                 <span class="text-slate-500 font-medium">Matrah:</span>
                 <span class="font-bold text-slate-700 dark:text-slate-300" id="mob_giden_matrah"><?= fmtMobMoney($giden['toplam_matrah'] ?? 0) ?></span>
@@ -72,18 +75,21 @@ function fmtMobMoney($val) {
                 <span class="font-bold text-emerald-600" id="mob_giden_kdv"><?= fmtMobMoney($giden['toplam_kdv'] ?? 0) ?></span>
             </div>
             <div class="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-                <span id="mob_giden_adet"><?= (int)($giden['toplam_adet'] ?? 0) ?> Fatura</span>
+                <span class="text-[10px] text-slate-400">Satış Listesi</span>
                 <span class="text-emerald-500 font-bold flex items-center">Detay <span class="material-symbols-outlined text-[14px]">chevron_right</span></span>
             </div>
         </a>
 
         <!-- Kart 2: Gelen Faturalar (Alış) -->
         <a href="?p=efatura-gelen" class="bg-white dark:bg-card-dark rounded-2xl p-3.5 border border-slate-100 dark:border-slate-700/60 shadow-sm relative overflow-hidden block active:scale-[0.98] transition-transform">
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[10px] font-extrabold uppercase tracking-wider text-sky-600 dark:text-sky-400">GELEN (ALIŞ)</span>
                 <span class="material-symbols-outlined text-sky-500 text-[20px] bg-sky-50 dark:bg-sky-900/30 w-7 h-7 rounded-lg flex items-center justify-center">download</span>
             </div>
-            <div class="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate" id="mob_gelen_tutar"><?= fmtMobMoney($gelen['toplam_tutar'] ?? 0) ?></div>
+            <div class="flex items-baseline justify-between gap-1">
+                <div class="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate" id="mob_gelen_tutar"><?= fmtMobMoney($gelen['toplam_tutar'] ?? 0) ?></div>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/50 shrink-0" id="mob_gelen_adet"><?= (int)($gelen['toplam_adet'] ?? 0) ?> Fatura</span>
+            </div>
             <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[11px]">
                 <span class="text-slate-500 font-medium">Matrah:</span>
                 <span class="font-bold text-slate-700 dark:text-slate-300" id="mob_gelen_matrah"><?= fmtMobMoney($gelen['toplam_matrah'] ?? 0) ?></span>
@@ -93,7 +99,7 @@ function fmtMobMoney($val) {
                 <span class="font-bold text-sky-600" id="mob_gelen_kdv"><?= fmtMobMoney($gelen['toplam_kdv'] ?? 0) ?></span>
             </div>
             <div class="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-                <span id="mob_gelen_adet"><?= (int)($gelen['toplam_adet'] ?? 0) ?> Fatura</span>
+                <span class="text-[10px] text-slate-400">Alış Listesi</span>
                 <span class="text-sky-500 font-bold flex items-center">Detay <span class="material-symbols-outlined text-[14px]">chevron_right</span></span>
             </div>
         </a>

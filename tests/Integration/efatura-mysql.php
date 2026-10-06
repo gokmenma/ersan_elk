@@ -55,6 +55,25 @@ try {
     $assert((int)$db->query('SELECT COUNT(*) FROM permissions')->fetchColumn() === 4, 'Migration permissions must be idempotent');
     $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_sync_jobs.sql');
     $runScript($db, dirname(__DIR__, 2) . '/sql/efatura_sync_jobs.sql');
+    // Reproduce a legacy TEXT schema and verify complete multibyte UBL notes survive import.
+    $db->prepare('ALTER TABLE faturalar MODIFY COLUMN notlar TEXT NULL')->execute();
+    $longNotes = str_repeat('İstanbul açıklaması\n', 5000);
+    $header = ['yon' => 'GELEN', 'belge_turu' => 'EFATURA', 'fatura_profili' => 'TICARIFATURA', 'fatura_tipi' => 'SATIS',
+        'ettn' => '12345678-1234-4234-8234-123456789012', 'fatura_no' => 'ABC2026000000001', 'fatura_tarihi' => '2026-01-01',
+        'duzenleme_saati' => '00:00:00', 'alici_vkn_tckn' => '1234567890', 'alici_unvan' => 'Offline test', 'notlar' => $longNotes];
+    $invoiceImports = new InvoiceMysqlModel($db);
+    try {
+        $invoiceImports->importInvoice(2, $header, [], 3);
+        throw new RuntimeException('Legacy TEXT should reject notes exceeding 65,535 bytes');
+    } catch (PDOException $e) {
+        $assert((int)($e->errorInfo[1] ?? 0) === 1406, 'Expected notes length error');
+    }
+    $runScript($db, dirname(__DIR__, 2) . '/sql/2026_10_06_efatura_notlar_mediumtext.sql');
+    $runScript($db, dirname(__DIR__, 2) . '/sql/2026_10_06_efatura_notlar_mediumtext.sql');
+    $importedId = $invoiceImports->importInvoice(2, $header, [], 3);
+    $storedNotes = $db->prepare('SELECT notlar FROM faturalar WHERE id = :id AND firm_id = :firm');
+    $storedNotes->execute(['id' => $importedId, 'firm' => 2]);
+    $assert($storedNotes->fetchColumn() === $longNotes, 'Long source notes must be preserved without truncation');
     $_ENV['ENCRYPTION_KEY'] = str_repeat('ab', 32);
     $jobs = new \App\Model\EInvoiceSyncJobModel($db);
     $jobService = new \App\Service\EInvoiceSyncJobService($jobs, fn() => true);
@@ -74,6 +93,14 @@ try {
     $assert($jobs->lock($jobId), 'Worker should acquire lock');
     $assert(!$otherJobModel->lock($jobId), 'Second worker should not acquire lock');
     $jobs->unlock($jobId);
+    $staleCheckpoint = $jobs->findJob($jobId);
+    $jobs->requestPause($jobId, 2, 3, true);
+    $jobs->saveJob($staleCheckpoint);
+    $assert((bool)$jobs->findJob($jobId)['state']['pause_requested'], 'Worker checkpoint must not overwrite a stop request');
+    $jobs->requestPause($jobId, 99, 3, false);
+    $assert((bool)$jobs->findJob($jobId)['state']['pause_requested'], 'Wrong firm must not clear stop request');
+    $jobs->requestPause($jobId, 2, 3, false);
+    $assert(!(bool)$jobs->findJob($jobId)['state']['pause_requested'], 'Resume must clear stop request');
     $job = $jobs->findJob($jobId); $job['status'] = 'paused'; $job['state']['offset'] = 50; $job['state']['cursor'] = 12;
     $jobs->saveJob($job);
     $jobService->resume(2, 3, $firstJob['job_token']);
@@ -88,6 +115,28 @@ try {
     $assert($jobService->status(2, 3, null, 'giden')['list_type'] === 'giden', 'Outgoing job must keep its query kind');
     $assert($jobService->status(2, 3, null, 'taslak')['list_type'] === 'taslak', 'Draft history must stay separate from outgoing');
     $jobService->cancel(2, 3, $outgoingJob['job_token']);
+    $failureJob = $jobService->start(2, 3, '2026-01-01', '2026-10-06', 'gelen');
+    $failureId = \App\Helper\Security::decrypt($failureJob['job_token']);
+    $failedState = $jobs->findJob($failureId);
+    $failedState['status'] = 'paused';
+    $failedState['state']['failed_count'] = 1;
+    $failedState['state']['validation_errors'] = [['uuid' => 'offline-failed-uuid', 'message' => 'Invalid source']];
+    $jobs->saveJob($failedState);
+    $assert(count($jobService->errors(2, 3, $failureJob['job_token'])['rows']) === 1, 'Owner must be able to read the failure report');
+    try {
+        $jobService->errors(99, 3, $failureJob['job_token']);
+        throw new RuntimeException('Failure report leaked across firm boundaries');
+    } catch (InvalidArgumentException $expected) {}
+    $retryJob = $jobService->retryFailed(2, 3, $failureJob['job_token']);
+    $retryId = \App\Helper\Security::decrypt($retryJob['job_token']);
+    $assert($retryId !== $failureId, 'Retry must preserve the original failure report');
+    $assert($jobs->findJob($failureId)['status'] === 'cancelled', 'Paused scan must release its active slot for the retry');
+    $assert(count($jobService->errors(2, 3, $failureJob['job_token'])['rows']) === 1, 'Original failure report must remain available');
+    $assert($jobs->findJob($retryId)['state']['retry_items'][0]['uuid'] === 'offline-failed-uuid', 'Retry must keep the failed invoice UUID');
+    $assert($jobs->findJob($retryId)['state']['retry_mode'] === true, 'Retry must bypass date-range scanning');
+    $jobService->pause(2, 3, $retryJob['job_token']);
+    $assert((bool)$jobs->findJob($retryId)['state']['pause_requested'], 'Pause service must record a durable stop request');
+    $jobService->cancel(2, 3, $retryJob['job_token']);
     $detached = new \App\Service\EInvoiceSyncJobService($jobs, function($id) use ($name) {
         $script = dirname(__DIR__) . '/Fixtures/efatura/sync-worker.php';
         exec('nohup ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($name) . ' ' . escapeshellarg($id) . ' > /dev/null 2>&1 < /dev/null &', $output, $code);
@@ -101,7 +150,7 @@ try {
         if ($backgroundState['status'] === 'completed') break;
         usleep(100000);
     }
-    $assert($backgroundState['status'] === 'completed' && $backgroundState['state']['processed_count'] === 3, 'Detached worker must persist progress independently of the request');
+    $assert($backgroundState['status'] === 'completed' && $backgroundState['state']['processed_count'] === 51, 'Detached worker must persist progress independently of the request');
     $jobs = $otherJobModel = $jobService = null;
 
     $db->exec('CREATE TABLE efatura_test_numbers (worker INT, number VARCHAR(16) UNIQUE)');

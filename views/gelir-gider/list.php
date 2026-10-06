@@ -1,5 +1,4 @@
 <?php
-
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Helper\Security;
@@ -9,620 +8,818 @@ use App\Helper\Helper;
 use App\Model\GelirGiderModel;
 use App\Helper\Financial;
 use App\Model\TanimlamalarModel;
-use Random\Engine\Secure;
 
 $GelirGider = new GelirGiderModel();
 $Financial = new Financial();
+$Tanimlama = new TanimlamalarModel();
 
-/* -------- Filtre parametreleri -------- */
+/* -------- Filtre seçenekleri -------- */
 $selectedYil = $_GET['yil'] ?? date('Y');
 $selectedAy  = $_GET['ay'] ?? '';
 $selectedTip = $_GET['tip'] ?? '';
 
-$yilSecenekleri = [];
+$yilSecenekleri = [
+    '' => 'Tüm Yıllar'
+];
 for ($y = (int)date('Y'); $y >= (int)date('Y') - 5; $y--) {
     $yilSecenekleri[$y] = (string) $y;
 }
 
 $aySecenekleri = [
-    ''   => 'Tüm Yıl',
+    ''   => 'Tüm Aylar',
     '1'  => 'Ocak',   '2'  => 'Şubat',  '3'  => 'Mart',
     '4'  => 'Nisan',  '5'  => 'Mayıs',  '6'  => 'Haziran',
     '7'  => 'Temmuz', '8'  => 'Ağustos','9'  => 'Eylül',
     '10' => 'Ekim',   '11' => 'Kasım',  '12' => 'Aralık',
 ];
 
-$tipSecenekleri = [
-    ''  => 'Tüm İşlemler',
-    '1' => 'Gelir',
-    '2' => 'Gider',
-];
-
-// Sunucu tarafı DataTables kullanıldığı için tüm kayıtları burada çekmeye gerek yok
-// $gelir_gider = $GelirGider->all($selectedYil, $selectedAy, $selectedTip);
-// $kayit_sayisi = count($gelir_gider);
-
-$Tanimlama = new TanimlamalarModel();
 $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'tip' => $selectedTip]);
-
 ?>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script>try { document.documentElement.classList.toggle('gelir-gider-summary-hidden', localStorage.getItem('gelir_gider_summary_cards_state') === 'hidden'); } catch (e) {}</script>
 <style>
-    :root {
-        --fin-primary: #0F172A;
-        --fin-secondary: #1E3A8A;
-        --fin-cta: #CA8A04;
-        --fin-bg: #F8FAFC;
-        --fin-text: #020617;
-        --fin-glass: rgba(255, 255, 255, 0.7);
-    }
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.gelir-gider-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
 
-    /* Modal Premium Styling */
-    #gelirGiderModal .modal-content {
-        border: none;
-        border-radius: 20px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        font-family: 'DM Sans', sans-serif;
-        background: var(--fin-bg);
-        overflow: hidden;
-    }
+/* Modern Tablo Tipografi */
+#gelirGiderTable {
+    font-size: 13px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+#gelirGiderTable thead th,
+#gelirGiderTable thead tr:first-child > th,
+.table-responsive #gelirGiderTable thead tr:first-child > th {
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    letter-spacing: 0.3px;
+    background-color: #f8fafc !important;
+    box-shadow: none !important;
+    vertical-align: middle !important;
+    position: relative !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    cursor: pointer !important;
+}
+#gelirGiderTable thead tr:first-child > th.dt-draggable-header {
+    cursor: pointer !important;
+}
+#gelirGiderTable thead tr:first-child > th.dt-draggable-header:active {
+    cursor: grabbing !important;
+}
 
-    #gelirGiderModal .modal-header {
-        background: white;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        padding: 1.5rem 2rem;
-    }
+/* Sıralama kapalı kolonlar */
+#gelirGiderTable thead tr:first-child > th.sorting_disabled,
+#gelirGiderTable thead tr:first-child > th.no-sort,
+#gelirGiderTable thead tr:first-child > th.dt-actions-header {
+    cursor: default !important;
+    background-image: none !important;
+    padding-left: 8px !important;
+}
 
-    #gelirGiderModal .premium-icon-box {
-        width: 48px;
-        height: 48px;
-        background: #f1f5f9;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--fin-primary);
-        margin-right: 1rem;
-    }
+/* Sıralama İkonları (Sol Kenar - Vektörel SVG) */
+#gelirGiderTable thead tr:first-child > th.sorting,
+.table-responsive #gelirGiderTable thead tr:first-child > th.sorting {
+    cursor: pointer !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 8px center !important;
+    background-size: 13px 13px !important;
+    padding-left: 28px !important;
+    padding-right: 34px !important;
+}
 
-    #gelirGiderModal .form-selectgroup-item {
-        width: 100%;
-    }
+#gelirGiderTable thead tr:first-child > th.sorting:hover,
+.table-responsive #gelirGiderTable thead tr:first-child > th.sorting:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 8px center !important;
+    background-size: 13px 13px !important;
+    padding-left: 28px !important;
+}
 
-    #gelirGiderModal .form-selectgroup-label {
-        border: 2px solid #e2e8f0;
-        border-radius: 16px;
-        transition: all 0.3s ease;
-        background: white;
-        cursor: pointer;
-    }
+#gelirGiderTable thead tr:first-child > th.sorting_asc,
+.table-responsive #gelirGiderTable thead tr:first-child > th.sorting_asc {
+    cursor: pointer !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%232563eb' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2394a3b8' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 8px center !important;
+    background-size: 13px 13px !important;
+    padding-left: 28px !important;
+    padding-right: 34px !important;
+}
 
-    #gelirGiderModal .form-selectgroup-input:checked + .form-selectgroup-label {
-        border-color: var(--fin-primary);
-        background: #f8fafc;
-        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.1);
-    }
+#gelirGiderTable thead tr:first-child > th.sorting_desc,
+.table-responsive #gelirGiderTable thead tr:first-child > th.sorting_desc {
+    cursor: pointer !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2394a3b8' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%232563eb' stroke-width='2.8'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 8px center !important;
+    background-size: 13px 13px !important;
+    padding-left: 28px !important;
+    padding-right: 34px !important;
+}
 
-    #gelirGiderModal .form-floating > .form-control:focus, 
-    #gelirGiderModal .form-floating > .form-select:focus {
-        border-color: var(--fin-primary);
-        box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.05);
-    }
+#gelirGiderTable tbody td {
+    padding: 8px 12px !important;
+    vertical-align: middle !important;
+    color: #0f172a !important;
+}
 
-    #gelirGiderModal .modal-footer {
-        background: white;
-        border-top: 1px solid rgba(0,0,0,0.05);
-        padding: 1.25rem 2rem;
-    }
+#gelirGiderTable tbody tr:last-child td {
+    border-bottom: 1px solid #e2e8f0 !important;
+}
 
-    .btn-premium-save {
-        background: var(--fin-primary);
-        color: white;
-        border-radius: 12px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.2s;
-        border: none;
-    }
+.table-responsive {
+    border-bottom: 1px solid #e2e8f0 !important;
+}
 
-    .btn-premium-save:hover {
-        background: #1e293b;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        color: white;
-    }
+/* Şık Checkbox Stili */
+.custom-table-check,
+.row-check,
+#checkAll {
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 5px !important;
+    border: 1.5px solid #94a3b8 !important;
+    background-color: #fff !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease-in-out !important;
+    margin: 0 auto !important;
+    vertical-align: middle !important;
+}
+.custom-table-check:checked,
+.row-check:checked,
+#checkAll:checked {
+    background-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
+}
+.custom-table-check:focus,
+.row-check:focus,
+#checkAll:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
 
-    .btn-premium-close {
-        background: #f1f5f9;
-        color: #475569;
-        border-radius: 12px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        border: none;
-    }
+/* Tablo Butonları */
+.table-action-btn {
+    width: 27px;
+    height: 27px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+.top-action-btn {
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+}
+.top-icon-btn {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 18px;
+}
+.summary-kpi-card {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    cursor: pointer;
+}
+.summary-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+    border-color: #3b82f6 !important;
+}
+.summary-kpi-card.active {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+}
+.summary-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+.summary-kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    text-transform: uppercase;
+}
+.summary-kpi-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+}
+.summary-kpi-subtext {
+    font-size: 11.5px;
+    color: #64748b;
+}
+.summary-pill-btn {
+    font-size: 11px;
+    font-weight: 600;
+}
 
-    /* Dark Mode Overrides */
-    [data-bs-theme="dark"] #gelirGiderModal .modal-content {
-        background: #1e293b;
-        color: #f1f5f9;
-    }
+/* Modal Özel Styling (Kusursuz ve Temiz Tasarım) */
+#gelirGiderModal .modal-content, #importExcelModal .modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+#gelirGiderModal .modal-header, #importExcelModal .modal-header {
+    background: #f8fafc;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    padding: 1.25rem 1.5rem;
+}
+.modal-icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.form-selectgroup-label {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    background: white;
+    cursor: pointer;
+}
+.form-selectgroup-input:checked + .form-selectgroup-label {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+}
 
-    [data-bs-theme="dark"] #gelirGiderModal .modal-header,
-    [data-bs-theme="dark"] #gelirGiderModal .modal-footer {
-        background: #0f172a;
-        border-color: rgba(255, 255, 255, 0.1);
-    }
+/* Modal Form Alanları İyileştirmesi */
+#gelirGiderModal .modal-custom-control {
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+}
+#gelirGiderModal .modal-custom-control:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
 
-    [data-bs-theme="dark"] #gelirGiderModal .premium-icon-box {
-        background: #334155;
-        color: #f1f5f9;
-    }
+/* Select2 Modal Özel Düzeltmesi (Çift Ok ve Bozulmaları Önler) */
+#gelirGiderModal .select2-container--default .select2-selection--single {
+    height: 40px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background-color: #fff !important;
+}
+#gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 38px !important;
+    padding-left: 12px !important;
+    padding-right: 32px !important;
+    font-size: 13px !important;
+    color: #1e293b !important;
+}
+#gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 38px !important;
+    right: 8px !important;
+}
+#gelirGiderModal .select2-container--default.select2-container--focus .select2-selection--single,
+#gelirGiderModal .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
 
-    [data-bs-theme="dark"] #gelirGiderModal .form-selectgroup-label {
-        background: #1e293b;
-        border-color: #334155;
-        color: #f1f5f9;
-    }
+/* Header FormSelect2 Uyumu */
+.header-filter-wrapper {
+    min-width: 140px;
+}
+.header-filter-wrapper .form-floating {
+    margin-bottom: 0 !important;
+}
+.header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single {
+    height: 38px !important;
+    padding-top: 14px !important;
+    border-radius: 8px !important;
+}
+.header-filter-wrapper .form-floating > label {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+}
 
-    [data-bs-theme="dark"] #gelirGiderModal .form-selectgroup-input:checked + .form-selectgroup-label {
-        background: #334155;
-        border-color: #64748b;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    }
-
-    [data-bs-theme="dark"] #gelirGiderModal .text-secondary {
-        color: #94a3b8 !important;
-    }
-
-    [data-bs-theme="dark"] .btn-premium-close {
-        background: #334155;
-        color: #f1f5f9;
-    }
-
-    [data-bs-theme="dark"] .btn-premium-close:hover {
-        background: #475569;
-        color: white;
-    }
-
-    [data-bs-theme="dark"] #gelirGiderModal .alert-info {
-        background: rgba(14, 165, 233, 0.1);
-        border: 1px solid rgba(14, 165, 233, 0.2);
-        color: #7dd3fc;
-    }
+[data-bs-theme="dark"] .summary-kpi-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-bs-theme="dark"] #gelirGiderTable tbody td {
+    color: #f1f5f9 !important;
+}
+[data-bs-theme="dark"] .summary-kpi-value {
+    color: #f8fafc;
+}
+[data-bs-theme="dark"] #gelirGiderModal .modal-header, [data-bs-theme="dark"] #importExcelModal .modal-header {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-bs-theme="dark"] .form-selectgroup-label {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+[data-bs-theme="dark"] .form-selectgroup-input:checked + .form-selectgroup-label {
+    background: #1e3a8a;
+    border-color: #3b82f6;
+}
+[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #f1f5f9 !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-bottom-color: #334155 !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable,
+[data-bs-theme="dark"] #gelirGiderTable tbody tr:last-child td,
+[data-bs-theme="dark"] .table-responsive {
+    border-bottom-color: #334155 !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting_asc {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2360a5fa' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting_desc {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2360a5fa' stroke-width='2.8'/%3E%3C/svg%3E") !important;
+}
 </style>
 
-<div class="container-fluid pt-3">
+<?php 
+$maintitle = "Finans";
+$title = "Gelir - Gider Yönetimi";
+include 'layouts/breadcrumb.php'; 
+?>
 
-    <!-- start page title -->
-    <?php
-    $maintitle = "Gelir-Gider";
-    $title = "Gelir Gider Listesi";
-    ?>
-    <?php include 'layouts/breadcrumb.php'; ?>
-    <!-- end page title -->
-
-        <!-- ======== FİLTRE KARTI ======== -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body p-3">
-                <form action="index.php" method="GET" id="filterForm" class="w-100 mb-0">
-                    <input type="hidden" name="p" value="gelir-gider/list">
-                    
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <!-- Yıl -->
-                        <?php echo Form::FormSelect2(
-                            name: 'yil',
-                            options: $yilSecenekleri,
-                            selectedValue: $selectedYil,
-                            label: 'Yıl',
-                            icon: 'calendar',
-                            style: 'min-width:120px'
-                        ); ?>
-
-                        <!-- Ay -->
-                        <?php echo Form::FormSelect2(
-                            name: 'ay',
-                            options: $aySecenekleri,
-                            selectedValue: $selectedAy,
-                            label: 'Ay',
-                            icon: 'calendar',
-                            style: 'min-width:150px'
-                        ); ?>
-
-                        <!-- Tip -->
-                        <?php echo Form::FormSelect2(
-                            name: 'tip',
-                            options: $tipSecenekleri,
-                            selectedValue: $selectedTip,
-                            label: 'İşlem Tipi',
-                            icon: 'filter',
-                            style: 'min-width:180px'
-                        ); ?>
-
-                        <div class="ms-auto d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button" id="exportExcel" class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"> 
-                                <i data-feather="file-text" class="me-1 fs-5"></i> <span class="d-none d-xl-inline">Excele Aktar</span>
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" id="btnImportExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#importExcelModal">
-                                <i data-feather="upload-cloud" class="me-1 fs-5"></i> <span class="d-none d-xl-inline">Excelden Yükle</span>
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" id="gelirGiderEkle" class="btn btn-dark btn-sm text-white shadow-sm text-decoration-none px-3 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#gelirGiderModal">
-                                <i data-feather="plus" class="me-1 fs-5"></i> <span class="d-none d-xl-inline">Yeni İşlem</span>
-                            </button>
-                        </div>
-                    </div>
-                </form>
+<div class="container-fluid">
+    <!-- 1. Üst Başlık ve Aksiyon Araç Çubuğu -->
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-transfer-alt fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Gelir - Gider Yönetimi</h4>
+                <p class="text-muted mb-0 font-size-12">Tüm gelir ve gider kayıtları, hesap hareketleri ve finansal bakiye durumu</p>
             </div>
         </div>
         
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var selects = document.querySelectorAll('#filterForm select');
-                selects.forEach(function(select) {
-                    $(select).on('select2:select', function (e) {
-                         // Form submit yerine tabloyu reload ediyoruz
-                         if (typeof reloadGelirGiderTable === 'function') {
-                             reloadGelirGiderTable();
-                         } else {
-                             document.getElementById('filterForm').submit();
-                         }
-                    });
-                });
-            });
-        </script>
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <!-- Toplu Silme Butonu (Seçim yapıldığında görünür) -->
+            <button type="button" class="btn btn-danger top-action-btn shadow-sm text-white d-none" id="btnBulkDelete">
+                <i class="bx bx-trash font-size-16"></i> <span id="bulkDeleteText">Seçilenleri Sil (0)</span>
+            </button>
 
-        <!-- ======== ÖZET KARTLARI ======== -->
-        <div class="row g-3 mb-4">
-            <!-- Toplam Gelir -->
-            <div class="col-xl-4 col-md-4">
-                <div class="card border-0 shadow-sm h-100" style="border-bottom: 3px solid #2a9d8f !important;">
-                    <div class="card-body p-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="rounded-circle p-2 me-2" style="background: rgba(42,157,143,0.1);">
-                                <i data-feather="trending-up" class="fs-4 text-success"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size:0.65rem;">GELİR</span>
-                        </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing:0.5px;opacity:0.7;">TOPLAM GELİR</p>
-                        <h4 class="mb-0 fw-bold" id="card_toplam_gelir">
-                            <?php echo Helper::formattedMoney($summary->toplam_gelir ?? 0); ?>
-                            <span style="font-size:0.85rem;font-weight:600;">₺</span>
-                        </h4>
+            <!-- 1. Yeni Gelir/Gider Ekle Butonu -->
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="gelirGiderEkle" data-bs-toggle="modal" data-bs-target="#gelirGiderModal">
+                <i class="bx bx-plus font-size-16"></i> Yeni İşlem
+            </button>
+
+            <!-- Sütunlar Dropdown (ColVis & Reorder) -->
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="btnColumnToggle">
+                    <i class="bx bx-columns font-size-16 text-primary"></i> Sütunlar
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2" style="min-width: 230px; max-height: 380px; overflow-y: auto;" id="columnListDropdown">
+                    <div class="d-flex align-items-center justify-content-between px-2 py-1 mb-1 border-bottom">
+                        <span class="fw-bold font-size-12 text-muted">SÜTUN GÖRÜNÜRLÜĞÜ</span>
+                        <button type="button" class="btn btn-link btn-sm p-0 text-primary font-size-11" id="btnResetColumns">Sıfırla</button>
                     </div>
+                    <div id="columnListContainer"></div>
                 </div>
             </div>
 
-            <!-- Toplam Gider -->
-            <div class="col-xl-4 col-md-4">
-                <div class="card border-0 shadow-sm h-100" style="border-bottom: 3px solid #f43f5e !important;">
-                    <div class="card-body p-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="rounded-circle p-2 me-2" style="background: rgba(244,63,94,0.1);">
-                                <i data-feather="trending-down" class="fs-4 text-danger"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size:0.65rem;">GİDER</span>
-                        </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing:0.5px;opacity:0.7;">TOPLAM GİDER</p>
-                        <h4 class="mb-0 fw-bold" id="card_toplam_gider">
-                            <?php echo Helper::formattedMoney($summary->toplam_gider ?? 0); ?>
-                            <span style="font-size:0.85rem;font-weight:600;">₺</span>
-                        </h4>
-                    </div>
+            <!-- 2. İşlemler Dropdown -->
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                        <i class="bx bx-cloud-upload me-2 font-size-16 text-success"></i> Excel'den Yükle
+                    </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnDropdownExportExcel">
+                        <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item d-flex align-items-center" href="views/gelir-gider/excel-sablon.php">
+                        <i class="bx bx-download me-2 text-info font-size-16"></i> Excel Şablonu İndir
+                    </a>
                 </div>
             </div>
 
-            <!-- Net Bakiye -->
-            <?php $bakiyeColor = ($summary->bakiye ?? 0) < 0 ? '#f43f5e' : '#0ea5e9'; ?>
-            <div class="col-xl-4 col-md-4">
-                <div class="card border-0 shadow-sm h-100" style="border-bottom: 3px solid <?= $bakiyeColor ?> !important;">
-                    <div class="card-body p-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="rounded-circle p-2 me-2" style="background: rgba(14,165,233,0.1);">
-                                <i data-feather="activity" class="fs-4" style="color: <?= $bakiyeColor ?>;"></i>
-                            </div>
-                            <span class="text-muted small fw-bold" style="font-size:0.65rem;">BAKİYE</span>
+            <!-- 3. Özet Kartları Açma/Kapama Butonu -->
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 4 Adet Minimal Özet KPI Kartı -->
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <!-- Kart 1: TOPLAM İŞLEM -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0 active" data-tip="" id="cardSummaryAll">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM İŞLEM</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bx bx-transfer"></i>
                         </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing:0.5px;opacity:0.7;">NET BAKİYE</p>
-                        <h4 class="mb-0 fw-bold" id="card_net_bakiye">
-                            <?php echo Helper::formattedMoney($summary->bakiye ?? 0); ?>
-                            <span style="font-size:0.85rem;font-weight:600;">₺</span>
-                        </h4>
+                    </div>
+                    <h3 class="summary-kpi-value my-1" id="stat_toplam_islem"><?= $summary->toplam_islem ?? 0 ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="stat_sub_gelir_gider">Gelir: <?= $summary->gelir_adet ?? 0 ?> | Gider: <?= $summary->gider_adet ?? 0 ?></span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-tip="">
+                            <i class="bx bx-layer"></i> Tümü
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body overflow-auto p-3">
-
-
-
-                        <table id="gelirGiderTable" class="table-hover table table-bordered nowrap w-100">
-                            <thead>
-                                <tr>
-                                    <th data-data="id" style="width: 7%;" class="text-center">Sıra</th>
-                                    <th data-data="kayit_tarihi" data-filter="date" class="text-center">Kayıt Tarihi</th>
-                                    <th data-data="type" data-filter="select" class="text-center">Tür</th>
-                                    <th data-data="hesap_adi" data-filter="select" class="text-center">Hesap Adı</th>
-                                    <th data-data="kategori_adi" data-filter="select" class="text-center">Kategori</th>
-                                    <th data-data="tarih" data-filter="date" class="text-center">İşlem Tarihi</th>
-                                    <th data-data="tutar" data-filter="number" class="text-end">Tutar</th>
-                                    <th data-data="bakiye" data-filter="number" class="text-end">Bakiye</th>
-                                    <th data-data="aciklama" data-filter="string">Açıklama</th>
-                                    <th data-data="actions" style="width:5%">İşlem</th>
-                                </tr>
-                            </thead>
-
-
-                            <tbody>
-                                <!-- Veriler AJAX ile yüklenecek -->
-                            </tbody>
-                        </table>
-
+        <!-- Kart 2: TOPLAM GELİR -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0" data-tip="1" id="cardSummaryGelir">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM GELİR</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-trending-up"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-success" id="card_toplam_gelir"><?= Helper::formattedMoney($summary->toplam_gelir ?? 0) ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_gelir_adet"><?= $summary->gelir_adet ?? 0 ?> Gelir Kaydı</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-tip="1">
+                            <i class="bx bx-check-circle"></i> Gelirler
+                        </button>
                     </div>
                 </div>
-            </div> <!-- end col -->
-        </div> <!-- end row -->
+            </div>
+        </div>
 
-    </div> <!-- container-fluid -->
-
-    <div class="modal fade" id="gelirGiderModal" tabindex="-1" aria-labelledby="gelirGiderModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header d-flex align-items-center">
-                    <div class="premium-icon-box">
-                        <i data-feather="layers"></i>
+        <!-- Kart 3: TOPLAM GİDER -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0" data-tip="2" id="cardSummaryGider">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM GİDER</span>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bx bx-trending-down"></i>
+                        </div>
                     </div>
-                    <div>
-                        <h5 class="modal-title fw-bold mb-0" id="gelirGiderModalLabel">Gelir Gider İşlemler</h5>
-                        <small class="text-muted">Lütfen formu eksiksiz doldurun.</small>
+                    <h3 class="summary-kpi-value my-1 text-danger" id="card_toplam_gider"><?= Helper::formattedMoney($summary->toplam_gider ?? 0) ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-danger fw-semibold" id="stat_sub_gider_adet"><?= $summary->gider_adet ?? 0 ?> Gider Kaydı</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-tip="2">
+                            <i class="bx bx-minus-circle"></i> Giderler
+                        </button>
                     </div>
-                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <form id="gelirGiderForm">
-                        <input type="hidden" name="gelir_gider_id" id="gelir_gider_id" class="form-control" value="0">
+            </div>
+        </div>
 
-                        <div class="row form-selectgroup-boxes row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-selectgroup-item">
-                                    <input type="radio" name="type" value="1" class="form-selectgroup-input">
-                                    <span class="form-selectgroup-label d-flex align-items-center p-3">
-                                        <span class="me-3">
-                                            <span class="form-selectgroup-check"></span>
-                                        </span>
-                                        <span class="">
-                                            <span class="form-selectgroup-title strong mb-1">Gelir</span>
-                                            <span class="d-block text-secondary">Gelir Türünü seçiniz</span>
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-selectgroup-item">
-                                    <input type="radio" name="type" value="2" class="form-selectgroup-input" checked="">
-                                    <span class="form-selectgroup-label d-flex align-items-center p-3">
-                                        <span class="me-3">
-                                            <span class="form-selectgroup-check"></span>
-                                        </span>
-                                        <span class="form-selectgroup-label-content">
-                                            <span class="form-selectgroup-title strong mb-1">Gider</span>
-                                            <span class="d-block text-secondary">Gider türünü seçiniz</span>
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-
-
-
+        <!-- Kart 4: NET BAKİYE -->
+        <?php 
+        $bakiyeVal = (float)($summary->bakiye ?? 0); 
+        $bakiyeColor = $bakiyeVal < 0 ? 'text-danger' : ($bakiyeVal > 0 ? 'text-success' : 'text-dark');
+        $bakiyeBadge = $bakiyeVal < 0 ? 'bg-danger-subtle text-danger border-danger-subtle' : ($bakiyeVal > 0 ? 'bg-success-subtle text-success border-success-subtle' : 'bg-secondary-subtle text-secondary border-secondary-subtle');
+        $bakiyeBadgeText = $bakiyeVal < 0 ? 'Borç / Açık' : ($bakiyeVal > 0 ? 'Kasa Fazlası' : 'Dengede');
+        ?>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0" id="cardSummaryBakiye">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">NET BAKİYE</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-wallet"></i>
                         </div>
-                        <div class="row mb-3">
-                            <!--Listede olmayan kategori için manuel olarak yazabilirsiniz-->
-                            <div class="alert alert-info">
-                                <div class="alert-title">
-                                    <i data-feather="info"></i>
-                                    <span>Bilgi</span>
-                                </div>
-                                <div class="alert-text">
-                                    Listede olmayan Hesap Adı veya Kategori için manuel olarak yazıt Enter'a basın!
-                                </div>
-                            </div>
-                            <div class="col-md-12 mb-3">
-                                <?php
-                                echo Form::FormSelect2(
-                                    "hesap_adi",
-                                    [],
-                                    "",
-                                    "Hesap Adı",
-                                    "user",
-                                    "id",
-                                    "hesap_adi",
-                                ); ?>
-                            </div>
-                            <div class="col-md-12">
-                                <?php
-                                echo Form::FormSelect2(
-                                    "islem_turu",
-                                    [],
-                                    "",
-                                    "Kategori",
-                                    "map-pin",
-                                    "id",
-                                    "tur_adi",
-
-                                ); ?>
-
-                            </div>
-                        </div>
-
-
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <?php echo
-                                    Form::FormFloatInput(
-                                        "text",
-                                        "islem_tarihi",
-                                        date("d.m.Y"),
-                                        "İşlem Tarihi giriniz!",
-                                        "İşlem Tarihi",
-                                        "calendar",
-                                        "form-control flatpickr"
-
-                                    ); ?>
-                            </div>
-                            <div class="col-md-6">
-                                <?php echo
-                                    Form::FormFloatInput(
-                                        "text",
-                                        "tutar",
-                                        "",
-                                        "Tutar giriniz!",
-                                        "Tutar",
-                                        "dollar-sign",
-                                        "form-control money"
-
-                                    ); ?>
-                            </div>
-
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <?php echo
-                                    Form::FormFloatTextarea(
-                                        "aciklama",
-                                        "",
-                                        "Açıklama giriniz",
-                                        "Açıklama",
-                                        "map-pin",
-
-
-                                    ); ?>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" id="yeniIslemModal" class="btn btn-outline-success border-2 rounded-3 me-auto px-3 py-2 fw-bold d-flex align-items-center">
-                        <i data-feather="plus" class="me-2"></i> Yeni İşlem
-                    </button>
-
-                    <button type="button" class="btn btn-premium-close waves-effect" data-bs-dismiss="modal">
-                        <i data-feather="x" class="me-1" style="width:18px"></i> Kapat
-                    </button>
-                    <button type="button" id="gelirGiderKaydet" class="btn btn-premium-save waves-effect">
-                        <i data-feather="save" class="me-1" style="width:18px"></i> Kaydet
-                    </button>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 <?= $bakiyeColor ?>" id="card_net_bakiye"><?= Helper::formattedMoney($bakiyeVal) ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-muted" id="stat_bakiye_durum_metni">Gelir - Gider Farkı</span>
+                        <span class="badge <?= $bakiyeBadge ?> border rounded-pill px-2 py-1 font-size-11 fw-semibold" id="bakiye_bilgi">
+                            <?= $bakiyeBadgeText ?>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Excel Import Modal -->
-    <div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header d-flex align-items-center">
-                    <div class="premium-icon-box bg-success bg-opacity-10 text-success">
-                        <i data-feather="upload-cloud"></i>
-                    </div>
-                    <div>
-                        <h5 class="modal-title fw-bold mb-0" id="importExcelModalLabel">Excel'den Gelir-Gider Yükle</h5>
-                        <small class="text-muted">Lütfen geçerli bir excel dosyası seçiniz.</small>
-                    </div>
-                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- 3. Standart DataTables Gelir-Gider Listesi Kartı -->
+    <div class="card summary-kpi-card mb-3 table-card-container" id="gelirGiderListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                    <i class="bx bx-list-ul font-size-20"></i>
                 </div>
-                <div class="modal-body">
-                    <div class="alert alert-success bg-success bg-opacity-10 border-0 mb-4 p-3 rounded-4">
-                        <div class="d-flex align-items-start">
-                            <div class="rounded-circle p-2 bg-success text-white me-3">
-                                <i data-feather="download" style="width:16px;height:16px"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 fw-bold text-success font-size-14">Şablon Dosyasını İndirin</h6>
-                                <p class="mb-2 small text-muted">İşlemleri doğru yüklemek için şablon dosyasını kullanın.</p>
-                                <a href="views/gelir-gider/excel-sablon.php" class="btn btn-sm btn-success rounded-3 px-3">
-                                    <i data-feather="file-text" class="me-1" style="width:14px"></i> Şablonu İndir
-                                </a>
+                <div>
+                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Gelir & Gider Hareketleri</h5>
+                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Anlık arama, sütun filtreleme, sürükle-bırak sıralama ve işlem geçmişi</p>
+                </div>
+            </div>
+
+            <!-- Sağ Araç Çubuğu: Form::FormSelect2 Yıl / Ay Filtreleri & Dışa Aktarma -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <!-- Yıl Dropdown (Form::FormSelect2) -->
+                <div class="header-filter-wrapper">
+                    <?php 
+                    echo Form::FormSelect2(
+                        name: "filter_yil",
+                        options: $yilSecenekleri,
+                        selectedValue: $selectedYil,
+                        label: "Yıl",
+                        icon: "calendar",
+                        valueField: "key",
+                        textField: "",
+                        class: "form-select select2",
+                        required: false,
+                        style: "width:100%",
+                        attributes: "",
+                        id: "filterYil"
+                    ); 
+                    ?>
+                </div>
+
+                <!-- Ay Dropdown (Form::FormSelect2) -->
+                <div class="header-filter-wrapper">
+                    <?php 
+                    echo Form::FormSelect2(
+                        name: "filter_ay",
+                        options: $aySecenekleri,
+                        selectedValue: $selectedAy,
+                        label: "Ay",
+                        icon: "calendar",
+                        valueField: "key",
+                        textField: "",
+                        class: "form-select select2",
+                        required: false,
+                        style: "width:100%",
+                        attributes: "",
+                        id: "filterAy"
+                    ); 
+                    ?>
+                </div>
+
+                <!-- Excel Export -->
+                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
+                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                </button>
+
+                <!-- Print -->
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-3 pt-0">
+            <div class="table-responsive" style="overflow-x: auto !important;">
+                <div id="dtDropzoneOverlay" class="dt-hide-dropzone-overlay">
+                    <i class="bx bx-trash"></i>
+                    <span>Sütunu Gizlemek İçin Buraya Bırakın</span>
+                </div>
+                <table id="gelirGiderTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                    <thead>
+                        <tr>
+                            <th data-filter="none" style="width: 35px;" class="text-center sorting_disabled no-drag">
+                                <input class="form-check-input custom-table-check" type="checkbox" id="checkAll" title="Tümünü Seç">
+                            </th>
+                            <th data-filter="number" style="width: 50px;" class="text-center">SIRA</th>
+                            <th data-filter="date" class="text-center" style="width: 125px;">KAYIT TARİHİ</th>
+                            <th data-filter="select" class="text-center" style="width: 90px;">TÜR</th>
+                            <th data-filter="string">HESAP ADI</th>
+                            <th data-filter="select">KATEGORİ</th>
+                            <th data-filter="select" class="text-center" style="width: 110px;">PLAKA</th>
+                            <th data-filter="select" class="text-center" style="width: 120px;">ÖDEME ŞEKLİ</th>
+                            <th data-filter="select" class="text-center" style="width: 120px;">BANKA</th>
+                            <th data-filter="date" class="text-center" style="width: 125px;">İŞLEM TARİHİ</th>
+                            <th data-filter="number" class="text-end" style="width: 120px;">TUTAR</th>
+                            <th data-filter="number" class="text-end" style="width: 120px;">BAKİYE</th>
+                            <th data-filter="string">AÇIKLAMA</th>
+                            <th data-filter="none" style="width: 85px;" class="text-center sorting_disabled no-drag">İŞLEMLER</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gelir / Gider Ekle - Düzenle Modal -->
+<div class="modal fade" id="gelirGiderModal" tabindex="-1" aria-labelledby="gelirGiderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header d-flex align-items-center">
+                <div class="modal-icon-box bg-primary-subtle text-primary me-3 flex-shrink-0">
+                    <i class="bx bx-transfer-alt font-size-22"></i>
+                </div>
+                <div>
+                    <h5 class="modal-title fw-bold mb-0 text-dark" id="gelirGiderModalLabel">Gelir / Gider İşlemi</h5>
+                    <small class="text-muted">Lütfen işlem detaylarını eksiksiz doldurunuz.</small>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="gelirGiderForm">
+                    <input type="hidden" name="gelir_gider_id" id="gelir_gider_id" value="0">
+
+                    <!-- 1. İşlem Türü (Gelir / Gider Seçim Kutuları) -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-selectgroup-item w-100 mb-0">
+                                <input type="radio" name="type" value="1" class="form-selectgroup-input d-none">
+                                <div class="form-selectgroup-label d-flex align-items-center p-3">
+                                    <div class="p-2 bg-success-subtle text-success rounded-3 me-3">
+                                        <i class="bx bx-trending-up font-size-22"></i>
+                                    </div>
+                                    <div>
+                                        <span class="d-block fw-bold text-dark font-size-14">Gelir</span>
+                                        <span class="d-block text-muted font-size-12">Kasaya Giriş</span>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-selectgroup-item w-100 mb-0">
+                                <input type="radio" name="type" value="2" class="form-selectgroup-input d-none" checked>
+                                <div class="form-selectgroup-label d-flex align-items-center p-3">
+                                    <div class="p-2 bg-danger-subtle text-danger rounded-3 me-3">
+                                        <i class="bx bx-trending-down font-size-22"></i>
+                                    </div>
+                                    <div>
+                                        <span class="d-block fw-bold text-dark font-size-14">Gider</span>
+                                        <span class="d-block text-muted font-size-12">Kasadan Çıkış</span>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 2. Hesap Adı & Kategori -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Hesap Adı</label>
+                            <select name="hesap_adi" id="hesap_adi" class="modal-select-field w-100" data-placeholder="Hesap Adı Seçiniz veya Yazınız">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Kategori / İşlem Türü <span class="text-danger">*</span></label>
+                            <select name="islem_turu" id="islem_turu" class="modal-select-field w-100" data-placeholder="Kategori Seçiniz" required>
+                                <option value=""></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 3. Plaka & Ödeme Şekli -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Plaka (Araç)</label>
+                            <select name="plaka" id="plaka" class="modal-select-field w-100" data-placeholder="Plaka Seçiniz veya Yazınız">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Ödeme Şekli</label>
+                            <select name="odeme_sekli" id="odeme_sekli" class="modal-select-field w-100" data-placeholder="Ödeme Şekli Seçiniz">
+                                <option value=""></option>
+                                <option value="Nakit">Nakit</option>
+                                <option value="Banka Havalesi / EFT / FAST">Banka Havalesi / EFT / FAST</option>
+                                <option value="Kredi Kartı / Banka Kartı">Kredi Kartı / Banka Kartı</option>
+                                <option value="Çek">Çek</option>
+                                <option value="Senet">Senet</option>
+                                <option value="Otomatik Ödeme">Otomatik Ödeme</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 4. Banka Adı & İşlem Tarihi -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Banka Adı</label>
+                            <select name="banka_adi" id="banka_adi" class="modal-select-field w-100" data-placeholder="Banka Seçiniz veya Yazınız">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">İşlem Tarihi <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="bx bx-calendar text-muted"></i></span>
+                                <input type="text" name="islem_tarihi" id="islem_tarihi" class="form-control flatpickr border-start-0 ps-0 modal-custom-control" value="<?= date('d.m.Y H:i') ?>" required>
                             </div>
                         </div>
                     </div>
-                    <form id="importExcelForm" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label for="excelFile" class="form-label fw-bold text-secondary small">Excel Dosyası (.xlsx, .xls)</label>
-                            <input class="form-control rounded-3" type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+
+                    <!-- 5. Tutar -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Tutar (₺) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 fw-bold text-primary px-3">₺</span>
+                                <input type="text" name="tutar" id="tutar" class="form-control money border-start-0 ps-0 text-end fw-bold font-size-16 modal-custom-control" placeholder="0,00" required>
+                            </div>
                         </div>
-                    </form>
-                    <div class="alert alert-info bg-info bg-opacity-10 border-0 rounded-4 p-3 mb-0">
-                        <h6 class="fw-bold font-size-13 mb-2"><i data-feather="info" class="me-1" style="width:14px"></i> İşlem Tipleri</h6>
-                        <p class="mb-1 small"><strong>GELİR:</strong> Kasaya eklenecek tutarlar.</p>
-                        <p class="mb-0 small"><strong>GİDER:</strong> Kasadan düşülecek tutarlar.</p>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-premium-close" data-bs-dismiss="modal">İptal</button>
-                    <button type="button" class="btn btn-success rounded-3 px-4 py-2 fw-bold" id="btnUploadExcel">
-                        <i data-feather="upload" class="me-1" style="width:18px"></i> Yükle
+
+                    <!-- 6. Açıklama -->
+                    <div class="mb-0">
+                        <label class="form-label font-size-12 fw-semibold text-muted mb-1">Açıklama</label>
+                        <textarea name="aciklama" id="aciklama" class="form-control rounded-3" rows="3" placeholder="İşlem ile ilgili detaylı açıklama girebilirsiniz..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 d-flex align-items-center justify-content-between">
+                <button type="button" id="yeniIslemModal" class="btn btn-outline-secondary btn-sm px-3 rounded-3 d-flex align-items-center gap-1">
+                    <i class="bx bx-refresh font-size-15"></i> Formu Temizle
+                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3 rounded-3" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" id="gelirGiderKaydet" class="btn btn-primary btn-sm px-4 rounded-3 d-flex align-items-center gap-1 shadow-sm">
+                        <i class="bx bx-save font-size-16"></i> Kaydet
                     </button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            flatpickr(".flatpickr", {
-                dateFormat: "d.m.Y H:i",
-                enableTime: true,
-                time_24hr: true,
-                allowInput: true,
-                minuteIncrement: 1,
-            });
-        });
-
-        $(document).ready(function() {
-            // Select2 tag desteği
-            $("#islem_turu").select2({
-                tags: true,
-                placeholder: "Kategori Seçiniz",
-                allowClear: true,
-                dropdownParent: $('#gelirGiderModal')
-            });
-
-            $("#hesap_adi").select2({
-                tags: true,
-                placeholder: "Hesap Adı Seçiniz",
-                allowClear: true,
-                dropdownParent: $('#gelirGiderModal')
-            });
-
-            // Hesap adlarını yükle
-            function loadHesapAdlari() {
-                $.ajax({
-                    url: 'views/gelir-gider/api.php',
-                    type: 'POST',
-                    data: { action: 'hesap-adlari-getir' },
-                    dataType: 'json',
-                    success: function(response) {
-                        let currentVal = $("#hesap_adi").val();
-                        $("#hesap_adi").empty().append('<option></option>');
-                        response.forEach(function(item) {
-                            if(item != '0' && item != '' && item != null) {
-                                $("#hesap_adi").append(new Option(item, item));
-                            }
-                        });
-                        if (currentVal) $("#hesap_adi").val(currentVal).trigger('change');
-                    }
-                });
-            }
-
-            // Modal açıldığında hesap adlarını yenile
-            $('#gelirGiderModal').on('show.bs.modal', function() {
-                loadHesapAdlari();
-            });
-        });
-    </script>
+<!-- Excel Import Modal -->
+<div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header d-flex align-items-center">
+                <div class="modal-icon-box bg-success-subtle text-success me-3 flex-shrink-0">
+                    <i class="bx bx-cloud-upload font-size-22"></i>
+                </div>
+                <div>
+                    <h5 class="modal-title fw-bold mb-0 text-dark" id="importExcelModalLabel">Excel'den Gelir-Gider Yükle</h5>
+                    <small class="text-muted">Geçerli bir Excel dosyası seçiniz (.xlsx, .xls)</small>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-success bg-success-subtle border-0 mb-3 p-3 rounded-3">
+                    <div class="d-flex align-items-start">
+                        <div class="p-2 bg-success text-white rounded-circle me-3 flex-shrink-0">
+                            <i class="bx bx-download font-size-18"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-bold text-success font-size-13">Şablon Dosyasını İndirin</h6>
+                            <p class="mb-2 font-size-12 text-muted">İşlemleri doğru aktarmak için hazır şablon dosyasını kullanınız.</p>
+                            <a href="views/gelir-gider/excel-sablon.php" class="btn btn-sm btn-success rounded-pill px-3 py-1 font-size-12">
+                                <i class="bx bx-file me-1"></i> Şablonu İndir
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <form id="importExcelForm" enctype="multipart/form-data">
+                    <div class="mb-0">
+                        <label for="excelFile" class="form-label font-size-12 fw-semibold text-muted mb-1">Excel Dosyası (.xlsx, .xls)</label>
+                        <input class="form-control rounded-3" type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 d-flex align-items-center justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3 rounded-3" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success btn-sm px-4 rounded-3 d-flex align-items-center gap-1 shadow-sm" id="btnUploadExcel">
+                    <i class="bx bx-upload font-size-16"></i> Yükle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

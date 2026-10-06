@@ -7,7 +7,7 @@ const {execFileSync} = require('node:child_process');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../..');
 const mode = process.env.EFATURA_SYNC_MODE || 'taslak-list';
-const syncButton = mode === 'giden-list' ? '#btnSyncOutgoing' : '#btnSyncDrafts';
+const syncButton = mode === 'gelen-list' ? '#btnSyncIncoming' : (mode === 'giden-list' ? '#btnSyncOutgoing' : '#btnSyncDrafts');
 const calls = [];
 let syncFixtureJob = null;
 let syncSequence = 0;
@@ -26,8 +26,11 @@ const server = http.createServer(async (request, response) => {
       syncFixtureJob = {created_at:`2026-10-04 14:00:00.${++syncSequence}`,job_token:'offline-job-token',job_status:'running',start_date:form.get('start_date'),end_date:form.get('end_date'),processed_count:2,added_count:2,updated_count:0,message:'Aktarım arka planda sürüyor.'};
       return response.end(JSON.stringify({status:'success',data:syncFixtureJob}));
     }
-    if (action === 'sync_job_resume') syncFixtureJob = {...syncFixtureJob,job_status:'running',message:'Aktarım kaldığı yerden devam ediyor.'};
-    if (['sync_job_status','sync_job_resume'].includes(action)) return response.end(JSON.stringify({status:'success',data:syncFixtureJob}));
+    if (action === 'sync_job_errors') return response.end(JSON.stringify({status:'success',data:{failed_count:1,rows:[{fatura_no:'=UNSAFE',uuid:'offline-failed',issue_date:'2026-01-05',supplier:'<script>window.fixtureXss=true</script>',message:'Invalid source'}]}}));
+    if (action === 'sync_job_pause') syncFixtureJob = {...syncFixtureJob,pause_requested:true};
+    if (action === 'sync_job_retry') syncFixtureJob = {...syncFixtureJob,job_status:'running',failed_count:0,pause_requested:false};
+    if (action === 'sync_job_resume') syncFixtureJob = {...syncFixtureJob,job_status:'running',pause_requested:false,message:'Aktarım kaldığı yerden devam ediyor.'};
+    if (['sync_job_status','sync_job_resume','sync_job_pause','sync_job_retry'].includes(action)) return response.end(JSON.stringify({status:'success',data:syncFixtureJob}));
         if (action === 'summary_stats') return response.end(JSON.stringify({status:'success',data:{}}));
         if (['list_invoices','list_giden'].includes(action)) return response.end(JSON.stringify({draw:Number(url.searchParams.get('draw') || 1),recordsTotal:0,recordsFiltered:0,summary:{},data:[]}));
         return response.end(JSON.stringify({status:'error',message:'Unexpected action'}));
@@ -60,6 +63,9 @@ const server = http.createServer(async (request, response) => {
     await page.locator('.sync-counts').filter({hasText:'2 işlendi'}).waitFor();
     assert.equal(await page.locator(syncButton).isDisabled(), true);
     await page.locator('.swal2-confirm').click();
+    await page.locator('.sync-pause').click();
+    await page.locator('.sync-pause').filter({hasText:'Durduruluyor'}).waitFor();
+    assert.equal(await page.locator('.sync-pause').isDisabled(), true);
     // Simulate a job pausing while this tab is closed; server state survives navigation.
     syncFixtureJob = {...syncFixtureJob,job_status:'paused',message:'EDM bağlantısı kesildi.'};
     await page.goto(base + '/?mode=' + mode);
@@ -76,6 +82,22 @@ const server = http.createServer(async (request, response) => {
         await page.locator('.sync-counts').filter({hasText:'1 aktarılamadı'}).waitFor();
         assert.equal(await page.locator('.sync-heading').locator('..').locator('..').locator('..').evaluate(node=>node.classList.contains('alert-warning')), true);
         assert.equal(await page.locator(syncButton).isEnabled(), true);
+        await page.locator('.sync-errors').click();
+        await page.locator('.swal2-title').filter({hasText:'Aktarılamayan faturalar'}).waitFor();
+        assert.equal(await page.evaluate(() => window.fixtureXss), undefined);
+        const downloading = page.waitForEvent('download');
+        await page.locator('.swal2-confirm').click();
+        const download = await downloading;
+        const stream = await download.createReadStream();
+        let csv = ''; for await (const chunk of stream) csv += chunk.toString('utf8');
+        assert.ok(csv.includes("'=UNSAFE"));
+        assert.ok(csv.includes('offline-failed'));
+        await page.locator('.sync-retry').click();
+        await page.waitForFunction(() => document.querySelector('.sync-retry').classList.contains('d-none'));
+        assert.ok(calls.some(call => call.action === 'sync_job_retry'));
+        syncFixtureJob = {...syncFixtureJob,job_status:'partial',failed_count:1};
+        await page.goto(base + '/?mode=' + mode);
+        await page.locator('.sync-dismiss').waitFor({state:'visible'});
         await page.locator('.sync-dismiss').click();
         assert.equal(await page.locator('.sync-heading').isVisible(), false);
         await page.goto(base + '/?mode=' + mode);

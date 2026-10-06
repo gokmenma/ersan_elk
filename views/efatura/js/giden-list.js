@@ -486,16 +486,14 @@ $(document).ready(function() {
         table.ajax.reload();
     });
 
-    // Header Dışa Aktarma / Yazdırma / Yenileme Butonları
-    $('#btnHeaderExportExcel, #exportExcel').on('click', function() {
+    // Header Dışa Aktarma / Yazdırma Butonları
+    $('#btnHeaderExportExcel, #exportExcel').on('click', function(e) {
+        e.preventDefault();
         window.location.href = 'api/efatura-api.php?action=export_excel';
     });
 
-    $('#btnHeaderRefresh').on('click', function() {
-        table.ajax.reload(null, false);
-    });
-
-    $('#btnHeaderPrint').on('click', function() {
+    $('#btnPrintTable, #btnHeaderPrint').on('click', function(e) {
+        e.preventDefault();
         printInvoiceListReport();
     });
 
@@ -636,6 +634,22 @@ $(document).ready(function() {
         openInvoicePreview(id);
     });
 
+    function decodeInvoiceHtml(html) {
+        if (!html) return '';
+        const safeTags = 'img|\\/img|table|\\/table|thead|\\/thead|tbody|\\/tbody|tfoot|\\/tfoot|tr|\\/tr|th|\\/th|td|\\/td|colgroup|\\/colgroup|col|\\/col|p|\\/p|div|\\/div|span|\\/span|br|\\/br|hr|\\/hr|strong|\\/strong|b|\\/b|em|\\/em|i|\\/i|u|\\/u|s|\\/s|small|\\/small|font|\\/font|ul|\\/ul|ol|\\/ol|li|\\/li|a|\\/a|center|\\/center';
+        const tagRegex = new RegExp('&lt;((\\/)?(' + safeTags + ')(\\s+[\\s\\S]*?)?(\\/)?)&gt;', 'gi');
+        let decoded = html.replace(/&amp;(lt|gt|quot|apos|#39;|#34;|#59;|amp);/gi, '&$1;');
+        decoded = decoded.replace(tagRegex, function(match) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = match;
+            let val = txt.value;
+            if (/^<\s*\/\s*br\s*>/i.test(val)) return '<br>';
+            return val;
+        });
+        decoded = decoded.replace(/<\s*\/\s*br\s*>/gi, '<br>');
+        return decoded;
+    }
+
     let lastGidenPreviewHtml = '';
     function openInvoicePreview(id, autoPrint = false) {
         const modalEl = document.getElementById('modalFaturaOnizleme');
@@ -648,8 +662,9 @@ $(document).ready(function() {
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success') {
-                    lastGidenPreviewHtml = res.html;
-                    let docHtml = res.html;
+                    const cleanedHtml = decodeInvoiceHtml(res.html);
+                    lastGidenPreviewHtml = cleanedHtml;
+                    let docHtml = cleanedHtml;
                     if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
                         docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body { margin: 0; padding: 15px; background: #fff; font-family: Arial, sans-serif; }</style></head><body>${docHtml}</body></html>`;
                     }
@@ -662,7 +677,7 @@ $(document).ready(function() {
                     }
                     if (autoPrint) {
                         setTimeout(() => {
-                            printInvoiceHtml(res.html);
+                            printInvoiceHtml(cleanedHtml);
                         }, 300);
                     }
                 } else {

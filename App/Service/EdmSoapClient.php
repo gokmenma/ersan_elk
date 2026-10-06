@@ -302,6 +302,17 @@ class EdmSoapClient
     /** Fetch one page without holding the entire date range in memory. */
     public function getInvoicePage(string $direction, string $startDate, string $endDate, int $offset = 0, int $limit = 50, ?string $createdBefore = null, ?string $listType = null): array
     {
+        return $this->fetchInvoicePage($direction, $startDate, $endDate, $offset, $limit, $createdBefore, $listType);
+    }
+
+    public function getIncomingInvoicePage(string $startDate, string $endDate, int $offset = 0, string $dateType = 'ISSUE'): array
+    {
+        if (!in_array($dateType, ['ISSUE', 'CREATE'], true)) throw new EdmOperationException('validation', 'Geçersiz tarih türü.');
+        return $this->fetchInvoicePage('IN', $startDate, $endDate, $offset, 50, null, 'gelen', $dateType);
+    }
+
+    private function fetchInvoicePage(string $direction, string $startDate, string $endDate, int $offset, int $limit, ?string $createdBefore, ?string $listType, string $dateType = 'CREATE'): array
+    {
         $start = \DateTimeImmutable::createFromFormat('!Y-m-d', $startDate);
         $end = \DateTimeImmutable::createFromFormat('!Y-m-d', $endDate);
         if (!$start || !$end || $start->format('Y-m-d') !== $startDate || $end->format('Y-m-d') !== $endDate || $start > $end || $offset < 0 || !in_array($direction, ['IN', 'OUT'], true)) {
@@ -314,15 +325,17 @@ class EdmSoapClient
             $endTime = min($endTime, $createdBefore);
             if ($endTime < $start->format('Y-m-d\T00:00:00')) return [];
         }
-        if ($listType !== null && !in_array($listType, ['taslak', 'giden'], true)) throw new EdmOperationException('validation', 'Geçersiz aktarım türü.');
+        if ($listType !== null && !in_array($listType, ['taslak', 'giden', 'gelen'], true)) throw new EdmOperationException('validation', 'Geçersiz aktarım türü.');
         $response = $this->call('GetInvoice', [
             'INVOICE_SEARCH_KEY' => (object)(($listType === 'taslak' ? ['CONNECTORSTATUSDESCRIPTION' => 'LOAD - SUCCEED'] : []) + [
                 'LIMIT' => max(1, min(50, $limit)), 'OFFSET' => $offset,
                 'DIRECTION' => $direction, 'READ_INCLUDED' => true,
-                'CR_START_DATE' => $start->format('Y-m-d\T00:00:00'),
-                'CR_END_DATE' => $endTime,
-            ]),
-            'HEADER_ONLY' => $listType === 'giden' ? 'Y' : 'N', 'INVOICE_CONTENT_TYPE' => 'XML',
+            ] + ($dateType === 'ISSUE' ? [
+                'START_DATE' => $startDate, 'END_DATE' => $endDate,
+            ] : [
+                'CR_START_DATE' => $start->format('Y-m-d\T00:00:00'), 'CR_END_DATE' => $endTime,
+            ])),
+            'HEADER_ONLY' => in_array($listType, ['giden', 'gelen'], true) ? 'Y' : 'N', 'INVOICE_CONTENT_TYPE' => 'XML',
         ]);
         if (isset($response->REQUEST_RETURN->RETURN_CODE) && (string)$response->REQUEST_RETURN->RETURN_CODE !== '0') {
             throw new EdmOperationException('business', 'EDM fatura listesini döndürmedi. Servis işlem sonucunu kontrol edin.');
@@ -334,7 +347,8 @@ class EdmSoapClient
             if ($uuid === '') throw new EdmOperationException('business', 'EDM sayfasında ETTN bilgisi eksik.');
             $header = $item->HEADER ?? (object)[];
             $result[] = [
-                'uuid' => $uuid, 'xml' => self::decodeContent($item->CONTENT ?? null),
+                'uuid' => $uuid, 'fatura_no' => (string)($item->ID ?? ''), 'issue_date' => (string)($header->ISSUE_DATE ?? ''),
+                'supplier' => (string)($header->SUPPLIER ?? ''), 'xml' => self::decodeContent($item->CONTENT ?? null),
                 'status' => $header->STATUS ?? '', 'status_desc' => $header->STATUS_DESCRIPTION ?? '',
             ];
         }

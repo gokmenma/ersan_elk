@@ -29,26 +29,28 @@ if ($_POST["action"] == "gelir-gider-kaydet") {
     $id = Security::decrypt($_POST["gelir_gider_id"]);
     $son_kayit = null;
     try {
-
         $data = [
             "id" => $id,
             "type" => $_POST["type"],
             "tarih" => date("Y-m-d H:i:s", strtotime($_POST["islem_tarihi"])),
-            "kategori" => $_POST["islem_turu"],
-            "hesap_adi" => $_POST["hesap_adi"],
+            "kategori" => $_POST["islem_turu"] ?? '',
+            "hesap_adi" => $_POST["hesap_adi"] ?? '',
             "tutar" => Helper::formattedMoneyToNumber($_POST["tutar"]),
-            "aciklama" => $_POST["aciklama"],
+            "aciklama" => $_POST["aciklama"] ?? '',
+            "plaka" => $_POST["plaka"] ?? '',
+            "odeme_sekli" => $_POST["odeme_sekli"] ?? '',
+            "banka_adi" => $_POST["banka_adi"] ?? '',
         ];
         //yeni kayıt olduğu zaman kayıt yapanı al
         if ($id == 0) {
-            $data["kayit_yapan"] = $_SESSION["id"];
+            $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
         }
 
         $lastInsertId = $GelirGider->saveWithAttr($data) ?? $_POST["gelir_gider_id"];
         $status = "success";
-        $message = "İşlem başarılı bir şekilde gerçekleştirildi.";
+        $message = "İşlem başarılı bir şekilde kaydedildi.";
 
-        //tabloya eklemek için eklenen veya güncellen kaydı getir
+        //tabloya eklemek için eklenen veya güncellenen kaydı getir
         $son_kayit = $GelirGider->getGelirGiderTableRow(Security::decrypt($lastInsertId));
 
     } catch (PDOException $ex) {
@@ -60,10 +62,11 @@ if ($_POST["action"] == "gelir-gider-kaydet") {
         "message" => $message,
         "son_kayit" => $son_kayit,
         "id" => $lastInsertId,
-        "data" => $data,
+        "data" => $data ?? [],
     ];
 
     echo json_encode($res);
+    exit;
 }
 
 //Gelir gider getir
@@ -71,6 +74,7 @@ if ($_POST["action"] == "gelir-gider-getir") {
     $id = Security::decrypt($_POST["gelir_gider_id"]);
     $data = $GelirGider->find($id);
     echo json_encode($data);
+    exit;
 }
 
 //Gelir gider sil
@@ -79,7 +83,7 @@ if ($_POST["action"] == "gelir-gider-sil") {
     try {
         $GelirGider->delete($id);
         $status = "success";
-        $message = "İşlem başarılı bir şekilde gerçekleştirildi.";
+        $message = "İşlem başarıyla silindi.";
     } catch (PDOException $ex) {
         $status = "error";
         $message = $ex->getMessage();
@@ -90,6 +94,24 @@ if ($_POST["action"] == "gelir-gider-sil") {
     ];
 
     echo json_encode($res);
+    exit;
+}
+
+// Toplu Silme
+if ($action == "gelir-gider-toplu-sil") {
+    $ids = $_POST["ids"] ?? [];
+    if (!is_array($ids) || empty($ids)) {
+        echo json_encode(["status" => "error", "message" => "Lütfen silinecek en az bir kayıt seçin."]);
+        exit;
+    }
+    try {
+        $userId = $_SESSION['id'] ?? 0;
+        $GelirGider->bulkDelete($ids, $userId);
+        echo json_encode(["status" => "success", "message" => count($ids) . " adet kayıt başarıyla silindi."]);
+    } catch (Exception $ex) {
+        echo json_encode(["status" => "error", "message" => $ex->getMessage()]);
+    }
+    exit;
 }
 
 //Gelir gider türlerini getir
@@ -97,12 +119,28 @@ if ($_POST["action"] == "gelir-gider-turu-getir") {
     $type = $_POST["type"];
     $turler = $Tanimlamalar->getGelirGiderTurleriSelect($type);
     echo json_encode($turler);
+    exit;
 }
 
 //Hesap adlarını getir
 if ($_POST["action"] == "hesap-adlari-getir") {
     $veriler = $GelirGider->getUniqueValues('hesap_adi');
     echo json_encode($veriler);
+    exit;
+}
+
+// Plakaları getir
+if ($action == "plakalari-getir") {
+    $plakalar = $GelirGider->getPlakalar();
+    echo json_encode($plakalar);
+    exit;
+}
+
+// Bankaları getir
+if ($action == "bankalari-getir") {
+    $bankalar = $GelirGider->getBankalar();
+    echo json_encode($bankalar);
+    exit;
 }
 
 //DataTable Benzersiz Değerleri Getir (Gelişmiş Filtreler İçin)
@@ -117,86 +155,6 @@ if ($_POST["action"] == "get-unique-values") {
     exit;
 }
 
-
-//Excelden gelen verileri kaydet
-if ($_POST["action"] == "gelir-gider-excel-kaydet") {
-        $file = $_FILES["excelFile"];
-        $file_name = $file["name"];
-
-    
-
-        $file_tmp = $file["tmp_name"];   
-        $file_size = $file["size"];
-        $file_error = $file["error"];
-        $file_ext = explode(".", $file_name);
-        $file_ext = strtolower(end($file_ext));
-        $allowed = ["xls", "xlsx"];
-    
-         if (in_array($file_ext, $allowed)) {
-            try {
-                //excel dosyasını okuma (formatlanmamış ham değerleri almak için 3. parametre false yapıldı)
-                $spreadsheet = IOFactory::load($file_tmp);
-                $sheetData = $spreadsheet->getActiveSheet()->toArray(null, true, false, true);
-                $data = [];
-                foreach ($sheetData as $key => $row) {
-                    if ($key == 1) {
-                        continue;
-                    }
-
-                    $rawTutar = $row["E"];
-                    if ($rawTutar === null || $rawTutar === "" || $rawTutar === 0) {
-                        continue;
-                    }
-                    
-                    // Veriyi sayısal tutara dönüştür
-                    $tutar = Helper::formattedMoneyToNumber($rawTutar);
-                    if (empty($tutar) || !is_numeric($tutar)) {
-                        continue;
-                    }
-
-                    //B sütunundaki veriyi kontrol et, GELİR ise 1 değilse 2 yap
-                    $typeText = trim($row["B"] ?? '');
-                    if (preg_match('/gel[iıİI]r/ui', $typeText)) {
-                        $type = 1;
-                        $islem_turu = empty($row["C"]) ? 2 : $row["C"];
-                    } else {
-                        $type = 2;
-                        $islem_turu = empty($row["C"]) ? 1 : $row["C"];
-                    }
-
-                     $data = [
-                        "id" => 0,
-                        "tarih" => Date::convertExcelDate($row["A"]),
-                        "type" => Security::escape($type),
-                        "kategori" => Security::escape($islem_turu),
-                        "hesap_adi" => Security::escape($row["D"]),
-                        "tutar" => Security::escape($tutar),
-                        "aciklama" => Security::escape($row["F"]),
-                    ];
-                   $lastInsertedId = $GelirGider->saveWithAttr($data) ?? 0;
-                }
-    
-                $status = "success";
-                $message = "Dosya başarıyla yüklendi" ;
-            } catch (PDOException $ex) {
-                $status = "error";
-                $message = $ex->getMessage();
-            }
-    
-        } else {
-            $status = "error";
-            $message = "Dosya uzantısı uygun değil";
-         }
-    
-        $res = [
-            "status" => $status,
-            "message" => $message,
-            //"data" => $data,
-        ];
-    
-        echo json_encode($res);
-}
-
 //Gelir gider ajax list (Server-side Datatables)
 if ($_POST["action"] == "gelir-gider-ajax-list") {
     try {
@@ -208,36 +166,49 @@ if ($_POST["action"] == "gelir-gider-ajax-list") {
         foreach ($res['data'] as $row) {
             $enc_id = Security::encrypt($row->id);
             
-            $bakiye = $row->bakiye;
-            $color = $bakiye < 0 ? 'danger' : 'success';
+            $bakiye = (float)($row->bakiye ?? 0);
+            $bakiyeColor = $bakiye < 0 ? 'text-danger' : 'text-success';
             
             $actions = '
-                <div class="dropdown">
-                    <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
-                    </a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item duzenle" href="#" data-id="' . $enc_id . '">
-                            <i class="bx bx-edit font-size-18 me-1"></i> Düzenle
-                        </a>
-                        <a class="dropdown-item gelir-gider-sil" href="#" data-id="' . $enc_id . '">
-                            <i class="bx bx-trash font-size-18 me-1"></i> Sil
-                        </a>
-                    </div>
+                <div class="action-btn-group d-flex align-items-center justify-content-center gap-1">
+                    <button type="button" class="btn btn-sm btn-subtle-warning table-action-btn duzenle" data-id="' . $enc_id . '" title="Düzenle">
+                        <i class="bx bx-edit font-size-15"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-subtle-danger table-action-btn gelir-gider-sil" data-id="' . $enc_id . '" title="Sil">
+                        <i class="bx bx-trash font-size-15"></i>
+                    </button>
                 </div>';
 
-            $typeVal = $row->type ?? $row->TYPE ?? 1;
+            $typeVal = (int)($row->type ?? $row->TYPE ?? 1);
+            $typeBadge = ($typeVal === 1)
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-trending-up me-1"></i>Gelir</span>'
+                : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-trending-down me-1"></i>Gider</span>';
+
+            $tutar = (float)($row->tutar ?? $row->TUTAR ?? 0);
+            $tutarColor = ($typeVal === 1) ? 'text-success' : 'text-danger';
+            $tutarFormatted = '<span class="' . $tutarColor . ' fw-semibold">' . Helper::formattedMoney($tutar) . '</span>';
+
+            $chk = '<div class="form-check text-center mb-0"><input class="form-check-input row-check" type="checkbox" value="' . $enc_id . '"></div>';
 
             $formattedData[] = [
+                "DT_RowId" => "gelir_gider_" . $row->id,
+                "DT_RowAttr" => [
+                    "data-id" => $enc_id,
+                    "data-title" => "#" . $row->id . " - " . ($row->hesap_adi ?: 'İşlem')
+                ],
+                "check" => $chk,
                 "id" => $row->id,
-                "kayit_tarihi" => $row->kayit_tarihi,
-                "type" => Helper::getBadge($typeVal),
-                "hesap_adi" => ($row->hesap_adi ?? $row->HESAP_ADI ?? '-') ?: '-',
-                "kategori_adi" => ($row->kategori_adi ?? $row->KATEGORI_ADI ?? '-') ?: '-',
+                "kayit_tarihi" => (!empty($row->kayit_tarihi)) ? date('d.m.Y H:i', strtotime($row->kayit_tarihi)) : '-',
+                "type" => $typeBadge,
+                "hesap_adi" => htmlspecialchars($row->hesap_adi ?? $row->HESAP_ADI ?? '-', ENT_QUOTES, 'UTF-8') ?: '-',
+                "kategori_adi" => htmlspecialchars($row->kategori_adi ?? $row->KATEGORI_ADI ?? '-', ENT_QUOTES, 'UTF-8') ?: '-',
+                "plaka" => htmlspecialchars($row->plaka ?? '-', ENT_QUOTES, 'UTF-8') ?: '-',
+                "odeme_sekli" => htmlspecialchars($row->odeme_sekli ?? '-', ENT_QUOTES, 'UTF-8') ?: '-',
+                "banka_adi" => htmlspecialchars($row->banka_adi ?? '-', ENT_QUOTES, 'UTF-8') ?: '-',
                 "tarih" => (!empty($row->tarih)) ? date('d.m.Y H:i', strtotime($row->tarih)) : '-',
-                "tutar" => Helper::formattedMoney($row->tutar ?? $row->TUTAR ?? 0),
-                "bakiye" => '<span class="text-' . $color . '">' . Helper::formattedMoney($bakiye) . '</span>',
-                "aciklama" => ($row->aciklama ?? $row->ACIKLAMA ?? '-') ?: '-',
+                "tutar" => $tutarFormatted,
+                "bakiye" => '<span class="' . $bakiyeColor . ' fw-bold">' . Helper::formattedMoney($bakiye) . '</span>',
+                "aciklama" => htmlspecialchars($row->aciklama ?? $row->ACIKLAMA ?? '-', ENT_QUOTES, 'UTF-8') ?: '-',
                 "actions" => $actions
             ];
         }

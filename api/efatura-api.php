@@ -351,14 +351,26 @@ try {
         case 'sync_job_status':
         case 'sync_job_resume':
         case 'sync_job_cancel':
+        case 'sync_job_pause':
+        case 'sync_job_errors':
+        case 'sync_job_retry':
             session_write_close();
             $jobs = new \App\Service\EInvoiceSyncJobService();
             $token = is_string($_POST['job_token'] ?? null) ? $_POST['job_token'] : '';
+            if ($token !== '') {
+                $jobId = \App\Helper\Security::decrypt($token);
+                if (!is_string($jobId) || !preg_match('/^[a-f0-9]{32}$/D', $jobId)) throw new \InvalidArgumentException('Geçersiz aktarım kimliği.');
+                $job = (new \App\Model\EInvoiceSyncJobModel())->findJob($jobId);
+                if (!$job || ($job['state']['list_type'] ?? 'giden') !== (string)($_POST['list_type'] ?? 'giden')) throw new \InvalidArgumentException('Aktarım türü uyuşmuyor.');
+            }
             $data = match ($action) {
-                'sync_job_start' => $jobs->start($firmId, $userId, trim((string)($_POST['start_date'] ?? '')), trim((string)($_POST['end_date'] ?? '')), (string)($_POST['list_type'] ?? 'taslak')),
+                'sync_job_start' => $jobs->start($firmId, $userId, trim((string)($_POST['start_date'] ?? '')), trim((string)($_POST['end_date'] ?? '')), (string)($_POST['list_type'] ?? 'giden'), (string)($_POST['date_type'] ?? 'ISSUE')),
                 'sync_job_resume' => $jobs->resume($firmId, $userId, $token),
+                'sync_job_pause' => $jobs->pause($firmId, $userId, $token),
+                'sync_job_errors' => $jobs->errors($firmId, $userId, $token),
+                'sync_job_retry' => $jobs->retryFailed($firmId, $userId, $token),
                 'sync_job_cancel' => $jobs->cancel($firmId, $userId, $token),
-                default => $jobs->status($firmId, $userId, $token ?: null, isset($_POST['list_type']) ? (string)$_POST['list_type'] : null),
+                default => $jobs->status($firmId, $userId, $token ?: null, (string)($_POST['list_type'] ?? 'giden')),
             };
             echo json_encode(['status' => 'success', 'data' => $data]);
             break;

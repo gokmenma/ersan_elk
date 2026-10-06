@@ -11,16 +11,17 @@ class EInvoiceSyncJobService
         $this->model ??= new EInvoiceSyncJobModel();
     }
 
-    public function start(int $firm, int $user, string $start, string $end, string $listType = 'taslak'): array
+    public function start(int $firm, int $user, string $start, string $end, string $listType = 'taslak', string $dateType = 'ISSUE'): array
     {
-        if (!in_array($listType, ['taslak', 'giden'], true)) throw new \InvalidArgumentException('Geçersiz aktarım türü.');
+        if (!in_array($listType, ['taslak', 'giden', 'gelen'], true)) throw new \InvalidArgumentException('Geçersiz aktarım türü.');
+        if (!in_array($dateType, ['ISSUE', 'CREATE'], true)) throw new \InvalidArgumentException('Geçersiz tarih türü.');
         foreach ([$start, $end] as $date) {
             $parsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
             if (!$parsed || $parsed->format('Y-m-d') !== $date) throw new \InvalidArgumentException('Geçerli tarih seçin.');
         }
         if ($start > $end) throw new \InvalidArgumentException('Başlangıç tarihi bitiş tarihinden sonra olamaz.');
         $job = $this->model->create($firm, $user, [
-            'list_type' => $listType, 'start_date' => $start, 'end_date' => $end, 'offset' => 0, 'cursor' => 0,
+            'list_type' => $listType, 'date_type' => $dateType, 'start_date' => $start, 'end_date' => $end, 'offset' => 0, 'cursor' => 0,
             'created_before' => min($end . 'T23:59:59', date('Y-m-d\TH:i:s')),
             'processed_count' => 0, 'added_count' => 0, 'updated_count' => 0, 'failed_count' => 0, 'validation_errors' => [],
             'page_size' => null, 'previous_signature' => null, 'pending_signature' => null,
@@ -49,6 +50,8 @@ class EInvoiceSyncJobService
             if (!$this->model->lock($job['id'])) throw new \RuntimeException('Aktarım hâlâ sürüyor.');
             try {
                 $job = $this->owned($firm, $user, $token);
+                $this->model->requestPause($job['id'], $firm, $user, false);
+                $job['state']['pause_requested'] = false;
                 $job['status'] = 'queued';
                 $job['state']['message'] = 'Aktarım kaldığı yerden devam ediyor.';
                 $job['state']['launch_attempts'] = 0;
@@ -56,6 +59,84 @@ class EInvoiceSyncJobService
             } finally { $this->model->unlock($job['id']); }
             $this->launch($job);
         }
+        return $this->present($this->model->findJob($job['id']));
+    }
+
+    public function pause(int $firm, int $user, string $token): array
+    {
+        $job = $this->owned($firm, $user, $token);
+        if (in_array($job['status'], ['queued', 'running'], true)) {
+            $this->model->requestPause($job['id'], $firm, $user, true);
+            if ($job['status'] === 'running' && empty($job['state']['worker_control_version'])) {
+                $this->stopLegacyWorker($job);
+            }
+        }
+        return $this->present($this->model->findJob($job['id']));
+    }
+
+    /** A worker started before cooperative pause support must release its last checkpoint. */
+    private function stopLegacyWorker(array $job): void
+    {
+        if (PHP_OS_FAMILY !== 'Linux' || !function_exists('posix_kill') || !function_exists('posix_geteuid')) {
+            throw new \RuntimeException('Bu aktarım eski işçiyle başlatılmış. Sunucuda eski aktarım işçisinin durdurulması gerekiyor; kaydedilen faturalar korunur.');
+        }
+        $script = dirname(__DIR__, 2) . '/cron/efatura_sync_worker.php';
+        foreach (glob('/proc/[0-9]*/cmdline') ?: [] as $file) {
+            $cmdline = @file_get_contents($file);
+            if (!$cmdline) continue;
+            $args = explode("\0", rtrim($cmdline, "\0"));
+            if (count($args) !== 3 || $args[1] !== $script || $args[2] !== $job['id']) continue;
+            $pid = (int)basename(dirname($file));
+            $status = @file_get_contents(dirname($file) . '/status');
+            if (!$status || !preg_match('/^Uid:\s+\d+\s+(\d+)/m', $status, $uid) || (int)$uid[1] !== posix_geteuid()) {
+                throw new \RuntimeException('Eski aktarım işçisini durdurmak için süreç kullanıcısı eşleşmiyor. Sunucu yöneticisi eski işçiyi durdurmalı.');
+            }
+            if (!posix_kill($pid, 15)) throw new \RuntimeException('Eski aktarım işçisi durdurulamadı.');
+            for ($attempt = 0; $attempt < 20; $attempt++) {
+                if ($this->model->lock($job['id'])) {
+                    try {
+                        $latest = $this->model->findJob($job['id']);
+                        if (in_array($latest['status'], ['queued', 'running'], true)) {
+                            $this->model->requestPause($job['id'], (int)$job['firm_id'], (int)$job['user_id'], true);
+                            $latest['status'] = 'paused';
+                            $latest['state']['message'] = 'Aktarım durduruldu. Son kaydedilen noktadan Devam et ile yeni işçi üzerinden sürdürebilirsiniz.';
+                            $this->model->saveJob($latest);
+                        }
+                    } finally { $this->model->unlock($job['id']); }
+                    return;
+                }
+                usleep(100000);
+            }
+            throw new \RuntimeException('Eski işçi kapanıyor; birkaç saniye sonra Durdur işlemini yeniden deneyin.');
+        }
+    }
+
+    public function errors(int $firm, int $user, string $token): array
+    {
+        $job = $this->owned($firm, $user, $token);
+        return ['rows' => $job['state']['validation_errors'] ?? [], 'failed_count' => $job['state']['failed_count'] ?? 0];
+    }
+
+    public function retryFailed(int $firm, int $user, string $token): array
+    {
+        $old = $this->owned($firm, $user, $token);
+        if (!in_array($old['status'], ['partial', 'paused', 'cancelled'], true) || empty($old['state']['validation_errors'])) {
+            throw new \InvalidArgumentException('Aktarım durduktan veya tamamlandıktan sonra aktarılamayan faturaları yeniden deneyebilirsiniz.');
+        }
+        $state = $old['state'];
+        $errors = array_map(static fn($item) => $item + ['status' => ($state['list_type'] ?? '') === 'taslak' ? 'LOAD - SUCCEED' : '', 'status_desc' => '', 'xml' => ''], $state['validation_errors']);
+        foreach (['window_start', 'window_end', 'last_error', 'pause_requested', 'launch_attempts'] as $key) unset($state[$key]);
+        $state = array_replace($state, [
+            'retry_items' => $errors, 'retry_mode' => true, 'validation_errors' => [],
+            'offset' => 0, 'cursor' => 0, 'processed_count' => 0, 'added_count' => 0,
+            'updated_count' => 0, 'failed_count' => 0, 'page_size' => null,
+            'previous_signature' => null, 'pending_signature' => null,
+            'message' => 'Aktarılamayan faturalar arka planda yeniden deneniyor.',
+        ]);
+        // Release the paused scan's active slot; its checkpoint and error report remain stored.
+        if ($old['status'] === 'paused') $this->cancel($firm, $user, $token);
+        $job = $this->model->create($firm, $user, $state);
+        if ($job['status'] === 'queued') $this->launch($job);
         return $this->present($this->model->findJob($job['id']));
     }
 
@@ -83,7 +164,7 @@ class EInvoiceSyncJobService
 
     private function present(array $job): array
     {
-        return array_intersect_key($job['state'], array_flip(['list_type','start_date','end_date','processed_count','added_count','updated_count','failed_count','message'])) + [
+        return array_intersect_key($job['state'], array_flip(['list_type','start_date','end_date','processed_count','added_count','updated_count','failed_count','message','pause_requested'])) + [
             'job_token' => Security::encrypt($job['id']), 'job_status' => $job['status'], 'updated_at' => $job['updated_at'], 'created_at' => $job['created_at'],
         ];
     }

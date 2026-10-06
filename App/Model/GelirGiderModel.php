@@ -60,6 +60,52 @@ class GelirGiderModel extends Model
         return $sql->fetch(PDO::FETCH_OBJ);
     }
 
+    public function delete($id, $decrypt = true)
+    {
+        if ($decrypt) {
+            $id = Security::decrypt($id);
+        }
+        $userId = $_SESSION['id'] ?? 0;
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = :uid WHERE id = :id");
+        return $stmt->execute(['uid' => $userId, 'id' => $id]);
+    }
+
+    public function bulkDelete(array $ids, $userId = 0)
+    {
+        if (empty($ids)) return false;
+        $cleanIds = [];
+        foreach ($ids as $id) {
+            $dec = is_numeric($id) ? (int)$id : (int)Security::decrypt($id);
+            if ($dec > 0) $cleanIds[] = $dec;
+        }
+        if (empty($cleanIds)) return false;
+
+        $inClause = implode(',', array_fill(0, count($cleanIds), '?'));
+        $sql = "UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = ? WHERE id IN ($inClause)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(array_merge([$userId], $cleanIds));
+    }
+
+    public function getPlakalar()
+    {
+        try {
+            return $this->db->query("SELECT DISTINCT plaka FROM araclar WHERE (silinme_tarihi IS NULL OR silinme_tarihi = '0000-00-00 00:00:00') AND plaka IS NOT NULL AND plaka != '' ORDER BY plaka ASC")->fetchAll(PDO::FETCH_COLUMN);
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    public function getBankalar()
+    {
+        try {
+            $kasalar = $this->db->query("SELECT DISTINCT kasa_adi FROM kasalar WHERE silinme_tarihi IS NULL AND kasa_adi IS NOT NULL AND kasa_adi != '' ORDER BY kasa_adi ASC")->fetchAll(PDO::FETCH_COLUMN);
+            $defaultBankalar = ['Ziraat Bankası', 'Garanti BBVA', 'İş Bankası', 'Yapı Kredi', 'Akbank', 'QNB Finansbank', 'VakıfBank', 'Halkbank', 'DenizBank', 'Kuveyt Türk', 'Enpara', 'TEB'];
+            return array_values(array_unique(array_filter(array_merge($kasalar, $defaultBankalar))));
+        } catch (\Exception $e) {
+            return ['Ziraat Bankası', 'Garanti BBVA', 'İş Bankası', 'Yapı Kredi', 'Akbank', 'QNB Finansbank', 'VakıfBank', 'Halkbank', 'DenizBank', 'Kuveyt Türk', 'Enpara', 'TEB'];
+        }
+    }
+
     //ekleme yapıldıktan sonra eklenen kaydın bilgileri tabloya eklemek için
     public function getGelirGiderTableRow($id)
     {
@@ -106,17 +152,20 @@ class GelirGiderModel extends Model
     //Toplam gelir, gider ve bakiye getir
     public function summary($params = [])
     {
-        $where = "1=1";
+        $where = "g.silinme_tarihi IS NULL";
         $bindParams = [];
         
         $this->prepareFilters($params, $where, $bindParams);
         
         $sql = $this->db->prepare("
             SELECT 
-                ROUND(SUM(CASE WHEN type = 1 THEN CAST(tutar AS DECIMAL(15,2)) ELSE 0 END), 2) AS toplam_gelir,
-                ROUND(SUM(CASE WHEN type = 2 THEN CAST(tutar AS DECIMAL(15,2)) ELSE 0 END),2) AS toplam_gider,
-                ROUND(SUM(CASE WHEN type = 1 THEN CAST(tutar AS DECIMAL(15,2)) ELSE 0 END) - SUM(CASE WHEN type = 2 THEN CAST(tutar AS DECIMAL(15,2)) ELSE 0 END),2) AS bakiye
-            FROM sql_gelir_gider g
+                COUNT(*) AS toplam_islem,
+                COALESCE(SUM(CASE WHEN g.type = 1 THEN 1 ELSE 0 END), 0) AS gelir_adet,
+                COALESCE(SUM(CASE WHEN g.type = 2 THEN 1 ELSE 0 END), 0) AS gider_adet,
+                ROUND(COALESCE(SUM(CASE WHEN g.type = 1 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0), 2) AS toplam_gelir,
+                ROUND(COALESCE(SUM(CASE WHEN g.type = 2 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0), 2) AS toplam_gider,
+                ROUND(COALESCE(SUM(CASE WHEN g.type = 1 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN g.type = 2 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0), 2) AS bakiye
+            FROM {$this->table} g
             WHERE $where
         ");
         $sql->execute($bindParams);
@@ -132,7 +181,7 @@ class GelirGiderModel extends Model
                 ROUND(SUM(CASE WHEN type = 2 THEN tutar ELSE 0 END),2) AS toplam_gider,
                 ROUND(SUM(CASE WHEN type = 1 THEN tutar ELSE 0 END) - SUM(CASE WHEN type = 2 THEN tutar ELSE 0 END),2) AS bakiye
             FROM $this->table
-           
+            WHERE silinme_tarihi IS NULL
         ");
         $sql->execute();
         return $sql->fetch(PDO::FETCH_OBJ);
@@ -152,17 +201,17 @@ class GelirGiderModel extends Model
         $ay = $params['ay'] ?? null;
         $tip = $params['tip'] ?? null;
 
-        $where = "1=1";
+        $where = "g.silinme_tarihi IS NULL";
         $bindParams = [];
 
         $this->prepareFilters($params, $where, $bindParams);
 
         // Toplam Kayıt Sayısı
-        $totalSql = "SELECT COUNT(*) FROM $this->table";
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE silinme_tarihi IS NULL";
         $totalCount = $this->db->query($totalSql)->fetchColumn();
 
-        // Filtrelenmiş Kayıt Sayısı
-        $filteredSql = "SELECT COUNT(*) FROM sql_gelir_gider g WHERE $where";
+        // Filtrelenmiş Kayıt Sayısı (Hızlı Sayım - Base table üzerinden)
+        $filteredSql = "SELECT COUNT(*) FROM {$this->table} g WHERE $where";
         $stmtFiltered = $this->db->prepare($filteredSql);
         $stmtFiltered->execute($bindParams);
         $filteredCount = $stmtFiltered->fetchColumn();

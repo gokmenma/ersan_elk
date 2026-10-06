@@ -21,6 +21,7 @@ class EInvoiceSyncWorker
             $job = $this->model->findJob($id);
             if (!$job || !in_array($job['status'], ['queued','running'], true)) return;
             $job['status'] = 'running';
+            $job['state']['worker_control_version'] = 1;
             $job['state']['failed_count'] ??= 0;
             $job['state']['validation_errors'] ??= [];
             unset($job['state']['last_error']);
@@ -29,9 +30,26 @@ class EInvoiceSyncWorker
             $stage = 'settings';
             $client = ($this->clientFactory)((int)$job['firm_id']);
             while (true) {
+                if ($this->pauseIfRequested($job)) return;
                 $state = &$job['state'];
+                // Keep each incoming search below EDM's four-month HEADER_ONLY limit.
+                if (($state['list_type'] ?? null) === 'gelen' && empty($state['retry_mode'])) {
+                    if (!isset($state['window_start'])) {
+                        $state['window_start'] = $state['start_date'];
+                        $firstEnd = (new \DateTimeImmutable($state['window_start']))->modify('+89 days')->format('Y-m-d');
+                        if ($firstEnd < $state['end_date']) {
+                            // Older jobs used one large query; restart its pagination safely.
+                            $state['offset'] = $state['cursor'] = 0;
+                            $state['previous_signature'] = $state['pending_signature'] = $state['page_size'] = null;
+                        }
+                    }
+                    $state['window_end'] = min($state['end_date'], (new \DateTimeImmutable($state['window_start']))->modify('+89 days')->format('Y-m-d'));
+                    $this->model->saveJob($job);
+                }
                 $stage = 'fetch';
                 $items = $this->retry(function () use ($client, &$state) {
+                    if (!empty($state['retry_mode'])) return array_slice($state['retry_items'], $state['offset'], 50);
+                    if (($state['list_type'] ?? null) === 'gelen') return $client->getIncomingInvoicePage($state['window_start'], $state['window_end'], $state['offset'], $state['date_type'] ?? 'ISSUE');
                     return $client->getInvoicePage('OUT', $state['start_date'], $state['end_date'], $state['offset'], 50, $state['created_before'] ?? null, $state['list_type'] ?? null);
                 }, $job);
                 $signature = hash('sha256', implode("\n", array_column($items, 'uuid')));
@@ -47,6 +65,7 @@ class EInvoiceSyncWorker
                 else $state['page_size'] ??= count($items);
                 $this->model->saveJob($job);
                 for ($i = $state['cursor']; $i < count($items); $i++) {
+                    if ($this->pauseIfRequested($job)) return;
                     try {
                         $listType = $state['list_type'] ?? null;
                         $mapped = InvoiceStatusService::map(['status' => $items[$i]['status'] ?? '', 'status_desc' => $items[$i]['status_desc'] ?? '']);
@@ -56,10 +75,11 @@ class EInvoiceSyncWorker
                             continue;
                         }
                         if ($listType === 'taslak' && $mapped['entegrator_durum_kodu'] !== 'TASLAK') throw new \InvalidArgumentException('EDM taslak filtresi beklenmeyen bir durum döndürdü.');
-                        if ($listType === 'giden') {
+                        if (in_array($listType, ['giden', 'gelen'], true) || !empty($state['retry_mode'])) {
                             $stage = 'fetch';
-                            $items[$i]['xml'] = $this->retry(fn() => ['xml' => $client->getInvoiceXml($items[$i]['uuid'], 'OUT')], $job)['xml'];
+                            $items[$i]['xml'] = $this->retry(fn() => ['xml' => $client->getInvoiceXml($items[$i]['uuid'], $listType === 'gelen' ? 'IN' : 'OUT')], $job)['xml'];
                         }
+                        $items[$i]['direction'] = $listType === 'gelen' ? 'GELEN' : 'GIDEN';
                         $stage = 'import';
                         $kind = $this->invoices->importSyncedInvoice((int)$job['firm_id'], $items[$i], (int)$job['user_id']);
                         $state[$kind]++;
@@ -67,9 +87,8 @@ class EInvoiceSyncWorker
                     } catch (\InvalidArgumentException $e) {
                         // Invalid source data is isolated; infrastructure/database errors still pause the job.
                         $state['failed_count']++;
-                        if (count($state['validation_errors']) < 50) {
-                            $state['validation_errors'][] = ['uuid' => $items[$i]['uuid'], 'message' => $e->getMessage()];
-                        }
+                        $state['validation_errors'][] = array_intersect_key($items[$i], array_flip(['uuid', 'fatura_no', 'issue_date', 'supplier', 'status', 'status_desc']))
+                            + ['message' => $e->getMessage()];
                     }
                     $state['cursor'] = $i + 1;
                     $state['message'] = $state['processed_count'] . ' fatura işlendi'
@@ -82,10 +101,18 @@ class EInvoiceSyncWorker
                 $state['pending_signature'] = null;
                 $state['previous_signature'] = $signature;
                 if (!$items || count($items) < $state['page_size']) {
+                    if (empty($state['retry_mode']) && ($state['list_type'] ?? null) === 'gelen' && $state['window_end'] < $state['end_date']) {
+                        $state['window_start'] = (new \DateTimeImmutable($state['window_end']))->modify('+1 day')->format('Y-m-d');
+                        $state['offset'] = $state['cursor'] = 0;
+                        $state['previous_signature'] = $state['pending_signature'] = $state['page_size'] = null;
+                        $this->model->saveJob($job);
+                        unset($state, $items);
+                        continue;
+                    }
                     $job['status'] = $state['failed_count'] > 0 ? 'partial' : 'completed';
                     $state['message'] = sprintf('Aktarım tamamlandı: %d yeni fatura, %d güncelleme.', $state['added_count'], $state['updated_count']);
                     if ($state['failed_count'] > 0) {
-                        $state['message'] .= sprintf(' %d fatura doğrulanamadığı için aktarılmadı. İlk neden: %s EDM kaydını düzelttikten sonra aynı tarih aralığını yeniden çekebilirsiniz.', $state['failed_count'], $state['validation_errors'][0]['message']);
+                        $state['message'] .= sprintf(' %d fatura doğrulanamadığı için aktarılmadı. İlk neden: %s Dökümü inceleyip Aktarılamayanları yeniden dene butonunu kullanabilirsiniz.', $state['failed_count'], $state['validation_errors'][0]['message']);
                     }
                     $this->model->saveJob($job);
                     break;
@@ -108,9 +135,13 @@ class EInvoiceSyncWorker
                 if (preg_match("/for column '([a-z_]+)'/i", $e->getMessage(), $match)) {
                     $diagnostic['column'] = $match[1];
                     $field = match ($match[1]) {
-                        'fatura_profili' => 'fatura profili', 'fatura_tipi' => 'fatura tipi', default => 'fatura',
+                        'fatura_profili' => 'fatura profili', 'fatura_tipi' => 'fatura tipi', 'notlar' => 'fatura notları (notlar)',
+                        default => $match[1],
                     };
                     $databaseMessage = 'Veritabanındaki ' . $field . ' alanı EDM verisiyle uyumsuz. İlgili veritabanı güncellemesi kontrol edilmeli.';
+                    if ((int)$diagnostic['db_code'] === 1406 && $match[1] === 'notlar') {
+                        $databaseMessage = 'Fatura notları veritabanındaki alan sınırını aşıyor. 2026_10_06_efatura_notlar_mediumtext.sql güncellemesini uygulayın.';
+                    }
                 }
                 $databaseMessage .= ' (SQLSTATE: ' . preg_replace('/[^A-Z0-9]/i', '', (string)$diagnostic['sqlstate'])
                     . ', kod: ' . (int)($diagnostic['db_code'] ?? 0) . ')';
@@ -134,6 +165,17 @@ class EInvoiceSyncWorker
             }
             error_log('EDM background sync stopped: ' . json_encode($diagnostic, JSON_UNESCAPED_UNICODE));
         } finally { $this->model->unlock($id); }
+    }
+
+    private function pauseIfRequested(array &$job): bool
+    {
+        $latest = $this->model->findJob($job['id']);
+        if (empty($latest['state']['pause_requested'])) return false;
+        $job['status'] = 'paused';
+        $job['state']['pause_requested'] = true;
+        $job['state']['message'] = 'Aktarım isteğiniz üzerine durduruldu. Aktarılan faturalar korundu; Devam et ile sürdürebilirsiniz.';
+        $this->model->saveJob($job);
+        return true;
     }
 
     private function retry(\Closure $fetch, array &$job): array

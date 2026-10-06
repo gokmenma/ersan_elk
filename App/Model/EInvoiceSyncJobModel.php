@@ -63,7 +63,7 @@ class EInvoiceSyncJobModel extends Model
 
     public function latestForList(int $firmId, int $userId, string $listType): ?array
     {
-        if (!in_array($listType, ['taslak', 'giden'], true)) throw new \InvalidArgumentException('Geçersiz aktarım türü.');
+        if (!in_array($listType, ['taslak', 'giden', 'gelen'], true)) throw new \InvalidArgumentException('Geçersiz aktarım türü.');
         $stmt = $this->db->prepare("SELECT * FROM efatura_sync_jobs WHERE firm_id = :firm AND user_id = :user AND JSON_UNQUOTE(JSON_EXTRACT(state_json, '$.list_type')) = :list_type AND deleted_at IS NULL AND is_active = 1 ORDER BY created_at DESC, id DESC LIMIT 1");
         $stmt->execute(['firm' => $firmId, 'user' => $userId, 'list_type' => $listType]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -72,8 +72,18 @@ class EInvoiceSyncJobModel extends Model
 
     public function saveJob(array $job): void
     {
-        $stmt = $this->db->prepare('UPDATE efatura_sync_jobs SET state_json = :state, status = :status, updated_at = NOW(6) WHERE id = :id AND firm_id = :firm AND deleted_at IS NULL AND is_active = 1');
+        $stmt = $this->db->prepare("UPDATE efatura_sync_jobs SET state_json = JSON_SET(:state, '$.pause_requested', CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(state_json, '$.pause_requested')) IN ('1', 'true') THEN 1 ELSE 0 END), status = :status, updated_at = NOW(6) WHERE id = :id AND firm_id = :firm AND deleted_at IS NULL AND is_active = 1");
         $stmt->execute(['state' => json_encode($job['state'], JSON_THROW_ON_ERROR), 'status' => $job['status'], 'id' => $job['id'], 'firm' => $job['firm_id']]);
+    }
+
+    public function requestPause(string $id, int $firmId, int $userId, bool $requested): void
+    {
+        $stmt = $this->db->prepare("UPDATE efatura_sync_jobs SET state_json = JSON_SET(state_json, '$.pause_requested', :flag) WHERE id = :id AND firm_id = :firm AND user_id = :user AND deleted_at IS NULL AND is_active = 1");
+        $stmt->bindValue(':flag', $requested ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $id);
+        $stmt->bindValue(':firm', $firmId, PDO::PARAM_INT);
+        $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
+        $stmt->execute();
     }
 
     private function decode(array $row): array

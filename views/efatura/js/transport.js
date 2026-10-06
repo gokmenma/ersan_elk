@@ -183,7 +183,10 @@
         const syncPanel = $('<div class="alert alert-info mb-3 d-none" role="status" aria-live="polite">' +
             '<div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">' +
             '<div><strong class="sync-heading">EDM aktarımı</strong><div class="sync-message"></div><small class="sync-counts"></small></div>' +
-            '<div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-primary sync-resume d-none">Devam et</button>' +
+            '<div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-sm btn-outline-warning sync-pause d-none">Durdur</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary sync-errors d-none">Aktarılamayanlar / Döküm</button>' +
+            '<button type="button" class="btn btn-sm btn-warning sync-retry d-none">Aktarılamayanları yeniden dene</button>' +
+            '<button type="button" class="btn btn-sm btn-primary sync-resume d-none">Devam et</button>' +
             '<button type="button" class="btn btn-sm btn-outline-secondary sync-cancel d-none">Aktarımı kapat</button>' +
             '<button type="button" class="btn btn-sm btn-outline-secondary sync-dismiss d-none" title="Aktarım kartını kapat" aria-label="Aktarım kartını kapat"><i class="bx bx-x" aria-hidden="true"></i> Kapat</button></div></div></div>');
         syncPanel.insertBefore(listCard);
@@ -209,6 +212,9 @@
             syncPanel.find('.sync-heading').text(`EDM aktarımı · ${job.start_date} – ${job.end_date}`);
             syncPanel.find('.sync-message').text(job.message);
             syncPanel.find('.sync-counts').text(`${job.processed_count} işlendi · ${job.added_count} yeni · ${job.updated_count} güncellendi${job.failed_count ? ` · ${job.failed_count} aktarılamadı` : ''}`);
+            syncPanel.find('.sync-pause').toggleClass('d-none', !active).prop('disabled', !!job.pause_requested).text(job.pause_requested ? 'Durduruluyor…' : 'Durdur');
+            syncPanel.find('.sync-errors').toggleClass('d-none', !job.failed_count);
+            syncPanel.find('.sync-retry').toggleClass('d-none', !['partial', 'paused', 'cancelled'].includes(job.job_status) || !job.failed_count);
             syncPanel.find('.sync-resume, .sync-cancel').toggleClass('d-none', job.job_status !== 'paused');
             const terminal = ['completed', 'partial', 'cancelled'].includes(job.job_status);
             syncPanel.find('.sync-dismiss').toggleClass('d-none', !terminal);
@@ -243,9 +249,9 @@
             try { localStorage.setItem(syncDismissKey, dismissedSyncResult); } catch (e) {}
             syncPanel.addClass('d-none');
         });
-        syncPanel.on('click', '.sync-resume, .sync-cancel', function() {
+        syncPanel.on('click', '.sync-resume, .sync-cancel, .sync-pause, .sync-retry', function() {
             const button = $(this);
-            const action = button.hasClass('sync-resume') ? 'sync_job_resume' : 'sync_job_cancel';
+            const action = button.hasClass('sync-pause') ? 'sync_job_pause' : (button.hasClass('sync-retry') ? 'sync_job_retry' : (button.hasClass('sync-resume') ? 'sync_job_resume' : 'sync_job_cancel'));
             syncPanel.find('button').prop('disabled', true);
             jobRequest(action, {job_token: syncJob.job_token})
                 .done(res => {
@@ -253,7 +259,38 @@
                     else Swal.fire('Aktarım', res.message || 'İşlem tamamlanamadı.', 'warning');
                 })
                 .fail(xhr => Swal.fire('Aktarım', xhr.responseJSON?.message || 'Sunucuya ulaşılamadı.', 'warning'))
-                .always(() => syncPanel.find('button').prop('disabled', false));
+                .always(() => { syncPanel.find('button').prop('disabled', false); if (syncJob) renderSyncJob(syncJob); });
+        });
+        syncPanel.on('click', '.sync-errors', async function() {
+            try {
+                const res = await jobRequest('sync_job_errors', {job_token: syncJob.job_token});
+                if (res.status !== 'success') throw new Error(res.message || 'Döküm alınamadı.');
+                const rows = res.data.rows || [];
+                const escape = value => $('<span>').text(value ?? '').html();
+                const result = await Swal.fire({
+                    title: 'Aktarılamayan faturalar', width: 'min(1400px, calc(100vw - 32px))',
+                    didOpen: popup => {
+                        popup.style.setProperty('width', 'min(1400px, calc(100vw - 32px))', 'important');
+                        popup.style.setProperty('max-width', 'calc(100vw - 32px)', 'important');
+                    },
+                    html: '<p>Bu döküm şimdiye kadar kaydedilen hataları içerir. Aktarım durduğunda veya tamamlandığında yeniden deneyebilirsiniz.</p>' +
+                        `<p>${rows.length} hata gösteriliyor; toplam ${res.data.failed_count} fatura aktarılamadı.</p>` +
+                        '<div class="table-responsive text-start" style="max-height:55vh"><table class="table table-bordered table-sm" style="min-width:1000px;table-layout:auto"><thead><tr><th style="min-width:150px;white-space:nowrap">Fatura No</th><th style="min-width:290px;white-space:nowrap">ETTN</th><th style="min-width:110px;white-space:nowrap">Tarih</th><th style="min-width:180px">Tedarikçi</th><th style="min-width:270px">Neden</th></tr></thead><tbody>' +
+                        rows.map(row => '<tr>' + ['fatura_no', 'uuid', 'issue_date', 'supplier', 'message'].map(key => `<td>${escape(row[key])}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>',
+                    showCancelButton: true, confirmButtonText: 'CSV dökümünü indir', cancelButtonText: 'Kapat'
+                });
+                if (result.isConfirmed) {
+                    const cell = value => {
+                        let text = String(value ?? '');
+                        if (/^[\s]*[=+@-]/.test(text)) text = "'" + text;
+                        return '"' + text.replace(/"/g, '""') + '"';
+                    };
+                    const data = [['Fatura No', 'ETTN', 'Tarih', 'Tedarikçi', 'Neden'], ...rows.map(row => ['fatura_no', 'uuid', 'issue_date', 'supplier', 'message'].map(key => row[key]))];
+                    const url = URL.createObjectURL(new Blob(['\uFEFF' + data.map(row => row.map(cell).join(';')).join('\r\n')], {type: 'text/csv;charset=utf-8'}));
+                    const link = document.createElement('a'); link.href = url; link.download = 'edm-aktarilamayan-faturalar.csv'; link.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }
+            } catch (error) { Swal.fire('Döküm', error.message || 'Döküm alınamadı.', 'warning'); }
         });
         pollSyncJob();
 

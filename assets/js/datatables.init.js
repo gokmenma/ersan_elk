@@ -631,9 +631,7 @@ $("#exportExcel").on("click", function () {
 });
 
 function getTableSpecificOptions() {
-  return {
-    ordering: document.getElementById("gelirGiderTable") ? false : true,
-  };
+  return {};
 }
 
 // DataTables Türkçe karakter arama desteği

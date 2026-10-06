@@ -6,6 +6,18 @@ use DOMXPath;
 
 final class UblReaderService
 {
+    /** Embedded supplier pictures stay in the original XML, not in textual notes. */
+    public static function compactNotes(string $notes): string
+    {
+        return preg_replace_callback('/^Variable_Picture:([^\r\n]+)$/m', static function(array $match): string {
+            $image = base64_decode(trim($match[1]), true);
+            if ($image !== false && (str_starts_with($image, "\xFF\xD8\xFF") || str_starts_with($image, "\x89PNG\r\n\x1a\n"))) {
+                return '[Faturaya gömülü görsel özgün XML içinde saklanır.]';
+            }
+            return $match[0];
+        }, $notes);
+    }
+
     public function read(string $xml, string $direction, bool $allowUnnumberedDraft = false): array
     {
         if ($xml === '' || preg_match('/<!DOCTYPE|<!ENTITY/i', $xml)) throw new \InvalidArgumentException('Fatura XML içeriği boş veya güvenli değil.');
@@ -20,7 +32,7 @@ final class UblReaderService
             $text = static fn(string $path, ?\DOMNode $node = null): string => trim((string)$xp->evaluate('string(' . $path . ')', $node));
             $decimal = static function (string $value, string $default = '0'): string {
                 if ($value === '') return $default;
-                if (!preg_match('/^-?\d{1,12}(?:\.\d{1,18})?$/D', $value)) throw new \InvalidArgumentException('XML parasal alanı geçersiz.');
+                if (strlen($value) > 256 || !preg_match('/^-?\d{1,12}(?:\.\d+)?$/D', $value)) throw new \InvalidArgumentException('XML parasal alanı geçersiz.');
                 return $value;
             };
             $party = static function(string $name) use ($text): array {
@@ -55,7 +67,7 @@ final class UblReaderService
                 'satir_toplami' => $decimal($text('/i:Invoice/cac:LegalMonetaryTotal/cbc:LineExtensionAmount')),
                 'iade_fatura_no' => $text('/i:Invoice/cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID') ?: null,
                 'iade_fatura_tarihi' => $text('/i:Invoice/cac:BillingReference/cac:InvoiceDocumentReference/cbc:IssueDate') ?: null,
-                'kaynak_xml' => $xml, 'notlar' => implode("\n", array_map(static fn($node) => $node->textContent, iterator_to_array($xp->query('/i:Invoice/cbc:Note'))))];
+                'kaynak_xml' => $xml, 'notlar' => self::compactNotes(implode("\n", array_map(static fn($node) => $node->textContent, iterator_to_array($xp->query('/i:Invoice/cbc:Note')))))];
             foreach ($other as $key => $value) $header['alici_' . $key] = $value;
             $lines = [];
             foreach ($xp->query('/i:Invoice/cac:InvoiceLine') as $node) {

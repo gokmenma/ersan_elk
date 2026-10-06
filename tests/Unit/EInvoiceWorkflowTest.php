@@ -71,6 +71,46 @@ final class EInvoiceWorkflowTest extends TestCase
         $seller = ['vkn_tckn'=>'1234567890','unvan'=>'Satıcı A & B','adres'=>'Adres','il'=>'İstanbul','ilce'=>'Şişli','ulke'=>'Türkiye'];
         return [(new UblGeneratorService())->generateInvoiceXml($invoice, $seller, $result['lines']), $invoice, $result['lines']];
     }
+    public function testIncomingPageUsesSelectedDateTypeAndHeaderOnly(): void
+    {
+        $transport = new InvoiceOfflineTransport(fn() => (object)['INVOICE' => []]);
+        $client = new EdmSoapClient(2, $transport, $this->settings());
+        $client->getIncomingInvoicePage('2026-01-01', '2026-10-06', 1000, 'ISSUE');
+        $request = $transport->requests[1][1];
+        self::assertSame('IN', $request->INVOICE_SEARCH_KEY->DIRECTION);
+        self::assertSame(1000, $request->INVOICE_SEARCH_KEY->OFFSET);
+        self::assertSame('2026-01-01', $request->INVOICE_SEARCH_KEY->START_DATE);
+        self::assertSame('2026-10-06', $request->INVOICE_SEARCH_KEY->END_DATE);
+        self::assertSame('Y', $request->HEADER_ONLY);
+        $client->getIncomingInvoicePage('2026-01-01', '2026-10-06', 0, 'CREATE');
+        $request = $transport->requests[2][1];
+        self::assertSame('2026-01-01T00:00:00', $request->INVOICE_SEARCH_KEY->CR_START_DATE);
+        self::assertSame('2026-10-06T23:59:59', $request->INVOICE_SEARCH_KEY->CR_END_DATE);
+        self::assertFalse(isset($request->INVOICE_SEARCH_KEY->START_DATE));
+    }
+
+    public function testHighPrecisionSourceDecimalsAreAcceptedWithoutChangingInvoiceTotals(): void
+    {
+        [$xml] = $this->xml();
+        $xml = preg_replace('/(<cbc:PriceAmount[^>]*>)[^<]+/', '${1}' . '28943.333333333333333333333333', $xml);
+        $source = (new UblReaderService())->read($xml, 'GELEN');
+        self::assertSame('28943.333333333333333333333333', $source['lines'][0]['birim_fiyat']);
+        self::assertSame('216.00', $source['header']['odenecek_tutar']);
+    }
+
+    public function testOnlyEmbeddedImageNotesAreCompactedAndOriginalXmlIsPreserved(): void
+    {
+        [$xml] = $this->xml();
+        $picture = 'Variable_Picture:' . base64_encode("\xFF\xD8\xFF" . str_repeat('image-fixture', 6000));
+        $xml = str_replace('<cbc:UUID>', '<cbc:Note>Ordinary note</cbc:Note><cbc:Note>' . $picture . '</cbc:Note><cbc:UUID>', $xml);
+        $source = (new UblReaderService())->read($xml, 'GELEN');
+        self::assertStringContainsString('Ordinary note', $source['header']['notlar']);
+        self::assertStringNotContainsString('Variable_Picture:', $source['header']['notlar']);
+        self::assertSame($xml, $source['header']['kaynak_xml']);
+        self::assertLessThan(200, strlen($source['header']['notlar']));
+        self::assertSame('Variable_Picture:ordinary text', UblReaderService::compactNotes('Variable_Picture:ordinary text'));
+    }
+
     public function testDecimalRoundingAndMultipleVatRates(): void
     {
         $result = (new InvoiceCalculationService())->calculate([

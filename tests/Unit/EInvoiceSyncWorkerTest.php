@@ -25,27 +25,38 @@ final class SyncMemoryJobs extends EInvoiceSyncJobModel
     public function unlock(string $name): void { unset($this->locks[$name]); }
     public function findJob(string $id): ?array { return $id === $this->job['id'] ? unserialize(serialize($this->job)) : null; }
     public function latest(int $firmId, int $userId): ?array { return $this->job['firm_id'] === $firmId && $this->job['user_id'] === $userId ? $this->findJob($this->job['id']) : null; }
-    public function saveJob(array $job): void { $this->job = unserialize(serialize($job)); $this->job['updated_at'] = date('Y-m-d H:i:s'); }
+    public function requestPause(string $id, int $firmId, int $userId, bool $requested): void { $this->job['state']['pause_requested'] = $requested; }
+    public function saveJob(array $job): void { $job['state']['pause_requested'] = $this->job['state']['pause_requested'] ?? false; $this->job = unserialize(serialize($job)); $this->job['updated_at'] = date('Y-m-d H:i:s'); }
 }
 final class SyncOfflinePages extends EdmSoapClient
 {
     public array $offsets = [];
     public array $xmlRequests = [];
+    public array $xmlDirections = [];
+    public array $incomingRanges = [];
     public function __construct(private Closure $fetch) {}
     public function getInvoicePage(string $direction, string $startDate, string $endDate, int $offset = 0, int $limit = 50, ?string $createdBefore = null, ?string $listType = null): array
     {
         $this->offsets[] = $offset;
         return ($this->fetch)($offset);
     }
-    public function getInvoiceXml(string $uuid, string $direction = 'OUT'): string { $this->xmlRequests[] = $uuid; return '<Invoice/>'; }
+    public function getIncomingInvoicePage(string $startDate, string $endDate, int $offset = 0, string $dateType = 'ISSUE'): array
+    {
+        $this->offsets[] = $offset;
+        $this->incomingRanges[] = [$startDate, $endDate, $offset, $dateType];
+        return ($this->fetch)($offset, $startDate, $endDate);
+    }
+    public function getInvoiceXml(string $uuid, string $direction = 'OUT'): string { $this->xmlRequests[] = $uuid; $this->xmlDirections[] = $direction; return '<Invoice/>'; }
 }
 final class SyncOfflineImporter extends EInvoiceService
 {
     public array $imported = [];
+    public array $directions = [];
     public ?string $failUuid = null;
     public ?PDOException $dbError = null;
     public ?RuntimeException $systemError = null;
     public ?string $invalidUuid = null;
+    public ?Closure $onImport = null;
     public function __construct() {}
     public function importSyncedInvoice(int $firmId, array $item, int $userId): string
     {
@@ -54,6 +65,8 @@ final class SyncOfflineImporter extends EInvoiceService
         if ($item['uuid'] === $this->invalidUuid) throw new InvalidArgumentException('XML fatura numarası geçersiz.');
         if ($item['uuid'] === $this->failUuid) throw new RuntimeException('Temporary record lock');
         $this->imported[] = [$item['uuid'], $firmId, $userId];
+        $this->directions[] = $item['direction'] ?? 'GIDEN';
+        if ($this->onImport) ($this->onImport)();
         return 'added_count';
     }
 }
@@ -64,6 +77,99 @@ final class EInvoiceSyncWorkerTest extends TestCase
     {
         return new EInvoiceSyncWorker($jobs, $importer, fn() => $pages, $sleep ?? fn() => null);
     }
+    public function testIncomingImportsMoreThanOneThousandInvoicesInBackground(): void
+    {
+        $jobs = new SyncMemoryJobs();
+        $jobs->job['state']['list_type'] = 'gelen';
+        $jobs->job['state']['start_date'] = '2026-01-01';
+        $jobs->job['state']['end_date'] = '2026-10-06';
+        $importer = new SyncOfflineImporter();
+        $pages = new SyncOfflinePages(fn($offset, $start) => $start === '2026-01-01' && $offset < 1004 ? $this->items($offset, min(50, 1004 - $offset)) : []);
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertSame(1004, $jobs->job['state']['processed_count']);
+        self::assertCount(1004, $importer->imported);
+        self::assertCount(1004, $pages->xmlRequests);
+        self::assertSame(['IN'], array_values(array_unique($pages->xmlDirections)));
+        self::assertSame(['GELEN'], array_values(array_unique($importer->directions)));
+        self::assertSame(array_merge(range(0, 1000, 50), [0, 0, 0]), $pages->offsets);
+        self::assertSame([['2026-01-01', '2026-03-31'], ['2026-04-01', '2026-06-29'], ['2026-06-30', '2026-09-27'], ['2026-09-28', '2026-10-06']], array_values(array_unique(array_map(fn($range) => array_slice($range, 0, 2), $pages->incomingRanges), SORT_REGULAR)));
+    }
+
+    public function testIncomingResumesInFailedWindowWithoutSkippingEmptyWindows(): void
+    {
+        $jobs = new SyncMemoryJobs();
+        $jobs->job['state']['list_type'] = 'gelen';
+        $jobs->job['state']['date_type'] = 'CREATE';
+        $jobs->job['state']['start_date'] = '2026-01-01';
+        $jobs->job['state']['end_date'] = '2026-10-06';
+        $importer = new SyncOfflineImporter();
+        $pages = new SyncOfflinePages(function($offset, $start) {
+            if ($start === '2026-04-01') throw new EdmOperationException('business', 'Temporary failure');
+            return $start === '2026-01-01' && $offset === 0 ? $this->items(0, 1) : [];
+        });
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('paused', $jobs->job['status']);
+        self::assertSame('2026-04-01', $jobs->job['state']['window_start']);
+        self::assertSame(1, $jobs->job['state']['processed_count']);
+        $jobs->job['status'] = 'queued';
+        $pages = new SyncOfflinePages(fn($offset, $start) => $start === '2026-09-28' && $offset === 0 ? $this->items(1, 1) : []);
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertSame(2, $jobs->job['state']['processed_count']);
+        self::assertSame(['uuid-0', 'uuid-1'], array_column($importer->imported, 0));
+        self::assertSame('CREATE', $pages->incomingRanges[0][3]);
+    }
+
+    public function testPauseBetweenInvoicesPreservesCursorAndResumeImportsRemaining(): void
+    {
+        $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'gelen';
+        $pages = new SyncOfflinePages(fn($offset) => $offset === 0 ? $this->items(0, 3) : []);
+        $importer = new SyncOfflineImporter();
+        $importer->onImport = fn() => $jobs->requestPause($jobs->job['id'], 2, 3, true);
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('paused', $jobs->job['status']);
+        self::assertSame(1, $jobs->job['state']['cursor']);
+        self::assertSame(['uuid-0'], array_column($importer->imported, 0));
+        $jobs->requestPause($jobs->job['id'], 2, 3, false);
+        $jobs->job['status'] = 'queued'; $importer->onImport = null;
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertSame(['uuid-0', 'uuid-1', 'uuid-2'], array_column($importer->imported, 0));
+    }
+
+    public function testRetryFetchesOnlyFailedUuidsAndNeverScansDateRange(): void
+    {
+        $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'gelen';
+        $jobs->job['state']['retry_mode'] = true;
+        $jobs->job['state']['retry_items'] = [['uuid' => 'failed-uuid', 'status' => '', 'status_desc' => '', 'xml' => '']];
+        $pages = new SyncOfflinePages(fn() => throw new RuntimeException('Date range must not be scanned'));
+        $importer = new SyncOfflineImporter();
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertSame(['failed-uuid'], $pages->xmlRequests);
+        self::assertSame(['failed-uuid'], array_column($importer->imported, 0));
+        self::assertSame([], $pages->incomingRanges);
+    }
+
+    public function testErrorReportKeepsMoreThanFiftyFailuresAndInvoiceMetadata(): void
+    {
+        $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'gelen';
+        $pages = new SyncOfflinePages(fn($offset) => $offset < 53 ? array_map(fn($item) => $item + ['fatura_no' => 'ABC2026000000001', 'issue_date' => '2026-10-01', 'supplier' => 'Offline supplier'], $this->items($offset, min(50, 53 - $offset))) : []);
+        $importer = new SyncOfflineImporter();
+        $importer->onImport = null;
+        // Use an importer whose individual source records are all invalid.
+        $invalid = new class extends EInvoiceService {
+            public function __construct() {}
+            public function importSyncedInvoice(int $firmId, array $item, int $userId): string { throw new InvalidArgumentException('Invalid source'); }
+        };
+        (new EInvoiceSyncWorker($jobs, $invalid, fn() => $pages))->run($jobs->job['id']);
+        self::assertSame('partial', $jobs->job['status']);
+        self::assertCount(53, $jobs->job['state']['validation_errors']);
+        self::assertSame('ABC2026000000001', $jobs->job['state']['validation_errors'][52]['fatura_no']);
+        self::assertSame('Offline supplier', $jobs->job['state']['validation_errors'][52]['supplier']);
+    }
+
     public function testServerCapAndShortLastPageAreFullyImported(): void
     {
         $jobs = new SyncMemoryJobs(); $importer = new SyncOfflineImporter();
@@ -194,6 +300,18 @@ final class EInvoiceSyncWorkerTest extends TestCase
         self::assertSame(1265, $jobs->job['state']['last_error']['db_code']);
         self::assertStringContainsString('fatura profili', $jobs->job['state']['message']);
     }
+    public function testLongNotesErrorNamesRequiredMigrationWithoutLeakingSource(): void
+    {
+        $jobs = new SyncMemoryJobs(); $importer = new SyncOfflineImporter();
+        $importer->dbError = new PDOException("Data too long for column 'notlar' at row 1");
+        $importer->dbError->errorInfo = ['22001', 1406, 'notes length'];
+        $pages = new SyncOfflinePages(fn() => $this->items(0, 1));
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('paused', $jobs->job['status']);
+        self::assertSame('notlar', $jobs->job['state']['last_error']['column']);
+        self::assertStringContainsString('2026_10_06_efatura_notlar_mediumtext.sql', $jobs->job['state']['message']);
+    }
+
     public function testMissingSettingsColumnReportsSafeDatabaseCodeAndStage(): void
     {
         $jobs = new SyncMemoryJobs();

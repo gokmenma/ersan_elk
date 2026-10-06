@@ -87,6 +87,13 @@ $title = 'Gelen Faturalar';
                     <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
                 </button>
                 <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <button type="button" class="dropdown-item d-flex align-items-center text-success" id="exportExcel">
+                        <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
+                    </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center text-secondary" id="btnPrintTable">
+                        <i class="bx bx-printer me-2 font-size-16 text-secondary"></i> Yazdır
+                    </button>
+                    <div class="dropdown-divider"></div>
                     <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/taslak-list">
                         <i class="bx bx-edit-alt me-2 text-primary font-size-16"></i> Taslak Faturalara Git
                     </a>
@@ -220,7 +227,7 @@ $title = 'Gelen Faturalar';
 
                 <!-- Hızlı Dönem Seçici Dropdown -->
                 <div class="dropdown d-inline-block">
-                    <button type="button" class="btn btn-sm btn-outline-secondary bg-white border shadow-xs dropdown-toggle d-flex align-items-center gap-1 font-size-12 fw-semibold" style="border-color: #cbd5e1 !important; padding: 5px 10px;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
+                    <button type="button" class="btn btn-sm bg-white border rounded-3 px-2 shadow-sm d-flex align-items-center gap-1 font-size-12 fw-semibold text-dark dropdown-toggle" style="border-color: #cbd5e1 !important; height: 32px; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
                         <i class="bx bx-calendar-event text-primary font-size-15"></i> <span id="currentPeriodLabel">Bu Ay</span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1 font-size-12" style="min-width: 150px;">
@@ -234,32 +241,22 @@ $title = 'Gelen Faturalar';
                 </div>
 
                 <!-- Başlangıç Tarihi Filtresi -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;" title="Başlangıç Tarihi">
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Başlangıç Tarihi">
                     <i class="bx bx-calendar text-primary font-size-15"></i>
-                    <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer;" placeholder="Başlangıç" readonly>
+                    <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Başlangıç" readonly>
                     <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearStartDate" title="Başlangıç Tarihini Temizle">
                         <i class="bx bx-x font-size-14"></i>
                     </button>
                 </div>
 
                 <!-- Bitiş Tarihi Filtresi -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;" title="Bitiş Tarihi">
+                <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Bitiş Tarihi">
                     <i class="bx bx-calendar text-primary font-size-15"></i>
-                    <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer;" placeholder="Bitiş" readonly>
+                    <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Bitiş" readonly>
                     <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearEndDate" title="Bitiş Tarihini Temizle">
                         <i class="bx bx-x font-size-14"></i>
                     </button>
                 </div>
-
-                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
-                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
-                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-subtle-primary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderRefresh" title="Listeyi Yenile">
-                    <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yenile</span>
-                </button>
 
                 <!-- Sütunlar Butonu (ColVis & Drag-Drop Yönetimi) -->
                 <div class="dropdown d-inline-block">

@@ -165,9 +165,6 @@ $(document).ready(function() {
         table.ajax.reload();
         loadStats();
     });
-        table.ajax.reload();
-        loadStats();
-    });
 
     // Ürün / Marka / Kalem Arama Dinleyicisi
     let taslakProductSearchTimer = null;
@@ -603,11 +600,13 @@ $(document).ready(function() {
         });
     });
 
-    $('#btnHeaderExportExcel').on('click', function() {
+    $('#exportExcel, #btnHeaderExportExcel').on('click', function(e) {
+        if (e) e.preventDefault();
         window.location.href = 'api/efatura-api.php?action=export_excel&list_type=taslak';
     });
 
-    $('#btnHeaderPrint').on('click', function() {
+    $('#btnPrintTable, #btnHeaderPrint').on('click', function(e) {
+        if (e) e.preventDefault();
         printInvoiceListReport();
     });
 
@@ -956,6 +955,22 @@ $(document).ready(function() {
         });
     });
 
+    function decodeInvoiceHtml(html) {
+        if (!html) return '';
+        const safeTags = 'img|\\/img|table|\\/table|thead|\\/thead|tbody|\\/tbody|tfoot|\\/tfoot|tr|\\/tr|th|\\/th|td|\\/td|colgroup|\\/colgroup|col|\\/col|p|\\/p|div|\\/div|span|\\/span|br|\\/br|hr|\\/hr|strong|\\/strong|b|\\/b|em|\\/em|i|\\/i|u|\\/u|s|\\/s|small|\\/small|font|\\/font|ul|\\/ul|ol|\\/ol|li|\\/li|a|\\/a|center|\\/center';
+        const tagRegex = new RegExp('&lt;((\\/)?(' + safeTags + ')(\\s+[\\s\\S]*?)?(\\/)?)&gt;', 'gi');
+        let decoded = html.replace(/&amp;(lt|gt|quot|apos|#39;|#34;|#59;|amp);/gi, '&$1;');
+        decoded = decoded.replace(tagRegex, function(match) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = match;
+            let val = txt.value;
+            if (/^<\s*\/\s*br\s*>/i.test(val)) return '<br>';
+            return val;
+        });
+        decoded = decoded.replace(/<\s*\/\s*br\s*>/gi, '<br>');
+        return decoded;
+    }
+
     // HTML Fatura Önizleme (Gerçek Resmi GİB / EDM Şablonu)
     let lastTaslakPreviewHtml = '';
     $(document).on('click', '.btn-preview', function() {
@@ -981,8 +996,9 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(res) {
                 if (res.status === 'success' && res.html) {
-                    lastTaslakPreviewHtml = res.html;
-                    let docHtml = res.html;
+                    const cleanedHtml = decodeInvoiceHtml(res.html);
+                    lastTaslakPreviewHtml = cleanedHtml;
+                    let docHtml = cleanedHtml;
                     if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
                         docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body { margin: 0; padding: 15px; background: #fff; font-family: Arial, sans-serif; }</style></head><body>${docHtml}</body></html>`;
                     }

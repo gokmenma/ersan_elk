@@ -12,7 +12,9 @@ class DetachedInvoicePages extends App\Service\EdmSoapClient {
     public function __construct() {}
     public function getInvoicePage(string $direction, string $startDate, string $endDate, int $offset = 0, int $limit = 50, ?string $createdBefore = null, ?string $listType = null): array {
         usleep(250000);
-        return $offset === 0 ? [['uuid' => 'first', 'status' => 'LOAD - SUCCEED'], ['uuid' => 'second', 'status' => 'LOAD - SUCCEED']] : [['uuid' => 'last', 'status' => 'LOAD - SUCCEED']];
+        return $offset === 0
+            ? array_map(static fn($i) => ['uuid' => 'invoice-' . $i, 'status' => 'LOAD - SUCCEED'], range(1, 50))
+            : [['uuid' => 'last', 'status' => 'LOAD - SUCCEED']];
     }
 }
 class DetachedInvoiceImporter extends App\Service\EInvoiceService {

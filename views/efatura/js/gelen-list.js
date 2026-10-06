@@ -429,17 +429,14 @@ $(document).ready(function() {
         $(this).addClass('selected');
     });
 
-    // Header Butonları
-    $('#btnHeaderRefresh').on('click', function() {
-        table.ajax.reload(null, false);
-        loadStats();
-    });
-
-    $('#btnHeaderExportExcel').on('click', function() {
+    // İşlemler & Dışa Aktarma Butonları
+    $('#exportExcel, #btnHeaderExportExcel').on('click', function(e) {
+        e.preventDefault();
         window.location.href = 'api/efatura-api.php?action=export_excel&list_type=gelen';
     });
 
-    $('#btnHeaderPrint').on('click', function() {
+    $('#btnPrintTable, #btnHeaderPrint').on('click', function(e) {
+        e.preventDefault();
         printInvoiceListReport();
     });
 
@@ -579,6 +576,12 @@ $(document).ready(function() {
     });
 
     // EDM'den Yeni Faturaları Çek (Tarih Aralığı Seçimli)
+    const backgroundSync = window.efaturaBackgroundSync({
+        listCard: '#faturaListCard', buttonSelector: '#btnSyncIncoming',
+        storageKey: 'efatura_gelen_sync_dismissed_result', listType: 'gelen',
+        onRefresh: () => { table.ajax.reload(null, false); loadStats(); }
+    });
+
     $('#btnSyncIncoming').on('click', function() {
         const todayStr = formatDMY(now);
         Swal.fire({
@@ -661,63 +664,15 @@ $(document).ready(function() {
             }
         }).then((result) => {
             if (result.isConfirmed && result.value) {
-                const syncRange = result.value;
-                Swal.fire({
-                    title: 'Faturalar Taranıyor...',
-                    text: `${syncRange.start_date} ile ${syncRange.end_date} arasındaki gelen faturalar taranıyor, lütfen bekleyin.`,
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                $.ajax({
-                    url: 'api/efatura-api.php',
-                    type: 'POST',
-                    data: {
-                        action: 'sync_incoming_invoices',
-                        start_date: syncRange.start_date,
-                        end_date: syncRange.end_date,
-                        date_type: syncRange.date_type
-                    },
-                    dataType: 'json',
-                    success: function(res) {
-                        if (res.status === 'success') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Tamamlandı',
-                                text: res.message || 'Gelen faturalar başarıyla güncellendi.'
-                            }).then(() => {
-                                currentStartDate = syncRange.start_date;
-                                currentEndDate = syncRange.end_date;
-                                if (document.getElementById('filterStartDate') && document.getElementById('filterStartDate')._flatpickr) {
-                                    const sParts = syncRange.start_date.split('-');
-                                    const sDate = new Date(parseInt(sParts[0], 10), parseInt(sParts[1], 10) - 1, parseInt(sParts[2], 10));
-                                    document.getElementById('filterStartDate')._flatpickr.setDate(sDate, false);
-                                    $('#btnClearStartDate').show();
-                                }
-                                if (document.getElementById('filterEndDate') && document.getElementById('filterEndDate')._flatpickr) {
-                                    const eParts = syncRange.end_date.split('-');
-                                    const eDate = new Date(parseInt(eParts[0], 10), parseInt(eParts[1], 10) - 1, parseInt(eParts[2], 10));
-                                    document.getElementById('filterEndDate')._flatpickr.setDate(eDate, false);
-                                    $('#btnClearEndDate').show();
-                                }
-                                table.ajax.reload(null, false);
-                                loadStats();
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Bilgi',
-                                text: res.message || 'Seçilen tarih aralığında yeni gelen fatura bulunamadı.'
-                            });
-                        }
-                    },
-                    error: function(xhr) {
-                        const errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Gelen faturalar çekilirken bağlantı hatası oluştu.';
-                        Swal.fire('Bilgi', errMsg, 'warning');
-                    }
-                });
+                currentStartDate = result.value.start_date;
+                currentEndDate = result.value.end_date;
+                for (const [id, value] of [['filterStartDate', currentStartDate], ['filterEndDate', currentEndDate]]) {
+                    const picker = document.getElementById(id)?._flatpickr;
+                    if (picker) picker.setDate(value, false, 'Y-m-d');
+                }
+                $('#btnClearStartDate, #btnClearEndDate').show();
+                updatePeriodLabelToCustom();
+                backgroundSync.start(result.value);
             }
         });
     });
@@ -808,7 +763,22 @@ $(document).ready(function() {
         });
     }
 
-    // HTML Fatura Önizleme
+    function decodeInvoiceHtml(html) {
+        if (!html) return '';
+        const safeTags = 'img|\\/img|table|\\/table|thead|\\/thead|tbody|\\/tbody|tfoot|\\/tfoot|tr|\\/tr|th|\\/th|td|\\/td|colgroup|\\/colgroup|col|\\/col|p|\\/p|div|\\/div|span|\\/span|br|\\/br|hr|\\/hr|strong|\\/strong|b|\\/b|em|\\/em|i|\\/i|u|\\/u|s|\\/s|small|\\/small|font|\\/font|ul|\\/ul|ol|\\/ol|li|\\/li|a|\\/a|center|\\/center';
+        const tagRegex = new RegExp('&lt;((\\/)?(' + safeTags + ')(\\s+[\\s\\S]*?)?(\\/)?)&gt;', 'gi');
+        let decoded = html.replace(/&amp;(lt|gt|quot|apos|#39;|#34;|#59;|amp);/gi, '&$1;');
+        decoded = decoded.replace(tagRegex, function(match) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = match;
+            let val = txt.value;
+            if (/^<\s*\/\s*br\s*>/i.test(val)) return '<br>';
+            return val;
+        });
+        decoded = decoded.replace(/<\s*\/\s*br\s*>/gi, '<br>');
+        return decoded;
+    }
+
     // HTML Fatura Önizleme (Gerçek Resmi GİB / EDM Şablonu)
     let lastPreviewHtml = '';
     $(document).on('click', '.btn-preview', function() {
@@ -833,8 +803,9 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(res) {
                 if (res.status === 'success' && res.html) {
-                    lastPreviewHtml = res.html;
-                    let docHtml = res.html;
+                    const cleanedHtml = decodeInvoiceHtml(res.html);
+                    lastPreviewHtml = cleanedHtml;
+                    let docHtml = cleanedHtml;
                     if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
                         docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body { margin: 0; padding: 15px; background: #fff; font-family: Arial, sans-serif; }</style></head><body>${docHtml}</body></html>`;
                     }

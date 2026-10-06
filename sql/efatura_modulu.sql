@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `faturalar` (
   `yaziyla_tutar` VARCHAR(255) NULL,
   
   -- Notlar ve Açıklama
-  `notlar` TEXT NULL,
+  `notlar` MEDIUMTEXT NULL,
   `siparis_no` VARCHAR(50) NULL,
   `siparis_tarihi` DATE NULL,
   `irsaliye_no` VARCHAR(50) NULL,
