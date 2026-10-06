@@ -96,7 +96,7 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 <?php if ($page == 'kullanici-gruplari/duzenle') { ?>
-    <script src="views/kullanici-gruplari/js/duzenle.js"></script>
+    <script src="views/kullanici-gruplari/js/duzenle.js?v=<?php echo filemtime(dirname(__DIR__) . '/views/kullanici-gruplari/js/duzenle.js'); ?>"></script>
 <?php } ?>
 
 <!-- Sms Gönder -->

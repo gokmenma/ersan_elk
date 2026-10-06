@@ -105,10 +105,20 @@ class MenuManagementModel extends Model
                     m.is_authorized,
                     m.created_at,
                     m.deleted_at,
-                    p.menu_name AS parent_name
+                    p.menu_name AS parent_name,
+                    GROUP_CONCAT(DISTINCT perm.name ORDER BY perm.id SEPARATOR ', ') AS permission_names,
+                    GROUP_CONCAT(DISTINCT perm.auth_name ORDER BY perm.id SEPARATOR ', ') AS permission_auth_names,
+                    GROUP_CONCAT(DISTINCT perm.id ORDER BY perm.id SEPARATOR ', ') AS permission_ids
                 FROM {$this->table} m
                 LEFT JOIN {$this->table} p ON p.id = m.parent_id
+                LEFT JOIN permissions perm ON (
+                    perm.auth_name = m.menu_link
+                    OR perm.name = m.menu_link
+                    OR (perm.id = m.id AND m.id <= 944)
+                    OR (m.menu_link = 'kullanici-gruplari/list' AND (perm.auth_name = 'yetki_gruplari' OR perm.auth_name = 'yetki_gruplari_izleme'))
+                ) AND perm.is_active = 1
                 WHERE {$whereSql}
+                GROUP BY m.id
                 ORDER BY m.group_order ASC, m.parent_id ASC, m.menu_order ASC, m.id ASC";
 
         $stmt = $this->db->prepare($sql);

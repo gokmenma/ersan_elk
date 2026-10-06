@@ -110,7 +110,7 @@ class PermissionsModel extends Model
                 LEFT JOIN menus m ON (
                     p.auth_name = m.menu_link
                     OR p.name = m.menu_link
-                    OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                    OR (p.id = m.id AND m.id <= 944)
                 ) AND m.is_active = 1
                 LEFT JOIN menus pm ON m.parent_id = pm.id
                 WHERE p.is_active = ? $superadminQuery
@@ -167,7 +167,7 @@ class PermissionsModel extends Model
                     ON (
                         p.auth_name = m.menu_link 
                         OR p.name = m.menu_link 
-                        OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                        OR (p.id = m.id AND m.id <= 944)
                     )
                 WHERE m.menu_link = ?
                   AND p.is_active = 1
@@ -253,7 +253,7 @@ class PermissionsModel extends Model
                       AND (
                           p.auth_name = m.menu_link
                           OR p.name = m.menu_link
-                          OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                          OR (p.id = m.id AND m.id <= 944)
                       )
                 )
             )";
@@ -305,7 +305,7 @@ class PermissionsModel extends Model
                 JOIN menus m ON (
                     p.auth_name = m.menu_link 
                     OR m.menu_link = p.name 
-                    OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                    OR (p.id = m.id AND m.id <= 944)
                 )
                 WHERE urp.role_id IN ($placeholders) 
                 AND m.menu_link IS NOT NULL 

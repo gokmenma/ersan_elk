@@ -168,7 +168,7 @@ class UserRolesModel extends Model
                 LEFT JOIN menus m ON (
                     p.auth_name = m.menu_link
                     OR p.name = m.menu_link
-                    OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                    OR (p.id = m.id AND m.id <= 944)
                 ) AND m.is_active = 1
                 LEFT JOIN menus pm ON m.parent_id = pm.id
                 INNER JOIN user_roles ur

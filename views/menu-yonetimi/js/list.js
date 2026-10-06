@@ -84,6 +84,21 @@ $(document).ready(function () {
             ? `<span class="menu-tag menu-tag-group">${escapeHtml(item.group_name)}</span>` 
             : '';
 
+        const linkBadge = item.menu_link 
+            ? `<span class="badge bg-light text-muted border rounded-pill font-size-10 font-monospace" title="Link: ${escapeHtml(item.menu_link)}"><i class="bx bx-link me-1"></i>${escapeHtml(item.menu_link)}</span>` 
+            : '';
+
+        let permBadge = '';
+        if (item.permission_names) {
+            permBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-size-10" title="Yetki: ${escapeHtml(item.permission_names)} (${escapeHtml(item.permission_auth_names || '-')})"><i class="mdi mdi-shield-check me-1"></i>${escapeHtml(item.permission_names)}</span>`;
+        } else if (item.menu_link) {
+            permBadge = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill font-size-10" title="Bu menü linki (${escapeHtml(item.menu_link)}) ile eşleşen yetki tanımı bulunmuyor"><i class="mdi mdi-shield-alert-outline me-1"></i>Yetki Tanımsız</span>`;
+        }
+
+        const permInfoRow = item.permission_names
+            ? `<div class="col-12"><div class="alert alert-light border py-1 px-2 mb-0 font-size-11 text-muted d-flex align-items-center gap-1"><i class="mdi mdi-shield-check text-success fs-6"></i><span><strong>Eşleşen Yetki:</strong> ${escapeHtml(item.permission_names)} <code class="ms-1">${escapeHtml(item.permission_auth_names || '')}</code></span></div></div>`
+            : (item.menu_link ? `<div class="col-12"><div class="alert alert-warning-subtle border border-warning-subtle py-1 px-2 mb-0 font-size-11 text-warning d-flex align-items-center gap-1"><i class="mdi mdi-alert-circle-outline fs-6"></i><span><strong>Dikkat:</strong> Bu menü linki (${escapeHtml(item.menu_link)}) için tanımlı bir yetki bulunmuyor.</span></div></div>` : '');
+
         const childCountBadge = (!isChild && childCount > 0)
             ? `<span class="menu-tag text-muted border bg-light fs-10" title="${childCount} Alt Menü">${childCount} Alt Menü</span>`
             : '';
@@ -120,6 +135,8 @@ $(document).ready(function () {
                             <span class="${badgeClass} item-type-badge">${badgeText}</span>
                             ${childCountBadge}
                             ${groupBadge}
+                            ${linkBadge}
+                            ${permBadge}
                         </div>
                     </div>
 
@@ -136,6 +153,7 @@ $(document).ready(function () {
                     <form class="inline-menu-form" autocomplete="off">
                         <input type="hidden" name="id" value="${item.encrypted_id}">
                         <div class="row g-2">
+                            ${permInfoRow}
                             <div class="col-md-4">
                                 <label class="form-label fs-11 text-muted mb-1 fw-semibold">Menü Adı</label>
                                 <input type="text" name="menu_name" class="form-control form-control-sm" value="${escapeHtml(item.menu_name)}" required>

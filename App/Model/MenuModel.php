@@ -140,7 +140,7 @@ class MenuModel extends Model
         }
 
         // Menü-yetki eşleştirme kuralı değiştiğinde eski ağaç cache'ini kullanma.
-        return 'v3_' . $rolePart . '_' . $permissionHash;
+        return 'v5_' . $rolePart . '_' . $permissionHash;
     }
 
     // Veritabanından menüyü çekip oluşturan yardımcı fonksiyon
@@ -180,7 +180,7 @@ class MenuModel extends Model
                           AND (
                               p.auth_name = m.menu_link
                               OR p.name = m.menu_link
-                              OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                              OR (p.id = m.id AND m.id <= 944)
                               OR (m.menu_link = 'kullanici-gruplari/list' AND (p.auth_name = 'yetki_gruplari' OR p.auth_name = 'yetki_gruplari_izleme'))
                           )
                           {$superadminFilter}
@@ -293,7 +293,20 @@ class MenuModel extends Model
             }
         }
 
-        //echo Helper::dd($structuredMenu);
+        // Çocuksuz ve linki olmayan boş klasör/grup ana menülerini temizle
+        foreach ($structuredMenu as $groupName => &$groupItems) {
+            $groupItems = array_values(array_filter($groupItems, function ($item) {
+                if (!empty($item->menu_link)) {
+                    return true;
+                }
+                return !empty($item->children);
+            }));
+            if (empty($groupItems)) {
+                unset($structuredMenu[$groupName]);
+            }
+        }
+        unset($groupItems);
+
         return $structuredMenu;
     }
 
@@ -412,7 +425,7 @@ class MenuModel extends Model
                                   AND (
                                       p.name = m.menu_link 
                                       OR p.auth_name = m.menu_link 
-                                      OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                                      OR (p.id = m.id AND m.id <= 944)
                                       OR (m.menu_link = 'kullanici-gruplari/list' AND (p.auth_name = 'yetki_gruplari' OR p.auth_name = 'yetki_gruplari_izleme'))
                                   )
                                   {$superadminFilter}
