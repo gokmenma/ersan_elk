@@ -727,8 +727,11 @@ $(document).ready(function() {
     }
 
     // HTML Fatura Önizleme
+    // HTML Fatura Önizleme (Gerçek Resmi GİB / EDM Şablonu)
+    let lastPreviewHtml = '';
     $(document).on('click', '.btn-preview', function() {
         const invoiceId = $(this).data('id');
+        lastPreviewHtml = '';
 
         $('#invoicePreviewContainer').html(`
             <div class="text-center py-5">
@@ -748,7 +751,18 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(res) {
                 if (res.status === 'success' && res.html) {
-                    $('#invoicePreviewContainer').html(res.html);
+                    lastPreviewHtml = res.html;
+                    let docHtml = res.html;
+                    if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
+                        docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body { margin: 0; padding: 15px; background: #fff; font-family: Arial, sans-serif; }</style></head><body>${docHtml}</body></html>`;
+                    }
+                    $('#invoicePreviewContainer').html(`
+                        <iframe id="gelenInvoiceIframe" style="width: 100%; height: 78vh; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff;" frameborder="0"></iframe>
+                    `);
+                    const iframe = document.getElementById('gelenInvoiceIframe');
+                    if (iframe) {
+                        iframe.srcdoc = docHtml;
+                    }
                 } else {
                     $('#invoicePreviewContainer').html(`
                         <div class="alert alert-danger m-3">
@@ -769,29 +783,29 @@ $(document).ready(function() {
 
     // Önizleme Yazdır
     $('#btnPrintPreview').on('click', function() {
-        const printContent = document.getElementById('invoicePreviewContainer').innerHTML;
+        const iframe = document.getElementById('gelenInvoiceIframe');
+        if (iframe && iframe.contentWindow) {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                return;
+            } catch (e) {
+                console.warn('Iframe print error, falling back to popup:', e);
+            }
+        }
+
+        if (!lastPreviewHtml) return;
         const win = window.open('', '_blank');
         if (!win) {
             Swal.fire('Uyarı', 'Pop-up engelleyici yazdırma sayfasını engelledi.', 'warning');
             return;
         }
         win.document.open();
-        win.document.write(`
-            <!DOCTYPE html>
-            <html lang="tr">
-            <head>
-                <meta charset="utf-8">
-                <title>Gelen Fatura Yazdır</title>
-                <style>
-                    @page { size: A4 portrait; margin: 6mm 10mm; }
-                    body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
-                </style>
-            </head>
-            <body>
-                ${printContent}
-            </body>
-            </html>
-        `);
+        let docHtml = lastPreviewHtml;
+        if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
+            docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fatura Yazdır</title><style>@page { size: A4 portrait; margin: 6mm 10mm; } body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }</style></head><body>${docHtml}</body></html>`;
+        }
+        win.document.write(docHtml);
         win.document.close();
         win.focus();
         setTimeout(() => {

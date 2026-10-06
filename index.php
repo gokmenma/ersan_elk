@@ -142,6 +142,21 @@ if (!isset($_SESSION['force_desktop'])) {
             <?php
             $page = $_GET['p'] ?? 'home';
 
+            // Mobil rota isimlerinin masaüstü eşleşmesi (alias)
+            $routeAliases = [
+                'efatura'            => 'efatura/dashboard',
+                'efatura-giden'      => 'efatura/giden-list',
+                'efatura-gelen'      => 'efatura/gelen-list',
+                'efatura-taslak'     => 'efatura/taslak-list',
+                'efatura-olustur'    => 'efatura/olustur',
+                'efatura-cari'       => 'efatura/cari-list',
+                'efatura-mal-hizmet' => 'efatura/mal-hizmet-list',
+                'efatura-ayarlar'    => 'efatura/ayarlar',
+            ];
+            if (isset($routeAliases[$page])) {
+                $page = $routeAliases[$page];
+            }
+
             try {
                 if ($currentUserId > 0) {
                     $logModel = new \App\Model\SystemLogModel();

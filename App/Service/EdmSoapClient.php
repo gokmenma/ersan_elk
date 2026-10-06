@@ -273,6 +273,20 @@ class EdmSoapClient
         return $xml;
     }
 
+    public function getInvoiceHtml(string $uuid, string $direction = 'OUT'): string
+    {
+        $result = $this->call('GetInvoice', [
+            'INVOICE_SEARCH_KEY' => (object)['UUID' => $uuid, 'DIRECTION' => $direction, 'READ_INCLUDED' => true, 'LIMIT' => 1],
+            'HEADER_ONLY' => 'N', 'INVOICE_CONTENT_TYPE' => 'HTML',
+        ]);
+        $item = self::items($result->INVOICE ?? null)[0] ?? null;
+        $html = self::decodeContent($item->CONTENT ?? null);
+        if (!$item || (string)($item->UUID ?? '') !== $uuid || empty($html)) {
+            throw new EdmOperationException('business', 'Bu faturanın HTML içeriği EDM’den alınamadı.');
+        }
+        return $html;
+    }
+
     public function getInvoicePdf(string $uuid, string $direction): string
     {
         $result = $this->call('GetInvoice', [

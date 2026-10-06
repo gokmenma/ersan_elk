@@ -332,20 +332,13 @@ function openInvoicePreview(encId, faturaNo) {
         .then(r => r.json())
         .then(res => {
             if (res.status === 'success' && res.html) {
-                frame.srcdoc = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
-                        <style>
-                            body { margin: 0; padding: 12px; background: #fff; font-family: sans-serif; -webkit-text-size-adjust: 100%; }
-                            table { max-width: 100% !important; }
-                        </style>
-                    </head>
-                    <body>${res.html}</body>
-                    </html>
-                `;
+                let htmlContent = res.html;
+                if (!htmlContent.includes('<html') && !htmlContent.includes('<!DOCTYPE')) {
+                    htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes"><style>body { margin: 0; padding: 12px; background: #fff; font-family: sans-serif; -webkit-text-size-adjust: 100%; } table { max-width: 100% !important; }</style></head><body>${htmlContent}</body></html>`;
+                } else if (!htmlContent.includes('name="viewport"')) {
+                    htmlContent = htmlContent.replace('<head>', '<head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">');
+                }
+                frame.srcdoc = htmlContent;
             } else {
                 frame.srcdoc = `<div style="padding:20px;color:#dc2626;font-family:sans-serif;font-weight:bold;">${res.message || 'Önizleme oluşturulamadı.'}</div>`;
             }

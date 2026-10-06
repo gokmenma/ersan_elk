@@ -555,17 +555,30 @@ $(document).ready(function() {
         openInvoicePreview(id);
     });
 
+    let lastGidenPreviewHtml = '';
     function openInvoicePreview(id, autoPrint = false) {
         const modalEl = document.getElementById('modalFaturaOnizleme');
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
+        lastGidenPreviewHtml = '';
         $('#onizlemeModalContent').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Fatura yükleniyor...</div></div>');
 
         fetch(`api/efatura-api.php?action=preview_html&invoice_id=${id}`)
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success') {
-                    $('#onizlemeModalContent').html(res.html);
+                    lastGidenPreviewHtml = res.html;
+                    let docHtml = res.html;
+                    if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
+                        docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body { margin: 0; padding: 15px; background: #fff; font-family: Arial, sans-serif; }</style></head><body>${docHtml}</body></html>`;
+                    }
+                    $('#onizlemeModalContent').html(`
+                        <iframe id="gidenInvoiceIframe" style="width: 100%; height: 78vh; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff;" frameborder="0"></iframe>
+                    `);
+                    const iframe = document.getElementById('gidenInvoiceIframe');
+                    if (iframe) {
+                        iframe.srcdoc = docHtml;
+                    }
                     if (autoPrint) {
                         setTimeout(() => {
                             printInvoiceHtml(res.html);
@@ -723,48 +736,44 @@ $(document).ready(function() {
     });
 
     function printInvoiceHtml(content) {
+        const iframe = document.getElementById('gidenInvoiceIframe');
+        if (iframe && iframe.contentWindow) {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                return;
+            } catch (e) {
+                console.warn('Iframe print error, falling back to popup:', e);
+            }
+        }
+
         const win = window.open('', '_blank');
         if (!win) {
             Swal.fire('Uyarı', 'Açılır pencere engelleyici (pop-up) yazdırma sayfasını engelledi. Lütfen tarayıcı ayarlarından izin verin.', 'warning');
             return;
         }
         win.document.open();
-        win.document.write(`
+        let docHtml = content || lastGidenPreviewHtml;
+        if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
+            docHtml = `
             <!DOCTYPE html>
             <html lang="tr">
             <head>
                 <meta charset="utf-8">
                 <title>E-Fatura / E-Arşiv Yazdır</title>
                 <style>
-                    @page {
-                        size: A4 portrait;
-                        margin: 6mm 10mm;
-                    }
-                    * {
-                        box-sizing: border-box;
-                    }
-                    html, body {
-                        margin: 0;
-                        padding: 0;
-                        background: #fff;
-                        color: #000;
-                        font-family: Arial, Helvetica, sans-serif;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    @media print {
-                        body {
-                            margin: 0 !important;
-                            padding: 0 !important;
-                        }
-                    }
+                    @page { size: A4 portrait; margin: 6mm 10mm; }
+                    * { box-sizing: border-box; }
+                    html, body { margin: 0; padding: 0; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    @media print { body { margin: 0 !important; padding: 0 !important; } }
                 </style>
             </head>
             <body>
-                ${content}
+                ${docHtml}
             </body>
-            </html>
-        `);
+            </html>`;
+        }
+        win.document.write(docHtml);
         win.document.close();
         win.focus();
         setTimeout(() => {
@@ -774,8 +783,7 @@ $(document).ready(function() {
 
     // 9. Yazdır Butonu
     $('#btnModalYazdir').on('click', function() {
-        const printContent = document.getElementById('onizlemeModalContent').innerHTML;
-        printInvoiceHtml(printContent);
+        printInvoiceHtml(lastGidenPreviewHtml);
     });
 
     // 10. SAĞ TIK & 3 NOKTA MENÜSÜ (CONTEXT MENU) ENTEGRASYONU

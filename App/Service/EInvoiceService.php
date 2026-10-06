@@ -218,6 +218,63 @@ class EInvoiceService
         finally { $this->invoiceModel->releaseInvoiceLock($invoiceId, $firmId); }
     }
 
+    /**
+     * UBL XML içeriğinden XSLT şablonunu ayıklayıp orijinal resmi GİB HTML çıktısı üretir.
+     */
+    public static function renderUblXmlToHtml(string $xmlContent): ?string
+    {
+        if (empty(trim($xmlContent))) {
+            return null;
+        }
+
+        try {
+            $prevErrorHandling = libxml_use_internal_errors(true);
+            $dom = new \DOMDocument();
+            if (!$dom->loadXML($xmlContent)) {
+                libxml_clear_errors();
+                libxml_use_internal_errors($prevErrorHandling);
+                return null;
+            }
+
+            $xpath = new \DOMXPath($dom);
+            $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+            $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+
+            // XSLT düğümünü bul
+            $xsltNodes = $xpath->query('//cac:AdditionalDocumentReference[cbc:DocumentType="XSLT" or cbc:DocumentTypeCode="XSLT"]/cac:Attachment/cbc:EmbeddedDocumentBinaryObject');
+            if ($xsltNodes->length === 0) {
+                $xsltNodes = $xpath->query('//cac:AdditionalDocumentReference/cac:Attachment/cbc:EmbeddedDocumentBinaryObject[@mimeCode="application/xml" or @filename="xslt" or @characterSetCode="UTF-8"]');
+            }
+
+            if ($xsltNodes->length > 0) {
+                $xsltBase64 = trim((string)$xsltNodes->item(0)->nodeValue);
+                if (!empty($xsltBase64)) {
+                    $xsltXml = base64_decode($xsltBase64);
+                    if ($xsltXml && (str_contains($xsltXml, '<xsl:stylesheet') || str_contains($xsltXml, '<xsl:transform'))) {
+                        $xslDoc = new \DOMDocument();
+                        if ($xslDoc->loadXML($xsltXml)) {
+                            $proc = new \XSLTProcessor();
+                            $proc->importStyleSheet($xslDoc);
+                            $transformedHtml = $proc->transformToXML($dom);
+                            libxml_clear_errors();
+                            libxml_use_internal_errors($prevErrorHandling);
+                            if (!empty($transformedHtml)) {
+                                return $transformedHtml;
+                            }
+                        }
+                    }
+                }
+            }
+
+            libxml_clear_errors();
+            libxml_use_internal_errors($prevErrorHandling);
+        } catch (\Throwable $e) {
+            error_log('renderUblXmlToHtml error: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
     public function renderHtmlPreview(int $invoiceId, int $firmId): string
     {
         $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
@@ -225,15 +282,38 @@ class EInvoiceService
             return '<div class="alert alert-danger p-3">Fatura kaydı bulunamadı.</div>';
         }
 
-        $firmaModel = new FirmaModel();
-        $firma = $firmaModel->getFirma($firmId);
-        $settings = $this->settingsModel->getSettings($firmId);
         $xmlContent = null;
         if (!empty($invoice['kaynak_xml'])) {
             $xmlContent = $invoice['kaynak_xml'];
         } elseif (!empty($invoice['ubl_xml_path']) && file_exists($invoice['ubl_xml_path'])) {
             $xmlContent = file_get_contents($invoice['ubl_xml_path']);
         }
+
+        // 1. Öncelik: UBL XML içindeki orijinal resmi XSLT ile gerçek fatura HTML çıktısı
+        if (!empty($xmlContent)) {
+            $xsltHtml = self::renderUblXmlToHtml($xmlContent);
+            if (!empty($xsltHtml)) {
+                return $xsltHtml;
+            }
+        }
+
+        // 2. Öncelik: EDM'de kayıtlı ise EDM SOAP servisinden orijinal HTML çıktısını çek
+        if (!empty($invoice['ettn']) && $invoice['entegrator_durum_kodu'] !== 'TASLAK') {
+            try {
+                $edmHtml = $this->client($firmId)->getInvoiceHtml($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
+                if (!empty($edmHtml) && (str_contains($edmHtml, '<html') || str_contains($edmHtml, '<table') || str_contains($edmHtml, '<div'))) {
+                    return $edmHtml;
+                }
+            } catch (\Throwable $e) {
+                // EDM'den alınamazsa yerel kurumsal şablon ile devam et
+                error_log('EDM getInvoiceHtml fallback to local template: ' . $e->getMessage());
+            }
+        }
+
+        // 3. Öncelik: Yerel Taslak veya XSLT bulunamayan faturalar için ERP kurumsal fatura şablonu
+        $firmaModel = new FirmaModel();
+        $firma = $firmaModel->getFirma($firmId);
+        $settings = $this->settingsModel->getSettings($firmId);
         if ($xmlContent) {
             $source = (new UblReaderService())->read($xmlContent, $invoice['yon']);
             foreach ($source['customer'] as $key => $value) $invoice['alici_' . $key] = $value;

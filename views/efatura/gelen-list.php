@@ -1,5 +1,7 @@
 <?php
-\App\Service\Gate::authorizeOrDie('efatura/giden-list');
+if (!\App\Service\Gate::allows('efatura/gelen-list') && !\App\Service\Gate::allows('efatura/giden-list')) {
+    \App\Service\Gate::authorizeOrDie('efatura/gelen-list');
+}
 use App\Service\Gate;
 
 $maintitle = 'E-Fatura & E-Arşiv';
