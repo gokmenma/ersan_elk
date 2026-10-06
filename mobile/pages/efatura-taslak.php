@@ -244,6 +244,7 @@ function loadTaslakInvoices() {
             listContainer.innerHTML = `<div class="p-4 text-center text-xs text-rose-500 font-bold">Veriler alınırken hata oluştu.</div>`;
         });
 }
+</script>
 
 <!-- 7. Dönem Seçim Modal / Bottom Sheet -->
 <div id="taslakPeriodModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">

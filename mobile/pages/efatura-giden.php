@@ -352,6 +352,7 @@ function openInvoicePreview(encId, faturaNo) {
             frame.srcdoc = `<div style="padding:20px;color:#dc2626;font-family:sans-serif;font-weight:bold;">Fatura yüklenirken sunucu hatası oluştu.</div>`;
         });
 }
+</script>
 
 <!-- 7. Dönem Seçim Modal / Bottom Sheet -->
 <div id="gidenPeriodModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">

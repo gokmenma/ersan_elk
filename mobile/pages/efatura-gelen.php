@@ -351,6 +351,7 @@ function openInvoicePreview(encId, faturaNo) {
             frame.srcdoc = `<div style="padding:20px;color:#dc2626;font-family:sans-serif;font-weight:bold;">Fatura yüklenirken sunucu hatası oluştu.</div>`;
         });
 }
+</script>
 
 <!-- 7. Dönem Seçim Modal / Bottom Sheet -->
 <div id="gelenPeriodModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">
@@ -437,8 +438,8 @@ function closeGelenPeriodModal() {
 function applyGelenMonth(monthNum, monthName) {
     const year = document.getElementById('gelenModalYearSelect').value;
     const lastDay = new Date(year, monthNum, 0).getDate();
-    currentGidenStartDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
-    currentGidenEndDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    currentGelenStartDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+    currentGelenEndDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     const label = `${monthName} ${year}`;
     
     closeGelenPeriodModal();
@@ -456,8 +457,8 @@ function applyGelenCustomRange() {
         const p = dStr.split('-');
         return `${p[2]}.${p[1]}`;
     };
-    currentGidenStartDate = sDate;
-    currentGidenEndDate = eDate;
+    currentGelenStartDate = sDate;
+    currentGelenEndDate = eDate;
     const label = `${fmtShort(sDate)} - ${fmtShort(eDate)}`;
     
     closeGelenPeriodModal();

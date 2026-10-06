@@ -163,9 +163,6 @@ $(document).ready(function() {
         table.ajax.reload();
         loadStats();
     });
-        table.ajax.reload();
-        loadStats();
-    });
 
     // Ürün / Marka / Kalem Arama Dinleyicisi
     let gelenProductSearchTimer = null;
