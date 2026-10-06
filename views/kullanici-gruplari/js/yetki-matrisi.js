@@ -41,9 +41,14 @@ $(document).ready(function () {
     permissions.forEach(function (permission) {
       html += '<div class="permission-result-card p-3 mb-3">';
       html += '<div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-3">';
-      html += '<div><h6 class="font-size-14 fw-bold text-dark mb-1">' + escapeHtml(permission.name);
-      if (permission.required) html += ' <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-size-10">Zorunlu</span>';
-      html += '</h6><div class="text-muted font-size-11">' + escapeHtml(permission.group_name || "Grupsuz") + ' · <code>' + escapeHtml(permission.auth_name || "-") + '</code></div>';
+      html += '<div><div class="d-flex align-items-center flex-wrap gap-2 mb-1"><h6 class="font-size-14 fw-bold text-dark mb-0">' + escapeHtml(permission.name) + '</h6>';
+      if (permission.required) html += '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-size-10">Zorunlu</span>';
+      if (permission.menu_info) {
+        html += '<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-size-11" title="Menü Yolu"><i class="mdi mdi-menu me-1"></i>' + escapeHtml(permission.menu_info) + '</span>';
+      } else {
+        html += '<span class="badge bg-light text-muted border rounded-pill font-size-10" title="Doğrudan Menüye Bağlı Değil / İşlem Yetkisi"><i class="mdi mdi-shield-outline me-1"></i>İşlem Yetkisi</span>';
+      }
+      html += '</div><div class="text-muted font-size-11">' + escapeHtml(permission.group_name || "Grupsuz") + ' · <code>' + escapeHtml(permission.auth_name || "-") + '</code></div>';
       if (permission.description) html += '<p class="text-muted font-size-11 mb-0 mt-1">' + escapeHtml(permission.description) + '</p>';
       html += '</div></div><div class="d-flex flex-wrap gap-2">';
       permission.roles.forEach(function (role) { html += roleButton(permission, role); });

@@ -74,6 +74,10 @@ document.addEventListener("DOMContentLoaded", function () {
     applyFilters(); // Tek bir ana filtre uygulama fonksiyonu
   }
 
+  function escapeHtml(value) {
+    return $("<div>").text(value == null ? "" : String(value)).html();
+  }
+
   function renderCardView() {
     if (!cardViewContainer || !permissionGroups) return;
     let html = "";
@@ -87,16 +91,19 @@ document.addEventListener("DOMContentLoaded", function () {
         (searchTerm &&
           (group.name.toLowerCase().includes(searchTerm) ||
             group.permissions.some((p) =>
-              p.name.toLowerCase().includes(searchTerm),
+              (p.name && p.name.toLowerCase().includes(searchTerm)) ||
+              (p.auth_name && p.auth_name.toLowerCase().includes(searchTerm)) ||
+              (p.menu_info && p.menu_info.toLowerCase().includes(searchTerm)) ||
+              (p.description && p.description.toLowerCase().includes(searchTerm))
             )));
 
       html += `
-        <div class="permission-group mb-3" data-group-name="${group.name.toLowerCase()}" data-group-id="${group.id}">
+        <div class="permission-group mb-3" data-group-name="${escapeHtml(group.name.toLowerCase())}" data-group-id="${group.id}">
           <div class="group-header d-flex justify-content-between align-items-center ${selectedInGroup > 0 ? "active" : ""}">
             <div class="d-flex align-items-center flex-grow-1">
               <div class="permission-icon me-3"><i data-feather="${group.icon || "shield"}"></i></div>
               <div>
-                <h6 class="mb-0 fw-bold">${group.name}</h6>
+                <h6 class="mb-0 fw-bold">${escapeHtml(group.name)}</h6>
                 <small class="text-muted">${totalInGroup} alt yetki</small>
               </div>
             </div>
@@ -108,17 +115,23 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="group-body ${isGroupInitiallyExpanded ? "show" : ""}">
             ${group.permissions
               .map(
-                (perm) => `
-              <div class="permission-item ${userPermissions.includes(perm.id) ? "selected" : ""}" data-id="${perm.id}" data-perm-name="${perm.name.toLowerCase()}">
+                (perm) => {
+                  const searchStr = [(perm.name || ""), (perm.auth_name || ""), (perm.menu_info || ""), (perm.description || "")].join(" ").toLowerCase();
+                  return `
+              <div class="permission-item ${userPermissions.includes(perm.id) ? "selected" : ""}" data-id="${perm.id}" data-perm-name="${escapeHtml(perm.name.toLowerCase())}" data-perm-search="${escapeHtml(searchStr)}">
                 <div class="flex-grow-1">
-                  <h6 class="mb-0 fw-semibold perm-name-text">${perm.name}</h6>
-                  ${perm.required ? '<span class="badge bg-danger-subtle text-danger-emphasis rounded-pill ms-1">Zorunlu</span>' : ""}
-                  <small class="text-muted d-block perm-description-text">${perm.description || ""}</small>
+                  <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                    <h6 class="mb-0 fw-semibold perm-name-text">${escapeHtml(perm.name)}</h6>
+                    ${perm.required ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-size-10">Zorunlu</span>' : ""}
+                    ${perm.menu_info ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-size-10" title="Menü Yolu"><i class="mdi mdi-menu me-1"></i>${escapeHtml(perm.menu_info)}</span>` : '<span class="badge bg-light text-muted border rounded-pill font-size-10" title="Doğrudan Menüye Bağlı Değil / İşlem Yetkisi"><i class="mdi mdi-shield-outline me-1"></i>İşlem Yetkisi</span>'}
+                  </div>
+                  <small class="text-muted d-block perm-description-text">${escapeHtml(perm.description || "")}${perm.auth_name ? ` · <code>${escapeHtml(perm.auth_name)}</code>` : ""}</small>
                 </div>
                 <div class="form-check form-switch ms-3">
                   <input class="form-check-input permission-checkbox" type="checkbox" data-id="${perm.id}" ${userPermissions.includes(perm.id) ? "checked" : ""} ${perm.required ? "disabled" : ""}>
                 </div>
-              </div>`,
+              </div>`;
+                }
               )
               .join("")}
           </div>
@@ -137,32 +150,41 @@ document.addEventListener("DOMContentLoaded", function () {
         (searchTerm &&
           (group.name.toLowerCase().includes(searchTerm) ||
             group.permissions.some((p) =>
-              p.name.toLowerCase().includes(searchTerm),
+              (p.name && p.name.toLowerCase().includes(searchTerm)) ||
+              (p.auth_name && p.auth_name.toLowerCase().includes(searchTerm)) ||
+              (p.menu_info && p.menu_info.toLowerCase().includes(searchTerm)) ||
+              (p.description && p.description.toLowerCase().includes(searchTerm))
             )));
 
       html += `
         <li>
           <div class="tree-node">
-            <a class="tree-toggle ${isGroupInitiallyExpanded ? "expanded" : "collapsed"}" data-group-name="${group.name.toLowerCase()}">
+            <a class="tree-toggle ${isGroupInitiallyExpanded ? "expanded" : "collapsed"}" data-group-name="${escapeHtml(group.name.toLowerCase())}">
               <i class="ti ti-folder text-warning"></i><i class="ti ti-folder-open text-warning"></i>
-              <span class="group-name-text">${group.name}</span>
+              <span class="group-name-text">${escapeHtml(group.name)}</span>
             </a>
           </div>
           <ul style="display: ${isGroupInitiallyExpanded ? "block" : "none"};">
             ${group.permissions
               .map(
-                (perm) => `
+                (perm) => {
+                  const searchStr = [(perm.name || ""), (perm.auth_name || ""), (perm.menu_info || ""), (perm.description || "")].join(" ").toLowerCase();
+                  return `
               <li>
-                <div class="permission-item" data-id="${perm.id}" data-perm-name="${perm.name.toLowerCase()}">
+                <div class="permission-item" data-id="${perm.id}" data-perm-name="${escapeHtml(perm.name.toLowerCase())}" data-perm-search="${escapeHtml(searchStr)}">
                   <div class="flex-grow-1">
-                    <span class="perm-name-text">${perm.name}</span>
-                    ${perm.required ? '<span class="badge bg-danger-subtle text-danger-emphasis rounded-pill ms-1">Zorunlu</span>' : ""}
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                      <span class="perm-name-text">${escapeHtml(perm.name)}</span>
+                      ${perm.required ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-size-10">Zorunlu</span>' : ""}
+                      ${perm.menu_info ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-size-10" title="Menü Yolu"><i class="mdi mdi-menu me-1"></i>${escapeHtml(perm.menu_info)}</span>` : '<span class="badge bg-light text-muted border rounded-pill font-size-10" title="Doğrudan Menüye Bağlı Değil / İşlem Yetkisi"><i class="mdi mdi-shield-outline me-1"></i>İşlem Yetkisi</span>'}
+                    </div>
                   </div>
                   <div class="form-check form-switch ms-3">
                     <input class="form-check-input permission-checkbox" type="checkbox" data-id="${perm.id}" ${userPermissions.includes(perm.id) ? "checked" : ""} ${perm.required ? "disabled" : ""}>
                   </div>
                 </div>
-              </li>`,
+              </li>`;
+                }
               )
               .join("")}
           </ul>
@@ -237,8 +259,8 @@ document.addEventListener("DOMContentLoaded", function () {
       if (searchTerm) {
         isVisibleBySearch = groupName.includes(searchTerm);
         groupEl.querySelectorAll(".permission-item").forEach((itemEl) => {
-          const permName = itemEl.dataset.permName;
-          const matchesSearch = permName.includes(searchTerm);
+          const permSearch = (itemEl.dataset.permSearch || itemEl.dataset.permName || "").toLowerCase();
+          const matchesSearch = permSearch.includes(searchTerm);
           itemEl.style.display = matchesSearch ? "flex" : "none";
           if (matchesSearch) hasVisiblePermsInSearch = true;
         });
@@ -298,8 +320,8 @@ document.addEventListener("DOMContentLoaded", function () {
         permLiElements.forEach((permLiEl) => {
           const permItemEl = permLiEl.querySelector(".permission-item");
           if (permItemEl) {
-            const permName = permItemEl.dataset.permName;
-            const matchesSearch = permName.includes(searchTerm);
+            const permSearch = (permItemEl.dataset.permSearch || permItemEl.dataset.permName || "").toLowerCase();
+            const matchesSearch = permSearch.includes(searchTerm);
             permLiEl.style.display = matchesSearch ? "block" : "none";
             if (matchesSearch) hasVisiblePermsInSearchInTree = true;
           }

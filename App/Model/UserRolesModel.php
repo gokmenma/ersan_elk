@@ -160,9 +160,17 @@ class UserRolesModel extends Model
 
         $sql = "SELECT DISTINCT p.id AS permission_id, p.name AS permission_name,
                        p.auth_name, p.description AS permission_description,
-                       p.group_name, p.is_required, ur.id AS role_id, ur.role_name, ur.role_color,
+                       p.group_name, p.is_required,
+                       m.menu_name, m.menu_link, pm.menu_name AS parent_menu_name,
+                       ur.id AS role_id, ur.role_name, ur.role_color,
                        CASE WHEN urp.permission_id IS NULL THEN 0 ELSE 1 END AS is_enabled
                 FROM permissions p
+                LEFT JOIN menus m ON (
+                    p.auth_name = m.menu_link
+                    OR p.name = m.menu_link
+                    OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                ) AND m.is_active = 1
+                LEFT JOIN menus pm ON m.parent_id = pm.id
                 INNER JOIN user_roles ur
                     ON ur.owner_id = :owner_id {$roleTypeFilter}
                 LEFT JOIN user_role_permissions urp
@@ -171,7 +179,9 @@ class UserRolesModel extends Model
                   AND (p.name LIKE :name_search
                        OR p.auth_name LIKE :auth_search
                        OR p.description LIKE :description_search
-                       OR p.group_name LIKE :group_search)
+                       OR p.group_name LIKE :group_search
+                       OR m.menu_name LIKE :menu_search
+                       OR m.menu_link LIKE :menulink_search)
                 ORDER BY p.group_name, p.name, ur.role_name";
 
         $stmt = $this->db->prepare($sql);
@@ -181,6 +191,8 @@ class UserRolesModel extends Model
             'auth_search' => $like,
             'description_search' => $like,
             'group_search' => $like,
+            'menu_search' => $like,
+            'menulink_search' => $like,
         ]);
 
         $rows = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
@@ -188,10 +200,19 @@ class UserRolesModel extends Model
         foreach ($rows as $row) {
             $permissionId = (int) $row->permission_id;
             if (!isset($permissions[$permissionId])) {
+                $menuInfo = null;
+                if (!empty($row->menu_name)) {
+                    $menuInfo = (!empty($row->parent_menu_name) ? $row->parent_menu_name . ' > ' : '') . $row->menu_name;
+                    if (!empty($row->menu_link)) {
+                        $menuInfo .= ' (' . $row->menu_link . ')';
+                    }
+                }
+
                 $permissions[$permissionId] = [
                     'id' => $permissionId,
                     'name' => $row->permission_name,
                     'auth_name' => $row->auth_name,
+                    'menu_info' => $menuInfo,
                     'description' => $row->permission_description,
                     'group_name' => $row->group_name,
                     'required' => (bool) $row->is_required,

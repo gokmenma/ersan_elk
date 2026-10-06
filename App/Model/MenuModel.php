@@ -140,7 +140,7 @@ class MenuModel extends Model
         }
 
         // Menü-yetki eşleştirme kuralı değiştiğinde eski ağaç cache'ini kullanma.
-        return 'v2_' . $rolePart . '_' . $permissionHash;
+        return 'v3_' . $rolePart . '_' . $permissionHash;
     }
 
     // Veritabanından menüyü çekip oluşturan yardımcı fonksiyon
@@ -169,17 +169,19 @@ class MenuModel extends Model
 
         $sql = "SELECT DISTINCT m.id
                 FROM {$this->table} m
-                WHERE (
+                WHERE m.is_active = 1
+                  AND (
                     EXISTS (
                         SELECT 1
                         FROM permissions p
                         INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                         WHERE urp.role_id IN ({$rolePlaceholders})
+                          AND p.is_active = 1
                           AND (
                               p.auth_name = m.menu_link
                               OR p.name = m.menu_link
-                              OR p.name = m.menu_name
-                              OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme')
+                              OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                              OR (m.menu_link = 'kullanici-gruplari/list' AND (p.auth_name = 'yetki_gruplari' OR p.auth_name = 'yetki_gruplari_izleme'))
                           )
                           {$superadminFilter}
                     )
@@ -400,16 +402,18 @@ class MenuModel extends Model
                 $sql = "SELECT COUNT(*)
                         FROM {$this->table} m
                         WHERE m.id = ?
+                          AND m.is_active = 1
                           AND EXISTS (
                                 SELECT 1
                                 FROM permissions p
                                 INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                                 WHERE urp.role_id IN ({$placeholders})
+                                  AND p.is_active = 1
                                   AND (
                                       p.name = m.menu_link 
-                                      OR p.name = m.menu_name 
                                       OR p.auth_name = m.menu_link 
-                                      OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme')
+                                      OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                                      OR (m.menu_link = 'kullanici-gruplari/list' AND (p.auth_name = 'yetki_gruplari' OR p.auth_name = 'yetki_gruplari_izleme'))
                                   )
                                   {$superadminFilter}
                           )";

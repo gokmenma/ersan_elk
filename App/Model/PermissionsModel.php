@@ -67,11 +67,21 @@ class PermissionsModel extends Model
                 ];
             }
 
+            $menuInfo = null;
+            if (!empty($permission->menu_name)) {
+                $menuInfo = (!empty($permission->parent_menu_name) ? $permission->parent_menu_name . ' > ' : '') . $permission->menu_name;
+                if (!empty($permission->menu_link)) {
+                    $menuInfo .= ' (' . $permission->menu_link . ')';
+                }
+            }
+
             // Mevcut izni, doğru grubun 'permissions' dizisine ekle.
             $index = $groupIndexMap[$groupName];
             $groupedPermissions[$index]['permissions'][] = [
                 'id' => (int) $permission->id,
                 'name' => $permission->name,
+                'auth_name' => $permission->auth_name ?? '',
+                'menu_info' => $menuInfo,
                 'description' => $permission->description ?? '',
                 'level' => (int) $permission->permission_level,
                 'required' => (bool) $permission->is_required
@@ -91,13 +101,20 @@ class PermissionsModel extends Model
         $UserModel = new UserModel();
         $superadminQuery = "";
         if (!$UserModel->isSuperAdmin()) {
-            $superadminQuery = " AND superadmin = 0";
+            $superadminQuery = " AND p.superadmin = 0";
         }
 
-        $sql = "SELECT id, name, description, group_name, permission_level, is_required, superadmin
-                FROM {$this->table} 
-                WHERE is_active = ? $superadminQuery
-                ORDER BY group_name, id";
+        $sql = "SELECT p.id, p.name, p.description, p.group_name, p.permission_level, p.is_required, p.superadmin, p.auth_name,
+                       m.menu_name, m.menu_link, pm.menu_name as parent_menu_name
+                FROM {$this->table} p
+                LEFT JOIN menus m ON (
+                    p.auth_name = m.menu_link
+                    OR p.name = m.menu_link
+                    OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                ) AND m.is_active = 1
+                LEFT JOIN menus pm ON m.parent_id = pm.id
+                WHERE p.is_active = ? $superadminQuery
+                ORDER BY p.group_name, p.id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([1]);
 
@@ -147,7 +164,11 @@ class PermissionsModel extends Model
         $sql = "SELECT p.auth_name
                 FROM menus m
                 INNER JOIN permissions p
-                    ON (p.auth_name = m.menu_link OR p.name = m.menu_link OR p.name = m.menu_name)
+                    ON (
+                        p.auth_name = m.menu_link 
+                        OR p.name = m.menu_link 
+                        OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                    )
                 WHERE m.menu_link = ?
                   AND p.is_active = 1
                 ORDER BY (p.auth_name = m.menu_link) DESC
@@ -228,10 +249,11 @@ class PermissionsModel extends Model
                     FROM permissions p
                     INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                     WHERE urp.role_id IN ($placeholders)
+                      AND p.is_active = 1
                       AND (
                           p.auth_name = m.menu_link
                           OR p.name = m.menu_link
-                          OR p.name = m.menu_name
+                          OR (p.id = m.id AND m.id < 975 AND m.id != 945)
                       )
                 )
             )";
@@ -280,7 +302,11 @@ class PermissionsModel extends Model
         $sql = "SELECT m.menu_link 
                 FROM user_role_permissions urp
                 JOIN permissions p ON urp.permission_id = p.id
-                JOIN menus m ON (p.auth_name = m.menu_link OR m.menu_name = p.name OR m.menu_link = p.name)
+                JOIN menus m ON (
+                    p.auth_name = m.menu_link 
+                    OR m.menu_link = p.name 
+                    OR (p.id = m.id AND m.id < 975 AND m.id != 945)
+                )
                 WHERE urp.role_id IN ($placeholders) 
                 AND m.menu_link IS NOT NULL 
                 AND m.menu_link != ''
