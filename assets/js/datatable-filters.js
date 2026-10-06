@@ -1041,6 +1041,7 @@
 
     if (urlSearch) {
       const priorityKeys = [
+        "fatura", "fatura no", "ettn", "alici", "kalem",
         "plaka", "arac", "demirbas", "cari", "firma", "evrak", "konu", 
         "baslik", "tutanak", "abone", "personel", "adi soyadi", "ad soyad", "ad", "unvan"
       ];

@@ -172,8 +172,6 @@ class PermissionsModel extends Model
     public function getPermissionsForUser(int $userId): array
     {
         // 1. Kullanıcının rol ID'sini al.
-        // Eğer getUserRoleID metodu zaten varsa, onu kullanın.
-        // Yoksa aşağıdaki gibi bir sorgu yazılabilir.
         $stmt = $this->db->prepare("SELECT roles FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $roleId = $stmt->fetchColumn();
@@ -182,21 +180,79 @@ class PermissionsModel extends Model
             return []; // Rolü olmayan kullanıcının izni yoktur.
         }
 
-        // 2. Rol ID'sine göre tüm izin adlarını çek.
+        // 2. Rol ID'sine göre tüm izin adlarını ve auth_name'lerini çek.
         $roleIds = explode(',', $roleId);
-        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+        $cleanRoleIds = [];
+        foreach ($roleIds as $rId) {
+            $rId = (int) trim((string)$rId);
+            if ($rId > 0) {
+                $cleanRoleIds[] = $rId;
+            }
+        }
 
-        $sql = "SELECT DISTINCT p.auth_name
+        if (empty($cleanRoleIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($cleanRoleIds), '?'));
+
+        $sql = "SELECT DISTINCT p.id, p.name, p.auth_name
             FROM user_role_permissions urp
             JOIN permissions p ON urp.permission_id = p.id
-            WHERE urp.role_id IN ($placeholders)";
+            WHERE urp.role_id IN ($placeholders)
+              AND p.is_active = 1";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($roleIds);
+        $stmt->execute($cleanRoleIds);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // fetchAll(PDO::FETCH_COLUMN) sadece 'permission_name' sütununu içeren
-        // ['izin1', 'izin2', ...] şeklinde düz bir dizi döndürür.
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $permissions = [];
+        foreach ($rows as $r) {
+            if (!empty($r['auth_name'])) {
+                $permissions[] = trim($r['auth_name']);
+            }
+            if (!empty($r['name'])) {
+                $permissions[] = trim($r['name']);
+            }
+            if (!empty($r['id'])) {
+                $permissions[] = (string)$r['id'];
+            }
+        }
+
+        // 3. Menü yetkileri üzerinden de izin verilen linkleri topla
+        $menuSql = "SELECT DISTINCT m.menu_link, m.menu_name
+            FROM menus m
+            WHERE (
+                EXISTS (
+                    SELECT 1
+                    FROM permissions p
+                    INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
+                    WHERE urp.role_id IN ($placeholders)
+                      AND (
+                          p.id = m.id
+                          OR p.auth_name = m.menu_link
+                          OR p.name = m.menu_link
+                          OR p.name = m.menu_name
+                      )
+                )
+            )";
+        try {
+            $menuStmt = $this->db->prepare($menuSql);
+            $menuStmt->execute($cleanRoleIds);
+            $menuRows = $menuStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($menuRows as $mRow) {
+                if (!empty($mRow['menu_link'])) {
+                    $permissions[] = trim($mRow['menu_link']);
+                }
+                if (!empty($mRow['menu_name'])) {
+                    $permissions[] = trim($mRow['menu_name']);
+                }
+            }
+        } catch (\PDOException $e) {
+            // Sessizce devam et
+        }
+
+        return array_values(array_unique(array_filter($permissions)));
     }
 
 

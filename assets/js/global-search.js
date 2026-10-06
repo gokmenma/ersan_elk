@@ -332,6 +332,7 @@
         updateCounters: function (counts) {
             if (!counts) return;
             $('#count-all').text(counts.all || 0);
+            $('#count-faturalar').text(counts.faturalar || 0);
             $('#count-personel').text(counts.personel || 0);
             $('#count-araclar').text(counts.araclar || 0);
             $('#count-demirbaslar').text(counts.demirbaslar || 0);
@@ -364,6 +365,7 @@
             var results = data.results || {};
 
             var moduleConfig = {
+                faturalar:   { title: 'FATURALAR & İÇERİKLERİ', icon: 'bx-receipt', color: 'rose', items: results.faturalar || [] },
                 personel:    { title: 'PERSONELLER', icon: 'bx-user', color: 'blue', items: results.personel || [] },
                 araclar:     { title: 'ARAÇLAR', icon: 'bx-car', color: 'amber', items: results.araclar || [] },
                 demirbaslar: { title: 'DEMİRBAŞLAR', icon: 'bx-cube', color: 'purple', items: results.demirbaslar || [] },
@@ -376,7 +378,7 @@
 
             var modulesToRender = [];
             if (cat === 'all') {
-                modulesToRender = ['personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
+                modulesToRender = ['faturalar', 'personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
             } else if (moduleConfig[cat]) {
                 modulesToRender = [cat];
             }
@@ -464,8 +466,9 @@
         },
 
         renderInitialSuggestions: function () {
-            var allowed = window.GLOBAL_SEARCH_ALLOWED_MODULES || ['personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
+            var allowed = window.GLOBAL_SEARCH_ALLOWED_MODULES || ['faturalar', 'personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
             var allCards = [
+                { key: 'faturalar',   url: 'index.php?p=efatura/giden-list',  icon: 'bx-receipt text-danger',       label: 'Faturalar' },
                 { key: 'personel',    url: 'index.php?p=personel/list',       icon: 'bx-user text-primary',         label: 'Personeller' },
                 { key: 'araclar',     url: 'index.php?p=arac-takip/list',     icon: 'bx-car text-warning',          label: 'Araç Takip' },
                 { key: 'demirbaslar', url: 'index.php?p=demirbas/list',       icon: 'bx-cube text-purple',          label: 'Demirbaşlar' },
@@ -490,7 +493,7 @@
             html += '</div>';
 
             this.resultsContainer.html(html);
-            this.updateCounters({ all: 0, personel: 0, araclar: 0, demirbaslar: 0, cariler: 0, evraklar: 0, gorevler: 0, kacak: 0, aparatlar: 0 });
+            this.updateCounters({ all: 0, faturalar: 0, personel: 0, araclar: 0, demirbaslar: 0, cariler: 0, evraklar: 0, gorevler: 0, kacak: 0, aparatlar: 0 });
             this.totalVisibleItems = 0;
             this.selectedIndex = -1;
             this.openDropdown();
@@ -500,7 +503,7 @@
             var html = `
                 <div class="p-3 text-center text-muted font-size-12">
                     <i class="bx bx-search-alt font-size-24 d-block mb-1 text-muted opacity-50"></i>
-                    Personel, araç, demirbaş, cari veya evrak aramak için yazmaya başlayın.
+                    Personel, fatura, kalem, araç, demirbaş veya cari aramak için yazmaya başlayın.
                 </div>
             `;
             this.mobileResultsContainer.html(html);
@@ -523,6 +526,7 @@
             }
 
             var moduleConfig = {
+                faturalar:   { title: 'Faturalar', icon: 'bx-receipt', items: results.faturalar || [] },
                 personel:    { title: 'Personeller', icon: 'bx-user', items: results.personel || [] },
                 araclar:     { title: 'Araçlar', icon: 'bx-car', items: results.araclar || [] },
                 demirbaslar: { title: 'Demirbaşlar', icon: 'bx-cube', items: results.demirbaslar || [] },
@@ -610,6 +614,7 @@
             // Kategori seçiliyse ilgili modülün arama filtreli sayfasına yönlendir
             if (this.currentQuery && this.currentQuery.trim().length > 0) {
                 var catMap = {
+                    faturalar: 'index.php?p=efatura/giden-list&search=',
                     personel: 'index.php?p=personel/list&search=',
                     araclar: 'index.php?p=arac-takip/list&search=',
                     demirbaslar: 'index.php?p=demirbas/list&search=',

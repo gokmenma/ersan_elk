@@ -43,7 +43,7 @@ $query    = isset($_GET['q']) ? trim((string)$_GET['q']) : (isset($_POST['q']) ?
 $category = isset($_GET['category']) ? trim((string)$_GET['category']) : 'all';
 $limit    = isset($_GET['limit']) ? min(max((int)$_GET['limit'], 1), 20) : 8;
 
-$allowedCategories = ['all', 'personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
+$allowedCategories = ['all', 'personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar', 'faturalar'];
 if (!in_array($category, $allowedCategories, true)) {
     $category = 'all';
 }
@@ -52,29 +52,99 @@ if (!in_array($category, $allowedCategories, true)) {
 $allowedModules = [];
 $isSuperAdmin = Gate::isSuperAdmin();
 
-if ($isSuperAdmin || Gate::allows('Personel Listesi') || Gate::allows('Personeller') || Gate::allows('personel_listesi')) {
+if ($isSuperAdmin 
+    || Gate::allows('Personel Listesi') 
+    || Gate::allows('Personeller') 
+    || Gate::allows('personel_listesi') 
+    || Gate::allows('personel/list') 
+    || Gate::allows('personel')) {
     $allowedModules[] = 'personel';
 }
-if ($isSuperAdmin || Gate::allows('Araç Takip') || Gate::allows('Araç Takip/Yönetim')) {
+
+if ($isSuperAdmin 
+    || Gate::allows('Araç Takip') 
+    || Gate::allows('Araç Takip/Yönetim') 
+    || Gate::allows('arac_takip') 
+    || Gate::allows('arac_takip_yonetim') 
+    || Gate::allows('arac-takip/list') 
+    || Gate::allows('arac_takip_puantaj')) {
     $allowedModules[] = 'araclar';
 }
-if ($isSuperAdmin || Gate::allows('Demirbaş Yönetimi') || Gate::allows('Demirbaş/Zimmet İşlemleri Sayfası')) {
+
+if ($isSuperAdmin 
+    || Gate::allows('Demirbaş Yönetimi') 
+    || Gate::allows('Demirbaş/Zimmet İşlemleri Sayfası') 
+    || Gate::allows('demirbas/list') 
+    || Gate::allows('demirbas_yonetimi') 
+    || Gate::allows('demirbas')) {
     $allowedModules[] = 'demirbaslar';
 }
-if ($isSuperAdmin || Gate::allows('Cari Takibi') || Gate::allows('Cari Hesap Hareketleri')) {
+
+if ($isSuperAdmin 
+    || Gate::allows('Cari Takibi') 
+    || Gate::allows('Cari Hesap Hareketleri') 
+    || Gate::allows('cari_takibi') 
+    || Gate::allows('cari_hesap_hareketleri') 
+    || Gate::allows('cari/list') 
+    || Gate::allows('cari')) {
     $allowedModules[] = 'cariler';
 }
-if ($isSuperAdmin || Gate::allows('Evrak Takip') || Gate::allows('Evrak Bilgileri Sekmesi')) {
+
+if ($isSuperAdmin 
+    || Gate::allows('Evrak Takip') 
+    || Gate::allows('Evrak Bilgileri Sekmesi') 
+    || Gate::allows('evrak-takip/list') 
+    || Gate::allows('evrak_bilgileri_sekmesi') 
+    || Gate::allows('evrak-takip/gelen-evrak') 
+    || Gate::allows('evrak-takip/giden-evrak')) {
     $allowedModules[] = 'evraklar';
 }
-if ($isSuperAdmin || Gate::allows('Görevler') || Gate::allows('Görev ve Bildirimler')) {
+
+if ($isSuperAdmin 
+    || Gate::allows('Görevler') 
+    || Gate::allows('Görev ve Bildirimler') 
+    || Gate::allows('gorevler') 
+    || Gate::allows('gorevler/list') 
+    || Gate::allows('gorev_bildirim_log_kayitlari')) {
     $allowedModules[] = 'gorevler';
 }
-if ($isSuperAdmin || Gate::allows('Kaçak İşlemleri') || Gate::allows('Kaçak Bildirim Onayı')) {
+
+if ($isSuperAdmin 
+    || Gate::allows('Kaçak İşlemleri') 
+    || Gate::allows('Kaçak Bildirim Onayı') 
+    || Gate::allows('kacak_islemleri') 
+    || Gate::allows('kacak/list') 
+    || Gate::allows('kacak_onay') 
+    || Gate::allows('kacak_duzenle')) {
     $allowedModules[] = 'kacak';
 }
-if ($isSuperAdmin || Gate::allows('Aparat Takip') || Gate::allows('Aparat Deposu') || Gate::allows('Aparat Tanımları')) {
+
+if ($isSuperAdmin 
+    || Gate::allows('Aparat Takip') 
+    || Gate::allows('Aparat Deposu') 
+    || Gate::allows('Aparat Tanımları') 
+    || Gate::allows('aparat_takip') 
+    || Gate::allows('aparat-takip/list') 
+    || Gate::allows('aparat_tanim') 
+    || Gate::allows('aparat_depo')) {
     $allowedModules[] = 'aparatlar';
+}
+
+if ($isSuperAdmin 
+    || Gate::allows('E-Fatura & E-Arşiv Yönetimi') 
+    || Gate::allows('Gelen Faturalar') 
+    || Gate::allows('Taslak Faturalar') 
+    || Gate::allows('Yeni Fatura Kesme') 
+    || Gate::allows('E-Fatura Cari Listesi') 
+    || Gate::allows('E-Fatura Mal/Hizmet Tanımları') 
+    || Gate::allows('E-Fatura Ayarları') 
+    || Gate::allows('E-Fatura Dashboard') 
+    || Gate::allows('efatura/giden-list') 
+    || Gate::allows('efatura/gelen-list') 
+    || Gate::allows('efatura/taslak-list') 
+    || Gate::allows('efatura/olustur') 
+    || Gate::allows('efatura/dashboard')) {
+    $allowedModules[] = 'faturalar';
 }
 
 if (empty($allowedModules)) {

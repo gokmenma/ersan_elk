@@ -92,14 +92,83 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
 
         <?php
         $isSuperAdmin = \App\Service\Gate::isSuperAdmin();
-        $hasPersonelPerm = $isSuperAdmin || \App\Service\Gate::allows('Personel Listesi') || \App\Service\Gate::allows('Personeller') || \App\Service\Gate::allows('personel_listesi');
-        $hasAracPerm = $isSuperAdmin || \App\Service\Gate::allows('Araç Takip') || \App\Service\Gate::allows('Araç Takip/Yönetim');
-        $hasDemirbasPerm = $isSuperAdmin || \App\Service\Gate::allows('Demirbaş Yönetimi') || \App\Service\Gate::allows('Demirbaş/Zimmet İşlemleri Sayfası');
-        $hasCariPerm = $isSuperAdmin || \App\Service\Gate::allows('Cari Takibi') || \App\Service\Gate::allows('Cari Hesap Hareketleri');
-        $hasEvrakPerm = $isSuperAdmin || \App\Service\Gate::allows('Evrak Takip') || \App\Service\Gate::allows('Evrak Bilgileri Sekmesi');
-        $hasGorevPerm = $isSuperAdmin || \App\Service\Gate::allows('Görevler') || \App\Service\Gate::allows('Görev ve Bildirimler');
-        $hasKacakPerm = $isSuperAdmin || \App\Service\Gate::allows('Kaçak İşlemleri') || \App\Service\Gate::allows('Kaçak Bildirim Onayı');
-        $hasAparatPerm = $isSuperAdmin || \App\Service\Gate::allows('Aparat Takip') || \App\Service\Gate::allows('Aparat Deposu') || \App\Service\Gate::allows('Aparat Tanımları');
+
+        $hasPersonelPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Personel Listesi') 
+            || \App\Service\Gate::allows('Personeller') 
+            || \App\Service\Gate::allows('personel_listesi') 
+            || \App\Service\Gate::allows('personel/list') 
+            || \App\Service\Gate::allows('personel');
+
+        $hasAracPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Araç Takip') 
+            || \App\Service\Gate::allows('Araç Takip/Yönetim') 
+            || \App\Service\Gate::allows('arac_takip') 
+            || \App\Service\Gate::allows('arac_takip_yonetim') 
+            || \App\Service\Gate::allows('arac-takip/list') 
+            || \App\Service\Gate::allows('arac_takip_puantaj');
+
+        $hasDemirbasPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Demirbaş Yönetimi') 
+            || \App\Service\Gate::allows('Demirbaş/Zimmet İşlemleri Sayfası') 
+            || \App\Service\Gate::allows('demirbas/list') 
+            || \App\Service\Gate::allows('demirbas_yonetimi') 
+            || \App\Service\Gate::allows('demirbas');
+
+        $hasCariPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Cari Takibi') 
+            || \App\Service\Gate::allows('Cari Hesap Hareketleri') 
+            || \App\Service\Gate::allows('cari_takibi') 
+            || \App\Service\Gate::allows('cari_hesap_hareketleri') 
+            || \App\Service\Gate::allows('cari/list') 
+            || \App\Service\Gate::allows('cari');
+
+        $hasEvrakPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Evrak Takip') 
+            || \App\Service\Gate::allows('Evrak Bilgileri Sekmesi') 
+            || \App\Service\Gate::allows('evrak-takip/list') 
+            || \App\Service\Gate::allows('evrak_bilgileri_sekmesi') 
+            || \App\Service\Gate::allows('evrak-takip/gelen-evrak') 
+            || \App\Service\Gate::allows('evrak-takip/giden-evrak');
+
+        $hasGorevPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Görevler') 
+            || \App\Service\Gate::allows('Görev ve Bildirimler') 
+            || \App\Service\Gate::allows('gorevler') 
+            || \App\Service\Gate::allows('gorevler/list') 
+            || \App\Service\Gate::allows('gorev_bildirim_log_kayitlari');
+
+        $hasKacakPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Kaçak İşlemleri') 
+            || \App\Service\Gate::allows('Kaçak Bildirim Onayı') 
+            || \App\Service\Gate::allows('kacak_islemleri') 
+            || \App\Service\Gate::allows('kacak/list') 
+            || \App\Service\Gate::allows('kacak_onay') 
+            || \App\Service\Gate::allows('kacak_duzenle');
+
+        $hasAparatPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('Aparat Takip') 
+            || \App\Service\Gate::allows('Aparat Deposu') 
+            || \App\Service\Gate::allows('Aparat Tanımları') 
+            || \App\Service\Gate::allows('aparat_takip') 
+            || \App\Service\Gate::allows('aparat-takip/list') 
+            || \App\Service\Gate::allows('aparat_tanim') 
+            || \App\Service\Gate::allows('aparat_depo');
+
+        $hasFaturaPerm = $isSuperAdmin 
+            || \App\Service\Gate::allows('E-Fatura & E-Arşiv Yönetimi') 
+            || \App\Service\Gate::allows('Gelen Faturalar') 
+            || \App\Service\Gate::allows('Taslak Faturalar') 
+            || \App\Service\Gate::allows('Yeni Fatura Kesme') 
+            || \App\Service\Gate::allows('E-Fatura Cari Listesi') 
+            || \App\Service\Gate::allows('E-Fatura Mal/Hizmet Tanımları') 
+            || \App\Service\Gate::allows('E-Fatura Ayarları') 
+            || \App\Service\Gate::allows('E-Fatura Dashboard') 
+            || \App\Service\Gate::allows('efatura/giden-list') 
+            || \App\Service\Gate::allows('efatura/gelen-list') 
+            || \App\Service\Gate::allows('efatura/taslak-list') 
+            || \App\Service\Gate::allows('efatura/olustur') 
+            || \App\Service\Gate::allows('efatura/dashboard');
 
         $allowedSearchModules = [];
         if ($hasPersonelPerm) $allowedSearchModules[] = 'personel';
@@ -110,9 +179,13 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
         if ($hasGorevPerm) $allowedSearchModules[] = 'gorevler';
         if ($hasKacakPerm) $allowedSearchModules[] = 'kacak';
         if ($hasAparatPerm) $allowedSearchModules[] = 'aparatlar';
+        if ($hasFaturaPerm) $allowedSearchModules[] = 'faturalar';
 
         $hasAnySearchPerm = !empty($allowedSearchModules);
         ?>
+        <script>
+            window.GLOBAL_SEARCH_ALLOWED_MODULES = <?php echo json_encode($allowedSearchModules, JSON_UNESCAPED_UNICODE); ?>;
+        </script>
 
         <!-- Global Arama Kutusu (Geniş Ekranlarda Topbarın Tam Ortasında) -->
         <?php if ($hasAnySearchPerm): ?>
@@ -123,7 +196,7 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
                     <input type="text" 
                            class="global-search-input" 
                            id="global-search-input" 
-                           placeholder="Personel, araç, demirbaş, cari, evrak veya görev ara..." 
+                           placeholder="Personel, fatura/içerik, araç, demirbaş, cari veya evrak ara..." 
                            autocomplete="off" 
                            spellcheck="false">
                     <button type="button" class="global-search-clear-btn" id="global-search-clear" title="Temizle" style="display: none;">
@@ -144,6 +217,11 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
                         <button type="button" class="gs-cat-pill active" data-cat="all">
                             <i class="bx bx-grid-alt"></i> Tümü <span class="gs-count" id="count-all">0</span>
                         </button>
+                        <?php if ($hasFaturaPerm): ?>
+                        <button type="button" class="gs-cat-pill" data-cat="faturalar">
+                            <i class="bx bx-receipt"></i> Faturalar <span class="gs-count" id="count-faturalar">0</span>
+                        </button>
+                        <?php endif; ?>
                         <?php if ($hasPersonelPerm): ?>
                         <button type="button" class="gs-cat-pill" data-cat="personel">
                             <i class="bx bx-user"></i> Personeller <span class="gs-count" id="count-personel">0</span>
@@ -221,7 +299,7 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
                     <div class="p-3 border-bottom bg-light">
                         <div class="position-relative">
                             <input type="text" class="form-control rounded-pill ps-4 pe-4 font-size-13" id="global-search-mobile-input" 
-                                   placeholder="Personel, araç, demirbaş, cari veya evrak ara..." autocomplete="off">
+                                   placeholder="Personel, fatura/kalem, araç, demirbaş veya cari ara..." autocomplete="off">
                             <i class="bx bx-search-alt position-absolute top-50 start-0 translate-middle-y ms-2 text-muted font-size-16"></i>
                             <span class="position-absolute top-50 end-0 translate-middle-y me-2" id="global-search-mobile-spinner" style="display: none;">
                                 <i class="bx bx-loader-alt bx-spin text-primary font-size-16"></i>
@@ -231,7 +309,7 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
                     <div class="global-search-results-list" id="global-search-mobile-results" style="max-height: 380px; overflow-y: auto;">
                         <div class="p-4 text-center text-muted font-size-12">
                             <i class="bx bx-search-alt font-size-24 d-block mb-1 text-muted opacity-50"></i>
-                            Personel, araç, demirbaş, cari veya evrak aramak için yazmaya başlayın.
+                            Personel, fatura, kalem, araç, demirbaş veya cari aramak için yazmaya başlayın.
                         </div>
                     </div>
                 </div>

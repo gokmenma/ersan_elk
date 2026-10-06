@@ -43,7 +43,8 @@ class GlobalSearchModel extends Model
             'evraklar'    => 0,
             'gorevler'    => 0,
             'kacak'       => 0,
-            'aparatlar'   => 0
+            'aparatlar'   => 0,
+            'faturalar'   => 0
         ];
 
         $results = [
@@ -54,7 +55,8 @@ class GlobalSearchModel extends Model
             'evraklar'    => [],
             'gorevler'    => [],
             'kacak'       => [],
-            'aparatlar'   => []
+            'aparatlar'   => [],
+            'faturalar'   => []
         ];
 
         if (mb_strlen($rawQuery, 'UTF-8') < 1 || $firmaId <= 0) {
@@ -112,6 +114,12 @@ class GlobalSearchModel extends Model
             $counts['aparatlar'] = count($results['aparatlar']);
         }
 
+        // 9. FATURALAR & FATURA KALEMLERİ
+        if (in_array('faturalar', $allowedModules) && ($category === 'all' || $category === 'faturalar')) {
+            $results['faturalar'] = $this->searchFaturalar($rawQuery, $firmaId, $limit);
+            $counts['faturalar'] = count($results['faturalar']);
+        }
+
         $counts['all'] = array_sum([
             $counts['personel'],
             $counts['araclar'],
@@ -120,7 +128,8 @@ class GlobalSearchModel extends Model
             $counts['evraklar'],
             $counts['gorevler'],
             $counts['kacak'],
-            $counts['aparatlar']
+            $counts['aparatlar'],
+            $counts['faturalar']
         ]);
 
         return [
@@ -808,6 +817,157 @@ class GlobalSearchModel extends Model
             return $results;
         } catch (\PDOException $e) {
             error_log('GlobalSearchModel::searchAparatlar Error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Faturalarda ve fatura içeriklerinde (kalemlerinde) arama yapar
+     * 
+     * @param string $term Arama kelimesi
+     * @param int $firmaId Firma ID
+     * @param int $limit Maksimum sonuç sayısı
+     * @return array
+     */
+    public function searchFaturalar(string $term, int $firmaId, int $limit = 8): array
+    {
+        $term = trim($term);
+        if (empty($term) || $firmaId <= 0) {
+            return [];
+        }
+
+        $sql = "SELECT 
+                    f.id,
+                    f.yon,
+                    f.belge_turu,
+                    f.fatura_profili,
+                    f.fatura_tipi,
+                    f.ettn,
+                    f.fatura_no,
+                    f.fatura_tarihi,
+                    f.alici_unvan,
+                    f.alici_vkn_tckn,
+                    f.odenecek_tutar,
+                    f.para_birimi,
+                    f.siparis_no,
+                    f.irsaliye_no,
+                    f.gib_durum_kodu,
+                    f.gib_durum_aciklamasi,
+                    f.edm_durum,
+                    (
+                        SELECT fs.urun_hizmet_adi 
+                        FROM fatura_satirlari fs 
+                        WHERE fs.fatura_id = f.id 
+                          AND fs.deleted_at IS NULL 
+                          AND (fs.urun_hizmet_adi LIKE :term_line OR fs.urun_kodu LIKE :term_line OR fs.istisna_aciklama LIKE :term_line)
+                        LIMIT 1
+                    ) AS eslesen_kalem
+                FROM faturalar f
+                WHERE f.firm_id = :firma_id 
+                  AND f.deleted_at IS NULL
+                  AND (
+                      f.fatura_no LIKE :term 
+                      OR f.alici_unvan LIKE :term 
+                      OR f.alici_vkn_tckn LIKE :term 
+                      OR f.ettn LIKE :term 
+                      OR f.siparis_no LIKE :term 
+                      OR f.irsaliye_no LIKE :term 
+                      OR f.notlar LIKE :term 
+                      OR EXISTS (
+                          SELECT 1 
+                          FROM fatura_satirlari fs 
+                          WHERE fs.fatura_id = f.id 
+                            AND fs.deleted_at IS NULL 
+                            AND (fs.urun_hizmet_adi LIKE :term_sub OR fs.urun_kodu LIKE :term_sub OR fs.istisna_aciklama LIKE :term_sub)
+                      )
+                  )
+                ORDER BY 
+                    CASE 
+                        WHEN f.fatura_no LIKE :term_exact THEN 1
+                        WHEN f.fatura_no LIKE :term_starts THEN 2
+                        WHEN f.alici_unvan LIKE :term_starts THEN 3
+                        ELSE 4
+                    END,
+                    f.fatura_tarihi DESC,
+                    f.id DESC
+                LIMIT " . (int)$limit;
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':firma_id'    => $firmaId,
+                ':term'        => '%' . $term . '%',
+                ':term_line'   => '%' . $term . '%',
+                ':term_sub'    => '%' . $term . '%',
+                ':term_exact'  => $term,
+                ':term_starts' => $term . '%'
+            ]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $results = [];
+            foreach ($rows as $row) {
+                $encryptedId = Security::encrypt($row['id']);
+                
+                $faturaNo = trim($row['fatura_no'] ?? '');
+                $isTaslak = empty($faturaNo) || $faturaNo === 'Taslak';
+                $title = $faturaNo ?: ($row['ettn'] ? ('Taslak (' . mb_substr($row['ettn'], 0, 8) . '...)') : ('Taslak Fatura #' . $row['id']));
+                
+                $aliciUnvan = trim($row['alici_unvan'] ?? '');
+                $subtitle = $aliciUnvan ?: 'Alıcı Ünvanı Belirtilmemiş';
+
+                $extraParts = [];
+                if (!empty($row['eslesen_kalem'])) {
+                    $extraParts[] = 'Kalem: ' . $row['eslesen_kalem'];
+                } else {
+                    $belgeTuru = ($row['belge_turu'] ?? '') === 'EARSIV' ? 'e-Arşiv' : 'e-Fatura';
+                    $tip = $row['fatura_tipi'] ?: 'SATIŞ';
+                    $extraParts[] = $belgeTuru . ' (' . $tip . ')';
+                    if (!empty($row['alici_vkn_tckn'])) {
+                        $extraParts[] = 'VKN/TCKN: ' . $row['alici_vkn_tckn'];
+                    }
+                }
+                $extraInfo = implode(' • ', $extraParts);
+
+                $dateStr = !empty($row['fatura_tarihi']) ? date('d.m.Y', strtotime($row['fatura_tarihi'])) : '';
+
+                $yon = strtoupper($row['yon'] ?? 'GIDEN');
+                $tutar = (float)($row['odenecek_tutar'] ?? 0);
+                $paraBirimi = $row['para_birimi'] ?: 'TRY';
+                $paraSembol = ($paraBirimi === 'TRY' || $paraBirimi === 'TL') ? '₺' : $paraBirimi;
+                $formattedTutar = number_format($tutar, 2, ',', '.') . ' ' . $paraSembol;
+
+                $badgeText = ($yon === 'GELEN' ? 'Gelen: ' : 'Giden: ') . $formattedTutar;
+                $badgeClass = $yon === 'GELEN' ? 'badge-info' : 'badge-success';
+
+                $searchTerm = $faturaNo ?: ($row['ettn'] ?: $aliciUnvan);
+                if ($isTaslak) {
+                    $url = 'index.php?p=efatura/taslak-list&search=' . urlencode($searchTerm);
+                } elseif ($yon === 'GELEN') {
+                    $url = 'index.php?p=efatura/gelen-list&search=' . urlencode($searchTerm);
+                } else {
+                    $url = 'index.php?p=efatura/giden-list&search=' . urlencode($searchTerm);
+                }
+
+                $results[] = [
+                    'id'          => (int)$row['id'],
+                    'enc_id'      => $encryptedId,
+                    'type'        => 'faturalar',
+                    'title'       => $title,
+                    'subtitle'    => $subtitle,
+                    'extra_info'  => $extraInfo,
+                    'date'        => $dateStr,
+                    'badge'       => $badgeText,
+                    'badge_class' => $badgeClass,
+                    'initial'     => $yon === 'GELEN' ? 'GF' : 'EF',
+                    'color_theme' => 'rose',
+                    'avatar_url'  => null,
+                    'url'         => $url
+                ];
+            }
+
+            return $results;
+        } catch (\PDOException $e) {
+            error_log('GlobalSearchModel::searchFaturalar Error: ' . $e->getMessage());
             return [];
         }
     }
