@@ -7,21 +7,34 @@ final class EInvoiceSecurity
 {
     public static function checkPermission(string $action): bool
     {
+        $listType = $_REQUEST['list_type'] ?? 'giden';
+
         $perms = match ($action) {
-            'dashboard_stats', 'list_giden', 'list_invoices', 'summary_stats', 'preview_html', 'download_xml', 'download_pdf', 'export_excel', 'invoice_history', 'get-unique-values', 'get_unique_values', 'get_invoice_payment_info', 'get_kasa_list', 'list_note_templates', 'get_note_template', 'get_serials'
-                => ['efatura/dashboard', 'efatura/giden-list', 'efatura/taslak-list', 'efatura/gelen-list', 'efatura/olustur', 'efatura/ayarlar'],
+            'dashboard_stats' => ['efatura/dashboard'],
+            'list_invoices', 'summary_stats', 'export_excel', 'get_unique_values', 'get-unique-values' => match ($listType) {
+                'gelen'  => ['efatura/gelen-list'],
+                'taslak' => ['efatura/taslak-list'],
+                default  => ['efatura/giden-list'],
+            },
+            'list_giden' => ['efatura/giden-list'],
+            'preview_html', 'download_xml', 'download_pdf', 'invoice_history'
+                => ['efatura/dashboard', 'efatura/giden-list', 'efatura/taslak-list', 'efatura/gelen-list'],
+            'get_invoice_payment_info', 'get_kasa_list', 'list_note_templates', 'get_note_template', 'get_serials'
+                => ['efatura/olustur', 'efatura/giden-list', 'efatura/taslak-list', 'efatura/ayarlar'],
             'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'save_invoice_payment', 'delete_invoice_payment', 'save_note_template', 'delete_note_template', 'set_default_note_template'
-                => ['efatura/olustur', 'efatura/ayarlar', 'efatura/taslak-list', 'efatura/giden-list'],
+                => ['efatura/olustur', 'efatura/taslak-list'],
             'list_cariler', 'get_cari', 'save_cari', 'delete_cari', 'search_cariler', 'summary_cariler'
-                => ['efatura/cari-list', 'efatura/olustur', 'efatura/giden-list', 'efatura/taslak-list'],
+                => ['efatura/cari-list', 'efatura/olustur'],
             'list_mal_hizmet', 'get_mal_hizmet', 'save_mal_hizmet', 'delete_mal_hizmet', 'search_mal_hizmet', 'summary_mal_hizmet'
-                => ['efatura/mal-hizmet-list', 'efatura/olustur', 'efatura/giden-list', 'efatura/taslak-list'],
-            'send_invoice', 'bulk_send_invoices', 'cancel_invoice'
-                => ['efatura/taslak-list', 'efatura/giden-list', 'efatura/olustur'],
+                => ['efatura/mal-hizmet-list', 'efatura/olustur'],
+            'send_invoice', 'bulk_send_invoices'
+                => ['efatura/taslak-list', 'efatura/giden-list'],
+            'cancel_invoice'
+                => ['efatura/giden-list'],
             'sync_status', 'sync_outgoing_invoices', 'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'refresh_history'
-                => ['efatura/giden-list', 'efatura/taslak-list', 'efatura/olustur'],
+                => ['efatura/giden-list', 'efatura/taslak-list'],
             'sync_incoming_invoices', 'respond_commercial'
-                => ['efatura/gelen-list', 'efatura/giden-list'],
+                => ['efatura/gelen-list'],
             'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials'
                 => ['efatura/ayarlar'],
             'connection_info'

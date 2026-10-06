@@ -1,7 +1,5 @@
 <?php
-if (!\App\Service\Gate::allows('efatura/dashboard') && !\App\Service\Gate::allows('efatura/giden-list') && !\App\Service\Gate::allows('efatura/gelen-list') && !\App\Service\Gate::allows('efatura/taslak-list')) {
-    \App\Service\Gate::authorizeOrDie('efatura/giden-list');
-}
+\App\Service\Gate::authorizeOrDie('efatura/dashboard');
 use App\Model\EInvoiceModel;
 use App\Helper\Security;
 
@@ -132,62 +130,85 @@ function fmtMobMoney($val) {
     <div>
         <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider mb-2 px-1">E-Fatura İşlemleri</h2>
         <div class="grid grid-cols-3 gap-2">
+            <?php if (\App\Service\Gate::allows('efatura/olustur')): ?>
             <a href="?p=efatura-olustur" class="bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-transform">
                 <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-1.5">
                     <span class="material-symbols-outlined text-[22px]">post_add</span>
                 </div>
                 <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200">Fatura Kes</span>
             </a>
+            <?php endif; ?>
 
+            <?php if (\App\Service\Gate::allows('efatura/giden-list')): ?>
             <a href="?p=efatura-giden" class="bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-transform">
                 <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center mb-1.5">
                     <span class="material-symbols-outlined text-[22px]">upload_file</span>
                 </div>
                 <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200">Gidenler</span>
             </a>
+            <?php endif; ?>
 
+            <?php if (\App\Service\Gate::allows('efatura/gelen-list')): ?>
             <a href="?p=efatura-gelen" class="bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-transform">
                 <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-900/30 text-sky-600 flex items-center justify-center mb-1.5">
                     <span class="material-symbols-outlined text-[22px]">download_for_offline</span>
                 </div>
                 <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200">Gelenler</span>
             </a>
+            <?php endif; ?>
 
+            <?php if (\App\Service\Gate::allows('efatura/taslak-list')): ?>
             <a href="?p=efatura-taslak" class="bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-transform">
                 <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center mb-1.5">
                     <span class="material-symbols-outlined text-[22px]">edit_note</span>
                 </div>
                 <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200">Taslaklar</span>
             </a>
+            <?php endif; ?>
 
+            <?php if (\App\Service\Gate::allows('efatura/cari-list')): ?>
             <a href="?p=efatura-cari" class="bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-transform">
                 <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center mb-1.5">
                     <span class="material-symbols-outlined text-[22px]">contact_page</span>
                 </div>
                 <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200">Cariler</span>
             </a>
+            <?php endif; ?>
 
+            <?php if (\App\Service\Gate::allows('efatura/mal-hizmet-list')): ?>
             <a href="?p=efatura-mal-hizmet" class="bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-100 dark:border-slate-700/60 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-transform">
                 <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center mb-1.5">
                     <span class="material-symbols-outlined text-[22px]">inventory_2</span>
                 </div>
                 <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200">Mal/Hizmet</span>
             </a>
+            <?php endif; ?>
         </div>
     </div>
 
     <!-- 4. Son Faturalar Hızlı Akışı -->
+    <?php 
+    $canSeeGelen = \App\Service\Gate::allows('efatura/gelen-list');
+    $canSeeGiden = \App\Service\Gate::allows('efatura/giden-list');
+    if ($canSeeGelen || $canSeeGiden):
+        $defaultTab = $canSeeGelen ? 'gelen' : 'giden';
+    ?>
     <div>
         <div class="flex items-center justify-between mb-2 px-1">
             <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">Son Faturalar</h2>
             <div class="flex gap-1">
-                <button type="button" id="tabBtnGelen" onclick="switchRecentTab('gelen')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-primary text-white">Gelen</button>
-                <button type="button" id="tabBtnGiden" onclick="switchRecentTab('giden')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Giden</button>
+                <?php if ($canSeeGelen): ?>
+                <button type="button" id="tabBtnGelen" onclick="switchRecentTab('gelen')" class="px-2 py-1 rounded-lg text-[10px] font-bold <?= $defaultTab === 'gelen' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' ?>">Gelen</button>
+                <?php endif; ?>
+                <?php if ($canSeeGiden): ?>
+                <button type="button" id="tabBtnGiden" onclick="switchRecentTab('giden')" class="px-2 py-1 rounded-lg text-[10px] font-bold <?= $defaultTab === 'giden' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' ?>">Giden</button>
+                <?php endif; ?>
             </div>
         </div>
 
         <!-- Gelen Son Faturalar -->
-        <div id="recentGelenList" class="space-y-2">
+        <?php if ($canSeeGelen): ?>
+        <div id="recentGelenList" class="space-y-2 <?= $defaultTab === 'gelen' ? '' : 'hidden' ?>">
             <?php 
             $recentGelen = $dashData['recent_gelen'] ?? [];
             if (empty($recentGelen)): ?>
@@ -215,9 +236,11 @@ function fmtMobMoney($val) {
                 </div>
             <?php endforeach; endif; ?>
         </div>
+        <?php endif; ?>
 
-        <!-- Giden Son Faturalar (Gizli) -->
-        <div id="recentGidenList" class="space-y-2 hidden">
+        <!-- Giden Son Faturalar -->
+        <?php if ($canSeeGiden): ?>
+        <div id="recentGidenList" class="space-y-2 <?= $defaultTab === 'giden' ? '' : 'hidden' ?>">
             <?php 
             $recentGiden = $dashData['recent_giden'] ?? [];
             if (empty($recentGiden)): ?>
@@ -245,7 +268,9 @@ function fmtMobMoney($val) {
                 </div>
             <?php endforeach; endif; ?>
         </div>
+        <?php endif; ?>
     </div>
+    <?php endif; ?>
 </div>
 
 <!-- Fatura PDF Önizleme Modalı / Sheet -->

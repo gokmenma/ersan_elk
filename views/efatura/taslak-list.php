@@ -1,5 +1,5 @@
 <?php
-\App\Service\Gate::authorizeOrDie('efatura/giden-list');
+\App\Service\Gate::authorizeOrDie('efatura/taslak-list');
 use App\Service\Gate;
 
 $maintitle = 'E-Fatura & E-Arşiv';
