@@ -21,6 +21,7 @@
             <div class="space-y-1.5">
                 <?php
                 $more_menu_items = [
+                    ['id' => 'efatura',  'label' => 'E-Fatura & Finans', 'icon' => 'receipt_long',    'color' => 'indigo', 'link' => '?p=efatura'],
                     ['id' => 'kasa',     'label' => 'Kasa Yönetimi',    'icon' => 'account_balance', 'color' => 'amber',  'link' => '?p=kasa'],
                     ['id' => 'raporlar', 'label' => 'İstatistikler',    'icon' => 'bar_chart',       'color' => 'purple', 'link' => '?p=raporlar'],
                     ['id' => 'gorevler', 'label' => 'Görev Takibi',     'icon' => 'check_circle',    'color' => 'green',  'link' => '?p=gorevler'],

@@ -80,7 +80,7 @@ try {
             echo json_encode(['status' => 'success', 'data' => $invoiceService->history($invoiceId, $firmId, $action === 'refresh_history')]);
             break;
         case 'download_pdf':
-            $invoiceId = EInvoiceSecurity::invoiceId($_GET['invoice_id'] ?? '');
+            $invoiceId = EInvoiceSecurity::invoiceId($_GET['invoice_id'] ?? ($_GET['id'] ?? ($_POST['invoice_id'] ?? ($_POST['id'] ?? ''))));
             $pdf = $invoiceService->downloadPdf($invoiceId, $firmId);
             $invoice = $invoiceModel->getInvoiceById($invoiceId, $firmId);
             $filename = preg_replace('/[^A-Za-z0-9_-]/', '', $invoice['fatura_no'] ?: $invoice['ettn']) . '.pdf';
@@ -190,7 +190,7 @@ try {
 
         // 5. HTML Önizleme Render
         case 'preview_html':
-            $encryptedId = $_GET['invoice_id'] ?? ($_POST['invoice_id'] ?? '');
+            $encryptedId = $_GET['invoice_id'] ?? ($_GET['id'] ?? ($_POST['invoice_id'] ?? ($_POST['id'] ?? '')));
             $invoiceId = EInvoiceSecurity::invoiceId($encryptedId);
 
             if (!$invoiceId) {
@@ -249,6 +249,14 @@ try {
             $endDate = !empty($_GET['bitis_tarihi']) ? trim($_GET['bitis_tarihi']) : null;
             $stats = $invoiceModel->getSummaryStats($firmId, $yon, $listType, $startDate, $endDate);
             echo json_encode(['status' => 'success', 'data' => $stats]);
+            break;
+
+        // 7.1 Dashboard Kapsamlı Finansal İstatistikler
+        case 'dashboard_stats':
+            $startDate = !empty($_GET['baslangic_tarihi']) ? trim($_GET['baslangic_tarihi']) : null;
+            $endDate = !empty($_GET['bitis_tarihi']) ? trim($_GET['bitis_tarihi']) : null;
+            $dashboardData = $invoiceModel->getDashboardData($firmId, $startDate, $endDate);
+            echo json_encode(['status' => 'success', 'data' => $dashboardData]);
             break;
 
         // 8. Toplu Taslak Fatura Gönderimi

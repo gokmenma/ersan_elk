@@ -1097,6 +1097,382 @@ class EInvoiceModel extends Model
     }
 
     /**
+     * E-Fatura Kapsamlı Dashboard Verilerini Getirir
+     */
+    public function getDashboardData(int $firmId, ?string $startDate = null, ?string $endDate = null): array
+    {
+        try {
+            $dateWhereF = "";
+            $dateWhereTahsilat = "";
+            $params = ['firm_id' => $firmId];
+            $tahsilatParams = ['firm_id' => $firmId];
+
+            if (!empty($startDate) && !empty($endDate)) {
+                $dateWhereF = " AND f.fatura_tarihi BETWEEN :start_date AND :end_date";
+                $dateWhereTahsilat = " AND islem_tarihi BETWEEN :start_date AND :end_date";
+                $params['start_date'] = $startDate;
+                $params['end_date'] = $endDate;
+                $tahsilatParams['start_date'] = $startDate;
+                $tahsilatParams['end_date'] = $endDate;
+            } elseif (!empty($startDate)) {
+                $dateWhereF = " AND f.fatura_tarihi >= :start_date";
+                $dateWhereTahsilat = " AND islem_tarihi >= :start_date";
+                $params['start_date'] = $startDate;
+                $tahsilatParams['start_date'] = $startDate;
+            } elseif (!empty($endDate)) {
+                $dateWhereF = " AND f.fatura_tarihi <= :end_date";
+                $dateWhereTahsilat = " AND islem_tarihi <= :end_date";
+                $params['end_date'] = $endDate;
+                $tahsilatParams['end_date'] = $endDate;
+            }
+
+            // 1. Gelen Faturalar Özeti (Alış / İndirilecek KDV)
+            $gelenStmt = $this->db->prepare("
+                SELECT 
+                    COUNT(*) as toplam_adet,
+                    COALESCE(SUM(f.kdv_matrahi), 0) as toplam_matrah,
+                    COALESCE(SUM(f.hesaplanan_kdv), 0) as toplam_kdv,
+                    COALESCE(SUM(f.tevkifat_tutari), 0) as toplam_tevkifat,
+                    COALESCE(SUM(f.odenecek_tutar), 0) as toplam_tutar,
+                    COUNT(CASE WHEN f.ticari_yanit = 'KABUL' THEN 1 END) as kabul_adet,
+                    COUNT(CASE WHEN f.ticari_yanit = 'RED' THEN 1 END) as red_adet,
+                    COUNT(CASE WHEN f.ticari_yanit = 'BEKLIYOR' THEN 1 END) as bekleyen_adet,
+                    COUNT(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN 1 END) as bu_ay_adet,
+                    COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.kdv_matrahi ELSE 0 END), 0) as bu_ay_matrah,
+                    COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.hesaplanan_kdv ELSE 0 END), 0) as bu_ay_kdv,
+                    COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.yon = 'GELEN'
+                  AND f.deleted_at IS NULL
+                  {$dateWhereF}
+            ");
+            $gelenStmt->execute($params);
+            $gelenSummary = $gelenStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            // 2. Giden Faturalar Özeti (Satış / Hesaplanan KDV - Taslak Hariç)
+            $gidenStmt = $this->db->prepare("
+                SELECT 
+                    COUNT(*) as toplam_adet,
+                    COALESCE(SUM(f.kdv_matrahi), 0) as toplam_matrah,
+                    COALESCE(SUM(f.hesaplanan_kdv), 0) as toplam_kdv,
+                    COALESCE(SUM(f.tevkifat_tutari), 0) as toplam_tevkifat,
+                    COALESCE(SUM(f.odenecek_tutar), 0) as toplam_tutar,
+                    COUNT(CASE WHEN f.belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
+                    COUNT(CASE WHEN f.belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
+                    COUNT(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) as onaylanan_adet,
+                    COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN f.odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
+                    COUNT(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN 1 END) as bekleyen_adet,
+                    COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN f.odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
+                    COUNT(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN 1 END) as bu_ay_adet,
+                    COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.kdv_matrahi ELSE 0 END), 0) as bu_ay_matrah,
+                    COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.hesaplanan_kdv ELSE 0 END), 0) as bu_ay_kdv,
+                    COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.yon = 'GIDEN'
+                  AND f.entegrator_durum_kodu <> 'TASLAK'
+                  AND f.deleted_at IS NULL
+                  {$dateWhereF}
+            ");
+            $gidenStmt->execute($params);
+            $gidenSummary = $gidenStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            // 3. Taslak Faturalar Özeti
+            $taslakStmt = $this->db->prepare("
+                SELECT 
+                    COUNT(*) as toplam_adet,
+                    COALESCE(SUM(f.kdv_matrahi), 0) as toplam_matrah,
+                    COALESCE(SUM(f.hesaplanan_kdv), 0) as toplam_kdv,
+                    COALESCE(SUM(f.odenecek_tutar), 0) as toplam_tutar
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.yon = 'GIDEN'
+                  AND f.entegrator_durum_kodu = 'TASLAK'
+                  AND f.deleted_at IS NULL
+                  {$dateWhereF}
+            ");
+            $taslakStmt->execute($params);
+            $taslakSummary = $taslakStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            // 4. KDV Dengesi Hesaplamaları
+            $gidenMatrah = (float)($gidenSummary['toplam_matrah'] ?? 0);
+            $gelenMatrah = (float)($gelenSummary['toplam_matrah'] ?? 0);
+            $gidenKdv = (float)($gidenSummary['toplam_kdv'] ?? 0); // Hesaplanan KDV
+            $gelenKdv = (float)($gelenSummary['toplam_kdv'] ?? 0); // İndirilecek KDV
+            $gidenTutar = (float)($gidenSummary['toplam_tutar'] ?? 0);
+            $gelenTutar = (float)($gelenSummary['toplam_tutar'] ?? 0);
+
+            $netKdv = $gidenKdv - $gelenKdv;
+            $odenecekKdv = max(0, $netKdv);
+            $devredenKdv = $netKdv < 0 ? abs($netKdv) : 0;
+            $netMatrahFarki = $gidenMatrah - $gelenMatrah;
+
+            // 5. Tahsilat Bilgisi
+            $tahsilatStmt = $this->db->prepare("
+                SELECT 
+                    COALESCE(SUM(tutar), 0) as toplam_tahsilat,
+                    COUNT(*) as tahsilat_adedi
+                FROM fatura_tahsilatlari
+                WHERE firm_id = :firm_id
+                  AND deleted_at IS NULL
+                  AND is_active = 1
+                  {$dateWhereTahsilat}
+            ");
+            $tahsilatStmt->execute($tahsilatParams);
+            $tahsilatSummary = $tahsilatStmt->fetch(PDO::FETCH_ASSOC) ?: ['toplam_tahsilat' => 0, 'tahsilat_adedi' => 0];
+
+            $toplamTahsilat = (float)$tahsilatSummary['toplam_tahsilat'];
+            $kalanTahsilat = max(0, $gidenTutar - $toplamTahsilat);
+            $tahsilatOrani = $gidenTutar > 0 ? round(($toplamTahsilat / $gidenTutar) * 100, 1) : 0;
+
+            // 6. Aylık Trend Dağılımı (Grafik için)
+            $aylikStmt = $this->db->prepare("
+                SELECT 
+                    DATE_FORMAT(f.fatura_tarihi, '%Y-%m') as ay,
+                    f.yon,
+                    COUNT(*) as adet,
+                    COALESCE(SUM(f.kdv_matrahi), 0) as matrah,
+                    COALESCE(SUM(f.hesaplanan_kdv), 0) as kdv,
+                    COALESCE(SUM(f.odenecek_tutar), 0) as tutar
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.deleted_at IS NULL
+                  AND (f.yon = 'GELEN' OR (f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'))
+                  {$dateWhereF}
+                GROUP BY DATE_FORMAT(f.fatura_tarihi, '%Y-%m'), f.yon
+                ORDER BY ay ASC
+            ");
+            $aylikStmt->execute($params);
+            $aylikRows = $aylikStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Aylık verileri düzenleyelim
+            $monthlyMap = [];
+            foreach ($aylikRows as $arow) {
+                $m = $arow['ay'];
+                if (!isset($monthlyMap[$m])) {
+                    $monthlyMap[$m] = [
+                        'ay' => $m,
+                        'ay_adi' => date('M Y', strtotime($m . '-01')),
+                        'giden_matrah' => 0, 'giden_kdv' => 0, 'giden_tutar' => 0, 'giden_adet' => 0,
+                        'gelen_matrah' => 0, 'gelen_kdv' => 0, 'gelen_tutar' => 0, 'gelen_adet' => 0,
+                        'net_kdv' => 0, 'odenecek_kdv' => 0, 'devreden_kdv' => 0
+                    ];
+                }
+                if ($arow['yon'] === 'GIDEN') {
+                    $monthlyMap[$m]['giden_matrah'] = (float)$arow['matrah'];
+                    $monthlyMap[$m]['giden_kdv'] = (float)$arow['kdv'];
+                    $monthlyMap[$m]['giden_tutar'] = (float)$arow['tutar'];
+                    $monthlyMap[$m]['giden_adet'] = (int)$arow['adet'];
+                } else {
+                    $monthlyMap[$m]['gelen_matrah'] = (float)$arow['matrah'];
+                    $monthlyMap[$m]['gelen_kdv'] = (float)$arow['kdv'];
+                    $monthlyMap[$m]['gelen_tutar'] = (float)$arow['tutar'];
+                    $monthlyMap[$m]['gelen_adet'] = (int)$arow['adet'];
+                }
+            }
+
+            foreach ($monthlyMap as &$mItem) {
+                $mNet = $mItem['giden_kdv'] - $mItem['gelen_kdv'];
+                $mItem['net_kdv'] = $mNet;
+                $mItem['odenecek_kdv'] = max(0, $mNet);
+                $mItem['devreden_kdv'] = $mNet < 0 ? abs($mNet) : 0;
+            }
+            unset($mItem);
+            ksort($monthlyMap);
+            $monthlyTrend = array_values($monthlyMap);
+
+            // 7. KDV Oranlarına Göre Dağılım
+            $kdvOranStmt = $this->db->prepare("
+                SELECT 
+                    s.kdv_orani,
+                    f.yon,
+                    COALESCE(SUM(s.satir_toplami), 0) as matrah,
+                    COALESCE(SUM(s.kdv_tutari), 0) as kdv_tutari,
+                    COUNT(*) as satir_sayisi
+                FROM fatura_satirlari s
+                JOIN faturalar f ON f.id = s.fatura_id
+                WHERE f.firm_id = :firm_id
+                  AND f.deleted_at IS NULL
+                  AND s.deleted_at IS NULL
+                  AND (f.yon = 'GELEN' OR (f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'))
+                  {$dateWhereF}
+                GROUP BY s.kdv_orani, f.yon
+                ORDER BY s.kdv_orani DESC
+            ");
+            $kdvOranStmt->execute($params);
+            $kdvOranRows = $kdvOranStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 8. Fatura Tiplerine Göre Dağılım
+            $faturaTipStmt = $this->db->prepare("
+                SELECT 
+                    f.fatura_tipi,
+                    f.yon,
+                    COUNT(*) as adet,
+                    COALESCE(SUM(f.odenecek_tutar), 0) as tutar
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.deleted_at IS NULL
+                  AND (f.yon = 'GELEN' OR (f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'))
+                  {$dateWhereF}
+                GROUP BY f.fatura_tipi, f.yon
+                ORDER BY tutar DESC
+            ");
+            $faturaTipStmt->execute($params);
+            $faturaTipRows = $faturaTipStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 9. En Çok Satış Yapılan İlk 5 Müşteri (Giden)
+            $topGidenStmt = $this->db->prepare("
+                SELECT 
+                    f.alici_unvan,
+                    f.alici_vkn_tckn,
+                    COUNT(*) as adet,
+                    COALESCE(SUM(f.kdv_matrahi), 0) as matrah,
+                    COALESCE(SUM(f.hesaplanan_kdv), 0) as kdv,
+                    COALESCE(SUM(f.odenecek_tutar), 0) as toplam
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.yon = 'GIDEN'
+                  AND f.entegrator_durum_kodu <> 'TASLAK'
+                  AND f.deleted_at IS NULL
+                  {$dateWhereF}
+                GROUP BY f.alici_unvan, f.alici_vkn_tckn
+                ORDER BY toplam DESC
+                LIMIT 5
+            ");
+            $topGidenStmt->execute($params);
+            $topGidenCariler = $topGidenStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 10. En Çok Alış Yapılan İlk 5 Tedarikçi (Gelen)
+            $topGelenStmt = $this->db->prepare("
+                SELECT 
+                    f.alici_unvan,
+                    f.alici_vkn_tckn,
+                    COUNT(*) as adet,
+                    COALESCE(SUM(f.kdv_matrahi), 0) as matrah,
+                    COALESCE(SUM(f.hesaplanan_kdv), 0) as kdv,
+                    COALESCE(SUM(f.odenecek_tutar), 0) as toplam
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.yon = 'GELEN'
+                  AND f.deleted_at IS NULL
+                  {$dateWhereF}
+                GROUP BY f.alici_unvan, f.alici_vkn_tckn
+                ORDER BY toplam DESC
+                LIMIT 5
+            ");
+            $topGelenStmt->execute($params);
+            $topGelenCariler = $topGelenStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 11. Son 5 Giden Fatura
+            $recentGidenStmt = $this->db->prepare("
+                SELECT 
+                    f.id, f.fatura_no, f.fatura_tarihi, f.alici_unvan, f.belge_turu, 
+                    f.odenecek_tutar, f.para_birimi, f.entegrator_durum_kodu, f.gib_durum_kodu
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.yon = 'GIDEN'
+                  AND f.deleted_at IS NULL
+                ORDER BY f.fatura_tarihi DESC, f.id DESC
+                LIMIT 5
+            ");
+            $recentGidenStmt->execute(['firm_id' => $firmId]);
+            $recentGiden = $recentGidenStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($recentGiden as &$rg) {
+                $rg['encrypted_id'] = Security::encrypt((string)$rg['id']);
+                $rg['fatura_tarihi_fmt'] = date('d.m.Y', strtotime($rg['fatura_tarihi']));
+                $rg['odenecek_tutar_fmt'] = number_format((float)$rg['odenecek_tutar'], 2, ',', '.') . ' ' . $rg['para_birimi'];
+            }
+            unset($rg);
+
+            // 12. Son 5 Gelen Fatura
+            $recentGelenStmt = $this->db->prepare("
+                SELECT 
+                    f.id, f.fatura_no, f.fatura_tarihi, f.alici_unvan, f.belge_turu, 
+                    f.odenecek_tutar, f.para_birimi, f.ticari_yanit, f.gib_durum_kodu
+                FROM faturalar f
+                WHERE f.firm_id = :firm_id
+                  AND f.yon = 'GELEN'
+                  AND f.deleted_at IS NULL
+                ORDER BY f.fatura_tarihi DESC, f.id DESC
+                LIMIT 5
+            ");
+            $recentGelenStmt->execute(['firm_id' => $firmId]);
+            $recentGelen = $recentGelenStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($recentGelen as &$rgl) {
+                $rgl['encrypted_id'] = Security::encrypt((string)$rgl['id']);
+                $rgl['fatura_tarihi_fmt'] = date('d.m.Y', strtotime($rgl['fatura_tarihi']));
+                $rgl['odenecek_tutar_fmt'] = number_format((float)$rgl['odenecek_tutar'], 2, ',', '.') . ' ' . $rgl['para_birimi'];
+            }
+            unset($rgl);
+
+            return [
+                'gelen' => [
+                    'toplam_adet'     => (int)($gelenSummary['toplam_adet'] ?? 0),
+                    'toplam_matrah'   => (float)($gelenSummary['toplam_matrah'] ?? 0),
+                    'toplam_kdv'      => (float)($gelenSummary['toplam_kdv'] ?? 0),
+                    'toplam_tevkifat' => (float)($gelenSummary['toplam_tevkifat'] ?? 0),
+                    'toplam_tutar'    => (float)($gelenSummary['toplam_tutar'] ?? 0),
+                    'kabul_adet'      => (int)($gelenSummary['kabul_adet'] ?? 0),
+                    'red_adet'        => (int)($gelenSummary['red_adet'] ?? 0),
+                    'bekleyen_adet'   => (int)($gelenSummary['bekleyen_adet'] ?? 0),
+                    'bu_ay_adet'      => (int)($gelenSummary['bu_ay_adet'] ?? 0),
+                    'bu_ay_matrah'    => (float)($gelenSummary['bu_ay_matrah'] ?? 0),
+                    'bu_ay_kdv'       => (float)($gelenSummary['bu_ay_kdv'] ?? 0),
+                    'bu_ay_tutar'     => (float)($gelenSummary['bu_ay_tutar'] ?? 0),
+                ],
+                'giden' => [
+                    'toplam_adet'     => (int)($gidenSummary['toplam_adet'] ?? 0),
+                    'toplam_matrah'   => (float)($gidenSummary['toplam_matrah'] ?? 0),
+                    'toplam_kdv'      => (float)($gidenSummary['toplam_kdv'] ?? 0),
+                    'toplam_tevkifat' => (float)($gidenSummary['toplam_tevkifat'] ?? 0),
+                    'toplam_tutar'    => (float)($gidenSummary['toplam_tutar'] ?? 0),
+                    'efatura_adet'    => (int)($gidenSummary['efatura_adet'] ?? 0),
+                    'earsiv_adet'     => (int)($gidenSummary['earsiv_adet'] ?? 0),
+                    'onaylanan_adet'  => (int)($gidenSummary['onaylanan_adet'] ?? 0),
+                    'onaylanan_tutar' => (float)($gidenSummary['onaylanan_tutar'] ?? 0),
+                    'bekleyen_adet'   => (int)($gidenSummary['bekleyen_adet'] ?? 0),
+                    'bekleyen_tutar'  => (float)($gidenSummary['bekleyen_tutar'] ?? 0),
+                    'bu_ay_adet'      => (int)($gidenSummary['bu_ay_adet'] ?? 0),
+                    'bu_ay_matrah'    => (float)($gidenSummary['bu_ay_matrah'] ?? 0),
+                    'bu_ay_kdv'       => (float)($gidenSummary['bu_ay_kdv'] ?? 0),
+                    'bu_ay_tutar'     => (float)($gidenSummary['bu_ay_tutar'] ?? 0),
+                ],
+                'taslak' => [
+                    'toplam_adet'     => (int)($taslakSummary['toplam_adet'] ?? 0),
+                    'toplam_matrah'   => (float)($taslakSummary['toplam_matrah'] ?? 0),
+                    'toplam_kdv'      => (float)($taslakSummary['toplam_kdv'] ?? 0),
+                    'toplam_tutar'    => (float)($taslakSummary['toplam_tutar'] ?? 0),
+                ],
+                'kdv' => [
+                    'hesaplanan_kdv'  => $gidenKdv,
+                    'indirilecek_kdv' => $gelenKdv,
+                    'net_kdv'         => $netKdv,
+                    'odenecek_kdv'    => $odenecekKdv,
+                    'devreden_kdv'    => $devredenKdv,
+                    'net_matrah_farki'=> $netMatrahFarki,
+                ],
+                'tahsilat' => [
+                    'toplam_tahsilat' => $toplamTahsilat,
+                    'tahsilat_adedi'  => (int)$tahsilatSummary['tahsilat_adedi'],
+                    'kalan_tahsilat'  => $kalanTahsilat,
+                    'tahsilat_orani'  => $tahsilatOrani,
+                ],
+                'monthly_trend'       => $monthlyTrend,
+                'kdv_oranlari'        => $kdvOranRows,
+                'fatura_tipleri'      => $faturaTipRows,
+                'top_giden_cariler'   => $topGidenCariler,
+                'top_gelen_cariler'   => $topGelenCariler,
+                'recent_giden'        => $recentGiden,
+                'recent_gelen'        => $recentGelen,
+            ];
+        } catch (\PDOException $e) {
+            error_log("EInvoiceModel::getDashboardData Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Taslak Durumundaki Faturayı Siler (Soft Delete)
      */
     public function deleteDraftInvoice(int $invoiceId, int $firmId): bool

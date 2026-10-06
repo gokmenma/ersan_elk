@@ -95,6 +95,7 @@ $all_mobile_menus = [
     'aparat'            => ['label' => 'Aparat Takip',      'icon' => 'construction', 'color_bg' => 'bg-amber-100 dark:bg-amber-900/30', 'color_icon' => 'text-amber-600', 'link_match' => 'aparat-takip/list', 'desc' => 'Sayaç Aparat Takip Ekranı', 'url' => '../index.php?p=aparat-takip/list'],
     'puantaj'           => ['label' => 'Puantaj',           'icon' => 'calendar_month', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'puantaj/list', 'desc' => 'Personel Puantaj İşlemleri', 'url' => '?p=puantaj'],
     'bordro'            => ['label' => 'Bordro',            'icon' => 'payments', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'bordro/list', 'desc' => 'Bordro Hesaplama ve Ödeme Yönetimi', 'url' => '?p=bordro'],
+    'efatura'           => ['label' => 'E-Fatura',          'icon' => 'receipt_long', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'efatura/giden-list', 'desc' => 'E-Fatura & E-Arşiv Yönetimi', 'url' => '?p=efatura'],
     'desktop'           => ['label' => 'Masaüstü Modu',     'icon' => 'desktop_windows', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home', 'desc' => 'Masaüstü Görünümüne Geçiş', 'url' => '?force_desktop=1&p=home'],
 ];
 
@@ -129,7 +130,7 @@ foreach ($all_mobile_menus as $pKey => $mData) {
         }
     }
 
-    // Fallback Gate checks for personel, arac, talepler, gorevler, puantaj, aparat
+    // Fallback Gate checks for personel, arac, talepler, gorevler, puantaj, aparat, efatura
     if (!$hasAccess) {
         if ($pKey === 'personel' && \App\Service\Gate::allows('personel_listesi')) {
             $hasAccess = true;
@@ -140,6 +141,8 @@ foreach ($all_mobile_menus as $pKey => $mData) {
         } elseif ($pKey === 'gorevler' && \App\Service\Gate::allows('gorevler')) {
             $hasAccess = true;
         } elseif ($pKey === 'aparat' && (\App\Service\Gate::allows('aparat_takip') || in_array('aparat-takip/list', $permitted_links))) {
+            $hasAccess = true;
+        } elseif ($pKey === 'efatura' && (\App\Service\Gate::allows('efatura/giden-list') || \App\Service\Gate::allows('efatura/dashboard') || \App\Service\Gate::allows('efatura/olustur') || \App\Service\Gate::allows('efatura/gelen-list'))) {
             $hasAccess = true;
         } elseif (($pKey === 'puantaj' || $pKey === 'raporlar')) {
             $db = (new \App\Core\Db())->getConnection();
@@ -165,7 +168,10 @@ foreach ($all_mobile_menus as $pKey => $mData) {
 $allowed_pages = array_keys($user_mobile_menus);
 
 // Menüde görünmeyen gizli mobil alt sayfalar
-$sub_pages = ['hesap-hareketleri', 'personel-duzenle', 'profil', 'giden-evrak'];
+$sub_pages = [
+    'hesap-hareketleri', 'personel-duzenle', 'profil', 'giden-evrak',
+    'efatura', 'efatura-giden', 'efatura-gelen', 'efatura-taslak', 'efatura-olustur', 'efatura-cari', 'efatura-mal-hizmet'
+];
 $allowed_pages = array_merge($allowed_pages, $sub_pages);
 
 if (!in_array($page, $allowed_pages)) {
@@ -175,26 +181,33 @@ if (!in_array($page, $allowed_pages)) {
 $page_file = __DIR__ . '/pages/' . $page . '.php';
 
 $page_titles = [
-    'home'              => 'Ana Sayfa',
-    'personel'          => 'Personel',
-    'arac'              => 'Araç Takip',
-    'gorevler'          => 'Görevler',
-    'gelir-gider'       => 'Gelir Gider Takibi',
-    'cari-takip'        => 'Cari',    
-    'hesap-hareketleri' => 'Hesap Hareketleri',
-    'talepler'          => 'Talepler',
-    'evrak-takip'       => 'Evrak Takip',
-    'giden-evrak'       => 'Giden Evrak',
-    'nobet'             => 'Nöbet Onay',
-    'km-onaylari'       => 'KM Onayları',
-    'raporlar'          => 'Raporlar',
-    'yardim'            => 'Yardım ve Destek',
-    'ihbar'             => 'İhbar Yönetimi',
-    'kacak'             => 'Kaçak Kontrol',
-    'profil'            => 'Profil',
-    'tum-hareketler'    => 'Tüm Hareketler',
-    'puantaj'           => 'Puantaj',
-    'bordro'            => 'Bordro Yönetimi',
+    'home'                => 'Ana Sayfa',
+    'personel'            => 'Personel',
+    'arac'                => 'Araç Takip',
+    'gorevler'            => 'Görevler',
+    'gelir-gider'         => 'Gelir Gider Takibi',
+    'cari-takip'          => 'Cari',    
+    'hesap-hareketleri'   => 'Hesap Hareketleri',
+    'talepler'            => 'Talepler',
+    'evrak-takip'         => 'Evrak Takip',
+    'giden-evrak'         => 'Giden Evrak',
+    'nobet'               => 'Nöbet Onay',
+    'km-onaylari'         => 'KM Onayları',
+    'raporlar'            => 'Raporlar',
+    'yardim'              => 'Yardım ve Destek',
+    'ihbar'               => 'İhbar Yönetimi',
+    'kacak'               => 'Kaçak Kontrol',
+    'profil'              => 'Profil',
+    'tum-hareketler'      => 'Tüm Hareketler',
+    'puantaj'             => 'Puantaj',
+    'bordro'              => 'Bordro Yönetimi',
+    'efatura'             => 'E-Fatura & Finans',
+    'efatura-giden'       => 'Giden Faturalar',
+    'efatura-gelen'       => 'Gelen Faturalar',
+    'efatura-taslak'      => 'Taslak Faturalar',
+    'efatura-olustur'     => 'Yeni Fatura Kes',
+    'efatura-cari'        => 'E-Fatura Cariler',
+    'efatura-mal-hizmet'  => 'Mal & Hizmetler',
 ];
 
 
@@ -716,7 +729,11 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
 
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
-    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip', 'giden-evrak', 'km-onaylari', 'nobet', 'ihbar', 'kacak'];
+    $no_header_pages = [
+        'home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 
+        'yardim', 'evrak-takip', 'giden-evrak', 'km-onaylari', 'nobet', 'ihbar', 'kacak',
+        'efatura', 'efatura-giden', 'efatura-gelen', 'efatura-taslak', 'efatura-olustur', 'efatura-cari', 'efatura-mal-hizmet'
+    ];
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->

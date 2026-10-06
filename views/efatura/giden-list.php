@@ -114,12 +114,15 @@ $title = 'Giden Faturalar';
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM FATURA</span>
+                        <span class="summary-kpi-label">TOPLAM GİDEN FATURA</span>
                         <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-receipt"></i>
                         </div>
                     </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_toplam_adet">0</h3>
+                    <div class="d-flex align-items-baseline justify-content-between my-1">
+                        <h3 class="summary-kpi-value mb-0" id="stat_toplam_adet">0</h3>
+                        <span class="summary-kpi-subtext text-primary fw-bold font-size-14" id="stat_toplam_tutar">0,00 ₺</span>
+                    </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_efatura_earsiv">E-Fatura: 0 | E-Arşiv: 0</span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="">

@@ -104,6 +104,9 @@ $(document).ready(function() {
         if (document.getElementById('stat_toplam_adet')) {
             document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
         }
+        if (document.getElementById('stat_toplam_tutar')) {
+            document.getElementById('stat_toplam_tutar').textContent = formatMoney(d.toplam_tutar);
+        }
         if (document.getElementById('stat_sub_efatura_earsiv')) {
             document.getElementById('stat_sub_efatura_earsiv').textContent = `E-Fatura: ${d.efatura_adet || 0} | E-Arşiv: ${d.earsiv_adet || 0}`;
         }
