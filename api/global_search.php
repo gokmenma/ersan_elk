@@ -158,7 +158,26 @@ if (empty($allowedModules)) {
         'status' => 'error',
         'message' => 'Arama yapabileceğiniz modül yetkisi bulunmamaktadır.',
         'counts' => ['all' => 0],
-        'results' => []
+        'results' => [],
+        'allowed_modules' => []
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Güvenlik: Eğer tek bir kategori istenmişse ve kullanıcının o kategoriye yetkisi yoksa derhal boş dön
+if ($category !== 'all' && !in_array($category, $allowedModules, true)) {
+    if (function_exists('ob_get_level')) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status'          => 'success',
+        'query'           => $query,
+        'counts'          => ['all' => 0, $category => 0],
+        'results'         => [$category => []],
+        'allowed_modules' => $allowedModules
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }

@@ -376,10 +376,15 @@
                 aparatlar:   { title: 'APARATLAR', icon: 'bx-wrench', color: 'amber', items: results.aparatlar || [] }
             };
 
+            var allowed = (data && Array.isArray(data.allowed_modules)) ? data.allowed_modules : (window.GLOBAL_SEARCH_ALLOWED_MODULES || []);
+            var defaultOrder = ['faturalar', 'personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
+
             var modulesToRender = [];
             if (cat === 'all') {
-                modulesToRender = ['faturalar', 'personel', 'araclar', 'demirbaslar', 'cariler', 'evraklar', 'gorevler', 'kacak', 'aparatlar'];
-            } else if (moduleConfig[cat]) {
+                modulesToRender = defaultOrder.filter(function (m) {
+                    return allowed.indexOf(m) !== -1;
+                });
+            } else if (moduleConfig[cat] && allowed.indexOf(cat) !== -1) {
                 modulesToRender = [cat];
             }
 
@@ -537,7 +542,10 @@
                 aparatlar:   { title: 'Aparatlar', icon: 'bx-wrench', items: results.aparatlar || [] }
             };
 
+            var allowed = (data && Array.isArray(data.allowed_modules)) ? data.allowed_modules : (window.GLOBAL_SEARCH_ALLOWED_MODULES || []);
+
             Object.keys(moduleConfig).forEach(function (key) {
+                if (allowed.indexOf(key) === -1) return;
                 var mod = moduleConfig[key];
                 if (mod.items && mod.items.length > 0) {
                     html += '<div class="gs-mobile-group p-2 border-bottom">';

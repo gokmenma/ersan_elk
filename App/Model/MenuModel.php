@@ -176,8 +176,7 @@ class MenuModel extends Model
                         INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                         WHERE urp.role_id IN ({$rolePlaceholders})
                           AND (
-                              p.id = m.id
-                              OR p.auth_name = m.menu_link
+                              p.auth_name = m.menu_link
                               OR p.name = m.menu_link
                               OR p.name = m.menu_name
                               OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme')
@@ -397,38 +396,26 @@ class MenuModel extends Model
                 $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
                 $isSuperAdmin = $this->isUserSuperAdmin($userId);
                 $superadminFilter = $isSuperAdmin ? "" : " AND (p.superadmin IS NULL OR p.superadmin = 0) ";
-                $superadminFilter0 = $isSuperAdmin ? "" : " AND (p0.superadmin IS NULL OR p0.superadmin = 0) ";
 
                 $sql = "SELECT COUNT(*)
-                                FROM {$this->table} m
-                                WHERE m.id = ?
-                                    AND (
-                                        EXISTS (
-                                                SELECT 1
-                                                FROM permissions p
-                                                INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
-                                                WHERE urp.role_id IN ({$placeholders})
-                                                    AND (p.id = m.id OR p.name = m.menu_link OR p.name = m.menu_name OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
-                                                    {$superadminFilter}
-                                        )
-                                        OR (
-                                                NOT EXISTS (
-                                                        SELECT 1
-                                                        FROM permissions p0
-                                                        WHERE (p0.id = m.id OR p0.name = m.menu_link OR p0.name = m.menu_name OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme'))
-                                                          {$superadminFilter0}
-                                                )
-                                                AND EXISTS (
-                                                        SELECT 1
-                                                        FROM user_role_permissions urp
-                                                        WHERE urp.role_id IN ({$placeholders})
-                                                            AND urp.permission_id = m.id
-                                                )
-                                        )
-                                    )";
+                        FROM {$this->table} m
+                        WHERE m.id = ?
+                          AND EXISTS (
+                                SELECT 1
+                                FROM permissions p
+                                INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
+                                WHERE urp.role_id IN ({$placeholders})
+                                  AND (
+                                      p.name = m.menu_link 
+                                      OR p.name = m.menu_name 
+                                      OR p.auth_name = m.menu_link 
+                                      OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme')
+                                  )
+                                  {$superadminFilter}
+                          )";
 
                 $stmt = $this->db->prepare($sql);
-                $params = array_merge([(int) $menu->id], array_values($roleIdArray), array_values($roleIdArray));
+                $params = array_merge([(int) $menu->id], array_values($roleIdArray));
                 $stmt->execute($params);
 
                 return (int) $stmt->fetchColumn() > 0;

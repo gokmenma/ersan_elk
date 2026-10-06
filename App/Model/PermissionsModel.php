@@ -147,10 +147,10 @@ class PermissionsModel extends Model
         $sql = "SELECT p.auth_name
                 FROM menus m
                 INNER JOIN permissions p
-                    ON (p.id = m.id OR p.name = m.menu_name)
+                    ON (p.auth_name = m.menu_link OR p.name = m.menu_link OR p.name = m.menu_name)
                 WHERE m.menu_link = ?
                   AND p.is_active = 1
-                ORDER BY (p.id = m.id) DESC
+                ORDER BY (p.auth_name = m.menu_link) DESC
                 LIMIT 1";
 
         $stmt = $this->db->prepare($sql);
@@ -229,8 +229,7 @@ class PermissionsModel extends Model
                     INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                     WHERE urp.role_id IN ($placeholders)
                       AND (
-                          p.id = m.id
-                          OR p.auth_name = m.menu_link
+                          p.auth_name = m.menu_link
                           OR p.name = m.menu_link
                           OR p.name = m.menu_name
                       )
@@ -281,12 +280,12 @@ class PermissionsModel extends Model
         $sql = "SELECT m.menu_link 
                 FROM user_role_permissions urp
                 JOIN permissions p ON urp.permission_id = p.id
-            JOIN menus m ON (m.id = p.id OR m.menu_name = p.name)
+                JOIN menus m ON (p.auth_name = m.menu_link OR m.menu_name = p.name OR m.menu_link = p.name)
                 WHERE urp.role_id IN ($placeholders) 
                 AND m.menu_link IS NOT NULL 
                 AND m.menu_link != ''
-            AND m.is_active = 1
-            ORDER BY m.group_order, m.menu_order
+                AND m.is_active = 1
+                ORDER BY m.group_order, m.menu_order
                 LIMIT 1";
 
         $stmt = $this->db->prepare($sql);

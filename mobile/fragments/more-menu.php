@@ -21,18 +21,96 @@
             <div class="space-y-1.5">
                 <?php
                 $more_menu_items = [
-                    ['id' => 'efatura',  'label' => 'E-Fatura & Finans', 'icon' => 'receipt_long',    'color' => 'indigo', 'link' => '?p=efatura'],
-                    ['id' => 'kasa',     'label' => 'Kasa Yönetimi',    'icon' => 'account_balance', 'color' => 'amber',  'link' => '?p=kasa'],
-                    ['id' => 'raporlar', 'label' => 'İstatistikler',    'icon' => 'bar_chart',       'color' => 'purple', 'link' => '?p=raporlar'],
-                    ['id' => 'gorevler', 'label' => 'Görev Takibi',     'icon' => 'check_circle',    'color' => 'green',  'link' => '?p=gorevler'],
-                    ['id' => 'talepler', 'label' => 'Talep Yönetimi',   'icon' => 'assignment',      'color' => 'rose',   'link' => '?p=talepler'],
-                    ['id' => 'evrak',    'label' => 'Evrak & Belgeler', 'icon' => 'mail',            'color' => 'sky',    'link' => '?p=evrak-takip'],
-                    ['id' => 'nobet',    'label' => 'Nöbet İşlemleri',  'icon' => 'calendar_month',  'color' => 'pink',   'link' => '?p=nobet'],
-                    ['id' => 'personel', 'label' => 'Personel Listesi', 'icon' => 'badge',           'color' => 'blue',   'link' => '?p=personeller'],
-                    ['id' => 'ayarlar',  'label' => 'Sistem Ayarları',  'icon' => 'settings',        'color' => 'slate',  'link' => '?p=ayarlar'],
+                    [
+                        'id' => 'efatura',
+                        'label' => 'E-Fatura & Finans',
+                        'icon' => 'receipt_long',
+                        'color' => 'indigo',
+                        'link' => '?p=efatura',
+                        'perms' => ['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list', 'efatura/taslak-list', 'efatura/olustur', 'efatura/cari-list', 'efatura/mal-hizmet-list']
+                    ],
+                    [
+                        'id' => 'kasa',
+                        'label' => 'Kasa Yönetimi',
+                        'icon' => 'account_balance',
+                        'color' => 'amber',
+                        'link' => '?p=kasa',
+                        'perms' => ['gelir-gider/list', 'cari/list', 'kasa']
+                    ],
+                    [
+                        'id' => 'raporlar',
+                        'label' => 'İstatistikler',
+                        'icon' => 'bar_chart',
+                        'color' => 'purple',
+                        'link' => '?p=raporlar',
+                        'perms' => ['puantaj/raporlar', 'puantaj_raporlama', 'puantaj/list', 'puantaj_yonetim']
+                    ],
+                    [
+                        'id' => 'gorevler',
+                        'label' => 'Görev Takibi',
+                        'icon' => 'check_circle',
+                        'color' => 'green',
+                        'link' => '?p=gorevler',
+                        'perms' => ['gorevler/list', 'gorevler']
+                    ],
+                    [
+                        'id' => 'talepler',
+                        'label' => 'Talep Yönetimi',
+                        'icon' => 'assignment',
+                        'color' => 'rose',
+                        'link' => '?p=talepler',
+                        'perms' => ['talepler/list', 'talepler']
+                    ],
+                    [
+                        'id' => 'evrak',
+                        'label' => 'Evrak & Belgeler',
+                        'icon' => 'mail',
+                        'color' => 'sky',
+                        'link' => '?p=evrak-takip',
+                        'perms' => ['evrak-takip/list', 'evrak-takip/gelen-evrak', 'evrak-takip/giden-evrak', 'evrak_yonetimi']
+                    ],
+                    [
+                        'id' => 'nobet',
+                        'label' => 'Nöbet İşlemleri',
+                        'icon' => 'calendar_month',
+                        'color' => 'pink',
+                        'link' => '?p=nobet',
+                        'perms' => ['nobet/onay-islemleri', 'kesme_nobet']
+                    ],
+                    [
+                        'id' => 'personel',
+                        'label' => 'Personel Listesi',
+                        'icon' => 'badge',
+                        'color' => 'blue',
+                        'link' => '?p=personeller',
+                        'perms' => ['personel/list', 'personel_listesi', 'personel']
+                    ],
+                    [
+                        'id' => 'ayarlar',
+                        'label' => 'Sistem Ayarları',
+                        'icon' => 'settings',
+                        'color' => 'slate',
+                        'link' => '?p=ayarlar',
+                        'perms' => ['ayarlar/duzenle', 'ayarlar']
+                    ],
                 ];
 
-                foreach ($more_menu_items as $item): ?>
+                $isSuperAdmin = \App\Service\Gate::isSuperAdmin();
+
+                foreach ($more_menu_items as $item):
+                    if (!$isSuperAdmin && !empty($item['perms'])) {
+                        $hasItemAccess = false;
+                        foreach ($item['perms'] as $perm) {
+                            if (\App\Service\Gate::allows($perm) || (!empty($permitted_links) && in_array($perm, $permitted_links, true))) {
+                                $hasItemAccess = true;
+                                break;
+                            }
+                        }
+                        if (!$hasItemAccess) {
+                            continue;
+                        }
+                    }
+                ?>
                     <a href="<?= $item['link'] ?>" class="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all border border-transparent hover:border-slate-100">
                         <div class="w-10 h-10 rounded-xl bg-<?= $item['color'] ?>-100 dark:bg-<?= $item['color'] ?>-900/30 flex items-center justify-center text-<?= $item['color'] ?>-600">
                             <span class="material-symbols-outlined text-[20px]"><?= $item['icon'] ?></span>
