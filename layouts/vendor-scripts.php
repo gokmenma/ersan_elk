@@ -90,6 +90,10 @@ $page = $_GET['p'] ?? 'home';
     <script src="views/kullanici-gruplari/js/yetki-matrisi.js?v=<?php echo filemtime(dirname(__DIR__) . '/views/kullanici-gruplari/js/yetki-matrisi.js'); ?>"></script>
 <?php } ?>
 
+<?php if ($page == 'kullanici-gruplari/yetki-denetimi') { ?>
+    <script src="views/kullanici-gruplari/js/yetki-denetimi.js?v=<?php echo filemtime(dirname(__DIR__) . '/views/kullanici-gruplari/js/yetki-denetimi.js'); ?>"></script>
+<?php } ?>
+
 <!-- Menü Yönetimi Sayfası -->
 <?php if ($page == 'menu-yonetimi/list') { ?>
     <script src="views/menu-yonetimi/js/list.js?v=<?php echo filemtime(dirname(__DIR__) . '/views/menu-yonetimi/js/list.js'); ?>"></script>
@@ -143,7 +147,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "demirbas/list" || $page == "demirbas/sayac-deposu" || $page == "demirbas/aparat-deposu" || $page == "demirbas/servis" || $page == "demirbas/zimmet" || $page == "rehber/list" ||
     $page == "evrak-takip/list" || $page == "evrak-takip/giden-evrak" ||
     $page == "slider/list" ||
-    $page == "kullanici/list" || $page == "kullanici-gruplari/list" ||
+    $page == "kullanici/list" || $page == "kullanici-gruplari/list" || $page == "kullanici-gruplari/yetki-denetimi" ||
     $page == "mail-sms/sms-gonder" ||
     $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
     $page == "bordro/list" || $page == "bordro/ai-analiz" || strpos($page, "bordro/") === 0 || $page == "demirbas/list" || $page == "puantaj/veri-yukleme" ||

@@ -34,11 +34,13 @@ final class SyncOfflinePages extends EdmSoapClient
     public array $xmlRequests = [];
     public array $xmlDirections = [];
     public array $incomingRanges = [];
+    public array $outgoingRanges = [];
     public function __construct(private Closure $fetch) {}
     public function getInvoicePage(string $direction, string $startDate, string $endDate, int $offset = 0, int $limit = 50, ?string $createdBefore = null, ?string $listType = null): array
     {
         $this->offsets[] = $offset;
-        return ($this->fetch)($offset);
+        $this->outgoingRanges[] = [$startDate, $endDate, $offset, $listType];
+        return ($this->fetch)($offset, $startDate, $endDate);
     }
     public function getIncomingInvoicePage(string $startDate, string $endDate, int $offset = 0, string $dateType = 'ISSUE'): array
     {
@@ -92,8 +94,9 @@ final class EInvoiceSyncWorkerTest extends TestCase
         self::assertCount(1004, $pages->xmlRequests);
         self::assertSame(['IN'], array_values(array_unique($pages->xmlDirections)));
         self::assertSame(['GELEN'], array_values(array_unique($importer->directions)));
-        self::assertSame(array_merge(range(0, 1000, 50), [0, 0, 0]), $pages->offsets);
-        self::assertSame([['2026-01-01', '2026-03-31'], ['2026-04-01', '2026-06-29'], ['2026-06-30', '2026-09-27'], ['2026-09-28', '2026-10-06']], array_values(array_unique(array_map(fn($range) => array_slice($range, 0, 2), $pages->incomingRanges), SORT_REGULAR)));
+        self::assertContains(1000, $pages->offsets);
+        self::assertContains(['2026-01-01', '2026-01-01'], array_values(array_unique(array_map(fn($range) => array_slice($range, 0, 2), $pages->incomingRanges), SORT_REGULAR)));
+        self::assertContains(['2026-09-28', '2026-10-06'], array_values(array_unique(array_map(fn($range) => array_slice($range, 0, 2), $pages->incomingRanges), SORT_REGULAR)));
     }
 
     public function testIncomingResumesInFailedWindowWithoutSkippingEmptyWindows(): void
@@ -155,6 +158,7 @@ final class EInvoiceSyncWorkerTest extends TestCase
     public function testErrorReportKeepsMoreThanFiftyFailuresAndInvoiceMetadata(): void
     {
         $jobs = new SyncMemoryJobs(); $jobs->job['state']['list_type'] = 'gelen';
+        $jobs->job['state']['start_date'] = $jobs->job['state']['end_date'] = '2026-10-01';
         $pages = new SyncOfflinePages(fn($offset) => $offset < 53 ? array_map(fn($item) => $item + ['fatura_no' => 'ABC2026000000001', 'issue_date' => '2026-10-01', 'supplier' => 'Offline supplier'], $this->items($offset, min(50, 53 - $offset))) : []);
         $importer = new SyncOfflineImporter();
         $importer->onImport = null;
@@ -168,6 +172,29 @@ final class EInvoiceSyncWorkerTest extends TestCase
         self::assertCount(53, $jobs->job['state']['validation_errors']);
         self::assertSame('ABC2026000000001', $jobs->job['state']['validation_errors'][52]['fatura_no']);
         self::assertSame('Offline supplier', $jobs->job['state']['validation_errors'][52]['supplier']);
+    }
+
+    public function testFullBroadIncomingPageIsSplitBeforeImportAndAvoidsUnstableOffset(): void
+    {
+        $jobs = new SyncMemoryJobs();
+        $jobs->job['state']['list_type'] = 'gelen';
+        $jobs->job['state']['start_date'] = '2025-01-01';
+        $jobs->job['state']['end_date'] = '2025-01-10';
+        $importer = new SyncOfflineImporter();
+        $pages = new SyncOfflinePages(function(int $offset, string $start, string $end) {
+            if ($offset > 0) return [];
+            if ($start === '2025-01-01' && $end === '2025-01-10') return $this->items(900, 50);
+            if ($start === '2025-01-01' && $end === '2025-01-05') return $this->items(0, 3);
+            if ($start === '2025-01-06' && $end === '2025-01-10') return $this->items(3, 2);
+            return [];
+        });
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertSame(['uuid-0', 'uuid-1', 'uuid-2', 'uuid-3', 'uuid-4'], array_column($importer->imported, 0));
+        self::assertSame([0], array_values(array_unique($pages->offsets)));
+        self::assertContains(['2025-01-01', '2025-01-10', 0, 'ISSUE'], $pages->incomingRanges);
+        self::assertContains(['2025-01-01', '2025-01-05', 0, 'ISSUE'], $pages->incomingRanges);
+        self::assertContains(['2025-01-06', '2025-01-10', 0, 'ISSUE'], $pages->incomingRanges);
     }
 
     public function testServerCapAndShortLastPageAreFullyImported(): void
@@ -226,11 +253,38 @@ final class EInvoiceSyncWorkerTest extends TestCase
             return [['uuid' => 'draft', 'status' => 'LOAD - SUCCEED'], ['uuid' => 'sent', 'status' => 'PACKAGE - PROCESSING']];
         });
         $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
-        self::assertSame([0, 2], $pages->offsets);
+        self::assertSame([0], $pages->offsets);
         self::assertSame(['sent'], $pages->xmlRequests);
         self::assertSame(['sent'], array_column($importer->imported, 0));
         self::assertSame(1, $jobs->job['state']['processed_count']);
         self::assertSame('completed', $jobs->job['status']);
+    }
+
+    public function testFullBroadOutgoingPageIsSplitBeforeImportAndAvoidsFourMonthLimit(): void
+    {
+        $jobs = new SyncMemoryJobs();
+        $jobs->job['state']['list_type'] = 'giden';
+        $jobs->job['state']['start_date'] = '2025-01-01';
+        $jobs->job['state']['end_date'] = '2025-12-31';
+        $jobs->job['state']['created_before'] = '2025-12-31T23:59:59';
+        $importer = new SyncOfflineImporter();
+        $pages = new SyncOfflinePages(function(int $offset, string $start, string $end) {
+            $sent = fn(array $items) => array_map(fn(array $item) => array_replace($item, ['status' => 'PACKAGE - PROCESSING']), $items);
+            if ($start === '2025-01-01' && $end === '2025-03-31') return $sent($this->items(900, 50));
+            if ($start === '2025-01-01' && $end === '2025-02-14') return $sent($this->items(0, 2));
+            if ($start === '2025-02-15' && $end === '2025-03-31') return $sent($this->items(2, 1));
+            return [];
+        });
+        $this->worker($jobs, $pages, $importer)->run($jobs->job['id']);
+        self::assertSame('completed', $jobs->job['status']);
+        self::assertSame(['uuid-0', 'uuid-1', 'uuid-2'], array_column($importer->imported, 0));
+        self::assertSame([0], array_values(array_unique($pages->offsets)));
+        self::assertContains(['2025-01-01', '2025-03-31', 0, 'giden'], $pages->outgoingRanges);
+        self::assertContains(['2025-01-01', '2025-02-14', 0, 'giden'], $pages->outgoingRanges);
+        self::assertContains(['2025-04-01', '2025-06-29', 0, 'giden'], $pages->outgoingRanges);
+        foreach ($pages->outgoingRanges as [$start, $end]) {
+            self::assertLessThanOrEqual(89, (new DateTimeImmutable($start))->diff(new DateTimeImmutable($end))->days);
+        }
     }
 
     public function testConnectionRetryUsesSameOffsetAndBackoff(): void

@@ -7,6 +7,7 @@ use App\Model\UserRolesModel;
 use App\Model\PermissionsModel;
 use App\Model\UserRolePermissionsModel;
 use App\Model\SystemLogModel;
+use App\Model\PermissionAuditModel;
 use App\Helper\Security;
 
 $Menus = new MenuModel();
@@ -77,6 +78,42 @@ if ($_POST['action'] === 'searchPermissionRoles') {
 
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['status' => 'success', 'data' => $results], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($_POST['action'] === 'runPermissionAudit') {
+    if (!Gate::isSuperAdmin()) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu denetim yalnızca Superadmin tarafından kullanılabilir.']);
+        exit;
+    }
+
+    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+    if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string) $_SESSION['csrf_token'], $csrfToken)) {
+        http_response_code(419);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Güvenlik doğrulaması başarısız oldu. Sayfayı yenileyip tekrar deneyin.']);
+        exit;
+    }
+
+    $type = ($_POST['type'] ?? '') === 'role' ? 'role' : 'user';
+    $subjectId = (int) Security::decrypt((string) ($_POST['subject_id'] ?? ''));
+
+    try {
+        $auditModel = new PermissionAuditModel();
+        $auditData = $auditModel->audit($type, $subjectId, (int) ($_SESSION['owner_id'] ?? 0));
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'success', 'data' => $auditData], JSON_UNESCAPED_UNICODE);
+    } catch (\RuntimeException $e) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        error_log('Yetki denetimi hatası: ' . $e->getMessage());
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Denetim sırasında bir sunucu hatası oluştu.'], JSON_UNESCAPED_UNICODE);
+    }
     exit;
 }
 

@@ -125,7 +125,7 @@ class EInvoiceSyncJobService
         }
         $state = $old['state'];
         $errors = array_map(static fn($item) => $item + ['status' => ($state['list_type'] ?? '') === 'taslak' ? 'LOAD - SUCCEED' : '', 'status_desc' => '', 'xml' => ''], $state['validation_errors']);
-        foreach (['window_start', 'window_end', 'last_error', 'pause_requested', 'launch_attempts'] as $key) unset($state[$key]);
+        foreach (['window_start', 'window_end', 'incoming_window', 'incoming_windows', 'incoming_window_version', 'date_window', 'date_windows', 'date_window_version', 'last_error', 'pause_requested', 'launch_attempts'] as $key) unset($state[$key]);
         $state = array_replace($state, [
             'retry_items' => $errors, 'retry_mode' => true, 'validation_errors' => [],
             'offset' => 0, 'cursor' => 0, 'processed_count' => 0, 'added_count' => 0,

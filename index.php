@@ -176,6 +176,7 @@ if (!isset($_SESSION['force_desktop'])) {
                         match ($page) {
                             'bordro/ai-analiz' => 'bordro/list',
                             'kullanici-gruplari/yetki-matrisi' => 'kullanici-gruplari/list',
+                            'kullanici-gruplari/yetki-denetimi' => 'kullanici-gruplari/list',
                             default => $page,
                         }
                     ),

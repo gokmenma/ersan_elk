@@ -32,26 +32,48 @@ class EInvoiceSyncWorker
             while (true) {
                 if ($this->pauseIfRequested($job)) return;
                 $state = &$job['state'];
-                // Keep each incoming search below EDM's four-month HEADER_ONLY limit.
-                if (($state['list_type'] ?? null) === 'gelen' && empty($state['retry_mode'])) {
-                    if (!isset($state['window_start'])) {
-                        $state['window_start'] = $state['start_date'];
-                        $firstEnd = (new \DateTimeImmutable($state['window_start']))->modify('+89 days')->format('Y-m-d');
-                        if ($firstEnd < $state['end_date']) {
-                            // Older jobs used one large query; restart its pagination safely.
-                            $state['offset'] = $state['cursor'] = 0;
-                            $state['previous_signature'] = $state['pending_signature'] = $state['page_size'] = null;
-                        }
+                // EDM can reshuffle OFFSET results for broad HEADER_ONLY searches. Build
+                // durable windows and split every full first page before importing it.
+                // This keeps normal incoming/outgoing scans on offset zero; only a single
+                // day containing 50+ invoices needs OFFSET pagination.
+                $windowedList = in_array($state['list_type'] ?? null, ['gelen', 'giden'], true) && empty($state['retry_mode']);
+                if ($windowedList) {
+                    if (($state['date_window_version'] ?? 0) < 3) {
+                        $state['date_windows'] = $this->dateWindows($state['start_date'], $state['end_date']);
+                        $state['date_window'] = array_shift($state['date_windows']);
+                        $state['date_window_version'] = 3;
+                        // A job paused by the old OFFSET strategy safely rechecks the
+                        // range. ETTN upsert turns its first 50 records into updates.
+                        $this->resetPage($state);
                     }
-                    $state['window_end'] = min($state['end_date'], (new \DateTimeImmutable($state['window_start']))->modify('+89 days')->format('Y-m-d'));
+                    if (empty($state['date_window'])) {
+                        $state['date_window'] = array_shift($state['date_windows']);
+                    }
+                    $state['window_start'] = $state['date_window']['start'];
+                    $state['window_end'] = $state['date_window']['end'];
                     $this->model->saveJob($job);
                 }
                 $stage = 'fetch';
                 $items = $this->retry(function () use ($client, &$state) {
                     if (!empty($state['retry_mode'])) return array_slice($state['retry_items'], $state['offset'], 50);
                     if (($state['list_type'] ?? null) === 'gelen') return $client->getIncomingInvoicePage($state['window_start'], $state['window_end'], $state['offset'], $state['date_type'] ?? 'ISSUE');
-                    return $client->getInvoicePage('OUT', $state['start_date'], $state['end_date'], $state['offset'], 50, $state['created_before'] ?? null, $state['list_type'] ?? null);
+                    $start = ($state['list_type'] ?? null) === 'giden' ? $state['window_start'] : $state['start_date'];
+                    $end = ($state['list_type'] ?? null) === 'giden' ? $state['window_end'] : $state['end_date'];
+                    return $client->getInvoicePage('OUT', $start, $end, $state['offset'], 50, $state['created_before'] ?? null, $state['list_type'] ?? null);
                 }, $job);
+                if ($windowedList && $state['offset'] === 0 && count($items) >= 50 && $state['window_start'] < $state['window_end']) {
+                    [$left, $right] = $this->splitWindow($state['window_start'], $state['window_end']);
+                    $state['date_window'] = $left;
+                    array_unshift($state['date_windows'], $right);
+                    $state['window_start'] = $left['start'];
+                    $state['window_end'] = $left['end'];
+                    $this->resetPage($state);
+                    $state['message'] = 'EDM kayıt yoğunluğu nedeniyle tarih aralığı küçültülüyor. Aktarım arka planda sürüyor.';
+                    $this->model->saveJob($job);
+                    unset($state, $items);
+                    continue;
+                }
+                $dateWindowComplete = $windowedList && $state['offset'] === 0 && count($items) < 50;
                 $signature = hash('sha256', implode("\n", array_column($items, 'uuid')));
                 if ($items && ($signature === $state['previous_signature'] || ($state['pending_signature'] !== null && $signature !== $state['pending_signature']))) {
                     throw new \InvalidArgumentException('EDM sayfası tekrarlandı veya devam edilecek kayıtlar değişti. Aktarımı kapatıp aynı tarih aralığını yeniden başlatın.');
@@ -100,11 +122,12 @@ class EInvoiceSyncWorker
                 $state['cursor'] = 0;
                 $state['pending_signature'] = null;
                 $state['previous_signature'] = $signature;
-                if (!$items || count($items) < $state['page_size']) {
-                    if (empty($state['retry_mode']) && ($state['list_type'] ?? null) === 'gelen' && $state['window_end'] < $state['end_date']) {
-                        $state['window_start'] = (new \DateTimeImmutable($state['window_end']))->modify('+1 day')->format('Y-m-d');
-                        $state['offset'] = $state['cursor'] = 0;
-                        $state['previous_signature'] = $state['pending_signature'] = $state['page_size'] = null;
+                if ($dateWindowComplete || !$items || count($items) < $state['page_size']) {
+                    if ($windowedList && !empty($state['date_windows'])) {
+                        $state['date_window'] = array_shift($state['date_windows']);
+                        $state['window_start'] = $state['date_window']['start'];
+                        $state['window_end'] = $state['date_window']['end'];
+                        $this->resetPage($state);
                         $this->model->saveJob($job);
                         unset($state, $items);
                         continue;
@@ -176,6 +199,40 @@ class EInvoiceSyncWorker
         $job['state']['message'] = 'Aktarım isteğiniz üzerine durduruldu. Aktarılan faturalar korundu; Devam et ile sürdürebilirsiniz.';
         $this->model->saveJob($job);
         return true;
+    }
+
+    private function dateWindows(string $start, string $end): array
+    {
+        $windows = [];
+        $cursor = new \DateTimeImmutable($start);
+        $last = new \DateTimeImmutable($end);
+        while ($cursor <= $last) {
+            $windowEnd = min($last->format('Y-m-d'), $cursor->modify('+89 days')->format('Y-m-d'));
+            $windows[] = ['start' => $cursor->format('Y-m-d'), 'end' => $windowEnd];
+            $cursor = (new \DateTimeImmutable($windowEnd))->modify('+1 day');
+        }
+        return $windows;
+    }
+
+    private function splitWindow(string $start, string $end): array
+    {
+        $first = new \DateTimeImmutable($start);
+        $last = new \DateTimeImmutable($end);
+        $days = (int)$first->diff($last)->format('%a');
+        $leftEnd = $first->modify('+' . intdiv($days, 2) . ' days');
+        return [
+            ['start' => $start, 'end' => $leftEnd->format('Y-m-d')],
+            ['start' => $leftEnd->modify('+1 day')->format('Y-m-d'), 'end' => $end],
+        ];
+    }
+
+    private function resetPage(array &$state): void
+    {
+        $state['offset'] = 0;
+        $state['cursor'] = 0;
+        $state['previous_signature'] = null;
+        $state['pending_signature'] = null;
+        $state['page_size'] = null;
     }
 
     private function retry(\Closure $fetch, array &$job): array

@@ -150,6 +150,11 @@ if (Gate::allows("yetki_gruplari") || Gate::allows("yetki_gruplari_izleme")) { ?
                         </div>
 
                         <div class="d-flex align-items-center gap-2">
+                            <?php if (Gate::isSuperAdmin()) { ?>
+                                <a href="index?p=kullanici-gruplari/yetki-denetimi" class="btn btn-outline-danger waves-effect">
+                                    <i class="mdi mdi-shield-search me-1"></i> Yetki Denetimi
+                                </a>
+                            <?php } ?>
                             <a href="index?p=kullanici-gruplari/yetki-matrisi" class="btn btn-outline-primary waves-effect">
                                 <i class="mdi mdi-table-key me-1"></i> Yetki Matrisi
                             </a>
