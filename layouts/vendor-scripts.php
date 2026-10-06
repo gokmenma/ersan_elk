@@ -86,6 +86,10 @@ $page = $_GET['p'] ?? 'home';
     <script src="views/kullanici-gruplari/js/list.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
+<?php if ($page == 'kullanici-gruplari/yetki-matrisi') { ?>
+    <script src="views/kullanici-gruplari/js/yetki-matrisi.js?v=<?php echo filemtime(dirname(__DIR__) . '/views/kullanici-gruplari/js/yetki-matrisi.js'); ?>"></script>
+<?php } ?>
+
 <!-- Menü Yönetimi Sayfası -->
 <?php if ($page == 'menu-yonetimi/list') { ?>
     <script src="views/menu-yonetimi/js/list.js?v=<?php echo filemtime(dirname(__DIR__) . '/views/menu-yonetimi/js/list.js'); ?>"></script>

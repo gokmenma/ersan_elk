@@ -45,8 +45,13 @@ function fmtMobMoney($val) {
     <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1" id="mobPeriodButtons">
         <button type="button" onclick="changeMobPeriod('this_month', this)" class="mob-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs whitespace-nowrap">Bu Ay</button>
         <button type="button" onclick="changeMobPeriod('last_month', this)" class="mob-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">Geçen Ay</button>
+        <button type="button" onclick="changeMobPeriod('last_3_months', this)" class="mob-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">Son 3 Ay</button>
         <button type="button" onclick="changeMobPeriod('this_year', this)" class="mob-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap"><?= date('Y') ?> Yılı</button>
         <button type="button" onclick="changeMobPeriod('all', this)" class="mob-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">Tümü</button>
+        <button type="button" onclick="openMobPeriodModal()" class="mob-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap flex items-center gap-1" id="btnCustomPeriod">
+            <span class="material-symbols-outlined text-[15px] text-primary">calendar_month</span>
+            <span id="customPeriodLabel">Dönem Seç</span>
+        </button>
     </div>
 
     <!-- 2. Ana Finans & KDV Özet Kartları -->
@@ -298,7 +303,127 @@ function fmtMobMoney($val) {
     </div>
 </div>
 
+<!-- 7. Dönem Seçim Modal / Bottom Sheet -->
+<div id="mobPeriodModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">
+    <div id="mobPeriodSheet" class="w-full sm:max-w-md bg-white dark:bg-card-dark rounded-t-3xl sm:rounded-2xl p-4 sm:p-5 shadow-2xl transform translate-y-full transition-transform duration-200 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
+                <h3 class="text-sm font-black text-slate-900 dark:text-white">Dönem & Tarih Seçimi</h3>
+            </div>
+            <button type="button" onclick="closeMobPeriodModal()" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                <span class="material-symbols-outlined text-base">close</span>
+            </button>
+        </div>
+
+        <!-- 1. Yıl ve Ay Seçimi -->
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Aylık Dönem Seç</span>
+                <select id="modalYearSelect" class="text-xs font-bold bg-slate-100 dark:bg-slate-800 border-0 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-200">
+                    <?php 
+                    $currY = (int)date('Y');
+                    for ($y = $currY; $y >= $currY - 3; $y--): ?>
+                        <option value="<?= $y ?>"><?= $y ?></option>
+                    <?php endfor; ?>
+                </select>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5" id="monthGrid">
+                <?php 
+                $months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+                $currM = (int)date('n');
+                foreach ($months as $idx => $mName): 
+                    $mNum = $idx + 1;
+                ?>
+                    <button type="button" onclick="applyMobMonth(<?= $mNum ?>, '<?= $mName ?>')" 
+                            class="month-btn py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-primary/10 hover:text-primary active:scale-95 transition-all text-center <?= $mNum === $currM ? 'border border-primary text-primary' : '' ?>">
+                        <?= $mName ?>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <!-- 2. Özel Tarih Aralığı -->
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Özel Tarih Aralığı</span>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 block mb-1">Başlangıç</label>
+                    <input type="date" id="mobStartDateInput" value="<?= date('Y-m-01') ?>" class="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-800 dark:text-slate-200">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 block mb-1">Bitiş</label>
+                    <input type="date" id="mobEndDateInput" value="<?= date('Y-m-t') ?>" class="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-800 dark:text-slate-200">
+                </div>
+            </div>
+            <button type="button" onclick="applyMobCustomRange()" class="w-full mt-3 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-sm shadow-primary/30 active:scale-95 transition-transform flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">check</span>
+                <span>Tarih Aralığını Uygula</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+function openMobPeriodModal() {
+    const modal = document.getElementById('mobPeriodModal');
+    const sheet = document.getElementById('mobPeriodSheet');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        sheet.classList.remove('translate-y-full');
+    }, 10);
+}
+
+function closeMobPeriodModal() {
+    const modal = document.getElementById('mobPeriodModal');
+    const sheet = document.getElementById('mobPeriodSheet');
+    sheet.classList.add('translate-y-full');
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+function applyMobMonth(monthNum, monthName) {
+    const year = document.getElementById('modalYearSelect').value;
+    const lastDay = new Date(year, monthNum, 0).getDate();
+    const sDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+    const eDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const label = `${monthName} ${year}`;
+    
+    closeMobPeriodModal();
+    setCustomPeriodActive(label, sDate, eDate);
+}
+
+function applyMobCustomRange() {
+    const sDate = document.getElementById('mobStartDateInput').value;
+    const eDate = document.getElementById('mobEndDateInput').value;
+    if (!sDate || !eDate) {
+        alert('Lütfen başlangıç ve bitiş tarihlerini seçin.');
+        return;
+    }
+    const fmtShort = (dStr) => {
+        const p = dStr.split('-');
+        return `${p[2]}.${p[1]}`;
+    };
+    const label = `${fmtShort(sDate)} - ${fmtShort(eDate)}`;
+    
+    closeMobPeriodModal();
+    setCustomPeriodActive(label, sDate, eDate);
+}
+
+function setCustomPeriodActive(label, sDate, eDate) {
+    document.querySelectorAll('.mob-period-btn').forEach(b => {
+        b.className = 'mob-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap';
+    });
+    const btn = document.getElementById('btnCustomPeriod');
+    btn.className = 'mob-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs whitespace-nowrap flex items-center gap-1';
+    document.getElementById('customPeriodLabel').textContent = label;
+
+    loadMobDashboard(sDate, eDate);
+}
+
 function switchRecentTab(type) {
     if (type === 'gelen') {
         document.getElementById('recentGelenList').classList.remove('hidden');
@@ -318,6 +443,7 @@ function changeMobPeriod(period, btn) {
         b.className = 'mob-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap';
     });
     btn.className = 'mob-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs whitespace-nowrap';
+    document.getElementById('customPeriodLabel').textContent = 'Dönem Seç';
 
     let sDate = '', eDate = '';
     const now = new Date();
@@ -331,11 +457,18 @@ function changeMobPeriod(period, btn) {
     } else if (period === 'last_month') {
         sDate = toIso(new Date(y, m - 1, 1));
         eDate = toIso(new Date(y, m, 0));
+    } else if (period === 'last_3_months') {
+        sDate = toIso(new Date(y, m - 2, 1));
+        eDate = toIso(new Date(y, m + 1, 0));
     } else if (period === 'this_year') {
         sDate = toIso(new Date(y, 0, 1));
         eDate = toIso(new Date(y, 11, 31));
     }
 
+    loadMobDashboard(sDate, eDate);
+}
+
+function loadMobDashboard(sDate, eDate) {
     let url = '../api/efatura-api.php?action=dashboard_stats';
     if (sDate) url += `&baslangic_tarihi=${sDate}`;
     if (eDate) url += `&bitis_tarihi=${eDate}`;

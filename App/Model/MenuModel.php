@@ -174,27 +174,18 @@ class MenuModel extends Model
                         FROM permissions p
                         INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                         WHERE urp.role_id IN ({$rolePlaceholders})
-                          AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
+                          AND (
+                              p.auth_name = m.menu_link 
+                              OR p.name = m.menu_link 
+                              OR (p.id = m.id AND (p.auth_name = m.menu_link OR m.menu_link IS NULL OR m.menu_link = ''))
+                              OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme')
+                          )
                           {$superadminFilter}
-                    )
-                    OR (
-                        NOT EXISTS (
-                            SELECT 1
-                            FROM permissions p0
-                            WHERE (p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme'))
-                              {$superadminFilter0}
-                        )
-                        AND EXISTS (
-                            SELECT 1
-                            FROM user_role_permissions urp
-                            WHERE urp.role_id IN ({$rolePlaceholders})
-                              AND urp.permission_id = m.id
-                        )
                     )
                 )";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(array_merge($roleIdArray, $roleIdArray));
+        $stmt->execute($roleIdArray);
         $permittedMenuIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if (empty($permittedMenuIds)) {

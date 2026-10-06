@@ -3,4 +3,11 @@ INSERT IGNORE INTO user_role_permissions (role_id, permission_id)
 SELECT r.id, p.id 
 FROM user_roles r
 CROSS JOIN permissions p
-WHERE r.id != 21 AND p.auth_name LIKE 'efatura/%';
+WHERE r.id != 21
+  AND p.auth_name LIKE 'efatura/%'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM user_role_permissions urp
+      WHERE urp.role_id = r.id
+        AND urp.permission_id = p.id
+  );

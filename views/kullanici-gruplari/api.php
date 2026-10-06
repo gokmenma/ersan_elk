@@ -25,7 +25,11 @@ function hasRoleGroupAccess($role) {
     }
     $currentUser = \App\Controllers\AuthController::user();
     if (!$currentUser) {
-        return true;
+        return false;
+    }
+    $ownerID = (int) ($_SESSION['owner_id'] ?? 0);
+    if ($ownerID <= 0 || (int) ($role->owner_id ?? 0) !== $ownerID) {
+        return false;
     }
     $currentUserRole = $currentUser->role ?? 'user';
     $targetRoleType = $role->role_type ?? 'user';
@@ -45,8 +49,39 @@ function hasRoleGroupAccess($role) {
 
 use App\Service\Gate;
 
+if (!isset($_POST['action']) || (!Gate::allows('yetki_gruplari') && !Gate::allows('yetki_gruplari_izleme'))) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Bu sayfayı görüntülemek için yetkiniz bulunmamaktadır.']);
+    exit;
+}
+
+if ($_POST['action'] === 'searchPermissionRoles') {
+    $search = trim((string) ($_POST['search'] ?? ''));
+    if (mb_strlen($search, 'UTF-8') < 2) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'success', 'data' => []]);
+        exit;
+    }
+
+    $results = $UserRoles->searchPermissionRoleMatrix($search);
+    foreach ($results as &$permission) {
+        $permission['encrypted_id'] = Security::encrypt($permission['id']);
+        unset($permission['id']);
+        foreach ($permission['roles'] as &$role) {
+            $role['encrypted_id'] = Security::encrypt($role['id']);
+            unset($role['id']);
+        }
+        unset($role);
+    }
+    unset($permission);
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'success', 'data' => $results], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // Yetki koruması: Yazma/Düzenleme işlemleri için yetki_gruplari yetkisi gerekir
-if (isset($_POST['action']) && in_array($_POST['action'], ['saveGroup', 'savePermissions', 'deleteGroup', 'copyPermissions'])) {
+if (isset($_POST['action']) && in_array($_POST['action'], ['saveGroup', 'savePermissions', 'deleteGroup', 'copyPermissions', 'toggleRolePermission'])) {
     if (!Gate::allows("yetki_gruplari")) {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['status' => 'error', 'message' => 'Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.']);
@@ -395,5 +430,54 @@ if ($_POST['action'] == 'getAssignedUsers') {
         'description' => $checkRole->description ?? '',
         'users' => $users
     ]);
+    exit;
+}
+
+if ($_POST['action'] === 'toggleRolePermission') {
+    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+    if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string) $_SESSION['csrf_token'], $csrfToken)) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Güvenlik doğrulaması başarısız oldu. Sayfayı yenileyip tekrar deneyin.']);
+        exit;
+    }
+
+    $roleID = (int) Security::decrypt((string) ($_POST['role_id'] ?? ''));
+    $permissionID = (int) Security::decrypt((string) ($_POST['permission_id'] ?? ''));
+    $enabled = filter_var($_POST['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+    $role = $UserRoles->find($roleID);
+    if (!$role || !hasRoleGroupAccess($role)) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
+
+    try {
+        $UserPermissions->setRolePermission($roleID, $permissionID, $enabled, $User->isSuperAdmin());
+        $Menus->clearMenuCacheForRole($roleID);
+        unset($_SESSION['permission_cache']);
+
+        $logModel = new SystemLogModel();
+        $logModel->logAction(
+            $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
+            $enabled ? 'Rol Yetkisi Açıldı' : 'Rol Yetkisi Kapatıldı',
+            "Yetki matrisi üzerinden rol yetkisi değiştirildi. Grup: {$role->role_name} (ID: {$roleID}), Yetki ID: {$permissionID}, Durum: " . ($enabled ? 'Açık' : 'Kapalı'),
+            SystemLogModel::LEVEL_CRITICAL
+        );
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Yetki durumu güncellendi.',
+            'enabled' => $enabled,
+        ], JSON_UNESCAPED_UNICODE);
+    } catch (\RuntimeException $e) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        error_log('toggleRolePermission hatası: ' . $e->getMessage());
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Yetki durumu güncellenirken bir hata oluştu.'], JSON_UNESCAPED_UNICODE);
+    }
     exit;
 }

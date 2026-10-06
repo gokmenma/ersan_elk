@@ -131,6 +131,84 @@ class UserRolesModel extends Model
 
         return $roles;
     }
+
+    /**
+     * Yetki adı, açıklaması, kodu veya modülüne göre eşleşen yetkilerin
+     * erişilebilir rol gruplarındaki açık/kapalı durumunu döndürür.
+     */
+    public function searchPermissionRoleMatrix(string $search): array
+    {
+        $search = trim($search);
+        if (mb_strlen($search, 'UTF-8') < 2) {
+            return [];
+        }
+
+        $ownerID = (int) ($_SESSION['owner_id'] ?? 1);
+        $currentUser = \App\Controllers\AuthController::user();
+        $currentUserRole = $currentUser->role ?? 'user';
+
+        $roleTypeFilter = '';
+        if ($currentUserRole === 'admin') {
+            $roleTypeFilter = " AND ur.role_type != 'superadmin'";
+        } elseif ($currentUserRole === 'user') {
+            $roleTypeFilter = " AND ur.role_type = 'user'";
+        }
+
+        $UserModel = new UserModel();
+        $superadminFilter = $UserModel->isSuperAdmin() ? '' : ' AND p.superadmin = 0';
+        $like = '%' . $search . '%';
+
+        $sql = "SELECT DISTINCT p.id AS permission_id, p.name AS permission_name,
+                       p.auth_name, p.description AS permission_description,
+                       p.group_name, p.is_required, ur.id AS role_id, ur.role_name, ur.role_color,
+                       CASE WHEN urp.permission_id IS NULL THEN 0 ELSE 1 END AS is_enabled
+                FROM permissions p
+                INNER JOIN user_roles ur
+                    ON ur.owner_id = :owner_id {$roleTypeFilter}
+                LEFT JOIN user_role_permissions urp
+                    ON urp.permission_id = p.id AND urp.role_id = ur.id
+                WHERE p.is_active = 1 {$superadminFilter}
+                  AND (p.name LIKE :name_search
+                       OR p.auth_name LIKE :auth_search
+                       OR p.description LIKE :description_search
+                       OR p.group_name LIKE :group_search)
+                ORDER BY p.group_name, p.name, ur.role_name";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'owner_id' => $ownerID,
+            'name_search' => $like,
+            'auth_search' => $like,
+            'description_search' => $like,
+            'group_search' => $like,
+        ]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+        $permissions = [];
+        foreach ($rows as $row) {
+            $permissionId = (int) $row->permission_id;
+            if (!isset($permissions[$permissionId])) {
+                $permissions[$permissionId] = [
+                    'id' => $permissionId,
+                    'name' => $row->permission_name,
+                    'auth_name' => $row->auth_name,
+                    'description' => $row->permission_description,
+                    'group_name' => $row->group_name,
+                    'required' => (bool) $row->is_required,
+                    'roles' => [],
+                ];
+            }
+
+            $permissions[$permissionId]['roles'][] = [
+                'id' => (int) $row->role_id,
+                'name' => $row->role_name,
+                'color' => $row->role_color ?: 'secondary',
+                'enabled' => (bool) $row->is_enabled,
+            ];
+        }
+
+        return array_values($permissions);
+    }
 }
 
 ?>

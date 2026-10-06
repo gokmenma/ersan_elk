@@ -103,5 +103,39 @@ class UserRolePermissionsModel extends Model
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+    /**
+     * Bir rol için tek bir yetkiyi açar veya kapatır.
+     * Zorunlu yetkiler kapatılamaz.
+     */
+    public function setRolePermission(int $roleId, int $permissionId, bool $enabled, bool $allowSuperadmin = false): bool
+    {
+        $permissionStmt = $this->db->prepare(
+            "SELECT is_required FROM permissions
+             WHERE id = ? AND is_active = 1 AND (superadmin = 0 OR ? = 1)
+             LIMIT 1"
+        );
+        $permissionStmt->execute([$permissionId, $allowSuperadmin ? 1 : 0]);
+        $permission = $permissionStmt->fetch(PDO::FETCH_OBJ);
+
+        if (!$permission) {
+            throw new \RuntimeException('Yetki bulunamadı veya aktif değil.');
+        }
+        if (!$enabled && (int) $permission->is_required === 1) {
+            throw new \RuntimeException('Zorunlu yetkiler kapatılamaz.');
+        }
+
+        if ($enabled) {
+            $stmt = $this->db->prepare(
+                "INSERT IGNORE INTO {$this->table} (role_id, permission_id) VALUES (?, ?)"
+            );
+            return $stmt->execute([$roleId, $permissionId]);
+        }
+
+        $stmt = $this->db->prepare(
+            "DELETE FROM {$this->table} WHERE role_id = ? AND permission_id = ?"
+        );
+        return $stmt->execute([$roleId, $permissionId]);
+    }
 }
 ?>

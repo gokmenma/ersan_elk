@@ -32,6 +32,10 @@ $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
         <button type="button" onclick="setGelenPeriod('last_3_months', this)" class="gelen-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">Son 3 Ay</button>
         <button type="button" onclick="setGelenPeriod('this_year', this)" class="gelen-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap"><?= date('Y') ?> Yılı</button>
         <button type="button" onclick="setGelenPeriod('all', this)" class="gelen-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">Tümü</button>
+        <button type="button" onclick="openGelenPeriodModal()" class="gelen-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap flex items-center gap-1" id="btnCustomGelenPeriod">
+            <span class="material-symbols-outlined text-[15px] text-primary">calendar_month</span>
+            <span id="customGelenPeriodLabel">Dönem Seç</span>
+        </button>
     </div>
 
     <!-- 3. Özet Kartları -->
@@ -348,16 +352,126 @@ function openInvoicePreview(encId, faturaNo) {
         });
 }
 
-function closeInvoicePreview() {
-    const modal = document.getElementById('mobPdfModal');
-    const sheet = document.getElementById('mobPdfSheet');
-    const frame = document.getElementById('mobPdfFrame');
+<!-- 7. Dönem Seçim Modal / Bottom Sheet -->
+<div id="gelenPeriodModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">
+    <div id="gelenPeriodSheet" class="w-full sm:max-w-md bg-white dark:bg-card-dark rounded-t-3xl sm:rounded-2xl p-4 sm:p-5 shadow-2xl transform translate-y-full transition-transform duration-200 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
+                <h3 class="text-sm font-black text-slate-900 dark:text-white">Dönem & Tarih Seçimi</h3>
+            </div>
+            <button type="button" onclick="closeGelenPeriodModal()" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                <span class="material-symbols-outlined text-base">close</span>
+            </button>
+        </div>
 
+        <!-- 1. Yıl ve Ay Seçimi -->
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Aylık Dönem Seç</span>
+                <select id="gelenModalYearSelect" class="text-xs font-bold bg-slate-100 dark:bg-slate-800 border-0 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-200">
+                    <?php 
+                    $currY = (int)date('Y');
+                    for ($y = $currY; $y >= $currY - 3; $y--): ?>
+                        <option value="<?= $y ?>"><?= $y ?></option>
+                    <?php endfor; ?>
+                </select>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5">
+                <?php 
+                $months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+                $currM = (int)date('n');
+                foreach ($months as $idx => $mName): 
+                    $mNum = $idx + 1;
+                ?>
+                    <button type="button" onclick="applyGelenMonth(<?= $mNum ?>, '<?= $mName ?>')" 
+                            class="month-btn py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-primary/10 hover:text-primary active:scale-95 transition-all text-center <?= $mNum === $currM ? 'border border-primary text-primary' : '' ?>">
+                        <?= $mName ?>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <!-- 2. Özel Tarih Aralığı -->
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Özel Tarih Aralığı</span>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 block mb-1">Başlangıç</label>
+                    <input type="date" id="gelenStartDateInput" value="<?= date('Y-m-01') ?>" class="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-800 dark:text-slate-200">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 block mb-1">Bitiş</label>
+                    <input type="date" id="gelenEndDateInput" value="<?= date('Y-m-t') ?>" class="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-800 dark:text-slate-200">
+                </div>
+            </div>
+            <button type="button" onclick="applyGelenCustomRange()" class="w-full mt-3 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-sm shadow-primary/30 active:scale-95 transition-transform flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">check</span>
+                <span>Tarih Aralığını Uygula</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openGelenPeriodModal() {
+    const modal = document.getElementById('gelenPeriodModal');
+    const sheet = document.getElementById('gelenPeriodSheet');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        sheet.classList.remove('translate-y-full');
+    }, 10);
+}
+
+function closeGelenPeriodModal() {
+    const modal = document.getElementById('gelenPeriodModal');
+    const sheet = document.getElementById('gelenPeriodSheet');
     sheet.classList.add('translate-y-full');
     modal.classList.add('opacity-0');
     setTimeout(() => {
         modal.classList.add('hidden');
-        frame.srcdoc = '';
-    }, 300);
+    }, 200);
+}
+
+function applyGelenMonth(monthNum, monthName) {
+    const year = document.getElementById('gelenModalYearSelect').value;
+    const lastDay = new Date(year, monthNum, 0).getDate();
+    currentGidenStartDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+    currentGidenEndDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const label = `${monthName} ${year}`;
+    
+    closeGelenPeriodModal();
+    setCustomGelenPeriodActive(label);
+}
+
+function applyGelenCustomRange() {
+    const sDate = document.getElementById('gelenStartDateInput').value;
+    const eDate = document.getElementById('gelenEndDateInput').value;
+    if (!sDate || !eDate) {
+        alert('Lütfen başlangıç ve bitiş tarihlerini seçin.');
+        return;
+    }
+    const fmtShort = (dStr) => {
+        const p = dStr.split('-');
+        return `${p[2]}.${p[1]}`;
+    };
+    currentGidenStartDate = sDate;
+    currentGidenEndDate = eDate;
+    const label = `${fmtShort(sDate)} - ${fmtShort(eDate)}`;
+    
+    closeGelenPeriodModal();
+    setCustomGelenPeriodActive(label);
+}
+
+function setCustomGelenPeriodActive(label) {
+    document.querySelectorAll('.gelen-period-btn').forEach(b => {
+        b.className = 'gelen-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap';
+    });
+    const btn = document.getElementById('btnCustomGelenPeriod');
+    btn.className = 'gelen-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs whitespace-nowrap flex items-center gap-1';
+    document.getElementById('customGelenPeriodLabel').textContent = label;
+
+    loadGelenInvoices();
 }
 </script>

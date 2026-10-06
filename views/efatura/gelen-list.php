@@ -218,6 +218,21 @@ $title = 'Gelen Faturalar';
                     </button>
                 </div>
 
+                <!-- Hızlı Dönem Seçici Dropdown -->
+                <div class="dropdown d-inline-block">
+                    <button type="button" class="btn btn-sm btn-outline-secondary bg-white border shadow-xs dropdown-toggle d-flex align-items-center gap-1 font-size-12 fw-semibold" style="border-color: #cbd5e1 !important; padding: 5px 10px;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
+                        <i class="bx bx-calendar-event text-primary font-size-15"></i> <span id="currentPeriodLabel">Bu Ay</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1 font-size-12" style="min-width: 150px;">
+                        <a class="dropdown-item py-1.5 period-select-opt active" href="javascript:void(0);" data-period="this_month"><i class="bx bx-check text-primary me-1 check-icon"></i> Bu Ay</a>
+                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="last_month"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Geçen Ay</a>
+                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="last_3_months"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Son 3 Ay</a>
+                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="this_year"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Bu Yıl (<?= date('Y') ?>)</a>
+                        <div class="dropdown-divider my-1"></div>
+                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="all"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Tümü</a>
+                    </div>
+                </div>
+
                 <!-- Başlangıç Tarihi Filtresi -->
                 <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;" title="Başlangıç Tarihi">
                     <i class="bx bx-calendar text-primary font-size-15"></i>

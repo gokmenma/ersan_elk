@@ -171,7 +171,14 @@ if (!isset($_SESSION['force_desktop'])) {
             if (!in_array($page, $publicPages, true)) {
                 $hasMenuAccess = RequestPerformanceProfiler::measure(
                     'index.menu_access_check',
-                    fn() => $Menus->userCanAccessMenuLink($currentUserId, $page === 'bordro/ai-analiz' ? 'bordro/list' : $page),
+                    fn() => $Menus->userCanAccessMenuLink(
+                        $currentUserId,
+                        match ($page) {
+                            'bordro/ai-analiz' => 'bordro/list',
+                            'kullanici-gruplari/yetki-matrisi' => 'kullanici-gruplari/list',
+                            default => $page,
+                        }
+                    ),
                     1
                 );
                 if (!$hasMenuAccess) {

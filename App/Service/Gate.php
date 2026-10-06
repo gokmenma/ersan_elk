@@ -63,11 +63,10 @@ class Gate
             return self::$requestAllowsCache[$userId][$permissionName];
         }
 
-        /**Süper Admin daha sonra açılacak */
-        // if (self::isSuperAdmin()) {
-        //     self::$requestAllowsCache[$userId][$permissionName] = true;
-        //     return true;
-        // }
+        if (self::isSuperAdmin()) {
+            self::$requestAllowsCache[$userId][$permissionName] = true;
+            return true;
+        }
 
         if (!isset(self::$requestPermissionSetCache[$userId])) {
             $sessionCache = $_SESSION['permission_cache'][$userId] ?? null;
@@ -209,8 +208,17 @@ class Gate
     public static function isSuperAdmin(): bool
     {
         $user = AuthController::user();
-        if ($user && isset($user->role)) {
-            return $user->role === 'superadmin';
+        if (!$user) {
+            return false;
+        }
+        if (isset($user->role) && $user->role === 'superadmin') {
+            return true;
+        }
+        if (!empty($user->roles)) {
+            $roles = explode(',', (string) $user->roles);
+            if (in_array('1', $roles, true)) {
+                return true;
+            }
         }
         return false;
     }

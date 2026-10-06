@@ -169,9 +169,18 @@ $allowed_pages = array_keys($user_mobile_menus);
 
 // Menüde görünmeyen gizli mobil alt sayfalar
 $sub_pages = [
-    'hesap-hareketleri', 'personel-duzenle', 'profil', 'giden-evrak',
-    'efatura', 'efatura-giden', 'efatura-gelen', 'efatura-taslak', 'efatura-olustur', 'efatura-cari', 'efatura-mal-hizmet'
+    'hesap-hareketleri', 'personel-duzenle', 'profil', 'giden-evrak'
 ];
+
+// E-Fatura alt sayfalarını sadece ilgili yetkisi olan kullanıcılar için izin verilen sayfalara ekle
+if (\App\Service\Gate::allows('efatura/dashboard') || in_array('efatura/dashboard', $permitted_links)) $sub_pages[] = 'efatura';
+if (\App\Service\Gate::allows('efatura/giden-list') || in_array('efatura/giden-list', $permitted_links)) $sub_pages[] = 'efatura-giden';
+if (\App\Service\Gate::allows('efatura/gelen-list') || in_array('efatura/gelen-list', $permitted_links)) $sub_pages[] = 'efatura-gelen';
+if (\App\Service\Gate::allows('efatura/taslak-list') || in_array('efatura/taslak-list', $permitted_links)) $sub_pages[] = 'efatura-taslak';
+if (\App\Service\Gate::allows('efatura/olustur') || in_array('efatura/olustur', $permitted_links)) $sub_pages[] = 'efatura-olustur';
+if (\App\Service\Gate::allows('efatura/cari-list') || in_array('efatura/cari-list', $permitted_links)) $sub_pages[] = 'efatura-cari';
+if (\App\Service\Gate::allows('efatura/mal-hizmet-list') || in_array('efatura/mal-hizmet-list', $permitted_links)) $sub_pages[] = 'efatura-mal-hizmet';
+
 $allowed_pages = array_merge($allowed_pages, $sub_pages);
 
 if (!in_array($page, $allowed_pages)) {

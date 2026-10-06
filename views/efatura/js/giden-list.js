@@ -29,6 +29,7 @@ $(document).ready(function() {
                     currentStartDate = '';
                     $('#btnClearStartDate').hide();
                 }
+                updatePeriodLabelToCustom();
                 table.ajax.reload();
             }
         });
@@ -46,10 +47,88 @@ $(document).ready(function() {
                     currentEndDate = '';
                     $('#btnClearEndDate').hide();
                 }
+                updatePeriodLabelToCustom();
                 table.ajax.reload();
             }
         });
     }
+
+    function updatePeriodLabelToCustom() {
+        if (currentStartDate && currentEndDate) {
+            $('#currentPeriodLabel').text(`${formatDMY(new Date(currentStartDate))} - ${formatDMY(new Date(currentEndDate))}`);
+        } else if (currentStartDate) {
+            $('#currentPeriodLabel').text(`>= ${formatDMY(new Date(currentStartDate))}`);
+        } else if (currentEndDate) {
+            $('#currentPeriodLabel').text(`<= ${formatDMY(new Date(currentEndDate))}`);
+        } else {
+            $('#currentPeriodLabel').text('Tümü');
+        }
+        $('.period-select-opt').removeClass('active');
+        $('.period-select-opt .check-icon').css('visibility', 'hidden');
+    }
+
+    // Dönem Seçici Dropdown İşleyicisi
+    $('.period-select-opt').on('click', function(e) {
+        e.preventDefault();
+        const period = $(this).data('period');
+        const label = $(this).text().trim();
+
+        $('.period-select-opt').removeClass('active');
+        $('.period-select-opt .check-icon').css('visibility', 'hidden');
+
+        $(this).addClass('active');
+        $(this).find('.check-icon').css('visibility', 'visible');
+
+        $('#currentPeriodLabel').text(label);
+
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        let sDateObj = null, eDateObj = null;
+
+        if (period === 'this_month') {
+            sDateObj = new Date(y, m, 1);
+            eDateObj = new Date(y, m + 1, 0);
+        } else if (period === 'last_month') {
+            sDateObj = new Date(y, m - 1, 1);
+            eDateObj = new Date(y, m, 0);
+        } else if (period === 'last_3_months') {
+            sDateObj = new Date(y, m - 2, 1);
+            eDateObj = new Date(y, m + 1, 0);
+        } else if (period === 'this_year') {
+            sDateObj = new Date(y, 0, 1);
+            eDateObj = new Date(y, 11, 31);
+        } else if (period === 'all') {
+            sDateObj = null;
+            eDateObj = null;
+        }
+
+        if (sDateObj && eDateObj) {
+            currentStartDate = formatYMD(sDateObj);
+            currentEndDate = formatYMD(eDateObj);
+            if (document.getElementById('filterStartDate') && document.getElementById('filterStartDate')._flatpickr) {
+                document.getElementById('filterStartDate')._flatpickr.setDate(sDateObj, false);
+            }
+            if (document.getElementById('filterEndDate') && document.getElementById('filterEndDate')._flatpickr) {
+                document.getElementById('filterEndDate')._flatpickr.setDate(eDateObj, false);
+            }
+            $('#btnClearStartDate').show();
+            $('#btnClearEndDate').show();
+        } else {
+            currentStartDate = '';
+            currentEndDate = '';
+            if (document.getElementById('filterStartDate') && document.getElementById('filterStartDate')._flatpickr) {
+                document.getElementById('filterStartDate')._flatpickr.clear();
+            }
+            if (document.getElementById('filterEndDate') && document.getElementById('filterEndDate')._flatpickr) {
+                document.getElementById('filterEndDate')._flatpickr.clear();
+            }
+            $('#btnClearStartDate').hide();
+            $('#btnClearEndDate').hide();
+        }
+
+        table.ajax.reload();
+    });
 
     // Başlangıç Tarihi Temizle Butonu
     $('#btnClearStartDate').on('click', function(e) {
@@ -60,6 +139,7 @@ $(document).ready(function() {
         }
         $('#filterStartDate').val('');
         $(this).hide();
+        updatePeriodLabelToCustom();
         table.ajax.reload();
     });
 
@@ -72,6 +152,7 @@ $(document).ready(function() {
         }
         $('#filterEndDate').val('');
         $(this).hide();
+        updatePeriodLabelToCustom();
         table.ajax.reload();
     });
 

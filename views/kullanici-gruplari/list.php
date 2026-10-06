@@ -121,6 +121,7 @@ if (Gate::allows("yetki_gruplari") || Gate::allows("yetki_gruplari_izleme")) { ?
             background: rgba(91, 115, 232, 0.12);
             color: #5b73e8;
         }
+
     </style>
 
     <div class="container-fluid">
@@ -148,7 +149,10 @@ if (Gate::allows("yetki_gruplari") || Gate::allows("yetki_gruplari_izleme")) { ?
                             </div>
                         </div>
 
-                        <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="index?p=kullanici-gruplari/yetki-matrisi" class="btn btn-outline-primary waves-effect">
+                                <i class="mdi mdi-table-key me-1"></i> Yetki Matrisi
+                            </a>
                             <?php if (Gate::allows("yetki_gruplari")) { ?>
                                 <button type="button" id="groupAddBtn" data-bs-toggle="modal" data-bs-target="#groupModal"
                                     class="btn btn-success waves-effect btn-label waves-light">
