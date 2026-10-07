@@ -159,13 +159,36 @@ class EInvoiceService
             }
             $year = (int)substr($invoice['fatura_tarihi'], 0, 4);
             $series = $settings[$invoice['belge_turu'] === 'EFATURA' ? 'efatura_seri' : 'earsiv_seri'] ?? '';
-            $found = false;
-            foreach (EdmSoapClient::items($company->{'SERIALLİST'} ?? $company->SERIALLIST ?? null) as $serial) {
-                if (($serial->SERIAL ?? '') !== $series || (int)($serial->YEAR ?? 0) !== $year || (int)($serial->ACTIVEFLAG ?? 0) !== 1 || ((int)($serial->EARCHIVEFLAG ?? 0) === 1) !== ($invoice['belge_turu'] === 'EARSIV')) continue;
-                $found = true;
-                $this->settingsModel->reconcileSerial($firmId, $invoice['belge_turu'], $series, $year, (int)($serial->{'LASTSERİAL'} ?? $serial->LASTSERIAL ?? 0));
+            $allSerials = EdmSoapClient::items($company->{'SERIALLİST'} ?? $company->SERIALLIST ?? null);
+            $eligibleSerials = array_values(array_filter($allSerials, static fn($serial) =>
+                (int)($serial->YEAR ?? 0) === $year
+                && (int)($serial->ACTIVEFLAG ?? 0) === 1
+                && (((int)($serial->EARCHIVEFLAG ?? 0) === 1) === ($invoice['belge_turu'] === 'EARSIV'))
+            ));
+            $selectedSerial = null;
+            foreach ($eligibleSerials as $serial) {
+                if (strtoupper(trim((string)($serial->SERIAL ?? ''))) === strtoupper(trim((string)$series))) {
+                    $selectedSerial = $serial;
+                    break;
+                }
             }
-            if (!$found) throw new \InvalidArgumentException('Fatura yılı ve türü için aktif EDM serisi bulunamadı.');
+            // Ayardaki seri eskimişse ve EDM bu yıl/tür için yalnızca bir aktif
+            // seri döndürüyorsa belirsizlik yoktur; canlı EDM serisini kullan.
+            if (!$selectedSerial && count($eligibleSerials) === 1) {
+                $selectedSerial = $eligibleSerials[0];
+                $series = strtoupper(trim((string)($selectedSerial->SERIAL ?? '')));
+            }
+            if (!$selectedSerial || !preg_match('/^[A-Z0-9]{3}$/D', $series)) {
+                $available = array_values(array_filter(array_map(static fn($serial) => sprintf(
+                    '%s/%d%s',
+                    strtoupper(trim((string)($serial->SERIAL ?? '?'))),
+                    (int)($serial->YEAR ?? 0),
+                    (int)($serial->EARCHIVEFLAG ?? 0) === 1 ? ' e-Arşiv' : ' e-Fatura'
+                ), $allSerials)));
+                $detail = $available ? ' EDM serileri: ' . implode(', ', $available) . '.' : '';
+                throw new \InvalidArgumentException('Fatura yılı (' . $year . ') ve türü için aktif EDM serisi bulunamadı.' . $detail . ' E-Fatura Ayarları ekranından EDM serilerini senkronize edin.');
+            }
+            $this->settingsModel->reconcileSerial($firmId, $invoice['belge_turu'], $series, $year, (int)($selectedSerial->{'LASTSERİAL'} ?? $selectedSerial->LASTSERIAL ?? 0));
             if (empty($invoice['fatura_no'])) {
                 $invoice['fatura_no'] = $this->settingsModel->generateNextInvoiceNumber($firmId, $invoice['belge_turu'], $series, $year);
                 $this->saveState($invoiceId, $firmId, ['fatura_no' => $invoice['fatura_no']]);
