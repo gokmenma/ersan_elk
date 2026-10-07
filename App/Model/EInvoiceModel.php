@@ -1588,4 +1588,106 @@ class EInvoiceModel extends Model
             throw $e;
         }
     }
+
+    /**
+     * Kayıtlı faturaların UBL XML dosyalarını okuyarak satır açıklamalarını ve stok kodlarını günceller.
+     */
+    public function syncAllLineDescriptionsFromXml(int $firmId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, fatura_no, ubl_xml_path 
+            FROM faturalar 
+            WHERE firm_id = :firm_id 
+              AND ubl_xml_path IS NOT NULL 
+              AND ubl_xml_path != '' 
+              AND deleted_at IS NULL
+            ORDER BY id ASC
+        ");
+        $stmt->execute(['firm_id' => $firmId]);
+        $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $updatedLines = 0;
+        $updatedInvoices = 0;
+
+        foreach ($invoices as $inv) {
+            $path = $inv['ubl_xml_path'];
+            if (!file_exists($path)) {
+                continue;
+            }
+
+            $content = file_get_contents($path);
+            if (strpos($content, '<Invoice') === false && strpos($content, ':Invoice') === false) {
+                try {
+                    $decrypted = Security::decryptFile($content);
+                    if ($decrypted) {
+                        $content = $decrypted;
+                    }
+                } catch (\Throwable $e) {}
+            }
+
+            $dom = new \DOMDocument();
+            $previous = libxml_use_internal_errors(true);
+            $loaded = @$dom->loadXML($content);
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+
+            if (!$loaded) {
+                continue;
+            }
+
+            $xp = new \DOMXPath($dom);
+            $lineIdx = 0;
+            $invUpdated = false;
+
+            foreach ($xp->query("//*[local-name()='InvoiceLine']") as $line) {
+                $lineIdx++;
+                $desc = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='Description'])", $line));
+                $name = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='Name'])", $line));
+                $code = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='SellersItemIdentification']/*[local-name()='ID'])", $line));
+
+                if (empty($code) && !empty($name) && !empty($desc)) {
+                    $code = $name;
+                }
+
+                $finalName = $name;
+                if (!empty($desc) && ($name === $code || empty($name) || $name !== $desc)) {
+                    $finalName = $desc;
+                    if (empty($code) && !empty($name)) {
+                        $code = $name;
+                    }
+                }
+
+                if (!empty($finalName) || !empty($code)) {
+                    $upd = $this->db->prepare("
+                        UPDATE fatura_satirlari 
+                        SET urun_hizmet_adi = :uname, 
+                            urun_kodu = CASE WHEN :ucode != '' THEN :ucode ELSE urun_kodu END 
+                        WHERE fatura_id = :fid 
+                          AND sira_no = :sno
+                    ");
+                    $upd->execute([
+                        'uname' => mb_substr($finalName ?: $name, 0, 255),
+                        'ucode' => mb_substr($code, 0, 50),
+                        'fid'   => (int)$inv['id'],
+                        'sno'   => $lineIdx
+                    ]);
+
+                    if ($upd->rowCount() > 0) {
+                        $updatedLines++;
+                        $invUpdated = true;
+                    }
+                }
+            }
+
+            if ($invUpdated) {
+                $updatedInvoices++;
+            }
+        }
+
+        return [
+            'total_invoices'   => count($invoices),
+            'updated_invoices' => $updatedInvoices,
+            'updated_lines'    => $updatedLines
+        ];
+    }
 }

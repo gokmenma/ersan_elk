@@ -100,6 +100,10 @@ $title = 'Taslak Faturalar';
                     <button type="button" class="dropdown-item d-flex align-items-center text-primary" id="btnDropdownSyncDrafts">
                         <i class="bx bx-refresh me-2 font-size-16 text-primary"></i> EDM'den Taslakları Çek
                     </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center text-primary" id="btnSyncLineDescriptions">
+                        <i class="bx bx-sync me-2 font-size-16 text-primary"></i> Satır Açıklamalarını XML'den Güncelle
+                    </button>
+                    <div class="dropdown-divider"></div>
                     <button type="button" class="dropdown-item d-flex align-items-center text-success" id="exportExcel">
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>

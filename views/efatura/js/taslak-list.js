@@ -1094,4 +1094,65 @@ $(document).ready(function() {
             });
         }
     });
+
+    // Satır Açıklamalarını XML'den Güncelle
+    $(document).on('click', '#btnSyncLineDescriptions', function(e) {
+        e.preventDefault();
+        Swal.fire({
+            title: 'Satır Açıklamalarını Güncelle',
+            text: 'Tüm fatura XML dosyaları taranarak satır açıklamaları ve araç plakaları veritabanına aktarılacaktır. Devam etmek istiyor musunuz?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Güncelle',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#64748b'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Güncelleniyor...',
+                    text: 'XML dosyaları taranıyor ve satır açıklamaları güncelleniyor, lütfen bekleyin...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: 'api/efatura-api.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'sync_line_descriptions',
+                        csrf_token: $('meta[name="efatura-csrf"]').attr('content')
+                    },
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Başarılı!',
+                                text: res.message || 'Satır açıklamaları başarıyla güncellendi.',
+                                confirmButtonText: 'Tamam'
+                            }).then(() => {
+                                if (typeof table !== 'undefined' && table.ajax) {
+                                    table.ajax.reload(null, false);
+                                }
+                            });
+                        } else {
+                            Swal.fire('Hata!', res.message || 'İşlem sırasında bir hata oluştu.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        let errMsg = 'İşlem gerçekleştirilemedi.';
+                        try {
+                            const json = JSON.parse(xhr.responseText);
+                            if (json.message) errMsg = json.message;
+                        } catch (e) {}
+                        Swal.fire('Hata!', errMsg, 'error');
+                    }
+                });
+            }
+        });
+    });
 });

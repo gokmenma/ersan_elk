@@ -394,6 +394,18 @@ try {
             echo json_encode($res + ['status' => $res['success'] ? 'success' : 'error']);
             break;
 
+        // 10.2. XML'lerden Satır Açıklamalarını ve Plakaları Güncelle
+        case 'sync_line_descriptions':
+            session_write_close();
+            @set_time_limit(300);
+            $res = $invoiceModel->syncAllLineDescriptionsFromXml($firmId);
+            echo json_encode([
+                'status'  => 'success',
+                'message' => "Toplam {$res['total_invoices']} faturadan {$res['updated_lines']} adet satır açıklaması XML'lerden başarıyla güncellendi.",
+                'data'    => $res
+            ]);
+            break;
+
         // 11. Ticari Faturaya Kabul / Red Yanıtı
         case 'respond_commercial':
             $encryptedId = $_POST['invoice_id'] ?? '';

@@ -90,6 +90,10 @@ $title = 'Giden Faturalar';
                     <button type="button" class="dropdown-item d-flex align-items-center text-success" id="btnSyncOutgoing">
                         <i class="bx bx-refresh me-2 font-size-16 text-success"></i> EDM'den Faturaları Çek
                     </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center text-primary" id="btnSyncLineDescriptions">
+                        <i class="bx bx-sync me-2 font-size-16 text-primary"></i> Satır Açıklamalarını XML'den Güncelle
+                    </button>
+                    <div class="dropdown-divider"></div>
                     <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/ayarlar">
                         <i class="bx bx-slider-alt me-2 text-primary font-size-16"></i> Entegratör Ayarları
                     </a>
