@@ -66,7 +66,7 @@ class PushNotificationService
      * @param array $payload ['title' => '...', 'body' => '...', 'url' => '...']
      * @return bool
      */
-    public function sendToUser($userId, $payload, $skipEmail = false, ?string $notificationType = null)
+    public function sendToUser($userId, $payload, $skipEmail = false, ?string $notificationType = null, ?int $firmId = null)
     {
         if ($notificationType !== null) {
             $preferences = new UserNotificationPreferenceModel();
@@ -75,13 +75,13 @@ class PushNotificationService
             }
         }
 
-        return $this->sendNotification('user', $userId, $payload, $skipEmail);
+        return $this->sendNotification('user', $userId, $payload, $skipEmail, $firmId);
     }
 
     /**
      * Ortak bildirim gönderme fonksiyonu
      */
-    private function sendNotification($type, $id, $payload, $skipEmail = false)
+    private function sendNotification($type, $id, $payload, $skipEmail = false, ?int $firmId = null)
     {
         $pushSent = false;
 
@@ -153,7 +153,7 @@ class PushNotificationService
         if ($pushSent) {
             try {
                 $MesajLogModel = new \App\Model\MesajLogModel();
-                $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
+                $firmaId = $firmId ?? $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
                 $title = $payload['title'] ?? 'Push Bildirim';
                 $body = $payload['body'] ?? '';
                 $recipients = [$type . ':' . $id];
@@ -171,7 +171,7 @@ class PushNotificationService
         } else {
             try {
                 $MesajLogModel = new \App\Model\MesajLogModel();
-                $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
+                $firmaId = $firmId ?? $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
                 $title = $payload['title'] ?? 'Push Bildirim';
                 $body = $payload['body'] ?? '';
                 $recipients = [$type . ':' . $id];

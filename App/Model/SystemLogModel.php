@@ -59,6 +59,17 @@ class SystemLogModel extends Model
         ]);
     }
 
+    public function logActionForFirm(int $firmId, int $userId, string $actionType, string $description, int $level = self::LEVEL_INFO)
+    {
+        return $this->saveWithAttr([
+            'user_id' => max(0, $userId),
+            'firma_id' => max(0, $firmId),
+            'action_type' => $actionType,
+            'description' => $description,
+            'level' => $level,
+        ]);
+    }
+
     /**
      * Belirli bir IP'den, verilen action_type için son X dakikada kaydedilmiş
      * başarısız kimlik doğrulama denemesi sayısını döndürür (basit rate-limit kontrolü).

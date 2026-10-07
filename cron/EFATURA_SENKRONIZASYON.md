@@ -19,5 +19,8 @@ yetkili kullanıcılara uygulama içi bildirim gönderilir.
 ```
 
 Görev her saatin başında çalışır. Bir önceki çalışma sürüyorsa dosya kilidi nedeniyle ikinci
-işlem başlamaz. EDM oluşturulma tarihine göre bugün ve bir önceki gün örtüşmeli sorgulanır;
+işlem başlamaz. EDM oluşturulma tarihine göre bugün ve önceki gün örtüşmeli sorgulanır;
 yerel `(firm_id, ettn)` tekilliği tekrar kayıt ve tekrar bildirimi engeller.
+
+Her firma çalışmasının sonucu ve oluşturulan bildirim sayısı merkezi `system_logs` audit
+tablosuna `EDM Gelen Fatura Senkronizasyonu` işlem tipiyle kaydedilir.

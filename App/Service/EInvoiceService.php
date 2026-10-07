@@ -15,14 +15,20 @@ class EInvoiceService
     private UblGeneratorService $ublService;
     private \Closure $clientFactory;
     private ?string $storageRoot;
+    private ?\Closure $incomingNotificationHandler;
 
-    public function __construct(?EInvoiceModel $invoiceModel = null, ?EInvoiceSettingsModel $settingsModel = null, ?\Closure $clientFactory = null, ?string $storageRoot = null)
+    public function __construct(?EInvoiceModel $invoiceModel = null, ?EInvoiceSettingsModel $settingsModel = null, ?\Closure $clientFactory = null, ?string $storageRoot = null, ?\Closure $incomingNotificationHandler = null)
     {
+        $usesDefaultInfrastructure = $invoiceModel === null && $settingsModel === null && $clientFactory === null;
         $this->invoiceModel = $invoiceModel ?? new EInvoiceModel();
         $this->settingsModel = $settingsModel ?? new EInvoiceSettingsModel();
         $this->ublService = new UblGeneratorService();
         $this->storageRoot = $storageRoot;
         $this->clientFactory = $clientFactory ?? static fn(int $firm) => new EdmSoapClient($firm);
+        $this->incomingNotificationHandler = $incomingNotificationHandler
+            ?? ($usesDefaultInfrastructure
+                ? static fn(int $firmId, array $invoices): int => (new EInvoiceIncomingNotificationService())->notify($firmId, $invoices)
+                : null);
     }
 
     private function client(int $firmId): EdmSoapClient { return ($this->clientFactory)($firmId); }
@@ -950,7 +956,17 @@ class EInvoiceService
 
     public function syncIncomingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null, string $dateType = 'ISSUE'): array
     {
-        return $this->syncInvoices($firmId, 'GELEN', $startDate ?: date('Y-m-d'), $endDate ?: date('Y-m-d'), $dateType);
+        $result = $this->syncInvoices($firmId, 'GELEN', $startDate ?: date('Y-m-d'), $endDate ?: date('Y-m-d'), $dateType);
+        $result['notification_count'] = 0;
+        if ($this->incomingNotificationHandler !== null && !empty($result['new_invoices'])) {
+            try {
+                $result['notification_count'] = ($this->incomingNotificationHandler)($firmId, $result['new_invoices']);
+            } catch (\Throwable $e) {
+                error_log(sprintf('[efatura_notification] Firma %d: %s', $firmId, $e->getMessage()));
+                $result['notification_error'] = 'Yeni faturalar alındı ancak bildirimler oluşturulamadı.';
+            }
+        }
+        return $result;
     }
 
     public function syncOutgoingInvoices(int $firmId, ?string $startDate = null, ?string $endDate = null, string $dateType = 'CREATE'): array

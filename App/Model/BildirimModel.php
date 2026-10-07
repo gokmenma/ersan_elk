@@ -200,22 +200,35 @@ class BildirimModel extends Model
      */
     public function broadcastByPermissionForFirm(int $firmId, string $permission, string $title, string $message, ?string $link = null, string $icon = 'bell', string $color = 'primary', ?string $notificationType = null): int
     {
+        $created = 0;
+        foreach ($this->userIdsByPermissionForFirm($firmId, $permission) as $userId) {
+            if ($this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType)) {
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    /** @return int[] */
+    public function userIdsByPermissionForFirm(int $firmId, string $permission): array
+    {
         if ($firmId <= 0 || trim($permission) === '') {
-            return 0;
+            return [];
         }
 
         $assignmentModel = new UserRoleAssignmentModel();
         $usersToNotify = [];
+        $accessStmt = $this->db->prepare(
+            "SELECT id FROM users
+             WHERE id = :user_id
+               AND durum = 'Aktif'
+               AND FIND_IN_SET(:firm_id, REPLACE(COALESCE(firma_ids, ''), ' ', '')) > 0
+             LIMIT 1"
+        );
         foreach ($assignmentModel->activeUsersWithPermission($permission) as $user) {
-            $stmt = $this->db->prepare(
-                "SELECT id FROM users
-                 WHERE id = :user_id
-                   AND durum = 'Aktif'
-                   AND FIND_IN_SET(:firm_id, REPLACE(COALESCE(firma_ids, ''), ' ', '')) > 0
-                 LIMIT 1"
-            );
-            $stmt->execute(['user_id' => (int)$user->id, 'firm_id' => (string)$firmId]);
-            if ($stmt->fetchColumn()) {
+            $accessStmt->execute(['user_id' => (int)$user->id, 'firm_id' => (string)$firmId]);
+            if ($accessStmt->fetchColumn()) {
                 $usersToNotify[(int)$user->id] = (int)$user->id;
             }
         }
@@ -224,13 +237,6 @@ class BildirimModel extends Model
             $usersToNotify[$userId] = $userId;
         }
 
-        $created = 0;
-        foreach ($usersToNotify as $userId) {
-            if ($this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType)) {
-                $created++;
-            }
-        }
-
-        return $created;
+        return array_values($usersToNotify);
     }
 }
