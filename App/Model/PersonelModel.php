@@ -661,16 +661,22 @@ class PersonelModel extends Model
 
     public function personelSayilari($modul = 'dashboard')
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
+        $depts = $this->getRestrictedDeptArray();
+        $is_restricted = ($depts !== null && count($depts) > 0);
 
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(departman, :restricted_dept) OR TRIM(departman) = '' OR departman IS NULL)" : "";
-        
-        $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND personel_tipi = 'standart' AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri)) $extra_where";
+        $extra_where = "";
         $params = ['firma_id' => $_SESSION['firma_id'], 'modul' => $modul];
         if ($is_restricted) {
-            $params['restricted_dept'] = $restricted_dept;
+            $deptPlaceholders = [];
+            foreach ($depts as $idx => $dept) {
+                $deptKey = 'dept_sayi_' . $idx;
+                $deptPlaceholders[] = ':' . $deptKey;
+                $params[$deptKey] = $dept;
+            }
+            $extra_where = " AND (TRIM(departman) IN (" . implode(',', $deptPlaceholders) . ") OR TRIM(departman) = '' OR departman IS NULL)";
         }
+        
+        $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND personel_tipi = 'standart' AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri)) $extra_where";
 
         $sql = $this->db->prepare("
         SELECT
@@ -747,6 +753,18 @@ class PersonelModel extends Model
         $params = ['firma_id' => $_SESSION['firma_id']];
         $extra_where_p = "";
 
+        $depts = $this->getRestrictedDeptArray();
+        $is_restricted = ($depts !== null && count($depts) > 0);
+        if ($is_restricted) {
+            $deptPlaceholders = [];
+            foreach ($depts as $idx => $dept) {
+                $deptKey = 'dept_dt_' . $idx;
+                $deptPlaceholders[] = ':' . $deptKey;
+                $params[$deptKey] = $dept;
+            }
+            $extra_where_p = " AND (TRIM(p.departman) IN (" . implode(',', $deptPlaceholders) . ") OR TRIM(p.departman) = '' OR p.departman IS NULL)";
+        }
+
         // Temel sorgu - Birden fazla ekip için GROUP_CONCAT kullanıldı
         $sql = "SELECT p.*, 
                 GROUP_CONCAT(DISTINCT t_all.tur_adi SEPARATOR ', ') as ekip_adi,
@@ -773,6 +791,11 @@ class PersonelModel extends Model
         $totalQuery = $this->db->prepare($totalSql);
         
         $totalParams = ['firma_id' => $_SESSION['firma_id']];
+        if ($is_restricted) {
+            foreach ($depts as $idx => $dept) {
+                $totalParams['dept_dt_' . $idx] = $dept;
+            }
+        }
         
         $totalQuery->execute($totalParams);
         $recordsTotal = $totalQuery->fetchColumn();
@@ -1002,7 +1025,7 @@ class PersonelModel extends Model
                                  AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                                  AND pg.firma_id = :firma_id_sub
                              ) t_all ON p.id = t_all.personel_id
-                             WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) $filterSql GROUP BY p.id) as temp";
+                             WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) $extra_where_p $filterSql GROUP BY p.id) as temp";
 
         $filteredQuery = $this->db->prepare($filteredQuerySql);
 
@@ -1964,11 +1987,24 @@ class PersonelModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $bugun = date('Y-m-d');
 
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        $extra_where_p = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
-        $extra_where_p1 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept1) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
-        $extra_where_p2 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept2) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
+        $depts = $this->getRestrictedDeptArray();
+        $is_restricted = ($depts !== null && count($depts) > 0);
+        $extra_where_p = "";
+        $extra_where_p1 = "";
+        $extra_where_p2 = "";
+        $deptParams = [];
+        if ($is_restricted) {
+            $placeholders = [];
+            foreach ($depts as $idx => $dept) {
+                $deptKey = 'dept_adv_' . $idx;
+                $placeholders[] = ':' . $deptKey;
+                $deptParams[$deptKey] = $dept;
+            }
+            $inList = implode(',', $placeholders);
+            $extra_where_p = " AND (TRIM(p.departman) IN ($inList) OR TRIM(p.departman) = '' OR p.departman IS NULL)";
+            $extra_where_p1 = $extra_where_p;
+            $extra_where_p2 = $extra_where_p;
+        }
 
         // Sahadaki Personel Sayısı (Bugün iş yapmış olanlar)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
@@ -1988,8 +2024,7 @@ class PersonelModel extends Model
             'firma_id2' => $firmaId
         ];
         if ($is_restricted) {
-            $paramsS['restricted_dept1'] = $restricted_dept;
-            $paramsS['restricted_dept2'] = $restricted_dept;
+            $paramsS = array_merge($paramsS, $deptParams);
         }
         $stmtS->execute($paramsS);
         $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
@@ -2004,7 +2039,9 @@ class PersonelModel extends Model
                       AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
         $stmtI = $this->db->prepare($sqlIzinli);
         $paramsI = ['bugun' => $bugun, 'firma_id' => $firmaId];
-        if ($is_restricted) $paramsI['restricted_dept'] = $restricted_dept;
+        if ($is_restricted) {
+            $paramsI = array_merge($paramsI, $deptParams);
+        }
         $stmtI->execute($paramsI);
         $izinliRecord = $stmtI->fetch(PDO::FETCH_OBJ);
         $izinliCount = $izinliRecord ? $izinliRecord->izinli : 0;
@@ -2039,11 +2076,24 @@ class PersonelModel extends Model
         $buAy = date('Y-m-01');
         $sonGun = date('Y-m-t');
 
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        $extra_where_p = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
-        $extra_where_p1 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept1) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
-        $extra_where_p2 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept2) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
+        $depts = $this->getRestrictedDeptArray();
+        $is_restricted = ($depts !== null && count($depts) > 0);
+        $extra_where_p = "";
+        $extra_where_p1 = "";
+        $extra_where_p2 = "";
+        $deptParams = [];
+        if ($is_restricted) {
+            $placeholders = [];
+            foreach ($depts as $idx => $dept) {
+                $deptKey = 'dept_madv_' . $idx;
+                $placeholders[] = ':' . $deptKey;
+                $deptParams[$deptKey] = $dept;
+            }
+            $inList = implode(',', $placeholders);
+            $extra_where_p = " AND (TRIM(p.departman) IN ($inList) OR TRIM(p.departman) = '' OR p.departman IS NULL)";
+            $extra_where_p1 = $extra_where_p;
+            $extra_where_p2 = $extra_where_p;
+        }
 
         // Sahadaki Personel Sayısı (Bu ay iş yapmış olan benzersiz personeller)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
@@ -2065,14 +2115,13 @@ class PersonelModel extends Model
             'firma_id2' => $firmaId
         ];
         if ($is_restricted) {
-            $paramsS['restricted_dept1'] = $restricted_dept;
-            $paramsS['restricted_dept2'] = $restricted_dept;
+            $paramsS = array_merge($paramsS, $deptParams);
         }
         $stmtS->execute($paramsS);
         $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
 
         // İzinli Personel Sayısı (Bu ay içinde en az bir gün izin kullanan benzersiz personeller)
-        $sqlIzinli = "SELECT COUNT(DISTINCT personel_id) as izinli FROM personel_izinleri pi
+        $sqlIzinli = "SELECT COUNT(DISTINCT pi.personel_id) as izinli FROM personel_izinleri pi
                       JOIN personel p ON pi.personel_id = p.id
                       LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                       WHERE ((pi.baslangic_tarihi <= :sonGun AND pi.bitis_tarihi >= :buAy))
@@ -2081,7 +2130,9 @@ class PersonelModel extends Model
                       AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
         $stmtI = $this->db->prepare($sqlIzinli);
         $paramsI = ['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId];
-        if ($is_restricted) $paramsI['restricted_dept'] = $restricted_dept;
+        if ($is_restricted) {
+            $paramsI = array_merge($paramsI, $deptParams);
+        }
         $stmtI->execute($paramsI);
         $izinliCount = $stmtI->fetch(PDO::FETCH_OBJ)->izinli ?? 0;
 
@@ -2112,222 +2163,21 @@ class PersonelModel extends Model
      */
     public function getUniqueValues($column, $request = [])
     {
-        $restricted_users = [
-            69 => 'Endeks Okuma',
-            68 => 'Kesme Açma',
-            67 => 'Sayaç Sökme Takma',
-            70 => 'Kaçak Kontrol'
-        ];
-        $current_user_id = $_SESSION['user_id'] ?? 0;
-        $is_restricted = isset($restricted_users[$current_user_id]);
-        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
-
-        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
-            $is_restricted = false;
-        }
+        $depts = $this->getRestrictedDeptArray();
+        $is_restricted = ($depts !== null && count($depts) > 0);
 
         $params = ['firma_id' => $_SESSION['firma_id']];
         $params['firma_id_sub'] = $_SESSION['firma_id'];
         
         $extra_where_p = "";
         if ($is_restricted) {
-            $extra_where_p = " AND p.departman = :restricted_dept";
-            $params['restricted_dept'] = $restricted_dept;
-        }
-
-        $colMap = [
-            2 => 'p.tc_kimlik_no',
-            3 => 'p.adi_soyadi',
-            4 => 'p.ise_giris_tarihi',
-            5 => 'p.isten_cikis_tarihi',
-            6 => 'p.cep_telefonu',
-            7 => 'p.email_adresi',
-            8 => 'p.gorev',
-            9 => 'p.departman',
-            10 => 't_all.tur_adi',
-            11 => 'bildirim_abonesi',
-            12 => 'p.isten_cikis_tarihi',
-            23 => 'p.sgk_yapilan_firma'
-        ];
-
-        $targetField = '';
-        $skipIdx = -1;
-
-        if ($column === 'ekip_adi' || $column === 'tur_adi' || $column === 't_all.tur_adi') {
-            $targetField = 't_all.tur_adi';
-            $skipIdx = 10;
-        } elseif ($column === 'bildirim_abonesi') {
-            return ['Açık', 'Kapalı'];
-        } elseif ($column === 'aktif_mi' || $column === 'p.aktif_mi' || $column === 'Durum') {
-            return ['Aktif', 'Pasif'];
-        } else {
-            $targetField = strpos($column, 'p.') === false ? "p." . $column : $column;
-            foreach ($colMap as $idx => $f) {
-                if ($f === $targetField || $f === $column) {
-                    $skipIdx = $idx;
-                    break;
-                }
+            $placeholders = [];
+            foreach ($depts as $idx => $dept) {
+                $deptKey = 'dept_uniq_' . $idx;
+                $placeholders[] = ':' . $deptKey;
+                $params[$deptKey] = $dept;
             }
-        }
-
-        // Temel Sorgu (DataTables filtrelemesiyle aynı JOIN yapısı)
-        $sql = "SELECT DISTINCT $targetField as val
-                FROM {$this->table} p 
-                LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
-                LEFT JOIN (
-                    SELECT pg.personel_id, t.tur_adi, t.ekip_bolge
-                    FROM personel_ekip_gecmisi pg
-                    JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
-                    WHERE pg.baslangic_tarihi <= CURDATE() 
-                    AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
-                    AND pg.firma_id = :firma_id_sub
-                ) t_all ON p.id = t_all.personel_id
-                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $extra_where_p AND p.personel_tipi = 'standart' AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
-
-        // Diğer sütunlardaki aktif filtreleri uygula (Cascading)
-        $filterSql = "";
-        if (isset($request['columns']) && is_array($request['columns'])) {
-            foreach ($request['columns'] as $i => $columnData) {
-                if ($i == $skipIdx)
-                    continue; // Mevcut sütun filtresini dahil etme
-
-                if (!empty($columnData['search']['value']) && isset($colMap[$i])) {
-                    $field = $colMap[$i];
-                    $searchValue = $columnData['search']['value'];
-                    $paramName = "u_col_" . $i;
-
-                    if ($i == 2) { // TC Kimlik (şifreli - hash ile ara)
-                        $filterSql .= " AND p.tc_hash = SHA2(:$paramName, 256)";
-                        $params[$paramName] = preg_replace('/[^0-9]/', '', $searchValue);
-                        continue;
-                    }
-
-                    if (strpos($searchValue, ':') !== false) {
-                        list($mode, $val) = explode(':', $searchValue, 2);
-                        $vals = explode('|', $val);
-                        $val = $vals[0];
-                        $val2 = isset($vals[1]) ? $vals[1] : null;
-
-                        if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
-                            switch ($mode) {
-                                case 'multi':
-                                    if (!empty($vals)) {
-                                        $orConditions = [];
-                                        foreach ($vals as $vIdx => $v) {
-                                            $vParam = $paramName . "_" . $vIdx;
-                                            if ($v === '(Boş)') {
-                                                $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
-                                            } elseif ($field == 'p.isten_cikis_tarihi' && $i == 12) {
-                                                if (stripos($v, 'Aktif') !== false) {
-                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
-                                                } else {
-                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
-                                                }
-                                            } elseif ($field == 'bildirim_abonesi') {
-                                                $mappedVal = (stripos($v, 'Açık') !== false) ? 1 : 0;
-                                                $orConditions[] = "(CASE WHEN EXISTS (SELECT 1 FROM push_subscriptions WHERE personel_id = p.id) THEN 1 ELSE 0 END) = :$vParam";
-                                                $params[$vParam] = $mappedVal;
-                                            } else {
-                                                $orConditions[] = "$field LIKE :$vParam";
-                                                $params[$vParam] = "%$v%";
-                                            }
-                                        }
-                                        $filterSql .= " AND (" . implode(" OR ", $orConditions) . ")";
-                                    }
-                                    break;
-                                case 'contains':
-                                    $filterSql .= " AND $field LIKE :$paramName";
-                                    $params[$paramName] = "%$val%";
-                                    break;
-                                case 'not_contains':
-                                    $filterSql .= " AND $field NOT LIKE :$paramName";
-                                    $params[$paramName] = "%$val%";
-                                    break;
-                                case 'starts_with':
-                                    $filterSql .= " AND $field LIKE :$paramName";
-                                    $params[$paramName] = "$val%";
-                                    break;
-                                case 'ends_with':
-                                    $filterSql .= " AND $field LIKE :$paramName";
-                                    $params[$paramName] = "%$val";
-                                    break;
-                                case 'equals':
-                                    $filterSql .= " AND $field = :$paramName";
-                                    $params[$paramName] = $val;
-                                    break;
-                                case 'gt':
-                                case 'greater_than':
-                                    $filterSql .= " AND $field > :$paramName";
-                                    $params[$paramName] = $val;
-                                    break;
-                                case 'lt':
-                                case 'less_than':
-                                    $filterSql .= " AND $field < :$paramName";
-                                    $params[$paramName] = $val;
-                                    break;
-                                case 'null':
-                                    $filterSql .= " AND ($field IS NULL OR $field = '' OR $field = '0000-00-00')";
-                                    break;
-                                case 'not_null':
-                                    $filterSql .= " AND $field IS NOT NULL AND $field != '' AND $field != '0000-00-00'";
-                                    break;
-                            }
-                        }
-                    } else {
-                        if ($i == 12) {
-                            if (stripos('Aktif', $searchValue) !== false)
-                                $filterSql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
-                            elseif (stripos('Pasif', $searchValue) !== false)
-                                $filterSql .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
-                        } elseif ($i == 10) {
-                            $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
-                            $params[$paramName] = "%$searchValue%";
-                        } else {
-                            $filterSql .= " AND $field LIKE :$paramName";
-                            $params[$paramName] = "%$searchValue%";
-                        }
-                    }
-                }
-            }
-        }
-
-        $sql .= $filterSql;
-        $sql .= " ORDER BY $targetField ASC";
-
-        $query = $this->db->prepare($sql);
-        $query->execute($params);
-        $results = $query->fetchAll(PDO::FETCH_COLUMN);
-
-        // Boş/Null olanları temizle ve (Boş) olarak ekle (eğer varsa)
-        $cleanResults = [];
-        $hasEmpty = false;
-        foreach ($results as $r) {
-            if ($r === null || $r === '' || $r === '0000-00-00') {
-                $hasEmpty = true;
-            } else {
-                $cleanResults[] = $r;
-            }
-        }
-
-        if ($hasEmpty) {
-            $cleanResults[] = "(Boş)";
-        }
-
-        return array_unique($cleanResults);
-        $is_restricted = isset($restricted_users[$current_user_id]);
-        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
-
-        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
-            $is_restricted = false;
-        }
-
-        $params = ['firma_id' => $_SESSION['firma_id']];
-        $params['firma_id_sub'] = $_SESSION['firma_id'];
-        
-        $extra_where_p = "";
-        if ($is_restricted) {
-            $extra_where_p = " AND p.departman = :restricted_dept";
-            $params['restricted_dept'] = $restricted_dept;
+            $extra_where_p = " AND (TRIM(p.departman) IN (" . implode(',', $placeholders) . ") OR TRIM(p.departman) = '' OR p.departman IS NULL)";
         }
 
         $colMap = [

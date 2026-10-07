@@ -13,6 +13,7 @@ use App\Helper\Helper;
 use App\Service\EInvoiceService;
 use App\Model\EInvoiceModel;
 use App\Helper\Security;
+use App\Service\Gate;
 
 header('Content-Type: application/json');
 
@@ -23,6 +24,7 @@ if (!isset($_SESSION['id']) || !isset($_SESSION['firma_id'])) {
 
 $firma_id = $_SESSION['firma_id'];
 $type = $_REQUEST['type'] ?? '';
+Gate::authorizeApiPolicy('hakedisler/online-api', (string) $type);
 
 try {
     function convertDateToDb($date)

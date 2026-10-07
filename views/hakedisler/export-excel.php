@@ -6,12 +6,17 @@ use App\Model\HakedisSozlesmeModel;
 use App\Model\HakedisDonemModel;
 use App\Model\HakedisKalemModel;
 use App\Model\HakedisMiktarModel;
+use App\Service\Gate;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 if (!isset($_SESSION['id']) || !isset($_SESSION['firma_id'])) {
     die("Oturum süresi dolmuş. Lütfen tekrar giriş yapın.");
+}
+if (!Gate::allowsPolicy('api', 'hakedisler/export-excel', 'export', 'GET')) {
+    http_response_code(403);
+    die('Bu raporu dışa aktarma yetkiniz bulunmamaktadır.');
 }
 
 $firma_id = $_SESSION['firma_id'];

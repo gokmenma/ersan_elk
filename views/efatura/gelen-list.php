@@ -224,38 +224,44 @@ $title = 'Gelen Faturalar';
                         <i class="bx bx-x font-size-14"></i>
                     </button>
                 </div>
+                <div id="productSearchGlobalBadge" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 font-size-11 align-items-center gap-1 shadow-xs d-none" style="display: none !important; height: 32px;" title="Ürün araması yapılırken tarih filtresi otomatik olarak askıya alınır ve tüm dönemlerde arama yapılır. Aramayı temizlediğinizde önceki tarihe dönülür.">
+                    <i class="bx bx-globe font-size-13"></i> <span>Tüm Dönemler</span>
+                </div>
 
-                <!-- Hızlı Dönem Seçici Dropdown -->
-                <div class="dropdown d-inline-block">
-                    <button type="button" class="btn btn-sm bg-white border rounded-3 px-2 shadow-sm d-flex align-items-center gap-1 font-size-12 fw-semibold text-dark dropdown-toggle" style="border-color: #cbd5e1 !important; height: 32px; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
-                        <i class="bx bx-calendar-event text-primary font-size-15"></i> <span id="currentPeriodLabel">Bu Ay</span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1 font-size-12" style="min-width: 150px;">
-                        <a class="dropdown-item py-1.5 period-select-opt active" href="javascript:void(0);" data-period="this_month"><i class="bx bx-check text-primary me-1 check-icon"></i> Bu Ay</a>
-                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="last_month"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Geçen Ay</a>
-                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="last_3_months"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Son 3 Ay</a>
-                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="this_year"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Bu Yıl (<?= date('Y') ?>)</a>
-                        <div class="dropdown-divider my-1"></div>
-                        <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="all"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Tümü</a>
+                <!-- Tarih Filtreleri Grubu -->
+                <div class="d-flex align-items-center gap-2 efatura-date-controls" id="efaturaDateControls">
+                    <!-- Hızlı Dönem Seçici Dropdown -->
+                    <div class="dropdown d-inline-block">
+                        <button type="button" class="btn btn-sm bg-white border rounded-3 px-2 shadow-sm d-flex align-items-center gap-1 font-size-12 fw-semibold text-dark dropdown-toggle" style="border-color: #cbd5e1 !important; height: 32px; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
+                            <i class="bx bx-calendar-event text-primary font-size-15"></i> <span id="currentPeriodLabel">Bu Ay</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1 font-size-12" style="min-width: 150px;">
+                            <a class="dropdown-item py-1.5 period-select-opt active" href="javascript:void(0);" data-period="this_month"><i class="bx bx-check text-primary me-1 check-icon"></i> Bu Ay</a>
+                            <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="last_month"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Geçen Ay</a>
+                            <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="last_3_months"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Son 3 Ay</a>
+                            <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="this_year"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Bu Yıl (<?= date('Y') ?>)</a>
+                            <div class="dropdown-divider my-1"></div>
+                            <a class="dropdown-item py-1.5 period-select-opt" href="javascript:void(0);" data-period="all"><i class="bx bx-check text-primary me-1 check-icon" style="visibility:hidden;"></i> Tümü</a>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Başlangıç Tarihi Filtresi -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Başlangıç Tarihi">
-                    <i class="bx bx-calendar text-primary font-size-15"></i>
-                    <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Başlangıç" readonly>
-                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearStartDate" title="Başlangıç Tarihini Temizle">
-                        <i class="bx bx-x font-size-14"></i>
-                    </button>
-                </div>
+                    <!-- Başlangıç Tarihi Filtresi -->
+                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Başlangıç Tarihi">
+                        <i class="bx bx-calendar text-primary font-size-15"></i>
+                        <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Başlangıç" readonly>
+                        <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearStartDate" title="Başlangıç Tarihini Temizle">
+                            <i class="bx bx-x font-size-14"></i>
+                        </button>
+                    </div>
 
-                <!-- Bitiş Tarihi Filtresi -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Bitiş Tarihi">
-                    <i class="bx bx-calendar text-primary font-size-15"></i>
-                    <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Bitiş" readonly>
-                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearEndDate" title="Bitiş Tarihini Temizle">
-                        <i class="bx bx-x font-size-14"></i>
-                    </button>
+                    <!-- Bitiş Tarihi Filtresi -->
+                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Bitiş Tarihi">
+                        <i class="bx bx-calendar text-primary font-size-15"></i>
+                        <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Bitiş" readonly>
+                        <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearEndDate" title="Bitiş Tarihini Temizle">
+                            <i class="bx bx-x font-size-14"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Sütunlar Butonu (ColVis & Drag-Drop Yönetimi) -->
@@ -773,6 +779,19 @@ $title = 'Gelen Faturalar';
     color: #94a3b8 !important;
     background-color: #f8fafc !important;
     border-color: #e2e8f0 !important;
+}
+.efatura-date-controls.disabled-by-product-search {
+    opacity: 0.42 !important;
+    pointer-events: none !important;
+    filter: grayscale(0.6) !important;
+    user-select: none !important;
+    transition: all 0.2s ease;
+}
+#productSearchGlobalBadge.d-none {
+    display: none !important;
+}
+#productSearchGlobalBadge.d-inline-flex {
+    display: inline-flex !important;
 }
 </style>
 

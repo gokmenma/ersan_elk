@@ -63,15 +63,20 @@ $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
         </div>
 
         <!-- Ürün / Marka / Kalem Arama -->
-        <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span class="material-symbols-outlined text-purple-500 text-lg">inventory_2</span>
+        <div class="space-y-1">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="material-symbols-outlined text-purple-500 text-lg">inventory_2</span>
+                </div>
+                <input type="text" id="taslakProductSearchInput" placeholder="Taslak içeriğindeki Ürün / Marka / Kalem Ara..." autocomplete="off"
+                       class="w-full pl-9 pr-8 py-2.5 bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 focus:border-purple-500 focus:ring-0 rounded-xl shadow-xs text-xs text-slate-900 dark:text-white placeholder-purple-400">
+                <button type="button" id="btnClearTaslakProductSearch" onclick="clearTaslakProductSearch()" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 hidden">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
             </div>
-            <input type="text" id="taslakProductSearchInput" placeholder="Taslak içeriğindeki Ürün / Marka / Kalem Ara..." autocomplete="off"
-                   class="w-full pl-9 pr-8 py-2.5 bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 focus:border-purple-500 focus:ring-0 rounded-xl shadow-xs text-xs text-slate-900 dark:text-white placeholder-purple-400">
-            <button type="button" id="btnClearTaslakProductSearch" onclick="clearTaslakProductSearch()" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 hidden">
-                <span class="material-symbols-outlined text-base">close</span>
-            </button>
+            <div id="taslakProductGlobalBadge" class="hidden text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">public</span> Tüm dönemlerde aranıyor
+            </div>
         </div>
     </div>
 
@@ -104,8 +109,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('taslakProductSearchInput').addEventListener('input', function() {
         const val = this.value.trim();
         const btnClear = document.getElementById('btnClearTaslakProductSearch');
-        if (val.length > 0) btnClear.classList.remove('hidden');
-        else btnClear.classList.add('hidden');
+        const badge = document.getElementById('taslakProductGlobalBadge');
+        if (val.length > 0) {
+            btnClear.classList.remove('hidden');
+            if (badge) badge.classList.remove('hidden');
+        } else {
+            btnClear.classList.add('hidden');
+            if (badge) badge.classList.add('hidden');
+        }
 
         clearTimeout(taslakSearchTimer);
         taslakSearchTimer = setTimeout(loadTaslakInvoices, 350);
@@ -149,6 +160,8 @@ function clearTaslakProductSearch() {
     const inp = document.getElementById('taslakProductSearchInput');
     inp.value = '';
     document.getElementById('btnClearTaslakProductSearch').classList.add('hidden');
+    const badge = document.getElementById('taslakProductGlobalBadge');
+    if (badge) badge.classList.add('hidden');
     loadTaslakInvoices();
 }
 
@@ -165,10 +178,13 @@ function loadTaslakInvoices() {
     const prodVal = document.getElementById('taslakProductSearchInput').value.trim();
 
     let url = '../api/efatura-api.php?action=list_invoices&list_type=taslak&start=0&length=100';
-    if (currentTaslakStartDate) url += `&baslangic_tarihi=${currentTaslakStartDate}`;
-    if (currentTaslakEndDate) url += `&bitis_tarihi=${currentTaslakEndDate}`;
+    if (prodVal) {
+        url += `&urun_ara=${encodeURIComponent(prodVal)}`;
+    } else {
+        if (currentTaslakStartDate) url += `&baslangic_tarihi=${currentTaslakStartDate}`;
+        if (currentTaslakEndDate) url += `&bitis_tarihi=${currentTaslakEndDate}`;
+    }
     if (searchVal) url += `&search[value]=${encodeURIComponent(searchVal)}`;
-    if (prodVal) url += `&urun_ara=${encodeURIComponent(prodVal)}`;
 
     fetch(url)
         .then(r => r.json())

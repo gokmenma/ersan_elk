@@ -267,20 +267,35 @@ try {
         $db = (new Db())->getConnection();
 
         // Get restriction from DB instead of hardcoded array
-        $restricted_dept = null;
-        $is_restricted = false;
-
+        $depts = null;
         if ($current_user_id && !\App\Service\Gate::isSuperAdmin()) {
             $uStmt = $db->prepare("SELECT yonetilen_departman FROM users WHERE id = ?");
             $uStmt->execute([$current_user_id]);
             $uRow = $uStmt->fetch(PDO::FETCH_OBJ);
             if ($uRow && !empty($uRow->yonetilen_departman)) {
-                $is_restricted = true;
-                $restricted_dept = $uRow->yonetilen_departman;
+                $raw = trim($uRow->yonetilen_departman);
+                if (strpos($raw, '|') !== false) {
+                    $depts = explode('|', $raw);
+                } elseif (strpos($raw, ';') !== false) {
+                    $depts = explode(';', $raw);
+                } else {
+                    $depts = explode(',', $raw);
+                }
+                $depts = array_values(array_filter(array_map('trim', $depts), function($v) { return $v !== ''; }));
             }
         }
 
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(departman, :dept)" : "";
+        $extra_where = "";
+        $params = [':term' => "%$term%"];
+        if (!empty($depts)) {
+            $placeholders = [];
+            foreach ($depts as $idx => $dept) {
+                $k = ':dept_' . $idx;
+                $placeholders[] = $k;
+                $params[$k] = $dept;
+            }
+            $extra_where = " AND (TRIM(departman) IN (" . implode(',', $placeholders) . ") OR TRIM(departman) = '' OR departman IS NULL)";
+        }
 
         $sql = "SELECT id, adi_soyadi, email_adresi, 'Kullanıcı' as kaynak FROM users WHERE (adi_soyadi LIKE :term OR email_adresi LIKE :term) AND silinme_tarihi IS NULL
                 UNION ALL
@@ -288,10 +303,6 @@ try {
                 LIMIT 15";
  
         $stmt = $db->prepare($sql);
-        $params = [':term' => "%$term%"];
-        if ($is_restricted) {
-            $params[':dept'] = $restricted_dept;
-        }
         $stmt->execute($params);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

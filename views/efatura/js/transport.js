@@ -46,7 +46,7 @@
                 yearSelect.setAttribute('aria-label', 'Yıl');
 
                 const curYear = new Date().getFullYear();
-                const startY = userOptions.minYear || (curYear - 15);
+                const startY = userOptions.minYear || 2020;
                 const endY = userOptions.maxYear || curYear;
 
                 for (let y = startY; y <= endY; y++) {

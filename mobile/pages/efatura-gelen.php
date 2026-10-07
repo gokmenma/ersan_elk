@@ -71,15 +71,20 @@ $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
         </div>
 
         <!-- Ürün / Marka / Kalem Arama -->
-        <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span class="material-symbols-outlined text-purple-500 text-lg">inventory_2</span>
+        <div class="space-y-1">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="material-symbols-outlined text-purple-500 text-lg">inventory_2</span>
+                </div>
+                <input type="text" id="gelenProductSearchInput" placeholder="Fatura içeriğindeki Ürün / Marka / Kalem Ara..." autocomplete="off"
+                       class="w-full pl-9 pr-8 py-2.5 bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 focus:border-purple-500 focus:ring-0 rounded-xl shadow-xs text-xs text-slate-900 dark:text-white placeholder-purple-400">
+                <button type="button" id="btnClearGelenProductSearch" onclick="clearGelenProductSearch()" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 hidden">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
             </div>
-            <input type="text" id="gelenProductSearchInput" placeholder="Fatura içeriğindeki Ürün / Marka / Kalem Ara..." autocomplete="off"
-                   class="w-full pl-9 pr-8 py-2.5 bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 focus:border-purple-500 focus:ring-0 rounded-xl shadow-xs text-xs text-slate-900 dark:text-white placeholder-purple-400">
-            <button type="button" id="btnClearGelenProductSearch" onclick="clearGelenProductSearch()" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 hidden">
-                <span class="material-symbols-outlined text-base">close</span>
-            </button>
+            <div id="gelenProductGlobalBadge" class="hidden text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">public</span> Tüm dönemlerde aranıyor
+            </div>
         </div>
 
         <!-- Ticari Yanıt Filtreleri -->
@@ -150,8 +155,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('gelenProductSearchInput').addEventListener('input', function() {
         const val = this.value.trim();
         const btnClear = document.getElementById('btnClearGelenProductSearch');
-        if (val.length > 0) btnClear.classList.remove('hidden');
-        else btnClear.classList.add('hidden');
+        const badge = document.getElementById('gelenProductGlobalBadge');
+        if (val.length > 0) {
+            btnClear.classList.remove('hidden');
+            if (badge) badge.classList.remove('hidden');
+        } else {
+            btnClear.classList.add('hidden');
+            if (badge) badge.classList.add('hidden');
+        }
 
         clearTimeout(gelenSearchTimer);
         gelenSearchTimer = setTimeout(loadGelenInvoices, 350);
@@ -204,6 +215,8 @@ function clearGelenProductSearch() {
     const inp = document.getElementById('gelenProductSearchInput');
     inp.value = '';
     document.getElementById('btnClearGelenProductSearch').classList.add('hidden');
+    const badge = document.getElementById('gelenProductGlobalBadge');
+    if (badge) badge.classList.add('hidden');
     loadGelenInvoices();
 }
 
@@ -220,11 +233,14 @@ function loadGelenInvoices() {
     const prodVal = document.getElementById('gelenProductSearchInput').value.trim();
 
     let url = '../api/efatura-api.php?action=list_invoices&list_type=gelen&start=0&length=100';
-    if (currentGelenStartDate) url += `&baslangic_tarihi=${currentGelenStartDate}`;
-    if (currentGelenEndDate) url += `&bitis_tarihi=${currentGelenEndDate}`;
+    if (prodVal) {
+        url += `&urun_ara=${encodeURIComponent(prodVal)}`;
+    } else {
+        if (currentGelenStartDate) url += `&baslangic_tarihi=${currentGelenStartDate}`;
+        if (currentGelenEndDate) url += `&bitis_tarihi=${currentGelenEndDate}`;
+    }
     if (currentGelenYanit) url += `&durum_filtre=${encodeURIComponent(currentGelenYanit)}`;
     if (searchVal) url += `&search[value]=${encodeURIComponent(searchVal)}`;
-    if (prodVal) url += `&urun_ara=${encodeURIComponent(prodVal)}`;
 
     fetch(url)
         .then(r => r.json())

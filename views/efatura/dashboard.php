@@ -154,6 +154,24 @@ $title = 'Fatura Dashboard';
     border-radius: 12px;
     backdrop-filter: blur(1px);
 }
+
+/* Flatpickr Year Dropdown Select */
+.flatpickr-current-month .flatpickr-yearDropdown-years {
+    font-weight: 700 !important;
+    font-size: inherit !important;
+    margin-left: 4px !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    color: inherit !important;
+    padding: 0 4px !important;
+    border-radius: 4px !important;
+}
+.flatpickr-current-month .flatpickr-yearDropdown-years:focus,
+.flatpickr-current-month .flatpickr-yearDropdown-years:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+    outline: none !important;
+}
 </style>
 
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
@@ -540,5 +558,7 @@ $title = 'Fatura Dashboard';
 <!-- Flatpickr Türkçe Destek -->
 <script src="assets/libs/flatpickr/flatpickr.min.js"></script>
 <script src="assets/libs/flatpickr/l10n/tr.js"></script>
+<!-- E-Fatura Ortak Yardımcı / Transport -->
+<script src="views/efatura/js/transport.js?v=<?= filemtime(__DIR__ . '/js/transport.js') ?>"></script>
 <!-- Dashboard Scripti -->
 <script src="views/efatura/js/dashboard.js?v=<?= filemtime(__DIR__ . '/js/dashboard.js') ?>"></script>

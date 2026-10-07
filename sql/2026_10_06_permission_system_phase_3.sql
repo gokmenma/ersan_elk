@@ -55,12 +55,31 @@ FROM (
     UNION ALL SELECT 'kullanici-gruplari/yetki-denetimi', 'kullanici-gruplari/list', 1
     UNION ALL SELECT 'kullanici-gruplari/yetki-katalogu', 'kullanici-gruplari/list', 1
     UNION ALL SELECT 'bordro/ai-analiz', 'bordro/list', 0
+    UNION ALL SELECT 'hakedisler/sozlesme-detay', 'hakedisler/index', 0
+    UNION ALL SELECT 'hakedisler/hakedis-detay', 'hakedisler/index', 0
 ) aliases
 INNER JOIN menus m ON m.menu_link = aliases.parent_resource AND m.is_active = 1
 WHERE m.permission_id IS NOT NULL
 ON DUPLICATE KEY UPDATE
     permission_id = VALUES(permission_id),
     superadmin_only = VALUES(superadmin_only),
+    is_active = 1;
+
+-- Sözleşme/Hakediş ortak API ve rapor dışa aktarma uçları.
+INSERT INTO permission_policies
+    (scope, resource, action, http_method, permission_id, superadmin_only, authenticated_only)
+SELECT 'api', endpoints.resource, endpoints.action, endpoints.http_method, p.id, 0, 0
+FROM (
+    SELECT 'hakedisler/online-api' AS resource, '*' AS action, '*' AS http_method
+    UNION ALL SELECT 'hakedisler/export-excel', 'export', 'GET'
+) endpoints
+INNER JOIN permissions p
+    ON p.is_active = 1
+   AND (p.permission_key = 'hakedis' OR p.auth_name = 'hakedis')
+ON DUPLICATE KEY UPDATE
+    permission_id = VALUES(permission_id),
+    superadmin_only = 0,
+    authenticated_only = 0,
     is_active = 1;
 
 -- Kullanıcı grupları API aksiyonları: okuma ve yazma ayrı yetkilere bağlanır.

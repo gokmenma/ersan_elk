@@ -72,15 +72,20 @@ $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
         </div>
 
         <!-- Ürün / Marka / Kalem Arama -->
-        <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span class="material-symbols-outlined text-purple-500 text-lg">inventory_2</span>
+        <div class="space-y-1">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="material-symbols-outlined text-purple-500 text-lg">inventory_2</span>
+                </div>
+                <input type="text" id="gidenProductSearchInput" placeholder="Fatura içeriğindeki Ürün / Marka / Kalem Ara..." autocomplete="off"
+                       class="w-full pl-9 pr-8 py-2.5 bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 focus:border-purple-500 focus:ring-0 rounded-xl shadow-xs text-xs text-slate-900 dark:text-white placeholder-purple-400">
+                <button type="button" id="btnClearGidenProductSearch" onclick="clearGidenProductSearch()" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 hidden">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
             </div>
-            <input type="text" id="gidenProductSearchInput" placeholder="Fatura içeriğindeki Ürün / Marka / Kalem Ara..." autocomplete="off"
-                   class="w-full pl-9 pr-8 py-2.5 bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 focus:border-purple-500 focus:ring-0 rounded-xl shadow-xs text-xs text-slate-900 dark:text-white placeholder-purple-400">
-            <button type="button" id="btnClearGidenProductSearch" onclick="clearGidenProductSearch()" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 hidden">
-                <span class="material-symbols-outlined text-base">close</span>
-            </button>
+            <div id="gidenProductGlobalBadge" class="hidden text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">public</span> Tüm dönemlerde aranıyor
+            </div>
         </div>
 
         <!-- Durum Filtreleri -->
@@ -150,8 +155,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('gidenProductSearchInput').addEventListener('input', function() {
         const val = this.value.trim();
         const btnClear = document.getElementById('btnClearGidenProductSearch');
-        if (val.length > 0) btnClear.classList.remove('hidden');
-        else btnClear.classList.add('hidden');
+        const badge = document.getElementById('gidenProductGlobalBadge');
+        if (val.length > 0) {
+            btnClear.classList.remove('hidden');
+            if (badge) badge.classList.remove('hidden');
+        } else {
+            btnClear.classList.add('hidden');
+            if (badge) badge.classList.add('hidden');
+        }
 
         clearTimeout(gidenSearchTimer);
         gidenSearchTimer = setTimeout(loadGidenInvoices, 350);
@@ -160,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function setGidenPeriod(period, btn) {
     document.querySelectorAll('.giden-period-btn').forEach(b => {
-        b.className = 'giden-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap';
+        b.className = 'gelen-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap';
     });
     if (btn) {
         btn.className = 'giden-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs whitespace-nowrap';
@@ -204,6 +215,8 @@ function clearGidenProductSearch() {
     const inp = document.getElementById('gidenProductSearchInput');
     inp.value = '';
     document.getElementById('btnClearGidenProductSearch').classList.add('hidden');
+    const badge = document.getElementById('gidenProductGlobalBadge');
+    if (badge) badge.classList.add('hidden');
     loadGidenInvoices();
 }
 
@@ -220,11 +233,14 @@ function loadGidenInvoices() {
     const prodVal = document.getElementById('gidenProductSearchInput').value.trim();
 
     let url = '../api/efatura-api.php?action=list_invoices&list_type=giden&start=0&length=100';
-    if (currentGidenStartDate) url += `&baslangic_tarihi=${currentGidenStartDate}`;
-    if (currentGidenEndDate) url += `&bitis_tarihi=${currentGidenEndDate}`;
+    if (prodVal) {
+        url += `&urun_ara=${encodeURIComponent(prodVal)}`;
+    } else {
+        if (currentGidenStartDate) url += `&baslangic_tarihi=${currentGidenStartDate}`;
+        if (currentGidenEndDate) url += `&bitis_tarihi=${currentGidenEndDate}`;
+    }
     if (currentGidenStatus) url += `&durum_filtre=${encodeURIComponent(currentGidenStatus)}`;
     if (searchVal) url += `&search[value]=${encodeURIComponent(searchVal)}`;
-    if (prodVal) url += `&urun_ara=${encodeURIComponent(prodVal)}`;
 
     fetch(url)
         .then(r => r.json())

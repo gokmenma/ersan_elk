@@ -156,15 +156,24 @@ $(document).ready(function() {
         table.ajax.reload();
     });
 
+    function updateProductSearchUI(isSearching) {
+        if (isSearching) {
+            $('#btnClearProductSearch').show();
+            $('#productSearchGlobalBadge').removeClass('d-none').addClass('d-inline-flex').css('display', 'inline-flex');
+            $('#efaturaDateControls').addClass('disabled-by-product-search');
+        } else {
+            $('#btnClearProductSearch').hide();
+            $('#productSearchGlobalBadge').addClass('d-none').removeClass('d-inline-flex').css('display', 'none');
+            $('#efaturaDateControls').removeClass('disabled-by-product-search');
+        }
+    }
+    updateProductSearchUI(Boolean($('#filterProductSearch').val()?.trim()));
+
     // Ürün / Marka / Kalem Arama Dinleyicisi
     let gidenProductSearchTimer = null;
     $('#filterProductSearch').on('input keyup', function() {
         const val = $(this).val().trim();
-        if (val.length > 0) {
-            $('#btnClearProductSearch').show();
-        } else {
-            $('#btnClearProductSearch').hide();
-        }
+        updateProductSearchUI(val.length > 0);
         clearTimeout(gidenProductSearchTimer);
         gidenProductSearchTimer = setTimeout(function() {
             table.ajax.reload();
@@ -174,7 +183,7 @@ $(document).ready(function() {
     $('#btnClearProductSearch').on('click', function(e) {
         e.stopPropagation();
         $('#filterProductSearch').val('');
-        $(this).hide();
+        updateProductSearchUI(false);
         table.ajax.reload();
     });
 
@@ -248,15 +257,17 @@ $(document).ready(function() {
                 if (currentStatusFilter) {
                     d.durum_filtre = currentStatusFilter;
                 }
-                if (currentStartDate) {
-                    d.baslangic_tarihi = currentStartDate;
-                }
-                if (currentEndDate) {
-                    d.bitis_tarihi = currentEndDate;
-                }
-                const prodSearch = $('#filterProductSearch').val();
-                if (prodSearch && prodSearch.trim()) {
-                    d.urun_ara = prodSearch.trim();
+                const prodSearch = $('#filterProductSearch').val() ? $('#filterProductSearch').val().trim() : '';
+                if (prodSearch) {
+                    d.urun_ara = prodSearch;
+                    // Ürün aramasında tarih kısıtı gönderilmez, tüm dönemlerde taranır
+                } else {
+                    if (currentStartDate) {
+                        d.baslangic_tarihi = currentStartDate;
+                    }
+                    if (currentEndDate) {
+                        d.bitis_tarihi = currentEndDate;
+                    }
                 }
             },
             dataSrc: function(json) {

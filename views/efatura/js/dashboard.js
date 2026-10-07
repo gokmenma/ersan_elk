@@ -61,7 +61,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 2. Flatpickr Başlatma
+    // 2. Flatpickr Başlatma (Yıl Seçimi Dropdown: 2020 - İçinde Olduğumuz Yıl)
+    const curYear = new Date().getFullYear();
     const flatpickrConfig = {
         locale: 'tr',
         dateFormat: 'Y-m-d',
@@ -69,17 +70,25 @@ document.addEventListener('DOMContentLoaded', function() {
         altFormat: 'd.m.Y',
         allowInput: false,
         disableMobile: true,
+        minYear: 2020,
+        maxYear: curYear,
+        minDate: '2020-01-01',
+        maxDate: `${curYear}-12-31`,
     };
 
     let startPicker = null;
     let endPicker = null;
 
+    const initPicker = (typeof window.initFlatpickrWithYearSelect === 'function')
+        ? window.initFlatpickrWithYearSelect
+        : flatpickr;
+
     if (document.getElementById('dashStartDate')) {
-        startPicker = flatpickr('#dashStartDate', {
+        startPicker = initPicker('#dashStartDate', {
             ...flatpickrConfig,
             onChange: function(selectedDates, dateStr) {
                 currentStartDate = dateStr;
-                if (endPicker) endPicker.set('minDate', dateStr);
+                if (endPicker) endPicker.set('minDate', dateStr || '2020-01-01');
                 $('#quickPeriodGroup .btn').removeClass('active');
                 $('#btnClearDates').show();
                 loadDashboardData();
@@ -88,11 +97,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (document.getElementById('dashEndDate')) {
-        endPicker = flatpickr('#dashEndDate', {
+        endPicker = initPicker('#dashEndDate', {
             ...flatpickrConfig,
             onChange: function(selectedDates, dateStr) {
                 currentEndDate = dateStr;
-                if (startPicker) startPicker.set('maxDate', dateStr);
+                if (startPicker) startPicker.set('maxDate', dateStr || `${curYear}-12-31`);
                 $('#quickPeriodGroup .btn').removeClass('active');
                 $('#btnClearDates').show();
                 loadDashboardData();
@@ -102,8 +111,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Tarihleri Temizle Butonu
     $('#btnClearDates').on('click', function() {
-        if (startPicker) startPicker.clear();
-        if (endPicker) endPicker.clear();
+        if (startPicker) {
+            startPicker.clear();
+            startPicker.set('maxDate', `${curYear}-12-31`);
+        }
+        if (endPicker) {
+            endPicker.clear();
+            endPicker.set('minDate', '2020-01-01');
+        }
         currentStartDate = '';
         currentEndDate = '';
         $(this).hide();
@@ -116,8 +131,14 @@ document.addEventListener('DOMContentLoaded', function() {
         $(this).addClass('active');
         currentPeriod = $(this).data('period');
         
-        if (startPicker) startPicker.clear();
-        if (endPicker) endPicker.clear();
+        if (startPicker) {
+            startPicker.clear();
+            startPicker.set('maxDate', `${curYear}-12-31`);
+        }
+        if (endPicker) {
+            endPicker.clear();
+            endPicker.set('minDate', '2020-01-01');
+        }
         $('#btnClearDates').hide();
 
         setPeriodDates(currentPeriod);
