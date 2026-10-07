@@ -480,7 +480,7 @@ $title = 'Fatura Dashboard';
                         </button>
                         <div class="collapse mt-2" id="kdvInvoicesCollapse">
                             <!-- Akordiyon KDV Oran Grupları / Fatura Listesi -->
-                            <div class="accordion accordion-flush rounded-2 border overflow-hidden" id="kdvRateInvoicesAccordion" style="max-height: 320px; overflow-y: auto;">
+                            <div class="accordion accordion-flush rounded-2 border" id="kdvRateInvoicesAccordion">
                                 <div class="p-3 text-center text-muted font-size-11">
                                     <i class="bx bx-loader-alt bx-spin me-1"></i> Faturalar yükleniyor...
                                 </div>
@@ -616,6 +616,40 @@ $title = 'Fatura Dashboard';
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fatura Önizleme Modalı -->
+<div class="modal fade" id="modalFaturaOnizleme" tabindex="-1" aria-labelledby="onizlemeModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom bg-light py-2.5 px-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-1.5 bg-primary-subtle text-primary rounded-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                        <i class="bx bx-file font-size-16"></i>
+                    </div>
+                    <h5 class="modal-title font-size-14 fw-bold text-dark mb-0" id="onizlemeModalTitle">Fatura Önizleme</h5>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="#" target="_blank" class="btn btn-sm btn-subtle-info rounded-2 px-2.5 py-1 font-size-11" id="btnModalYeniSekme" title="Yeni sekmede aç">
+                        <i class="bx bx-link-external me-1"></i> Yeni Sekmede Aç
+                    </a>
+                    <a href="#" class="btn btn-sm btn-subtle-success rounded-2 px-2.5 py-1 font-size-11" id="btnModalPdfIndir" title="PDF olarak indir">
+                        <i class="bx bxs-file-pdf me-1"></i> PDF İndir
+                    </a>
+                    <button type="button" class="btn btn-sm btn-primary rounded-2 px-2.5 py-1 font-size-11" id="btnModalYazdir" title="Yazdır">
+                        <i class="bx bx-printer me-1"></i> Yazdır
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+            </div>
+            <div class="modal-body p-2" id="onizlemeModalContent" style="min-height: 70vh; background: #f8fafc;">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="mt-2 text-muted font-size-12">Fatura yükleniyor...</div>
                 </div>
             </div>
         </div>

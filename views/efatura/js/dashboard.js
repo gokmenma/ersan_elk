@@ -740,16 +740,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </button>
                         </h2>
-                        <div id="collapse_kdv_${rateClean}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="heading_kdv_${rateClean}" data-bs-parent="#kdvRateInvoicesAccordion">
+                        <div id="collapse_kdv_${rateClean}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="heading_kdv_${rateClean}">
                             <div class="accordion-body p-0">
-                                <div class="table-responsive" style="max-height: 190px; overflow-y: auto;">
+                                <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
                                     <table class="table table-dashboard table-sm table-hover mb-0 font-size-10 align-middle">
                                         <thead>
                                             <tr>
-                                                <th class="ps-2">Fatura No & Tarih</th>
-                                                <th>Cari Ünvan</th>
-                                                <th class="text-end">Matrah</th>
-                                                <th class="text-end">KDV</th>
+                                                <th class="ps-2" style="min-width: 110px;">Fatura No & Tarih</th>
+                                                <th style="min-width: 120px;">Cari Ünvan</th>
+                                                <th class="text-end" style="min-width: 80px;">Matrah</th>
+                                                <th class="text-end" style="min-width: 75px;">KDV</th>
                                                 <th class="text-center pe-2" style="width: 32px;"></th>
                                             </tr>
                                         </thead>
@@ -757,21 +757,21 @@ document.addEventListener('DOMContentLoaded', function() {
                                             ${rateInvoices.map(inv => `
                                                 <tr>
                                                     <td class="ps-2">
-                                                        <div class="fw-bold font-monospace text-truncate" style="max-width: 105px;">
-                                                            <a href="${inv.detail_url}" class="text-primary text-decoration-none" title="Faturayı Görüntüle / İncele" target="_blank">${inv.fatura_no || 'Taslak'}</a>
+                                                        <div class="fw-bold font-monospace text-truncate" style="max-width: 115px;">
+                                                            <a href="javascript:void(0)" class="text-primary text-decoration-none btn-preview-invoice" data-id="${inv.encrypted_id}" title="Fatura Önizle">${inv.fatura_no || 'Taslak'}</a>
                                                         </div>
                                                         <div class="text-muted font-size-9">${inv.fatura_tarihi_fmt}</div>
                                                     </td>
                                                     <td>
-                                                        <div class="fw-semibold text-dark text-truncate" style="max-width: 120px;" title="${inv.alici_unvan || ''}">${inv.alici_unvan || '-'}</div>
+                                                        <div class="fw-semibold text-dark text-truncate" style="max-width: 130px;" title="${inv.alici_unvan || ''}">${inv.alici_unvan || '-'}</div>
                                                         <div class="text-muted font-size-9">${inv.belge_turu || 'EFATURA'}</div>
                                                     </td>
                                                     <td class="text-end fw-semibold text-dark font-size-10">${formatMoney(inv.matrah)}</td>
                                                     <td class="text-end fw-semibold ${kdvValClass} font-size-10">${formatMoney(inv.kdv_tutari)}</td>
                                                     <td class="text-center pe-2">
-                                                        <a href="${inv.detail_url}" class="btn btn-xs btn-subtle-primary p-0.5" title="Faturayı Görüntüle" target="_blank">
+                                                        <button type="button" class="btn btn-xs btn-subtle-primary p-1 btn-preview-invoice" data-id="${inv.encrypted_id}" title="Fatura Önizle">
                                                             <i class="bx bx-show font-size-12"></i>
-                                                        </a>
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             `).join('')}
@@ -847,7 +847,9 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `
             <tr>
                 <td>
-                    <div class="fw-bold font-size-12 text-primary font-monospace">${inv.fatura_no || 'Taslak'}</div>
+                    <div class="fw-bold font-size-12 text-primary font-monospace">
+                        <a href="javascript:void(0)" class="text-primary text-decoration-none btn-preview-invoice" data-id="${inv.encrypted_id}" title="Faturayı Önizle">${inv.fatura_no || 'Taslak'}</a>
+                    </div>
                     <div class="font-size-11 text-muted">${inv.fatura_tarihi_fmt}</div>
                 </td>
                 <td>
@@ -860,6 +862,97 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         tbody.innerHTML = html;
     }
+
+    // 10. Fatura HTML Önizleme Fonksiyonları
+    function decodeInvoiceHtml(html) {
+        if (!html) return '';
+        let txt = document.createElement('textarea');
+        txt.innerHTML = html;
+        let decoded = txt.value;
+        if (decoded.includes('&lt;') || decoded.includes('&gt;')) {
+            txt.innerHTML = decoded;
+            decoded = txt.value;
+        }
+        return decoded;
+    }
+
+    let lastInvoicePreviewHtml = '';
+    function openInvoicePreview(id, autoPrint = false) {
+        const modalEl = document.getElementById('modalFaturaOnizleme');
+        if (!modalEl) return;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+        lastInvoicePreviewHtml = '';
+        
+        $('#onizlemeModalTitle').text('Fatura Önizleme');
+        $('#btnModalYeniSekme').attr('href', `api/efatura-api.php?action=view_invoice&invoice_id=${id}`);
+        $('#btnModalPdfIndir').attr('href', `api/efatura-api.php?action=download_pdf&invoice_id=${id}`);
+        $('#onizlemeModalContent').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted font-size-12">Fatura yükleniyor...</div></div>');
+
+        fetch(`api/efatura-api.php?action=preview_html&invoice_id=${id}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    const cleanedHtml = decodeInvoiceHtml(res.html);
+                    lastInvoicePreviewHtml = cleanedHtml;
+                    let docHtml = cleanedHtml;
+                    if (!docHtml.includes('<html') && !docHtml.includes('<!DOCTYPE')) {
+                        docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body { margin: 0; padding: 15px; background: #fff; font-family: Arial, sans-serif; }</style></head><body>${docHtml}</body></html>`;
+                    }
+                    $('#onizlemeModalContent').html(`
+                        <iframe id="dashInvoiceIframe" style="width: 100%; height: 74vh; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff;" frameborder="0"></iframe>
+                    `);
+                    const iframe = document.getElementById('dashInvoiceIframe');
+                    if (iframe) {
+                        iframe.srcdoc = docHtml;
+                    }
+                    if (autoPrint) {
+                        setTimeout(() => {
+                            printInvoiceHtml(cleanedHtml);
+                        }, 300);
+                    }
+                } else {
+                    $('#onizlemeModalContent').html(`<div class="alert alert-danger m-3">${res.message || 'Fatura görüntülenemedi.'}</div>`);
+                }
+            })
+            .catch(err => {
+                $('#onizlemeModalContent').html(`<div class="alert alert-danger m-3">Önizleme yüklenirken hata oluştu.</div>`);
+            });
+    }
+
+    function printInvoiceHtml(html) {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+    }
+
+    // Önizleme Butonu ve Yazdır Olayları
+    $(document).on('click', '.btn-preview-invoice', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        if (id) {
+            openInvoicePreview(id);
+        }
+    });
+
+    $('#btnModalYazdir').on('click', function() {
+        if (lastInvoicePreviewHtml) {
+            printInvoiceHtml(lastInvoicePreviewHtml);
+        } else {
+            const iframe = document.getElementById('dashInvoiceIframe');
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }
+        }
+    });
 
     // Başlangıç: Bu Ay dönemini seç ve yükle
     setPeriodDates('this_month');

@@ -126,8 +126,8 @@ class Form
         }
 
         $html = '
-    <div class="form-floating form-floating-custom">
-        <select style=' . $style . ' 
+    <div class="form-floating form-floating-custom form-floating-select2">
+        <select style="' . htmlspecialchars($style, ENT_QUOTES, 'UTF-8') . '" 
                 class="' . htmlspecialchars($class) . '" 
                 id="' . htmlspecialchars($elementId) . '" 
                 name="' . htmlspecialchars($name) . '" 
@@ -207,7 +207,8 @@ class Form
         $class = "form-select select2",
         $required = false,
         $id = null,
-        $attributes = ''
+        $attributes = '',
+        $style = 'width:100%'
     ) {
         $elementId = $id ?? $name;
         // If valueField is empty, use key
@@ -216,8 +217,8 @@ class Form
         }
 
         $html = '
-    <div class="form-floating form-floating-custom">
-        <select style="width:100%" 
+    <div class="form-floating form-floating-custom form-floating-select2">
+        <select style="' . htmlspecialchars($style, ENT_QUOTES, 'UTF-8') . '" 
                 class="' . htmlspecialchars($class) . '" 
                 id="' . htmlspecialchars($elementId) . '" 
                 name="' . htmlspecialchars($name) . '[]" 

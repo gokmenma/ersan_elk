@@ -395,6 +395,7 @@ function editSozlesme(id) {
         setTimeout(() => {
           $("#yeniSozlesmeForm")
             .find(".select2")
+            .not(".select2-hidden-accessible")
             .each(function () {
               $(this).select2({
                 dropdownParent: $("#yeniSozlesmeModal"),
@@ -432,6 +433,7 @@ $(document).on("click", '[data-bs-target="#yeniSozlesmeModal"]', function () {
   setTimeout(() => {
     $("#yeniSozlesmeForm")
       .find(".select2")
+      .not(".select2-hidden-accessible")
       .each(function () {
         $(this).select2({
           dropdownParent: $("#yeniSozlesmeModal"),

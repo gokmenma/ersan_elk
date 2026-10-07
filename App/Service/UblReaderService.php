@@ -72,7 +72,23 @@ final class UblReaderService
                 'iade_fatura_no' => $text('/i:Invoice/cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID') ?: null,
                 'iade_fatura_tarihi' => $text('/i:Invoice/cac:BillingReference/cac:InvoiceDocumentReference/cbc:IssueDate') ?: null,
                 'kaynak_xml' => $xml, 'notlar' => self::compactNotes(implode("\n", array_map(static fn($node) => $node->textContent, iterator_to_array($xp->query('/i:Invoice/cbc:Note')))))];
-            foreach ($other as $key => $value) $header['alici_' . $key] = $value;
+            $headerKdvSubtotals = [];
+            foreach ($xp->query('/i:Invoice/cac:TaxTotal/cac:TaxSubtotal') as $tNode) {
+                $taxCode = $text('cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode', $tNode);
+                $taxName = $text('cac:TaxCategory/cac:TaxScheme/cbc:Name', $tNode);
+                $percent = $decimal($text('cbc:Percent', $tNode));
+                $taxable = $decimal($text('cbc:TaxableAmount', $tNode));
+                $taxAmt = $decimal($text('cbc:TaxAmount', $tNode));
+
+                if ($taxCode === '0015' || strcasecmp($taxName, 'KDV') === 0 || ($taxCode === '' && $taxName === '')) {
+                    $headerKdvSubtotals[] = [
+                        'percent' => $percent,
+                        'taxable' => $taxable,
+                        'tax_amount' => $taxAmt
+                    ];
+                }
+            }
+
             $lines = [];
             foreach ($xp->query('/i:Invoice/cac:InvoiceLine') as $node) {
                 $base = $decimal($text('cbc:LineExtensionAmount', $node));
@@ -107,12 +123,34 @@ final class UblReaderService
                 $exemptionReason = $text('cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:TaxExemptionReason', $node) ?: null;
                 $rowDesc = $exemptionReason ? ($exemptionReason . ($lineNote !== '' ? ' | ' . $lineNote : '')) : ($lineNote ?: null);
 
+                // KDV Oranı & Tutarı Çıkarma
+                $linePercent = $text('cac:TaxTotal/cac:TaxSubtotal[cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode="0015"]/cbc:Percent', $node);
+                if ($linePercent === '') {
+                    $linePercent = $text('cac:TaxTotal/cac:TaxSubtotal/cbc:Percent', $node);
+                }
+                if ($linePercent === '') {
+                    $linePercent = $text('cac:Item/cac:ClassifiedTaxCategory/cbc:Percent', $node);
+                }
+                if ($linePercent === '' && !empty($lineNote)) {
+                    if (preg_match('/(?:!#KDV:|KDV\s*[:%]?\s*|%\s*)(\d+(?:\.\d+)?)/i', $lineNote, $m)) {
+                        $linePercent = $m[1];
+                    }
+                }
+                if ($linePercent === '' && count($headerKdvSubtotals) === 1) {
+                    $linePercent = (string)$headerKdvSubtotals[0]['percent'];
+                }
+
+                $kdvOrani = $linePercent !== '' ? $decimal($linePercent) : '0.00';
+                if ((float)$vat == 0 && (float)$kdvOrani > 0 && (float)$base != 0) {
+                    $vat = bcmul((string)$base, bcdiv((string)$kdvOrani, '100', 4), 2);
+                }
+
                 $lines[] = ['urun_hizmet_adi' => mb_substr($itemName, 0, 255), 'urun_kodu' => mb_substr($itemCode, 0, 50),
                     'miktar' => $decimal($text('cbc:InvoicedQuantity', $node)), 'birim' => $text('cbc:InvoicedQuantity/@unitCode', $node),
                     'birim_fiyat' => $decimal($text('cac:Price/cbc:PriceAmount', $node)),
                     'iskonto_tutari' => bcadd((string)$xp->evaluate('sum(cac:AllowanceCharge[cbc:ChargeIndicator="false"]/cbc:Amount)', $node), '0', 2),
                     'iskonto_orani' => bcmul($decimal($text('cac:AllowanceCharge[cbc:ChargeIndicator="false"]/cbc:MultiplierFactorNumeric', $node)), '100', 2),
-                    'kdv_orani' => $decimal($text('cac:TaxTotal/cac:TaxSubtotal[cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode="0015"]/cbc:Percent', $node)),
+                    'kdv_orani' => $kdvOrani,
                     'kdv_tutari' => $vat, 'tevkifat_tutari' => $withheld,
                     'tevkifat_kodu' => $text('cac:WithholdingTaxTotal/cac:TaxSubtotal/cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode', $node) ?: null,
                     'tevkifat_orani' => $decimal($text('cac:WithholdingTaxTotal/cac:TaxSubtotal/cbc:Percent', $node)),

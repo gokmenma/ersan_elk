@@ -396,12 +396,15 @@ function editHakedis(id) {
 
         // Select2 clipping fix
         setTimeout(() => {
-          $form.find(".select2").each(function () {
-            $(this).select2({
-              dropdownParent: $("#yeniHakedisModal"),
-              language: "tr",
+          $form
+            .find(".select2")
+            .not(".select2-hidden-accessible")
+            .each(function () {
+              $(this).select2({
+                dropdownParent: $("#yeniHakedisModal"),
+                language: "tr",
+              });
             });
-          });
         }, 300);
 
         if (typeof feather !== "undefined") {
@@ -452,12 +455,15 @@ $(document).on("click", '[data-bs-target="#yeniHakedisModal"]', function () {
 
   // Initialize Select2 with dropdownParent to prevent clipping
   setTimeout(() => {
-    $form.find(".select2").each(function () {
-      $(this).select2({
-        dropdownParent: $("#yeniHakedisModal"),
-        language: "tr",
+    $form
+      .find(".select2")
+      .not(".select2-hidden-accessible")
+      .each(function () {
+        $(this).select2({
+          dropdownParent: $("#yeniHakedisModal"),
+          language: "tr",
+        });
       });
-    });
   }, 300);
 
   // Reset endeks labels

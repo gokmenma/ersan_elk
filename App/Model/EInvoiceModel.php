@@ -1786,6 +1786,28 @@ class EInvoiceModel extends Model
             $lineIdx = 0;
             $invUpdated = false;
 
+            // KDV oranlarını fatura başlığından tespit et
+            $headerKdvSubtotals = [];
+            foreach ($xp->query("//*[local-name()='TaxTotal']/*[local-name()='TaxSubtotal']") as $tNode) {
+                $parent = $tNode->parentNode;
+                $grandParent = $parent ? $parent->parentNode : null;
+                if ($grandParent && in_array($grandParent->localName, ['Invoice', 'CreditNote'], true)) {
+                    $taxCode = trim($xp->evaluate("string(.//*[local-name()='TaxTypeCode'])", $tNode));
+                    $taxName = trim($xp->evaluate("string(.//*[local-name()='TaxScheme']/*[local-name()='Name'])", $tNode));
+                    $percent = (float)$xp->evaluate("string(.//*[local-name()='Percent'])", $tNode);
+                    $taxable = (float)$xp->evaluate("string(.//*[local-name()='TaxableAmount'])", $tNode);
+                    $taxAmt = (float)$xp->evaluate("string(.//*[local-name()='TaxAmount'])", $tNode);
+
+                    if ($taxCode === '0015' || strcasecmp($taxName, 'KDV') === 0 || ($taxCode === '' && $taxName === '')) {
+                        $headerKdvSubtotals[] = [
+                            'percent' => $percent,
+                            'taxable' => $taxable,
+                            'tax_amount' => $taxAmt
+                        ];
+                    }
+                }
+            }
+
             foreach ($xp->query("//*[local-name()='InvoiceLine']") as $line) {
                 $lineIdx++;
                 $notes = [];
@@ -1823,31 +1845,58 @@ class EInvoiceModel extends Model
                     $finalName = $baseName;
                 }
 
-                if (!empty($finalName) || !empty($code) || !empty($lineNote)) {
-                    $upd = $this->db->prepare("
-                        UPDATE fatura_satirlari 
-                        SET urun_hizmet_adi = :uname, 
-                            urun_kodu = CASE WHEN :ucode != '' THEN :ucode ELSE urun_kodu END,
-                            istisna_aciklama = CASE 
-                                WHEN :unote != '' AND (istisna_aciklama IS NULL OR istisna_aciklama = '') THEN :unote 
-                                WHEN :unote != '' AND istisna_aciklama NOT LIKE CONCAT('%', :unote, '%') THEN CONCAT(istisna_aciklama, ' | ', :unote)
-                                ELSE istisna_aciklama 
-                            END
-                        WHERE fatura_id = :fid 
-                          AND sira_no = :sno
-                    ");
-                    $upd->execute([
-                        'uname' => mb_substr($finalName ?: $name, 0, 255),
-                        'ucode' => mb_substr($code, 0, 50),
-                        'unote' => $lineNote,
-                        'fid'   => (int)$inv['id'],
-                        'sno'   => $lineIdx
-                    ]);
+                // KDV Oranı & Tutarı
+                $base = (float)$xp->evaluate("string(.//*[local-name()='LineExtensionAmount'])", $line);
+                $vat = (float)$xp->evaluate("string(.//*[local-name()='TaxTotal']/*[local-name()='TaxAmount'])", $line);
 
-                    if ($upd->rowCount() > 0) {
-                        $updatedLines++;
-                        $invUpdated = true;
+                $linePercentStr = trim($xp->evaluate("string(.//*[local-name()='TaxTotal']/*[local-name()='TaxSubtotal'][.//*[local-name()='TaxTypeCode']='0015']/*[local-name()='Percent'])", $line));
+                if ($linePercentStr === '') {
+                    $linePercentStr = trim($xp->evaluate("string(.//*[local-name()='TaxTotal']/*[local-name()='TaxSubtotal']/*[local-name()='Percent'])", $line));
+                }
+                if ($linePercentStr === '') {
+                    $linePercentStr = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='ClassifiedTaxCategory']/*[local-name()='Percent'])", $line));
+                }
+                if ($linePercentStr === '' && !empty($lineNote)) {
+                    if (preg_match('/(?:!#KDV:|KDV\s*[:%]?\s*|%\s*)(\d+(?:\.\d+)?)/i', $lineNote, $m)) {
+                        $linePercentStr = $m[1];
                     }
+                }
+                if ($linePercentStr === '' && count($headerKdvSubtotals) === 1) {
+                    $linePercentStr = (string)$headerKdvSubtotals[0]['percent'];
+                }
+
+                $kdvOrani = $linePercentStr !== '' ? (float)$linePercentStr : 0.00;
+                if ($vat == 0 && $kdvOrani > 0 && $base != 0) {
+                    $vat = round($base * $kdvOrani / 100, 2);
+                }
+
+                $upd = $this->db->prepare("
+                    UPDATE fatura_satirlari 
+                    SET urun_hizmet_adi = :uname, 
+                        urun_kodu = CASE WHEN :ucode != '' THEN :ucode ELSE urun_kodu END,
+                        kdv_orani = :kdv_orani,
+                        kdv_tutari = :kdv_tutari,
+                        istisna_aciklama = CASE 
+                            WHEN :unote != '' AND (istisna_aciklama IS NULL OR istisna_aciklama = '') THEN :unote 
+                            WHEN :unote != '' AND istisna_aciklama NOT LIKE CONCAT('%', :unote, '%') THEN CONCAT(istisna_aciklama, ' | ', :unote)
+                            ELSE istisna_aciklama 
+                        END
+                    WHERE fatura_id = :fid 
+                      AND sira_no = :sno
+                ");
+                $upd->execute([
+                    'uname'      => mb_substr($finalName ?: $name, 0, 255),
+                    'ucode'      => mb_substr($code, 0, 50),
+                    'kdv_orani'  => $kdvOrani,
+                    'kdv_tutari' => $vat,
+                    'unote'      => $lineNote,
+                    'fid'        => (int)$inv['id'],
+                    'sno'        => $lineIdx
+                ]);
+
+                if ($upd->rowCount() > 0) {
+                    $updatedLines++;
+                    $invUpdated = true;
                 }
             }
 

@@ -2920,11 +2920,17 @@ Select group
 /* Hide native select when Select2 is applied to prevent double select boxes */
 .form-floating > select.select2-hidden-accessible,
 .form-floating-custom > select.select2-hidden-accessible,
+.form-floating-select2 > select.select2-hidden-accessible,
+.form-floating select.form-select.select2-hidden-accessible,
+.form-floating-custom select.form-select.select2-hidden-accessible,
+.form-floating-select2 select.form-select.select2-hidden-accessible,
+select.form-select.select2-hidden-accessible,
 select.select2-hidden-accessible {
   position: absolute !important;
   width: 1px !important;
   height: 1px !important;
   min-height: 0 !important;
+  max-height: 0 !important;
   padding: 0 !important;
   margin: -1px !important;
   border: 0 !important;
@@ -2936,14 +2942,18 @@ select.select2-hidden-accessible {
   -webkit-appearance: none !important;
   display: none !important;
   visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.form-floating-custom .select2-container {
+.form-floating-custom .select2-container,
+.form-floating-select2 .select2-container {
   width: 100% !important;
   display: block !important;
 }
 
-.form-floating-custom .select2-container--default .select2-selection--single {
+.form-floating-custom .select2-container--default .select2-selection--single,
+.form-floating-select2 .select2-container--default .select2-selection--single {
   height: 56px !important;
   min-height: 56px !important;
   border: 1px solid var(--bs-border-color, #d8dde6) !important;
@@ -2957,7 +2967,20 @@ select.select2-hidden-accessible {
   align-items: center !important;
 }
 
-.form-floating-custom .select2-container--default .select2-selection--single .select2-selection__rendered {
+.form-floating-custom .select2-container--default .select2-selection--multiple,
+.form-floating-select2 .select2-container--default .select2-selection--multiple {
+  min-height: 56px !important;
+  border: 1px solid var(--bs-border-color, #d8dde6) !important;
+  border-radius: var(--bs-border-radius, 8px) !important;
+  background-color: var(--bs-body-bg, #fff) !important;
+  padding-left: 45px !important;
+  padding-top: 18px !important;
+  padding-bottom: 4px !important;
+  padding-right: 28px !important;
+}
+
+.form-floating-custom .select2-container--default .select2-selection--single .select2-selection__rendered,
+.form-floating-select2 .select2-container--default .select2-selection--single .select2-selection__rendered {
   line-height: normal !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
@@ -2971,7 +2994,8 @@ select.select2-hidden-accessible {
   text-overflow: ellipsis !important;
 }
 
-.form-floating-custom .select2-container--default .select2-selection--single .select2-selection__arrow {
+.form-floating-custom .select2-container--default .select2-selection--single .select2-selection__arrow,
+.form-floating-select2 .select2-container--default .select2-selection--single .select2-selection__arrow {
   height: 54px !important;
   top: 1px !important;
   right: 8px !important;
@@ -2981,8 +3005,11 @@ select.select2-hidden-accessible {
 }
 
 .form-floating-custom:has(.select2-container) > label,
+.form-floating-select2:has(.select2-container) > label,
 .form-floating-custom > select.select2-hidden-accessible ~ label,
-.form-floating-custom > .select2-container ~ label {
+.form-floating-select2 > select.select2-hidden-accessible ~ label,
+.form-floating-custom > .select2-container ~ label,
+.form-floating-select2 > .select2-container ~ label {
   position: absolute !important;
   top: 0 !important;
   left: 32px !important;

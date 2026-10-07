@@ -13,20 +13,45 @@ if (typeof flatpickr == "undefined") {
 
 const deferBordroModalFields = $(".bordro-page").length > 0;
 
-if ($(".select2").length > 0) {
-  $(".select2").not(".select2-hidden-accessible").filter(function () {
-    return !deferBordroModalFields || !$(this).closest(".modal").length;
-  }).select2({});
-
-  $(".modal .select2").not(".select2-hidden-accessible").each(function () {
-    if (deferBordroModalFields) return;
-    $(this).select2({
-      dropdownParent: $(this).parent(),
-      tags: true,
-      language: "tr",
-    });
+// Global Select2 Initialization
+if ($("select.select2").length > 0) {
+  // Only initialize select2 for elements NOT inside hidden modals
+  $("select.select2").not(".modal select.select2").not(".select2-hidden-accessible").select2({
+    language: "tr",
+    width: "100%",
   });
 }
+
+// Automatically initialize select2 inside modals when shown
+$(document).on("shown.bs.modal", ".modal", function () {
+  const $modal = $(this);
+  $modal.find("select.select2").not(".select2-hidden-accessible").each(function () {
+    $(this).select2({
+      dropdownParent: $modal,
+      language: "tr",
+      width: "100%",
+    });
+  });
+});
+
+// Update/initialize select2 when tabs are switched inside modals or pages
+$(document).on("shown.bs.tab", 'a[data-bs-toggle="tab"], button[data-bs-toggle="tab"], .nav-link', function () {
+  const targetId = $(this).attr("href") || $(this).data("bs-target");
+  if (targetId && targetId.startsWith("#")) {
+    const $target = $(targetId);
+    $target.find("select.select2").each(function () {
+      const $select = $(this);
+      const $modal = $select.closest(".modal");
+      if (!$select.hasClass("select2-hidden-accessible")) {
+        $select.select2({
+          dropdownParent: $modal.length ? $modal : $(document.body),
+          language: "tr",
+          width: "100%",
+        });
+      }
+    });
+  }
+});
 
 if ($(".flatpickr").length > 0) {
   //.flatpickr sınıfına sahip alanlarda tarih+saat formatına izin verir
