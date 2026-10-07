@@ -733,6 +733,12 @@ $title = "Talep Yönetimi";
                                                         <i class="bx bx-x"></i>
                                                     </button>
                                                 <?php endif; ?>
+                                                <button class="table-action-btn btn-subtle-secondary btn-izin-formu" type="button"
+                                                    data-id="<?= $izin->id ?>"
+                                                    data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
+                                                    title="İzin Formu (Önizle / Yazdır / Word İndir)">
+                                                    <i class="bx bx-file"></i>
+                                                </button>
                                                 <button class="table-action-btn btn-subtle-info btn-izin-detay" type="button"
                                                     data-id="<?= $izin->id ?>" title="Detay İncele">
                                                     <i class="bx bx-show"></i>
@@ -808,6 +814,10 @@ $title = "Talep Yönetimi";
                                                         data-bitis="<?= $izin->bitis_tarihi ?>"><i class="bx bx-check"></i> Onayla</button>
                                                     <button class="btn btn-sm btn-subtle-danger flex-fill btn-izin-reddet py-1" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"><i class="bx bx-x"></i> Red</button>
                                                 <?php endif; ?>
+                                                <button class="btn btn-sm btn-subtle-secondary flex-fill btn-izin-formu py-1" type="button" 
+                                                    data-id="<?= $izin->id ?>" 
+                                                    data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
+                                                    title="İzin Formu"><i class="bx bx-file"></i> Form</button>
                                                 <button class="btn btn-sm btn-subtle-info flex-fill btn-izin-detay py-1" type="button" data-id="<?= $izin->id ?>"><i class="bx bx-show"></i> Detay</button>
                                             </div>
                                         </div>
@@ -1357,6 +1367,54 @@ $title = "Talep Yönetimi";
     </div>
 </div>
 
+<!-- Modern İzin Formu Önizleme / Yazdır / Word İndir Modalı -->
+<div class="modal fade" id="modalIzinFormu" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 18px; overflow: hidden;">
+            <div class="modal-header border-bottom bg-white py-2.5 px-4 align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-xs" style="width: 38px; height: 38px;">
+                        <i class="bx bx-file font-size-20"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-dark font-size-15">İzin Talep Formu</h5>
+                        <p class="text-muted small mb-0 font-size-11">Önizleme, yazdırma ve Word (.docx) indirme</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-subtle-success px-3 py-1.5 rounded-3 fw-semibold shadow-xs d-flex align-items-center gap-1" id="btnModalIzinDocxHeader" title="Word (.docx) İndir">
+                        <i class="bx bx-download font-size-15"></i> <span class="d-none d-sm-inline">Word İndir (.docx)</span><span class="d-inline d-sm-none">Word</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary px-3 py-1.5 rounded-3 fw-semibold shadow-xs d-flex align-items-center gap-1 text-white" id="btnModalIzinYazdirHeader" title="Yazdır">
+                        <i class="bx bx-printer font-size-15"></i> <span>Yazdır</span>
+                    </button>
+                    <button type="button" class="btn-close ms-1" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+            </div>
+            <div class="modal-body p-3 p-md-4 bg-light" style="max-height: calc(100vh - 180px); overflow-y: auto;">
+                <div id="izinFormuIcerik">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Yükleniyor...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top bg-white py-2.5 px-4 justify-content-between">
+                <button type="button" class="btn btn-light px-4 rounded-3 fw-semibold font-size-13 shadow-xs" data-bs-dismiss="modal">Kapat</button>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-success px-3.5 py-1.5 rounded-3 fw-semibold font-size-13 shadow-xs d-flex align-items-center gap-1" id="btnModalIzinDocx">
+                        <i class="bx bx-download font-size-16"></i> <span>Word İndir (.docx)</span>
+                    </button>
+                    <button type="button" class="btn btn-primary px-3.5 py-1.5 rounded-3 fw-semibold font-size-13 shadow-xs d-flex align-items-center gap-1 text-white" id="btnModalIzinYazdir">
+                        <i class="bx bx-printer font-size-16"></i> <span>Yazdır</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Silme Modal -->
 <div class="modal fade" id="modalSil" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1725,6 +1783,137 @@ document.addEventListener('DOMContentLoaded', function () {
             loadDetay('izin', this.dataset.id);
         });
     });
+
+    // İzin Talep Formu Önizleme / Yazdır / Word İndir Mantığı
+    let activeIzinFormId = null;
+    const modalIzinFormuEl = document.getElementById('modalIzinFormu');
+    const modalIzinFormu = modalIzinFormuEl ? new bootstrap.Modal(modalIzinFormuEl) : null;
+    const izinFormuIcerik = document.getElementById('izinFormuIcerik');
+
+    function openIzinFormuModal(izinId) {
+        if (!izinId) return;
+        activeIzinFormId = izinId;
+        
+        if (izinFormuIcerik) {
+            izinFormuIcerik.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                    <div class="text-muted mt-2 font-size-12">İzin talep formu hazırlanıyor...</div>
+                </div>
+            `;
+        }
+        
+        if (modalIzinFormu) {
+            modalIzinFormu.show();
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'izin-formu-onizle');
+        formData.append('id', izinId);
+
+        fetch(API_URL, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(resp => {
+            if (resp.status === 'success' && resp.html) {
+                if (izinFormuIcerik) {
+                    izinFormuIcerik.innerHTML = resp.html;
+                }
+            } else {
+                if (izinFormuIcerik) {
+                    izinFormuIcerik.innerHTML = `
+                        <div class="alert alert-danger rounded-3 p-3 text-center my-4">
+                            <i class="bx bx-error-circle fs-3 d-block mb-1"></i>
+                            <strong>Hata:</strong> ${resp.message || 'İzin formu verisi alınamadı.'}
+                        </div>
+                    `;
+                }
+            }
+        })
+        .catch(err => {
+            if (izinFormuIcerik) {
+                izinFormuIcerik.innerHTML = `
+                    <div class="alert alert-danger rounded-3 p-3 text-center my-4">
+                        <i class="bx bx-error-circle fs-3 d-block mb-1"></i>
+                        <strong>Bağlantı Hatası:</strong> ${err.message}
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function printIzinFormu() {
+        const printArea = document.getElementById('izinFormPrintArea');
+        if (!printArea) {
+            window.print();
+            return;
+        }
+
+        let printFrame = document.getElementById('izinPrintIframe');
+        if (!printFrame) {
+            printFrame = document.createElement('iframe');
+            printFrame.id = 'izinPrintIframe';
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            document.body.appendChild(printFrame);
+        }
+
+        const frameDoc = printFrame.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>İzin Talep Formu</title>
+                <style>
+                    @page { size: A4 portrait; margin: 10mm 12mm; }
+                    body { margin: 0; padding: 0; background: #fff; font-family: "Segoe UI", Arial, sans-serif; }
+                </style>
+            </head>
+            <body>
+                ${printArea.outerHTML}
+            </body>
+            </html>
+        `);
+        frameDoc.close();
+
+        setTimeout(() => {
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+        }, 300);
+    }
+
+    function downloadIzinDocx() {
+        if (!activeIzinFormId) {
+            alert('Lütfen bir izin kaydı seçiniz.');
+            return;
+        }
+        window.location.href = API_URL + '?action=izin-formu-docx-indir&id=' + encodeURIComponent(activeIzinFormId);
+    }
+
+    // Buton Tetikleyicileri (Event Delegation ile hem dinamik hem statik satırlar için)
+    document.addEventListener('click', function (e) {
+        const btnForm = e.target.closest('.btn-izin-formu');
+        if (btnForm) {
+            e.preventDefault();
+            const izinId = btnForm.dataset.id;
+            openIzinFormuModal(izinId);
+        }
+    });
+
+    document.getElementById('btnModalIzinYazdir')?.addEventListener('click', printIzinFormu);
+    document.getElementById('btnModalIzinYazdirHeader')?.addEventListener('click', printIzinFormu);
+    document.getElementById('btnModalIzinDocx')?.addEventListener('click', downloadIzinDocx);
+    document.getElementById('btnModalIzinDocxHeader')?.addEventListener('click', downloadIzinDocx);
 
     // 7. Genel Talep İşlemleri
     document.querySelectorAll('.btn-talep-isleme').forEach(btn => {

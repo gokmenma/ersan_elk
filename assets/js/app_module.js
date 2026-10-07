@@ -1085,11 +1085,11 @@ File: Main Js File
       const isDark = luminance < 0.42;
 
       return {
-        text: isDark ? "#94a3b8" : "#1f2937",
-        muted: isDark ? "#64748b" : "#64748b",
-        subtle: isDark ? "#64748b" : "#64748b",
-        surface: isDark ? "rgba(255,255,255,.08)" : "rgba(15,23,42,.07)",
-        border: isDark ? "rgba(255,255,255,.12)" : "rgba(15,23,42,.14)",
+        text: isDark ? "#ffffff" : "#1f2937",
+        muted: isDark ? "rgba(255,255,255,0.75)" : "#64748b",
+        subtle: isDark ? "rgba(255,255,255,0.6)" : "#64748b",
+        surface: isDark ? "rgba(255,255,255,.15)" : "rgba(15,23,42,.07)",
+        border: isDark ? "rgba(255,255,255,.2)" : "rgba(15,23,42,.14)",
         dark: isDark,
       };
     }
@@ -1098,14 +1098,14 @@ File: Main Js File
       const contrast = getAdaptiveColors(color);
       $("#custom-topbar-style").remove();
       $(`<style id="custom-topbar-style">
-        html body #page-topbar, html body .navbar-brand-box, body[data-topbar] #page-topbar, body[data-topbar] .navbar-brand-box { background-color: ${color} !important; border-color: ${color} !important; }
+        html body #page-topbar, html body .navbar-brand-box, body[data-topbar] #page-topbar, body[data-topbar] .navbar-brand-box { background-color: ${color} !important; background-image: none !important; border-color: ${color} !important; }
         html body #page-topbar .header-item, html body #page-topbar .logo-txt, html body #page-topbar #topbar-page-title, html body #page-topbar .topbar-page-title, body[data-topbar] #page-topbar .header-item, body[data-topbar] #page-topbar .logo-txt, body[data-topbar] #page-topbar #topbar-page-title, body[data-topbar] #page-topbar .topbar-page-title { color: ${contrast.text} !important; }
         html body #page-topbar #topbar-page-desc, html body #page-topbar .topbar-page-desc, body[data-topbar] #page-topbar #topbar-page-desc, body[data-topbar] #page-topbar .topbar-page-desc { color: ${contrast.muted} !important; }
         html body #page-topbar .header-item svg, html body #page-topbar .header-item i, body[data-topbar] #page-topbar .header-item svg, body[data-topbar] #page-topbar .header-item i { color: ${contrast.text} !important; stroke: currentColor !important; }
         html body #page-topbar .logo-dark, body[data-topbar] #page-topbar .logo-dark { display: ${contrast.dark ? "none" : "block"} !important; }
         html body #page-topbar .logo-light, body[data-topbar] #page-topbar .logo-light { display: ${contrast.dark ? "block" : "none"} !important; }
         html body #page-topbar .global-search-input-box, body[data-topbar] #page-topbar .global-search-input-box { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; box-shadow: none !important; }
-        html body #page-topbar .global-search-input-box:focus-within, body[data-topbar] #page-topbar .global-search-input-box:focus-within { background-color: ${contrast.dark ? "rgba(255,255,255,0.12)" : "#ffffff"} !important; border-color: ${contrast.dark ? "rgba(255,255,255,0.3)" : "var(--bs-primary, #3b82f6)"} !important; box-shadow: 0 0 0 3px ${contrast.dark ? "rgba(255,255,255,0.12)" : "rgba(59,130,246,0.15)"} !important; }
+        html body #page-topbar .global-search-input-box:focus-within, body[data-topbar] #page-topbar .global-search-input-box:focus-within { background-color: ${contrast.dark ? "rgba(255,255,255,0.2)" : "#ffffff"} !important; border-color: ${contrast.dark ? "rgba(255,255,255,0.4)" : "var(--bs-primary, #3b82f6)"} !important; box-shadow: 0 0 0 3px ${contrast.dark ? "rgba(255,255,255,0.15)" : "rgba(59,130,246,0.15)"} !important; }
         html body #page-topbar .global-search-input, body[data-topbar] #page-topbar .global-search-input { color: ${contrast.text} !important; }
         html body #page-topbar .global-search-input::placeholder, body[data-topbar] #page-topbar .global-search-input::placeholder { color: ${contrast.subtle} !important; }
         html body #page-topbar .global-search-icon, body[data-topbar] #page-topbar .global-search-icon { color: ${contrast.muted} !important; }

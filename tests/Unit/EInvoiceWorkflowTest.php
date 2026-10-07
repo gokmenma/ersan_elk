@@ -122,6 +122,46 @@ final class EInvoiceWorkflowTest extends TestCase
         self::assertSame('9.52', $result['header']['hesaplanan_kdv']);
         self::assertSame('114.63', $result['header']['odenecek_tutar']);
     }
+
+    public function testInvoiceTotalsKeepUnitPricePrecisionUntilVatGroupIsRounded(): void
+    {
+        $lines = [
+            ['urun_hizmet_adi'=>'A','miktar'=>'1','birim_fiyat'=>'9166.6667','kdv_orani'=>'20'],
+            ['urun_hizmet_adi'=>'B','miktar'=>'1','birim_fiyat'=>'1666.6667','kdv_orani'=>'20'],
+            ['urun_hizmet_adi'=>'C','miktar'=>'1','birim_fiyat'=>'1666.6667','kdv_orani'=>'20'],
+        ];
+
+        $result = (new InvoiceCalculationService())->calculate($lines);
+
+        self::assertSame('12500.01', $result['header']['satir_toplami']);
+        self::assertSame('12500.00', $result['header']['kdv_matrahi']);
+        self::assertSame('2500.00', $result['header']['hesaplanan_kdv']);
+        self::assertSame('15000.00', $result['header']['odenecek_tutar']);
+        self::assertSame(['1833.33', '333.33', '333.33'], array_column($result['lines'], 'kdv_tutari'));
+
+        [$xml, $invoice, $calculatedLines] = $this->xml([
+            'fatura_tipi'=>'IADE',
+            'fatura_profili'=>'TEMELFATURA',
+            'iade_fatura_no'=>'DLK2026000005527',
+            'iade_fatura_tarihi'=>'2026-08-06',
+        ], $lines);
+        (new InvoiceValidationService())->validateXml($xml, $invoice, $calculatedLines);
+        $source = (new UblReaderService())->read($xml, 'GIDEN');
+        self::assertSame('12500.00', $source['header']['kdv_matrahi']);
+        self::assertSame('2500.00', $source['header']['hesaplanan_kdv']);
+        self::assertSame('15000.00', $source['header']['odenecek_tutar']);
+        self::assertSame('15000.00', $invoice['odenecek_tutar']);
+
+        $dom = new \DOMDocument();
+        self::assertTrue($dom->loadXML($xml));
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('i', 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2');
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+        self::assertSame(1, $xpath->query('/i:Invoice/cac:TaxTotal/cac:TaxSubtotal')->length);
+        self::assertSame('12500.00', $xpath->evaluate('string(/i:Invoice/cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount)'));
+        self::assertSame('2500.00', $xpath->evaluate('string(/i:Invoice/cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount)'));
+    }
     public function testXmlRoundTripDiscountWithholdingAndForeignCurrency(): void
     {
         $lines = $this->lines(); $lines[0] += ['tevkifat_kodu'=>'601','tevkifat_orani'=>'40'];

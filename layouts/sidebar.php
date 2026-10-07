@@ -113,25 +113,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     display: none !important;
                 }
 
-                body:not([data-topbar="light"]) #page-topbar {
-                    left: 250px !important;
-                    background-color: var(--sidebar-bg) !important;
-                    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
-                    border-bottom: 1px solid var(--sidebar-border) !important;
-                    box-shadow: none !important;
-                }
-
-                body[data-topbar="light"] #page-topbar {
-                    background-color: #ffffff !important;
-                    background-image: none !important;
-                    border-bottom: 1px solid #e2e8f0 !important;
-                }
-
-                body[data-topbar="dark"] #page-topbar {
-                    background-color: #191e22 !important;
-                    border-bottom-color: #22292f !important;
-                }
-
                 body[data-sidebar="dark"] .vertical-menu,
                 body[data-sidebar="dark"] .sidebar-sticky-top {
                     background-color: #191e22 !important;

@@ -14,6 +14,43 @@ use App\Model\SystemLogModel;
 use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
+use App\Service\IzinFormuService;
+use App\Helper\Security;
+
+// GET isteği ile Word indirme desteği
+if ($_SERVER['REQUEST_METHOD'] == 'GET' && (($_GET['action'] ?? '') === 'izin-formu-docx-indir')) {
+    $currentUserId = intval($_SESSION['user_id'] ?? 0);
+    $firmaId = intval($_SESSION['firma_id'] ?? 1);
+    
+    if ($currentUserId <= 0) {
+        die('Oturum sonlanmış.');
+    }
+    
+    if (!Gate::allowsAny(['talepler', 'izin_talepleri'])) {
+        die('Yetkisiz erişim.');
+    }
+    
+    $rawId = $_GET['id'] ?? '';
+    $id = intval($rawId);
+    if ($id <= 0 && !empty($rawId)) {
+        $decrypted = Security::decrypt($rawId);
+        $id = intval($decrypted);
+    }
+    
+    if ($id <= 0) {
+        die('Geçersiz izin ID.');
+    }
+    
+    try {
+        $izinFormuService = new IzinFormuService();
+        $formData = $izinFormuService->getFormData($id, $firmaId, $currentUserId);
+        $izinFormuService->generateDocx($formData);
+        exit;
+    } catch (\Exception $e) {
+        error_log('İzin formu docx indirme hatası: ' . $e->getMessage());
+        die('Dosya oluşturulamadı: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'));
+    }
+}
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -160,6 +197,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode([
                     'status' => 'success',
                     'data' => $izin
+                ]);
+                break;
+
+            // İzin Talep Formu Önizleme (files/izin_formu.pdf formatı)
+            case 'izin-formu-onizle':
+                if (!Gate::allowsAny(['talepler', 'izin_talepleri'])) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
+                $id = intval($_POST['id'] ?? 0);
+                if ($id <= 0) {
+                    $rawId = $_POST['id'] ?? '';
+                    if (!empty($rawId)) {
+                        $decrypted = Security::decrypt($rawId);
+                        $id = intval($decrypted);
+                    }
+                }
+
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz izin ID.');
+                }
+
+                $firmaId = intval($_SESSION['firma_id'] ?? 1);
+                $izinFormuService = new IzinFormuService();
+                $formData = $izinFormuService->getFormData($id, $firmaId, $currentUserId);
+                $previewHtml = $izinFormuService->renderHtml($formData);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => $formData,
+                    'html' => $previewHtml
                 ]);
                 break;
 

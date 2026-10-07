@@ -2134,7 +2134,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${UNIT_SELECT}
                 </td>
                 <td style="width: 110px;">
-                    <input type="number" step="0.01" min="0" class="form-control form-control-sm kalem-fiyat text-end fw-semibold" value="0">
+                    <input type="number" step="0.0001" min="0" class="form-control form-control-sm kalem-fiyat text-end fw-semibold" value="0">
                 </td>
                 <td style="width: 85px;">
                     <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm kalem-iskonto text-end" value="0">
@@ -2667,18 +2667,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                 row.find('.kalem-toplam').text(money(result.data.lines[index].satir_toplami));
                             }
                             
-                            // Satır bazlı KDV tutarı hesapla ve yaz
+                            // Satır bazlı KDV tutarını merkezi hesaplama servisinden yaz.
                             const miktar = parseFloat(row.find('.kalem-miktar').val()) || 0;
                             const fiyat = parseFloat(row.find('.kalem-fiyat').val()) || 0;
                             const iskonto = parseFloat(row.find('.kalem-iskonto').val()) || 0;
-                            const vatRate = parseFloat(row.find('.kalem-kdv').val()) || 0;
 
                             const gross = miktar * fiyat;
                             const disc = (gross * iskonto) / 100;
                             const base = gross - disc;
-                            const vatAmt = (base * vatRate) / 100;
-
-                            row.find('.kalem-kdv-tutar').val(vatAmt.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                            row.find('.kalem-kdv-tutar').val(Number(result.data.lines[index].kdv_tutari || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
                             // Ek Vergi Satır Tutarlarını Hesapla ve Yaz
                             activeDynamicTaxes.forEach(tax => {

@@ -25,37 +25,16 @@ class EInvoiceModel extends Model
             // ETTN (UUID v4) yoksa üret
             $ettn = !empty($header['ettn']) ? $header['ettn'] : Helper::generateUuid();
 
-            // Alt Toplamları Hesapla
-            $satirToplami = '0.00';
-            $iskontoToplami = '0.00';
-            $kdvMatrahi = '0.00';
-            $hesaplananKdv = '0.00';
-            $tevkifatTutari = '0.00';
-            $odenecekTutar = '0.00';
-
-            foreach ($lines as $line) {
-                $miktar = (float)($line['miktar'] ?? 1);
-                $birimFiyat = (float)($line['birim_fiyat'] ?? 0);
-                $iskontoOrani = (float)($line['iskonto_orani'] ?? 0);
-                $kdvOrani = (float)($line['kdv_orani'] ?? 20);
-                $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
-
-                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
-                $line = $calculated['lines'][0];
-                $hamTutar = $calculated['header']['satir_toplami'];
-                $iskontoTutari = $line['iskonto_tutari'];
-                $netMatrah = $calculated['header']['kdv_matrahi'];
-                $kdvTutari = $line['kdv_tutari'];
-                $tevkifat = $line['tevkifat_tutari'];
-                $satirNet = $line['satir_toplami'];
-
-                $satirToplami = bcadd($satirToplami, $hamTutar, 2);
-                $iskontoToplami = bcadd($iskontoToplami, $iskontoTutari, 2);
-                $kdvMatrahi = bcadd($kdvMatrahi, $netMatrah, 2);
-                $hesaplananKdv = bcadd($hesaplananKdv, $kdvTutari, 2);
-                $tevkifatTutari = bcadd($tevkifatTutari, $tevkifat, 2);
-                $odenecekTutar = bcadd($odenecekTutar, $satirNet, 2);
-            }
+            // Fatura toplamları satır satır değil, aynı KDV oranındaki ham
+            // matrahlar birleştirildikten sonra hesaplanır.
+            $calculated = (new \App\Service\InvoiceCalculationService())->calculate($lines);
+            $lines = $calculated['lines'];
+            $satirToplami = $calculated['header']['satir_toplami'];
+            $iskontoToplami = $calculated['header']['iskonto_toplami'];
+            $kdvMatrahi = $calculated['header']['kdv_matrahi'];
+            $hesaplananKdv = $calculated['header']['hesaplanan_kdv'];
+            $tevkifatTutari = $calculated['header']['tevkifat_tutari'];
+            $odenecekTutar = $calculated['header']['odenecek_tutar'];
 
             $stmt = $this->db->prepare("
                 INSERT INTO faturalar (
@@ -141,11 +120,7 @@ class EInvoiceModel extends Model
                 $kdvOrani = (float)($line['kdv_orani'] ?? 20);
                 $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
 
-                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
-                $line = $calculated['lines'][0];
-                $hamTutar = $calculated['header']['satir_toplami'];
                 $iskontoTutari = $line['iskonto_tutari'];
-                $netMatrah = $calculated['header']['kdv_matrahi'];
                 $kdvTutari = $line['kdv_tutari'];
                 $tevkifat = $line['tevkifat_tutari'];
                 $satirNet = $line['satir_toplami'];
@@ -202,37 +177,14 @@ class EInvoiceModel extends Model
                 throw new \Exception("Sadece taslak durumundaki faturalar düzenlenebilir.");
             }
 
-            // Alt Toplamları Hesapla
-            $satirToplami = '0.00';
-            $iskontoToplami = '0.00';
-            $kdvMatrahi = '0.00';
-            $hesaplananKdv = '0.00';
-            $tevkifatTutari = '0.00';
-            $odenecekTutar = '0.00';
-
-            foreach ($lines as $line) {
-                $miktar = (float)($line['miktar'] ?? 1);
-                $birimFiyat = (float)($line['birim_fiyat'] ?? 0);
-                $iskontoOrani = (float)($line['iskonto_orani'] ?? 0);
-                $kdvOrani = (float)($line['kdv_orani'] ?? 20);
-                $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
-
-                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
-                $line = $calculated['lines'][0];
-                $hamTutar = $calculated['header']['satir_toplami'];
-                $iskontoTutari = $line['iskonto_tutari'];
-                $netMatrah = $calculated['header']['kdv_matrahi'];
-                $kdvTutari = $line['kdv_tutari'];
-                $tevkifat = $line['tevkifat_tutari'];
-                $satirNet = $line['satir_toplami'];
-
-                $satirToplami = bcadd($satirToplami, $hamTutar, 2);
-                $iskontoToplami = bcadd($iskontoToplami, $iskontoTutari, 2);
-                $kdvMatrahi = bcadd($kdvMatrahi, $netMatrah, 2);
-                $hesaplananKdv = bcadd($hesaplananKdv, $kdvTutari, 2);
-                $tevkifatTutari = bcadd($tevkifatTutari, $tevkifat, 2);
-                $odenecekTutar = bcadd($odenecekTutar, $satirNet, 2);
-            }
+            $calculated = (new \App\Service\InvoiceCalculationService())->calculate($lines);
+            $lines = $calculated['lines'];
+            $satirToplami = $calculated['header']['satir_toplami'];
+            $iskontoToplami = $calculated['header']['iskonto_toplami'];
+            $kdvMatrahi = $calculated['header']['kdv_matrahi'];
+            $hesaplananKdv = $calculated['header']['hesaplanan_kdv'];
+            $tevkifatTutari = $calculated['header']['tevkifat_tutari'];
+            $odenecekTutar = $calculated['header']['odenecek_tutar'];
 
             $stmt = $this->db->prepare("
                 UPDATE faturalar SET
@@ -332,11 +284,7 @@ class EInvoiceModel extends Model
                 $kdvOrani = (float)($line['kdv_orani'] ?? 20);
                 $tevkifatOrani = (float)($line['tevkifat_orani'] ?? 0);
 
-                $calculated = (new \App\Service\InvoiceCalculationService())->calculate([$line]);
-                $line = $calculated['lines'][0];
-                $hamTutar = $calculated['header']['satir_toplami'];
                 $iskontoTutari = $line['iskonto_tutari'];
-                $netMatrah = $calculated['header']['kdv_matrahi'];
                 $kdvTutari = $line['kdv_tutari'];
                 $tevkifat = $line['tevkifat_tutari'];
                 $satirNet = $line['satir_toplami'];

@@ -60,6 +60,24 @@ final class EInvoicePersistenceTest extends TestCase
         self::assertTrue($this->model->deleteDraftInvoice($id,2)); self::assertNull($this->model->getInvoiceById($id,2));
         self::assertFalse($this->model->deleteDraftInvoice($id,2));
     }
+
+    public function testDraftPersistsVatCalculatedFromPreciseInvoiceTotal(): void
+    {
+        $lines = [
+            ['urun_hizmet_adi'=>'A','miktar'=>'1','birim_fiyat'=>'9166.6667','birim'=>'C62','kdv_orani'=>'20'],
+            ['urun_hizmet_adi'=>'B','miktar'=>'1','birim_fiyat'=>'1666.6667','birim'=>'C62','kdv_orani'=>'20'],
+            ['urun_hizmet_adi'=>'C','miktar'=>'1','birim_fiyat'=>'1666.6667','birim'=>'C62','kdv_orani'=>'20'],
+        ];
+        $id = $this->model->createInvoice(2, $this->header(), $lines, 3);
+
+        self::assertNotNull($id);
+        $invoice = $this->model->getInvoiceById($id, 2);
+        self::assertSame('12500.01', $invoice['satir_toplami']);
+        self::assertSame('12500.00', $invoice['kdv_matrahi']);
+        self::assertSame('2500.00', $invoice['hesaplanan_kdv']);
+        self::assertSame('15000.00', $invoice['odenecek_tutar']);
+        self::assertSame(['1833.33', '333.33', '333.33'], array_column($invoice['satirlar'], 'kdv_tutari'));
+    }
     public function testImportedSourceAmountsArePreservedOnRepeatedImport(): void
     {
         $calculated=(new InvoiceCalculationService())->calculate($this->lines());

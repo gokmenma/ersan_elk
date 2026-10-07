@@ -107,7 +107,19 @@ class UblGeneratorService
             $scheme = $add($category, 'cac:TaxScheme'); $add($scheme, 'cbc:Name', $withholding ? 'KDV TEVKIFAT' : 'KDV'); $add($scheme, 'cbc:TaxTypeCode', $withholding ? $line['tevkifat_kodu'] : '0015');
         };
         $tax = $add($root, 'cac:TaxTotal'); $amount($tax, 'cbc:TaxAmount', $invoice['hesaplanan_kdv']);
-        foreach ($lines as $line) $subtax($tax, $line);
+        $vatGroups = (new InvoiceCalculationService())->calculate($lines)['vat_groups'];
+        foreach ($vatGroups as $group) {
+            // Fatura seviyesindeki TaxSubtotal satırların toplamı değil, aynı vergi
+            // kategorisindeki yüksek hassasiyetli matrahın tek seferde yuvarlanmış halidir.
+            $subtax($tax, [
+                'satir_toplami' => bcadd($group['matrah'], $group['kdv_tutari'], 2),
+                'kdv_tutari' => $group['kdv_tutari'],
+                'tevkifat_tutari' => '0.00',
+                'kdv_orani' => $group['kdv_orani'],
+                'istisna_kodu' => $group['istisna_kodu'],
+                'istisna_aciklama' => $group['istisna_aciklama'],
+            ]);
+        }
         if (bccomp((string)($invoice['tevkifat_tutari'] ?? '0'), '0', 2) > 0) {
             $tax = $add($root, 'cac:WithholdingTaxTotal'); $amount($tax, 'cbc:TaxAmount', $invoice['tevkifat_tutari']);
             foreach ($lines as $line) if (bccomp((string)$line['tevkifat_tutari'], '0', 2) > 0) $subtax($tax, $line, true);

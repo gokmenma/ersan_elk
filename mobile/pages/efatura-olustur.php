@@ -521,7 +521,7 @@ $unitCodes = [
             <div class="grid grid-cols-2 gap-2">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Birim Fiyat (KDV Hariç) <span class="text-rose-500">*</span></label>
-                    <input type="number" step="0.01" id="modalLineFiyat" placeholder="0.00" oninput="recalcModalLineTotal()"
+                    <input type="number" step="0.0001" id="modalLineFiyat" placeholder="0.0000" oninput="recalcModalLineTotal()"
                            class="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white">
                 </div>
                 <div>
@@ -892,21 +892,25 @@ function renderLines() {
 function recalcInvoice() {
     let topSatir = 0;
     let topIskonto = 0;
-    let topMatrah = 0;
-    let topKdv = 0;
+    let rawMatrah = 0;
+    const vatBases = {};
+    const moneyRound = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
     invoiceLines.forEach(l => {
         const sub = (l.miktar * l.birim_fiyat);
-        const isk = (sub * (l.iskonto_orani || 0)) / 100;
+        const roundedSub = moneyRound(sub);
+        const isk = moneyRound((roundedSub * (l.iskonto_orani || 0)) / 100);
         const mat = sub - isk;
-        const kdv = (mat * (l.kdv_orani || 0)) / 100;
+        const vatKey = String(Number(l.kdv_orani || 0));
 
-        topSatir += sub;
+        topSatir += roundedSub;
         topIskonto += isk;
-        topMatrah += mat;
-        topKdv += kdv;
+        rawMatrah += mat;
+        vatBases[vatKey] = (vatBases[vatKey] || 0) + mat;
     });
 
+    const topMatrah = moneyRound(rawMatrah);
+    const topKdv = Object.entries(vatBases).reduce((sum, [rate, base]) => sum + moneyRound(base * Number(rate) / 100), 0);
     const netOdenecek = topMatrah + topKdv;
     const fmt = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
 
