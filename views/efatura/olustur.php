@@ -2233,6 +2233,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (bTuru === 'EFATURA') {
             $('#gonderim_efatura').prop('checked', true);
             $('#divPostaKutusu').show();
+            const savedReceiverAlias = String(EDIT_DATA.alici_posta_kutusu || '').trim();
+            if (savedReceiverAlias) {
+                const aliasSelect = $('#alici_posta_kutusu');
+                aliasSelect.empty().append(new Option(savedReceiverAlias, savedReceiverAlias, true, true));
+                aliasSelect.val(savedReceiverAlias).trigger('change.select2');
+                $('#mukellefDurumuBadge').html(`
+                    <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 rounded-pill fw-semibold font-size-12">
+                        <i class="bx bx-mail-send me-1"></i> Kayıtlı GİB Posta Kutusu
+                    </span>
+                `);
+            }
         } else {
             $('#gonderim_earsiv').prop('checked', true);
             $('#divPostaKutusu').hide();
@@ -2866,7 +2877,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     `);
                     $('#gonderim_efatura').prop('checked', true);
                     $('#belge_turu').val('EFATURA');
-                    $('#fatura_profili').val('TICARIFATURA').trigger('change.select2');
+                    // İade faturası UBL-TR gereği TEMELFATURA profilinde kalmalıdır.
+                    if ($('#fatura_tipi').val() === 'IADE') {
+                        $('#fatura_profili').val('TEMELFATURA').trigger('change.select2');
+                    } else if (!['TEMELFATURA', 'TICARIFATURA'].includes($('#fatura_profili').val())) {
+                        $('#fatura_profili').val('TICARIFATURA').trigger('change.select2');
+                    }
                     $('#divPostaKutusu').slideDown(200);
                     populateSeriOptions('EFATURA');
 
@@ -2875,11 +2891,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     let aliasSelect = $('#alici_posta_kutusu');
+                    const savedAlias = String(aliasSelect.val() || (EDIT_DATA && EDIT_DATA.alici_posta_kutusu) || '').trim();
                     aliasSelect.empty();
                     if (d.aliases && d.aliases.length > 0) {
                         d.aliases.forEach(a => {
                             aliasSelect.append(new Option(a, a));
                         });
+                        const selectedAlias = d.aliases.includes(savedAlias) ? savedAlias : d.aliases[0];
+                        aliasSelect.val(selectedAlias);
                     } else {
                         aliasSelect.append(new Option('Aktif posta kutusu bulunamadı', ''));
                     }
@@ -2956,7 +2975,7 @@ document.addEventListener('DOMContentLoaded', function() {
             belge_turu: getVal('#belge_turu') || 'EARSIV',
             fatura_profili: getVal('#fatura_profili') || 'EARSIVFATURA',
             fatura_tipi: getVal('#fatura_tipi') || 'SATIS',
-            alici_posta_kutusu: getVal('#alici_posta_kutusu'),
+            alici_posta_kutusu: getValTrim('#alici_posta_kutusu'),
             alici_vergi_dairesi: getValTrim('#alici_vergi_dairesi') || '',
             fatura_tarihi: parseDateForPayload(getVal('#fatura_tarihi')),
             duzenleme_saati: getValTrim('#duzenleme_saati'),
@@ -3556,6 +3575,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const payload = getInvoicePayload();
         if (!payload.header.alici_vkn_tckn || !payload.header.alici_unvan) {
             Swal.fire('Uyarı', 'Lütfen Alıcı VKN ve Unvan bilgilerini doldurun.', 'warning');
+            return;
+        }
+        if (payload.header.belge_turu === 'EFATURA' && !payload.header.alici_posta_kutusu) {
+            Swal.fire('Uyarı', 'Gönderimden önce alıcının GİB posta kutusunu sorgulayıp seçin.', 'warning');
             return;
         }
 

@@ -137,7 +137,7 @@ class EInvoiceService
             if (!$senderAlias || !in_array($senderAlias, $sellerUser['sender_aliases'], true)) throw new \InvalidArgumentException('Aktif EDM gönderici etiketi seçilmelidir.');
             $receiverUser = $client->checkUser($invoice['alici_vkn_tckn']);
             if ($invoice['belge_turu'] === 'EFATURA') {
-                $receiverAlias = $invoice['alici_posta_kutusu'] ?? '';
+                $receiverAlias = trim((string)($invoice['alici_posta_kutusu'] ?? ''));
                 if (!$receiverUser['is_einvoice_user'] || !in_array($receiverAlias, $receiverUser['aliases'], true)) throw new \InvalidArgumentException('Alıcının aktif e-Fatura posta kutusu seçilmelidir.');
             } else {
                 if ($receiverUser['is_einvoice_user']) throw new \InvalidArgumentException('Alıcı e-Fatura mükellefi; e-Fatura düzenleyin.');
