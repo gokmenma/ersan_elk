@@ -502,6 +502,33 @@ class EInvoiceModel extends Model
      */
     public function ajaxList(array $params, int $firmId, string $yon = 'GIDEN', string $listType = 'giden'): array
     {
+        // Sunucu ortamında XML satır açıklamalarının otomatik senkronizasyon kontrolü (Tek seferlik self-healing)
+        static $syncedFirms = [];
+        if ($firmId > 0 && !isset($syncedFirms[$firmId]) && empty($_SESSION['efatura_xml_lines_synced_' . $firmId])) {
+            $syncedFirms[$firmId] = true;
+            $_SESSION['efatura_xml_lines_synced_' . $firmId] = true;
+            try {
+                $checkStmt = $this->db->prepare("
+                    SELECT 1 
+                    FROM faturalar f 
+                    JOIN fatura_satirlari fs ON fs.fatura_id = f.id 
+                    WHERE f.firm_id = :fid 
+                      AND f.deleted_at IS NULL 
+                      AND f.ubl_xml_path IS NOT NULL 
+                      AND f.ubl_xml_path != '' 
+                      AND (fs.istisna_aciklama IS NULL OR fs.istisna_aciklama = '')
+                    LIMIT 1
+                ");
+                $checkStmt->execute(['fid' => $firmId]);
+                if ($checkStmt->fetchColumn()) {
+                    @set_time_limit(180);
+                    $this->syncAllLineDescriptionsFromXml($firmId);
+                }
+            } catch (\Throwable $e) {
+                error_log("EInvoiceModel auto-sync error: " . $e->getMessage());
+            }
+        }
+
         $draw = (int)($params['draw'] ?? 1);
         $start = max(0, (int)($params['start'] ?? 0));
         $length = (int)($params['length'] ?? 10);
@@ -795,25 +822,37 @@ class EInvoiceModel extends Model
             if (!empty($words)) {
                 $wordConds = [];
                 foreach ($words as $wIdx => $word) {
-                    $pWord = "p_word_" . $wIdx;
-                    $pWordNote = "p_word_n_" . $wIdx;
-                    $wordConds[] = "(
-                        f.notlar LIKE :$pWordNote 
-                        OR EXISTS (
-                            SELECT 1 FROM fatura_satirlari fs 
-                            WHERE fs.fatura_id = f.id 
-                              AND fs.deleted_at IS NULL 
-                              AND (
-                                  fs.urun_hizmet_adi LIKE :$pWord 
-                                  OR fs.urun_kodu LIKE :$pWord 
-                                  OR fs.istisna_aciklama LIKE :$pWord
-                              )
-                        )
-                    )";
-                    $bind[$pWord] = "%$word%";
-                    $bind[$pWordNote] = "%$word%";
+                    $variants = $this->getSearchVariants($word);
+                    $varConds = [];
+                    foreach ($variants as $vIdx => $var) {
+                        $pWord = "p_w_{$wIdx}_{$vIdx}";
+                        $pWordNote = "p_wn_{$wIdx}_{$vIdx}";
+                        $varConds[] = "(
+                            f.notlar LIKE :$pWordNote 
+                            OR f.alici_unvan LIKE :$pWord 
+                            OR f.alici_vkn_tckn LIKE :$pWord 
+                            OR f.fatura_no LIKE :$pWord 
+                            OR EXISTS (
+                                SELECT 1 FROM fatura_satirlari fs 
+                                WHERE fs.fatura_id = f.id 
+                                  AND fs.deleted_at IS NULL 
+                                  AND (
+                                      fs.urun_hizmet_adi LIKE :$pWord 
+                                      OR fs.urun_kodu LIKE :$pWord 
+                                      OR fs.istisna_aciklama LIKE :$pWord
+                                  )
+                            )
+                        )";
+                        $bind[$pWord] = "%$var%";
+                        $bind[$pWordNote] = "%$var%";
+                    }
+                    if (!empty($varConds)) {
+                        $wordConds[] = "(" . implode(" OR ", $varConds) . ")";
+                    }
                 }
-                $where .= " AND (" . implode(" AND ", $wordConds) . ")";
+                if (!empty($wordConds)) {
+                    $where .= " AND (" . implode(" AND ", $wordConds) . ")";
+                }
             }
         }
 
@@ -822,30 +861,39 @@ class EInvoiceModel extends Model
             if (!empty($searchWords)) {
                 $searchConds = [];
                 foreach ($searchWords as $sIdx => $sword) {
-                    $sParam = "s_" . $sIdx;
-                    $searchConds[] = "(
-                        f.fatura_no LIKE :$sParam 
-                        OR f.alici_unvan LIKE :$sParam 
-                        OR f.alici_vkn_tckn LIKE :$sParam 
-                        OR f.ettn LIKE :$sParam
-                        OR f.notlar LIKE :$sParam
-                        OR f.siparis_no LIKE :$sParam
-                        OR f.irsaliye_no LIKE :$sParam
-                        OR f.alici_adres LIKE :$sParam
-                        OR EXISTS (
-                            SELECT 1 FROM fatura_satirlari fs 
-                            WHERE fs.fatura_id = f.id 
-                              AND fs.deleted_at IS NULL 
-                              AND (
-                                  fs.urun_hizmet_adi LIKE :$sParam 
-                                  OR fs.urun_kodu LIKE :$sParam 
-                                  OR fs.istisna_aciklama LIKE :$sParam
-                              )
-                        )
-                    )";
-                    $bind[$sParam] = "%$sword%";
+                    $variants = $this->getSearchVariants($sword);
+                    $varConds = [];
+                    foreach ($variants as $vIdx => $var) {
+                        $sParam = "s_{$sIdx}_{$vIdx}";
+                        $varConds[] = "(
+                            f.fatura_no LIKE :$sParam 
+                            OR f.alici_unvan LIKE :$sParam 
+                            OR f.alici_vkn_tckn LIKE :$sParam 
+                            OR f.ettn LIKE :$sParam
+                            OR f.notlar LIKE :$sParam
+                            OR f.siparis_no LIKE :$sParam
+                            OR f.irsaliye_no LIKE :$sParam
+                            OR f.alici_adres LIKE :$sParam
+                            OR EXISTS (
+                                SELECT 1 FROM fatura_satirlari fs 
+                                WHERE fs.fatura_id = f.id 
+                                  AND fs.deleted_at IS NULL 
+                                  AND (
+                                      fs.urun_hizmet_adi LIKE :$sParam 
+                                      OR fs.urun_kodu LIKE :$sParam 
+                                      OR fs.istisna_aciklama LIKE :$sParam
+                                  )
+                            )
+                        )";
+                        $bind[$sParam] = "%$var%";
+                    }
+                    if (!empty($varConds)) {
+                        $searchConds[] = "(" . implode(" OR ", $varConds) . ")";
+                    }
                 }
-                $where .= " AND (" . implode(" AND ", $searchConds) . ")";
+                if (!empty($searchConds)) {
+                    $where .= " AND (" . implode(" AND ", $searchConds) . ")";
+                }
             }
         }
 
@@ -1772,5 +1820,32 @@ class EInvoiceModel extends Model
             'updated_invoices' => $updatedInvoices,
             'updated_lines'    => $updatedLines
         ];
+    }
+
+    /**
+     * Türkçe karakter ve arama varyasyonlarını üretir.
+     */
+    public function getSearchVariants(string $term): array
+    {
+        $term = trim($term);
+        if ($term === '') return [];
+        $variants = [$term];
+
+        $trMapFrom = ['ı', 'i', 'İ', 'I', 'ğ', 'g', 'Ğ', 'G', 'ü', 'u', 'Ü', 'U', 'ş', 's', 'Ş', 'S', 'ö', 'o', 'Ö', 'O', 'ç', 'c', 'Ç', 'C'];
+        $trMapTo   = ['i', 'ı', 'i', 'i', 'g', 'ğ', 'g', 'g', 'u', 'ü', 'u', 'u', 's', 'ş', 's', 's', 'o', 'ö', 'o', 'o', 'c', 'ç', 'c', 'c'];
+        $vCross = str_replace($trMapFrom, $trMapTo, $term);
+        if ($vCross !== $term) $variants[] = $vCross;
+
+        $vAscii = str_replace(['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'İ', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'],
+                              ['i', 'g', 'u', 's', 'o', 'c', 'I', 'G', 'U', 'S', 'O', 'C'], $term);
+        if ($vAscii !== $term) $variants[] = $vAscii;
+
+        $vUpper = mb_strtoupper($term, 'UTF-8');
+        if ($vUpper !== $term) $variants[] = $vUpper;
+
+        $vLower = mb_strtolower($term, 'UTF-8');
+        if ($vLower !== $term) $variants[] = $vLower;
+
+        return array_values(array_unique(array_filter($variants)));
     }
 }
