@@ -30,18 +30,21 @@ $(document).ready(function () {
     });
     var html = "";
     rows.forEach(function (row) {
-      var access = row.accessible ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Açık</span>' : '<span class="badge bg-light text-secondary border rounded-pill">Kapalı</span>';
+      var sidebar = row.sidebar_visible ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Görünür</span>' : '<span class="badge bg-light text-secondary border rounded-pill">Gizli</span>';
+      var access = row.route_accessible ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Açık</span>' : '<span class="badge bg-light text-secondary border rounded-pill">Kapalı</span>';
       var findingClass = row.severity === "critical" ? "text-danger" : (row.severity === "warning" ? "text-warning" : "text-muted");
-      html += '<tr><td><div class="fw-semibold text-dark">' + esc(row.menu_name || "-") + '</div><code class="font-size-11">' + esc(row.menu_link || "Üst menü") + '</code></td><td>' + esc(row.group_name || "-") + '</td><td class="audit-code"><code>' + esc(row.permission_codes || "Eşleşme yok") + '</code></td><td>' + esc(row.source_roles || "-") + '</td><td class="text-center">' + access + '</td><td class="' + findingClass + ' fw-semibold font-size-11">' + esc(row.finding) + '</td></tr>';
+      var policyClass = row.policy_status === "Tanımlı" ? "success" : (row.policy_status === "Eksik" ? "danger" : "secondary");
+      var policy = '<span class="badge bg-' + policyClass + '-subtle text-' + policyClass + ' border border-' + policyClass + '-subtle rounded-pill">' + esc(row.policy_status || "-") + '</span>';
+      html += '<tr><td><div class="fw-semibold text-dark">' + esc(row.menu_name || "-") + '</div><code class="font-size-11">' + esc(row.menu_link || "Üst menü") + '</code></td><td>' + esc(row.group_name || "-") + '</td><td class="audit-code"><code>' + esc(row.permission_codes || "Eşleşme yok") + '</code></td><td>' + esc(row.source_roles || "-") + '</td><td>' + policy + '</td><td class="text-center">' + sidebar + '</td><td class="text-center">' + (row.menu_link ? access : "—") + '</td><td class="' + findingClass + ' fw-semibold font-size-11">' + esc(row.finding) + '</td></tr>';
     });
     if (auditTable) { auditTable.destroy(); auditTable = null; }
-    $("#auditTableBody").html(html || '<tr><td colspan="6" class="text-center text-muted py-4">Bu filtrede kayıt bulunamadı.</td></tr>');
+    $("#auditTableBody").html(html || '<tr><td colspan="8" class="text-center text-muted py-4">Bu filtrede kayıt bulunamadı.</td></tr>');
     if (rows.length && $.fn.DataTable && typeof getDatatableOptions === "function" && typeof applyLengthStateSave === "function") {
       auditTable = $("#permissionAuditTable").DataTable(applyLengthStateSave({
         ...getDatatableOptions(),
         pageLength: 25,
         order: [],
-        columnDefs: [{ targets: [4], className: "text-center" }]
+        columnDefs: [{ targets: [5, 6], className: "text-center" }]
       }));
     }
   }
@@ -56,7 +59,11 @@ $(document).ready(function () {
     $("#auditCriticalCount").text(stats.critical + " kritik");
     $("#auditWarningCount").text(stats.warning + " uyarı");
     $("#auditSubjectTitle").text(data.subject.name + " — Yetki Denetimi");
-    $("#auditRoleSummary").text("Etkin roller: " + data.roles.map(function (r) { return r.role_name; }).join(", "));
+    var migration = data.migration || {};
+    var migrationText = "Politika: " + (migration.policy_ready ? "hazır" : "SQL bekliyor") +
+      " · Rol tablosu: " + (migration.assignment_ready ? "hazır" : "SQL bekliyor") +
+      (migration.assignment_ready ? " · Rol kaynakları: " + (migration.role_sources_match ? "uyumlu" : "UYUMSUZ") : "");
+    $("#auditRoleSummary").text("Etkin roller: " + data.roles.map(function (r) { return r.role_name; }).join(", ") + " · " + migrationText);
     $("#permissionAuditEmpty").addClass("d-none");
     $("#permissionAuditResults").removeClass("d-none");
     $("#auditFilters button").removeClass("active");

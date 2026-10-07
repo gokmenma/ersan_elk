@@ -337,7 +337,7 @@ class EInvoiceService
         $firma = $firmaModel->getFirma($firmId);
         $settings = $this->settingsModel->getSettings($firmId);
         if ($xmlContent) {
-            $source = (new UblReaderService())->read($xmlContent, $invoice['yon']);
+            $source = (new UblReaderService())->read($xmlContent, $invoice['yon'], ($invoice['yon'] ?? '') === 'GIDEN');
             foreach ($source['customer'] as $key => $value) $invoice['alici_' . $key] = $value;
             $seller = $source['supplier'];
             $firma = (object)['firma_unvan' => $seller['unvan'], 'firma_adi' => $seller['unvan'], 'vergi_no' => $seller['vkn_tckn'], 'adres' => $seller['adres'], 'il' => $seller['il'], 'ilce' => $seller['ilce'], 'ulke' => $seller['ulke'], 'vergi_dairesi' => $seller['vergi_dairesi'], 'email' => $seller['eposta'], 'telefon' => $seller['telefon']];
@@ -956,7 +956,8 @@ class EInvoiceService
 
                 // 2. Aşama: Yalnızca yeni veya XML'i eksik olan faturaların tam UBL XML'ini indir
                 $xml = !empty($item['xml']) ? $item['xml'] : $client->getInvoiceXml($item['uuid'], $direction === 'GELEN' ? 'IN' : 'OUT');
-                $source = $reader->read($xml, $direction, $direction === 'GIDEN' && $mapped['entegrator_durum_kodu'] === 'TASLAK');
+                $allowUnnumbered = $direction === 'GIDEN' && in_array($mapped['entegrator_durum_kodu'], ['TASLAK', 'IPTAL', 'HATALI'], true);
+                $source = $reader->read($xml, $direction, $allowUnnumbered);
                 if (strcasecmp($source['header']['ettn'], $item['uuid']) !== 0) throw new \InvalidArgumentException('XML ETTN ile EDM ETTN uyuşmuyor.');
 
                 $header = array_merge($source['header'], $mapped);
@@ -989,7 +990,8 @@ class EInvoiceService
         $mapped = InvoiceStatusService::map(['status' => $item['status'], 'status_desc' => $item['status_desc'] ?? '']);
         $direction = $item['direction'] ?? 'GIDEN';
         if (!in_array($direction, ['GELEN', 'GIDEN'], true)) throw new \InvalidArgumentException('Geçersiz fatura yönü.');
-        $source = (new UblReaderService())->read($item['xml'], $direction, $direction === 'GIDEN' && $mapped['entegrator_durum_kodu'] === 'TASLAK');
+        $allowUnnumbered = $direction === 'GIDEN' && in_array($mapped['entegrator_durum_kodu'], ['TASLAK', 'IPTAL', 'HATALI'], true);
+        $source = (new UblReaderService())->read($item['xml'], $direction, $allowUnnumbered);
         if (strcasecmp($source['header']['ettn'], $item['uuid']) !== 0) {
             throw new \InvalidArgumentException('XML ETTN ile EDM ETTN uyuşmuyor.');
         }

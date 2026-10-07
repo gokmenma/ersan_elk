@@ -10,6 +10,7 @@ use App\Model\PersonelModel;
 use App\Helper\Security;
 use App\Helper\Date;
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 use App\Service\MailGonderService;
 
@@ -86,6 +87,17 @@ function notifyDegisimTaraflari(NobetModel $Nobet, PersonelModel $Personel, $tal
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
+
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('nobet/api', (string) $action);
+    } elseif (!Gate::allowsAny(['nobet/list', 'nobet/talepler'])) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Nöbet işlemleri için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     $Nobet = new NobetModel();
     $Personel = new PersonelModel();
     $SystemLog = new SystemLogModel();

@@ -536,7 +536,7 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `action=savePermissions&id=${encodeURIComponent(roleID)}&permissions=${JSON.stringify(userPermissions)}`,
+          body: `action=savePermissions&id=${encodeURIComponent(roleID)}&permissions=${encodeURIComponent(JSON.stringify(userPermissions))}&csrf_token=${encodeURIComponent(window.permissionGroupsCsrf || "")}`,
         })
           .then((response) => response.json())
           .then((data) => {

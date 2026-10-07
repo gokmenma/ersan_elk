@@ -15,6 +15,8 @@ use App\Model\PersonelModel;
 use App\Model\AracModel;
 use App\Model\AracHareketleriModel;
 use App\Model\SettingsModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 use App\Helper\Security;
 use App\Helper\Date;
 
@@ -31,6 +33,12 @@ function response($success, $data = null, $message = '')
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('personel-takip/api', (string) $action);
+} elseif (!Gate::allows('personel-takip/list')) {
+    response(false, null, 'Personel takip işlemleri için yetkiniz bulunmamaktadır.');
+}
 
 try {
     $HareketModel = new PersonelHareketleriModel();

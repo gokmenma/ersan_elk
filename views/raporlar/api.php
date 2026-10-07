@@ -7,7 +7,9 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
+use App\Model\PermissionPolicyModel;
 use App\Helper\Security;
+use App\Service\Gate;
 
 // header('Content-Type: application/json; charset=utf-8'); // Set conditionally later
 
@@ -18,6 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $firmaId = $_SESSION['firma_id'] ?? 0;
     if ($firmaId <= 0) {
         echo json_encode(['status' => 'error', 'message' => 'Firma bilgisi bulunamadı.']);
+        exit;
+    }
+
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('raporlar/api', (string) $action);
+    } elseif (!Gate::allows('toplu_raporlar')) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Toplu raporlar için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 

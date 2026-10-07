@@ -59,7 +59,7 @@ $(document).ready(function () {
   $(document).on("click", "#actionKaydet", function () {
     var form = $("#actionForm");
     var formData = form.serialize();
-    formData += "&action=saveGroup";
+    formData += "&action=saveGroup&csrf_token=" + encodeURIComponent(window.permissionGroupsCsrf || "");
 
     var $btn = $(this);
     var originalText = $btn.html();
@@ -111,7 +111,7 @@ $(document).ready(function () {
         $.ajax({
           url: "views/kullanici-gruplari/api.php",
           type: "POST",
-          data: { action: "deleteGroup", id: id },
+          data: { action: "deleteGroup", id: id, csrf_token: window.permissionGroupsCsrf || "" },
           dataType: "json",
           success: function (res) {
             if (res.status === "success") {
@@ -184,6 +184,7 @@ $(document).ready(function () {
             action: "copyPermissions",
             target_role_id: target_id,
             source_role_id: source_id,
+            csrf_token: window.permissionGroupsCsrf || "",
           },
           dataType: "json",
           success: function (res) {

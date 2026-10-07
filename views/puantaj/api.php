@@ -15,6 +15,8 @@ use App\Service\EndeskOkumaService;
 use App\Service\KesmeAcmaService;
 use App\Service\SayacDegisimService;
 use App\Model\SayacDegisimModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 // Set header to JSON
 // header('Content-Type: application/json');
@@ -22,6 +24,27 @@ use App\Model\SayacDegisimModel;
 $Puantaj = new PuantajModel();
 $Tanimlamalar = new TanimlamalarModel();
 $Zimmet = new DemirbasZimmetModel(); // Yeni eklendi
+
+$requestedAction = trim((string) ($_POST['action'] ?? $_GET['action'] ?? ''));
+if ($requestedAction === '') {
+    http_response_code(400);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Puantaj API aksiyonu belirtilmedi.']);
+    exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('puantaj/api', $requestedAction);
+} elseif (!Gate::allowsAny([
+    'puantaj/veri-yukleme', 'puantaj/raporlar', 'defter_bazli_rapor',
+    'sorgulama', 'kacak_islemleri', 'is_takip_ayarlar',
+])) {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Bu puantaj veya iş takip işlemi için yetkiniz bulunmamaktadır.']);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'puantaj-excel-kaydet') {
 

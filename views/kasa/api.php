@@ -1,11 +1,32 @@
 <?php
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 use App\Helper\Security;
 use App\Model\KasaModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 $Kasa = new KasaModel();
+$action = trim((string) ($_POST['action'] ?? ''));
+header('Content-Type: application/json; charset=utf-8');
+
+if (!in_array($action, ['kasa_kaydet', 'kasa_sil'], true)) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Tanımsız kasa API aksiyonu.']);
+    exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('kasa/api', $action);
+} elseif (!Gate::allows('gelir_gider_takibi')) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Bu kasa işlemi için yetkiniz bulunmamaktadır.']);
+    exit;
+}
 
 if ($_POST['action'] == 'kasa_kaydet') {
 

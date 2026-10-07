@@ -79,6 +79,44 @@ if (!isset($_SESSION['force_desktop'])) {
     }
 }
 
+$page = $_GET['p'] ?? 'home';
+
+// Mobil rota isimlerinin masaüstü eşleşmesi (alias)
+$routeAliases = [
+    'efatura'            => 'efatura/dashboard',
+    'efatura-giden'      => 'efatura/giden-list',
+    'efatura-gelen'      => 'efatura/gelen-list',
+    'efatura-taslak'     => 'efatura/taslak-list',
+    'efatura-olustur'    => 'efatura/olustur',
+    'efatura-cari'       => 'efatura/cari-list',
+    'efatura-mal-hizmet' => 'efatura/mal-hizmet-list',
+    'efatura-ayarlar'    => 'efatura/ayarlar',
+];
+if (isset($routeAliases[$page])) {
+    $page = $routeAliases[$page];
+}
+
+// Yetki kontrolü herhangi bir HTML çıktısı üretilmeden önce yapılmalıdır.
+$publicPages = ['home'];
+if (!in_array($page, $publicPages, true)) {
+    $hasMenuAccess = RequestPerformanceProfiler::measure(
+        'index.permission_policy_check',
+        fn() => Gate::allowsPolicy('page', $page, '', 'GET'),
+        1
+    );
+
+    if (!$hasMenuAccess) {
+        header('Location: unauthorize.php');
+        exit();
+    }
+}
+
+try {
+    $logModel = new \App\Model\SystemLogModel();
+    $logModel->logPageView($currentUserId, $page, 'Desktop');
+} catch (\Exception $e) {
+}
+
 
 
 
@@ -140,55 +178,6 @@ if (!isset($_SESSION['force_desktop'])) {
         <div class="page-content">
 
             <?php
-            $page = $_GET['p'] ?? 'home';
-
-            // Mobil rota isimlerinin masaüstü eşleşmesi (alias)
-            $routeAliases = [
-                'efatura'            => 'efatura/dashboard',
-                'efatura-giden'      => 'efatura/giden-list',
-                'efatura-gelen'      => 'efatura/gelen-list',
-                'efatura-taslak'     => 'efatura/taslak-list',
-                'efatura-olustur'    => 'efatura/olustur',
-                'efatura-cari'       => 'efatura/cari-list',
-                'efatura-mal-hizmet' => 'efatura/mal-hizmet-list',
-                'efatura-ayarlar'    => 'efatura/ayarlar',
-            ];
-            if (isset($routeAliases[$page])) {
-                $page = $routeAliases[$page];
-            }
-
-            try {
-                if ($currentUserId > 0) {
-                    $logModel = new \App\Model\SystemLogModel();
-                    $logModel->logPageView($currentUserId, $page, 'Desktop');
-                }
-            } catch (\Exception $e) {}
-
-            $publicPages = [
-                'home'
-            ];
-
-            if (!in_array($page, $publicPages, true)) {
-                $hasMenuAccess = RequestPerformanceProfiler::measure(
-                    'index.menu_access_check',
-                    fn() => $Menus->userCanAccessMenuLink(
-                        $currentUserId,
-                        match ($page) {
-                            'bordro/ai-analiz' => 'bordro/list',
-                            'kullanici-gruplari/yetki-matrisi' => 'kullanici-gruplari/list',
-                            'kullanici-gruplari/yetki-denetimi' => 'kullanici-gruplari/list',
-                            default => $page,
-                        }
-                    ),
-                    1
-                );
-                if (!$hasMenuAccess) {
-
-                    echo "<script> window.location.href = 'unauthorize.php'; </script>";
-                    exit;
-                }
-            }
-
             // JSON endpoint'ler HTML layout'a girmemeli.
             // online-api.php, fetch ile çağrıldığı için burada erken include edip çıkıyoruz.
             if ($page === 'gelir-gider/online-api') {

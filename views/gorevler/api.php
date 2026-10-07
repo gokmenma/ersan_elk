@@ -7,6 +7,10 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\GorevModel;
 use App\Helper\Security;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
+
+header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
@@ -14,8 +18,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $userId = $_SESSION['user_id'] ?? 0;
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
-    header('Content-Type: application/json');
+    if ($userId <= 0 || $firmaId <= 0) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Oturum süresi doldu.']);
+        exit;
+    }
 
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('gorevler/api', (string) $action);
+    } elseif (!Gate::allows('gorevler')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Görev işlemleri için yetkiniz bulunmamaktadır.']);
+        exit;
+    }
     try {
         switch ($action) {
 

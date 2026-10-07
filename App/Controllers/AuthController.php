@@ -257,7 +257,7 @@ class AuthController
 
 
         // SÜPER ADMIN KONTROLÜ
-        $rolesArray = explode(',', $user->roles ?? '');
+        $rolesArray = (new \App\Model\UserRoleAssignmentModel())->activeRoleIdsForUser((int) $user->id);
         if (in_array('10', $rolesArray)) {
             header("Location: /superadmin");
             exit();

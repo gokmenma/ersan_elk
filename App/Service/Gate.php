@@ -6,6 +6,10 @@ use App\Helper\Helper;
 use App\Helper\Alert;
 use App\Controllers\AuthController;
 use App\Model\PermissionsModel;
+use App\Model\PermissionPolicyModel;
+use App\Model\MenuModel;
+use App\Model\SystemLogModel;
+use App\Model\UserRoleAssignmentModel;
 use App\Service\RequestPerformanceProfiler;
 use Exception;
 
@@ -14,6 +18,8 @@ class Gate
     private static array $requestPermissionSetCache = [];
     private static array $requestAllowsCache = [];
     private static ?bool $requestSuperAdminCache = null;
+    private static array $requestPolicyCache = [];
+    private static array $loggedSuperAdminPolicies = [];
 
     /**
      * Mevcut kullanıcının belirli bir role sahip olup olmadığını kontrol eder.
@@ -98,6 +104,122 @@ class Gate
         self::$requestAllowsCache[$userId][$permissionName] = $allowed;
 
         return $allowed;
+    }
+
+    public static function allowsAny(array $permissionNames): bool
+    {
+        foreach (array_values(array_unique(array_filter($permissionNames))) as $permissionName) {
+            if (self::allows((string) $permissionName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Sayfa/API politika kontrolü. Politika tablosu kurulunca tanımsız kaynaklar varsayılan reddedilir.
+     * Geçiş SQL'i uygulanmamışsa sayfalarda mevcut menü kontrolüne geri döner.
+     */
+    public static function allowsPolicy(
+        string $scope,
+        string $resource,
+        string $action = '',
+        ?string $httpMethod = null
+    ): bool {
+        $user = AuthController::user();
+        $userId = (int) ($user->id ?? 0);
+        $personelId = (int) ($_SESSION['personel_id'] ?? 0);
+        if ($userId <= 0 && $personelId <= 0) {
+            return false;
+        }
+
+        $scope = $scope === 'api' ? 'api' : 'page';
+        $resource = trim($resource, '/');
+        $action = trim($action);
+        $httpMethod = strtoupper($httpMethod ?: ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        $subjectKey = $userId > 0 ? 'u' . $userId : 'p' . $personelId;
+        $cacheKey = implode('|', [$subjectKey, $scope, $resource, $action, $httpMethod]);
+        if (array_key_exists($cacheKey, self::$requestPolicyCache)) {
+            return self::$requestPolicyCache[$cacheKey];
+        }
+
+        $policyModel = new PermissionPolicyModel();
+        if (!$policyModel->isReady()) {
+            $legacyResource = match ($resource) {
+                'bordro/ai-analiz' => 'bordro/list',
+                'kullanici-gruplari/yetki-matrisi',
+                'kullanici-gruplari/yetki-denetimi',
+                'kullanici-gruplari/yetki-katalogu' => 'kullanici-gruplari/list',
+                default => $resource,
+            };
+            $allowed = $scope === 'page'
+                ? (new MenuModel())->userCanAccessMenuLink($userId, $legacyResource)
+                : false;
+            return self::$requestPolicyCache[$cacheKey] = $allowed;
+        }
+
+        $policy = $policyModel->resolve($scope, $resource, $action, $httpMethod);
+        if (!$policy) {
+            error_log("Tanımsız yetki politikası reddedildi: {$scope} {$resource} {$action} {$httpMethod}");
+            return self::$requestPolicyCache[$cacheKey] = false;
+        }
+
+        if ($userId > 0 && self::isSuperAdmin()) {
+            self::logSuperAdminPolicyPass($userId, $policy);
+            return self::$requestPolicyCache[$cacheKey] = true;
+        }
+
+        if ((int) ($policy->authenticated_only ?? 0) === 1) {
+            return self::$requestPolicyCache[$cacheKey] = true;
+        }
+
+        if ($userId <= 0 || (int) $policy->superadmin_only === 1 || empty($policy->permission_key)) {
+            return self::$requestPolicyCache[$cacheKey] = false;
+        }
+
+        return self::$requestPolicyCache[$cacheKey] = self::allows((string) $policy->permission_key);
+    }
+
+    public static function authorizeApiPolicy(string $resource, string $action = ''): void
+    {
+        if (self::allowsPolicy('api', $resource, $action)) {
+            return;
+        }
+
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Bu API işlemini gerçekleştirmek için yetkiniz bulunmamaktadır.',
+            'data' => [],
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    private static function logSuperAdminPolicyPass(int $userId, object $policy): void
+    {
+        $policyId = (int) ($policy->id ?? 0);
+        if ($policyId <= 0 || isset(self::$loggedSuperAdminPolicies[$policyId])) {
+            return;
+        }
+        self::$loggedSuperAdminPolicies[$policyId] = true;
+
+        try {
+            (new SystemLogModel())->logAction(
+                $userId,
+                'Superadmin Yetki Geçişi',
+                sprintf(
+                    'Politika #%d üzerinden erişim: %s %s%s',
+                    $policyId,
+                    (string) ($policy->scope ?? ''),
+                    (string) ($policy->resource ?? ''),
+                    empty($policy->action) ? '' : ' / ' . (string) $policy->action
+                ),
+                SystemLogModel::LEVEL_CRITICAL
+            );
+        } catch (\Throwable $e) {
+            error_log('Superadmin politika geçişi loglanamadı: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -214,13 +336,25 @@ class Gate
         if (isset($user->role) && $user->role === 'superadmin') {
             return true;
         }
-        if (!empty($user->roles)) {
-            $roles = explode(',', (string) $user->roles);
-            if (in_array('1', $roles, true)) {
-                return true;
-            }
+        $userId = (int) ($user->id ?? 0);
+        if ($userId <= 0) {
+            return false;
         }
-        return false;
+        if (self::$requestSuperAdminCache !== null) {
+            return self::$requestSuperAdminCache;
+        }
+        $roleModel = new UserRoleAssignmentModel();
+        $roleIds = $roleModel->activeRoleIdsForUser($userId);
+        if (!$roleIds) {
+            return self::$requestSuperAdminCache = false;
+        }
+        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+        $stmt = $roleModel->getDb()->prepare(
+            "SELECT COUNT(*) FROM user_roles
+             WHERE id IN ({$placeholders}) AND (superadmin = 1 OR role_type = 'superadmin')"
+        );
+        $stmt->execute($roleIds);
+        return self::$requestSuperAdminCache = (int) $stmt->fetchColumn() > 0;
     }
 
 

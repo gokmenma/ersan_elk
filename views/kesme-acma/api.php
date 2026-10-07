@@ -14,6 +14,7 @@ use App\Model\MahalleModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
 use App\Service\KesmeAcmaPlanService;
+use App\Model\PermissionPolicyModel;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -65,6 +66,11 @@ function kaTarih($deger, ?string $varsayilan = null): string
 
 if (!kaIzin('kesme_acma')) {
     kaYanit(false, 'Bu işlem için yetkiniz yok.');
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('kesme-acma/api', (string) $action);
 }
 
 $Mahalle = new MahalleModel();

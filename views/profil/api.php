@@ -6,12 +6,19 @@ use App\Helper\Security;
 use App\Model\UserModel;
 use App\Model\SystemLogModel;
 use App\Model\UserNotificationPreferenceModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 $User = new UserModel();
 
 session_start();
 
 $action = $_POST["action"] ?? '';
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('profil/api', (string) $action);
+}
 
 if ($action == "profil-guncelle") {
     $userId = $_SESSION["user_id"] ?? $_SESSION["id"] ?? 0;

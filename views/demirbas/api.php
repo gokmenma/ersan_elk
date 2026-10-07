@@ -15,6 +15,7 @@ use App\Model\SystemLogModel;
 use App\Model\PersonelModel;
 use App\Service\Gate;
 use App\Model\DemirbasZimmetFotoModel;
+use App\Model\PermissionPolicyModel;
 
 $Demirbas = new DemirbasModel();
 $Servis = new DemirbasServisModel();
@@ -81,6 +82,26 @@ $zimmetFotoIsle = function ($zimmetId, $hareketId, $fileKey, $tur) use ($ZimmetF
 
 
 $action = $_POST["action"] ?? $_GET["action"] ?? null;
+
+if (!is_string($action) || trim($action) === '') {
+    http_response_code(400);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Demirbaş API aksiyonu belirtilmedi.']);
+    exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('demirbas/api', $action);
+} elseif (!Gate::allowsAny([
+    'demirbas/list', 'demirbas/sayac-deposu', 'demirbas/aparat-deposu',
+    'demirbas/zimmet', 'demirbas/servis', 'demirbas/raporlar',
+])) {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Bu demirbaş işlemi için yetkiniz bulunmamaktadır.']);
+    exit;
+}
 
 // JSON yanıt helper
 function jsonResponse($status, $message, $data = null)

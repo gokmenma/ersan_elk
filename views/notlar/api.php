@@ -4,6 +4,8 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\NotModel;
 use App\Helper\Security;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 header('Content-Type: application/json');
 
@@ -15,6 +17,11 @@ $user_id = $_SESSION['user_id'] ?? 0;
 if (!$firma_id || !$user_id) {
     echo json_encode(['success' => false, 'message' => 'Oturum kapalı.']);
     exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('notlar/api', (string) $action);
 }
 
 switch ($action) {

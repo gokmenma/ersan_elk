@@ -4,6 +4,8 @@ require_once dirname(__DIR__, 3) . '/Autoloader.php';
 
 use App\Helper\Security;
 use App\Model\IcraDaireleriModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 $Model = new IcraDaireleriModel();
 
@@ -13,6 +15,14 @@ if (!isset($_POST['action'])) {
 }
 
 $action = $_POST['action'];
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('tanimlamalar/icra-daireleri/api', (string) $action);
+} elseif (!Gate::allows('tanimlamalar/icra-daireleri/list')) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'İcra dairesi tanımları için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 try {
     switch ($action) {

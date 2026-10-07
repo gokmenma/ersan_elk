@@ -996,4 +996,101 @@ class EndeksOkumaModel extends Model
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Silinmiş (silinme_tarihi dolu olan) kayıt sayısını döner.
+     *
+     * @param int|null $firmaId
+     * @return int
+     */
+    public function countDeletedRecords(?int $firmaId = null): int
+    {
+        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE silinme_tarihi IS NOT NULL";
+        $params = [];
+        if ($firmaId !== null && $firmaId > 0) {
+            $sql .= " AND firma_id = ?";
+            $params[] = $firmaId;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Silinmiş (silinme_tarihi dolu olan) kayıtları veritabanından kalıcı olarak (batch halinde) temizler.
+     *
+     * @param int $batchSize
+     * @param int|null $firmaId
+     * @return int Toplam silinen kayıt sayısı
+     */
+    public function purgeDeletedRecords(int $batchSize = 50000, ?int $firmaId = null): int
+    {
+        $totalDeleted = 0;
+        $batchSize = max(1000, min(100000, $batchSize));
+
+        $sql = "DELETE FROM {$this->table} WHERE silinme_tarihi IS NOT NULL";
+        if ($firmaId !== null && $firmaId > 0) {
+            $sql .= " AND firma_id = :firma_id";
+        }
+        $sql .= " LIMIT :limit";
+
+        while (true) {
+            $stmt = $this->db->prepare($sql);
+            if ($firmaId !== null && $firmaId > 0) {
+                $stmt->bindValue(':firma_id', $firmaId, PDO::PARAM_INT);
+            }
+            $stmt->bindValue(':limit', $batchSize, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $deletedInBatch = $stmt->rowCount();
+            $totalDeleted += $deletedInBatch;
+
+            if ($deletedInBatch < $batchSize) {
+                break;
+            }
+        }
+
+        return $totalDeleted;
+    }
+
+    /**
+     * Milyonlarca satırlık büyük tablolarda silinmiş kayıtları anında (Copy-Swap-Drop yöntemiyle) temizler.
+     * Aktif kayıtları yeni bir geçici tabloya aktarır, tabloları atomik olarak takas eder ve eskiyi kaldırır.
+     *
+     * @return array ['deleted_count' => int, 'active_count' => int]
+     */
+    public function fastPurgeDeletedRecords(): array
+    {
+        $deletedBefore = $this->countDeletedRecords();
+        if ($deletedBefore === 0) {
+            $activeCount = (int) $this->db->query("SELECT COUNT(*) FROM {$this->table}")->fetchColumn();
+            return ['deleted_count' => 0, 'active_count' => $activeCount];
+        }
+
+        $tempTable = "{$this->table}_purge_temp";
+        $oldTable = "{$this->table}_purge_old";
+
+        // 1. Varsa eski artık tabloları temizle
+        $this->db->exec("DROP TABLE IF EXISTS `{$tempTable}`, `{$oldTable}`");
+
+        // 2. Yeni tabloyu mevcut yapıyla aynı şekilde oluştur
+        $this->db->exec("CREATE TABLE `{$tempTable}` LIKE `{$this->table}`");
+
+        // 3. Yalnızca aktif (silinmemiş) kayıtları yeni tabloya aktar
+        $this->db->exec("INSERT INTO `{$tempTable}` SELECT * FROM `{$this->table}` WHERE `silinme_tarihi` IS NULL");
+
+        // 4. Atomik olarak tabloların isimlerini değiştir (sıfır kesinti)
+        $this->db->exec("RENAME TABLE `{$this->table}` TO `{$oldTable}`, `{$tempTable}` TO `{$this->table}`");
+
+        // 5. Eski silinmiş kayıtların olduğu tabloyu kaldır
+        $this->db->exec("DROP TABLE IF EXISTS `{$oldTable}`");
+
+        $activeAfter = (int) $this->db->query("SELECT COUNT(*) FROM {$this->table}")->fetchColumn();
+
+        return [
+            'deleted_count' => $deletedBefore,
+            'active_count' => $activeAfter
+        ];
+    }
 }

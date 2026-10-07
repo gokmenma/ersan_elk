@@ -7,6 +7,7 @@ use App\Helper\Form;
 use App\Helper\Security;
 use App\Model\UserModel;
 use App\Model\UserRolesModel;
+use App\Model\UserRoleAssignmentModel;
 use App\Model\FirmaModel;
 
 $User = new UserModel();
@@ -20,9 +21,12 @@ $usergroups = $UserRoles->getGroupsOptions();
 
 $firma = new FirmaModel();
 $firmalar = $firma->getFirmaList();
-$user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
+$user_firmler = array_values(array_filter(array_map('trim', explode(',', $user ? ($user->firma_ids ?? '') : '')), 'strlen'));
 
 $isEdit = !empty($user && $user->id);
+$selectedRoleIds = $isEdit
+    ? (new UserRoleAssignmentModel())->activeRoleIdsForUser((int) $user->id)
+    : [];
 ?>
 
 <style>
@@ -373,11 +377,12 @@ $isEdit = !empty($user && $user->id);
                     <?php echo Form::FormMultipleSelect2(
                         name: "roles",
                         options: $usergroups,
-                        selectedValues: explode(',', $user->roles ?? ''),
+                        selectedValues: $selectedRoleIds,
                         label: "Yetki Grubu (Roller) *",
                         icon: "shield",
                         valueField: "id",
                         textField: "role_name",
+                        required: true,
                         attributes: 'data-selection-label="yetki"'
                     ); ?>
                 </div>
@@ -391,6 +396,7 @@ $isEdit = !empty($user && $user->id);
                         icon: "home",
                         valueField: "id",
                         textField: "firma_adi",
+                        required: true,
                         attributes: 'data-selection-label="şube"'
                     ); ?>
                 </div>

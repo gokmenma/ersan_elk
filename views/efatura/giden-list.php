@@ -116,10 +116,10 @@ $title = 'Giden Faturalar';
         </div>
     </div>
 
-    <!-- 2. 4 Adet Minimal Özet KPI Kartı -->
+    <!-- 2. 5 Adet Minimal Özet KPI Kartı -->
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <!-- Kart 1: TOPLAM FATURA -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-md-4 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
@@ -130,7 +130,7 @@ $title = 'Giden Faturalar';
                     </div>
                     <div class="d-flex align-items-baseline justify-content-between my-1">
                         <h3 class="summary-kpi-value mb-0" id="stat_toplam_adet">0</h3>
-                        <span class="summary-kpi-subtext text-primary fw-bold font-size-14" id="stat_toplam_tutar">0,00 ₺</span>
+                        <span class="summary-kpi-subtext text-primary fw-bold font-size-13" id="stat_toplam_tutar">0,00 ₺</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_efatura_earsiv">E-Fatura: 0 | E-Arşiv: 0</span>
@@ -143,7 +143,7 @@ $title = 'Giden Faturalar';
         </div>
 
         <!-- Kart 2: GİB ONAYLI -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-md-4 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
@@ -152,9 +152,12 @@ $title = 'Giden Faturalar';
                             <i class="bx bx-check-double"></i>
                         </div>
                     </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_onaylanan_adet">0</h3>
+                    <div class="d-flex align-items-baseline justify-content-between my-1">
+                        <h3 class="summary-kpi-value mb-0" id="stat_onaylanan_adet">0</h3>
+                        <span class="summary-kpi-subtext text-success fw-bold font-size-13" id="stat_onaylanan_tutar">0,00 ₺</span>
+                    </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-success fw-semibold" id="stat_onaylanan_tutar">0,00 ₺</span>
+                        <span class="summary-kpi-subtext text-success fw-semibold">İletilen / Onaylanan</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="ONAYLANDI">
                             <i class="bx bx-check-double"></i> Onaylı
                         </button>
@@ -163,29 +166,56 @@ $title = 'Giden Faturalar';
             </div>
         </div>
 
-        <!-- Kart 3: BEKLEYEN / İLETİLEN -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <!-- Kart 3: GİB BEKLEYEN -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BEKLEYEN / İLETİLEN</span>
+                        <span class="summary-kpi-label">GİB BEKLEYEN</span>
                         <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
-                            <i class="bx bx-send"></i>
+                            <i class="bx bx-time-five"></i>
                         </div>
                     </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_bekleyen_adet">0</h3>
+                    <div class="d-flex align-items-baseline justify-content-between my-1">
+                        <h3 class="summary-kpi-value mb-0" id="stat_bekleyen_adet">0</h3>
+                        <span class="summary-kpi-subtext text-info fw-bold font-size-13" id="stat_bekleyen_tutar">0,00 ₺</span>
+                    </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-info fw-semibold" id="stat_bekleyen_tutar">0,00 ₺</span>
-                        <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="BEKLEYEN_ILETILEN">
-                            <i class="bx bx-send"></i> Bekleyen / İletilen
+                        <span class="summary-kpi-subtext text-info fw-semibold">İletim Bekleyen</span>
+                        <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="BEKLIYOR">
+                            <i class="bx bx-time"></i> Bekleyen
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Kart 4: BU AY KESİLEN -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <!-- Kart 4: İPTAL EDİLENLER -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">İPTAL EDİLENLER</span>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bx bx-x-circle"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-baseline justify-content-between my-1">
+                        <h3 class="summary-kpi-value mb-0 text-danger" id="stat_iptal_adet">0</h3>
+                        <span class="summary-kpi-subtext text-danger fw-bold font-size-13" id="stat_iptal_tutar">0,00 ₺</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-danger fw-semibold">İptal Faturalar</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="IPTAL">
+                            <i class="bx bx-x"></i> İptal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 5: BU AY KESİLEN -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
@@ -194,9 +224,12 @@ $title = 'Giden Faturalar';
                             <i class="bx bx-calendar"></i>
                         </div>
                     </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_bu_ay_adet">0</h3>
+                    <div class="d-flex align-items-baseline justify-content-between my-1">
+                        <h3 class="summary-kpi-value mb-0" id="stat_bu_ay_adet">0</h3>
+                        <span class="summary-kpi-subtext text-warning fw-bold font-size-13" id="stat_bu_ay_tutar">0,00 ₺</span>
+                    </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-muted" id="stat_bu_ay_tutar">0,00 ₺</span>
+                        <span class="summary-kpi-subtext text-muted">Dönem Toplamı</span>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" id="stat_donem_badge">
                             <?= date('m/Y') ?> Dönemi
                         </span>

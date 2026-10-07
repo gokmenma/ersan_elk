@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 use App\Model\SettingsModel;
+use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -19,6 +20,11 @@ function apiClientRespond(array $data, int $code = 200): never
 
 if (!Gate::isSuperAdmin()) {
     apiClientRespond(['status' => 'error', 'message' => 'Bu alan yalnızca Superadmin kullanıcıya açıktır.'], 403);
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('api-istemcisi/api', 'execute');
 }
 
 $input = json_decode((string) file_get_contents('php://input'), true);

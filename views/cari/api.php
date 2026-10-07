@@ -9,11 +9,44 @@ use App\Helper\Helper;
 use App\Helper\Date;
 use App\Model\CariModel;
 use App\Model\CariHareketleriModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 $Cari = new CariModel();
 $CariHareket = new CariHareketleriModel();
 
 $action = $_POST["action"] ?? "";
+header('Content-Type: application/json; charset=utf-8');
+
+$cariActions = [
+    'get-unique-values', 'get_unique_values', 'cari-ajax-list', 'cari-kaydet',
+    'cari-not-kaydet', 'cari-getir', 'vkn-sorgula', 'cari-sil',
+    'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
+    'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
+];
+if (!in_array($action, $cariActions, true)) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Tanımsız cari API aksiyonu.']);
+    exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('cari/api', $action);
+} else {
+    $movementActions = [
+        'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
+        'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
+    ];
+    $requiredPermission = in_array($action, $movementActions, true)
+        ? 'cari_hesap_hareketleri'
+        : 'cari_takibi';
+    if (!Gate::allows($requiredPermission)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Bu cari işlemi için yetkiniz bulunmamaktadır.']);
+        exit;
+    }
+}
 
 /**
  * PDF içe aktarma uçları için oturum ve yetki kontrolü. Oturumdaki kullanıcı ID'sini döndürür.
@@ -638,4 +671,3 @@ if ($action == "tum-hareketler-getir") {
     }
     exit;
 }
-

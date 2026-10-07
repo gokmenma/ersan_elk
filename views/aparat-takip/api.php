@@ -16,6 +16,7 @@ use App\Model\KesmeAcmaIslemModel;
 use App\Model\SystemLogModel;
 use App\Service\AparatStokService;
 use App\Service\Gate;
+use App\Model\PermissionPolicyModel;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -74,6 +75,11 @@ function aparatTarih($deger, string $varsayilan): string
 
 if (!aparatIzin('aparat_takip') && !aparatIzin('aparat-takip/list') && !aparatSuperAdmin()) {
     aparatYanit(false, 'Bu işlem için yetkiniz yok.');
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('aparat-takip/api', (string) $action);
 }
 
 $saltOkunurActionlar = ['stok-matris', 'islem-listesi', 'hareket-listesi', 'transfer-listesi',

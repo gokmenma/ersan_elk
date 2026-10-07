@@ -10,14 +10,29 @@ use App\Model\TanimlamalarModel;
 use App\Model\SettingsModel;
 use App\Model\MenuModel;
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
 
 $Tanimlamalar = new TanimlamalarModel();
 $Settings = new SettingsModel();
 $firma_id = $_SESSION["firma_id"];
+$action = (string) ($_POST['action'] ?? '');
 
 /**firma id boş ise işlem yapma */
 if ($firma_id == 0 || $firma_id == null) {
     echo json_encode(["status" => "error", "message" => "Firma bilgileri bulunamadı."]);
+    exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('tanimlamalar/api', $action);
+} elseif (!Gate::allowsAny([
+    'tanimlamalar/gelir-gider-turu', 'tanimlamalar/ekip-kodu', 'tanimlamalar/is-turu',
+    'tanimlamalar/izin-turu', 'tanimlamalar/unvan-ucret',
+    'tanimlamalar/demirbas-kategorileri', 'tanimlamalar/defter-kodu',
+])) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Tanımlama işlemleri için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

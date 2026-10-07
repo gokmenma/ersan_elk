@@ -187,7 +187,8 @@ $title = "Kullanıcı Listesi";
                         <tr>
                             <th class="text-center" style="width: 45px;" data-filter="none">#</th>
                             <th data-filter="string">KULLANICI</th>
-                            <th style="width: 140px;" data-filter="select">ROLLER</th>
+                            <th style="width: 130px;" data-filter="select">ROLLER</th>
+                            <th style="min-width: 140px;" data-filter="select">YETKİLİ FİRMALAR</th>
                             <th data-filter="string">GÖREVİ</th>
                             <th data-filter="string">İLETİŞİM</th>
                             <th class="text-center" style="width: 120px;" data-filter="select">İZİN ONAYI</th>
@@ -235,13 +236,29 @@ $title = "Kullanıcı Listesi";
                                     if ($names === []):
                                     ?>
                                         <span class="text-muted small">-</span>
-                                    <?php else: ?>
+                                     <?php else: ?>
                                         <div class="d-flex flex-wrap gap-1">
                                             <?php foreach ($names as $key => $name):
                                                 $color = $colors[$key] ?? 'secondary';
                                             ?>
                                                 <span class="badge bg-<?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8'); ?>-subtle text-<?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8'); ?> border border-<?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8'); ?>-subtle rounded-pill px-2 py-0.5 font-size-11 fw-semibold">
                                                     <?= htmlspecialchars(trim($name), ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php
+                                    $firmaList = $user->firma_listesi ?? [];
+                                    if (empty($firmaList)):
+                                    ?>
+                                        <span class="text-muted small">-</span>
+                                    <?php else: ?>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <?php foreach ($firmaList as $fItem): ?>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 font-size-11 fw-semibold">
+                                                    <i class="bx bx-buildings me-0.5"></i><?= htmlspecialchars($fItem['firma_adi'], ENT_QUOTES, 'UTF-8'); ?>
                                                 </span>
                                             <?php endforeach; ?>
                                         </div>
@@ -370,5 +387,3 @@ $title = "Kullanıcı Listesi";
     transition: all 0.15s ease;
 }
 </style>
-
-<script src="<?= Helper::assetVersion('views/kullanici/js/user.js'); ?>"></script>

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 use App\Service\Gate;
 use App\Model\MenuManagementModel;
+use App\Model\PermissionPolicyModel;
 use App\Helper\Security;
 use App\Controllers\AuthController;
 
@@ -27,6 +28,10 @@ $rawInput = file_get_contents('php://input');
 $jsonPayload = (!empty($rawInput) && is_string($rawInput)) ? json_decode($rawInput, true) : null;
 
 $action = $_REQUEST['action'] ?? ($jsonPayload['action'] ?? '');
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('menu-yonetimi/api', (string) $action);
+}
 $model = new MenuManagementModel();
 
 try {

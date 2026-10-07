@@ -14,6 +14,7 @@ use App\Model\PersonelHareketleriModel;
 use App\Helper\Security;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
+use App\Model\PermissionPolicyModel;
 
 const IHBAR_MAX_FOTO = IhbarModel::MAX_FOTO;
 
@@ -47,16 +48,7 @@ function ihbarNormalizeKonumLink(?string $link): ?string
  */
 function ihbarGetSorumluKullanicilar(): array
 {
-    $userModel = new UserModel();
-    $db = $userModel->getDb();
-
-    $stmt = $db->prepare("SELECT DISTINCT u.id, u.adi_soyadi, u.email_adresi
-        FROM users u
-        INNER JOIN user_role_permissions urp ON FIND_IN_SET(urp.role_id, REPLACE(u.roles, ' ', ''))
-        INNER JOIN permissions p ON p.id = urp.permission_id
-        WHERE p.auth_name = 'ihbar/list' AND u.durum = 'Aktif'");
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+    return (new \App\Model\UserRoleAssignmentModel())->activeUsersWithPermission('ihbar/list');
 }
 
 function ihbarNotifyYeniIhbar(int $ihbarId, string $ozetMetin): void
@@ -160,6 +152,11 @@ $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 
 if ($currentUserId <= 0) {
     ihbarResponse(false, 'Oturum sonlanmış veya geçersiz.');
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('ihbar/api', (string) $action);
 }
 
 if (!empty($_POST['mobile_token'])) {

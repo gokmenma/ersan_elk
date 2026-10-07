@@ -572,9 +572,12 @@ class EInvoiceModel extends Model
         }
 
         if (!empty($params['durum_filtre']) && $params['durum_filtre'] !== 'all') {
-            if ($listType === 'giden' && $params['durum_filtre'] === 'BEKLEYEN_ILETILEN') {
-                $where .= " AND f.entegrator_durum_kodu IN (:pending_queue, :pending_sent, :pending_wait)";
-                $bind += ['pending_queue' => 'KUYRUKTA', 'pending_sent' => 'GONDERILDI', 'pending_wait' => 'BEKLIYOR'];
+            if ($listType === 'giden' && in_array($params['durum_filtre'], ['ONAYLANDI', 'GIB_ONAYLI', 'GONDERILDI'], true)) {
+                $where .= " AND f.entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI')";
+            } elseif ($listType === 'giden' && in_array($params['durum_filtre'], ['BEKLIYOR', 'BEKLEYEN', 'KUYRUKTA', 'BEKLEYEN_ILETILEN'], true)) {
+                $where .= " AND f.entegrator_durum_kodu IN ('KUYRUKTA', 'BEKLIYOR')";
+            } elseif ($listType === 'giden' && $params['durum_filtre'] === 'IPTAL') {
+                $where .= " AND f.entegrator_durum_kodu = 'IPTAL'";
             } else {
                 $where .= " AND f.entegrator_durum_kodu = :durum_filtre";
                 $bind['durum_filtre'] = $params['durum_filtre'];
@@ -866,10 +869,12 @@ class EInvoiceModel extends Model
                 COALESCE(SUM(f.odenecek_tutar), 0) AS toplam_tutar,
                 COUNT(CASE WHEN f.belge_turu = 'EFATURA' THEN 1 END) AS efatura_adet,
                 COUNT(CASE WHEN f.belge_turu = 'EARSIV' THEN 1 END) AS earsiv_adet,
-                COUNT(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) AS onaylanan_adet,
-                COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN f.odenecek_tutar ELSE 0 END), 0) AS onaylanan_tutar,
-                COUNT(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA','GONDERILDI','BEKLIYOR') THEN 1 END) AS bekleyen_adet,
-                COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA','GONDERILDI','BEKLIYOR') THEN f.odenecek_tutar ELSE 0 END), 0) AS bekleyen_tutar,
+                COUNT(CASE WHEN f.entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI') THEN 1 END) AS onaylanan_adet,
+                COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI') THEN f.odenecek_tutar ELSE 0 END), 0) AS onaylanan_tutar,
+                COUNT(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA','BEKLIYOR') THEN 1 END) AS bekleyen_adet,
+                COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA','BEKLIYOR') THEN f.odenecek_tutar ELSE 0 END), 0) AS bekleyen_tutar,
+                COUNT(CASE WHEN f.entegrator_durum_kodu = 'IPTAL' THEN 1 END) AS iptal_adet,
+                COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu = 'IPTAL' THEN f.odenecek_tutar ELSE 0 END), 0) AS iptal_tutar,
                 COUNT(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN 1 END) AS bu_ay_adet,
                 COALESCE(SUM(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN f.odenecek_tutar ELSE 0 END), 0) AS bu_ay_tutar
                 FROM faturalar f WHERE $where");
@@ -1072,12 +1077,13 @@ class EInvoiceModel extends Model
                         COALESCE(SUM(odenecek_tutar), 0) as toplam_tutar,
                         COUNT(CASE WHEN belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
                         COUNT(CASE WHEN belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
-                        COUNT(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) as onaylanan_adet,
-                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu = 'ONAYLANDI' THEN odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
-                        COUNT(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN 1 END) as bekleyen_adet,
-                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
+                        COUNT(CASE WHEN entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI') THEN 1 END) as onaylanan_adet,
+                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI') THEN odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
+                        COUNT(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'BEKLIYOR') THEN 1 END) as bekleyen_adet,
+                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu IN ('KUYRUKTA', 'BEKLIYOR') THEN odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
                         COUNT(CASE WHEN entegrator_durum_kodu = 'HATALI' THEN 1 END) as hatali_adet,
                         COUNT(CASE WHEN entegrator_durum_kodu = 'IPTAL' THEN 1 END) as iptal_adet,
+                        COALESCE(SUM(CASE WHEN entegrator_durum_kodu = 'IPTAL' THEN odenecek_tutar ELSE 0 END), 0) as iptal_tutar,
                         COUNT(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN 1 END) as bu_ay_adet,
                         COALESCE(SUM(CASE WHEN fatura_tarihi BETWEEN :month_start AND :month_end THEN odenecek_tutar ELSE 0 END), 0) as bu_ay_tutar
                     FROM faturalar
@@ -1160,10 +1166,12 @@ class EInvoiceModel extends Model
                     COALESCE(SUM(f.odenecek_tutar), 0) as toplam_tutar,
                     COUNT(CASE WHEN f.belge_turu = 'EFATURA' THEN 1 END) as efatura_adet,
                     COUNT(CASE WHEN f.belge_turu = 'EARSIV' THEN 1 END) as earsiv_adet,
-                    COUNT(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN 1 END) as onaylanan_adet,
-                    COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu = 'ONAYLANDI' THEN f.odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
-                    COUNT(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN 1 END) as bekleyen_adet,
-                    COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA', 'GONDERILDI', 'BEKLIYOR') THEN f.odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
+                    COUNT(CASE WHEN f.entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI') THEN 1 END) as onaylanan_adet,
+                    COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI') THEN f.odenecek_tutar ELSE 0 END), 0) as onaylanan_tutar,
+                    COUNT(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA', 'BEKLIYOR') THEN 1 END) as bekleyen_adet,
+                    COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu IN ('KUYRUKTA', 'BEKLIYOR') THEN f.odenecek_tutar ELSE 0 END), 0) as bekleyen_tutar,
+                    COUNT(CASE WHEN f.entegrator_durum_kodu = 'IPTAL' THEN 1 END) as iptal_adet,
+                    COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu = 'IPTAL' THEN f.odenecek_tutar ELSE 0 END), 0) as iptal_tutar,
                     COUNT(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN 1 END) as bu_ay_adet,
                     COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.kdv_matrahi ELSE 0 END), 0) as bu_ay_matrah,
                     COALESCE(SUM(CASE WHEN f.fatura_tarihi >= DATE_FORMAT(NOW(), '%Y-%m-01') THEN f.hesaplanan_kdv ELSE 0 END), 0) as bu_ay_kdv,
@@ -1433,6 +1441,8 @@ class EInvoiceModel extends Model
                     'onaylanan_tutar' => (float)($gidenSummary['onaylanan_tutar'] ?? 0),
                     'bekleyen_adet'   => (int)($gidenSummary['bekleyen_adet'] ?? 0),
                     'bekleyen_tutar'  => (float)($gidenSummary['bekleyen_tutar'] ?? 0),
+                    'iptal_adet'      => (int)($gidenSummary['iptal_adet'] ?? 0),
+                    'iptal_tutar'     => (float)($gidenSummary['iptal_tutar'] ?? 0),
                     'bu_ay_adet'      => (int)($gidenSummary['bu_ay_adet'] ?? 0),
                     'bu_ay_matrah'    => (float)($gidenSummary['bu_ay_matrah'] ?? 0),
                     'bu_ay_kdv'       => (float)($gidenSummary['bu_ay_kdv'] ?? 0),

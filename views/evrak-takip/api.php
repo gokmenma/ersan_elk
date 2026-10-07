@@ -17,6 +17,8 @@ use App\Helper\Security;
 use App\Helper\RichTextSanitizer;
 use App\Model\MenuModel;
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 use App\Service\EvrakOnayBildirimService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -28,7 +30,11 @@ if (empty($_SESSION['loggedin']) || empty($_SESSION['firma_id']) || empty($_SESS
 }
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
-if (!(new MenuModel())->userCanAccessMenuLink($currentUserId, 'evrak-takip/list')) {
+$action = (string) ($_POST['action'] ?? '');
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('evrak-takip/api', $action);
+} elseif (!(new MenuModel())->userCanAccessMenuLink($currentUserId, 'evrak-takip/list')) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Bu işlem için yetkiniz yok.'], JSON_UNESCAPED_UNICODE);
     exit;
@@ -39,7 +45,6 @@ $decryptId = static function ($value): int {
 };
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $action = $_POST['action'] ?? '';
     $Model = new EvrakTakipModel();
 
     try {

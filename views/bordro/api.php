@@ -15,6 +15,8 @@ use App\Model\PersonelIzinleriModel;
 use App\Helper\Helper;
 use App\Helper\Date;
 use App\Helper\Security;
+use App\Service\Gate;
+use App\Model\PermissionPolicyModel;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -80,9 +82,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     $MenuModel = new \App\Model\MenuModel();
-    $hasBordroAccess = $MenuModel->userCanAccessMenuLink($userId, 'bordro/parametreler')
-        || $MenuModel->userCanAccessMenuLink($userId, 'bordro/list')
-        || $MenuModel->userCanAccessMenuLink($userId, 'bordro/raporlar');
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('bordro/api', (string) $action);
+        $hasBordroAccess = true;
+    } else {
+        $hasBordroAccess = $MenuModel->userCanAccessMenuLink($userId, 'bordro/parametreler')
+            || $MenuModel->userCanAccessMenuLink($userId, 'bordro/list')
+            || $MenuModel->userCanAccessMenuLink($userId, 'bordro/raporlar');
+    }
 
     if (!$hasBordroAccess) {
         http_response_code(403);

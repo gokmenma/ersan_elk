@@ -21,6 +21,7 @@ class MenuModel extends Model
 
     private int $ownerId; // Mevcut kiracının (owner) ID'si
     private string $ownerSpecificCacheDir; // Kiracıya özel cache alt dizini
+    private ?bool $hasExplicitMenuPermission = null;
 
     public function __construct()
     {
@@ -140,7 +141,62 @@ class MenuModel extends Model
         }
 
         // Menü-yetki eşleştirme kuralı değiştiğinde eski ağaç cache'ini kullanma.
-        return 'v5_' . $rolePart . '_' . $permissionHash;
+        $mappingVersion = $this->hasExplicitMenuPermissionColumn() ? 'explicit' : 'legacy';
+        $mappingHash = 'none';
+        if ($mappingVersion === 'explicit') {
+            $stmt = $this->db->prepare(
+                "SELECT GROUP_CONCAT(CONCAT(id, ':', COALESCE(permission_id, 0)) ORDER BY id SEPARATOR ',')
+                 FROM menus WHERE is_active = ?"
+            );
+            $stmt->execute([1]);
+            $mappingHash = md5((string) ($stmt->fetchColumn() ?: ''));
+        }
+
+        return 'v7_' . $mappingVersion . '_' . $rolePart . '_' . $permissionHash . '_' . $mappingHash;
+    }
+
+    /**
+     * Fazlı geçiş boyunca yeni kolon uygulanmamış kurulumlarda eski sistemi çalışır tutar.
+     */
+    private function hasExplicitMenuPermissionColumn(): bool
+    {
+        if ($this->hasExplicitMenuPermission !== null) {
+            return $this->hasExplicitMenuPermission;
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+        );
+        $stmt->execute([$this->table, 'permission_id']);
+        $this->hasExplicitMenuPermission = (int) $stmt->fetchColumn() > 0;
+
+        return $this->hasExplicitMenuPermission;
+    }
+
+    /**
+     * Yeni permission_id önceliklidir; geçiş tamamlanıncaya kadar eski eşleşmeler fallback'tir.
+     */
+    private function permissionMenuMatchSql(string $permissionAlias = 'p', string $menuAlias = 'm'): string
+    {
+        $legacyMatch = "(
+            {$permissionAlias}.auth_name = {$menuAlias}.menu_link
+            OR {$permissionAlias}.name = {$menuAlias}.menu_link
+            OR ({$permissionAlias}.id = {$menuAlias}.id AND {$menuAlias}.id <= 944)
+            OR (
+                {$menuAlias}.menu_link = 'kullanici-gruplari/list'
+                AND {$permissionAlias}.auth_name IN ('yetki_gruplari', 'yetki_gruplari_izleme')
+            )
+        )";
+
+        if (!$this->hasExplicitMenuPermissionColumn()) {
+            return $legacyMatch;
+        }
+
+        return "(
+            {$permissionAlias}.id = {$menuAlias}.permission_id
+            OR ({$menuAlias}.permission_id IS NULL AND {$legacyMatch})
+        )";
     }
 
     // Veritabanından menüyü çekip oluşturan yardımcı fonksiyon
@@ -164,31 +220,26 @@ class MenuModel extends Model
 
         $rolePlaceholders = implode(',', array_fill(0, count($roleIdArray), '?'));
         $isSuperAdmin = $this->isUserSuperAdmin($user_id);
-        $superadminFilter = $isSuperAdmin ? "" : " AND (p.superadmin IS NULL OR p.superadmin = 0) ";
-        $superadminFilter0 = $isSuperAdmin ? "" : " AND (p0.superadmin IS NULL OR p0.superadmin = 0) ";
+        $permissionMatch = $this->permissionMenuMatchSql();
 
-        $sql = "SELECT DISTINCT m.id
-                FROM {$this->table} m
-                WHERE m.is_active = 1
-                  AND (
-                    EXISTS (
-                        SELECT 1
-                        FROM permissions p
-                        INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
-                        WHERE urp.role_id IN ({$rolePlaceholders})
-                          AND p.is_active = 1
-                          AND (
-                              p.auth_name = m.menu_link
-                              OR p.name = m.menu_link
-                              OR (p.id = m.id AND m.id <= 944)
-                              OR (m.menu_link = 'kullanici-gruplari/list' AND (p.auth_name = 'yetki_gruplari' OR p.auth_name = 'yetki_gruplari_izleme'))
-                          )
-                          {$superadminFilter}
-                    )
-                )";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($roleIdArray);
+        if ($isSuperAdmin) {
+            $stmt = $this->db->prepare("SELECT id FROM {$this->table} WHERE is_active = ?");
+            $stmt->execute([1]);
+        } else {
+            $sql = "SELECT DISTINCT m.id
+                    FROM {$this->table} m
+                    WHERE m.is_active = 1
+                      AND EXISTS (
+                            SELECT 1
+                            FROM permissions p
+                            INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
+                            WHERE urp.role_id IN ({$rolePlaceholders})
+                              AND p.is_active = 1
+                              AND {$permissionMatch}
+                      )";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($roleIdArray);
+        }
         $permittedMenuIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if (empty($permittedMenuIds)) {
@@ -382,6 +433,10 @@ class MenuModel extends Model
             return false;
         }
 
+        if ($this->isUserSuperAdmin($userId)) {
+            return true;
+        }
+
         if (!$menu) {
             $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
 
@@ -409,8 +464,7 @@ class MenuModel extends Model
         }
 
                 $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
-                $isSuperAdmin = $this->isUserSuperAdmin($userId);
-                $superadminFilter = $isSuperAdmin ? "" : " AND (p.superadmin IS NULL OR p.superadmin = 0) ";
+                $permissionMatch = $this->permissionMenuMatchSql();
 
                 $sql = "SELECT COUNT(*)
                         FROM {$this->table} m
@@ -422,13 +476,7 @@ class MenuModel extends Model
                                 INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                                 WHERE urp.role_id IN ({$placeholders})
                                   AND p.is_active = 1
-                                  AND (
-                                      p.name = m.menu_link 
-                                      OR p.auth_name = m.menu_link 
-                                      OR (p.id = m.id AND m.id <= 944)
-                                      OR (m.menu_link = 'kullanici-gruplari/list' AND (p.auth_name = 'yetki_gruplari' OR p.auth_name = 'yetki_gruplari_izleme'))
-                                  )
-                                  {$superadminFilter}
+                                  AND {$permissionMatch}
                           )";
 
                 $stmt = $this->db->prepare($sql);
@@ -452,16 +500,16 @@ class MenuModel extends Model
             return true;
         }
 
-        $roleIdsStr = $user->roles ?? '';
-        if (!empty($roleIdsStr)) {
-            $roleIds = array_filter(array_map('intval', explode(',', $roleIdsStr)));
-            if (!empty($roleIds)) {
-                $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
-                $stmtSuper = $this->db->prepare("SELECT COUNT(*) FROM user_roles WHERE id IN ($placeholders) AND (role_type = 'superadmin' OR role_name = 'Süper Admin')");
-                $stmtSuper->execute($roleIds);
-                if ((int) $stmtSuper->fetchColumn() > 0) {
-                    return true;
-                }
+        $roleIds = (new UserRoleAssignmentModel())->activeRoleIdsForUser($userId);
+        if ($roleIds) {
+            $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+            $stmtSuper = $this->db->prepare(
+                "SELECT COUNT(*) FROM user_roles
+                 WHERE id IN ({$placeholders}) AND (superadmin = 1 OR role_type = 'superadmin')"
+            );
+            $stmtSuper->execute($roleIds);
+            if ((int) $stmtSuper->fetchColumn() > 0) {
+                return true;
             }
         }
 
@@ -718,4 +766,3 @@ class MenuModel extends Model
         return $orderedMenuData;
     }
 }
-

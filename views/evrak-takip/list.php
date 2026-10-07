@@ -121,10 +121,10 @@ $title = "Evrak Listesi";
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item d-flex align-items-center" href="index?p=evrak-takip/ai-taslak">
+                    <a class="dropdown-item d-flex align-items-center" href="index?p=evrak-takip/giden-evrak&amp;arac=ai">
                         <i class="bx bx-bot me-2 text-info font-size-16"></i> AI ile Taslak Yazdır
                     </a>
-                    <a class="dropdown-item d-flex align-items-center" href="index?p=evrak-takip/icra-ust-yazi">
+                    <a class="dropdown-item d-flex align-items-center" href="index?p=evrak-takip/giden-evrak&amp;arac=icra">
                         <i class="bx bx-file-blank me-2 text-warning font-size-16"></i> İcra Üst Yazısı Oluştur
                     </a>
                 </div>

@@ -546,6 +546,13 @@ $(document).ready(function () {
     icraModal.modal("show");
   });
 
+  const requestedTool = new URLSearchParams(window.location.search).get("arac");
+  if (requestedTool === "ai") {
+    $("#btnAiTaslakAc").trigger("click");
+  } else if (requestedTool === "icra") {
+    $("#btnIcraUstYaziAc").trigger("click");
+  }
+
   icraPersonelSelect.on("change", function () {
     const personelId = $(this).val();
     if (!personelId) {

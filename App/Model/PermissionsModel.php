@@ -8,10 +8,51 @@ use App\Helper\Helper;
 class PermissionsModel extends Model
 {
     protected $table = 'permissions';
+    private array $columnCache = [];
 
     public function __construct()
     {
         parent::__construct($this->table);
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        $cacheKey = $table . '.' . $column;
+        if (array_key_exists($cacheKey, $this->columnCache)) {
+            return $this->columnCache[$cacheKey];
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+        );
+        $stmt->execute([$table, $column]);
+        return $this->columnCache[$cacheKey] = (int) $stmt->fetchColumn() > 0;
+    }
+
+    private function permissionKeySelect(string $alias = 'p'): string
+    {
+        return $this->hasColumn('permissions', 'permission_key')
+            ? "{$alias}.permission_key"
+            : "NULL AS permission_key";
+    }
+
+    private function menuPermissionJoin(string $permissionAlias = 'p', string $menuAlias = 'm'): string
+    {
+        $legacy = "(
+            {$permissionAlias}.auth_name = {$menuAlias}.menu_link
+            OR {$permissionAlias}.name = {$menuAlias}.menu_link
+            OR ({$permissionAlias}.id = {$menuAlias}.id AND {$menuAlias}.id <= 944)
+        )";
+
+        if (!$this->hasColumn('menus', 'permission_id')) {
+            return $legacy;
+        }
+
+        return "(
+            {$permissionAlias}.id = {$menuAlias}.permission_id
+            OR ({$menuAlias}.permission_id IS NULL AND {$legacy})
+        )";
     }
 
     /**
@@ -81,6 +122,7 @@ class PermissionsModel extends Model
                 'id' => (int) $permission->id,
                 'name' => $permission->name,
                 'auth_name' => $permission->auth_name ?? '',
+                'permission_key' => $permission->permission_key ?: ($permission->auth_name ?? ''),
                 'menu_info' => $menuInfo,
                 'description' => $permission->description ?? '',
                 'level' => (int) $permission->permission_level,
@@ -104,14 +146,13 @@ class PermissionsModel extends Model
             $superadminQuery = " AND p.superadmin = 0";
         }
 
+        $permissionKeySelect = $this->permissionKeySelect();
+        $menuPermissionJoin = $this->menuPermissionJoin();
         $sql = "SELECT p.id, p.name, p.description, p.group_name, p.permission_level, p.is_required, p.superadmin, p.auth_name,
+                       {$permissionKeySelect},
                        m.menu_name, m.menu_link, pm.menu_name as parent_menu_name
                 FROM {$this->table} p
-                LEFT JOIN menus m ON (
-                    p.auth_name = m.menu_link
-                    OR p.name = m.menu_link
-                    OR (p.id = m.id AND m.id <= 944)
-                ) AND m.is_active = 1
+                LEFT JOIN menus m ON {$menuPermissionJoin} AND m.is_active = 1
                 LEFT JOIN menus pm ON m.parent_id = pm.id
                 WHERE p.is_active = ? $superadminQuery
                 ORDER BY p.group_name, p.id";
@@ -161,14 +202,14 @@ class PermissionsModel extends Model
      */
     public function getAuthNameByMenuLink(string $menuLink): ?string
     {
-        $sql = "SELECT p.auth_name
+        $permissionKeySelect = $this->hasColumn('permissions', 'permission_key')
+            ? 'COALESCE(NULLIF(p.permission_key, \'\'), p.auth_name)'
+            : 'p.auth_name';
+        $menuPermissionJoin = $this->menuPermissionJoin();
+        $sql = "SELECT {$permissionKeySelect}
                 FROM menus m
                 INNER JOIN permissions p
-                    ON (
-                        p.auth_name = m.menu_link 
-                        OR p.name = m.menu_link 
-                        OR (p.id = m.id AND m.id <= 944)
-                    )
+                    ON {$menuPermissionJoin}
                 WHERE m.menu_link = ?
                   AND p.is_active = 1
                 ORDER BY (p.auth_name = m.menu_link) DESC
@@ -192,24 +233,7 @@ class PermissionsModel extends Model
      */
     public function getPermissionsForUser(int $userId): array
     {
-        // 1. Kullanıcının rol ID'sini al.
-        $stmt = $this->db->prepare("SELECT roles FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $roleId = $stmt->fetchColumn();
-
-        if (empty($roleId)) {
-            return []; // Rolü olmayan kullanıcının izni yoktur.
-        }
-
-        // 2. Rol ID'sine göre tüm izin adlarını ve auth_name'lerini çek.
-        $roleIds = explode(',', $roleId);
-        $cleanRoleIds = [];
-        foreach ($roleIds as $rId) {
-            $rId = (int) trim((string)$rId);
-            if ($rId > 0) {
-                $cleanRoleIds[] = $rId;
-            }
-        }
+        $cleanRoleIds = (new UserRoleAssignmentModel())->activeRoleIdsForUser($userId);
 
         if (empty($cleanRoleIds)) {
             return [];
@@ -217,7 +241,8 @@ class PermissionsModel extends Model
 
         $placeholders = implode(',', array_fill(0, count($cleanRoleIds), '?'));
 
-        $sql = "SELECT DISTINCT p.id, p.name, p.auth_name
+        $permissionKeySelect = $this->permissionKeySelect();
+        $sql = "SELECT DISTINCT p.id, p.name, p.auth_name, {$permissionKeySelect}
             FROM user_role_permissions urp
             JOIN permissions p ON urp.permission_id = p.id
             WHERE urp.role_id IN ($placeholders)
@@ -229,6 +254,9 @@ class PermissionsModel extends Model
 
         $permissions = [];
         foreach ($rows as $r) {
+            if (!empty($r['permission_key'])) {
+                $permissions[] = trim($r['permission_key']);
+            }
             if (!empty($r['auth_name'])) {
                 $permissions[] = trim($r['auth_name']);
             }
@@ -241,6 +269,7 @@ class PermissionsModel extends Model
         }
 
         // 3. Menü yetkileri üzerinden de izin verilen linkleri topla
+        $menuPermissionJoin = $this->menuPermissionJoin();
         $menuSql = "SELECT DISTINCT m.menu_link, m.menu_name
             FROM menus m
             WHERE (
@@ -250,11 +279,7 @@ class PermissionsModel extends Model
                     INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                     WHERE urp.role_id IN ($placeholders)
                       AND p.is_active = 1
-                      AND (
-                          p.auth_name = m.menu_link
-                          OR p.name = m.menu_link
-                          OR (p.id = m.id AND m.id <= 944)
-                      )
+                      AND {$menuPermissionJoin}
                 )
             )";
         try {
@@ -286,27 +311,18 @@ class PermissionsModel extends Model
             return;
         }
 
-        // Kullanıcının rolünü al
-        $stmt = $this->db->prepare("SELECT roles FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $roleIdStr = $stmt->fetchColumn();
-
-        if (empty($roleIdStr)) {
+        $roleIds = (new UserRoleAssignmentModel())->activeRoleIdsForUser($userId);
+        if (!$roleIds) {
             return;
         }
-
-        $roleIds = explode(',', $roleIdStr);
         $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
 
         // Kullanıcının yetkili olduğu ve menüde karşılığı olan ilk sayfayı bul
-        $sql = "SELECT m.menu_link 
+        $menuPermissionJoin = $this->menuPermissionJoin();
+        $sql = "SELECT m.menu_link
                 FROM user_role_permissions urp
                 JOIN permissions p ON urp.permission_id = p.id
-                JOIN menus m ON (
-                    p.auth_name = m.menu_link 
-                    OR m.menu_link = p.name 
-                    OR (p.id = m.id AND m.id <= 944)
-                )
+                JOIN menus m ON {$menuPermissionJoin}
                 WHERE urp.role_id IN ($placeholders) 
                 AND m.menu_link IS NOT NULL 
                 AND m.menu_link != ''

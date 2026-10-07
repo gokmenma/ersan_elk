@@ -11,6 +11,7 @@ use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
 use App\Model\BildirimModel;
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
 
@@ -29,6 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         if ($currentUserId <= 0) {
             throw new Exception('Oturum sonlanmış veya geçersiz.');
+        }
+
+        $permissionPolicy = new PermissionPolicyModel();
+        if ($permissionPolicy->isReady()) {
+            Gate::authorizeApiPolicy('talepler/api', (string) $action);
+        } elseif (!Gate::allowsAny(['talepler', 'avans_talepleri', 'izin_talepleri', 'ariza_talepleri'])) {
+            throw new Exception('Talep işlemleri için yetkiniz bulunmamaktadır.');
         }
 
         switch ($action) {

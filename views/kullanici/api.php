@@ -5,6 +5,9 @@ use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\UserModel;
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
+use App\Model\UserRoleAssignmentModel;
+use App\Service\Gate;
 
 $User = new UserModel();
 
@@ -17,18 +20,45 @@ $User = new UserModel();
 // };
 session_start();
 
-if ($_POST["action"] == "kullanici-kaydet") {
+$action = (string) ($_POST['action'] ?? '');
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('kullanici/api', $action);
+} elseif (!Gate::allows('kullanici/list')) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Kullanıcı yönetimi için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action == "kullanici-kaydet") {
     $id = Security::decrypt($_POST['user_id']) ?? 0;
 
     $lastInsertedId = 0; // Son eklenen ID başlangıç değeri
     $rowData = ''; // Satır verisi başlangıç değeri
 
-    //User_branchs multiple select, bunu virgül ile birleştir
-    if (isset($_POST['user_firms']) && is_array($_POST['user_firms'])) {
-
-        $user_firma_ids = implode(',', $_POST['user_firms']);
+    // Yetkili olunan şube / firma zorunluluğu
+    $rawUserFirms = $_POST['user_firms'] ?? [];
+    if (!is_array($rawUserFirms)) {
+        $rawUserFirms = array_filter(array_map('trim', explode(',', (string) $rawUserFirms)), 'strlen');
     } else {
-        $user_firma_ids = '';
+        $rawUserFirms = array_filter(array_map('trim', $rawUserFirms), 'strlen');
+    }
+
+    if (empty($rawUserFirms)) {
+        echo json_encode(['status' => 'error', 'message' => 'Lütfen kullanıcının yetkili olduğu en az bir şube / firma seçiniz.']);
+        exit;
+    }
+    $user_firma_ids = implode(',', $rawUserFirms);
+
+    $rawRoles = $_POST['roles'] ?? [];
+    if (!is_array($rawRoles)) {
+        $rawRoles = array_filter(array_map('trim', explode(',', (string) $rawRoles)), 'strlen');
+    } else {
+        $rawRoles = array_filter(array_map('trim', $rawRoles), 'strlen');
+    }
+    if (empty($rawRoles)) {
+        echo json_encode(['status' => 'error', 'message' => 'Lütfen en az bir yetki grubu (rol) seçiniz.']);
+        exit;
     }
 
     try {
@@ -80,6 +110,13 @@ if ($_POST["action"] == "kullanici-kaydet") {
         }
 
         $lastInsertedId = $User->saveWithAttr($data) ?? $_POST['user_id'];
+        $savedUserId = $id > 0 ? $id : (int) Security::decrypt((string) $lastInsertedId);
+        (new UserRoleAssignmentModel())->syncActiveAssignments(
+            $savedUserId,
+            is_array($_POST['roles'] ?? null) ? $_POST['roles'] : explode(',', (string) ($_POST['roles'] ?? '')),
+            (int) ($_SESSION['id'] ?? $_SESSION['user_id'] ?? 0),
+            $id > 0 ? 'Kullanıcı düzenleme ekranından güncellendi' : 'Kullanıcı oluşturulurken atandı'
+        );
         unset($_SESSION['topbar_firma_option_cache']);
 
         $logModel = new SystemLogModel();
@@ -116,7 +153,7 @@ if ($_POST["action"] == "kullanici-kaydet") {
 
 
 //Kullanıcı silme işlemi
-if ($_POST["action"] == "kullanici-sil") {
+if ($action == "kullanici-sil") {
     $id = $_POST['id'];
 
     try {
@@ -137,7 +174,7 @@ if ($_POST["action"] == "kullanici-sil") {
 }
 
 // Kullanıcı durum değiştirme işlemi
-if ($_POST["action"] == "kullanici-durum-degistir") {
+if ($action == "kullanici-durum-degistir") {
     $id = Security::decrypt($_POST['id']);
     $status_new = $_POST['status'];
 

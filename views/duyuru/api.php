@@ -9,6 +9,8 @@ use App\Model\DuyuruModel;
 use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
 use App\Helper\Security;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -20,6 +22,14 @@ error_reporting(E_ALL);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('duyuru/api', (string) $action);
+    } elseif (!Gate::allows('duyuru_etkinlik')) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Duyuru işlemleri için yetkiniz bulunmamaktadır.']);
+        exit;
+    }
     $model = new DuyuruModel();
     $logModel = new SystemLogModel();
 

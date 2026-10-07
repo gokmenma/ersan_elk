@@ -12,6 +12,7 @@ use App\Model\KacakKontrolModel;
 use App\Model\KacakSicilEksikModel;
 use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 use App\Service\KacakTutanakAnalizService;
 use App\Service\VideoUploadService;
@@ -59,6 +60,11 @@ if (!empty($_POST['mobile_token'])) {
 if (!kacakIzin('kacak_islemleri') && !kacakIzin('kacak/list') && !kacakSuperAdmin()) {
     echo json_encode(['status' => 'error', 'message' => 'Bu işlem için yetkiniz yok.']);
     exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('kacak/api', (string) $action);
 }
 
 // KASKİ portalı rol izinleri sonradan hatalı değiştirilse bile yazma işlemi yapamaz.

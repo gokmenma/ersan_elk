@@ -8,6 +8,8 @@ require_once __DIR__ . '/render_widgets.php';
 
 use App\Model\PuantajModel;
 use App\Model\EndeksOkumaModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 use App\Service\SayacDegisimService;
 
 ini_set('display_errors', '0');
@@ -44,6 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $dashboard_is_free = $dbFreeLayout === 'true';
 
     $action = $_POST['action'] ?? '';
+    if ($firmaId <= 0 || $userId <= 0) {
+        http_response_code(403);
+        echo safeJsonEncode(['status' => 'error', 'message' => 'Oturum süresi doldu.']);
+        exit;
+    }
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('home/api', (string) $action);
+    }
     $puantajModel = new PuantajModel();
     $aylar = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
     $aylarUzun = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];

@@ -29,7 +29,9 @@ use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelIcralariModel;
 use App\Model\AracZimmetModel;
 use App\Model\AracKmBildirimModel;
+use App\Model\PermissionPolicyModel;
 use App\Service\PushNotificationService;
+use App\Service\Gate;
 use App\Helper\Security;
 use App\Service\ImageUploadService;
 
@@ -120,6 +122,13 @@ if ($personel_id > 0) {
             echo json_encode(['success' => false, 'message' => 'Bu işlem için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
+    }
+}
+
+if (!in_array($action, ['login', 'logout'], true)) {
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('personel-pwa/api', (string) $action);
     }
 }
 
@@ -312,24 +321,10 @@ function handleYardimFileUpload($file)
 
 function pwaGetUsersByPermissionName(string $permissionName): array
 {
-    $userModel = new UserModel();
-    $db = $userModel->getDb();
-
-    $sql = "SELECT DISTINCT u.id, u.adi_soyadi, u.email_adresi
-            FROM users u
-            INNER JOIN user_role_permissions urp ON FIND_IN_SET(urp.role_id, REPLACE(u.roles, ' ', ''))
-            INNER JOIN permissions p ON p.id = urp.permission_id
-            WHERE (p.auth_name = :permission OR p.name = :permission)";
-
-    $params = [':permission' => $permissionName];
-    if (!empty($_SESSION['owner_id'])) {
-        $sql .= " AND u.owner_id = :owner_id";
-        $params[':owner_id'] = (int) $_SESSION['owner_id'];
-    }
-
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+    return (new \App\Model\UserRoleAssignmentModel())->activeUsersWithPermission(
+        $permissionName,
+        !empty($_SESSION['owner_id']) ? (int) $_SESSION['owner_id'] : null
+    );
 }
 
 function pwaExtractUserEmail($user): string
@@ -495,28 +490,14 @@ function pwaNotifyApproversForSupportTicket($ticket, string $ilkMesaj, int $pers
 
 function pwaPersonelHasApprovalBypassPermission(int $personelId): bool
 {
-    $userModel = new UserModel();
-    $db = $userModel->getDb();
-
-    $sql = "SELECT COUNT(*) as toplam
-            FROM users u
-            INNER JOIN user_role_permissions urp ON FIND_IN_SET(urp.role_id, REPLACE(u.roles, ' ', ''))
-            INNER JOIN permissions p ON p.id = urp.permission_id
-            WHERE u.personel_id = :personel_id
-              AND (p.auth_name IN ('admin_destek_talebi', 'destek_talebi_onaylama')
-                   OR p.name IN ('admin_destek_talebi', 'destek_talebi_onaylama'))";
-
-    $params = [':personel_id' => $personelId];
-    if (!empty($_SESSION['owner_id'])) {
-        $sql .= " AND u.owner_id = :owner_id";
-        $params[':owner_id'] = (int) $_SESSION['owner_id'];
+    foreach (['admin_destek_talebi', 'destek_talebi_onaylama'] as $permissionName) {
+        foreach (pwaGetUsersByPermissionName($permissionName) as $user) {
+            if ((int) ($user->personel_id ?? 0) === $personelId) {
+                return true;
+            }
+        }
     }
-
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    return ((int) ($row['toplam'] ?? 0)) > 0;
+    return false;
 }
 
 try {

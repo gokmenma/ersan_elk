@@ -9,6 +9,8 @@ use App\Helper\Date;
 use App\Helper\Security;
 use App\Model\ManuelGiderModel;
 use App\Model\MaliyetRaporuModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     echo json_encode(['status' => 'error', 'message' => 'Oturum bulunamadı.']);
@@ -19,6 +21,14 @@ $ManuelGider   = new ManuelGiderModel();
 $MaliyetRaporu = new MaliyetRaporuModel();
 
 $action = $_POST['action'] ?? '';
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('maliyet-raporu/api', (string) $action);
+} elseif (!Gate::allows('maliyet_raporu')) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Maliyet raporu için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 /* ------------------------------------------------------------------ */
 /*  MANUEL GİDER KAYDET / GÜNCELLE                                     */

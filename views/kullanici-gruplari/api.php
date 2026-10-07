@@ -8,6 +8,7 @@ use App\Model\PermissionsModel;
 use App\Model\UserRolePermissionsModel;
 use App\Model\SystemLogModel;
 use App\Model\PermissionAuditModel;
+use App\Model\PermissionPolicyModel;
 use App\Helper\Security;
 
 $Menus = new MenuModel();
@@ -50,10 +51,48 @@ function hasRoleGroupAccess($role) {
 
 use App\Service\Gate;
 
-if (!isset($_POST['action']) || (!Gate::allows('yetki_gruplari') && !Gate::allows('yetki_gruplari_izleme'))) {
+$action = trim((string) ($_POST['action'] ?? ''));
+$policyModel = new PermissionPolicyModel();
+$policyReady = $policyModel->isReady();
+
+if ($action === '') {
     header('Content-Type: application/json; charset=utf-8');
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'API aksiyonu belirtilmedi.']);
+    exit;
+}
+
+$knownActions = [
+    'searchPermissionRoles', 'runPermissionAudit', 'getPermissions',
+    'savePermissions', 'saveGroup', 'getGroup', 'deleteGroup',
+    'copyPermissions', 'getPermissionsSummary', 'getAssignedUsers',
+    'toggleRolePermission',
+];
+if (!in_array($action, $knownActions, true)) {
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Tanımsız API aksiyonu.']);
+    exit;
+}
+
+if ($policyReady) {
+    Gate::authorizeApiPolicy('kullanici-gruplari/api', $action);
+} elseif (!Gate::allowsAny(['yetki_gruplari', 'yetki_gruplari_izleme'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Bu sayfayı görüntülemek için yetkiniz bulunmamaktadır.']);
     exit;
+}
+
+$writeActions = ['saveGroup', 'savePermissions', 'deleteGroup', 'copyPermissions', 'toggleRolePermission'];
+if (in_array($action, $writeActions, true)) {
+    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+    if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string) $_SESSION['csrf_token'], $csrfToken)) {
+        http_response_code(419);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Güvenlik doğrulaması başarısız oldu. Sayfayı yenileyip tekrar deneyin.']);
+        exit;
+    }
 }
 
 if ($_POST['action'] === 'searchPermissionRoles') {
@@ -118,7 +157,7 @@ if ($_POST['action'] === 'runPermissionAudit') {
 }
 
 // Yetki koruması: Yazma/Düzenleme işlemleri için yetki_gruplari yetkisi gerekir
-if (isset($_POST['action']) && in_array($_POST['action'], ['saveGroup', 'savePermissions', 'deleteGroup', 'copyPermissions', 'toggleRolePermission'])) {
+if (!$policyReady && in_array($action, ['saveGroup', 'savePermissions', 'deleteGroup', 'copyPermissions', 'toggleRolePermission'], true)) {
     if (!Gate::allows("yetki_gruplari")) {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['status' => 'error', 'message' => 'Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.']);
@@ -444,15 +483,10 @@ if ($_POST['action'] == 'getAssignedUsers') {
         exit;
     }
 
-    $db = (new \App\Model\Model())->db;
-    $stmt = $db->prepare("SELECT u.id, u.adi_soyadi, u.user_name, u.email_adresi, u.telefon, u.gorevi, u.durum,
-                                 p.id as personel_id, p.departman, p.calisilan_firma, p.personel_resim_yolu
-                          FROM users u 
-                          LEFT JOIN personel p ON p.id = u.personel_id
-                          WHERE FIND_IN_SET(?, u.roles) > 0 
-                          ORDER BY u.durum ASC, u.adi_soyadi ASC");
-    $stmt->execute([(string)$id]);
-    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = array_map(
+        static fn(object $user): array => (array) $user,
+        (new \App\Model\UserRoleAssignmentModel())->activeUsersForRole((int) $id)
+    );
 
     foreach ($users as &$u) {
         $u['encrypted_id'] = Security::encrypt($u['id']);
@@ -471,13 +505,6 @@ if ($_POST['action'] == 'getAssignedUsers') {
 }
 
 if ($_POST['action'] === 'toggleRolePermission') {
-    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
-    if ($csrfToken === '' || empty($_SESSION['csrf_token']) || !hash_equals((string) $_SESSION['csrf_token'], $csrfToken)) {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['status' => 'error', 'message' => 'Güvenlik doğrulaması başarısız oldu. Sayfayı yenileyip tekrar deneyin.']);
-        exit;
-    }
-
     $roleID = (int) Security::decrypt((string) ($_POST['role_id'] ?? ''));
     $permissionID = (int) Security::decrypt((string) ($_POST['permission_id'] ?? ''));
     $enabled = filter_var($_POST['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);

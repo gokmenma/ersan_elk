@@ -10,6 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -26,6 +27,10 @@ if (!Gate::allows("log_kayitlari")) {
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('logs/api', (string) $action);
+}
 $systemLogModel = new SystemLogModel();
 
 $getColumnFilter = static function (int $index): string {

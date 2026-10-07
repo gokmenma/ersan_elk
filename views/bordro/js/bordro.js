@@ -1002,7 +1002,7 @@ $(document).ready(function () {
               donemDurumGuncelle(action, isChecked, true);
             } else if (result.dismiss === Swal.DismissReason.cancel) {
               // Talepleri İncele tıklandığında talepler sayfasına git
-              window.location.href = "index.php?p=talepler";
+              window.location.href = "index.php?p=talepler/list";
             } else {
               $("#switchDonemDurum").prop("checked", false);
             }

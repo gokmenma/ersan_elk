@@ -15,7 +15,7 @@ use App\Helper\Route;
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title">Puantaj Excel Yükleme</h3>
-        <a href="index.php?p=puantaj/list" class="btn btn-secondary">
+        <a href="index.php?p=puantaj/raporlar" class="btn btn-secondary">
             <i class="bx bx-arrow-back"></i> Listeye Dön
         </a>
     </div>
@@ -80,7 +80,7 @@ use App\Helper\Route;
                                 confirmButtonText: 'Tamam'
                             }).then((result) => {
                                 if (result.isConfirmed) {
-                                    window.location.href = 'index.php?p=puantaj/list';
+                                    window.location.href = 'index.php?p=puantaj/raporlar';
                                 }
                             });
                         } else {

@@ -1,5 +1,9 @@
 <?php
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -7,6 +11,8 @@ header('Content-Type: application/json; charset=utf-8');
 
 use App\Model\SettingsModel;
 use App\Helper\Security;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 $Settings = new SettingsModel();
 $response = [
@@ -16,6 +22,19 @@ $response = [
 ];
 
 $action = $_POST['action'] ?? '';
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('ayarlar/api', (string) $action);
+} elseif (!Gate::allows('ayarlar/duzenle')) {
+    http_response_code(403);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Ayarlar modülünde işlem yapma yetkiniz bulunmamaktadır.',
+        'data' => null,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 switch ($action) {
     case 'get':

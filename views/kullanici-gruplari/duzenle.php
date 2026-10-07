@@ -15,6 +15,11 @@ if (!Gate::allows("yetki_gruplari")) {
     exit;
 }
 
+echo '<script>window.permissionGroupsCsrf = ' . json_encode(
+    Security::csrf(),
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+) . ';</script>';
+
 $UserRoles = new UserRolesModel();
 $UserModel = new UserModel();
 

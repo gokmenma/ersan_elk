@@ -28,20 +28,17 @@ final class EInvoiceSecurity
             'list_mal_hizmet', 'get_mal_hizmet', 'save_mal_hizmet', 'delete_mal_hizmet', 'search_mal_hizmet', 'summary_mal_hizmet'
                 => ['efatura/mal-hizmet-list', 'efatura/olustur'],
             'send_invoice', 'bulk_send_invoices'
-                => ['efatura/taslak-list', 'efatura/giden-list'],
+                => ['efatura/gonder'],
             'cancel_invoice'
-                => ['efatura/giden-list'],
+                => ['efatura/iptal'],
             'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'sync_job_pause', 'sync_job_errors', 'sync_job_retry'
-                => match ($listType) {
-                    'gelen' => ['efatura/gelen-list'],
-                    'taslak' => ['efatura/taslak-list'],
-                    'giden' => ['efatura/giden-list'],
-                    default => [],
-                },
+                => ['efatura/senkronize'],
             'sync_status', 'sync_outgoing_invoices', 'refresh_history'
-                => ['efatura/giden-list', 'efatura/taslak-list'],
-            'sync_incoming_invoices', 'respond_commercial'
-                => ['efatura/gelen-list'],
+                => ['efatura/senkronize'],
+            'sync_incoming_invoices'
+                => ['efatura/senkronize'],
+            'respond_commercial'
+                => ['efatura/yanit'],
             'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials'
                 => ['efatura/ayarlar'],
             'connection_info'
@@ -70,10 +67,10 @@ final class EInvoiceSecurity
             'list_cariler', 'get_cari', 'save_cari', 'delete_cari', 'search_cariler', 'summary_cariler' => 'efatura/cari-list',
             'list_mal_hizmet', 'get_mal_hizmet', 'save_mal_hizmet', 'delete_mal_hizmet', 'search_mal_hizmet', 'summary_mal_hizmet' => 'efatura/mal-hizmet-list',
             'check_taxpayer', 'save_draft', 'calculate_invoice', 'delete_draft', 'connection_info', 'save_invoice_payment', 'delete_invoice_payment', 'list_note_templates', 'get_note_template', 'save_note_template', 'delete_note_template', 'set_default_note_template' => 'efatura/olustur',
-            'send_invoice', 'bulk_send_invoices' => 'efatura/taslak-list',
-            'sync_status', 'sync_outgoing_invoices', 'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'sync_job_pause', 'sync_job_errors', 'sync_job_retry', 'refresh_history' => 'efatura/giden-list',
-            'sync_incoming_invoices', 'respond_commercial' => 'efatura/gelen-list',
-            'cancel_invoice' => 'efatura/giden-list',
+            'send_invoice', 'bulk_send_invoices' => 'efatura/gonder',
+            'sync_status', 'sync_outgoing_invoices', 'sync_incoming_invoices', 'sync_job_start', 'sync_job_status', 'sync_job_resume', 'sync_job_cancel', 'sync_job_pause', 'sync_job_errors', 'sync_job_retry', 'refresh_history' => 'efatura/senkronize',
+            'respond_commercial' => 'efatura/yanit',
+            'cancel_invoice' => 'efatura/iptal',
             'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials' => 'efatura/ayarlar',
             default => null,
         };

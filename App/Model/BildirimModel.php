@@ -171,19 +171,18 @@ class BildirimModel extends Model
         // 3. Bu rollere sahip tüm aktif kullanıcıları bul
         $usersToNotify = [];
         if (!empty($roleIds)) {
+            $assignmentModel = new UserRoleAssignmentModel();
             foreach ($roleIds as $roleId) {
-                $stmtU = $this->db->prepare("SELECT id FROM users WHERE FIND_IN_SET(?, roles) AND durum = 'Aktif'");
-                $stmtU->execute([$roleId]);
-                while ($uid = $stmtU->fetchColumn()) {
-                    $usersToNotify[$uid] = $uid;
+                foreach ($assignmentModel->activeUsersForRole((int) $roleId) as $assignedUser) {
+                    if (($assignedUser->durum ?? '') === 'Aktif') {
+                        $usersToNotify[(int) $assignedUser->id] = (int) $assignedUser->id;
+                    }
                 }
             }
         }
 
         // 4. Superadmin'leri de her zaman ekle (opsiyonel ama genelde istenir)
-        $stmtS = $this->db->prepare("SELECT u.id FROM users u JOIN user_roles ur ON FIND_IN_SET(ur.id, u.roles) WHERE ur.superadmin = 1 AND u.durum = 'Aktif'");
-        $stmtS->execute();
-        while ($sid = $stmtS->fetchColumn()) {
+        foreach ((new UserRoleAssignmentModel())->activeSuperAdminUserIds() as $sid) {
             $usersToNotify[$sid] = $sid;
         }
 

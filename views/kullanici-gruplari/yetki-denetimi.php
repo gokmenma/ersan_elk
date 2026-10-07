@@ -50,6 +50,7 @@ foreach ($subjects['users'] as $user) {
             </div>
         </div>
         <div class="col-auto personel-action-toolbar">
+            <a href="index?p=kullanici-gruplari/yetki-katalogu" class="btn btn-outline-primary bg-white top-action-btn shadow-sm"><i class="mdi mdi-shield-key-outline me-1"></i>Yetki Kataloğu</a>
             <a href="index?p=kullanici-gruplari/list" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm"><i class="mdi mdi-arrow-left me-1"></i>Yetki Gruplarına Dön</a>
             <button type="button" id="btnToggleSummaryCards" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" title="Özet kartlarını gizle" aria-label="Özet kartlarını gizle" aria-expanded="true"><i class="bx bx-chevron-up"></i></button>
         </div>
@@ -89,7 +90,7 @@ foreach ($subjects['users'] as $user) {
                 <div class="d-flex align-items-center gap-3"><div class="audit-kpi-icon bg-primary-subtle text-primary"><i class="bx bx-list-ul font-size-20"></i></div><div><h5 class="font-size-14 fw-bold mb-1" id="auditSubjectTitle">Denetim Sonucu</h5><div class="font-size-11 text-muted" id="auditRoleSummary"></div></div></div>
                 <div class="btn-group btn-group-sm" id="auditFilters"><button class="btn btn-primary active" data-filter="all">Tümü</button><button class="btn btn-outline-danger" data-filter="critical">Kritik</button><button class="btn btn-outline-warning" data-filter="warning">Uyarı</button><button class="btn btn-outline-success" data-filter="accessible">Erişilebilir</button><button class="btn btn-outline-secondary" data-filter="denied">Kapalı</button></div>
             </div>
-            <div class="card-body p-0"><div class="table-responsive"><table id="permissionAuditTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0 audit-table"><thead class="table-light"><tr><th data-filter="string">Menü / Rota</th><th data-filter="select">Grup</th><th data-filter="string">Yetki Kodu</th><th data-filter="select">Yetkinin Kaynağı</th><th data-filter="select" class="text-center">Erişim</th><th data-filter="select">Bulgular</th></tr></thead><tbody id="auditTableBody"></tbody></table></div></div>
+            <div class="card-body p-0"><div class="table-responsive"><table id="permissionAuditTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0 audit-table"><thead class="table-light"><tr><th data-filter="string">Menü / Rota</th><th data-filter="select">Grup</th><th data-filter="string">Yetki Kodu</th><th data-filter="select">Yetkinin Kaynağı</th><th data-filter="select">Politika</th><th data-filter="select" class="text-center">Sidebar</th><th data-filter="select" class="text-center">Rota Erişimi</th><th data-filter="select">Bulgular</th></tr></thead><tbody id="auditTableBody"></tbody></table></div></div>
         </div>
     </div>
 </div>

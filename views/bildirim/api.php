@@ -11,6 +11,8 @@ use App\Model\PersonelModel;
 use App\Model\MesajLogModel;
 use App\Model\BildirimModel;
 use App\Helper\Helper;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -21,6 +23,22 @@ error_reporting(E_ALL);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
+    $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+    if ($currentUserId <= 0) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Oturum süresi doldu.']);
+        exit;
+    }
+
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('bildirim/api', (string) $action);
+    } elseif (in_array($action, ['send-notification', 'test-notification', 'datatable-list'], true)
+        && !Gate::allows('gorev-bildirimler')) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Bildirim yönetimi için yetkiniz bulunmamaktadır.']);
+        exit;
+    }
 
     $pushService = new PushNotificationService();
     $subscriptionModel = new PushSubscriptionModel();

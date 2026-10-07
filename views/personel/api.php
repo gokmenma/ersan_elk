@@ -16,6 +16,7 @@ use App\Model\SystemLogModel;
 use App\Model\PersonelEvrakModel;
 use App\Service\ImageUploadService;
 use App\Service\Gate;
+use App\Model\PermissionPolicyModel;
 
 
 
@@ -34,6 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (empty($firma_id)) {
         echo json_encode(['status' => 'error', 'message' => 'Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.']);
         exit;
+    }
+
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('personel/api', (string) $action);
     }
 
     if ($action == 'personel-kaydet') {
@@ -1972,6 +1978,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     $action = $_GET['action'] ?? '';
     $Personel = new PersonelModel();
+
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('personel/api', (string) $action);
+    }
 
     if ($action == 'export-puantaj') {
         try {

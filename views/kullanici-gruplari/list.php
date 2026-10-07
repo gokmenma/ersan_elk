@@ -11,6 +11,7 @@ $UserGroups = new UserRolesModel();
 $usergroups = $UserGroups->getRolesWithDetails();
 
 if (Gate::allows("yetki_gruplari") || Gate::allows("yetki_gruplari_izleme")) { ?>
+    <script>window.permissionGroupsCsrf = <?= json_encode(Security::csrf(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
     <style>
         .select2-results__option[aria-disabled=true] {
             display: none !important;
@@ -151,6 +152,9 @@ if (Gate::allows("yetki_gruplari") || Gate::allows("yetki_gruplari_izleme")) { ?
 
                         <div class="d-flex align-items-center gap-2">
                             <?php if (Gate::isSuperAdmin()) { ?>
+                                <a href="index?p=kullanici-gruplari/yetki-katalogu" class="btn btn-outline-primary waves-effect">
+                                    <i class="mdi mdi-shield-key-outline me-1"></i> Yetki Kataloğu
+                                </a>
                                 <a href="index?p=kullanici-gruplari/yetki-denetimi" class="btn btn-outline-danger waves-effect">
                                     <i class="mdi mdi-shield-search me-1"></i> Yetki Denetimi
                                 </a>

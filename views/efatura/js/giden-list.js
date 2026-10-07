@@ -203,6 +203,12 @@ $(document).ready(function() {
         if (document.getElementById('stat_bekleyen_tutar')) {
             document.getElementById('stat_bekleyen_tutar').textContent = formatMoney(d.bekleyen_tutar);
         }
+        if (document.getElementById('stat_iptal_adet')) {
+            document.getElementById('stat_iptal_adet').textContent = d.iptal_adet || 0;
+        }
+        if (document.getElementById('stat_iptal_tutar')) {
+            document.getElementById('stat_iptal_tutar').textContent = formatMoney(d.iptal_tutar);
+        }
         if (document.getElementById('stat_bu_ay_adet')) {
             document.getElementById('stat_bu_ay_adet').textContent = d.bu_ay_adet || 0;
         }
@@ -393,16 +399,16 @@ $(document).ready(function() {
                 data: 'entegrator_durum_kodu',
                 className: 'align-middle text-center',
                 render: function(data, type, row) {
-                    if (data === 'ONAYLANDI') {
+                    if (data === 'ONAYLANDI' || data === 'GONDERILDI') {
                         return '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 font-size-11"><i class="bx bx-check-double me-1"></i>GİB Onaylı</span>';
-                    } else if (data === 'GONDERILDI') {
-                        return '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 font-size-11"><i class="bx bx-send me-1"></i>İletildi</span>';
+                    } else if (data === 'BEKLIYOR' || data === 'KUYRUKTA') {
+                        return '<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1 font-size-11"><i class="bx bx-time-five me-1"></i>Bekliyor</span>';
                     } else if (data === 'TASLAK') {
                         return '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 font-size-11"><i class="bx bx-edit me-1"></i>Taslak</span>';
                     } else if (data === 'HATALI') {
                         return `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 font-size-11" title="${row.gib_durum_aciklamasi || ''}"><i class="bx bx-error me-1"></i>Hatalı</span>`;
                     } else if (data === 'IPTAL') {
-                        return '<span class="badge bg-dark-subtle text-dark border border-dark-subtle px-2 py-1 font-size-11"><i class="bx bx-x me-1"></i>İptal</span>';
+                        return '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 font-size-11"><i class="bx bx-x me-1"></i>İptal</span>';
                     }
                     return `<span class="badge bg-light text-muted border px-2 py-1 font-size-11">${data}</span>`;
                 }
@@ -519,8 +525,8 @@ $(document).ready(function() {
             totalAmount += numVal;
 
             let durumLabel = row.entegrator_durum_kodu || 'TASLAK';
-            if (durumLabel === 'ONAYLANDI') durumLabel = 'GİB Onaylı';
-            else if (durumLabel === 'GONDERILDI') durumLabel = 'İletildi';
+            if (durumLabel === 'ONAYLANDI' || durumLabel === 'GONDERILDI') durumLabel = 'GİB Onaylı';
+            else if (durumLabel === 'BEKLIYOR' || durumLabel === 'KUYRUKTA') durumLabel = 'Bekliyor';
             else if (durumLabel === 'TASLAK') durumLabel = 'Taslak';
             else if (durumLabel === 'IPTAL') durumLabel = 'İptal';
             else if (durumLabel === 'HATALI') durumLabel = 'Hatalı';

@@ -48,17 +48,16 @@ class UserModel extends Model
             return false;
         }
 
+        $roleIds = (new UserRoleAssignmentModel())->activeRoleIdsForUser($userId);
+        if (!$roleIds) {
+            return false;
+        }
+        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
         $query = $this->db->prepare(
-            "SELECT COUNT(*)
-             FROM users u
-             INNER JOIN user_roles ur ON FIND_IN_SET(CAST(ur.id AS CHAR), u.roles) > 0
-             WHERE u.id = :user_id
-               AND ur.role_name = :role_name"
+            "SELECT COUNT(*) FROM user_roles
+             WHERE id IN ({$placeholders}) AND role_name = ?"
         );
-        $query->execute([
-            'user_id' => $userId,
-            'role_name' => $roleName,
-        ]);
+        $query->execute(array_merge($roleIds, [$roleName]));
 
         return (int) $query->fetchColumn() > 0;
     }
@@ -73,26 +72,58 @@ class UserModel extends Model
     {
         $ownerID = $_SESSION["owner_id"];
 
+        $sql = $this->db->prepare("SELECT u.* FROM $this->table u WHERE u.owner_id = ? ORDER BY u.id DESC");
+        $sql->execute([$ownerID]);
+        $users = $sql->fetchAll(PDO::FETCH_OBJ) ?: [];
 
-        $squery = "";
-        if (!$this->isSuperAdmin()) {
-            $squery = "AND (SELECT COUNT(*) FROM user_roles ur2 WHERE FIND_IN_SET(ur2.id, u.roles) AND ur2.superadmin = 1) = 0";
+        $firmaModel = new FirmaModel();
+        $firmalar = $firmaModel->getFirmaList();
+        $firmMap = [];
+        foreach ($firmalar as $f) {
+            $firmMap[(int) $f->id] = $f->firma_adi;
         }
 
-        // Rol isimlerini ve renklerini virgülle birleştirerek getir
-        $sql = $this->db->prepare("SELECT u.*, 
-                                   (SELECT GROUP_CONCAT(role_name SEPARATOR ',') FROM user_roles ur WHERE FIND_IN_SET(ur.id, u.roles)) as role_names,
-                                   (SELECT GROUP_CONCAT(role_color SEPARATOR ',') FROM user_roles ur WHERE FIND_IN_SET(ur.id, u.roles)) as role_colors
-                                   FROM $this->table u
-                                   WHERE u.owner_id = :owner_id $squery
-                                   ORDER BY u.id DESC");
-        $sql->execute([
-            'owner_id' => $ownerID
-        ]);
+        $assignmentModel = new UserRoleAssignmentModel();
+        foreach ($users as $index => $user) {
+            $userFirmaIds = array_filter(array_map('intval', explode(',', (string) ($user->firma_ids ?? ''))));
+            $userFirmaList = [];
+            foreach ($userFirmaIds as $fId) {
+                if (isset($firmMap[$fId])) {
+                    $userFirmaList[] = [
+                        'id' => $fId,
+                        'firma_adi' => $firmMap[$fId]
+                    ];
+                }
+            }
+            $user->firma_listesi = $userFirmaList;
+            $user->firma_adlari = implode(', ', array_column($userFirmaList, 'firma_adi'));
 
-        return $sql->fetchAll(PDO::FETCH_OBJ) ?? [];
+            $roleIds = $assignmentModel->activeRoleIdsForUser((int) $user->id);
+            if (!$roleIds) {
+                $user->role_names = '';
+                $user->role_colors = '';
+                continue;
+            }
+            $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+            $roleStmt = $this->db->prepare(
+                "SELECT role_name, role_color, superadmin, role_type FROM user_roles
+                 WHERE id IN ({$placeholders}) ORDER BY id"
+            );
+            $roleStmt->execute($roleIds);
+            $roleRows = $roleStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $isTargetSuperAdmin = array_filter($roleRows, static fn(array $role): bool =>
+                (int) ($role['superadmin'] ?? 0) === 1 || ($role['role_type'] ?? '') === 'superadmin'
+            );
+            if (!$this->isSuperAdmin() && $isTargetSuperAdmin) {
+                unset($users[$index]);
+                continue;
+            }
+            $user->role_names = implode(',', array_column($roleRows, 'role_name'));
+            $user->role_colors = implode(',', array_column($roleRows, 'role_color'));
+        }
+        return array_values($users);
     }
-    /** 
+    /**
      * Kullanıcı id'sinden kullanıcının role id'sini döndürür.
      * Not: Artık birden fazla rol olabileceği için bu metot ilk rolü veya virgüllü stringi döndürebilir.
      * @param int $userId Kullanıcı ID'si
@@ -129,8 +160,8 @@ class UserModel extends Model
 
         // Rol isimlerini ve renklerini al
         $roles = [];
-        if (!empty($user->roles)) {
-            $roleIds = explode(',', $user->roles);
+        $roleIds = (new UserRoleAssignmentModel())->activeRoleIdsForUser((int) $user->id);
+        if ($roleIds) {
             $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
 
             $stmt = $this->db->prepare("SELECT role_name, role_color FROM user_roles WHERE id IN ($placeholders)");
@@ -220,7 +251,7 @@ class UserModel extends Model
         return $query->fetch(PDO::FETCH_OBJ);
     }
 
-    /** 
+    /**
      * Bir kullanıcının belirli bir yetkiye veya Süper Admin rolüne sahip olup olmadığını kontrol eder.
      * @param int|object $user Kullanıcı ID'si veya Nesnesi
      * @param string $permissionName Yetki adı (örn: 'izin_talepleri')
@@ -238,17 +269,15 @@ class UserModel extends Model
             return false;
         }
 
-        // 1. Superadmin kontrolü (role alanı veya roles içindeki superadmin yetki grubu)
-        $roleIdsStr = $userObj->roles ?? '';
+        // 1. Superadmin kontrolü (role alanı veya aktif yetki grubu ataması)
         $userRoleName = $userObj->role ?? '';
 
         if ($userRoleName === 'superadmin') {
             return true;
         }
 
-        if (!empty($roleIdsStr)) {
-            $roleIds = array_filter(array_map('intval', explode(',', $roleIdsStr)));
-            if (!empty($roleIds)) {
+        $roleIds = (new UserRoleAssignmentModel())->activeRoleIdsForUser((int) $userObj->id);
+        if ($roleIds) {
                 $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
                 $stmtSuper = $this->db->prepare("SELECT COUNT(*) FROM user_roles WHERE id IN ($placeholders) AND superadmin = 1");
                 $stmtSuper->execute($roleIds);
@@ -258,10 +287,10 @@ class UserModel extends Model
 
                 // 2. Yetki tablosundan yetki adı kontrolü
                 $stmtPerm = $this->db->prepare("
-                    SELECT COUNT(*) 
+                    SELECT COUNT(*)
                     FROM user_role_permissions urp
                     JOIN permissions p ON urp.permission_id = p.id
-                    WHERE urp.role_id IN ($placeholders) 
+                    WHERE urp.role_id IN ($placeholders)
                       AND (p.auth_name = ? OR p.name = ?)
                 ");
                 $params = array_merge($roleIds, [$permissionName, $permissionName]);
@@ -269,13 +298,12 @@ class UserModel extends Model
                 if ((int) $stmtPerm->fetchColumn() > 0) {
                     return true;
                 }
-            }
         }
 
         return false;
     }
 
-    /** 
+    /**
      * Belirli bir talep türü için mail bildirimlerini açık olan ve İLGİLİ SAYFAYA YETKİSİ BULUNAN kullanıcıları getirir
      * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
      * @return array Kullanıcı listesi
@@ -315,7 +343,7 @@ class UserModel extends Model
         }));
     }
 
-    /** 
+    /**
      * Belirli bir talep türü için uygulama içi bildirimleri açık olan ve İLGİLİ SAYFAYA YETKİSİ BULUNAN kullanıcıları getirir
      * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
      * @return array Kullanıcı listesi
@@ -402,18 +430,7 @@ class UserModel extends Model
     /**Giriş Yapan kullanıcı superadmin mi */
     public function isSuperAdmin(): bool
     {
-        $user = \App\Controllers\AuthController::user();
-        if ($user && isset($user->role)) {
-            return $user->role === 'superadmin';
-        }
-
-        $query = $this->db->prepare(
-            "SELECT role FROM $this->table WHERE id = ?"
-        );
-        $query->execute([$_SESSION["user_id"] ?? 0]);
-        $role = $query->fetchColumn();
-
-        return $role === 'superadmin';
+        return \App\Service\Gate::isSuperAdmin();
     }
 
     /**
@@ -480,7 +497,7 @@ class UserModel extends Model
 
     /**
      * Kullanıcının Mobil Hızlı Erişim / İşlem sıralamasını getirir
-     * 
+     *
      * @param int $userId
      * @return array|null Null dönerse varsayılan olarak yetkili olunan tüm menüler gösterilir
      */
@@ -508,7 +525,7 @@ class UserModel extends Model
 
     /**
      * Kullanıcının Mobil Hızlı Erişim / İşlem sıralamasını kaydeder
-     * 
+     *
      * @param int $userId
      * @param array $items
      * @return bool
@@ -525,5 +542,4 @@ class UserModel extends Model
         return $stmt->execute([$json, $userId]);
     }
 }
-
 

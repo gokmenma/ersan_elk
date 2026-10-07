@@ -16,6 +16,8 @@ use App\Helper\Date;
 
 use App\Model\GelirGiderModel;
 use App\Model\TanimlamalarModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 use PhpOffice\PhpSpreadsheet\Calculation\TextData\Replace;
 use Random\Engine\Secure;
 
@@ -23,6 +25,28 @@ $GelirGider = new GelirGiderModel();
 $Tanimlamalar = new TanimlamalarModel();
 
 $action = $_POST["action"] ?? "";
+header('Content-Type: application/json; charset=utf-8');
+
+$knownActions = [
+    'gelir-gider-kaydet', 'gelir-gider-getir', 'gelir-gider-sil',
+    'gelir-gider-toplu-sil', 'gelir-gider-turu-getir', 'hesap-adlari-getir',
+    'plakalari-getir', 'bankalari-getir', 'get-unique-values',
+    'gelir-gider-ajax-list', 'tum-hareketler-getir',
+];
+if (!in_array($action, $knownActions, true)) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Tanımsız gelir-gider API aksiyonu.']);
+    exit;
+}
+
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('gelir-gider/api', $action);
+} elseif (!Gate::allows('gelir_gider_takibi')) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Bu finans işlemi için yetkiniz bulunmamaktadır.']);
+    exit;
+}
 
 //Gelir gider kaydet
 if ($_POST["action"] == "gelir-gider-kaydet") {
@@ -296,4 +320,3 @@ if ($action == "tum-hareketler-getir") {
     }
     exit;
 }
-   

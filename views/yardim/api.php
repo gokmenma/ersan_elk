@@ -14,6 +14,7 @@ use App\Model\PersonelModel;
 use App\Model\UserModel;
 use App\Model\BildirimModel;
 use App\Model\UserNotificationPreferenceModel;
+use App\Model\PermissionPolicyModel;
 use App\Helper\Security;
 use App\Service\MailGonderService;
 use App\Service\Gate;
@@ -28,6 +29,10 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('yardim/api', (string) $action);
+}
 $destekBiletModel = new DestekBiletModel();
 
 try {
@@ -493,26 +498,10 @@ function handleFileUpload($file) {
 
 function getUsersByPermissionName(string $permissionName): array
 {
-    $userModel = new UserModel();
-    $db = $userModel->getDb();
-
-    $sql = "SELECT DISTINCT u.id, u.adi_soyadi, u.email_adresi
-            FROM users u
-            INNER JOIN user_role_permissions urp ON FIND_IN_SET(urp.role_id, REPLACE(u.roles, ' ', ''))
-            INNER JOIN permissions p ON p.id = urp.permission_id
-            WHERE (p.auth_name = :permission OR p.name = :permission)";
-
-    $params = [':permission' => $permissionName];
-
-    if (!empty($_SESSION['owner_id'])) {
-        $sql .= " AND u.owner_id = :owner_id";
-        $params[':owner_id'] = (int) $_SESSION['owner_id'];
-    }
-
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-
-    return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+    return (new \App\Model\UserRoleAssignmentModel())->activeUsersWithPermission(
+        $permissionName,
+        !empty($_SESSION['owner_id']) ? (int) $_SESSION['owner_id'] : null
+    );
 }
 
 function getUsersByPersonelId(int $personelId): array

@@ -13,6 +13,8 @@ use App\Model\AracKmModel;
 use App\Model\AracServisModel;
 use App\Model\AracKmBildirimModel;
 use App\Model\SystemLogModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 
 use App\Helper\Security;
 use App\Helper\Date;
@@ -21,6 +23,24 @@ header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+    if (!is_string($action) || trim($action) === '') {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Araç takip API aksiyonu belirtilmedi.']);
+        exit;
+    }
+
+    $permissionPolicy = new PermissionPolicyModel();
+    if ($permissionPolicy->isReady()) {
+        Gate::authorizeApiPolicy('arac-takip/api', $action);
+    } elseif (!Gate::allowsAny([
+        'arac_takip_yonetim', 'arac_takip_puantaj', 'arac_performans',
+        'arac_km_onaylari', 'ai_is_ajani_arac_takip',
+    ])) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Bu araç takip işlemi için yetkiniz bulunmamaktadır.']);
+        exit;
+    }
 
     $Arac = new AracModel();
     $Zimmet = new AracZimmetModel();
@@ -3478,7 +3498,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         $uid,
                         'KM Bildirim Hatırlatması',
                         $message,
-                        'index.php?p=personel-pwa/pages/ana-sayfa', // PWA ana sayfa veya bildirim sayfası
+                        'views/personel-pwa/index.php?page=ana-sayfa',
                         'bell',
                         'warning',
                         \App\Model\UserNotificationPreferenceModel::TYPE_KM

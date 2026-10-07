@@ -11,6 +11,8 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\DestekModel;
 use App\Model\PersonelModel;
+use App\Model\PermissionPolicyModel;
+use App\Service\Gate;
 use App\Service\PushNotificationService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -30,6 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $action = $_POST['action'] ?? '';
+$permissionPolicy = new PermissionPolicyModel();
+if ($permissionPolicy->isReady()) {
+    Gate::authorizeApiPolicy('destek/api', (string) $action);
+} elseif (!Gate::allows('canli_sohbet_ayarlari_sekmesi')) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Canlı destek yönetimi için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 $destekModel = new DestekModel();
 
 try {

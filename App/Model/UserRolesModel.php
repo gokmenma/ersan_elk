@@ -99,7 +99,7 @@ class UserRolesModel extends Model
         $totalPermissions = (int) $totalPermQuery->fetchColumn();
 
         $sql = $this->db->prepare("SELECT ur.*,
-            (SELECT COUNT(DISTINCT u.id) FROM users u WHERE FIND_IN_SET(CAST(ur.id AS CHAR), u.roles) > 0) as assigned_user_count,
+            0 as assigned_user_count,
             (SELECT COUNT(DISTINCT urp.permission_id) FROM user_role_permissions urp JOIN permissions p ON p.id = urp.permission_id WHERE urp.role_id = ur.id AND p.is_active = 1 $superadminQuery) as permission_count
             FROM {$this->table} ur
             WHERE ur.owner_id = :owner_id $roleTypeFilter
@@ -107,6 +107,7 @@ class UserRolesModel extends Model
         $sql->execute(['owner_id' => $ownerID]);
         $roles = $sql->fetchAll(PDO::FETCH_OBJ) ?? [];
 
+        $assignmentModel = new UserRoleAssignmentModel();
         foreach ($roles as &$role) {
             $role->total_permissions = $totalPermissions;
             $role->permission_percent = $totalPermissions > 0 ? round(($role->permission_count / $totalPermissions) * 100) : 0;
@@ -121,12 +122,8 @@ class UserRolesModel extends Model
             $role->sample_permissions = $sampleStmt->fetchAll(PDO::FETCH_COLUMN) ?? [];
 
             // Atanan kullanıcıların detayları
-            $usersStmt = $this->db->prepare("SELECT id, adi_soyadi, user_name, gorevi, durum 
-                FROM users 
-                WHERE FIND_IN_SET(?, roles) > 0 
-                ORDER BY durum ASC, adi_soyadi ASC");
-            $usersStmt->execute([(string)$role->id]);
-            $role->assigned_users = $usersStmt->fetchAll(PDO::FETCH_OBJ) ?? [];
+            $role->assigned_users = $assignmentModel->activeUsersForRole((int) $role->id);
+            $role->assigned_user_count = count($role->assigned_users);
         }
 
         return $roles;

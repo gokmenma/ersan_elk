@@ -356,7 +356,7 @@ class AracKmBildirimModel extends Model
                     $uid,
                     'KM Bildirim Hatırlatması',
                     $message,
-                    'index.php?p=personel-pwa/pages/ana-sayfa',
+                    'views/personel-pwa/index.php?page=ana-sayfa',
                     'bell',
                     'warning',
                     UserNotificationPreferenceModel::TYPE_KM
