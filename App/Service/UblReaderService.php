@@ -74,8 +74,24 @@ final class UblReaderService
                 $base = $decimal($text('cbc:LineExtensionAmount', $node));
                 $vat = $decimal($text('cac:TaxTotal/cbc:TaxAmount', $node));
                 $withheld = $decimal($text('cac:WithholdingTaxTotal/cbc:TaxAmount', $node));
-                $itemName = $text('cac:Item/cbc:Name', $node) ?: $text('cac:Item/cbc:Description', $node) ?: $text('cac:Item/cbc:Keyword', $node);
-                $itemCode = $text('cac:Item/cac:SellersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:BuyersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:StandardItemIdentification/cbc:ID', $node);
+                $rawName = trim($text('cac:Item/cbc:Name', $node) ?: '');
+                $rawDesc = trim($text('cac:Item/cbc:Description', $node) ?: '');
+                $rawKeyword = trim($text('cac:Item/cbc:Keyword', $node) ?: '');
+                $itemCode = trim($text('cac:Item/cac:SellersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:BuyersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:StandardItemIdentification/cbc:ID', $node) ?: '');
+
+                if (empty($itemCode) && !empty($rawName) && !empty($rawDesc)) {
+                    $itemCode = $rawName;
+                }
+
+                if (!empty($rawDesc) && ($rawName === $itemCode || empty($rawName) || $rawName !== $rawDesc)) {
+                    $itemName = $rawDesc;
+                    if (empty($itemCode) && !empty($rawName)) {
+                        $itemCode = $rawName;
+                    }
+                } else {
+                    $itemName = $rawName ?: $rawDesc ?: $rawKeyword;
+                }
+
                 $lines[] = ['urun_hizmet_adi' => $itemName, 'urun_kodu' => $itemCode,
                     'miktar' => $decimal($text('cbc:InvoicedQuantity', $node)), 'birim' => $text('cbc:InvoicedQuantity/@unitCode', $node),
                     'birim_fiyat' => $decimal($text('cac:Price/cbc:PriceAmount', $node)),
