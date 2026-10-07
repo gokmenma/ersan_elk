@@ -402,22 +402,91 @@ $title = 'Fatura Dashboard';
 
     <!-- 4. İKİNCİL GRAFİKLER & CARİ ANALİZLERİ -->
     <div class="row g-3 mb-3">
-        <!-- Grafik 3: KDV Oranlarına Göre Matrah Dağılımı (%20, %10, %1 vb.) -->
+        <!-- Grafik 3: KDV Oran Dağılımı & Detaylı Matrah Analizi -->
         <div class="col-12 col-md-6 col-xl-4">
-            <div class="card chart-card h-100 mb-0">
-                <div class="card-header bg-transparent border-0 px-3 pt-3 pb-0 d-flex align-items-center justify-content-between">
+            <div class="card chart-card h-100 mb-0 d-flex flex-column">
+                <div class="card-header bg-transparent border-0 px-3 pt-3 pb-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
-                        <div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle d-flex align-items-center justify-content-center shadow-xs" style="width: 34px; height: 34px;">
+                        <div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0" style="width: 34px; height: 34px;">
                             <i class="bx bx-pie-chart font-size-18"></i>
                         </div>
                         <div>
-                            <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">KDV Oran Dağılımı</h5>
-                            <p class="text-muted mb-0 font-size-11">%20, %10, %1 matrah oranları</p>
+                            <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">KDV Oran Dağılımı</h5>
+                                <span id="kdvScopeBadge" class="badge bg-success-subtle text-success border border-success-subtle font-size-10 fw-semibold px-2 py-0.5 rounded-pill">Giden (Satış)</span>
+                            </div>
+                            <p class="text-muted mb-0 font-size-11" id="kdvScopeSubtitle">Satış Faturaları Matrah & Hesaplanan KDV</p>
                         </div>
                     </div>
+                    <!-- Yön Filtresi Switcher (Giden / Gelen / Tümü) -->
+                    <div class="btn-group btn-group-sm period-btn-group shadow-xs" id="kdvScopeGroup" role="group">
+                        <button type="button" class="btn btn-sm py-1 px-2.5 active" data-scope="GIDEN" title="Giden (Satış / Hesaplanan KDV)">
+                            <i class="bx bx-up-arrow-alt text-success me-0.5"></i>Giden
+                        </button>
+                        <button type="button" class="btn btn-sm py-1 px-2.5" data-scope="GELEN" title="Gelen (Alış / İndirilecek KDV)">
+                            <i class="bx bx-down-arrow-alt text-info me-0.5"></i>Gelen
+                        </button>
+                        <button type="button" class="btn btn-sm py-1 px-2.5" data-scope="ALL" title="Tüm Faturalar">
+                            Tümü
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body p-3">
-                    <div id="kdvRatesChart" style="min-height: 260px;"></div>
+                <div class="card-body p-3 d-flex flex-column justify-content-between flex-grow-1">
+                    <!-- Donut Grafik -->
+                    <div id="kdvRatesChart" style="min-height: 210px;"></div>
+
+                    <!-- Mini KPI Özet Kutuları -->
+                    <div class="row g-2 mb-2 mt-1">
+                        <div class="col-6">
+                            <div class="p-2 rounded-2 bg-light border text-center">
+                                <div class="text-muted font-size-10 text-uppercase fw-semibold" id="kdvScopeMatrahLabel">GİDEN MATRAH</div>
+                                <div class="font-size-13 fw-bold text-dark text-truncate" id="kdvScopeMatrahValue">0,00 ₺</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded-2 bg-light border text-center">
+                                <div class="text-muted font-size-10 text-uppercase fw-semibold" id="kdvScopeKdvLabel">HESAPLANAN KDV</div>
+                                <div class="font-size-13 fw-bold text-success text-truncate" id="kdvScopeKdvValue">0,00 ₺</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detaylı KDV Döküm Tablosu -->
+                    <div class="table-responsive rounded-2 border" style="max-height: 160px; overflow-y: auto;">
+                        <table class="table table-dashboard table-sm table-hover mb-0 font-size-11 align-middle">
+                            <thead>
+                                <tr>
+                                    <th class="ps-2">Oran</th>
+                                    <th class="text-end">Matrah</th>
+                                    <th class="text-end">KDV Tutarı</th>
+                                    <th class="text-center pe-2" style="width: 55px;">Pay</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kdvBreakdownTableBody">
+                                <tr><td colspan="4" class="text-center py-3 text-muted font-size-11"><i class="bx bx-loader-alt bx-spin me-1"></i> Yükleniyor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Dahil Olan Faturalar Akordiyon Butonu & Paneli -->
+                    <div class="mt-2 pt-2 border-top">
+                        <button class="btn btn-subtle-primary w-100 d-flex align-items-center justify-content-between font-size-11 fw-bold rounded-2 py-1.5 px-2.5 shadow-2xs" type="button" data-bs-toggle="collapse" data-bs-target="#kdvInvoicesCollapse" aria-expanded="false" aria-controls="kdvInvoicesCollapse" id="btnToggleKdvAccordion">
+                            <span class="d-flex align-items-center gap-1.5">
+                                <i class="bx bx-receipt font-size-14"></i>
+                                <span>Dahil Olan Faturalar</span>
+                                <span class="badge bg-primary text-white rounded-pill font-size-10 px-1.5 py-0.5" id="kdvInvoiceCountBadge">0</span>
+                            </span>
+                            <i class="bx bx-chevron-down font-size-16" id="kdvAccordionChevron" style="transition: transform .2s ease;"></i>
+                        </button>
+                        <div class="collapse mt-2" id="kdvInvoicesCollapse">
+                            <!-- Akordiyon KDV Oran Grupları / Fatura Listesi -->
+                            <div class="accordion accordion-flush rounded-2 border overflow-hidden" id="kdvRateInvoicesAccordion" style="max-height: 320px; overflow-y: auto;">
+                                <div class="p-3 text-center text-muted font-size-11">
+                                    <i class="bx bx-loader-alt bx-spin me-1"></i> Faturalar yükleniyor...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

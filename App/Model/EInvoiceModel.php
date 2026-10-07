@@ -1364,6 +1364,43 @@ class EInvoiceModel extends Model
             $kdvOranStmt->execute($params);
             $kdvOranRows = $kdvOranStmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // 7.1 KDV Oranlarına Dahil Olan Fatura Kalemleri (Akordiyon Listesi İçin)
+            $kdvFaturalarStmt = $this->db->prepare("
+                SELECT 
+                    f.id as fatura_id,
+                    f.fatura_no,
+                    f.fatura_tarihi,
+                    f.alici_unvan,
+                    f.alici_vkn_tckn,
+                    f.yon,
+                    f.belge_turu,
+                    s.kdv_orani,
+                    COALESCE(SUM(s.satir_toplami), 0) as matrah,
+                    COALESCE(SUM(s.kdv_tutari), 0) as kdv_tutari,
+                    f.odenecek_tutar,
+                    f.para_birimi
+                FROM fatura_satirlari s
+                JOIN faturalar f ON f.id = s.fatura_id
+                WHERE f.firm_id = :firm_id
+                  AND f.deleted_at IS NULL
+                  AND s.deleted_at IS NULL
+                  AND (f.yon = 'GELEN' OR (f.yon = 'GIDEN' AND f.entegrator_durum_kodu <> 'TASLAK'))
+                  {$dateWhereF}
+                GROUP BY s.kdv_orani, f.yon, f.id, f.fatura_no, f.fatura_tarihi, f.alici_unvan, f.alici_vkn_tckn, f.belge_turu, f.odenecek_tutar, f.para_birimi
+                ORDER BY s.kdv_orani DESC, f.fatura_tarihi DESC, f.id DESC
+            ");
+            $kdvFaturalarStmt->execute($params);
+            $kdvFaturalar = $kdvFaturalarStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($kdvFaturalar as &$kf) {
+                $kf['encrypted_id'] = Security::encrypt((string)$kf['fatura_id']);
+                $kf['fatura_tarihi_fmt'] = date('d.m.Y', strtotime($kf['fatura_tarihi']));
+                $kf['detail_url'] = ($kf['yon'] === 'GIDEN')
+                    ? 'index.php?p=efatura/giden-detay&id=' . urlencode($kf['encrypted_id'])
+                    : 'index.php?p=efatura/gelen-detay&id=' . urlencode($kf['encrypted_id']);
+            }
+            unset($kf);
+
             // 8. Fatura Tiplerine Göre Dağılım
             $faturaTipStmt = $this->db->prepare("
                 SELECT 
@@ -1523,6 +1560,7 @@ class EInvoiceModel extends Model
                 ],
                 'monthly_trend'       => $monthlyTrend,
                 'kdv_oranlari'        => $kdvOranRows,
+                'kdv_faturalari'      => $kdvFaturalar,
                 'fatura_tipleri'      => $faturaTipRows,
                 'top_giden_cariler'   => $topGidenCariler,
                 'top_gelen_cariler'   => $topGelenCariler,

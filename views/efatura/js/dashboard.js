@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let monthlyTrendChartInstance = null;
     let kdvTrendChartInstance = null;
     let kdvRatesChartInstance = null;
+    let rawKdvRatesData = [];
+    let rawKdvFaturalarData = [];
+    let currentKdvScope = 'GIDEN';
 
     // Para ve Sayı Formatlayıcılar
     const formatMoney = (val) => {
@@ -147,6 +150,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     $('#btnRefreshDashboard').on('click', function() {
         loadDashboardData();
+    });
+
+    // KDV Yön Filtresi Butonları (Giden / Gelen / Tümü)
+    $('#kdvScopeGroup button').on('click', function() {
+        $('#kdvScopeGroup button').removeClass('active');
+        $(this).addClass('active');
+        currentKdvScope = $(this).data('scope') || 'GIDEN';
+        renderKdvRatesCard();
+    });
+
+    // KDV Fatura Akordiyon İkon Dönüşü
+    $('#kdvInvoicesCollapse').on('show.bs.collapse', function() {
+        $('#kdvAccordionChevron').css('transform', 'rotate(180deg)');
+    }).on('hide.bs.collapse', function() {
+        $('#kdvAccordionChevron').css('transform', 'rotate(0deg)');
     });
 
     // 3. Ana Dashboard Veri Yükleme
@@ -290,7 +308,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // 4.5 Grafikleri Render Et
         renderMonthlyTrendChart(data.monthly_trend || []);
         renderKdvTrendChart(data.monthly_trend || []);
-        renderKdvRatesChart(data.kdv_oranlari || []);
+        rawKdvRatesData = data.kdv_oranlari || [];
+        rawKdvFaturalarData = data.kdv_faturalari || [];
+        renderKdvRatesCard();
 
         // 4.6 Tabloları Render Et
         renderTopCarilerTable('topGidenCarilerBody', data.top_giden_cariler || [], 'Müşteri bulunamadı');
@@ -420,47 +440,203 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 7. Grafik 3: KDV Oran Dağılımı (Donut)
-    function renderKdvRatesChart(ratesData) {
-        // Matrah toplamlarını KDV oranına göre gruplayalım
-        const rateMap = {};
-        ratesData.forEach(r => {
-            const rateKey = `%${Number(r.kdv_orani)} KDV`;
-            rateMap[rateKey] = (rateMap[rateKey] || 0) + Number(r.matrah || 0);
+    // 7. Grafik 3: KDV Oran Dağılımı & Detaylı Matrah Analizi
+    const kdvRateColorMap = {
+        '20': '#3b82f6',
+        '10': '#10b981',
+        '1': '#8b5cf6',
+        '0': '#f59e0b'
+    };
+
+    function getKdvColor(rate) {
+        const key = String(Math.round(rate));
+        return kdvRateColorMap[key] || '#06b6d4';
+    }
+
+    function renderKdvRatesCard() {
+        // 1. Seçili kapsama göre filtreleme (Giden / Gelen / Tümü)
+        let filtered = [];
+        if (currentKdvScope === 'ALL') {
+            filtered = rawKdvRatesData;
+        } else {
+            filtered = rawKdvRatesData.filter(r => (r.yon || '').toUpperCase() === currentKdvScope);
+        }
+
+        // 2. KDV Oranlarına göre gruplama ve toplama
+        const ratesMap = {};
+        let totalMatrah = 0;
+        let totalKdv = 0;
+        let totalLines = 0;
+
+        filtered.forEach(r => {
+            const rate = Number(r.kdv_orani || 0);
+            const rateKey = rate.toString();
+            const matrah = Number(r.matrah || 0);
+            const kdv = Number(r.kdv_tutari || 0);
+            const lines = Number(r.satir_sayisi || 0);
+
+            if (!ratesMap[rateKey]) {
+                ratesMap[rateKey] = {
+                    rate: rate,
+                    rateLabel: `%${rate} KDV`,
+                    matrah: 0,
+                    kdv: 0,
+                    lines: 0
+                };
+            }
+            ratesMap[rateKey].matrah += matrah;
+            ratesMap[rateKey].kdv += kdv;
+            ratesMap[rateKey].lines += lines;
+
+            totalMatrah += matrah;
+            totalKdv += kdv;
+            totalLines += lines;
         });
 
-        let labels = Object.keys(rateMap);
-        let series = Object.values(rateMap);
+        // Oranları azalan sırayla sırala (%20, %10, %1, %0)
+        const sortedRates = Object.values(ratesMap).sort((a, b) => b.rate - a.rate);
 
-        if (labels.length === 0) {
+        // 3. Başlık Rozeti ve Açıklamalarını Güncelle
+        const badgeEl = document.getElementById('kdvScopeBadge');
+        const subTitleEl = document.getElementById('kdvScopeSubtitle');
+        const matrahLabelEl = document.getElementById('kdvScopeMatrahLabel');
+        const matrahValEl = document.getElementById('kdvScopeMatrahValue');
+        const kdvLabelEl = document.getElementById('kdvScopeKdvLabel');
+        const kdvValEl = document.getElementById('kdvScopeKdvValue');
+
+        let scopeCenterLabel = 'Toplam Matrah';
+        let kdvValClass = 'text-primary';
+
+        if (currentKdvScope === 'GIDEN') {
+            if (badgeEl) {
+                badgeEl.className = 'badge bg-success-subtle text-success border border-success-subtle font-size-10 fw-semibold px-2 py-0.5 rounded-pill';
+                badgeEl.innerHTML = '<i class="bx bx-up-arrow-alt me-0.5"></i>Giden (Satış)';
+            }
+            if (subTitleEl) subTitleEl.textContent = 'Satış Faturaları Matrah & Hesaplanan KDV';
+            if (matrahLabelEl) matrahLabelEl.textContent = 'GİDEN MATRAH';
+            if (kdvLabelEl) kdvLabelEl.textContent = 'HESAPLANAN KDV';
+            kdvValClass = 'text-success';
+            scopeCenterLabel = 'Giden Matrah';
+        } else if (currentKdvScope === 'GELEN') {
+            if (badgeEl) {
+                badgeEl.className = 'badge bg-info-subtle text-info border border-info-subtle font-size-10 fw-semibold px-2 py-0.5 rounded-pill';
+                badgeEl.innerHTML = '<i class="bx bx-down-arrow-alt me-0.5"></i>Gelen (Alış)';
+            }
+            if (subTitleEl) subTitleEl.textContent = 'Alış Faturaları Matrah & İndirilecek KDV';
+            if (matrahLabelEl) matrahLabelEl.textContent = 'GELEN MATRAH';
+            if (kdvLabelEl) kdvLabelEl.textContent = 'İNDİRİLECEK KDV';
+            kdvValClass = 'text-info';
+            scopeCenterLabel = 'Gelen Matrah';
+        } else {
+            if (badgeEl) {
+                badgeEl.className = 'badge bg-primary-subtle text-primary border border-primary-subtle font-size-10 fw-semibold px-2 py-0.5 rounded-pill';
+                badgeEl.innerHTML = '<i class="bx bx-shuffle me-0.5"></i>Tüm Faturalar';
+            }
+            if (subTitleEl) subTitleEl.textContent = 'Toplam Matrah & KDV Dağılımı';
+            if (matrahLabelEl) matrahLabelEl.textContent = 'TOPLAM MATRAH';
+            if (kdvLabelEl) kdvLabelEl.textContent = 'TOPLAM KDV';
+            kdvValClass = 'text-primary';
+            scopeCenterLabel = 'Toplam Matrah';
+        }
+
+        if (matrahValEl) matrahValEl.textContent = formatMoney(totalMatrah);
+        if (kdvValEl) {
+            kdvValEl.textContent = formatMoney(totalKdv);
+            kdvValEl.className = `font-size-13 fw-bold ${kdvValClass} text-truncate`;
+        }
+
+        // 4. Detay Tablosunu Render Et
+        const tbody = document.getElementById('kdvBreakdownTableBody');
+        if (tbody) {
+            if (sortedRates.length === 0 || totalMatrah === 0) {
+                const scopeName = currentKdvScope === 'GIDEN' ? 'giden (satış)' : (currentKdvScope === 'GELEN' ? 'gelen (alış)' : '');
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-muted font-size-11"><i class="bx bx-info-circle me-1"></i> Bu dönemde ${scopeName} fatura satırı bulunmuyor</td></tr>`;
+            } else {
+                let rowsHtml = '';
+                sortedRates.forEach(item => {
+                    const color = getKdvColor(item.rate);
+                    const pct = totalMatrah > 0 ? ((item.matrah / totalMatrah) * 100).toFixed(1) : '0.0';
+                    rowsHtml += `
+                    <tr>
+                        <td class="ps-2">
+                            <span class="d-inline-flex align-items-center gap-1.5">
+                                <span class="rounded-circle d-inline-block" style="width: 8px; height: 8px; background: ${color};"></span>
+                                <span class="fw-bold text-dark font-size-11">%${item.rate}</span>
+                            </span>
+                        </td>
+                        <td class="text-end fw-semibold text-dark font-size-11">${formatMoney(item.matrah)}</td>
+                        <td class="text-end fw-semibold ${kdvValClass} font-size-11">${formatMoney(item.kdv)}</td>
+                        <td class="text-center pe-2"><span class="badge bg-light text-dark font-size-10 px-1 py-0.5 border">%${pct}</span></td>
+                    </tr>`;
+                });
+
+                rowsHtml += `
+                <tr class="table-light fw-bold border-top">
+                    <td class="ps-2 text-uppercase font-size-10 text-muted">Toplam</td>
+                    <td class="text-end font-size-11 text-dark">${formatMoney(totalMatrah)}</td>
+                    <td class="text-end font-size-11 ${kdvValClass}">${formatMoney(totalKdv)}</td>
+                    <td class="text-center pe-2 font-size-10 text-muted">%100</td>
+                </tr>`;
+
+                tbody.innerHTML = rowsHtml;
+            }
+        }
+
+        // 5. ApexCharts Donut Grafiğini Render Et
+        let labels = sortedRates.map(r => r.rateLabel);
+        let series = sortedRates.map(r => r.matrah);
+        let colors = sortedRates.map(r => getKdvColor(r.rate));
+
+        if (series.length === 0 || totalMatrah === 0) {
             labels = ['Kayıt Yok'];
             series = [1];
+            colors = ['#e2e8f0'];
         }
 
         const options = {
             chart: {
                 type: 'donut',
-                height: 260,
+                height: 210,
                 fontFamily: 'inherit'
             },
             labels: labels,
             series: series,
-            colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'],
-            dataLabels: { enabled: true },
-            legend: { position: 'bottom', fontSize: '11px' },
+            colors: colors,
+            dataLabels: {
+                enabled: series.length > 0 && totalMatrah > 0,
+                formatter: function (val) {
+                    return val > 5 ? val.toFixed(1) + '%' : '';
+                },
+                style: {
+                    fontSize: '10px',
+                    fontWeight: 600
+                },
+                dropShadow: { enabled: false }
+            },
+            legend: {
+                show: true,
+                position: 'bottom',
+                fontSize: '11px',
+                horizontalAlign: 'center',
+                itemMargin: { horizontal: 6, vertical: 2 }
+            },
             plotOptions: {
                 pie: {
                     donut: {
-                        size: '68%',
+                        size: '70%',
                         labels: {
                             show: true,
                             total: {
                                 show: true,
-                                label: 'Toplam Matrah',
-                                fontSize: '11px',
+                                label: scopeCenterLabel,
+                                fontSize: '10px',
+                                color: '#64748b',
                                 formatter: function(w) {
-                                    const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
-                                    return (total / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + 'k ₺';
+                                    if (totalMatrah === 0) return '0 ₺';
+                                    if (totalMatrah >= 1000000) {
+                                        return (totalMatrah / 1000000).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + 'M ₺';
+                                    }
+                                    return (totalMatrah / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + 'k ₺';
                                 }
                             }
                         }
@@ -468,10 +644,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             tooltip: {
-                y: {
-                    formatter: function(val) {
-                        return formatMoney(val);
+                custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                    if (totalMatrah === 0) {
+                        return '<div class="p-2 font-size-11">Kayıt Bulunmuyor</div>';
                     }
+                    const item = sortedRates[seriesIndex];
+                    if (!item) return '';
+                    const pct = totalMatrah > 0 ? ((item.matrah / totalMatrah) * 100).toFixed(1) : '0';
+                    const color = getKdvColor(item.rate);
+                    return `
+                    <div class="p-2 font-size-11 shadow-sm" style="background:#fff; border-radius:6px; border:1px solid #e2e8f0; min-width:160px;">
+                        <div class="d-flex align-items-center gap-1 mb-1 pb-1 border-bottom">
+                            <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;"></span>
+                            <strong class="text-dark">${item.rateLabel}</strong>
+                            <span class="ms-auto badge bg-light text-dark font-size-10 border">%${pct}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-0.5">
+                            <span class="text-muted">Matrah:</span>
+                            <span class="fw-bold text-dark">${formatMoney(item.matrah)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-0.5">
+                            <span class="text-muted">KDV Tutarı:</span>
+                            <span class="fw-bold text-primary">${formatMoney(item.kdv)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between pt-1 border-top mt-1">
+                            <span class="text-muted">Toplam Tutar:</span>
+                            <span class="fw-bolder text-dark">${formatMoney(item.matrah + item.kdv)}</span>
+                        </div>
+                    </div>`;
                 }
             }
         };
@@ -482,6 +682,109 @@ document.addEventListener('DOMContentLoaded', function() {
         if (document.getElementById('kdvRatesChart')) {
             kdvRatesChartInstance = new ApexCharts(document.getElementById('kdvRatesChart'), options);
             kdvRatesChartInstance.render();
+        }
+
+        // 6. Dahil Olan Faturalar Akordiyonunu Render Et
+        let filteredInvoices = [];
+        if (currentKdvScope === 'ALL') {
+            filteredInvoices = rawKdvFaturalarData;
+        } else {
+            filteredInvoices = rawKdvFaturalarData.filter(inv => (inv.yon || '').toUpperCase() === currentKdvScope);
+        }
+
+        // Benzersiz fatura sayısını hesapla
+        const uniqueInvoiceIds = new Set(filteredInvoices.map(inv => inv.fatura_id));
+        const invoiceCountEl = document.getElementById('kdvInvoiceCountBadge');
+        if (invoiceCountEl) {
+            invoiceCountEl.textContent = uniqueInvoiceIds.size.toString();
+        }
+
+        // Faturaları KDV oranına göre gruplayalım
+        const invoiceByRateMap = {};
+        filteredInvoices.forEach(inv => {
+            const rKey = Number(inv.kdv_orani || 0).toString();
+            if (!invoiceByRateMap[rKey]) {
+                invoiceByRateMap[rKey] = [];
+            }
+            invoiceByRateMap[rKey].push(inv);
+        });
+
+        const accordionEl = document.getElementById('kdvRateInvoicesAccordion');
+        if (accordionEl) {
+            if (filteredInvoices.length === 0) {
+                const scopeName = currentKdvScope === 'GIDEN' ? 'giden (satış)' : (currentKdvScope === 'GELEN' ? 'gelen (alış)' : '');
+                accordionEl.innerHTML = `<div class="p-3 text-center text-muted font-size-11"><i class="bx bx-info-circle me-1"></i> Bu dönemde ${scopeName} fatura kaydı bulunmuyor</div>`;
+            } else {
+                let accHtml = '';
+                sortedRates.forEach((item, index) => {
+                    const rKey = item.rate.toString();
+                    const rateInvoices = invoiceByRateMap[rKey] || [];
+                    if (rateInvoices.length === 0) return;
+
+                    const color = getKdvColor(item.rate);
+                    const rateClean = String(item.rate).replace(/[^a-zA-Z0-9]/g, '_');
+                    const isFirst = index === 0;
+
+                    accHtml += `
+                    <div class="accordion-item border-bottom">
+                        <h2 class="accordion-header" id="heading_kdv_${rateClean}">
+                            <button class="accordion-button ${isFirst ? '' : 'collapsed'} py-2 px-2.5 font-size-11 fw-bold bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_kdv_${rateClean}" aria-expanded="${isFirst ? 'true' : 'false'}" aria-controls="collapse_kdv_${rateClean}">
+                                <div class="d-flex align-items-center justify-content-between w-100 me-2 flex-wrap gap-1">
+                                    <span class="d-flex align-items-center gap-1.5">
+                                        <span class="rounded-circle d-inline-block" style="width:8px;height:8px;background:${color};"></span>
+                                        <span>%${item.rate} KDV (${rateInvoices.length} Fatura)</span>
+                                    </span>
+                                    <span class="font-size-10 text-muted">
+                                        Matrah: <strong class="text-dark">${formatMoney(item.matrah)}</strong> | KDV: <strong class="${kdvValClass}">${formatMoney(item.kdv)}</strong>
+                                    </span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapse_kdv_${rateClean}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="heading_kdv_${rateClean}" data-bs-parent="#kdvRateInvoicesAccordion">
+                            <div class="accordion-body p-0">
+                                <div class="table-responsive" style="max-height: 190px; overflow-y: auto;">
+                                    <table class="table table-dashboard table-sm table-hover mb-0 font-size-10 align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th class="ps-2">Fatura No & Tarih</th>
+                                                <th>Cari Ünvan</th>
+                                                <th class="text-end">Matrah</th>
+                                                <th class="text-end">KDV</th>
+                                                <th class="text-center pe-2" style="width: 32px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${rateInvoices.map(inv => `
+                                                <tr>
+                                                    <td class="ps-2">
+                                                        <div class="fw-bold font-monospace text-truncate" style="max-width: 105px;">
+                                                            <a href="${inv.detail_url}" class="text-primary text-decoration-none" title="Faturayı Görüntüle / İncele" target="_blank">${inv.fatura_no || 'Taslak'}</a>
+                                                        </div>
+                                                        <div class="text-muted font-size-9">${inv.fatura_tarihi_fmt}</div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="fw-semibold text-dark text-truncate" style="max-width: 120px;" title="${inv.alici_unvan || ''}">${inv.alici_unvan || '-'}</div>
+                                                        <div class="text-muted font-size-9">${inv.belge_turu || 'EFATURA'}</div>
+                                                    </td>
+                                                    <td class="text-end fw-semibold text-dark font-size-10">${formatMoney(inv.matrah)}</td>
+                                                    <td class="text-end fw-semibold ${kdvValClass} font-size-10">${formatMoney(inv.kdv_tutari)}</td>
+                                                    <td class="text-center pe-2">
+                                                        <a href="${inv.detail_url}" class="btn btn-xs btn-subtle-primary p-0.5" title="Faturayı Görüntüle" target="_blank">
+                                                            <i class="bx bx-show font-size-12"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+
+                accordionEl.innerHTML = accHtml || `<div class="p-3 text-center text-muted font-size-11"><i class="bx bx-info-circle me-1"></i> Fatura detayı bulunamadı</div>`;
+            }
         }
     }
 
