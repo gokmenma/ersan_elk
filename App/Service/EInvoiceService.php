@@ -158,7 +158,9 @@ class EInvoiceService
                 $receiverAlias = 'defaultpk'; // EDM e-Arşiv routing value, not a fabricated GİB alias.
             }
             $year = (int)substr($invoice['fatura_tarihi'], 0, 4);
-            $series = $settings[$invoice['belge_turu'] === 'EFATURA' ? 'efatura_seri' : 'earsiv_seri'] ?? '';
+            $explicitSeries = strtoupper(trim((string)($invoice['seri_no'] ?? '')));
+            $configuredSeries = strtoupper(trim((string)($settings[$invoice['belge_turu'] === 'EFATURA' ? 'efatura_seri' : 'earsiv_seri'] ?? '')));
+            $series = $explicitSeries ?: $configuredSeries;
             $allSerials = EdmSoapClient::items($company->{'SERIALLİST'} ?? $company->SERIALLIST ?? null);
             $eligibleSerials = array_values(array_filter($allSerials, static fn($serial) =>
                 (int)($serial->YEAR ?? 0) === $year
@@ -172,9 +174,15 @@ class EInvoiceService
                     break;
                 }
             }
-            // Ayardaki seri eskimişse ve EDM bu yıl/tür için yalnızca bir aktif
-            // seri döndürüyorsa belirsizlik yoktur; canlı EDM serisini kullan.
-            if (!$selectedSerial && count($eligibleSerials) === 1) {
+            // Otomatik seçimde ayardaki seri eskimiş olabilir. EDM'nin ilgili
+            // yıl/türdeki aktif serileri arasından sayacı en ileride olan seri,
+            // fiilen kullanılan seri kabul edilir. Eşitlikte seri adı belirleyicidir.
+            if (!$selectedSerial && $explicitSeries === '' && !empty($eligibleSerials)) {
+                usort($eligibleSerials, static function ($left, $right): int {
+                    $leftLast = (int)($left->{'LASTSERİAL'} ?? $left->LASTSERIAL ?? 0);
+                    $rightLast = (int)($right->{'LASTSERİAL'} ?? $right->LASTSERIAL ?? 0);
+                    return $rightLast <=> $leftLast ?: strcmp((string)($left->SERIAL ?? ''), (string)($right->SERIAL ?? ''));
+                });
                 $selectedSerial = $eligibleSerials[0];
                 $series = strtoupper(trim((string)($selectedSerial->SERIAL ?? '')));
             }

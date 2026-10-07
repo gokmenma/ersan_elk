@@ -21,6 +21,7 @@ final class InvoiceValidationService
         $type = $header['fatura_tipi'] ?? '';
         $document = $header['belge_turu'] ?? '';
         if (!in_array($type, ['SATIS','IADE','TEVKIFAT','ISTISNA'], true) || !in_array($profile, $document === 'EARSIV' ? ['EARSIVFATURA'] : ['TEMELFATURA','TICARIFATURA'], true) || !in_array($document, ['EFATURA','EARSIV'], true)) throw new \InvalidArgumentException('Bu belge türü, profil veya fatura tipi henüz desteklenmiyor.');
+        if (!empty($header['seri_no']) && !preg_match('/^[A-Z0-9]{3}$/D', strtoupper(trim((string)$header['seri_no'])))) throw new \InvalidArgumentException('Fatura serisi üç harf/rakamdan oluşmalıdır.');
         if (!preg_match('/^\d{10,11}$/D', $header['alici_vkn_tckn'] ?? '') || trim($header['alici_unvan'] ?? '') === '') throw new \InvalidArgumentException('Geçerli alıcı VKN/TCKN ve unvan gereklidir.');
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $header['fatura_tarihi'] ?? '');
         if (!$date || $date->format('Y-m-d') !== ($header['fatura_tarihi'] ?? '')) throw new \InvalidArgumentException('Fatura tarihi geçersiz.');

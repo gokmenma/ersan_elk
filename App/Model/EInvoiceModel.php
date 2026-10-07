@@ -39,7 +39,7 @@ class EInvoiceModel extends Model
             $stmt = $this->db->prepare("
                 INSERT INTO faturalar (
                     firm_id, cari_id, yon, belge_turu, fatura_profili, fatura_tipi, ettn, fatura_no,
-                    fatura_tarihi, duzenleme_saati, vade_tarihi, alici_vkn_tckn, alici_unvan,
+                    seri_no, fatura_tarihi, duzenleme_saati, vade_tarihi, alici_vkn_tckn, alici_unvan,
                     alici_vergi_dairesi, alici_adres, alici_il, alici_ilce, alici_ulke,
                     alici_eposta, alici_telefon, alici_posta_kutusu, para_birimi, doviz_kuru,
                     satir_toplami, iskonto_toplami, kdv_matrahi, hesaplanan_kdv, tevkifat_tutari,
@@ -47,7 +47,7 @@ class EInvoiceModel extends Model
                     entegrator_durum_kodu, olusturan_user_id, is_active, created_at
                 ) VALUES (
                     :firm_id, :cari_id, :yon, :belge_turu, :fatura_profili, :fatura_tipi, :ettn, :fatura_no,
-                    :fatura_tarihi, :duzenleme_saati, :vade_tarihi, :alici_vkn_tckn, :alici_unvan,
+                    :seri_no, :fatura_tarihi, :duzenleme_saati, :vade_tarihi, :alici_vkn_tckn, :alici_unvan,
                     :alici_vergi_dairesi, :alici_adres, :alici_il, :alici_ilce, :alici_ulke,
                     :alici_eposta, :alici_telefon, :alici_posta_kutusu, :para_birimi, :doviz_kuru,
                     :satir_toplami, :iskonto_toplami, :kdv_matrahi, :hesaplanan_kdv, :tevkifat_tutari,
@@ -65,6 +65,7 @@ class EInvoiceModel extends Model
                 'fatura_tipi'           => $header['fatura_tipi'] ?? 'SATIS',
                 'ettn'                  => $ettn,
                 'fatura_no'             => $header['fatura_no'] ?? null,
+                'seri_no'               => !empty($header['seri_no']) ? strtoupper(trim((string)$header['seri_no'])) : null,
                 'fatura_tarihi'         => $header['fatura_tarihi'] ?? date('Y-m-d'),
                 'duzenleme_saati'       => $header['duzenleme_saati'] ?? date('H:i:s'),
                 'vade_tarihi'           => !empty($header['vade_tarihi']) ? $header['vade_tarihi'] : null,
@@ -192,6 +193,7 @@ class EInvoiceModel extends Model
                     belge_turu = :belge_turu,
                     fatura_profili = :fatura_profili,
                     fatura_tipi = :fatura_tipi,
+                    seri_no = :seri_no,
                     fatura_tarihi = :fatura_tarihi,
                     duzenleme_saati = :duzenleme_saati,
                     vade_tarihi = :vade_tarihi,
@@ -229,6 +231,7 @@ class EInvoiceModel extends Model
                 'belge_turu'            => $header['belge_turu'] ?? 'EFATURA',
                 'fatura_profili'        => $header['fatura_profili'] ?? 'TICARIFATURA',
                 'fatura_tipi'           => $header['fatura_tipi'] ?? 'SATIS',
+                'seri_no'               => !empty($header['seri_no']) ? strtoupper(trim((string)$header['seri_no'])) : null,
                 'fatura_tarihi'         => $header['fatura_tarihi'] ?? date('Y-m-d'),
                 'duzenleme_saati'       => $header['duzenleme_saati'] ?? date('H:i:s'),
                 'vade_tarihi'           => !empty($header['vade_tarihi']) ? $header['vade_tarihi'] : null,

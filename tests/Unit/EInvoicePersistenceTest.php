@@ -33,7 +33,7 @@ final class EInvoicePersistenceTest extends TestCase
         $this->db->sqliteCreateFunction('NOW', fn() => '2026-10-02 12:00:00');
         $this->db->exec('CREATE TABLE cari(id INTEGER PRIMARY KEY, CariAdi TEXT, Telefon TEXT, Email TEXT)');
         $columns = ['id INTEGER PRIMARY KEY AUTOINCREMENT','firm_id INT','cari_id INT','olusturan_user_id INT','is_active INT DEFAULT 1','deleted_at TEXT','created_at TEXT','updated_at TEXT'];
-        foreach (['yon','belge_turu','fatura_profili','fatura_tipi','ettn','fatura_no','fatura_tarihi','duzenleme_saati','vade_tarihi','alici_vkn_tckn','alici_unvan','alici_vergi_dairesi','alici_adres','alici_il','alici_ilce','alici_ulke','alici_eposta','alici_telefon','alici_posta_kutusu','para_birimi','doviz_kuru','satir_toplami','iskonto_toplami','kdv_matrahi','hesaplanan_kdv','tevkifat_tutari','odenecek_tutar','notlar','siparis_no','siparis_tarihi','irsaliye_no','irsaliye_tarihi','iade_fatura_no','iade_fatura_tarihi','ubl_xml_path','pdf_path','kaynak_xml','entegrator_durum_kodu','edm_durum','zarf_id','earsiv_rapor_durum','earsiv_rapor_aciklama','earsiv_iptal_rapor_durum','earsiv_iptal_rapor_aciklama','islem_belirsiz','gib_durum_kodu','gib_durum_aciklamasi','edm_referans_no','ticari_yanit'] as $name) $columns[] = "$name TEXT";
+        foreach (['yon','belge_turu','fatura_profili','fatura_tipi','ettn','fatura_no','seri_no','fatura_tarihi','duzenleme_saati','vade_tarihi','alici_vkn_tckn','alici_unvan','alici_vergi_dairesi','alici_adres','alici_il','alici_ilce','alici_ulke','alici_eposta','alici_telefon','alici_posta_kutusu','para_birimi','doviz_kuru','satir_toplami','iskonto_toplami','kdv_matrahi','hesaplanan_kdv','tevkifat_tutari','odenecek_tutar','notlar','siparis_no','siparis_tarihi','irsaliye_no','irsaliye_tarihi','iade_fatura_no','iade_fatura_tarihi','ubl_xml_path','pdf_path','kaynak_xml','entegrator_durum_kodu','edm_durum','zarf_id','earsiv_rapor_durum','earsiv_rapor_aciklama','earsiv_iptal_rapor_durum','earsiv_iptal_rapor_aciklama','islem_belirsiz','gib_durum_kodu','gib_durum_aciklamasi','edm_referans_no','ticari_yanit'] as $name) $columns[] = "$name TEXT";
         $this->db->exec('CREATE TABLE faturalar(' . implode(',', $columns) . ', UNIQUE(firm_id,ettn))');
         $columns = ['id INTEGER PRIMARY KEY AUTOINCREMENT','fatura_id INT','sira_no INT','is_active INT DEFAULT 1','deleted_at TEXT'];
         foreach (['urun_hizmet_adi','urun_kodu','miktar','birim','birim_fiyat','iskonto_orani','iskonto_tutari','kdv_orani','kdv_tutari','tevkifat_kodu','tevkifat_orani','tevkifat_tutari','istisna_kodu','istisna_aciklama','satir_toplami'] as $name) $columns[] = "$name TEXT";
@@ -77,6 +77,16 @@ final class EInvoicePersistenceTest extends TestCase
         self::assertSame('2500.00', $invoice['hesaplanan_kdv']);
         self::assertSame('15000.00', $invoice['odenecek_tutar']);
         self::assertSame(['1833.33', '333.33', '333.33'], array_column($invoice['satirlar'], 'kdv_tutari'));
+    }
+
+    public function testDraftPersistsSelectedEdmSeries(): void
+    {
+        $header = $this->header();
+        $header['seri_no'] = 'YDF';
+        $id = $this->model->createInvoice(2, $header, $this->lines(), 3);
+
+        self::assertNotNull($id);
+        self::assertSame('YDF', $this->model->getInvoiceById($id, 2)['seri_no']);
     }
     public function testImportedSourceAmountsArePreservedOnRepeatedImport(): void
     {

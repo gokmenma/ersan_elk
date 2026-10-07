@@ -11,6 +11,21 @@ $settingsModel = new EInvoiceSettingsModel();
 $settings = $settingsModel->getSettings($firmId) ?: [];
 $numaratorList = $settingsModel->getNumarators($firmId);
 
+$efaturaSeriesOptions = [];
+$earsivSeriesOptions = [];
+foreach ($numaratorList as $numarator) {
+    $series = strtoupper(trim((string)($numarator['seri'] ?? '')));
+    if (!preg_match('/^[A-Z0-9]{3}$/D', $series)) continue;
+    $label = sprintf('%s — %d / Son sayaç: %d', $series, (int)$numarator['yil'], (int)$numarator['son_numara']);
+    if (($numarator['belge_turu'] ?? '') === 'EFATURA' && !isset($efaturaSeriesOptions[$series])) $efaturaSeriesOptions[$series] = $label;
+    if (($numarator['belge_turu'] ?? '') === 'EARSIV' && !isset($earsivSeriesOptions[$series])) $earsivSeriesOptions[$series] = $label;
+}
+foreach (['efatura_seri' => &$efaturaSeriesOptions, 'earsiv_seri' => &$earsivSeriesOptions] as $settingKey => &$options) {
+    $savedSeries = strtoupper(trim((string)($settings[$settingKey] ?? '')));
+    if ($savedSeries !== '' && !isset($options[$savedSeries])) $options[$savedSeries] = $savedSeries . ' — Kayıtlı, EDM senkron listesinde yok';
+}
+unset($options);
+
 $envOptions = [
     'TEST' => 'TEST / SandBox (Geliştirme)',
     'LIVE' => 'CANLI / Production (Gerçek Gönderim)'
@@ -228,6 +243,42 @@ $envOptions = [
                                             'form-control font-monospace'
                                         ) ?>
                                         <small class="text-muted ms-1">EDM hesabındaki aktif gönderici birim etiketini bağlantı kontrolünden doğrulayabilirsiniz.</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <?= Form::FormSelect2(
+                                            'efatura_seri',
+                                            $efaturaSeriesOptions,
+                                            $settings['efatura_seri'] ?? '',
+                                            'Varsayılan e-Fatura Serisi *',
+                                            'hash',
+                                            'key',
+                                            '',
+                                            'form-select select2',
+                                            true,
+                                            'width:100%',
+                                            '',
+                                            'efatura_seri'
+                                        ) ?>
+                                        <small class="text-muted ms-1">“Otomatik Seri” faturalarında öncelikle bu aktif EDM serisi kullanılır.</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <?= Form::FormSelect2(
+                                            'earsiv_seri',
+                                            $earsivSeriesOptions,
+                                            $settings['earsiv_seri'] ?? '',
+                                            'Varsayılan e-Arşiv Serisi *',
+                                            'hash',
+                                            'key',
+                                            '',
+                                            'form-select select2',
+                                            true,
+                                            'width:100%',
+                                            '',
+                                            'earsiv_seri'
+                                        ) ?>
+                                        <small class="text-muted ms-1">e-Arşiv faturalarının otomatik numaralandırılmasında kullanılır.</small>
                                     </div>
 
                                     <!-- Kontör Eşiği ve Otomatik Gönder -->

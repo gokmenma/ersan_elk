@@ -1731,7 +1731,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     targetSerialObj = EDM_SERIALS.find(s => s.series === seriVal);
                 }
             } else {
-                targetSerialObj = EDM_SERIALS.find(s => parseInt(s.active, 10) === 1 && parseInt(s.earchive, 10) === isEarchiveTarget);
+                const automaticCandidates = EDM_SERIALS
+                    .filter(s => parseInt(s.active, 10) === 1 && parseInt(s.earchive, 10) === isEarchiveTarget)
+                    .sort((a, b) => (parseInt(b.last, 10) || 0) - (parseInt(a.last, 10) || 0) || String(a.series || '').localeCompare(String(b.series || '')));
+                targetSerialObj = automaticCandidates[0] || null;
             }
         }
 
