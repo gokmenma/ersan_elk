@@ -134,7 +134,21 @@ class EInvoiceService
             if ((int)($company->$product ?? 0) !== 70) throw new \InvalidArgumentException('EDM hesabında bu belge ürünü aktif değil.');
             $senderAlias = trim($settings['varsayilan_gonderici_alias'] ?? '');
             $sellerUser = $client->checkUser($supplier['vkn_tckn']);
-            if (!$senderAlias || !in_array($senderAlias, $sellerUser['sender_aliases'], true)) throw new \InvalidArgumentException('Aktif EDM gönderici etiketi seçilmelidir.');
+            $activeSenderAliases = $sellerUser['sender_aliases'];
+            foreach (EdmSoapClient::items($company->GB ?? null) as $companyGb) {
+                $companyAlias = is_object($companyGb)
+                    ? trim((string)($companyGb->ALIAS ?? $companyGb->GB ?? $companyGb->VALUE ?? ''))
+                    : trim((string)$companyGb);
+                if ($companyAlias !== '') $activeSenderAliases[] = $companyAlias;
+            }
+            $activeSenderAliases = array_values(array_unique(array_filter($activeSenderAliases)));
+            if (!$senderAlias || !in_array($senderAlias, $activeSenderAliases, true)) {
+                if (count($activeSenderAliases) === 1) {
+                    $senderAlias = $activeSenderAliases[0];
+                } else {
+                    throw new \InvalidArgumentException('Aktif EDM gönderici etiketi seçilmelidir. E-Fatura Ayarları > Varsayılan Gönderici Posta Kutusu alanını kontrol edin.');
+                }
+            }
             $receiverUser = $client->checkUser($invoice['alici_vkn_tckn']);
             if ($invoice['belge_turu'] === 'EFATURA') {
                 $receiverAlias = trim((string)($invoice['alici_posta_kutusu'] ?? ''));

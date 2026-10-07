@@ -256,7 +256,7 @@ final class EInvoiceWorkflowTest extends TestCase
     }
     public function testActiveAliasesAndLookupErrors(): void
     {
-        $transport=new InvoiceOfflineTransport(fn()=> (object)['USER'=>[(object)['UNIT'=>'PK','ALIAS'=>'active'],(object)['UNIT'=>'PK','ALIAS'=>'removed','ALIAS_REMOVAL_TIME'=>'2026-01-01'],(object)['UNIT'=>'GB','ALIAS'=>'sender']]]);
+        $transport=new InvoiceOfflineTransport(fn()=> (object)['USER'=>[(object)['UNIT'=>'PK','ALIAS'=>'active'],(object)['UNIT'=>'PK','ALIAS'=>'removed','ALIAS_REMOVAL_TIME'=>'2026-01-01'],(object)['UNIT'=>' gb ','ALIAS'=>'sender','ALIAS_REMOVAL_TIME'=>'0001-01-01T00:00:00']]]);
         $result=(new EdmSoapClient(2,$transport,$this->settings()))->checkUser('1234567890');
         self::assertSame(['active'],$result['aliases']); self::assertSame(['sender'],$result['sender_aliases']);
         $transport=new InvoiceOfflineTransport(function(){ throw new SoapFault('HTTP','timeout'); });

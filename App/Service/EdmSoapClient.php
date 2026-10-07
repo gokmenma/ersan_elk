@@ -151,13 +151,18 @@ class EdmSoapClient
         if (!preg_match('/^\d{10,11}$/D', $vknTckn)) throw new EdmOperationException('validation', 'VKN/TCKN 10 veya 11 haneli olmalıdır.');
         $result = $this->call('CheckUser', ['USER' => (object)['IDENTIFIER' => $vknTckn]]);
         $users = self::items($result->GIBUSER ?? $result->USER ?? $result->Items ?? null);
-        $active = array_values(array_filter($users, static fn($u) => empty($u->ALIAS_REMOVAL_TIME) && trim((string)($u->IDENTIFIER ?? $vknTckn)) === $vknTckn));
+        $active = array_values(array_filter($users, static function ($u) use ($vknTckn): bool {
+            $removalTime = trim((string)($u->ALIAS_REMOVAL_TIME ?? ''));
+            $hasRemoval = $removalTime !== '' && !preg_match('/^(?:0001|1900)-01-01(?:T00:00:00)?/', $removalTime);
+            return !$hasRemoval && trim((string)($u->IDENTIFIER ?? $vknTckn)) === $vknTckn;
+        }));
         $aliases = [];
         $senderAliases = [];
         foreach ($active as $u) {
             if (empty($u->ALIAS)) continue;
-            if (($u->UNIT ?? '') === 'PK') $aliases[] = trim($u->ALIAS);
-            if (($u->UNIT ?? '') === 'GB') $senderAliases[] = trim($u->ALIAS);
+            $unit = strtoupper(trim((string)($u->UNIT ?? '')));
+            if ($unit === 'PK') $aliases[] = trim($u->ALIAS);
+            if ($unit === 'GB') $senderAliases[] = trim($u->ALIAS);
         }
         $aliases = array_values(array_unique($aliases));
         return ['is_einvoice_user' => count($active) > 0, 'vkn_tckn' => $vknTckn,
