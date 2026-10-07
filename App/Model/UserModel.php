@@ -114,6 +114,7 @@ class UserModel extends Model
             $isTargetSuperAdmin = array_filter($roleRows, static fn(array $role): bool =>
                 (int) ($role['superadmin'] ?? 0) === 1 || ($role['role_type'] ?? '') === 'superadmin'
             );
+            $user->is_superadmin = !empty($isTargetSuperAdmin);
             if (!$this->isSuperAdmin() && $isTargetSuperAdmin) {
                 unset($users[$index]);
                 continue;
@@ -542,4 +543,3 @@ class UserModel extends Model
         return $stmt->execute([$json, $userId]);
     }
 }
-

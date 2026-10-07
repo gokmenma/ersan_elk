@@ -182,7 +182,23 @@ class Gate
 
     public static function authorizeApiPolicy(string $resource, string $action = ''): void
     {
-        if (self::allowsPolicy('api', $resource, $action)) {
+        $httpMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'POST');
+        $policyModel = new PermissionPolicyModel();
+        $policy = $policyModel->resolve('api', $resource, $action, $httpMethod);
+
+        if (\App\Service\ObserverMode::isActive()
+            && !\App\Service\ObserverMode::allowsPolicy($policy, $resource, $action, $httpMethod)) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Gözlem modunda veri değiştiren veya sınıflandırılmamış işlemler kullanılamaz.',
+                'data' => [],
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if (self::allowsPolicy('api', $resource, $action, $httpMethod)) {
             return;
         }
 

@@ -31,7 +31,7 @@ $knownActions = [
     'gelir-gider-kaydet', 'gelir-gider-getir', 'gelir-gider-sil',
     'gelir-gider-toplu-sil', 'gelir-gider-turu-getir', 'hesap-adlari-getir',
     'plakalari-getir', 'bankalari-getir', 'get-unique-values',
-    'gelir-gider-ajax-list', 'tum-hareketler-getir',
+    'gelir-gider-ajax-list', 'tum-hareketler-getir', 'gelir-gider-excel-kaydet',
 ];
 if (!in_array($action, $knownActions, true)) {
     http_response_code(400);
@@ -318,5 +318,42 @@ if ($action == "tum-hareketler-getir") {
     } catch (Exception $e) {
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
+    exit;
+}
+
+// Excel'den Toplu Gelir-Gider Yükle
+if ($action == "gelir-gider-excel-kaydet") {
+    if (!isset($_FILES['excelFile']) || $_FILES['excelFile']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['status' => 'error', 'message' => 'Lütfen geçerli bir Excel dosyası seçin.']);
+        exit;
+    }
+
+    $fileTmpPath = $_FILES['excelFile']['tmp_name'];
+    $fileName = $_FILES['excelFile']['name'];
+    $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+    if (!in_array($ext, ['xlsx', 'xls'], true)) {
+        echo json_encode(['status' => 'error', 'message' => 'Yalnızca .xlsx ve .xls uzantılı dosyalar desteklenmektedir.']);
+        exit;
+    }
+
+    $userId = (int)($_SESSION['id'] ?? ($_SESSION['user_id'] ?? 0));
+    $result = $GelirGider->importFromExcel($fileTmpPath, $userId);
+
+    if ($result['status'] === 'success') {
+        try {
+            $logModel = new \App\Model\SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'Excel Yükleme',
+                "Gelir-Gider modülüne Excel'den {$result['count']} adet kayıt içe aktarıldı ({$fileName}).",
+                \App\Model\SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (\Throwable $logEx) {
+            error_log("Gelir-Gider Excel Log Error: " . $logEx->getMessage());
+        }
+    }
+
+    echo json_encode($result);
     exit;
 }

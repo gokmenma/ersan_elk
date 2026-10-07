@@ -422,4 +422,192 @@ class GelirGiderModel extends Model
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_COLUMN);
     }
+
+    /**
+     * Excel dosyasından gelir-gider kayıtlarını içe aktarır
+     *
+     * @param string $filePath Geçici dosya yolu
+     * @param int $userId İşlemi yapan kullanıcı ID
+     * @return array [status => 'success'|'error', 'message' => string, 'count' => int]
+     */
+    public function importFromExcel(string $filePath, int $userId = 0): array
+    {
+        if (!file_exists($filePath)) {
+            return ['status' => 'error', 'message' => 'Excel dosyası bulunamadı.', 'count' => 0];
+        }
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray(null, true, true, false);
+
+            if (empty($rows) || count($rows) < 2) {
+                return ['status' => 'error', 'message' => 'Excel dosyasında içe aktarılacak veri satırı bulunamadı.', 'count' => 0];
+            }
+
+            $headers = array_shift($rows);
+            $headerMap = [];
+
+            foreach ($headers as $colIdx => $headerTitle) {
+                $norm = mb_strtolower(trim((string)$headerTitle), 'UTF-8');
+                $norm = str_replace(['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'İ', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'g', 'u', 's', 'o', 'c', 'i', 'g', 'u', 's', 'o', 'c'], $norm);
+
+                if (str_contains($norm, 'islem tarihi') || ($norm === 'tarih')) {
+                    $headerMap['tarih'] = $colIdx;
+                } elseif (str_contains($norm, 'hesap') || str_contains($norm, 'cari')) {
+                    $headerMap['hesap_adi'] = $colIdx;
+                } elseif (str_contains($norm, 'tutar')) {
+                    $headerMap['tutar'] = $colIdx;
+                } elseif (str_contains($norm, 'kategori')) {
+                    $headerMap['kategori'] = $colIdx;
+                } elseif (str_contains($norm, 'plaka')) {
+                    $headerMap['plaka'] = $colIdx;
+                } elseif (str_contains($norm, 'aciklama')) {
+                    $headerMap['aciklama'] = $colIdx;
+                } elseif (str_contains($norm, 'tur') || str_contains($norm, 'tip')) {
+                    $headerMap['type'] = $colIdx;
+                } elseif (str_contains($norm, 'odeme')) {
+                    $headerMap['odeme_sekli'] = $colIdx;
+                } elseif (str_contains($norm, 'banka')) {
+                    $headerMap['banka_adi'] = $colIdx;
+                } elseif (str_contains($norm, 'kayit tarihi')) {
+                    $headerMap['kayit_tarihi'] = $colIdx;
+                }
+            }
+
+            // Varsayılan kolon indeksleri (Resimdeki formata göre: 0:Sıra, 1:İşlem Tarihi, 2:Hesap Adı, 3:Tutar, 4:Kategori, 5:Plaka, 6:Açıklama, 7:Tür, 8:Ödeme Şekli, 9:Banka Adı, 10:Bakiye, 11:Kayıt Tarihi)
+            $idxTarih = $headerMap['tarih'] ?? 1;
+            $idxHesap = $headerMap['hesap_adi'] ?? 2;
+            $idxTutar = $headerMap['tutar'] ?? 3;
+            $idxKategori = $headerMap['kategori'] ?? 4;
+            $idxPlaka = $headerMap['plaka'] ?? 5;
+            $idxAciklama = $headerMap['aciklama'] ?? 6;
+            $idxType = $headerMap['type'] ?? 7;
+            $idxOdemeSekli = $headerMap['odeme_sekli'] ?? 8;
+            $idxBankaAdi = $headerMap['banka_adi'] ?? 9;
+            $idxKayitTarihi = $headerMap['kayit_tarihi'] ?? 11;
+
+            $insertData = [];
+            $skipped = 0;
+
+            foreach ($rows as $rowIndex => $row) {
+                // Boş satır kontrolü
+                $allEmpty = true;
+                foreach ($row as $cellVal) {
+                    if ($cellVal !== null && trim((string)$cellVal) !== '') {
+                        $allEmpty = false;
+                        break;
+                    }
+                }
+                if ($allEmpty) {
+                    continue;
+                }
+
+                $rawTutar = $row[$idxTutar] ?? null;
+                $tutar = (float)Helper::formattedMoneyToNumber($rawTutar);
+                $rawHesap = trim((string)($row[$idxHesap] ?? ''));
+                $rawKategori = trim((string)($row[$idxKategori] ?? ''));
+                $rawAciklama = trim((string)($row[$idxAciklama] ?? ''));
+
+                if ($tutar <= 0 && empty($rawHesap) && empty($rawKategori) && empty($rawAciklama)) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Tür tespiti (1: Gelir, 2: Gider)
+                $rawType = trim((string)($row[$idxType] ?? ''));
+                $normType = mb_strtolower($rawType, 'UTF-8');
+                $normType = str_replace(['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'İ', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'g', 'u', 's', 'o', 'c', 'i', 'g', 'u', 's', 'o', 'c'], $normType);
+
+                $type = 1;
+                if ($normType === '2' || str_contains($normType, 'gider')) {
+                    $type = 2;
+                } elseif ($normType === '1' || str_contains($normType, 'gelir')) {
+                    $type = 1;
+                } else {
+                    $type = 1;
+                }
+
+                // İşlem Tarihi
+                $rawTarih = $row[$idxTarih] ?? null;
+                $tarih = null;
+                if (!empty($rawTarih)) {
+                    $tarih = \App\Helper\Date::convertExcelDate($rawTarih, 'Y-m-d H:i:s');
+                    if (!$tarih && is_string($rawTarih)) {
+                        $time = strtotime($rawTarih);
+                        if ($time !== false && $time > 0) {
+                            $tarih = date('Y-m-d H:i:s', $time);
+                        }
+                    }
+                }
+                if (!$tarih) {
+                    $tarih = date('Y-m-d H:i:s');
+                }
+
+                // Kayıt Tarihi
+                $rawKayitTarihi = $row[$idxKayitTarihi] ?? null;
+                $kayitTarihi = null;
+                if (!empty($rawKayitTarihi)) {
+                    $kayitTarihi = \App\Helper\Date::convertExcelDate($rawKayitTarihi, 'Y-m-d H:i:s');
+                    if (!$kayitTarihi && is_string($rawKayitTarihi)) {
+                        $time = strtotime($rawKayitTarihi);
+                        if ($time !== false && $time > 0) {
+                            $kayitTarihi = date('Y-m-d H:i:s', $time);
+                        }
+                    }
+                }
+                if (!$kayitTarihi) {
+                    $kayitTarihi = date('Y-m-d H:i:s');
+                }
+
+                $insertData[] = [
+                    'type' => $type,
+                    'tarih' => $tarih,
+                    'kategori' => $rawKategori,
+                    'hesap_adi' => $rawHesap,
+                    'tutar' => $tutar,
+                    'aciklama' => $rawAciklama,
+                    'plaka' => trim((string)($row[$idxPlaka] ?? '')),
+                    'odeme_sekli' => trim((string)($row[$idxOdemeSekli] ?? '')),
+                    'banka_adi' => trim((string)($row[$idxBankaAdi] ?? '')),
+                    'kayit_tarihi' => $kayitTarihi,
+                    'kayit_yapan' => $userId > 0 ? $userId : 0
+                ];
+            }
+
+            if (empty($insertData)) {
+                return ['status' => 'error', 'message' => 'İçe aktarılacak geçerli kayıt bulunamadı.', 'count' => 0];
+            }
+
+            $this->db->beginTransaction();
+            $stmt = $this->db->prepare("
+                INSERT INTO {$this->table} 
+                (type, tarih, kategori, hesap_adi, tutar, aciklama, plaka, odeme_sekli, banka_adi, kayit_tarihi, kayit_yapan) 
+                VALUES 
+                (:type, :tarih, :kategori, :hesap_adi, :tutar, :aciklama, :plaka, :odeme_sekli, :banka_adi, :kayit_tarihi, :kayit_yapan)
+            ");
+
+            foreach ($insertData as $data) {
+                $stmt->execute($data);
+            }
+
+            $this->db->commit();
+
+            return [
+                'status' => 'success',
+                'message' => count($insertData) . ' adet gelir-gider kaydı başarıyla yüklendi.',
+                'count' => count($insertData)
+            ];
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("GelirGiderModel::importFromExcel error: " . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Excel dosyası işlenirken bir hata oluştu: ' . $e->getMessage(),
+                'count' => 0
+            ];
+        }
+    }
 }

@@ -382,6 +382,25 @@
   });
 
   // Silme Butonu
+  $(document).on("click", ".kullanici-gozlemle", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var id = $(this).data("id");
+    var name = $(this).data("name") || "Bu kullanıcı";
+    Swal.fire({
+      title: "Kullanıcı olarak görüntüle",
+      text: name + " hesabının yetkileriyle salt okunur moda geçilecek.",
+      icon: "info",
+      showCancelButton: true,
+      confirmButtonText: "Gözlemi Başlat",
+      cancelButtonText: "Vazgeç"
+    }).then(function (result) {
+      if (!result.isConfirmed) return;
+      $("#observerTargetUserId").val(id);
+      document.getElementById("observerStartForm").submit();
+    });
+  });
+
   $(document).on("click", ".kullanici-sil", function (e) {
     e.preventDefault();
     e.stopPropagation();

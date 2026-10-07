@@ -12,6 +12,19 @@ if (empty($_SESSION['firma_id']) && empty($_SESSION['owner_id']) && empty($_SESS
     exit('Excel şablonu indirmek için lütfen sisteme giriş yapın.');
 }
 
+$staticFile = dirname(__DIR__, 2) . '/files/gelir_gider_sablon.xlsx';
+if (file_exists($staticFile)) {
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="gelir_gider_sablonu_' . date('Y-m-d') . '.xlsx"');
+    header('Content-Length: ' . filesize($staticFile));
+    header('Cache-Control: max-age=0');
+    readfile($staticFile);
+    exit;
+}
+
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -20,7 +33,8 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
-$sheet->setTitle('Gelir Gider Şablonu');
+$sheet->setTitle('Gelir-Gider Şablonu');
+$sheet->setShowGridLines(true);
 
 // Başlık stilleri
 $headerStyle = [
@@ -31,7 +45,7 @@ $headerStyle = [
     ],
     'fill' => [
         'fillType' => Fill::FILL_SOLID,
-        'startColor' => ['rgb' => '1E293B']
+        'startColor' => ['rgb' => '0D6EFD']
     ],
     'alignment' => [
         'horizontal' => Alignment::HORIZONTAL_CENTER,
@@ -45,80 +59,42 @@ $headerStyle = [
     ]
 ];
 
-// Veri stili
-$dataStyle = [
-    'borders' => [
-        'allBorders' => [
-            'borderStyle' => Border::BORDER_THIN,
-            'color' => ['rgb' => 'E2E8F0']
-        ]
-    ],
-    'alignment' => [
-        'vertical' => Alignment::VERTICAL_CENTER
-    ]
-];
-
 // Başlıklar
 $headers = [
-    'A1' => 'TARİH',
-    'B1' => 'İŞLEM TİPİ',
-    'C1' => 'KATEGORİ / İŞLEM TÜRÜ',
-    'D1' => 'HESAP / CARİ ADI',
-    'E1' => 'TUTAR',
-    'F1' => 'AÇIKLAMA'
+    'A1' => 'Sıra',
+    'B1' => 'İşlem Tarihi',
+    'C1' => 'Hesap Adı',
+    'D1' => 'Tutar (TL)',
+    'E1' => 'Kategori',
+    'F1' => 'Plaka',
+    'G1' => 'Açıklama',
+    'H1' => 'Tür',
+    'I1' => 'Ödeme Şekli',
+    'J1' => 'Banka Adı',
+    'K1' => 'Bakiye (TL)',
+    'L1' => 'Kayıt Tarihi'
 ];
 
 foreach ($headers as $cell => $value) {
     $sheet->setCellValue($cell, $value);
 }
 
-$sheet->getStyle('A1:F1')->applyFromArray($headerStyle);
-$sheet->getRowDimension(1)->setRowHeight(25);
+$sheet->getStyle('A1:L1')->applyFromArray($headerStyle);
+$sheet->getRowDimension(1)->setRowHeight(26);
 
 // Sütun Genişlikleri
-$sheet->getColumnDimension('A')->setWidth(18);
-$sheet->getColumnDimension('B')->setWidth(16);
-$sheet->getColumnDimension('C')->setWidth(25);
-$sheet->getColumnDimension('D')->setWidth(25);
-$sheet->getColumnDimension('E')->setWidth(18);
-$sheet->getColumnDimension('F')->setWidth(35);
-
-// Örnek Satırlar
-$samples = [
-    [
-        'tarih' => date('d.m.Y'),
-        'tip' => 'GELİR',
-        'kategori' => 'Hakediş / Satış',
-        'hesap' => 'ABC Elektrik A.Ş.',
-        'tutar' => 15000.00,
-        'aciklama' => 'Örnek gelir kaydı'
-    ],
-    [
-        'tarih' => date('d.m.Y'),
-        'tip' => 'GİDER',
-        'kategori' => 'Malzeme Alımı',
-        'hesap' => 'XYZ Ticaret',
-        'tutar' => 4500.50,
-        'aciklama' => 'Örnek gider kaydı'
-    ]
-];
-
-$rowNum = 2;
-foreach ($samples as $sample) {
-    $sheet->setCellValue('A' . $rowNum, $sample['tarih']);
-    $sheet->setCellValue('B' . $rowNum, $sample['tip']);
-    $sheet->setCellValue('C' . $rowNum, $sample['kategori']);
-    $sheet->setCellValue('D' . $rowNum, $sample['hesap']);
-    $sheet->setCellValue('E' . $rowNum, $sample['tutar']);
-    $sheet->setCellValue('F' . $rowNum, $sample['aciklama']);
-
-    $sheet->getStyle('A' . $rowNum . ':F' . $rowNum)->applyFromArray($dataStyle);
-    $sheet->getStyle('A' . $rowNum)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('B' . $rowNum)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('E' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
-
-    $rowNum++;
-}
+$sheet->getColumnDimension('A')->setWidth(10);
+$sheet->getColumnDimension('B')->setWidth(18);
+$sheet->getColumnDimension('C')->setWidth(26);
+$sheet->getColumnDimension('D')->setWidth(18);
+$sheet->getColumnDimension('E')->setWidth(22);
+$sheet->getColumnDimension('F')->setWidth(16);
+$sheet->getColumnDimension('G')->setWidth(35);
+$sheet->getColumnDimension('H')->setWidth(14);
+$sheet->getColumnDimension('I')->setWidth(18);
+$sheet->getColumnDimension('J')->setWidth(22);
+$sheet->getColumnDimension('K')->setWidth(18);
+$sheet->getColumnDimension('L')->setWidth(20);
 
 // Dosyayı indir
 $filename = 'gelir_gider_sablonu_' . date('Y-m-d') . '.xlsx';

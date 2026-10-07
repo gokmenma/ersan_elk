@@ -111,6 +111,8 @@ if (!in_array($page, $publicPages, true)) {
     }
 }
 
+\App\Service\ObserverMode::logPage($page);
+
 try {
     $logModel = new \App\Model\SystemLogModel();
     $logModel->logPageView($currentUserId, $page, 'Desktop');
@@ -169,6 +171,7 @@ try {
 <div id="layout-wrapper">
 
     <?php include 'layouts/menu.php'; ?>
+    <?php include 'layouts/observer-banner.php'; ?>
 
     <!-- ============================================================== -->
     <!-- Start right Content here -->

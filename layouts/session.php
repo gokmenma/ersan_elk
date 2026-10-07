@@ -10,6 +10,11 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 // User status check (kicks out passive users)
 require_once __DIR__ . '/../vendor/autoload.php';
+$observerWasValid = \App\Service\ObserverMode::ensureValid();
+if (!$observerWasValid) {
+    header('Location: /index.php?p=kullanici/list&observer=ended');
+    exit;
+}
 $UserStatusModel = new \App\Model\UserModel();
 // We use $_SESSION["id"] or $_SESSION["user_id"]
 $currentUserIdForStatus = $_SESSION["id"] ?? $_SESSION["user_id"] ?? 0;

@@ -37,9 +37,11 @@ class PermissionPolicyModel extends Model
             ? "COALESCE(NULLIF(p.permission_key, ''), p.auth_name)"
             : 'p.auth_name';
 
+        $accessModeSelect = $this->hasAccessModeColumn() ? 'pp.access_mode' : "'write' AS access_mode";
         $stmt = $this->db->prepare(
             "SELECT pp.id, pp.scope, pp.resource, pp.action, pp.http_method,
                     pp.permission_id, pp.superadmin_only, pp.authenticated_only,
+                    {$accessModeSelect},
                     {$permissionKeySelect} AS permission_key
              FROM permission_policies pp
              LEFT JOIN permissions p ON p.id = pp.permission_id AND p.is_active = 1
@@ -64,6 +66,16 @@ class PermissionPolicyModel extends Model
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
         );
         $stmt->execute(['permissions', 'permission_key']);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    private function hasAccessModeColumn(): bool
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+        );
+        $stmt->execute(['permission_policies', 'access_mode']);
         return (int) $stmt->fetchColumn() > 0;
     }
 }

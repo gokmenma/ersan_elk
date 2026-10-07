@@ -5,9 +5,11 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\UserModel;
+use App\Service\Gate;
 
 $User = new UserModel();
 $users = $User->getUsers();
+$canStartObserverMode = Gate::isSuperAdmin();
 
 // İstatistikler
 $toplamKullanici = count($users);
@@ -318,6 +320,14 @@ $title = "Kullanıcı Listesi";
                                 </td>
                                 <td class="text-center">
                                     <div class="action-btn-group d-flex align-items-center justify-content-center gap-1">
+                                        <?php if ($canStartObserverMode && $isAktif && empty($user->is_superadmin)): ?>
+                                            <button type="button" class="btn btn-subtle-primary table-action-btn kullanici-gozlemle"
+                                                    data-id="<?= htmlspecialchars($enc_id, ENT_QUOTES, 'UTF-8'); ?>"
+                                                    data-name="<?= htmlspecialchars((string) ($user->adi_soyadi ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                    title="Kullanıcı Olarak Görüntüle">
+                                                <i class="bx bx-show"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="button" class="btn btn-subtle-warning table-action-btn kullanici-duzenle" data-id="<?= htmlspecialchars($enc_id, ENT_QUOTES, 'UTF-8'); ?>" title="Kullanıcıyı Düzenle">
                                             <i class="bx bx-edit-alt"></i>
                                         </button>
@@ -334,6 +344,14 @@ $title = "Kullanıcı Listesi";
         </div>
     </div>
 </div>
+
+<?php if ($canStartObserverMode): ?>
+<form id="observerStartForm" method="post" action="/observer-mode.php" class="d-none">
+    <input type="hidden" name="action" value="start">
+    <input type="hidden" name="user_id" id="observerTargetUserId" value="">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
+</form>
+<?php endif; ?>
 
 <!-- Kullanıcı İşlem Modalı -->
 <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true" style="z-index: 1060;">
