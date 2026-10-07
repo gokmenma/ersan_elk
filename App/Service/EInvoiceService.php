@@ -564,7 +564,8 @@ class EInvoiceService
         $tutarYaziylaDoviz = ($curr !== 'TRY' && $curr !== 'TL') ? \App\Helper\Helper::numberToWordsTr($invoice['odenecek_tutar'], $curr, 'CENT') : '';
 
         $belgeTuruText = ($invoice['belge_turu'] === 'EFATURA') ? 'e-FATURA' : 'e-ARŞİV FATURA';
-        $vergilerDahil = bcadd((string)$invoice['kdv_matrahi'], (string)$invoice['hesaplanan_kdv'], 2);
+        $vergiHaricToplam = bcsub((string)$invoice['satir_toplami'], (string)($invoice['iskonto_toplami'] ?? '0'), 2);
+        $vergilerDahil = bcadd($vergiHaricToplam, (string)$invoice['hesaplanan_kdv'], 2);
 
         // Notların temizlenmesi ve güvenli HTML olarak hazırlanması
         $userNotesHtml = !empty($invoice['notlar']) ? self::sanitizeInvoiceNoteHtml($invoice['notlar']) : '';

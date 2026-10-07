@@ -54,12 +54,16 @@ final class UblReaderService
             if (!(($allowUnnumberedDraft && $direction === 'GIDEN') && $number === '') && !preg_match('/^[A-Z0-9]{3}20\d{2}\d{9}$/D', $number)) {
                 throw new \InvalidArgumentException('XML fatura numarası geçersiz.');
             }
+            $taxableTotal = '0.00';
+            $taxableNodes = $xp->query('/i:Invoice/cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount');
+            foreach ($taxableNodes as $taxableNode) $taxableTotal = bcadd($taxableTotal, $decimal($taxableNode->textContent), 2);
+            if ($taxableNodes->length === 0) $taxableTotal = $decimal($text('/i:Invoice/cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount'));
             $header = ['yon' => $direction, 'ettn' => $uuid, 'fatura_no' => $number !== '' ? $number : null,
                 'fatura_profili' => $profile, 'belge_turu' => $profile === 'EARSIVFATURA' ? 'EARSIV' : 'EFATURA',
                 'fatura_tipi' => $text('/i:Invoice/cbc:InvoiceTypeCode'), 'fatura_tarihi' => $text('/i:Invoice/cbc:IssueDate'),
                 'duzenleme_saati' => substr($text('/i:Invoice/cbc:IssueTime') ?: '00:00:00', 0, 8),
                 'para_birimi' => $text('/i:Invoice/cbc:DocumentCurrencyCode'), 'doviz_kuru' => $decimal($text('/i:Invoice/cac:PricingExchangeRate/cbc:CalculationRate'), '1'),
-                'kdv_matrahi' => $decimal($text('/i:Invoice/cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount')),
+                'kdv_matrahi' => $taxableTotal,
                 'hesaplanan_kdv' => $decimal($text('/i:Invoice/cac:TaxTotal/cbc:TaxAmount')),
                 'tevkifat_tutari' => $decimal($text('/i:Invoice/cac:WithholdingTaxTotal/cbc:TaxAmount')),
                 'odenecek_tutar' => $decimal($text('/i:Invoice/cac:LegalMonetaryTotal/cbc:PayableAmount')),

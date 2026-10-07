@@ -50,7 +50,11 @@ final class InvoiceCalculationService
             // KDV oranına göre birleştirilmesinden sonra para hassasiyetine yuvarlanır.
             $rawBase = bcsub($rawGross, $line['iskonto_tutari'], 8);
             $base = self::money($rawBase);
-            $line['kdv_tutari'] = self::money(bcdiv(bcmul($rawBase, $vat, 8), '100', 8));
+            $rawVat = bcdiv(bcmul($rawBase, $vat, 8), '100', 8);
+            $line['kdv_tutari'] = self::money($rawVat);
+            // UBL satır vergisi yüksek hassasiyetle taşınabilir; ekranda ve
+            // veritabanında kullanılan iki haneli tutardan ayrı tutulur.
+            $line['_ubl_kdv_tutari'] = $rawVat;
             $line['tevkifat_tutari'] = self::money(bcdiv(bcmul($line['kdv_tutari'], $withholding, 8), '100', 8));
             $line['satir_toplami'] = bcsub(bcadd($base, $line['kdv_tutari'], 2), $line['tevkifat_tutari'], 2);
             $line['miktar'] = $qty;

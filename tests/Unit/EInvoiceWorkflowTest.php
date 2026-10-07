@@ -161,6 +161,12 @@ final class EInvoiceWorkflowTest extends TestCase
         self::assertSame(1, $xpath->query('/i:Invoice/cac:TaxTotal/cac:TaxSubtotal')->length);
         self::assertSame('12500.00', $xpath->evaluate('string(/i:Invoice/cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount)'));
         self::assertSame('2500.00', $xpath->evaluate('string(/i:Invoice/cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount)'));
+        self::assertSame('12500.01', $xpath->evaluate('string(/i:Invoice/cac:LegalMonetaryTotal/cbc:LineExtensionAmount)'));
+        self::assertSame('12500.01', $xpath->evaluate('string(/i:Invoice/cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount)'));
+        self::assertSame('15000.01', $xpath->evaluate('string(/i:Invoice/cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount)'));
+        self::assertSame('0.00', $xpath->evaluate('string(/i:Invoice/cac:LegalMonetaryTotal/cbc:PayableRoundingAmount)'));
+        self::assertSame('15000.00', $xpath->evaluate('string(/i:Invoice/cac:LegalMonetaryTotal/cbc:PayableAmount)'));
+        self::assertSame('1833.33334000', $xpath->evaluate('string(/i:Invoice/cac:InvoiceLine[1]/cac:TaxTotal/cbc:TaxAmount)'));
     }
     public function testXmlRoundTripDiscountWithholdingAndForeignCurrency(): void
     {

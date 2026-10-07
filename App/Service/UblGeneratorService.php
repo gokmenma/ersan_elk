@@ -18,7 +18,7 @@ class UblGeneratorService
             $parent->appendChild($node); return $node;
         };
         $currency = $invoice['para_birimi'] ?? 'TRY';
-        $amount = static fn(DOMElement $node, string $tag, mixed $value) => $add($node, $tag, bcadd((string)$value, '0', 2), ['currencyID' => $currency]);
+        $amount = static fn(DOMElement $node, string $tag, mixed $value, int $scale = 2) => $add($node, $tag, bcadd((string)$value, '0', $scale), ['currencyID' => $currency]);
         // Empty extension is reserved for EDM server signing; no fabricated signature.
         $add($add($add($root, 'ext:UBLExtensions'), 'ext:UBLExtension'), 'ext:ExtensionContent');
         foreach (['UBLVersionID' => '2.1', 'CustomizationID' => 'TR1.2', 'ProfileID' => $invoice['fatura_profili'], 'ID' => $invoice['fatura_no'] ?? '', 'CopyIndicator' => 'false', 'UUID' => $invoice['ettn'], 'IssueDate' => $invoice['fatura_tarihi'], 'IssueTime' => $invoice['duzenleme_saati'] ?? '00:00:00', 'InvoiceTypeCode' => $invoice['fatura_tipi']] as $tag => $value) $add($root, 'cbc:' . $tag, $value);
@@ -94,10 +94,10 @@ class UblGeneratorService
         if ($currency !== 'TRY') {
             $exchange = $add($root, 'cac:PricingExchangeRate'); $add($exchange, 'cbc:SourceCurrencyCode', $currency); $add($exchange, 'cbc:TargetCurrencyCode', 'TRY'); $add($exchange, 'cbc:CalculationRate', $invoice['doviz_kuru']);
         }
-        $subtax = static function(DOMElement $parent, array $line, bool $withholding = false) use ($add, $amount): void {
+        $subtax = static function(DOMElement $parent, array $line, bool $withholding = false, int $scale = 2) use ($add, $amount): void {
             $node = $add($parent, 'cac:TaxSubtotal');
             $base = $withholding ? $line['kdv_tutari'] : bcsub(bcsub((string)$line['satir_toplami'], (string)$line['kdv_tutari'], 2), '-' . ($line['tevkifat_tutari'] ?? '0'), 2);
-            $amount($node, 'cbc:TaxableAmount', $base); $amount($node, 'cbc:TaxAmount', $line[$withholding ? 'tevkifat_tutari' : 'kdv_tutari']);
+            $amount($node, 'cbc:TaxableAmount', $base); $amount($node, 'cbc:TaxAmount', $line[$withholding ? 'tevkifat_tutari' : 'kdv_tutari'], $scale);
             $percent = rtrim(rtrim(bcadd((string)$line[$withholding ? 'tevkifat_orani' : 'kdv_orani'], '0', 2), '0'), '.');
             $add($node, 'cbc:Percent', $percent ?: '0');
             $category = $add($node, 'cac:TaxCategory');
@@ -107,7 +107,9 @@ class UblGeneratorService
             $scheme = $add($category, 'cac:TaxScheme'); $add($scheme, 'cbc:Name', $withholding ? 'KDV TEVKIFAT' : 'KDV'); $add($scheme, 'cbc:TaxTypeCode', $withholding ? $line['tevkifat_kodu'] : '0015');
         };
         $tax = $add($root, 'cac:TaxTotal'); $amount($tax, 'cbc:TaxAmount', $invoice['hesaplanan_kdv']);
-        $vatGroups = (new InvoiceCalculationService())->calculate($lines)['vat_groups'];
+        $calculated = (new InvoiceCalculationService())->calculate($lines);
+        $lines = $calculated['lines'];
+        $vatGroups = $calculated['vat_groups'];
         foreach ($vatGroups as $group) {
             // Fatura seviyesindeki TaxSubtotal satırların toplamı değil, aynı vergi
             // kategorisindeki yüksek hassasiyetli matrahın tek seferde yuvarlanmış halidir.
@@ -125,9 +127,11 @@ class UblGeneratorService
             foreach ($lines as $line) if (bccomp((string)$line['tevkifat_tutari'], '0', 2) > 0) $subtax($tax, $line, true);
         }
         $totals = $add($root, 'cac:LegalMonetaryTotal');
-        $amount($totals, 'cbc:LineExtensionAmount', $invoice['kdv_matrahi']); $amount($totals, 'cbc:TaxExclusiveAmount', $invoice['kdv_matrahi']);
-        $amount($totals, 'cbc:TaxInclusiveAmount', bcadd((string)$invoice['kdv_matrahi'], (string)$invoice['hesaplanan_kdv'], 2));
+        $lineExtensionTotal = bcsub((string)$invoice['satir_toplami'], (string)($invoice['iskonto_toplami'] ?? '0'), 2);
+        $amount($totals, 'cbc:LineExtensionAmount', $lineExtensionTotal); $amount($totals, 'cbc:TaxExclusiveAmount', $lineExtensionTotal);
+        $amount($totals, 'cbc:TaxInclusiveAmount', bcadd($lineExtensionTotal, (string)$invoice['hesaplanan_kdv'], 2));
         // Discounts are represented at line level, already included in line extensions.
+        $amount($totals, 'cbc:PayableRoundingAmount', '0.00');
         $amount($totals, 'cbc:PayableAmount', $invoice['odenecek_tutar']);
         foreach ($lines as $index => $line) {
             $node = $add($root, 'cac:InvoiceLine'); $add($node, 'cbc:ID', $index + 1); $add($node, 'cbc:InvoicedQuantity', $line['miktar'], ['unitCode' => $line['birim'] ?? 'C62']);
@@ -138,7 +142,10 @@ class UblGeneratorService
                 $add($discount, 'cbc:MultiplierFactorNumeric', bcdiv((string)$line['iskonto_orani'], '100', 6)); $amount($discount, 'cbc:Amount', $line['iskonto_tutari']);
                 $amount($discount, 'cbc:BaseAmount', bcadd($base, (string)$line['iskonto_tutari'], 2));
             }
-            $tax = $add($node, 'cac:TaxTotal'); $amount($tax, 'cbc:TaxAmount', $line['kdv_tutari']); $subtax($tax, $line);
+            $rawLineVat = $line['_ubl_kdv_tutari'] ?? $line['kdv_tutari'];
+            $tax = $add($node, 'cac:TaxTotal'); $amount($tax, 'cbc:TaxAmount', $rawLineVat, 8);
+            $taxLine = $line; $taxLine['kdv_tutari'] = $rawLineVat;
+            $subtax($tax, $taxLine, false, 8);
             if (bccomp((string)($line['tevkifat_tutari'] ?? '0'), '0', 2) > 0) {
                 $tax = $add($node, 'cac:WithholdingTaxTotal'); $amount($tax, 'cbc:TaxAmount', $line['tevkifat_tutari']); $subtax($tax, $line, true);
             }
