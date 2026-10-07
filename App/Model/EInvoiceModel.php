@@ -1648,16 +1648,20 @@ class EInvoiceModel extends Model
      */
     public function syncAllLineDescriptionsFromXml(int $firmId): array
     {
+        $where = "deleted_at IS NULL AND ubl_xml_path IS NOT NULL AND ubl_xml_path != ''";
+        $bind = [];
+        if ($firmId > 0) {
+            $where .= " AND firm_id = :firm_id";
+            $bind['firm_id'] = $firmId;
+        }
+
         $stmt = $this->db->prepare("
             SELECT id, fatura_no, ubl_xml_path 
             FROM faturalar 
-            WHERE firm_id = :firm_id 
-              AND ubl_xml_path IS NOT NULL 
-              AND ubl_xml_path != '' 
-              AND deleted_at IS NULL
+            WHERE $where
             ORDER BY id ASC
         ");
-        $stmt->execute(['firm_id' => $firmId]);
+        $stmt->execute($bind);
         $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $updatedLines = 0;
@@ -1695,33 +1699,58 @@ class EInvoiceModel extends Model
 
             foreach ($xp->query("//*[local-name()='InvoiceLine']") as $line) {
                 $lineIdx++;
+                $notes = [];
+                foreach ($xp->query("./*[local-name()='Note']", $line) as $nNode) {
+                    $nt = trim($nNode->textContent);
+                    if ($nt !== '') $notes[] = $nt;
+                }
+                $lineNote = implode(' ', $notes);
                 $desc = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='Description'])", $line));
                 $name = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='Name'])", $line));
                 $code = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='SellersItemIdentification']/*[local-name()='ID'])", $line));
+                if (empty($code)) {
+                    $code = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='BuyersItemIdentification']/*[local-name()='ID'])", $line));
+                }
+                if (empty($code)) {
+                    $code = trim($xp->evaluate("string(.//*[local-name()='Item']/*[local-name()='StandardItemIdentification']/*[local-name()='ID'])", $line));
+                }
 
-                if (empty($code) && !empty($name) && !empty($desc)) {
+                if (empty($code) && !empty($name) && (!empty($desc) || !empty($lineNote))) {
                     $code = $name;
                 }
 
-                $finalName = $name;
-                if (!empty($desc) && ($name === $code || empty($name) || $name !== $desc)) {
-                    $finalName = $desc;
-                    if (empty($code) && !empty($name)) {
-                        $code = $name;
-                    }
+                $baseName = $desc ?: $name;
+                if (!empty($code) && $baseName === $code && !empty($desc)) {
+                    $baseName = $desc;
                 }
 
-                if (!empty($finalName) || !empty($code)) {
+                if (!empty($lineNote)) {
+                    if (!empty($baseName) && stripos($lineNote, $baseName) === false && stripos($baseName, $lineNote) === false) {
+                        $finalName = $baseName . ' - ' . $lineNote;
+                    } else {
+                        $finalName = $lineNote ?: $baseName;
+                    }
+                } else {
+                    $finalName = $baseName;
+                }
+
+                if (!empty($finalName) || !empty($code) || !empty($lineNote)) {
                     $upd = $this->db->prepare("
                         UPDATE fatura_satirlari 
                         SET urun_hizmet_adi = :uname, 
-                            urun_kodu = CASE WHEN :ucode != '' THEN :ucode ELSE urun_kodu END 
+                            urun_kodu = CASE WHEN :ucode != '' THEN :ucode ELSE urun_kodu END,
+                            istisna_aciklama = CASE 
+                                WHEN :unote != '' AND (istisna_aciklama IS NULL OR istisna_aciklama = '') THEN :unote 
+                                WHEN :unote != '' AND istisna_aciklama NOT LIKE CONCAT('%', :unote, '%') THEN CONCAT(istisna_aciklama, ' | ', :unote)
+                                ELSE istisna_aciklama 
+                            END
                         WHERE fatura_id = :fid 
                           AND sira_no = :sno
                     ");
                     $upd->execute([
                         'uname' => mb_substr($finalName ?: $name, 0, 255),
                         'ucode' => mb_substr($code, 0, 50),
+                        'unote' => $lineNote,
                         'fid'   => (int)$inv['id'],
                         'sno'   => $lineIdx
                     ]);

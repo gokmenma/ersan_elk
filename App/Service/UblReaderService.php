@@ -74,25 +74,36 @@ final class UblReaderService
                 $base = $decimal($text('cbc:LineExtensionAmount', $node));
                 $vat = $decimal($text('cac:TaxTotal/cbc:TaxAmount', $node));
                 $withheld = $decimal($text('cac:WithholdingTaxTotal/cbc:TaxAmount', $node));
+                $lineNotes = array_map(static fn($n) => trim($n->textContent), iterator_to_array($xp->query('cbc:Note', $node)));
+                $lineNote = implode(' ', array_filter($lineNotes));
                 $rawName = trim($text('cac:Item/cbc:Name', $node) ?: '');
                 $rawDesc = trim($text('cac:Item/cbc:Description', $node) ?: '');
                 $rawKeyword = trim($text('cac:Item/cbc:Keyword', $node) ?: '');
                 $itemCode = trim($text('cac:Item/cac:SellersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:BuyersItemIdentification/cbc:ID', $node) ?: $text('cac:Item/cac:StandardItemIdentification/cbc:ID', $node) ?: '');
 
-                if (empty($itemCode) && !empty($rawName) && !empty($rawDesc)) {
+                if (empty($itemCode) && !empty($rawName) && (!empty($rawDesc) || !empty($lineNote))) {
                     $itemCode = $rawName;
                 }
 
-                if (!empty($rawDesc) && ($rawName === $itemCode || empty($rawName) || $rawName !== $rawDesc)) {
-                    $itemName = $rawDesc;
-                    if (empty($itemCode) && !empty($rawName)) {
-                        $itemCode = $rawName;
-                    }
-                } else {
-                    $itemName = $rawName ?: $rawDesc ?: $rawKeyword;
+                $baseName = $rawDesc ?: $rawName ?: $rawKeyword;
+                if (!empty($itemCode) && $baseName === $itemCode && !empty($rawDesc)) {
+                    $baseName = $rawDesc;
                 }
 
-                $lines[] = ['urun_hizmet_adi' => $itemName, 'urun_kodu' => $itemCode,
+                if (!empty($lineNote)) {
+                    if (!empty($baseName) && stripos($lineNote, $baseName) === false && stripos($baseName, $lineNote) === false) {
+                        $itemName = $baseName . ' - ' . $lineNote;
+                    } else {
+                        $itemName = $lineNote ?: $baseName;
+                    }
+                } else {
+                    $itemName = $baseName;
+                }
+
+                $exemptionReason = $text('cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:TaxExemptionReason', $node) ?: null;
+                $rowDesc = $exemptionReason ? ($exemptionReason . ($lineNote !== '' ? ' | ' . $lineNote : '')) : ($lineNote ?: null);
+
+                $lines[] = ['urun_hizmet_adi' => mb_substr($itemName, 0, 255), 'urun_kodu' => mb_substr($itemCode, 0, 50),
                     'miktar' => $decimal($text('cbc:InvoicedQuantity', $node)), 'birim' => $text('cbc:InvoicedQuantity/@unitCode', $node),
                     'birim_fiyat' => $decimal($text('cac:Price/cbc:PriceAmount', $node)),
                     'iskonto_tutari' => bcadd((string)$xp->evaluate('sum(cac:AllowanceCharge[cbc:ChargeIndicator="false"]/cbc:Amount)', $node), '0', 2),
@@ -102,7 +113,7 @@ final class UblReaderService
                     'tevkifat_kodu' => $text('cac:WithholdingTaxTotal/cac:TaxSubtotal/cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode', $node) ?: null,
                     'tevkifat_orani' => $decimal($text('cac:WithholdingTaxTotal/cac:TaxSubtotal/cbc:Percent', $node)),
                     'istisna_kodu' => $text('cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:TaxExemptionReasonCode', $node) ?: null,
-                    'istisna_aciklama' => $text('cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:TaxExemptionReason', $node) ?: null,
+                    'istisna_aciklama' => $rowDesc,
                     'satir_toplami' => bcsub(bcadd($base, $vat, 2), $withheld, 2)];
             }
             if (!$lines) throw new \InvalidArgumentException('XML’de fatura kalemi bulunamadı.');
