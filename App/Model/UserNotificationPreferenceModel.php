@@ -17,6 +17,7 @@ class UserNotificationPreferenceModel extends Model
     public const TYPE_TASK = 'task';
     public const TYPE_DOCUMENT = 'document';
     public const TYPE_SHIFT = 'shift';
+    public const TYPE_EINVOICE = 'einvoice';
 
     public const TYPES = [
         self::TYPE_KACAK_CREATED,
@@ -30,6 +31,7 @@ class UserNotificationPreferenceModel extends Model
         self::TYPE_TASK,
         self::TYPE_DOCUMENT,
         self::TYPE_SHIFT,
+        self::TYPE_EINVOICE,
     ];
 
     protected $table = 'user_notification_preferences';

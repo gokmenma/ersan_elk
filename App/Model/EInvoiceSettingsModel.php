@@ -39,6 +39,25 @@ class EInvoiceSettingsModel extends Model
         }
     }
 
+    /** @return int[] */
+    public function getActiveFirmIds(): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT firm_id
+             FROM efatura_ayarlar
+             WHERE is_active = 1
+               AND entegrator = :entegrator
+               AND api_username IS NOT NULL
+               AND api_username <> ''
+               AND api_password IS NOT NULL
+               AND api_password <> ''
+             ORDER BY firm_id"
+        );
+        $stmt->execute(['entegrator' => 'EDM']);
+
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+    }
+
     /**
      * Firma e-fatura ayarlarını kaydeder veya günceller
      */

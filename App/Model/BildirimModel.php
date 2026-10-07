@@ -193,4 +193,44 @@ class BildirimModel extends Model
 
         return count($usersToNotify);
     }
+
+    /**
+     * Belirli bir firmaya erişimi ve ilgili sayfa yetkisi olan aktif kullanıcılara bildirir.
+     * Superadmin kullanıcılar firma listesinden bağımsız olarak kapsama alınır.
+     */
+    public function broadcastByPermissionForFirm(int $firmId, string $permission, string $title, string $message, ?string $link = null, string $icon = 'bell', string $color = 'primary', ?string $notificationType = null): int
+    {
+        if ($firmId <= 0 || trim($permission) === '') {
+            return 0;
+        }
+
+        $assignmentModel = new UserRoleAssignmentModel();
+        $usersToNotify = [];
+        foreach ($assignmentModel->activeUsersWithPermission($permission) as $user) {
+            $stmt = $this->db->prepare(
+                "SELECT id FROM users
+                 WHERE id = :user_id
+                   AND durum = 'Aktif'
+                   AND FIND_IN_SET(:firm_id, REPLACE(COALESCE(firma_ids, ''), ' ', '')) > 0
+                 LIMIT 1"
+            );
+            $stmt->execute(['user_id' => (int)$user->id, 'firm_id' => (string)$firmId]);
+            if ($stmt->fetchColumn()) {
+                $usersToNotify[(int)$user->id] = (int)$user->id;
+            }
+        }
+
+        foreach ($assignmentModel->activeSuperAdminUserIds() as $userId) {
+            $usersToNotify[$userId] = $userId;
+        }
+
+        $created = 0;
+        foreach ($usersToNotify as $userId) {
+            if ($this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType)) {
+                $created++;
+            }
+        }
+
+        return $created;
+    }
 }

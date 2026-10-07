@@ -191,38 +191,40 @@ class IzinFormuService
         .izin-table-section {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
-            table-layout: fixed;
+            margin-bottom: 14px;
         }
         .izin-table-section td {
-            border: 1px solid #111111;
-            padding: 5px 8px;
-            vertical-align: top;
-            font-size: 12px;
+            border: 1px solid #222222;
+            padding: 5px 10px;
+            vertical-align: middle;
+            font-size: 12.5px;
         }
         .izin-tbl-hdr {
             font-weight: 700;
-            background-color: #f7f7f7;
+            background-color: #f0f0f0;
             text-transform: uppercase;
-            font-size: 12.5px;
-            padding: 6px 8px !important;
-            border: 1px solid #111111;
+            font-size: 13px;
+            padding: 6px 10px !important;
+            border: 1px solid #222222;
         }
         .izin-lbl-col {
-            width: 28%;
-            font-weight: 600;
-            color: #222222;
+            width: 29%;
+            font-weight: 700;
+            color: #111111;
+            background-color: #ffffff;
         }
         .izin-sep-col {
-            width: 3%;
+            width: 22px;
+            min-width: 22px;
+            max-width: 22px;
             text-align: center;
-            font-weight: 600;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
+            font-weight: 700;
+            color: #111111;
+            padding: 5px 0 !important;
         }
         .izin-val-col {
-            width: 69%;
-            color: #000000;
+            width: auto;
+            color: #111111;
         }
         .izin-signatures-table {
             width: 100%;
@@ -231,7 +233,7 @@ class IzinFormuService
             table-layout: fixed;
         }
         .izin-signatures-table td {
-            border: 1px solid #111111;
+            border: 1px solid #222222;
             padding: 8px;
             vertical-align: top;
             font-size: 11.5px;
@@ -359,7 +361,7 @@ class IzinFormuService
             <tr>
                 <td class="izin-lbl-col">Türü</td>
                 <td class="izin-sep-col">:</td>
-                <td class="izin-val-col fw-bold text-primary">{$hTur}</td>
+                <td class="izin-val-col fw-bold">{$hTur}</td>
             </tr>
             <tr>
                 <td class="izin-lbl-col">Süresi (Gün)</td>

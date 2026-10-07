@@ -34,6 +34,7 @@ $notificationOptions = [
     UserNotificationPreferenceModel::TYPE_TASK => ['Görev Bildirimleri', 'Görev zamanı ve görev süreçleri için bildirim alın.', 'check-square', 'text-warning'],
     UserNotificationPreferenceModel::TYPE_DOCUMENT => ['Evrak Bildirimleri', 'Tarafınıza evrak zimmetlendiğinde bildirim alın.', 'file-text', 'text-secondary'],
     UserNotificationPreferenceModel::TYPE_SHIFT => ['Nöbet Bildirimleri', 'Nöbet talebi, değişim ve mazeret bildirimlerini alın.', 'clock', 'text-primary'],
+    UserNotificationPreferenceModel::TYPE_EINVOICE => ['E-Fatura Bildirimleri', 'EDM üzerinden yeni bir gelen fatura alındığında bildirim alın.', 'file-plus', 'text-success'],
 ];
 ?>
 

@@ -964,7 +964,7 @@ class EInvoiceService
         $client = $this->client($firmId);
         // 1. Aşama: HEADER_ONLY = 'Y' ile sadece başlık ve durum listesini hızlıca çek
         $items = $client->getInvoices($direction === 'GELEN' ? 'IN' : 'OUT', $start, $end, 500, $dateType, 'Y');
-        $result = $client->getSyncResult() + ['added_count' => 0, 'updated_count' => 0];
+        $result = $client->getSyncResult() + ['added_count' => 0, 'updated_count' => 0, 'new_invoices' => []];
         $reader = new UblReaderService();
         foreach ($items as $item) {
             try {
@@ -1015,6 +1015,14 @@ class EInvoiceService
                     $id = $this->invoiceModel->importInvoice($firmId, $header, $source['lines'], (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0));
                 } finally { if ($locked) $this->invoiceModel->releaseInvoiceLock((int)$existing['id'], $firmId); }
                 $result[$existing ? 'updated_count' : 'added_count']++;
+                if (!$existing && $direction === 'GELEN') {
+                    $result['new_invoices'][] = [
+                        'fatura_no' => (string)($header['fatura_no'] ?? ''),
+                        'gonderici_unvan' => (string)($source['supplier']['unvan'] ?? $header['alici_unvan'] ?? ''),
+                        'odenecek_tutar' => (string)($header['odenecek_tutar'] ?? '0'),
+                        'para_birimi' => (string)($header['para_birimi'] ?? 'TRY'),
+                    ];
+                }
             } catch (\Throwable $e) {
                 $result['complete'] = false; $result['errors'][] = ['uuid' => $item['uuid'], 'message' => $this->publicMessage($e)];
             }
