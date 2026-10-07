@@ -1870,13 +1870,117 @@ document.addEventListener('DOMContentLoaded', function () {
         frameDoc.open();
         frameDoc.write(`
             <!DOCTYPE html>
-            <html>
+            <html lang="tr">
             <head>
                 <meta charset="utf-8">
                 <title>İzin Talep Formu</title>
                 <style>
-                    @page { size: A4 portrait; margin: 10mm 12mm; }
-                    body { margin: 0; padding: 0; background: #fff; font-family: "Segoe UI", Arial, sans-serif; }
+                    * { box-sizing: border-box !important; }
+                    @page { size: A4 portrait; margin: 15mm 15mm 15mm 15mm; }
+                    html, body {
+                        width: 100%;
+                        margin: 0;
+                        padding: 0;
+                        background: #ffffff;
+                        color: #000000;
+                        font-family: "Segoe UI", Arial, sans-serif;
+                    }
+                    .izin-form-print-wrapper {
+                        width: 100% !important;
+                        margin: 0 auto !important;
+                        padding: 0 !important;
+                    }
+                    .izin-form-container {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 auto !important;
+                        padding: 0 !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                    }
+                    .izin-form-title {
+                        text-align: center;
+                        font-size: 18px;
+                        font-weight: 700;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 16px;
+                        color: #000000;
+                        text-transform: uppercase;
+                    }
+                    .izin-table-section {
+                        width: 100% !important;
+                        border-collapse: collapse;
+                        margin-bottom: 12px;
+                    }
+                    .izin-table-section td {
+                        border: 1px solid #222222;
+                        padding: 5px 8px;
+                        vertical-align: middle;
+                        font-size: 12px;
+                    }
+                    .izin-tbl-hdr {
+                        font-weight: 700;
+                        background-color: #f0f0f0;
+                        text-transform: uppercase;
+                        font-size: 12px;
+                        padding: 6px 8px !important;
+                        border: 1px solid #222222;
+                    }
+                    .izin-lbl-col {
+                        width: 28%;
+                        font-weight: 700;
+                        color: #111111;
+                        background-color: #ffffff;
+                    }
+                    .izin-sep-col {
+                        width: 20px;
+                        min-width: 20px;
+                        max-width: 20px;
+                        text-align: center;
+                        font-weight: 700;
+                        color: #111111;
+                        padding: 5px 0 !important;
+                    }
+                    .izin-val-col {
+                        width: auto;
+                        color: #111111;
+                    }
+                    .izin-signatures-table {
+                        width: 100% !important;
+                        border-collapse: collapse;
+                        margin-top: 14px;
+                        table-layout: fixed;
+                    }
+                    .izin-signatures-table td {
+                        border: 1px solid #222222;
+                        padding: 8px 6px;
+                        vertical-align: top;
+                        font-size: 11px;
+                        text-align: center;
+                        width: 33.33%;
+                    }
+                    .sig-header {
+                        font-weight: 700;
+                        font-size: 11.5px;
+                        text-decoration: underline;
+                        margin-bottom: 6px;
+                    }
+                    .sig-name {
+                        font-weight: 600;
+                        margin-bottom: 16px;
+                        min-height: 16px;
+                    }
+                    .sig-imza {
+                        font-style: italic;
+                        font-weight: 700;
+                        margin-bottom: 20px;
+                    }
+                    .sig-date {
+                        font-size: 10.5px;
+                        color: #333333;
+                        text-align: left;
+                        padding-left: 2px;
+                    }
                 </style>
             </head>
             <body>

@@ -311,6 +311,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: var(--sidebar-foreground) !important;
                     border-radius: 8px !important;
                     padding-left: 36px !important;
+                    padding-right: 32px !important;
                     height: 38px;
                     font-size: 13px;
                     backdrop-filter: blur(4px);
@@ -336,6 +337,32 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: var(--sidebar-muted);
                     pointer-events: none;
                     transform: translateY(-50%);
+                    z-index: 2;
+                }
+
+                .sidebar-search-container .btn-clear-search {
+                    position: absolute;
+                    right: 8px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: rgba(125, 138, 156, 0.18);
+                    border: none;
+                    color: var(--sidebar-muted, #8590a5);
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+                    cursor: pointer;
+                    z-index: 5;
+                    transition: all 0.15s ease;
+                }
+
+                .sidebar-search-container .btn-clear-search:hover {
+                    color: #ffffff !important;
+                    background: #ef4444 !important;
                 }
 
                 .btn-sidebar-settings {
@@ -896,6 +923,12 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                             <input type="text" class="form-control sidebar-search" id="menu-search-input"
                                 placeholder="Menüde ara...">
                             <i data-feather="search" class="search-icon"></i>
+                            <button type="button" class="btn-clear-search" id="btn-clear-menu-search" style="display: none;" title="Aramayı Temizle" aria-label="Aramayı Temizle">
+                                <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
                         </div>
                         <div class="dropdown menu-settings-dropdown">
                             <button class="btn btn-sidebar-settings dropdown-toggle" type="button" id="sidebarMenuSettingsBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Menü Ayarları">
@@ -1143,20 +1176,84 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
         setTimeout(scrollToActiveSidebarMenu, 400);
 
         const searchInput = document.getElementById('menu-search-input');
+        const clearSearchBtn = document.getElementById('btn-clear-menu-search');
         const sideMenu = document.getElementById('side-menu');
 
         // 1. Menüde Arama Filtreleme
         if (searchInput && sideMenu) {
+            // Başlangıçtaki orijinal aktif ve açık menü durumlarını kaydet
+            sideMenu.querySelectorAll('.menu-item-draggable').forEach(li => {
+                if (li.classList.contains('mm-active')) {
+                    li.dataset.origActive = 'true';
+                }
+                const topAnchor = li.querySelector(':scope > a');
+                if (topAnchor && topAnchor.getAttribute('aria-expanded') === 'true') {
+                    topAnchor.dataset.origExpanded = 'true';
+                }
+                const subMenu = li.querySelector(':scope > ul.sub-menu');
+                if (subMenu && subMenu.classList.contains('mm-show')) {
+                    subMenu.dataset.origShow = 'true';
+                }
+            });
+
+            function resetMenuSearchState() {
+                sideMenu.classList.remove('is-menu-searching');
+                if (clearSearchBtn) clearSearchBtn.style.display = 'none';
+
+                const sections = sideMenu.querySelectorAll('.menu-section');
+                sections.forEach(s => s.style.display = '');
+
+                sideMenu.querySelectorAll('li').forEach(li => {
+                    li.style.display = '';
+                });
+
+                sideMenu.querySelectorAll('ul.sub-menu').forEach(sub => {
+                    sub.style.display = '';
+                    sub.style.height = '';
+                });
+
+                sideMenu.querySelectorAll('.menu-item-draggable').forEach(li => {
+                    const topAnchor = li.querySelector(':scope > a');
+                    const subMenu = li.querySelector(':scope > ul.sub-menu');
+
+                    if (li.dataset.origActive === 'true') {
+                        li.classList.add('mm-active');
+                    } else {
+                        li.classList.remove('mm-active');
+                    }
+
+                    if (topAnchor) {
+                        if (topAnchor.dataset.origExpanded === 'true') {
+                            topAnchor.setAttribute('aria-expanded', 'true');
+                        } else {
+                            topAnchor.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+
+                    if (subMenu) {
+                        if (subMenu.dataset.origShow === 'true') {
+                            subMenu.classList.add('mm-show');
+                            subMenu.setAttribute('aria-expanded', 'true');
+                        } else {
+                            subMenu.classList.remove('mm-show');
+                            subMenu.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+            }
+
             searchInput.addEventListener('input', function () {
                 const filter = this.value.toLowerCase().trim();
-                const sections = sideMenu.querySelectorAll('.menu-section');
 
                 if (filter === '') {
-                    sideMenu.querySelectorAll('li').forEach(li => li.style.display = '');
-                    sections.forEach(s => s.style.display = '');
+                    resetMenuSearchState();
                     return;
                 }
 
+                if (clearSearchBtn) clearSearchBtn.style.display = 'flex';
+                sideMenu.classList.add('is-menu-searching');
+
+                const sections = sideMenu.querySelectorAll('.menu-section');
                 sections.forEach(section => {
                     let sectionHasVisible = false;
                     const topItems = section.querySelectorAll('.menu-items-list > li[data-menu-id]');
@@ -1165,34 +1262,39 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                         let topLiHasVisible = false;
                         const topAnchor = topLi.querySelector(':scope > a');
                         const topText = topAnchor ? topAnchor.textContent.toLowerCase() : '';
+                        const isTopMatch = topText.includes(filter);
 
+                        const subMenu = topLi.querySelector(':scope > ul.sub-menu');
                         const subItems = topLi.querySelectorAll('.sub-menu > li[data-menu-id]');
                         let subHasMatch = false;
 
                         subItems.forEach(subLi => {
                             const subAnchor = subLi.querySelector('a');
                             const subText = subAnchor ? subAnchor.textContent.toLowerCase() : '';
-                            if (subText.includes(filter)) {
+                            if (subText.includes(filter) || isTopMatch) {
                                 subLi.style.display = '';
-                                subHasMatch = true;
+                                if (subText.includes(filter)) {
+                                    subHasMatch = true;
+                                }
                             } else {
                                 subLi.style.display = 'none';
                             }
                         });
 
-                        if (topText.includes(filter) || subHasMatch) {
+                        if (isTopMatch || subHasMatch) {
                             topLi.style.display = '';
                             topLiHasVisible = true;
-                            if (subHasMatch) {
+                            if (subMenu) {
                                 topLi.classList.add('mm-active');
-                                const subMenu = topLi.querySelector('ul.sub-menu');
-                                if (subMenu) {
-                                    subMenu.classList.add('mm-show');
-                                    subMenu.style.display = 'block';
-                                }
+                                if (topAnchor) topAnchor.setAttribute('aria-expanded', 'true');
+                                subMenu.classList.add('mm-show');
+                                subMenu.style.display = 'block';
                             }
                         } else {
                             topLi.style.display = 'none';
+                            if (subMenu) {
+                                subMenu.style.display = 'none';
+                            }
                         }
 
                         if (topLiHasVisible) {
@@ -1202,6 +1304,23 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
                     section.style.display = sectionHasVisible ? '' : 'none';
                 });
+            });
+
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    searchInput.value = '';
+                    resetMenuSearchState();
+                    searchInput.focus();
+                });
+            }
+
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    this.value = '';
+                    resetMenuSearchState();
+                    this.blur();
+                }
             });
         }
 

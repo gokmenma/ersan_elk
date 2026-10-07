@@ -167,16 +167,20 @@ class IzinFormuService
         $html = <<<HTML
 <div class="izin-form-print-wrapper" id="izinFormPrintArea">
     <style>
+        .izin-form-print-wrapper {
+            width: 100%;
+            box-sizing: border-box;
+        }
         .izin-form-container {
             width: 100%;
-            max-width: 800px;
+            max-width: 760px;
             margin: 0 auto;
             background: #ffffff;
             color: #000000;
             font-family: "Segoe UI", Arial, sans-serif;
             font-size: 13px;
             line-height: 1.4;
-            padding: 24px 30px;
+            padding: 24px 28px;
             box-sizing: border-box;
         }
         .izin-form-title {
@@ -184,39 +188,41 @@ class IzinFormuService
             font-size: 18px;
             font-weight: 700;
             letter-spacing: 0.5px;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
             color: #000000;
             text-transform: uppercase;
         }
         .izin-table-section {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
         }
         .izin-table-section td {
             border: 1px solid #222222;
-            padding: 5px 10px;
+            padding: 5px 8px;
             vertical-align: middle;
             font-size: 12.5px;
+            box-sizing: border-box;
         }
         .izin-tbl-hdr {
             font-weight: 700;
             background-color: #f0f0f0;
             text-transform: uppercase;
-            font-size: 13px;
-            padding: 6px 10px !important;
+            font-size: 12.5px;
+            padding: 6px 8px !important;
             border: 1px solid #222222;
         }
         .izin-lbl-col {
-            width: 29%;
+            width: 28%;
             font-weight: 700;
             color: #111111;
             background-color: #ffffff;
         }
         .izin-sep-col {
-            width: 22px;
-            min-width: 22px;
-            max-width: 22px;
+            width: 20px;
+            min-width: 20px;
+            max-width: 20px;
             text-align: center;
             font-weight: 700;
             color: #111111;
@@ -231,14 +237,16 @@ class IzinFormuService
             border-collapse: collapse;
             margin-top: 14px;
             table-layout: fixed;
+            box-sizing: border-box;
         }
         .izin-signatures-table td {
             border: 1px solid #222222;
-            padding: 8px;
+            padding: 8px 6px;
             vertical-align: top;
             font-size: 11.5px;
             text-align: center;
             width: 33.33%;
+            box-sizing: border-box;
         }
         .sig-header {
             font-weight: 700;
@@ -248,22 +256,28 @@ class IzinFormuService
         }
         .sig-name {
             font-weight: 600;
-            margin-bottom: 18px;
-            min-height: 18px;
+            margin-bottom: 16px;
+            min-height: 16px;
         }
         .sig-imza {
             font-style: italic;
             font-weight: 700;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
         .sig-date {
             font-size: 11px;
             color: #333333;
             text-align: left;
-            padding-left: 4px;
+            padding-left: 2px;
         }
 
         @media print {
+            html, body {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+            }
             body * {
                 visibility: hidden;
             }
@@ -271,22 +285,24 @@ class IzinFormuService
                 visibility: visible;
             }
             #izinFormPrintArea {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                margin: 0;
-                padding: 10mm 15mm;
+                position: static !important;
+                width: 100% !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
             }
             .izin-form-container {
                 max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 auto !important;
                 padding: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
+                box-sizing: border-box !important;
             }
             @page {
                 size: A4 portrait;
-                margin: 10mm 10mm;
+                margin: 15mm 15mm 15mm 15mm;
             }
         }
     </style>
