@@ -605,24 +605,48 @@ class EInvoiceModel extends Model
                     $primaryVal = trim($vals[0] ?? '');
 
                     if ($field === 'kalemler_ozet') {
-                        // Kalemler / Ürün adı bazlı özel filtre
+                        // Kalemler / Ürün adı ve Fatura Açıklamaları bazlı filtre
                         if ($mode === 'multi') {
                             $mConds = [];
                             foreach ($vals as $vIdx => $v) {
                                 $v = trim($v);
                                 if ($v === '') continue;
                                 $vParam = "{$paramKey}_m_{$vIdx}";
-                                $mConds[] = "(fs.urun_hizmet_adi LIKE :$vParam OR fs.urun_kodu LIKE :$vParam)";
+                                $mConds[] = "(
+                                    f.notlar LIKE :$vParam 
+                                    OR EXISTS (
+                                        SELECT 1 FROM fatura_satirlari fs 
+                                        WHERE fs.fatura_id = f.id 
+                                          AND fs.deleted_at IS NULL 
+                                          AND (fs.urun_hizmet_adi LIKE :$vParam OR fs.urun_kodu LIKE :$vParam OR fs.istisna_aciklama LIKE :$vParam)
+                                    )
+                                )";
                                 $bind[$vParam] = "%$v%";
                             }
                             if (!empty($mConds)) {
-                                $where .= " AND EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (" . implode(" OR ", $mConds) . "))";
+                                $where .= " AND (" . implode(" OR ", $mConds) . ")";
                             }
                         } elseif ($mode === 'not_contains') {
-                            $where .= " AND NOT EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey))";
+                            $where .= " AND (
+                                (f.notlar IS NULL OR f.notlar NOT LIKE :$paramKey)
+                                AND NOT EXISTS (
+                                    SELECT 1 FROM fatura_satirlari fs 
+                                    WHERE fs.fatura_id = f.id 
+                                      AND fs.deleted_at IS NULL 
+                                      AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey OR fs.istisna_aciklama LIKE :$paramKey)
+                                )
+                            )";
                             $bind[$paramKey] = "%$primaryVal%";
                         } else {
-                            $where .= " AND EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey OR fs.istisna_aciklama LIKE :$paramKey))";
+                            $where .= " AND (
+                                f.notlar LIKE :$paramKey 
+                                OR EXISTS (
+                                    SELECT 1 FROM fatura_satirlari fs 
+                                    WHERE fs.fatura_id = f.id 
+                                      AND fs.deleted_at IS NULL 
+                                      AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey OR fs.istisna_aciklama LIKE :$paramKey)
+                                )
+                            )";
                             $bind[$paramKey] = "%$primaryVal%";
                         }
                         continue;
@@ -741,7 +765,15 @@ class EInvoiceModel extends Model
                     }
                 } else {
                     if ($field === 'kalemler_ozet') {
-                        $where .= " AND EXISTS (SELECT 1 FROM fatura_satirlari fs WHERE fs.fatura_id = f.id AND fs.deleted_at IS NULL AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey OR fs.istisna_aciklama LIKE :$paramKey))";
+                        $where .= " AND (
+                            f.notlar LIKE :$paramKey 
+                            OR EXISTS (
+                                SELECT 1 FROM fatura_satirlari fs 
+                                WHERE fs.fatura_id = f.id 
+                                  AND fs.deleted_at IS NULL 
+                                  AND (fs.urun_hizmet_adi LIKE :$paramKey OR fs.urun_kodu LIKE :$paramKey OR fs.istisna_aciklama LIKE :$paramKey)
+                            )
+                        )";
                         $bind[$paramKey] = "%$rawVal%";
                     } elseif ($field === 'f.fatura_tarihi') {
                         $where .= " AND $field = :$paramKey";
@@ -759,40 +791,62 @@ class EInvoiceModel extends Model
 
         if (!empty($params['urun_ara'])) {
             $itemTerm = trim((string)$params['urun_ara']);
-            $where .= " AND EXISTS (
-                SELECT 1 FROM fatura_satirlari fs 
-                WHERE fs.fatura_id = f.id 
-                  AND fs.deleted_at IS NULL 
-                  AND (
-                      fs.urun_hizmet_adi LIKE :item_term 
-                      OR fs.urun_kodu LIKE :item_term 
-                      OR fs.istisna_aciklama LIKE :item_term
-                  )
-            )";
-            $bind['item_term'] = "%$itemTerm%";
+            $words = preg_split('/\s+/', $itemTerm, -1, PREG_SPLIT_NO_EMPTY);
+            if (!empty($words)) {
+                $wordConds = [];
+                foreach ($words as $wIdx => $word) {
+                    $pWord = "p_word_" . $wIdx;
+                    $pWordNote = "p_word_n_" . $wIdx;
+                    $wordConds[] = "(
+                        f.notlar LIKE :$pWordNote 
+                        OR EXISTS (
+                            SELECT 1 FROM fatura_satirlari fs 
+                            WHERE fs.fatura_id = f.id 
+                              AND fs.deleted_at IS NULL 
+                              AND (
+                                  fs.urun_hizmet_adi LIKE :$pWord 
+                                  OR fs.urun_kodu LIKE :$pWord 
+                                  OR fs.istisna_aciklama LIKE :$pWord
+                              )
+                        )
+                    )";
+                    $bind[$pWord] = "%$word%";
+                    $bind[$pWordNote] = "%$word%";
+                }
+                $where .= " AND (" . implode(" AND ", $wordConds) . ")";
+            }
         }
 
         if (!empty($search)) {
-            $where .= " AND (
-                f.fatura_no LIKE :s 
-                OR f.alici_unvan LIKE :s 
-                OR f.alici_vkn_tckn LIKE :s 
-                OR f.ettn LIKE :s
-                OR f.notlar LIKE :s
-                OR f.siparis_no LIKE :s
-                OR f.irsaliye_no LIKE :s
-                OR EXISTS (
-                    SELECT 1 FROM fatura_satirlari fs 
-                    WHERE fs.fatura_id = f.id 
-                      AND fs.deleted_at IS NULL 
-                      AND (
-                          fs.urun_hizmet_adi LIKE :s 
-                          OR fs.urun_kodu LIKE :s 
-                          OR fs.istisna_aciklama LIKE :s
-                      )
-                )
-            )";
-            $bind['s'] = "%$search%";
+            $searchWords = preg_split('/\s+/', trim((string)$search), -1, PREG_SPLIT_NO_EMPTY);
+            if (!empty($searchWords)) {
+                $searchConds = [];
+                foreach ($searchWords as $sIdx => $sword) {
+                    $sParam = "s_" . $sIdx;
+                    $searchConds[] = "(
+                        f.fatura_no LIKE :$sParam 
+                        OR f.alici_unvan LIKE :$sParam 
+                        OR f.alici_vkn_tckn LIKE :$sParam 
+                        OR f.ettn LIKE :$sParam
+                        OR f.notlar LIKE :$sParam
+                        OR f.siparis_no LIKE :$sParam
+                        OR f.irsaliye_no LIKE :$sParam
+                        OR f.alici_adres LIKE :$sParam
+                        OR EXISTS (
+                            SELECT 1 FROM fatura_satirlari fs 
+                            WHERE fs.fatura_id = f.id 
+                              AND fs.deleted_at IS NULL 
+                              AND (
+                                  fs.urun_hizmet_adi LIKE :$sParam 
+                                  OR fs.urun_kodu LIKE :$sParam 
+                                  OR fs.istisna_aciklama LIKE :$sParam
+                              )
+                        )
+                    )";
+                    $bind[$sParam] = "%$sword%";
+                }
+                $where .= " AND (" . implode(" AND ", $searchConds) . ")";
+            }
         }
 
         // Toplam Kayıt Sayısı

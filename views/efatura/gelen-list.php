@@ -86,10 +86,7 @@ $title = 'Gelen Faturalar';
                 <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
                 </button>
-                    <button type="button" class="dropdown-item d-flex align-items-center text-primary" id="btnSyncLineDescriptions">
-                        <i class="bx bx-sync me-2 font-size-16 text-primary"></i> Satır Açıklamalarını XML'den Güncelle
-                    </button>
-                    <div class="dropdown-divider"></div>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
                     <button type="button" class="dropdown-item d-flex align-items-center text-success" id="exportExcel">
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
