@@ -1668,12 +1668,15 @@ class EInvoiceModel extends Model
     {
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare('SELECT id, deleted_at, yon, entegrator_durum_kodu, ubl_xml_path, kaynak_xml, islem_belirsiz FROM faturalar WHERE ettn = :uuid AND firm_id = :firm FOR UPDATE');
+            $stmt = $this->db->prepare('SELECT id, deleted_at, yon, entegrator_durum_kodu, ubl_xml_path, kaynak_xml, islem_belirsiz, alici_unvan, alici_vkn_tckn FROM faturalar WHERE ettn = :uuid AND firm_id = :firm FOR UPDATE');
             $stmt->execute(['uuid' => $header['ettn'], 'firm' => $firmId]);
             $existing = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($existing && ($existing['deleted_at'] || $existing['yon'] !== $header['yon'] || $existing['entegrator_durum_kodu'] === 'GONDERILIYOR' || !empty($existing['islem_belirsiz']))) throw new \RuntimeException('Fatura silinmiş, işlemde veya yönü uyuşmuyor.');
-            if ($existing && !empty($header['ubl_xml_path']) && !empty($existing['ubl_xml_path']) && $existing['ubl_xml_path'] === $header['ubl_xml_path']) { $this->db->commit(); return (int)$existing['id']; }
-            if ($existing && !empty($header['kaynak_xml']) && !empty($existing['kaynak_xml']) && $existing['kaynak_xml'] === $header['kaynak_xml']) { $this->db->commit(); return (int)$existing['id']; }
+            $hasCompleteParty = $existing
+                && trim((string)($existing['alici_unvan'] ?? '')) !== ''
+                && trim((string)($existing['alici_vkn_tckn'] ?? '')) !== '';
+            if ($hasCompleteParty && !empty($header['ubl_xml_path']) && !empty($existing['ubl_xml_path']) && $existing['ubl_xml_path'] === $header['ubl_xml_path']) { $this->db->commit(); return (int)$existing['id']; }
+            if ($hasCompleteParty && !empty($header['kaynak_xml']) && !empty($existing['kaynak_xml']) && $existing['kaynak_xml'] === $header['kaynak_xml']) { $this->db->commit(); return (int)$existing['id']; }
             $allowed = ['yon','belge_turu','fatura_profili','fatura_tipi','ettn','fatura_no','fatura_tarihi','duzenleme_saati','vade_tarihi','alici_vkn_tckn','alici_unvan','alici_vergi_dairesi','alici_adres','alici_il','alici_ilce','alici_ulke','alici_eposta','alici_telefon','para_birimi','doviz_kuru','satir_toplami','iskonto_toplami','kdv_matrahi','hesaplanan_kdv','tevkifat_tutari','odenecek_tutar','notlar','iade_fatura_no','iade_fatura_tarihi','ubl_xml_path','kaynak_xml','entegrator_durum_kodu','edm_durum'];
             $data = array_intersect_key($header, array_flip($allowed));
             if ($existing) {

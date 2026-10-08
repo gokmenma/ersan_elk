@@ -22,6 +22,16 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertFalse($method->invoke($model, 'Manuel prim'));
     }
 
+    public function testResmiManuelEkOdemeKullaniciSecimindenBagimsizBankayaAlinir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'resolveEkOdemeYontemi');
+
+        self::assertSame('banka', $method->invoke($model, 0, 'elden', true, false, false));
+        self::assertSame('elden', $method->invoke($model, 0, 'elden', true, true, false));
+        self::assertSame('elden', $method->invoke($model, 0, 'elden', false, false, false));
+    }
+
     public function testSgkFirmaDagilimiIseGirisOncesiniSaymazVeEksikGunleriGercekFirmadanDuser(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

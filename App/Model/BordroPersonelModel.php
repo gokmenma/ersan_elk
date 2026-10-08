@@ -154,6 +154,16 @@ class BordroPersonelModel extends Model
             || strpos($kod, 'hafta_tatili') !== false;
     }
 
+    /** Resmî, elle eklenen gelirlerde kullanıcıdan ikinci bir banka seçimi beklenmez. */
+    private function resolveEkOdemeYontemi(?int $kayitSecimi, ?string $parametreYontemi, bool $resmiAlacakDahil, bool $isPuantajOdeme, bool $isPrimUsulu): string
+    {
+        $yontem = $kayitSecimi !== null
+            ? ($kayitSecimi === 1 ? 'banka' : 'elden')
+            : ($parametreYontemi ?? ($isPrimUsulu ? 'elden' : 'banka'));
+
+        return $resmiAlacakDahil && !$isPuantajOdeme ? 'banka' : $yontem;
+    }
+
     // Net/prim maaşta yalnız resmî alacak kalemleri bankaya eklenir, personel kesintileri sonra düşülür.
     // Banka kesintileri önce bankadan (yetmezse elden'den), Elden kesintileri önce elden'den (yetmezse bankadan) düşülür.
     private function hesaplaNormalBankaDagilimi(float $asgariTaban, float $bankaEkleri, float $bankaKesintisi, float $netAlacagi, float $sodexo, float $diger, float $eldenKesintisi = 0.0): array
@@ -1204,14 +1214,16 @@ class BordroPersonelModel extends Model
                 // Prim ek kazançtır; sözleşme hakedişi tabanından mahsup edilemez.
                 $isPrimTuru = ($eoTurLower === 'prim' || strpos($eoTurLower, 'prim') !== false);
 
-                if (isset($eo->banka_matrahina_ekle)) {
-                    $yontem = intval($eo->banka_matrahina_ekle) === 1 ? 'banka' : 'elden';
-                } else {
-                    $yontem = $param->odeme_yontemi ?? ($isPrimUsulu ? 'elden' : 'banka');
-                }
                 $resmiAlacakDahil = $this->isDogalResmiAlacakTuru($eoTurLower)
                     || !empty($param->resmi_alacagina_dahil)
                     || floatval($eo->resmi_tutar ?? 0) > 0;
+                $yontem = $this->resolveEkOdemeYontemi(
+                    isset($eo->banka_matrahina_ekle) ? intval($eo->banka_matrahina_ekle) : null,
+                    $param->odeme_yontemi ?? null,
+                    $resmiAlacakDahil,
+                    $isPuantajOdeme,
+                    $isPrimUsulu
+                );
                 // Net maaş + puantaj veya primler, resmî banka tavanına taşınmaz.
                 if (($isNet && $isPuantajOdeme) || $isPrimOdemeItem) {
                     $yontem = 'elden';
@@ -5527,12 +5539,6 @@ class BordroPersonelModel extends Model
             $ekOdemeTutari = isset($toplamTutar) ? $toplamTutar : $tutar;
 
             // Ek ödemenin banka matrahına eklenip eklenmeyeceği kullanıcı seçimine göre belirlenir
-            if (isset($odeme->banka_matrahina_ekle)) {
-                $yontem = intval($odeme->banka_matrahina_ekle) === 1 ? 'banka' : 'elden';
-            } else {
-                $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
-                $yontem = $parametre->odeme_yontemi ?? $defaultYontem;
-            }
             $rTutar = floatval($odeme->resmi_tutar ?? 0);
             $resmiAlacakDahil = $this->isDogalResmiAlacakTuru((string) ($odeme->tur ?? ''))
                 || !empty($parametre->resmi_alacagina_dahil)
@@ -5556,6 +5562,13 @@ class BordroPersonelModel extends Model
             // taşınmaz. Elle girilen primlerde kullanıcının Banka/Elden seçimi geçerlidir.
             $isPrimOdemeItem = $this->isPuantajEkOdeme($aciklamaLower);
             $isPrimTuru = (strpos($turLower, 'prim') !== false);
+            $yontem = $this->resolveEkOdemeYontemi(
+                isset($odeme->banka_matrahina_ekle) ? intval($odeme->banka_matrahina_ekle) : null,
+                $parametre->odeme_yontemi ?? null,
+                $resmiAlacakDahil,
+                $isPrimOdemeItem,
+                $isPrimUsulu
+            );
 
             if ($isPrimOdemeItem) {
                 if (isset($yontemliOdemeler['elden'])) {

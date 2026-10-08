@@ -393,6 +393,7 @@ vergiliKisim = max(0, tutar - muafLimit)
 - Resmi banka alacaginin dogal kalemleri maas/asgari ucret, maasa dahil yemek yardimi, es yardimi, fazla calisma ile resmi tatil/hafta tatili calismasidir.
 - Genel bir ek odemede `banka_matrahina_ekle = 1` secimi tek basina odemeyi resmi alacaga donusturmez. Bu secim, maasa dahil yemek/es yardimi kapasitesinin hesabinda ek kazancin dikkate alinmasini saglar.
 - Genel ek odemenin kendisinin resmi banka alacagina eklenmesi icin ilgili bordro parametresinde `resmi_alacagina_dahil = 1` olmasi veya kayitta pozitif `resmi_tutar` bulunmasi gerekir.
+- Elle eklenen puantaj disi bir odemenin parametresinde `resmi_alacagina_dahil = 1` ise kullanicidan ayrica odeme kanali secmesi beklenmez; sistem bu kalemi otomatik olarak banka kanalinda degerlendirir. Maasa dahil yardimli personelin prim/puantaj kazancinda yemek tavanini asan bakiyenin elden odenmesi kurali saklidir.
 - Resmi alacaga dahil olmayan ek odeme toplam net hak edisi arttirir; resmi banka matrahina eklenmeyen bakiye elden odemeye aktarilir.
 - Banka odemesi, resmi banka matrahindan banka oncelikli kesintiler dusulerek bulunur ve toplam net hak edisi asamaz. `Elden = odenecek net toplam - banka - kart/Sodexo - diger kanal` mutabakati korunur.
 
