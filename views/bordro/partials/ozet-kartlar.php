@@ -3,7 +3,7 @@
                             style="border-radius: 20px; background: rgba(231, 111, 81, 0.03); border: 1px solid rgba(231, 111, 81, 0.1) !important;">
                             <div class="card-body p-3 d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-white rounded-3 shadow-sm p-2 me-3 d-flex align-items-center justify-content-center"
+                                    <div class="bg-white rounded-3 shadow-sm p-2 me-3 d-flex align-items-center justify-content-center bordro-info-icon-box"
                                         style="width: 45px; height: 45px;">
                                         <i class="bx bx-calendar-event fs-3" style="color: #E76F51;"></i>
                                     </div>

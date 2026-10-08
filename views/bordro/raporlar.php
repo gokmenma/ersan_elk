@@ -359,6 +359,22 @@ $raporlar = [
         width: 100%;
         height: 100%;
     }
+
+    /* macOS Dark Uyumluluğu */
+    html[data-theme-preset="macos-dark"] .rapor-card {
+        background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+        border: 1px solid var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+        box-shadow: var(--content-shadow) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] .rapor-card:hover {
+        border-color: rgba(255, 255, 255, 0.16) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] .rapor-card h5 {
+        color: #f1f5f9 !important;
+    }
 </style>
 
 <script>

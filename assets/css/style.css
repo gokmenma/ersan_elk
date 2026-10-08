@@ -7246,3 +7246,80 @@ html[data-theme-preset="macos-dark"] body .dataTables_paginate .pagination .page
   border-color: rgba(255, 255, 255, 0.07) !important;
 }
 
+/* ==========================================================================
+   macOS Dark - Bordro Modülleri ve Tablo Standartları
+   ========================================================================== */
+html[data-theme-preset="macos-dark"] body .bordro-table-responsive {
+  background-color: var(--mac-surface) !important;
+  border: 1px solid var(--mac-line) !important;
+  box-shadow: var(--content-shadow) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #bordroTable thead th,
+html[data-theme-preset="macos-dark"] body #bordroTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] body #bordroTable_wrapper table.dataTable thead th,
+html[data-theme-preset="macos-dark"] body #bordroTable_wrapper table.dataTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] body #dtParametreler thead th,
+html[data-theme-preset="macos-dark"] body #dtParametreler thead.table-light th,
+html[data-theme-preset="macos-dark"] body #auditPersonelTable thead th,
+html[data-theme-preset="macos-dark"] body #auditPersonelTable thead.table-light th {
+  background-color: rgba(39, 40, 44, 0.96) !important;
+  color: rgba(224, 225, 229, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #bordroTable tbody td,
+html[data-theme-preset="macos-dark"] body #bordroTable_wrapper table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] body #dtParametreler tbody td,
+html[data-theme-preset="macos-dark"] body #auditPersonelTable tbody td {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(232, 233, 236, 0.85) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #bordroTable tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-action-toolbar {
+  background-color: var(--mac-surface) !important;
+  border: 1px solid var(--mac-line) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-period-dropdown-btn {
+  background-color: var(--mac-surface) !important;
+  border: 1px solid var(--mac-line) !important;
+  color: rgba(235, 238, 245, 0.88) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-period-dropdown-btn:hover,
+html[data-theme-preset="macos-dark"] body .bordro-period-dropdown-btn:focus {
+  background-color: rgba(48, 50, 60, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-summary-card,
+html[data-theme-preset="macos-dark"] body .premium-summary-card {
+  background-color: var(--mac-surface) !important;
+  border-color: var(--mac-line) !important;
+  box-shadow: var(--content-shadow) !important;
+  color: var(--mac-text) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-info-bar {
+  background: rgba(231, 111, 81, 0.08) !important;
+  border: 1px solid rgba(231, 111, 81, 0.2) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-info-bar .bordro-info-icon-box,
+html[data-theme-preset="macos-dark"] body .bordro-info-bar .bg-white {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-text-heading {
+  color: #ffffff !important;
+}
+
+

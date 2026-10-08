@@ -117,6 +117,24 @@ $kahramanmarasIlceleri = [
     'Türkoğlu' => 'Türkoğlu',
 ];
 
+$bildirenPersoneller = [];
+foreach ($ihbarlar as $ihb) {
+    $bAdi = trim((string) ($ihb->bildiren_personel_adi ?? $ihb->olusturan_user_adi ?? ''));
+    if ($bAdi !== '' && !in_array($bAdi, $bildirenPersoneller, true)) {
+        $bildirenPersoneller[] = $bAdi;
+    }
+}
+sort($bildirenPersoneller);
+
+$ihbarDurumFiltreleri = [
+    'all' => 'Tüm Durumlar',
+    'yeni' => 'Yeni',
+    'yonlendirildi' => 'Yönlendirildi',
+    'islemde' => 'İşlemde',
+    'olumlu' => 'Olumlu',
+    'olumsuz' => 'Olumsuz',
+];
+
 $ihbarEkipSelectHtml = Form::FormMultipleSelect2(
     'ihbarEkipSelect',
     $yonlendirilecekPersoneller,
@@ -403,110 +421,197 @@ function ihbarDurumBadge($durum)
         </div>
 
         <div class="tab-pane fade" id="ihbar-list-pane" role="tabpanel">
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h5 class="mb-0"><i class="bx bx-error-circle me-2 text-danger"></i>Gelen İhbarlar</h5>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="ihbarExportExcel">
-                    <i class="bx bx-file me-1"></i>Excel'e Aktar
-                </button>
-                <?php if ($yetkiDuzenle): ?>
-                <button type="button" class="btn btn-sm btn-primary px-3 rounded-pill d-none" id="btnTopluSecilenYonlendir" onclick="ihbarTopluSecilenYonlendirAc()">
-                    <i class="bx bx-user-check me-1"></i>Seçilenleri Yönlendir (<span id="secilenIhbarSayisi">0</span>)
-                </button>
-                <button type="button" class="btn btn-sm btn-danger px-3 rounded-pill" onclick="ihbarYeniAc()">
-                    <i class="bx bx-plus me-1"></i>Yeni İhbar Ekle
-                </button>
-                <button type="button" class="btn btn-sm btn-warning px-3 rounded-pill" onclick="ihbarYenidenYonlendirAc()">
-                    <i class="bx bx-transfer-alt me-1"></i>Yeniden Yönlendir
-                </button>
-                <?php endif; ?>
-                <?php if (Gate::allows('is_takip_ayarlar') || Gate::isSuperAdmin()): ?>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#modalIhbarAyarlar" title="İhbar yönlendirme ayarları">
-                    <i class="bx bx-cog"></i>
-                </button>
-                <?php endif; ?>
+            <div class="card border-0 shadow-sm mb-3 ihbar-filter-card">
+                <div class="card-body p-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreBaslangic">
+                                <i class="bx bx-calendar me-1"></i>Başlangıç Tarihi
+                            </label>
+                            <input type="date" class="form-control form-control-sm" id="ihbarFiltreBaslangic" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreBitis">
+                                <i class="bx bx-calendar me-1"></i>Bitiş Tarihi
+                            </label>
+                            <input type="date" class="form-control form-control-sm" id="ihbarFiltreBitis" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreIlce">
+                                <i class="bx bx-map-pin me-1"></i>İlçe
+                            </label>
+                            <select class="form-select form-select-sm" id="ihbarFiltreIlce">
+                                <option value="all">Tüm İlçeler</option>
+                                <?php foreach ($kahramanmarasIlceleri as $kIlce => $vIlce): if ($kIlce === '') continue; ?>
+                                    <option value="<?= htmlspecialchars($kIlce, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($vIlce, ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreDurum">
+                                <i class="bx bx-check-shield me-1"></i>Durum
+                            </label>
+                            <select class="form-select form-select-sm" id="ihbarFiltreDurum">
+                                <?php foreach ($ihbarDurumFiltreleri as $kDurum => $vDurum): ?>
+                                    <option value="<?= $kDurum ?>"><?= $vDurum ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreBildiren">
+                                <i class="bx bx-user me-1"></i>Bildiren Personel
+                            </label>
+                            <select class="form-select form-select-sm" id="ihbarFiltreBildiren">
+                                <option value="all">Tüm Bildirenler</option>
+                                <?php foreach ($bildirenPersoneller as $bPersonel): ?>
+                                    <option value="<?= htmlspecialchars($bPersonel, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($bPersonel, ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreAtanan">
+                                <i class="bx bx-group me-1"></i>Atanan Ekip
+                            </label>
+                            <select class="form-select form-select-sm" id="ihbarFiltreAtanan">
+                                <option value="all">Tüm Ekipler</option>
+                                <option value="atanmamis">Atanmamış İhbarlar</option>
+                                <?php foreach ($yonlendirilecekPersoneller as $yPersonel): ?>
+                                    <option value="<?= htmlspecialchars($yPersonel->adi_soyadi, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($yPersonel->adi_soyadi, ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-2 border-top">
+                        <div class="d-flex flex-wrap align-items-center gap-1">
+                            <span class="font-size-11 text-muted fw-semibold me-1"><i class="bx bx-time-five me-1"></i>Hızlı Tarih:</span>
+                            <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date active" data-period="all">Tümü</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date" data-period="today">Bugün</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date" data-period="yesterday">Dün</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date" data-period="this_week">Bu Hafta</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date" data-period="this_month">Bu Ay</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date" data-period="last_30">Son 30 Gün</button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-subtle-danger" id="btnIhbarFiltreTemizle">
+                                <i class="bx bx-reset me-1"></i>Filtreleri Sıfırla
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="card-body">
-            <div class="alert alert-info d-none align-items-center justify-content-between gap-3 mb-3"
-                id="ihbarBildirimFiltreUyarisi">
-                <span><i class="bx bx-filter-alt me-1"></i>Bildirimdeki ihbar kaydı gösteriliyor.</span>
-                <button type="button" class="btn btn-sm btn-outline-info flex-shrink-0"
-                    onclick="ihbarBildirimFiltresiniTemizle()">
-                    <i class="bx bx-list-ul me-1"></i>Tüm İhbarları Göster
-                </button>
-            </div>
-            <div class="table-responsive">
-                <table class="table datatables table-hover table-bordered nowrap align-middle w-100"
-                    id="ihbarTable" data-order="[]">
-                    <thead class="table-light">
-                        <tr>
-                            <?php if ($yetkiDuzenle): ?>
-                            <th style="width:38px" class="text-center no-export" data-orderable="false">
-                                <input type="checkbox" id="ihbarSelectAll" class="form-check-input" title="Tümünü Seç / Kaldır">
-                            </th>
-                            <?php endif; ?>
-                            <th data-filter="date">Tarih</th>
-                            <th data-filter="string">İlçe</th>
-                            <th data-filter="string">Mahalle</th>
-                            <th data-filter="string">Telefon</th>
-                            <th data-filter="string">Bildiren</th>
-                            <th data-filter="string">Atanan Ekip</th>
-                            <th data-filter="select">Durum</th>
-                            <th class="text-center" style="width:210px">İşlemler</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($ihbarlar as $ihbar): 
-                            $yonlendirilebilir = in_array($ihbar->durum, ['yeni', 'yonlendirildi'], true);
-                        ?>
-                            <tr data-id="<?= (int) $ihbar->id ?>">
-                                <?php if ($yetkiDuzenle): ?>
-                                <td class="text-center">
-                                    <?php if ($yonlendirilebilir): ?>
-                                    <input type="checkbox" class="form-check-input ihbar-row-check"
-                                           value="<?= (int) $ihbar->id ?>"
-                                           data-id="<?= (int) $ihbar->id ?>"
-                                           data-token="<?= Security::encrypt((int) $ihbar->id) ?>"
-                                           data-ilce="<?= htmlspecialchars($ihbar->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?>"
-                                           data-mahalle="<?= htmlspecialchars($ihbar->mahalle ?? '-', ENT_QUOTES, 'UTF-8') ?>"
-                                           data-durum="<?= htmlspecialchars($ihbar->durum ?? '-', ENT_QUOTES, 'UTF-8') ?>"
-                                           data-ekip="<?= htmlspecialchars($ihbar->atanan_ekip_adi ?? 'Atanmamış', ENT_QUOTES, 'UTF-8') ?>">
-                                    <?php else: ?>
-                                    <input type="checkbox" class="form-check-input" disabled title="Sonuçlanmış veya işlemdeki ihbarlar yönlendirilemez">
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="mb-0"><i class="bx bx-error-circle me-2 text-danger"></i>Gelen İhbarlar</h5>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="ihbarExportExcel">
+                            <i class="bx bx-file me-1"></i>Excel'e Aktar
+                        </button>
+                        <?php if ($yetkiDuzenle): ?>
+                        <button type="button" class="btn btn-sm btn-primary px-3 rounded-pill d-none" id="btnTopluSecilenYonlendir" onclick="ihbarTopluSecilenYonlendirAc()">
+                            <i class="bx bx-user-check me-1"></i>Seçilenleri Yönlendir (<span id="secilenIhbarSayisi">0</span>)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger px-3 rounded-pill" onclick="ihbarYeniAc()">
+                            <i class="bx bx-plus me-1"></i>Yeni İhbar Ekle
+                        </button>
+                        <button type="button" class="btn btn-sm btn-warning px-3 rounded-pill" onclick="ihbarYenidenYonlendirAc()">
+                            <i class="bx bx-transfer-alt me-1"></i>Yeniden Yönlendir
+                        </button>
+                        <?php endif; ?>
+                        <?php if (Gate::allows('is_takip_ayarlar') || Gate::isSuperAdmin()): ?>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#modalIhbarAyarlar" title="İhbar yönlendirme ayarları">
+                            <i class="bx bx-cog"></i>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info d-none align-items-center justify-content-between gap-3 mb-3"
+                        id="ihbarBildirimFiltreUyarisi">
+                        <span><i class="bx bx-filter-alt me-1"></i>Bildirimdeki ihbar kaydı gösteriliyor.</span>
+                        <button type="button" class="btn btn-sm btn-outline-info flex-shrink-0"
+                            onclick="ihbarBildirimFiltresiniTemizle()">
+                            <i class="bx bx-list-ul me-1"></i>Tüm İhbarları Göster
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table datatables table-hover table-bordered nowrap align-middle w-100"
+                            id="ihbarTable" data-order="[]">
+                            <thead class="table-light">
+                                <tr>
+                                    <?php if ($yetkiDuzenle): ?>
+                                    <th style="width:38px" class="text-center no-export" data-orderable="false">
+                                        <input type="checkbox" id="ihbarSelectAll" class="form-check-input" title="Tümünü Seç / Kaldır">
+                                    </th>
                                     <?php endif; ?>
-                                </td>
-                                <?php endif; ?>
-                                <td><?= date('d.m.Y H:i', strtotime($ihbar->created_at)) ?></td>
-                                <td><?= htmlspecialchars($ihbar->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                <td><?= htmlspecialchars($ihbar->mahalle ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                <td><?= htmlspecialchars($ihbar->telefon ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                <td><?= htmlspecialchars($ihbar->bildiren_personel_adi ?? $ihbar->olusturan_user_adi ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                <td><?= htmlspecialchars($ihbar->atanan_ekip_adi ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                <td><?= ihbarDurumBadge($ihbar->durum) ?></td>
-                                <td class="text-center">
-                                    <div class="d-inline-flex gap-1">
-                                        <button type="button" class="btn btn-sm btn-info text-white" onclick="ihbarDetay(<?= (int) $ihbar->id ?>)" title="Detay">
-                                            <i class="bx bx-detail"></i>
-                                        </button>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">İlçe</th>
+                                    <th data-filter="string">Mahalle</th>
+                                    <th data-filter="string">Telefon</th>
+                                    <th data-filter="string">Bildiren</th>
+                                    <th data-filter="string">Atanan Ekip</th>
+                                    <th data-filter="select">Durum</th>
+                                    <th class="text-center" style="width:210px">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($ihbarlar as $ihbar): 
+                                    $yonlendirilebilir = in_array($ihbar->durum, ['yeni', 'yonlendirildi'], true);
+                                    $ihbarDateOnly = date('Y-m-d', strtotime($ihbar->created_at));
+                                    $bildirenAdi = $ihbar->bildiren_personel_adi ?? $ihbar->olusturan_user_adi ?? '-';
+                                ?>
+                                    <tr data-id="<?= (int) $ihbar->id ?>"
+                                        data-date="<?= $ihbarDateOnly ?>"
+                                        data-ilce="<?= htmlspecialchars($ihbar->ilce ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                        data-durum="<?= htmlspecialchars($ihbar->durum ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                        data-bildiren="<?= htmlspecialchars($bildirenAdi, ENT_QUOTES, 'UTF-8') ?>"
+                                        data-atanan="<?= htmlspecialchars($ihbar->atanan_ekip_adi ?? '', ENT_QUOTES, 'UTF-8') ?>">
                                         <?php if ($yetkiDuzenle): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="ihbarDuzenle(<?= (int) $ihbar->id ?>)" title="Düzenle">
-                                            <i class="bx bx-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="ihbarSil(<?= (int) $ihbar->id ?>)" title="Sil">
-                                            <i class="bx bx-trash"></i>
-                                        </button>
+                                        <td class="text-center">
+                                            <?php if ($yonlendirilebilir): ?>
+                                            <input type="checkbox" class="form-check-input ihbar-row-check"
+                                                   value="<?= (int) $ihbar->id ?>"
+                                                   data-id="<?= (int) $ihbar->id ?>"
+                                                   data-token="<?= Security::encrypt((int) $ihbar->id) ?>"
+                                                   data-ilce="<?= htmlspecialchars($ihbar->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?>"
+                                                   data-mahalle="<?= htmlspecialchars($ihbar->mahalle ?? '-', ENT_QUOTES, 'UTF-8') ?>"
+                                                   data-durum="<?= htmlspecialchars($ihbar->durum ?? '-', ENT_QUOTES, 'UTF-8') ?>"
+                                                   data-ekip="<?= htmlspecialchars($ihbar->atanan_ekip_adi ?? 'Atanmamış', ENT_QUOTES, 'UTF-8') ?>">
+                                            <?php else: ?>
+                                            <input type="checkbox" class="form-check-input" disabled title="Sonuçlanmış veya işlemdeki ihbarlar yönlendirilemez">
+                                            <?php endif; ?>
+                                        </td>
                                         <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                                        <td data-order="<?= strtotime($ihbar->created_at) ?>" data-date="<?= $ihbarDateOnly ?>"><?= date('d.m.Y H:i', strtotime($ihbar->created_at)) ?></td>
+                                        <td><?= htmlspecialchars($ihbar->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td><?= htmlspecialchars($ihbar->mahalle ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td><?= htmlspecialchars($ihbar->telefon ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td><?= htmlspecialchars($bildirenAdi, ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td><?= htmlspecialchars($ihbar->atanan_ekip_adi ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td data-status="<?= htmlspecialchars($ihbar->durum, ENT_QUOTES, 'UTF-8') ?>"><?= ihbarDurumBadge($ihbar->durum) ?></td>
+                                        <td class="text-center">
+                                            <div class="d-inline-flex gap-1">
+                                                <button type="button" class="btn btn-sm btn-info text-white" onclick="ihbarDetay(<?= (int) $ihbar->id ?>)" title="Detay">
+                                                    <i class="bx bx-detail"></i>
+                                                </button>
+                                                <?php if ($yetkiDuzenle): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="ihbarDuzenle(<?= (int) $ihbar->id ?>)" title="Düzenle">
+                                                    <i class="bx bx-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="ihbarSil(<?= (int) $ihbar->id ?>)" title="Sil">
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
         </div>
 
         <div class="tab-pane fade" id="ihbar-personel-pane" role="tabpanel">
@@ -571,6 +676,62 @@ function ihbarDurumBadge($durum)
                 </div>
             </div>
 
+            <div class="card border-0 shadow-sm mb-3 ihbar-filter-card">
+                <div class="card-body p-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltreBaslangic">
+                                <i class="bx bx-calendar me-1"></i>Son İhbar Başlangıç
+                            </label>
+                            <input type="date" class="form-control form-control-sm" id="personelFiltreBaslangic" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltreBitis">
+                                <i class="bx bx-calendar me-1"></i>Son İhbar Bitiş
+                            </label>
+                            <input type="date" class="form-control form-control-sm" id="personelFiltreBitis" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltrePersonel">
+                                <i class="bx bx-user me-1"></i>Personel
+                            </label>
+                            <select class="form-select form-select-sm" id="personelFiltrePersonel">
+                                <option value="all">Tüm Personeller</option>
+                                <?php foreach ($personelIhbarStats as $pSt): ?>
+                                    <option value="<?= htmlspecialchars($pSt->adi_soyadi, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($pSt->adi_soyadi, ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltreBasari">
+                                <i class="bx bx-trending-up me-1"></i>Başarı Oranı
+                            </label>
+                            <select class="form-select form-select-sm" id="personelFiltreBasari">
+                                <option value="all">Tüm Başarı Oranları</option>
+                                <option value="80plus">%80 ve Üzeri (Yüksek)</option>
+                                <option value="50_79">%50 - %79 Arası (Orta)</option>
+                                <option value="under50">%50 Altı (Düşük)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-2 border-top">
+                        <div class="d-flex flex-wrap align-items-center gap-1">
+                            <span class="font-size-11 text-muted fw-semibold me-1"><i class="bx bx-time-five me-1"></i>Hızlı Tarih:</span>
+                            <button type="button" class="btn btn-xs btn-outline-secondary personel-quick-date active" data-period="all">Tümü</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary personel-quick-date" data-period="this_month">Bu Ay</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary personel-quick-date" data-period="last_30">Son 30 Gün</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary personel-quick-date" data-period="this_year">Bu Yıl</button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-subtle-danger" id="btnPersonelFiltreTemizle">
+                                <i class="bx bx-reset me-1"></i>Filtreleri Sıfırla
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="mb-0"><i class="bx bx-group me-2 text-primary"></i>Personel Bazlı İhbar Performansı</h5>
@@ -597,8 +758,11 @@ function ihbarDurumBadge($durum)
                                 <?php foreach ($personelIhbarStats as $stat): 
                                     $sonuclanan = (int) $stat->olumlu_sayisi + (int) $stat->olumsuz_sayisi;
                                     $orani = $sonuclanan > 0 ? round(((int) $stat->olumlu_sayisi / $sonuclanan) * 100) : 0;
+                                    $statDateOnly = $stat->son_ihbar_tarihi ? date('Y-m-d', strtotime($stat->son_ihbar_tarihi)) : '';
                                 ?>
-                                    <tr>
+                                    <tr data-personel="<?= htmlspecialchars($stat->adi_soyadi, ENT_QUOTES, 'UTF-8') ?>"
+                                        data-basari="<?= $orani ?>"
+                                        data-date="<?= $statDateOnly ?>">
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px; height:32px; min-width:32px; font-size:13px; line-height:1;">
@@ -611,7 +775,7 @@ function ihbarDurumBadge($durum)
                                         <td><span class="badge bg-success fs-6 px-2 py-1"><?= (int) $stat->olumlu_sayisi ?></span></td>
                                         <td><span class="badge bg-danger fs-6 px-2 py-1"><?= (int) $stat->olumsuz_sayisi ?></span></td>
                                         <td><span class="badge bg-warning text-dark fs-6 px-2 py-1"><?= (int) $stat->bekleyen_sayisi ?></span></td>
-                                        <td style="min-width: 150px;">
+                                        <td style="min-width: 150px;" data-order="<?= $orani ?>">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="progress flex-grow-1" style="height: 8px;">
                                                     <div class="progress-bar bg-success" style="width: <?= $orani ?>%"></div>
@@ -620,7 +784,7 @@ function ihbarDurumBadge($durum)
                                             </div>
                                             <small class="text-muted d-block" style="font-size: 11px;"><?= (int) $stat->olumlu_sayisi ?> olumlu / <?= $sonuclanan ?> sonuçlanan</small>
                                         </td>
-                                        <td><?= $stat->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($stat->son_ihbar_tarihi)) : '-' ?></td>
+                                        <td data-order="<?= $stat->son_ihbar_tarihi ? strtotime($stat->son_ihbar_tarihi) : 0 ?>" data-date="<?= $statDateOnly ?>"><?= $stat->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($stat->son_ihbar_tarihi)) : '-' ?></td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2"
                                                     onclick="personelIhbarlariniFiltrele('<?= htmlspecialchars(addslashes($stat->adi_soyadi), ENT_QUOTES, 'UTF-8') ?>')"
@@ -1219,6 +1383,40 @@ function ihbarDurumBadge($durum)
         color: #94a3b8;
         font-weight: 600;
     }
+
+    /* İhbar & Personel Filtre Alanları Stili */
+    .ihbar-filter-card {
+        background: #fdfdfd;
+        border: 1px solid #eef2f7 !important;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+    [data-bs-theme="dark"] .ihbar-filter-card {
+        background: #222736;
+        border-color: #2e3548 !important;
+    }
+    .ihbar-quick-date.active, .personel-quick-date.active {
+        background-color: #6366f1 !important;
+        border-color: #6366f1 !important;
+        color: #fff !important;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+    }
+    .btn-xs {
+        padding: .2rem .55rem;
+        font-size: .72rem;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all .15s ease;
+    }
+    .btn-subtle-danger {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .btn-subtle-danger:hover {
+        background-color: #ef4444;
+        color: #ffffff;
+    }
 </style>
 
 <script src="assets/libs/glightbox/js/glightbox.min.js"></script>
@@ -1297,7 +1495,119 @@ function ihbarDurumBadge($durum)
         if (typeof applyLengthStateSave === 'function') {
             ihbarTableOpts = applyLengthStateSave(ihbarTableOpts);
         }
-        const ihbarTable = $('#ihbarTable').DataTable(ihbarTableOpts);
+        window.ihbarTable = $('#ihbarTable').DataTable(ihbarTableOpts);
+        const ihbarTable = window.ihbarTable;
+
+        // Select2 filtreleri başlat
+        $('#ihbarFiltreIlce, #ihbarFiltreDurum, #ihbarFiltreBildiren, #ihbarFiltreAtanan').select2({
+            width: '100%'
+        });
+        $('#personelFiltrePersonel, #personelFiltreBasari').select2({
+            width: '100%'
+        });
+
+        // Tarih Yardımcıları
+        function formatDateYMD(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        // ================= Gelen İhbarlar Filtre Mantığı =================
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            if (settings.nTable.id !== 'ihbarTable') return true;
+
+            const baslangic = $('#ihbarFiltreBaslangic').val();
+            const bitis = $('#ihbarFiltreBitis').val();
+            const ilce = $('#ihbarFiltreIlce').val();
+            const durum = $('#ihbarFiltreDurum').val();
+            const bildiren = $('#ihbarFiltreBildiren').val();
+            const atanan = $('#ihbarFiltreAtanan').val();
+
+            const rowNode = settings.aoData[dataIndex].nTr;
+            const rowDate = $(rowNode).attr('data-date') || '';
+            const rowIlce = $(rowNode).attr('data-ilce') || '';
+            const rowDurum = $(rowNode).attr('data-durum') || '';
+            const rowBildiren = $(rowNode).attr('data-bildiren') || '';
+            const rowAtanan = $(rowNode).attr('data-atanan') || '';
+
+            if (baslangic && rowDate && rowDate < baslangic) return false;
+            if (bitis && rowDate && rowDate > bitis) return false;
+
+            if (ilce && ilce !== 'all' && rowIlce !== ilce) return false;
+            if (durum && durum !== 'all' && rowDurum !== durum) return false;
+            if (bildiren && bildiren !== 'all' && !rowBildiren.includes(bildiren)) return false;
+
+            if (atanan && atanan !== 'all') {
+                if (atanan === 'atanmamis') {
+                    if (rowAtanan !== '' && rowAtanan !== '-' && rowAtanan !== 'Atanmamış') return false;
+                } else if (!rowAtanan.includes(atanan)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        $('#ihbarFiltreBaslangic, #ihbarFiltreBitis').on('change', function () {
+            $('.ihbar-quick-date').removeClass('active');
+            ihbarTable.draw();
+        });
+
+        $('#ihbarFiltreIlce, #ihbarFiltreDurum, #ihbarFiltreBildiren, #ihbarFiltreAtanan').on('change', function () {
+            ihbarTable.draw();
+        });
+
+        $('.ihbar-quick-date').on('click', function () {
+            $('.ihbar-quick-date').removeClass('active');
+            $(this).addClass('active');
+            const period = $(this).data('period');
+            const today = new Date();
+
+            if (period === 'all') {
+                $('#ihbarFiltreBaslangic').val('');
+                $('#ihbarFiltreBitis').val('');
+            } else if (period === 'today') {
+                const dStr = formatDateYMD(today);
+                $('#ihbarFiltreBaslangic').val(dStr);
+                $('#ihbarFiltreBitis').val(dStr);
+            } else if (period === 'yesterday') {
+                const yDate = new Date();
+                yDate.setDate(yDate.getDate() - 1);
+                const dStr = formatDateYMD(yDate);
+                $('#ihbarFiltreBaslangic').val(dStr);
+                $('#ihbarFiltreBitis').val(dStr);
+            } else if (period === 'this_week') {
+                const day = today.getDay() || 7;
+                const mon = new Date(today);
+                mon.setDate(today.getDate() - day + 1);
+                $('#ihbarFiltreBaslangic').val(formatDateYMD(mon));
+                $('#ihbarFiltreBitis').val(formatDateYMD(today));
+            } else if (period === 'this_month') {
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                $('#ihbarFiltreBaslangic').val(formatDateYMD(firstDay));
+                $('#ihbarFiltreBitis').val(formatDateYMD(today));
+            } else if (period === 'last_30') {
+                const d30 = new Date();
+                d30.setDate(d30.getDate() - 29);
+                $('#ihbarFiltreBaslangic').val(formatDateYMD(d30));
+                $('#ihbarFiltreBitis').val(formatDateYMD(today));
+            }
+            ihbarTable.draw();
+        });
+
+        $('#btnIhbarFiltreTemizle').on('click', function () {
+            $('#ihbarFiltreBaslangic').val('');
+            $('#ihbarFiltreBitis').val('');
+            $('#ihbarFiltreIlce').val('all').trigger('change.select2');
+            $('#ihbarFiltreDurum').val('all').trigger('change.select2');
+            $('#ihbarFiltreBildiren').val('all').trigger('change.select2');
+            $('#ihbarFiltreAtanan').val('all').trigger('change.select2');
+            $('.ihbar-quick-date').removeClass('active');
+            $('.ihbar-quick-date[data-period="all"]').addClass('active');
+            ihbarTable.search('').draw();
+        });
 
         if (IHBAR_YETKI_DUZENLE) {
             $('#topluSecilenEkipSelect').select2({
@@ -1328,6 +1638,7 @@ function ihbarDurumBadge($durum)
             ihbarTable.columns.adjust().responsive.recalc();
         });
 
+        // ================= Personel Performansı Filtre Mantığı =================
         let ihbarPersonelOptions = $.extend(true, {}, getDatatableOptions(), {
             dom: 'rt' +
                  '<"row mt-3 align-items-center g-2"' +
@@ -1339,7 +1650,80 @@ function ihbarDurumBadge($durum)
         if (typeof applyLengthStateSave === 'function') {
             ihbarPersonelOptions = applyLengthStateSave(ihbarPersonelOptions);
         }
-        const ihbarPersonelTable = $('#ihbarPersonelTable').DataTable(ihbarPersonelOptions);
+        window.ihbarPersonelTable = $('#ihbarPersonelTable').DataTable(ihbarPersonelOptions);
+        const ihbarPersonelTable = window.ihbarPersonelTable;
+
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            if (settings.nTable.id !== 'ihbarPersonelTable') return true;
+
+            const baslangic = $('#personelFiltreBaslangic').val();
+            const bitis = $('#personelFiltreBitis').val();
+            const personel = $('#personelFiltrePersonel').val();
+            const basari = $('#personelFiltreBasari').val();
+
+            const rowNode = settings.aoData[dataIndex].nTr;
+            const rowDate = $(rowNode).attr('data-date') || '';
+            const rowPersonel = $(rowNode).attr('data-personel') || '';
+            const rowBasari = parseInt($(rowNode).attr('data-basari') || '0', 10);
+
+            if (baslangic && rowDate && rowDate < baslangic) return false;
+            if (bitis && rowDate && rowDate > bitis) return false;
+
+            if (personel && personel !== 'all' && !rowPersonel.includes(personel)) return false;
+
+            if (basari && basari !== 'all') {
+                if (basari === '80plus' && rowBasari < 80) return false;
+                if (basari === '50_79' && (rowBasari < 50 || rowBasari >= 80)) return false;
+                if (basari === 'under50' && rowBasari >= 50) return false;
+            }
+
+            return true;
+        });
+
+        $('#personelFiltreBaslangic, #personelFiltreBitis').on('change', function () {
+            $('.personel-quick-date').removeClass('active');
+            ihbarPersonelTable.draw();
+        });
+
+        $('#personelFiltrePersonel, #personelFiltreBasari').on('change', function () {
+            ihbarPersonelTable.draw();
+        });
+
+        $('.personel-quick-date').on('click', function () {
+            $('.personel-quick-date').removeClass('active');
+            $(this).addClass('active');
+            const period = $(this).data('period');
+            const today = new Date();
+
+            if (period === 'all') {
+                $('#personelFiltreBaslangic').val('');
+                $('#personelFiltreBitis').val('');
+            } else if (period === 'this_month') {
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                $('#personelFiltreBaslangic').val(formatDateYMD(firstDay));
+                $('#personelFiltreBitis').val(formatDateYMD(today));
+            } else if (period === 'last_30') {
+                const d30 = new Date();
+                d30.setDate(d30.getDate() - 29);
+                $('#personelFiltreBaslangic').val(formatDateYMD(d30));
+                $('#personelFiltreBitis').val(formatDateYMD(today));
+            } else if (period === 'this_year') {
+                const firstDayYear = new Date(today.getFullYear(), 0, 1);
+                $('#personelFiltreBaslangic').val(formatDateYMD(firstDayYear));
+                $('#personelFiltreBitis').val(formatDateYMD(today));
+            }
+            ihbarPersonelTable.draw();
+        });
+
+        $('#btnPersonelFiltreTemizle').on('click', function () {
+            $('#personelFiltreBaslangic').val('');
+            $('#personelFiltreBitis').val('');
+            $('#personelFiltrePersonel').val('all').trigger('change.select2');
+            $('#personelFiltreBasari').val('all').trigger('change.select2');
+            $('.personel-quick-date').removeClass('active');
+            $('.personel-quick-date[data-period="all"]').addClass('active');
+            ihbarPersonelTable.search('').draw();
+        });
 
         document.getElementById('ihbar-personel-tab')?.addEventListener('shown.bs.tab', function () {
             ihbarPersonelTable.columns.adjust().responsive.recalc();
@@ -2164,8 +2548,21 @@ function ihbarDurumBadge($durum)
             const bsTab = new bootstrap.Tab(listTabBtn);
             bsTab.show();
         }
-        if (typeof ihbarTable !== 'undefined' && ihbarTable) {
-            ihbarTable.search(personelAdi).draw();
+        $('#ihbarFiltreBaslangic').val('');
+        $('#ihbarFiltreBitis').val('');
+        $('#ihbarFiltreIlce').val('all').trigger('change.select2');
+        $('#ihbarFiltreDurum').val('all').trigger('change.select2');
+        $('#ihbarFiltreAtanan').val('all').trigger('change.select2');
+        $('.ihbar-quick-date').removeClass('active');
+        $('.ihbar-quick-date[data-period="all"]').addClass('active');
+
+        if ($('#ihbarFiltreBildiren option[value="' + personelAdi + '"]').length > 0) {
+            $('#ihbarFiltreBildiren').val(personelAdi).trigger('change');
+        } else {
+            $('#ihbarFiltreBildiren').val('all').trigger('change.select2');
+            if (typeof window.ihbarTable !== 'undefined' && window.ihbarTable) {
+                window.ihbarTable.search(personelAdi).draw();
+            }
         }
     }
 

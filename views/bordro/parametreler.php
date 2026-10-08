@@ -136,6 +136,36 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
+    <style>
+        /* macOS Dark Uyumluluğu */
+        html[data-theme-preset="macos-dark"] .card-header .bg-white {
+            background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            border-color: var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .nav-tabs-custom .nav-link,
+        html[data-theme-preset="macos-dark"] .nav-pills .nav-link {
+            color: rgba(235, 238, 245, 0.75);
+        }
+
+        html[data-theme-preset="macos-dark"] .nav-pills .nav-link.active {
+            background-color: #0a84ff !important;
+            color: #ffffff !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #dtParametreler thead th,
+        html[data-theme-preset="macos-dark"] #dtParametreler thead.table-light th {
+            background-color: rgba(39, 40, 44, 0.96) !important;
+            color: rgba(224, 225, 229, 0.75) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #dtParametreler td {
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: rgba(232, 233, 236, 0.85) !important;
+        }
+    </style>
+
     <!-- Nav tabs -->
     <ul class="nav nav-tabs nav-pills mb-3" role="tablist">
         <li class="nav-item">

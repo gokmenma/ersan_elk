@@ -70,6 +70,43 @@ include 'layouts/breadcrumb.php';
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(0,0,0,0.06) !important;
     }
+
+    /* macOS Dark Uyumluluğu */
+    html[data-theme-preset="macos-dark"] .card.bg-white,
+    html[data-theme-preset="macos-dark"] .card-kpi,
+    html[data-theme-preset="macos-dark"] .card-header.bg-white {
+        background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+        border-color: var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+        color: var(--mac-text) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #auditPersonelTable th,
+    html[data-theme-preset="macos-dark"] #auditPersonelTable thead.table-light th {
+        background-color: rgba(39, 40, 44, 0.96) !important;
+        color: rgba(224, 225, 229, 0.75) !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #auditPersonelTable td {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: rgba(232, 233, 236, 0.85) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] .text-dark {
+        color: #f1f5f9 !important;
+    }
+
+    html[data-theme-preset="macos-dark"] .status-filter-group .btn-outline-secondary {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: rgba(235, 238, 245, 0.8) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] .status-filter-group .btn-outline-secondary.active {
+        background-color: #0a84ff !important;
+        border-color: #0a84ff !important;
+        color: #ffffff !important;
+    }
 </style>
 
 <div class="container-fluid ai-audit-container">

@@ -718,6 +718,151 @@ if (!empty($dbGelirler)) {
         [data-bs-theme="dark"] .bordro-action-toolbar .btn-link:hover {
             background-color: rgba(255, 255, 255, 0.08);
         }
+
+        /* macOS Dark Uyumluluğu */
+        html[data-theme-preset="macos-dark"] .bordro-table-responsive {
+            background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            border: 1px solid var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+            box-shadow: var(--content-shadow) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroTable td {
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: rgba(232, 233, 236, 0.85) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroTable thead th {
+            background-color: rgba(39, 40, 44, 0.96) !important;
+            color: rgba(224, 225, 229, 0.75) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroTable thead .dt-filter-row th {
+            background-color: rgba(30, 31, 36, 0.96) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroTable tbody tr:hover td {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroTable tr.selected-row {
+            background-color: rgba(10, 132, 255, 0.15) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-action-toolbar {
+            background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            border: 1px solid var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+            box-shadow: none !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-period-dropdown-btn {
+            background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            border: 1px solid var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+            color: rgba(235, 238, 245, 0.88) !important;
+            box-shadow: none !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-period-dropdown-btn:hover,
+        html[data-theme-preset="macos-dark"] .bordro-period-dropdown-btn:focus {
+            background-color: rgba(48, 50, 60, 0.85) !important;
+            border-color: rgba(255, 255, 255, 0.16) !important;
+            color: #ffffff !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-action-toolbar .btn-link {
+            color: rgba(235, 238, 245, 0.85) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-action-toolbar .btn-link:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            color: #ffffff !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-action-toolbar .vr {
+            background-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-card > .card-header {
+            background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            border-bottom: 1px solid var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .premium-summary-card {
+            background: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            border-color: var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+            box-shadow: var(--content-shadow) !important;
+            color: var(--mac-text) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .year-calendar-month {
+            background: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            border-color: var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .year-calendar-header {
+            background: rgba(39, 40, 44, 0.96) !important;
+            color: #ffffff !important;
+            border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .year-calendar-table td {
+            background: rgba(25, 26, 31, 0.9) !important;
+            border-color: rgba(255, 255, 255, 0.06) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .year-calendar-table td:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .year-calendar-table td.today {
+            background-color: rgba(59, 130, 246, 0.2) !important;
+            border-color: #3b82f6 !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .year-calendar-table td.passive-date {
+            background: rgba(255, 255, 255, 0.02) !important;
+            opacity: 0.2;
+        }
+
+        html[data-theme-preset="macos-dark"] .year-calendar-day-number {
+            color: #e2e8f0 !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .takvim-legend-item {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: #cbd5e1 !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .takvim-legend-item:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #modalIzinTakvim .modal-header {
+            background: rgba(35, 36, 42, 0.98) !important;
+            color: #ffffff !important;
+            border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #modalIzinTakvim .modal-body {
+            background: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
+            color: var(--mac-text) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #modalIzinTakvim .modal-footer {
+            background: rgba(35, 36, 42, 0.98) !important;
+            border-top-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #modalIzinTakvim .btn-close {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
     </style>
 
 

@@ -3327,7 +3327,7 @@ class BordroPersonelModel extends Model
      * Personelin bildirdiği ve olumlu sonuçlanan kaçak ihbarları için prim hesaplar ve ek ödeme olarak oluşturur
      * 
      * İş Kuralı:
-     * - Personelin bildirdiği ve ilgili dönemde olumlu sonuçlanan kaçak ihbarları tespit edilir
+     * - Personelin bildirdiği, ilgili dönemde oluşturulan ve güncel durumu olumlu olan kaçak ihbarları tespit edilir
      * - bordro_parametreleri tablosundan kacak_ihbar_primi tutarı (100 TL) birim fiyat olarak alınır
      * - Toplam Tutar = Olumlu İhbar Sayısı × Birim Fiyat
      * - Prim personel_ek_odemeler tablosuna kaydedilir
@@ -3349,16 +3349,12 @@ class BordroPersonelModel extends Model
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
-        // 2. Personelin dönem içinde olumlu sonuçlanan ihbarlarını tarihleriyle birlikte çek
+        // 2. Personelin dönem içinde oluşturulan ve güncel durumu olumlu olan ihbarlarını çek
         // Bildiren personel; bildiren_personel_id ile veya users tablosu üzerinden (personel_id / ad-soyad) tespit edilir.
-        // Tarih kriteri; ihbarın bildirildiği tarih (created_at) veya sonuçlanma tarihi ilgili dönemde olan kayıtları kapsar.
+        // Dönem yalnızca ihbarın bildirildiği tarih (created_at) üzerinden belirlenir.
         $sql = $this->db->prepare("
             SELECT DISTINCT i.id,
-                   DATE(COALESCE(
-                       (SELECT it.created_at FROM ihbar_tarihce it WHERE it.ihbar_id = i.id AND it.tip = 'durum_degisti' AND it.aciklama LIKE '%olumlu%' ORDER BY it.id DESC LIMIT 1),
-                       i.created_at,
-                       i.updated_at
-                   )) AS ihbar_tarihi
+                   DATE(i.created_at) AS ihbar_tarihi
             FROM ihbarlar i
             LEFT JOIN users u ON u.id = i.olusturan_user_id
             LEFT JOIN personel p ON p.id = ?
@@ -3369,22 +3365,13 @@ class BordroPersonelModel extends Model
             )
             AND i.durum = 'olumlu'
             AND i.silinme_tarihi IS NULL
-            AND (
-                DATE(i.created_at) BETWEEN ? AND ?
-                OR DATE(COALESCE(
-                    (SELECT it.created_at FROM ihbar_tarihce it WHERE it.ihbar_id = i.id AND it.tip = 'durum_degisti' AND it.aciklama LIKE '%olumlu%' ORDER BY it.id DESC LIMIT 1),
-                    i.updated_at,
-                    i.created_at
-                )) BETWEEN ? AND ?
-            )
+            AND DATE(i.created_at) BETWEEN ? AND ?
             ORDER BY i.created_at ASC
         ");
         $sql->execute([
             $personel_id,
             $personel_id,
             $personel_id,
-            $baslangic_tarihi,
-            $bitis_tarihi,
             $baslangic_tarihi,
             $bitis_tarihi
         ]);
@@ -5063,7 +5050,10 @@ class BordroPersonelModel extends Model
 
         // Ek Ödemeler ve Kesintileri detaylı çek (sürekli kayıtlar da artık dahil)
         $ekOdemeler = $this->getDonemEkOdemeleriListe($kayit->personel_id, $kayit->donem_id);
-        $kesintiler = $this->getDonemKesintileriListe($kayit->personel_id, $kayit->donem_id);
+        // Otomatik kesintiler (özellikle icra) bu hesaplama içinde az önce oluşturulmuş olabilir.
+        // Toplu hesaplamada ilk personelin yüklediği dönem cache'i sonraki personellerin yeni
+        // kesintilerini gizlememeli; yalnızca hesaplanan personelin cache kaydını tazele.
+        $kesintiler = $this->getDonemKesintileriListe($kayit->personel_id, $kayit->donem_id, true);
 
         // Hesaplama için değişkenler
         $brutEkOdemeler = 0;       // Brüt maaşa eklenecek (SGK + Vergi hesaplanacak)
@@ -6412,7 +6402,7 @@ class BordroPersonelModel extends Model
      * Personelin dönemdeki tüm kesinti kayıtlarını getirir (detaylı liste için)
      * Sadece onaylanmış kesintileri getirir (maaş hesaplaması için)
      */
-    public function getDonemKesintileriListe($personel_id, $donem_id)
+    public function getDonemKesintileriListe($personel_id, $donem_id, bool $forcePersonelRefresh = false)
     {
         if (empty($personel_id) || empty($donem_id)) {
             return [];
@@ -6421,7 +6411,29 @@ class BordroPersonelModel extends Model
         $donem_id = (int) $donem_id;
         $personel_id = (int) $personel_id;
 
-        if (!isset($this->donemKesintileriCache[$donem_id])) {
+        if ($forcePersonelRefresh) {
+            $sql = $this->db->prepare("
+                SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi, bd.kapali_mi,
+                       COALESCE(pk.durum, 'beklemede') as durum,
+                       COALESCE(ky.adi_soyadi, ky.user_name) as kayit_yapan_ad_soyad
+                FROM personel_kesintileri pk
+                LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
+                LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
+                LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id
+                LEFT JOIN users ky ON pk.kayit_yapan = ky.id
+                WHERE pk.silinme_tarihi IS NULL
+                  AND pk.tekrar_tipi = 'tek_sefer'
+                  AND pk.donem_id = ?
+                  AND pk.personel_id = ?
+                ORDER BY pk.tekrar_tipi DESC, pk.baslangic_donemi DESC, pk.donem_id DESC, pk.olusturma_tarihi DESC
+            ");
+            $sql->execute([$donem_id, $personel_id]);
+            $personelKesintileri = $sql->fetchAll(PDO::FETCH_OBJ);
+            if (isset($this->donemKesintileriCache[$donem_id])) {
+                $this->donemKesintileriCache[$donem_id][$personel_id] = $personelKesintileri;
+            }
+            return $personelKesintileri;
+        } elseif (!isset($this->donemKesintileriCache[$donem_id])) {
             $sql = $this->db->prepare("
                 SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi, bd.kapali_mi,
                        COALESCE(pk.durum, 'beklemede') as durum,

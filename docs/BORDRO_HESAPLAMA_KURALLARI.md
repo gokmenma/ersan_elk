@@ -128,12 +128,14 @@ Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maas
 ### Banka İşaretli Prim ve Özel Kesinti Sırası
 
 - `[Kaçak İhbar Primi]`, puantaj/kaçak kontrol hakedişi değildir; diğer primler gibi kaydın `banka_matrahina_ekle` seçimine uyar. Puantaj sınıflandırması yalnızca `[Puantaj]`, `[Sayaç]` ve `[Kaçak Kontrol]` etiketleriyle yapılır.
+- `[Kaçak İhbar Primi]` dönem eşleştirmesinde yalnızca ihbarın oluşturulma tarihi (`ihbarlar.created_at`) esas alınır. Olumlu sonuç tarihi ihbarı başka bir bordro dönemine taşımaz; dönem içinde oluşturulmuş ve hesaplama anındaki güncel durumu `olumlu` olan ihbarlar sayılır.
 - Maaşa dahil sosyal yardım olmayan net, prim usulü ve karma maaşlarda banka matrahı önce asgari net hakediş + banka kanallı ek ödemeler olarak kurulur. Prim türü olması banka seçimini geçersiz kılamaz.
 - Ardından avans/özel kesinti gibi personel kesintileri bu banka matrahından düşülür. Bankayı aşan kesinti bakiyesi elden ödemeye yansır. İcra toplam kesintinin içindeyse ikinci kez düşülmez; yasal vergi/SGK hesabı değişmez.
 - Açıkça `elden_tutardan` tanımlanan kesintiler yalnızca elden tutara uygulanır. Manuel dağıtım korunur.
 - Maaşa dahil primlerin yemek havuzuna aktarılması, günlük limit ve yuvarlama hesabı korunur; ayrıca banka kalemi eklenerek çift sayılmaz.
 - Örnek: toplam hakediş 29.795,00; asgari banka tabanı 26.203,80; banka işaretli prim 600,00; diğer banka eki yok; özel kesinti 500,00 ise banka **26.303,80**, elden **2.991,20**, net **29.295,00** olur.
 - Liste, detay ve banka Excel/raporu ortak gösterim hesabını; kayıt hesabı da aynı banka dağıtım yardımcısını kullanır.
+- Toplu bordro hesaplamasında her personelin otomatik oluşturulan kesintileri, o personelin maaş hesabına geçilmeden önce güncel veritabanı kaydından okunur. İlk personelde oluşturulan dönem önbelleği sonraki personellerin icra kesintilerini gizleyemez; tekil ve toplu hesaplama aynı icra sonucunu üretir.
 - Aynı dönemde sabit maaş ve prim usulü görev geçmişi bulunması, maaşa dahil yemek yardımını tek başına kapatmaz. Dönemde personelin seçili yemek koduna ait tek geçerli parametre varsa yemek yardımı karma maaşta da hesaplanır. Otomatik dahil yardım dağıtımı yalnızca aynı bordro dönemine birden fazla geçerli yemek parametresi denk geldiğinde kapatılır. Liste–detay–kayıt hesapları aynı kontrolü kullanır.
 
 ## Maasa Dahil Sosyal Yardim Kurali
