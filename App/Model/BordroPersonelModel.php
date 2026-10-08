@@ -1966,18 +1966,23 @@ class BordroPersonelModel extends Model
         WHERE bp.donem_id = ?
         AND bp.silinme_tarihi IS NULL
         AND (
-            p.aktif_mi = 2
-            OR p.personel_tipi != 'standart'
-            OR p.maas_durumu = 'Maaş Hesaplanmayan'
-            OR (p.ise_giris_tarihi IS NOT NULL AND p.ise_giris_tarihi != '0000-00-00' AND p.ise_giris_tarihi > ?)
-            OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi < ?)
-            OR (p.aktif_mi = 0 AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00'))
-        )
-        AND NOT EXISTS (
-            SELECT 1 FROM personel_calisma_gecmisi pcg
-            WHERE pcg.personel_id = p.id
-            AND pcg.ise_giris_tarihi <= ?
-            AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= ?)
+            p.silinme_tarihi IS NOT NULL
+            OR (
+                (
+                    p.aktif_mi = 2
+                    OR p.personel_tipi != 'standart'
+                    OR p.maas_durumu = 'Maaş Hesaplanmayan'
+                    OR (p.ise_giris_tarihi IS NOT NULL AND p.ise_giris_tarihi != '0000-00-00' AND p.ise_giris_tarihi > ?)
+                    OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi < ?)
+                    OR (p.aktif_mi = 0 AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00'))
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM personel_calisma_gecmisi pcg
+                    WHERE pcg.personel_id = p.id
+                    AND pcg.ise_giris_tarihi <= ?
+                    AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= ?)
+                )
+            )
         )
     ");
         $sqlRemove->execute([$donem_id, $bitis_tarihi, $baslangic_tarihi, $bitis_tarihi, $baslangic_tarihi]);
@@ -1988,6 +1993,7 @@ class BordroPersonelModel extends Model
         SELECT id, adi_soyadi, ise_giris_tarihi, isten_cikis_tarihi, aktif_mi
         FROM personel
         WHERE firma_id = :firma_id
+        AND silinme_tarihi IS NULL
         AND personel_tipi = 'standart'
         AND aktif_mi != 2
         AND (maas_durumu IS NULL OR maas_durumu != 'Maaş Hesaplanmayan')
