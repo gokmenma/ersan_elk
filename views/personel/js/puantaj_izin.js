@@ -708,10 +708,6 @@ $(document).ready(function () {
                                         ${cellContent}
                                     </td>`;
                   }
-                  if (p.gorev_gecmisi_var && p.gg_toplam_gun > 0) {
-                    paidCount = Math.min(paidCount, parseInt(p.gg_toplam_gun));
-                  }
-
                   bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${Math.max(0, paidCount)}</td>`;
                   bodyHtml += "</tr>";
                 });
@@ -1128,14 +1124,6 @@ $(document).ready(function () {
       if (typeId && ucretliIzinIds.has(typeId.toString())) {
         paidCount++;
       }
-    }
-
-    const personelCell = row.querySelector(".personel-info");
-    const gorevGecmisiVar = parseInt(personelCell.getAttribute("data-gorev-gecmisi")) || 0;
-    const ggToplamGun = parseInt(personelCell.getAttribute("data-gg-toplam-gun")) || 0;
-
-    if (gorevGecmisiVar && ggToplamGun > 0) {
-      paidCount = Math.min(paidCount, ggToplamGun);
     }
 
     return Math.max(0, paidCount);

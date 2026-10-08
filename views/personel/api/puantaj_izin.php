@@ -1467,12 +1467,6 @@ try {
                 $sheet->getStyle($cell)->applyFromArray($currentStyle);
             }
 
-            // Görev Geçmişi Kısıtlaması (Web Arayüzü ile Uyumlu)
-            if ($p->gorev_gecmisi_var && $p->gg_toplam_gun > 0) {
-                $paidCount = min($paidCount, (int)$p->gg_toplam_gun);
-                $fiiliCount = min($fiiliCount, (int)$p->gg_toplam_gun);
-            }
-
             $sheet->setCellValue($toplamCol . $row, max(0, $paidCount));
             $sheet->setCellValue($fiiliCol . $row, max(0, $fiiliCount));
 
