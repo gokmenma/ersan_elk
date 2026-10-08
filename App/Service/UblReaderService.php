@@ -37,8 +37,14 @@ final class UblReaderService
             };
             $party = static function(string $name) use ($text): array {
                 $path = '/i:Invoice/cac:' . $name . '/cac:Party';
-                return ['vkn_tckn' => $text($path . '/cac:PartyIdentification/cbc:ID[@schemeID="VKN" or @schemeID="TCKN"]'),
-                    'unvan' => $text($path . '/cac:PartyName/cbc:Name') ?: trim($text($path . '/cac:Person/cbc:FirstName') . ' ' . $text($path . '/cac:Person/cbc:FamilyName')),
+                $taxId = $text($path . '/cac:PartyIdentification/cbc:ID[@schemeID="VKN" or @schemeID="TCKN"]')
+                    ?: $text($path . '/cac:PartyTaxScheme/cbc:CompanyID')
+                    ?: $text($path . '/cac:PartyLegalEntity/cbc:CompanyID')
+                    ?: $text($path . '/cac:PartyIdentification/cbc:ID[1]');
+                $companyName = $text($path . '/cac:PartyName/cbc:Name')
+                    ?: $text($path . '/cac:PartyLegalEntity/cbc:RegistrationName');
+                return ['vkn_tckn' => preg_replace('/\D+/', '', $taxId),
+                    'unvan' => $companyName ?: trim($text($path . '/cac:Person/cbc:FirstName') . ' ' . $text($path . '/cac:Person/cbc:FamilyName')),
                     'adres' => $text($path . '/cac:PostalAddress/cbc:StreetName'), 'il' => $text($path . '/cac:PostalAddress/cbc:CityName'),
                     'ilce' => $text($path . '/cac:PostalAddress/cbc:CitySubdivisionName'), 'ulke' => $text($path . '/cac:PostalAddress/cac:Country/cbc:Name'),
                     'vergi_dairesi' => $text($path . '/cac:PartyTaxScheme/cac:TaxScheme/cbc:Name'),
@@ -72,6 +78,9 @@ final class UblReaderService
                 'iade_fatura_no' => $text('/i:Invoice/cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID') ?: null,
                 'iade_fatura_tarihi' => $text('/i:Invoice/cac:BillingReference/cac:InvoiceDocumentReference/cbc:IssueDate') ?: null,
                 'kaynak_xml' => $xml, 'notlar' => self::compactNotes(implode("\n", array_map(static fn($node) => $node->textContent, iterator_to_array($xp->query('/i:Invoice/cbc:Note')))))];
+            foreach ($other as $key => $value) {
+                $header['alici_' . $key] = $value;
+            }
             $headerKdvSubtotals = [];
             foreach ($xp->query('/i:Invoice/cac:TaxTotal/cac:TaxSubtotal') as $tNode) {
                 $taxCode = $text('cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode', $tNode);

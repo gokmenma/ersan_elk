@@ -997,7 +997,9 @@ class EInvoiceService
                 ]);
 
                 // Mevcut fatura kontrolü: Eğer fatura yerelde zaten kayıtlıysa ve XML'i mevcutsa
-                if ($existing && !empty($existing['ubl_xml_path']) && file_exists($existing['ubl_xml_path'])) {
+                $hasCompleteParty = trim((string)($existing['alici_unvan'] ?? '')) !== ''
+                    && trim((string)($existing['alici_vkn_tckn'] ?? '')) !== '';
+                if ($existing && $hasCompleteParty && !empty($existing['ubl_xml_path']) && file_exists($existing['ubl_xml_path'])) {
                     $statusChanged = (($existing['entegrator_durum_kodu'] ?? '') !== ($mapped['entegrator_durum_kodu'] ?? ''))
                         || (($existing['gib_durum_aciklamasi'] ?? '') !== ($mapped['gib_durum_aciklamasi'] ?? ''));
 
