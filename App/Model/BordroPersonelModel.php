@@ -1255,7 +1255,7 @@ class BordroPersonelModel extends Model
                 if (!$isInclusive && $isMuhasebePrimi && $yontem === 'banka' && $resmiAlacakDahil) {
                     $muhasebeBankaPrimToplami += max(0.0, $tutar);
                 }
-                if ($isInclusive && $isPrimTuru && !$isPuantajOdeme) {
+                if ($isInclusive && $isPrimTuru && !$isPuantajOdeme && !$resmiAlacakDahil) {
                     // Elle girilen prim "Banka" seçiliyse yemek tavanını yükseltir ve tutar
                     // yemeğe absorbe olur; ayrıca banka kalemi olarak gösterilmez (çift sayım).
                     if ($yontem === 'banka') {
@@ -5603,7 +5603,7 @@ class BordroPersonelModel extends Model
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
                 }
-            } elseif ($isPrimTuru && $maasaDahilYardimAktif) {
+            } elseif ($isPrimTuru && $maasaDahilYardimAktif && !$resmiAlacakDahil) {
                 // Elle girilen prim yemek tavanına yansır; ayrı banka kalemi olarak eklenmez.
                 if (isset($yontemliOdemeler['elden'])) {
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;

@@ -88,7 +88,7 @@ Net maaşlı ve maaşa dahil yemek yardımı alan personelde üretilen puantaj k
 3. Günlük yemek tavanına kadar olan kısım yemek yardımı olarak **bankadan ödenir**.
 4. Yemek tavanını aşan bakiye tutar ise **elden ödeme** olarak personele yansıtılır.
 
-Manuel fazla mesai, prim/ikramiye, nöbet ve diğer sözleşme dışı kazançların resmî banka kapasitesinde kullanılması bu kazançların toplam hakedişten mahsup edildiği anlamına gelmez. Önce resmî/temel hakediş oluşturulur; manuel sözleşme dışı kazançlar bunun üzerine ayrıca eklenir. Ödeme kanalı yalnız banka/elden dağılımını değiştirir, toplam hakedişi değiştiremez.
+Manuel fazla mesai, prim/ikramiye, nöbet ve diğer sözleşme dışı kazançların resmî banka kapasitesinde kullanılması bu kazançların toplam hakedişten mahsup edildiği anlamına gelmez. Önce resmî/temel hakediş oluşturulur; manuel sözleşme dışı kazançlar bunun üzerine ayrıca eklenir. Ödeme kanalı yalnız banka/elden dağılımını değiştirir, toplam hakedişi değiştiremez. Parametresinde `resmi_alacagina_dahil = 1` olan manuel prim/ikramiye, maaşa dahil yardım aktif olsa da yemek tavanı fazlası olarak eldene bırakılamaz; tamamı doğrudan resmî banka kalemi olarak dağıtılır. Resmî olmayan primlerde yemek tavanı ve kalan elden kuralı devam eder.
 
 Muhasebelestirme sirasi sabittir — once yemek, kalan puantaj kalemi olarak:
 

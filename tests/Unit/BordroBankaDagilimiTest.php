@@ -47,6 +47,14 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(41300.0, 37700.0 + 2300.0 + 1300.0);
     }
 
+    public function testResmiManuelPrimMaasaDahilYardimdaDogrudanBankaKalemidir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'resolveEkOdemeYontemi');
+
+        self::assertSame('banka', $method->invoke($model, 1, 'diger', true, false, false));
+    }
+
     public function testSgkFirmaDagilimiIseGirisOncesiniSaymazVeEksikGunleriGercekFirmadanDuser(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

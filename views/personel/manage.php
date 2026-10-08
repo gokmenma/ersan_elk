@@ -270,34 +270,30 @@ foreach ($tabCategories as $catKey => $cat) {
                                 <button class="btn btn-sm btn-tab-settings d-inline-flex align-items-center justify-content-center shadow-sm" type="button" id="tabLayoutDropdownGrouped" data-bs-toggle="dropdown" aria-expanded="false" title="Sekme Düzeni Ayarları" style="height: 34px; width: 34px; border-radius: 8px; padding: 0;">
                                     <i class="bx bx-cog font-size-17"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" aria-labelledby="tabLayoutDropdownGrouped" style="min-width: 190px; border-radius: 10px; z-index: 1050;">
-                                    <li class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1">
+                                <div class="dropdown-menu dropdown-menu-end tab-layout-dropdown-menu shadow-lg border-0 py-2" aria-labelledby="tabLayoutDropdownGrouped" style="min-width: 190px; border-radius: 10px; z-index: 1060;">
+                                    <h6 class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1 mb-1">
                                         Sekme Düzeni
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="grouped">
-                                            <span class="d-flex align-items-center gap-2 font-size-13">
-                                                <i class="bx bx-layer font-size-16 text-primary"></i>
-                                                <span>Gruplu</span>
-                                            </span>
-                                            <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="single">
-                                            <span class="d-flex align-items-center gap-2 font-size-13">
-                                                <i class="bx bx-list-ul font-size-16 text-primary"></i>
-                                                <span>Tek Sıra</span>
-                                            </span>
-                                            <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
-                                        </a>
-                                    </li>
-                                </ul>
+                                    </h6>
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt is-selected" data-mode="grouped" onmousedown="window.applyTabLayout('grouped', true);" onclick="window.applyTabLayout('grouped', true);">
+                                        <span class="d-flex align-items-center gap-2 font-size-13">
+                                            <i class="bx bx-layer font-size-16 text-primary"></i>
+                                            <span>Gruplu</span>
+                                        </span>
+                                        <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
+                                    </button>
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt" data-mode="single" onmousedown="window.applyTabLayout('single', true);" onclick="window.applyTabLayout('single', true);">
+                                        <span class="d-flex align-items-center gap-2 font-size-13">
+                                            <i class="bx bx-list-ul font-size-16 text-primary"></i>
+                                            <span>Tek Sıra</span>
+                                        </span>
+                                        <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Alt Sekmeler Grubu (Subtabs) -->
-                        <div class="personel-subtabs-container p-1 rounded-3 bg-white border shadow-sm" id="desktopTabs">
+                        <div class="personel-subtabs-container p-1 rounded-3 border shadow-sm" id="desktopTabs">
                             <?php foreach ($tabCategories as $catKey => $cat): ?>
                                 <div class="subtab-group nav nav-pills gap-1 flex-wrap <?php echo $activeCategory === $catKey ? 'd-flex' : 'd-none'; ?>" 
                                      id="subtabs-<?php echo $catKey; ?>" 
@@ -324,13 +320,13 @@ foreach ($tabCategories as $catKey => $cat) {
                         <div class="d-flex align-items-center gap-2">
                             <div class="calendar-nav d-flex gap-1 flex-shrink-0">
                                 <button type="button"
-                                    class="btn btn-sm btn-light border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
+                                    class="btn btn-sm btn-tab-settings border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
                                     id="scrollTabsLeft" style="height: 38px; width: 38px; border-radius: 8px !important;">
                                     <i class="bx bx-chevron-left fs-4"></i>
                                 </button>
                             </div>
 
-                            <div class="flex-grow-1 border rounded-3 shadow-sm p-1 overflow-hidden tab-nav-container bg-white"
+                            <div class="flex-grow-1 border rounded-3 shadow-sm p-1 overflow-hidden tab-nav-container"
                                 style="height: 48px;">
                                 <div class="d-flex align-items-center gap-1 overflow-auto no-scrollbar" id="singleRowTabs"
                                     role="tablist" style="scroll-behavior: smooth; height: 100%;">
@@ -366,7 +362,7 @@ foreach ($tabCategories as $catKey => $cat) {
 
                             <div class="calendar-nav d-flex gap-1 flex-shrink-0">
                                 <button type="button"
-                                    class="btn btn-sm btn-light border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
+                                    class="btn btn-sm btn-tab-settings border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
                                     id="scrollTabsRight" style="height: 38px; width: 38px; border-radius: 8px !important;">
                                     <i class="bx bx-chevron-right fs-4"></i>
                                 </button>
@@ -377,41 +373,109 @@ foreach ($tabCategories as $catKey => $cat) {
                                 <button class="btn btn-sm btn-tab-settings d-inline-flex align-items-center justify-content-center shadow-sm" type="button" id="tabLayoutDropdownSingle" data-bs-toggle="dropdown" aria-expanded="false" title="Sekme Düzeni Ayarları" style="height: 38px; width: 38px; border-radius: 8px; padding: 0;">
                                     <i class="bx bx-cog font-size-18"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" aria-labelledby="tabLayoutDropdownSingle" style="min-width: 190px; border-radius: 10px; z-index: 1050;">
-                                    <li class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1">
+                                <div class="dropdown-menu dropdown-menu-end tab-layout-dropdown-menu shadow-lg border-0 py-2" aria-labelledby="tabLayoutDropdownSingle" style="min-width: 190px; border-radius: 10px; z-index: 1060;">
+                                    <h6 class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1 mb-1">
                                         Sekme Düzeni
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="grouped">
-                                            <span class="d-flex align-items-center gap-2 font-size-13">
-                                                <i class="bx bx-layer font-size-16 text-primary"></i>
-                                                <span>Gruplu</span>
-                                            </span>
-                                            <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher" href="javascript:void(0);" data-mode="single">
-                                            <span class="d-flex align-items-center gap-2 font-size-13">
-                                                <i class="bx bx-list-ul font-size-16 text-primary"></i>
-                                                <span>Tek Sıra</span>
-                                            </span>
-                                            <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
-                                        </a>
-                                    </li>
-                                </ul>
+                                    </h6>
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt is-selected" data-mode="grouped" onmousedown="window.applyTabLayout('grouped', true);" onclick="window.applyTabLayout('grouped', true);">
+                                        <span class="d-flex align-items-center gap-2 font-size-13">
+                                            <i class="bx bx-layer font-size-16 text-primary"></i>
+                                            <span>Gruplu</span>
+                                        </span>
+                                        <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
+                                    </button>
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt" data-mode="single" onmousedown="window.applyTabLayout('single', true);" onclick="window.applyTabLayout('single', true);">
+                                        <span class="d-flex align-items-center gap-2 font-size-13">
+                                            <i class="bx bx-list-ul font-size-16 text-primary"></i>
+                                            <span>Tek Sıra</span>
+                                        </span>
+                                        <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <script>
+                    window.scrollSingleTabIntoView = function() {
+                        var tabsContainer = document.getElementById('singleRowTabs');
+                        if (tabsContainer) {
+                            var activeTab = tabsContainer.querySelector('.single-tab-link.active');
+                            if (activeTab) {
+                                var containerRect = tabsContainer.getBoundingClientRect();
+                                var tabRect = activeTab.getBoundingClientRect();
+                                if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+                                    activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                }
+                            }
+                        }
+                    };
+
+                    window.applyTabLayout = function(mode, shouldScroll) {
+                        mode = (mode === 'single') ? 'single' : 'grouped';
+                        var groupedEl = document.getElementById('personelTabLayoutGrouped');
+                        var singleEl = document.getElementById('personelTabLayoutSingle');
+
+                        if (mode === 'single') {
+                            if (groupedEl) groupedEl.classList.add('d-none');
+                            if (singleEl) singleEl.classList.remove('d-none');
+                            document.querySelectorAll('.mode-check-grouped').forEach(function(el){ el.classList.add('d-none'); });
+                            document.querySelectorAll('.mode-check-single').forEach(function(el){ el.classList.remove('d-none'); });
+                            document.querySelectorAll('.tab-layout-opt[data-mode="single"]').forEach(function(el){ el.classList.add('is-selected'); });
+                            document.querySelectorAll('.tab-layout-opt[data-mode="grouped"]').forEach(function(el){ el.classList.remove('is-selected'); });
+
+                            // Senkronize et: o an aktif sekme
+                            var activeLink = document.querySelector('.subtab-nav-link.active, .single-tab-link.active, #personelTabContent > .tab-pane.active, #personelTabContent > form > .tab-pane.active');
+                            if (activeLink) {
+                                var targetId = activeLink.getAttribute('href') || ('#' + activeLink.getAttribute('id'));
+                                if (targetId && targetId !== '#') {
+                                    document.querySelectorAll('#singleRowTabs .single-tab-link').forEach(function(l){ l.classList.remove('active'); });
+                                    var matchLink = document.querySelector('#singleRowTabs .single-tab-link[href="' + targetId + '"]');
+                                    if (matchLink) matchLink.classList.add('active');
+                                }
+                            }
+                            if (shouldScroll) {
+                                setTimeout(window.scrollSingleTabIntoView, 60);
+                            }
+                        } else {
+                            if (singleEl) singleEl.classList.add('d-none');
+                            if (groupedEl) groupedEl.classList.remove('d-none');
+                            document.querySelectorAll('.mode-check-grouped').forEach(function(el){ el.classList.remove('d-none'); });
+                            document.querySelectorAll('.mode-check-single').forEach(function(el){ el.classList.add('d-none'); });
+                            document.querySelectorAll('.tab-layout-opt[data-mode="grouped"]').forEach(function(el){ el.classList.add('is-selected'); });
+                            document.querySelectorAll('.tab-layout-opt[data-mode="single"]').forEach(function(el){ el.classList.remove('is-selected'); });
+
+                            // Senkronize et: o an aktif sekme ve kategorisi
+                            var activeLink = document.querySelector('.single-tab-link.active, .subtab-nav-link.active, #personelTabContent > .tab-pane.active, #personelTabContent > form > .tab-pane.active');
+                            if (activeLink) {
+                                var targetId = activeLink.getAttribute('href') || ('#' + activeLink.getAttribute('id'));
+                                if (targetId && targetId !== '#') {
+                                    document.querySelectorAll('.subtab-nav-link').forEach(function(l){ l.classList.remove('active'); });
+                                    var matchSubLink = document.querySelector('.subtab-nav-link[href="' + targetId + '"]');
+                                    if (matchSubLink) {
+                                        matchSubLink.classList.add('active');
+                                        var catKey = matchSubLink.getAttribute('data-category');
+                                        if (catKey) {
+                                            document.querySelectorAll('.btn-category-pill').forEach(function(p){ p.classList.remove('active'); });
+                                            var catBtn = document.querySelector('.btn-category-pill[data-category-target="' + catKey + '"]');
+                                            if (catBtn) catBtn.classList.add('active');
+                                            document.querySelectorAll('.subtab-group').forEach(function(g){ g.classList.add('d-none'); g.classList.remove('d-flex'); });
+                                            var catGroup = document.getElementById('subtabs-' + catKey);
+                                            if (catGroup) { catGroup.classList.remove('d-none'); catGroup.classList.add('d-flex'); }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        try {
+                            localStorage.setItem('personel_tab_layout_mode', mode);
+                        } catch(e) {}
+                    };
+
                     (function() {
                         try {
-                            var savedMode = localStorage.getItem('personel_tab_layout_mode');
-                            if (savedMode === 'single') {
-                                document.getElementById('personelTabLayoutGrouped').classList.add('d-none');
-                                document.getElementById('personelTabLayoutSingle').classList.remove('d-none');
-                            }
+                            var savedMode = localStorage.getItem('personel_tab_layout_mode') || 'grouped';
+                            window.applyTabLayout(savedMode, false);
                         } catch(e) {}
                     })();
                 </script>
@@ -489,6 +553,7 @@ foreach ($tabCategories as $catKey => $cat) {
                         border: 1px solid #d9e3ef;
                         color: #495057;
                         transition: all 0.2s ease;
+                        cursor: pointer;
                     }
 
                     .btn-tab-settings::after {
@@ -501,6 +566,35 @@ foreach ($tabCategories as $catKey => $cat) {
                         background-color: #f8f9fa;
                         border-color: #cbd5e1;
                         color: var(--bs-primary);
+                    }
+
+                    /* Tab Layout Dropdown UX */
+                    .tab-layout-dropdown-menu {
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+                    }
+
+                    .tab-layout-opt {
+                        cursor: pointer !important;
+                        transition: all 0.15s ease !important;
+                        border-radius: 6px !important;
+                        margin: 2px 6px !important;
+                        width: calc(100% - 12px) !important;
+                    }
+
+                    .tab-layout-opt:hover {
+                        background-color: rgba(var(--bs-primary-rgb), 0.08) !important;
+                        color: var(--bs-primary) !important;
+                    }
+
+                    .tab-layout-opt.is-selected {
+                        background-color: rgba(var(--bs-primary-rgb), 0.12) !important;
+                        color: var(--bs-primary) !important;
+                        font-weight: 600 !important;
+                    }
+
+                    html[data-bs-theme="dark"] .tab-layout-opt.is-selected {
+                        background-color: rgba(var(--bs-primary-rgb), 0.25) !important;
+                        color: #ffffff !important;
                     }
 
                     /* Scrollbar Gizleme */
@@ -623,6 +717,111 @@ foreach ($tabCategories as $catKey => $cat) {
 
                     html[data-bs-theme="dark"] .single-tab-link.active {
                         background-color: var(--bs-primary) !important;
+                        color: #ffffff !important;
+                    }
+
+                    /* macOS Dark Theme Special Overrides (data-theme-preset="macos-dark") */
+                    html[data-theme-preset*="macos"] .tab-layout-dropdown-menu,
+                    html[data-theme-preset="macos-dark"] .tab-layout-dropdown-menu,
+                    html[data-theme-preset="macos-dark"] body .tab-layout-dropdown-menu {
+                        background-color: #1e2029 !important;
+                        background: #1e2029 !important;
+                        opacity: 1 !important;
+                        backdrop-filter: blur(25px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75) !important;
+                        z-index: 99999 !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .tab-layout-dropdown-menu .dropdown-header,
+                    html[data-theme-preset="macos-dark"] .tab-layout-dropdown-menu .dropdown-header {
+                        color: rgba(200, 205, 218, 0.6) !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .tab-layout-opt,
+                    html[data-theme-preset="macos-dark"] .tab-layout-opt {
+                        color: rgba(235, 238, 245, 0.9) !important;
+                        background: transparent !important;
+                        border: 1px solid transparent !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .tab-layout-opt:hover,
+                    html[data-theme-preset="macos-dark"] .tab-layout-opt:hover {
+                        background: rgba(255, 255, 255, 0.1) !important;
+                        color: #ffffff !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .tab-layout-opt.is-selected,
+                    html[data-theme-preset="macos-dark"] .tab-layout-opt.is-selected {
+                        background: rgba(10, 132, 255, 0.25) !important;
+                        color: #60a5fa !important;
+                        border-color: rgba(10, 132, 255, 0.45) !important;
+                        font-weight: 600 !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .personel-category-pills .btn-category-pill,
+                    html[data-theme-preset="macos-dark"] .personel-category-pills .btn-category-pill {
+                        background-color: var(--mac-surface, #212227) !important;
+                        border-color: var(--mac-line, rgba(255, 255, 255, 0.12)) !important;
+                        color: rgba(235, 238, 245, 0.85) !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .personel-category-pills .btn-category-pill:hover,
+                    html[data-theme-preset="macos-dark"] .personel-category-pills .btn-category-pill:hover {
+                        background-color: rgba(48, 50, 60, 0.9) !important;
+                        color: #ffffff !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .personel-category-pills .btn-category-pill.active,
+                    html[data-theme-preset="macos-dark"] .personel-category-pills .btn-category-pill.active {
+                        background-color: var(--bs-primary, #0a84ff) !important;
+                        border-color: var(--bs-primary, #0a84ff) !important;
+                        color: #ffffff !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .personel-subtabs-container,
+                    html[data-theme-preset="macos-dark"] .personel-subtabs-container,
+                    html[data-theme-preset*="macos"] .tab-nav-container,
+                    html[data-theme-preset="macos-dark"] .tab-nav-container {
+                        background-color: var(--mac-surface, #1e2029) !important;
+                        border-color: var(--mac-line, rgba(255, 255, 255, 0.12)) !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .btn-tab-settings,
+                    html[data-theme-preset="macos-dark"] .btn-tab-settings,
+                    html[data-theme-preset*="macos"] .tab-scroll-btn,
+                    html[data-theme-preset="macos-dark"] .tab-scroll-btn {
+                        background-color: var(--mac-surface, #252834) !important;
+                        border-color: var(--mac-line, rgba(255, 255, 255, 0.15)) !important;
+                        color: rgba(235, 238, 245, 0.9) !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .subtab-nav-link,
+                    html[data-theme-preset="macos-dark"] .subtab-nav-link,
+                    html[data-theme-preset*="macos"] .single-tab-link,
+                    html[data-theme-preset="macos-dark"] .single-tab-link {
+                        color: rgba(235, 238, 245, 0.72) !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .subtab-nav-link:hover,
+                    html[data-theme-preset="macos-dark"] .subtab-nav-link:hover,
+                    html[data-theme-preset*="macos"] .single-tab-link:hover:not(.active),
+                    html[data-theme-preset="macos-dark"] .single-tab-link:hover:not(.active) {
+                        background-color: rgba(255, 255, 255, 0.08) !important;
+                        color: #ffffff !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .subtab-nav-link.active,
+                    html[data-theme-preset="macos-dark"] .subtab-nav-link.active {
+                        background-color: rgba(10, 132, 255, 0.25) !important;
+                        border-color: rgba(10, 132, 255, 0.45) !important;
+                        color: #60a5fa !important;
+                    }
+
+                    html[data-theme-preset*="macos"] .single-tab-link.active,
+                    html[data-theme-preset="macos-dark"] .single-tab-link.active {
+                        background-color: var(--bs-primary, #0a84ff) !important;
                         color: #ffffff !important;
                     }
 
@@ -907,96 +1106,115 @@ foreach ($tabCategories as $catKey => $cat) {
     };
 
     function initPlugins(container) {
-        if ($(container).find(".select2:not(#topbar-personel-search)").length > 0) {
-            $(container).find(".select2:not(#topbar-personel-search)").each(function () {
-                var tags = $(this).data('tags') || false;
-                $(this).select2({
-                    tags: tags,
-                    dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body)
+        try {
+            if (typeof $.fn.select2 === 'function' && $(container).find(".select2:not(#topbar-personel-search)").length > 0) {
+                $(container).find(".select2:not(#topbar-personel-search)").each(function () {
+                    var tags = $(this).data('tags') || false;
+                    $(this).select2({
+                        tags: tags,
+                        dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body)
+                    });
                 });
-            });
+            }
+        } catch (e) {
+            console.warn('Select2 init error:', e);
         }
 
-        if ($(container).find(".flatpickr:not(.flatpickr-input)").length > 0) {
-            $(container).find(".flatpickr:not(.flatpickr-input)").each(function () {
-                if (!this._flatpickr) {
-                    $(this).flatpickr({
-                        dateFormat: "d.m.Y",
-                        altInput: true,
-                        altFormat: "d.m.Y",
-                        locale: "tr",
-                        onChange: function (selectedDates, dateStr, instance) {
-                            var elem = null;
-                            try {
-                                if (instance && instance.element) {
-                                    elem = instance.element;
-                                } else if (this && this.element) {
-                                    elem = this.element;
+        try {
+            if (typeof $.fn.flatpickr === 'function' && $(container).find(".flatpickr:not(.flatpickr-input)").length > 0) {
+                $(container).find(".flatpickr:not(.flatpickr-input)").each(function () {
+                    if (!this._flatpickr) {
+                        $(this).flatpickr({
+                            dateFormat: "d.m.Y",
+                            altInput: true,
+                            altFormat: "d.m.Y",
+                            locale: "tr",
+                            onChange: function (selectedDates, dateStr, instance) {
+                                var elem = null;
+                                try {
+                                    if (instance && instance.element) {
+                                        elem = instance.element;
+                                    } else if (this && this.element) {
+                                        elem = this.element;
+                                    }
+                                    if (elem) $(elem).trigger('change');
+                                } catch (e) {
+                                    console.error('Flatpickr onChange error:', e);
                                 }
-                                if (elem) $(elem).trigger('change');
-                            } catch (e) {
-                                console.error('Flatpickr onChange error:', e);
                             }
-                        }
-                    });
-                }
-            });
+                        });
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Flatpickr init error:', e);
         }
 
-        if ($(container).find(".flatpickr-date:not(.flatpickr-input)").length > 0) {
-            $(container).find(".flatpickr-date:not(.flatpickr-input)").each(function () {
-                if (!this._flatpickr) {
-                    $(this).flatpickr({
-                        enableTime: true,
-                        dateFormat: "d.m.Y H:i",
-                        time_24hr: true,
-                        locale: "tr",
-                        onChange: function (selectedDates, dateStr, instance) {
-                            var elem = null;
-                            try {
-                                if (instance && instance.element) {
-                                    elem = instance.element;
-                                } else if (this && this.element) {
-                                    elem = this.element;
+        try {
+            if (typeof $.fn.flatpickr === 'function' && $(container).find(".flatpickr-date:not(.flatpickr-input)").length > 0) {
+                $(container).find(".flatpickr-date:not(.flatpickr-input)").each(function () {
+                    if (!this._flatpickr) {
+                        $(this).flatpickr({
+                            enableTime: true,
+                            dateFormat: "d.m.Y H:i",
+                            time_24hr: true,
+                            locale: "tr",
+                            onChange: function (selectedDates, dateStr, instance) {
+                                var elem = null;
+                                try {
+                                    if (instance && instance.element) {
+                                        elem = instance.element;
+                                    } else if (this && this.element) {
+                                        elem = this.element;
+                                    }
+                                    if (elem) $(elem).trigger('change');
+                                } catch (e) {
+                                    console.error('Flatpickr-date onChange error:', e);
                                 }
-                                if (elem) $(elem).trigger('change');
-                            } catch (e) {
-                                console.error('Flatpickr-date onChange error:', e);
                             }
-                        }
-                    });
-                }
-            });
+                        });
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Flatpickr-date init error:', e);
         }
 
-        if ($(container).find(".datatable").length > 0) {
-            $(container).find(".datatable").each(function () {
-                if (!$.fn.DataTable.isDataTable(this)) {
-                    $(this).DataTable(getDatatableOptions());
-                }
-            });
+        try {
+            if (typeof $.fn.DataTable === 'function' && $(container).find(".datatable").length > 0) {
+                $(container).find(".datatable").each(function () {
+                    if (!$.fn.DataTable.isDataTable(this)) {
+                        var dtOpts = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
+                        $(this).DataTable(dtOpts);
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('DataTable init error:', e);
         }
 
         // Segmented Control Aktiflik Durumunu Senkronize Et
-        if ($(container).find(".segmented-control-container").length > 0) {
-            $(container).find(".segmented-control-container").each(function () {
-                var c = $(this);
-                var checked = c.find('.segmented-control-input:checked');
-                c.find('.segmented-control-label').removeClass('active');
-                if (checked.length) {
-                    var firstChecked = checked.first();
-                    c.find('.segmented-control-input').not(firstChecked).prop('checked', false).removeAttr('checked');
-                    firstChecked.prop('checked', true).attr('checked', 'checked');
-                    var forId = firstChecked.attr('id');
-                    if (forId) {
-                        c.find('label[for="' + forId + '"]').addClass('active');
+        try {
+            if ($(container).find(".segmented-control-container").length > 0) {
+                $(container).find(".segmented-control-container").each(function () {
+                    var c = $(this);
+                    var checked = c.find('.segmented-control-input:checked');
+                    c.find('.segmented-control-label').removeClass('active');
+                    if (checked.length) {
+                        var firstChecked = checked.first();
+                        c.find('.segmented-control-input').not(firstChecked).prop('checked', false).removeAttr('checked');
+                        firstChecked.prop('checked', true).attr('checked', 'checked');
+                        var forId = firstChecked.attr('id');
+                        if (forId) {
+                            c.find('label[for="' + forId + '"]').addClass('active');
+                        }
                     }
-                }
-            });
-        }
+                });
+            }
+        } catch (e) {}
 
         if (typeof feather !== "undefined") {
-            feather.replace();
+            try { feather.replace(); } catch (e) {}
         }
     }
 
@@ -1029,187 +1247,221 @@ foreach ($tabCategories as $catKey => $cat) {
         }
     });
 
-    document.addEventListener("DOMContentLoaded", function () {
+    // Tab Düzeni (Layout Mode: 'grouped' veya 'single') Yönetimi
+    const TAB_LAYOUT_STORAGE_KEY = 'personel_tab_layout_mode';
+
+    function scrollSingleTabIntoView() {
+        var tabsContainer = document.getElementById('singleRowTabs');
+        if (tabsContainer) {
+            var activeTab = tabsContainer.querySelector('.single-tab-link.active');
+            if (activeTab) {
+                var containerRect = tabsContainer.getBoundingClientRect();
+                var tabRect = activeTab.getBoundingClientRect();
+                if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+                    activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }
+        }
+    }
+    window.scrollSingleTabIntoView = scrollSingleTabIntoView;
+
+    function applyTabLayout(mode, shouldScroll) {
+        mode = (mode === 'single') ? 'single' : 'grouped';
+        
+        // Menü seçeneklerindeki seçili durumu ve check ikonlarını senkronize et
+        $('.tab-layout-opt').removeClass('is-selected');
+        $('.tab-layout-opt[data-mode="' + mode + '"]').addClass('is-selected');
+
+        if (mode === 'single') {
+            $('#personelTabLayoutGrouped').addClass('d-none');
+            $('#personelTabLayoutSingle').removeClass('d-none');
+            $('.mode-check-grouped').addClass('d-none');
+            $('.mode-check-single').removeClass('d-none');
+            
+            // Tek sıra görünümünde aktif sekmenin senkronizasyonu
+            var activeLink = $('.subtab-nav-link.active, .single-tab-link.active, #personelTabContent > .tab-pane.active, #personelTabContent > form > .tab-pane.active').first();
+            var targetId = activeLink.attr('href') || (activeLink.attr('id') ? '#' + activeLink.attr('id') : '');
+            if (targetId) {
+                $('.single-tab-link').removeClass('active');
+                $('.single-tab-link[href="' + targetId + '"]').addClass('active');
+            }
+            if (shouldScroll) {
+                setTimeout(scrollSingleTabIntoView, 80);
+            }
+        } else {
+            $('#personelTabLayoutSingle').addClass('d-none');
+            $('#personelTabLayoutGrouped').removeClass('d-none');
+            $('.mode-check-grouped').removeClass('d-none');
+            $('.mode-check-single').addClass('d-none');
+
+            // Gruplu görünümde aktif sekmenin kategorisini ve alt sekmesini senkronize et
+            var activeLink = $('.single-tab-link.active, .subtab-nav-link.active, #personelTabContent > .tab-pane.active, #personelTabContent > form > .tab-pane.active').first();
+            var targetId = activeLink.attr('href') || (activeLink.attr('id') ? '#' + activeLink.attr('id') : '');
+            if (targetId) {
+                $('.subtab-nav-link').removeClass('active');
+                var $targetSubLink = $('.subtab-nav-link[href="' + targetId + '"]');
+                $targetSubLink.addClass('active');
+                
+                var catKey = $targetSubLink.data('category') || $targetSubLink.attr('data-category');
+                if (catKey) {
+                    $('.btn-category-pill').removeClass('active');
+                    $('.btn-category-pill[data-category-target="' + catKey + '"]').addClass('active');
+                    $('.subtab-group').addClass('d-none').removeClass('d-flex');
+                    $('#subtabs-' + catKey).removeClass('d-none').addClass('d-flex');
+                }
+            }
+        }
+        try {
+            localStorage.setItem(TAB_LAYOUT_STORAGE_KEY, mode);
+        } catch (e) {}
+    }
+    window.applyTabLayout = applyTabLayout;
+
+    // Layout Değiştirici Butonları Delegasyonu
+    $(document).off('click.tabLayoutSwitcher', '.tab-layout-switcher').on('click.tabLayoutSwitcher', '.tab-layout-switcher', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var targetMode = $(this).attr('data-mode') || $(this).data('mode') || 'grouped';
+        applyTabLayout(targetMode, true);
+
+        // Bootstrap dropdown menüsünü kapat
+        try {
+            var dropdownBtn = $(this).closest('.dropdown').find('[data-bs-toggle="dropdown"]');
+            if (dropdownBtn.length && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                var inst = bootstrap.Dropdown.getInstance(dropdownBtn[0]) || new bootstrap.Dropdown(dropdownBtn[0]);
+                if (inst) inst.hide();
+            }
+        } catch (err) {}
+    });
+
+    // Tek sıra tab kaydırma butonları
+    const scrollAmount = 250;
+    $(document).off('click.scrollTabsLeft', '#scrollTabsLeft').on('click.scrollTabsLeft', '#scrollTabsLeft', function (e) {
+        e.preventDefault();
+        var container = document.getElementById('singleRowTabs');
+        if (container) container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    });
+
+    $(document).off('click.scrollTabsRight', '#scrollTabsRight').on('click.scrollTabsRight', '#scrollTabsRight', function (e) {
+        e.preventDefault();
+        var container = document.getElementById('singleRowTabs');
+        if (container) container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    });
+
+    // Kategori butonlarına tıklandığında alt sekmeleri göster
+    $(document).off('click.catPill', '.btn-category-pill').on('click.catPill', '.btn-category-pill', function(e) {
+        e.preventDefault();
+        var catKey = $(this).data('category-target') || $(this).attr('data-category-target');
+        
+        // Kategori butonlarını güncelle
+        $('.btn-category-pill').removeClass('active');
+        $(this).addClass('active');
+        
+        // Alt sekme gruplarını göster/gizle
+        $('.subtab-group').addClass('d-none').removeClass('d-flex');
+        var targetGroup = $('#subtabs-' + catKey);
+        targetGroup.removeClass('d-none').addClass('d-flex');
+        
+        // Eğer bu kategorideki sekmelerden biri zaten aktif değilse ilk sekmeyi aktif yap
+        var currentActiveInCat = targetGroup.find('.subtab-nav-link.active');
+        if (currentActiveInCat.length === 0) {
+            var firstTab = targetGroup.find('.subtab-nav-link').first();
+            if (firstTab.length) {
+                var tab = new bootstrap.Tab(firstTab[0]);
+                tab.show();
+            }
+        }
+    });
+
+    // Tab değişikliklerini dinle (Gruplu ve Tek Sıra Senkronizasyonu)
+    $(document).off('click.tabSync', '.subtab-nav-link, .single-tab-link').on('click.tabSync', '.subtab-nav-link, .single-tab-link', function (e) {
+        var targetId = $(this).attr('href');
+        if (!targetId || targetId === '#') return;
+
+        var catKey = $(this).attr('data-category') || $(this).data('category');
+
+        // Form içi ve form dışı tüm üst düzey tab-pane elemanlarını gizle
+        $('#personelTabContent > .tab-pane, #personelTabContent > form > .tab-pane').removeClass('active show');
+        $(targetId).addClass('active show');
+
+        // Hem gruplu hem tek sıra sekmelerde aktif sınıfını senkronize et
+        $('.subtab-nav-link, .single-tab-link').removeClass('active');
+        $('.subtab-nav-link[href="' + targetId + '"], .single-tab-link[href="' + targetId + '"]').addClass('active');
+
+        // Eğer kategori aktif değilse senkronize et
+        if (catKey) {
+            $('.btn-category-pill').removeClass('active');
+            $('.btn-category-pill[data-category-target="' + catKey + '"]').addClass('active');
+            
+            $('.subtab-group').addClass('d-none').removeClass('d-flex');
+            $('#subtabs-' + catKey).removeClass('d-none').addClass('d-flex');
+        }
+
+        var targetPane = document.querySelector(targetId);
+        if (targetPane) {
+            loadTabContent(targetPane);
+        }
+
+        // Sync mobile dropdown active state
+        $('.mobile-tab-link').removeClass('active');
+        $('.mobile-tab-link[data-target="' + targetId + '"]').addClass('active');
+
+        // Tek sırada ise görünür alana kaydır
+        scrollSingleTabIntoView();
+    });
+
+    // Mobile Tab Click Handler
+    $(document).off('click.mobileTab', '.mobile-tab-link').on('click.mobileTab', '.mobile-tab-link', function (e) {
+        e.preventDefault();
+        var target = $(this).data('target') || $(this).attr('data-target');
+        var tabEl = document.querySelector('.subtab-nav-link[href="' + target + '"]') || document.querySelector('.single-tab-link[href="' + target + '"]');
+        if (tabEl) {
+            var tab = new bootstrap.Tab(tabEl);
+            tab.show();
+        }
+    });
+
+    // Personel seçimi değiştiğinde yönlendir
+    $(document).off('change.personelSelect', '#personel_select').on('change.personelSelect', '#personel_select', function () {
+        var selectedId = $(this).val();
+        var activeTab = $('.subtab-nav-link.active, .single-tab-link.active').first().attr('href') || $('.nav-link.active').first().attr('href');
+        if (activeTab) {
+            activeTab = activeTab.replace('#', '');
+        } else {
+            activeTab = 'home';
+        }
+        if (selectedId) {
+            window.location.href = 'index?p=personel/manage&id=' + selectedId + '&tab=' + activeTab;
+        }
+    });
+
+    // Başlangıç çalıştırmaları
+    function initPersonelManagePage() {
         initPlugins(document);
-
-        // Tab Düzeni (Layout Mode: 'grouped' veya 'single') Yönetimi
-        const TAB_LAYOUT_STORAGE_KEY = 'personel_tab_layout_mode';
-
-        function scrollSingleTabIntoView() {
-            var tabsContainer = document.getElementById('singleRowTabs');
-            if (tabsContainer) {
-                var activeTab = tabsContainer.querySelector('.single-tab-link.active');
-                if (activeTab) {
-                    var containerRect = tabsContainer.getBoundingClientRect();
-                    var tabRect = activeTab.getBoundingClientRect();
-                    if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
-                        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }
-                }
-            }
-        }
-
-        function applyTabLayout(mode, shouldScroll) {
-            if (mode === 'single') {
-                $('#personelTabLayoutGrouped').addClass('d-none');
-                $('#personelTabLayoutSingle').removeClass('d-none');
-                $('.mode-check-grouped').addClass('d-none');
-                $('.mode-check-single').removeClass('d-none');
-                if (shouldScroll) {
-                    setTimeout(scrollSingleTabIntoView, 100);
-                }
-            } else {
-                $('#personelTabLayoutSingle').addClass('d-none');
-                $('#personelTabLayoutGrouped').removeClass('d-none');
-                $('.mode-check-grouped').removeClass('d-none');
-                $('.mode-check-single').addClass('d-none');
-
-                // Gruplu görünümde aktif sekmenin kategorisini senkronize et
-                var activeLink = $('.single-tab-link.active, .subtab-nav-link.active').first();
-                if (activeLink.length) {
-                    var catKey = activeLink.data('category');
-                    if (catKey) {
-                        $('.btn-category-pill').removeClass('active');
-                        $('.btn-category-pill[data-category-target="' + catKey + '"]').addClass('active');
-                        $('.subtab-group').addClass('d-none').removeClass('d-flex');
-                        $('#subtabs-' + catKey).removeClass('d-none').addClass('d-flex');
-                    }
-                }
-            }
-            try {
-                localStorage.setItem(TAB_LAYOUT_STORAGE_KEY, mode);
-            } catch (e) {}
-        }
-
-        // Layout Değiştirici Butonları
-        $(document).on('click', '.tab-layout-switcher', function (e) {
-            e.preventDefault();
-            var targetMode = $(this).data('mode');
-            applyTabLayout(targetMode, true);
-        });
 
         // Başlangıçta kayıtlı düzeni uygula
         var initialLayoutMode = 'grouped';
         try {
             initialLayoutMode = localStorage.getItem(TAB_LAYOUT_STORAGE_KEY) || 'grouped';
         } catch (e) {}
-        applyTabLayout(initialLayoutMode, true);
-
-        // Tek sıra tab kaydırma butonları
-        const scrollAmount = 250;
-        $('#scrollTabsLeft').on('click', function (e) {
-            e.preventDefault();
-            var container = document.getElementById('singleRowTabs');
-            if (container) container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-        });
-
-        $('#scrollTabsRight').on('click', function (e) {
-            e.preventDefault();
-            var container = document.getElementById('singleRowTabs');
-            if (container) container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-        });
-
-        // Personel seçimi değiştiğinde yönlendir
-        $('#personel_select').on('change', function () {
-            var selectedId = $(this).val();
-            var activeTab = $('.subtab-nav-link.active, .single-tab-link.active').first().attr('href') || $('.nav-link.active').first().attr('href');
-            if (activeTab) {
-                activeTab = activeTab.replace('#', '');
-            } else {
-                activeTab = 'home';
-            }
-            if (selectedId) {
-                window.location.href = 'index?p=personel/manage&id=' + selectedId + '&tab=' + activeTab;
-            }
-        });
-
-        // Kategori butonlarına tıklandığında alt sekmeleri göster
-        $('.btn-category-pill').on('click', function(e) {
-            e.preventDefault();
-            var catKey = $(this).data('category-target');
-            
-            // Kategori butonlarını güncelle
-            $('.btn-category-pill').removeClass('active');
-            $(this).addClass('active');
-            
-            // Alt sekme gruplarını göster/gizle
-            $('.subtab-group').addClass('d-none').removeClass('d-flex');
-            var targetGroup = $('#subtabs-' + catKey);
-            targetGroup.removeClass('d-none').addClass('d-flex');
-            
-            // Eğer bu kategorideki sekmelerden biri zaten aktif değilse ilk sekmeyi aktif yap
-            var currentActiveInCat = targetGroup.find('.subtab-nav-link.active');
-            if (currentActiveInCat.length === 0) {
-                var firstTab = targetGroup.find('.subtab-nav-link').first();
-                if (firstTab.length) {
-                    var tab = new bootstrap.Tab(firstTab[0]);
-                    tab.show();
-                }
-            }
-        });
-
-        // Tab değişikliklerini dinle (Gruplu ve Tek Sıra Senkronizasyonu)
-        var triggerTabList = [].slice.call(document.querySelectorAll('.subtab-nav-link[data-bs-toggle="tab"], .single-tab-link[data-bs-toggle="tab"]'));
-        triggerTabList.forEach(function (triggerEl) {
-            triggerEl.addEventListener('show.bs.tab', function (event) {
-                var targetId = event.target.getAttribute('href');
-                // Form içi ve form dışı tüm üst düzey tab-pane elemanlarını gizle
-                $('#personelTabContent > .tab-pane, #personelTabContent > form > .tab-pane').removeClass('active show');
-                $(targetId).addClass('active show');
-
-                // Hem gruplu hem tek sıra sekmelerde aktif sınıfını senkronize et
-                $('.subtab-nav-link, .single-tab-link').removeClass('active');
-                $('.subtab-nav-link[href="' + targetId + '"], .single-tab-link[href="' + targetId + '"]').addClass('active');
-            });
-
-            triggerEl.addEventListener('shown.bs.tab', function (event) {
-                var targetId = event.target.getAttribute('href');
-                var catKey = event.target.getAttribute('data-category');
-                
-                // Eğer kategori aktif değilse senkronize et
-                if (catKey) {
-                    $('.btn-category-pill').removeClass('active');
-                    $('.btn-category-pill[data-category-target="' + catKey + '"]').addClass('active');
-                    
-                    $('.subtab-group').addClass('d-none').removeClass('d-flex');
-                    $('#subtabs-' + catKey).removeClass('d-none').addClass('d-flex');
-                }
-
-                // Hedef dışındakileri temizle, hedefi göster
-                $('#personelTabContent > .tab-pane, #personelTabContent > form > .tab-pane').not(targetId).removeClass('active show');
-                $(targetId).addClass('active show');
-                
-                var targetPane = document.querySelector(targetId);
-                loadTabContent(targetPane);
-
-                // Sync mobile dropdown active state
-                $('.mobile-tab-link').removeClass('active');
-                $('.mobile-tab-link[data-target="' + targetId + '"]').addClass('active');
-
-                // Tek sırada ise görünür alana kaydır
-                scrollSingleTabIntoView();
-            });
-        });
-
-        // Mobile Tab Click Handler
-        $(document).on('click', '.mobile-tab-link', function (e) {
-            e.preventDefault();
-            var target = $(this).data('target');
-            var tabEl = document.querySelector('.subtab-nav-link[href="' + target + '"]') || document.querySelector('.single-tab-link[href="' + target + '"]');
-            if (tabEl) {
-                var tab = new bootstrap.Tab(tabEl);
-                tab.show();
-            }
-        });
+        applyTabLayout(initialLayoutMode, false);
 
         // Sayfa yüklendiğinde aktif tab eğer dinamik içerikliyse yükle
         var activeTabLink = document.querySelector('.subtab-nav-link.active') || document.querySelector('.single-tab-link.active') || document.querySelector('.nav-link.active');
         if (activeTabLink) {
             var targetId = activeTabLink.getAttribute('href');
             var targetPane = document.querySelector(targetId);
-            loadTabContent(targetPane);
+            if (targetPane) {
+                loadTabContent(targetPane);
+            }
         }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener("DOMContentLoaded", initPersonelManagePage);
+    } else {
+        initPersonelManagePage();
+    }
 </script>
 <script src="views/personel/js/zimmet.js?v=<?= filemtime(__DIR__ . '/js/zimmet.js') ?>"></script>
 <script src="views/personel/js/kesinti.js?v=<?= filemtime(__DIR__ . '/js/kesinti.js') ?>"></script>
