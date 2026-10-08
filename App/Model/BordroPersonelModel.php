@@ -1179,6 +1179,7 @@ class BordroPersonelModel extends Model
         $sozlesmeHakedisiOverride = false;
         $resmiDahilEkToplam = 0.0;
         $bankayaTasinabilirEkOdemeGosterim = 0.0;
+        $eldenTasinabilirEkOdemeGosterim = 0.0;
         $muhasebePrimToplami = 0.0;
         $muhasebeBankaPrimToplami = 0.0;
         $muhasebedeGizlenecekPrim = 0.0;
@@ -1242,6 +1243,8 @@ class BordroPersonelModel extends Model
                     if (!$isPrimTuru) {
                         $bankaMahsupEdilebilirEkOdemeGosterim += $tutar;
                     }
+                } elseif ($yontem === 'elden' && !$isPuantajOdeme) {
+                    $eldenTasinabilirEkOdemeGosterim += $tutar;
                 }
                 if (!$isInclusive && $isYemekOdeme && $yontem !== 'sodexo') {
                     $muhasebeHariciYemekToplami += max(0.0, $tutar);
@@ -1524,6 +1527,17 @@ class BordroPersonelModel extends Model
                 $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme
                     + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                     + $yuvarlamaFarki;
+            }
+
+            // Resmî/temel hakedişin hesabında kullanılan manuel sözleşme dışı
+            // kazançlar toplam hakedişten mahsup edilemez; ayrıca hak edilir.
+            if ($isNet && !$isPrimUsulu && $karisikMaasOzeti === null) {
+                $toplamAlacagi = round(
+                    $toplamAlacagi
+                    + max(0.0, $bankayaTasinabilirEkOdemeGosterim)
+                    + max(0.0, $eldenTasinabilirEkOdemeGosterim),
+                    2
+                );
             }
         } else {
             $sozlesmeHakedisi = $karisikMaasOzeti !== null
@@ -6168,6 +6182,14 @@ class BordroPersonelModel extends Model
                 + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                 + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
+            // Kanal seçimi toplam hakedişi değiştirmez. Manuel sözleşme dışı
+            // kazançlar resmî/temel hakedişin üzerine ayrıca eklenir.
+            if ($isNetMaas && !$isPrimUsulu && $karisikMaasOzeti === null) {
+                $baseHakedis = round(
+                    $baseHakedis + max(0.0, $bankayaTasinabilirEkOdeme) + max(0.0, $eldenTasinabilirEkOdeme),
+                    2
+                );
+            }
             
             $netMaas = $baseHakedis;
             

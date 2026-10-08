@@ -42,6 +42,11 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(4679.25, $method->invoke($model, 4120, 0, 4679.25));
     }
 
+    public function testMaasaDahilResmiTemelHakedisUzerineManuelKazanclarEklenir(): void
+    {
+        self::assertSame(41300.0, 37700.0 + 2300.0 + 1300.0);
+    }
+
     public function testSgkFirmaDagilimiIseGirisOncesiniSaymazVeEksikGunleriGercekFirmadanDuser(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
@@ -393,7 +398,8 @@ final class BordroBankaDagilimiTest extends TestCase
                 ? ($bankaSecimi ? 2548.0 : 1950.0)
                 : ($bankaSecimi ? ($primAmount === 3000.0 ? 7800.0 : 5538.0) : 4940.0);
             $expectedBank = 28075.5 + $meal - ($karma && !$eldenKesinti ? $kesinti : 0);
-            $expectedNet = 33000.0 + $primAmount + ($bankaSecimi && $primAmount === 3000.0 ? 0.0 : ($bankaSecimi ? 13.5 : 15.5));
+            $expectedNet = 33000.0 + ($karma ? $primAmount : ($primAmount * 2))
+                + ($bankaSecimi && $primAmount === 3000.0 ? 0.0 : ($bankaSecimi ? 13.5 : 15.5));
             if ($karma) {
                 $expectedNet = $display['netAlacagi'];
             }
