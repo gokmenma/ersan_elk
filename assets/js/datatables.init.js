@@ -140,6 +140,7 @@ $(document).ready(function () {
     // Boş satır, yükleniyor uyarısı veya çocuk satır ise engelleme
     if ($tr.hasClass('dataTables_empty') || $tr.find('td').length <= 1) return;
     if ($tr.closest('table').hasClass('no-context-menu')) return;
+    if (e.isDefaultPrevented() || e.isPropagationStopped()) return;
 
     e.preventDefault();
 

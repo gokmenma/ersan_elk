@@ -217,9 +217,9 @@ $title = 'Gelen Faturalar';
             <!-- Sağ Araç Çubuğu: Ürün Arama, Tarih Aralığı ve Dışa Aktarma Butonları -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
                 <!-- Ürün / Marka / İçerik Arama Alanı -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" style="border-color: #cbd5e1 !important;" title="Fatura içeriğindeki ürün adı, marka, ürün kodu veya açıklamaya göre filtrele">
+                <div class="d-flex align-items-center border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" title="Fatura içeriğindeki ürün adı, marka, ürün kodu veya açıklamaya göre filtrele">
                     <i class="bx bx-package text-primary font-size-16"></i>
-                    <input type="text" id="filterProductSearch" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 195px;" placeholder="Ürün / Marka / Kalem Ara..." autocomplete="off">
+                    <input type="text" id="filterProductSearch" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 195px;" placeholder="Ürün / Marka / Kalem Ara..." autocomplete="off">
                     <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearProductSearch" title="Ürün Aramasını Temizle" style="display: none;">
                         <i class="bx bx-x font-size-14"></i>
                     </button>
@@ -232,7 +232,7 @@ $title = 'Gelen Faturalar';
                 <div class="d-flex align-items-center gap-2 efatura-date-controls" id="efaturaDateControls">
                     <!-- Hızlı Dönem Seçici Dropdown -->
                     <div class="dropdown d-inline-block">
-                        <button type="button" class="btn btn-sm bg-white border rounded-3 px-2 shadow-sm d-flex align-items-center gap-1 font-size-12 fw-semibold text-dark dropdown-toggle" style="border-color: #cbd5e1 !important; height: 32px; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
+                        <button type="button" class="btn btn-sm border rounded-3 px-2 shadow-sm d-flex align-items-center gap-1 font-size-12 fw-semibold dropdown-toggle period-filter-dropdown-btn" style="height: 32px; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
                             <i class="bx bx-calendar-event text-primary font-size-15"></i> <span id="currentPeriodLabel">Bu Ay</span>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1 font-size-12" style="min-width: 150px;">
@@ -246,18 +246,18 @@ $title = 'Gelen Faturalar';
                     </div>
 
                     <!-- Başlangıç Tarihi Filtresi -->
-                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Başlangıç Tarihi">
+                    <div class="d-flex align-items-center border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="height: 32px;" title="Başlangıç Tarihi">
                         <i class="bx bx-calendar text-primary font-size-15"></i>
-                        <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Başlangıç" readonly>
+                        <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Başlangıç" readonly>
                         <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearStartDate" title="Başlangıç Tarihini Temizle">
                             <i class="bx bx-x font-size-14"></i>
                         </button>
                     </div>
 
                     <!-- Bitiş Tarihi Filtresi -->
-                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Bitiş Tarihi">
+                    <div class="d-flex align-items-center border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="height: 32px;" title="Bitiş Tarihi">
                         <i class="bx bx-calendar text-primary font-size-15"></i>
-                        <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Bitiş" readonly>
+                        <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Bitiş" readonly>
                         <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearEndDate" title="Bitiş Tarihini Temizle">
                             <i class="bx bx-x font-size-14"></i>
                         </button>
@@ -843,6 +843,39 @@ html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item
     background-color: rgba(255,255,255,.025) !important;
     color: rgba(232,235,242,.32) !important;
     border-color: rgba(255,255,255,.07) !important;
+}
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white,
+html[data-theme-preset="macos-dark"] .date-filter-box,
+html[data-theme-preset="macos-dark"] .product-search-box,
+html[data-theme-preset="macos-dark"] .period-filter-dropdown-btn,
+html[data-theme-preset="macos-dark"] #btnHeaderColVis,
+html[data-theme-preset="macos-dark"] .btn-subtle-secondary {
+    background-color: rgba(28, 30, 38, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+    box-shadow: none !important;
+}
+html[data-theme-preset="macos-dark"] .date-filter-box input,
+html[data-theme-preset="macos-dark"] .product-search-box input {
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-card {
+    background: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-value {
+    color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-label {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-subtext {
+    color: rgba(200, 205, 218, 0.6) !important;
+}
+html[data-theme-preset="macos-dark"] h4.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
 }
 </style>
 

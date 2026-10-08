@@ -505,33 +505,6 @@ class EInvoiceModel extends Model
      */
     public function ajaxList(array $params, int $firmId, string $yon = 'GIDEN', string $listType = 'giden'): array
     {
-        // Sunucu ortamında XML satır açıklamalarının otomatik senkronizasyon kontrolü (Tek seferlik self-healing)
-        static $syncedFirms = [];
-        if ($firmId > 0 && !isset($syncedFirms[$firmId]) && empty($_SESSION['efatura_xml_lines_synced_' . $firmId])) {
-            $syncedFirms[$firmId] = true;
-            $_SESSION['efatura_xml_lines_synced_' . $firmId] = true;
-            try {
-                $checkStmt = $this->db->prepare("
-                    SELECT 1 
-                    FROM faturalar f 
-                    JOIN fatura_satirlari fs ON fs.fatura_id = f.id 
-                    WHERE f.firm_id = :fid 
-                      AND f.deleted_at IS NULL 
-                      AND f.ubl_xml_path IS NOT NULL 
-                      AND f.ubl_xml_path != '' 
-                      AND (fs.istisna_aciklama IS NULL OR fs.istisna_aciklama = '')
-                    LIMIT 1
-                ");
-                $checkStmt->execute(['fid' => $firmId]);
-                if ($checkStmt->fetchColumn()) {
-                    @set_time_limit(180);
-                    $this->syncAllLineDescriptionsFromXml($firmId);
-                }
-            } catch (\Throwable $e) {
-                error_log("EInvoiceModel auto-sync error: " . $e->getMessage());
-            }
-        }
-
         $draw = (int)($params['draw'] ?? 1);
         $start = max(0, (int)($params['start'] ?? 0));
         $length = (int)($params['length'] ?? 10);

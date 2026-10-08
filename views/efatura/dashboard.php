@@ -172,6 +172,113 @@ $title = 'Fatura Dashboard';
     background: rgba(0, 0, 0, 0.05) !important;
     outline: none !important;
 }
+
+/* =========================================================
+   macOS Dark Floating Theme Uyumlandırması (data-theme-preset="macos-dark")
+   ========================================================= */
+html[data-theme-preset="macos-dark"] .dashboard-stat-card,
+html[data-theme-preset="macos-dark"] .chart-card {
+    background: rgba(28, 30, 38, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+    backdrop-filter: blur(25px) saturate(160%);
+    -webkit-backdrop-filter: blur(25px) saturate(160%);
+}
+html[data-theme-preset="macos-dark"] .dashboard-stat-card:hover,
+html[data-theme-preset="macos-dark"] .chart-card:hover {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55) !important;
+}
+html[data-theme-preset="macos-dark"] .stat-title {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+html[data-theme-preset="macos-dark"] .stat-main-value {
+    color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] .stat-sub-row {
+    border-top: 1px dashed rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .stat-sub-label {
+    color: rgba(200, 205, 218, 0.6) !important;
+}
+html[data-theme-preset="macos-dark"] .stat-sub-val {
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+html[data-theme-preset="macos-dark"] .period-btn-group .btn {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(225, 228, 236, 0.78) !important;
+    border-color: rgba(255, 255, 255, 0.11) !important;
+}
+html[data-theme-preset="macos-dark"] .period-btn-group .btn:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+}
+html[data-theme-preset="macos-dark"] .period-btn-group .btn.active {
+    background: #0a84ff !important;
+    color: #ffffff !important;
+    border-color: #0a84ff !important;
+    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.35) !important;
+}
+html[data-theme-preset="macos-dark"] .date-filter-box {
+    background: rgba(35, 36, 42, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] .date-filter-box input {
+    color: rgba(235, 238, 245, 0.9) !important;
+}
+html[data-theme-preset="macos-dark"] .date-filter-box input::placeholder {
+    color: rgba(200, 205, 218, 0.45) !important;
+}
+html[data-theme-preset="macos-dark"] .table-dashboard thead th {
+    background-color: rgba(39, 40, 44, 0.96) !important;
+    color: rgba(224, 225, 229, 0.75) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .table-dashboard tbody td {
+    background-color: rgba(33, 34, 39, 0.85) !important;
+    color: rgba(231, 234, 241, 0.82) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.065) !important;
+}
+html[data-theme-preset="macos-dark"] .table-dashboard tbody tr:hover td {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+}
+html[data-theme-preset="macos-dark"] .kdv-hero-badge.kdv-payable {
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    color: #f87171 !important;
+}
+html[data-theme-preset="macos-dark"] .kdv-hero-badge.kdv-carried {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+    color: #34d399 !important;
+}
+html[data-theme-preset="macos-dark"] .dash-loading {
+    background: rgba(17, 18, 22, 0.75) !important;
+}
+html[data-theme-preset="macos-dark"] .card-header h5,
+html[data-theme-preset="macos-dark"] .card-header .card-title,
+html[data-theme-preset="macos-dark"] h4.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
+}
+html[data-theme-preset="macos-dark"] .bg-light {
+    background-color: rgba(35, 36, 42, 0.8) !important;
+}
+html[data-theme-preset="macos-dark"] .border {
+    border-color: rgba(255, 255, 255, 0.09) !important;
+}
+html[data-theme-preset="macos-dark"] .text-dark {
+    color: rgba(235, 238, 245, 0.9) !important;
+}
+html[data-theme-preset="macos-dark"] .accordion-item,
+html[data-theme-preset="macos-dark"] .accordion-button {
+    background-color: rgba(33, 34, 39, 0.9) !important;
+    color: rgba(231, 234, 241, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .accordion-button:not(.collapsed) {
+    background-color: rgba(43, 44, 52, 0.95) !important;
+    color: #60a5fa !important;
+}
 </style>
 
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
@@ -202,11 +309,11 @@ $title = 'Fatura Dashboard';
             </div>
 
             <!-- Özel Tarih Seçici -->
-            <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important;" title="Özel Tarih Aralığı">
+            <div class="d-flex align-items-center rounded-3 px-2 py-1 shadow-sm gap-1 date-filter-box" title="Özel Tarih Aralığı">
                 <i class="bx bx-calendar text-primary font-size-15"></i>
-                <input type="text" id="dashStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer;" placeholder="Başlangıç" readonly>
+                <input type="text" id="dashStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 82px; cursor: pointer;" placeholder="Başlangıç" readonly>
                 <span class="text-muted font-size-12">-</span>
-                <input type="text" id="dashEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer;" placeholder="Bitiş" readonly>
+                <input type="text" id="dashEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 82px; cursor: pointer;" placeholder="Bitiş" readonly>
                 <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearDates" title="Tarihi Sıfırla" style="display: none;">
                     <i class="bx bx-x font-size-14"></i>
                 </button>

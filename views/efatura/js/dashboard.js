@@ -319,8 +319,17 @@ document.addEventListener('DOMContentLoaded', function() {
         renderRecentInvoicesTable('recentGelenBody', data.recent_gelen || [], 'gelen');
     }
 
+    // Tema Modu Algılayıcı (macOS Dark / Dark Theme)
+    function isMacosDarkMode() {
+        const doc = document.documentElement;
+        return doc.getAttribute('data-theme-preset') === 'macos-dark' ||
+               doc.getAttribute('data-bs-theme') === 'dark' ||
+               (document.body && document.body.getAttribute('data-bs-theme') === 'dark');
+    }
+
     // 5. Grafik 1: Aylık Fatura Trendi & Matrah Karşılaştırması (ApexCharts)
     function renderMonthlyTrendChart(trendData) {
+        const isDark = isMacosDarkMode();
         const categories = trendData.map(item => item.ay_adi || item.ay);
         const gidenMatrahSeries = trendData.map(item => item.giden_matrah || 0);
         const gelenMatrahSeries = trendData.map(item => item.gelen_matrah || 0);
@@ -330,7 +339,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 type: 'bar',
                 height: 320,
                 toolbar: { show: false },
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                background: 'transparent'
+            },
+            theme: {
+                mode: isDark ? 'dark' : 'light'
             },
             plotOptions: {
                 bar: {
@@ -352,26 +365,34 @@ document.addEventListener('DOMContentLoaded', function() {
             ],
             xaxis: {
                 categories: categories.length > 0 ? categories : ['Kayıt Yok'],
-                labels: { style: { fontSize: '11px', colors: '#64748b' } }
+                labels: { style: { fontSize: '11px', colors: isDark ? 'rgba(224, 225, 230, 0.65)' : '#64748b' } },
+                axisBorder: { color: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0' },
+                axisTicks: { color: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0' }
             },
             yaxis: {
                 labels: {
                     formatter: function(val) {
                         return (val / 1000).toLocaleString('tr-TR') + 'k ₺';
                     },
-                    style: { fontSize: '11px', colors: '#64748b' }
+                    style: { fontSize: '11px', colors: isDark ? 'rgba(224, 225, 230, 0.65)' : '#64748b' }
                 }
             },
             fill: { opacity: 1 },
             tooltip: {
+                theme: isDark ? 'dark' : 'light',
                 y: {
                     formatter: function(val) {
                         return formatMoney(val);
                     }
                 }
             },
-            legend: { position: 'top', horizontalAlign: 'right', fontSize: '12px' },
-            grid: { borderColor: '#f1f5f9' }
+            legend: {
+                position: 'top',
+                horizontalAlign: 'right',
+                fontSize: '12px',
+                labels: { colors: isDark ? 'rgba(230, 232, 238, 0.85)' : '#475569' }
+            },
+            grid: { borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9' }
         };
 
         if (monthlyTrendChartInstance) {
@@ -385,6 +406,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 6. Grafik 2: Aylık KDV Akışı & Dengesi (ApexCharts)
     function renderKdvTrendChart(trendData) {
+        const isDark = isMacosDarkMode();
         const categories = trendData.map(item => item.ay_adi || item.ay);
         const gidenKdvSeries = trendData.map(item => item.giden_kdv || 0);
         const gelenKdvSeries = trendData.map(item => item.gelen_kdv || 0);
@@ -395,7 +417,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 type: 'line',
                 height: 320,
                 toolbar: { show: false },
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                background: 'transparent'
+            },
+            theme: {
+                mode: isDark ? 'dark' : 'light'
             },
             stroke: {
                 curve: 'smooth',
@@ -410,25 +436,33 @@ document.addEventListener('DOMContentLoaded', function() {
             ],
             xaxis: {
                 categories: categories.length > 0 ? categories : ['Kayıt Yok'],
-                labels: { style: { fontSize: '11px', colors: '#64748b' } }
+                labels: { style: { fontSize: '11px', colors: isDark ? 'rgba(224, 225, 230, 0.65)' : '#64748b' } },
+                axisBorder: { color: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0' },
+                axisTicks: { color: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0' }
             },
             yaxis: {
                 labels: {
                     formatter: function(val) {
                         return (val / 1000).toLocaleString('tr-TR') + 'k ₺';
                     },
-                    style: { fontSize: '11px', colors: '#64748b' }
+                    style: { fontSize: '11px', colors: isDark ? 'rgba(224, 225, 230, 0.65)' : '#64748b' }
                 }
             },
             tooltip: {
+                theme: isDark ? 'dark' : 'light',
                 y: {
                     formatter: function(val) {
                         return formatMoney(val);
                     }
                 }
             },
-            legend: { position: 'top', horizontalAlign: 'right', fontSize: '11px' },
-            grid: { borderColor: '#f1f5f9' }
+            legend: {
+                position: 'top',
+                horizontalAlign: 'right',
+                fontSize: '11px',
+                labels: { colors: isDark ? 'rgba(230, 232, 238, 0.85)' : '#475569' }
+            },
+            grid: { borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9' }
         };
 
         if (kdvTrendChartInstance) {
@@ -454,6 +488,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderKdvRatesCard() {
+        const isDark = isMacosDarkMode();
+
         // 1. Seçili kapsama göre filtreleme (Giden / Gelen / Tümü)
         let filtered = [];
         if (currentKdvScope === 'ALL') {
@@ -561,19 +597,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td class="ps-2">
                             <span class="d-inline-flex align-items-center gap-1.5">
                                 <span class="rounded-circle d-inline-block" style="width: 8px; height: 8px; background: ${color};"></span>
-                                <span class="fw-bold text-dark font-size-11">%${item.rate}</span>
+                                <span class="fw-bold font-size-11">%${item.rate}</span>
                             </span>
                         </td>
-                        <td class="text-end fw-semibold text-dark font-size-11">${formatMoney(item.matrah)}</td>
+                        <td class="text-end fw-semibold font-size-11">${formatMoney(item.matrah)}</td>
                         <td class="text-end fw-semibold ${kdvValClass} font-size-11">${formatMoney(item.kdv)}</td>
-                        <td class="text-center pe-2"><span class="badge bg-light text-dark font-size-10 px-1 py-0.5 border">%${pct}</span></td>
+                        <td class="text-center pe-2"><span class="badge bg-light text-muted font-size-10 px-1 py-0.5 border">%${pct}</span></td>
                     </tr>`;
                 });
 
                 rowsHtml += `
-                <tr class="table-light fw-bold border-top">
+                <tr class="fw-bold border-top" style="background-color: ${isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc'};">
                     <td class="ps-2 text-uppercase font-size-10 text-muted">Toplam</td>
-                    <td class="text-end font-size-11 text-dark">${formatMoney(totalMatrah)}</td>
+                    <td class="text-end font-size-11">${formatMoney(totalMatrah)}</td>
                     <td class="text-end font-size-11 ${kdvValClass}">${formatMoney(totalKdv)}</td>
                     <td class="text-center pe-2 font-size-10 text-muted">%100</td>
                 </tr>`;
@@ -590,14 +626,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (series.length === 0 || totalMatrah === 0) {
             labels = ['Kayıt Yok'];
             series = [1];
-            colors = ['#e2e8f0'];
+            colors = [isDark ? '#374151' : '#e2e8f0'];
         }
 
         const options = {
             chart: {
                 type: 'donut',
                 height: 210,
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                background: 'transparent'
+            },
+            theme: {
+                mode: isDark ? 'dark' : 'light'
+            },
+            stroke: {
+                colors: [isDark ? 'rgba(28, 30, 38, 0.95)' : '#ffffff'],
+                width: 2
             },
             labels: labels,
             series: series,
@@ -618,7 +662,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 position: 'bottom',
                 fontSize: '11px',
                 horizontalAlign: 'center',
-                itemMargin: { horizontal: 6, vertical: 2 }
+                itemMargin: { horizontal: 6, vertical: 2 },
+                labels: { colors: isDark ? 'rgba(230, 232, 238, 0.85)' : '#475569' }
             },
             plotOptions: {
                 pie: {
@@ -630,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 show: true,
                                 label: scopeCenterLabel,
                                 fontSize: '10px',
-                                color: '#64748b',
+                                color: isDark ? 'rgba(220, 225, 235, 0.65)' : '#64748b',
                                 formatter: function(w) {
                                     if (totalMatrah === 0) return '0 ₺';
                                     if (totalMatrah >= 1000000) {
@@ -638,40 +683,22 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                     return (totalMatrah / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + 'k ₺';
                                 }
+                            },
+                            value: {
+                                color: isDark ? 'rgba(240, 242, 246, 0.95)' : '#0f172a',
+                                fontSize: '13px',
+                                fontWeight: 700
                             }
                         }
                     }
                 }
             },
             tooltip: {
-                custom: function({ series, seriesIndex, dataPointIndex, w }) {
-                    if (totalMatrah === 0) {
-                        return '<div class="p-2 font-size-11">Kayıt Bulunmuyor</div>';
+                theme: isDark ? 'dark' : 'light',
+                y: {
+                    formatter: function(val) {
+                        return formatMoney(val);
                     }
-                    const item = sortedRates[seriesIndex];
-                    if (!item) return '';
-                    const pct = totalMatrah > 0 ? ((item.matrah / totalMatrah) * 100).toFixed(1) : '0';
-                    const color = getKdvColor(item.rate);
-                    return `
-                    <div class="p-2 font-size-11 shadow-sm" style="background:#fff; border-radius:6px; border:1px solid #e2e8f0; min-width:160px;">
-                        <div class="d-flex align-items-center gap-1 mb-1 pb-1 border-bottom">
-                            <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;"></span>
-                            <strong class="text-dark">${item.rateLabel}</strong>
-                            <span class="ms-auto badge bg-light text-dark font-size-10 border">%${pct}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-0.5">
-                            <span class="text-muted">Matrah:</span>
-                            <span class="fw-bold text-dark">${formatMoney(item.matrah)}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-0.5">
-                            <span class="text-muted">KDV Tutarı:</span>
-                            <span class="fw-bold text-primary">${formatMoney(item.kdv)}</span>
-                        </div>
-                        <div class="d-flex justify-content-between pt-1 border-top mt-1">
-                            <span class="text-muted">Toplam Tutar:</span>
-                            <span class="fw-bolder text-dark">${formatMoney(item.matrah + item.kdv)}</span>
-                        </div>
-                    </div>`;
                 }
             }
         };
@@ -684,13 +711,16 @@ document.addEventListener('DOMContentLoaded', function() {
             kdvRatesChartInstance.render();
         }
 
-        // 6. Dahil Olan Faturalar Akordiyonunu Render Et
-        let filteredInvoices = [];
-        if (currentKdvScope === 'ALL') {
-            filteredInvoices = rawKdvFaturalarData;
-        } else {
-            filteredInvoices = rawKdvFaturalarData.filter(inv => (inv.yon || '').toUpperCase() === currentKdvScope);
-        }
+        // 6. Dahil Olan Faturalar Akordiyonunu Doldur
+        renderKdvRateInvoicesAccordion();
+
+        function renderKdvRateInvoicesAccordion() {
+            let filteredInvoices = [];
+            if (currentKdvScope === 'ALL') {
+                filteredInvoices = rawKdvFaturalarData;
+            } else {
+                filteredInvoices = rawKdvFaturalarData.filter(inv => (inv.yon || '').toUpperCase() === currentKdvScope);
+            }
 
         // Benzersiz fatura sayısını hesapla
         const uniqueInvoiceIds = new Set(filteredInvoices.map(inv => inv.fatura_id));
@@ -787,6 +817,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+}
 
     // 8. Tablo: Top Cariler
     function renderTopCarilerTable(elementId, cariler, emptyText) {

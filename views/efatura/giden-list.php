@@ -255,9 +255,9 @@ $title = 'Giden Faturalar';
             <!-- Sağ Araç Çubuğu: Ürün Arama, Tarih Aralığı ve Dışa Aktarma Butonları -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
                 <!-- Ürün / Marka / İçerik Arama Alanı -->
-                <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" style="border-color: #cbd5e1 !important;" title="Fatura içeriğindeki ürün adı, marka, ürün kodu veya açıklamaya göre filtrele">
+                <div class="d-flex align-items-center border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" title="Fatura içeriğindeki ürün adı, marka, ürün kodu veya açıklamaya göre filtrele">
                     <i class="bx bx-package text-primary font-size-16"></i>
-                    <input type="text" id="filterProductSearch" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 195px;" placeholder="Ürün / Marka / Kalem Ara..." autocomplete="off">
+                    <input type="text" id="filterProductSearch" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 195px;" placeholder="Ürün / Marka / Kalem Ara..." autocomplete="off">
                     <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearProductSearch" title="Ürün Aramasını Temizle" style="display: none;">
                         <i class="bx bx-x font-size-14"></i>
                     </button>
@@ -270,7 +270,7 @@ $title = 'Giden Faturalar';
                 <div class="d-flex align-items-center gap-2 efatura-date-controls" id="efaturaDateControls">
                     <!-- Hızlı Dönem Seçici Dropdown -->
                     <div class="dropdown d-inline-block">
-                        <button type="button" class="btn btn-sm bg-white border rounded-3 px-2 shadow-sm d-flex align-items-center gap-1 font-size-12 fw-semibold text-dark dropdown-toggle" style="border-color: #cbd5e1 !important; height: 32px; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
+                        <button type="button" class="btn btn-sm border rounded-3 px-2 shadow-sm d-flex align-items-center gap-1 font-size-12 fw-semibold dropdown-toggle period-filter-dropdown-btn" style="height: 32px; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" id="btnPeriodDropdown" title="Dönem Filtresi">
                             <i class="bx bx-calendar-event text-primary font-size-15"></i> <span id="currentPeriodLabel">Bu Ay</span>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1 font-size-12" style="min-width: 150px;">
@@ -284,18 +284,18 @@ $title = 'Giden Faturalar';
                     </div>
 
                     <!-- Başlangıç Tarihi Filtresi -->
-                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Başlangıç Tarihi">
+                    <div class="d-flex align-items-center border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="height: 32px;" title="Başlangıç Tarihi">
                         <i class="bx bx-calendar text-primary font-size-15"></i>
-                        <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Başlangıç" readonly>
+                        <input type="text" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Başlangıç" readonly>
                         <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearStartDate" title="Başlangıç Tarihini Temizle">
                             <i class="bx bx-x font-size-14"></i>
                         </button>
                     </div>
 
                     <!-- Bitiş Tarihi Filtresi -->
-                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="border-color: #cbd5e1 !important; height: 32px;" title="Bitiş Tarihi">
+                    <div class="d-flex align-items-center border rounded-3 px-2 shadow-sm gap-1 date-filter-box" style="height: 32px;" title="Bitiş Tarihi">
                         <i class="bx bx-calendar text-primary font-size-15"></i>
-                        <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold text-dark" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Bitiş" readonly>
+                        <input type="text" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 82px; cursor: pointer; height: 100%;" placeholder="Bitiş" readonly>
                         <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearEndDate" title="Bitiş Tarihini Temizle">
                             <i class="bx bx-x font-size-14"></i>
                         </button>
@@ -412,47 +412,63 @@ $title = 'Giden Faturalar';
 </div>
 
 <!-- Özel Sağ Tık (Context Menu) ve 3 Nokta Menüsü Bileşeni -->
-<div id="faturaContextMenu" class="dropdown-menu shadow-lg border rounded-3 p-1" style="display: none; position: fixed; z-index: 99999; min-width: 200px;">
-    <div class="dropdown-header text-muted font-size-11 text-uppercase fw-bold pb-1">Fatura İşlemleri</div>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-tahsilat-action text-success" data-action="tahsilat" href="javascript:void(0)">
-        <i class="bx bx-money me-2 text-success font-size-16"></i> Tahsilat Ekle / Yönet
+<div id="faturaContextMenu" class="custom-context-menu dropdown-menu shadow-lg border rounded-3 p-1" style="display: none; position: fixed; z-index: 99999; min-width: 215px;">
+    <div class="cm-header d-flex align-items-center gap-2 px-2 py-1.5 border-bottom mb-1">
+        <i class="bx bx-receipt text-primary font-size-16"></i>
+        <span class="fw-bold font-monospace text-dark text-truncate cm-invoice-title font-size-12" id="cmInvoiceTitle">Fatura İşlemleri</span>
+    </div>
+    
+    <!-- 1. Görüntüleme & İndirme -->
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-preview-action" data-action="preview" href="javascript:void(0)">
+        <i class="bx bx-show me-2 text-primary font-size-15"></i> Fatura Önizle
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-edit-action text-warning" data-action="edit" href="javascript:void(0)">
-        <i class="bx bx-edit me-2 font-size-16"></i> Faturayı Düzenle
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-print-action" data-action="print" href="javascript:void(0)">
+        <i class="bx bx-printer me-2 text-secondary font-size-15"></i> Yazdır
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-preview-action" data-action="preview" href="javascript:void(0)">
-        <i class="bx bx-show me-2 text-primary font-size-16"></i> Görüntüle / Önizle
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-pdf-action" data-action="download-pdf" href="javascript:void(0)">
+        <i class="bx bxs-file-pdf me-2 text-danger font-size-15"></i> PDF İndir
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-print-action" data-action="print" href="javascript:void(0)">
-        <i class="bx bx-printer me-2 text-dark font-size-16"></i> Yazdır
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-xml-action" data-action="download-xml" href="javascript:void(0)">
+        <i class="bx bx-code-alt me-2 text-info font-size-15"></i> UBL (XML) İndir
     </a>
-    <a class="dropdown-item cm-action" data-action="history" href="javascript:void(0)"><i class="bx bx-history me-2"></i>İşlem Geçmişi</a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-pdf-action" data-action="download-pdf" href="javascript:void(0)">
-        <i class="bx bxs-file-pdf me-2 text-danger font-size-16"></i> PDF İndir
-    </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-xml-action" data-action="download-xml" href="javascript:void(0)">
-        <i class="bx bx-code-alt me-2 text-info font-size-16"></i> UBL (XML) İndir
-    </a>
+    
     <div class="dropdown-divider my-1 cm-div-1"></div>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-send-action" data-action="send" href="javascript:void(0)">
-        <i class="bx bx-send me-2 text-success font-size-16"></i> GİB / EDM'ye Gönder
+    
+    <!-- 2. Operasyon & Muhasebe -->
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-tahsilat-action text-success" data-action="tahsilat" href="javascript:void(0)">
+        <i class="bx bx-money me-2 text-success font-size-15"></i> Tahsilat Ekle / Yönet
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-sync-action" data-action="sync" href="javascript:void(0)">
-        <i class="bx bx-refresh me-2 text-warning font-size-16"></i> GİB Durumunu Güncelle
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-sync-action text-warning" data-action="sync" href="javascript:void(0)">
+        <i class="bx bx-refresh me-2 text-warning font-size-15"></i> GİB Durumu Sorgula
     </a>
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-send-action text-success" data-action="send" href="javascript:void(0)">
+        <i class="bx bx-send me-2 text-success font-size-15"></i> GİB / EDM'ye Gönder
+    </a>
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-edit-action text-warning" data-action="edit" href="javascript:void(0)">
+        <i class="bx bx-edit me-2 font-size-15"></i> Taslağı Düzenle
+    </a>
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-history-action text-info" data-action="history" href="javascript:void(0)">
+        <i class="bx bx-history me-2 text-info font-size-15"></i> İşlem Geçmişi
+    </a>
+    
     <div class="dropdown-divider my-1 cm-div-2"></div>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-copy-no" data-action="copy-no" href="javascript:void(0)">
-        <i class="bx bx-copy me-2 text-secondary font-size-16"></i> Fatura No Kopyala
+    
+    <!-- 3. Kopyalama -->
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-copy-no" data-action="copy-no" href="javascript:void(0)">
+        <i class="bx bx-copy me-2 text-secondary font-size-15"></i> Fatura No Kopyala
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 cm-action cm-copy-ettn" data-action="copy-ettn" href="javascript:void(0)">
-        <i class="bx bx-key me-2 text-secondary font-size-16"></i> ETTN (UUID) Kopyala
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-copy-ettn" data-action="copy-ettn" href="javascript:void(0)">
+        <i class="bx bx-key me-2 text-secondary font-size-15"></i> ETTN (UUID) Kopyala
     </a>
+    
     <div class="dropdown-divider my-1 cm-div-3"></div>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 text-danger cm-action cm-delete-action" data-action="delete" href="javascript:void(0)">
-        <i class="bx bx-trash me-2 font-size-16 text-danger" style="color: #ef4444 !important;"></i> <span style="color: #ef4444 !important; font-weight: 500;">Taslak Faturayı Sil</span>
+    
+    <!-- 4. Kritik / Silme / İptal -->
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 text-danger cm-action cm-delete-action" data-action="delete" href="javascript:void(0)">
+        <i class="bx bx-trash me-2 font-size-15 text-danger"></i> <span class="fw-semibold">Taslağı Sil</span>
     </a>
-    <a class="dropdown-item d-flex align-items-center py-1 font-size-13 text-danger cm-action cm-cancel-action" data-action="cancel" href="javascript:void(0)">
-        <i class="bx bx-x-circle me-2 font-size-16 text-danger" style="color: #ef4444 !important;"></i> <span style="color: #ef4444 !important; font-weight: 500;">Faturayı İptal Et</span>
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 text-danger cm-action cm-cancel-action" data-action="cancel" href="javascript:void(0)">
+        <i class="bx bx-x-circle me-2 font-size-15 text-danger"></i> <span class="fw-semibold">Faturayı İptal Et</span>
     </a>
 </div>
 
@@ -916,6 +932,95 @@ $title = 'Giden Faturalar';
     color: #94a3b8 !important;
     background-color: #f8fafc !important;
     border-color: #e2e8f0 !important;
+}
+
+/* macOS koyu tema: Finder paletine uyumlu cam ve koyu tonlar */
+html[data-theme-preset="macos-dark"] #tblFaturalar {
+    background: transparent !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+html[data-theme-preset="macos-dark"] #tblFaturalar thead th,
+html[data-theme-preset="macos-dark"] #tblFaturalar thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead .dt-filter-row th {
+    background-color: rgba(39, 40, 44, .96) !important;
+    background-image: none !important;
+    color: rgba(224, 225, 229, .75) !important;
+    border-color: rgba(255,255,255,.08) !important;
+}
+html[data-theme-preset="macos-dark"] #tblFaturalar thead .dt-filter-row input,
+html[data-theme-preset="macos-dark"] #tblFaturalar thead .dt-filter-row select,
+html[data-theme-preset="macos-dark"] .dt-filter-control {
+    background-color: rgba(25, 26, 30, .94) !important;
+    color: rgba(225, 226, 230, .85) !important;
+    border-color: rgba(255,255,255,.14) !important;
+}
+html[data-theme-preset="macos-dark"] #tblFaturalar thead .dt-filter-row input::placeholder,
+html[data-theme-preset="macos-dark"] .dt-filter-control::placeholder {
+    color: rgba(202, 209, 222, .42) !important;
+}
+html[data-theme-preset="macos-dark"] #tblFaturalar tbody tr td {
+    background-color: rgba(33, 34, 39, .9) !important;
+    color: rgba(232, 233, 236, .82) !important;
+    border-color: rgba(255,255,255,.085) !important;
+}
+html[data-theme-preset="macos-dark"] #tblFaturalar tbody tr:hover td {
+    background-color: rgba(255,255,255,.075) !important;
+}
+html[data-theme-preset="macos-dark"] #tblFaturalar tbody tr.selected td {
+    background-color: rgba(10,132,255,.14) !important;
+}
+html[data-theme-preset="macos-dark"] .dataTables_info,
+html[data-theme-preset="macos-dark"] .dataTables_length {
+    color: rgba(220,225,235,.62) !important;
+}
+html[data-theme-preset="macos-dark"] .dataTables_length select,
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item .page-link {
+    background-color: rgba(255,255,255,.065) !important;
+    color: rgba(232,235,242,.78) !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item.active .page-link {
+    background-color: #0a84ff !important;
+    border-color: #0a84ff !important;
+    color: #ffffff !important;
+}
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item.disabled .page-link {
+    background-color: rgba(255,255,255,.025) !important;
+    color: rgba(232,235,242,.32) !important;
+    border-color: rgba(255,255,255,.07) !important;
+}
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white,
+html[data-theme-preset="macos-dark"] .date-filter-box,
+html[data-theme-preset="macos-dark"] .product-search-box,
+html[data-theme-preset="macos-dark"] .period-filter-dropdown-btn,
+html[data-theme-preset="macos-dark"] #btnHeaderColVis,
+html[data-theme-preset="macos-dark"] .btn-subtle-secondary {
+    background-color: rgba(28, 30, 38, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+    box-shadow: none !important;
+}
+html[data-theme-preset="macos-dark"] .date-filter-box input,
+html[data-theme-preset="macos-dark"] .product-search-box input {
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-card {
+    background: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-value {
+    color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-label {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-subtext {
+    color: rgba(200, 205, 218, 0.6) !important;
+}
+html[data-theme-preset="macos-dark"] h4.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
 }
 
 /* 3. Profesyonel Yazdırma (Print) Standartları */

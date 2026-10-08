@@ -905,81 +905,65 @@ $(document).ready(function() {
     function showContextMenu(targetElement, data, e) {
         selectedRowData = data;
         const status = (data.entegrator_durum_kodu || '').toUpperCase();
-        const isRightClick = e && e.type === 'contextmenu';
+        const faturaNo = (data.fatura_no && data.fatura_no !== 'Taslak') ? data.fatura_no : 'Taslak Fatura';
 
-        // Menü Başlığı
-        $contextMenu.find('.dropdown-header').text(isRightClick ? 'Tüm Fatura İşlemleri' : 'Diğer İşlemler');
+        // Menü Başlığı: Fatura No
+        $contextMenu.find('#cmInvoiceTitle').text(faturaNo);
 
-        if (isRightClick) {
-            // SAĞ TIK: HEPSİ (Tüm işlemler) listelenir
-            $('.cm-preview-action').removeClass('d-none').show();
-            $('.cm-print-action').removeClass('d-none').show();
-            $('.cm-pdf-action').removeClass('d-none').show();
-            $('.cm-xml-action').removeClass('d-none').show();
-            $('.cm-copy-no').removeClass('d-none').show();
-            $('.cm-copy-ettn').removeClass('d-none').show();
-            $('.cm-div-1').removeClass('d-none').show();
-            $('.cm-div-2').removeClass('d-none').show();
+        // 1. Temel Görüntüleme & İndirme Aksiyonları (Her zaman görünür)
+        $('.cm-preview-action').show();
+        $('.cm-print-action').show();
+        $('.cm-pdf-action').show();
+        $('.cm-xml-action').show();
+        $('.cm-div-1').show();
 
-            if (status === 'TASLAK') {
-                $('.cm-edit-action').removeClass('d-none').show();
-                $('.cm-send-action').removeClass('d-none').show();
-                $('.cm-sync-action').addClass('d-none').hide();
-                $('.cm-delete-action').removeClass('d-none').show();
-                $('.cm-cancel-action').addClass('d-none').hide();
-                $('.cm-div-3').removeClass('d-none').show();
-            } else if (status === 'IPTAL') {
-                $('.cm-edit-action').addClass('d-none').hide();
-                $('.cm-send-action').addClass('d-none').hide();
-                $('.cm-sync-action').addClass('d-none').hide();
-                $('.cm-delete-action').addClass('d-none').hide();
-                $('.cm-cancel-action').addClass('d-none').hide();
-                $('.cm-div-3').addClass('d-none').hide();
-            } else {
-                // GONDERILDI, ONAYLANDI, HATALI
-                $('.cm-edit-action').addClass('d-none').hide();
-                $('.cm-send-action').addClass('d-none').hide();
-                if (status === 'GONDERILDI' || status === 'KUYRUKTA') {
-                    $('.cm-sync-action').removeClass('d-none').show();
-                } else {
-                    $('.cm-sync-action').addClass('d-none').hide();
-                }
-                $('.cm-delete-action').addClass('d-none').hide();
-                $('.cm-cancel-action').removeClass('d-none').show();
-                $('.cm-div-3').removeClass('d-none').show();
-            }
+        // 2. Tahsilat: İptal haricinde her zaman aktif
+        if (status === 'IPTAL') {
+            $('.cm-tahsilat-action').hide();
         } else {
-            // 3 NOKTA (⋮) BUTONU: Satırda olan Düzenle ve GİB'e Gönder hariç diğer TÜM işlemler açılır listede olur
-            $('.cm-edit-action').addClass('d-none').hide();
-            $('.cm-send-action').addClass('d-none').hide();
-            $('.cm-sync-action').addClass('d-none').hide();
-
-            // Diğer tüm işlemler açılır listede mevcuttur:
-            $('.cm-preview-action').removeClass('d-none').show();
-            $('.cm-print-action').removeClass('d-none').show();
-            $('.cm-pdf-action').removeClass('d-none').show();
-            $('.cm-xml-action').removeClass('d-none').show();
-            $('.cm-div-1').removeClass('d-none').show();
-
-            $('.cm-copy-no').removeClass('d-none').show();
-            $('.cm-copy-ettn').removeClass('d-none').show();
-            $('.cm-div-2').removeClass('d-none').show();
-
-            // Taslak ise Sil, GİB'e iletildiyse İptal
-            if (status === 'TASLAK') {
-                $('.cm-delete-action').removeClass('d-none').show();
-                $('.cm-cancel-action').addClass('d-none').hide();
-                $('.cm-div-3').removeClass('d-none').show();
-            } else if (status === 'IPTAL') {
-                $('.cm-delete-action').addClass('d-none').hide();
-                $('.cm-cancel-action').addClass('d-none').hide();
-                $('.cm-div-3').addClass('d-none').hide();
-            } else {
-                $('.cm-delete-action').addClass('d-none').hide();
-                $('.cm-cancel-action').removeClass('d-none').show();
-                $('.cm-div-3').removeClass('d-none').show();
-            }
+            $('.cm-tahsilat-action').show();
         }
+
+        // 3. Duruma Göre Özel Operasyonlar
+        if (status === 'TASLAK') {
+            $('.cm-edit-action').show();
+            $('.cm-send-action').show();
+            $('.cm-sync-action').hide();
+            $('.cm-history-action').hide();
+            $('.cm-delete-action').show();
+            $('.cm-cancel-action').hide();
+            $('.cm-div-3').show();
+        } else if (status === 'IPTAL') {
+            $('.cm-edit-action').hide();
+            $('.cm-send-action').hide();
+            $('.cm-sync-action').hide();
+            $('.cm-history-action').show();
+            $('.cm-delete-action').hide();
+            $('.cm-cancel-action').hide();
+            $('.cm-div-3').hide();
+        } else if (status === 'GONDERILDI' || status === 'KUYRUKTA' || status === 'BEKLIYOR') {
+            $('.cm-edit-action').hide();
+            $('.cm-send-action').hide();
+            $('.cm-sync-action').show();
+            $('.cm-history-action').show();
+            $('.cm-delete-action').hide();
+            $('.cm-cancel-action').show();
+            $('.cm-div-3').show();
+        } else {
+            // ONAYLANDI, GIB_ONAYLI vb.
+            $('.cm-edit-action').hide();
+            $('.cm-send-action').hide();
+            $('.cm-sync-action').hide();
+            $('.cm-history-action').show();
+            $('.cm-delete-action').hide();
+            $('.cm-cancel-action').show();
+            $('.cm-div-3').show();
+        }
+
+        // 4. Kopyalama Grubu (Her zaman görünür)
+        $('.cm-copy-no').show();
+        $('.cm-copy-ettn').show();
+        $('.cm-div-2').show();
 
         // Body'ye taşı
         if (!$contextMenu.parent().is('body')) {
@@ -999,7 +983,7 @@ $(document).ready(function() {
         }
 
         const menuWidth = $contextMenu.outerWidth() || 220;
-        const menuHeight = $contextMenu.outerHeight() || 320;
+        const menuHeight = $contextMenu.outerHeight() || 340;
 
         // Viewport sınır kontrolleri
         if (posX + menuWidth > $(window).width()) {
@@ -1039,6 +1023,7 @@ $(document).ready(function() {
     $('#tblFaturalar tbody').on('click', '.btn-row-menu', function(e) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         const tr = $(this).closest('tr');
         const data = table.row(tr).data();
         if (!data) return;
@@ -1048,9 +1033,11 @@ $(document).ready(function() {
         showContextMenu(this, data, e);
     });
 
-    // Satıra Sağ Tıklanınca Menüyü Aç
+    // Satıra Sağ Tıklanınca Menüyü Aç (Global Menüyü Engelle)
     $('#tblFaturalar tbody').on('contextmenu', 'tr', function(e) {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         const row = table.row(this);
         const data = row.data();
         if (!data) return;

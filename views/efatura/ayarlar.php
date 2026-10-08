@@ -61,6 +61,38 @@ $envOptions = [
     border-radius: 16px;
     border: 1px solid rgba(226, 232, 240, 0.8) !important;
 }
+
+/* macOS Koyu Tema Uyumu */
+html[data-theme-preset="macos-dark"] .nav-pills-custom .nav-link {
+    color: rgba(224, 225, 230, 0.7) !important;
+}
+html[data-theme-preset="macos-dark"] .nav-pills-custom .nav-link:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] .nav-pills-custom .nav-link.active {
+    color: #ffffff !important;
+    background: #0a84ff !important;
+    border-color: #0a84ff !important;
+    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.35) !important;
+}
+html[data-theme-preset="macos-dark"] .settings-card {
+    background: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme-preset="macos-dark"] .card.bg-white {
+    background-color: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+}
+html[data-theme-preset="macos-dark"] .bg-light {
+    background-color: rgba(35, 36, 42, 0.8) !important;
+}
+html[data-theme-preset="macos-dark"] h4.text-dark,
+html[data-theme-preset="macos-dark"] h6.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
+}
 </style>
 
 <div class="container-fluid pb-5">

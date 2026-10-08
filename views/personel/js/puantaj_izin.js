@@ -372,10 +372,41 @@ $(document).ready(function () {
   const styleCache = {};
   function getStyleFromTailwind(tailwindClass, shortCode) {
     const code = (shortCode || "").toUpperCase();
-    const cacheKey = `${tailwindClass || ""}_${code}`;
+    const isMacTheme = document.documentElement.getAttribute("data-theme-preset") === "macos-dark";
+    const cacheKey = `${isMacTheme ? "mac" : "default"}_${tailwindClass || ""}_${code}`;
     if (styleCache[cacheKey]) return styleCache[cacheKey];
 
     let result;
+
+    // Finder benzeri koyu cam paleti. Renkler anlamı korur, yüzeyler parlak beyaz olmaz.
+    if (isMacTheme) {
+      const colorToken = (tailwindClass || "").toLowerCase();
+
+      if (code === "X" || colorToken.includes("blue") || colorToken.includes("primary")) {
+        result = { bg: "rgba(67, 91, 123, .34)", color: "rgba(166, 195, 231, .9)", border: "rgba(112, 145, 185, .32)" };
+      } else if (code === "HT" || colorToken.includes("amber") || colorToken.includes("orange") || colorToken.includes("warning")) {
+        result = { bg: "rgba(119, 82, 40, .34)", color: "rgba(229, 179, 110, .9)", border: "rgba(181, 130, 68, .32)" };
+      } else if (colorToken.includes("red") || colorToken.includes("rose") || colorToken.includes("danger") || colorToken.includes("pink")) {
+        result = { bg: "rgba(116, 55, 65, .34)", color: "rgba(222, 141, 153, .9)", border: "rgba(174, 86, 101, .32)" };
+      } else if (colorToken.includes("green") || colorToken.includes("emerald") || colorToken.includes("success") || colorToken.includes("teal")) {
+        result = { bg: "rgba(48, 103, 79, .34)", color: "rgba(137, 207, 172, .9)", border: "rgba(73, 145, 109, .32)" };
+      } else if (colorToken.includes("purple") || colorToken.includes("violet") || colorToken.includes("indigo")) {
+        result = { bg: "rgba(91, 67, 116, .34)", color: "rgba(198, 165, 226, .9)", border: "rgba(137, 101, 169, .32)" };
+      } else if (colorToken.includes("cyan") || colorToken.includes("info")) {
+        result = { bg: "rgba(47, 100, 108, .34)", color: "rgba(137, 205, 211, .9)", border: "rgba(72, 143, 151, .32)" };
+      } else if (tailwindClass && tailwindClass.startsWith("#")) {
+        result = {
+          bg: `color-mix(in srgb, ${tailwindClass} 22%, rgba(34, 35, 40, .96))`,
+          color: `color-mix(in srgb, ${tailwindClass} 58%, white)`,
+          border: `color-mix(in srgb, ${tailwindClass} 34%, transparent)`
+        };
+      } else {
+        result = { bg: "rgba(255, 255, 255, .075)", color: "rgba(226, 227, 230, .78)", border: "rgba(255, 255, 255, .12)" };
+      }
+
+      styleCache[cacheKey] = result;
+      return result;
+    }
 
     // Çalışılan Gün (X) için göz yormayan soft Ice Blue
     if (code === "X") {

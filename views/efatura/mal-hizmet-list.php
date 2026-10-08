@@ -47,6 +47,31 @@ html[data-theme-preset="macos-dark"] #efaturaMalHizmetTable tbody tr:last-child 
 html[data-theme-preset="macos-dark"] .card .table-responsive {
     border-bottom-color: rgba(255, 255, 255, .07) !important;
 }
+
+/* macOS Koyu Tema Uyumu */
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white {
+    background-color: rgba(35, 36, 42, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-card {
+    background: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-value {
+    color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-label {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-kpi-subtext {
+    color: rgba(200, 205, 218, 0.6) !important;
+}
+html[data-theme-preset="macos-dark"] h4.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
+}
 </style>
 <meta name="csrf-token" content="<?= htmlspecialchars(Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
 

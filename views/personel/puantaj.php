@@ -1269,6 +1269,232 @@ use App\Service\Gate;
             background: #2b3542 !important;
             color: #ffffff !important;
         }
+
+        /* macOS Finder paleti: Puantaj sayfasındaki lacivert ve parlak beyazları nötrleştir */
+        html[data-theme-preset="macos-dark"] #puantaj-full-container {
+            --pnt-mac-bg: rgba(27, 28, 32, .96);
+            --pnt-mac-surface: rgba(34, 35, 40, .94);
+            --pnt-mac-raised: rgba(41, 42, 47, .94);
+            --pnt-mac-hover: rgba(49, 50, 55, .94);
+            --pnt-mac-line: rgba(255, 255, 255, .075);
+            --pnt-mac-text: rgba(226, 227, 230, .72);
+            --pnt-mac-muted: rgba(207, 209, 215, .48);
+            background: transparent !important;
+            color: var(--pnt-mac-text) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-table-header,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .card-izin-turleri,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-grid-card,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-grid-summary {
+            background: var(--pnt-mac-surface) !important;
+            border-color: var(--pnt-mac-line) !important;
+            box-shadow: none !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-filter-cluster .form-control,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-filter-cluster .form-select,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-filter-cluster .select2-selection,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-filter-cluster .form-floating {
+            background: rgba(255, 255, 255, .055) !important;
+            border-color: rgba(255, 255, 255, .1) !important;
+            color: var(--pnt-mac-text) !important;
+            box-shadow: none !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-filter-cluster label,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-grid-subtitle,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .izin-palette-header .text-muted {
+            color: var(--pnt-mac-muted) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .view-buttons,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-stat-pill,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-focus-toggle {
+            background: rgba(20, 21, 24, .76) !important;
+            border-color: rgba(255, 255, 255, .09) !important;
+            color: var(--pnt-mac-muted) !important;
+            box-shadow: none !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .view-buttons .nav-link {
+            background: transparent !important;
+            color: var(--pnt-mac-muted) !important;
+            border-color: transparent !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .view-buttons .nav-link.active {
+            background: rgba(255, 255, 255, .12) !important;
+            color: rgba(235, 236, 239, .82) !important;
+            border-color: rgba(255, 255, 255, .08) !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-table-wrapper,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tbody tr {
+            background: var(--pnt-mac-bg) !important;
+            scrollbar-color: rgba(255, 255, 255, .16) transparent !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead tr,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.sticky-col,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.sticky-col-right-1 {
+            background: rgba(31, 32, 36, .98) !important;
+            background-image: none !important;
+            border-color: var(--pnt-mac-line) !important;
+            color: var(--pnt-mac-muted) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead .day-name {
+            color: var(--pnt-mac-muted) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead .day-number {
+            color: rgba(229, 230, 233, .78) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .day-cell,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .personel-info,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .sticky-col-right-1 {
+            background: var(--pnt-mac-surface) !important;
+            border-color: var(--pnt-mac-line) !important;
+            color: var(--pnt-mac-text) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tbody tr:hover .day-cell,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tbody tr:hover .personel-info {
+            background: var(--pnt-mac-hover) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .text-truncate-name,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .toplam-calisma-gunu {
+            color: rgba(230, 231, 234, .78) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .personel-avatar-mini {
+            background: rgba(255, 255, 255, .075) !important;
+            color: rgba(218, 220, 225, .68) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-sunday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .day-cell.is-sunday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot td.is-sunday {
+            background: rgba(136, 64, 72, .22) !important;
+            border-color: rgba(206, 111, 122, .2) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-today,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .day-cell.is-today {
+            background: rgba(91, 89, 119, .22) !important;
+            border-color: rgba(151, 148, 190, .2) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot tr,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot td {
+            background: rgba(29, 30, 34, .98) !important;
+            border-color: var(--pnt-mac-line) !important;
+            color: rgba(224, 225, 228, .72) !important;
+        }
+
+        /* Çalışma/izin kodları: parlak beyaz yerine mat, düşük doygunluklu rozetler */
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .izin-item-container .izin-box {
+            background: rgba(255, 255, 255, .075) !important;
+            border: 1px solid rgba(255, 255, 255, .11) !important;
+            color: rgba(226, 227, 230, .76) !important;
+            box-shadow: none !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="X"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="x"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .izin-item-container[data-shortcode="X"] .izin-box {
+            background: rgba(74, 105, 146, .25) !important;
+            border-color: rgba(108, 143, 188, .28) !important;
+            color: rgba(161, 190, 227, .84) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="HT"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="ht"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .izin-item-container[data-shortcode="HT"] .izin-box {
+            background: rgba(132, 92, 43, .27) !important;
+            border-color: rgba(191, 139, 74, .3) !important;
+            color: rgba(224, 174, 105, .86) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="Yİ"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="Üİ"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="RTÇ"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="HTÇ"] {
+            background: rgba(51, 116, 88, .25) !important;
+            border-color: rgba(75, 157, 121, .28) !important;
+            color: rgba(130, 204, 166, .84) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="RP"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="D"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="ÜZ"] {
+            background: rgba(126, 61, 70, .25) !important;
+            border-color: rgba(183, 91, 104, .28) !important;
+            color: rgba(220, 137, 148, .84) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="Mİ"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="Bİ"],
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .cell-content[data-shortcode="Eİ"] {
+            background: rgba(101, 75, 126, .25) !important;
+            border-color: rgba(145, 109, 177, .28) !important;
+            color: rgba(193, 158, 221, .84) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .btn-primary {
+            background: rgba(50, 115, 184, .82) !important;
+            border-color: rgba(94, 151, 211, .42) !important;
+            color: rgba(244, 245, 247, .9) !important;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .25) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .day-cell:hover:not(.disabled) {
+            box-shadow: inset 0 0 0 1px rgba(198, 200, 207, .26) !important;
+            border-radius: 6px;
+        }
+
+        /* Gün rozetleri: Finder ikon/list düğmeleri gibi kompakt koyu cam yüzey */
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .day-cell {
+            padding: 2px !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .cell-content {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            height: 100% !important;
+            min-height: 42px !important;
+            margin: 0 !important;
+            border-radius: 4px !important;
+            font-size: 11px !important;
+            font-weight: 650 !important;
+            letter-spacing: 0 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .055), 0 1px 3px rgba(0, 0, 0, .22) !important;
+            transform: none !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .cell-content:hover {
+            filter: brightness(1.12);
+            transform: none !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .075), 0 3px 8px rgba(0, 0, 0, .3) !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .izin-item-container .izin-box {
+            min-width: 40px !important;
+            height: 34px !important;
+            border-radius: 8px !important;
+            font-weight: 650 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .055), 0 1px 3px rgba(0, 0, 0, .2) !important;
+        }
     </style>
 
     <div id="puantaj-full-container">

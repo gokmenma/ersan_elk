@@ -7137,3 +7137,112 @@ html[data-theme-preset="macos-dark"] body.global-search-open .vertical-menu {
     transition: none !important;
   }
 }
+
+/* ==========================================================================
+   macOS Dark - E-Fatura Modülleri ve DataTables Filtre Standartları
+   ========================================================================== */
+html[data-theme-preset="macos-dark"] body .summary-kpi-card,
+html[data-theme-preset="macos-dark"] body .dashboard-stat-card,
+html[data-theme-preset="macos-dark"] body .chart-card,
+html[data-theme-preset="macos-dark"] body .settings-card,
+html[data-theme-preset="macos-dark"] body .summary-card {
+  background-color: var(--mac-surface) !important;
+  border-color: var(--mac-line) !important;
+  box-shadow: var(--content-shadow) !important;
+  color: var(--mac-text) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] body .top-icon-btn.bg-white,
+html[data-theme-preset="macos-dark"] body .top-action-btn.btn-outline-secondary,
+html[data-theme-preset="macos-dark"] body .top-icon-btn.btn-outline-secondary {
+  background-color: var(--mac-surface) !important;
+  border: 1px solid var(--mac-line) !important;
+  color: rgba(235, 238, 245, 0.88) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .top-action-btn.bg-white:hover,
+html[data-theme-preset="macos-dark"] body .top-icon-btn.bg-white:hover,
+html[data-theme-preset="macos-dark"] body .top-action-btn.btn-outline-secondary:hover,
+html[data-theme-preset="macos-dark"] body .top-icon-btn.btn-outline-secondary:hover {
+  background-color: rgba(48, 50, 60, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme-preset="macos-dark"] body .date-filter-box,
+html[data-theme-preset="macos-dark"] body .product-search-box,
+html[data-theme-preset="macos-dark"] body .period-filter-dropdown-btn,
+html[data-theme-preset="macos-dark"] body #btnPeriodDropdown,
+html[data-theme-preset="macos-dark"] body #btnHeaderColVis,
+html[data-theme-preset="macos-dark"] body .btn-subtle-secondary {
+  background-color: var(--mac-surface) !important;
+  border: 1px solid var(--mac-line) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .date-filter-box input,
+html[data-theme-preset="macos-dark"] body .product-search-box input {
+  color: rgba(235, 238, 245, 0.9) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .date-filter-box input::placeholder,
+html[data-theme-preset="macos-dark"] body .product-search-box input::placeholder {
+  color: rgba(200, 205, 218, 0.45) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dt-filter-control,
+html[data-theme-preset="macos-dark"] body table.dataTable thead .dt-filter-row input,
+html[data-theme-preset="macos-dark"] body table.dataTable thead .dt-filter-row select {
+  background-color: rgba(25, 26, 30, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: rgba(235, 238, 244, 0.85) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dt-filter-control::placeholder,
+html[data-theme-preset="macos-dark"] body table.dataTable thead .dt-filter-row input::placeholder {
+  color: rgba(202, 209, 222, 0.45) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable thead th,
+html[data-theme-preset="macos-dark"] body table.dataTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] body .datatable-premium-shell table.dataTable thead .dt-filter-row th {
+  background-color: rgba(39, 40, 44, 0.96) !important;
+  color: rgba(224, 225, 229, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable tbody td {
+  background-color: rgba(33, 34, 39, 0.88) !important;
+  color: rgba(232, 233, 236, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.065) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable tbody tr.selected td {
+  background-color: rgba(10, 132, 255, 0.15) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dataTables_length select,
+html[data-theme-preset="macos-dark"] body .dataTables_paginate .pagination .page-item .page-link {
+  background-color: rgba(255, 255, 255, 0.065) !important;
+  color: rgba(232, 235, 242, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dataTables_paginate .pagination .page-item.active .page-link {
+  background-color: #0a84ff !important;
+  border-color: #0a84ff !important;
+  color: #ffffff !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dataTables_paginate .pagination .page-item.disabled .page-link {
+  background-color: rgba(255, 255, 255, 0.025) !important;
+  color: rgba(232, 235, 242, 0.32) !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+

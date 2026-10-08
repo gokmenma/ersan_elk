@@ -859,6 +859,78 @@ $malHizmetSelectHtml .= '</select>';
     background-color: #f1f5f9;
     color: #2563eb;
 }
+
+/* macOS Koyu Tema Uyumu */
+html[data-theme-preset="macos-dark"] .summary-kpi-card,
+html[data-theme-preset="macos-dark"] .summary-card,
+html[data-theme-preset="macos-dark"] .invoice-items-table-frame {
+    background: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-action-btn.btn-outline-secondary,
+html[data-theme-preset="macos-dark"] .top-icon-btn.btn-outline-secondary {
+    background-color: rgba(35, 36, 42, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+html[data-theme-preset="macos-dark"] .items-table thead th {
+    background-color: rgba(39, 40, 44, 0.96) !important;
+    color: rgba(224, 225, 229, 0.75) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .items-table thead th.th-tax-header {
+    background-color: rgba(14, 165, 233, 0.15) !important;
+    color: #38bdf8 !important;
+    border-color: rgba(14, 165, 233, 0.25) !important;
+}
+html[data-theme-preset="macos-dark"] .items-table thead th.th-tax-sub {
+    background-color: rgba(39, 40, 44, 0.96) !important;
+    color: #38bdf8 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .items-table tbody td {
+    background-color: rgba(33, 34, 39, 0.85) !important;
+    color: rgba(231, 234, 241, 0.82) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.065) !important;
+}
+html[data-theme-preset="macos-dark"] .items-table .form-control-sm,
+html[data-theme-preset="macos-dark"] .items-table .form-select-sm,
+html[data-theme-preset="macos-dark"] .tax-detail-fields-wrap {
+    background-color: rgba(25, 26, 30, 0.9) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] .items-table .select2-container--default .select2-selection--single {
+    background-color: rgba(25, 26, 30, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] .items-table .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-row {
+    color: rgba(200, 205, 218, 0.75) !important;
+}
+html[data-theme-preset="macos-dark"] .summary-row.grand-total {
+    border-top: 2px dashed rgba(255, 255, 255, 0.12) !important;
+    color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] .status-filter-group {
+    background: rgba(35, 36, 42, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme-preset="macos-dark"] .status-filter-group .btn-check + .btn {
+    color: rgba(200, 205, 218, 0.7) !important;
+}
+html[data-theme-preset="macos-dark"] h4.text-dark,
+html[data-theme-preset="macos-dark"] h5.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
+}
+html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label {
+    color: rgba(224, 225, 230, 0.8) !important;
+}
 </style>
 
 <div class="container-fluid pb-5">
