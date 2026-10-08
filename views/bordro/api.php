@@ -1220,6 +1220,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     .bordro-compact-view .dist-badge:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
                     .rotate-icon { transition: transform 0.3s; }
                     .parent-row[aria-expanded="true"] .rotate-icon { transform: rotate(180deg); }
+
+                    /* macOS Dark Uyumu */
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .main-card {
+                        background: rgba(30, 32, 40, 0.6) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        backdrop-filter: blur(20px);
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass {
+                        background: rgba(255, 255, 255, 0.04) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        backdrop-filter: blur(16px);
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass h5 {
+                        color: #ffffff !important;
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table td {
+                        border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+                        color: #e2e8f0 !important;
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row {
+                        background: rgba(30, 32, 40, 0.4) !important;
+                        color: #f1f5f9 !important;
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row:hover {
+                        background: rgba(255, 255, 255, 0.06) !important;
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .child-row {
+                        background: rgba(20, 22, 28, 0.4) !important;
+                        color: #94a3b8 !important;
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .footer-row {
+                        background: rgba(255, 255, 255, 0.04) !important;
+                        color: #ffffff !important;
+                    }
                 </style>';
 
                 $html .= '<div class="bordro-compact-view container-fluid px-0">';
@@ -2460,22 +2494,33 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 }
 
                 $html = '<style>
-                    .bordro-ref-view { font-family: inherit; color: #1e293b; background-color: #f8fafc; padding: 20px; border-radius: 12px; }
-                    .bordro-ref-view .section-title { font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 15px; margin-top: 25px; text-transform: uppercase; letter-spacing: 0.5px; }
-                    .bordro-ref-view .section-title.gains { color: #10b981; border-left: 4px solid #10b981; padding-left: 8px; }
-                    .bordro-ref-view .section-title.deductions { color: #3b82f6; border-left: 4px solid #3b82f6; padding-left: 8px; }
-                    .bordro-ref-view .ref-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-                    .bordro-ref-view .ref-card-title { font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+                    .bordro-ref-view { font-family: inherit; color: #1e293b; background-color: transparent; padding: 5px; border-radius: 12px; }
+                    .bordro-ref-view .section-title { font-size: 0.92rem; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; margin-top: 22px; text-transform: uppercase; letter-spacing: 0.5px; }
+                    .bordro-ref-view .section-title.gains { color: #10b981; border-left: 4px solid #10b981; padding-left: 10px; }
+                    .bordro-ref-view .section-title.deductions { color: #3b82f6; border-left: 4px solid #3b82f6; padding-left: 10px; }
+                    .bordro-ref-view .ref-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: all 0.2s ease; }
+                    .bordro-ref-view .ref-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.04); }
+                    .bordro-ref-view .ref-card-title { font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; letter-spacing: 0.3px; }
                     .bordro-ref-view .ref-card-list { display: flex; flex-direction: column; gap: 8px; flex-grow: 1; margin-bottom: 12px; }
-                    .bordro-ref-view .ref-card-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; line-height: 1.4; position: relative; }
+                    .bordro-ref-view .ref-card-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.84rem; line-height: 1.4; position: relative; }
                     .bordro-ref-view .ref-card-item .label { color: #475569; }
                     .bordro-ref-view .ref-card-item .value { font-weight: 600; color: #0f172a; text-align: right; }
                     .bordro-ref-view .ref-card-item .value .subval { font-size: 0.75rem; color: #64748b; font-weight: 400; margin-right: 6px; }
-                    .bordro-ref-view .ref-card-item.total-row { border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: auto; font-weight: 700; font-size: 0.9rem; }
+                    .bordro-ref-view .ref-card-item.total-row { border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: auto; font-weight: 700; font-size: 0.88rem; }
                     .bordro-ref-view .ref-card-item.total-row .label { font-weight: 700; color: #0f172a; }
                     .bordro-ref-view .ref-card-item.total-row .value { font-weight: 800; color: #0f172a; }
                     .bordro-ref-view .green-text { color: #10b981 !important; font-weight: 600; }
                     .bordro-ref-view .red-text { color: #ef4444 !important; font-weight: 600; }
+                    
+                    /* Personel Başlık Kartı */
+                    .bordro-ref-view .person-header-card {
+                        background: #ffffff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 14px;
+                        padding: 16px 20px;
+                        margin-bottom: 20px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+                    }
                     
                     /* Hover Popover Styles */
                     .bordro-ref-view .hover-popover-trigger { cursor: help; position: relative; }
@@ -2484,17 +2529,18 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         position: absolute;
                         bottom: 125%;
                         right: 0;
-                        background: #1e293b;
+                        background: rgba(24, 26, 33, 0.96);
+                        backdrop-filter: blur(16px);
                         color: #ffffff;
                         padding: 12px 16px;
-                        border-radius: 8px;
-                        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1);
+                        border-radius: 10px;
+                        box-shadow: 0 16px 36px rgba(0,0,0,0.45);
                         min-width: 280px;
                         max-width: 350px;
                         z-index: 1000;
                         font-size: 0.75rem;
                         text-align: left;
-                        border: 1px solid #334155;
+                        border: 1px solid rgba(255, 255, 255, 0.12);
                     }
                     .bordro-ref-view .ref-popover-content::after {
                         content: "";
@@ -2503,7 +2549,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         right: 15px;
                         border-width: 6px;
                         border-style: solid;
-                        border-color: #1e293b transparent transparent transparent;
+                        border-color: rgba(24, 26, 33, 0.96) transparent transparent transparent;
                     }
                     .bordro-ref-view .hover-popover-trigger:hover .ref-popover-content {
                         display: block;
@@ -2511,10 +2557,11 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     
                     /* Dark Popover Theme (for Bootstrap Popovers like Banka Ödemesi Detayı) */
                     .popover.bordro-dark-popover {
-                        background-color: #1e293b !important;
-                        border: 1px solid #334155 !important;
-                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3) !important;
-                        border-radius: 8px !important;
+                        background-color: rgba(24, 26, 33, 0.96) !important;
+                        backdrop-filter: blur(20px) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55) !important;
+                        border-radius: 10px !important;
                         color: #ffffff !important;
                         z-index: 1065 !important;
                         max-width: 360px !important;
@@ -2528,8 +2575,8 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         line-height: 1.5 !important;
                     }
                     .popover.bordro-dark-popover .popover-header {
-                        background-color: #0f172a !important;
-                        border-bottom: 1px solid #334155 !important;
+                        background-color: rgba(15, 17, 23, 0.98) !important;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
                         color: #f1f5f9 !important;
                     }
                     .popover.bordro-dark-popover .pop-header {
@@ -2576,19 +2623,19 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     }
                     .popover.bordro-dark-popover.bs-popover-top .popover-arrow::before,
                     .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="top"] .popover-arrow::before {
-                        border-top-color: #334155 !important;
+                        border-top-color: rgba(255, 255, 255, 0.12) !important;
                     }
                     .popover.bordro-dark-popover.bs-popover-top .popover-arrow::after,
                     .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="top"] .popover-arrow::after {
-                        border-top-color: #1e293b !important;
+                        border-top-color: rgba(24, 26, 33, 0.96) !important;
                     }
                     .popover.bordro-dark-popover.bs-popover-bottom .popover-arrow::before,
                     .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::before {
-                        border-bottom-color: #334155 !important;
+                        border-bottom-color: rgba(255, 255, 255, 0.12) !important;
                     }
                     .popover.bordro-dark-popover.bs-popover-bottom .popover-arrow::after,
                     .popover.bordro-dark-popover.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::after {
-                        border-bottom-color: #1e293b !important;
+                        border-bottom-color: rgba(24, 26, 33, 0.96) !important;
                     }
                     
                     /* Lower Section Panels */
@@ -2596,16 +2643,99 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     @media (max-width: 991px) {
                         .bordro-ref-view .bottom-panels { grid-template-columns: 1fr; }
                     }
-                    .bordro-ref-view .panel-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-                    .bordro-ref-view .panel-card-title { font-size: 0.85rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
-                    .bordro-ref-view .summary-badge { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; border-radius: 8px; padding: 16px; margin-top: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+                    .bordro-ref-view .panel-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: all 0.2s ease; }
+                    .bordro-ref-view .panel-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.04); }
+                    .bordro-ref-view .panel-card-title { font-size: 0.82rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; letter-spacing: 0.3px; }
+                    .bordro-ref-view .summary-badge { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; border-radius: 10px; padding: 16px; margin-top: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
                     .bordro-ref-view .summary-val { font-size: 1.8rem; font-weight: 800; color: #10b981; }
+
+                    /* macOS Dark Glassmorphism Uyumu */
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view {
+                        color: #e2e8f0;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .person-header-card {
+                        background: rgba(255, 255, 255, 0.04) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        backdrop-filter: blur(16px);
+                        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .person-header-card h5 {
+                        color: #ffffff !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .person-header-card .badge {
+                        background: rgba(255, 255, 255, 0.06) !important;
+                        border-color: rgba(255, 255, 255, 0.08) !important;
+                        color: #f1f5f9 !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card,
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .panel-card {
+                        background: rgba(30, 32, 40, 0.6) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.07) !important;
+                        backdrop-filter: blur(20px);
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card:hover,
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .panel-card:hover {
+                        border-color: rgba(255, 255, 255, 0.16) !important;
+                        background: rgba(36, 38, 48, 0.72) !important;
+                        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35) !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card-title,
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .panel-card-title {
+                        color: #94a3b8 !important;
+                        border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card-item .label {
+                        color: #94a3b8 !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card-item .value {
+                        color: #f1f5f9 !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card-item .value .subval {
+                        color: #64748b !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card-item.total-row {
+                        border-top-color: rgba(255, 255, 255, 0.08) !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card-item.total-row .label,
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .ref-card-item.total-row .value {
+                        color: #ffffff !important;
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .section-title.gains {
+                        color: #34d399 !important;
+                        border-left-color: #34d399 !important;
+                        text-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .section-title.deductions {
+                        color: #60a5fa !important;
+                        border-left-color: #60a5fa !important;
+                        text-shadow: 0 0 16px rgba(96, 165, 250, 0.3);
+                    }
+
+                    html[data-theme-preset="macos-dark"] .bordro-ref-view .yuvarlama-box {
+                        background: rgba(255, 255, 255, 0.04) !important;
+                        border-color: rgba(255, 255, 255, 0.08) !important;
+                        color: #cbd5e1 !important;
+                    }
                 </style>';
 
                 $html .= '<div class="bordro-ref-view container-fluid px-0">';
 
                 // Header Information
-                $html .= '<div class="bg-white border rounded-3 p-3 mb-4 d-flex flex-wrap justify-content-between align-items-center">';
+                $html .= '<div class="person-header-card d-flex flex-wrap justify-content-between align-items-center">';
                 $html .= '<div>
                             <h5 class="mb-1 fw-bold text-dark"><i class="bx bxs-user-circle me-2 text-muted"></i>' . htmlspecialchars($personel->adi_soyadi ?? 'Bilinmeyen') . '</h5>
                             <div class="d-flex gap-3 text-muted small">
@@ -2977,7 +3107,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $html .= '</div>'; // End bottom panels
 
                 if ($toplamYuvarlamaFarki != 0) {
-                    $html .= '<div class="mt-3 p-2 bg-white border rounded text-end text-muted small">
+                    $html .= '<div class="mt-3 p-2 bg-white border rounded text-end text-muted small yuvarlama-box">
                                 <i class="bx bx-info-circle me-1"></i>Küsürat düzeltmesi için ' . $fmt($toplamYuvarlamaFarki, ($toplamYuvarlamaFarki < 0), ($toplamYuvarlamaFarki > 0)) . ' yuvarlama farkı uygulanmıştır.
                               </div>';
                 }

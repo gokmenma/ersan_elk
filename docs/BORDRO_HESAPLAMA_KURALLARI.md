@@ -128,7 +128,7 @@ Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maas
 ### Banka İşaretli Prim ve Özel Kesinti Sırası
 
 - `[Kaçak İhbar Primi]`, puantaj/kaçak kontrol hakedişi değildir; diğer primler gibi kaydın `banka_matrahina_ekle` seçimine uyar. Puantaj sınıflandırması yalnızca `[Puantaj]`, `[Sayaç]` ve `[Kaçak Kontrol]` etiketleriyle yapılır.
-- `[Kaçak İhbar Primi]` dönem eşleştirmesinde yalnızca ihbarın oluşturulma tarihi (`ihbarlar.created_at`) esas alınır. Olumlu sonuç tarihi ihbarı başka bir bordro dönemine taşımaz; dönem içinde oluşturulmuş ve hesaplama anındaki güncel durumu `olumlu` olan ihbarlar sayılır.
+- `[Kaçak İhbar Primi]` dönem eşleştirmesinde ihbar tarihçesindeki son olumlu sonuçlanma tarihi esas alınır. İhbarın oluşturulma tarihi dönemi belirlemez; hesaplama anındaki güncel durumu `olumlu` olan kayıt, olumlu sonuçlandığı bordro döneminde sayılır.
 - Maaşa dahil sosyal yardım olmayan net, prim usulü ve karma maaşlarda banka matrahı önce asgari net hakediş + banka kanallı ek ödemeler olarak kurulur. Prim türü olması banka seçimini geçersiz kılamaz.
 - Ardından avans/özel kesinti gibi personel kesintileri bu banka matrahından düşülür. Bankayı aşan kesinti bakiyesi elden ödemeye yansır. İcra toplam kesintinin içindeyse ikinci kez düşülmez; yasal vergi/SGK hesabı değişmez.
 - Açıkça `elden_tutardan` tanımlanan kesintiler yalnızca elden tutara uygulanır. Manuel dağıtım korunur.

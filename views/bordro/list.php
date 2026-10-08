@@ -863,6 +863,101 @@ if (!empty($dbGelirler)) {
             border-color: rgba(255, 255, 255, 0.15) !important;
             filter: invert(1) grayscale(100%) brightness(200%);
         }
+
+        /* Bordro Footer Summary Kartları (Normal & macOS Dark) */
+        .bordro-footer-kpi {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .bordro-footer-kpi.kpi-net {
+            background-color: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.25);
+        }
+
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            backdrop-filter: blur(12px);
+        }
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi .kpi-label {
+            color: #94a3b8 !important;
+        }
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi .kpi-value.text-dark {
+            color: #ffffff !important;
+        }
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi.kpi-net {
+            background-color: rgba(16, 185, 129, 0.18) !important;
+            border-color: rgba(16, 185, 129, 0.35) !important;
+        }
+
+        /* macOS Glassmorphism Modallar */
+        html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-content,
+        html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-content,
+        html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-content,
+        html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-content,
+        html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-content,
+        html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-content,
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-content {
+            background-color: rgba(26, 28, 35, 0.88) !important;
+            backdrop-filter: blur(28px) !important;
+            -webkit-backdrop-filter: blur(28px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65) !important;
+            border-radius: 18px !important;
+            color: #e2e8f0 !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-header,
+        html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-header,
+        html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-header,
+        html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-header,
+        html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-header,
+        html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-header,
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-header {
+            background-color: rgba(18, 20, 26, 0.96) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            color: #ffffff !important;
+            border-top-left-radius: 18px !important;
+            border-top-right-radius: 18px !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-body,
+        html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-body,
+        html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-body,
+        html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-body,
+        html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-body,
+        html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-body,
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-body {
+            background-color: transparent !important;
+            color: #e2e8f0 !important;
+        }
+
+        html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-footer,
+        html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-footer,
+        html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-footer,
+        html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-footer,
+        html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-footer,
+        html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-footer,
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-footer {
+            background-color: rgba(18, 20, 26, 0.96) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-bottom-left-radius: 18px !important;
+            border-bottom-right-radius: 18px !important;
+        }
+
+        html[data-theme-preset="macos-dark"] .modal .btn-close {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            border-radius: 50% !important;
+            filter: invert(1) grayscale(100%) brightness(200%);
+            opacity: 0.8;
+            transition: all 0.2s ease;
+        }
+        html[data-theme-preset="macos-dark"] .modal .btn-close:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
     </style>
 
 

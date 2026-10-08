@@ -38,41 +38,41 @@ function renderBordroDetailFooterSummary(summary) {
     
     // Brut Toplam
     footerHtml += `
-      <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px;">
-        <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Brüt Toplamı</div>
-        <div class="fw-bold text-dark" style="font-size: 0.95rem; color:#0f172a;">${summary.brut_toplam}</div>
+      <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center" style="min-width: 120px;">
+        <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Brüt Toplamı</div>
+        <div class="kpi-value fw-bold text-dark" style="font-size: 0.95rem;">${summary.brut_toplam}</div>
       </div>
     `;
     
     // Kesinti Toplam
     footerHtml += `
-      <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px;">
-        <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Kesintiler Toplamı</div>
-        <div class="fw-bold text-danger" style="font-size: 0.95rem; color:#ef4444;">${summary.kesinti_toplam}</div>
+      <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center" style="min-width: 120px;">
+        <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Kesintiler Toplamı</div>
+        <div class="kpi-value fw-bold text-danger" style="font-size: 0.95rem; color:#ef4444;">${summary.kesinti_toplam}</div>
       </div>
     `;
     
     // Net Maas
     footerHtml += `
-      <div class="d-flex flex-column bg-success bg-opacity-10 border border-success border-opacity-25 rounded px-3 py-2 text-center" style="border-radius:6px; border: 1px solid rgba(16, 185, 129, 0.2); background-color: rgba(16, 185, 129, 0.1); min-width: 130px;">
-        <div class="small text-success mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 800; color:#10b981; letter-spacing: 0.5px;">Ödenecek Net Maaş</div>
-        <div class="fw-bold text-success" style="font-size: 1.05rem; color:#10b981;">${summary.net_maas}</div>
+      <div class="d-flex flex-column bordro-footer-kpi kpi-net rounded px-3 py-2 text-center" style="min-width: 130px;">
+        <div class="kpi-label small text-success mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Ödenecek Net Maaş</div>
+        <div class="kpi-value fw-bold text-success" style="font-size: 1.05rem; color:#10b981;">${summary.net_maas}</div>
       </div>
     `;
     
     // Banka
     if (summary.banka) {
       footerHtml += `
-        <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" 
-             style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px; cursor: pointer;"
+        <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center" 
+             style="min-width: 120px; cursor: pointer;"
              data-bs-toggle="popover" 
              data-bs-trigger="hover" 
              data-bs-html="true" 
              data-bs-placement="top" 
              data-bs-custom-class="bordro-dark-popover"
              data-bs-content="${(summary.banka_detay || '').replace(/"/g, '&quot;')}">
-          <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Banka Ödemesi</div>
-          <div class="fw-bold text-primary" style="font-size: 0.95rem; color:#3b82f6;">${summary.banka}</div>
+          <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Banka Ödemesi</div>
+          <div class="kpi-value fw-bold text-primary" style="font-size: 0.95rem; color:#3b82f6;">${summary.banka}</div>
         </div>
       `;
     }
@@ -80,9 +80,9 @@ function renderBordroDetailFooterSummary(summary) {
     // Elden
     if (summary.elden) {
       footerHtml += `
-        <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px;">
-          <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Elden Ödeme</div>
-          <div class="fw-bold text-warning" style="font-size: 0.95rem; color:#f59e0b;">${summary.elden}</div>
+        <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center" style="min-width: 120px;">
+          <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Elden Ödeme</div>
+          <div class="kpi-value fw-bold text-warning" style="font-size: 0.95rem; color:#f59e0b;">${summary.elden}</div>
         </div>
       `;
     }
@@ -90,9 +90,9 @@ function renderBordroDetailFooterSummary(summary) {
     // Sodexo
     if (summary.sodexo) {
       footerHtml += `
-        <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px;">
-          <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Sodexo Ödemesi</div>
-          <div class="fw-bold text-success" style="font-size: 0.95rem; color:#10b981;">${summary.sodexo}</div>
+        <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center" style="min-width: 120px;">
+          <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Sodexo Ödemesi</div>
+          <div class="kpi-value fw-bold text-success" style="font-size: 0.95rem; color:#10b981;">${summary.sodexo}</div>
         </div>
       `;
     }
@@ -100,9 +100,9 @@ function renderBordroDetailFooterSummary(summary) {
     // Diger
     if (summary.diger) {
       footerHtml += `
-        <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px;">
-          <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Diğer Ödemeler</div>
-          <div class="fw-bold text-secondary" style="font-size: 0.95rem; color:#6b7280;">${summary.diger}</div>
+        <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center" style="min-width: 120px;">
+          <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Diğer Ödemeler</div>
+          <div class="kpi-value fw-bold text-secondary" style="font-size: 0.95rem; color:#6b7280;">${summary.diger}</div>
         </div>
       `;
     }

@@ -3327,7 +3327,7 @@ class BordroPersonelModel extends Model
      * Personelin bildirdiği ve olumlu sonuçlanan kaçak ihbarları için prim hesaplar ve ek ödeme olarak oluşturur
      * 
      * İş Kuralı:
-     * - Personelin bildirdiği, ilgili dönemde oluşturulan ve güncel durumu olumlu olan kaçak ihbarları tespit edilir
+     * - Personelin bildirdiği, ilgili dönemde olumlu sonuçlanan kaçak ihbarları tespit edilir
      * - bordro_parametreleri tablosundan kacak_ihbar_primi tutarı (100 TL) birim fiyat olarak alınır
      * - Toplam Tutar = Olumlu İhbar Sayısı × Birim Fiyat
      * - Prim personel_ek_odemeler tablosuna kaydedilir
@@ -3349,12 +3349,18 @@ class BordroPersonelModel extends Model
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
-        // 2. Personelin dönem içinde oluşturulan ve güncel durumu olumlu olan ihbarlarını çek
+        // 2. Personelin dönem içinde olumlu sonuçlanan ihbarlarını çek
         // Bildiren personel; bildiren_personel_id ile veya users tablosu üzerinden (personel_id / ad-soyad) tespit edilir.
-        // Dönem yalnızca ihbarın bildirildiği tarih (created_at) üzerinden belirlenir.
+        // Dönem yalnızca ihbar tarihçesindeki son olumlu sonuçlanma tarihi üzerinden belirlenir.
         $sql = $this->db->prepare("
             SELECT DISTINCT i.id,
-                   DATE(i.created_at) AS ihbar_tarihi
+                   DATE((
+                       SELECT MAX(it.created_at)
+                       FROM ihbar_tarihce it
+                       WHERE it.ihbar_id = i.id
+                         AND it.tip = 'durum_degisti'
+                         AND it.aciklama LIKE '%olumlu%'
+                   )) AS ihbar_tarihi
             FROM ihbarlar i
             LEFT JOIN users u ON u.id = i.olusturan_user_id
             LEFT JOIN personel p ON p.id = ?
@@ -3365,8 +3371,14 @@ class BordroPersonelModel extends Model
             )
             AND i.durum = 'olumlu'
             AND i.silinme_tarihi IS NULL
-            AND DATE(i.created_at) BETWEEN ? AND ?
-            ORDER BY i.created_at ASC
+            AND DATE((
+                SELECT MAX(it.created_at)
+                FROM ihbar_tarihce it
+                WHERE it.ihbar_id = i.id
+                  AND it.tip = 'durum_degisti'
+                  AND it.aciklama LIKE '%olumlu%'
+            )) BETWEEN ? AND ?
+            ORDER BY ihbar_tarihi ASC, i.id ASC
         ");
         $sql->execute([
             $personel_id,
@@ -3381,7 +3393,7 @@ class BordroPersonelModel extends Model
             return $sonuc;
         }
 
-        // 3. Her ihbar için yapıldığı gün geçerli olan kacak_ihbar_primi parametresini belirle
+        // 3. Her ihbar için olumlu sonuçlandığı gün geçerli olan kacak_ihbar_primi parametresini belirle
         $paramModel = $this->cachedParametreModel ?? new \App\Model\BordroParametreModel();
         $toplamPrim = 0.0;
         $fiyatGruplari = []; // [100.00 => 2, 150.00 => 3]
@@ -3389,7 +3401,7 @@ class BordroPersonelModel extends Model
 
         foreach ($ihbarlar as $ihbar) {
             $ihbarGunu = $ihbar->ihbar_tarihi ?: $baslangic_tarihi;
-            // İlgili gün için geçerli parametreyi çek
+            // Olumlu sonuçlanma gününde geçerli parametreyi çek
             $param = $paramModel->getByKod('kacak_ihbar_primi', $ihbarGunu);
             $birimFiyat = $param ? floatval($param->varsayilan_tutar ?? 0) : 0.0;
 

@@ -7322,4 +7322,79 @@ html[data-theme-preset="macos-dark"] body .bordro-text-heading {
   color: #ffffff !important;
 }
 
+/* macOS Glassmorphism Modal & Popup Standartları */
+html[data-theme-preset="macos-dark"] body #bordroDetailModal .modal-content,
+html[data-theme-preset="macos-dark"] body #modalIcraDetay .modal-content,
+html[data-theme-preset="macos-dark"] body #modalPersonelKesintiEkle .modal-content,
+html[data-theme-preset="macos-dark"] body #modalPersonelEkOdemeEkle .modal-content,
+html[data-theme-preset="macos-dark"] body #modalDonemGuncelle .modal-content,
+html[data-theme-preset="macos-dark"] body #yeniDonemModal .modal-content,
+html[data-theme-preset="macos-dark"] body #modalFixMatrah .modal-content {
+  background-color: rgba(26, 28, 35, 0.88) !important;
+  backdrop-filter: blur(28px) !important;
+  -webkit-backdrop-filter: blur(28px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65) !important;
+  border-radius: 18px !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-theme-preset="macos-dark"] body #bordroDetailModal .modal-header,
+html[data-theme-preset="macos-dark"] body #modalIcraDetay .modal-header,
+html[data-theme-preset="macos-dark"] body #modalPersonelKesintiEkle .modal-header,
+html[data-theme-preset="macos-dark"] body #modalPersonelEkOdemeEkle .modal-header,
+html[data-theme-preset="macos-dark"] body #modalDonemGuncelle .modal-header,
+html[data-theme-preset="macos-dark"] body #yeniDonemModal .modal-header,
+html[data-theme-preset="macos-dark"] body #modalFixMatrah .modal-header {
+  background-color: rgba(18, 20, 26, 0.96) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-top-left-radius: 18px !important;
+  border-top-right-radius: 18px !important;
+}
+
+html[data-theme-preset="macos-dark"] body #bordroDetailModal .modal-body,
+html[data-theme-preset="macos-dark"] body #modalIcraDetay .modal-body,
+html[data-theme-preset="macos-dark"] body #modalPersonelKesintiEkle .modal-body,
+html[data-theme-preset="macos-dark"] body #modalPersonelEkOdemeEkle .modal-body,
+html[data-theme-preset="macos-dark"] body #modalDonemGuncelle .modal-body,
+html[data-theme-preset="macos-dark"] body #yeniDonemModal .modal-body,
+html[data-theme-preset="macos-dark"] body #modalFixMatrah .modal-body {
+  background-color: transparent !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-theme-preset="macos-dark"] body #bordroDetailModal .modal-footer,
+html[data-theme-preset="macos-dark"] body #modalIcraDetay .modal-footer,
+html[data-theme-preset="macos-dark"] body #modalPersonelKesintiEkle .modal-footer,
+html[data-theme-preset="macos-dark"] body #modalPersonelEkOdemeEkle .modal-footer,
+html[data-theme-preset="macos-dark"] body #modalDonemGuncelle .modal-footer,
+html[data-theme-preset="macos-dark"] body #yeniDonemModal .modal-footer,
+html[data-theme-preset="macos-dark"] body #modalFixMatrah .modal-footer {
+  background-color: rgba(18, 20, 26, 0.96) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom-left-radius: 18px !important;
+  border-bottom-right-radius: 18px !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-footer-kpi {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(12px);
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-footer-kpi .kpi-label {
+  color: #94a3b8 !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-footer-kpi .kpi-value.text-dark {
+  color: #ffffff !important;
+}
+
+html[data-theme-preset="macos-dark"] body .bordro-footer-kpi.kpi-net {
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+
 

@@ -117,6 +117,13 @@ $kahramanmarasIlceleri = [
     'Türkoğlu' => 'Türkoğlu',
 ];
 
+$ilceFiltreOptions = ['all' => 'Tüm İlçeler'];
+foreach ($kahramanmarasIlceleri as $k => $v) {
+    if ($k !== '') {
+        $ilceFiltreOptions[$k] = $v;
+    }
+}
+
 $bildirenPersoneller = [];
 foreach ($ihbarlar as $ihb) {
     $bAdi = trim((string) ($ihb->bildiren_personel_adi ?? $ihb->olusturan_user_adi ?? ''));
@@ -126,6 +133,19 @@ foreach ($ihbarlar as $ihb) {
 }
 sort($bildirenPersoneller);
 
+$bildirenFiltreOptions = ['all' => 'Tüm Bildirenler'];
+foreach ($bildirenPersoneller as $bPersonel) {
+    $bildirenFiltreOptions[$bPersonel] = $bPersonel;
+}
+
+$atananFiltreOptions = [
+    'all' => 'Tüm Ekipler',
+    'atanmamis' => 'Atanmamış İhbarlar',
+];
+foreach ($yonlendirilecekPersoneller as $yPersonel) {
+    $atananFiltreOptions[$yPersonel->adi_soyadi] = $yPersonel->adi_soyadi;
+}
+
 $ihbarDurumFiltreleri = [
     'all' => 'Tüm Durumlar',
     'yeni' => 'Yeni',
@@ -133,6 +153,18 @@ $ihbarDurumFiltreleri = [
     'islemde' => 'İşlemde',
     'olumlu' => 'Olumlu',
     'olumsuz' => 'Olumsuz',
+];
+
+$personelPerformansFiltreOptions = ['all' => 'Tüm Personeller'];
+foreach ($personelIhbarStats as $pSt) {
+    $personelPerformansFiltreOptions[$pSt->adi_soyadi] = $pSt->adi_soyadi;
+}
+
+$basariFiltreOptions = [
+    'all' => 'Tüm Başarı Oranları',
+    '80plus' => '%80 ve Üzeri (Yüksek)',
+    '50_79' => '%50 - %79 Arası (Orta)',
+    'under50' => '%50 Altı (Düşük)',
 ];
 
 $ihbarEkipSelectHtml = Form::FormMultipleSelect2(
@@ -425,60 +457,22 @@ function ihbarDurumBadge($durum)
                 <div class="card-body p-3">
                     <div class="row g-2 align-items-end">
                         <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreBaslangic">
-                                <i class="bx bx-calendar me-1"></i>Başlangıç Tarihi
-                            </label>
-                            <input type="date" class="form-control form-control-sm" id="ihbarFiltreBaslangic" />
+                            <?= Form::FormFloatInput('date', 'ihbarFiltreBaslangic', '', '', 'Başlangıç Tarihi', 'bx bx-calendar') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreBitis">
-                                <i class="bx bx-calendar me-1"></i>Bitiş Tarihi
-                            </label>
-                            <input type="date" class="form-control form-control-sm" id="ihbarFiltreBitis" />
+                            <?= Form::FormFloatInput('date', 'ihbarFiltreBitis', '', '', 'Bitiş Tarihi', 'bx bx-calendar') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreIlce">
-                                <i class="bx bx-map-pin me-1"></i>İlçe
-                            </label>
-                            <select class="form-select form-select-sm" id="ihbarFiltreIlce">
-                                <option value="all">Tüm İlçeler</option>
-                                <?php foreach ($kahramanmarasIlceleri as $kIlce => $vIlce): if ($kIlce === '') continue; ?>
-                                    <option value="<?= htmlspecialchars($kIlce, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($vIlce, ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2('ihbarFiltreIlce', $ilceFiltreOptions, 'all', 'İlçe', 'bx bx-map-pin', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreDurum">
-                                <i class="bx bx-check-shield me-1"></i>Durum
-                            </label>
-                            <select class="form-select form-select-sm" id="ihbarFiltreDurum">
-                                <?php foreach ($ihbarDurumFiltreleri as $kDurum => $vDurum): ?>
-                                    <option value="<?= $kDurum ?>"><?= $vDurum ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2('ihbarFiltreDurum', $ihbarDurumFiltreleri, 'all', 'Durum', 'bx bx-check-shield', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreBildiren">
-                                <i class="bx bx-user me-1"></i>Bildiren Personel
-                            </label>
-                            <select class="form-select form-select-sm" id="ihbarFiltreBildiren">
-                                <option value="all">Tüm Bildirenler</option>
-                                <?php foreach ($bildirenPersoneller as $bPersonel): ?>
-                                    <option value="<?= htmlspecialchars($bPersonel, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($bPersonel, ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2('ihbarFiltreBildiren', $bildirenFiltreOptions, 'all', 'Bildiren Personel', 'bx bx-user', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="ihbarFiltreAtanan">
-                                <i class="bx bx-group me-1"></i>Atanan Ekip
-                            </label>
-                            <select class="form-select form-select-sm" id="ihbarFiltreAtanan">
-                                <option value="all">Tüm Ekipler</option>
-                                <option value="atanmamis">Atanmamış İhbarlar</option>
-                                <?php foreach ($yonlendirilecekPersoneller as $yPersonel): ?>
-                                    <option value="<?= htmlspecialchars($yPersonel->adi_soyadi, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($yPersonel->adi_soyadi, ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2('ihbarFiltreAtanan', $atananFiltreOptions, 'all', 'Atanan Ekip', 'bx bx-group', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                     </div>
 
@@ -680,38 +674,16 @@ function ihbarDurumBadge($durum)
                 <div class="card-body p-3">
                     <div class="row g-2 align-items-end">
                         <div class="col-12 col-sm-6 col-md-3 col-xl-3">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltreBaslangic">
-                                <i class="bx bx-calendar me-1"></i>Son İhbar Başlangıç
-                            </label>
-                            <input type="date" class="form-control form-control-sm" id="personelFiltreBaslangic" />
+                            <?= Form::FormFloatInput('date', 'personelFiltreBaslangic', '', '', 'Son İhbar Başlangıç', 'bx bx-calendar') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-xl-3">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltreBitis">
-                                <i class="bx bx-calendar me-1"></i>Son İhbar Bitiş
-                            </label>
-                            <input type="date" class="form-control form-control-sm" id="personelFiltreBitis" />
+                            <?= Form::FormFloatInput('date', 'personelFiltreBitis', '', '', 'Son İhbar Bitiş', 'bx bx-calendar') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-xl-3">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltrePersonel">
-                                <i class="bx bx-user me-1"></i>Personel
-                            </label>
-                            <select class="form-select form-select-sm" id="personelFiltrePersonel">
-                                <option value="all">Tüm Personeller</option>
-                                <?php foreach ($personelIhbarStats as $pSt): ?>
-                                    <option value="<?= htmlspecialchars($pSt->adi_soyadi, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($pSt->adi_soyadi, ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2('personelFiltrePersonel', $personelPerformansFiltreOptions, 'all', 'Personel', 'bx bx-user', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-xl-3">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1" for="personelFiltreBasari">
-                                <i class="bx bx-trending-up me-1"></i>Başarı Oranı
-                            </label>
-                            <select class="form-select form-select-sm" id="personelFiltreBasari">
-                                <option value="all">Tüm Başarı Oranları</option>
-                                <option value="80plus">%80 ve Üzeri (Yüksek)</option>
-                                <option value="50_79">%50 - %79 Arası (Orta)</option>
-                                <option value="under50">%50 Altı (Düşük)</option>
-                            </select>
+                            <?= Form::FormSelect2('personelFiltreBasari', $basariFiltreOptions, 'all', 'Başarı Oranı', 'bx bx-trending-up', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                     </div>
 
