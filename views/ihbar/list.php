@@ -456,29 +456,35 @@ function ihbarDurumBadge($durum)
             <div class="card border-0 shadow-sm mb-3 ihbar-filter-card">
                 <div class="card-body p-3">
                     <div class="row g-2 align-items-end">
-                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <?= Form::FormFloatInput('date', 'ihbarFiltreBaslangic', '', '', 'Başlangıç Tarihi', 'bx bx-calendar') ?>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <?= Form::FormFloatInput('date', 'ihbarFiltreBaslangic', '', '', 'İhbar Başlangıç', 'bx bx-calendar') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
-                            <?= Form::FormFloatInput('date', 'ihbarFiltreBitis', '', '', 'Bitiş Tarihi', 'bx bx-calendar') ?>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <?= Form::FormFloatInput('date', 'ihbarFiltreBitis', '', '', 'İhbar Bitiş', 'bx bx-calendar') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <?= Form::FormFloatInput('date', 'ihbarFiltreSonucBaslangic', '', '', 'Sonuçlanma Başlangıç', 'bx bx-calendar-check') ?>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <?= Form::FormFloatInput('date', 'ihbarFiltreSonucBitis', '', '', 'Sonuçlanma Bitiş', 'bx bx-calendar-check') ?>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
                             <?= Form::FormSelect2('ihbarFiltreIlce', $ilceFiltreOptions, 'all', 'İlçe', 'bx bx-map-pin', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
                             <?= Form::FormSelect2('ihbarFiltreDurum', $ihbarDurumFiltreleri, 'all', 'Durum', 'bx bx-check-shield', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
                             <?= Form::FormSelect2('ihbarFiltreBildiren', $bildirenFiltreOptions, 'all', 'Bildiren Personel', 'bx bx-user', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
                             <?= Form::FormSelect2('ihbarFiltreAtanan', $atananFiltreOptions, 'all', 'Atanan Ekip', 'bx bx-group', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                     </div>
 
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-2 border-top">
                         <div class="d-flex flex-wrap align-items-center gap-1">
-                            <span class="font-size-11 text-muted fw-semibold me-1"><i class="bx bx-time-five me-1"></i>Hızlı Tarih:</span>
+                            <span class="font-size-11 text-muted fw-semibold me-1"><i class="bx bx-time-five me-1"></i>Hızlı Tarih (İhbar):</span>
                             <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date active" data-period="all">Tümü</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date" data-period="today">Bugün</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary ihbar-quick-date" data-period="yesterday">Dün</button>
@@ -539,7 +545,8 @@ function ihbarDurumBadge($durum)
                                         <input type="checkbox" id="ihbarSelectAll" class="form-check-input" title="Tümünü Seç / Kaldır">
                                     </th>
                                     <?php endif; ?>
-                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="date">İhbar Tarihi</th>
+                                    <th data-filter="date">Sonuçlanma Tarihi</th>
                                     <th data-filter="string">İlçe</th>
                                     <th data-filter="string">Mahalle</th>
                                     <th data-filter="string">Telefon</th>
@@ -553,10 +560,12 @@ function ihbarDurumBadge($durum)
                                 <?php foreach ($ihbarlar as $ihbar): 
                                     $yonlendirilebilir = in_array($ihbar->durum, ['yeni', 'yonlendirildi'], true);
                                     $ihbarDateOnly = date('Y-m-d', strtotime($ihbar->created_at));
+                                    $sonucDateOnly = !empty($ihbar->sonuclanma_tarihi) ? date('Y-m-d', strtotime($ihbar->sonuclanma_tarihi)) : '';
                                     $bildirenAdi = $ihbar->bildiren_personel_adi ?? $ihbar->olusturan_user_adi ?? '-';
                                 ?>
                                     <tr data-id="<?= (int) $ihbar->id ?>"
                                         data-date="<?= $ihbarDateOnly ?>"
+                                        data-sonuc-date="<?= $sonucDateOnly ?>"
                                         data-ilce="<?= htmlspecialchars($ihbar->ilce ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                         data-durum="<?= htmlspecialchars($ihbar->durum ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                         data-bildiren="<?= htmlspecialchars($bildirenAdi, ENT_QUOTES, 'UTF-8') ?>"
@@ -578,6 +587,9 @@ function ihbarDurumBadge($durum)
                                         </td>
                                         <?php endif; ?>
                                         <td data-order="<?= strtotime($ihbar->created_at) ?>" data-date="<?= $ihbarDateOnly ?>"><?= date('d.m.Y H:i', strtotime($ihbar->created_at)) ?></td>
+                                        <td data-order="<?= !empty($ihbar->sonuclanma_tarihi) ? strtotime($ihbar->sonuclanma_tarihi) : 0 ?>" data-sonuc-date="<?= $sonucDateOnly ?>">
+                                            <?= !empty($ihbar->sonuclanma_tarihi) ? date('d.m.Y H:i', strtotime($ihbar->sonuclanma_tarihi)) : '<span class="text-muted">-</span>' ?>
+                                        </td>
                                         <td><?= htmlspecialchars($ihbar->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                                         <td><?= htmlspecialchars($ihbar->mahalle ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                                         <td><?= htmlspecialchars($ihbar->telefon ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
@@ -673,23 +685,29 @@ function ihbarDurumBadge($durum)
             <div class="card border-0 shadow-sm mb-3 ihbar-filter-card">
                 <div class="card-body p-3">
                     <div class="row g-2 align-items-end">
-                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
                             <?= Form::FormFloatInput('date', 'personelFiltreBaslangic', '', '', 'Son İhbar Başlangıç', 'bx bx-calendar') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
                             <?= Form::FormFloatInput('date', 'personelFiltreBitis', '', '', 'Son İhbar Bitiş', 'bx bx-calendar') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <?= Form::FormFloatInput('date', 'personelFiltreSonucBaslangic', '', '', 'Son Sonuçlanma Başlangıç', 'bx bx-calendar-check') ?>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+                            <?= Form::FormFloatInput('date', 'personelFiltreSonucBitis', '', '', 'Son Sonuçlanma Bitiş', 'bx bx-calendar-check') ?>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
                             <?= Form::FormSelect2('personelFiltrePersonel', $personelPerformansFiltreOptions, 'all', 'Personel', 'bx bx-user', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
                             <?= Form::FormSelect2('personelFiltreBasari', $basariFiltreOptions, 'all', 'Başarı Oranı', 'bx bx-trending-up', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                     </div>
 
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-2 border-top">
                         <div class="d-flex flex-wrap align-items-center gap-1">
-                            <span class="font-size-11 text-muted fw-semibold me-1"><i class="bx bx-time-five me-1"></i>Hızlı Tarih:</span>
+                            <span class="font-size-11 text-muted fw-semibold me-1"><i class="bx bx-time-five me-1"></i>Hızlı Tarih (İhbar):</span>
                             <button type="button" class="btn btn-xs btn-outline-secondary personel-quick-date active" data-period="all">Tümü</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary personel-quick-date" data-period="this_month">Bu Ay</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary personel-quick-date" data-period="last_30">Son 30 Gün</button>
@@ -723,6 +741,7 @@ function ihbarDurumBadge($durum)
                                     <th data-filter="string">Devam Eden</th>
                                     <th data-filter="string">Başarı Oranı</th>
                                     <th data-filter="date">Son İhbar Tarihi</th>
+                                    <th data-filter="date">Son Sonuçlanma</th>
                                     <th class="text-center" style="width:130px">İşlemler</th>
                                 </tr>
                             </thead>
@@ -731,10 +750,12 @@ function ihbarDurumBadge($durum)
                                     $sonuclanan = (int) $stat->olumlu_sayisi + (int) $stat->olumsuz_sayisi;
                                     $orani = $sonuclanan > 0 ? round(((int) $stat->olumlu_sayisi / $sonuclanan) * 100) : 0;
                                     $statDateOnly = $stat->son_ihbar_tarihi ? date('Y-m-d', strtotime($stat->son_ihbar_tarihi)) : '';
+                                    $statSonucDateOnly = !empty($stat->son_sonuclanma_tarihi) ? date('Y-m-d', strtotime($stat->son_sonuclanma_tarihi)) : '';
                                 ?>
                                     <tr data-personel="<?= htmlspecialchars($stat->adi_soyadi, ENT_QUOTES, 'UTF-8') ?>"
                                         data-basari="<?= $orani ?>"
-                                        data-date="<?= $statDateOnly ?>">
+                                        data-date="<?= $statDateOnly ?>"
+                                        data-sonuc-date="<?= $statSonucDateOnly ?>">
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px; height:32px; min-width:32px; font-size:13px; line-height:1;">
@@ -756,7 +777,12 @@ function ihbarDurumBadge($durum)
                                             </div>
                                             <small class="text-muted d-block" style="font-size: 11px;"><?= (int) $stat->olumlu_sayisi ?> olumlu / <?= $sonuclanan ?> sonuçlanan</small>
                                         </td>
-                                        <td data-order="<?= $stat->son_ihbar_tarihi ? strtotime($stat->son_ihbar_tarihi) : 0 ?>" data-date="<?= $statDateOnly ?>"><?= $stat->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($stat->son_ihbar_tarihi)) : '-' ?></td>
+                                        <td data-order="<?= $stat->son_ihbar_tarihi ? strtotime($stat->son_ihbar_tarihi) : 0 ?>" data-date="<?= $statDateOnly ?>">
+                                            <?= $stat->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($stat->son_ihbar_tarihi)) : '<span class="text-muted">-</span>' ?>
+                                        </td>
+                                        <td data-order="<?= !empty($stat->son_sonuclanma_tarihi) ? strtotime($stat->son_sonuclanma_tarihi) : 0 ?>" data-sonuc-date="<?= $statSonucDateOnly ?>">
+                                            <?= !empty($stat->son_sonuclanma_tarihi) ? date('d.m.Y H:i', strtotime($stat->son_sonuclanma_tarihi)) : '<span class="text-muted">-</span>' ?>
+                                        </td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2"
                                                     onclick="personelIhbarlariniFiltrele('<?= htmlspecialchars(addslashes($stat->adi_soyadi), ENT_QUOTES, 'UTF-8') ?>')"
@@ -1492,6 +1518,8 @@ function ihbarDurumBadge($durum)
 
             const baslangic = $('#ihbarFiltreBaslangic').val();
             const bitis = $('#ihbarFiltreBitis').val();
+            const sonucBaslangic = $('#ihbarFiltreSonucBaslangic').val();
+            const sonucBitis = $('#ihbarFiltreSonucBitis').val();
             const ilce = $('#ihbarFiltreIlce').val();
             const durum = $('#ihbarFiltreDurum').val();
             const bildiren = $('#ihbarFiltreBildiren').val();
@@ -1499,13 +1527,23 @@ function ihbarDurumBadge($durum)
 
             const rowNode = settings.aoData[dataIndex].nTr;
             const rowDate = $(rowNode).attr('data-date') || '';
+            const rowSonucDate = $(rowNode).attr('data-sonuc-date') || '';
             const rowIlce = $(rowNode).attr('data-ilce') || '';
             const rowDurum = $(rowNode).attr('data-durum') || '';
             const rowBildiren = $(rowNode).attr('data-bildiren') || '';
             const rowAtanan = $(rowNode).attr('data-atanan') || '';
 
+            // İhbar Tarihi filtre
             if (baslangic && rowDate && rowDate < baslangic) return false;
             if (bitis && rowDate && rowDate > bitis) return false;
+
+            // Sonuçlanma Tarihi filtre
+            if (sonucBaslangic) {
+                if (!rowSonucDate || rowSonucDate < sonucBaslangic) return false;
+            }
+            if (sonucBitis) {
+                if (!rowSonucDate || rowSonucDate > sonucBitis) return false;
+            }
 
             if (ilce && ilce !== 'all' && rowIlce !== ilce) return false;
             if (durum && durum !== 'all' && rowDurum !== durum) return false;
@@ -1524,6 +1562,10 @@ function ihbarDurumBadge($durum)
 
         $('#ihbarFiltreBaslangic, #ihbarFiltreBitis').on('change', function () {
             $('.ihbar-quick-date').removeClass('active');
+            ihbarTable.draw();
+        });
+
+        $('#ihbarFiltreSonucBaslangic, #ihbarFiltreSonucBitis').on('change', function () {
             ihbarTable.draw();
         });
 
@@ -1572,6 +1614,8 @@ function ihbarDurumBadge($durum)
         $('#btnIhbarFiltreTemizle').on('click', function () {
             $('#ihbarFiltreBaslangic').val('');
             $('#ihbarFiltreBitis').val('');
+            $('#ihbarFiltreSonucBaslangic').val('');
+            $('#ihbarFiltreSonucBitis').val('');
             $('#ihbarFiltreIlce').val('all').trigger('change.select2');
             $('#ihbarFiltreDurum').val('all').trigger('change.select2');
             $('#ihbarFiltreBildiren').val('all').trigger('change.select2');
@@ -1630,16 +1674,28 @@ function ihbarDurumBadge($durum)
 
             const baslangic = $('#personelFiltreBaslangic').val();
             const bitis = $('#personelFiltreBitis').val();
+            const sonucBaslangic = $('#personelFiltreSonucBaslangic').val();
+            const sonucBitis = $('#personelFiltreSonucBitis').val();
             const personel = $('#personelFiltrePersonel').val();
             const basari = $('#personelFiltreBasari').val();
 
             const rowNode = settings.aoData[dataIndex].nTr;
             const rowDate = $(rowNode).attr('data-date') || '';
+            const rowSonucDate = $(rowNode).attr('data-sonuc-date') || '';
             const rowPersonel = $(rowNode).attr('data-personel') || '';
             const rowBasari = parseInt($(rowNode).attr('data-basari') || '0', 10);
 
+            // Son İhbar Tarihi filtre
             if (baslangic && rowDate && rowDate < baslangic) return false;
             if (bitis && rowDate && rowDate > bitis) return false;
+
+            // Son Sonuçlanma Tarihi filtre
+            if (sonucBaslangic) {
+                if (!rowSonucDate || rowSonucDate < sonucBaslangic) return false;
+            }
+            if (sonucBitis) {
+                if (!rowSonucDate || rowSonucDate > sonucBitis) return false;
+            }
 
             if (personel && personel !== 'all' && !rowPersonel.includes(personel)) return false;
 
@@ -1654,6 +1710,10 @@ function ihbarDurumBadge($durum)
 
         $('#personelFiltreBaslangic, #personelFiltreBitis').on('change', function () {
             $('.personel-quick-date').removeClass('active');
+            ihbarPersonelTable.draw();
+        });
+
+        $('#personelFiltreSonucBaslangic, #personelFiltreSonucBitis').on('change', function () {
             ihbarPersonelTable.draw();
         });
 
@@ -1690,6 +1750,8 @@ function ihbarDurumBadge($durum)
         $('#btnPersonelFiltreTemizle').on('click', function () {
             $('#personelFiltreBaslangic').val('');
             $('#personelFiltreBitis').val('');
+            $('#personelFiltreSonucBaslangic').val('');
+            $('#personelFiltreSonucBitis').val('');
             $('#personelFiltrePersonel').val('all').trigger('change.select2');
             $('#personelFiltreBasari').val('all').trigger('change.select2');
             $('.personel-quick-date').removeClass('active');
@@ -2522,6 +2584,8 @@ function ihbarDurumBadge($durum)
         }
         $('#ihbarFiltreBaslangic').val('');
         $('#ihbarFiltreBitis').val('');
+        $('#ihbarFiltreSonucBaslangic').val('');
+        $('#ihbarFiltreSonucBitis').val('');
         $('#ihbarFiltreIlce').val('all').trigger('change.select2');
         $('#ihbarFiltreDurum').val('all').trigger('change.select2');
         $('#ihbarFiltreAtanan').val('all').trigger('change.select2');

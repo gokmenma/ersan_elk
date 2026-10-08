@@ -581,7 +581,8 @@ class IhbarModel extends Model
                     JOIN personel p ON p.id = a.personel_id
                     WHERE a.ihbar_id = i.id AND a.silinme_tarihi IS NULL) AS atanan_ekip_adi,
                 (SELECT COUNT(*) FROM ihbar_fotograflari f WHERE f.ihbar_id = i.id AND f.medya_tipi = 'foto') AS foto_sayisi,
-                (SELECT COUNT(*) FROM ihbar_fotograflari fv WHERE fv.ihbar_id = i.id AND fv.medya_tipi = 'video') AS video_sayisi
+                (SELECT COUNT(*) FROM ihbar_fotograflari fv WHERE fv.ihbar_id = i.id AND fv.medya_tipi = 'video') AS video_sayisi,
+                (SELECT MAX(t.created_at) FROM ihbar_tarihce t WHERE t.ihbar_id = i.id AND t.tip = 'durum_degisti') AS sonuclanma_tarihi
             FROM ihbarlar i
             LEFT JOIN personel bp ON bp.id = i.bildiren_personel_id
             LEFT JOIN users ou ON ou.id = i.olusturan_user_id
@@ -817,7 +818,8 @@ class IhbarModel extends Model
                     COALESCE(SUM(CASE WHEN i.durum = 'olumlu' THEN 1 ELSE 0 END), 0) AS olumlu_sayisi,
                     COALESCE(SUM(CASE WHEN i.durum = 'olumsuz' THEN 1 ELSE 0 END), 0) AS olumsuz_sayisi,
                     COALESCE(SUM(CASE WHEN i.durum IN ('yeni', 'yonlendirildi', 'islemde') THEN 1 ELSE 0 END), 0) AS bekleyen_sayisi,
-                    MAX(i.created_at) AS son_ihbar_tarihi
+                    MAX(i.created_at) AS son_ihbar_tarihi,
+                    MAX(CASE WHEN i.durum IN ('olumlu', 'olumsuz') THEN (SELECT MAX(t.created_at) FROM ihbar_tarihce t WHERE t.ihbar_id = i.id AND t.tip = 'durum_degisti') ELSE NULL END) AS son_sonuclanma_tarihi
                 FROM ihbarlar i
                 JOIN personel p ON p.id = i.bildiren_personel_id
                 WHERE i.silinme_tarihi IS NULL 
