@@ -42,6 +42,11 @@ $kdvOptions = [
 #efaturaMalHizmetTable { border-bottom: 1px solid #e2e8f0 !important; }
 #efaturaMalHizmetTable tbody tr:last-child td { border-bottom: 1px solid #e2e8f0 !important; }
 .table-responsive { border-bottom: 1px solid #e2e8f0 !important; }
+html[data-theme-preset="macos-dark"] #efaturaMalHizmetTable,
+html[data-theme-preset="macos-dark"] #efaturaMalHizmetTable tbody tr:last-child td,
+html[data-theme-preset="macos-dark"] .card .table-responsive {
+    border-bottom-color: rgba(255, 255, 255, .07) !important;
+}
 </style>
 <meta name="csrf-token" content="<?= htmlspecialchars(Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
 

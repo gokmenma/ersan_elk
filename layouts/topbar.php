@@ -1475,6 +1475,3 @@ body[data-topbar="dark"] .gs-suggestion-card:hover {
     color: #93c5fd;
 }
 </style>
-
-    });
-</script>

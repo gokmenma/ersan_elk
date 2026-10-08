@@ -1001,6 +1001,77 @@ try {
     .fullscreen-map-wrapper #personelHarita {
         height: calc(100vh - 100px) !important;
     }
+
+    /* macOS koyu tema: personel takip tablolarini ortak Finder paletine bagla */
+    html[data-theme-preset="macos-dark"] #personelTakipTable,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable {
+        background: transparent !important;
+        border-color: var(--mac-line, rgba(255,255,255,.105)) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #personelTakipTable thead th,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable thead th,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable thead th,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable thead th {
+        color: rgba(224,225,229,.72) !important;
+        background-color: rgba(39,40,44,.96) !important;
+        background-image: none !important;
+        border-color: rgba(255,255,255,.08) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #personelTakipTable thead .dt-filter-row th,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable thead .dt-filter-row th,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable thead .dt-filter-row th,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable thead .dt-filter-row th {
+        background-color: rgba(31,32,36,.96) !important;
+        background-image: none !important;
+        border-color: rgba(255,255,255,.075) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #personelTakipTable thead input,
+    html[data-theme-preset="macos-dark"] #personelTakipTable thead select,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable thead input,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable thead select,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable thead input,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable thead select,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable thead input,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable thead select {
+        background-color: rgba(16,19,24,.82) !important;
+        color: rgba(225,226,230,.76) !important;
+        border-color: rgba(255,255,255,.13) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #personelTakipTable thead input::placeholder,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable thead input::placeholder,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable thead input::placeholder,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable thead input::placeholder {
+        color: rgba(202,209,222,.42) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #personelTakipTable tbody td,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable tbody td,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable tbody td,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable tbody td {
+        color: rgba(231,234,241,.84) !important;
+        background-color: rgba(33,34,39,.9) !important;
+        border-color: rgba(255,255,255,.075) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #personelTakipTable tbody td strong,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable tbody td strong,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable tbody td strong,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable tbody td strong {
+        color: rgba(244,245,248,.92) !important;
+    }
+
+    html[data-theme-preset="macos-dark"] #personelTakipTable tbody tr:hover td,
+    html[data-theme-preset="macos-dark"] #calismaRaporuTable tbody tr:hover td,
+    html[data-theme-preset="macos-dark"] #gecKalanlarTable tbody tr:hover td,
+    html[data-theme-preset="macos-dark"] #dashPersonelPerformansTable tbody tr:hover td {
+        background-color: rgba(48,49,55,.94) !important;
+    }
 </style>
 
 <!-- Leaflet JS & ApexCharts JS -->

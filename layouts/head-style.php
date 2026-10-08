@@ -27,6 +27,7 @@
             'crimson-rose': { primary: '#ec003f', topbar: '#ec003f', sidebar: '#232125', themeMode: 'rose', layoutMode: 'light', font: 'Poppins' },
             'minimalist': { primary: '#18181b', topbar: 'light', sidebar: 'light', themeMode: 'slate', layoutMode: 'light', font: 'Geist' },
             'dark-pro': { primary: '#06b6d4', topbar: 'dark', sidebar: 'dark', themeMode: 'cyan', layoutMode: 'dark', font: 'Inter' },
+            'macos-dark': { primary: '#0a84ff', topbar: 'dark', sidebar: 'dark', themeMode: 'default', layoutMode: 'dark', font: 'Inter' },
             'ocean-deep': { primary: '#0284c7', topbar: '#0284c7', sidebar: '#0f172a', themeMode: 'cyan', layoutMode: 'light', font: 'Plus Jakarta Sans' },
             'sunset-amber': { primary: '#f97316', topbar: '#f59e0b', sidebar: '#1c1917', themeMode: 'orange', layoutMode: 'light', font: 'Montserrat' },
             'forest-moss': { primary: '#10b981', topbar: '#059669', sidebar: '#064e3b', themeMode: 'emerald', layoutMode: 'light', font: 'Manrope' },

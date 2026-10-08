@@ -45,6 +45,11 @@ $belgeTuruOptions = [
 #efaturaCariTable tbody tr { cursor: pointer; }
 #efaturaCariTable { border-bottom: 1px solid #e2e8f0 !important; }
 #efaturaCariTable tbody tr:last-child td { border-bottom: 1px solid #e2e8f0 !important; }
+html[data-theme-preset="macos-dark"] #efaturaCariTable,
+html[data-theme-preset="macos-dark"] #efaturaCariTable tbody tr:last-child td,
+html[data-theme-preset="macos-dark"] .card .table-responsive {
+    border-bottom-color: rgba(255, 255, 255, .07) !important;
+}
 .table-responsive { border-bottom: 1px solid #e2e8f0 !important; }
 </style>
 <script>

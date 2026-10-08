@@ -14,16 +14,19 @@ $(document).ready(function() {
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const formatDMY = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+    const initialUrlSearch = (new URLSearchParams(window.location.search).get('search') || '').trim();
 
-    currentStartDate = formatYMD(firstDay);
-    currentEndDate = formatYMD(lastDay);
+    // Bildirimden fatura numarasıyla gelindiğinde, eski tarihli faturanın aylık
+    // varsayılan filtreye takılmaması için tüm dönemlerde arama yapılır.
+    currentStartDate = initialUrlSearch ? '' : formatYMD(firstDay);
+    currentEndDate = initialUrlSearch ? '' : formatYMD(lastDay);
 
     window.efaturaSetupSummary('efatura_gelen_summary_cards_state');
 
     // Başlangıç Tarihi Seçici Başlat
     if (typeof window.initFlatpickrWithYearSelect === 'function' && document.getElementById('filterStartDate')) {
         window.initFlatpickrWithYearSelect('#filterStartDate', {
-            defaultDate: firstDay,
+            defaultDate: initialUrlSearch ? null : firstDay,
             onChange: function(selectedDates) {
                 if (selectedDates.length > 0) {
                     currentStartDate = formatYMD(selectedDates[0]);
@@ -42,7 +45,7 @@ $(document).ready(function() {
     // Bitiş Tarihi Seçici Başlat
     if (typeof window.initFlatpickrWithYearSelect === 'function' && document.getElementById('filterEndDate')) {
         window.initFlatpickrWithYearSelect('#filterEndDate', {
-            defaultDate: lastDay,
+            defaultDate: initialUrlSearch ? null : lastDay,
             onChange: function(selectedDates) {
                 if (selectedDates.length > 0) {
                     currentEndDate = formatYMD(selectedDates[0]);
@@ -70,6 +73,14 @@ $(document).ready(function() {
         }
         $('.period-select-opt').removeClass('active');
         $('.period-select-opt .check-icon').css('visibility', 'hidden');
+    }
+
+    if (initialUrlSearch) {
+        $('#currentPeriodLabel').text('Tümü');
+        $('#btnClearStartDate, #btnClearEndDate').hide();
+        $('.period-select-opt').removeClass('active');
+        $('.period-select-opt .check-icon').css('visibility', 'hidden');
+        $('.period-select-opt[data-period="all"]').addClass('active').find('.check-icon').css('visibility', 'visible');
     }
 
     // Dönem Seçici Dropdown İşleyicisi

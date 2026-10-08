@@ -485,6 +485,15 @@ File: Main Js File
         layoutMode: "dark",
         fontFamily: "Inter"
       },
+      "macos-dark": {
+        name: "macOS Koyu",
+        topbarColor: "dark",
+        sidebarColor: "dark",
+        primaryColor: "#0a84ff",
+        themeMode: "default",
+        layoutMode: "dark",
+        fontFamily: "Inter"
+      },
       "ocean-deep": {
         name: "Okyanus",
         topbarColor: "#0284c7",

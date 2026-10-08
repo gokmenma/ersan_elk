@@ -793,6 +793,57 @@ $title = 'Gelen Faturalar';
 #productSearchGlobalBadge.d-inline-flex {
     display: inline-flex !important;
 }
+
+/* macOS koyu tema: sayfaya ozel acik renkleri Finder paletine uyarla */
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar {
+    background: transparent !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead th,
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead .dt-filter-row th {
+    background-color: rgba(39, 40, 44, .96) !important;
+    background-image: none !important;
+    color: rgba(224, 225, 229, .72) !important;
+    border-color: rgba(255,255,255,.08) !important;
+}
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead .dt-filter-row input,
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead .dt-filter-row select,
+html[data-theme-preset="macos-dark"] .dt-filter-control {
+    background-color: rgba(25, 26, 30, .94) !important;
+    color: rgba(225, 226, 230, .76) !important;
+    border-color: rgba(255,255,255,.13) !important;
+}
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead .dt-filter-row input::placeholder,
+html[data-theme-preset="macos-dark"] .dt-filter-control::placeholder {
+    color: rgba(202, 209, 222, .42) !important;
+}
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar tbody tr td {
+    background-color: rgba(33, 34, 39, .9) !important;
+    color: rgba(232, 233, 236, .78) !important;
+    border-color: rgba(255,255,255,.085) !important;
+}
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar tbody tr:hover td {
+    background-color: rgba(255,255,255,.075) !important;
+}
+html[data-theme-preset="macos-dark"] #tblGelenFaturalar tbody tr.selected td {
+    background-color: rgba(10,132,255,.14) !important;
+}
+html[data-theme-preset="macos-dark"] .dataTables_info,
+html[data-theme-preset="macos-dark"] .dataTables_length {
+    color: rgba(220,225,235,.62) !important;
+}
+html[data-theme-preset="macos-dark"] .dataTables_length select,
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item .page-link {
+    background-color: rgba(255,255,255,.065) !important;
+    color: rgba(232,235,242,.78) !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item.disabled .page-link {
+    background-color: rgba(255,255,255,.025) !important;
+    color: rgba(232,235,242,.32) !important;
+    border-color: rgba(255,255,255,.07) !important;
+}
 </style>
 
 <script src="views/efatura/js/gelen-list.js?v=<?= time() ?>"></script>

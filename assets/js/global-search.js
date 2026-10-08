@@ -231,6 +231,7 @@
         openDropdown: function () {
             if (this.dropdown.length) {
                 this.dropdown.addClass('show').show();
+                $('body').addClass('global-search-open');
                 this.isOpen = true;
             }
         },
@@ -238,6 +239,7 @@
         closeDropdown: function () {
             if (this.dropdown.length) {
                 this.dropdown.removeClass('show').hide();
+                $('body').removeClass('global-search-open');
                 this.isOpen = false;
                 this.selectedIndex = -1;
             }

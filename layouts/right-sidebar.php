@@ -161,7 +161,26 @@
                         <span class="preset-sub">Tam Koyu Mod</span>
                     </div>
 
-                    <!-- 8. Okyanus -->
+                    <!-- 8. macOS Koyu -->
+                    <div class="theme-preset-card" data-preset="macos-dark" role="button" title="macOS Koyu (Tahoe)">
+                        <div class="preset-preview">
+                            <div class="preset-topbar d-flex align-items-center px-1" style="background: #1e1f26; border-bottom: 1px solid #2e313b; gap: 3px;">
+                                <span style="width: 4px; height: 4px; border-radius: 50%; background: #ff5f57; display: inline-block;"></span>
+                                <span style="width: 4px; height: 4px; border-radius: 50%; background: #febc2e; display: inline-block;"></span>
+                                <span style="width: 4px; height: 4px; border-radius: 50%; background: #28c840; display: inline-block;"></span>
+                            </div>
+                            <div class="preset-body">
+                                <div class="preset-sidebar" style="background: #181920; border-right: 1px solid #262832;"></div>
+                                <div class="preset-content" style="background: #14151a;">
+                                    <div class="preset-accent-bar" style="background: #0a84ff;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="preset-name">macOS Koyu</span>
+                        <span class="preset-sub">Tahoe & Grafit</span>
+                    </div>
+
+                    <!-- 9. Okyanus -->
                     <div class="theme-preset-card" data-preset="ocean-deep" role="button" title="Okyanus">
                         <div class="preset-preview">
                             <div class="preset-topbar" style="background: #0284c7;"></div>

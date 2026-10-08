@@ -3124,6 +3124,116 @@ select.select2-hidden-accessible {
     transition: none;
   }
 }
+
+/* Tüm modallarda global arama ile aynı arka plan odak/blur etkisi. */
+html[data-theme-preset="macos-dark"] .modal-backdrop {
+  background-color: rgba(8, 9, 12, .48) !important;
+  opacity: 0 !important;
+  backdrop-filter: blur(0) brightness(1) saturate(1);
+  -webkit-backdrop-filter: blur(0) brightness(1) saturate(1);
+  transition: opacity .18s ease, backdrop-filter .18s ease, -webkit-backdrop-filter .18s ease !important;
+}
+
+html[data-theme-preset="macos-dark"] .modal-backdrop.show {
+  opacity: 1 !important;
+  backdrop-filter: blur(6px) brightness(.68) saturate(.72);
+  -webkit-backdrop-filter: blur(6px) brightness(.68) saturate(.72);
+}
+
+html[data-theme-preset="macos-dark"] body.modal-open .modal.show .modal-dialog {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-preset="macos-dark"] .modal-backdrop {
+    transition: none !important;
+  }
+}
+
+/* Son Finder tonlari: personel tablosundaki sayfaya ozel mavi basligi da ez. */
+html[data-theme-preset="macos-dark"] {
+  --mac-text: rgba(225, 226, 229, .7);
+  --mac-text-strong: rgba(233, 234, 237, .8);
+  --mac-table-head: rgba(37, 38, 41, .98);
+  --mac-table-filter: rgba(29, 30, 33, .98);
+}
+
+html[data-theme-preset="macos-dark"] body #membersTable thead th,
+html[data-theme-preset="macos-dark"] body #membersTable thead td,
+html[data-theme-preset="macos-dark"] body #membersTable_wrapper table.dataTable thead th,
+html[data-theme-preset="macos-dark"] body #membersTable_wrapper table.dataTable thead td {
+  background: var(--mac-table-head) !important;
+  background-color: var(--mac-table-head) !important;
+  background-image: none !important;
+  color: rgba(216, 217, 221, .68) !important;
+  border-color: rgba(255, 255, 255, .07) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #membersTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] body #membersTable_wrapper table.dataTable thead .dt-filter-row th {
+  background: var(--mac-table-filter) !important;
+  background-color: var(--mac-table-filter) !important;
+  background-image: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .table tbody td,
+html[data-theme-preset="macos-dark"] body table.dataTable tbody td {
+  color: var(--mac-text) !important;
+}
+
+/* Ana sayfa scrollbar'i: macOS gibi normalde gizli, yalnizca dogrudan uzerindeyken gorunur. */
+html[data-theme-preset="macos-dark"],
+html[data-theme-preset="macos-dark"] body {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+html[data-theme-preset="macos-dark"]::-webkit-scrollbar,
+html[data-theme-preset="macos-dark"] body::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+  background: transparent !important;
+}
+
+html[data-theme-preset="macos-dark"]::-webkit-scrollbar-track,
+html[data-theme-preset="macos-dark"] body::-webkit-scrollbar-track,
+html[data-theme-preset="macos-dark"]::-webkit-scrollbar-corner,
+html[data-theme-preset="macos-dark"] body::-webkit-scrollbar-corner {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+html[data-theme-preset="macos-dark"]::-webkit-scrollbar-thumb,
+html[data-theme-preset="macos-dark"] body::-webkit-scrollbar-thumb {
+  min-height: 28px;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"]::-webkit-scrollbar-thumb:hover,
+html[data-theme-preset="macos-dark"] body::-webkit-scrollbar-thumb:hover {
+  background: rgba(225, 226, 230, .28) !important;
+}
+
+/* Kart kenarlari: border kalsin, alt kenarda beyaz cam parlamasi olusmasin. */
+html[data-theme-preset="macos-dark"] body .main-content .card:not(.modal-content) {
+  border-color: rgba(255, 255, 255, .085) !important;
+  border-bottom-color: rgba(255, 255, 255, .055) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .3) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .main-content .card:not(.modal-content)::before {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .045), transparent 36%) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .main-content .page-content .card:not(.modal-content):hover {
+  border-bottom-color: rgba(255, 255, 255, .065) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .32) !important;
+}
 .form-selectgroup-label .icon:only-child {
   margin: 0 -0.25rem;
 }
@@ -5827,4 +5937,1203 @@ button.note-btn.active {
 
 [data-bs-theme="dark"] .main-content .page-content .card-body {
   color: #cbd5e1;
+}
+
+/* ==========================================================================
+   macOS Dark Floating Glassmorphism Theme (data-theme-preset="macos-dark")
+   ========================================================================== */
+[data-theme-preset="macos-dark"] {
+  --bs-body-bg: #111216;
+  --bs-body-color: #d1d5db;
+  --bs-border-color: rgba(255, 255, 255, 0.08);
+  --bs-card-bg: rgba(28, 30, 38, 0.65);
+  --bs-card-border-color: rgba(255, 255, 255, 0.09);
+  --bs-primary: #0a84ff;
+  --bs-primary-rgb: 10, 132, 255;
+  --content-surface: rgba(28, 30, 38, 0.65);
+  --content-canvas: #111216;
+  --content-border: rgba(255, 255, 255, 0.09);
+  --content-border-soft: rgba(255, 255, 255, 0.05);
+  --content-shadow: 0 16px 45px rgba(0, 0, 0, 0.5);
+  --content-shadow-hover: 0 20px 55px rgba(0, 0, 0, 0.6);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+}
+
+[data-theme-preset="macos-dark"] body {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(130, 35, 75, 0.42) 0%, transparent 42%),
+    radial-gradient(circle at 90% 80%, rgba(15, 80, 165, 0.38) 0%, transparent 45%),
+    radial-gradient(circle at 50% 30%, rgba(65, 30, 95, 0.28) 0%, transparent 50%),
+    linear-gradient(135deg, #13141d 0%, #0a0b0e 100%) fixed !important;
+  color: #d1d5db !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-theme-preset="macos-dark"] #layout-wrapper,
+[data-theme-preset="macos-dark"] .main-content,
+[data-theme-preset="macos-dark"] .page-content {
+  background: transparent !important;
+}
+
+/* macOS Window Dots (Traffic Lights) */
+.macos-window-controls {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding-left: 2px;
+}
+
+.macos-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.macos-dot:hover {
+  transform: scale(1.15);
+  opacity: 0.9;
+}
+
+.macos-dot-red {
+  background-color: #ff5f56;
+  border: 1px solid #e0443e;
+  box-shadow: 0 0 4px rgba(255, 95, 86, 0.45);
+}
+
+.macos-dot-yellow {
+  background-color: #febc2e;
+  border: 1px solid #dea123;
+  box-shadow: 0 0 4px rgba(254, 188, 46, 0.45);
+}
+
+.macos-dot-green {
+  background-color: #27c93f;
+  border: 1px solid #1aab29;
+  box-shadow: 0 0 4px rgba(39, 201, 63, 0.45);
+}
+
+[data-theme-preset="macos-dark"] .macos-window-controls {
+  display: flex !important;
+}
+
+/* Hide noisy particle canvas on macOS Dark for clean glass */
+[data-theme-preset="macos-dark"] #sidebar-particles-canvas,
+[data-theme-preset="macos-dark"] .sidebar-particles-canvas {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* ==========================================================================
+   FLOATING MAC DOCK SIDEBAR & TOPBAR (Havada Süzülen Buzlu Cam Pencereler)
+   ========================================================================== */
+@media (min-width: 992px) {
+  /* Floating Frosted Glass Sidebar */
+  [data-theme-preset="macos-dark"] .vertical-menu {
+    position: fixed !important;
+    top: 8px !important;
+    left: 8px !important;
+    bottom: 8px !important;
+    height: calc(100vh - 16px) !important;
+    border-radius: 20px !important;
+    background-color: rgba(22, 23, 30, 0.68) !important;
+    background-image: none !important;
+    backdrop-filter: blur(45px) saturate(210%) !important;
+    -webkit-backdrop-filter: blur(45px) saturate(210%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    overflow: hidden !important;
+    z-index: 1001 !important;
+  }
+
+  /* Floating Frosted Glass Topbar */
+  [data-theme-preset="macos-dark"] body:not([data-sidebar-size="sm"]) #page-topbar {
+    position: fixed !important;
+    top: 14px !important;
+    left: 270px !important;
+    right: 8px !important;
+    width: calc(100% - 278px) !important;
+    height: 60px !important;
+    border-radius: 16px !important;
+    background-color: rgba(24, 25, 33, 0.72) !important;
+    background-image: none !important;
+    backdrop-filter: blur(35px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(35px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    z-index: 1000 !important;
+  }
+
+  /* Floating Topbar for Small Sidebar Mode */
+  [data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] #page-topbar {
+    left: 80px !important;
+    width: calc(100% - 88px) !important;
+  }
+
+  /* Floating Quick Favorites Bar */
+  [data-theme-preset="macos-dark"] body:not([data-sidebar-size="sm"]) .quick-favorites-bar {
+    position: fixed !important;
+    top: 84px !important;
+    left: 270px !important;
+    right: 8px !important;
+    width: calc(100% - 278px) !important;
+    border-radius: 12px !important;
+    background-color: rgba(22, 23, 30, 0.68) !important;
+    backdrop-filter: blur(30px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(190%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+    z-index: 999 !important;
+  }
+
+  [data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .quick-favorites-bar {
+    left: 80px !important;
+    width: calc(100% - 88px) !important;
+  }
+
+  /* Main Content Layout Adjustments */
+  [data-theme-preset="macos-dark"] body:not([data-sidebar-size="sm"]) .main-content {
+    margin-left: 258px !important;
+    width: calc(100% - 258px) !important;
+    padding-right: 8px !important;
+    padding-left: 12px !important;
+  }
+
+  [data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .main-content {
+    margin-left: 68px !important;
+    width: calc(100% - 68px) !important;
+    padding-right: 8px !important;
+    padding-left: 12px !important;
+  }
+
+  [data-theme-preset="macos-dark"] .page-content {
+    padding-top: 88px !important;
+  }
+
+  [data-theme-preset="macos-dark"] body:has(#quick-favorites-bar) .main-content .page-content {
+    padding-top: 138px !important;
+  }
+}
+
+/* Mobile Topbar */
+@media (max-width: 991px) {
+  [data-theme-preset="macos-dark"] #page-topbar {
+    background-color: rgba(24, 25, 33, 0.85) !important;
+    backdrop-filter: blur(25px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+}
+
+/* macOS Topbar Inner Elements */
+[data-theme-preset="macos-dark"] .global-search-input-box {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme-preset="macos-dark"] .global-search-input-box:focus-within {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: #0a84ff !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.28) !important;
+}
+
+[data-theme-preset="macos-dark"] .global-search-input {
+  color: #f3f4f8 !important;
+}
+
+[data-theme-preset="macos-dark"] .global-search-input::placeholder {
+  color: #8c90a2 !important;
+}
+
+[data-theme-preset="macos-dark"] .global-search-icon {
+  color: #8c90a2 !important;
+}
+
+[data-theme-preset="macos-dark"] .global-search-kbd-badge kbd {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #8c90a2 !important;
+}
+
+/* macOS Sidebar Inner Elements */
+[data-theme-preset="macos-dark"] .sidebar-sticky-top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: transparent !important;
+}
+
+[data-theme-preset="macos-dark"] .sidebar-search {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f3f4f8 !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+[data-theme-preset="macos-dark"] .sidebar-search:focus {
+  border-color: #0a84ff !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25) !important;
+}
+
+[data-theme-preset="macos-dark"] .btn-sidebar-settings {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #8c90a2 !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+[data-theme-preset="macos-dark"] .btn-sidebar-settings:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+[data-theme-preset="macos-dark"] #sidebar-menu ul li a {
+  margin: 2px 8px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  color: #b0b5c4 !important;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+[data-theme-preset="macos-dark"] #sidebar-menu ul li a:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+[data-theme-preset="macos-dark"] #sidebar-menu ul li a.active,
+[data-theme-preset="macos-dark"] #sidebar-menu ul li.mm-active > a {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+[data-theme-preset="macos-dark"] #sidebar-menu ul li a.active i,
+[data-theme-preset="macos-dark"] #sidebar-menu ul li.mm-active > a i,
+[data-theme-preset="macos-dark"] #sidebar-menu ul li a.active svg,
+[data-theme-preset="macos-dark"] #sidebar-menu ul li.mm-active > a svg {
+  color: #0a84ff !important;
+  stroke: #0a84ff !important;
+}
+
+[data-theme-preset="macos-dark"] #sidebar-menu .menu-title {
+  color: #72778c !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 12px 14px 4px 14px !important;
+}
+
+[data-theme-preset="macos-dark"] .brand-logo {
+  background-color: #0a84ff !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.4);
+}
+
+/* macOS Glassmorphic Cards (Floating Widgets & Main Content) */
+[data-theme-preset="macos-dark"] .card {
+  background-color: rgba(26, 27, 35, 0.65) !important;
+  backdrop-filter: blur(30px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme-preset="macos-dark"] .card-header {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+[data-theme-preset="macos-dark"] .card-title,
+[data-theme-preset="macos-dark"] h1,
+[data-theme-preset="macos-dark"] h2,
+[data-theme-preset="macos-dark"] h3,
+[data-theme-preset="macos-dark"] h4,
+[data-theme-preset="macos-dark"] h5,
+[data-theme-preset="macos-dark"] h6 {
+  color: #f3f4f8 !important;
+}
+
+/* macOS KPI & Summary Cards */
+[data-theme-preset="macos-dark"] .summary-card,
+[data-theme-preset="macos-dark"] .summary-kpi-value,
+[data-theme-preset="macos-dark"] .card .fs-4,
+[data-theme-preset="macos-dark"] .card .fw-bold.text-dark {
+  color: #f3f4f8 !important;
+}
+
+[data-theme-preset="macos-dark"] .summary-pill-btn,
+[data-theme-preset="macos-dark"] .btn-subtle-primary,
+[data-theme-preset="macos-dark"] .btn-subtle-success,
+[data-theme-preset="macos-dark"] .btn-subtle-info,
+[data-theme-preset="macos-dark"] .btn-subtle-warning {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #cbd0e0 !important;
+  border-radius: 20px !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+[data-theme-preset="macos-dark"] .summary-pill-btn:hover,
+[data-theme-preset="macos-dark"] .btn-subtle-primary:hover,
+[data-theme-preset="macos-dark"] .btn-subtle-success:hover,
+[data-theme-preset="macos-dark"] .btn-subtle-info:hover,
+[data-theme-preset="macos-dark"] .btn-subtle-warning:hover {
+  background-color: rgba(255, 255, 255, 0.13) !important;
+  color: #ffffff !important;
+}
+
+/* macOS Glassmorphic Segmented Navigation & Filter Pills */
+[data-theme-preset="macos-dark"] .nav-pills,
+[data-theme-preset="macos-dark"] .status-filter-group,
+[data-theme-preset="macos-dark"] .btn-group:has(.status-filter-btn) {
+  background: rgba(20, 21, 27, 0.65) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 3px !important;
+}
+
+[data-theme-preset="macos-dark"] .nav-pills .nav-link,
+[data-theme-preset="macos-dark"] .status-filter-btn,
+[data-theme-preset="macos-dark"] .btn-filter-pill {
+  background: transparent !important;
+  border: none !important;
+  color: #8e94a8 !important;
+  border-radius: 7px !important;
+  padding: 6px 14px !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease;
+}
+
+[data-theme-preset="macos-dark"] .nav-pills .nav-link:hover,
+[data-theme-preset="macos-dark"] .status-filter-btn:hover,
+[data-theme-preset="macos-dark"] .btn-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f1f3f8 !important;
+}
+
+[data-theme-preset="macos-dark"] .nav-pills .nav-link.active,
+[data-theme-preset="macos-dark"] .status-filter-btn.active,
+[data-theme-preset="macos-dark"] .btn-filter-pill.active {
+  background: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border-radius: 7px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  font-weight: 600 !important;
+}
+
+/* Quick Fav Items */
+[data-theme-preset="macos-dark"] .quick-fav-item {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 7px;
+  color: #c4c8d8 !important;
+}
+
+[data-theme-preset="macos-dark"] .quick-fav-item:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+/* macOS Tables & DataTables (Glass Finder List View) */
+[data-theme-preset="macos-dark"] .table,
+[data-theme-preset="macos-dark"] table.dataTable {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme-preset="macos-dark"] table.dataTable thead th,
+[data-theme-preset="macos-dark"] .table thead th {
+  background-color: rgba(24, 25, 32, 0.6) !important;
+  color: #8a8f9f !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  border-top: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 9px 12px !important;
+}
+
+[data-theme-preset="macos-dark"] table.dataTable tbody tr td,
+[data-theme-preset="macos-dark"] .table tbody td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-left: none !important;
+  border-right: none !important;
+  color: #cbd0dd !important;
+  padding: 8px 12px !important;
+}
+
+[data-theme-preset="macos-dark"] table.dataTable tbody tr:hover td,
+[data-theme-preset="macos-dark"] .table tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme-preset="macos-dark"] .dt-filter-row th {
+  background-color: rgba(20, 21, 27, 0.6) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 6px 12px !important;
+}
+
+[data-theme-preset="macos-dark"] .dt-filter-row input,
+[data-theme-preset="macos-dark"] .dt-filter-row select {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e5e8f2 !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+}
+
+/* macOS Badges & Pills */
+[data-theme-preset="macos-dark"] .badge.bg-success-subtle,
+[data-theme-preset="macos-dark"] .badge[class*="success"] {
+  background-color: rgba(39, 201, 63, 0.16) !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(39, 201, 63, 0.3) !important;
+  border-radius: 20px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+}
+
+[data-theme-preset="macos-dark"] .badge.bg-primary-subtle,
+[data-theme-preset="macos-dark"] .badge.bg-info-subtle,
+[data-theme-preset="macos-dark"] .badge[class*="primary"],
+[data-theme-preset="macos-dark"] .badge[class*="info"] {
+  background-color: rgba(10, 132, 255, 0.16) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(10, 132, 255, 0.3) !important;
+  border-radius: 20px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+}
+
+[data-theme-preset="macos-dark"] .badge.bg-dark-subtle,
+[data-theme-preset="macos-dark"] .badge.bg-secondary-subtle {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd0df !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 20px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+}
+
+/* macOS Alerts & Banners */
+[data-theme-preset="macos-dark"] .alert-success,
+[data-theme-preset="macos-dark"] .alert-info,
+[data-theme-preset="macos-dark"] div.alert {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  color: #4ade80 !important;
+  border-radius: 10px !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* macOS Modals & Dropdowns (Deep Frosted Glass) */
+[data-theme-preset="macos-dark"] .modal-content {
+  background-color: rgba(28, 30, 38, 0.82) !important;
+  backdrop-filter: blur(35px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(35px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme-preset="macos-dark"] .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme-preset="macos-dark"] .modal-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme-preset="macos-dark"] .dropdown-menu {
+  background-color: rgba(28, 30, 38, 0.82) !important;
+  backdrop-filter: blur(30px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55) !important;
+}
+
+[data-theme-preset="macos-dark"] .dropdown-item {
+  color: #c4c8d5 !important;
+  border-radius: 6px;
+  margin: 2px 4px;
+  width: auto;
+}
+
+[data-theme-preset="macos-dark"] .dropdown-item:hover,
+[data-theme-preset="macos-dark"] .dropdown-item:focus {
+  background: rgba(10, 132, 255, 0.2) !important;
+  color: #52a9ff !important;
+}
+
+/* macOS Form Controls (Frosted Input) */
+[data-theme-preset="macos-dark"] .form-control,
+[data-theme-preset="macos-dark"] .form-select,
+[data-theme-preset="macos-dark"] .select2-container--default .select2-selection--single {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f1f3f7 !important;
+  border-radius: 8px !important;
+}
+
+[data-theme-preset="macos-dark"] .form-control:focus,
+[data-theme-preset="macos-dark"] .form-select:focus {
+  border-color: #0a84ff !important;
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25) !important;
+}
+
+/* macOS Buttons */
+[data-theme-preset="macos-dark"] .btn:not(.btn-link):not(.btn-close) {
+  border-radius: 8px !important;
+  font-weight: 500;
+}
+
+[data-theme-preset="macos-dark"] .btn-primary {
+  background-color: #0a84ff !important;
+  border-color: #0a84ff !important;
+  box-shadow: 0 2px 10px rgba(10, 132, 255, 0.4) !important;
+}
+
+[data-theme-preset="macos-dark"] .btn-outline-secondary {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cbd0dc !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+[data-theme-preset="macos-dark"] .btn-outline-secondary:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+/* macOS Action Button Group in Tables */
+[data-theme-preset="macos-dark"] .action-btn-group .btn,
+[data-theme-preset="macos-dark"] .table-action-btn {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #b0b5c4 !important;
+  border-radius: 7px !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+[data-theme-preset="macos-dark"] .action-btn-group .btn:hover,
+[data-theme-preset="macos-dark"] .table-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* macOS Scrollbar */
+[data-theme-preset="macos-dark"] ::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+[data-theme-preset="macos-dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+}
+
+[data-theme-preset="macos-dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* macOS Tahoe glass pass: Finder benzeri, daha aydinlik ve gercekten yari saydam yuzeyler */
+html[data-theme-preset="macos-dark"] {
+  --mac-window-gap: 6px;
+  --mac-sidebar-left: 3px;
+  --mac-glass: rgba(31, 31, 36, 0.46);
+  --mac-glass-strong: rgba(38, 38, 43, 0.58);
+  --mac-glass-soft: rgba(255, 255, 255, 0.055);
+  --mac-glass-border: rgba(255, 255, 255, 0.16);
+  --mac-glass-divider: rgba(255, 255, 255, 0.085);
+  --mac-glass-highlight: rgba(255, 255, 255, 0.13);
+  --mac-glass-shadow: 0 24px 70px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --bs-card-bg: var(--mac-glass);
+  --content-surface: var(--mac-glass);
+  --content-border: var(--mac-glass-border);
+}
+
+html[data-theme-preset="macos-dark"] body {
+  background:
+    radial-gradient(ellipse at 4% 72%, rgba(151, 35, 91, 0.72) 0, rgba(91, 24, 68, 0.34) 27%, transparent 53%),
+    radial-gradient(ellipse at 92% 12%, rgba(28, 93, 170, 0.55) 0, rgba(12, 51, 104, 0.24) 31%, transparent 58%),
+    radial-gradient(ellipse at 56% 105%, rgba(68, 37, 128, 0.34) 0, transparent 48%),
+    linear-gradient(135deg, #15151c 0%, #090a0e 68%, #0d1019 100%) fixed !important;
+}
+
+html[data-theme-preset="macos-dark"] body .vertical-menu,
+html[data-theme-preset="macos-dark"] body[data-sidebar] .vertical-menu {
+  background: linear-gradient(145deg, rgba(55, 45, 55, 0.52), rgba(28, 28, 34, 0.42)) !important;
+  border-color: var(--mac-glass-border) !important;
+  backdrop-filter: blur(34px) saturate(145%) brightness(0.88) !important;
+  -webkit-backdrop-filter: blur(34px) saturate(145%) brightness(0.88) !important;
+  box-shadow: var(--mac-glass-shadow) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #page-topbar,
+html[data-theme-preset="macos-dark"] body .quick-favorites-bar,
+html[data-theme-preset="macos-dark"] body .card,
+html[data-theme-preset="macos-dark"] body .modal-content,
+html[data-theme-preset="macos-dark"] body .dropdown-menu,
+html[data-theme-preset="macos-dark"] body .custom-context-menu {
+  background-color: var(--mac-glass) !important;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)) !important;
+  border-color: var(--mac-glass-border) !important;
+  backdrop-filter: blur(34px) saturate(150%) brightness(0.9) !important;
+  -webkit-backdrop-filter: blur(34px) saturate(150%) brightness(0.9) !important;
+  box-shadow: var(--mac-glass-shadow) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .quick-favorites-bar {
+  background-color: rgba(31, 31, 36, 0.38) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .card::before,
+html[data-theme-preset="macos-dark"] body .vertical-menu::before,
+html[data-theme-preset="macos-dark"] body #page-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.075), transparent 35%, transparent 70%, rgba(255, 255, 255, 0.018));
+  z-index: 0;
+}
+
+html[data-theme-preset="macos-dark"] body .card > *,
+html[data-theme-preset="macos-dark"] body .vertical-menu > *,
+html[data-theme-preset="macos-dark"] body #page-topbar > * {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-theme-preset="macos-dark"] body .card-header,
+html[data-theme-preset="macos-dark"] body .card-footer,
+html[data-theme-preset="macos-dark"] body .modal-header,
+html[data-theme-preset="macos-dark"] body .modal-footer {
+  background-color: rgba(255, 255, 255, 0.025) !important;
+  background-image: none !important;
+  border-color: var(--mac-glass-divider) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .card,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .carousel {
+  background-color: rgba(35, 34, 40, 0.43) !important;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.006)) !important;
+  border-color: var(--mac-glass-border) !important;
+  box-shadow: var(--mac-glass-shadow) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .mac-title-bar {
+  background: rgba(66, 67, 73, 0.42) !important;
+  border-bottom-color: var(--mac-glass-divider) !important;
+  backdrop-filter: blur(22px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .widget-item:hover .mac-title-bar {
+  background: rgba(76, 77, 84, 0.48) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .global-search-input-box,
+html[data-theme-preset="macos-dark"] body .sidebar-search,
+html[data-theme-preset="macos-dark"] body .btn-sidebar-settings,
+html[data-theme-preset="macos-dark"] body .form-control,
+html[data-theme-preset="macos-dark"] body .form-select,
+html[data-theme-preset="macos-dark"] body .select2-container--default .select2-selection--single {
+  background-color: rgba(255, 255, 255, 0.075) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -1px 0 rgba(0, 0, 0, 0.14) !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-theme-preset="macos-dark"] body .vertical-menu,
+  html[data-theme-preset="macos-dark"] body #page-topbar,
+  html[data-theme-preset="macos-dark"] body .quick-favorites-bar,
+  html[data-theme-preset="macos-dark"] body .card,
+  html[data-theme-preset="macos-dark"] body .modal-content,
+  html[data-theme-preset="macos-dark"] body .dropdown-menu {
+    background-color: #25262c !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Finder benzeri tek ritim: tum ana paneller ve kart izgara araliklari ayni */
+@media (min-width: 992px) {
+  html[data-theme-preset="macos-dark"] body .vertical-menu {
+    top: var(--mac-window-gap) !important;
+    left: var(--mac-sidebar-left) !important;
+    bottom: var(--mac-window-gap) !important;
+    height: calc(100vh - (var(--mac-window-gap) * 2)) !important;
+    margin: 0 !important;
+  }
+
+  html[data-theme-preset="macos-dark"] body:not([data-sidebar-size="sm"]) #page-topbar,
+  html[data-theme-preset="macos-dark"] body:not([data-sidebar-size="sm"]) .quick-favorites-bar {
+    left: calc(var(--mac-sidebar-left) + 250px + var(--mac-window-gap)) !important;
+    right: var(--mac-window-gap) !important;
+    width: calc(100% - var(--mac-sidebar-left) - 250px - (var(--mac-window-gap) * 2)) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  html[data-theme-preset="macos-dark"] body:not([data-sidebar-size="sm"]) #page-topbar {
+    top: var(--mac-window-gap) !important;
+    height: 60px !important;
+  }
+
+  html[data-theme-preset="macos-dark"] body #page-topbar .navbar-header {
+    height: 100% !important;
+    margin: 0 !important;
+  }
+
+  html[data-theme-preset="macos-dark"] body .quick-favorites-bar {
+    top: calc(var(--mac-window-gap) + 60px + var(--mac-window-gap)) !important;
+    height: 42px !important;
+  }
+
+  html[data-theme-preset="macos-dark"] body:not([data-sidebar-size="sm"]) .main-content {
+    margin-left: calc(var(--mac-sidebar-left) + 250px) !important;
+    width: calc(100% - var(--mac-sidebar-left) - 250px) !important;
+    padding: 0 !important;
+  }
+
+  html[data-theme-preset="macos-dark"] body:has(#quick-favorites-bar) .main-content .page-content {
+    padding-top: calc(var(--mac-window-gap) + 60px + var(--mac-window-gap) + 42px + var(--mac-window-gap)) !important;
+  }
+
+  html[data-theme-preset="macos-dark"] body:not(:has(#quick-favorites-bar)) .main-content .page-content {
+    padding-top: calc(var(--mac-window-gap) + 60px + var(--mac-window-gap)) !important;
+  }
+}
+
+html[data-theme-preset="macos-dark"] body .main-content .container-fluid,
+html[data-theme-preset="macos-dark"] body .page-content .container-fluid {
+  padding-left: var(--mac-window-gap) !important;
+  padding-right: var(--mac-window-gap) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .page-content .row {
+  --bs-gutter-x: var(--mac-window-gap);
+  --bs-gutter-y: var(--mac-window-gap);
+}
+
+html[data-theme-preset="macos-dark"] body .main-content .card {
+  margin-bottom: var(--mac-window-gap) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .page-content .row > [class*="col-"] > .card,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .widget-item > .card,
+html[data-theme-preset="macos-dark"] body #summaryCardsContainer > [class*="col-"] > .card {
+  margin-bottom: 0 !important;
+}
+
+html[data-theme-preset="macos-dark"] body #summaryCardsContainer,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets {
+  row-gap: var(--mac-window-gap) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets:not(.free-layout-active) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets:not(.free-layout-active) > .widget-item {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets:not(.free-layout-active) > .widget-item > .card,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets:not(.free-layout-active) > .widget-item > .carousel {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Finder fidelity pass: renkli masaustu yerine tek parca, notr grafit pencere dili */
+html[data-theme-preset="macos-dark"] body {
+  background:
+    radial-gradient(ellipse at 8% 18%, rgba(111, 68, 102, .38), transparent 38%),
+    radial-gradient(ellipse at 92% 28%, rgba(43, 91, 145, .34), transparent 44%),
+    radial-gradient(ellipse at 52% 105%, rgba(61, 53, 111, .24), transparent 42%),
+    linear-gradient(145deg, #22242b 0%, #15161b 58%, #101116 100%) fixed !important;
+}
+
+html[data-theme-preset="macos-dark"] body #page-topbar,
+html[data-theme-preset="macos-dark"] body .quick-favorites-bar {
+  background: linear-gradient(145deg, rgba(255,255,255,.035), transparent 45%), rgba(28, 29, 34, .58) !important;
+  border-color: rgba(255, 255, 255, .15) !important;
+  backdrop-filter: blur(32px) saturate(135%) brightness(.9) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(135%) brightness(.9) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .1) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .quick-favorites-bar {
+  background: linear-gradient(145deg, rgba(255,255,255,.025), transparent 48%), rgba(27, 28, 33, .52) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .main-content .card,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .card,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .carousel {
+  background: linear-gradient(145deg, rgba(255,255,255,.035), transparent 45%), rgba(30, 31, 36, .6) !important;
+  border-color: rgba(255, 255, 255, .145) !important;
+  backdrop-filter: blur(30px) saturate(128%) brightness(.9) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(128%) brightness(.9) !important;
+  box-shadow: 0 9px 26px rgba(0, 0, 0, .27), inset 0 1px 0 rgba(255, 255, 255, .085) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .mac-title-bar,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .widget-item:hover .mac-title-bar {
+  background: rgba(58, 59, 65, .58) !important;
+  border-bottom-color: rgba(255, 255, 255, .1) !important;
+  backdrop-filter: blur(22px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(125%) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .card-body,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .card-footer {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .card::before,
+html[data-theme-preset="macos-dark"] body #page-topbar::before {
+  background: linear-gradient(135deg, rgba(255,255,255,.035), transparent 38%) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .text-muted,
+html[data-theme-preset="macos-dark"] body .card .text-muted {
+  color: rgba(225, 228, 236, .5) !important;
+}
+
+/* macOS tema tutarliligi: tek font, tek notr cam paleti */
+html[data-theme-preset="macos-dark"] {
+  --mac-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, "Segoe UI", sans-serif;
+  --mac-surface-rgb: 33, 34, 39;
+  --mac-surface: rgba(var(--mac-surface-rgb), .64);
+  --mac-surface-raised: rgba(43, 44, 50, .68);
+  --mac-row: rgba(255, 255, 255, .025);
+  --mac-row-hover: rgba(255, 255, 255, .065);
+  --mac-text: rgba(244, 245, 248, .9);
+  --mac-text-muted: rgba(220, 224, 233, .52);
+  --mac-line: rgba(255, 255, 255, .105);
+  font-family: var(--mac-font) !important;
+}
+
+html[data-theme-preset="macos-dark"] body,
+html[data-theme-preset="macos-dark"] button,
+html[data-theme-preset="macos-dark"] input,
+html[data-theme-preset="macos-dark"] select,
+html[data-theme-preset="macos-dark"] textarea,
+html[data-theme-preset="macos-dark"] table,
+html[data-theme-preset="macos-dark"] a,
+html[data-theme-preset="macos-dark"] p,
+html[data-theme-preset="macos-dark"] span,
+html[data-theme-preset="macos-dark"] label,
+html[data-theme-preset="macos-dark"] th,
+html[data-theme-preset="macos-dark"] td,
+html[data-theme-preset="macos-dark"] .btn,
+html[data-theme-preset="macos-dark"] .form-control,
+html[data-theme-preset="macos-dark"] .form-select,
+html[data-theme-preset="macos-dark"] .dropdown-menu,
+html[data-theme-preset="macos-dark"] .select2-container,
+html[data-theme-preset="macos-dark"] h1,
+html[data-theme-preset="macos-dark"] h2,
+html[data-theme-preset="macos-dark"] h3,
+html[data-theme-preset="macos-dark"] h4,
+html[data-theme-preset="macos-dark"] h5,
+html[data-theme-preset="macos-dark"] h6 {
+  font-family: var(--mac-font) !important;
+}
+
+html[data-theme-preset="macos-dark"] body {
+  color: var(--mac-text) !important;
+  background:
+    radial-gradient(ellipse at 88% 15%, rgba(63, 91, 128, .28), transparent 44%),
+    radial-gradient(ellipse at 48% 108%, rgba(58, 61, 84, .22), transparent 46%),
+    linear-gradient(145deg, #202228 0%, #15161b 60%, #111216 100%) fixed !important;
+}
+
+html[data-theme-preset="macos-dark"] body #page-topbar,
+html[data-theme-preset="macos-dark"] body .quick-favorites-bar,
+html[data-theme-preset="macos-dark"] body .main-content .card,
+html[data-theme-preset="macos-dark"] body .modal-content,
+html[data-theme-preset="macos-dark"] body .dropdown-menu {
+  background-color: var(--mac-surface) !important;
+  border-color: var(--mac-line) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .card-header,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .mac-title-bar,
+html[data-theme-preset="macos-dark"] body #dashboard-widgets .widget-item:hover .mac-title-bar {
+  background-color: var(--mac-surface-raised) !important;
+  border-color: var(--mac-line) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable thead th,
+html[data-theme-preset="macos-dark"] body .table thead th,
+html[data-theme-preset="macos-dark"] body table.dataTable thead td {
+  background-color: rgba(43, 44, 50, .92) !important;
+  color: rgba(238, 241, 246, .78) !important;
+  border-color: var(--mac-line) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] body .table tbody td {
+  background-color: rgba(33, 34, 39, .9) !important;
+  color: rgba(231, 234, 241, .82) !important;
+  border-color: rgba(255, 255, 255, .075) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable tbody tr:hover td,
+html[data-theme-preset="macos-dark"] body .table tbody tr:hover td {
+  background-color: rgba(48, 49, 55, .94) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable .dt-filter-row th,
+html[data-theme-preset="macos-dark"] body .table .dt-filter-row th {
+  background-color: rgba(36, 37, 42, .94) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable .dt-filter-row input,
+html[data-theme-preset="macos-dark"] body table.dataTable .dt-filter-row select,
+html[data-theme-preset="macos-dark"] body .table .dt-filter-row input,
+html[data-theme-preset="macos-dark"] body .table .dt-filter-row select {
+  background-color: rgba(25, 26, 30, .94) !important;
+  border-color: rgba(255, 255, 255, .14) !important;
+  color: rgba(235, 238, 244, .82) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #membersTable tbody tr:not(.selected):hover > td {
+  background-color: rgba(48, 49, 55, .94) !important;
+}
+
+html[data-theme-preset="macos-dark"] body #membersTable tbody tr:not(.selected) > td {
+  background-color: rgba(33, 34, 39, .9) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .text-muted,
+html[data-theme-preset="macos-dark"] body .text-secondary,
+html[data-theme-preset="macos-dark"] body .card-title-desc,
+html[data-theme-preset="macos-dark"] body .small {
+  color: var(--mac-text-muted) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .main-content {
+  isolation: isolate;
+}
+
+/* Finder son renk ayari: notr basliklar, mat metin ve sakin kart hover'i */
+html[data-theme-preset="macos-dark"] {
+  --mac-text: rgba(232, 233, 236, .78);
+  --mac-text-strong: rgba(238, 239, 242, .86);
+  --mac-table-head: rgba(39, 40, 44, .96);
+  --mac-table-filter: rgba(31, 32, 36, .96);
+  --mac-card-hover-line: rgba(255, 255, 255, .13);
+}
+
+html[data-theme-preset="macos-dark"] body,
+html[data-theme-preset="macos-dark"] body .card-body,
+html[data-theme-preset="macos-dark"] body .table,
+html[data-theme-preset="macos-dark"] body table.dataTable tbody td {
+  color: var(--mac-text) !important;
+}
+
+html[data-theme-preset="macos-dark"] body h1,
+html[data-theme-preset="macos-dark"] body h2,
+html[data-theme-preset="macos-dark"] body h3,
+html[data-theme-preset="macos-dark"] body h4,
+html[data-theme-preset="macos-dark"] body h5,
+html[data-theme-preset="macos-dark"] body h6,
+html[data-theme-preset="macos-dark"] body .card-title,
+html[data-theme-preset="macos-dark"] body .fw-bold,
+html[data-theme-preset="macos-dark"] body strong {
+  color: var(--mac-text-strong) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable thead th,
+html[data-theme-preset="macos-dark"] body table.dataTable thead td,
+html[data-theme-preset="macos-dark"] body .table thead th,
+html[data-theme-preset="macos-dark"] body .table thead td {
+  background-color: var(--mac-table-head) !important;
+  background-image: none !important;
+  color: rgba(224, 225, 229, .72) !important;
+  border-color: rgba(255, 255, 255, .08) !important;
+}
+
+html[data-theme-preset="macos-dark"] body table.dataTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] body .table thead .dt-filter-row th {
+  background-color: var(--mac-table-filter) !important;
+  background-image: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .main-content .page-content .card:not(.modal-content):hover {
+  border-color: var(--mac-card-hover-line) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .045) !important;
+}
+
+/* Liste kartlarinda imlecin tabloya girmesi yeni bir cerceve olusturmasin. */
+html[data-theme-preset="macos-dark"] body .main-content .page-content .card:has(.dataTables_wrapper):hover,
+html[data-theme-preset="macos-dark"] body .main-content .page-content .card:has(table.dataTable):hover,
+html[data-theme-preset="macos-dark"] body .main-content .page-content .card.datatable-premium-shell:hover {
+  border-color: var(--mac-line) !important;
+  box-shadow: var(--content-shadow) !important;
+}
+
+/* Global arama: Finder ile ayni notr cam paleti */
+html[data-theme-preset="macos-dark"] body .global-search-input-box {
+  background: rgba(48, 49, 54, .72) !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .global-search-input-box:focus-within {
+  background: rgba(52, 53, 58, .88) !important;
+  border-color: rgba(255, 255, 255, .2) !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .055), inset 0 1px 0 rgba(255, 255, 255, .045) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .global-search-input,
+html[data-theme-preset="macos-dark"] body .global-search-input-box:focus-within .global-search-icon {
+  color: rgba(232, 233, 236, .8) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .global-search-input::placeholder,
+html[data-theme-preset="macos-dark"] body .global-search-icon,
+html[data-theme-preset="macos-dark"] body .global-search-clear-btn {
+  color: rgba(214, 216, 222, .5) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .global-search-kbd-badge kbd,
+html[data-theme-preset="macos-dark"] body .gs-hint-item kbd {
+  background: rgba(255, 255, 255, .055) !important;
+  border-color: rgba(255, 255, 255, .11) !important;
+  color: rgba(220, 222, 227, .58) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .global-search-dropdown {
+  background: rgba(31, 32, 36, .9) !important;
+  background-image: linear-gradient(145deg, rgba(255,255,255,.035), transparent 42%) !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255, 255, 255, .045) !important;
+  backdrop-filter: blur(30px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(120%) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .global-search-categories,
+html[data-theme-preset="macos-dark"] body .global-search-footer {
+  background: rgba(38, 39, 44, .86) !important;
+  border-color: rgba(255, 255, 255, .075) !important;
+  color: rgba(211, 213, 219, .55) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-cat-pill {
+  background: rgba(255, 255, 255, .045) !important;
+  border-color: rgba(255, 255, 255, .09) !important;
+  color: rgba(220, 222, 227, .62) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-cat-pill:hover {
+  background: rgba(255, 255, 255, .085) !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+  color: rgba(235, 236, 239, .82) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-cat-pill.active {
+  background: rgba(105, 107, 115, .62) !important;
+  border-color: rgba(255, 255, 255, .15) !important;
+  color: rgba(244, 245, 247, .9) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-result-item:hover,
+html[data-theme-preset="macos-dark"] body .gs-result-item.active {
+  background: rgba(255, 255, 255, .075) !important;
+  border-color: rgba(255, 255, 255, .09) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-item-title,
+html[data-theme-preset="macos-dark"] body .gs-empty-title {
+  color: rgba(235, 236, 239, .84) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-item-row-secondary,
+html[data-theme-preset="macos-dark"] body .gs-item-date,
+html[data-theme-preset="macos-dark"] body .gs-category-header,
+html[data-theme-preset="macos-dark"] body .gs-suggestions-header,
+html[data-theme-preset="macos-dark"] body .gs-empty-subtitle {
+  color: rgba(211, 213, 219, .5) !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-suggestion-card {
+  background: rgba(255, 255, 255, .035) !important;
+  border-color: rgba(255, 255, 255, .085) !important;
+  color: rgba(224, 225, 229, .72) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .gs-suggestion-card:hover {
+  background: rgba(255, 255, 255, .075) !important;
+  border-color: rgba(255, 255, 255, .13) !important;
+  color: rgba(239, 240, 242, .88) !important;
+}
+
+/* Arama acikken arkadaki uygulama yumusak bicimde odaktan ciksin. */
+html[data-theme-preset="macos-dark"] body .main-content,
+html[data-theme-preset="macos-dark"] body .vertical-menu {
+  transition: filter .18s ease, opacity .18s ease !important;
+}
+
+html[data-theme-preset="macos-dark"] body.global-search-open .main-content,
+html[data-theme-preset="macos-dark"] body.global-search-open .vertical-menu {
+  filter: blur(5px) brightness(.68) saturate(.72);
+  opacity: .84;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-preset="macos-dark"] body .main-content,
+  html[data-theme-preset="macos-dark"] body .vertical-menu {
+    transition: none !important;
+  }
 }

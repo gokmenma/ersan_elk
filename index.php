@@ -91,6 +91,7 @@ $routeAliases = [
     'efatura-cari'       => 'efatura/cari-list',
     'efatura-mal-hizmet' => 'efatura/mal-hizmet-list',
     'efatura-ayarlar'    => 'efatura/ayarlar',
+    'profil'             => 'profil/index',
 ];
 if (isset($routeAliases[$page])) {
     $page = $routeAliases[$page];

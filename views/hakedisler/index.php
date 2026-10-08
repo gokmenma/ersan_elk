@@ -336,6 +336,60 @@ $aylar = [
     border-color: #475569;
     box-shadow: 0 2px 5px rgba(71, 85, 105, 0.25);
 }
+
+/* Sözleşme modalı: Personel Takip ile aynı Finder segmented sekmeler */
+html[data-theme-preset="macos-dark"] #sozlesmeModalTabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 3px !important;
+    padding: 3px !important;
+    margin: 0 14px 10px !important;
+    background: rgba(18, 19, 23, .86) !important;
+    border: 1px solid rgba(255, 255, 255, .085) !important;
+    border-radius: 10px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025) !important;
+}
+
+html[data-theme-preset="macos-dark"] #sozlesmeModalTabs .nav-item {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+}
+
+html[data-theme-preset="macos-dark"] #sozlesmeModalTabs .nav-link {
+    width: 100% !important;
+    min-height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 7px 10px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 7px !important;
+    color: rgba(210, 212, 218, .58) !important;
+    font-size: 12px !important;
+    font-weight: 550 !important;
+    line-height: 1.2 !important;
+    box-shadow: none !important;
+    transition: background-color .16s ease, color .16s ease, border-color .16s ease !important;
+}
+
+html[data-theme-preset="macos-dark"] #sozlesmeModalTabs .nav-link::after {
+    display: none !important;
+}
+
+html[data-theme-preset="macos-dark"] #sozlesmeModalTabs .nav-link:hover {
+    background: rgba(255, 255, 255, .06) !important;
+    color: rgba(229, 230, 233, .76) !important;
+}
+
+html[data-theme-preset="macos-dark"] #sozlesmeModalTabs .nav-link.active {
+    background: rgba(255, 255, 255, .13) !important;
+    border-color: rgba(255, 255, 255, .11) !important;
+    color: rgba(239, 240, 242, .88) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .045) !important;
+}
 </style>
 
 <!-- Yeni Sözleşme Modal -->
@@ -351,7 +405,7 @@ $aylar = [
             </div>
             <div class="modal-body">
                 <!-- Nav tabs -->
-                <ul class="nav nav-tabs nav-tabs-custom nav-justified" role="tablist">
+                <ul class="nav nav-tabs nav-tabs-custom nav-justified" id="sozlesmeModalTabs" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active" data-bs-toggle="tab" href="#sozlesme-bilgileri-tab" role="tab">
                             <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
