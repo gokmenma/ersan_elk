@@ -123,6 +123,9 @@ matrahinda iki kez sayilir.
 ### Prim Usulu
 
 Prim usulu net gibi islenir. Varsayilan ek odeme kanali `elden` kabul edilir; parametrede odeme yontemi varsa o yontem kullanilir.
+
+- Prim usulunde kanuni asgari net taban yalniz normal puantaj/calisma hakedisini tamamlar. Fazla mesai, nobet, resmi tatil ve hafta tatili calismasi gibi ek calisma kazanclari bu tabanin icinde eritilemez; `max(normal puantaj hakedisi, gunluk asgari net taban) + ek calisma kazanclari` sirasi ile toplam hakedise eklenir.
+- Ornek: 5 gunluk asgari net taban 4.679,25; normal puantaj hakedisi 4.120,00 ve nobet 500,00 ise toplam net hakedis `max(4.120,00, 4.679,25) + 500,00 = 5.179,25` olur.
 Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maasHesapGunu > 0`), puantaj veya ek odeme uretilmemis ya da asgari tabandan dusuk kalmis olsa dahi personelin hakedisi en az calisilan gune tekabul eden `asgariHakedis` (`asgari_ucret_net / 30 * maasHesapGunu`) tutarindan az olamaz.
 
 ### Banka İşaretli Prim ve Özel Kesinti Sırası

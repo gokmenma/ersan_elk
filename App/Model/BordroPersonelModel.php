@@ -164,6 +164,12 @@ class BordroPersonelModel extends Model
         return $resmiAlacakDahil && !$isPuantajOdeme ? 'banka' : $yontem;
     }
 
+    /** Prim usulünde ek çalışma kazancı kanuni asgari taban tamamlamasının içinde eritilemez. */
+    private function hesaplaPrimUsuluTabanliHakedis(float $normalPuantajHakedisi, float $ekCalismaHakedisi, float $asgariNetTaban): float
+    {
+        return round(max(0.0, $normalPuantajHakedisi, $asgariNetTaban) + max(0.0, $ekCalismaHakedisi), 2);
+    }
+
     // Net/prim maaşta yalnız resmî alacak kalemleri bankaya eklenir, personel kesintileri sonra düşülür.
     // Banka kesintileri önce bankadan (yetmezse elden'den), Elden kesintileri önce elden'den (yetmezse bankadan) düşülür.
     private function hesaplaNormalBankaDagilimi(float $asgariTaban, float $bankaEkleri, float $bankaKesintisi, float $netAlacagi, float $sodexo, float $diger, float $eldenKesintisi = 0.0): array
@@ -1198,7 +1204,7 @@ class BordroPersonelModel extends Model
             if ($isMuhasebePrimi) {
                 $muhasebePrimToplami += $tutar;
             }
-            if ($isInclusive && $isPrimUsulu && $isPuantajOdeme) {
+            if ($isPrimUsulu && $isPuantajOdeme) {
                 $primUsuluPuantajHedefToplami += $tutar;
             }
             if ($isInclusive && $isNet && $isPuantajOdeme) {
@@ -1527,7 +1533,13 @@ class BordroPersonelModel extends Model
             if ($karisikMaasOzeti !== null) {
                 $toplamAlacagi = $sozlesmeHakedisi + $rawEkOdeme;
             } elseif ($isPrimUsulu) {
-                $toplamAlacagi = max($sozlesmeHakedisi + $rawEkOdeme, $asgariTabanVal);
+                $primUsuluTabanKazanci = $sozlesmeHakedisi + $primUsuluPuantajHedefToplami;
+                $primUsuluEkCalismaKazanci = max(0.0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
+                $toplamAlacagi = $this->hesaplaPrimUsuluTabanliHakedis(
+                    $primUsuluTabanKazanci,
+                    $primUsuluEkCalismaKazanci,
+                    $asgariTabanVal
+                );
             } elseif ($isBrut && !empty($p->hesaplama_tarihi) && isset($p->net_maas)) {
                 // Brüt ücrette bordro kaydı SGK/vergi kesintileri uygulanmış net
                 // hakedişi içerir. Resmî ödeme dağılımı brüt sözleşme tutarından
@@ -5228,8 +5240,11 @@ class BordroPersonelModel extends Model
                 $detay['sgk_dahil'] = (bool) $parametre->sgk_matrahi_dahil;
                 $detay['gv_dahil'] = (bool) $parametre->gelir_vergisi_dahil;
 
-                if ($isPrimUsuluDahilYardim) {
+                if ($isPrimUsulu) {
                     $primUsuluPuantajHedefToplami += $tutar;
+                }
+
+                if ($isPrimUsuluDahilYardim) {
                     $detay['hedef_net_adayi'] = round($tutar, 2);
                     $detay['donem_hedef_toplami'] = round($primUsuluPuantajHedefToplami, 2);
                     $detay['net_etki'] = 0;
@@ -5887,7 +5902,13 @@ class BordroPersonelModel extends Model
             $hakedisNetBeforeKesinti = $brutMaas + $toplamEkOdeme;
             if ($isPrimUsulu && !$this->hasMaasaDahilSosyalYardim($kayit)) {
                 $asgariNetTabanHesap = round((floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30) * $maasHesapGunu, 2);
-                $hakedisNetBeforeKesinti = max($hakedisNetBeforeKesinti, $asgariNetTabanHesap);
+                $primUsuluTabanKazanci = $brutMaas + $primUsuluPuantajHedefToplami;
+                $primUsuluEkCalismaKazanci = max(0.0, $toplamEkOdeme - $primUsuluPuantajHedefToplami);
+                $hakedisNetBeforeKesinti = $this->hesaplaPrimUsuluTabanliHakedis(
+                    $primUsuluTabanKazanci,
+                    $primUsuluEkCalismaKazanci,
+                    $asgariNetTabanHesap
+                );
             }
             $hakedisNet = $hakedisNetBeforeKesinti - $digerKesintiler;
         } else {
