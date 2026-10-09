@@ -269,32 +269,9 @@ foreach ($exemptionOptions as $k => $v) {
 }
 $exemptionSelectHtml .= '</select>';
 
-// Mal / Hizmet Tanımları Select Şablonu
+// Mal / Hizmet Tanımları
 $malHizmetModel = new \App\Model\EFaturaMalHizmetModel();
 $malHizmetListesi = $malHizmetModel->getAllActive($firmId);
-
-$malHizmetSelectHtml = '<select class="form-select form-select-sm select2-mal-hizmet kalem-ad" style="width: 100%;">';
-$malHizmetSelectHtml .= '<option value="">Ürün adı yazarak arayın veya seçin...</option>';
-if (!empty($malHizmetListesi)) {
-    foreach ($malHizmetListesi as $mh) {
-        $birimKey = $mh['birim'] ?? 'C62';
-        $birimAd = $unitCodes[$birimKey] ?? $birimKey;
-        $malHizmetSelectHtml .= '<option value="' . htmlspecialchars($mh['urun_adi'], ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-id="' . htmlspecialchars((string)$mh['id'], ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-urun-adi="' . htmlspecialchars($mh['urun_adi'], ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-kod="' . htmlspecialchars($mh['stok_kodu'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-fiyat="' . htmlspecialchars((string)$mh['satis_fiyati'], ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-alis-fiyat="' . htmlspecialchars((string)($mh['alis_fiyati'] ?? '0'), ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-birim="' . htmlspecialchars($birimKey, ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-birim-ad="' . htmlspecialchars($birimAd, ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-pb="' . htmlspecialchars($mh['para_birimi'] ?? 'TRY', ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-kdv="' . htmlspecialchars((string)($mh['kdv_orani'] ?? '20'), ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-tevkifat-kod="' . htmlspecialchars($mh['tevkifat_kodu'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
-            . ' data-tevkifat-oran="' . htmlspecialchars((string)($mh['tevkifat_orani'] ?? '0'), ENT_QUOTES, 'UTF-8') . '"'
-            . '>' . htmlspecialchars($mh['urun_adi'], ENT_QUOTES, 'UTF-8') . '</option>';
-    }
-}
-$malHizmetSelectHtml .= '</select>';
 ?>
 <meta name="efatura-csrf" content="<?= htmlspecialchars(\App\Helper\Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
 <script src="views/efatura/js/transport.js?v=<?= filemtime(__DIR__ . '/js/transport.js') ?>"></script>
@@ -327,6 +304,76 @@ $malHizmetSelectHtml .= '</select>';
 }
 .select2-results__option:last-child {
     border-bottom: none;
+}
+
+/* Kalem Ürün/Hizmet Seçici ve Düzenlenebilir Input Stilleri */
+.kalem-urun-wrap {
+    position: relative;
+    width: 100%;
+}
+.kalem-urun-wrap .kalem-ad {
+    font-weight: 500;
+    color: #1e293b;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.kalem-urun-wrap .kalem-ad:focus {
+    z-index: 3;
+}
+.kalem-urun-wrap .btn-stok-dropdown-toggle {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #3b82f6;
+    height: 34px;
+    z-index: 2;
+}
+.kalem-urun-wrap .btn-stok-dropdown-toggle:hover,
+.kalem-urun-wrap .btn-stok-dropdown-toggle:focus {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+.stok-sec-dropdown-menu {
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.06);
+    background: #ffffff;
+}
+.stok-autocomplete-menu {
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+    background: #ffffff;
+    margin-top: 2px;
+}
+.stok-item-option,
+.stok-autocomplete-item {
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-radius: 6px;
+}
+.stok-item-option:hover,
+.stok-autocomplete-item:hover,
+.stok-autocomplete-item.active {
+    background-color: #eff6ff !important;
+}
+.stok-item-option:hover strong,
+.stok-autocomplete-item:hover strong,
+.stok-autocomplete-item.active strong {
+    color: #1d4ed8 !important;
+}
+.items-table tbody td {
+    overflow: visible !important;
+}
+.invoice-items-table-frame {
+    overflow: visible !important;
 }
 
 
@@ -1636,7 +1683,6 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
 <script>
 const CARI_DATA = <?= json_encode($cariler, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const MAL_HIZMET_DATA = <?= json_encode($malHizmetListesi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-const MAL_HIZMET_SELECT = <?= json_encode($malHizmetSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const UNIT_SELECT = <?= json_encode($unitSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const VAT_SELECT = <?= json_encode($vatSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const WITHHOLDING_SELECT = <?= json_encode($withholdingSelectHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -1760,53 +1806,138 @@ document.addEventListener('DOMContentLoaded', function() {
         return $('<span><i class="bx bx-buildings text-primary me-1"></i> <strong class="text-dark">' + escapeHtml(unvan) + '</strong>' + (vkn ? ' <span class="text-muted font-size-11">[' + escapeHtml(vkn) + ']</span>' : '') + '</span>');
     }
 
-    function formatMalHizmetOption(state) {
-        if (!state.id) return state.text;
-        const $el = $(state.element);
-        if (!$el.length || !$el.data('id')) {
-            return $('<span><i class="bx bx-plus-circle text-primary me-1"></i> ' + escapeHtml(state.text) + '</span>');
+    // Stok/Hizmet Seçimi ve Kaleme Uygulama Fonksiyonu (Hem manuel düzenlenebilir hem stoktan dolabilir)
+    function applyProductToRow($row, product) {
+        if (!$row || !$row.length || !product) return;
+
+        // 1. Ürün adını ata (input olarak atanır, böylece kullanıcı dilediği gibi düzenleyebilir / metin ekleyebilir)
+        $row.find('.kalem-ad').val(product.urun_adi || '');
+
+        // 2. Satış fiyatını ata
+        if (product.satis_fiyati !== undefined && parseFloat(product.satis_fiyati) >= 0) {
+            $row.find('.kalem-fiyat').val(parseFloat(product.satis_fiyati));
         }
-        const kod = $el.data('kod') || '';
-        const urunAdi = $el.data('urun-adi') || state.text;
-        const fiyat = parseFloat($el.data('fiyat') || 0);
-        const alisFiyat = parseFloat($el.data('alis-fiyat') || 0);
-        const birim = $el.data('birim-ad') || $el.data('birim') || 'Adet';
-        const pb = $el.data('pb') || 'TRY';
-        const kdv = $el.data('kdv');
 
-        const badgeKod = kod ? `<span class="badge bg-light text-secondary border font-size-11 px-2 py-0.5">${escapeHtml(kod)}</span>` : '';
-        const satisStr = fiyat > 0 ? `<span class="text-success fw-bold">${formatMoney(fiyat)} ${escapeHtml(pb)}</span>` : `<span class="text-muted fw-bold">0.00 ${escapeHtml(pb)}</span>`;
-        const alisStr = alisFiyat > 0 ? `<span class="text-dark fw-semibold">${formatMoney(alisFiyat)} ${escapeHtml(pb)}</span>` : `<span class="text-muted fw-semibold">0.00 ${escapeHtml(pb)}</span>`;
+        // 3. Birim bilgisini ata
+        if (product.birim) {
+            $row.find('.kalem-birim').val(product.birim).trigger('change.select2');
+        }
 
-        const html = `
-            <div class="py-1 px-1">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
-                        <i class="bx bx-package text-secondary flex-shrink-0 font-size-16"></i>
-                        <span class="fw-bold text-dark font-size-13 text-truncate">${escapeHtml(urunAdi)}</span>
-                    </div>
-                    ${badgeKod}
-                </div>
-                <div class="d-flex align-items-center flex-wrap gap-3 mt-1 font-size-11 text-muted ps-4 ms-1">
-                    <span>Birim: <strong class="text-dark">${escapeHtml(birim)}</strong></span>
-                    <span>Satış: ${satisStr}</span>
-                    <span>Alış: ${alisStr}</span>
-                    ${kdv !== undefined && kdv !== '' ? `<span>KDV: <strong class="text-dark">%${escapeHtml(kdv)}</strong></span>` : ''}
-                </div>
-            </div>
-        `;
-        return $(html);
+        // 4. KDV oranını ata
+        if (product.kdv_orani !== undefined && product.kdv_orani !== null && product.kdv_orani !== '') {
+            $row.find('.kalem-kdv').val(String(parseFloat(product.kdv_orani))).trigger('change.select2');
+        }
+
+        // 5. Tevkifat varsa ata
+        if (product.tevkifat_kodu) {
+            const tevkifatVal = product.tevkifat_kodu + '|' + parseInt(product.tevkifat_orani || 0, 10);
+            $row.find('.kalem-tevkifat').val(tevkifatVal).trigger('change.select2');
+            toggleTevkifatColumn(true);
+        }
+
+        // 6. Hesaplamaları tetikle
+        calculateTotals();
+
+        // 7. Autocomplete ve dropdown menülerini kapat
+        $row.find('.stok-autocomplete-menu').hide();
+        const toggleBtn = $row.find('.btn-stok-dropdown-toggle')[0];
+        if (toggleBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+            const bsDropdown = bootstrap.Dropdown.getInstance(toggleBtn);
+            if (bsDropdown) bsDropdown.hide();
+        }
+
+        // 8. Kullanıcının doğrudan düzenleme yapabilmesi veya miktara geçebilmesi için imleci ürün adı alanına bırak
+        $row.find('.kalem-ad').focus();
     }
 
-    function formatMalHizmetSelection(state) {
-        if (!state.id) return state.text;
-        const $el = $(state.element);
-        const kod = $el.data('kod') || '';
-        const urunAdi = $el.data('urun-adi') || state.text;
-        if (kod) {
-            return $('<span><span class="badge bg-light text-secondary border font-size-11 me-1">' + escapeHtml(kod) + '</span> <strong class="text-dark">' + escapeHtml(urunAdi) + '</strong></span>');
+    // Stok Seçici Dropdown Listesini Doldurma
+    function renderStokDropdownList($menu, filterText = '') {
+        const $list = $menu.find('.stok-quick-list');
+        $list.empty();
+        const term = (filterText || '').trim().toLowerCase();
+        const filtered = (!term)
+            ? MAL_HIZMET_DATA
+            : MAL_HIZMET_DATA.filter(item => {
+                const name = (item.urun_adi || '').toLowerCase();
+                const code = (item.stok_kodu || '').toLowerCase();
+                return name.includes(term) || code.includes(term);
+            });
+
+        if (!filtered || filtered.length === 0) {
+            $list.html('<div class="text-center py-3 text-muted font-size-12"><i class="bx bx-info-circle me-1"></i>Uygun stok bulunamadı.</div>');
+            return;
         }
-        return $('<span><strong class="text-dark">' + escapeHtml(urunAdi) + '</strong></span>');
+
+        filtered.forEach(item => {
+            const kodBadge = item.stok_kodu ? `<span class="badge bg-light text-secondary border font-size-10 px-1.5 py-0.5 me-1">${escapeHtml(item.stok_kodu)}</span>` : '';
+            const fiyatVal = parseFloat(item.satis_fiyati || 0);
+            const fiyatStr = fiyatVal > 0 ? `${formatMoney(fiyatVal)} ${escapeHtml(item.para_birimi || 'TRY')}` : '0,00 ₺';
+            const birimStr = item.birim || 'Adet';
+            const kdvStr = (item.kdv_orani !== undefined && item.kdv_orani !== null) ? `%${item.kdv_orani} KDV` : '';
+
+            const html = `
+                <div class="stok-item-option p-2 rounded-2 border-bottom cursor-pointer" data-id="${escapeHtml(String(item.id || ''))}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <strong class="font-size-12 text-dark text-truncate" title="${escapeHtml(item.urun_adi)}">${escapeHtml(item.urun_adi)}</strong>
+                        ${kodBadge}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-muted font-size-11 mt-1">
+                        <span class="text-success fw-bold">${fiyatStr}</span>
+                        <span>•</span>
+                        <span>${escapeHtml(birimStr)}</span>
+                        ${kdvStr ? `<span>•</span><span>${escapeHtml(kdvStr)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+            $list.append(html);
+        });
+    }
+
+    // Canlı Arama (Typeahead / Autocomplete) Önerilerini Gösterme
+    function renderAutocompleteOptions($menu, query) {
+        $menu.empty();
+        const term = (query || '').trim().toLowerCase();
+        if (!term || !Array.isArray(MAL_HIZMET_DATA) || MAL_HIZMET_DATA.length === 0) {
+            $menu.hide();
+            return;
+        }
+
+        const matches = MAL_HIZMET_DATA.filter(item => {
+            const name = (item.urun_adi || '').toLowerCase();
+            const code = (item.stok_kodu || '').toLowerCase();
+            return name.includes(term) || code.includes(term);
+        }).slice(0, 8); // En fazla 8 eşleşme
+
+        if (matches.length === 0) {
+            $menu.hide();
+            return;
+        }
+
+        matches.forEach((item, idx) => {
+            const kodBadge = item.stok_kodu ? `<span class="badge bg-light text-secondary border font-size-10 px-1.5 py-0.5 me-1">${escapeHtml(item.stok_kodu)}</span>` : '';
+            const fiyatVal = parseFloat(item.satis_fiyati || 0);
+            const fiyatStr = fiyatVal > 0 ? `${formatMoney(fiyatVal)} ${escapeHtml(item.para_birimi || 'TRY')}` : '0,00 ₺';
+            const birimStr = item.birim || 'Adet';
+            const kdvStr = (item.kdv_orani !== undefined && item.kdv_orani !== null) ? `%${item.kdv_orani} KDV` : '';
+
+            const html = `
+                <div class="stok-autocomplete-item p-2 border-bottom cursor-pointer ${idx === 0 ? 'active' : ''}" data-id="${escapeHtml(String(item.id || ''))}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <strong class="font-size-12 text-dark text-truncate" title="${escapeHtml(item.urun_adi)}">${escapeHtml(item.urun_adi)}</strong>
+                        ${kodBadge}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-muted font-size-11 mt-1">
+                        <span class="text-success fw-bold">${fiyatStr}</span>
+                        <span>•</span>
+                        <span>${escapeHtml(birimStr)}</span>
+                        ${kdvStr ? `<span>•</span><span>${escapeHtml(kdvStr)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+            $menu.append(html);
+        });
+
+        $menu.show();
     }
 
     // 1. Tüm Fatura Standart Select2 Elemanlarını Başlat
@@ -2248,8 +2379,36 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill row-number font-size-11 fw-bold">${rowCounter}</span>
                     </div>
                 </td>
-                <td style="min-width: 240px;">
-                    ${MAL_HIZMET_SELECT}
+                <td style="min-width: 250px;">
+                    <div class="position-relative kalem-urun-wrap">
+                        <div class="input-group input-group-sm">
+                            <input type="text" 
+                                   class="form-control form-control-sm kalem-ad font-size-12" 
+                                   placeholder="Ürün / hizmet adı girin veya stoktan seçin..." 
+                                   autocomplete="off">
+                            <button type="button" 
+                                    class="btn btn-subtle-secondary btn-stok-dropdown-toggle dropdown-toggle dropdown-toggle-split" 
+                                    data-bs-toggle="dropdown" 
+                                    data-bs-auto-close="outside" 
+                                    aria-expanded="false" 
+                                    title="Stok / Hizmet Listesinden Seç">
+                                <i class="bx bx-package text-primary"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-start p-2 shadow-lg stok-sec-dropdown-menu" style="min-width: 350px; max-width: 440px; z-index: 1065;">
+                                <div class="p-1 border-bottom pb-2 mb-2">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light border-end-0 py-1"><i class="bx bx-search text-muted"></i></span>
+                                        <input type="text" class="form-control form-control-sm border-start-0 stok-search-input" placeholder="Stok adı veya kodu ile filtrele...">
+                                    </div>
+                                </div>
+                                <div class="stok-quick-list" style="max-height: 220px; overflow-y: auto;">
+                                    <!-- Dinamik Stok Listesi -->
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Canlı Arama / Typeahead Menüsü -->
+                        <div class="stok-autocomplete-menu shadow-lg border rounded-3 bg-white position-absolute w-100" style="display: none; z-index: 1070; top: 100%; left: 0; max-height: 240px; overflow-y: auto;"></div>
+                    </div>
                 </td>
                 <td style="width: 85px;">
                     <input type="number" step="0.0001" min="0.0001" class="form-control form-control-sm kalem-miktar text-end fw-semibold" value="1">
@@ -2289,29 +2448,9 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         $('#kalemlerContainer').append(rowHtml);
         const row = $(`#row_${rowCounter}`);
-        
-        const $malHizmetSelect = row.find('.select2-mal-hizmet');
-        $malHizmetSelect.select2({
-            tags: true,
-            dropdownAutoWidth: true,
-            width: '100%',
-            placeholder: 'Ürün adı yazarak arayın veya seçin...',
-            matcher: select2CustomMatcher,
-            templateResult: formatMalHizmetOption,
-            templateSelection: formatMalHizmetSelection,
-            escapeMarkup: function(m) { return m; }
-        });
 
         const itemTitle = data.urun_hizmet_adi || data.mal_hizmet_adi || '';
-        if (itemTitle) {
-            const currentVal = itemTitle;
-            if ($malHizmetSelect.find('option').filter(function() { return $(this).val() === currentVal; }).length === 0) {
-                $malHizmetSelect.append(new Option(currentVal, currentVal, true, true));
-            }
-            $malHizmetSelect.val(currentVal).trigger('change.select2');
-        } else {
-            $malHizmetSelect.val('').trigger('change.select2');
-        }
+        row.find('.kalem-ad').val(itemTitle);
 
         row.find('.kalem-miktar').val(data.miktar ?? '1');
         row.find('.kalem-fiyat').val(data.birim_fiyat ?? '0');
@@ -2880,58 +3019,113 @@ document.addEventListener('DOMContentLoaded', function() {
         calculateTotals();
     });
 
-    // Mal / Hizmet Seçildiğinde Otomatik Doldur
-    $('#kalemlerContainer').on('change', '.select2-mal-hizmet', function() {
+    // =========================================================================
+    // DİNAMİK MAL/HİZMET YÖNETİMİ: MANUEL GİRİŞ, DÜZENLEME & STOKTAN SEÇİM
+    // =========================================================================
+
+    // 1. Ürün Adı Yazıldığında (Canlı Arama / Autocomplete Önerileri)
+    $('#kalemlerContainer').on('input', '.kalem-ad', function() {
         const row = $(this).closest('tr');
-        const selectedOpt = $(this).find('option:selected');
-        const val = ($(this).val() || '').trim();
-        if (!val) return;
+        const $menu = row.find('.stok-autocomplete-menu');
+        const query = $(this).val();
+        renderAutocompleteOptions($menu, query);
+    });
 
-        const dataFiyat = selectedOpt.data('fiyat');
-        const dataBirim = selectedOpt.data('birim');
-        const dataKdv = selectedOpt.data('kdv');
-        const dataTevkifatKod = selectedOpt.data('tevkifat-kod');
-        const dataTevkifatOran = selectedOpt.data('tevkifat-oran');
-
-        if (dataFiyat !== undefined && parseFloat(dataFiyat) > 0) {
-            row.find('.kalem-fiyat').val(parseFloat(dataFiyat));
-        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
-            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
-            if (found && parseFloat(found.satis_fiyati) > 0) {
-                row.find('.kalem-fiyat').val(parseFloat(found.satis_fiyati));
-            }
+    // 2. Ürün Adı Alanına Odaklanıldığında
+    $('#kalemlerContainer').on('focus', '.kalem-ad', function() {
+        const row = $(this).closest('tr');
+        const $menu = row.find('.stok-autocomplete-menu');
+        const query = $(this).val();
+        if (query && query.trim() !== '') {
+            renderAutocompleteOptions($menu, query);
         }
+    });
 
-        if (dataBirim) {
-            row.find('.kalem-birim').val(dataBirim).trigger('change.select2');
-        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
-            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
-            if (found && found.birim) {
-                row.find('.kalem-birim').val(found.birim).trigger('change.select2');
+    // 3. Klavye Gezinme Desteği (Aşağı/Yukarı Ok, Enter, Escape)
+    $('#kalemlerContainer').on('keydown', '.kalem-ad', function(e) {
+        const row = $(this).closest('tr');
+        const $menu = row.find('.stok-autocomplete-menu');
+        if (!$menu.is(':visible')) return;
+
+        const items = $menu.find('.stok-autocomplete-item');
+        if (!items.length) return;
+
+        let activeIdx = items.index($menu.find('.stok-autocomplete-item.active'));
+
+        if (e.which === 40) { // Aşağı Ok
+            e.preventDefault();
+            activeIdx = (activeIdx + 1) >= items.length ? 0 : activeIdx + 1;
+            items.removeClass('active');
+            items.eq(activeIdx).addClass('active');
+            // Görünür alana kaydır
+            const activeEl = items.eq(activeIdx)[0];
+            if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+        } else if (e.which === 38) { // Yukarı Ok
+            e.preventDefault();
+            activeIdx = (activeIdx - 1) < 0 ? items.length - 1 : activeIdx - 1;
+            items.removeClass('active');
+            items.eq(activeIdx).addClass('active');
+            const activeEl = items.eq(activeIdx)[0];
+            if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+        } else if (e.which === 13) { // Enter
+            if (activeIdx >= 0 && items.eq(activeIdx).length) {
+                e.preventDefault();
+                const stockId = items.eq(activeIdx).data('id');
+                const product = MAL_HIZMET_DATA.find(p => String(p.id) === String(stockId));
+                if (product) {
+                    applyProductToRow(row, product);
+                }
             }
+        } else if (e.which === 27) { // Escape
+            $menu.hide();
         }
+    });
 
-        if (dataKdv !== undefined && dataKdv !== null && dataKdv !== '') {
-            row.find('.kalem-kdv').val(String(parseFloat(dataKdv))).trigger('change.select2');
-        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
-            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
-            if (found && found.kdv_orani !== undefined && found.kdv_orani !== null) {
-                row.find('.kalem-kdv').val(String(parseFloat(found.kdv_orani))).trigger('change.select2');
-            }
+    // 4. Autocomplete Listesinden Ürüne Tıklanması
+    $('#kalemlerContainer').on('click', '.stok-autocomplete-item', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const row = $(this).closest('tr');
+        const stockId = $(this).data('id');
+        const product = MAL_HIZMET_DATA.find(p => String(p.id) === String(stockId));
+        if (product) {
+            applyProductToRow(row, product);
         }
+    });
 
-        if (dataTevkifatKod) {
-            row.find('.kalem-tevkifat').val(dataTevkifatKod + '|' + parseInt(dataTevkifatOran || 0, 10)).trigger('change.select2');
-            toggleTevkifatColumn(true);
-        } else if (Array.isArray(MAL_HIZMET_DATA) && MAL_HIZMET_DATA.length > 0) {
-            const found = MAL_HIZMET_DATA.find(item => item.urun_adi === val || item.stok_kodu === val);
-            if (found && found.tevkifat_kodu) {
-                row.find('.kalem-tevkifat').val(found.tevkifat_kodu + '|' + parseInt(found.tevkifat_orani || 0, 10)).trigger('change.select2');
-                toggleTevkifatColumn(true);
-            }
+    // 5. Stok Seçici Dropdown Açıldığında Listeyi Hazırla
+    $('#kalemlerContainer').on('show.bs.dropdown', '.btn-stok-dropdown-toggle', function() {
+        const $menu = $(this).next('.stok-sec-dropdown-menu');
+        const $input = $menu.find('.stok-search-input');
+        $input.val('');
+        renderStokDropdownList($menu, '');
+        setTimeout(() => { $input.focus(); }, 100);
+    });
+
+    // 6. Stok Seçici Dropdown Arama Filtresi
+    $('#kalemlerContainer').on('input', '.stok-search-input', function(e) {
+        e.stopPropagation();
+        const $menu = $(this).closest('.stok-sec-dropdown-menu');
+        renderStokDropdownList($menu, $(this).val());
+    });
+
+    // 7. Stok Seçici Dropdown'dan Ürün Seçilmesi
+    $('#kalemlerContainer').on('click', '.stok-item-option', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const row = $(this).closest('tr');
+        const stockId = $(this).data('id');
+        const product = MAL_HIZMET_DATA.find(p => String(p.id) === String(stockId));
+        if (product) {
+            applyProductToRow(row, product);
         }
+    });
 
-        calculateTotals();
+    // 8. Dışarı Tıklandığında Açık Autocomplete Menülerini Kapat
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.kalem-urun-wrap').length) {
+            $('.stok-autocomplete-menu').hide();
+        }
     });
 
     // Cari Seçildiğinde

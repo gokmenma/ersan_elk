@@ -6652,7 +6652,6 @@ html[data-theme-preset="macos-dark"] body .menu-settings-dropdown {
 
 html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-menu,
 html[data-theme-preset="macos-dark"] body .dropdown-menu.mac-popover-menu,
-[data-theme-preset="macos-dark"] .dropdown-menu,
 html[data-theme-preset="macos-dark"] body .mac-popover-menu {
   position: absolute !important;
   top: calc(100% + 8px) !important;
@@ -7834,6 +7833,101 @@ html[data-theme-preset="macos-dark"] body h5.text-dark,
 [data-theme-preset="macos-dark"] h5.text-dark {
   color: rgba(240, 242, 246, 0.95) !important;
 }
+
+/* ==========================================================================
+   Merkezi Dropdown ve Açılır Menü Stacking Context Standartları
+   ========================================================================== */
+.dropdown-menu {
+  z-index: 1060 !important;
+}
+
+/* Dropdown açık olduğunda ebeveyn kapsayıcıların z-index'ini otomatik yükselt */
+.dropdown.show,
+.dropdown:has(> .dropdown-menu.show),
+.btn-group.show,
+.btn-group:has(> .dropdown-menu.show) {
+  position: relative !important;
+  z-index: 1065 !important;
+}
+
+.card-header:has(.dropdown.show),
+.card-header:has(.dropdown-menu.show),
+.bordro-sticky-header:has(.dropdown-menu.show),
+.bordro-action-toolbar:has(.dropdown-menu.show),
+.personel-action-toolbar:has(.dropdown-menu.show),
+.top-action-btn:has(.dropdown-menu.show) {
+  position: relative !important;
+  z-index: 1070 !important;
+}
+
+/* Genel Koyu Tema (Dark Mode) Dropdown Stilleri */
+[data-bs-theme="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu),
+[data-theme-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu),
+body[data-layout-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) {
+  background-color: #242836 !important;
+  border: 1px solid #363d52 !important;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  color: #eff2f7 !important;
+  border-radius: 10px;
+}
+
+[data-bs-theme="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item,
+[data-theme-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item,
+body[data-layout-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item {
+  color: rgba(235, 238, 245, 0.88) !important;
+  transition: all 0.15s ease;
+}
+
+[data-bs-theme="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item:hover,
+[data-bs-theme="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item:focus,
+[data-theme-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item:hover,
+body[data-layout-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-divider,
+[data-theme-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-divider,
+body[data-layout-mode="dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* macOS Dark Dropdown Stilleri */
+html[data-theme-preset="macos-dark"] body .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu),
+[data-theme-preset="macos-dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) {
+  background: rgba(32, 34, 42, 0.96) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+  padding: 6px !important;
+  z-index: 1060 !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item,
+[data-theme-preset="macos-dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item {
+  color: rgba(235, 238, 245, 0.9) !important;
+  border-radius: 8px !important;
+  padding: 7px 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item:hover,
+html[data-theme-preset="macos-dark"] body .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item:focus,
+[data-theme-preset="macos-dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-divider,
+[data-theme-preset="macos-dark"] .dropdown-menu:not(.mac-popover-menu):not(.menu-settings-dropdown .dropdown-menu) .dropdown-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  margin: 4px 0 !important;
+}
+
 
 
 

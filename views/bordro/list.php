@@ -255,11 +255,19 @@ if (!empty($dbGelirler)) {
         .bordro-sticky-header,
         .bordro-card > .card-header {
             position: relative;
-            z-index: 1030;
+            z-index: 1040;
+        }
+
+        .bordro-sticky-header:has(.dropdown.show),
+        .bordro-sticky-header:has(.dropdown-menu.show),
+        .bordro-action-toolbar:has(.dropdown.show),
+        .bordro-action-toolbar:has(.dropdown-menu.show) {
+            position: relative;
+            z-index: 1070 !important;
         }
 
         .dropdown-menu {
-            z-index: 1060;
+            z-index: 1060 !important;
         }
 
         /* Modern Checkbox Tasarımı */
