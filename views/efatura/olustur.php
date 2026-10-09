@@ -1368,7 +1368,8 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
                             <th rowspan="2" style="min-width: 220px;" class="align-middle">Mal / Hizmet Açıklaması <span class="text-danger">*</span></th>
                             <th rowspan="2" style="width: 85px;" class="text-end align-middle">Miktar</th>
                             <th rowspan="2" style="width: 110px;" class="align-middle">Birim</th>
-                            <th rowspan="2" style="width: 110px;" class="text-end align-middle">Birim Fiyat</th>
+                            <th rowspan="2" style="width: 115px;" class="text-end align-middle">Birim Fiyat</th>
+                            <th rowspan="2" style="width: 115px;" class="text-end align-middle">Toplam Fiyat</th>
                             <th rowspan="2" style="width: 85px;" class="text-end align-middle">İskonto %</th>
                             <!-- DİNAMİK VERGİLER BURAYA EKLENECEK -->
                             <th colspan="2" class="text-center th-tax-header" id="thKdvGroup" style="min-width: 170px;">
@@ -1721,8 +1722,41 @@ document.addEventListener('DOMContentLoaded', function() {
         return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
     }
 
+    // Türkçe Para / Rakam Dönüştürücü (Binlik Noktalı ve Virgüllü Metinleri Float Sayıya Çevirir)
+    function parseTrNumber(val) {
+        if (val === null || val === undefined) return 0;
+        if (typeof val === 'number') return isNaN(val) ? 0 : val;
+        let s = String(val).trim();
+        if (!s) return 0;
+        
+        // Hem nokta hem virgül varsa (örn: 1.250,50 veya 1,250.50)
+        if (s.indexOf('.') > -1 && s.indexOf(',') > -1) {
+            if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+                // TR formatı: 1.250,50 -> 1250.50
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                // US formatı: 1,250.50 -> 1250.50
+                s = s.replace(/,/g, '');
+            }
+        } else if (s.indexOf(',') > -1) {
+            // Sadece virgül var: 1250,50 -> 1250.50
+            s = s.replace(',', '.');
+        }
+        const num = parseFloat(s);
+        return isNaN(num) ? 0 : num;
+    }
+
+    // Binlik Noktalı ve 2 Haneli Virgüllü Formatlama (Örn: 29925 -> 29.925,00)
+    function formatTrMoney(amount, decimals = 2) {
+        const num = (typeof amount === 'number') ? amount : parseTrNumber(amount);
+        return num.toLocaleString('tr-TR', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        });
+    }
+
     function formatMoney(amount) {
-        return Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return formatTrMoney(amount, 2);
     }
 
     function select2CustomMatcher(params, data) {
@@ -1813,9 +1847,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // 1. Ürün adını ata (input olarak atanır, böylece kullanıcı dilediği gibi düzenleyebilir / metin ekleyebilir)
         $row.find('.kalem-ad').val(product.urun_adi || '');
 
-        // 2. Satış fiyatını ata
+        // 2. Satış fiyatını binlik noktalı formatta ata
         if (product.satis_fiyati !== undefined && parseFloat(product.satis_fiyati) >= 0) {
-            $row.find('.kalem-fiyat').val(parseFloat(product.satis_fiyati));
+            $row.find('.kalem-fiyat').val(formatTrMoney(parseFloat(product.satis_fiyati)));
         }
 
         // 3. Birim bilgisini ata
@@ -1846,8 +1880,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (bsDropdown) bsDropdown.hide();
         }
 
-        // 8. Kullanıcının doğrudan düzenleme yapabilmesi veya miktara geçebilmesi için imleci ürün adı alanına bırak
-        $row.find('.kalem-ad').focus();
+        // 8. Hızlı akış için odaklanmayı miktara geçir ve seç
+        $row.find('.kalem-miktar').focus().select();
     }
 
     // Stok Seçici Dropdown Listesini Doldurma
@@ -2411,16 +2445,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </td>
                 <td style="width: 85px;">
-                    <input type="number" step="0.0001" min="0.0001" class="form-control form-control-sm kalem-miktar text-end fw-semibold" value="1">
+                    <input type="text" class="form-control form-control-sm kalem-miktar text-end fw-semibold" value="1">
                 </td>
                 <td style="width: 110px;">
                     ${UNIT_SELECT}
                 </td>
-                <td style="width: 110px;">
-                    <input type="number" step="0.0001" min="0" class="form-control form-control-sm kalem-fiyat text-end fw-semibold" value="0">
+                <td style="width: 115px;">
+                    <input type="text" class="form-control form-control-sm kalem-fiyat text-end fw-semibold" placeholder="0,00" value="0,00">
+                </td>
+                <td style="width: 115px;">
+                    <input type="text" class="form-control form-control-sm kalem-brut-tutar text-end bg-light font-monospace fw-bold text-dark" value="0,00" readonly title="Miktar × Birim Fiyat (İskonto Öncesi Tutar)">
                 </td>
                 <td style="width: 85px;">
-                    <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm kalem-iskonto text-end" value="0">
+                    <input type="text" class="form-control form-control-sm kalem-iskonto text-end" value="0">
                 </td>
                 ${dynamicTaxCells}
                 <td class="col-kdv-oran-cell" style="width: 80px;">
@@ -2452,9 +2489,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const itemTitle = data.urun_hizmet_adi || data.mal_hizmet_adi || '';
         row.find('.kalem-ad').val(itemTitle);
 
-        row.find('.kalem-miktar').val(data.miktar ?? '1');
-        row.find('.kalem-fiyat').val(data.birim_fiyat ?? '0');
-        row.find('.kalem-iskonto').val(data.iskonto_orani ?? '0');
+        const rawMiktar = data.miktar !== undefined ? parseTrNumber(data.miktar) : 1;
+        const rawFiyat = data.birim_fiyat !== undefined ? parseTrNumber(data.birim_fiyat) : 0;
+        const rawIskonto = data.iskonto_orani !== undefined ? parseTrNumber(data.iskonto_orani) : 0;
+        const brutTutar = rawMiktar * rawFiyat;
+
+        row.find('.kalem-miktar').val(rawMiktar > 0 ? (rawMiktar % 1 === 0 ? rawMiktar : rawMiktar) : '1');
+        row.find('.kalem-fiyat').val(formatTrMoney(rawFiyat));
+        row.find('.kalem-brut-tutar').val(formatTrMoney(brutTutar));
+        row.find('.kalem-iskonto').val(rawIskonto);
         row.find('.kalem-kdv').val(data.kdv_orani == null ? '20' : String(parseFloat(data.kdv_orani)));
         row.find('.kalem-birim').val(data.birim ?? 'C62');
         row.find('.kalem-tevkifat').val(data.tevkifat_kodu ? data.tevkifat_kodu + '|' + parseInt(data.tevkifat_orani, 10) : '');
@@ -2948,19 +2991,21 @@ document.addEventListener('DOMContentLoaded', function() {
                                 row.find('.kalem-toplam').text(money(result.data.lines[index].satir_toplami));
                             }
                             
-                            // Satır bazlı KDV tutarını merkezi hesaplama servisinden yaz.
-                            const miktar = parseFloat(row.find('.kalem-miktar').val()) || 0;
-                            const fiyat = parseFloat(row.find('.kalem-fiyat').val()) || 0;
-                            const iskonto = parseFloat(row.find('.kalem-iskonto').val()) || 0;
+                            // Satır bazlı brüt tutar ve KDV tutarı
+                            const miktar = parseTrNumber(row.find('.kalem-miktar').val());
+                            const fiyat = parseTrNumber(row.find('.kalem-fiyat').val());
+                            const iskonto = parseTrNumber(row.find('.kalem-iskonto').val());
 
                             const gross = miktar * fiyat;
+                            row.find('.kalem-brut-tutar').val(formatTrMoney(gross));
+
                             const disc = (gross * iskonto) / 100;
                             const base = gross - disc;
                             row.find('.kalem-kdv-tutar').val(Number(result.data.lines[index].kdv_tutari || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
                             // Ek Vergi Satır Tutarlarını Hesapla ve Yaz
                             activeDynamicTaxes.forEach(tax => {
-                                const rate = parseFloat(row.find(`.kalem-ek-vergi-oran[data-tax-code="${tax.kod}"]`).val()) || 0;
+                                const rate = parseTrNumber(row.find(`.kalem-ek-vergi-oran[data-tax-code="${tax.kod}"]`).val());
                                 const amt = (base * rate) / 100;
                                 row.find(`.kalem-ek-vergi-tutar[data-tax-code="${tax.kod}"]`).val(amt.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                             });
@@ -2974,10 +3019,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     activeDynamicTaxes.forEach(tax => {
                         let taxSum = 0;
                         $('.kalem-row').each(function() {
-                            const miktar = parseFloat($(this).find('.kalem-miktar').val()) || 0;
-                            const fiyat = parseFloat($(this).find('.kalem-fiyat').val()) || 0;
-                            const iskonto = parseFloat($(this).find('.kalem-iskonto').val()) || 0;
-                            const rate = parseFloat($(this).find(`.kalem-ek-vergi-oran[data-tax-code="${tax.kod}"]`).val()) || 0;
+                            const miktar = parseTrNumber($(this).find('.kalem-miktar').val());
+                            const fiyat = parseTrNumber($(this).find('.kalem-fiyat').val());
+                            const iskonto = parseTrNumber($(this).find('.kalem-iskonto').val());
+                            const rate = parseTrNumber($(this).find(`.kalem-ek-vergi-oran[data-tax-code="${tax.kod}"]`).val());
 
                             const gross = miktar * fiyat;
                             const disc = (gross * iskonto) / 100;
@@ -3125,6 +3170,90 @@ document.addEventListener('DOMContentLoaded', function() {
     $(document).on('click', function(e) {
         if (!$(e.target).closest('.kalem-urun-wrap').length) {
             $('.stok-autocomplete-menu').hide();
+        }
+    });
+
+    // 9. Rakam Formatlama ve Binlik Ayraç Yönetimi (Blur & Focus)
+    $('#kalemlerContainer').on('focus', '.kalem-fiyat, .kalem-miktar, .kalem-iskonto', function() {
+        $(this).select();
+    });
+
+    $('#kalemlerContainer').on('blur', '.kalem-fiyat', function() {
+        const val = parseTrNumber($(this).val());
+        $(this).val(formatTrMoney(val));
+        const row = $(this).closest('tr');
+        const miktar = parseTrNumber(row.find('.kalem-miktar').val());
+        row.find('.kalem-brut-tutar').val(formatTrMoney(miktar * val));
+        calculateTotals();
+    });
+
+    $('#kalemlerContainer').on('blur', '.kalem-miktar', function() {
+        const val = parseTrNumber($(this).val());
+        const displayVal = val > 0 ? (val % 1 === 0 ? String(val) : String(val)) : '1';
+        $(this).val(displayVal);
+        const row = $(this).closest('tr');
+        const fiyat = parseTrNumber(row.find('.kalem-fiyat').val());
+        row.find('.kalem-brut-tutar').val(formatTrMoney((val > 0 ? val : 1) * fiyat));
+        calculateTotals();
+    });
+
+    $('#kalemlerContainer').on('blur', '.kalem-iskonto', function() {
+        const val = parseTrNumber($(this).val());
+        $(this).val(val >= 0 ? val : 0);
+        calculateTotals();
+    });
+
+    // 10. Enter Tuşu ile Hücreler Arasında İlerleme (Excel Stili Hızlı Veri Girişi)
+    $('#kalemlerContainer').on('keydown', 'input, select', function(e) {
+        if (e.which !== 13) return; // Sadece Enter tuşu
+
+        const $this = $(this);
+        const row = $this.closest('tr.kalem-row');
+
+        // Ürün adı alanında ise
+        if ($this.hasClass('kalem-ad')) {
+            const $menu = row.find('.stok-autocomplete-menu');
+            if ($menu.is(':visible') && $menu.find('.stok-autocomplete-item.active').length) {
+                // Autocomplete keydown yönetecek
+                return;
+            }
+            e.preventDefault();
+            row.find('.kalem-miktar').focus().select();
+            return;
+        }
+
+        // Miktar alanında ise
+        if ($this.hasClass('kalem-miktar')) {
+            e.preventDefault();
+            const val = parseTrNumber($this.val());
+            $this.val(val > 0 ? (val % 1 === 0 ? String(val) : String(val)) : '1');
+            row.find('.kalem-fiyat').focus().select();
+            return;
+        }
+
+        // Birim Fiyat alanında ise
+        if ($this.hasClass('kalem-fiyat')) {
+            e.preventDefault();
+            const val = parseTrNumber($this.val());
+            $this.val(formatTrMoney(val));
+            row.find('.kalem-iskonto').focus().select();
+            return;
+        }
+
+        // İskonto alanında ise
+        if ($this.hasClass('kalem-iskonto')) {
+            e.preventDefault();
+            const nextRow = row.next('tr.kalem-row');
+            if (nextRow.length) {
+                nextRow.find('.kalem-ad').focus().select();
+            } else {
+                // Son satırdaysa otomatik yeni satır ekle ve yeni satırın ürün alanına geç
+                addRow();
+                setTimeout(() => {
+                    $('#kalemlerContainer tr.kalem-row:last').find('.kalem-ad').focus().select();
+                }, 60);
+            }
+            return;
         }
     });
 
@@ -3344,10 +3473,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             lines.push({
                 urun_hizmet_adi: (typeof adVal === 'string') ? adVal.trim() : (adVal ? String(adVal).trim() : ''),
-                miktar: row.find('.kalem-miktar').val() || '1',
+                miktar: String(parseTrNumber(row.find('.kalem-miktar').val()) || 1),
                 birim: row.find('.kalem-birim').val() || 'C62',
-                birim_fiyat: row.find('.kalem-fiyat').val() || '0',
-                iskonto_orani: row.find('.kalem-iskonto').val() || '0',
+                birim_fiyat: String(parseTrNumber(row.find('.kalem-fiyat').val()) || 0),
+                iskonto_orani: String(parseTrNumber(row.find('.kalem-iskonto').val()) || 0),
                 kdv_orani: row.find('.kalem-kdv').val() || '20',
                 tevkifat_kodu: (row.find('.kalem-tevkifat').val() || '').split('|')[0] || null,
                 tevkifat_orani: (row.find('.kalem-tevkifat').val() || '').split('|')[1] || '0',
