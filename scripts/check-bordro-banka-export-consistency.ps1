@@ -28,7 +28,7 @@ function Assert-NotContains($file, $text, $pattern, $label) {
 Assert-Contains 'BordroPersonelModel.php' $model 'public function hesaplaOrtakGosterimDegerleri' 'ortak banka gosterim hesabi korunmali'
 Assert-Contains 'BordroPersonelModel.php' $model 'p.iban_numarasi' 'ortak donem sorgusu banka export icin IBAN getirmeli'
 Assert-Contains 'BordroPersonelModel.php' $model '$bankayaYatmayacak' 'bankaya yatmayacak personel kurali ortak hesapta olmali'
-Assert-Contains 'BordroPersonelModel.php' $model "'Sigortal'" 'Sigortal personel banka toplamindan ortak hesapta dusmeli'
+Assert-Contains 'BordroPersonelModel.php' $model '$this->isDisaridanSigortali($p)' 'disaridan sigortali personel banka toplamindan bayrakla dusmeli'
 Assert-Contains 'BordroPersonelModel.php' $model "'KUR'" 'KUR personel banka toplamindan ortak hesapta dusmeli'
 
 Assert-Contains 'excel-banka-export.php' $export '$ids = null;' 'banka export liste filtresiyle daralmamali'

@@ -976,6 +976,26 @@ class BordroPersonelModel extends Model
         ];
     }
 
+    private function isDisaridanSigortali(object|array $kayit): bool
+    {
+        $bayrakVar = is_object($kayit)
+            ? property_exists($kayit, 'disardan_sigortali')
+            : array_key_exists('disardan_sigortali', $kayit);
+        $bayrak = is_object($kayit)
+            ? ($kayit->disardan_sigortali ?? null)
+            : ($kayit['disardan_sigortali'] ?? null);
+
+        if ($bayrakVar && $bayrak !== null && $bayrak !== '') {
+            return (int) $bayrak === 1;
+        }
+
+        $sgkFirma = is_object($kayit)
+            ? ($kayit->sgk_yapilan_firma ?? '')
+            : ($kayit['sgk_yapilan_firma'] ?? '');
+
+        return stripos((string) $sgkFirma, 'Sigortal') !== false;
+    }
+
     public function hesaplaOrtakGosterimDegerleri(object $p, ?object $donemBilgi, float $asgariUcretNet): array
     {
         $donemBaslangic = $donemBilgi->baslangic_tarihi ?? date('Y-m-01');
@@ -1672,9 +1692,12 @@ class BordroPersonelModel extends Model
             }
         }
 
-        $bankayaYatmayacak = ($nonKurRatio <= 0.0);
+        $disaridanSigortali = $this->isDisaridanSigortali($p);
+        $bankayaYatmayacak = ($nonKurRatio <= 0.0) || $disaridanSigortali;
         if ($bankayaYatmayacak && $bankaOdemesi > 0) {
-            $eldenOdeme += $bankaOdemesi;
+            if (!$disaridanSigortali) {
+                $eldenOdeme += $bankaOdemesi;
+            }
             $bankaOdemesi = 0;
         }
         if ($bankayaYatmayacak) {
@@ -1940,7 +1963,7 @@ class BordroPersonelModel extends Model
                    bp.sgk_isveren, bp.issizlik_isveren, bp.toplam_maliyet, bp.kumulatif_matrah,
                    p.adi_soyadi, p.tc_kimlik_no, p.iban_numarasi, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
-                   p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma, 
+                   p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma, p.disardan_sigortali,
                    p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,
                    p.es_yardimi_dahil, p.es_yardimi_tutari, p.es_yardimi_parametre_id,
                    t_all.ekip_adi, t_all.ekip_bolge,
@@ -4668,7 +4691,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.adi_soyadi, p.departman, p.gorev, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.ise_giris_tarihi, p.isten_cikis_tarihi, 
+            SELECT bp.*, p.adi_soyadi, p.departman, p.gorev, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.disardan_sigortali, p.ise_giris_tarihi, p.isten_cikis_tarihi,
                    p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,
                    p.es_yardimi_dahil, p.es_yardimi_tutari, p.es_yardimi_parametre_id,
                    bd.baslangic_tarihi, bd.bitis_tarihi
@@ -6330,8 +6353,11 @@ class BordroPersonelModel extends Model
             $netAlacagi = max(0, $netMaas - $toplamKesinti);
             $eldenOdeme = $netAlacagi - $bankaOdemesi - $sodexoOdemesi - $diger_odeme;
         } else {
-            if ($nonKurRatio <= 0.0 && $bankaOdemesi > 0) {
-                $eldenOdeme += $bankaOdemesi;
+            $disaridanSigortali = $this->isDisaridanSigortali($kayit);
+            if (($nonKurRatio <= 0.0 || $disaridanSigortali) && $bankaOdemesi > 0) {
+                if (!$disaridanSigortali) {
+                    $eldenOdeme += $bankaOdemesi;
+                }
                 $bankaOdemesi = 0;
             }
 
@@ -6686,6 +6712,7 @@ class BordroPersonelModel extends Model
                    p.email_adresi,
                    p.iban_numarasi,
                    p.sgk_yapilan_firma,
+                   p.disardan_sigortali,
                    p.yemek_yardimi_dahil,
                    p.yemek_yardimi_tutari,
                    p.yemek_yardimi_parametre_id,

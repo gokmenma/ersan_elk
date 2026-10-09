@@ -352,14 +352,17 @@ Manuel dagilimda otomatik banka/Sodexo duzeltmesi yapilmaz.
 ## Bankaya Yatmayacak Personel Kurali
 
 `sgk_yapilan_firma` alaninda `KUR` geciyorsa otomatik dagilimda banka odemesi sifirlanir ve tutar elden odemeye aktarilir.
-`sgk_yapilan_firma` alaninda `Sigortal` geciyorsa banka odemesi sifirlanir, ancak elden odemeye aktarilmaz.
+Dışarıdan sigortalı durumu metinden türetilmez; dönemsel çalışma geçmişindeki, geçmiş yoksa personel kartındaki
+`disardan_sigortali = 1` bayrağı esas alınır. Bu personelde banka ödemesi sıfırlanır, ancak tutar elden ödemeye
+aktarılmaz. Eski verilerle geriye uyumluluk için yalnızca bayrak alanı bulunmuyorsa `sgk_yapilan_firma`
+alanındaki `Sigortal` ifadesi yedek kontrol olarak kullanılabilir.
 
 ```text
 if sgk_yapilan_firma contains "KUR":
     eldenOdeme += bankaOdemesi
     bankaOdemesi = 0
 
-if sgk_yapilan_firma contains "Sigortal":
+if disardan_sigortali = 1:
     bankaOdemesi = 0
 ```
 

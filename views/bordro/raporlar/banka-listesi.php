@@ -33,10 +33,6 @@ if ($selectedDonemId) {
             $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($personel, $selectedDonem, floatval($asgariUcretNet));
             $bankaOdemesi = floatval($ortak['bankaOdemesi'] ?? 0);
 
-            if (mb_stripos((string)($personel->sgk_yapilan_firma ?? ''), 'KUR', 0, 'UTF-8') !== false) {
-                $bankaOdemesi = 0;
-            }
-
             $bankaOdemeleri[$personel->id] = $bankaOdemesi;
             $toplamBankaOdemesi += $bankaOdemesi;
         }
@@ -231,8 +227,7 @@ foreach ($donemler as $donem) {
                                     <?php
                                     $sira = 1;
                                     foreach ($personeller as $personel):
-                                        $disaridanSigortali = (stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'KUR') !== false);
-                                        $bankaOdemesi = $disaridanSigortali ? 0 : floatval($bankaOdemeleri[$personel->id] ?? 0);
+                                        $bankaOdemesi = floatval($bankaOdemeleri[$personel->id] ?? 0);
                                         $ibanDolu = !empty($personel->iban_numarasi);
                                         ?>
                                         <tr class="<?= !$ibanDolu && $bankaOdemesi > 0 ? 'table-warning' : '' ?>">

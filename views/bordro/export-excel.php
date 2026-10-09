@@ -237,7 +237,7 @@ try {
         $pNetMaasGercek = max(0, $pNetAlacagi - $pIcra);
         $digerP = floatval($personel->diger_odeme ?? 0);
         $eldenP = max(0, $pNetMaasGercek - $bankaP - $sodexoP - $digerP);
-        if (stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false && $bankaP > 0) {
+        if ((int)($personel->disardan_sigortali ?? 0) === 1 && $bankaP > 0) {
             $bankaP = 0;
         }
 

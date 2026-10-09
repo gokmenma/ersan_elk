@@ -11,6 +11,24 @@ final class BordroBankaDagilimiTest extends TestCase
         (new ReflectionProperty(BordroPersonelModel::class, $name))->setValue($model, $value);
     }
 
+    public function testDisaridanSigortaliKontroluMetinYerineBayragiEsasAlir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'isDisaridanSigortali');
+
+        self::assertTrue($method->invoke($model, (object) [
+            'disardan_sigortali' => 1,
+            'sgk_yapilan_firma' => 'D??ar?dan Sigortal?',
+        ]));
+        self::assertFalse($method->invoke($model, (object) [
+            'disardan_sigortali' => 0,
+            'sgk_yapilan_firma' => 'Dışarıdan Sigortalı',
+        ]));
+        self::assertTrue($method->invoke($model, (object) [
+            'sgk_yapilan_firma' => 'Dışarıdan Sigortalı',
+        ]));
+    }
+
     public function testIhbarPrimiPuantajSayilmaz(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
