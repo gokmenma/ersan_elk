@@ -1023,6 +1023,53 @@ class BordroPersonelModel extends Model
         $nominalMaas = round((float) ($matrah['nominal_maas'] ?? $p->maas_tutari ?? 0), 2);
         $asgariNet = (float) ($parametreler['asgari_ucret_net'] ?? $asgariUcretNet);
 
+        $snapshotBankaDetaylari = [];
+        $snapshotPrimDetaylari = [];
+        foreach (($detay['ek_odemeler'] ?? []) as $ekOdeme) {
+            if (!is_array($ekOdeme)) {
+                continue;
+            }
+            $tutar = max(0.0, round((float) ($ekOdeme['net_etki'] ?? $ekOdeme['tutar'] ?? 0), 2));
+            $resmiDahil = !empty($ekOdeme['resmi_alacagina_dahil']) || !empty($ekOdeme['banka_matrahina_ekle']);
+            if ($tutar <= 0 || !$resmiDahil) {
+                continue;
+            }
+            $kod = mb_strtolower((string) ($ekOdeme['kod'] ?? ''), 'UTF-8');
+            $etiket = trim((string) ($ekOdeme['etiket'] ?? ''));
+            if ($etiket === '') {
+                $etiket = ucwords(str_replace('_', ' ', $kod));
+            }
+            $kalem = ['etiket' => $etiket, 'tutar' => $tutar];
+            if (strpos($kod, 'prim') !== false || strpos($kod, 'ikramiye') !== false) {
+                $snapshotPrimDetaylari[] = $kalem;
+            } else {
+                $snapshotBankaDetaylari[] = $kalem;
+            }
+        }
+
+        $donemBaslangic = (string) ($detay['donem']['baslangic'] ?? '');
+        $donemBitis = $donemBaslangic !== '' ? date('Y-m-t', strtotime($donemBaslangic)) : '';
+        $rtcGun = 0;
+        $htcGun = 0;
+        if ($donemBaslangic !== '' && $donemBitis !== '') {
+            $rtcGun = $this->getOzelCalismaGunSayisi((int) $p->personel_id, $donemBaslangic, $donemBitis, 'resmi_tatil_calismasi');
+            $htcGun = $this->getOzelCalismaGunSayisi((int) $p->personel_id, $donemBaslangic, $donemBitis, 'hafta_tatili_calismasi');
+        }
+        $gunlukAsgariNet = round($asgariNet / 30, 2);
+        if ($rtcGun > 0) {
+            $snapshotBankaDetaylari[] = [
+                'etiket' => 'Resmi Tatil Çalışması (Net)',
+                'tutar' => round($gunlukAsgariNet * $rtcGun, 2),
+            ];
+        }
+        if ($htcGun > 0) {
+            $snapshotBankaDetaylari[] = [
+                'etiket' => 'Hafta Tatili Çalışması (Net)',
+                'tutar' => round($gunlukAsgariNet * $htcGun, 2),
+            ];
+        }
+        $snapshotBankaDetaylari = array_merge($snapshotBankaDetaylari, $snapshotPrimDetaylari);
+
         return [
             'hesaplanmis' => true, 'gosterimKaynagi' => 'kayitli',
             'muhasebePrimTutari' => round((float) ($p->prim_tutar ?? 0), 2),
@@ -1041,13 +1088,13 @@ class BordroPersonelModel extends Model
             'includedAllowanceFiiliGun' => (int) ($ozet['dahil_yemek_gun'] ?? $calismaGunu),
             'sozlesmeHakedisi' => round(($nominalMaas / 30) * $calismaGunu, 2),
             'asgariHakedis' => round(($asgariNet / 30) * $calismaGunu, 2),
-            'rtcGun' => 0, 'htcGun' => 0, 'yontemliBankaEki' => 0.0, 'nonKurRatio' => 1.0,
+            'rtcGun' => $rtcGun, 'htcGun' => $htcGun, 'yontemliBankaEki' => 0.0, 'nonKurRatio' => 1.0,
             'isInclusive' => $yemek > 0 || $es > 0, 'karisikMaasGecmisi' => !empty($detay['gorev_gecmisi_parcali']),
             'sabitMaasGun' => $calismaGunu, 'manualDagitimVar' => !empty($p->dagitim_manuel),
             'asgariYatacak' => round(($asgariNet / 30) * $calismaGunu, 2),
             'resmiNetTaban' => round(($asgariNet / 30) * $calismaGunu, 2),
             'bankaMatrahi' => round($banka + $icra, 2), 'bankaOncelikliKesinti' => $icra,
-            'bankaAktarilanKesinti' => 0.0, 'bankaEkOdemeDetaylari' => [], 'bankaKesintiKalemleri' => [],
+            'bankaAktarilanKesinti' => 0.0, 'bankaEkOdemeDetaylari' => $snapshotBankaDetaylari, 'bankaKesintiKalemleri' => [],
         ];
     }
 
@@ -1596,7 +1643,11 @@ class BordroPersonelModel extends Model
             }
 
             if ($isPrimUsulu && $karisikMaasOzeti === null) {
-                $toplamAlacagi = max($primUsuluPuantajHedefToplami + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
+                $primUsuluTabanHakedisi = max(
+                    $primUsuluPuantajHedefToplami,
+                    $asgariTabanVal + $includedAllowanceDeduction
+                );
+                $toplamAlacagi = round($primUsuluTabanHakedisi + $hariciEkOdeme + $yuvarlamaFarki, 2);
             } else {
                 // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ve HTÇ'nin
                 // ham karşılığı sözleşme hakedişinin üstüne eklenir. Yemek havuzunu
@@ -1849,7 +1900,7 @@ class BordroPersonelModel extends Model
             'yemek' => $yemek,
             'es_yardimi' => $esYardimi,
             'ek_odemeler' => $ekOdemeler,
-            'diger_banka_payi' => $kalan,
+            'sozlesme_farki' => $kalan,
             'kesinti' => $kesinti,
             'brut_banka' => $brutBanka,
             'net_banka' => round((float) ($hesap['bankaOdemesi'] ?? 0), 2),
@@ -6296,14 +6347,26 @@ class BordroPersonelModel extends Model
             
             // Maaşa dahil olmayan ek ödemeler (ör. aylık araç kirası) ve HTÇ'nin ham
             // karşılığı ($htcEkOdeme) sözleşme netinin üstüne ayrıca hak edilir.
-            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis)
-                + $bankayaTasinabilirEkOdeme
-                + $eldenTasinabilirEkOdeme
-                + $htcEkOdeme
-                + $netMaasPuantajHakedisi
-                + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
-                + $yuvarlamaFarki;
-            $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
+            if ($isPrimUsuluDahilYardim && $karisikMaasOzeti === null) {
+                $primUsuluTabanHakedisi = max(
+                    $primUsuluPuantajHedefToplami,
+                    $asgariYatacak + $toplamDahilYardim
+                );
+                $baseHakedis = $primUsuluTabanHakedisi
+                    + $bankayaTasinabilirEkOdeme
+                    + $eldenTasinabilirEkOdeme
+                    + $htcEkOdeme
+                    + $yuvarlamaFarki;
+            } else {
+                $hedefHakedisDahilEk = $targetNetHakedis
+                    + $bankayaTasinabilirEkOdeme
+                    + $eldenTasinabilirEkOdeme
+                    + $htcEkOdeme
+                    + $netMaasPuantajHakedisi
+                    + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
+                    + $yuvarlamaFarki;
+                $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
+            }
             
             $netMaas = $baseHakedis;
             

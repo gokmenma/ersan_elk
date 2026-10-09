@@ -114,23 +114,12 @@ final class UblReaderService
                     $itemCode = $rawName;
                 }
 
-                $baseName = $rawDesc ?: $rawName ?: $rawKeyword;
-                if (!empty($itemCode) && $baseName === $itemCode && !empty($rawDesc)) {
-                    $baseName = $rawDesc;
-                }
+                $baseName = $rawName ?: $rawDesc ?: $rawKeyword;
+                $itemName = $baseName !== '' ? $baseName : $lineNote;
 
-                if (!empty($lineNote)) {
-                    if (!empty($baseName) && stripos($lineNote, $baseName) === false && stripos($baseName, $lineNote) === false) {
-                        $itemName = $baseName . ' - ' . $lineNote;
-                    } else {
-                        $itemName = $lineNote ?: $baseName;
-                    }
-                } else {
-                    $itemName = $baseName;
-                }
-
+                $exemptionCode = $text('cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:TaxExemptionReasonCode', $node) ?: null;
                 $exemptionReason = $text('cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:TaxExemptionReason', $node) ?: null;
-                $rowDesc = $exemptionReason ? ($exemptionReason . ($lineNote !== '' ? ' | ' . $lineNote : '')) : ($lineNote ?: null);
+                $rowDesc = $exemptionReason ?: ($exemptionCode ? ($lineNote ?: null) : null);
 
                 // KDV Oranı & Tutarı Çıkarma
                 $linePercent = $text('cac:TaxTotal/cac:TaxSubtotal[cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode="0015"]/cbc:Percent', $node);
@@ -163,7 +152,7 @@ final class UblReaderService
                     'kdv_tutari' => $vat, 'tevkifat_tutari' => $withheld,
                     'tevkifat_kodu' => $text('cac:WithholdingTaxTotal/cac:TaxSubtotal/cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode', $node) ?: null,
                     'tevkifat_orani' => $decimal($text('cac:WithholdingTaxTotal/cac:TaxSubtotal/cbc:Percent', $node)),
-                    'istisna_kodu' => $text('cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:TaxExemptionReasonCode', $node) ?: null,
+                    'istisna_kodu' => $exemptionCode,
                     'istisna_aciklama' => $rowDesc,
                     'satir_toplami' => bcsub(bcadd($base, $vat, 2), $withheld, 2)];
             }

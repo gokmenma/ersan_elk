@@ -128,6 +128,7 @@ Prim usulu net gibi islenir. Varsayilan ek odeme kanali `elden` kabul edilir; pa
 
 - Prim usulunde kanuni asgari net taban yalniz normal puantaj/calisma hakedisini tamamlar. Fazla mesai, nobet, resmi tatil ve hafta tatili calismasi gibi ek calisma kazanclari bu tabanin icinde eritilemez; `max(normal puantaj hakedisi, gunluk asgari net taban) + ek calisma kazanclari` sirasi ile toplam hakedise eklenir.
 - Ornek: 5 gunluk asgari net taban 4.679,25; normal puantaj hakedisi 4.120,00 ve nobet 500,00 ise toplam net hakedis `max(4.120,00, 4.679,25) + 500,00 = 5.179,25` olur.
+- Aynı sıra maaşa dahil yemek/eş yardımı profili bulunan prim usulü personelde de değişmez. Dahil yardım tabanı ile normal puantajın büyüğü belirlendikten sonra nöbet ve diğer ek çalışma kazançları ayrıca eklenir; `max(puantaj + nöbet, asgari taban)` biçiminde nöbet tabana eritilemez.
 Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maasHesapGunu > 0`), puantaj veya ek odeme uretilmemis ya da asgari tabandan dusuk kalmis olsa dahi personelin hakedisi en az calisilan gune tekabul eden `asgariHakedis` (`asgari_ucret_net / 30 * maasHesapGunu`) tutarindan az olamaz.
 
 ### Banka İşaretli Prim ve Özel Kesinti Sırası
@@ -491,6 +492,8 @@ Bordro hesaplama etki alani:
 - Prim kaydı ve bordro detayındaki asıl kazanç silinmez; bu ayrıştırma yalnızca muhasebe aktarımında mükerrer toplamı önler.
 - Maaşa dahil personelde elden seçilen manuel prim de kayıt hesabında hedef hakedişe eklenir; banka seçili olmaması kazancı ortadan kaldırmaz. Liste–kayıt–detay–Excel karşılaştırmasında banka ve elden seçimi birlikte doğrulanır.
 - Banka ödeme detayı satırları net banka ödemesiyle matematiksel olarak uzlaşır. Sosyal yardımlar kartındaki yemek tutarı banka detayında da aynı gösterilir. Maaşa dahil yemek havuzunu büyüten bir banka ek ödemesi (prim, ikramiye vb.) yemek tutarının içindeyse ayrıca toplanan `+` satırı yapılmaz; `Yemek yardımına dahil (bilgi)` açıklamasıyla gösterilir. Yalnız yemek dışında kalan kısmı ayrı banka kazancı olarak toplama girer. Bu gösterim kayıtlı hakedişi veya ödeme dağıtımını değiştirmez.
+- Maaşa dahil personelin banka detayında asgari ücret, yemek/eş yardımı ve ayrı banka ek ödemelerinden sonra sözleşme netini tamamlayan bakiye `Diğer Banka Payı` adıyla değil `Sözleşme Farkı` adıyla gösterilir. RTÇ/HTÇ ve fazla mesai yalnız ilgili dönemde gerçek puantaj veya ek ödeme kaydı varsa gösterilir; sözleşme farkına dönüştürülmez.
+- Hesaplanmış bordronun kayıtlı özeti okunurken banka ek ödeme detayları boşaltılamaz. Snapshot içindeki resmî/banka ek ödemeleri ile dönemin RTÇ/HTÇ günleri yeniden ayrıştırılır; banka detayında fazla mesai ve RTÇ/HTÇ kendi adlarıyla gösterildikten sonra gerçekten açıklanamayan bakiye varsa ancak o tutar sözleşme farkı olabilir.
 
 ### Net ve prim usulü bordroda kesinti özeti
 

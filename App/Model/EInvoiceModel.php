@@ -358,6 +358,170 @@ class EInvoiceModel extends Model
     }
 
     /**
+     * Gelen Faturadan İade Faturası Taslağı Oluşturmak İçin Fatura ve Kalem Bilgilerini Getirir
+     */
+    public function getIncomingInvoiceForReturn(int $invoiceId, int $firmId): ?array
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM faturalar 
+                WHERE id = :id AND firm_id = :firm_id AND yon = 'GELEN' AND deleted_at IS NULL
+                LIMIT 1
+            ");
+            $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+            $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$invoice) {
+                return null;
+            }
+
+            // Satırları Çek
+            $linesStmt = $this->db->prepare("
+                SELECT * FROM fatura_satirlari
+                WHERE fatura_id = :fatura_id AND deleted_at IS NULL AND is_active = 1
+                ORDER BY sira_no ASC
+            ");
+            $linesStmt->execute(['fatura_id' => $invoiceId]);
+            $rawLines = $linesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Tedarikçi VKN/TCKN ile sistemde kayıtlı cari eşleştirmesi ara
+            $matchedCariId = null;
+            $vkn = trim((string)($invoice['alici_vkn_tckn'] ?? ''));
+            if ($vkn !== '') {
+                // Önce efatura_cariler tablosuna bak
+                $cStmt = $this->db->prepare("
+                    SELECT id, posta_kutusu FROM efatura_cariler 
+                    WHERE firm_id = :firm_id AND vkn_tckn = :vkn AND is_active = 1 AND deleted_at IS NULL 
+                    LIMIT 1
+                ");
+                $cStmt->execute(['firm_id' => $firmId, 'vkn' => $vkn]);
+                $cRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+                if ($cRow) {
+                    $matchedCariId = $cRow['id'];
+                    if (empty($invoice['alici_posta_kutusu']) && !empty($cRow['posta_kutusu'])) {
+                        $invoice['alici_posta_kutusu'] = $cRow['posta_kutusu'];
+                    }
+                } else {
+                    // cari tablosuna bak
+                    $cStmt2 = $this->db->prepare("
+                        SELECT id FROM cari 
+                        WHERE vkn_tckn = :vkn AND Aktif = 1 AND silinme_tarihi IS NULL 
+                        LIMIT 1
+                    ");
+                    $cStmt2->execute(['vkn' => $vkn]);
+                    $cRow2 = $cStmt2->fetch(PDO::FETCH_ASSOC);
+                    if ($cRow2) {
+                        $matchedCariId = $cRow2['id'];
+                    }
+                }
+            }
+
+            // XML üzerinden temiz satır ürün isimlerini çıkarma (varsa)
+            $cleanItemNamesByLine = [];
+            $xmlContent = $invoice['kaynak_xml'] ?? '';
+            if (empty($xmlContent) && !empty($invoice['ubl_xml_path']) && file_exists($invoice['ubl_xml_path'])) {
+                $xmlContent = file_get_contents($invoice['ubl_xml_path']);
+            }
+            if (!empty($xmlContent)) {
+                try {
+                    $dom = new \DOMDocument();
+                    if (@$dom->loadXML($xmlContent, LIBXML_NONET)) {
+                        $xp = new \DOMXPath($dom);
+                        $xp->registerNamespace('i', 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2');
+                        $xp->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+                        $xp->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+                        $lineNodes = $xp->query('/i:Invoice/cac:InvoiceLine');
+                        $idx = 0;
+                        foreach ($lineNodes as $lNode) {
+                            $idx++;
+                            $rawName = trim((string)$xp->evaluate('string(cac:Item/cbc:Name)', $lNode));
+                            $rawDesc = trim((string)$xp->evaluate('string(cac:Item/cbc:Description)', $lNode));
+                            $cleanItemNamesByLine[$idx] = $rawName ?: ($rawDesc ?: '');
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    error_log("getIncomingInvoiceForReturn XML parse item name error: " . $e->getMessage());
+                }
+            }
+
+            $formattedLines = [];
+            $lineIndex = 0;
+            foreach ($rawLines as $l) {
+                $lineIndex++;
+                // 1. Temiz ürün adı belirleme
+                if (!empty($cleanItemNamesByLine[$lineIndex])) {
+                    $itemText = $cleanItemNamesByLine[$lineIndex];
+                } else {
+                    $itemText = $l['urun_hizmet_adi'] ?? ($l['mal_hizmet_adi'] ?? '');
+                    // Eğer istisna_aciklama ürün adının sonuna yapıştırılmışsa temizle
+                    if (!empty($l['istisna_aciklama'])) {
+                        $suffix = ' - ' . $l['istisna_aciklama'];
+                        if (str_ends_with($itemText, $suffix)) {
+                            $itemText = substr($itemText, 0, -strlen($suffix));
+                        }
+                    }
+                    // SERILOT= vb. not kalıntılarını temizle
+                    $itemText = preg_replace('/\s*-\s*SERILOT=.*$/i', '', $itemText);
+                }
+
+                $hasTevkifat = !empty($l['tevkifat_kodu']) && trim((string)$l['tevkifat_kodu']) !== '';
+                $hasIstisna = !empty($l['istisna_kodu']) && trim((string)$l['istisna_kodu']) !== '';
+
+                $formattedLines[] = [
+                    'urun_hizmet_adi'  => $itemText,
+                    'mal_hizmet_adi'   => $itemText,
+                    'urun_kodu'        => $l['urun_kodu'] ?? '',
+                    'miktar'           => $l['miktar'] ?? '1.00',
+                    'birim'            => $l['birim'] ?? 'C62',
+                    'birim_fiyat'      => $l['birim_fiyat'] ?? '0.00',
+                    'iskonto_orani'    => $l['iskonto_orani'] ?? '0.00',
+                    'iskonto_tutari'   => $l['iskonto_tutari'] ?? '0.00',
+                    'kdv_orani'        => $l['kdv_orani'] ?? '20',
+                    'kdv_tutari'       => $l['kdv_tutari'] ?? '0.00',
+                    'tevkifat_kodu'    => $hasTevkifat ? $l['tevkifat_kodu'] : '',
+                    'tevkifat_orani'   => $hasTevkifat ? ($l['tevkifat_orani'] ?? '0') : '0',
+                    'tevkifat_tutari'  => $hasTevkifat ? ($l['tevkifat_tutari'] ?? '0.00') : '0.00',
+                    'istisna_kodu'     => $hasIstisna ? $l['istisna_kodu'] : '',
+                    'istisna_aciklama' => $hasIstisna ? ($l['istisna_aciklama'] ?? '') : '',
+                    'satir_toplami'    => $l['satir_toplami'] ?? '0.00'
+                ];
+            }
+
+            $faturaNo = $invoice['fatura_no'] ?: '';
+            $faturaTarihi = $invoice['fatura_tarihi'] ?: date('Y-m-d');
+
+            return [
+                'is_return_draft'     => true,
+                'source_invoice_id'   => (int)$invoice['id'],
+                'source_fatura_no'    => $faturaNo,
+                'cari_id'             => $matchedCariId,
+                'alici_unvan'         => $invoice['alici_unvan'] ?? '',
+                'alici_vkn_tckn'      => $invoice['alici_vkn_tckn'] ?? '',
+                'alici_vergi_dairesi' => $invoice['alici_vergi_dairesi'] ?? '',
+                'alici_adres'         => $invoice['alici_adres'] ?? '',
+                'alici_il'            => $invoice['alici_il'] ?? 'Kayseri',
+                'alici_ilce'          => $invoice['alici_ilce'] ?? '',
+                'alici_ulke'          => $invoice['alici_ulke'] ?? 'Türkiye',
+                'alici_eposta'        => $invoice['alici_eposta'] ?? '',
+                'alici_telefon'       => $invoice['alici_telefon'] ?? '',
+                'alici_posta_kutusu'  => $invoice['alici_posta_kutusu'] ?? '',
+                'fatura_tipi'         => 'IADE',
+                'fatura_profili'      => 'TEMELFATURA',
+                'belge_turu'          => (!empty($invoice['alici_posta_kutusu']) || ($invoice['belge_turu'] ?? '') === 'EFATURA') ? 'EFATURA' : 'EARSIV',
+                'para_birimi'         => $invoice['para_birimi'] ?? 'TRY',
+                'doviz_kuru'          => $invoice['doviz_kuru'] ?? '1.0000',
+                'iade_fatura_no'      => $faturaNo,
+                'iade_fatura_tarihi'  => $faturaTarihi,
+                'notlar'              => $faturaNo ? ($faturaNo . " nolu gelen faturanın iadesidir.") : "Gelen faturanın iadesidir.",
+                'satirlar'            => $formattedLines
+            ];
+        } catch (\PDOException $e) {
+            error_log("EInvoiceModel::getIncomingInvoiceForReturn Error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * ETTN (UUID) İle Faturayı Getirir
      */
     public function getInvoiceByEttn(string $ettn, int $firmId): ?array

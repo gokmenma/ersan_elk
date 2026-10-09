@@ -326,11 +326,18 @@ $title = 'Gelen Faturalar';
                     <div class="mt-2 text-muted">Fatura yükleniyor...</div>
                 </div>
             </div>
-            <div class="modal-footer border-top bg-light">
-                <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Kapat</button>
-                <button type="button" class="btn btn-primary rounded-3 d-flex align-items-center gap-1" id="btnPrintPreview">
-                    <i class="bx bx-printer"></i> Yazdır
-                </button>
+            <div class="modal-footer border-top bg-light d-flex justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-outline-primary rounded-3 d-flex align-items-center gap-1" id="btnCreateReturnFromPreview" data-id="" title="Bu faturaya istinaden iade faturası hazırla">
+                        <i class="bx bx-undo font-size-16"></i> İade Faturası Oluştur
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary rounded-3 d-flex align-items-center gap-1" id="btnPrintPreview">
+                        <i class="bx bx-printer"></i> Yazdır
+                    </button>
+                </div>
             </div>
         </div>
     </div>

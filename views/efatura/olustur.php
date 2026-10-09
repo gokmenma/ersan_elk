@@ -168,9 +168,28 @@ $paraBirimleri = [
 
 $editInvoice = null;
 $editInvoiceEncryptedId = $_GET['id'] ?? '';
+$action = $_GET['action'] ?? '';
+$sourceEncryptedId = $_GET['source_id'] ?? '';
+$isReturnInvoice = false;
+$sourceFaturaNo = '';
 $currentEttn = Helper::generateUuid();
 
-if (!empty($editInvoiceEncryptedId)) {
+if ($action === 'iade' && !empty($sourceEncryptedId)) {
+    $sourceId = EInvoiceSecurity::invoiceId($sourceEncryptedId);
+    if ($sourceId > 0) {
+        $invoiceModel = new EInvoiceModel();
+        $returnDraft = $invoiceModel->getIncomingInvoiceForReturn($sourceId, $firmId);
+        if ($returnDraft) {
+            $editInvoice = $returnDraft;
+            if (!empty($editInvoice['cari_id'])) {
+                $editInvoice['cari_id'] = Security::encrypt((string)$editInvoice['cari_id']);
+            }
+            $isReturnInvoice = true;
+            $sourceFaturaNo = $returnDraft['source_fatura_no'] ?? '';
+            $title = 'İade Faturası Düzenle' . ($sourceFaturaNo ? ' (' . htmlspecialchars($sourceFaturaNo, ENT_QUOTES, 'UTF-8') . ')' : '');
+        }
+    }
+} elseif (!empty($editInvoiceEncryptedId)) {
     $decryptedId = EInvoiceSecurity::invoiceId($editInvoiceEncryptedId);
     if ($decryptedId > 0) {
         $invoiceModel = new EInvoiceModel();
@@ -939,15 +958,31 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
     <!-- Üst Sayfa Başlığı ve Aksiyon Araç Çubuğu -->
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-3">
-            <a href="index.php?p=efatura/giden-list" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" title="Geri Dön">
+            <a href="<?= $isReturnInvoice ? 'index.php?p=efatura/gelen-list' : 'index.php?p=efatura/giden-list' ?>" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" title="Geri Dön">
                 <i class="bx bx-arrow-back font-size-18 align-middle"></i>
             </a>
-            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
-                <i class="bx bx-file font-size-22 text-primary"></i>
+            <div class="p-2 <?= $isReturnInvoice ? 'bg-info-subtle text-info border-info-subtle' : 'bg-primary-subtle text-primary border-primary-subtle' ?> rounded-3 border d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx <?= $isReturnInvoice ? 'bx-undo' : 'bx-file' ?> font-size-22"></i>
             </div>
             <div>
-                <h4 class="mb-0 fw-bold text-dark font-size-16"><?= !empty($editInvoice) ? 'Taslak Faturayı Düzenle' : 'Yeni Fatura Düzenle' ?></h4>
-                <p class="text-muted mb-0 font-size-12"><?= !empty($editInvoice) ? 'Taslak faturayı güncelleyip kaydedin veya doğrudan GİB\'e gönderin' : 'E-Fatura & E-Arşiv Belgesi Oluşturma ve EDM İletimi' ?></p>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">
+                    <?php if ($isReturnInvoice): ?>
+                        İade Faturası Düzenle
+                    <?php elseif (!empty($editInvoice)): ?>
+                        Taslak Faturayı Düzenle
+                    <?php else: ?>
+                        Yeni Fatura Düzenle
+                    <?php endif; ?>
+                </h4>
+                <p class="text-muted mb-0 font-size-12">
+                    <?php if ($isReturnInvoice): ?>
+                        <?= htmlspecialchars($sourceFaturaNo, ENT_QUOTES, 'UTF-8') ?> nolu gelen faturaya istinaden iade belgesi düzenlenmektedir.
+                    <?php elseif (!empty($editInvoice)): ?>
+                        Taslak faturayı güncelleyip kaydedin veya doğrudan GİB'e gönderin
+                    <?php else: ?>
+                        E-Fatura & E-Arşiv Belgesi Oluşturma ve EDM İletimi
+                    <?php endif; ?>
+                </p>
             </div>
         </div>
 
@@ -958,7 +993,7 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
                 </span>
             </div>
             <button type="button" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm" id="btnTaslakKaydet">
-                <i class="bx bx-save me-1 font-size-16 text-primary align-middle"></i> <?= !empty($editInvoice) ? 'Değişiklikleri Kaydet' : 'Taslak Kaydet' ?>
+                <i class="bx bx-save me-1 font-size-16 text-primary align-middle"></i> <?= (!empty($editInvoice) && !$isReturnInvoice) ? 'Değişiklikleri Kaydet' : 'Taslak Kaydet' ?>
             </button>
             <button type="button" class="btn btn-primary top-action-btn shadow-sm" id="btnGonderDirect">
                 <i class="bx bx-send me-1 font-size-16 text-white align-middle"></i> Kaydet ve Gönder
@@ -966,8 +1001,22 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
         </div>
     </div>
 
+    <?php if ($isReturnInvoice): ?>
+    <div class="alert alert-info border-info-subtle bg-info-subtle d-flex align-items-center gap-3 p-3 rounded-3 shadow-xs mb-4">
+        <div class="p-2 bg-info text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+            <i class="bx bx-undo font-size-20"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h6 class="mb-1 fw-bold text-dark font-size-13">Gelen Faturaya İstinaden İade Faturası Hazırlanıyor</h6>
+            <p class="mb-0 text-muted font-size-12">
+                <strong><?= htmlspecialchars($sourceFaturaNo, ENT_QUOTES, 'UTF-8') ?></strong> numaralı gelen faturanın tedarikçi ve kalem bilgileri yüklendi. İade edilecek miktarları kontrol edip dilediğiniz kalemleri silebilir veya güncelleyebilirsiniz.
+            </p>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <form id="formFaturaOlustur">
-        <input type="hidden" id="editInvoiceId" value="<?= !empty($editInvoice) ? htmlspecialchars($editInvoiceEncryptedId, ENT_QUOTES, 'UTF-8') : '' ?>">
+        <input type="hidden" id="editInvoiceId" value="<?= (!empty($editInvoice) && !$isReturnInvoice) ? htmlspecialchars($editInvoiceEncryptedId, ENT_QUOTES, 'UTF-8') : '' ?>">
         
         <!-- ÜST KARTLAR: FATURA BİLGİLERİ & ALICI BİLGİLERİ -->
         <div class="row g-4 mb-4">
@@ -2253,8 +2302,9 @@ document.addEventListener('DOMContentLoaded', function() {
             escapeMarkup: function(m) { return m; }
         });
 
-        if (data.urun_hizmet_adi) {
-            const currentVal = data.urun_hizmet_adi;
+        const itemTitle = data.urun_hizmet_adi || data.mal_hizmet_adi || '';
+        if (itemTitle) {
+            const currentVal = itemTitle;
             if ($malHizmetSelect.find('option').filter(function() { return $(this).val() === currentVal; }).length === 0) {
                 $malHizmetSelect.append(new Option(currentVal, currentVal, true, true));
             }
@@ -2272,7 +2322,7 @@ document.addEventListener('DOMContentLoaded', function() {
         row.find('.kalem-istisna').val(data.istisna_kodu ?? '');
         row.find('.kalem-istisna-aciklama').val(data.istisna_aciklama ?? '');
 
-        if (data.tevkifat_kodu || data.istisna_kodu || data.istisna_aciklama) {
+        if (data.tevkifat_kodu || (data.istisna_kodu && String(data.istisna_kodu).trim() !== '')) {
             toggleTevkifatColumn(true);
         }
 
@@ -2301,7 +2351,9 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#alici_ulke').val(EDIT_DATA.alici_ulke || 'Türkiye').trigger('change');
         $('#alici_eposta').val(EDIT_DATA.alici_eposta || '');
         $('#alici_telefon').val(EDIT_DATA.alici_telefon || '');
-        $('#fatura_no').val(EDIT_DATA.fatura_no || '');
+        if (!EDIT_DATA.is_return_draft) {
+            $('#fatura_no').val(EDIT_DATA.fatura_no || '');
+        }
         
         const bTuru = EDIT_DATA.belge_turu || 'EARSIV';
         $('#belge_turu').val(bTuru);
@@ -2328,7 +2380,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#fatura_tipi').val(EDIT_DATA.fatura_tipi || 'SATIS').trigger('change.select2');
         $('#para_birimi').val(EDIT_DATA.para_birimi || 'TRY').trigger('change.select2');
         
-        if (EDIT_DATA.fatura_tarihi) {
+        if (!EDIT_DATA.is_return_draft && EDIT_DATA.fatura_tarihi) {
             const parts = EDIT_DATA.fatura_tarihi.split('-');
             if (parts.length === 3) {
                 $('#fatura_tarihi').val(`${parts[2]}.${parts[1]}.${parts[0]}`);
@@ -2336,7 +2388,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 $('#fatura_tarihi').val(EDIT_DATA.fatura_tarihi);
             }
         }
-        if (EDIT_DATA.duzenleme_saati) {
+        if (!EDIT_DATA.is_return_draft && EDIT_DATA.duzenleme_saati) {
             $('#duzenleme_saati').val(EDIT_DATA.duzenleme_saati);
         }
         if (EDIT_DATA.vade_tarihi) {
@@ -2357,6 +2409,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 $('#iade_fatura_tarihi').val(EDIT_DATA.iade_fatura_tarihi);
             }
+        }
+
+        if (EDIT_DATA.fatura_tipi === 'IADE' || EDIT_DATA.is_return_draft) {
+            $('.iade-fields').show();
         }
 
         $('#kalemlerContainer').empty();

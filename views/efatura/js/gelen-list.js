@@ -416,16 +416,19 @@ $(document).ready(function() {
                     // 1. Önizle
                     btns += `<button type="button" class="btn btn-sm btn-subtle-primary table-action-btn btn-preview" data-id="${row.encrypted_id}" title="Önizle / İncele"><i class="bx bx-show font-size-15"></i></button>`;
 
-                    // 2. PDF İndir
+                    // 2. İade Faturası Oluştur
+                    btns += `<a href="index.php?p=efatura/olustur&action=iade&source_id=${row.encrypted_id}" class="btn btn-sm btn-subtle-warning table-action-btn btn-return-invoice" title="İade Faturası Oluştur"><i class="bx bx-undo font-size-15"></i></a>`;
+
+                    // 3. PDF İndir
                     btns += `<a href="api/efatura-api.php?action=download_pdf&invoice_id=${row.encrypted_id}" class="btn btn-sm btn-subtle-danger table-action-btn" title="PDF İndir" target="_blank"><i class="bx bxs-file-pdf font-size-15"></i></a>`;
 
-                    // 3. Ticari Kabul / Red Butonları
+                    // 4. Ticari Kabul / Red Butonları
                     if (row.fatura_profili === 'TICARIFATURA' && row.ticari_yanit === 'BEKLIYOR') {
                         btns += `<button type="button" class="btn btn-sm btn-subtle-success table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="KABUL" title="Kabul Et"><i class="bx bx-check font-size-15"></i></button>`;
                         btns += `<button type="button" class="btn btn-sm btn-subtle-danger table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="RED" title="Reddet"><i class="bx bx-x font-size-15"></i></button>`;
                     }
 
-                    // 4. Tarihçe
+                    // 5. Tarihçe
                     btns += `<button type="button" class="btn btn-sm btn-subtle-info table-action-btn btn-history efatura-history" data-id="${row.encrypted_id}" title="Geçmiş / Loglar"><i class="bx bx-history font-size-15"></i></button>`;
 
                     btns += `</div>`;
@@ -811,6 +814,7 @@ $(document).ready(function() {
     $(document).on('click', '.btn-preview', function() {
         const invoiceId = $(this).data('id');
         lastPreviewHtml = '';
+        $('#btnCreateReturnFromPreview').data('id', invoiceId);
 
         $('#invoicePreviewContainer').html(`
             <div class="text-center py-5">
@@ -859,6 +863,15 @@ $(document).ready(function() {
                 `);
             }
         });
+    });
+
+    // Önizleme Modalı İçinden İade Faturası Oluştur
+    $('#btnCreateReturnFromPreview').on('click', function(e) {
+        e.preventDefault();
+        const invoiceId = $(this).data('id');
+        if (invoiceId) {
+            window.location.href = `index.php?p=efatura/olustur&action=iade&source_id=${invoiceId}`;
+        }
     });
 
     // Önizleme Yazdır

@@ -1395,10 +1395,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     }
                                 }
                             }
-                            if ($bankaDetayDagilimi['diger_banka_payi'] > 0) {
+                            if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
                                 $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
-                                            <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Diğer Banka Payı</td>
-                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bankaDetayDagilimi['diger_banka_payi'], 2, ',', '.') . ' ₺</td>
+                                            <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Sözleşme Farkı</td>
+                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bankaDetayDagilimi['sozlesme_farki'], 2, ',', '.') . ' ₺</td>
                                           </tr>';
                             }
                         }
@@ -3176,8 +3176,8 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                             }
                         }
                         
-                        if ($bankaDetayDagilimi['diger_banka_payi'] > 0) {
-                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Diğer Banka Payı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['diger_banka_payi'], 2, ',', '.') . ' ₺</span></div>';
+                        if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Sözleşme Farkı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['sozlesme_farki'], 2, ',', '.') . ' ₺</span></div>';
                         }
 
                         $toplamKesintiBanka = $bankaDetayDagilimi['kesinti'];

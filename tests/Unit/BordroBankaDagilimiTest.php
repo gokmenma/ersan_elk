@@ -365,11 +365,55 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(5976.0, $detay['yemek']);
         self::assertSame(0.0, $detay['ek_odemeler'][0]['tutar']);
         self::assertSame(1200.0, $detay['ek_odemeler'][0]['yemek_dahil_tutar']);
-        self::assertSame(0.0, $detay['diger_banka_payi']);
+        self::assertSame(0.0, $detay['sozlesme_farki']);
         self::assertSame(33115.65, round(
             $detay['asgari'] + $detay['yemek'] + $detay['ek_odemeler'][0]['tutar'],
             2
         ));
+    }
+
+    public function testBankaDetayindakiAciklanmayanBakiyeSozlesmeFarkidir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 36000,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 0,
+            'asgariYatacak' => 28075.50,
+            'mealAllowanceDeduction' => 7263,
+            'spouseAllowanceDeduction' => 0,
+            'bankaEkOdemeDetaylari' => [],
+        ]);
+
+        self::assertSame(661.5, $detay['sozlesme_farki']);
+        self::assertSame(36000.0, round(
+            $detay['asgari'] + $detay['yemek'] + $detay['sozlesme_farki'],
+            2
+        ));
+    }
+
+    public function testBankaDetayiFazlaMesaiVeHaftaTatiliniSozlesmeFarkinaDonusturmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 38311.35,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 0,
+            'asgariYatacak' => 28075.50,
+            'mealAllowanceDeduction' => 8100,
+            'spouseAllowanceDeduction' => 0,
+            'bankaEkOdemeDetaylari' => [
+                ['etiket' => 'Fazla Mesai', 'tutar' => 1200],
+                ['etiket' => 'Hafta Tatili Çalışması (Net)', 'tutar' => 935.85],
+                ['etiket' => 'Prim', 'tutar' => 600],
+            ],
+        ]);
+
+        self::assertSame(1200.0, $detay['ek_odemeler'][0]['tutar']);
+        self::assertSame(935.85, $detay['ek_odemeler'][1]['tutar']);
+        self::assertSame(0.0, $detay['ek_odemeler'][2]['tutar']);
+        self::assertSame(600.0, $detay['ek_odemeler'][2]['yemek_dahil_tutar']);
+        self::assertSame(0.0, $detay['sozlesme_farki']);
     }
 
     private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false, bool $disardanSigortali = false): void
