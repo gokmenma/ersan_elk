@@ -208,7 +208,7 @@ $belgeTuruOptions = [
         <div class="card-body p-3 pt-0">
             <div class="table-responsive" style="overflow-x: auto !important;">
                 <table id="cariTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
-                    <thead class="table-light">
+                    <thead>
                         <tr>
                             <th data-filter="none" style="width: 50px;" class="text-center">SIRA</th>
                             <th data-filter="string">CARİ ADI</th>
@@ -227,224 +227,17 @@ $belgeTuruOptions = [
     </div>
 </div>
 
-<style>
-/* Tablo Tipografi ve Okunabilirlik İyileştirmeleri */
-#cariTable {
-    font-size: 13px !important;
-}
-#cariTable thead th {
-    font-size: 11.5px !important;
-    font-weight: 700 !important;
-    color: #334155 !important;
-    letter-spacing: 0.3px;
-    background-color: #f8fafc !important;
-    vertical-align: middle !important;
-}
-#cariTable tbody td {
-    padding: 8px 12px !important;
-    vertical-align: middle !important;
-    color: #0f172a !important;
-}
-/* Muhasebe ve Tablo Satır Butonları */
-.table-action-btn {
-    width: 27px;
-    height: 27px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: all 0.15s ease;
-}
-.table-action-btn:hover {
-    transform: translateY(-1px);
-}
-.action-btn-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-}
-/* Modern Kart ve Tablo Stilleri */
-.summary-kpi-card {
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.summary-kpi-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05) !important;
-}
-.summary-kpi-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-}
-.summary-kpi-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 16px;
-    line-height: 1;
-}
-.summary-kpi-value {
-    font-size: 1.45rem;
-    font-weight: 700;
-    color: #0f172a;
-    line-height: 1.2;
-}
-.summary-kpi-subtext {
-    font-size: 11.5px;
-    color: #64748b;
-    font-weight: 500;
-}
-.summary-pill-btn {
-    font-size: 11px !important;
-    height: 24px !important;
-    line-height: 1 !important;
-    padding: 0 10px !important;
-    font-weight: 600 !important;
-    border-radius: 20px !important;
-    transition: all 0.2s ease;
-}
-
-/* Modern Subtle Renkli Butonlar */
-.btn-subtle-primary {
-    background-color: #eff6ff;
-    color: #2563eb;
-    border: 1px solid #bfdbfe;
-    transition: all 0.18s ease;
-}
-.btn-subtle-primary:hover, .btn-subtle-primary:focus, .btn-subtle-primary.active {
-    background-color: #2563eb !important;
-    color: #ffffff !important;
-    border-color: #2563eb !important;
-    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
-}
-
-.btn-subtle-success {
-    background-color: #f0fdf4;
-    color: #16a34a;
-    border: 1px solid #bbf7d0;
-    transition: all 0.18s ease;
-}
-.btn-subtle-success:hover, .btn-subtle-success:focus, .btn-subtle-success.active {
-    background-color: #16a34a !important;
-    color: #ffffff !important;
-    border-color: #16a34a !important;
-    box-shadow: 0 2px 5px rgba(22, 163, 74, 0.25);
-}
-
-.btn-subtle-danger {
-    background-color: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-    transition: all 0.18s ease;
-}
-.btn-subtle-danger:hover, .btn-subtle-danger:focus, .btn-subtle-danger.active {
-    background-color: #dc2626 !important;
-    color: #ffffff !important;
-    border-color: #dc2626 !important;
-    box-shadow: 0 2px 5px rgba(220, 38, 38, 0.25);
-}
-
-.btn-subtle-warning {
-    background-color: #fffbeb;
-    color: #d97706;
-    border: 1px solid #fde68a;
-    transition: all 0.18s ease;
-}
-.btn-subtle-warning:hover, .btn-subtle-warning:focus, .btn-subtle-warning.active {
-    background-color: #d97706 !important;
-    color: #ffffff !important;
-    border-color: #d97706 !important;
-    box-shadow: 0 2px 5px rgba(217, 119, 6, 0.25);
-}
-
-.btn-subtle-secondary {
-    background-color: #f8fafc;
-    color: #475569;
-    border: 1px solid #cbd5e1;
-    transition: all 0.18s ease;
-}
-.btn-subtle-secondary:hover, .btn-subtle-secondary:focus {
-    background-color: #475569;
-    color: #ffffff !important;
-    border-color: #475569;
-    box-shadow: 0 2px 5px rgba(71, 85, 105, 0.25);
-}
-
-.top-action-btn {
-    font-size: 13px;
-    padding: 7px 14px;
-    border-radius: 8px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-}
-
-.top-icon-btn {
-    width: 38px;
-    height: 38px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    font-size: 1.15rem;
-    color: #475569;
-    border: 1px solid #cbd5e1;
-    transition: all 0.2s ease;
-}
-.top-icon-btn:hover {
-    background-color: #f1f5f9;
-    color: #1e293b;
-    border-color: #94a3b8;
-}
-
-/* Modal Nav Pills */
-#cariModal .nav-pills {
-    background: #f1f5f9;
-}
-#cariModal .nav-pills .nav-link {
-    color: #64748b;
-    border-radius: 8px;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-#cariModal .nav-pills .nav-link:hover:not(.active) {
-    background: #e2e8f0;
-    color: #1e293b;
-}
-#cariModal .nav-pills .nav-link.active {
-    background-color: #2563eb;
-    color: #ffffff;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
-}
-</style>
-
 <!-- Cari Ekle / Düzenle Modalı (Sekmeli Modern Yapı) -->
 <div class="modal fade" id="cariModal" tabindex="-1" aria-labelledby="cariModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+        <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-start">
                 <div class="d-flex align-items-center">
-                    <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: #d1fae5;">
-                        <i data-feather="plus-circle" style="width: 24px; height: 24px; color: #10b981;"></i>
+                    <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                        <i data-feather="plus-circle" style="width: 24px; height: 24px;"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-bold mb-1" id="cariModalLabel" style="color: #1a1a1a;">Yeni Cari Ekle</h5>
+                        <h5 class="modal-title fw-bold mb-1" id="cariModalLabel">Yeni Cari Ekle</h5>
                         <p class="text-muted small mb-0">Cari kartı, e-Fatura/e-Arşiv ve vergi bilgilerini doldurun.</p>
                     </div>
                 </div>
@@ -457,7 +250,7 @@ $belgeTuruOptions = [
                 
                 <div class="modal-body px-4 pt-3 pb-2">
                     <!-- Sekmeler (Nav Tabs: 1. Genel, 2. İletişim & Adres, 3. Fatura & Vergi) -->
-                    <ul class="nav nav-pills nav-justified mb-3 p-1 bg-light rounded-3" id="cariModalTabs" role="tablist">
+                    <ul class="nav nav-pills nav-justified mb-3 p-1 rounded-3" id="cariModalTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active py-2 fw-semibold d-flex align-items-center justify-content-center gap-1" id="tab-genel-btn" data-bs-toggle="pill" data-bs-target="#tab-genel" type="button" role="tab" aria-selected="true">
                                 <i class="bx bx-user font-size-16"></i> <span>Genel Bilgiler</span>
@@ -531,7 +324,7 @@ $belgeTuruOptions = [
                                     <div class="input-group">
                                         <div class="form-floating form-floating-custom flex-grow-1">
                                             <input type="text" class="form-control fw-bold" id="vkn_tckn" name="vkn_tckn" maxlength="11" placeholder="10 veya 11 Haneli VKN/TCKN">
-                                            <label for="vkn_tckn">Vergi No / TCKN</label>
+                                             <label for="vkn_tckn">Vergi No / TCKN</label>
                                             <div class="form-floating-icon">
                                                 <i data-feather="hash"></i>
                                             </div>
@@ -575,8 +368,8 @@ $belgeTuruOptions = [
                 </div>
                 
                 <div class="modal-footer border-top-0 pt-2 pb-4 px-4 justify-content-between">
-                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
-                    <button type="submit" class="btn btn-dark px-4 shadow-sm" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
                         <i class="bx bx-save me-1"></i> Kaydet
                     </button>
                 </div>
@@ -588,14 +381,14 @@ $belgeTuruOptions = [
 <!-- Hızlı Hareket Ekle Modalı -->
 <div class="modal fade" id="hizliIslemModal" tabindex="-1" aria-labelledby="hizliIslemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+        <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-start">
                 <div class="d-flex align-items-center w-100">
                     <div class="bg-primary-subtle rounded-circle d-flex align-items-center justify-content-center me-3" id="hizliIslemIconBg" style="width: 48px; height: 48px;">
                         <i class="bx bx-transfer font-size-24 text-primary" id="hizliIslemIcon"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <h5 class="modal-title fw-bold mb-1" id="hizliIslemModalLabel" style="color: #1a1a1a;">Yeni İşlem Ekle</h5>
+                        <h5 class="modal-title fw-bold mb-1" id="hizliIslemModalLabel">Yeni İşlem Ekle</h5>
                         <p class="text-muted small mb-0" id="hizliIslemModalDesc">İşlem türünü seçin ve bilgileri girin.</p>
                     </div>
                 </div>
@@ -635,8 +428,8 @@ $belgeTuruOptions = [
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end">
-                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
-                    <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-4">Kaydet</button>
                 </div>
             </form>
         </div>

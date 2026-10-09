@@ -11,6 +11,7 @@ use App\Model\SettingsModel;
 use App\Model\MenuModel;
 use App\Model\SystemLogModel;
 use App\Model\PermissionPolicyModel;
+use App\Model\SozlesmeDonemModel;
 
 $Tanimlamalar = new TanimlamalarModel();
 $Settings = new SettingsModel();
@@ -30,11 +31,134 @@ if ($permissionPolicy->isReady()) {
     'tanimlamalar/gelir-gider-turu', 'tanimlamalar/ekip-kodu', 'tanimlamalar/is-turu',
     'tanimlamalar/izin-turu', 'tanimlamalar/unvan-ucret',
     'tanimlamalar/demirbas-kategorileri', 'tanimlamalar/defter-kodu',
+    'tanimlamalar/donem-tanimlari',
 ])) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Tanımlama işlemleri için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+// ==========================================
+// SÖZLEŞME / ÇALIŞMA DÖNEMLERİ API İŞLEMLERİ
+// ==========================================
+$SozlesmeDonem = new SozlesmeDonemModel();
+$userId = (int) ($_SESSION['user_id'] ?? $_SESSION['user']->id ?? 0);
+
+// 1. Dönem Listesi (DataTables Ajax)
+if ($action === 'donem-liste') {
+    try {
+        $result = $SozlesmeDonem->ajaxList($_POST, (int)$firma_id);
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        echo json_encode([
+            'draw' => (int)($_POST['draw'] ?? 0),
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => 'Dönem listesi alınamadı: ' . $e->getMessage()
+        ], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+// 2. Tekil Dönem Getir (Düzenleme Modalı İçin)
+if ($action === 'donem-getir') {
+    $rawId = (int) Security::decrypt($_POST['id'] ?? '');
+    if ($rawId <= 0) {
+        $rawId = (int) ($_POST['raw_id'] ?? 0);
+    }
+
+    $donem = $SozlesmeDonem->getDonemById($rawId, (int)$firma_id);
+    if ($donem) {
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'id' => Security::encrypt($donem->id),
+                'raw_id' => (int)$donem->id,
+                'donem_adi' => $donem->donem_adi,
+                'baslangic_tarihi' => $donem->baslangic_tarihi,
+                'bitis_tarihi' => $donem->bitis_tarihi,
+                'is_active' => (int)$donem->is_active,
+                'aciklama' => $donem->aciklama ?? ''
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Dönem kaydı bulunamadı.'], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+// 3. Dönem Kaydet / Güncelle
+if ($action === 'donem-kaydet') {
+    $encId = $_POST['id'] ?? '';
+    $rawId = 0;
+    if (!empty($encId)) {
+        $rawId = (int) Security::decrypt($encId);
+        if ($rawId <= 0) {
+            $rawId = (int) ($_POST['raw_id'] ?? 0);
+        }
+    }
+
+    $data = [
+        'id' => $rawId,
+        'donem_adi' => $_POST['donem_adi'] ?? '',
+        'baslangic_tarihi' => $_POST['baslangic_tarihi'] ?? '',
+        'bitis_tarihi' => $_POST['bitis_tarihi'] ?? '',
+        'is_active' => !empty($_POST['is_active']) ? 1 : 0,
+        'aciklama' => $_POST['aciklama'] ?? ''
+    ];
+
+    $res = $SozlesmeDonem->saveDonem($data, (int)$firma_id, $userId);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 4. Dönemi Aktif Yap
+if ($action === 'donem-aktif-yap') {
+    $encId = $_POST['id'] ?? '';
+    $rawId = (int) Security::decrypt($encId);
+    if ($rawId <= 0) {
+        $rawId = (int) ($_POST['raw_id'] ?? 0);
+    }
+
+    $res = $SozlesmeDonem->setActive($rawId, (int)$firma_id, $userId);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 5. Dönem Sil (Soft Delete)
+if ($action === 'donem-sil') {
+    $encId = $_POST['id'] ?? '';
+    $rawId = (int) Security::decrypt($encId);
+    if ($rawId <= 0) {
+        $rawId = (int) ($_POST['raw_id'] ?? 0);
+    }
+
+    $res = $SozlesmeDonem->deleteDonem($rawId, (int)$firma_id, $userId);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 6. Dönem Özet KPI Verisi
+if ($action === 'donem-ozet') {
+    $summary = $SozlesmeDonem->summary((int)$firma_id);
+    echo json_encode(['status' => 'success', 'summary' => $summary], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 7. Topbar'dan Hızlı Dönem Değiştirme
+if ($action === 'topbar-donem-degistir') {
+    $encId = $_POST['id'] ?? '';
+    $rawId = (int) Security::decrypt($encId);
+    if ($rawId <= 0) {
+        $rawId = (int) ($_POST['raw_id'] ?? 0);
+    }
+
+    $res = $SozlesmeDonem->setActive($rawId, (int)$firma_id, $userId);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 
 /**
  * İş türü ücret geçmişini günceller.

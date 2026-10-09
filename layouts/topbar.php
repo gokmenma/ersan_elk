@@ -37,16 +37,6 @@ if (!is_array($firma_option)) {
     $firma_option = [];
 }
 
-//Helper::dd($firma_option);
-
-
-?>
-<?php
-$currentPageKey = $_GET['p'] ?? 'home';
-$topbarMenuModel = new \App\Model\MenuModel();
-$currentMenuObj = $topbarMenuModel->getMenuByLink($currentPageKey);
-$topbarTitle = $currentMenuObj->menu_name ?? ($title ?? 'Ana Sayfa');
-$topbarDesc = $currentMenuObj->page_description ?? '';
 ?>
 <header id="page-topbar">
     <div class="navbar-header">
@@ -79,15 +69,67 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
                 <i data-feather="menu" class="icon-lg"></i>
             </button>
 
-            <!-- Topbar Sayfa Başlığı ve Açıklaması -->
-            <div class="topbar-page-header d-none d-md-flex flex-column justify-content-center">
-                <h5 class="topbar-page-title m-0" id="topbar-page-title">
-                    <?php echo htmlspecialchars($topbarTitle); ?>
-                </h5>
-                <span class="topbar-page-desc mt-1" id="topbar-page-desc" <?php echo empty($topbarDesc) ? 'style="display: none;"' : ''; ?>>
-                    <?php echo htmlspecialchars($topbarDesc); ?>
-                </span>
+            <!-- Sözleşme / Çalışma Dönem Seçici -->
+            <?php
+            $topbarFirmaId = (int) ($_SESSION['firma_id'] ?? 0);
+            $topbarDonemModel = new \App\Model\SozlesmeDonemModel();
+            $topbarActiveDonem = $topbarFirmaId > 0 ? $topbarDonemModel->getActiveDonem($topbarFirmaId) : null;
+            $topbarDonemler = $topbarFirmaId > 0 ? $topbarDonemModel->getAllDonemler($topbarFirmaId) : [];
+            ?>
+
+            <?php if ($topbarActiveDonem): ?>
+            <div class="topbar-donem-dropdown dropdown d-none d-md-inline-block ms-0 ms-lg-1">
+                <button type="button" class="btn topbar-donem-btn dropdown-toggle d-flex align-items-center gap-2" id="topbarDonemDropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Çalışma / Sözleşme Dönemi">
+                    <span class="donem-indicator-dot"></span>
+                    <div class="d-flex flex-column text-start">
+                        <span class="donem-btn-title fw-bold font-size-12 lh-1">
+                            <?php echo htmlspecialchars($topbarActiveDonem->donem_adi, ENT_QUOTES, 'UTF-8'); ?>
+                        </span>
+                        <span class="donem-btn-dates text-muted font-size-10 mt-0.5">
+                            <?php echo date('d.m.Y', strtotime($topbarActiveDonem->baslangic_tarihi)) . ' / ' . date('d.m.Y', strtotime($topbarActiveDonem->bitis_tarihi)); ?>
+                        </span>
+                    </div>
+                    <i class="bx bx-chevron-down donem-chevron font-size-14 ms-0.5"></i>
+                </button>
+
+                <div class="dropdown-menu dropdown-menu-start shadow-lg p-1 topbar-donem-menu" aria-labelledby="topbarDonemDropdown" style="width: 100%; min-width: 100%; border-radius: 12px; z-index: 1060;">
+                    <div class="px-2.5 py-1.5 border-bottom border-secondary-subtle d-flex align-items-center gap-2">
+                        <i class="bx bx-calendar-check text-success font-size-15"></i>
+                        <span class="font-size-11 fw-bold text-muted text-uppercase tracking-wider">Sözleşme / Çalışma Dönemi</span>
+                    </div>
+
+                    <div class="topbar-donem-list p-1 mt-1" style="max-height: 280px; overflow-y: auto;">
+                        <?php foreach ($topbarDonemler as $d): 
+                            $isActive = ($d->is_active == 1);
+                            $encId = \App\Helper\Security::encrypt($d->id);
+                        ?>
+                            <div class="topbar-donem-item p-2 rounded-2 d-flex align-items-center justify-content-between mb-1 cursor-pointer <?php echo $isActive ? 'active-donem-row' : ''; ?>" 
+                                 onclick="<?php echo !$isActive ? "switchTopbarDonem('" . $encId . "', " . (int)$d->id . ", '" . htmlspecialchars($d->donem_adi, ENT_QUOTES, 'UTF-8') . "')" : "void(0);"; ?>">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="donem-item-icon <?php echo $isActive ? 'text-success' : 'text-muted'; ?>">
+                                        <i class="<?php echo $isActive ? 'bx bxs-check-circle font-size-16' : 'bx bx-calendar font-size-15'; ?>"></i>
+                                    </div>
+                                    <div class="d-flex flex-column">
+                                        <span class="font-size-12 fw-semibold donem-item-title <?php echo $isActive ? 'text-success' : ''; ?>">
+                                            <?php echo htmlspecialchars($d->donem_adi, ENT_QUOTES, 'UTF-8'); ?>
+                                        </span>
+                                        <span class="font-size-10 text-muted">
+                                            <?php echo date('d.m.Y', strtotime($d->baslangic_tarihi)) . ' - ' . date('d.m.Y', strtotime($d->bitis_tarihi)); ?>
+                                            <span class="ms-1 badge donem-days-badge font-size-9"><?php echo $d->toplam_gun; ?> Gün</span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <?php if ($isActive): ?>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 font-size-9">Aktif</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 font-size-9 donem-select-pill">Seç</span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <?php
@@ -1474,4 +1516,187 @@ body[data-topbar="dark"] .gs-suggestion-card:hover {
     border-color: #60a5fa;
     color: #93c5fd;
 }
+
+/* ==========================================
+   TOPBAR DÖNEM SEÇİCİ (macOS TEMA UYUMLU)
+   ========================================== */
+.topbar-donem-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.topbar-donem-btn {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 8px;
+    padding: 3px 6px;
+    box-shadow: none !important;
+    transition: background 0.15s ease;
+}
+.topbar-donem-btn:hover, 
+.topbar-donem-btn:focus,
+.show > .topbar-donem-btn {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+.donem-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+    display: inline-block;
+    flex-shrink: 0;
+    animation: donemPulse 2.4s infinite;
+}
+@keyframes donemPulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+    70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.donem-active-pill {
+    background: rgba(16, 185, 129, 0.15);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    font-weight: 600;
+}
+.topbar-donem-menu {
+    width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+.topbar-donem-item {
+    border-radius: 8px;
+    transition: background 0.15s ease, transform 0.1s ease;
+    border: 1px solid transparent;
+}
+.topbar-donem-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+.topbar-donem-item:hover .donem-select-pill {
+    background-color: #4f46e5;
+    color: #fff !important;
+}
+.donem-days-badge {
+    background: rgba(0, 0, 0, 0.05);
+    color: #64748b;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* macOS Koyu Tema Uyumu */
+[data-bs-theme="dark"] .topbar-donem-btn,
+body[data-topbar="dark"] .topbar-donem-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-bs-theme="dark"] .topbar-donem-btn:hover,
+body[data-topbar="dark"] .topbar-donem-btn:hover,
+[data-bs-theme="dark"] .show > .topbar-donem-btn,
+body[data-topbar="dark"] .show > .topbar-donem-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-bs-theme="dark"] .topbar-donem-btn .donem-btn-title,
+body[data-topbar="dark"] .topbar-donem-btn .donem-btn-title {
+    color: #f8fafc !important;
+}
+[data-bs-theme="dark"] .donem-active-pill,
+body[data-topbar="dark"] .donem-active-pill {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+[data-bs-theme="dark"] .topbar-donem-menu,
+body[data-topbar="dark"] .topbar-donem-menu {
+    background: rgba(22, 27, 36, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+[data-bs-theme="dark"] .topbar-donem-item:hover,
+body[data-topbar="dark"] .topbar-donem-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+[data-bs-theme="dark"] .topbar-donem-item .donem-item-title,
+body[data-topbar="dark"] .topbar-donem-item .donem-item-title {
+    color: #f1f5f9;
+}
+[data-bs-theme="dark"] .topbar-donem-item .donem-item-title.text-success,
+body[data-topbar="dark"] .topbar-donem-item .donem-item-title.text-success {
+    color: #34d399 !important;
+}
+[data-bs-theme="dark"] .active-donem-row,
+body[data-topbar="dark"] .active-donem-row {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.28) !important;
+}
+[data-bs-theme="dark"] .donem-days-badge,
+body[data-topbar="dark"] .donem-days-badge {
+    background: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-bs-theme="dark"] .donem-select-pill,
+body[data-topbar="dark"] .donem-select-pill {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+}
 </style>
+
+<script>
+/**
+ * Topbar'dan Hızlı Dönem Değiştirme
+ */
+function switchTopbarDonem(encId, rawId, donemAdi) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Çalışma Dönemi Değiştirilsin mi?',
+            html: `Aktif çalışma dönemi <strong>"${donemAdi}"</strong> olarak ayarlanacak ve sayfa yenilenecektir.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28c76f',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="bx bx-check me-1"></i> Evet, Geçiş Yap',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('views/tanimlamalar/api.php', { action: 'topbar-donem-degistir', id: encId, raw_id: rawId }, function(res) {
+                    if (res && res.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Dönem Değiştirildi!',
+                            text: res.message,
+                            timer: 1200,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Hata!',
+                            text: res.message || 'Dönem değiştirilemedi.'
+                        });
+                    }
+                }, 'json');
+            }
+        });
+    } else {
+        if (confirm(`"${donemAdi}" dönemine geçiş yapmak istediğinize emin misiniz?`)) {
+            $.post('views/tanimlamalar/api.php', { action: 'topbar-donem-degistir', id: encId, raw_id: rawId }, function(res) {
+                if (res && res.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert(res.message || 'Dönem değiştirilemedi.');
+                }
+            }, 'json');
+        }
+    }
+}
+</script>

@@ -53,8 +53,124 @@ $(document).on("shown.bs.tab", 'a[data-bs-toggle="tab"], button[data-bs-toggle="
   }
 });
 
+// Flatpickr Global Year Select & Defaults
+// -----------------------------------
+function setupFlatpickrYearDropdown(instance) {
+  if (!instance || !instance.calendarContainer) return;
+
+  var curYear = instance.currentYear || new Date().getFullYear();
+  var minYear = 1940;
+  var maxYear = 2060;
+
+  if (instance.config && instance.config.minDate) {
+    var minD = instance.config.minDate instanceof Date ? instance.config.minDate : new Date(instance.config.minDate);
+    if (!isNaN(minD.getFullYear())) minYear = minD.getFullYear();
+  }
+  if (instance.config && instance.config.maxDate) {
+    var maxD = instance.config.maxDate instanceof Date ? instance.config.maxDate : new Date(instance.config.maxDate);
+    if (!isNaN(maxD.getFullYear())) maxYear = maxD.getFullYear();
+  }
+
+  if (curYear < minYear) minYear = curYear - 5;
+  if (curYear > maxYear) maxYear = curYear + 5;
+
+  var monthElements = instance.calendarContainer.querySelectorAll(".flatpickr-current-month");
+  monthElements.forEach(function (monthEl) {
+    var numWrapper = monthEl.querySelector(".numInputWrapper");
+    var curYearInput = monthEl.querySelector(".cur-year");
+    if (numWrapper) {
+      numWrapper.style.setProperty("display", "none", "important");
+    } else if (curYearInput) {
+      curYearInput.style.setProperty("display", "none", "important");
+    }
+
+    var existingSelect = monthEl.querySelector(".flatpickr-yearDropdown-years");
+    if (!existingSelect) {
+      var select = document.createElement("select");
+      select.className = "flatpickr-monthDropdown-months flatpickr-yearDropdown-years";
+      select.setAttribute("aria-label", "Yıl");
+      select.tabIndex = -1;
+
+      var frag = document.createDocumentFragment();
+      for (var y = minYear; y <= maxYear; y++) {
+        var opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        if (y === curYear) opt.selected = true;
+        frag.appendChild(opt);
+      }
+      select.appendChild(frag);
+      select.value = curYear;
+
+      select.addEventListener("change", function (e) {
+        var selectedYear = parseInt(e.target.value, 10);
+        if (!isNaN(selectedYear)) {
+          instance.changeYear(selectedYear);
+          if (typeof instance.redraw === "function") {
+            instance.redraw();
+          }
+        }
+      });
+
+      if (numWrapper) {
+        numWrapper.parentNode.insertBefore(select, numWrapper.nextSibling);
+      } else {
+        monthEl.appendChild(select);
+      }
+    } else {
+      if (parseInt(existingSelect.value, 10) !== curYear) {
+        existingSelect.value = curYear;
+      }
+    }
+  });
+}
+
+function attachFlatpickrYearHooks(config) {
+  config = config || {};
+  var hooks = ["onReady", "onOpen", "onMonthChange", "onYearChange"];
+  hooks.forEach(function (hookName) {
+    var existing = config[hookName];
+    var fn = function (selectedDates, dateStr, instance) {
+      setupFlatpickrYearDropdown(instance);
+    };
+    if (Array.isArray(existing)) {
+      if (!existing.includes(fn)) existing.push(fn);
+    } else if (typeof existing === "function") {
+      config[hookName] = [existing, fn];
+    } else {
+      config[hookName] = [fn];
+    }
+  });
+  return config;
+}
+
+if (typeof flatpickr !== "undefined") {
+  flatpickr.setDefaults({
+    locale: "tr",
+    dateFormat: "d.m.Y",
+    onReady: [function (d, s, fp) { setupFlatpickrYearDropdown(fp); }],
+    onOpen: [function (d, s, fp) { setupFlatpickrYearDropdown(fp); }],
+    onMonthChange: [function (d, s, fp) { setupFlatpickrYearDropdown(fp); }],
+    onYearChange: [function (d, s, fp) { setupFlatpickrYearDropdown(fp); }]
+  });
+
+  var origFlatpickr = window.flatpickr;
+  if (origFlatpickr && !origFlatpickr._yearSelectPatched) {
+    var patchedFlatpickr = function (selector, config) {
+      config = attachFlatpickrYearHooks(config);
+      return origFlatpickr(selector, config);
+    };
+    Object.assign(patchedFlatpickr, origFlatpickr);
+    patchedFlatpickr.setDefaults = function (cfg) {
+      return origFlatpickr.setDefaults(attachFlatpickrYearHooks(cfg));
+    };
+    patchedFlatpickr._yearSelectPatched = true;
+    window.flatpickr = patchedFlatpickr;
+  }
+}
+
 if ($(".flatpickr").length > 0) {
-  //.flatpickr sınıfına sahip alanlarda tarih+saat formatına izin verir
+  //.flatpickr sınıfına sahip alanlarda tarih formatına izin verir
   $(document).on("focus", ".flatpickr:not(.time-input)", function () {
     $(this).inputmask("datetime", {
       alias: "datetime",

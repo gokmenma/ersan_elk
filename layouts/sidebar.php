@@ -299,47 +299,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     border-color: #2b333e !important;
                 }
 
-                /* macOS Dark Glassmorphism Override */
-                html[data-theme-preset="macos-dark"] body .vertical-menu,
-                html[data-theme-preset="macos-dark"] body[data-sidebar] .vertical-menu,
-                html[data-theme-preset="macos-dark"] body[data-sidebar="dark"] .vertical-menu {
-                    background-color: rgba(50, 42, 51, 0.42) !important;
-                    background-image:
-                        linear-gradient(145deg, rgba(255, 255, 255, 0.075), transparent 34%),
-                        linear-gradient(180deg, rgba(92, 68, 82, 0.18), rgba(31, 28, 36, 0.08)) !important;
-                    backdrop-filter: blur(30px) saturate(155%) brightness(0.92) !important;
-                    -webkit-backdrop-filter: blur(30px) saturate(155%) brightness(0.92) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.17) !important;
-                    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
-                }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-sticky-top,
-                html[data-theme-preset="macos-dark"] body[data-sidebar] .sidebar-sticky-top,
-                html[data-theme-preset="macos-dark"] body[data-sidebar="dark"] .sidebar-sticky-top {
-                    background-color: rgba(255, 255, 255, 0.018) !important;
-                    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent) !important;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-                }
-
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a {
-                    color: #b4b9c8 !important;
-                }
-
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a:hover {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                    color: #ffffff !important;
-                }
-
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a.active,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li.mm-active > a {
-                    background-color: rgba(255, 255, 255, 0.19) !important;
-                    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)) !important;
-                    backdrop-filter: blur(18px) saturate(135%) !important;
-                    -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
-                    color: #ffffff !important;
-                    border: 1px solid rgba(255, 255, 255, 0.18) !important;
-                    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-                }
 
                 /* Sidebar Search & Settings */
                 .sidebar-search-container {
@@ -422,6 +382,18 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     backdrop-filter: blur(4px);
                     -webkit-backdrop-filter: blur(4px);
                     transition: all 0.2s ease;
+                }
+
+                .macos-window-controls {
+                    display: none !important;
+                }
+
+                .settings-icon-mac {
+                    display: none !important;
+                }
+
+                .settings-icon-default {
+                    display: inline-block !important;
                 }
 
                 .btn-sidebar-settings:hover,
@@ -945,23 +917,22 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     justify-content: center;
                 }
 
-                /* macOS Finder Sidebar — neutral graphite, compact rows and monochrome icons */
+                /* macOS Finder Sidebar — neutral graphite, compact rows and monochrome icons (Tahoe style) */
                 html[data-theme-preset="macos-dark"] body .vertical-menu,
                 html[data-theme-preset="macos-dark"] body[data-sidebar] .vertical-menu,
                 html[data-theme-preset="macos-dark"] body[data-sidebar="dark"] .vertical-menu {
-                    --sidebar-bg: rgba(31, 31, 35, 0.84);
-                    --sidebar-border: rgba(255, 255, 255, 0.13);
-                    --sidebar-foreground: rgba(235, 236, 239, 0.78);
-                    --sidebar-muted: rgba(235, 235, 245, 0.48);
-                    --sidebar-item-hover: rgba(255, 255, 255, 0.075);
-                    --sidebar-item-active: rgba(255, 255, 255, 0.13);
+                    --sidebar-bg: rgba(30, 31, 35, 0.96);
+                    --sidebar-border: rgba(255, 255, 255, 0.10);
+                    --sidebar-foreground: rgba(255, 255, 255, 0.85);
+                    --sidebar-muted: rgba(235, 235, 245, 0.42);
+                    --sidebar-item-hover: rgba(255, 255, 255, 0.08);
+                    --sidebar-item-active: rgba(255, 255, 255, 0.16);
                     background:
-                        linear-gradient(145deg, rgba(255,255,255,.045), transparent 38%),
-                        rgba(33, 34, 39, .78) !important;
-                    backdrop-filter: none !important;
-                    -webkit-backdrop-filter: none !important;
-                    border-color: rgba(255, 255, 255, 0.16) !important;
-                    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.11) !important;
+                        linear-gradient(180deg, rgba(34, 35, 40, 0.97) 0%, rgba(26, 27, 30, 0.97) 100%) !important;
+                    backdrop-filter: blur(24px) saturate(140%) !important;
+                    -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+                    border-color: rgba(255, 255, 255, 0.08) !important;
+                    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
                     contain: paint;
                     isolation: isolate;
                     transform: translateZ(0);
@@ -969,36 +940,112 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 html[data-theme-preset="macos-dark"] body .sidebar-sticky-top {
-                    padding: 12px 8px 10px !important;
-                    background: rgba(255, 255, 255, 0.018) !important;
-                    border-bottom-color: rgba(255, 255, 255, 0.075) !important;
+                    display: flex !important;
+                    flex-direction: row !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    padding: 14px 14px 8px 14px !important;
+                    background: transparent !important;
+                    border-bottom: none !important;
+                    box-shadow: none !important;
+                    gap: 6px !important;
+                    position: relative !important;
+                    z-index: 1000 !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .sidebar-brand-box {
-                    min-height: 32px;
-                    padding: 0 10px 10px !important;
-                    gap: 12px;
-                    justify-content: flex-start;
+                    min-height: auto !important;
+                    height: auto !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    gap: 10px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    flex: 1 1 auto !important;
+                    background: transparent !important;
+                    border-bottom: none !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .macos-window-controls {
                     width: auto !important;
-                    gap: 8px !important;
+                    gap: 6px !important;
                     margin: 0 !important;
                     padding: 0 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    flex-shrink: 0 !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .macos-dot {
-                    width: 12px;
-                    height: 12px;
+                    width: 11px !important;
+                    height: 11px !important;
                     box-shadow: none;
-                    border-width: 0.5px;
+                    border: 0.5px solid rgba(0, 0, 0, 0.25);
+                }
+
+                html[data-theme-preset="macos-dark"] body .sidebar-search-container {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    flex-shrink: 0 !important;
+                    position: relative !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .sidebar-search-container .position-relative {
+                    display: flex !important;
+                    align-items: center !important;
+                }
+
+                /* Arama simgesi: Finder gibi çerçevesiz ikon, tıklandığında genişler */
+                html[data-theme-preset="macos-dark"] body .sidebar-search {
+                    width: 24px !important;
+                    height: 24px !important;
+                    padding: 0 0 0 24px !important;
+                    background: transparent !important;
+                    border: none !important;
+                    border-radius: 4px !important;
+                    color: #ffffff !important;
+                    box-shadow: none !important;
+                    font-size: 11.5px !important;
+                    cursor: pointer !important;
+                    transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, padding 0.15s ease !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .sidebar-search:hover {
+                    background: rgba(255, 255, 255, 0.08) !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .sidebar-search:focus,
+                html[data-theme-preset="macos-dark"] body .sidebar-search:not(:placeholder-shown) {
+                    width: 96px !important;
+                    padding-left: 24px !important;
+                    padding-right: 20px !important;
+                    cursor: text !important;
+                    background: rgba(255, 255, 255, 0.12) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+                    border-radius: 6px !important;
+                    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08) !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .sidebar-search::placeholder {
+                    color: rgba(235, 235, 245, 0.38) !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .sidebar-search-container .search-icon {
+                    left: 5px !important;
+                    top: 50% !important;
+                    transform: translateY(-50%) !important;
+                    width: 14px !important;
+                    height: 14px !important;
+                    color: rgba(255, 255, 255, 0.65) !important;
+                    pointer-events: none !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .brand-wrapper {
                     min-width: 0;
-                    margin-left: 8px;
+                    margin: 0 !important;
                     gap: 0;
+                    display: flex !important;
+                    align-items: center !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .brand-logo,
@@ -1007,151 +1054,316 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 html[data-theme-preset="macos-dark"] body .brand-name {
-                    max-width: 92px;
+                    max-width: 90px !important;
                     overflow: hidden;
-                    color: rgba(255, 255, 255, 0.94) !important;
+                    color: rgba(255, 255, 255, 0.88) !important;
                     font-size: 13px !important;
-                    font-weight: 650 !important;
+                    font-weight: 600 !important;
                     line-height: 1.2;
                     white-space: nowrap;
                     text-overflow: ellipsis;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-search-container {
-                    padding: 0 2px !important;
-                }
-
-                html[data-theme-preset="macos-dark"] body .sidebar-search {
-                    height: 34px !important;
-                    padding-left: 32px !important;
-                    background: rgba(255, 255, 255, 0.075) !important;
-                    border-color: transparent !important;
-                    border-radius: 8px !important;
-                    color: rgba(255, 255, 255, 0.9) !important;
-                    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035) !important;
-                    font-size: 12px !important;
-                }
-
-                html[data-theme-preset="macos-dark"] body .sidebar-search::placeholder {
-                    color: rgba(235, 235, 245, 0.38) !important;
+                /* Üç Nokta Ayarlar Butonu (Çerçevesiz Finder Stili) & Popover Menü */
+                html[data-theme-preset="macos-dark"] body .menu-settings-dropdown {
+                    flex-shrink: 0 !important;
+                    position: relative !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .btn-sidebar-settings {
-                    width: 34px !important;
-                    height: 34px !important;
+                    width: 24px !important;
+                    height: 24px !important;
                     padding: 0 !important;
-                    background: rgba(255, 255, 255, 0.075) !important;
-                    border-color: transparent !important;
+                    background: transparent !important;
+                    border: none !important;
+                    border-radius: 4px !important;
+                    color: rgba(255, 255, 255, 0.65) !important;
+                    box-shadow: none !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    flex-shrink: 0 !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings i,
+                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings svg {
+                    width: 15px !important;
+                    height: 15px !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings:hover,
+                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings[aria-expanded="true"] {
+                    background: rgba(255, 255, 255, 0.14) !important;
+                    color: #ffffff !important;
+                }
+
+                /* GNOME / macOS Finder Stili Açılır Menü (Popover Dropdown) - Tooltip Ok Desteği ve Merkezleme */
+                html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-menu,
+                html[data-theme-preset="macos-dark"] body .dropdown-menu.mac-popover-menu,
+                html[data-theme-preset="macos-dark"] body .mac-popover-menu {
+                    position: absolute !important;
+                    top: calc(100% + 8px) !important;
+                    right: -4px !important;
+                    left: auto !important;
+                    transform: none !important;
+                    background: #303030 !important;
+                    background-color: #303030 !important;
+                    border: 1px solid #484848 !important;
+                    border-radius: 12px !important;
+                    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+                    padding: 7px !important;
+                    width: 220px !important;
+                    min-width: 220px !important;
+                    max-width: 220px !important;
+                    margin: 0 !important;
+                    z-index: 99999 !important;
+                    opacity: 1 !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    overflow: visible !important;
+                }
+
+                /* Üç Noktayı Hedefleyen Tooltip / Popover Üçgen Oku */
+                html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-menu::before,
+                html[data-theme-preset="macos-dark"] body .dropdown-menu.mac-popover-menu::before {
+                    content: '' !important;
+                    position: absolute !important;
+                    top: -5px !important;
+                    right: 11px !important;
+                    width: 10px !important;
+                    height: 10px !important;
+                    background: #303030 !important;
+                    border-top: 1px solid #484848 !important;
+                    border-left: 1px solid #484848 !important;
+                    transform: rotate(45deg) !important;
+                    z-index: 100000 !important;
+                    border-top-left-radius: 2px !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .mac-dropdown-group {
+                    background: #242424 !important;
+                    border: 1px solid #383838 !important;
                     border-radius: 8px !important;
-                    color: rgba(235, 235, 245, 0.58) !important;
-                    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035) !important;
+                    padding: 3px !important;
+                    margin-bottom: 6px !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .mac-dropdown-group:last-child {
+                    margin-bottom: 0 !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .dropdown-item,
+                html[data-theme-preset="macos-dark"] body .mac-popover-item {
+                    color: #ffffff !important;
+                    font-size: 13px !important;
+                    font-weight: 400 !important;
+                    line-height: 1.4 !important;
+                    padding: 6px 10px !important;
+                    border-radius: 6px !important;
+                    margin: 0 !important;
+                    width: 100% !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    background: transparent !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    transition: background 0.12s ease, color 0.12s ease !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .dropdown-item:hover,
+                html[data-theme-preset="macos-dark"] body .dropdown-item:focus,
+                html[data-theme-preset="macos-dark"] body .mac-popover-item:hover,
+                html[data-theme-preset="macos-dark"] body .mac-popover-item:focus {
+                    background: #3b3b3b !important;
+                    color: #ffffff !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .dropdown-item.disabled,
+                html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled {
+                    color: #5a5a5a !important;
+                    background: transparent !important;
+                    cursor: default !important;
+                    pointer-events: none !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .mac-item-shortcut {
+                    font-size: 12px !important;
+                    font-weight: 400 !important;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+                    color: #8c8c8c !important;
+                    margin-left: auto !important;
+                    padding-left: 8px !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .dropdown-item:hover .mac-item-shortcut,
+                html[data-theme-preset="macos-dark"] body .mac-popover-item:hover .mac-item-shortcut {
+                    color: #b0b0b0 !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .dropdown-item.disabled .mac-item-shortcut,
+                html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled .mac-item-shortcut {
+                    color: #4a4a4a !important;
+                }
+
+                /* Sidebar içerisi tamamen kesintisiz ve akıcı (çizgisiz) */
+                html[data-theme-preset="macos-dark"] body .sidebar-menu-scroll {
+                    border-top: none !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body #sidebar-menu {
-                    padding: 6px 5px 12px !important;
+                    padding: 4px 6px 16px !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .menu-section {
-                    margin-bottom: 6px;
+                    margin-bottom: 4px;
                 }
 
                 html[data-theme-preset="macos-dark"] body #sidebar-menu .menu-title,
                 html[data-theme-preset="macos-dark"] body #side-menu .menu-title {
-                    min-height: 24px;
-                    padding: 7px 10px 3px !important;
+                    min-height: auto !important;
+                    padding: 12px 10px 4px !important;
                     background: transparent !important;
                     color: rgba(235, 235, 245, 0.38) !important;
-                    font-size: 10px !important;
-                    font-weight: 650 !important;
-                    letter-spacing: 0.035em !important;
+                    font-size: 10.5px !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.04em !important;
                     text-transform: uppercase !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu li a,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a {
-                    min-height: 34px;
-                    margin: 1px 4px !important;
-                    padding: 7px 10px !important;
+                /* Ana menü satırları */
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li > a,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li > a {
+                    min-height: 32px !important;
+                    margin: 1px 6px !important;
+                    padding: 6px 10px !important;
                     gap: 10px !important;
                     border: 1px solid transparent !important;
                     border-radius: 7px !important;
-                    color: rgba(255, 255, 255, 0.9) !important;
+                    color: rgba(255, 255, 255, 0.85) !important;
                     font-size: 13px !important;
                     font-weight: 450 !important;
                     line-height: 18px;
-                    transition: background-color .18s ease, color .14s ease, border-color .14s ease !important;
+                    transition: background-color .15s ease, color .12s ease !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu li a i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu li a svg,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a svg {
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li > a i,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li > a svg,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li > a i,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li > a svg {
                     width: 16px !important;
                     height: 16px !important;
                     min-width: 16px !important;
                     margin: 0 !important;
-                    color: rgba(245, 245, 247, 0.82) !important;
+                    color: rgba(255, 255, 255, 0.75) !important;
                     stroke: currentColor !important;
                     stroke-width: 1.65 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li a:hover,
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu #side-menu li a:hover {
-                    background: rgba(255, 255, 255, 0.105) !important;
+                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li > a:hover,
+                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu #side-menu li > a:hover {
+                    background: rgba(255, 255, 255, 0.08) !important;
                     border-color: transparent !important;
-                    color: #fff !important;
+                    color: #ffffff !important;
                     backdrop-filter: none !important;
                     -webkit-backdrop-filter: none !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li > a:hover i,
+                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li > a:hover svg,
+                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu #side-menu li > a:hover i,
+                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu #side-menu li > a:hover svg {
+                    color: #ffffff !important;
+                    stroke: currentColor !important;
+                }
+
+                /* Alt Menü Kırılımları — Orijinal Hiyerarşi Korundu */
+                html[data-theme-preset="macos-dark"] body .sub-menu {
+                    padding: 0 0 0 12px !important;
+                    margin: 0 0 0 28px !important;
+                    list-style: none !important;
+                    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+                    position: relative !important;
+                }
+
+                html[data-theme-preset="macos-dark"] body #sidebar-menu .sub-menu li a,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li ul.sub-menu li a {
+                    font-size: 13px !important;
+                    padding-left: 1rem !important;
+                    padding-right: 28px !important;
+                    color: rgba(235, 236, 239, 0.78) !important;
+                    border-radius: 7px !important;
+                    margin: 2px 10px 2px 4px !important;
+                    white-space: nowrap !important;
+                    border: 1px solid transparent !important;
+                    min-height: 30px !important;
+                    transition: background-color .15s ease, color .12s ease, padding-left .15s ease !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu .sub-menu li a:hover,
                 html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li ul.sub-menu li a:hover {
-                    padding-left: 1rem !important;
+                    background-color: rgba(255, 255, 255, 0.08) !important;
+                    color: #ffffff !important;
+                    padding-left: 1.2rem !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu .star-btn {
-                    transition: opacity .14s ease, color .14s ease, background-color .14s ease !important;
-                }
-
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li.mm-active > a:hover,
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li a.active:hover {
-                    background: rgba(255, 255, 255, 0.13) !important;
-                }
-
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a.active,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li.mm-active > a {
-                    background: rgba(255, 255, 255, 0.13) !important;
-                    border-color: rgba(255, 255, 255, 0.035) !important;
-                    color: rgba(235, 236, 239, .82) !important;
+                /* SADECE GERÇEK AKTİF ÖĞE (Seçili Sayfa) Dolu Pill Alır */
+                html[data-theme-preset="macos-dark"] body #sidebar-menu .sub-menu li a.active,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li ul.sub-menu li a.active,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li:not(:has(.sub-menu)) > a.active,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li:not(:has(.sub-menu)) > a.active {
+                    background: rgba(255, 255, 255, 0.16) !important;
+                    border-color: rgba(255, 255, 255, 0.04) !important;
+                    color: #ffffff !important;
                     font-weight: 500 !important;
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+                    box-shadow: inset 0 0.5px 0.5px rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.15) !important;
                     backdrop-filter: none !important;
                     -webkit-backdrop-filter: none !important;
                 }
 
+                html[data-theme-preset="macos-dark"] body #sidebar-menu .sub-menu li a.active {
+                    padding-left: 1.2rem !important;
+                }
+
+                /* Alt menülü üst başlık açıkken çift kutu olmasını engelle, sadece açık/parlak göster */
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li.mm-active:has(.sub-menu) > a,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li.mm-active:has(.sub-menu) > a {
+                    background: rgba(255, 255, 255, 0.05) !important;
+                    color: #ffffff !important;
+                    font-weight: 500 !important;
+                    border-color: transparent !important;
+                    box-shadow: none !important;
+                }
+
                 html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a.active i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li.mm-active > a i,
                 html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a.active svg,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li.mm-active > a svg {
-                    color: #8eacbf !important;
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu li a.active i,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu li a.active svg,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li.mm-active > a i,
+                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li.mm-active > a svg {
+                    color: #ffffff !important;
                     stroke: currentColor !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .has-arrow::after {
-                    right: 12px !important;
+                    right: 14px !important;
                     width: 5px !important;
                     height: 5px !important;
-                    border-color: rgba(235, 235, 245, 0.46) !important;
+                    border-color: rgba(235, 235, 245, 0.45) !important;
                 }
 
                 html[data-theme-preset="macos-dark"] body .star-btn {
                     color: rgba(235, 235, 245, 0.35) !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu .sidebar-menu-scroll,
+                html[data-theme-preset="macos-dark"] body .vertical-menu .sidebar-menu-scroll {
+                    position: relative !important;
+                    z-index: 1 !important;
+                }
+
                 html[data-theme-preset="macos-dark"] body .vertical-menu .sidebar-sticky-top {
-                    position: relative;
-                    z-index: 1;
+                    position: relative !important;
+                    z-index: 1000 !important;
                 }
 
                 /* Dar Finder sidebar: esit dis bosluk, gizli ince scrollbar ve yumusak koseler */
@@ -1349,6 +1561,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                         <span class="macos-dot macos-dot-yellow" title="Simge Durumuna Küçült"></span>
                         <span class="macos-dot macos-dot-green" title="Ekranı Kapla"></span>
                     </div>
+
                     <div class="brand-wrapper">
                         <div class="brand-logo">
                             <i data-feather="box"></i>
@@ -1362,9 +1575,9 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
                 <div class="sidebar-search-container">
                     <div class="d-flex align-items-center gap-1">
-                        <div class="position-relative flex-grow-1">
+                        <div class="position-relative flex-grow-1 search-input-wrapper">
                             <input type="text" class="form-control sidebar-search" id="menu-search-input"
-                                placeholder="Menüde ara...">
+                                placeholder="Menüde ara..." autocomplete="off">
                             <i data-feather="search" class="search-icon"></i>
                             <button type="button" class="btn-clear-search" id="btn-clear-menu-search" style="display: none;" title="Aramayı Temizle" aria-label="Aramayı Temizle">
                                 <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -1374,20 +1587,46 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                             </button>
                         </div>
                         <div class="dropdown menu-settings-dropdown">
-                            <button class="btn btn-sidebar-settings dropdown-toggle" type="button" id="sidebarMenuSettingsBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Menü Ayarları">
-                                <i data-feather="settings" style="width: 15px; height: 15px;"></i>
+                            <button class="btn btn-sidebar-settings dropdown-toggle" type="button" id="sidebarMenuSettingsBtn" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" title="Menü Ayarları">
+                                <i data-feather="settings" class="settings-icon-default" style="width: 15px; height: 15px;"></i>
+                                <i data-feather="more-horizontal" class="settings-icon-mac" style="width: 15px; height: 15px;"></i>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" aria-labelledby="sidebarMenuSettingsBtn">
-                                <li>
-                                    <h6 class="dropdown-header text-muted py-1" style="font-size: 11px; text-transform: uppercase;">Menü Ayarları</h6>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item d-flex align-items-center gap-2 py-2" type="button" id="btn-reset-menu-order">
-                                        <i data-feather="rotate-ccw" style="width: 14px; height: 14px; color: #ef4444;"></i>
+                            <div class="dropdown-menu dropdown-menu-end mac-popover-menu shadow-lg border-0" aria-labelledby="sidebarMenuSettingsBtn">
+                                <!-- Grup 1: Menü İşlemleri -->
+                                <div class="mac-dropdown-group">
+                                    <button class="dropdown-item mac-popover-item" type="button" id="btn-reset-menu-order">
                                         <span>Varsayılan Menü Sırası</span>
+                                        <span class="mac-item-shortcut">Sıfırla</span>
                                     </button>
-                                </li>
-                            </ul>
+                                    <button class="dropdown-item mac-popover-item" type="button" id="btn-collapse-all-menus">
+                                        <span>Tüm Menüleri Kapat</span>
+                                        <span class="mac-item-shortcut">Daralt</span>
+                                    </button>
+                                </div>
+
+                                <!-- Grup 2: Arama & Düzen -->
+                                <div class="mac-dropdown-group">
+                                    <button class="dropdown-item mac-popover-item" type="button" id="btn-focus-menu-search">
+                                        <span>Menüde Ara</span>
+                                        <span class="mac-item-shortcut">Ctrl+F</span>
+                                    </button>
+                                    <button class="dropdown-item mac-popover-item disabled" type="button" tabindex="-1">
+                                        <span>Geri Al</span>
+                                        <span class="mac-item-shortcut">Ctrl+Z</span>
+                                    </button>
+                                </div>
+
+                                <!-- Grup 3: Tercihler & Bilgi -->
+                                <div class="mac-dropdown-group">
+                                    <button class="dropdown-item mac-popover-item" type="button" id="btn-toggle-shortcuts-info">
+                                        <span>Klavye Kısayolları</span>
+                                        <span class="mac-item-shortcut">Ctrl+?</span>
+                                    </button>
+                                    <button class="dropdown-item mac-popover-item" type="button" id="btn-about-system">
+                                        <span>Ersan ELK Hakkında</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1953,6 +2192,72 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     if (confirm('Menü sıranız varsayılan haline döndürülecektir. Onaylıyor musunuz?')) {
                         executeReset();
                     }
+                }
+            });
+        }
+
+        // 4. Tüm Menüleri Kapatma / Daraltma Butonu
+        const btnCollapseAll = document.getElementById('btn-collapse-all-menus');
+        if (btnCollapseAll) {
+            btnCollapseAll.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (typeof $ !== 'undefined') {
+                    $('#side-menu ul.sub-menu.mm-show').removeClass('mm-show').css('height', '');
+                    $('#side-menu li.mm-active').removeClass('mm-active');
+                    $('#side-menu a[aria-expanded="true"]').attr('aria-expanded', 'false');
+                }
+                if (typeof showToast === 'function') {
+                    showToast('Tüm alt menüler kapatıldı.');
+                }
+            });
+        }
+
+        // 5. Menüde Arama Odağı
+        const btnFocusSearch = document.getElementById('btn-focus-menu-search');
+        if (btnFocusSearch) {
+            btnFocusSearch.addEventListener('click', function(e) {
+                e.preventDefault();
+                const searchInput = document.getElementById('menu-search-input');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            });
+        }
+
+        // 6. Klavye Kısayolları Modal/Bilgilendirme
+        const btnShortcuts = document.getElementById('btn-toggle-shortcuts-info');
+        if (btnShortcuts) {
+            btnShortcuts.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Klavye Kısayolları',
+                        html: '<div style="text-align:left; font-size:13px; line-height:2; padding:8px;">' +
+                              '<div><kbd style="background:#333; color:#fff; padding:2px 6px; border-radius:4px;">Ctrl + F</kbd> : Menüde Arama Yap</div>' +
+                              '<div><kbd style="background:#333; color:#fff; padding:2px 6px; border-radius:4px;">Alt + C</kbd> : Tüm Menüleri Kapat</div>' +
+                              '<div><kbd style="background:#333; color:#fff; padding:2px 6px; border-radius:4px;">Ctrl + Shift + R</kbd> : Menü Sırasını Sıfırla</div>' +
+                              '</div>',
+                        icon: 'info',
+                        confirmButtonText: 'Tamam',
+                        confirmButtonColor: '#1c84ee'
+                    });
+                }
+            });
+        }
+
+        // 7. Sistem Hakkında
+        const btnAbout = document.getElementById('btn-about-system');
+        if (btnAbout) {
+            btnAbout.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Ersan ELK',
+                        text: 'Yönetim Paneli • Sürüm 2.5',
+                        icon: 'info',
+                        confirmButtonText: 'Kapat',
+                        confirmButtonColor: '#1c84ee'
+                    });
                 }
             });
         }

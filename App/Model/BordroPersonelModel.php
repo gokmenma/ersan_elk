@@ -1179,7 +1179,6 @@ class BordroPersonelModel extends Model
         $sozlesmeHakedisiOverride = false;
         $resmiDahilEkToplam = 0.0;
         $bankayaTasinabilirEkOdemeGosterim = 0.0;
-        $eldenTasinabilirEkOdemeGosterim = 0.0;
         $muhasebePrimToplami = 0.0;
         $muhasebeBankaPrimToplami = 0.0;
         $muhasebedeGizlenecekPrim = 0.0;
@@ -1243,8 +1242,6 @@ class BordroPersonelModel extends Model
                     if (!$isPrimTuru) {
                         $bankaMahsupEdilebilirEkOdemeGosterim += $tutar;
                     }
-                } elseif ($yontem === 'elden' && !$isPuantajOdeme) {
-                    $eldenTasinabilirEkOdemeGosterim += $tutar;
                 }
                 if (!$isInclusive && $isYemekOdeme && $yontem !== 'sodexo') {
                     $muhasebeHariciYemekToplami += max(0.0, $tutar);
@@ -1529,16 +1526,6 @@ class BordroPersonelModel extends Model
                     + $yuvarlamaFarki;
             }
 
-            // Resmî/temel hakedişin hesabında kullanılan manuel sözleşme dışı
-            // kazançlar toplam hakedişten mahsup edilemez; ayrıca hak edilir.
-            if ($isNet && !$isPrimUsulu && $karisikMaasOzeti === null) {
-                $toplamAlacagi = round(
-                    $toplamAlacagi
-                    + max(0.0, $bankayaTasinabilirEkOdemeGosterim)
-                    + max(0.0, $eldenTasinabilirEkOdemeGosterim),
-                    2
-                );
-            }
         } else {
             $sozlesmeHakedisi = $karisikMaasOzeti !== null
                 ? floatval($karisikMaasOzeti['sabit_hakedis'])
@@ -1731,6 +1718,59 @@ class BordroPersonelModel extends Model
             'bankaAktarilanKesinti' => $bankaAktarilanKesinti,
             'bankaEkOdemeDetaylari' => $bankaEkOdemeDetaylari,
             'bankaKesintiKalemleri' => $bankaKesintiKalemleri,
+        ];
+    }
+
+    /**
+     * Bordro detayındaki banka kalemlerini, net banka toplamıyla kuruş bazında uzlaştırır.
+     * Maaşa dahil yemek havuzunu büyüten ek ödeme ayrıca listelendiğinde yemek satırında
+     * ikinci kez görünmesini engeller; hesaplanan/kaydedilen ödeme tutarını değiştirmez.
+     */
+    public function getBankaOdemeDetayDagilimi(array $hesap): array
+    {
+        $kesinti = max(0.0, round(
+            (float) ($hesap['bankaOncelikliKesinti'] ?? 0)
+            + (float) ($hesap['bankaAktarilanKesinti'] ?? 0),
+            2
+        ));
+        $brutBanka = max(0.0, round((float) ($hesap['bankaOdemesi'] ?? 0) + $kesinti, 2));
+        $kalan = $brutBanka;
+
+        $asgari = min($kalan, max(0.0, round((float) ($hesap['asgariYatacak'] ?? 0), 2)));
+        $kalan = max(0.0, round($kalan - $asgari, 2));
+
+        $esYardimi = min($kalan, max(0.0, round((float) ($hesap['spouseAllowanceDeduction'] ?? 0), 2)));
+        $kalan = max(0.0, round($kalan - $esYardimi, 2));
+
+        $yemek = min($kalan, max(0.0, round((float) ($hesap['mealAllowanceDeduction'] ?? 0), 2)));
+        $kalan = max(0.0, round($kalan - $yemek, 2));
+
+        $ekOdemeler = [];
+        foreach (($hesap['bankaEkOdemeDetaylari'] ?? []) as $ekOdeme) {
+            $toplamTutar = max(0.0, round((float) ($ekOdeme['tutar'] ?? 0), 2));
+            if ($toplamTutar <= 0) {
+                continue;
+            }
+            $ayriBankaTutari = min($kalan, $toplamTutar);
+            $yemekDahilTutari = max(0.0, round($toplamTutar - $ayriBankaTutari, 2));
+            $ekOdemeler[] = [
+                'etiket' => (string) ($ekOdeme['etiket'] ?? ''),
+                'tutar' => $ayriBankaTutari,
+                'toplam_tutar' => $toplamTutar,
+                'yemek_dahil_tutar' => $yemekDahilTutari,
+            ];
+            $kalan = max(0.0, round($kalan - $ayriBankaTutari, 2));
+        }
+
+        return [
+            'asgari' => $asgari,
+            'yemek' => $yemek,
+            'es_yardimi' => $esYardimi,
+            'ek_odemeler' => $ekOdemeler,
+            'diger_banka_payi' => $kalan,
+            'kesinti' => $kesinti,
+            'brut_banka' => $brutBanka,
+            'net_banka' => round((float) ($hesap['bankaOdemesi'] ?? 0), 2),
         ];
     }
 
@@ -3388,8 +3428,8 @@ class BordroPersonelModel extends Model
 
         // 1. Önceki kaçak ihbar primlerini temizle (duplicate önlemek için)
         $deleteSql = $this->db->prepare("
-            DELETE FROM personel_ek_odemeler 
-            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Kaçak İhbar Primi]%'
+            DELETE FROM personel_ek_odemeler
+            WHERE personel_id = ? AND donem_id = ? AND tur = 'kacak_ihbar_primi'
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
@@ -3478,8 +3518,8 @@ class BordroPersonelModel extends Model
         // 5. Ek ödeme oluştur
         $insertSql = $this->db->prepare("
             INSERT INTO personel_ek_odemeler 
-            (personel_id, donem_id, tur, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
-            VALUES (?, ?, 'prim', ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+            (personel_id, donem_id, tur, aciklama, tutar, tekrar_tipi, durum, aktif, banka_matrahina_ekle, created_at)
+            VALUES (?, ?, 'kacak_ihbar_primi', ?, ?, 'tek_sefer', 'onaylandi', 1, 1, NOW())
         ");
         $insertSql->execute([$personel_id, $donem_id, $aciklama, $toplamPrim]);
 
@@ -6182,14 +6222,6 @@ class BordroPersonelModel extends Model
                 + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                 + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
-            // Kanal seçimi toplam hakedişi değiştirmez. Manuel sözleşme dışı
-            // kazançlar resmî/temel hakedişin üzerine ayrıca eklenir.
-            if ($isNetMaas && !$isPrimUsulu && $karisikMaasOzeti === null) {
-                $baseHakedis = round(
-                    $baseHakedis + max(0.0, $bankayaTasinabilirEkOdeme) + max(0.0, $eldenTasinabilirEkOdeme),
-                    2
-                );
-            }
             
             $netMaas = $baseHakedis;
             

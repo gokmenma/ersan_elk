@@ -861,6 +861,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
                 $asgariUcretBrut = $BordroParametre->getGenelAyar('asgari_ucret_brut', $donemBaslangicTarihi) ?? 33030.00;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
+                $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap);
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
                 $isInclusive = (bool) $hesap['isInclusive'];
@@ -1361,27 +1362,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             
                             $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
                                         <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret (Net)</td>
-                                        <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">' . number_format($sozlesmeTabanGosterim, 2, ',', '.') . ' ₺</td>
+                                        <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">' . number_format($bankaDetayDagilimi['asgari'], 2, ',', '.') . ' ₺</td>
                                       </tr>';
-                            if ($displayMealDeduction > 0) {
+                            if ($bankaDetayDagilimi['yemek'] > 0) {
                                 $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
                                             <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Yemek Yardımı (Resmi)</td>
-                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
+                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</td>
                                           </tr>';
                             }
-                            if ($spouseDeduction > 0) {
+                            if ($bankaDetayDagilimi['es_yardimi'] > 0) {
                                 $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
                                             <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Eş Yardımı (Resmi)</td>
-                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>
+                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bankaDetayDagilimi['es_yardimi'], 2, ',', '.') . ' ₺</td>
                                           </tr>';
                             }
-                            if (!empty($hesap['bankaEkOdemeDetaylari'])) {
-                                foreach ($hesap['bankaEkOdemeDetaylari'] as $bed) {
-                                    $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
-                                                <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($bed['etiket']) . '</td>
-                                                <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</td>
-                                              </tr>';
+                            if (!empty($bankaDetayDagilimi['ek_odemeler'])) {
+                                foreach ($bankaDetayDagilimi['ek_odemeler'] as $bed) {
+                                    if ($bed['tutar'] > 0) {
+                                        $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
+                                                    <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . '</td>
+                                                    <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</td>
+                                                  </tr>';
+                                    }
+                                    if ($bed['yemek_dahil_tutar'] > 0) {
+                                        $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
+                                                    <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-info-circle me-1 opacity-50"></i>' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . ' <small>(Yemek yardımına dahil)</small></td>
+                                                    <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">' . number_format($bed['yemek_dahil_tutar'], 2, ',', '.') . ' ₺ <small>(bilgi)</small></td>
+                                                  </tr>';
+                                    }
                                 }
+                            }
+                            if ($bankaDetayDagilimi['diger_banka_payi'] > 0) {
+                                $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
+                                            <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Diğer Banka Payı</td>
+                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bankaDetayDagilimi['diger_banka_payi'], 2, ',', '.') . ' ₺</td>
+                                          </tr>';
                             }
                         }
                         if ($ucretsizIzinGunu > 0) {
@@ -1748,6 +1763,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
                 $asgariUcretBrut = $BordroParametre->getGenelAyar('asgari_ucret_brut', $donemBaslangicTarihi) ?? 33030.00;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
+                $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap);
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
                 $isInclusive = (bool) $hesap['isInclusive'];
@@ -2295,7 +2311,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     } elseif (strpos($eoTur, 'sosyal') !== false || strpos($eoTur, 'yardim') !== false) {
                         $digerSosyalYardim += floatval($ek->tutar);
                         $digerSosyalYardimListesi[] = $ek;
-                    } elseif ($eoTur === 'prim' || $eoTur === 'ikramiye') {
+                    } elseif ($eoTur === 'prim' || $eoTur === 'ikramiye' || $eoTur === 'kacak_ihbar_primi') {
                         if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0) {
                             $primTutar += floatval($ek->tutar);
                             $primListesi[] = $ek;
@@ -3136,22 +3152,29 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                     
                     if ($hesap['isInclusive']) {
-                        $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Asgari Ücret (Net)</span><span class="pop-row-val val-white">' . number_format($hesap['asgariYatacak'], 2, ',', '.') . ' ₺</span></div>';
-                        if ($hesap['mealAllowanceDeduction'] > 0) {
-                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Yemek Yardımı</span><span class="pop-row-val val-green">+' . number_format($hesap['mealAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
+                        $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Asgari Ücret (Net)</span><span class="pop-row-val val-white">' . number_format($bankaDetayDagilimi['asgari'], 2, ',', '.') . ' ₺</span></div>';
+                        if ($bankaDetayDagilimi['yemek'] > 0) {
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Yemek Yardımı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</span></div>';
                         }
-                        if ($hesap['spouseAllowanceDeduction'] > 0) {
-                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Eş Yardımı</span><span class="pop-row-val val-green">+' . number_format($hesap['spouseAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
+                        if ($bankaDetayDagilimi['es_yardimi'] > 0) {
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Eş Yardımı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['es_yardimi'], 2, ',', '.') . ' ₺</span></div>';
                         }
-                        if (!empty($hesap['bankaEkOdemeDetaylari'])) {
-                            foreach ($hesap['bankaEkOdemeDetaylari'] as $bed) {
+                        if (!empty($bankaDetayDagilimi['ek_odemeler'])) {
+                            foreach ($bankaDetayDagilimi['ek_odemeler'] as $bed) {
                                 if ($bed['tutar'] > 0) {
-                                    $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($bed['etiket']) . '</span><span class="pop-row-val val-green">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</span></div>';
+                                    $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . '</span><span class="pop-row-val val-green">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</span></div>';
+                                }
+                                if ($bed['yemek_dahil_tutar'] > 0) {
+                                    $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . '<small style="display:block;color:#94a3b8;">Yemek yardımına dahil</small></span><span class="pop-row-val" style="color:#94a3b8;">' . number_format($bed['yemek_dahil_tutar'], 2, ',', '.') . ' ₺ <small>(bilgi)</small></span></div>';
                                 }
                             }
                         }
                         
-                        $toplamKesintiBanka = $hesap['bankaOncelikliKesinti'] + $hesap['bankaAktarilanKesinti'];
+                        if ($bankaDetayDagilimi['diger_banka_payi'] > 0) {
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Diğer Banka Payı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['diger_banka_payi'], 2, ',', '.') . ' ₺</span></div>';
+                        }
+
+                        $toplamKesintiBanka = $bankaDetayDagilimi['kesinti'];
                         if ($toplamKesintiBanka > 0) {
                             $bankaDetayHtml .= '<div class="pop-row" style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:4px; margin-top:2px;"><span class="pop-row-title">Düşülen Kesintiler</span><span class="pop-row-val val-red">-' . number_format($toplamKesintiBanka, 2, ',', '.') . ' ₺</span></div>';
                         }

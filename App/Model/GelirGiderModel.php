@@ -448,9 +448,12 @@ class GelirGiderModel extends Model
             $headers = array_shift($rows);
             $headerMap = [];
 
+            $trSearch = ['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç'];
+            $trReplace = ['i', 'i', 'g', 'u', 's', 'o', 'c', 'i', 'g', 'u', 's', 'o', 'c'];
+
             foreach ($headers as $colIdx => $headerTitle) {
-                $norm = mb_strtolower(trim((string)$headerTitle), 'UTF-8');
-                $norm = str_replace(['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'İ', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'g', 'u', 's', 'o', 'c', 'i', 'g', 'u', 's', 'o', 'c'], $norm);
+                $norm = str_replace($trSearch, $trReplace, trim((string)$headerTitle));
+                $norm = mb_strtolower($norm, 'UTF-8');
 
                 if (str_contains($norm, 'islem tarihi') || ($norm === 'tarih')) {
                     $headerMap['tarih'] = $colIdx;
@@ -514,15 +517,16 @@ class GelirGiderModel extends Model
                     continue;
                 }
 
-                // Tür tespiti (1: Gelir, 2: Gider)
+                // Tür tespiti (1: Gelir, 2: Gider) - GELİR, GİDER, GELIR, GIDER, vb.
                 $rawType = trim((string)($row[$idxType] ?? ''));
-                $normType = mb_strtolower($rawType, 'UTF-8');
-                $normType = str_replace(['ı', 'ğ', 'ü', 'ş', 'ö', 'ç', 'İ', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'g', 'u', 's', 'o', 'c', 'i', 'g', 'u', 's', 'o', 'c'], $normType);
+                $normType = str_replace($trSearch, $trReplace, $rawType);
+                $normType = mb_strtolower($normType, 'UTF-8');
+                $normType = trim($normType);
 
                 $type = 1;
-                if ($normType === '2' || str_contains($normType, 'gider')) {
+                if ($normType === '2' || str_contains($normType, 'gider') || str_contains($normType, 'cikis') || $normType === 'g') {
                     $type = 2;
-                } elseif ($normType === '1' || str_contains($normType, 'gelir')) {
+                } elseif ($normType === '1' || str_contains($normType, 'gelir') || str_contains($normType, 'giris') || $normType === 'a') {
                     $type = 1;
                 } else {
                     $type = 1;

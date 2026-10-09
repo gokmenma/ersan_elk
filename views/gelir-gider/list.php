@@ -322,56 +322,335 @@ $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'ti
     font-size: 11px !important;
 }
 
-[data-bs-theme="dark"] .summary-kpi-card {
-    background: #1e293b;
-    border-color: rgba(255, 255, 255, 0.08);
+/* macOS Koyu Tema & Genel Dark Tema Uyumu */
+[data-bs-theme="dark"] .summary-kpi-card,
+html[data-theme-preset="macos-dark"] .summary-kpi-card {
+    background: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
 }
-[data-bs-theme="dark"] #gelirGiderTable tbody td {
+[data-bs-theme="dark"] .summary-kpi-card:hover,
+html[data-theme-preset="macos-dark"] .summary-kpi-card:hover {
+    border-color: #3b82f6 !important;
+}
+[data-bs-theme="dark"] .summary-kpi-value,
+html[data-theme-preset="macos-dark"] .summary-kpi-value {
+    color: #f3f4f8 !important;
+}
+[data-bs-theme="dark"] .summary-kpi-label,
+html[data-theme-preset="macos-dark"] .summary-kpi-label {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+[data-bs-theme="dark"] .summary-kpi-subtext,
+html[data-theme-preset="macos-dark"] .summary-kpi-subtext {
+    color: rgba(200, 205, 218, 0.6) !important;
+}
+[data-bs-theme="dark"] h4.text-dark,
+[data-bs-theme="dark"] h5.text-dark,
+html[data-theme-preset="macos-dark"] h4.text-dark,
+html[data-theme-preset="macos-dark"] h5.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
+}
+
+/* Üst Araç Çubuğu Butonları */
+[data-bs-theme="dark"] .top-action-btn.bg-white,
+[data-bs-theme="dark"] .top-icon-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white {
+    background-color: rgba(35, 36, 42, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+    box-shadow: none !important;
+}
+
+/* Header Filtre Select2 (Yıl & Ay) */
+[data-bs-theme="dark"] .header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single,
+html[data-theme-preset="macos-dark"] .header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single {
+    background-color: rgba(28, 30, 38, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-bs-theme="dark"] .header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single .select2-selection__rendered,
+html[data-theme-preset="macos-dark"] .header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+[data-bs-theme="dark"] .header-filter-wrapper .form-floating > label,
+html[data-theme-preset="macos-dark"] .header-filter-wrapper .form-floating > label {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+
+/* Tablo Başlığı (Thead) */
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead tr:first-child > th,
+html[data-theme-preset="macos-dark"] .table-responsive #gelirGiderTable thead tr:first-child > th {
+    background-color: rgba(39, 40, 44, .96) !important;
+    color: rgba(224, 225, 229, .88) !important;
+    border-color: rgba(255, 255, 255, .08) !important;
+}
+
+/* Tablo Filtre Satırı (dt-filter-row) */
+[data-bs-theme="dark"] #gelirGiderTable thead .dt-filter-row th,
+[data-bs-theme="dark"] .dt-filter-row > th,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] .dt-filter-row > th,
+html[data-theme-preset="macos-dark"] .table-responsive #gelirGiderTable thead .dt-filter-row th {
+    background-color: rgba(30, 32, 38, .98) !important;
+    background-image: none !important;
+    color: rgba(224, 225, 229, .72) !important;
+    border-color: rgba(255, 255, 255, .08) !important;
+}
+
+/* Filtre Inputları */
+[data-bs-theme="dark"] #gelirGiderTable thead .dt-filter-row input,
+[data-bs-theme="dark"] #gelirGiderTable thead .dt-filter-row select,
+[data-bs-theme="dark"] .dt-filter-control,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead .dt-filter-row input,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead .dt-filter-row select,
+html[data-theme-preset="macos-dark"] .dt-filter-control {
+    background-color: rgba(20, 22, 26, .94) !important;
+    color: rgba(225, 226, 230, .85) !important;
+    border-color: rgba(255, 255, 255, .13) !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable thead .dt-filter-row input::placeholder,
+[data-bs-theme="dark"] .dt-filter-control::placeholder,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead .dt-filter-row input::placeholder,
+html[data-theme-preset="macos-dark"] .dt-filter-control::placeholder {
+    color: rgba(202, 209, 222, .42) !important;
+}
+[data-bs-theme="dark"] .dt-filter-mode-trigger,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-trigger {
+    background-color: rgba(35, 37, 43, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+[data-bs-theme="dark"] .dt-filter-mode-trigger:hover,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-trigger:hover {
+    background-color: rgba(50, 53, 62, 0.9) !important;
+    color: #fff !important;
+}
+
+/* Filtre Açılır Menüleri (Funnel & Excel) */
+[data-bs-theme="dark"] .dt-filter-mode-dropdown,
+[data-bs-theme="dark"] .dt-filter-excel-dropdown,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-dropdown,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown {
+    background-color: #1e2028 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6) !important;
+}
+[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt,
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-dropdown .mode-opt,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .option-item {
+    color: rgba(230, 235, 245, 0.85) !important;
+}
+[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt:hover,
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item:hover,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-dropdown .mode-opt:hover,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .option-item:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #38bdf8 !important;
+}
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box input,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .search-box input {
+    background-color: #15171d !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
     color: #f1f5f9 !important;
 }
-[data-bs-theme="dark"] .summary-kpi-value {
-    color: #f8fafc;
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box,
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .dt-filter-footer,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .search-box,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .dt-filter-footer {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: #1a1c23 !important;
 }
-[data-bs-theme="dark"] #gelirGiderModal .modal-header, [data-bs-theme="dark"] #importExcelModal .modal-header {
-    background: #0f172a;
-    border-color: rgba(255, 255, 255, 0.08);
-}
-[data-bs-theme="dark"] .form-selectgroup-label {
-    background: #1e293b;
-    border-color: #334155;
-    color: #f1f5f9;
-}
-[data-bs-theme="dark"] .form-selectgroup-input:checked + .form-selectgroup-label {
-    background: #1e3a8a;
-    border-color: #3b82f6;
-}
-[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single {
-    background-color: #1e293b !important;
-    border-color: #334155 !important;
-}
-[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered {
-    color: #f1f5f9 !important;
-}
-[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th {
-    background-color: #1e293b !important;
-    color: #f1f5f9 !important;
-    border-bottom-color: #334155 !important;
-}
+
+/* Tablo Gövdesi (Tbody Tr/Td) */
 [data-bs-theme="dark"] #gelirGiderTable,
 [data-bs-theme="dark"] #gelirGiderTable tbody tr:last-child td,
-[data-bs-theme="dark"] .table-responsive {
-    border-bottom-color: #334155 !important;
+[data-bs-theme="dark"] .table-responsive,
+html[data-theme-preset="macos-dark"] #gelirGiderTable,
+html[data-theme-preset="macos-dark"] #gelirGiderTable tbody tr:last-child td,
+html[data-theme-preset="macos-dark"] .table-responsive {
+    border-color: rgba(255, 255, 255, .08) !important;
 }
-[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting {
+[data-bs-theme="dark"] #gelirGiderTable tbody td,
+html[data-theme-preset="macos-dark"] #gelirGiderTable tbody td {
+    background-color: rgba(30, 32, 38, .85) !important;
+    color: rgba(232, 233, 236, .85) !important;
+    border-color: rgba(255, 255, 255, .08) !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable tbody tr:hover td,
+html[data-theme-preset="macos-dark"] #gelirGiderTable tbody tr:hover td {
+    background-color: rgba(255, 255, 255, .05) !important;
+}
+[data-bs-theme="dark"] #gelirGiderTable tbody tr.selected td,
+html[data-theme-preset="macos-dark"] #gelirGiderTable tbody tr.selected td {
+    background-color: rgba(59, 130, 246, .18) !important;
+}
+
+/* Checkbox Dark Mode */
+[data-bs-theme="dark"] .custom-table-check,
+[data-bs-theme="dark"] .row-check,
+[data-bs-theme="dark"] #checkAll,
+html[data-theme-preset="macos-dark"] .custom-table-check,
+html[data-theme-preset="macos-dark"] .row-check,
+html[data-theme-preset="macos-dark"] #checkAll {
+    background-color: rgba(20, 22, 26, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* DataTables Pagination & Info */
+[data-bs-theme="dark"] .dataTables_info,
+html[data-theme-preset="macos-dark"] .dataTables_info {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+[data-bs-theme="dark"] .dataTables_length select,
+html[data-theme-preset="macos-dark"] .dataTables_length select {
+    background-color: rgba(28, 30, 38, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+[data-bs-theme="dark"] .dataTables_paginate .pagination .page-item .page-link,
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item .page-link {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(232, 235, 242, 0.8) !important;
+}
+[data-bs-theme="dark"] .dataTables_paginate .pagination .page-item.active .page-link,
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item.active .page-link {
+    background-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .dataTables_paginate .pagination .page-item.disabled .page-link,
+html[data-theme-preset="macos-dark"] .dataTables_paginate .pagination .page-item.disabled .page-link {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(232, 235, 242, 0.3) !important;
+}
+
+/* Subtle Butonlar */
+[data-bs-theme="dark"] .btn-subtle-primary,
+html[data-theme-preset="macos-dark"] .btn-subtle-primary {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    color: #60a5fa !important;
+    border: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+[data-bs-theme="dark"] .btn-subtle-success,
+html[data-theme-preset="macos-dark"] .btn-subtle-success {
+    background-color: rgba(34, 197, 94, 0.15) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(34, 197, 94, 0.25) !important;
+}
+[data-bs-theme="dark"] .btn-subtle-danger,
+html[data-theme-preset="macos-dark"] .btn-subtle-danger {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+}
+[data-bs-theme="dark"] .btn-subtle-warning,
+html[data-theme-preset="macos-dark"] .btn-subtle-warning {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245, 158, 11, 0.25) !important;
+}
+[data-bs-theme="dark"] .btn-subtle-secondary,
+html[data-theme-preset="macos-dark"] .btn-subtle-secondary {
+    background-color: rgba(148, 163, 184, 0.15) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+
+/* Dropdown Menüler */
+[data-bs-theme="dark"] .dropdown-menu,
+html[data-theme-preset="macos-dark"] .dropdown-menu {
+    background-color: #1e2028 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5) !important;
+}
+[data-bs-theme="dark"] .dropdown-item,
+html[data-theme-preset="macos-dark"] .dropdown-item {
+    color: rgba(235, 238, 245, 0.85) !important;
+}
+[data-bs-theme="dark"] .dropdown-item:hover,
+html[data-theme-preset="macos-dark"] .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .dropdown-divider,
+html[data-theme-preset="macos-dark"] .dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Modal Stilleri */
+[data-bs-theme="dark"] #gelirGiderModal .modal-content,
+[data-bs-theme="dark"] #importExcelModal .modal-content,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .modal-content,
+html[data-theme-preset="macos-dark"] #importExcelModal .modal-content {
+    background-color: #181a20 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+}
+[data-bs-theme="dark"] #gelirGiderModal .modal-header,
+[data-bs-theme="dark"] #importExcelModal .modal-header,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .modal-header,
+html[data-theme-preset="macos-dark"] #importExcelModal .modal-header {
+    background: #131418 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] #gelirGiderModal .modal-footer,
+[data-bs-theme="dark"] #importExcelModal .modal-footer,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .modal-footer,
+html[data-theme-preset="macos-dark"] #importExcelModal .modal-footer {
+    background: #131418 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] .form-selectgroup-label,
+html[data-theme-preset="macos-dark"] .form-selectgroup-label {
+    background: #21232b !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #f1f5f9 !important;
+}
+[data-bs-theme="dark"] .form-selectgroup-input:checked + .form-selectgroup-label,
+html[data-theme-preset="macos-dark"] .form-selectgroup-input:checked + .form-selectgroup-label {
+    background: rgba(59, 130, 246, 0.2) !important;
+    border-color: #3b82f6 !important;
+}
+[data-bs-theme="dark"] #gelirGiderModal .modal-custom-control,
+[data-bs-theme="dark"] #importExcelModal .form-control,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .modal-custom-control,
+html[data-theme-preset="macos-dark"] #importExcelModal .form-control {
+    background-color: #21232b !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #f1f5f9 !important;
+}
+[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .select2-container--default .select2-selection--single {
+    background-color: #21232b !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #f1f5f9 !important;
+}
+
+/* Sıralama İkonları Dark */
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead tr:first-child > th.sorting {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
 }
-[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting:hover {
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting:hover,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead tr:first-child > th.sorting:hover {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
 }
-[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting_asc {
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting_asc,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead tr:first-child > th.sorting_asc {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2360a5fa' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
 }
-[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting_desc {
+[data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th.sorting_desc,
+html[data-theme-preset="macos-dark"] #gelirGiderTable thead tr:first-child > th.sorting_desc {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2360a5fa' stroke-width='2.8'/%3E%3C/svg%3E") !important;
 }
 </style>

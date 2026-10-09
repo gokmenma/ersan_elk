@@ -276,58 +276,69 @@
   color: #f46a6a;
 }
 
-/* Dark Mode Support */
-[data-bs-theme="dark"] .dt-filter-row > th {
+/* Dark Mode Support & macOS Dark Preset */
+[data-bs-theme="dark"] .dt-filter-row > th,
+html[data-theme-preset="macos-dark"] .dt-filter-row > th {
   background-color: #262b3c !important;
   border-bottom-color: #32394e !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-control {
+[data-bs-theme="dark"] .dt-filter-control,
+html[data-theme-preset="macos-dark"] .dt-filter-control {
   background-color: #191e22 !important;
   color: #eff2f7 !important;
   border-color: #32394e !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-control::placeholder {
+[data-bs-theme="dark"] .dt-filter-control::placeholder,
+html[data-theme-preset="macos-dark"] .dt-filter-control::placeholder {
   color: #74788d !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-control[readonly] {
+[data-bs-theme="dark"] .dt-filter-control[readonly],
+html[data-theme-preset="macos-dark"] .dt-filter-control[readonly] {
   background-color: #222736 !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-mode-trigger {
+[data-bs-theme="dark"] .dt-filter-mode-trigger,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-trigger {
   background: #2a3042 !important;
   color: #a6b0cf !important;
   border-color: #32394e !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-mode-trigger:hover {
+[data-bs-theme="dark"] .dt-filter-mode-trigger:hover,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-trigger:hover {
   background: #32394e !important;
   color: #ffffff !important;
   border-color: var(--bs-primary, var(--dtf-primary)) !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-mode-dropdown {
+[data-bs-theme="dark"] .dt-filter-mode-dropdown,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-dropdown {
   background: #2a3042 !important;
   border-color: #3e4556 !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt {
+[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-dropdown .mode-opt {
   color: #a6b0cf !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt:hover {
+[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt:hover,
+html[data-theme-preset="macos-dark"] .dt-filter-mode-dropdown .mode-opt:hover {
   background: #32394e !important;
   color: #ffffff !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-excel-dropdown {
+[data-bs-theme="dark"] .dt-filter-excel-dropdown,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown {
   background: #2a3042 !important;
   border-color: #3e4556 !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box input {
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box input,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .search-box input {
   background-color: #191e22 !important;
   color: #eff2f7 !important;
   border-color: #3e4556 !important;
@@ -336,22 +347,32 @@
 [data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box,
 [data-bs-theme="dark"] .dt-filter-excel-dropdown .options-list,
 [data-bs-theme="dark"] .dt-filter-excel-dropdown .dt-filter-footer,
-[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item.select-all {
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item.select-all,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .search-box,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .options-list,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .dt-filter-footer,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .option-item.select-all {
   background: transparent !important;
   border-color: #3e4556 !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item {
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .option-item {
   color: #a6b0cf !important;
   background: transparent !important;
 }
 
-[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item:hover {
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item:hover,
+html[data-theme-preset="macos-dark"] .dt-filter-excel-dropdown .option-item:hover {
   background: #32394e !important;
   color: #ffffff !important;
 }
 
 [data-bs-theme="dark"]
+  .dt-filter-excel-dropdown
+  .dt-filter-footer
+  .btn-cancel,
+html[data-theme-preset="macos-dark"]
   .dt-filter-excel-dropdown
   .dt-filter-footer
   .btn-cancel {
@@ -450,8 +471,11 @@
 }
 
 .datatable-premium-shell table.dataTable thead th,
+.table-responsive table.dataTable thead th,
 .table-responsive:has(> table.dataTable) table.dataTable thead th,
-.dataTables_wrapper > .table-responsive table.dataTable thead th {
+.dataTables_wrapper table.dataTable thead th,
+.dataTables_wrapper > .table-responsive table.dataTable thead th,
+table.dataTable thead th {
   position: relative;
   padding-top: 13px !important;
   padding-bottom: 13px !important;
@@ -470,26 +494,38 @@
 }
 
 .datatable-premium-shell table.dataTable thead th:last-child,
+.table-responsive table.dataTable thead th:last-child,
 .table-responsive:has(> table.dataTable) table.dataTable thead th:last-child,
-.dataTables_wrapper > .table-responsive table.dataTable thead th:last-child {
+.dataTables_wrapper table.dataTable thead th:last-child,
+.dataTables_wrapper > .table-responsive table.dataTable thead th:last-child,
+table.dataTable thead th:last-child {
   border-right: 0 !important;
 }
 
 .datatable-premium-shell table.dataTable thead tr:first-child th:first-child,
+.table-responsive table.dataTable thead tr:first-child th:first-child,
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child th:first-child,
-.dataTables_wrapper > .table-responsive table.dataTable thead tr:first-child th:first-child {
+.dataTables_wrapper table.dataTable thead tr:first-child th:first-child,
+.dataTables_wrapper > .table-responsive table.dataTable thead tr:first-child th:first-child,
+table.dataTable thead tr:first-child th:first-child {
   border-top-left-radius: 11px !important;
 }
 
 .datatable-premium-shell table.dataTable thead tr:first-child th:last-child,
+.table-responsive table.dataTable thead tr:first-child th:last-child,
 .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child th:last-child,
-.dataTables_wrapper > .table-responsive table.dataTable thead tr:first-child th:last-child {
+.dataTables_wrapper table.dataTable thead tr:first-child th:last-child,
+.dataTables_wrapper > .table-responsive table.dataTable thead tr:first-child th:last-child,
+table.dataTable thead tr:first-child th:last-child {
   border-top-right-radius: 11px !important;
 }
 
 .datatable-premium-shell table.dataTable tbody td,
+.table-responsive table.dataTable tbody td,
 .table-responsive:has(> table.dataTable) table.dataTable tbody td,
-.dataTables_wrapper > .table-responsive table.dataTable tbody td {
+.dataTables_wrapper table.dataTable tbody td,
+.dataTables_wrapper > .table-responsive table.dataTable tbody td,
+table.dataTable tbody td {
   border: 0 !important;
   border-right: 1px solid #eff2f7 !important;
   border-bottom: 1px solid #eff2f7 !important;
@@ -870,6 +906,11 @@ table.dataTable thead tr.search-input-row > th,
   font-size: 13px;
   color: #475569;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  white-space: nowrap;
 }
 
 .dataTables_wrapper .dataTables_length select {
@@ -882,71 +923,145 @@ table.dataTable thead tr.search-input-row > th,
 }
 
 /* =============================================================
-   Dark Mode Support
+   Dark Mode & macOS Dark Support
    ============================================================= */
 [data-bs-theme="dark"] .datatable-premium-shell,
+[data-bs-theme="dark"] .table-responsive table.dataTable,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable),
-[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive {
-  border-color: #36404a !important;
-  background: #222830;
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable,
+[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive,
+[data-theme-mode="dark"] .datatable-premium-shell,
+[data-theme-mode="dark"] .table-responsive table.dataTable,
+[data-theme-mode="dark"] .dataTables_wrapper table.dataTable,
+body[data-layout-mode="dark"] .datatable-premium-shell,
+body[data-layout-mode="dark"] .table-responsive table.dataTable,
+body[data-layout-mode="dark"] .dataTables_wrapper table.dataTable,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell,
+html[data-theme-preset="macos-dark"] .table-responsive table.dataTable,
+html[data-theme-preset="macos-dark"] .table-responsive:has(> table.dataTable),
+html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper > .table-responsive,
+[data-theme-preset="macos-dark"] .datatable-premium-shell,
+[data-theme-preset="macos-dark"] .table-responsive table.dataTable,
+[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: transparent;
 }
 
+[data-bs-theme="dark"] table.dataTable thead th,
+[data-bs-theme="dark"] table.dataTable thead.table-light th,
+[data-bs-theme="dark"] table.dataTable thead.table-light,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead th,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead .dt-filter-row th,
+[data-bs-theme="dark"] .table-responsive table.dataTable thead th,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead th,
-[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive table.dataTable thead th {
-  border-color: #3b4652 !important;
-  background-color: #29313c !important;
-  color: #e2e8f0 !important;
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead th,
+[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive table.dataTable thead th,
+[data-theme-mode="dark"] table.dataTable thead th,
+[data-theme-mode="dark"] table.dataTable thead.table-light th,
+body[data-layout-mode="dark"] table.dataTable thead th,
+body[data-layout-mode="dark"] table.dataTable thead.table-light th,
+html[data-theme-preset="macos-dark"] table.dataTable thead th,
+html[data-theme-preset="macos-dark"] table.dataTable thead.table-light th,
+html[data-theme-preset="macos-dark"] table.dataTable thead.table-light,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead th,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] .table-responsive table.dataTable thead th,
+html[data-theme-preset="macos-dark"] .table-responsive:has(> table.dataTable) table.dataTable thead th,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable thead th,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper > .table-responsive table.dataTable thead th,
+[data-theme-preset="macos-dark"] table.dataTable thead th,
+[data-theme-preset="macos-dark"] table.dataTable thead.table-light th {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(39, 40, 44, 0.96) !important;
+  color: rgba(224, 225, 229, 0.85) !important;
+  --bs-table-bg: rgba(39, 40, 44, 0.96) !important;
+  --bs-table-color: rgba(224, 225, 229, 0.85) !important;
 }
 
+[data-bs-theme="dark"] table.dataTable tbody td,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable tbody td,
+[data-bs-theme="dark"] .table-responsive table.dataTable tbody td,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable tbody td,
-[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive table.dataTable tbody td {
-  border-color: #36404a !important;
-  color: #cbd5e1 !important;
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable tbody td,
+[data-bs-theme="dark"] .dataTables_wrapper > .table-responsive table.dataTable tbody td,
+[data-theme-mode="dark"] table.dataTable tbody td,
+body[data-layout-mode="dark"] table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] .table-responsive table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] .table-responsive:has(> table.dataTable) table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable tbody td,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper > .table-responsive table.dataTable tbody td,
+[data-theme-preset="macos-dark"] table.dataTable tbody td {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(33, 34, 39, 0.88) !important;
+  color: rgba(232, 233, 236, 0.85) !important;
+  --bs-table-bg: rgba(33, 34, 39, 0.88) !important;
+  --bs-table-color: rgba(232, 233, 236, 0.85) !important;
+}
+
+[data-bs-theme="dark"] table.dataTable tbody tr:hover td,
+[data-theme-mode="dark"] table.dataTable tbody tr:hover td,
+body[data-layout-mode="dark"] table.dataTable tbody tr:hover td,
+html[data-theme-preset="macos-dark"] table.dataTable tbody tr:hover td,
+[data-theme-preset="macos-dark"] table.dataTable tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.065) !important;
 }
 
 [data-bs-theme="dark"] .datatable-premium-shell .dt-header-with-filter .dt-filter-mode-trigger,
-[data-bs-theme="dark"] .datatable-premium-shell .dt-filter-control {
-  border-color: #4a5868 !important;
-  background: #171d23 !important;
-  color: #cbd5e1 !important;
+[data-bs-theme="dark"] .datatable-premium-shell .dt-filter-control,
+[data-bs-theme="dark"] table.dataTable thead .dt-filter-row input,
+[data-bs-theme="dark"] table.dataTable thead .dt-filter-row select,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell .dt-header-with-filter .dt-filter-mode-trigger,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell .dt-filter-control,
+html[data-theme-preset="macos-dark"] table.dataTable thead .dt-filter-row input,
+html[data-theme-preset="macos-dark"] table.dataTable thead .dt-filter-row select {
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  background: rgba(20, 22, 26, 0.94) !important;
+  color: rgba(225, 226, 230, 0.85) !important;
 }
 
-[data-bs-theme="dark"] .dataTables_wrapper .page-item .page-link {
-  background-color: #222830;
-  border-color: #36404a;
-  color: #cbd5e1;
+[data-bs-theme="dark"] .dataTables_wrapper .page-item .page-link,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper .page-item .page-link {
+  background-color: rgba(255, 255, 255, 0.065) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(232, 235, 242, 0.78) !important;
 }
 
-[data-bs-theme="dark"] .dataTables_wrapper .page-item.active .page-link {
+[data-bs-theme="dark"] .dataTables_wrapper .page-item.active .page-link,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper .page-item.active .page-link {
   background-color: #3b82f6 !important;
   border-color: #3b82f6 !important;
   color: #fff !important;
 }
 
-[data-bs-theme="dark"] .dataTables_wrapper .page-item:not(.active):not(.disabled) .page-link:hover {
-  background-color: #2a313c;
-  border-color: #4b5563;
-  color: #fff;
+[data-bs-theme="dark"] .dataTables_wrapper .page-item:not(.active):not(.disabled) .page-link:hover,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper .page-item:not(.active):not(.disabled) .page-link:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
 }
 
-[data-bs-theme="dark"] .dataTables_wrapper .page-item.disabled .page-link {
-  background-color: #1a2026;
-  border-color: #303842;
-  color: #64748b;
+[data-bs-theme="dark"] .dataTables_wrapper .page-item.disabled .page-link,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper .page-item.disabled .page-link {
+  background-color: rgba(255, 255, 255, 0.025) !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  color: rgba(232, 235, 242, 0.32) !important;
 }
 
 [data-bs-theme="dark"] .dataTables_wrapper .dataTables_info,
-[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length label {
-  color: #94a3b8;
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length label,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper .dataTables_info,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper .dataTables_length label {
+  color: rgba(200, 205, 218, 0.65) !important;
 }
 
-[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length select {
-  background-color: #1a2026;
-  border-color: #36404a;
-  color: #e2e8f0;
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length select,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper .dataTables_length select {
+  background-color: rgba(25, 26, 30, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(225, 226, 230, 0.85) !important;
 }
 
 /* ===================================================

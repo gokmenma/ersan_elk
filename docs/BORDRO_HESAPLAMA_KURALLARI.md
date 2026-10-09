@@ -88,7 +88,7 @@ Net maaşlı ve maaşa dahil yemek yardımı alan personelde üretilen puantaj k
 3. Günlük yemek tavanına kadar olan kısım yemek yardımı olarak **bankadan ödenir**.
 4. Yemek tavanını aşan bakiye tutar ise **elden ödeme** olarak personele yansıtılır.
 
-Manuel fazla mesai, prim/ikramiye, nöbet ve diğer sözleşme dışı kazançların resmî banka kapasitesinde kullanılması bu kazançların toplam hakedişten mahsup edildiği anlamına gelmez. Önce resmî/temel hakediş oluşturulur; manuel sözleşme dışı kazançlar bunun üzerine ayrıca eklenir. Ödeme kanalı yalnız banka/elden dağılımını değiştirir, toplam hakedişi değiştiremez. Parametresinde `resmi_alacagina_dahil = 1` olan manuel prim/ikramiye, maaşa dahil yardım aktif olsa da yemek tavanı fazlası olarak eldene bırakılamaz; tamamı doğrudan resmî banka kalemi olarak dağıtılır. Resmî olmayan primlerde yemek tavanı ve kalan elden kuralı devam eder.
+Fazla mesai, prim/ikramiye, nöbet ve diğer sözleşme dışı kazançlar toplam hakedişi yalnız bir kez artırır. Maaşa dahil yardım hesabında bir kazanç yemek kapasitesini yükseltiyorsa aynı tutar ayrıca ikinci kez banka eki olarak toplam hakedişe eklenemez. Ödeme kanalı toplam hakedişi değiştirmez. Parametresinde `resmi_alacagina_dahil = 1` olan prim/ikramiye resmî banka dağılımında yer alır; resmî olmayan primlerde yemek tavanı ve kalan elden kuralı devam eder.
 
 Muhasebelestirme sirasi sabittir — once yemek, kalan puantaj kalemi olarak:
 
@@ -128,12 +128,11 @@ Prim usulu net gibi islenir. Varsayilan ek odeme kanali `elden` kabul edilir; pa
 
 - Prim usulunde kanuni asgari net taban yalniz normal puantaj/calisma hakedisini tamamlar. Fazla mesai, nobet, resmi tatil ve hafta tatili calismasi gibi ek calisma kazanclari bu tabanin icinde eritilemez; `max(normal puantaj hakedisi, gunluk asgari net taban) + ek calisma kazanclari` sirasi ile toplam hakedise eklenir.
 - Ornek: 5 gunluk asgari net taban 4.679,25; normal puantaj hakedisi 4.120,00 ve nobet 500,00 ise toplam net hakedis `max(4.120,00, 4.679,25) + 500,00 = 5.179,25` olur.
-- Maasa dahil yardimli net personelde resmi/temel hakedis 37.700,00; manuel fazla mesai 2.300,00 ve prim 1.300,00 ise toplam alacak `37.700,00 + 2.300,00 + 1.300,00 = 41.300,00` olur.
 Personelin prim usulu calismasi olsa bile donem icinde calisma gunu varsa (`maasHesapGunu > 0`), puantaj veya ek odeme uretilmemis ya da asgari tabandan dusuk kalmis olsa dahi personelin hakedisi en az calisilan gune tekabul eden `asgariHakedis` (`asgari_ucret_net / 30 * maasHesapGunu`) tutarindan az olamaz.
 
 ### Banka İşaretli Prim ve Özel Kesinti Sırası
 
-- `[Kaçak İhbar Primi]`, puantaj/kaçak kontrol hakedişi değildir; diğer primler gibi kaydın `banka_matrahina_ekle` seçimine uyar. Puantaj sınıflandırması yalnızca `[Puantaj]`, `[Sayaç]` ve `[Kaçak Kontrol]` etiketleriyle yapılır.
+- Kaçak ihbar primi genel `prim` türüyle değil, ayrı `kacak_ihbar_primi` bordro parametresiyle otomatik oluşturulur. Bu parametrenin banka matrahı, ödeme yöntemi ve resmî alacak seçimleri standart parametre akışından okunur; açıklama metnine bağlı hesap istisnası kullanılmaz. Varsayılan kurulumda banka matrahına ve resmî alacağa dahildir, bankadan ödenir. Manuel primler genel `prim` parametresine uymaya devam eder.
 - `[Kaçak İhbar Primi]` dönem eşleştirmesinde ihbar tarihçesindeki son olumlu sonuçlanma tarihi esas alınır. İhbarın oluşturulma tarihi dönemi belirlemez; hesaplama anındaki güncel durumu `olumlu` olan kayıt, olumlu sonuçlandığı bordro döneminde sayılır.
 - Maaşa dahil sosyal yardım olmayan net, prim usulü ve karma maaşlarda banka matrahı önce asgari net hakediş + banka kanallı ek ödemeler olarak kurulur. Prim türü olması banka seçimini geçersiz kılamaz.
 - Ardından avans/özel kesinti gibi personel kesintileri bu banka matrahından düşülür. Bankayı aşan kesinti bakiyesi elden ödemeye yansır. İcra toplam kesintinin içindeyse ikinci kez düşülmez; yasal vergi/SGK hesabı değişmez.
@@ -482,6 +481,7 @@ Bordro hesaplama etki alani:
 - Bu gizleme yalnızca muhasebe aktarımının Prim / İkramiye sütununa uygulanır; günlük yemek yuvarlaması, hakediş ve banka/elden ödeme dağıtımı değiştirilmez.
 - Prim kaydı ve bordro detayındaki asıl kazanç silinmez; bu ayrıştırma yalnızca muhasebe aktarımında mükerrer toplamı önler.
 - Maaşa dahil personelde elden seçilen manuel prim de kayıt hesabında hedef hakedişe eklenir; banka seçili olmaması kazancı ortadan kaldırmaz. Liste–kayıt–detay–Excel karşılaştırmasında banka ve elden seçimi birlikte doğrulanır.
+- Banka ödeme detayı satırları net banka ödemesiyle matematiksel olarak uzlaşır. Sosyal yardımlar kartındaki yemek tutarı banka detayında da aynı gösterilir. Maaşa dahil yemek havuzunu büyüten bir banka ek ödemesi (prim, ikramiye vb.) yemek tutarının içindeyse ayrıca toplanan `+` satırı yapılmaz; `Yemek yardımına dahil (bilgi)` açıklamasıyla gösterilir. Yalnız yemek dışında kalan kısmı ayrı banka kazancı olarak toplama girer. Bu gösterim kayıtlı hakedişi veya ödeme dağıtımını değiştirmez.
 
 ### Net ve prim usulü bordroda kesinti özeti
 

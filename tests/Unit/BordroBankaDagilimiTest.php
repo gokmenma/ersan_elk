@@ -20,6 +20,7 @@ final class BordroBankaDagilimiTest extends TestCase
         }
         self::assertFalse($method->invoke($model, '[Kaçak İhbar Primi] (6 adet x 100 ₺)'));
         self::assertFalse($method->invoke($model, 'Manuel prim'));
+
     }
 
     public function testResmiManuelEkOdemeKullaniciSecimindenBagimsizBankayaAlinir(): void
@@ -40,11 +41,6 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(5179.25, $method->invoke($model, 4120, 500, 4679.25));
         self::assertSame(5500.0, $method->invoke($model, 5000, 500, 4679.25));
         self::assertSame(4679.25, $method->invoke($model, 4120, 0, 4679.25));
-    }
-
-    public function testMaasaDahilResmiTemelHakedisUzerineManuelKazanclarEklenir(): void
-    {
-        self::assertSame(41300.0, 37700.0 + 2300.0 + 1300.0);
     }
 
     public function testResmiManuelPrimMaasaDahilYardimdaDogrudanBankaKalemidir(): void
@@ -301,8 +297,35 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(0.0, $ozet['dagitim_farki']);
     }
 
+    public function testBankaDetayindaAyriGosterilenPrimYemekteIkinciKezSayilmaz(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 33115.65,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 0,
+            'asgariYatacak' => 27139.65,
+            'mealAllowanceDeduction' => 5976,
+            'spouseAllowanceDeduction' => 0,
+            'bankaEkOdemeDetaylari' => [
+                ['etiket' => 'Olumlu Kaçak İhbar Primi', 'tutar' => 1200],
+            ],
+        ]);
+
+        self::assertSame(27139.65, $detay['asgari']);
+        self::assertSame(5976.0, $detay['yemek']);
+        self::assertSame(0.0, $detay['ek_odemeler'][0]['tutar']);
+        self::assertSame(1200.0, $detay['ek_odemeler'][0]['yemek_dahil_tutar']);
+        self::assertSame(0.0, $detay['diger_banka_payi']);
+        self::assertSame(33115.65, round(
+            $detay['asgari'] + $detay['yemek'] + $detay['ek_odemeler'][0]['tutar'],
+            2
+        ));
+    }
+
     private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false): void
     {
+        $isKacakIhbarPrimi = str_starts_with($primAciklama, '[Kaçak İhbar Primi]');
         $record = (object) [
             'id' => 1, 'personel_id' => 1, 'donem_id' => 1,
             'baslangic_tarihi' => '2026-09-01', 'bitis_tarihi' => '2026-09-30',
@@ -315,7 +338,7 @@ final class BordroBankaDagilimiTest extends TestCase
             'hesaplama_tarihi' => '2026-09-01 12:00:00',
         ];
         $payments = [
-            (object) ['id' => 1, 'tur' => 'prim', 'tutar' => $primAmount, 'resmi_tutar' => 0, 'aciklama' => $primAciklama, 'banka_matrahina_ekle' => $bankaSecimi],
+            (object) ['id' => 1, 'tur' => $isKacakIhbarPrimi ? 'kacak_ihbar_primi' : 'prim', 'tutar' => $primAmount, 'resmi_tutar' => 0, 'aciklama' => $primAciklama, 'banka_matrahina_ekle' => $bankaSecimi],
             (object) ['id' => 2, 'tur' => 'diger', 'tutar' => $inclusive ? 0 : 1200, 'resmi_tutar' => 0, 'aciklama' => 'Diğer ödeme', 'banka_matrahina_ekle' => 0],
         ];
         if ($hariciYemek) {
@@ -372,8 +395,8 @@ final class BordroBankaDagilimiTest extends TestCase
         });
         $this->setProperty($model, 'db', $pdo);
         $params = [];
-        foreach (['prim', 'diger', 'yemek_yardimi_tum'] as $code) {
-            $params[$code] = (object) ['etiket' => $code, 'hesaplama_tipi' => 'net', 'odeme_yontemi' => 'elden', 'sgk_matrahi_dahil' => 0, 'gelir_vergisi_dahil' => 0, 'damga_vergisi_dahil' => 0];
+        foreach (['prim', 'kacak_ihbar_primi', 'diger', 'yemek_yardimi_tum'] as $code) {
+            $params[$code] = (object) ['etiket' => $code, 'hesaplama_tipi' => 'net', 'odeme_yontemi' => $code === 'kacak_ihbar_primi' ? 'banka' : 'elden', 'resmi_alacagina_dahil' => $code === 'kacak_ihbar_primi' ? 1 : 0, 'sgk_matrahi_dahil' => 0, 'gelir_vergisi_dahil' => 0, 'damga_vergisi_dahil' => 0];
         }
         $paramModel = $this->getMockBuilder(BordroParametreModel::class)->disableOriginalConstructor()->onlyMethods(['getByKod', 'getGenelAyar', 'hesaplaGelirVergisi', 'hesaplaAsgariUcretGelirVergisiIstisnasi'])->getMock();
         $paramModel->method('getByKod')->willReturn(null);
@@ -406,13 +429,16 @@ final class BordroBankaDagilimiTest extends TestCase
                 ? ($bankaSecimi ? 2548.0 : 1950.0)
                 : ($bankaSecimi ? ($primAmount === 3000.0 ? 7800.0 : 5538.0) : 4940.0);
             $expectedBank = 28075.5 + $meal - ($karma && !$eldenKesinti ? $kesinti : 0);
-            $expectedNet = 33000.0 + ($karma ? $primAmount : ($primAmount * 2))
+            $expectedNet = 33000.0 + $primAmount
                 + ($bankaSecimi && $primAmount === 3000.0 ? 0.0 : ($bankaSecimi ? 13.5 : 15.5));
             if ($karma) {
                 $expectedNet = $display['netAlacagi'];
             }
             self::assertEquals($meal, $display['mealAllowanceDeduction']);
-            self::assertEquals($bankaSecimi ? 0.0 : $primAmount, $display['muhasebePrimTutari']);
+            self::assertEquals($isKacakIhbarPrimi ? 0.0 : ($bankaSecimi ? 0.0 : $primAmount), $display['muhasebePrimTutari']);
+        }
+        if ($isKacakIhbarPrimi) {
+            $expectedBank += $primAmount;
         }
         $excel = $model->getMuhasebeOdemeOzeti($display);
         self::assertSame($expectedBank, $excel['net_maas']);
@@ -434,7 +460,7 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(0.0, $excel['banka_kontrol_farki']);
         self::assertSame(0.0, $excel['dagitim_farki']);
         if (!$inclusive) {
-            self::assertSame($primAmount, $excel['prim']);
+            self::assertSame($isKacakIhbarPrimi ? 0.0 : $primAmount, $excel['prim']);
         }
         self::assertSame($expectedBank, $saved['banka_odemesi']);
         self::assertSame($expectedBank, $display['bankaOdemesi']);

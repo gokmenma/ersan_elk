@@ -4306,15 +4306,49 @@ table thead tr:first-child th {
 .flatpickr-current-month {
   color: #0f172a !important;
   font-size: 0.9rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 0 !important;
 }
 
 .flatpickr-current-month .cur-month {
   font-weight: 600 !important;
 }
 
+.flatpickr-current-month .numInputWrapper,
 .flatpickr-current-month input.cur-year {
+  display: none !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month .flatpickr-yearDropdown-years {
+  font-size: 0.875rem !important;
   font-weight: 600 !important;
   color: inherit !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  padding: 2px 6px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  outline: none !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months:hover,
+.flatpickr-current-month .flatpickr-yearDropdown-years:hover,
+.flatpickr-current-month .flatpickr-monthDropdown-months:focus,
+.flatpickr-current-month .flatpickr-yearDropdown-years:focus {
+  background: rgba(15, 23, 42, 0.06) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months option,
+.flatpickr-current-month .flatpickr-yearDropdown-years option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 500 !important;
 }
 
 .flatpickr-months .flatpickr-prev-month,
@@ -4393,6 +4427,20 @@ span.flatpickr-weekday {
 [data-bs-theme="dark"] .flatpickr-current-month input.cur-year {
   color: #f8fafc !important;
   fill: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-monthDropdown-months:hover,
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-yearDropdown-years:hover,
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-monthDropdown-months:focus,
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-yearDropdown-years:focus {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-monthDropdown-months option,
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-yearDropdown-years option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
 }
 
 [data-bs-theme="dark"] .flatpickr-day {
@@ -5347,8 +5395,8 @@ body[data-sidebar-size="sm"] #sidebar-menu .star-btn {
 }
 
 .page-content {
-  padding-top: 74px !important;
-  padding-bottom: 16px !important;
+  padding-top: 84px !important;
+  padding-bottom: 20px !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
   max-width: 100% !important;
@@ -5356,11 +5404,11 @@ body[data-sidebar-size="sm"] #sidebar-menu .star-btn {
 }
 
 body:has(#quick-favorites-bar) .main-content .page-content {
-  padding-top: 116px !important;
+  padding-top: 128px !important;
 }
 
 body:not(:has(#quick-favorites-bar)) .main-content .page-content {
-  padding-top: 74px !important;
+  padding-top: 84px !important;
 }
 
 .main-content .container-fluid,
@@ -6111,11 +6159,11 @@ button.note-btn.active {
   }
 
   [data-theme-preset="macos-dark"] .page-content {
-    padding-top: 88px !important;
+    padding-top: calc(var(--mac-window-gap, 6px) + 60px + 18px) !important;
   }
 
   [data-theme-preset="macos-dark"] body:has(#quick-favorites-bar) .main-content .page-content {
-    padding-top: 138px !important;
+    padding-top: calc(var(--mac-window-gap, 6px) + 60px + var(--mac-window-gap, 6px) + 42px + 18px) !important;
   }
 }
 
@@ -6162,87 +6210,211 @@ button.note-btn.active {
   color: #8c90a2 !important;
 }
 
+.macos-window-controls {
+  display: none !important;
+}
+
+.settings-icon-mac {
+  display: none !important;
+}
+
+.settings-icon-default {
+  display: inline-block !important;
+}
+
 /* macOS Sidebar Inner Elements */
+[data-theme-preset="macos-dark"] .macos-window-controls {
+  display: flex !important;
+}
+
+[data-theme-preset="macos-dark"] .settings-icon-mac {
+  display: inline-block !important;
+}
+
+[data-theme-preset="macos-dark"] .settings-icon-default {
+  display: none !important;
+}
+
 [data-theme-preset="macos-dark"] .sidebar-sticky-top {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 10px 4px 12px !important;
   background-color: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  gap: 6px !important;
+  position: relative !important;
+  z-index: 1000 !important;
 }
 
+[data-theme-preset="macos-dark"] .sidebar-menu-scroll {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+[data-theme-preset="macos-dark"] .sidebar-brand-box {
+  min-height: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  background: transparent !important;
+  border-bottom: none !important;
+}
+
+[data-theme-preset="macos-dark"] .sidebar-search-container {
+  padding: 0 !important;
+  margin: 0 !important;
+  flex-grow: 0 !important;
+  position: relative !important;
+}
+
+[data-theme-preset="macos-dark"] .sidebar-search-container .position-relative {
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Arama simge halinde başlar; tıklandığında/yazıldığında yumuşakça genişler */
 [data-theme-preset="macos-dark"] .sidebar-search {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #f3f4f8 !important;
-  border-radius: 8px !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 0 0 28px !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, border-color 0.15s ease !important;
 }
 
-[data-theme-preset="macos-dark"] .sidebar-search:focus {
-  border-color: #0a84ff !important;
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25) !important;
+[data-theme-preset="macos-dark"] .sidebar-search:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
 }
 
+[data-theme-preset="macos-dark"] .sidebar-search:focus,
+[data-theme-preset="macos-dark"] .sidebar-search:not(:placeholder-shown) {
+  width: 110px !important;
+  padding-left: 24px !important;
+  padding-right: 22px !important;
+  cursor: text !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme-preset="macos-dark"] .sidebar-search-container .search-icon {
+  left: 7px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 13px !important;
+  height: 13px !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  pointer-events: none !important;
+}
+
+/* Üç Nokta Ayarlar Butonu */
 [data-theme-preset="macos-dark"] .btn-sidebar-settings {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #8c90a2 !important;
-  border-radius: 8px !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  border-radius: 6px !important;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+[data-theme-preset="macos-dark"] .btn-sidebar-settings i,
+[data-theme-preset="macos-dark"] .btn-sidebar-settings svg {
+  width: 15px !important;
+  height: 15px !important;
 }
 
 [data-theme-preset="macos-dark"] .btn-sidebar-settings:hover {
-  background-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(255, 255, 255, 0.14) !important;
   color: #ffffff !important;
 }
 
-[data-theme-preset="macos-dark"] #sidebar-menu ul li a {
-  margin: 2px 8px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  color: #b0b5c4 !important;
+/* Sidebar içerisi tamamen kesintisiz ve akıcı */
+[data-theme-preset="macos-dark"] .sidebar-menu-scroll {
+  border-top: none !important;
+}
+
+[data-theme-preset="macos-dark"] #sidebar-menu #side-menu > li > a,
+[data-theme-preset="macos-dark"] #sidebar-menu ul > li > a {
+  margin: 1px 6px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.85) !important;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 450;
   transition: all 0.15s ease;
 }
 
-[data-theme-preset="macos-dark"] #sidebar-menu ul li a:hover {
+[data-theme-preset="macos-dark"] #sidebar-menu ul li > a:hover {
   background-color: rgba(255, 255, 255, 0.08) !important;
   color: #ffffff !important;
 }
 
-[data-theme-preset="macos-dark"] #sidebar-menu ul li a.active,
-[data-theme-preset="macos-dark"] #sidebar-menu ul li.mm-active > a {
-  background-color: rgba(255, 255, 255, 0.16) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+[data-theme-preset="macos-dark"] #sidebar-menu ul li > a:hover i,
+[data-theme-preset="macos-dark"] #sidebar-menu ul li > a:hover svg {
   color: #ffffff !important;
-  font-weight: 600;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  stroke: currentColor !important;
+}
+
+/* SADECE GERÇEK AKTİF ÖĞE Dolu Pill Alır */
+[data-theme-preset="macos-dark"] #sidebar-menu .sub-menu li a.active,
+[data-theme-preset="macos-dark"] #sidebar-menu ul li ul.sub-menu li a.active,
+[data-theme-preset="macos-dark"] #sidebar-menu #side-menu > li:not(:has(.sub-menu)) > a.active,
+[data-theme-preset="macos-dark"] #sidebar-menu ul > li:not(:has(.sub-menu)) > a.active {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  box-shadow: inset 0 0.5px 0.5px rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+[data-theme-preset="macos-dark"] #sidebar-menu #side-menu > li.mm-active:has(.sub-menu) > a,
+[data-theme-preset="macos-dark"] #sidebar-menu ul > li.mm-active:has(.sub-menu) > a {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  border-color: transparent !important;
 }
 
 [data-theme-preset="macos-dark"] #sidebar-menu ul li a.active i,
-[data-theme-preset="macos-dark"] #sidebar-menu ul li.mm-active > a i,
 [data-theme-preset="macos-dark"] #sidebar-menu ul li a.active svg,
-[data-theme-preset="macos-dark"] #sidebar-menu ul li.mm-active > a svg {
-  color: #0a84ff !important;
-  stroke: #0a84ff !important;
+[data-theme-preset="macos-dark"] #sidebar-menu #side-menu > li.mm-active > a i,
+[data-theme-preset="macos-dark"] #sidebar-menu #side-menu > li.mm-active > a svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
 }
 
 [data-theme-preset="macos-dark"] #sidebar-menu .menu-title {
-  color: #72778c !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
+  color: rgba(235, 235, 245, 0.38) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  padding: 12px 14px 4px 14px !important;
+  letter-spacing: 0.04em;
+  padding: 12px 10px 4px 10px !important;
 }
 
 [data-theme-preset="macos-dark"] .brand-logo {
-  background-color: #0a84ff !important;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 7px;
+  box-shadow: none;
 }
 
 /* macOS Glassmorphic Cards (Floating Widgets & Main Content) */
@@ -6472,26 +6644,123 @@ button.note-btn.active {
   border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-[data-theme-preset="macos-dark"] .dropdown-menu {
-  background-color: rgba(28, 30, 38, 0.82) !important;
-  backdrop-filter: blur(30px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 10px !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55) !important;
+/* GNOME / macOS Finder Stili Açılır Menü (Popover Dropdown) - Tooltip Ok Desteği ve Merkezleme */
+html[data-theme-preset="macos-dark"] body .menu-settings-dropdown {
+  flex-shrink: 0 !important;
+  position: relative !important;
 }
 
-[data-theme-preset="macos-dark"] .dropdown-item {
-  color: #c4c8d5 !important;
-  border-radius: 6px;
-  margin: 2px 4px;
-  width: auto;
+html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-menu,
+html[data-theme-preset="macos-dark"] body .dropdown-menu.mac-popover-menu,
+[data-theme-preset="macos-dark"] .dropdown-menu,
+html[data-theme-preset="macos-dark"] body .mac-popover-menu {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: -4px !important;
+  left: auto !important;
+  transform: none !important;
+  background: #303030 !important;
+  background-color: #303030 !important;
+  border: 1px solid #484848 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+  padding: 7px !important;
+  width: 220px !important;
+  min-width: 220px !important;
+  max-width: 220px !important;
+  margin: 0 !important;
+  z-index: 99999 !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible !important;
 }
 
+/* Üç Noktayı Hedefleyen Tooltip / Popover Üçgen Oku */
+html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-menu::before,
+html[data-theme-preset="macos-dark"] body .dropdown-menu.mac-popover-menu::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -5px !important;
+  right: 11px !important;
+  width: 10px !important;
+  height: 10px !important;
+  background: #303030 !important;
+  border-top: 1px solid #484848 !important;
+  border-left: 1px solid #484848 !important;
+  transform: rotate(45deg) !important;
+  z-index: 100000 !important;
+  border-top-left-radius: 2px !important;
+}
+
+html[data-theme-preset="macos-dark"] body .mac-dropdown-group {
+  background: #242424 !important;
+  border: 1px solid #383838 !important;
+  border-radius: 8px !important;
+  padding: 3px !important;
+  margin-bottom: 6px !important;
+}
+
+html[data-theme-preset="macos-dark"] body .mac-dropdown-group:last-child {
+  margin-bottom: 0 !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-item,
+[data-theme-preset="macos-dark"] .dropdown-item,
+html[data-theme-preset="macos-dark"] body .mac-popover-item {
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  margin: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background 0.12s ease, color 0.12s ease !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-item:hover,
+html[data-theme-preset="macos-dark"] body .dropdown-item:focus,
 [data-theme-preset="macos-dark"] .dropdown-item:hover,
-[data-theme-preset="macos-dark"] .dropdown-item:focus {
-  background: rgba(10, 132, 255, 0.2) !important;
-  color: #52a9ff !important;
+[data-theme-preset="macos-dark"] .dropdown-item:focus,
+html[data-theme-preset="macos-dark"] body .mac-popover-item:hover,
+html[data-theme-preset="macos-dark"] body .mac-popover-item:focus {
+  background: #3b3b3b !important;
+  color: #ffffff !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-item.disabled,
+[data-theme-preset="macos-dark"] .dropdown-item.disabled,
+html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled {
+  color: #5a5a5a !important;
+  background: transparent !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+html[data-theme-preset="macos-dark"] body .mac-item-shortcut {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  color: #8c8c8c !important;
+  margin-left: auto !important;
+  padding-left: 8px !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-item:hover .mac-item-shortcut,
+html[data-theme-preset="macos-dark"] body .mac-popover-item:hover .mac-item-shortcut {
+  color: #b0b0b0 !important;
+}
+
+html[data-theme-preset="macos-dark"] body .dropdown-item.disabled .mac-item-shortcut,
+html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled .mac-item-shortcut {
+  color: #4a4a4a !important;
 }
 
 /* macOS Form Controls (Frosted Input) */
@@ -6598,18 +6867,17 @@ html[data-theme-preset="macos-dark"] body {
 
 html[data-theme-preset="macos-dark"] body .vertical-menu,
 html[data-theme-preset="macos-dark"] body[data-sidebar] .vertical-menu {
-  background: linear-gradient(145deg, rgba(55, 45, 55, 0.52), rgba(28, 28, 34, 0.42)) !important;
-  border-color: var(--mac-glass-border) !important;
-  backdrop-filter: blur(34px) saturate(145%) brightness(0.88) !important;
-  -webkit-backdrop-filter: blur(34px) saturate(145%) brightness(0.88) !important;
-  box-shadow: var(--mac-glass-shadow) !important;
+  background: linear-gradient(180deg, rgba(34, 35, 40, 0.97) 0%, rgba(26, 27, 30, 0.97) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
 html[data-theme-preset="macos-dark"] body #page-topbar,
 html[data-theme-preset="macos-dark"] body .quick-favorites-bar,
 html[data-theme-preset="macos-dark"] body .card,
 html[data-theme-preset="macos-dark"] body .modal-content,
-html[data-theme-preset="macos-dark"] body .dropdown-menu,
 html[data-theme-preset="macos-dark"] body .custom-context-menu {
   background-color: var(--mac-glass) !important;
   background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)) !important;
@@ -6735,11 +7003,11 @@ html[data-theme-preset="macos-dark"] body .select2-container--default .select2-s
   }
 
   html[data-theme-preset="macos-dark"] body:has(#quick-favorites-bar) .main-content .page-content {
-    padding-top: calc(var(--mac-window-gap) + 60px + var(--mac-window-gap) + 42px + var(--mac-window-gap)) !important;
+    padding-top: calc(var(--mac-window-gap) + 60px + var(--mac-window-gap) + 42px + 18px) !important;
   }
 
   html[data-theme-preset="macos-dark"] body:not(:has(#quick-favorites-bar)) .main-content .page-content {
-    padding-top: calc(var(--mac-window-gap) + 60px + var(--mac-window-gap)) !important;
+    padding-top: calc(var(--mac-window-gap) + 60px + 18px) !important;
   }
 }
 
@@ -6894,8 +7162,7 @@ html[data-theme-preset="macos-dark"] body {
 html[data-theme-preset="macos-dark"] body #page-topbar,
 html[data-theme-preset="macos-dark"] body .quick-favorites-bar,
 html[data-theme-preset="macos-dark"] body .main-content .card,
-html[data-theme-preset="macos-dark"] body .modal-content,
-html[data-theme-preset="macos-dark"] body .dropdown-menu {
+html[data-theme-preset="macos-dark"] body .modal-content {
   background-color: var(--mac-surface) !important;
   border-color: var(--mac-line) !important;
 }
@@ -7395,6 +7662,179 @@ html[data-theme-preset="macos-dark"] body .bordro-footer-kpi.kpi-net {
   background-color: rgba(16, 185, 129, 0.18) !important;
   border-color: rgba(16, 185, 129, 0.35) !important;
 }
+
+/* ==========================================================================
+   Merkezi UI ve KPI Özet Kartı Standartları (AGENTS.md Kural 8)
+   ========================================================================== */
+.summary-kpi-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.summary-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05) !important;
+}
+.summary-kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.summary-kpi-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+.summary-kpi-value {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.summary-kpi-subtext {
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+.summary-pill-btn {
+  font-size: 11px !important;
+  height: 24px !important;
+  line-height: 1 !important;
+  padding: 0 10px !important;
+  font-weight: 600 !important;
+  border-radius: 20px !important;
+  transition: all 0.2s ease;
+}
+.top-action-btn {
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+.top-icon-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 1.15rem;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  transition: all 0.2s ease;
+}
+.top-icon-btn:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+.table-action-btn {
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.table-action-btn:hover {
+  transform: translateY(-1px);
+}
+.action-btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Dark Mode - KPI & UI Overrides */
+[data-bs-theme="dark"] .summary-kpi-card,
+[data-theme-mode="dark"] .summary-kpi-card,
+body[data-layout-mode="dark"] .summary-kpi-card {
+  background-color: #2a3042 !important;
+  border-color: #32394e !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+}
+[data-bs-theme="dark"] .summary-kpi-value,
+[data-theme-mode="dark"] .summary-kpi-value,
+body[data-layout-mode="dark"] .summary-kpi-value {
+  color: #eff2f7 !important;
+}
+[data-bs-theme="dark"] .summary-kpi-label,
+[data-bs-theme="dark"] .summary-kpi-subtext,
+[data-theme-mode="dark"] .summary-kpi-label,
+[data-theme-mode="dark"] .summary-kpi-subtext,
+body[data-layout-mode="dark"] .summary-kpi-label,
+body[data-layout-mode="dark"] .summary-kpi-subtext {
+  color: #a6b0cf !important;
+}
+[data-bs-theme="dark"] .top-action-btn.bg-white,
+[data-bs-theme="dark"] .top-icon-btn.bg-white,
+[data-theme-mode="dark"] .top-action-btn.bg-white,
+[data-theme-mode="dark"] .top-icon-btn.bg-white,
+body[data-layout-mode="dark"] .top-action-btn.bg-white,
+body[data-layout-mode="dark"] .top-icon-btn.bg-white {
+  background-color: #2a3042 !important;
+  border-color: #32394e !important;
+  color: #eff2f7 !important;
+}
+[data-bs-theme="dark"] .top-action-btn.bg-white:hover,
+[data-bs-theme="dark"] .top-icon-btn.bg-white:hover {
+  background-color: #32394e !important;
+  color: #ffffff !important;
+}
+[data-bs-theme="dark"] h4.text-dark,
+[data-bs-theme="dark"] h5.text-dark,
+[data-theme-mode="dark"] h4.text-dark,
+[data-theme-mode="dark"] h5.text-dark,
+body[data-layout-mode="dark"] h4.text-dark,
+body[data-layout-mode="dark"] h5.text-dark {
+  color: #eff2f7 !important;
+}
+
+/* macOS Dark - KPI & UI Overrides */
+html[data-theme-preset="macos-dark"] body .summary-kpi-card,
+[data-theme-preset="macos-dark"] .summary-kpi-card {
+  background: rgba(28, 30, 38, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+html[data-theme-preset="macos-dark"] body .summary-kpi-value,
+[data-theme-preset="macos-dark"] .summary-kpi-value {
+  color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] body .summary-kpi-label,
+[data-theme-preset="macos-dark"] .summary-kpi-label {
+  color: rgba(200, 205, 218, 0.65) !important;
+}
+html[data-theme-preset="macos-dark"] body .summary-kpi-subtext,
+[data-theme-preset="macos-dark"] .summary-kpi-subtext {
+  color: rgba(200, 205, 218, 0.6) !important;
+}
+html[data-theme-preset="macos-dark"] body h4.text-dark,
+html[data-theme-preset="macos-dark"] body h5.text-dark,
+[data-theme-preset="macos-dark"] h4.text-dark,
+[data-theme-preset="macos-dark"] h5.text-dark {
+  color: rgba(240, 242, 246, 0.95) !important;
+}
+
 
 
 
