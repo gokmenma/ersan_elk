@@ -342,15 +342,17 @@ $malHizmetListesi = $malHizmetModel->getAllActive($firmId);
 .stok-sec-dropdown-menu {
     border-radius: 10px;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08);
     background: #ffffff;
+    z-index: 1090 !important;
 }
 .stok-autocomplete-menu {
     border-radius: 8px;
     border: 1px solid #cbd5e1;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.20), 0 4px 12px rgba(15, 23, 42, 0.08);
     background: #ffffff;
     margin-top: 2px;
+    z-index: 1090 !important;
 }
 .stok-item-option,
 .stok-autocomplete-item {
@@ -369,11 +371,99 @@ $malHizmetListesi = $malHizmetModel->getAllActive($firmId);
 .stok-autocomplete-item.active strong {
     color: #1d4ed8 !important;
 }
-.items-table tbody td {
+
+/* Fatura Kalem Tablosu Açılır Menü ve Katman Yönetimi (z-index / overflow) */
+#cardMalHizmetKalemleri {
     overflow: visible !important;
+    position: relative !important;
+    z-index: 30 !important;
+}
+.invoice-items-table-wrap {
+    overflow: visible !important;
+    position: relative !important;
+    z-index: 100 !important;
 }
 .invoice-items-table-frame {
     overflow: visible !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+.invoice-bottom-summary-section {
+    position: relative !important;
+    z-index: 1 !important;
+}
+.items-table {
+    position: relative;
+}
+.items-table tbody td {
+    overflow: visible !important;
+}
+.kalem-row {
+    position: relative;
+}
+.kalem-row.dropdown-active,
+.kalem-row:has(.stok-autocomplete-menu:not([style*="display: none"])),
+.kalem-row:has(.stok-sec-dropdown-menu.show),
+.kalem-row:has(.dropdown-menu.show),
+.kalem-row:focus-within {
+    position: relative !important;
+    z-index: 1080 !important;
+}
+.kalem-row.dropdown-active td,
+.kalem-row:has(.stok-autocomplete-menu:not([style*="display: none"])) td,
+.kalem-row:has(.stok-sec-dropdown-menu.show) td,
+.kalem-row:has(.dropdown-menu.show) td,
+.kalem-row:focus-within td {
+    position: relative !important;
+    z-index: 1080 !important;
+}
+.kalem-urun-wrap.dropdown-active,
+.kalem-urun-wrap:has(.stok-autocomplete-menu:not([style*="display: none"])),
+.kalem-urun-wrap:has(.stok-sec-dropdown-menu.show),
+.kalem-urun-wrap:has(.dropdown-menu.show) {
+    position: relative !important;
+    z-index: 1085 !important;
+}
+
+/* Koyu / macOS Dark Tema Desteği */
+[data-bs-theme="dark"] .stok-sec-dropdown-menu,
+[data-theme-mode="dark"] .stok-sec-dropdown-menu,
+html[data-theme-preset="macos-dark"] .stok-sec-dropdown-menu,
+[data-bs-theme="dark"] .stok-autocomplete-menu,
+[data-theme-mode="dark"] .stok-autocomplete-menu,
+html[data-theme-preset="macos-dark"] .stok-autocomplete-menu {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45) !important;
+}
+[data-bs-theme="dark"] .stok-item-option,
+[data-theme-mode="dark"] .stok-item-option,
+html[data-theme-preset="macos-dark"] .stok-item-option,
+[data-bs-theme="dark"] .stok-autocomplete-item,
+[data-theme-mode="dark"] .stok-autocomplete-item,
+html[data-theme-preset="macos-dark"] .stok-autocomplete-item {
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-bs-theme="dark"] .stok-item-option:hover,
+[data-theme-mode="dark"] .stok-item-option:hover,
+html[data-theme-preset="macos-dark"] .stok-item-option:hover,
+[data-bs-theme="dark"] .stok-autocomplete-item:hover,
+[data-theme-mode="dark"] .stok-autocomplete-item:hover,
+html[data-theme-preset="macos-dark"] .stok-autocomplete-item:hover,
+[data-bs-theme="dark"] .stok-autocomplete-item.active,
+[data-theme-mode="dark"] .stok-autocomplete-item.active,
+html[data-theme-preset="macos-dark"] .stok-autocomplete-item.active {
+    background-color: rgba(59, 130, 246, 0.18) !important;
+}
+[data-bs-theme="dark"] .stok-item-option strong,
+[data-theme-mode="dark"] .stok-item-option strong,
+html[data-theme-preset="macos-dark"] .stok-item-option strong,
+[data-bs-theme="dark"] .stok-autocomplete-item strong,
+[data-theme-mode="dark"] .stok-autocomplete-item strong,
+html[data-theme-preset="macos-dark"] .stok-autocomplete-item strong {
+    color: #f8fafc !important;
 }
 
 
@@ -997,6 +1087,149 @@ html[data-theme-preset="macos-dark"] h5.text-dark {
 html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label {
     color: rgba(224, 225, 230, 0.8) !important;
 }
+
+/* macOS Koyu Tema - Fatura Notu / Alt Bilgi & Summernote Editör Uyumu */
+html[data-theme-preset="macos-dark"] .invoice-bottom-summary-section {
+    background-color: transparent !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .invoice-not-editor .note-editor.note-frame,
+html[data-theme-preset="macos-dark"] #modalNoteTemplates .note-editor.note-frame {
+    background-color: rgba(28, 30, 38, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar {
+    background: rgba(35, 36, 42, 0.85) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar > .note-btn-group {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px !important;
+}
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar .note-btn,
+html[data-theme-preset="macos-dark"] button.note-btn {
+    color: rgba(235, 238, 245, 0.85) !important;
+}
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar .note-btn:hover,
+html[data-theme-preset="macos-dark"] button.note-btn:hover {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+}
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar .note-btn.active,
+html[data-theme-preset="macos-dark"] button.note-btn.active {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+    color: #60a5fa !important;
+}
+html[data-theme-preset="macos-dark"] .note-editor.note-frame .note-editing-area .note-editable,
+html[data-theme-preset="macos-dark"] .invoice-not-editor .note-editor .note-editable,
+html[data-theme-preset="macos-dark"] #modalNoteTemplates .note-editable {
+    background-color: transparent !important;
+    color: #f1f5f9 !important;
+}
+html[data-theme-preset="macos-dark"] .note-editable table,
+html[data-theme-preset="macos-dark"] .note-editable table td,
+html[data-theme-preset="macos-dark"] .note-editable table th {
+    color: #f1f5f9 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] .note-editable table[style*="background-color"],
+html[data-theme-preset="macos-dark"] .note-editable table tr[style*="background-color"],
+html[data-theme-preset="macos-dark"] .note-editable table td[style*="background-color"] {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+html[data-theme-preset="macos-dark"] .note-statusbar {
+    background-color: rgba(35, 36, 42, 0.85) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .note-statusbar .note-resizebar .note-icon-bar {
+    border-top: 2px solid rgba(255, 255, 255, 0.25) !important;
+}
+html[data-theme-preset="macos-dark"] .note-dropdown-menu {
+    background: rgba(32, 34, 42, 0.96) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] .note-dropdown-menu .dropdown-item {
+    color: rgba(235, 238, 245, 0.9) !important;
+}
+html[data-theme-preset="macos-dark"] .note-dropdown-menu .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+/* macOS Koyu Tema - Özet Kartları Rakam ve Metin Renkleri */
+html[data-theme-preset="macos-dark"] .summary-card .summary-row span,
+html[data-theme-preset="macos-dark"] .summary-card .summary-row span.text-dark,
+html[data-theme-preset="macos-dark"] .summary-card .summary-row .font-monospace {
+    color: #f1f5f9 !important;
+}
+html[data-theme-preset="macos-dark"] .summary-card .summary-row .text-danger {
+    color: #f87171 !important;
+}
+html[data-theme-preset="macos-dark"] .summary-card .summary-row .text-success {
+    color: #4ade80 !important;
+}
+html[data-theme-preset="macos-dark"] .summary-card .summary-row.grand-total span:first-child {
+    color: #ffffff !important;
+}
+html[data-theme-preset="macos-dark"] .summary-card .summary-row.grand-total span.text-primary,
+html[data-theme-preset="macos-dark"] #lblOdenecekTutar {
+    color: #60a5fa !important;
+    text-shadow: 0 0 12px rgba(96, 165, 250, 0.25);
+}
+
+/* macOS Koyu Tema - Inputlar, Salt Okunur Alanlar ve Şablon Seçici */
+html[data-theme-preset="macos-dark"] .kalem-brut-tutar,
+html[data-theme-preset="macos-dark"] .kalem-ek-vergi-tutar {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #f1f5f9 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] #sablonSecici {
+    background-color: rgba(25, 26, 30, 0.9) !important;
+    color: #f1f5f9 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme-preset="macos-dark"] #btnSablonYonet {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+    color: #93c5fd !important;
+}
+html[data-theme-preset="macos-dark"] #btnSablonYonet:hover {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+}
+
+/* macOS Koyu Tema - Modallar ve Tablolar */
+html[data-theme-preset="macos-dark"] .modal-content {
+    background: rgba(28, 30, 38, 0.96) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75) !important;
+    color: #f1f5f9 !important;
+}
+html[data-theme-preset="macos-dark"] .modal-header,
+html[data-theme-preset="macos-dark"] .modal-footer {
+    background-color: rgba(35, 36, 42, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme-preset="macos-dark"] .modal-body {
+    background-color: transparent !important;
+    color: #f1f5f9 !important;
+}
+html[data-theme-preset="macos-dark"] .modal-title {
+    color: #ffffff !important;
+}
+html[data-theme-preset="macos-dark"] .modal-body .table,
+html[data-theme-preset="macos-dark"] .modal-body .table th,
+html[data-theme-preset="macos-dark"] .modal-body .table td {
+    color: rgba(235, 238, 245, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
 </style>
 
 <div class="container-fluid pb-5">
@@ -1338,7 +1571,7 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
         </div>
 
         <!-- 4. KART: MAL VE HİZMET KALEMLERİ -->
-        <div class="card summary-kpi-card mb-4">
+        <div class="card summary-kpi-card mb-4" id="cardMalHizmetKalemleri" style="overflow: visible !important; position: relative; z-index: 30;">
             <div class="card-header bg-transparent border-0 px-4 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
                     <div class="p-2 bg-success-subtle text-success rounded-3 border border-success-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 36px; height: 36px;">
@@ -1359,8 +1592,8 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
                 </div>
             </div>
             
-            <div class="table-responsive invoice-items-table-wrap">
-                <div class="invoice-items-table-frame">
+            <div class="table-responsive invoice-items-table-wrap" style="overflow: visible !important; position: relative !important; z-index: 100 !important;">
+                <div class="invoice-items-table-frame" style="overflow: visible !important; position: relative !important; z-index: 100 !important;">
                 <table class="table items-table align-middle table-hover" id="tblKalemler">
                     <thead id="tblKalemlerHead">
                         <tr id="tblKalemlerHeadRowMain">
@@ -1409,7 +1642,7 @@ html[data-theme-preset="macos-dark"] .custom-invoice-checkbox .form-check-label 
             </div>
 
             <!-- Alt Toplamlar & Notlar Alanı (Direkt Hizada, İç İçe Div Olmadan) -->
-            <div class="p-4 bg-white border-top">
+            <div class="p-4 bg-white border-top invoice-bottom-summary-section" style="position: relative !important; z-index: 1 !important;">
                 <div class="row g-4 align-items-stretch">
                     <!-- Sol: Fatura Notu / Alt Bilgi & Hazır Şablonlar -->
                     <div class="col-lg-7 col-12 d-flex flex-column">
@@ -1874,6 +2107,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 7. Autocomplete ve dropdown menülerini kapat
         $row.find('.stok-autocomplete-menu').hide();
+        $row.removeClass('dropdown-active');
+        $row.find('.kalem-urun-wrap').removeClass('dropdown-active');
         const toggleBtn = $row.find('.btn-stok-dropdown-toggle')[0];
         if (toggleBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
             const bsDropdown = bootstrap.Dropdown.getInstance(toggleBtn);
@@ -1929,10 +2164,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Canlı Arama (Typeahead / Autocomplete) Önerilerini Gösterme
     function renderAutocompleteOptions($menu, query) {
+        const $row = $menu.closest('tr');
+        const $wrap = $menu.closest('.kalem-urun-wrap');
         $menu.empty();
         const term = (query || '').trim().toLowerCase();
         if (!term || !Array.isArray(MAL_HIZMET_DATA) || MAL_HIZMET_DATA.length === 0) {
             $menu.hide();
+            $row.removeClass('dropdown-active');
+            $wrap.removeClass('dropdown-active');
             return;
         }
 
@@ -1944,6 +2183,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (matches.length === 0) {
             $menu.hide();
+            $row.removeClass('dropdown-active');
+            $wrap.removeClass('dropdown-active');
             return;
         }
 
@@ -1972,6 +2213,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         $menu.show();
+        $('.kalem-row').not($row).removeClass('dropdown-active');
+        $('.kalem-urun-wrap').not($wrap).removeClass('dropdown-active');
+        $row.addClass('dropdown-active');
+        $wrap.addClass('dropdown-active');
     }
 
     // 1. Tüm Fatura Standart Select2 Elemanlarını Başlat
@@ -3140,11 +3385,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 5. Stok Seçici Dropdown Açıldığında Listeyi Hazırla
     $('#kalemlerContainer').on('show.bs.dropdown', '.btn-stok-dropdown-toggle', function() {
+        const $row = $(this).closest('tr');
+        const $wrap = $(this).closest('.kalem-urun-wrap');
+        $('.kalem-row').removeClass('dropdown-active');
+        $('.kalem-urun-wrap').removeClass('dropdown-active');
+        $row.addClass('dropdown-active');
+        $wrap.addClass('dropdown-active');
         const $menu = $(this).next('.stok-sec-dropdown-menu');
         const $input = $menu.find('.stok-search-input');
         $input.val('');
         renderStokDropdownList($menu, '');
         setTimeout(() => { $input.focus(); }, 100);
+    });
+
+    $('#kalemlerContainer').on('hide.bs.dropdown', '.btn-stok-dropdown-toggle', function() {
+        const $row = $(this).closest('tr');
+        const $wrap = $(this).closest('.kalem-urun-wrap');
+        $row.removeClass('dropdown-active');
+        $wrap.removeClass('dropdown-active');
     });
 
     // 6. Stok Seçici Dropdown Arama Filtresi
@@ -3170,6 +3428,8 @@ document.addEventListener('DOMContentLoaded', function() {
     $(document).on('click', function(e) {
         if (!$(e.target).closest('.kalem-urun-wrap').length) {
             $('.stok-autocomplete-menu').hide();
+            $('.kalem-row').removeClass('dropdown-active');
+            $('.kalem-urun-wrap').removeClass('dropdown-active');
         }
     });
 
@@ -3593,18 +3853,22 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(res => {
                 if ((res.status === 'success' || res.success) && Array.isArray(res.data)) {
                     cachedTemplates = res.data;
-                    renderTemplateDropdown(selectIdToSelect);
+                    const defaultTpl = cachedTemplates.find(t => parseInt(t.varsayilan_mi, 10) === 1);
+                    const effectiveSelectedId = selectIdToSelect || (defaultTpl ? defaultTpl.id : null);
+
+                    renderTemplateDropdown(effectiveSelectedId);
                     renderTemplateModalList($('#searchTemplatesInput').val());
 
                     // Eğer yeni fatura oluşturuluyorsa ve not alanı henüz boşsa varsayılan şablonu uygula
-                    if (!EDIT_DATA && !getEditorContent()) {
-                        const defaultTpl = cachedTemplates.find(t => parseInt(t.varsayilan_mi, 10) === 1);
-                        if (defaultTpl && defaultTpl.icerik) {
+                    const currentContent = getEditorContent();
+                    if (!EDIT_DATA || !currentContent || currentContent.trim() === '') {
+                        if (defaultTpl && defaultTpl.icerik && (!currentContent || currentContent.trim() === '')) {
                             setEditorContent(defaultTpl.icerik, false);
-                            if ($('#sablonSecici').length) {
-                                $('#sablonSecici').val(defaultTpl.id);
-                            }
                         }
+                    }
+
+                    if (effectiveSelectedId && $('#sablonSecici').length) {
+                        $('#sablonSecici').val(String(effectiveSelectedId));
                     }
                 }
             })
@@ -3617,12 +3881,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const $sel = $('#sablonSecici');
         $sel.empty();
         $sel.append('<option value="">-- Hazır Şablon Seçin --</option>');
+
+        let targetId = selectedId;
+        if (!targetId && cachedTemplates.length > 0) {
+            const def = cachedTemplates.find(t => parseInt(t.varsayilan_mi, 10) === 1);
+            if (def) targetId = def.id;
+        }
+
         cachedTemplates.forEach(t => {
             const isDef = parseInt(t.varsayilan_mi, 10) === 1;
             const defText = isDef ? ' ⭐ (Varsayılan)' : '';
-            const isSel = selectedId && parseInt(selectedId, 10) === parseInt(t.id, 10);
+            const isSel = targetId && String(targetId) === String(t.id);
             $sel.append(`<option value="${t.id}" ${isSel ? 'selected' : ''}>${$('<div>').text(t.baslik).html()}${defText}</option>`);
         });
+
+        if (targetId) {
+            $sel.val(String(targetId));
+        }
     }
 
     function renderTemplateModalList(keyword = '') {

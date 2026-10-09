@@ -5805,66 +5805,112 @@ button.note-btn.active {
   font-style: normal !important;
 }
 
-/* Dark theme support */
-[data-bs-theme="dark"] .note-editor.note-frame {
-  border-color: #334155 !important;
-  background-color: #1e293b !important;
+/* Dark & macOS Dark theme support for Summernote */
+[data-bs-theme="dark"] .note-editor.note-frame,
+[data-theme-mode="dark"] .note-editor.note-frame,
+body[data-layout-mode="dark"] .note-editor.note-frame,
+html[data-theme-preset="macos-dark"] .note-editor.note-frame {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(28, 30, 38, 0.72) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
 }
 
 [data-bs-theme="dark"] .note-editor .note-toolbar,
-[data-bs-theme="dark"] .note-popover .popover-content {
-  background: #0f172a !important;
-  border-bottom-color: #334155 !important;
+[data-bs-theme="dark"] .note-popover .popover-content,
+[data-theme-mode="dark"] .note-editor .note-toolbar,
+[data-theme-mode="dark"] .note-popover .popover-content,
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar,
+html[data-theme-preset="macos-dark"] .note-popover .popover-content {
+  background: rgba(35, 36, 42, 0.85) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 [data-bs-theme="dark"] .note-editor .note-toolbar > .note-btn-group,
-[data-bs-theme="dark"] .note-popover .popover-content > .note-btn-group {
-  background: #1e293b !important;
-  border-color: #334155 !important;
+[data-bs-theme="dark"] .note-popover .popover-content > .note-btn-group,
+[data-theme-mode="dark"] .note-editor .note-toolbar > .note-btn-group,
+[data-theme-mode="dark"] .note-popover .popover-content > .note-btn-group,
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar > .note-btn-group,
+html[data-theme-preset="macos-dark"] .note-popover .popover-content > .note-btn-group {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 [data-bs-theme="dark"] .note-editor .note-toolbar .note-btn,
 [data-bs-theme="dark"] .note-popover .popover-content .note-btn,
-[data-bs-theme="dark"] button.note-btn {
-  color: #94a3b8 !important;
+[data-bs-theme="dark"] button.note-btn,
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar .note-btn,
+html[data-theme-preset="macos-dark"] .note-popover .popover-content .note-btn,
+html[data-theme-preset="macos-dark"] button.note-btn {
+  color: rgba(235, 238, 245, 0.85) !important;
 }
 
 [data-bs-theme="dark"] .note-editor .note-toolbar .note-btn:hover,
 [data-bs-theme="dark"] .note-popover .popover-content .note-btn:hover,
-[data-bs-theme="dark"] button.note-btn:hover {
-  background-color: rgba(var(--bs-primary-rgb, 117, 107, 224), 0.2) !important;
-  color: #fff !important;
+[data-bs-theme="dark"] button.note-btn:hover,
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar .note-btn:hover,
+html[data-theme-preset="macos-dark"] .note-popover .popover-content .note-btn:hover,
+html[data-theme-preset="macos-dark"] button.note-btn:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
 }
 
 [data-bs-theme="dark"] .note-editor .note-toolbar .note-btn.active,
-[data-bs-theme="dark"] button.note-btn.active {
-  background-color: rgba(var(--bs-primary-rgb, 117, 107, 224), 0.35) !important;
-  color: #fff !important;
+[data-bs-theme="dark"] button.note-btn.active,
+html[data-theme-preset="macos-dark"] .note-editor .note-toolbar .note-btn.active,
+html[data-theme-preset="macos-dark"] button.note-btn.active {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+  color: #60a5fa !important;
 }
 
 [data-bs-theme="dark"] .note-current-fontname,
-[data-bs-theme="dark"] .note-current-fontsize {
+[data-bs-theme="dark"] .note-current-fontsize,
+html[data-theme-preset="macos-dark"] .note-current-fontname,
+html[data-theme-preset="macos-dark"] .note-current-fontsize {
   color: #cbd5e1 !important;
 }
 
-[data-bs-theme="dark"] .note-dropdown-menu {
-  background: #1e293b !important;
-  border-color: #334155 !important;
+[data-bs-theme="dark"] .note-dropdown-menu,
+html[data-theme-preset="macos-dark"] .note-dropdown-menu {
+  background: rgba(32, 34, 42, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 [data-bs-theme="dark"] .note-dropdown-menu > li > a,
 [data-bs-theme="dark"] .note-dropdown-menu .dropdown-item,
-[data-bs-theme="dark"] .note-dropdown-menu > a {
-  color: #cbd5e1 !important;
+[data-bs-theme="dark"] .note-dropdown-menu > a,
+html[data-theme-preset="macos-dark"] .note-dropdown-menu > li > a,
+html[data-theme-preset="macos-dark"] .note-dropdown-menu .dropdown-item,
+html[data-theme-preset="macos-dark"] .note-dropdown-menu > a {
+  color: rgba(235, 238, 245, 0.9) !important;
 }
 
-[data-bs-theme="dark"] .note-statusbar {
-  background-color: #0f172a !important;
-  border-top-color: #334155 !important;
+[data-bs-theme="dark"] .note-statusbar,
+html[data-theme-preset="macos-dark"] .note-statusbar {
+  background-color: rgba(35, 36, 42, 0.85) !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-[data-bs-theme="dark"] .note-editor.note-frame .note-editing-area .note-editable {
+[data-bs-theme="dark"] .note-statusbar .note-resizebar .note-icon-bar,
+html[data-theme-preset="macos-dark"] .note-statusbar .note-resizebar .note-icon-bar {
+  border-top: 2px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+[data-bs-theme="dark"] .note-editor.note-frame .note-editing-area .note-editable,
+[data-bs-theme="dark"] .note-editable,
+html[data-theme-preset="macos-dark"] .note-editor.note-frame .note-editing-area .note-editable,
+html[data-theme-preset="macos-dark"] .note-editable {
   color: #f1f5f9 !important;
+  background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .note-editable table,
+[data-bs-theme="dark"] .note-editable table td,
+[data-bs-theme="dark"] .note-editable table th,
+html[data-theme-preset="macos-dark"] .note-editable table,
+html[data-theme-preset="macos-dark"] .note-editable table td,
+html[data-theme-preset="macos-dark"] .note-editable table th {
+  color: #f1f5f9 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* ==========================================================================
@@ -6704,8 +6750,7 @@ html[data-theme-preset="macos-dark"] body .mac-dropdown-group:last-child {
   margin-bottom: 0 !important;
 }
 
-html[data-theme-preset="macos-dark"] body .dropdown-item,
-[data-theme-preset="macos-dark"] .dropdown-item,
+html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-item,
 html[data-theme-preset="macos-dark"] body .mac-popover-item {
   color: #ffffff !important;
   font-size: 13px !important;
@@ -6717,25 +6762,24 @@ html[data-theme-preset="macos-dark"] body .mac-popover-item {
   width: 100% !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  gap: 8px !important;
   background: transparent !important;
   border: none !important;
   cursor: pointer !important;
   transition: background 0.12s ease, color 0.12s ease !important;
 }
 
-html[data-theme-preset="macos-dark"] body .dropdown-item:hover,
-html[data-theme-preset="macos-dark"] body .dropdown-item:focus,
-[data-theme-preset="macos-dark"] .dropdown-item:hover,
-[data-theme-preset="macos-dark"] .dropdown-item:focus,
+html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-item:hover,
+html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-item:focus,
 html[data-theme-preset="macos-dark"] body .mac-popover-item:hover,
 html[data-theme-preset="macos-dark"] body .mac-popover-item:focus {
   background: #3b3b3b !important;
   color: #ffffff !important;
 }
 
-html[data-theme-preset="macos-dark"] body .dropdown-item.disabled,
-[data-theme-preset="macos-dark"] .dropdown-item.disabled,
+html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-item.disabled,
 html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled {
   color: #5a5a5a !important;
   background: transparent !important;
@@ -7927,6 +7971,33 @@ html[data-theme-preset="macos-dark"] body .dropdown-menu:not(.mac-popover-menu):
   border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
   margin: 4px 0 !important;
 }
+
+/* Merkezi Dropdown Item Sola Yaslama ve İkon Düzeni */
+.dropdown-item,
+[data-bs-theme="dark"] .dropdown-item,
+[data-theme-mode="dark"] .dropdown-item,
+body[data-layout-mode="dark"] .dropdown-item,
+html[data-theme-preset="macos-dark"] body .dropdown-item,
+[data-theme-preset="macos-dark"] .dropdown-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  gap: 8px !important;
+}
+
+.dropdown-item > i,
+.dropdown-item > svg,
+.dropdown-item > .mdi,
+.dropdown-item > .bx {
+  flex-shrink: 0 !important;
+  margin-right: 0 !important;
+}
+
+.dropdown-item .mac-item-shortcut {
+  margin-left: auto !important;
+}
+
 
 
 

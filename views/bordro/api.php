@@ -1387,12 +1387,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                                     <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</td>
                                                   </tr>';
                                     }
-                                    if ($bed['yemek_dahil_tutar'] > 0) {
-                                        $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
-                                                    <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-info-circle me-1 opacity-50"></i>' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . ' <small>(Yemek yardımına dahil)</small></td>
-                                                    <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">' . number_format($bed['yemek_dahil_tutar'], 2, ',', '.') . ' ₺ <small>(bilgi)</small></td>
-                                                  </tr>';
-                                    }
                                 }
                             }
                             if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
