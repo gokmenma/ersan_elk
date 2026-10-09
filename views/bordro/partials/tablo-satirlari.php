@@ -3,6 +3,7 @@
 <?php $idx = 1;
 foreach ($personeller as $personel):
     $pc = $preCalc[$personel->id];
+    $hesaplanmis = !empty($pc['hesaplanmis']);
     $enc_id = $pc['enc_id'];
     $toplamAlacagiPersonel = $pc['toplamAlacagi'];
     $kesintiHaricIcra = $pc['kesintiHaricIcra'];
@@ -132,13 +133,17 @@ foreach ($personeller as $personel):
             data-ay="<?= $selectedAy ?>"
             data-yil="<?= $selectedYil ?>"
             title="İzin/Rapor Takvimini Görüntüle">
-            <?= $calismaGunu ?>
+            <?= $hesaplanmis ? $calismaGunu : '-' ?>
         </a>
     </td>
     <td class="text-end text-dark fw-bold">
-        <span class="cursor-pointer btn-detail-old text-primary" data-id="<?= $personel->id ?>" title="Bordro Detayını Gör">
-            <?= number_format($toplamAlacagiPersonel, 2, ',', '.') ?> ₺
-        </span>
+        <?php if ($hesaplanmis): ?>
+            <span class="cursor-pointer btn-detail-old text-primary" data-id="<?= $personel->id ?>" title="Bordro Detayını Gör">
+                <?= number_format($toplamAlacagiPersonel, 2, ',', '.') ?> ₺
+            </span>
+        <?php else: ?>
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill">Hesaplanmadı</span>
+        <?php endif; ?>
     </td>
     <td class="text-end text-danger fw-bold">
         <span class="cursor-pointer btn-kesinti-ekle text-danger"
@@ -146,12 +151,12 @@ foreach ($personeller as $personel):
             data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
             data-maas="<?= floatval($personel->maas_tutari ?? 0) ?>"
             data-maas-durumu="<?= $personel->maas_durumu ?? '' ?>">
-            <?= number_format($kesintiHaricIcra, 2, ',', '.') ?> ₺
+            <?= $hesaplanmis ? number_format($kesintiHaricIcra, 2, ',', '.') . ' ₺' : '-' ?>
         </span>
     </td>
     <td class="text-end fw-bold <?= ($toplamAlacagiPersonel - $kesintiHaricIcra) < 0 ? 'text-danger' : 'text-success' ?>">
         <span class="cursor-pointer btn-detail <?= ($toplamAlacagiPersonel - $kesintiHaricIcra) < 0 ? 'text-danger' : 'text-success' ?>" data-id="<?= $personel->id ?>">
-            <?= number_format($toplamAlacagiPersonel - $kesintiHaricIcra, 2, ',', '.') ?> ₺
+            <?= $hesaplanmis ? number_format($toplamAlacagiPersonel - $kesintiHaricIcra, 2, ',', '.') . ' ₺' : '-' ?>
         </span>
     </td>
     <td class="text-end text-danger fw-medium">
@@ -167,15 +172,15 @@ foreach ($personeller as $personel):
         <?php endif; ?>
     </td>
     <td class="text-end text-warning fw-medium">
-        <?= $sgkVergiKesintisi > 0 ? number_format($sgkVergiKesintisi, 2, ',', '.') . ' ₺' : '-' ?>
+        <?= $hesaplanmis && $sgkVergiKesintisi > 0 ? number_format($sgkVergiKesintisi, 2, ',', '.') . ' ₺' : '-' ?>
     </td>
     <td class="text-end text-primary">
-        <?= $bankaOdemesi > 0 ? number_format($bankaOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
+        <?= $hesaplanmis && $bankaOdemesi > 0 ? number_format($bankaOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
     </td>
     <td class="text-end text-info td-sodexo">
         <div class="sodexo-wrapper d-flex align-items-center justify-content-end gap-1">
             <span class="sodexo-value fw-bold">
-                <?= $sodexoOdemesi > 0 ? number_format($sodexoOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
+                <?= $hesaplanmis && $sodexoOdemesi > 0 ? number_format($sodexoOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
             </span>
             <input type="text"
                 class="form-control form-control-sm text-end update-sodexo money d-none"
@@ -187,13 +192,15 @@ foreach ($personeller as $personel):
                 data-toplam_alacak="<?= number_format($toplamAlacagiPersonel, 2, '.', '') ?>"
                 data-current-val="<?= $sodexoOdemesi ?>"
                 value="<?= Helper::formattedMoney($sodexoOdemesi) ?>">
-            <a href="javascript:void(0);" class="btn-edit-sodexo-inline text-muted" title="Düzenle">
-                <i class="bx bx-edit" style="font-size: 14px;"></i>
-            </a>
+            <?php if ($hesaplanmis): ?>
+                <a href="javascript:void(0);" class="btn-edit-sodexo-inline text-muted" title="Düzenle">
+                    <i class="bx bx-edit" style="font-size: 14px;"></i>
+                </a>
+            <?php endif; ?>
         </div>
     </td>
     <td class="text-end fw-bold td-elden <?= $eldenOdeme < 0 ? 'text-danger' : 'text-warning' ?>">
-        <?= $eldenOdeme != 0 ? number_format($eldenOdeme, 2, ',', '.') . ' ₺' : '-' ?>
+        <?= $hesaplanmis && $eldenOdeme != 0 ? number_format($eldenOdeme, 2, ',', '.') . ' ₺' : '-' ?>
     </td>
     <td class="text-center">
         <div class="dropdown">
@@ -202,7 +209,7 @@ foreach ($personeller as $personel):
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                    <a class="dropdown-item btn-odeme<?= $donemKapali ? ' disabled' : '' ?>"
+                    <a class="dropdown-item btn-odeme<?= ($donemKapali || !$hesaplanmis) ? ' disabled' : '' ?>"
                         href="javascript:void(0);" data-id="<?= $personel->id ?>"
                         data-net="<?= $netAlacagi ?>"
                         data-banka="<?= $bankaOdemesi ?>"
@@ -215,7 +222,7 @@ foreach ($personeller as $personel):
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item btn-detail" href="javascript:void(0);" data-id="<?= $personel->id ?>">
+                    <a class="dropdown-item btn-detail<?= !$hesaplanmis ? ' disabled' : '' ?>" href="javascript:void(0);" data-id="<?= $personel->id ?>">
                         <i class="mdi mdi-information-outline me-2 text-info"></i> Detay
                     </a>
                 </li>

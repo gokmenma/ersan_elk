@@ -349,21 +349,27 @@ eldenOdeme = max(0, netMaas - bankaOdemesi - sodexoOdemesi - icraKesintisi - dig
 
 Manuel dagilimda otomatik banka/Sodexo duzeltmesi yapilmaz.
 
+## Hesaplanmış Bordronun Gösterim Kaynağı
+
+Açık veya kapalı dönem ayrımı yapılmadan, `hesaplama_tarihi` ve geçerli `hesaplama_detay` snapshot'ı bulunan
+bordro satırları liste, detay, özet, Excel ve ödeme raporlarında kayıtlı `bordro_personel` değerlerinden gösterilir.
+Personel, puantaj, parametre veya hesaplama kodundaki sonraki değişiklikler kayıtlı bordronun görünümünü kendiliğinden
+değiştiremez. Yeni değerler yalnızca kullanıcı bordroyu yeniden hesapladığında kaydedilir ve gösterime girer.
+
+Snapshot bulunmayan satırlar canlı hesaplanmaz; tutar yerine `Hesaplanmadı` durumu gösterilir ve ödeme/rapor
+çıktılarına dahil edilmez.
+
 ## Bankaya Yatmayacak Personel Kurali
 
 `sgk_yapilan_firma` alaninda `KUR` geciyorsa otomatik dagilimda banka odemesi sifirlanir ve tutar elden odemeye aktarilir.
-Dışarıdan sigortalı durumu metinden türetilmez; dönemsel çalışma geçmişindeki, geçmiş yoksa personel kartındaki
-`disardan_sigortali = 1` bayrağı esas alınır. Bu personelde banka ödemesi sıfırlanır, ancak tutar elden ödemeye
-aktarılmaz. Eski verilerle geriye uyumluluk için yalnızca bayrak alanı bulunmuyorsa `sgk_yapilan_firma`
-alanındaki `Sigortal` ifadesi yedek kontrol olarak kullanılabilir.
+`disardan_sigortali = 1` bayrağı personelin modüllerde görünürlüğünü belirler; ödeme kanalını değiştirmez.
+Dışarıdan sigortalı personelin hesaplanan veya kaydedilmiş banka ödemesi korunur.
 
 ```text
 if sgk_yapilan_firma contains "KUR":
     eldenOdeme += bankaOdemesi
     bankaOdemesi = 0
 
-if disardan_sigortali = 1:
-    bankaOdemesi = 0
 ```
 
 ## Ek Odeme Kurallari

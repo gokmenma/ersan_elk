@@ -63,6 +63,9 @@ try {
     foreach ($personeller as $p) {
         // Listeyle aynı güncel hesap; kayıtlı eski ödeme tutarlarına geri dönülmez.
         $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
+        if (empty($hesap['hesaplanmis'])) {
+            continue;
+        }
         if (!empty($p->hesaplama_tarihi)) {
             // Kayıtlı bordronun vergi, mesai ve kesinti ayrıntıları.
             $detay = !empty($p->hesaplama_detay) ? json_decode($p->hesaplama_detay, true) : [];

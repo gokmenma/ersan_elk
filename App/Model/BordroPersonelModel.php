@@ -976,28 +976,88 @@ class BordroPersonelModel extends Model
         ];
     }
 
-    private function isDisaridanSigortali(object|array $kayit): bool
+    private function kayitliGosterimDegerleri(object $p, float $asgariUcretNet): ?array
     {
-        $bayrakVar = is_object($kayit)
-            ? property_exists($kayit, 'disardan_sigortali')
-            : array_key_exists('disardan_sigortali', $kayit);
-        $bayrak = is_object($kayit)
-            ? ($kayit->disardan_sigortali ?? null)
-            : ($kayit['disardan_sigortali'] ?? null);
-
-        if ($bayrakVar && $bayrak !== null && $bayrak !== '') {
-            return (int) $bayrak === 1;
+        if (empty($p->hesaplama_tarihi)) {
+            return [
+                'hesaplanmis' => false,
+                'gosterimKaynagi' => 'hesaplanmadi',
+                'muhasebePrimTutari' => 0.0, 'muhasebePrimHakedisi' => 0.0,
+                'muhasebeBankaPrimTutari' => 0.0, 'muhasebeDagilimaDahilPrim' => 0.0,
+                'muhasebeHariciYemekTutari' => 0.0, 'muhasebeBankaYemekTutari' => 0.0,
+                'maasDurumu' => (string) ($p->maas_durumu ?? ''), 'maasTutari' => 0.0, 'rawEkOdeme' => 0.0,
+                'ucretsizIzinGunu' => 0, 'calismaGunu' => 0, 'kesintiHaricIcra' => 0.0, 'icraKesintisi' => 0.0,
+                'toplamAlacagi' => 0.0, 'netAlacagi' => 0.0, 'netMaasGercek' => 0.0,
+                'bankaOdemesi' => 0.0, 'sodexoOdemesi' => 0.0, 'digerOdeme' => 0.0, 'eldenOdeme' => 0.0,
+                'mealAllowanceDeduction' => 0.0, 'spouseAllowanceDeduction' => 0.0, 'includedAllowanceDeduction' => 0.0,
+                'resmiAlacagi' => 0.0, 'yuvarlamaFarki' => 0.0, 'includedAllowanceFiiliGun' => 0,
+                'sozlesmeHakedisi' => 0.0, 'asgariHakedis' => 0.0, 'rtcGun' => 0, 'htcGun' => 0,
+                'yontemliBankaEki' => 0.0, 'nonKurRatio' => 0.0, 'isInclusive' => false,
+                'karisikMaasGecmisi' => false, 'sabitMaasGun' => 0, 'manualDagitimVar' => false,
+                'asgariYatacak' => 0.0, 'resmiNetTaban' => 0.0, 'bankaMatrahi' => 0.0,
+                'bankaOncelikliKesinti' => 0.0, 'bankaAktarilanKesinti' => 0.0,
+                'bankaEkOdemeDetaylari' => [], 'bankaKesintiKalemleri' => [],
+            ];
         }
 
-        $sgkFirma = is_object($kayit)
-            ? ($kayit->sgk_yapilan_firma ?? '')
-            : ($kayit['sgk_yapilan_firma'] ?? '');
+        $detay = json_decode((string) ($p->hesaplama_detay ?? ''), true);
+        if (!is_array($detay)) {
+            return null; // Eski, snapshotsız hesaplarda geçici geriye uyumluluk.
+        }
 
-        return stripos((string) $sgkFirma, 'Sigortal') !== false;
+        $matrah = is_array($detay['matrahlar'] ?? null) ? $detay['matrahlar'] : [];
+        $odeme = is_array($detay['odeme_dagilimi'] ?? null) ? $detay['odeme_dagilimi'] : [];
+        $ozet = is_array($detay['ozet'] ?? null) ? $detay['ozet'] : [];
+        $parametreler = is_array($detay['parametreler'] ?? null) ? $detay['parametreler'] : [];
+        $calismaGunu = (int) ($matrah['maas_hesap_gunu'] ?? $matrah['ssk_gunu'] ?? $p->calisan_gun ?? 0);
+        $icra = round((float) ($odeme['icra_kesintisi'] ?? 0), 2);
+        $kesinti = round((float) ($p->kesinti_tutar ?? 0), 2);
+        $toplamAlacak = round((float) ($p->net_maas ?? 0), 2);
+        $banka = round((float) ($p->banka_odemesi ?? $odeme['banka_net'] ?? 0), 2);
+        $sodexo = round((float) ($p->sodexo_odemesi ?? $odeme['sodexo'] ?? 0), 2);
+        $diger = round((float) ($p->diger_odeme ?? 0), 2);
+        $elden = round((float) ($p->elden_odeme ?? $odeme['elden'] ?? 0), 2);
+        $netAlacak = round(max(0.0, $toplamAlacak - $kesinti - $icra), 2);
+        $yemek = round((float) ($ozet['dahil_yemek_yardimi'] ?? 0), 2);
+        $es = round((float) ($ozet['dahil_es_yardimi'] ?? 0), 2);
+        $nominalMaas = round((float) ($matrah['nominal_maas'] ?? $p->maas_tutari ?? 0), 2);
+        $asgariNet = (float) ($parametreler['asgari_ucret_net'] ?? $asgariUcretNet);
+
+        return [
+            'hesaplanmis' => true, 'gosterimKaynagi' => 'kayitli',
+            'muhasebePrimTutari' => round((float) ($p->prim_tutar ?? 0), 2),
+            'muhasebePrimHakedisi' => round((float) ($p->prim_tutar ?? 0), 2),
+            'muhasebeBankaPrimTutari' => 0.0, 'muhasebeDagilimaDahilPrim' => 0.0,
+            'muhasebeHariciYemekTutari' => 0.0, 'muhasebeBankaYemekTutari' => 0.0,
+            'maasDurumu' => (string) ($detay['maas_durumu'] ?? $p->maas_durumu ?? ''),
+            'maasTutari' => $nominalMaas, 'rawEkOdeme' => round((float) ($p->prim_tutar ?? 0), 2),
+            'ucretsizIzinGunu' => (int) ($matrah['ucretsiz_izin_gunu'] ?? 0), 'calismaGunu' => $calismaGunu,
+            'kesintiHaricIcra' => $kesinti, 'icraKesintisi' => $icra,
+            'toplamAlacagi' => $toplamAlacak, 'netAlacagi' => $netAlacak, 'netMaasGercek' => $netAlacak,
+            'bankaOdemesi' => $banka, 'sodexoOdemesi' => $sodexo, 'digerOdeme' => $diger, 'eldenOdeme' => $elden,
+            'mealAllowanceDeduction' => $yemek, 'spouseAllowanceDeduction' => $es,
+            'includedAllowanceDeduction' => round($yemek + $es, 2), 'resmiAlacagi' => $banka,
+            'yuvarlamaFarki' => round((float) ($ozet['yuvarlama_farki'] ?? 0), 2),
+            'includedAllowanceFiiliGun' => (int) ($ozet['dahil_yemek_gun'] ?? $calismaGunu),
+            'sozlesmeHakedisi' => round(($nominalMaas / 30) * $calismaGunu, 2),
+            'asgariHakedis' => round(($asgariNet / 30) * $calismaGunu, 2),
+            'rtcGun' => 0, 'htcGun' => 0, 'yontemliBankaEki' => 0.0, 'nonKurRatio' => 1.0,
+            'isInclusive' => $yemek > 0 || $es > 0, 'karisikMaasGecmisi' => !empty($detay['gorev_gecmisi_parcali']),
+            'sabitMaasGun' => $calismaGunu, 'manualDagitimVar' => !empty($p->dagitim_manuel),
+            'asgariYatacak' => round(($asgariNet / 30) * $calismaGunu, 2),
+            'resmiNetTaban' => round(($asgariNet / 30) * $calismaGunu, 2),
+            'bankaMatrahi' => round($banka + $icra, 2), 'bankaOncelikliKesinti' => $icra,
+            'bankaAktarilanKesinti' => 0.0, 'bankaEkOdemeDetaylari' => [], 'bankaKesintiKalemleri' => [],
+        ];
     }
 
     public function hesaplaOrtakGosterimDegerleri(object $p, ?object $donemBilgi, float $asgariUcretNet): array
     {
+        $kayitli = $this->kayitliGosterimDegerleri($p, $asgariUcretNet);
+        if ($kayitli !== null) {
+            return $kayitli;
+        }
+
         $donemBaslangic = $donemBilgi->baslangic_tarihi ?? date('Y-m-01');
         $donemBitis = $donemBilgi->bitis_tarihi ?? date('Y-m-t');
         $context = ($_SESSION['firma_id'] ?? 0) . '|' . $p->donem_id . '|' . $donemBaslangic . '|' . $donemBitis;
@@ -1692,12 +1752,9 @@ class BordroPersonelModel extends Model
             }
         }
 
-        $disaridanSigortali = $this->isDisaridanSigortali($p);
-        $bankayaYatmayacak = ($nonKurRatio <= 0.0) || $disaridanSigortali;
+        $bankayaYatmayacak = ($nonKurRatio <= 0.0);
         if ($bankayaYatmayacak && $bankaOdemesi > 0) {
-            if (!$disaridanSigortali) {
-                $eldenOdeme += $bankaOdemesi;
-            }
+            $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
         if ($bankayaYatmayacak) {
@@ -1710,6 +1767,8 @@ class BordroPersonelModel extends Model
         $resmiAlacagi = $bankaOdemesi;
 
         return [
+            'hesaplanmis' => true,
+            'gosterimKaynagi' => 'canli_legacy',
             'muhasebePrimTutari' => max(0.0, round($muhasebePrimToplami - $muhasebedeGizlenecekPrim, 2)),
             'muhasebePrimHakedisi' => round($muhasebePrimToplami, 2),
             'muhasebeBankaPrimTutari' => round($muhasebeBankaPrimToplami, 2),
@@ -6353,11 +6412,8 @@ class BordroPersonelModel extends Model
             $netAlacagi = max(0, $netMaas - $toplamKesinti);
             $eldenOdeme = $netAlacagi - $bankaOdemesi - $sodexoOdemesi - $diger_odeme;
         } else {
-            $disaridanSigortali = $this->isDisaridanSigortali($kayit);
-            if (($nonKurRatio <= 0.0 || $disaridanSigortali) && $bankaOdemesi > 0) {
-                if (!$disaridanSigortali) {
-                    $eldenOdeme += $bankaOdemesi;
-                }
+            if ($nonKurRatio <= 0.0 && $bankaOdemesi > 0) {
+                $eldenOdeme += $bankaOdemesi;
                 $bankaOdemesi = 0;
             }
 

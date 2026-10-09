@@ -31,6 +31,10 @@ if ($selectedDonemId) {
 
         foreach ($personeller as $personel) {
             $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($personel, $selectedDonem, floatval($asgariUcretNet));
+            if (empty($ortak['hesaplanmis'])) {
+                $bankaOdemeleri[$personel->id] = null;
+                continue;
+            }
             $bankaOdemesi = floatval($ortak['bankaOdemesi'] ?? 0);
 
             $bankaOdemeleri[$personel->id] = $bankaOdemesi;
@@ -227,7 +231,8 @@ foreach ($donemler as $donem) {
                                     <?php
                                     $sira = 1;
                                     foreach ($personeller as $personel):
-                                        $bankaOdemesi = floatval($bankaOdemeleri[$personel->id] ?? 0);
+                                        $hesaplanmis = array_key_exists($personel->id, $bankaOdemeleri) && $bankaOdemeleri[$personel->id] !== null;
+                                        $bankaOdemesi = $hesaplanmis ? floatval($bankaOdemeleri[$personel->id]) : 0.0;
                                         $ibanDolu = !empty($personel->iban_numarasi);
                                         ?>
                                         <tr class="<?= !$ibanDolu && $bankaOdemesi > 0 ? 'table-warning' : '' ?>">
@@ -254,7 +259,9 @@ foreach ($donemler as $donem) {
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-end">
-                                                <?php if ($bankaOdemesi > 0): ?>
+                                                <?php if (!$hesaplanmis): ?>
+                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Hesaplanmadı</span>
+                                                <?php elseif ($bankaOdemesi > 0): ?>
                                                     <span class="fw-bold text-success">
                                                         <?= number_format($bankaOdemesi, 2, ',', '.') ?> ₺
                                                     </span>

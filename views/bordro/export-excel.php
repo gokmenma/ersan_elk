@@ -237,10 +237,6 @@ try {
         $pNetMaasGercek = max(0, $pNetAlacagi - $pIcra);
         $digerP = floatval($personel->diger_odeme ?? 0);
         $eldenP = max(0, $pNetMaasGercek - $bankaP - $sodexoP - $digerP);
-        if ((int)($personel->disardan_sigortali ?? 0) === 1 && $bankaP > 0) {
-            $bankaP = 0;
-        }
-
         // Birim Kodu
         $deptName = $personel->departman ?? '-';
         $deptUp = mb_convert_case($deptName, MB_CASE_UPPER, "UTF-8");
@@ -263,6 +259,15 @@ try {
         }
 
         $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($personel, $donem, floatval($asgariUcretNet));
+
+        if (empty($ortak['hesaplanmis'])) {
+            $sheet->setCellValue('A' . $satir, $birimCode);
+            $sheet->setCellValue('B' . $satir, $personel->adi_soyadi);
+            $sheet->setCellValueExplicit('C' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
+            $sheet->setCellValue('D' . $satir, 'Hesaplanmadı');
+            $satir++;
+            continue;
+        }
 
         $pFiiliGun = $ortak['includedAllowanceFiiliGun'] ?? 0;
         if ($pFiiliGun <= 0) {

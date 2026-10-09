@@ -20,7 +20,7 @@ $checks = @(
     @{ File = 'BordroPersonelModel.php'; Text = $model; Pattern = '$yemekTutari = round($yemekGunluk * $calcFiiliGun, 2);'; Label = 'yemek yardimi toplam tutari gunluk x fiili gun olmali' },
     @{ File = 'BordroPersonelModel.php'; Text = $model; Pattern = '$asgariYatacak + $roundedIncludedMeal + $hesaplananEsToplam'; Label = 'maasa dahil banka dagilimi asgari + yemek + es kuralini korumali' },
     @{ File = 'BordroPersonelModel.php'; Text = $model; Pattern = '$sodexoOdemesi = 0;'; Label = 'maasa dahil modda otomatik Sodexo sifirlanmali' },
-    @{ File = 'BordroPersonelModel.php'; Text = $model; Pattern = '$disaridanSigortali = $this->isDisaridanSigortali($kayit);'; Label = 'disaridan sigortali banka sifirlama kurali bayraktan okunmali' },
+    @{ File = 'BordroPersonelModel.php'; Text = $model; Pattern = 'if ($nonKurRatio <= 0.0 && $bankaOdemesi > 0)'; Label = 'KUR personel banka sifirlama kurali korunmali' },
     @{ File = 'docs/BORDRO_HESAPLAMA_KURALLARI.md'; Text = $doc; Pattern = 'yemekGunluk = min(yemekGunluk, yemekYardimiGunlukLimit)'; Label = 'dokuman yemek limit kuralini anlatmali' },
     @{ File = 'docs/BORDRO_HESAPLAMA_KURALLARI.md'; Text = $doc; Pattern = 'bankaOdemesi = asgariHakedis + yemekYardimiToplam + esYardimiToplam'; Label = 'dokuman banka dagilim kuralini anlatmali' },
     @{ File = 'docs/BORDRO_HESAPLAMA_KURALLARI.md'; Text = $doc; Pattern = 'dagitim_manuel = 1'; Label = 'dokuman manuel dagilim kuralini anlatmali' }

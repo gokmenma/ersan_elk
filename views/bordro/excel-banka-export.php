@@ -105,6 +105,9 @@ try {
     $toplamBankaOdemesi = 0;
     foreach ($personeller as $p) {
         $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
+        if (empty($ortak['hesaplanmis'])) {
+            continue;
+        }
         $bankaOdemesi = (float) ($ortak['bankaOdemesi'] ?? 0);
 
         if (mb_stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR", 0, "UTF-8") !== false) {

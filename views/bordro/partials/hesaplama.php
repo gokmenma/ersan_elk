@@ -56,6 +56,7 @@ use App\Helper\Security;
                             }
 
                             $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $selectedDonem, floatval($asgariUcretNet));
+                            $hesaplanmis = !empty($hesap['hesaplanmis']);
 
                             $pToplamAlacagi = $hesap['toplamAlacagi'];
                             $pKesintiHaricIcra = $hesap['kesintiHaricIcra'];
@@ -230,6 +231,7 @@ use App\Helper\Security;
 
                             // Ön-hesaplama sonuçlarını kaydet (tablo satırında kullanılacak)
                             $preCalc[$p->id] = [
+                                'hesaplanmis' => $hesaplanmis,
                                 'enc_id' => Security::encrypt($p->personel_id),
                                 'toplamAlacagi' => $pToplamAlacagi,
                                 'kesintiHaricIcra' => $pKesintiHaricIcra,

@@ -11,24 +11,6 @@ final class BordroBankaDagilimiTest extends TestCase
         (new ReflectionProperty(BordroPersonelModel::class, $name))->setValue($model, $value);
     }
 
-    public function testDisaridanSigortaliKontroluMetinYerineBayragiEsasAlir(): void
-    {
-        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
-        $method = new ReflectionMethod($model, 'isDisaridanSigortali');
-
-        self::assertTrue($method->invoke($model, (object) [
-            'disardan_sigortali' => 1,
-            'sgk_yapilan_firma' => 'D??ar?dan Sigortal?',
-        ]));
-        self::assertFalse($method->invoke($model, (object) [
-            'disardan_sigortali' => 0,
-            'sgk_yapilan_firma' => 'Dışarıdan Sigortalı',
-        ]));
-        self::assertTrue($method->invoke($model, (object) [
-            'sgk_yapilan_firma' => 'Dışarıdan Sigortalı',
-        ]));
-    }
-
     public function testIhbarPrimiPuantajSayilmaz(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
@@ -243,6 +225,55 @@ final class BordroBankaDagilimiTest extends TestCase
         $this->assertKayitGosterim('Net', 1, 'Manuel prim', 500, false, true);
     }
 
+    public function testDisaridanSigortaliOlmakBankaOdemesiniSifirlamaz(): void
+    {
+        $this->assertKayitGosterim(
+            'Net',
+            1,
+            'Manuel prim',
+            disardanSigortali: true
+        );
+    }
+
+    public function testHesaplanmisSatirKayitliSnapshotDegerleriniKullanir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $record = (object) [
+            'hesaplama_tarihi' => '2026-09-30 12:00:00',
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Net',
+                'matrahlar' => ['nominal_maas' => 30000, 'maas_hesap_gunu' => 19],
+                'odeme_dagilimi' => ['icra_kesintisi' => 0, 'banka_net' => 20901.15, 'elden' => 0, 'sodexo' => 0],
+                'ozet' => [],
+                'parametreler' => ['asgari_ucret_net' => 28075.50],
+            ], JSON_UNESCAPED_UNICODE),
+            'net_maas' => 20901.15, 'kesinti_tutar' => 0,
+            'banka_odemesi' => 20901.15, 'sodexo_odemesi' => 0,
+            'diger_odeme' => 0, 'elden_odeme' => 0, 'prim_tutar' => 0,
+        ];
+
+        $hesap = $model->hesaplaOrtakGosterimDegerleri($record, null, 99999);
+
+        self::assertTrue($hesap['hesaplanmis']);
+        self::assertSame('kayitli', $hesap['gosterimKaynagi']);
+        self::assertSame(20901.15, $hesap['bankaOdemesi']);
+        self::assertSame(19, $hesap['calismaGunu']);
+    }
+
+    public function testHesaplanmamisSatirCanliHesaplanmaz(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $hesap = $model->hesaplaOrtakGosterimDegerleri((object) [
+            'hesaplama_tarihi' => null,
+            'maas_tutari' => 50000,
+        ], null, 28075.50);
+
+        self::assertFalse($hesap['hesaplanmis']);
+        self::assertSame('hesaplanmadi', $hesap['gosterimKaynagi']);
+        self::assertSame(0.0, $hesap['toplamAlacagi']);
+        self::assertSame(0.0, $hesap['bankaOdemesi']);
+    }
+
     public function testBrutUcretteKaydedilenNetHakedisBankaDagilimindaKullanilir(): void
     {
         $this->assertKayitGosterim('Brüt', 0, 'Manuel prim', 0);
@@ -341,7 +372,7 @@ final class BordroBankaDagilimiTest extends TestCase
         ));
     }
 
-    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false): void
+    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false, bool $disardanSigortali = false): void
     {
         $isKacakIhbarPrimi = str_starts_with($primAciklama, '[Kaçak İhbar Primi]');
         $record = (object) [
@@ -352,6 +383,7 @@ final class BordroBankaDagilimiTest extends TestCase
             'yemek_yardimi_dahil' => ($karma || $inclusive) ? 1 : 0, 'yemek_yardimi_tutari' => 300, 'es_yardimi_dahil' => 0,
             'sodexo' => 0, 'sodexo_odemesi' => 0, 'diger_odeme' => 0,
             'guncel_toplam_kesinti' => $kesinti, 'sgk_yapilan_firma' => 'Firma',
+            'disardan_sigortali' => $disardanSigortali ? 1 : 0,
             'dagitim_manuel' => $manuel ? 1 : 0, 'banka_odemesi' => $manuel ? 25000 : 17800,
             'hesaplama_tarihi' => '2026-09-01 12:00:00',
         ];

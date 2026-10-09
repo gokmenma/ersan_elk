@@ -861,6 +861,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
                 $asgariUcretBrut = $BordroParametre->getGenelAyar('asgari_ucret_brut', $donemBaslangicTarihi) ?? 33030.00;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
+                if (empty($hesap['hesaplanmis'])) {
+                    throw new Exception('Bu personelin bordrosu henüz hesaplanmadı. Önce Maaş Hesapla işlemini çalıştırın.');
+                }
                 $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap);
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
@@ -1763,6 +1766,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
                 $asgariUcretBrut = $BordroParametre->getGenelAyar('asgari_ucret_brut', $donemBaslangicTarihi) ?? 33030.00;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
+                if (empty($hesap['hesaplanmis'])) {
+                    throw new Exception('Bu personelin bordrosu henüz hesaplanmadı. Önce Maaş Hesapla işlemini çalıştırın.');
+                }
                 $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap);
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
