@@ -413,7 +413,9 @@ $(document).ready(function () {
 
     function updateSummaryCards() {
         table.ajax.reload(null, false); // Sayfayı kaydırmadan yenile
-        loadSonHareketler();
+        if ($('#sonHareketlerModal').hasClass('show')) {
+            loadSonHareketlerModal();
+        }
     }
 
     // Hızlı Hareket Ekle (Cari Listesi - Desktop & Mobile)
@@ -468,7 +470,7 @@ $(document).ready(function () {
         });
     });
 
-    // --- SON HESAP HAREKETLERİ BÖLÜMÜ ---
+    // --- SON HESAP HAREKETLERİ MODALI BÖLÜMÜ ---
     let currentSonHareketType = 'all';
 
     function escapeHtml(text) {
@@ -481,15 +483,15 @@ $(document).ready(function () {
             .replace(/'/g, "&#039;");
     }
 
-    function loadSonHareketler() {
-        const tbody = $('#sonHareketlerTbody');
-        if (!tbody.length) return;
+    function loadSonHareketlerModal() {
+        const tbody = $('#sonHareketlerModalTbody');
+        const searchVal = $('#sonHareketlerModalSearch').val() || '';
 
         tbody.html(`
             <tr>
-                <td colspan="8" class="text-center py-4 text-muted">
+                <td colspan="8" class="text-center py-5 text-muted">
                     <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                    Son hareketler yükleniyor...
+                    Hareketler yükleniyor...
                 </td>
             </tr>
         `);
@@ -500,7 +502,8 @@ $(document).ready(function () {
             data: {
                 action: "son-hareketler-getir",
                 type: currentSonHareketType,
-                limit: 15
+                search: searchVal,
+                limit: 25
             },
             dataType: "json",
             success: function (res) {
@@ -508,24 +511,27 @@ $(document).ready(function () {
                     if (res.data.length === 0) {
                         tbody.html(`
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">
-                                    <i class="bx bx-info-circle fs-4 d-block mb-1 text-secondary"></i>
-                                    Henüz kayıtlı bir hesap hareketi bulunmuyor.
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <i class="bx bx-info-circle fs-3 d-block mb-1 text-secondary"></i>
+                                    Kayıtlı hesap hareketi bulunamadı.
                                 </td>
                             </tr>
                         `);
+                        $('#sonHareketlerModalStatusText').text('0 işlem bulundu');
                         return;
                     }
+
+                    $('#sonHareketlerModalStatusText').text(`En son ${res.data.length} işlem listelendi`);
 
                     let html = '';
                     res.data.forEach(item => {
                         const cariName = escapeHtml(item.CariAdi || '-');
-                        const firmaName = item.firma ? `<div class="text-muted font-size-11 text-truncate" style="max-width: 250px;">${escapeHtml(item.firma)}</div>` : '';
+                        const firmaName = item.firma ? `<div class="text-muted font-size-11 text-truncate" style="max-width: 240px;">${escapeHtml(item.firma)}</div>` : '';
                         const belgeNo = item.belge_no 
                             ? `<span class="badge bg-light text-dark border font-monospace font-size-11 px-2 py-1">${escapeHtml(item.belge_no)}</span>` 
                             : '<span class="text-muted">-</span>';
                         const aciklama = item.aciklama 
-                            ? `<span class="text-secondary font-size-12 d-inline-block text-wrap" style="max-width: 320px; line-height: 1.3;">${escapeHtml(item.aciklama)}</span>` 
+                            ? `<span class="text-secondary font-size-12 d-inline-block text-wrap" style="max-width: 300px; line-height: 1.3;">${escapeHtml(item.aciklama)}</span>` 
                             : '<span class="text-muted">-</span>';
                         const ekleyenBadge = item.ekleyen && item.ekleyen !== '-'
                             ? `<span class="badge bg-light text-secondary border font-size-11"><i class="bx bx-user me-1"></i>${escapeHtml(item.ekleyen)}</span>`
@@ -568,8 +574,8 @@ $(document).ready(function () {
                 } else {
                     tbody.html(`
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-danger">
-                                <i class="bx bx-error-circle fs-4 d-block mb-1"></i>
+                            <td colspan="8" class="text-center py-5 text-danger">
+                                <i class="bx bx-error-circle fs-3 d-block mb-1"></i>
                                 ${res.message || 'Veriler yüklenirken bir hata oluştu.'}
                             </td>
                         </tr>
@@ -579,8 +585,8 @@ $(document).ready(function () {
             error: function () {
                 tbody.html(`
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-danger">
-                            <i class="bx bx-error-circle fs-4 d-block mb-1"></i>
+                        <td colspan="8" class="text-center py-5 text-danger">
+                            <i class="bx bx-error-circle fs-3 d-block mb-1"></i>
                             Sunucu bağlantısında hata oluştu.
                         </td>
                     </tr>
@@ -589,20 +595,32 @@ $(document).ready(function () {
         });
     }
 
-    // Filtre Butonları
-    $('#sonHareketlerFilterGroup').on('click', '.son-hareket-filter-btn', function () {
-        $('.son-hareket-filter-btn').removeClass('active btn-subtle-primary').addClass('btn-light');
+    // Modal Aç Butonu
+    $('#btnSonHareketlerModal').on('click', function () {
+        $('#sonHareketlerModal').modal('show');
+        loadSonHareketlerModal();
+    });
+
+    // Modal İçi Filtre Butonları
+    $('#sonHareketlerModalFilterGroup').on('click', '.son-modal-filter-btn', function () {
+        $('.son-modal-filter-btn').removeClass('active btn-subtle-primary').addClass('btn-light');
         $(this).addClass('active btn-subtle-primary').removeClass('btn-light');
         currentSonHareketType = $(this).data('type') || 'all';
-        loadSonHareketler();
+        loadSonHareketlerModal();
     });
 
-    // Yenile Butonu
-    $('#btnSonHareketlerRefresh').on('click', function () {
-        loadSonHareketler();
+    // Modal İçi Arama
+    let modalSearchTimeout;
+    $('#sonHareketlerModalSearch').on('keyup', function () {
+        clearTimeout(modalSearchTimeout);
+        modalSearchTimeout = setTimeout(() => {
+            loadSonHareketlerModal();
+        }, 300);
     });
 
-    // Sayfa Yüklendiğinde Son Hareketleri Başlat
-    loadSonHareketler();
+    // Modal İçi Yenile Butonu
+    $('#btnSonHareketlerModalRefresh').on('click', function () {
+        loadSonHareketlerModal();
+    });
 });
 

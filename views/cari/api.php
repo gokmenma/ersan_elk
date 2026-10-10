@@ -23,7 +23,7 @@ $cariActions = [
     'cari-not-kaydet', 'cari-getir', 'vkn-sorgula', 'cari-sil',
     'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
     'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
-    'son-hareketler-getir'
+    'son-hareketler-getir', 'tum-hareketler-ajax-list', 'dashboard-data', 'dashboard_data'
 ];
 if (!in_array($action, $cariActions, true)) {
     http_response_code(400);
@@ -38,7 +38,7 @@ if ($permissionPolicy->isReady()) {
     $movementActions = [
         'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
         'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
-        'son-hareketler-getir'
+        'son-hareketler-getir', 'tum-hareketler-ajax-list'
     ];
     $requiredPermission = in_array($action, $movementActions, true)
         ? 'cari_hesap_hareketleri'
@@ -750,4 +750,182 @@ if ($action == "son-hareketler-getir") {
     }
     exit;
 }
+
+// Tüm Cari Hareketleri (DataTable Sunucu Taraflı Liste)
+if ($action == "tum-hareketler-ajax-list") {
+    try {
+        $res = $CariHareket->ajaxTumHareketlerList($_POST);
+        
+        $formattedData = [];
+        foreach ($res['data'] as $row) {
+            $encCariId = Security::encrypt($row->cari_id);
+            $encHareketId = Security::encrypt($row->id);
+            $isBorc = (float)$row->borc > 0;
+            $tutar = $isBorc ? (float)$row->borc : (float)$row->alacak;
+
+            $actions = '
+                <div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">
+                    <a href="index.php?p=cari/hesap-hareketleri&id=' . $encCariId . '" class="btn btn-subtle-primary table-action-btn" title="Cari Hareketlerine Git">
+                        <i class="bx bx-history font-size-14"></i>
+                    </a>
+                    <button type="button" class="btn btn-subtle-warning table-action-btn hareket-duzenle" data-id="' . $encHareketId . '" title="Düzenle">
+                        <i class="bx bx-edit-alt font-size-14"></i>
+                    </button>
+                    <button type="button" class="btn btn-subtle-danger table-action-btn hareket-sil" data-id="' . $encHareketId . '" title="Sil">
+                        <i class="bx bx-trash font-size-14"></i>
+                    </button>
+                </div>';
+
+            $tarihHtml = '
+                <div>
+                    <span class="fw-semibold text-dark font-size-12">' . date('d.m.Y', strtotime($row->islem_tarihi)) . '</span>
+                    <span class="text-muted font-size-11 ms-1">' . date('H:i', strtotime($row->islem_tarihi)) . '</span>
+                </div>';
+
+            $cariHtml = '
+                <div>
+                    <a href="index.php?p=cari/hesap-hareketleri&id=' . $encCariId . '" class="fw-bold text-dark font-size-13 text-decoration-none">
+                        ' . htmlspecialchars($row->CariAdi, ENT_QUOTES, 'UTF-8') . '
+                    </a>
+                    ' . (!empty($row->firma) ? '<div class="text-muted font-size-11 text-truncate" style="max-width: 200px;">' . htmlspecialchars($row->firma, ENT_QUOTES, 'UTF-8') . '</div>' : '') . '
+                </div>';
+
+            $belgeHtml = !empty($row->belge_no)
+                ? '<span class="badge bg-light text-dark border font-monospace font-size-11">' . htmlspecialchars($row->belge_no, ENT_QUOTES, 'UTF-8') . '</span>'
+                : '<span class="text-muted">-</span>';
+
+            $typeBadge = $isBorc
+                ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-minus-circle me-1"></i>Aldım</span>'
+                : '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-plus-circle me-1"></i>Verdim</span>';
+
+            $borcHtml = $row->borc > 0 
+                ? '<span class="fw-bold text-danger font-size-12">' . Helper::formattedMoney((float)$row->borc) . '</span>' 
+                : '<span class="text-muted">-</span>';
+
+            $alacakHtml = $row->alacak > 0 
+                ? '<span class="fw-bold text-success font-size-12">' . Helper::formattedMoney((float)$row->alacak) . '</span>' 
+                : '<span class="text-muted">-</span>';
+
+            $ekleyenUser = !empty($row->ekleyen_kullanici_adi) 
+                ? $row->ekleyen_kullanici_adi 
+                : (!empty($row->ekleyen_user_name) ? $row->ekleyen_user_name : '-');
+
+            $ekleyenBadge = $ekleyenUser !== '-'
+                ? '<span class="badge bg-light text-secondary border font-size-11"><i class="bx bx-user me-1"></i>' . htmlspecialchars($ekleyenUser, ENT_QUOTES, 'UTF-8') . '</span>'
+                : '<span class="text-muted">-</span>';
+
+            $formattedData[] = [
+                "id" => '<span class="fw-semibold text-muted font-size-12">' . $row->id . '</span>',
+                "islem_tarihi" => $tarihHtml,
+                "CariAdi" => $cariHtml,
+                "islem_turu" => $typeBadge,
+                "belge_no" => $belgeHtml,
+                "aciklama" => '<span class="text-secondary font-size-12 d-inline-block text-wrap" style="max-width: 280px; line-height: 1.3;">' . htmlspecialchars($row->aciklama ?? '-', ENT_QUOTES, 'UTF-8') . '</span>',
+                "borc" => $borcHtml,
+                "alacak" => $alacakHtml,
+                "ekleyen" => $ekleyenBadge,
+                "actions" => $actions
+            ];
+        }
+
+        $res['data'] = $formattedData;
+        echo json_encode($res);
+    } catch (Exception $e) {
+        echo json_encode(['error' => $e->getMessage(), 'data' => []]);
+    }
+    exit;
+}
+
+// Cari Dashboard Verileri
+if ($action == "dashboard-data" || $action == "dashboard_data") {
+    try {
+        $period = $_POST['period'] ?? 'all';
+        $startDate = $_POST['start_date'] ?? null;
+        $endDate = $_POST['end_date'] ?? null;
+
+        $stats = $Cari->getDashboardStats($period, $startDate, $endDate);
+
+        // Top Alacaklılar şifreleme ve formatlama
+        $topAlacaklilar = [];
+        foreach ($stats['top_alacaklilar'] as $item) {
+            $topAlacaklilar[] = [
+                'id' => (int)$item->id,
+                'enc_id' => Security::encrypt($item->id),
+                'CariAdi' => $item->CariAdi,
+                'firma' => $item->firma,
+                'vkn_tckn' => $item->vkn_tckn,
+                'Telefon' => $item->Telefon,
+                'il_ilce' => trim(($item->il ?? '') . ' / ' . ($item->ilce ?? ''), ' /'),
+                'bakiye' => (float)$item->bakiye,
+                'bakiye_fmt' => Helper::formattedMoney((float)$item->bakiye),
+                'son_islem_tarihi' => !empty($item->son_islem_tarihi) ? date('d.m.Y', strtotime($item->son_islem_tarihi)) : '-',
+                'islem_sayisi' => (int)$item->islem_sayisi
+            ];
+        }
+
+        // Top Borçlular şifreleme ve formatlama
+        $topBorclular = [];
+        foreach ($stats['top_borclular'] as $item) {
+            $absBakiye = abs((float)$item->bakiye);
+            $topBorclular[] = [
+                'id' => (int)$item->id,
+                'enc_id' => Security::encrypt($item->id),
+                'CariAdi' => $item->CariAdi,
+                'firma' => $item->firma,
+                'vkn_tckn' => $item->vkn_tckn,
+                'Telefon' => $item->Telefon,
+                'il_ilce' => trim(($item->il ?? '') . ' / ' . ($item->ilce ?? ''), ' /'),
+                'bakiye' => (float)$item->bakiye,
+                'abs_bakiye' => $absBakiye,
+                'bakiye_fmt' => Helper::formattedMoney($absBakiye),
+                'son_islem_tarihi' => !empty($item->son_islem_tarihi) ? date('d.m.Y', strtotime($item->son_islem_tarihi)) : '-',
+                'islem_sayisi' => (int)$item->islem_sayisi
+            ];
+        }
+
+        // Son Hareketler şifreleme ve formatlama
+        $recentMovements = [];
+        foreach ($stats['recent_movements'] as $m) {
+            $isBorc = (float)$m->borc > 0;
+            $tutar = $isBorc ? (float)$m->borc : (float)$m->alacak;
+            $recentMovements[] = [
+                'id' => (int)$m->id,
+                'enc_id' => Security::encrypt($m->id),
+                'cari_id_enc' => Security::encrypt($m->cari_id),
+                'CariAdi' => $m->CariAdi,
+                'firma' => $m->firma,
+                'vkn_tckn' => $m->vkn_tckn,
+                'islem_tarihi_fmt' => date('d.m.Y H:i', strtotime($m->islem_tarihi)),
+                'islem_tarih_gun' => date('d.m.Y', strtotime($m->islem_tarihi)),
+                'islem_tarih_saat' => date('H:i', strtotime($m->islem_tarihi)),
+                'belge_no' => $m->belge_no,
+                'aciklama' => $m->aciklama,
+                'is_borc' => $isBorc,
+                'type_label' => $isBorc ? 'Aldım (Borç)' : 'Verdim (Alacak)',
+                'tutar' => $tutar,
+                'tutar_fmt' => Helper::formattedMoney($tutar),
+                'ekleyen_adi' => $m->ekleyen_adi ?? '-'
+            ];
+        }
+
+        $response = [
+            'status' => 'success',
+            'summary' => $stats['summary'],
+            'top_alacaklilar' => $topAlacaklilar,
+            'top_borclular' => $topBorclular,
+            'monthly_trend' => $stats['monthly_trend'],
+            'distribution' => $stats['distribution'],
+            'recent_movements' => $recentMovements
+        ];
+
+        echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    } catch (Exception $e) {
+        error_log("Cari Dashboard API Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+
 

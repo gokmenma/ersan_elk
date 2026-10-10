@@ -40,7 +40,7 @@ const server = http.createServer(async (req, res) => {
   const data = multipart(req, Buffer.concat(chunks));
   const val = key => (data[key] || Buffer.alloc(0)).toString('utf8');
   const action = val('action');
-  state.calls.push({ action, index: val('index'), operation: val('operation_key') });
+  state.calls.push({ action, index: val('index'), operation: val('operation_key'), mime: val('mime') });
   const reply = (success, value = {}, message = '') => {
     res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ success, data: value, message }));
   };
@@ -106,6 +106,16 @@ async function flush(page) { return page.evaluate(() => { window.testOnline=true
       const sizes = await page.evaluate(async uuid => { const k=await OfflineQueue.oku(uuid); return [k.dosyalar.length,k.ekDosyalar.length,k.videolar[0].blob.size]; },uuid);
       assert.deepEqual(sizes,[1,1,600000]); assert.equal((await flush(page)).gonderildi,1);
       assert.deepEqual(state.counts,{main:1,photo:1,video:1});
+    });
+    await test('MediaRecorder codec MIME parameters are normalized before video start', async page => {
+      await page.evaluate(async () => {
+        const bytes = new Uint8Array(300000);
+        const video = new File([bytes], 'camera.webm', {type:'video/webm;codecs=vp8,opus'});
+        await OfflineQueue.ekle('createIhbar', {}, [], {ilce:'Test'}, {videolar:[{dosya:video,sure:12,kapak:''}]});
+      });
+      assert.equal((await flush(page)).gonderildi,1);
+      const start = state.calls.find(c => c.action === 'pwaVideoStart');
+      assert.equal(start.mime, 'video/webm');
     });
     await test('lost main response reuses fixed operation without duplicate report', async page => {
       const uuid=await record(page,'saveKacakBildirim',false); state.drop='saveKacakBildirim';

@@ -512,5 +512,203 @@ class CariHareketleriModel extends Model
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Tüm cariler genelindeki hesap hareketleri için DataTable Ajax listesi ve özet KPI verilerini üretir.
+     *
+     * @param array $params
+     * @return array
+     */
+    public function ajaxTumHareketlerList(array $params): array
+    {
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 25;
+        $search = $params['search']['value'] ?? "";
+        $orders = $params['order'] ?? [];
+        $columns = $params['columns'] ?? [];
+        $filter_type = $params['filter_type'] ?? 'all';
+        $cari_id = !empty($params['cari_id']) ? (int)$params['cari_id'] : null;
+        $startDate = !empty($params['start_date']) ? trim($params['start_date']) : null;
+        $endDate = !empty($params['end_date']) ? trim($params['end_date']) : null;
+
+        $where = "h.silinme_tarihi IS NULL AND c.silinme_tarihi IS NULL";
+        $bindParams = [];
+
+        if ($cari_id) {
+            $where .= " AND h.cari_id = :cari_id";
+            $bindParams['cari_id'] = $cari_id;
+        }
+
+        if ($filter_type === 'verdim') {
+            $where .= " AND h.alacak > 0";
+        } elseif ($filter_type === 'aldim') {
+            $where .= " AND h.borc > 0";
+        }
+
+        if ($startDate) {
+            $where .= " AND DATE(h.islem_tarihi) >= :start_date";
+            $bindParams['start_date'] = date('Y-m-d', strtotime($startDate));
+        }
+
+        if ($endDate) {
+            $where .= " AND DATE(h.islem_tarihi) <= :end_date";
+            $bindParams['end_date'] = date('Y-m-d', strtotime($endDate));
+        }
+
+        if (!empty($search)) {
+            $where .= " AND (c.CariAdi LIKE :search OR c.firma LIKE :search OR c.vkn_tckn LIKE :search OR h.belge_no LIKE :search OR h.aciklama LIKE :search OR u.adi_soyadi LIKE :search OR u.user_name LIKE :search)";
+            $bindParams['search'] = "%$search%";
+        }
+
+        // Sütun Bazlı Arama
+        if (!empty($columns)) {
+            $colMap = [
+                0 => 'h.id',
+                1 => 'h.islem_tarihi',
+                2 => 'c.CariAdi',
+                3 => 'h.belge_no',
+                4 => 'h.aciklama',
+                5 => 'h.borc',
+                6 => 'h.alacak',
+                7 => 'u.adi_soyadi'
+            ];
+            foreach ($columns as $i => $column) {
+                if (!empty($column['search']['value']) && isset($colMap[$i])) {
+                    $field = $colMap[$i];
+                    $val = $column['search']['value'];
+                    $paramName = "col_" . $i;
+
+                    if (strpos($val, ':') !== false) {
+                        list($mode, $filterVal) = explode(':', $val, 2);
+                        $vals = explode('|', $filterVal);
+                        $filterVal = $vals[0];
+
+                        if ($field === 'h.borc' || $field === 'h.alacak') {
+                            if (!in_array($mode, ['null', 'not_null'])) {
+                                $filterVal = \App\Helper\Helper::formattedMoneyToNumber($filterVal);
+                            }
+                        }
+
+                        switch ($mode) {
+                            case 'contains': $where .= " AND $field LIKE :$paramName"; $bindParams[$paramName] = "%$filterVal%"; break;
+                            case 'not_contains': $where .= " AND $field NOT LIKE :$paramName"; $bindParams[$paramName] = "%$filterVal%"; break;
+                            case 'equals': $where .= " AND $field = :$paramName"; $bindParams[$paramName] = $filterVal; break;
+                            case 'not_equals': $where .= " AND $field != :$paramName"; $bindParams[$paramName] = $filterVal; break;
+                            case 'starts_with': $where .= " AND $field LIKE :$paramName"; $bindParams[$paramName] = "$filterVal%"; break;
+                            case 'ends_with': $where .= " AND $field LIKE :$paramName"; $bindParams[$paramName] = "%$filterVal"; break;
+                            case 'greater_than': $where .= " AND $field > :$paramName"; $bindParams[$paramName] = $filterVal; break;
+                            case 'less_than': $where .= " AND $field < :$paramName"; $bindParams[$paramName] = $filterVal; break;
+                            case 'greater_equal': $where .= " AND $field >= :$paramName"; $bindParams[$paramName] = $filterVal; break;
+                            case 'less_equal': $where .= " AND $field <= :$paramName"; $bindParams[$paramName] = $filterVal; break;
+                            case 'before': $where .= " AND DATE($field) <= :$paramName"; $bindParams[$paramName] = date('Y-m-d', strtotime($filterVal)); break;
+                            case 'after': $where .= " AND DATE($field) >= :$paramName"; $bindParams[$paramName] = date('Y-m-d', strtotime($filterVal)); break;
+                            case 'between':
+                                if (count($vals) === 2) {
+                                    $v1 = $paramName . "_1";
+                                    $v2 = $paramName . "_2";
+                                    $where .= " AND DATE($field) BETWEEN :$v1 AND :$v2";
+                                    $bindParams[$v1] = date('Y-m-d', strtotime($vals[0]));
+                                    $bindParams[$v2] = date('Y-m-d', strtotime($vals[1]));
+                                }
+                                break;
+                            case 'null': $where .= " AND ($field IS NULL OR $field = '')"; break;
+                            case 'not_null': $where .= " AND ($field IS NOT NULL AND $field != '')"; break;
+                        }
+                    } else {
+                        $where .= " AND $field LIKE :$paramName";
+                        $bindParams[$paramName] = "%$val%";
+                    }
+                }
+            }
+        }
+
+        // Toplam Kayıt Sayısı
+        $stmtTotal = $this->db->query("SELECT COUNT(*) FROM $this->table h JOIN cari c ON c.id = h.cari_id WHERE h.silinme_tarihi IS NULL AND c.silinme_tarihi IS NULL");
+        $totalCount = (int)$stmtTotal->fetchColumn();
+
+        // Filtrelenmiş Kayıt Sayısı ve Toplamlar
+        $stmtFiltered = $this->db->prepare("
+            SELECT 
+                COUNT(*) as filtered_count,
+                COALESCE(SUM(h.borc), 0) as toplam_borc,
+                COALESCE(SUM(h.alacak), 0) as toplam_alacak,
+                COUNT(CASE WHEN h.borc > 0 THEN 1 END) as aldim_sayisi,
+                COUNT(CASE WHEN h.alacak > 0 THEN 1 END) as verdim_sayisi
+            FROM $this->table h
+            JOIN cari c ON c.id = h.cari_id
+            LEFT JOIN users u ON u.id = h.ekleyen_kullanici
+            WHERE $where
+        ");
+        foreach ($bindParams as $k => $v) {
+            $stmtFiltered->bindValue($k, $v);
+        }
+        $stmtFiltered->execute();
+        $summary = $stmtFiltered->fetch(PDO::FETCH_OBJ);
+        $filteredCount = (int)($summary->filtered_count ?? 0);
+
+        // Sıralama
+        $orderQuery = "ORDER BY h.islem_tarihi DESC, h.id DESC";
+        if (!empty($orders)) {
+            $orderArr = [];
+            foreach ($orders as $order) {
+                $colIdx = $order['column'];
+                $colDir = $order['dir'];
+                $colName = $columns[$colIdx]['data'] ?? null;
+                
+                if ($colName === "ekleyen") {
+                    $orderArr[] = "u.adi_soyadi $colDir";
+                } elseif ($colName === "CariAdi") {
+                    $orderArr[] = "c.CariAdi $colDir";
+                } elseif ($colName && $colName != "actions" && $colName != "yuruyen_bakiye") {
+                    $orderArr[] = "h.$colName $colDir";
+                }
+            }
+            if (!empty($orderArr)) {
+                $orderQuery = "ORDER BY " . implode(", ", $orderArr);
+            }
+        }
+
+        $sql = "SELECT 
+                    h.id, h.cari_id, h.islem_tarihi, h.belge_no, h.aciklama, h.borc, h.alacak, h.fatura_id, h.dosya,
+                    c.CariAdi, c.firma, c.vkn_tckn,
+                    u.adi_soyadi as ekleyen_kullanici_adi, u.user_name as ekleyen_user_name,
+                    f.fatura_no as ref_fatura_no, f.yon as ref_fatura_yon, f.ettn as ref_fatura_ettn
+                FROM $this->table h
+                JOIN cari c ON c.id = h.cari_id
+                LEFT JOIN users u ON u.id = h.ekleyen_kullanici
+                LEFT JOIN faturalar f ON f.id = h.fatura_id
+                WHERE $where
+                $orderQuery
+                LIMIT :start, :length";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($bindParams as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue('start', (int)$start, PDO::PARAM_INT);
+        $stmt->bindValue('length', (int)$length, PDO::PARAM_INT);
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $toplamBorc = (float)($summary->toplam_borc ?? 0);
+        $toplamAlacak = (float)($summary->toplam_alacak ?? 0);
+        $genelBakiye = $toplamAlacak - $toplamBorc;
+
+        return [
+            "draw" => intval($draw),
+            "recordsTotal" => intval($totalCount),
+            "recordsFiltered" => intval($filteredCount),
+            "data" => $data,
+            "summary" => [
+                "toplam_hareket" => $filteredCount,
+                "toplam_borc" => $toplamBorc,
+                "toplam_alacak" => $toplamAlacak,
+                "genel_bakiye" => $genelBakiye,
+                "aldim_sayisi" => (int)($summary->aldim_sayisi ?? 0),
+                "verdim_sayisi" => (int)($summary->verdim_sayisi ?? 0)
+            ]
+        ];
+    }
 }
 

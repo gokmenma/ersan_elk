@@ -61,12 +61,27 @@ $title = "Yetki Yönetimi " . ($role ? " - ( " . $role->role_name . " )" : "");
 
 
                 <!-- Kaydetme Alanı -->
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span id="selectedCount" class="badge bg-primary badge-count">0</span>
-                        <span class="text-muted ms-2">yetki seçildi</span>
-                        <span class="text-muted ms-3 d-none d-sm-inline">(<span id="requiredCount">0</span>
-                            zorunlu)</span>
+                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="d-flex align-items-center">
+                            <span class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-3 me-2"
+                                style="width: 38px; height: 38px;" aria-hidden="true">
+                                <i class="mdi mdi-shield-account-outline fs-4"></i>
+                            </span>
+                            <div>
+                                <div class="text-muted font-size-11">Yetkileri düzenlenen grup</div>
+                                <div class="fw-bold text-dark">
+                                    <?= htmlspecialchars($role->role_name ?? 'Bilinmeyen Yetki Grubu', ENT_QUOTES, 'UTF-8') ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="vr d-none d-sm-block" style="height: 32px;"></div>
+                        <div>
+                            <span id="selectedCount" class="badge bg-primary badge-count">0</span>
+                            <span class="text-muted ms-2">yetki seçildi</span>
+                            <span class="text-muted ms-3 d-none d-sm-inline">(<span id="requiredCount">0</span>
+                                zorunlu)</span>
+                        </div>
                     </div>
                     <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                         <a href="index?p=kullanici-gruplari/list"
@@ -109,17 +124,22 @@ $title = "Yetki Yönetimi " . ($role ? " - ( " . $role->role_name . " )" : "");
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-                    <div class="col-md-9">
+                    <div class="col-md-8">
 
                         <div class="filter-chips mb-2 mb-md-0 d-flex flex-wrap gap-1" id="filterChips">
 
                         </div>
                     </div>
-                    <div class="col-md-3 d-flex justify-content-end">
+                    <div class="col-md-4 d-flex justify-content-end">
 
-                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 mb-3">
+                            <div class="d-flex align-items-center flex-wrap justify-content-end bg-white border rounded shadow-sm p-1 gap-1 mb-3">
                                 <button class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="selectHighlighted">
                                     <i class="mdi mdi-checkbox-multiple-marked-outline fs-5 me-1"></i> Arama Sonuçlarını Seç
+                                </button>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
+                                    id="showUnselectedPermissions" aria-pressed="false" title="Bu gruba henüz verilmemiş yetkileri göster">
+                                    <i class="mdi mdi-checkbox-blank-outline fs-5 me-1"></i> Seçili Olmayanlar
                                 </button>
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                 <div class="form-check form-switch ms-1">

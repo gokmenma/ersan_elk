@@ -11,6 +11,11 @@
 - Yalnızca Superadmin yetkisindeki sayfalar ve API aksiyonları `Gate::isSuperAdmin()` ile korunacak.
 - Hassas nesne ve kayıt ID'leri `Security::encrypt()` ve `Security::decrypt()` ile şifrelenecek.
 - HTML çıktısında değişkenler `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')` ile sarılacak.
+- Yeni yetkilendirilen her sayfa için aktif ve benzersiz bir `permissions.permission_key` kaydı oluşturulacak; yalnızca `menus` veya `permission_policies` kaydı eklemek yeterli kabul edilmeyecek.
+- Sayfanın `menus.permission_id` bağlantısı ile sayfa ve ilgili API aksiyonlarının `permission_policies.permission_id` bağlantıları aynı yetki kaydını gösterecek.
+- Yetkilendirme SQL'lerinde sabit permission ID kullanılmayacak; yetki ID'si `permission_key` üzerinden bulunarak menü, politika ve rol atamalarına bağlanacak.
+- Bu kuralın yürürlüğe girmesinden sonra oluşturulan her yeni aktif yetki, kendi oluşturma SQL scripti içinde `user_role_permissions` tablosu üzerinden `role_type = 'superadmin'` veya `superadmin = 1` olan rollere (Süper Admin ve Firma Sahibi) `NOT EXISTS` kontrollü ve tekrarlanabilir biçimde otomatik atanacak. Bu işlem yalnızca yeni oluşturulan yetki için yapılacak; mevcut yetkiler, geçmiş rol atamaları ve diğer grupların seçimleri geriye dönük olarak değiştirilmeyecek veya topluca tamamlanmayacak.
+- Yeni yetki çalışması, yetkinin Yetki Kataloğu'nda ve Yetki Grubu Düzenleme ekranında göründüğü doğrulanmadan tamamlanmış sayılmayacak.
 
 ## 3. DataTables Varsayılan Tablo Başlatma Standartları
 - **JavaScript Başlatma**: Tüm DataTables tabloları `applyLengthStateSave({ ...getDatatableOptions(), ... })` mantığı ile başlatılacaktır.

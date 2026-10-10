@@ -253,7 +253,12 @@
             uuid: uuidUret(),
             accountKey: accountKey,
             reliable: ["saveKacakBildirim", "updateKacakBildirim", "createIhbar", "updateIhbar"].indexOf(action) >= 0,
-            videolar: (ek.videolar || []).map(function (v) { return { key: uuidUret(), blob: v.dosya || v.blob, ad: (v.dosya && v.dosya.name) || v.ad || "video.mp4", tip: (v.dosya && v.dosya.type) || v.tip, sure: v.sure, kapak: v.kapak || "", cekim: v.cekim || "", tamam: false }; }),
+            videolar: (ek.videolar || []).map(function (v) {
+                var videoBlob = v.dosya || v.blob;
+                var videoTip = (videoBlob && videoBlob.type) || v.tip || "";
+                videoTip = videoTip.split(";", 1)[0].trim().toLowerCase();
+                return { key: uuidUret(), blob: videoBlob, ad: (v.dosya && v.dosya.name) || v.ad || "video.mp4", tip: videoTip, sure: v.sure, kapak: v.kapak || "", cekim: v.cekim || "", tamam: false };
+            }),
             action: action,
             alanlar: alanlar || {},
             dosyalar: dosyalar || [],
@@ -287,7 +292,10 @@
         return oku(uuid).then(function (kayit) {
             if (!kayit || kayit.accountKey !== accountKey) throw new Error("Kayıt bu hesaba ait değil.");
             if (kayit.anaGonderildi || (kayit.anaDenendi && !kayit.mainRejected) || kayit.durum === "gonderiliyor") throw new Error("Gönderimi başlamış kaydı sunucu listesinden düzenleyin.");
-            if (videolar && videolar.length) kayit.videolar = (kayit.videolar || []).concat(videolar.map(function (v) { return { key: uuidUret(), blob: v.dosya, ad: v.dosya.name, tip: v.dosya.type, sure: v.sure, kapak: v.kapak || "", cekim: v.cekim || "", tamam: false }; }));
+            if (videolar && videolar.length) kayit.videolar = (kayit.videolar || []).concat(videolar.map(function (v) {
+                var videoTip = (v.dosya.type || "").split(";", 1)[0].trim().toLowerCase();
+                return { key: uuidUret(), blob: v.dosya, ad: v.dosya.name, tip: videoTip, sure: v.sure, kapak: v.kapak || "", cekim: v.cekim || "", tamam: false };
+            }));
             if (alanlar) {
                 Object.keys(alanlar).forEach(function (k) {
                     kayit.alanlar[k] = alanlar[k];
@@ -805,6 +813,9 @@
         for (var v of (k.videolar || [])) {
             if (v.tamam) continue;
             if (!v.hash) { v.hash = await hashBlob(v.blob); await yaz(k); }
+            // Daha önce kuyruğa alınmış codec parametreli MIME değerlerini de
+            // yeni kayıt oluşturmadan tekrar gönderilebilir hale getir.
+            v.tip = String(v.tip || (v.blob && v.blob.type) || "").split(";", 1)[0].trim().toLowerCase();
             var vf = Object.assign(targetFields(k), { video_key: v.key });
             result = await istekGonder("pwaVideoStart", Object.assign({}, vf, { size: v.blob.size, hash: v.hash, mime: v.tip, duration: v.sure, name: v.ad, cover: v.kapak, capture: v.cekim }), [], "video hazırlığı");
             if (result.sonuc !== "tamam") return result;

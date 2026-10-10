@@ -65,12 +65,28 @@ $belgeTuruOptions = [
                 <i class="bx bx-plus font-size-16"></i> Yeni Cari Ekle
             </button>
 
-            <!-- 2. İşlemler Dropdown -->
+            <!-- 2. Cari Dashboard Butonu -->
+            <a href="index.php?p=cari/dashboard" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm">
+                <i class="bx bx-pie-chart-alt-2 font-size-16 text-primary"></i> <span class="d-none d-sm-inline">Dashboard</span>
+            </a>
+
+            <!-- 3. Son Hareketler Modalı Aç Butonu -->
+            <button type="button" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm" id="btnSonHareketlerModal">
+                <i class="bx bx-history font-size-16 text-primary"></i> <span class="d-none d-sm-inline">Son Hareketler</span>
+            </button>
+
+            <!-- 4. İşlemler Dropdown -->
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
                 </button>
                 <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=cari/dashboard">
+                        <i class="bx bx-pie-chart-alt-2 me-2 text-primary font-size-16"></i> Cari Finansal Dashboard
+                    </a>
+                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=cari/tum-hareketler">
+                        <i class="bx bx-history me-2 text-primary font-size-16"></i> Tüm Hesap Hareketleri
+                    </a>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnDropdownExportExcel">
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
@@ -90,7 +106,7 @@ $belgeTuruOptions = [
                 </div>
             </div>
 
-            <!-- 3. Özet Kartları Açma/Kapama Butonu -->
+            <!-- 5. Özet Kartları Açma/Kapama Butonu -->
             <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-expanded="true">
                 <i class="bx bx-chevron-up"></i>
             </button>
@@ -224,66 +240,6 @@ $belgeTuruOptions = [
                         </tr>
                     </thead>
                     <tbody></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- 4. Son Hesap Hareketleri Kartı -->
-    <div class="card summary-kpi-card mb-4" id="sonHareketlerCard">
-        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2">
-                <div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
-                    <i class="bx bx-history font-size-20"></i>
-                </div>
-                <div>
-                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Son Hesap Hareketleri</h5>
-                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Tüm cariler genelinde en son gerçekleşen alacak ve borç işlemleri</p>
-                </div>
-            </div>
-
-            <!-- Sağ Araç Çubuğu / Hızlı Filtreler -->
-            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-                <div class="btn-group btn-group-sm p-0.5 bg-light rounded-pill border" role="group" id="sonHareketlerFilterGroup">
-                    <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2.5 py-1 son-hareket-filter-btn active" data-type="all">
-                        Tümü
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light rounded-pill px-2.5 py-1 son-hareket-filter-btn" data-type="aldim">
-                        <i class="bx bx-minus-circle text-danger me-1"></i>Aldım
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light rounded-pill px-2.5 py-1 son-hareket-filter-btn" data-type="verdim">
-                        <i class="bx bx-plus-circle text-success me-1"></i>Verdim
-                    </button>
-                </div>
-                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnSonHareketlerRefresh" title="Listeyi Yenile">
-                    <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yenile</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="card-body p-3 pt-0">
-            <div class="table-responsive" style="overflow-x: auto !important;">
-                <table id="sonHareketlerTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 130px;">TARİH & SAAT</th>
-                            <th>CARİ / FİRMA</th>
-                            <th style="width: 100px;" class="text-center">İŞLEM TÜRÜ</th>
-                            <th style="width: 130px;">BELGE NO</th>
-                            <th>AÇIKLAMA</th>
-                            <th class="text-end" style="width: 130px;">TUTAR</th>
-                            <th style="width: 130px;">EKLEYEN</th>
-                            <th style="width: 80px;" class="text-center">GİT</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sonHareketlerTbody">
-                        <tr>
-                            <td colspan="8" class="text-center py-4 text-muted">
-                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                                Son hareketler yükleniyor...
-                            </td>
-                        </tr>
-                    </tbody>
                 </table>
             </div>
         </div>
@@ -495,6 +451,93 @@ $belgeTuruOptions = [
                     <button type="submit" class="btn btn-primary px-4">Kaydet</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Son Hesap Hareketleri Modalı -->
+<div class="modal fade" id="sonHareketlerModal" tabindex="-1" aria-labelledby="sonHareketlerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom px-4 py-3 align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                        <i class="bx bx-history font-size-22"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-dark font-size-16" id="sonHareketlerModalLabel">Son Hesap Hareketleri</h5>
+                        <p class="text-muted small mb-0">Tüm carilerde sisteme kaydedilen en son işlemler</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <a href="index.php?p=cari/tum-hareketler" class="btn btn-sm btn-subtle-primary d-flex align-items-center gap-1 rounded-pill px-3 py-1.5 fw-semibold shadow-xs">
+                        <i class="bx bx-window-open font-size-15"></i> <span class="d-none d-sm-inline">Tüm Hareketler Sayfası</span>
+                    </a>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+            </div>
+            
+            <div class="modal-body p-4">
+                <!-- Filtre ve Arama Araç Çubuğu -->
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div class="btn-group btn-group-sm p-0.5 bg-light rounded-pill border" role="group" id="sonHareketlerModalFilterGroup">
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-3 py-1 son-modal-filter-btn active" data-type="all">
+                            Tümü
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light rounded-pill px-3 py-1 son-modal-filter-btn" data-type="aldim">
+                            <i class="bx bx-minus-circle text-danger me-1"></i>Aldım (Borç)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light rounded-pill px-3 py-1 son-modal-filter-btn" data-type="verdim">
+                            <i class="bx bx-plus-circle text-success me-1"></i>Verdim (Alacak)
+                        </button>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="input-group input-group-sm" style="width: 220px;">
+                            <span class="input-group-text bg-white border-end-0"><i class="bx bx-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 ps-0" id="sonHareketlerModalSearch" placeholder="Listede ara...">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnSonHareketlerModalRefresh" title="Yenile">
+                            <i class="bx bx-refresh font-size-15"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width: 130px;">TARİH & SAAT</th>
+                                <th>CARİ / FİRMA</th>
+                                <th style="width: 100px;" class="text-center">İŞLEM TÜRÜ</th>
+                                <th style="width: 120px;">BELGE NO</th>
+                                <th>AÇIKLAMA</th>
+                                <th class="text-end" style="width: 130px;">TUTAR</th>
+                                <th style="width: 130px;">EKLEYEN</th>
+                                <th style="width: 80px;" class="text-center">GİT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sonHareketlerModalTbody">
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    Hareketler yükleniyor...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="modal-footer border-top px-4 py-2.5 justify-content-between">
+                <span class="text-muted font-size-12" id="sonHareketlerModalStatusText">En son 20 işlem gösteriliyor</span>
+                <div class="d-flex gap-2">
+                    <a href="index.php?p=cari/tum-hareketler" class="btn btn-primary btn-sm px-3 shadow-xs">
+                        <i class="bx bx-list-check me-1"></i> Tüm Hareketleri Aç
+                    </a>
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

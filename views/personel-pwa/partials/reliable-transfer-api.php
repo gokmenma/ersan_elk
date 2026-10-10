@@ -129,7 +129,10 @@ $result = $chunks->run($transferFirma, $transferPersonel, $videoKey, function (s
         $size = filter_var($_POST['size'] ?? null, FILTER_VALIDATE_INT);
         $duration = filter_var($_POST['duration'] ?? null, FILTER_VALIDATE_FLOAT);
         $hash = (string) ($_POST['hash'] ?? '');
-        $mime = (string) ($_POST['mime'] ?? '');
+        // MediaRecorder bazı Android tarayıcılarında codec bilgisini MIME
+        // parametresi olarak ekler (örn. video/webm;codecs=vp8,opus).
+        // Dosya türü doğrulamasında yalnızca ana MIME değerini kullan.
+        $mime = strtolower(trim(explode(';', (string) ($_POST['mime'] ?? ''), 2)[0]));
         $limit = $kind === 'ihbar' ? IhbarModel::VIDEO_MAX_BYTE : KacakKontrolModel::VIDEO_MAX_BYTE;
         if ($size === false || $size <= 0 || $size > $limit || $duration === false || $duration <= 0 || $duration > 90
             || !preg_match('/^[a-f0-9]{64}$/D', $hash) || !in_array($mime, IhbarModel::VIDEO_MIMES, true)) throw new RuntimeException('Video boyutu, süresi veya formatı geçersiz.');

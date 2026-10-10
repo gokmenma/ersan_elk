@@ -8,7 +8,7 @@ use App\Model\CariModel;
 use Mpdf\Mpdf;
 
 require_once __DIR__ . '/yetki.php';
-cariExportYetkiKontrol('cari_hesap_hareketleri');
+cariExportYetkiKontrol('cari/tum-hareketler');
 
 $Cari = new CariModel();
 $db = $Cari->getDb();

@@ -324,4 +324,223 @@ class CariModel extends Model
         $str = preg_replace('/[^A-Z0-9]/', '', $str);
         return $str;
     }
+
+    /**
+     * Cari Finansal Dashboard İstatistiklerini ve Grafik Verilerini Döndürür
+     */
+    public function getDashboardStats(?string $period = 'all', ?string $startDate = null, ?string $endDate = null): array
+    {
+        $now = date('Y-m-d H:i:s');
+        $donemFilterActive = false;
+        $periodLabel = 'Tüm Zamanlar';
+        $pStart = null;
+        $pEnd = null;
+
+        if ($period === 'bu_ay') {
+            $pStart = date('Y-m-01 00:00:00');
+            $pEnd = date('Y-m-t 23:59:59');
+            $periodLabel = 'Bu Ay (' . date('m/Y') . ')';
+            $donemFilterActive = true;
+        } elseif ($period === 'son_3_ay') {
+            $pStart = date('Y-m-d 00:00:00', strtotime('-3 months'));
+            $pEnd = $now;
+            $periodLabel = 'Son 3 Ay';
+            $donemFilterActive = true;
+        } elseif ($period === 'son_6_ay') {
+            $pStart = date('Y-m-d 00:00:00', strtotime('-6 months'));
+            $pEnd = $now;
+            $periodLabel = 'Son 6 Ay';
+            $donemFilterActive = true;
+        } elseif ($period === 'bu_yil') {
+            $pStart = date('Y-01-01 00:00:00');
+            $pEnd = date('Y-12-31 23:59:59');
+            $periodLabel = 'Bu Yıl (' . date('Y') . ')';
+            $donemFilterActive = true;
+        } elseif ($period === 'son_12_ay') {
+            $pStart = date('Y-m-d 00:00:00', strtotime('-12 months'));
+            $pEnd = $now;
+            $periodLabel = 'Son 1 Yıl';
+            $donemFilterActive = true;
+        } elseif ($period === 'custom' && !empty($startDate) && !empty($endDate)) {
+            $pStart = date('Y-m-d 00:00:00', strtotime($startDate));
+            $pEnd = date('Y-m-d 23:59:59', strtotime($endDate));
+            $periodLabel = date('d.m.Y', strtotime($pStart)) . ' - ' . date('d.m.Y', strtotime($pEnd));
+            $donemFilterActive = true;
+        }
+
+        // 1. Genel Cari Sayıları ve Net Bakiyeler (Mevcut Durum)
+        $overallSql = "SELECT 
+                COUNT(DISTINCT c.id) as toplam_cari,
+                COUNT(DISTINCT CASE WHEN c.Aktif = 1 THEN c.id END) as aktif_cari_sayisi,
+                ROUND(COALESCE(SUM(ch.borc), 0), 2) as genel_toplam_borc,
+                ROUND(COALESCE(SUM(ch.alacak), 0), 2) as genel_toplam_alacak,
+                ROUND(COALESCE(SUM(ch.alacak), 0) - COALESCE(SUM(ch.borc), 0), 2) as genel_net_bakiye,
+                COUNT(DISTINCT ch.id) as genel_islem_sayisi
+            FROM cari c
+            LEFT JOIN cari_hareketleri ch ON ch.cari_id = c.id AND ch.silinme_tarihi IS NULL
+            WHERE c.silinme_tarihi IS NULL";
+        $overall = $this->db->query($overallSql)->fetch(PDO::FETCH_OBJ);
+
+        // 2. Cari Bakiye Dağılımı (Alacaklı vs Borçlu vs Dengede Sayıları ve Kümülatif Bakiyeleri)
+        $countsSql = "SELECT 
+                SUM(CASE WHEN bakiye > 0 THEN 1 ELSE 0 END) as alacakli_sayisi,
+                SUM(CASE WHEN bakiye < 0 THEN 1 ELSE 0 END) as borclu_sayisi,
+                SUM(CASE WHEN bakiye = 0 OR bakiye IS NULL THEN 1 ELSE 0 END) as dengede_sayisi,
+                ROUND(COALESCE(SUM(CASE WHEN bakiye > 0 THEN bakiye ELSE 0 END), 0), 2) as toplam_alacak_bakiye,
+                ROUND(COALESCE(SUM(CASE WHEN bakiye < 0 THEN ABS(bakiye) ELSE 0 END), 0), 2) as toplam_borc_bakiye
+            FROM (
+                SELECT c.id, (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as bakiye
+                FROM cari c WHERE c.silinme_tarihi IS NULL
+            ) t";
+        $counts = $this->db->query($countsSql)->fetch(PDO::FETCH_OBJ);
+
+        // 3. Dönem İçi Hareket İstatistikleri (Filtreye göre)
+        if ($donemFilterActive && $pStart && $pEnd) {
+            $donemSql = "SELECT 
+                    ROUND(COALESCE(SUM(borc), 0), 2) as donem_borc,
+                    ROUND(COALESCE(SUM(alacak), 0), 2) as donem_alacak,
+                    ROUND(COALESCE(SUM(alacak), 0) - COALESCE(SUM(borc), 0), 2) as donem_net,
+                    COUNT(id) as donem_islem_sayisi
+                FROM cari_hareketleri
+                WHERE silinme_tarihi IS NULL AND islem_tarihi BETWEEN :pStart AND :pEnd";
+            $stmtDonem = $this->db->prepare($donemSql);
+            $stmtDonem->execute(['pStart' => $pStart, 'pEnd' => $pEnd]);
+            $donemStats = $stmtDonem->fetch(PDO::FETCH_OBJ);
+        } else {
+            $donemStats = (object)[
+                'donem_borc' => $overall->genel_toplam_borc ?? 0,
+                'donem_alacak' => $overall->genel_toplam_alacak ?? 0,
+                'donem_net' => $overall->genel_net_bakiye ?? 0,
+                'donem_islem_sayisi' => $overall->genel_islem_sayisi ?? 0,
+            ];
+        }
+
+        // 4. En Çok Alacaklı Olduğumuz İlk 5 Cari (Bizim Paramız Olanlar - Top Alacaklılar)
+        $topAlacakSql = "SELECT c.id, c.CariAdi, c.firma, c.vkn_tckn, c.Telefon, c.il, c.ilce,
+                (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as bakiye,
+                (SELECT MAX(islem_tarihi) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as son_islem_tarihi,
+                (SELECT COUNT(*) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as islem_sayisi
+            FROM cari c
+            WHERE c.silinme_tarihi IS NULL
+            HAVING bakiye > 0
+            ORDER BY bakiye DESC
+            LIMIT 5";
+        $topAlacaklilar = $this->db->query($topAlacakSql)->fetchAll(PDO::FETCH_OBJ);
+
+        // 5. En Çok Borçlu Olduğumuz İlk 5 Cari (Bizim Borcumuz Olanlar - Top Borçlular)
+        $topBorcSql = "SELECT c.id, c.CariAdi, c.firma, c.vkn_tckn, c.Telefon, c.il, c.ilce,
+                (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as bakiye,
+                (SELECT MAX(islem_tarihi) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as son_islem_tarihi,
+                (SELECT COUNT(*) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as islem_sayisi
+            FROM cari c
+            WHERE c.silinme_tarihi IS NULL
+            HAVING bakiye < 0
+            ORDER BY bakiye ASC
+            LIMIT 5";
+        $topBorclular = $this->db->query($topBorcSql)->fetchAll(PDO::FETCH_OBJ);
+
+        // 6. Aylık Hareket Trendi (Son 12 Ay Zaman Serisi - ApexCharts)
+        $trendStart = date('Y-m-01 00:00:00', strtotime('-11 months'));
+        $trendSql = "SELECT 
+                DATE_FORMAT(ch.islem_tarihi, '%Y-%m') as ay_kodu,
+                ROUND(SUM(ch.alacak), 2) as alacak_toplam,
+                ROUND(SUM(ch.borc), 2) as borc_toplam,
+                ROUND(SUM(ch.alacak) - SUM(ch.borc), 2) as net_fark,
+                COUNT(ch.id) as islem_adedi
+            FROM cari_hareketleri ch
+            JOIN cari c ON c.id = ch.cari_id AND c.silinme_tarihi IS NULL
+            WHERE ch.silinme_tarihi IS NULL AND ch.islem_tarihi >= :trend_start
+            GROUP BY DATE_FORMAT(ch.islem_tarihi, '%Y-%m')
+            ORDER BY ay_kodu ASC";
+        $stmtTrend = $this->db->prepare($trendSql);
+        $stmtTrend->execute(['trend_start' => $trendStart]);
+        $trendRows = $stmtTrend->fetchAll(PDO::FETCH_OBJ);
+
+        $trendMap = [];
+        foreach ($trendRows as $tr) {
+            $trendMap[$tr->ay_kodu] = $tr;
+        }
+
+        $trAyKisa = [
+            '01' => 'Oca', '02' => 'Şub', '03' => 'Mar', '04' => 'Nis',
+            '05' => 'May', '06' => 'Haz', '07' => 'Tem', '08' => 'Ağu',
+            '09' => 'Eyl', '10' => 'Eki', '11' => 'Kas', '12' => 'Ara'
+        ];
+
+        $categories = [];
+        $alacakSeries = [];
+        $borcSeries = [];
+        $netSeries = [];
+
+        // Son 12 ayın tümünü eksiksiz listele
+        for ($i = 11; $i >= 0; $i--) {
+            $mKey = date('Y-m', strtotime("-$i months"));
+            $yearShort = date('y', strtotime("-$i months"));
+            $monthNum = date('m', strtotime("-$i months"));
+            $catLabel = ($trAyKisa[$monthNum] ?? $monthNum) . ' ' . $yearShort;
+
+            $categories[] = $catLabel;
+            if (isset($trendMap[$mKey])) {
+                $alacakSeries[] = (float)$trendMap[$mKey]->alacak_toplam;
+                $borcSeries[] = (float)$trendMap[$mKey]->borc_toplam;
+                $netSeries[] = (float)$trendMap[$mKey]->net_fark;
+            } else {
+                $alacakSeries[] = 0.0;
+                $borcSeries[] = 0.0;
+                $netSeries[] = 0.0;
+            }
+        }
+
+        // 7. Son 10 Hareket (Canlı Akış)
+        $recentSql = "SELECT ch.*, c.CariAdi, c.firma, c.vkn_tckn,
+                COALESCE(u.adi_soyadi, u.user_name) as ekleyen_adi
+            FROM cari_hareketleri ch
+            JOIN cari c ON c.id = ch.cari_id AND c.silinme_tarihi IS NULL
+            LEFT JOIN users u ON u.id = ch.ekleyen_kullanici
+            WHERE ch.silinme_tarihi IS NULL
+            ORDER BY ch.islem_tarihi DESC, ch.id DESC
+            LIMIT 10";
+        $recentMovements = $this->db->query($recentSql)->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            'summary' => [
+                'toplam_cari' => (int)($overall->toplam_cari ?? 0),
+                'aktif_cari_sayisi' => (int)($overall->aktif_cari_sayisi ?? 0),
+                'toplam_alacak' => (float)($overall->genel_toplam_alacak ?? 0),
+                'toplam_borc' => (float)($overall->genel_toplam_borc ?? 0),
+                'genel_net_bakiye' => (float)($overall->genel_net_bakiye ?? 0),
+                'alacakli_sayisi' => (int)($counts->alacakli_sayisi ?? 0),
+                'borclu_sayisi' => (int)($counts->borclu_sayisi ?? 0),
+                'dengede_sayisi' => (int)($counts->dengede_sayisi ?? 0),
+                'toplam_alacak_bakiye' => (float)($counts->toplam_alacak_bakiye ?? 0),
+                'toplam_borc_bakiye' => (float)($counts->toplam_borc_bakiye ?? 0),
+                'donem_alacak' => (float)($donemStats->donem_alacak ?? 0),
+                'donem_borc' => (float)($donemStats->donem_borc ?? 0),
+                'donem_net' => (float)($donemStats->donem_net ?? 0),
+                'donem_islem_sayisi' => (int)($donemStats->donem_islem_sayisi ?? 0),
+                'donem_hacim' => (float)(($donemStats->donem_alacak ?? 0) + ($donemStats->donem_borc ?? 0)),
+                'period_label' => $periodLabel,
+                'period' => $period,
+                'start_date' => $pStart ? substr($pStart, 0, 10) : null,
+                'end_date' => $pEnd ? substr($pEnd, 0, 10) : null
+            ],
+            'top_alacaklilar' => $topAlacaklilar,
+            'top_borclular' => $topBorclular,
+            'monthly_trend' => [
+                'categories' => $categories,
+                'alacak' => $alacakSeries,
+                'borc' => $borcSeries,
+                'net' => $netSeries
+            ],
+            'distribution' => [
+                'alacak_tutar' => (float)($counts->toplam_alacak_bakiye ?? 0),
+                'borc_tutar' => (float)($counts->toplam_borc_bakiye ?? 0),
+                'alacakli_sayisi' => (int)($counts->alacakli_sayisi ?? 0),
+                'borclu_sayisi' => (int)($counts->borclu_sayisi ?? 0),
+                'dengede_sayisi' => (int)($counts->dengede_sayisi ?? 0)
+            ],
+            'recent_movements' => $recentMovements
+        ];
+    }
 }
+

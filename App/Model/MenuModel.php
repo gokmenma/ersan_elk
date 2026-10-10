@@ -145,14 +145,14 @@ class MenuModel extends Model
         $mappingHash = 'none';
         if ($mappingVersion === 'explicit') {
             $stmt = $this->db->prepare(
-                "SELECT GROUP_CONCAT(CONCAT(id, ':', COALESCE(permission_id, 0)) ORDER BY id SEPARATOR ',')
+                "SELECT GROUP_CONCAT(CONCAT(id, ':', COALESCE(permission_id, 0), ':', is_menu) ORDER BY id SEPARATOR ',')
                  FROM menus WHERE is_active = ?"
             );
             $stmt->execute([1]);
             $mappingHash = md5((string) ($stmt->fetchColumn() ?: ''));
         }
 
-        return 'v7_' . $mappingVersion . '_' . $rolePart . '_' . $permissionHash . '_' . $mappingHash;
+        return 'v8_' . $mappingVersion . '_' . $rolePart . '_' . $permissionHash . '_' . $mappingHash;
     }
 
     /**
@@ -223,12 +223,13 @@ class MenuModel extends Model
         $permissionMatch = $this->permissionMenuMatchSql();
 
         if ($isSuperAdmin) {
-            $stmt = $this->db->prepare("SELECT id FROM {$this->table} WHERE is_active = ?");
-            $stmt->execute([1]);
+            $stmt = $this->db->prepare("SELECT id FROM {$this->table} WHERE is_active = ? AND is_menu = ?");
+            $stmt->execute([1, 1]);
         } else {
             $sql = "SELECT DISTINCT m.id
                     FROM {$this->table} m
                     WHERE m.is_active = 1
+                      AND m.is_menu = 1
                       AND EXISTS (
                             SELECT 1
                             FROM permissions p

@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let roleID;
   let selectedGroups = [];
   let searchTerm = ""; // Arama terimini globalde tutalım
+  let showOnlyUnselected = false;
 
   // Element Referansları
   const loadingSkeleton = document.getElementById("loadingSkeleton");
@@ -17,6 +18,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const filterChipsContainer = document.getElementById("filterChips");
   const selectedCountEl = document.getElementById("selectedCount");
   const requiredCountEl = document.getElementById("requiredCount");
+  const showUnselectedButton = document.getElementById(
+    "showUnselectedPermissions",
+  );
 
   // --- VERİ YÜKLEME ---
   roleID = $("#user_id").val();
@@ -255,32 +259,37 @@ document.addEventListener("DOMContentLoaded", function () {
         selectedGroups.length === 0 || selectedGroups.includes(groupName);
       let isVisibleBySearch = true;
       let hasVisiblePermsInSearch = false;
+      let hasVisiblePermissions = false;
+      const groupMatchesSearch = !searchTerm || groupName.includes(searchTerm);
 
-      if (searchTerm) {
-        isVisibleBySearch = groupName.includes(searchTerm);
-        groupEl.querySelectorAll(".permission-item").forEach((itemEl) => {
-          const permSearch = (itemEl.dataset.permSearch || itemEl.dataset.permName || "").toLowerCase();
-          const matchesSearch = permSearch.includes(searchTerm);
-          itemEl.style.display = matchesSearch ? "flex" : "none";
-          if (matchesSearch) hasVisiblePermsInSearch = true;
-        });
-        if (hasVisiblePermsInSearch) isVisibleBySearch = true; // Eğer iç öğe eşleşirse grubu da göster
-      } else {
-        groupEl.querySelectorAll(".permission-item").forEach((itemEl) => {
-          // Arama yoksa tüm item'ları göster
-          itemEl.style.display = "flex";
-        });
-      }
+      groupEl.querySelectorAll(".permission-item").forEach((itemEl) => {
+        const permSearch = (
+          itemEl.dataset.permSearch ||
+          itemEl.dataset.permName ||
+          ""
+        ).toLowerCase();
+        const matchesSearch = groupMatchesSearch || permSearch.includes(searchTerm);
+        const permissionId = parseInt(itemEl.dataset.id, 10);
+        const matchesSelection =
+          !showOnlyUnselected || !userPermissions.includes(permissionId);
+        const isVisible = matchesSearch && matchesSelection;
+        itemEl.style.display = isVisible ? "flex" : "none";
+        if (matchesSearch) hasVisiblePermsInSearch = true;
+        if (isVisible) hasVisiblePermissions = true;
+      });
+
+      isVisibleBySearch = !searchTerm || groupMatchesSearch || hasVisiblePermsInSearch;
 
       groupEl.style.display =
-        isVisibleByChip && isVisibleBySearch ? "block" : "none";
+        isVisibleByChip && isVisibleBySearch && hasVisiblePermissions
+          ? "block"
+          : "none";
 
       // Arama varsa ve eşleşen öğe varsa grubu aç
       if (
         isVisibleByChip &&
         isVisibleBySearch &&
-        searchTerm &&
-        hasVisiblePermsInSearch
+        ((searchTerm && hasVisiblePermsInSearch) || showOnlyUnselected)
       ) {
         const groupBody = groupEl.querySelector(".group-body");
         const arrowIcon = groupEl.querySelector(".arrow-icon");
@@ -312,36 +321,44 @@ document.addEventListener("DOMContentLoaded", function () {
         selectedGroups.length === 0 || selectedGroups.includes(groupName);
       let isVisibleBySearch = true; // Grup seviyesinde arama
       let hasVisiblePermsInSearchInTree = false; // İzin seviyesinde arama
+      let hasVisiblePermissions = false;
 
       const permLiElements = liEl.querySelectorAll("ul > li");
 
-      if (searchTerm) {
-        isVisibleBySearch = groupName.includes(searchTerm);
-        permLiElements.forEach((permLiEl) => {
-          const permItemEl = permLiEl.querySelector(".permission-item");
-          if (permItemEl) {
-            const permSearch = (permItemEl.dataset.permSearch || permItemEl.dataset.permName || "").toLowerCase();
-            const matchesSearch = permSearch.includes(searchTerm);
-            permLiEl.style.display = matchesSearch ? "block" : "none";
-            if (matchesSearch) hasVisiblePermsInSearchInTree = true;
-          }
-        });
-        if (hasVisiblePermsInSearchInTree) isVisibleBySearch = true;
-      } else {
-        permLiElements.forEach((permLiEl) => {
-          // Arama yoksa tüm item'ları göster
-          permLiEl.style.display = "block";
-        });
-      }
+      const groupMatchesSearch = !searchTerm || groupName.includes(searchTerm);
+      permLiElements.forEach((permLiEl) => {
+        const permItemEl = permLiEl.querySelector(".permission-item");
+        if (!permItemEl) return;
+        const permSearch = (
+          permItemEl.dataset.permSearch ||
+          permItemEl.dataset.permName ||
+          ""
+        ).toLowerCase();
+        const matchesSearch = groupMatchesSearch || permSearch.includes(searchTerm);
+        const permissionId = parseInt(permItemEl.dataset.id, 10);
+        const matchesSelection =
+          !showOnlyUnselected || !userPermissions.includes(permissionId);
+        const isVisible = matchesSearch && matchesSelection;
+        permLiEl.style.display = isVisible ? "block" : "none";
+        if (matchesSearch) hasVisiblePermsInSearchInTree = true;
+        if (isVisible) hasVisiblePermissions = true;
+      });
+      isVisibleBySearch =
+        !searchTerm || groupMatchesSearch || hasVisiblePermsInSearchInTree;
 
       liEl.style.display =
-        isVisibleByChip && isVisibleBySearch ? "block" : "none";
+        isVisibleByChip && isVisibleBySearch && hasVisiblePermissions
+          ? "block"
+          : "none";
 
       // Dal açma/kapama mantığı
       const subList = liEl.querySelector("ul");
       if (subList) {
         let shouldExpand = false;
         if (isVisibleByChip && isVisibleBySearch) {
+          if (showOnlyUnselected && hasVisiblePermissions) {
+            shouldExpand = true;
+          }
           // Sadece grup görünürse genişletmeyi düşün
           if (
             groupData.permissions.some((p) => userPermissions.includes(p.id))
@@ -387,7 +404,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const allPermissionsFlat = permissionGroups.flatMap((g) => g.permissions);
 
     selectedCountEl.textContent = selectedIds.size;
-    // requiredCountEl.textContent = allPermissionsFlat.filter((p) => p.required).length; // Bu her zaman aynı kalır, gerekirse başta bir kez hesaplanır.
+    requiredCountEl.textContent = allPermissionsFlat.filter(
+      (permission) => permission.required,
+    ).length;
 
     document
       .querySelectorAll("#cardViewContainer .permission-group")
@@ -452,6 +471,25 @@ document.addEventListener("DOMContentLoaded", function () {
   if (permissionSearchInput) {
     permissionSearchInput.addEventListener("input", function () {
       searchTerm = this.value.toLowerCase().trim(); // Global searchTerm'i güncelle
+      applyFilters();
+    });
+  }
+
+  if (showUnselectedButton) {
+    showUnselectedButton.addEventListener("click", function () {
+      showOnlyUnselected = !showOnlyUnselected;
+      this.setAttribute("aria-pressed", showOnlyUnselected ? "true" : "false");
+      this.classList.toggle("text-secondary", !showOnlyUnselected);
+      this.classList.toggle("text-primary", showOnlyUnselected);
+      this.classList.toggle("bg-primary-subtle", showOnlyUnselected);
+      this.querySelector("i")?.classList.toggle(
+        "mdi-checkbox-blank-outline",
+        !showOnlyUnselected,
+      );
+      this.querySelector("i")?.classList.toggle(
+        "mdi-filter-check-outline",
+        showOnlyUnselected,
+      );
       applyFilters();
     });
   }

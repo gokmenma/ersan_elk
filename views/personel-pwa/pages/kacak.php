@@ -1181,46 +1181,6 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             if (detailEl) detailEl.textContent = `${mbSize} MB (Form Gönderilince Yüklenecek)`;
         }
 
-        document.getElementById('kacak-video-input').addEventListener('change', async function (e) {
-            const dosya = e.target.files[0];
-            e.target.value = '';
-            if (!dosya) return;
-
-            if (videoDosyalari.length >= MAX_VIDEO) {
-                return Alert.warning('Limit', `En fazla ${MAX_VIDEO} video ekleyebilirsiniz.`);
-            }
-
-            const progressBox = document.getElementById('kacak-video-progress-container');
-            if (progressBox) progressBox.classList.remove('hidden');
-
-            const textEl = document.getElementById('kacak-video-progress-text');
-            const percentEl = document.getElementById('kacak-video-progress-percent');
-            const barEl = document.getElementById('kacak-video-progress-bar');
-            const nameEl = document.getElementById('kacak-video-progress-name');
-            const detailEl = document.getElementById('kacak-video-progress-detail');
-
-            const mbSize = (dosya.size / (1024 * 1024)).toFixed(1);
-            if (textEl) textEl.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Video İşleniyor...`;
-            if (percentEl) percentEl.textContent = '50%';
-            if (barEl) barEl.style.width = '50%';
-            if (nameEl) nameEl.textContent = dosya.name;
-            if (detailEl) detailEl.textContent = `${mbSize} MB Hazırlanıyor...`;
-
-            try {
-                const vSonuc = await OfflineQueue.videoIncele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE);
-                videoDosyalari.push(vSonuc);
-                videoOnizlemeCiz();
-                videoProgressDurumGuncelle();
-                if (vSonuc.sikistirildi) {
-                    const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
-                    Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
-                }
-            } catch (hata) {
-                videoProgressDurumGuncelle();
-                Alert.warning('Video Eklenemedi', hata.message);
-            }
-        });
-
         function videoOnizlemeCiz() {
             const box = document.getElementById('kacak-video-preview');
             box.innerHTML = '';
