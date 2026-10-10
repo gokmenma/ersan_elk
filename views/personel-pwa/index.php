@@ -733,6 +733,23 @@ if ($page === 'ihbar') {
     <script src="assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="assets/js/exif-cekim.js?v=<?= filemtime(__DIR__ . '/assets/js/exif-cekim.js') ?>"></script>
     <script>window.PWA_ACCOUNT_KEY = <?= json_encode(hash('sha256', 'pwa:' . (int) $_SESSION['firma_id'] . ':' . (int) $personel_id)) ?>;</script>
+    <script>
+        // Eski PWA JavaScript'i sabit IndexedDB sürümüyle açılırsa Safari mevcut
+        // daha yüksek sürümü reddeder. Kuyruk veritabanında sürüm seçimini daima
+        // tarayıcıya bırakarak önbellekte kalmış eski istemciyi de kurtar.
+        try {
+            if (window.indexedDB && !window.__pwaIndexedDbVersionGuard) {
+                const indexedDbOpen = window.indexedDB.open.bind(window.indexedDB);
+                window.indexedDB.open = function (name, version) {
+                    if (name === 'ersan-pwa-offline') return indexedDbOpen(name);
+                    return arguments.length > 1 ? indexedDbOpen(name, version) : indexedDbOpen(name);
+                };
+                window.__pwaIndexedDbVersionGuard = true;
+            }
+        } catch (e) {
+            console.warn('IndexedDB sürüm koruması kurulamadı:', e);
+        }
+    </script>
     <script src="assets/js/pwa-offline-queue.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-offline-queue.js') ?>"></script>
     <script src="assets/js/pwa-app.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-app.js') ?>"></script>
     <script src="assets/js/notification-helper.js"></script>
@@ -789,7 +806,7 @@ if ($page === 'ihbar') {
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('./sw.js?v=<?= filemtime(__DIR__ . '/sw.js') ?>', { updateViaCache: 'none' })
                     .then(registration => {
                         console.log('SW registered:', registration);
                         // Tarayıcının periyodik kontrolünü beklemeden yeni worker'ı denetle.

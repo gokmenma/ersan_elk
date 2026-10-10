@@ -7,7 +7,7 @@
 // temizlenir hem de importScripts ve precache URL'leri değişir. Kayıt tarafında
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
-const KUYRUK_SURUM = "27";
+const KUYRUK_SURUM = "28";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v2";
 const OFFLINE_URL = "offline.html";
@@ -56,8 +56,8 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((cacheNames) => {
-        return Promise.all(
+      .then(async (cacheNames) => {
+        await Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME && cacheName !== SAYFA_CACHE) {
               console.log("Eski önbellek siliniyor:", cacheName);
@@ -65,6 +65,19 @@ self.addEventListener("activate", (event) => {
             }
           }),
         );
+        // Önceki worker sürümleri asset sorgu parametresini yok saydığı için
+        // aynı cache içinde eski kuyruk dosyaları kalmış olabilir.
+        const kuyrukYolu = new URL("./assets/js/pwa-offline-queue.js", self.location.href).pathname;
+        await Promise.all([CACHE_NAME, SAYFA_CACHE].map(async (cacheName) => {
+          const cache = await caches.open(cacheName);
+          const keys = await cache.keys();
+          await Promise.all(keys.map((key) => {
+            const keyUrl = new URL(key.url);
+            if (keyUrl.pathname === kuyrukYolu && keyUrl.searchParams.get("v") !== KUYRUK_SURUM) {
+              return cache.delete(key);
+            }
+          }));
+        }));
       })
       .then(() => self.clients.claim()),
   );
@@ -160,6 +173,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (requestScheme !== "http:" && requestScheme !== "https:") {
+    return;
+  }
+
+  // Kuyruk kodunda sürüm karışması IndexedDB VersionError üretir. Bu dosyada
+  // ignoreSearch/stale-while-revalidate kullanılmaz; çevrimiçiyken daima ağdaki
+  // güncel kopya, çevrimdışıyken yalnızca mevcut worker sürümü döndürülür.
+  const requestUrl = new URL(url);
+  const kuyrukYolu = new URL("./assets/js/pwa-offline-queue.js", self.location.href).pathname;
+  if (event.request.method === "GET" && requestUrl.origin === self.location.origin && requestUrl.pathname === kuyrukYolu) {
+    const surumluIstek = new Request("./assets/js/pwa-offline-queue.js?v=" + KUYRUK_SURUM);
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .then((response) => {
+          if (response && response.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(surumluIstek, response.clone())).catch(() => {});
+          }
+          return response;
+        })
+        .catch(() => caches.open(CACHE_NAME).then((cache) => cache.match(surumluIstek)))
+    );
     return;
   }
 

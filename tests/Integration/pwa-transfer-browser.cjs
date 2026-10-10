@@ -206,6 +206,13 @@ async function flush(page) { return page.evaluate(() => { window.testOnline=true
     });
     await test('production service worker serves versioned static queue assets offline', async (page,context) => {
       await page.evaluate(async()=>{await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;if(!navigator.serviceWorker.controller)await new Promise(r=>navigator.serviceWorker.addEventListener('controllerchange',r,{once:true}));});
+      const onlineSource=await page.evaluate(async()=>{
+        const cache=await caches.open('personel-pwa-v28');
+        await cache.put('/assets/js/pwa-offline-queue.js',new Response('STALE_VERSION_ONE'));
+        return fetch('/assets/js/pwa-offline-queue.js?v=unseen-version').then(r=>r.text());
+      });
+      assert.ok(onlineSource.includes('function reliableSend'));
+      assert.ok(!onlineSource.includes('STALE_VERSION_ONE'));
       await context.setOffline(true);
       const source=await page.evaluate(()=>fetch('/assets/js/pwa-offline-queue.js?v=unseen-version').then(r=>r.text()));
       assert.ok(source.includes('function reliableSend'));
