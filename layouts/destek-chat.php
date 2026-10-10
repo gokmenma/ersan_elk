@@ -846,6 +846,8 @@ if (!empty($_yetkiliKullanicilar)) {
         panelMinimized: false,
         openWindows: {},
         pollInterval: null,
+        pollInFlight: false,
+        pollingEnabled: false,
         lastCheck: null,
         windowPositions: [],
         seenMessageIds: new Set(),
@@ -862,7 +864,8 @@ if (!empty($_yetkiliKullanicilar)) {
             this.loadAdminStatus();
             // Sunucu zamanını kullan (JS/PHP zaman farkını önlemek için)
             this.lastCheck = '<?php echo date("Y-m-d H:i:s"); ?>';
-            this.startPolling();
+            // İlk sayfa/tablo çizimi sırasında arka plan API isteği oluşturma.
+            this.startPolling(this.getPollingDelay());
 
             // Status menu dışına tıklanınca kapat
             document.addEventListener('click', (e) => {
@@ -991,11 +994,13 @@ if (!empty($_yetkiliKullanicilar)) {
             document.getElementById('achat-panel').classList.add('show');
             document.getElementById('achat-panel').classList.remove('minimized');
             this.refreshConversations();
+            this.restartPolling(3000);
         },
 
         closePanel() {
             this.panelOpen = false;
             document.getElementById('achat-panel').classList.remove('show');
+            this.restartPolling(15000);
         },
 
         toggleMinimize() {
@@ -1200,6 +1205,7 @@ if (!empty($_yetkiliKullanicilar)) {
 
                 // Pencere oluştur
                 this.createChatWindow(konusmaId, conv, messages, rightPos);
+                this.restartPolling(3000);
 
                 if (response.opponent_last_read_id) {
                     this.markMessagesAsReadUI(konusmaId, response.opponent_last_read_id);
@@ -1480,6 +1486,7 @@ if (!empty($_yetkiliKullanicilar)) {
             if (win) win.remove();
             delete this.openWindows[konusmaId];
             this.repositionWindows();
+            this.restartPolling(this.panelOpen ? 3000 : 15000);
         },
 
         repositionWindows() {
@@ -1519,20 +1526,41 @@ if (!empty($_yetkiliKullanicilar)) {
         },
 
         // ===== Polling =====
-        startPolling() {
+        getPollingDelay() {
+            return (this.panelOpen || Object.keys(this.openWindows).length > 0) ? 3000 : 15000;
+        },
+
+        startPolling(initialDelay = 0) {
             this.stopPolling();
-            this.poll(); // Hemen çalıştır
-            this.pollInterval = setInterval(() => this.poll(), 3000);
+            this.pollingEnabled = true;
+            this.scheduleNextPoll(initialDelay);
+        },
+
+        restartPolling(initialDelay = null) {
+            if (!this.pollingEnabled || document.hidden) return;
+            this.startPolling(initialDelay ?? this.getPollingDelay());
+        },
+
+        scheduleNextPoll(delay = null) {
+            if (!this.pollingEnabled || document.hidden) return;
+            if (this.pollInterval) clearTimeout(this.pollInterval);
+            this.pollInterval = setTimeout(() => {
+                this.pollInterval = null;
+                this.poll();
+            }, delay ?? this.getPollingDelay());
         },
 
         stopPolling() {
+            this.pollingEnabled = false;
             if (this.pollInterval) {
-                clearInterval(this.pollInterval);
+                clearTimeout(this.pollInterval);
                 this.pollInterval = null;
             }
         },
 
         async poll() {
+            if (this.pollInFlight || !this.pollingEnabled || document.hidden) return;
+            this.pollInFlight = true;
             try {
                 const response = await this.apiRequest('check-new-messages', {
                     last_check: this.lastCheck
@@ -1599,6 +1627,9 @@ if (!empty($_yetkiliKullanicilar)) {
 
             } catch (e) {
                 // Sessiz
+            } finally {
+                this.pollInFlight = false;
+                this.scheduleNextPoll();
             }
         },
 
@@ -1723,17 +1754,28 @@ if (!empty($_yetkiliKullanicilar)) {
         }
     };
 
-    // Initialize on DOM ready
-    document.addEventListener('DOMContentLoaded', () => {
-        AdminChat.init();
-    });
+    // Sohbet trafiğini sayfanın kritik açılışından sonra başlat.
+    const initAdminChat = () => {
+        const run = () => AdminChat.init();
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(run, { timeout: 2500 });
+        } else {
+            setTimeout(run, 1500);
+        }
+    };
+
+    if (document.readyState === 'complete') {
+        initAdminChat();
+    } else {
+        window.addEventListener('load', initAdminChat, { once: true });
+    }
 
     // Visiblity API
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             AdminChat.stopPolling();
         } else {
-            AdminChat.startPolling();
+            AdminChat.startPolling(1000);
         }
     });
 </script>

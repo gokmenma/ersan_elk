@@ -94,6 +94,9 @@ if (!function_exists('formatMoneyGG')) {
             $encId = Security::encrypt($row->id);
             $searchString = mb_strtolower($row->hesap_adi . ' ' . $row->kategori_adi . ' ' . $row->aciklama, 'UTF-8');
             $tarih = date('d.m.Y H:i', strtotime($row->tarih));
+            $yuruyenBakiye = (float)($row->yuruyen_bakiye ?? 0);
+            $bakiyeColor = $yuruyenBakiye < 0 ? 'text-rose-500' : ($yuruyenBakiye > 0 ? 'text-emerald-500' : 'text-slate-400');
+            $bakiyeYon = $yuruyenBakiye < 0 ? 'B' : ($yuruyenBakiye > 0 ? 'A' : '');
         ?>
         <div class="relative gg-item-container overflow-hidden rounded-xl shadow-sm">
             <!-- Delete Action -->
@@ -126,7 +129,12 @@ if (!function_exists('formatMoneyGG')) {
                 <div class="ml-3 flex-1 min-w-0">
                     <div class="flex items-center justify-between mb-0.5">
                         <h4 class="font-semibold text-[13px] text-slate-900 dark:text-white truncate"><?= htmlspecialchars($row->kategori_adi ?: 'Kategorisiz') ?></h4>
-                        <span class="font-bold text-[13px] <?= $typeColor ?>"><?= ($row->type == 2 ? '-' : '+') . formatMoneyGG($row->tutar) ?></span>
+                        <div class="text-right shrink-0 ml-2">
+                            <span class="block font-bold text-[13px] <?= $typeColor ?>"><?= ($row->type == 2 ? '-' : '+') . formatMoneyGG($row->tutar) ?></span>
+                            <span class="block text-[9px] font-bold <?= $bakiyeColor ?> mt-0.5">
+                                Bakiye: <?= formatMoneyGG(abs($yuruyenBakiye)) ?><?= $bakiyeYon !== '' ? ' (' . $bakiyeYon . ')' : '' ?>
+                            </span>
+                        </div>
                     </div>
                     <div class="flex items-center justify-between">
                         <div class="flex flex-col">
@@ -633,8 +641,8 @@ window.loadModalHareketler = function() {
                         <p class="font-bold text-xs ${colorClass}">
                             ${isGelir ? '+' : '-'}${window.formatMoneyGG(h.amt)}
                         </p>
-                        <p class="text-[9px] font-bold ${h.yuruyen < 0 ? 'text-rose-500' : 'text-emerald-500'} mt-0.5 opacity-80">
-                            ${window.formatMoneyGG(Math.abs(h.yuruyen))} ${h.yuruyen < 0 ? '(B)' : '(A)'}
+                        <p class="text-[9px] font-bold ${h.yuruyen < 0 ? 'text-rose-500' : (h.yuruyen > 0 ? 'text-emerald-500' : 'text-slate-400')} mt-0.5 opacity-80">
+                            Bakiye: ${window.formatMoneyGG(Math.abs(h.yuruyen))} ${h.yuruyen < 0 ? '(B)' : (h.yuruyen > 0 ? '(A)' : '')}
                         </p>
                     </div>
                 </div>

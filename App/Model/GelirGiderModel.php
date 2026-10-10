@@ -27,23 +27,32 @@ class GelirGiderModel extends Model
 
     public function all($yil = null, $ay = null, $kategori = null)
     {
-        $where = "1=1";
+        $where = "g.silinme_tarihi IS NULL";
         $params = [];
         
         if ($yil) {
-            $where .= " AND YEAR(tarih) = :yil";
+            $where .= " AND YEAR(g.tarih) = :yil";
             $params['yil'] = $yil;
         }
         if ($ay) {
-            $where .= " AND MONTH(tarih) = :ay";
+            $where .= " AND MONTH(g.tarih) = :ay";
             $params['ay'] = $ay;
         }
         if ($kategori) {
-            $where .= " AND type = :kategori";
+            $where .= " AND g.type = :kategori";
             $params['kategori'] = $kategori;
         }
 
-        $sql = $this->db->prepare("SELECT g.*, g.kategori as kategori_adi 
+        $sql = $this->db->prepare("SELECT g.*, g.kategori as kategori_adi,
+                                    (SELECT COALESCE(SUM(
+                                        CASE WHEN g2.type = 1
+                                             THEN CAST(g2.tutar AS DECIMAL(15,2))
+                                             ELSE -CAST(g2.tutar AS DECIMAL(15,2)) END
+                                    ), 0)
+                                     FROM {$this->table} g2
+                                     WHERE g2.silinme_tarihi IS NULL
+                                       AND (g2.tarih < g.tarih OR (g2.tarih = g.tarih AND g2.id <= g.id))
+                                    ) AS yuruyen_bakiye
                                     FROM $this->table g
                                     WHERE $where
                                     ORDER BY g.tarih DESC, g.id DESC");
@@ -210,8 +219,9 @@ class GelirGiderModel extends Model
         $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE silinme_tarihi IS NULL";
         $totalCount = $this->db->query($totalSql)->fetchColumn();
 
-        // Filtrelenmiş Kayıt Sayısı (Hızlı Sayım - Base table üzerinden)
-        $filteredSql = "SELECT COUNT(*) FROM {$this->table} g WHERE $where";
+        // View, yürüyen bakiyeyi tüm aktif kayıtlar üzerinden hesaplar. Filtreler
+        // view sonucuna dışarıdan uygulandığı için kaydın gerçek bakiyesi değişmez.
+        $filteredSql = "SELECT COUNT(*) FROM {$this->sql_table} g WHERE $where";
         $stmtFiltered = $this->db->prepare($filteredSql);
         $stmtFiltered->execute($bindParams);
         $filteredCount = $stmtFiltered->fetchColumn();
@@ -237,8 +247,8 @@ class GelirGiderModel extends Model
         }
 
         // Ana Sorgu
-        $sql = "SELECT g.*, g.kategori as kategori_adi 
-                FROM sql_gelir_gider g 
+        $sql = "SELECT g.*, g.kategori AS kategori_adi
+                FROM {$this->sql_table} g
                 WHERE $where $orderQuery LIMIT :start, :length";
         $stmt = $this->db->prepare($sql);
         foreach ($bindParams as $key => $val) {

@@ -33,6 +33,16 @@ $aySecenekleri = [
     '10' => 'Ekim',   '11' => 'Kasım',  '12' => 'Aralık',
 ];
 
+$odemeSekilleri = [
+    ''                           => 'Ödeme Şekli Seçiniz',
+    'Nakit'                      => 'Nakit',
+    'Banka Havalesi / EFT / FAST'=> 'Banka Havalesi / EFT / FAST',
+    'Kredi Kartı / Banka Kartı'  => 'Kredi Kartı / Banka Kartı',
+    'Çek'                        => 'Çek',
+    'Senet'                      => 'Senet',
+    'Otomatik Ödeme'             => 'Otomatik Ödeme',
+];
+
 $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'tip' => $selectedTip]);
 ?>
 <script>try { document.documentElement.classList.toggle('gelir-gider-summary-hidden', localStorage.getItem('gelir_gider_summary_cards_state') === 'hidden'); } catch (e) {}</script>
@@ -131,6 +141,47 @@ $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'ti
 
 .table-responsive {
     border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* Tabloya özel yüklenme katmanı */
+#gelirGiderTableContainer {
+    position: relative;
+}
+#gelirGiderTableContainer.table-is-loading {
+    min-height: 280px;
+}
+.gelir-gider-table-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .18s ease, visibility .18s ease;
+}
+#gelirGiderTableContainer.table-is-loading .gelir-gider-table-loader {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+.gelir-gider-table-loader .spinner-border {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-width: .2rem;
+}
+[data-bs-theme="dark"] .gelir-gider-table-loader,
+html[data-theme-preset="macos-dark"] .gelir-gider-table-loader {
+    background: rgba(24, 26, 32, 0.88);
+}
+[data-bs-theme="dark"] .gelir-gider-table-loader .text-dark,
+html[data-theme-preset="macos-dark"] .gelir-gider-table-loader .text-dark {
+    color: #f1f5f9 !important;
 }
 
 /* Şık Checkbox Stili */
@@ -236,6 +287,12 @@ $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'ti
     font-weight: 600;
 }
 
+/* Row Loading Highlight */
+tr.table-row-loading > td {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    transition: background-color 0.2s ease;
+}
+
 /* Modal Özel Styling (Kusursuz ve Temiz Tasarım) */
 #gelirGiderModal .modal-content, #importExcelModal .modal-content {
     border: none;
@@ -249,12 +306,56 @@ $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'ti
     padding: 1.25rem 1.5rem;
 }
 .modal-icon-box {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Modal Loading Overlay & Preloader */
+.modal-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(4px);
+    z-index: 1055;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+.modal-loading-card {
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    min-width: 250px;
+    max-width: 320px;
+}
+.modal-spinner-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-spinner-inner-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Modal Form Select Group (Gelir / Gider Switcher) */
+.form-selectgroup-item {
+    cursor: pointer;
 }
 .form-selectgroup-label {
     border: 2px solid #e2e8f0;
@@ -263,46 +364,48 @@ $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'ti
     background: white;
     cursor: pointer;
 }
-.form-selectgroup-input:checked + .form-selectgroup-label {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+.form-selectgroup-label:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+.form-selectgroup-input[value="1"]:checked + .form-selectgroup-label {
+    border-color: #10b981 !important;
+    background: #ecfdf5 !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15) !important;
+}
+.form-selectgroup-input[value="2"]:checked + .form-selectgroup-label {
+    border-color: #ef4444 !important;
+    background: #fef2f2 !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15) !important;
 }
 
-/* Modal Form Alanları İyileştirmesi */
-#gelirGiderModal .modal-custom-control {
-    height: 40px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    font-size: 13px;
+/* Modal Floating Form Kontrolleri & İkonları */
+#gelirGiderModal .form-floating-custom .form-floating-icon {
+    width: 44px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 4;
 }
-#gelirGiderModal .modal-custom-control:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+#gelirGiderModal .form-floating-custom .form-floating-icon i,
+#gelirGiderModal .form-floating-custom .form-floating-icon svg {
+    font-size: 20px !important;
+    color: #64748b !important;
+    transition: color 0.15s ease, transform 0.15s ease;
 }
-
-/* Select2 Modal Özel Düzeltmesi (Çift Ok ve Bozulmaları Önler) */
-#gelirGiderModal .select2-container--default .select2-selection--single {
-    height: 40px !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 8px !important;
-    background-color: #fff !important;
+#gelirGiderModal .form-floating-custom:focus-within .form-floating-icon i,
+#gelirGiderModal .form-floating-custom:focus-within .form-floating-icon svg {
+    color: #3b82f6 !important;
+    transform: scale(1.08);
 }
-#gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 38px !important;
-    padding-left: 12px !important;
-    padding-right: 32px !important;
-    font-size: 13px !important;
-    color: #1e293b !important;
+#gelirGiderModal .form-floating-custom > .form-control.money {
+    font-size: 15px !important;
 }
-#gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 38px !important;
-    right: 8px !important;
-}
-#gelirGiderModal .select2-container--default.select2-container--focus .select2-selection--single,
-#gelirGiderModal .select2-container--default.select2-container--open .select2-selection--single {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+#gelirGiderModal .modal-footer .modal-footer-action {
+    min-height: 42px;
+    padding-top: 9px;
+    padding-bottom: 9px;
 }
 
 /* Header FormSelect2 Uyumu */
@@ -613,26 +716,34 @@ html[data-theme-preset="macos-dark"] .form-selectgroup-label {
     border-color: rgba(255, 255, 255, 0.12) !important;
     color: #f1f5f9 !important;
 }
-[data-bs-theme="dark"] .form-selectgroup-input:checked + .form-selectgroup-label,
-html[data-theme-preset="macos-dark"] .form-selectgroup-input:checked + .form-selectgroup-label {
-    background: rgba(59, 130, 246, 0.2) !important;
-    border-color: #3b82f6 !important;
+[data-bs-theme="dark"] .form-selectgroup-input[value="1"]:checked + .form-selectgroup-label,
+html[data-theme-preset="macos-dark"] .form-selectgroup-input[value="1"]:checked + .form-selectgroup-label {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border-color: #10b981 !important;
 }
-[data-bs-theme="dark"] #gelirGiderModal .modal-custom-control,
+[data-bs-theme="dark"] .form-selectgroup-input[value="2"]:checked + .form-selectgroup-label,
+html[data-theme-preset="macos-dark"] .form-selectgroup-input[value="2"]:checked + .form-selectgroup-label {
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: #ef4444 !important;
+}
+[data-bs-theme="dark"] .modal-loading-overlay,
+html[data-theme-preset="macos-dark"] .modal-loading-overlay {
+    background: rgba(24, 26, 32, 0.9) !important;
+}
+[data-bs-theme="dark"] .modal-loading-overlay .text-dark,
+html[data-theme-preset="macos-dark"] .modal-loading-overlay .text-dark {
+    color: #f1f5f9 !important;
+}
+[data-bs-theme="dark"] #gelirGiderModal .form-floating-custom .form-floating-icon i,
+[data-bs-theme="dark"] #gelirGiderModal .form-floating-custom .form-floating-icon svg,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .form-floating-custom .form-floating-icon i,
+html[data-theme-preset="macos-dark"] #gelirGiderModal .form-floating-custom .form-floating-icon svg {
+    color: #94a3b8 !important;
+}
 [data-bs-theme="dark"] #importExcelModal .form-control,
-html[data-theme-preset="macos-dark"] #gelirGiderModal .modal-custom-control,
 html[data-theme-preset="macos-dark"] #importExcelModal .form-control {
     background-color: #21232b !important;
     border-color: rgba(255, 255, 255, 0.12) !important;
-    color: #f1f5f9 !important;
-}
-[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single,
-html[data-theme-preset="macos-dark"] #gelirGiderModal .select2-container--default .select2-selection--single {
-    background-color: #21232b !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-}
-[data-bs-theme="dark"] #gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered,
-html[data-theme-preset="macos-dark"] #gelirGiderModal .select2-container--default .select2-selection--single .select2-selection__rendered {
     color: #f1f5f9 !important;
 }
 
@@ -886,7 +997,14 @@ include 'layouts/breadcrumb.php';
         </div>
 
         <div class="card-body p-3 pt-0">
-            <div class="table-responsive" style="overflow-x: auto !important;">
+            <div class="table-responsive table-is-loading" id="gelirGiderTableContainer" style="overflow-x: auto !important;" aria-busy="true">
+                <div class="gelir-gider-table-loader" id="gelirGiderTableLoader" role="status" aria-live="polite">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" aria-hidden="true"></div>
+                        <div class="mt-2 fw-semibold text-dark font-size-13">Hareketler yükleniyor...</div>
+                        <div class="text-muted font-size-11">Lütfen bekleyiniz</div>
+                    </div>
+                </div>
                 <div id="dtDropzoneOverlay" class="dt-hide-dropzone-overlay">
                     <i class="bx bx-trash"></i>
                     <span>Sütunu Gizlemek İçin Buraya Bırakın</span>
@@ -922,28 +1040,48 @@ include 'layouts/breadcrumb.php';
 <!-- Gelir / Gider Ekle - Düzenle Modal -->
 <div class="modal fade" id="gelirGiderModal" tabindex="-1" aria-labelledby="gelirGiderModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
+        <div class="modal-content position-relative">
+            <!-- Modal Loading Overlay (Preloader) -->
+            <div id="gelirGiderModalLoading" class="modal-loading-overlay d-none">
+                <div class="modal-loading-card p-4 text-center rounded-4">
+                    <div class="modal-spinner-wrapper mb-3">
+                        <div class="spinner-border text-primary" style="width: 2.75rem; height: 2.75rem; border-width: 3px;" role="status">
+                            <span class="visually-hidden">Yükleniyor...</span>
+                        </div>
+                        <div class="modal-spinner-inner-icon">
+                            <i class="bx bx-transfer-alt font-size-18 text-primary"></i>
+                        </div>
+                    </div>
+                    <h6 class="fw-bold text-dark font-size-14 mb-1">Veriler Yükleniyor</h6>
+                    <p class="text-muted font-size-12 mb-0">Kayıt detayları ve seçenekler hazırlanıyor...</p>
+                </div>
+            </div>
+
+            <!-- Modal Header -->
             <div class="modal-header d-flex align-items-center">
                 <div class="modal-icon-box bg-primary-subtle text-primary me-3 flex-shrink-0">
                     <i class="bx bx-transfer-alt font-size-22"></i>
                 </div>
                 <div>
                     <h5 class="modal-title fw-bold mb-0 text-dark" id="gelirGiderModalLabel">Gelir / Gider İşlemi</h5>
-                    <small class="text-muted">Lütfen işlem detaylarını eksiksiz doldurunuz.</small>
+                    <small class="text-muted" id="gelirGiderModalSubtitle">Lütfen işlem detaylarını eksiksiz doldurunuz.</small>
                 </div>
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
+
+            <!-- Modal Body -->
             <div class="modal-body p-4">
                 <form id="gelirGiderForm">
                     <input type="hidden" name="gelir_gider_id" id="gelir_gider_id" value="0">
+                    <input type="hidden" name="islem_tarihi" id="islem_tarihi" value="<?= date('d.m.Y H:i') ?>">
 
-                    <!-- 1. İşlem Türü (Gelir / Gider Seçim Kutuları) -->
+                    <!-- 1. İşlem Türü (Gelir / Gider Seçim Kartları) -->
                     <div class="row g-3 mb-3">
                         <div class="col-6">
                             <label class="form-selectgroup-item w-100 mb-0">
                                 <input type="radio" name="type" value="1" class="form-selectgroup-input d-none">
                                 <div class="form-selectgroup-label d-flex align-items-center p-3">
-                                    <div class="p-2 bg-success-subtle text-success rounded-3 me-3">
+                                    <div class="p-2 bg-success-subtle text-success rounded-3 me-3 flex-shrink-0">
                                         <i class="bx bx-trending-up font-size-22"></i>
                                     </div>
                                     <div>
@@ -957,7 +1095,7 @@ include 'layouts/breadcrumb.php';
                             <label class="form-selectgroup-item w-100 mb-0">
                                 <input type="radio" name="type" value="2" class="form-selectgroup-input d-none" checked>
                                 <div class="form-selectgroup-label d-flex align-items-center p-3">
-                                    <div class="p-2 bg-danger-subtle text-danger rounded-3 me-3">
+                                    <div class="p-2 bg-danger-subtle text-danger rounded-3 me-3 flex-shrink-0">
                                         <i class="bx bx-trending-down font-size-22"></i>
                                     </div>
                                     <div>
@@ -969,86 +1107,172 @@ include 'layouts/breadcrumb.php';
                         </div>
                     </div>
 
-                    <!-- 2. Hesap Adı & Kategori -->
+                    <!-- 2. Hesap Adı & Kategori / İşlem Türü (Form::FormSelect2) -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Hesap Adı</label>
-                            <select name="hesap_adi" id="hesap_adi" class="modal-select-field w-100" data-placeholder="Hesap Adı Seçiniz veya Yazınız">
-                                <option value=""></option>
-                            </select>
+                            <?= Form::FormSelect2(
+                                name: 'hesap_adi',
+                                options: [],
+                                selectedValue: '',
+                                label: 'Hesap Adı',
+                                icon: 'bx bx-user',
+                                valueField: 'key',
+                                textField: '',
+                                class: 'form-select select2',
+                                required: false,
+                                style: 'width:100%',
+                                attributes: 'data-placeholder="Hesap Adı Seçiniz veya Yazınız"'
+                            ) ?>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Kategori / İşlem Türü <span class="text-danger">*</span></label>
-                            <select name="islem_turu" id="islem_turu" class="modal-select-field w-100" data-placeholder="Kategori Seçiniz" required>
-                                <option value=""></option>
-                            </select>
+                            <?= Form::FormSelect2(
+                                name: 'islem_turu',
+                                options: [],
+                                selectedValue: '',
+                                label: 'Kategori / İşlem Türü *',
+                                icon: 'bx bx-category',
+                                valueField: 'key',
+                                textField: '',
+                                class: 'form-select select2',
+                                required: true,
+                                style: 'width:100%',
+                                attributes: 'data-placeholder="Kategori Seçiniz"'
+                            ) ?>
                         </div>
                     </div>
 
-                    <!-- 3. Plaka & Ödeme Şekli -->
+                    <!-- 3. Plaka & Ödeme Şekli (Form::FormSelect2) -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Plaka (Araç)</label>
-                            <select name="plaka" id="plaka" class="modal-select-field w-100" data-placeholder="Plaka Seçiniz veya Yazınız">
-                                <option value=""></option>
-                            </select>
+                            <?= Form::FormSelect2(
+                                name: 'plaka',
+                                options: [],
+                                selectedValue: '',
+                                label: 'Plaka (Araç)',
+                                icon: 'bx bx-car',
+                                valueField: 'key',
+                                textField: '',
+                                class: 'form-select select2',
+                                required: false,
+                                style: 'width:100%',
+                                attributes: 'data-placeholder="Plaka Seçiniz veya Yazınız"'
+                            ) ?>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Ödeme Şekli</label>
-                            <select name="odeme_sekli" id="odeme_sekli" class="modal-select-field w-100" data-placeholder="Ödeme Şekli Seçiniz">
-                                <option value=""></option>
-                                <option value="Nakit">Nakit</option>
-                                <option value="Banka Havalesi / EFT / FAST">Banka Havalesi / EFT / FAST</option>
-                                <option value="Kredi Kartı / Banka Kartı">Kredi Kartı / Banka Kartı</option>
-                                <option value="Çek">Çek</option>
-                                <option value="Senet">Senet</option>
-                                <option value="Otomatik Ödeme">Otomatik Ödeme</option>
-                            </select>
+                            <?= Form::FormSelect2(
+                                name: 'odeme_sekli',
+                                options: $odemeSekilleri,
+                                selectedValue: '',
+                                label: 'Ödeme Şekli',
+                                icon: 'bx bx-credit-card',
+                                valueField: 'key',
+                                textField: '',
+                                class: 'form-select select2',
+                                required: false,
+                                style: 'width:100%',
+                                attributes: 'data-placeholder="Ödeme Şekli Seçiniz"'
+                            ) ?>
                         </div>
                     </div>
 
-                    <!-- 4. Banka Adı & İşlem Tarihi -->
+                    <!-- 4. Banka Adı & İşlem Tarihi / Saati (Form::FormSelect2 & Form::FormFloatInput) -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Banka Adı</label>
-                            <select name="banka_adi" id="banka_adi" class="modal-select-field w-100" data-placeholder="Banka Seçiniz veya Yazınız">
-                                <option value=""></option>
-                            </select>
+                            <?= Form::FormSelect2(
+                                name: 'banka_adi',
+                                options: [],
+                                selectedValue: '',
+                                label: 'Banka Adı',
+                                icon: 'bx bx-building-house',
+                                valueField: 'key',
+                                textField: '',
+                                class: 'form-select select2',
+                                required: false,
+                                style: 'width:100%',
+                                attributes: 'data-placeholder="Banka Seçiniz veya Yazınız"'
+                            ) ?>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">İşlem Tarihi <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0"><i class="bx bx-calendar text-muted"></i></span>
-                                <input type="text" name="islem_tarihi" id="islem_tarihi" class="form-control flatpickr border-start-0 ps-0 modal-custom-control" value="<?= date('d.m.Y H:i') ?>" required>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <?= Form::FormFloatInput(
+                                        type: 'text',
+                                        name: 'islem_tarihi_tarih',
+                                        value: date('d.m.Y'),
+                                        placeholder: 'gg.aa.yyyy',
+                                        label: 'İşlem Tarihi *',
+                                        icon: 'bx bx-calendar',
+                                        class: 'form-control flatpickr',
+                                        required: true,
+                                        maxlength: 10,
+                                        autocomplete: 'off',
+                                        readonly: false,
+                                        attributes: 'data-date-format="d.m.Y"'
+                                    ) ?>
+                                </div>
+                                <div class="col-5">
+                                    <?= Form::FormFloatInput(
+                                        type: 'text',
+                                        name: 'islem_saati',
+                                        value: date('H:i'),
+                                        placeholder: 'SS:DD',
+                                        label: 'Saat *',
+                                        icon: 'bx bx-time-five',
+                                        class: 'form-control',
+                                        required: true,
+                                        maxlength: 5,
+                                        autocomplete: 'off',
+                                        readonly: false,
+                                        attributes: 'inputmode="numeric"'
+                                    ) ?>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 5. Tutar -->
+                    <!-- 5. Tutar (Form::FormFloatInput) -->
                     <div class="row g-3 mb-3">
                         <div class="col-12">
-                            <label class="form-label font-size-12 fw-semibold text-muted mb-1">Tutar (₺) <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0 fw-bold text-primary px-3">₺</span>
-                                <input type="text" name="tutar" id="tutar" class="form-control money border-start-0 ps-0 text-end fw-bold font-size-16 modal-custom-control" placeholder="0,00" required>
-                            </div>
+                            <?= Form::FormFloatInput(
+                                type: 'text',
+                                name: 'tutar',
+                                value: '',
+                                placeholder: '0,00',
+                                label: 'Tutar (₺) *',
+                                icon: 'bx bx-lira',
+                                class: 'form-control money fw-bold text-start font-size-15',
+                                required: true,
+                                maxlength: null,
+                                autocomplete: 'off'
+                            ) ?>
                         </div>
                     </div>
 
-                    <!-- 6. Açıklama -->
+                    <!-- 6. Açıklama (Form::FormFloatTextarea) -->
                     <div class="mb-0">
-                        <label class="form-label font-size-12 fw-semibold text-muted mb-1">Açıklama</label>
-                        <textarea name="aciklama" id="aciklama" class="form-control rounded-3" rows="3" placeholder="İşlem ile ilgili detaylı açıklama girebilirsiniz..."></textarea>
+                        <?= Form::FormFloatTextarea(
+                            name: 'aciklama',
+                            value: '',
+                            placeholder: 'İşlem ile ilgili detaylı açıklama...',
+                            label: 'Açıklama',
+                            icon: 'bx bx-comment-detail',
+                            class: 'form-control',
+                            required: false,
+                            minHeight: '80px',
+                            rows: 3
+                        ) ?>
                     </div>
                 </form>
             </div>
+
+            <!-- Modal Footer -->
             <div class="modal-footer bg-light px-4 py-3 d-flex align-items-center justify-content-between">
-                <button type="button" id="yeniIslemModal" class="btn btn-outline-secondary btn-sm px-3 rounded-3 d-flex align-items-center gap-1">
+                <button type="button" id="yeniIslemModal" class="btn btn-outline-secondary btn-sm px-3 rounded-3 d-flex align-items-center gap-1 modal-footer-action">
                     <i class="bx bx-refresh font-size-15"></i> Formu Temizle
                 </button>
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-secondary btn-sm px-3 rounded-3" data-bs-dismiss="modal">Kapat</button>
-                    <button type="button" id="gelirGiderKaydet" class="btn btn-primary btn-sm px-4 rounded-3 d-flex align-items-center gap-1 shadow-sm">
+                    <button type="button" class="btn btn-secondary btn-sm px-3 rounded-3 modal-footer-action" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" id="gelirGiderKaydet" class="btn btn-primary btn-sm px-4 rounded-3 d-flex align-items-center gap-1 shadow-sm modal-footer-action">
                         <i class="bx bx-save font-size-16"></i> Kaydet
                     </button>
                 </div>

@@ -486,23 +486,26 @@
           populateOptions(currentUnique);
         };
 
+        // Bazı DataTables sürüm/eklenti kombinasyonlarında API'deki unique()
+        // metodu bulunmuyor. Bu durum filtre satırının select kolonunda yarıda
+        // kalmasına neden oluyordu; değerleri temel each() API'siyle güvenli topla.
         try {
           api
             .column(colIdx, { search: "none" })
             .data()
-            .unique()
             .each(function (v) {
               const t = extractTextWithSpaces(v);
               if (t && !uniqueVals.includes(t)) uniqueVals.push(t);
             });
         } catch (e) {
-          column
-            .data()
-            .unique()
-            .each(function (v) {
+          try {
+            column.data().each(function (v) {
               const t = extractTextWithSpaces(v);
               if (t && !uniqueVals.includes(t)) uniqueVals.push(t);
             });
+          } catch (ignored) {
+            uniqueVals = [];
+          }
         }
         uniqueVals.sort((a, b) => a.localeCompare(b, "tr"));
 
@@ -786,7 +789,13 @@
 
         const initFp = () => {
           if (cellInfo._fp) cellInfo._fp.destroy();
-          cellInfo._fp = $($input).flatpickr({
+          // jQuery eklenti köprüsüne bağlı kalma; Flatpickr'ın yerel API'si
+          // yükleme sırası ve farklı paket sürümlerinde daha güvenilirdir.
+          if (typeof window.flatpickr !== "function") {
+            cellInfo._fp = null;
+            return;
+          }
+          cellInfo._fp = window.flatpickr($input[0], {
             locale: "tr",
             dateFormat: "d.m.Y",
             allowInput: true,

@@ -5,6 +5,10 @@ var url = window.gelirGiderApiUrl || "views/gelir-gider/api.php";
 var gelirGiderTable = window.gelirGiderTable || null;
 var currentTipFilter = window.currentTipFilter || '';
 
+// Script sayfanın alt bölümünde, tablo HTML'i hazırken yüklenir. Sunucu taraflı
+// veri isteğini DOMContentLoaded ve diğer genel eklentileri bekletmeden başlat.
+initGelirGiderTable();
+
 $(document).ready(function() {
     // 1. Özet Kartları Açma/Kapama Standardı (AGENTS.md)
     const toggleBtn = $('#btnToggleSummaryCards');
@@ -24,11 +28,22 @@ $(document).ready(function() {
         updateToggleState();
     });
 
-    // 2. DataTables Başlatma
-    initGelirGiderTable();
-
-    // 3. Flatpickr Başlatma
+    // 2. Flatpickr Başlatma
     initFlatpickr();
+
+    $('#islem_saati').on('input', function() {
+        let digits = this.value.replace(/\D/g, '').slice(0, 4);
+        if (digits.length > 2) digits = digits.slice(0, 2) + ':' + digits.slice(2);
+        this.value = digits;
+        syncCombinedDateTime();
+    }).on('blur', function() {
+        const match = this.value.match(/^(\d{1,2}):(\d{1,2})$/);
+        if (!match) return;
+        const hour = Math.min(parseInt(match[1], 10), 23);
+        const minute = Math.min(parseInt(match[2], 10), 59);
+        this.value = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+        syncCombinedDateTime();
+    });
 
     // 4. Modal Select2 Alanlarını Başlatma
     initModalSelect2Fields();
@@ -158,8 +173,13 @@ $(document).ready(function() {
         const $row = $(this).closest('tr');
         const encId = $row.data('id') || $row.find('.duzenle').data('id');
         if (encId) {
-            editGelirGider(encId);
+            editGelirGider(encId, $row);
         }
+    });
+
+    $('#gelirGiderModal').on('hidden.bs.modal', function () {
+        $('.table-row-loading').removeClass('table-row-loading');
+        $('#gelirGiderModalLoading').addClass('d-none');
     });
 });
 
@@ -176,14 +196,29 @@ function updateBulkDeleteButton() {
 
 function initFlatpickr() {
     if (typeof flatpickr !== 'undefined') {
-        flatpickr(".flatpickr", {
-            dateFormat: "d.m.Y H:i",
-            enableTime: true,
-            time_24hr: true,
+        const input = document.getElementById('islem_tarihi_tarih');
+        if (!input) return;
+        if (input._flatpickr) {
+            input._flatpickr.destroy();
+        }
+        flatpickr(input, {
+            dateFormat: "d.m.Y",
             allowInput: true,
-            minuteIncrement: 1
+            onChange: syncCombinedDateTime
         });
     }
+}
+
+function syncCombinedDateTime() {
+    const date = $('#islem_tarihi_tarih').val().trim();
+    const time = $('#islem_saati').val().trim();
+    $('#islem_tarihi').val(date && time ? `${date} ${time}` : '');
+}
+
+if ($.validator && !$.validator.methods.time24) {
+    $.validator.addMethod('time24', function(value, element) {
+        return this.optional(element) || /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+    }, 'Saati SS:DD biçiminde giriniz');
 }
 
 function initModalSelect2Fields() {
@@ -206,6 +241,25 @@ function initModalSelect2Fields() {
 
 function initGelirGiderTable() {
     const tableId = "#gelirGiderTable";
+    const $tableContainer = $('#gelirGiderTableContainer');
+
+    const setTableLoading = function(isLoading) {
+        $tableContainer.toggleClass('table-is-loading', isLoading);
+        $tableContainer.attr('aria-busy', isLoading ? 'true' : 'false');
+    };
+
+    // İlk yükleme, filtreleme, sıralama ve sayfa değişimlerinde aynı katmanı kullan.
+    $(tableId)
+        .off('.gelirGiderLoader')
+        .on('preXhr.dt.gelirGiderLoader processing.dt.gelirGiderLoader', function(e, settings, processing) {
+            setTableLoading(e.type === 'preXhr' || processing === true);
+        })
+        .on('xhr.dt.gelirGiderLoader error.dt.gelirGiderLoader', function() {
+            setTableLoading(false);
+        });
+
+    setTableLoading(true);
+
     if ($.fn.DataTable.isDataTable(tableId)) {
         $(tableId).DataTable().destroy();
     }
@@ -215,7 +269,9 @@ function initGelirGiderTable() {
     gelirGiderTable = $(tableId).DataTable(applyLengthStateSave({
         ...defaultOpts,
         ordering: true,
+        responsive: false,
         colReorder: true,
+        deferAdvancedFilters: true,
         processing: true,
         serverSide: true,
         ajax: {
@@ -260,10 +316,36 @@ function initGelirGiderTable() {
         order: [[2, "desc"]],
         initComplete: function(settings, json) {
             const api = this.api();
+            setTableLoading(false);
             
             // Gelişmiş filtreleri ve sıralama ikonlarını başlat
             if (typeof initAdvancedFilters === 'function') {
-                initAdvancedFilters(api, settings);
+                try {
+                    initAdvancedFilters(api, settings);
+                    if ($('#gelirGiderTable thead .dt-filter-row > th').length !== api.columns().count()) {
+                        throw new Error('Kolon filtrelerinin tamamı oluşturulamadı');
+                    }
+                } catch (error) {
+                    console.error('Gelir-gider kolon filtreleri oluşturulamadı:', error);
+                    $('#gelirGiderTable thead .dt-filter-row').remove();
+                    $('#gelirGiderTable thead .dt-filter-mode-trigger').remove();
+                    $('.dt-filter-mode-dropdown[data-table-id="gelirGiderTable"], .dt-filter-excel-dropdown[data-table-id="gelirGiderTable"]').remove();
+
+                    // Tek bir kolon hatasının bütün filtre satırını yarım bırakmasını önle.
+                    setTimeout(function() {
+                        try {
+                            initAdvancedFilters(api, settings);
+                            if ($('#gelirGiderTable thead .dt-filter-row > th').length !== api.columns().count()) {
+                                throw new Error('Kolon filtrelerinin tamamı oluşturulamadı');
+                            }
+                        } catch (retryError) {
+                            console.error('Gelir-gider kolon filtreleri yeniden oluşturulamadı:', retryError);
+                            $('#gelirGiderTable thead .dt-filter-row').remove();
+                            $('#gelirGiderTable thead .dt-filter-mode-trigger').remove();
+                            $('.dt-filter-mode-dropdown[data-table-id="gelirGiderTable"], .dt-filter-excel-dropdown[data-table-id="gelirGiderTable"]').remove();
+                        }
+                    }, 100);
+                }
             }
             
             setupColumnManager();
@@ -469,65 +551,61 @@ function updateSummaryCards(summary) {
 
 // Modal dinamik seçeneklerini yükle
 function loadModalOptions() {
-    // Hesap Adları
-    $.ajax({
+    const p1 = $.ajax({
         url: url,
         type: 'POST',
         data: { action: 'hesap-adlari-getir' },
-        dataType: 'json',
-        success: function(response) {
-            let currentVal = $("#hesap_adi").val();
-            $("#hesap_adi").empty().append('<option value=""></option>');
-            if (Array.isArray(response)) {
-                response.forEach(function(item) {
-                    if (item && item !== '0' && item !== '') {
-                        $("#hesap_adi").append(new Option(item, item));
-                    }
-                });
-            }
-            if (currentVal) $("#hesap_adi").val(currentVal).trigger('change.select2');
+        dataType: 'json'
+    }).then(function(response) {
+        let currentVal = $("#hesap_adi").val();
+        $("#hesap_adi").empty().append('<option value=""></option>');
+        if (Array.isArray(response)) {
+            response.forEach(function(item) {
+                if (item && item !== '0' && item !== '') {
+                    $("#hesap_adi").append(new Option(item, item));
+                }
+            });
         }
+        if (currentVal) $("#hesap_adi").val(currentVal).trigger('change.select2');
     });
 
-    // Plakalar
-    $.ajax({
+    const p2 = $.ajax({
         url: url,
         type: 'POST',
         data: { action: 'plakalari-getir' },
-        dataType: 'json',
-        success: function(response) {
-            let currentVal = $("#plaka").val();
-            $("#plaka").empty().append('<option value=""></option>');
-            if (Array.isArray(response)) {
-                response.forEach(function(item) {
-                    if (item) {
-                        $("#plaka").append(new Option(item, item));
-                    }
-                });
-            }
-            if (currentVal) $("#plaka").val(currentVal).trigger('change.select2');
+        dataType: 'json'
+    }).then(function(response) {
+        let currentVal = $("#plaka").val();
+        $("#plaka").empty().append('<option value=""></option>');
+        if (Array.isArray(response)) {
+            response.forEach(function(item) {
+                if (item) {
+                    $("#plaka").append(new Option(item, item));
+                }
+            });
         }
+        if (currentVal) $("#plaka").val(currentVal).trigger('change.select2');
     });
 
-    // Bankalar
-    $.ajax({
+    const p3 = $.ajax({
         url: url,
         type: 'POST',
         data: { action: 'bankalari-getir' },
-        dataType: 'json',
-        success: function(response) {
-            let currentVal = $("#banka_adi").val();
-            $("#banka_adi").empty().append('<option value=""></option>');
-            if (Array.isArray(response)) {
-                response.forEach(function(item) {
-                    if (item) {
-                        $("#banka_adi").append(new Option(item, item));
-                    }
-                });
-            }
-            if (currentVal) $("#banka_adi").val(currentVal).trigger('change.select2');
+        dataType: 'json'
+    }).then(function(response) {
+        let currentVal = $("#banka_adi").val();
+        $("#banka_adi").empty().append('<option value=""></option>');
+        if (Array.isArray(response)) {
+            response.forEach(function(item) {
+                if (item) {
+                    $("#banka_adi").append(new Option(item, item));
+                }
+            });
         }
+        if (currentVal) $("#banka_adi").val(currentVal).trigger('change.select2');
     });
+
+    return Promise.all([p1, p2, p3]);
 }
 
 // İşlem türüne göre kategorileri getir
@@ -565,6 +643,10 @@ function fetchCategories(type, selectedValue = null) {
 
 // Yeni İşlem Butonu Modal Temizleme
 $(document).on('click', '#gelirGiderEkle', function () {
+    $('#gelirGiderModalLabel').text('Yeni Gelir / Gider İşlemi');
+    $('#gelirGiderModalSubtitle').text('Lütfen işlem detaylarını eksiksiz doldurunuz.');
+    $('#gelirGiderModalLoading').addClass('d-none');
+    $('.table-row-loading').removeClass('table-row-loading');
     resetGelirGiderForm();
     initModalSelect2Fields();
     loadModalOptions();
@@ -590,23 +672,41 @@ function resetGelirGiderForm() {
     $("#banka_adi").val("").trigger("change.select2");
     $("#tutar").val("");
     $("#aciklama").val("");
+    const now = new Date();
+    const pad = value => String(value).padStart(2, '0');
+    const dateValue = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+    const timeValue = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const dateInput = document.getElementById('islem_tarihi_tarih');
+    if (dateInput && dateInput._flatpickr) {
+        dateInput._flatpickr.setDate(dateValue, false, 'd.m.Y');
+    } else {
+        $('#islem_tarihi_tarih').val(dateValue);
+    }
+    $('#islem_saati').val(timeValue);
+    syncCombinedDateTime();
 }
 
 // Form Kaydet
 $(document).on("click", "#gelirGiderKaydet", function () {
     const form = $("#gelirGiderForm");
     const gelir_gider_id = $("#gelir_gider_id").val() || 0;
+    syncCombinedDateTime();
     
     form.validate({
         rules: {
             islem_turu: { required: true },
             tutar: { required: true },
-            islem_tarihi: { required: true }
+            islem_tarihi_tarih: { required: true },
+            islem_saati: { required: true, time24: true }
         },
         messages: {
             islem_turu: { required: "Lütfen bir kategori seçiniz" },
             tutar: { required: "Tutar alanı boş bırakılamaz" },
-            islem_tarihi: { required: "İşlem tarihi boş bırakılamaz" }
+            islem_tarihi_tarih: { required: "İşlem tarihi boş bırakılamaz" },
+            islem_saati: {
+                required: "İşlem saati boş bırakılamaz",
+                time24: "Saati SS:DD biçiminde giriniz"
+            }
         },
         errorElement: "span",
         highlight: function (element) {
@@ -674,62 +774,114 @@ function formatDateDMYHI(dateStr) {
     );
 }
 
-// Gelir-Gider Düzenleme Fonksiyonu
-function editGelirGider(gelir_gider_id) {
+// Gelir-Gider Düzenleme Fonksiyonu (Modal İçi Preloader ile)
+function editGelirGider(gelir_gider_id, $row) {
+    if (!gelir_gider_id) return;
+
+    // Satır vurgusu
+    $('.table-row-loading').removeClass('table-row-loading');
+    if ($row && $row.length) {
+        $row.addClass('table-row-loading');
+    }
+
+    // Modal başlıkları ve modal içi preloader katmanı
+    $('#gelirGiderModalLabel').text('Gelir / Gider İşlemini Düzenle');
+    $('#gelirGiderModalSubtitle').text('Kayıtlı işlem detaylarını güncelleyebilirsiniz.');
+    $('#gelirGiderModalLoading').removeClass('d-none');
+    $('#gelirGiderModal').modal('show');
+
     $("#gelir_gider_id").val(gelir_gider_id);
     initModalSelect2Fields();
-    loadModalOptions();
 
     const formData = new FormData();
     formData.append("action", "gelir-gider-getir");
     formData.append("gelir_gider_id", gelir_gider_id);
 
-    fetch(url, {
+    const fetchDetail = fetch(url, {
         method: "POST",
         body: formData,
-    })
-    .then((response) => response.json())
-    .then((data) => {
-        if (!data) return;
+    }).then((response) => response.json());
 
-        $(`.form-selectgroup-input[value="${data.type}"]`).prop("checked", true);
-        
-        fetchCategories(data.type, data.kategori).then(() => {
-            $("#gelirGiderModal").modal("show");
+    const loadOptionsPromise = loadModalOptions();
 
-            $("#tutar").val(data.tutar);
-            $("#aciklama").val(data.aciklama);
-            
-            if (data.hesap_adi) {
-                if ($("#hesap_adi option[value='" + data.hesap_adi + "']").length === 0) {
-                    $("#hesap_adi").append(new Option(data.hesap_adi, data.hesap_adi, true, true));
+    Promise.all([fetchDetail, loadOptionsPromise])
+        .then(([data]) => {
+            if (!data) {
+                throw new Error("Kayıt bilgisi bulunamadı.");
+            }
+
+            const itemType = data.type || 2;
+            $(`.form-selectgroup-input[value="${itemType}"]`).prop("checked", true);
+
+            return fetchCategories(itemType, data.kategori).then(() => {
+                $("#tutar").val(data.tutar || '');
+                $("#aciklama").val(data.aciklama || '');
+
+                if (data.hesap_adi) {
+                    if ($("#hesap_adi option[value='" + data.hesap_adi + "']").length === 0) {
+                        $("#hesap_adi").append(new Option(data.hesap_adi, data.hesap_adi, true, true));
+                    }
+                    $("#hesap_adi").val(data.hesap_adi).trigger("change.select2");
+                } else {
+                    $("#hesap_adi").val("").trigger("change.select2");
                 }
-                $("#hesap_adi").val(data.hesap_adi).trigger("change.select2");
-            }
-            
-            if (data.plaka) {
-                if ($("#plaka option[value='" + data.plaka + "']").length === 0) {
-                    $("#plaka").append(new Option(data.plaka, data.plaka, true, true));
+
+                if (data.plaka) {
+                    if ($("#plaka option[value='" + data.plaka + "']").length === 0) {
+                        $("#plaka").append(new Option(data.plaka, data.plaka, true, true));
+                    }
+                    $("#plaka").val(data.plaka).trigger("change.select2");
+                } else {
+                    $("#plaka").val("").trigger("change.select2");
                 }
-                $("#plaka").val(data.plaka).trigger("change.select2");
-            }
 
-            if (data.odeme_sekli) {
-                $("#odeme_sekli").val(data.odeme_sekli).trigger("change.select2");
-            }
-
-            if (data.banka_adi) {
-                if ($("#banka_adi option[value='" + data.banka_adi + "']").length === 0) {
-                    $("#banka_adi").append(new Option(data.banka_adi, data.banka_adi, true, true));
+                if (data.odeme_sekli) {
+                    $("#odeme_sekli").val(data.odeme_sekli).trigger("change.select2");
+                } else {
+                    $("#odeme_sekli").val("").trigger("change.select2");
                 }
-                $("#banka_adi").val(data.banka_adi).trigger("change.select2");
-            }
 
-            if (data.tarih) {
-                $("#islem_tarihi").val(formatDateDMYHI(data.tarih));
-            }
+                if (data.banka_adi) {
+                    if ($("#banka_adi option[value='" + data.banka_adi + "']").length === 0) {
+                        $("#banka_adi").append(new Option(data.banka_adi, data.banka_adi, true, true));
+                    }
+                    $("#banka_adi").val(data.banka_adi).trigger("change.select2");
+                } else {
+                    $("#banka_adi").val("").trigger("change.select2");
+                }
+
+                if (data.tarih) {
+                    const parts = String(data.tarih).split(' ');
+                    const datePart = parts[0] || '';
+                    const timePart = (parts[1] || '00:00').slice(0, 5);
+                    const dateInput = document.getElementById('islem_tarihi_tarih');
+                    if (dateInput && dateInput._flatpickr) {
+                        dateInput._flatpickr.setDate(datePart, false, 'Y-m-d');
+                    } else {
+                        const datePieces = datePart.split('-');
+                        $("#islem_tarihi_tarih").val(datePieces.length === 3 ? `${datePieces[2]}.${datePieces[1]}.${datePieces[0]}` : datePart);
+                    }
+                    $('#islem_saati').val(timePart);
+                    syncCombinedDateTime();
+                }
+
+                // Yükleme tamamlandı: Preloader katmanını ve satır vurgusunu kaldır
+                $('#gelirGiderModalLoading').addClass('d-none');
+                $('.table-row-loading').removeClass('table-row-loading');
+            });
+        })
+        .catch(() => {
+            $('#gelirGiderModalLoading').addClass('d-none');
+            $('.table-row-loading').removeClass('table-row-loading');
+            $('#gelirGiderModal').modal('hide');
+            Swal.fire({
+                icon: 'error',
+                title: 'Hata',
+                text: 'Kayıt bilgileri yüklenirken bir hata oluştu.',
+                customClass: { confirmButton: 'btn btn-primary' },
+                buttonsStyling: false
+            });
         });
-    });
 }
 
 // Tablodaki Düzenle Butonu
@@ -737,7 +889,8 @@ $(document).on("click", ".duzenle", function (e) {
     e.preventDefault();
     e.stopPropagation();
     const gelir_gider_id = $(this).data("id");
-    editGelirGider(gelir_gider_id);
+    const $row = $(this).closest('tr');
+    editGelirGider(gelir_gider_id, $row);
 });
 
 // Gelir-gider Sil

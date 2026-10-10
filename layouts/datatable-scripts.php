@@ -1,7 +1,8 @@
 <!-- Required datatable js -->
 <?php require_once __DIR__ . '/datatable-core.php'; ?>
 <?php $isBordroListTable = ($_GET['p'] ?? '') === 'bordro/list'; ?>
-<?php if (!$isBordroListTable): ?>
+<?php $isGelirGiderListTable = ($_GET['p'] ?? '') === 'gelir-gider/list'; ?>
+<?php if (!$isBordroListTable && !$isGelirGiderListTable): ?>
 <link rel="stylesheet" href="assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css">
 
 <!-- Responsive examples -->
@@ -25,4 +26,12 @@
 <!-- DataTables FixedHeader -->
 <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.bootstrap4.min.css">
 <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+<?php endif; ?>
+
+<?php if ($isGelirGiderListTable): ?>
+<!-- Gelir-gider sunucu taraflı çalışır; kullanılmayan Responsive, Buttons,
+     JSZip, Print ve FixedHeader paketleri ilk çizime dahil edilmez. -->
+<link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.7.0/css/colReorder.bootstrap4.min.css">
+<script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
+<script src="assets/libs/sortablejs/sortable.min.js"></script>
 <?php endif; ?>

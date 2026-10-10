@@ -538,6 +538,7 @@ if (!is_array($firma_option)) {
         let lastNotificationId = 0;
         let isFirstLoad = true;
         let pollingInterval = null;
+        let notificationRequestInFlight = false;
         const POLLING_INTERVAL = 15000; // 15 saniye
 
         /**
@@ -653,7 +654,11 @@ if (!is_array($firma_option)) {
          * Bildirimleri getir
          */
         function fetchNotifications() {
-            $.post('views/bildirim/api.php', { action: 'get-unread' }, function (response) {
+            if (notificationRequestInFlight || document.hidden) return;
+            notificationRequestInFlight = true;
+
+            const request = function () {
+                return $.post('views/bildirim/api.php', { action: 'get-unread' }, function (response) {
                 if (response.status === 'success') {
                     updateBadge(response.count, response.support_count);
 
@@ -680,9 +685,18 @@ if (!is_array($firma_option)) {
                     }
                     isFirstLoad = false;
                 }
-            }, 'json').fail(function () {
+                }, 'json').fail(function () {
                 console.log('Bildirim kontrolü başarısız oldu');
-            });
+                }).always(function () {
+                    notificationRequestInFlight = false;
+                });
+            };
+
+            if (window.Pace && typeof window.Pace.ignore === 'function') {
+                window.Pace.ignore(request);
+            } else {
+                request();
+            }
         }
 
         /**
@@ -690,7 +704,6 @@ if (!is_array($firma_option)) {
          */
         function startPolling() {
             if (pollingInterval) return;
-            fetchNotifications();
             pollingInterval = setInterval(fetchNotifications, POLLING_INTERVAL);
         }
 
@@ -704,8 +717,12 @@ if (!is_array($firma_option)) {
             }
         }
 
-        // Sayfa yüklendiğinde polling'i başlat
-        startPolling();
+        // İlk tablo ve sayfa çizimini arka plan bildirim isteğiyle yarıştırma.
+        if (document.readyState === 'complete') {
+            startPolling();
+        } else {
+            window.addEventListener('load', startPolling, { once: true });
+        }
 
         // Visibility API
         document.addEventListener('visibilitychange', function () {

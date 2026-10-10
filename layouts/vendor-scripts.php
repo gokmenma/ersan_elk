@@ -7,7 +7,7 @@ use App\Helper\Helper;
 $page = $_GET['p'] ?? 'home';
 
 ?>
-<script src="<?= $page === 'bordro/list' ? 'assets/libs/jquery-validation/jquery.validate.min.js' : 'https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js' ?>"></script>
+<script src="<?= in_array($page, ['bordro/list', 'gelir-gider/list'], true) ? 'assets/libs/jquery-validation/jquery.validate.min.js' : 'https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js' ?>"></script>
 <script src="assets/libs/imask/imask.min.js"></script>
 
 <!-- Sayfalara Özel Scriptler -->
@@ -60,10 +60,6 @@ $page = $_GET['p'] ?? 'home';
 
 <?php if ($page == 'demirbas/zimmet') { ?>
     <script src="<?php echo Helper::assetVersion('views/demirbas/js/zimmet.js'); ?>"></script>
-<?php } ?>
-
-<?php if ($page == 'gelir-gider/list') { ?>
-    <script src="views/gelir-gider/js/gelir-gider.js?v=<?php echo filemtime("views/gelir-gider/js/gelir-gider.js"); ?>"></script>
 <?php } ?>
 
 <!-- Gelir gider türü tanımlama -->
@@ -190,9 +186,16 @@ if ($page == "hakedisler/hakedis-detay") {
     <?php require_once "datatable-scripts.php"; ?>
 <?php } ?>
 
+<?php if ($page === 'gelir-gider/list'): ?>
+<!-- Tablo isteğini genel arayüz eklentilerinden önce başlat. -->
+<script src="assets/libs/flatpickr/flatpickr.min.js"></script>
+<script src="assets/libs/flatpickr/l10n/tr.js"></script>
+<script src="<?= Helper::assetVersion('views/gelir-gider/js/gelir-gider.js'); ?>"></script>
+<?php endif; ?>
+
 <!-- Required Vendor Scripts -->
 <script src="assets/libs/moment/min/moment-with-locales.min.js"></script>
-<script src="<?= $page === 'bordro/list' ? 'assets/libs/sweetalert2/sweetalert2.all.min.js' : 'https://cdn.jsdelivr.net/npm/sweetalert2@11' ?>"></script>
+<script src="<?= in_array($page, ['bordro/list', 'gelir-gider/list'], true) ? 'assets/libs/sweetalert2/sweetalert2.all.min.js' : 'https://cdn.jsdelivr.net/npm/sweetalert2@11' ?>"></script>
 
 <!-- Bootstrap Bundle JS -->
 <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -216,8 +219,10 @@ if ($page == "hakedisler/hakedis-detay") {
 <?php endif; ?>
 
 <!-- Flatpickr -->
+<?php if ($page !== 'gelir-gider/list'): ?>
 <script src="assets/libs/flatpickr/flatpickr.min.js"></script>
 <script src="assets/libs/flatpickr/l10n/tr.js"></script>
+<?php endif; ?>
 <?php if ($page == 'personel/performans-raporu' || $page == 'arac-takip/list' || $page == 'personel/manage' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/veri-yukleme' || $page == 'kacak/list') { ?>
 <link rel="stylesheet" href="assets/libs/flatpickr/plugins/monthSelect/style.css">
 <script src="assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
@@ -250,7 +255,9 @@ if ($page == "hakedisler/hakedis-detay") {
 </script>
 
 <!-- SortableJS (Global for sidebar and reorderable lists) -->
+<?php if ($page !== 'gelir-gider/list'): ?>
 <script src="assets/libs/sortablejs/sortable.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js';"></script>
+<?php endif; ?>
 
 <?php if ($page == 'gorevler/list') { ?>
     <script src="views/gorevler/js/gorevler.js?v=<?php echo time(); ?>"></script>
