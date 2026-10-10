@@ -7,16 +7,18 @@
 // temizlenir hem de importScripts ve precache URL'leri değişir. Kayıt tarafında
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
-const KUYRUK_SURUM = "28";
+const KUYRUK_SURUM = "29";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
-const SAYFA_CACHE = "personel-pwa-sayfa-v2";
+const SAYFA_CACHE = "personel-pwa-sayfa-v3";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar
 const PRECACHE_ASSETS = [
   "./assets/css/pwa-style.css",
+  "./assets/css/pwa-chat.css",
   "./assets/css/tailwind-build.css",
   "./assets/js/pwa-app.js",
+  "./assets/js/pwa-chat.js",
   "./assets/js/pwa-offline-queue.js?v=" + KUYRUK_SURUM,
   "./assets/js/exif-cekim.js",
   "./assets/libs/sweetalert2/sweetalert2.all.min.js",
