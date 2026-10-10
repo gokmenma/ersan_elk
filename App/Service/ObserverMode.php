@@ -44,7 +44,7 @@ final class ObserverMode
         if ($roleIds) {
             $db = (new UserRoleAssignmentModel())->getDb();
             $marks = implode(',', array_fill(0, count($roleIds), '?'));
-            $stmt = $db->prepare("SELECT COUNT(*) FROM user_roles WHERE id IN ({$marks}) AND (superadmin = 1 OR role_type = 'superadmin')");
+            $stmt = $db->prepare("SELECT COUNT(*) FROM user_roles WHERE id IN ({$marks}) AND (role_type = 'superadmin' OR role_name = 'Süper Admin')");
             $stmt->execute($roleIds);
             if ((int) $stmt->fetchColumn() > 0) {
                 throw new \RuntimeException('Superadmin hesapları gözlem hedefi olamaz.');

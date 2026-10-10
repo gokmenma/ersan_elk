@@ -112,7 +112,7 @@ class UserModel extends Model
             $roleStmt->execute($roleIds);
             $roleRows = $roleStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             $isTargetSuperAdmin = array_filter($roleRows, static fn(array $role): bool =>
-                (int) ($role['superadmin'] ?? 0) === 1 || ($role['role_type'] ?? '') === 'superadmin'
+                ($role['role_type'] ?? '') === 'superadmin' || ($role['role_name'] ?? '') === 'Süper Admin'
             );
             $user->is_superadmin = !empty($isTargetSuperAdmin);
             if (!$this->isSuperAdmin() && $isTargetSuperAdmin) {

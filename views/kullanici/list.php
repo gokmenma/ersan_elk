@@ -320,7 +320,7 @@ $title = "Kullanıcı Listesi";
                                 </td>
                                 <td class="text-center">
                                     <div class="action-btn-group d-flex align-items-center justify-content-center gap-1">
-                                        <?php if ($canStartObserverMode && $isAktif && empty($user->is_superadmin)): ?>
+                                        <?php if ($canStartObserverMode && $isAktif && empty($user->is_superadmin) && (int) ($user->id ?? 0) !== (int) ($_SESSION['user_id'] ?? 0)): ?>
                                             <button type="button" class="btn btn-subtle-primary table-action-btn kullanici-gozlemle"
                                                     data-id="<?= htmlspecialchars($enc_id, ENT_QUOTES, 'UTF-8'); ?>"
                                                     data-name="<?= htmlspecialchars((string) ($user->adi_soyadi ?? ''), ENT_QUOTES, 'UTF-8'); ?>"

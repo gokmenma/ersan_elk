@@ -252,7 +252,7 @@
         var kayit = {
             uuid: uuidUret(),
             accountKey: accountKey,
-            reliable: ["saveKacakBildirim", "updateKacakBildirim", "createIhbar", "updateIhbar"].indexOf(action) >= 0,
+            reliable: ["saveKacakBildirim", "updateKacakBildirim", "appendKacakMedia", "createIhbar", "updateIhbar"].indexOf(action) >= 0,
             videolar: (ek.videolar || []).map(function (v) {
                 var videoBlob = v.dosya || v.blob;
                 var videoTip = (videoBlob && videoBlob.type) || v.tip || "";

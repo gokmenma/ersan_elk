@@ -52,7 +52,7 @@ const server = http.createServer(async (req, res) => {
   const operation = val('operation_key');
   if (operation && state.receipts.has(operation)) return reply(true, state.receipts.get(operation));
   let output = {};
-  if (['saveKacakBildirim', 'updateKacakBildirim', 'createIhbar', 'updateIhbar'].includes(action)) {
+  if (['saveKacakBildirim', 'updateKacakBildirim', 'appendKacakMedia', 'createIhbar', 'updateIhbar'].includes(action)) {
     state.counts.main++; output = { target_token: 'encrypted-record' };
   } else if (action === 'pwaTransferPhoto') {
     state.counts.photo++;
@@ -116,6 +116,17 @@ async function flush(page) { return page.evaluate(() => { window.testOnline=true
       assert.equal((await flush(page)).gonderildi,1);
       const start = state.calls.find(c => c.action === 'pwaVideoStart');
       assert.equal(start.mime, 'video/webm');
+    });
+    await test('approved record can queue attachment-only photo and video transfer', async page => {
+      await page.evaluate(async () => {
+        const photo = {ad:'after.jpg', blob:new Blob(['after-photo'], {type:'image/jpeg'}), tip:'image/jpeg'};
+        const video = new File([new Uint8Array(300000)], 'after.mp4', {type:'video/mp4'});
+        await OfflineQueue.ekle('appendKacakMedia', {edit_token:'approved-record'}, [],
+          {ilce:'Dulkadiroğlu',tutanak_no:'45267'}, {dosyalar:[photo],videolar:[{dosya:video,sure:10,kapak:''}]});
+      });
+      assert.equal((await flush(page)).gonderildi,1);
+      assert.deepEqual(state.counts,{main:1,photo:1,video:1});
+      assert.ok(state.calls.some(c => c.action === 'appendKacakMedia'));
     });
     await test('lost main response reuses fixed operation without duplicate report', async page => {
       const uuid=await record(page,'saveKacakBildirim',false); state.drop='saveKacakBildirim';

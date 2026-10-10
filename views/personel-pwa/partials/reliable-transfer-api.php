@@ -6,7 +6,7 @@ use App\Model\KacakKontrolModel;
 use App\Service\PwaChunkUploadService;
 
 $transferActions = ['pwaTransferResolve', 'pwaTransferIdentity', 'pwaTransferPhoto', 'pwaVideoStart', 'pwaVideoStatus', 'pwaVideoChunk', 'pwaVideoComplete'];
-$reliableMain = !empty($_POST['reliable_transfer']) && in_array($action, ['saveKacakBildirim', 'updateKacakBildirim', 'createIhbar', 'updateIhbar'], true);
+$reliableMain = !empty($_POST['reliable_transfer']) && in_array($action, ['saveKacakBildirim', 'updateKacakBildirim', 'appendKacakMedia', 'createIhbar', 'updateIhbar'], true);
 if (!$reliableMain && !in_array($action, $transferActions, true)) return;
 
 $transferFirma = (int) $_SESSION['firma_id'];
@@ -47,7 +47,7 @@ if ($reliableMain) {
         unset($GLOBALS['pwaTransfer']);
         response($cached['success'], $cached['data'], $cached['message']);
     }
-    if (in_array($action, ['updateKacakBildirim', 'updateIhbar'], true)) {
+    if (in_array($action, ['updateKacakBildirim', 'appendKacakMedia', 'updateIhbar'], true)) {
         $GLOBALS['pwaTransfer']->lockRecord($action === 'updateIhbar' ? 'ihbar' : 'kacak', (int) \App\Helper\Security::decrypt((string) ($_POST['edit_token'] ?? '')));
     }
     return; // Existing validation and business rules remain authoritative.
@@ -63,14 +63,18 @@ $id = (int) \App\Helper\Security::decrypt((string) ($_POST['target_token'] ?? ''
 $model = $kind === 'ihbar' ? new IhbarModel() : new KacakKontrolModel();
 $record = $kind === 'ihbar' ? $model->getById($id) : $model->getRecord($id);
 $record = $record ? (array) $record : [];
-if (!$record || (int) ($record['firma_id'] ?? 0) !== $transferFirma || (int) ($record['bildiren_personel_id'] ?? 0) !== $transferPersonel
-    || ($kind === 'kacak' && stripos($personel->departman ?? '', 'Kaçak') === false)) {
+$isRecordOwner = (int) ($record['bildiren_personel_id'] ?? 0) === $transferPersonel;
+if ($kind === 'kacak' && !$isRecordOwner && !empty($record['personel_ids'])) {
+    $isRecordOwner = in_array($transferPersonel, array_map('intval', explode(',', (string) $record['personel_ids'])), true);
+}
+if (!$record || (int) ($record['firma_id'] ?? 0) !== $transferFirma || !$isRecordOwner
+    || ($kind === 'kacak' && (stripos($personel->departman ?? '', 'Kaçak') === false || ($record['durum'] ?? '') === 'iptal'))) {
     http_response_code(403);
     response(false, ['transfer_error' => 'permission'], 'Bu kayda dosya ekleme yetkiniz yok veya kayıt artık düzenlenemiyor.');
 }
 
 $mainAction = (string) ($_POST['main_action'] ?? '');
-if (($kind === 'ihbar') !== str_contains($mainAction, 'Ihbar') || !in_array($mainAction, ['saveKacakBildirim', 'updateKacakBildirim', 'createIhbar', 'updateIhbar'], true)) throw new RuntimeException('Geçersiz ana işlem.');
+if (($kind === 'ihbar') !== str_contains($mainAction, 'Ihbar') || !in_array($mainAction, ['saveKacakBildirim', 'updateKacakBildirim', 'appendKacakMedia', 'createIhbar', 'updateIhbar'], true)) throw new RuntimeException('Geçersiz ana işlem.');
 $mainReceipt = (new PwaTransferModel($transferFirma, $transferPersonel))->receipt((string) ($_POST['transfer_key'] ?? ''), $mainAction);
 if (!$mainReceipt || (int) \App\Helper\Security::decrypt((string) ($mainReceipt['data']['target_token'] ?? '')) !== $id) {
     http_response_code(403);

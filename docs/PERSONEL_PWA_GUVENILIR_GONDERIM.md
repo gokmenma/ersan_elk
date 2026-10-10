@@ -11,6 +11,7 @@ Kaçak ve ihbar oluşturma/düzenleme işlemleri, fotoğraf ve videolarıyla ön
 - Gönderim istekleri en fazla 120 saniye bekler. Geçici hatalarda yeniden deneme aralığı 30 saniyeden başlayıp 5 dakikaya kadar çıkar. Liste/referans istekleri 15 saniyede sonlanır; saha sayfası navigasyonları 8 saniye sonunda önbelleğe dönebilir. Zaman aşımı isteğin sunucu tarafından işlenmediği anlamına gelmez; sabit işlem anahtarı bu belirsizliği karşılar.
 - Oturum ve yetki hatalarında kayıtlar korunur; kullanıcı girişini doğrulayıp “Şimdi tekrar dene” seçeneğini kullanır. Doğrulama hataları otomatik olarak sürekli gönderilmez.
 - Önceden yetkilendirilip ana kaydı ulaşmış gönderimin kalan ekleri, kayıt sonradan onaylansa/sonuçlandırılsa da tamamlanabilir. Her ek, aynı hesap ve ana işlem sonucu üzerinden kayıtla eşleştirilir; yeni düzenlemeler mevcut durum/yetki kontrollerinden geçer.
+- Onaylanmış ve iptal edilmemiş kaçak tutanaklarına, bildirimi yapan personel veya kayıtlı ekip arkadaşı sonradan saha fotoğrafı/video ekleyebilir. Bu işlem tutanak alanlarını ve onay durumunu değiştirmez; ekler `appendKacakMedia` işlemiyle aynı güvenilir kuyruk, parça doğrulama ve kaldığı yerden devam mekanizmasını kullanır.
 - “Tamamlandı” yalnızca tüm dosyalar sunucu tarafından onaylandığında görünür. Tamamlanan gönderim özetleri cihazda bir gün tutulur; tamamlanmamış medya otomatik silinmez.
 
 ## Eski kuyruklar
@@ -32,7 +33,7 @@ HTTPS ve IndexedDB destekleyen bir tarayıcı gerekir. Kalıcı depolama talep e
 
 ## Yeni API alanları
 
-Ana oluşturma/düzenleme aksiyonları `reliable_transfer=1`, `operation_key`, `account_key` alanlarıyla mevcut doğrulama yollarını kullanır. Yanıtta şifreli `target_token` döner. Eklerde `transfer_key`, `main_action`, `kind`, `account_key`, `target_token` ile ana işlem ve kayıt eşleştirilir.
+Ana oluşturma/düzenleme ve sonradan medya ekleme aksiyonları `reliable_transfer=1`, `operation_key`, `account_key` alanlarıyla mevcut doğrulama yollarını kullanır. Yanıtta şifreli `target_token` döner. Eklerde `transfer_key`, `main_action`, `kind`, `account_key`, `target_token` ile ana işlem ve kayıt eşleştirilir.
 
 - `pwaTransferIdentity`: aktif hesabın kuyruk anahtarı.
 - `pwaTransferResolve`: sahipliği doğrulanan eski kaçak UUID'sinin şifreli hedefi.

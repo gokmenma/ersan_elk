@@ -113,6 +113,7 @@ if ($personel_id > 0) {
             'kacak_guncelle', 'kacak_ekip_adaylari', 'kacak_kuyruk_senkron',
             'kacak_sicil_duzeltme_talepleri', 'kacak_sicil_duzeltme_kaydet',
             'getKacakKayitlar', 'updateKacakBildirim', 'deleteKacakBildirim', 'deleteKacakFoto',
+            'appendKacakMedia',
             'getKacakSahaFotoLimit', 'uploadKacakSahaFoto', 'uploadKacakVideo', 'uploadKacakVideoChunk',
             'uploadKacakBildirim', 'getKacakSicilTalepleri', 'saveKacakSicilTalep',
             'pwaTransferResolve', 'pwaTransferIdentity', 'pwaTransferPhoto', 'pwaVideoStart', 'pwaVideoStatus', 'pwaVideoChunk', 'pwaVideoComplete'
@@ -4906,6 +4907,10 @@ try {
                     && $kayit['onay_durumu'] === 'beklemede'
                     && $kayit['durum'] !== 'iptal';
                 $kayit['edit_token'] = $kayit['duzenlenebilir'] ? Security::encrypt($kayit['id']) : '';
+                $kayit['medya_eklenebilir'] = $isEkip
+                    && $kayit['onay_durumu'] === 'onaylandi'
+                    && $kayit['durum'] !== 'iptal';
+                $kayit['media_token'] = $kayit['medya_eklenebilir'] ? Security::encrypt($kayit['id']) : '';
                 $kayit['fotograflar'] = array_map(static function ($foto) {
                     $etiket = ['tutanak' => 'Tutanak', 'saha' => 'Saha', 'iptal' => 'İptal'];
                     return [
@@ -5054,6 +5059,23 @@ try {
                 }
             }
             response(true, ['id' => $kacakId], 'Kaçak bildirimi güncellendi.');
+            break;
+
+        case 'appendKacakMedia':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+            $KacakModel = new \App\Model\KacakKontrolModel();
+            $kacakId = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
+            $kayit = $kacakId > 0 ? $KacakModel->getRecord($kacakId) : null;
+            $isEkip = $kayit && (int) $kayit['bildiren_personel_id'] === (int) $personel_id;
+            if ($kayit && !$isEkip && !empty($kayit['personel_ids'])) {
+                $isEkip = in_array((int) $personel_id, array_map('intval', explode(',', (string) $kayit['personel_ids'])), true);
+            }
+            if (!$kayit || !$isEkip || ($kayit['onay_durumu'] ?? '') !== 'onaylandi' || ($kayit['durum'] ?? '') === 'iptal') {
+                response(false, null, 'Bu tutanağa medya ekleme yetkiniz bulunmuyor.');
+            }
+            response(true, ['id' => $kacakId], 'Medya gönderimi başlatıldı.');
             break;
 
         case 'deleteKacakBildirim':

@@ -1,4 +1,7 @@
-<body class="preload <?php echo (isset($bodyClass) ? $bodyClass : ''); ?>">
+<?php
+$isObserverModeActive = class_exists('\App\Service\ObserverMode') && \App\Service\ObserverMode::isActive();
+?>
+<body class="preload <?= $isObserverModeActive ? 'observer-mode-active' : '' ?> <?php echo (isset($bodyClass) ? $bodyClass : ''); ?>">
     <script>
         (function () {
             const htmlAttrs = [

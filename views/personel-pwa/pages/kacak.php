@@ -368,6 +368,61 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
     </div>
 </div>
 
+<!-- ============ SONRADAN MEDYA EKLEME MODALI ============ -->
+<div id="kacak-medya-modal" class="modal-overlay" style="z-index: 210;">
+    <div class="modal-content"
+        style="display:flex !important; flex-direction:column !important; max-height:90vh !important; overflow:hidden !important; padding:0 !important;">
+        <div class="px-6 pt-3 pb-3 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800">
+            <div class="modal-handle mb-4"></div>
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-white">Fotoğraf / Video Ekle</h3>
+                    <p id="kacak-medya-kayit" class="text-xs text-slate-400 mt-1"></p>
+                </div>
+                <button type="button" onclick="Modal.close('kacak-medya-modal')"
+                    class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+        </div>
+        <form id="kacak-medya-form" class="p-6 overflow-y-auto flex-1 space-y-5">
+            <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                İşin onay durumu değişmez. Seçilen dosyalar güvenli gönderim kuyruğuna alınır.
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Saha Fotoğrafları</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="py-3 rounded-xl bg-primary/10 text-primary text-xs font-bold text-center cursor-pointer">
+                        Galeriden Seç
+                        <input id="kacak-medya-foto" type="file" accept="image/*" multiple class="hidden">
+                    </label>
+                    <label class="py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold text-center cursor-pointer">
+                        Fotoğraf Çek
+                        <input id="kacak-medya-foto-kamera" type="file" accept="image/*" capture="environment" class="hidden">
+                    </label>
+                </div>
+                <p id="kacak-medya-foto-ozet" class="text-xs text-slate-400 mt-2">Fotoğraf seçilmedi.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Videolar</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="py-3 rounded-xl bg-primary/10 text-primary text-xs font-bold text-center cursor-pointer">
+                        Galeriden Seç
+                        <input id="kacak-medya-video" type="file" accept="video/*" multiple class="hidden">
+                    </label>
+                    <label class="py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold text-center cursor-pointer">
+                        Video Çek
+                        <input id="kacak-medya-video-kamera" type="file" accept="video/*" capture="environment" class="hidden">
+                    </label>
+                </div>
+                <p id="kacak-medya-video-ozet" class="text-xs text-slate-400 mt-2">Video seçilmedi.</p>
+            </div>
+            <button type="submit" id="kacak-medya-submit"
+                class="w-full py-4 rounded-xl bg-primary text-white font-black text-sm">DOSYALARI GÖNDER</button>
+        </form>
+    </div>
+</div>
+
 <!-- ============ SİCİL DÜZELTME MODALI ============ -->
 <div id="sicil-duzeltme-modal" class="modal-overlay" style="z-index: 200;">
     <div class="modal-content"
@@ -485,6 +540,9 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         let bekleyenKayitlar = [];
         let kacakEditToken = null;
         let kacakKuyrukEditUuid = null;
+        let medyaKaydi = null;
+        let medyaFotolari = [];
+        let medyaVideolari = [];
 
         // Aynı cihazda farklı personeller oturum açabildiği için personel bazlı tutulur.
         // Aksi halde önceki kullanıcının ekip adayları güncel sunucu listesini ezer.
@@ -529,6 +587,9 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             const duzenleBtn = k.duzenlenebilir
                 ? `<div class="grid grid-cols-2 gap-2 mt-3"><button type="button" onclick="event.stopPropagation(); kacakDuzenle('${esc(k.edit_token)}')"
                     class="py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">edit</span>Düzenle</button><button type="button" onclick="event.stopPropagation(); kacakSil('${esc(k.edit_token)}')" class="py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">delete</span>Sil</button></div>` : '';
+            const medyaBtn = k.medya_eklenebilir
+                ? `<button type="button" onclick="event.stopPropagation(); kacakMedyaAc(${parseInt(k.id, 10)})"
+                    class="w-full mt-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">add_a_photo</span>Fotoğraf / Video Ekle</button>` : '';
 
             return `
             <div onclick="kacakDetayAc(${k.id})"
@@ -543,6 +604,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 </p>
                 ${redSatiri}
                 ${duzenleBtn}
+                ${medyaBtn}
             </div>`;
         }
 
@@ -579,7 +641,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 OfflineQueue.mountPanel('kacak', panel.id, { onEdit: kacakKuyrukDuzenle, onDelete: kacakKuyrukSil });
             }
             const tumu = await OfflineQueue.listele();
-            bekleyenKayitlar = tumu.filter(k => k.action === 'saveKacakBildirim' || k.action === 'updateKacakBildirim');
+            bekleyenKayitlar = tumu.filter(k => k.action === 'saveKacakBildirim' || k.action === 'updateKacakBildirim' || k.action === 'appendKacakMedia');
 
             const bekleyen = bekleyenKayitlar.filter(k => k.durum !== 'hata').length;
             const hatali = bekleyenKayitlar.filter(k => k.durum === 'hata').length;
@@ -866,11 +928,110 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             ${k.onay_durumu === 'reddedildi' && k.red_nedeni ? satir('Red Nedeni', k.red_nedeni) : ''}
             ${k.durum === 'iptal' ? satir('İptal Açıklaması', k.iptal_aciklama) : ''}
             ${fotoHtml}
+            ${k.medya_eklenebilir ? `<button type="button" onclick="Modal.close('kacak-detay-modal'); kacakMedyaAc(${parseInt(k.id, 10)})"
+                class="w-full mt-4 py-3 bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2"><span class="material-symbols-outlined">add_a_photo</span>Fotoğraf / Video Ekle</button>` : ''}
             <button onclick="Modal.close('kacak-detay-modal')"
                 class="w-full mt-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl">Kapat</button>`;
 
             Modal.open('kacak-detay-modal');
         };
+
+        function medyaOzetleriniGuncelle() {
+            const foto = document.getElementById('kacak-medya-foto-ozet');
+            const video = document.getElementById('kacak-medya-video-ozet');
+            if (foto) foto.textContent = medyaFotolari.length
+                ? `${medyaFotolari.length} fotoğraf gönderime hazır.`
+                : 'Fotoğraf seçilmedi.';
+            if (video) video.textContent = medyaVideolari.length
+                ? `${medyaVideolari.length} video gönderime hazır.`
+                : 'Video seçilmedi.';
+        }
+
+        window.kacakMedyaAc = function (id) {
+            const kayit = kacakKayitlar.find(k => parseInt(k.id, 10) === parseInt(id, 10));
+            if (!kayit || !kayit.medya_eklenebilir || !kayit.media_token) {
+                return Alert.warning('Yetki Yok', 'Bu tutanağa medya eklenemiyor.');
+            }
+            medyaKaydi = kayit;
+            medyaFotolari = [];
+            medyaVideolari = [];
+            document.getElementById('kacak-medya-form').reset();
+            document.getElementById('kacak-medya-kayit').textContent =
+                `${kayit.tur || 'Kaçak'} · ${kayit.tutanak_no || ('#' + kayit.id)} · ${kayit.abone_adi || ''}`;
+            medyaOzetleriniGuncelle();
+            Modal.open('kacak-medya-modal');
+        };
+
+        function medyaFotoSec(e) {
+            if (!medyaKaydi) return;
+            const mevcut = (medyaKaydi.fotograflar || []).filter(f => f.tur === 'saha' && f.medya_tipi !== 'video').length;
+            const kalan = Math.max(0, MAX_SAHA_FOTO - mevcut - medyaFotolari.length);
+            const secilen = Array.from(e.target.files || []).slice(0, kalan);
+            medyaFotolari.push(...secilen);
+            e.target.value = '';
+            medyaOzetleriniGuncelle();
+            if (secilen.length === 0) Alert.warning('Fotoğraf Limiti', `Bu tutanakta en fazla ${MAX_SAHA_FOTO} saha fotoğrafı bulunabilir.`);
+        }
+
+        async function medyaVideoSec(e) {
+            if (!medyaKaydi) return;
+            const mevcut = (medyaKaydi.fotograflar || []).filter(f => f.medya_tipi === 'video').length;
+            const kalan = Math.max(0, MAX_VIDEO - mevcut - medyaVideolari.length);
+            const secilen = Array.from(e.target.files || []).slice(0, kalan);
+            e.target.value = '';
+            if (secilen.length === 0) {
+                return Alert.warning('Video Limiti', `Bu tutanakta en fazla ${MAX_VIDEO} video bulunabilir.`);
+            }
+            const ozet = document.getElementById('kacak-medya-video-ozet');
+            try {
+                for (let i = 0; i < secilen.length; i++) {
+                    if (ozet) ozet.textContent = `Video hazırlanıyor (${i + 1}/${secilen.length})...`;
+                    medyaVideolari.push(await OfflineQueue.videoIncele(secilen[i], VIDEO_MAX_SURE, VIDEO_MAX_BYTE));
+                }
+            } catch (hata) {
+                Alert.warning('Video Eklenemedi', hata.message || 'Video hazırlanamadı.');
+            }
+            medyaOzetleriniGuncelle();
+        }
+
+        document.getElementById('kacak-medya-foto').addEventListener('change', medyaFotoSec);
+        document.getElementById('kacak-medya-foto-kamera').addEventListener('change', medyaFotoSec);
+        document.getElementById('kacak-medya-video').addEventListener('change', medyaVideoSec);
+        document.getElementById('kacak-medya-video-kamera').addEventListener('change', medyaVideoSec);
+
+        document.getElementById('kacak-medya-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!medyaKaydi || !medyaKaydi.media_token) return;
+            if (medyaFotolari.length === 0 && medyaVideolari.length === 0) {
+                return Alert.warning('Dosya Seçilmedi', 'En az bir fotoğraf veya video seçin.');
+            }
+            const btn = document.getElementById('kacak-medya-submit');
+            btn.disabled = true;
+            btn.textContent = 'HAZIRLANIYOR...';
+            try {
+                const fotograflar = [];
+                for (const dosya of medyaFotolari) {
+                    const f = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
+                    fotograflar.push({ ad: f.ad, tip: f.tip, blob: f.blob, cekim: f.cekim || '' });
+                }
+                await OfflineQueue.ekle(
+                    'appendKacakMedia',
+                    { edit_token: medyaKaydi.media_token },
+                    [],
+                    { tur: medyaKaydi.tur, ilce: medyaKaydi.ilce, tutanak_no: medyaKaydi.tutanak_no, abone_adi: medyaKaydi.abone_adi },
+                    { dosyalar: fotograflar, videolar: medyaVideolari }
+                );
+                Modal.close('kacak-medya-modal');
+                await kuyrugaBak();
+                OfflineQueue.flush().then(loadKacakKayitlar).catch(() => {});
+                Alert.success('Gönderime Alındı', 'Fotoğraf ve videolar cihazınıza kaydedildi. Bağlantıya göre otomatik gönderilecek.');
+            } catch (hata) {
+                Alert.error('Kaydedilemedi', (hata && hata.message) || 'Dosyalar gönderim kuyruğuna alınamadı.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'DOSYALARI GÖNDER';
+            }
+        });
 
         window.kacakFotoSilPwa = async function (fotoId, btnEl) {
             const onay = await Alert.confirm('Fotoğrafı Sil', 'Bu görsel kayıttan kalıcı olarak silinecek. Onaylıyor musunuz?', 'Sil', 'Vazgeç');

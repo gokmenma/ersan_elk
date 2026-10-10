@@ -24,11 +24,15 @@ if ($userId > 0) {
     $favoriteMenus = $menuModel->getFavoriteMenus($userId);
 
     if ($showFavoritesBar === 0 || empty($favoriteMenus)) {
-        echo '<style>.page-content, body .main-content .page-content { padding-top: 74px !important; }</style>';
+        if (!class_exists('\App\Service\ObserverMode') || !\App\Service\ObserverMode::isActive()) {
+            echo '<style>.page-content, body .main-content .page-content { padding-top: 74px !important; }</style>';
+        }
         return;
     }
 } else {
-    echo '<style>.page-content, body .main-content .page-content { padding-top: 74px !important; }</style>';
+    if (!class_exists('\App\Service\ObserverMode') || !\App\Service\ObserverMode::isActive()) {
+        echo '<style>.page-content, body .main-content .page-content { padding-top: 74px !important; }</style>';
+    }
     return;
 }
 ?>
