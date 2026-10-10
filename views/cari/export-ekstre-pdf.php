@@ -31,11 +31,12 @@ $toplam_alacak = $ozet->toplam_alacak ?? 0;
 $bakiye = $ozet->bakiye ?? 0;
 
 // Hareketler
-$sql = "SELECT h.*, 
+$sql = "SELECT h.*, u.adi_soyadi as ekleyen_adi,
         (SELECT ROUND(SUM(alacak - borc), 2) FROM cari_hareketleri 
          WHERE cari_id = :cari_id AND silinme_tarihi IS NULL 
            AND (islem_tarihi < h.islem_tarihi OR (islem_tarihi = h.islem_tarihi AND id <= h.id))) as yuruyen_bakiye
         FROM cari_hareketleri h
+        LEFT JOIN users u ON u.id = h.ekleyen_kullanici
         WHERE h.cari_id = :cari_id AND h.silinme_tarihi IS NULL
         ORDER BY h.islem_tarihi DESC, h.id DESC";
 
@@ -109,12 +110,14 @@ $html .= '
                 <th class="text-right">Borç</th>
                 <th class="text-right">Alacak</th>
                 <th class="text-right">Bakiye</th>
+                <th>Ekleyen</th>
             </tr>
         </thead>
         <tbody>';
 
 foreach ($hareketler as $h) {
     $currBakiye = $h->yuruyen_bakiye;
+    $ekleyenMetin = $h->ekleyen_adi ?: (!empty($h->fatura_id) ? 'e-Fatura Entegrasyonu' : '-');
     $html .= '
             <tr>
                 <td>'.date('d.m.Y H:i', strtotime($h->islem_tarihi)).'</td>
@@ -123,11 +126,12 @@ foreach ($hareketler as $h) {
                 <td class="text-right">'.($h->borc > 0 ? fmt($h->borc) : "-").'</td>
                 <td class="text-right">'.($h->alacak > 0 ? fmt($h->alacak) : "-").'</td>
                 <td class="text-right" style="font-weight: bold;">'.fmt(abs($currBakiye)).' '.($currBakiye < 0 ? "(B)" : ($currBakiye > 0 ? "(A)" : "")).'</td>
+                <td>'.htmlspecialchars($ekleyenMetin).'</td>
             </tr>';
 }
 
 if (empty($hareketler)) {
-    $html .= '<tr><td colspan="6" style="text-align: center; padding: 20px;">Hareket bulunmamaktadır.</td></tr>';
+    $html .= '<tr><td colspan="7" style="text-align: center; padding: 20px;">Hareket bulunmamaktadır.</td></tr>';
 }
 
 $html .= '

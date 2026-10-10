@@ -413,6 +413,7 @@ $(document).ready(function () {
 
     function updateSummaryCards() {
         table.ajax.reload(null, false); // Sayfayı kaydırmadan yenile
+        loadSonHareketler();
     }
 
     // Hızlı Hareket Ekle (Cari Listesi - Desktop & Mobile)
@@ -452,7 +453,7 @@ $(document).ready(function () {
                 if (res.status === "success" || res.status === "success_alert") {
                     $('#hizliIslemModal').modal('hide');
                     table.ajax.reload();
-                    updateSummaryCards(); // Bakiyeleri güncellemek için
+                    updateSummaryCards(); // Bakiyeleri ve son hareketleri güncellemek için
                     showToast(res.message || 'İşlem başarıyla eklendi.', 'success');
                 } else {
                     Swal.fire("Hata!", res.message || "İşlem kaydedilemedi.", "error");
@@ -466,4 +467,142 @@ $(document).ready(function () {
             }
         });
     });
+
+    // --- SON HESAP HAREKETLERİ BÖLÜMÜ ---
+    let currentSonHareketType = 'all';
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function loadSonHareketler() {
+        const tbody = $('#sonHareketlerTbody');
+        if (!tbody.length) return;
+
+        tbody.html(`
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Son hareketler yükleniyor...
+                </td>
+            </tr>
+        `);
+
+        $.ajax({
+            url: "views/cari/api.php",
+            type: "POST",
+            data: {
+                action: "son-hareketler-getir",
+                type: currentSonHareketType,
+                limit: 15
+            },
+            dataType: "json",
+            success: function (res) {
+                if (res.status === "success" && Array.isArray(res.data)) {
+                    if (res.data.length === 0) {
+                        tbody.html(`
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">
+                                    <i class="bx bx-info-circle fs-4 d-block mb-1 text-secondary"></i>
+                                    Henüz kayıtlı bir hesap hareketi bulunmuyor.
+                                </td>
+                            </tr>
+                        `);
+                        return;
+                    }
+
+                    let html = '';
+                    res.data.forEach(item => {
+                        const cariName = escapeHtml(item.CariAdi || '-');
+                        const firmaName = item.firma ? `<div class="text-muted font-size-11 text-truncate" style="max-width: 250px;">${escapeHtml(item.firma)}</div>` : '';
+                        const belgeNo = item.belge_no 
+                            ? `<span class="badge bg-light text-dark border font-monospace font-size-11 px-2 py-1">${escapeHtml(item.belge_no)}</span>` 
+                            : '<span class="text-muted">-</span>';
+                        const aciklama = item.aciklama 
+                            ? `<span class="text-secondary font-size-12 d-inline-block text-wrap" style="max-width: 320px; line-height: 1.3;">${escapeHtml(item.aciklama)}</span>` 
+                            : '<span class="text-muted">-</span>';
+                        const ekleyenBadge = item.ekleyen && item.ekleyen !== '-'
+                            ? `<span class="badge bg-light text-secondary border font-size-11"><i class="bx bx-user me-1"></i>${escapeHtml(item.ekleyen)}</span>`
+                            : '<span class="text-muted">-</span>';
+
+                        html += `
+                            <tr class="align-middle" style="cursor: pointer;" onclick="if (!event.target.closest('a, button')) { window.location.href='${item.hareket_link}'; }">
+                                <td>
+                                    <div class="fw-semibold text-dark font-size-12">${item.islem_tarih_gun}</div>
+                                    <div class="text-muted font-size-11"><i class="bx bx-time-five me-1"></i>${item.islem_tarih_saat}</div>
+                                </td>
+                                <td>
+                                    <div><a href="${item.hareket_link}" class="fw-bold text-dark font-size-13 text-decoration-none">${cariName}</a></div>
+                                    ${firmaName}
+                                </td>
+                                <td class="text-center">
+                                    ${item.type_badge}
+                                </td>
+                                <td>
+                                    ${belgeNo}
+                                </td>
+                                <td>
+                                    ${aciklama}
+                                </td>
+                                <td class="text-end">
+                                    <span class="fw-bold font-size-13 ${item.tutar_color}">${item.tutar_fmt}</span>
+                                </td>
+                                <td>
+                                    ${ekleyenBadge}
+                                </td>
+                                <td class="text-center">
+                                    <a href="${item.hareket_link}" class="btn btn-subtle-primary btn-sm table-action-btn" title="Hesap Hareketlerine Git">
+                                        <i class="bx bx-right-arrow-alt font-size-15"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.html(html);
+                } else {
+                    tbody.html(`
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-danger">
+                                <i class="bx bx-error-circle fs-4 d-block mb-1"></i>
+                                ${res.message || 'Veriler yüklenirken bir hata oluştu.'}
+                            </td>
+                        </tr>
+                    `);
+                }
+            },
+            error: function () {
+                tbody.html(`
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-danger">
+                            <i class="bx bx-error-circle fs-4 d-block mb-1"></i>
+                            Sunucu bağlantısında hata oluştu.
+                        </td>
+                    </tr>
+                `);
+            }
+        });
+    }
+
+    // Filtre Butonları
+    $('#sonHareketlerFilterGroup').on('click', '.son-hareket-filter-btn', function () {
+        $('.son-hareket-filter-btn').removeClass('active btn-subtle-primary').addClass('btn-light');
+        $(this).addClass('active btn-subtle-primary').removeClass('btn-light');
+        currentSonHareketType = $(this).data('type') || 'all';
+        loadSonHareketler();
+    });
+
+    // Yenile Butonu
+    $('#btnSonHareketlerRefresh').on('click', function () {
+        loadSonHareketler();
+    });
+
+    // Sayfa Yüklendiğinde Son Hareketleri Başlat
+    loadSonHareketler();
 });
+

@@ -341,13 +341,13 @@ class DestekModel extends Model
     /**
      * Çalışma saatleri kontrolü (Dinamik Ayarlardan)
      */
-    public function isWorkingHours()
+    public function isWorkingHours($firmaId = null)
     {
         $Settings = new \App\Model\SettingsModel();
-        $gunlerStr = $Settings->getSettings('canli_destek_gunler') ?? '1,2,3,4,5,6';
+        $gunlerStr = $Settings->getSettings('canli_destek_gunler', $firmaId) ?? '1,2,3,4,5,6';
         $gunler = explode(',', $gunlerStr);
-        $baslama = $Settings->getSettings('canli_destek_baslama_saati') ?? '08:00';
-        $bitis = $Settings->getSettings('canli_destek_bitis_saati') ?? '18:00';
+        $baslama = $Settings->getSettings('canli_destek_baslama_saati', $firmaId) ?? '08:00';
+        $bitis = $Settings->getSettings('canli_destek_bitis_saati', $firmaId) ?? '18:00';
 
         $dayOfWeek = (int) date('N'); // 1=Pazartesi, 7=Pazar
         if (!in_array((string) $dayOfWeek, $gunler)) {
@@ -361,13 +361,13 @@ class DestekModel extends Model
     /**
      * Çalışma saatleri dışı otomatik mesaj (Dinamik Ayarlardan)
      */
-    public function getOutOfHoursMessage()
+    public function getOutOfHoursMessage($firmaId = null)
     {
         $Settings = new \App\Model\SettingsModel();
-        $gunlerStr = $Settings->getSettings('canli_destek_gunler') ?? '1,2,3,4,5,6';
+        $gunlerStr = $Settings->getSettings('canli_destek_gunler', $firmaId) ?? '1,2,3,4,5,6';
         $gunler = explode(',', $gunlerStr);
-        $baslama = $Settings->getSettings('canli_destek_baslama_saati') ?? '08:00';
-        $bitis = $Settings->getSettings('canli_destek_bitis_saati') ?? '18:00';
+        $baslama = $Settings->getSettings('canli_destek_baslama_saati', $firmaId) ?? '08:00';
+        $bitis = $Settings->getSettings('canli_destek_bitis_saati', $firmaId) ?? '18:00';
 
         $dayOfWeek = (int) date('N');
 

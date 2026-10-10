@@ -7973,6 +7973,7 @@ html[data-theme-preset="macos-dark"] body .dropdown-menu:not(.mac-popover-menu):
 }
 
 /* Merkezi Dropdown Item Sola Yaslama ve İkon Düzeni */
+.dropdown-menu .dropdown-item,
 .dropdown-item,
 [data-bs-theme="dark"] .dropdown-item,
 [data-theme-mode="dark"] .dropdown-item,
@@ -7980,23 +7981,38 @@ body[data-layout-mode="dark"] .dropdown-item,
 html[data-theme-preset="macos-dark"] body .dropdown-item,
 [data-theme-preset="macos-dark"] .dropdown-item {
   display: flex !important;
+  flex-direction: row !important;
   align-items: center !important;
   justify-content: flex-start !important;
   text-align: left !important;
   gap: 8px !important;
+  width: 100% !important;
 }
 
+.dropdown-menu .dropdown-item > i,
+.dropdown-menu .dropdown-item > svg,
+.dropdown-menu .dropdown-item > .mdi,
+.dropdown-menu .dropdown-item > .bx,
 .dropdown-item > i,
 .dropdown-item > svg,
 .dropdown-item > .mdi,
 .dropdown-item > .bx {
   flex-shrink: 0 !important;
   margin-right: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.dropdown-menu .dropdown-item > span:not(.mac-item-shortcut),
+.dropdown-item > span:not(.mac-item-shortcut) {
+  text-align: left !important;
 }
 
 .dropdown-item .mac-item-shortcut {
   margin-left: auto !important;
 }
+
 
 
 

@@ -91,7 +91,7 @@ $bilgi->fromArray([
     ['TUTANAK NO', 'Evet', 'Mükerrer kontrolü bu alana göre yapılır. Sistemde kayıtlı numaralar atlanır.'],
     ['İSİM SOYİSİM', 'Hayır', 'Abone adı.'],
     ['SAYAÇ NO', 'Hayır', 'Sayaç numarası.'],
-    ['TÜR', 'Hayır', 'Kaçak / Abonesiz / Usülsüz. Boş bırakılırsa USULSÜZ sütununa göre belirlenir, o da boşsa Kaçak kabul edilir.'],
+    ['TÜR', 'Hayır', 'Kaçak / Abonesiz / Usülsüz / Pasif Abone. Boş bırakılırsa USULSÜZ sütununa göre belirlenir, o da boşsa Kaçak kabul edilir.'],
     ['ENDEKS', 'Hayır', 'Sayaç endeks değeri.'],
     ['İŞLEM YAPAN MEMUR', 'Evet', 'Personel adı. İki kişi için virgülle ayırın: "BÜNYAMİN ATEŞ,SAMED ARSLAN". Ad soyad sistemdeki personel kaydıyla eşleşmelidir.'],
     ['İLÇE', 'Evet', 'Geçerli ilçe adı olmalıdır (aşağıdaki listeye bakın).'],

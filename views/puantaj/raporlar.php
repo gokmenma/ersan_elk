@@ -1117,6 +1117,8 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 <option value="">Tür Seçiniz</option>
                 <option value="Kaçak" ${(!data || data.tur === 'Kaçak') ? 'selected' : ''}>Kaçak</option>
                 <option value="Abonesiz" ${(data && data.tur === 'Abonesiz') ? 'selected' : ''}>Abonesiz</option>
+                <option value="Usülsüz" ${(data && data.tur === 'Usülsüz') ? 'selected' : ''}>Usülsüz</option>
+                <option value="Pasif Abone" ${(data && data.tur === 'Pasif Abone') ? 'selected' : ''}>Pasif Abone</option>
             `;
 
             var aiConfClass = function (guven, field) {

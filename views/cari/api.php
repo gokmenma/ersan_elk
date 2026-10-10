@@ -23,6 +23,7 @@ $cariActions = [
     'cari-not-kaydet', 'cari-getir', 'vkn-sorgula', 'cari-sil',
     'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
     'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
+    'son-hareketler-getir'
 ];
 if (!in_array($action, $cariActions, true)) {
     http_response_code(400);
@@ -37,6 +38,7 @@ if ($permissionPolicy->isReady()) {
     $movementActions = [
         'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
         'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
+        'son-hareketler-getir'
     ];
     $requiredPermission = in_array($action, $movementActions, true)
         ? 'cari_hesap_hareketleri'
@@ -144,6 +146,7 @@ if ($action == "cari-ajax-list") {
 // Cari Kaydet (Ekle/Güncelle)
 if ($action == "cari-kaydet") {
     $id = Security::decrypt($_POST["cari_id"] ?? "");
+    $currentUserId = (int)($_SESSION["id"] ?? $_SESSION["user_id"] ?? ($_SESSION["user"]->id ?? 0));
     try {
         $data = [
             "id" => $id ?: 0,
@@ -262,6 +265,28 @@ if ($action == "hesap-hareketleri-ajax-list") {
                 $belgeNoHtml .= ' <a href="uploads/cari_belgeler/' . htmlspecialchars($row->dosya, ENT_QUOTES, 'UTF-8') . '" target="_blank" class="btn btn-subtle-primary p-0 rounded-1 ms-1" style="width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;" title="Belgeyi Görüntüle"><i class="bx bx-paperclip font-size-13"></i></a>';
             }
 
+            // Ekleyen Kullanıcı ve Kaynak Bilgisi
+            $ekleyenHtml = '';
+            $ekleyenAdi = !empty($row->ekleyen_kullanici_adi) ? htmlspecialchars($row->ekleyen_kullanici_adi, ENT_QUOTES, 'UTF-8') : (!empty($row->ekleyen_user_name) ? htmlspecialchars($row->ekleyen_user_name, ENT_QUOTES, 'UTF-8') : '');
+
+            if (!empty($row->fatura_id)) {
+                $faturaYonLabel = ($row->ref_fatura_yon ?? '') === 'GELEN' ? 'Gelen Fatura' : 'Giden Fatura';
+                $ekleyenHtml = '<div class="d-flex flex-column align-items-start gap-1">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 font-size-11 fw-semibold d-inline-flex align-items-center gap-1">
+                        <i class="bx bx-receipt font-size-12"></i> ' . $faturaYonLabel . '
+                    </span>';
+                if (!empty($ekleyenAdi)) {
+                    $ekleyenHtml .= '<span class="text-muted font-size-11 d-inline-flex align-items-center gap-1"><i class="bx bx-user font-size-12"></i>' . $ekleyenAdi . '</span>';
+                }
+                $ekleyenHtml .= '</div>';
+            } elseif (!empty($ekleyenAdi)) {
+                $ekleyenHtml = '<span class="badge bg-light text-dark border rounded-pill px-2 py-1 font-size-11 fw-semibold d-inline-flex align-items-center gap-1">
+                    <i class="bx bx-user font-size-12 text-secondary"></i> ' . $ekleyenAdi . '
+                </span>';
+            } else {
+                $ekleyenHtml = '<span class="text-muted font-size-11">-</span>';
+            }
+
             $formattedData[] = [
                 "islem_tarihi" => '<span class="fw-semibold text-dark font-size-13">' . date('d.m.Y H:i', strtotime($row->islem_tarihi)) . '</span>',
                 "belge_no" => $belgeNoHtml,
@@ -272,6 +297,8 @@ if ($action == "hesap-hareketleri-ajax-list") {
                 "yuruyen_bakiye" => '<span class="fw-bold font-size-13 ' . ($row->yuruyen_bakiye < 0 ? 'text-danger' : ($row->yuruyen_bakiye > 0 ? 'text-success' : 'text-dark')) . '" style="' . ($row->yuruyen_bakiye < 0 ? 'color: #dc2626 !important;' : ($row->yuruyen_bakiye > 0 ? 'color: #16a34a !important;' : 'color: #0f172a !important;')) . '">' . 
                                     Helper::formattedMoney(abs($row->yuruyen_bakiye)) . 
                                     ($row->yuruyen_bakiye < 0 ? ' (B)' : ($row->yuruyen_bakiye > 0 ? ' (A)' : '')) . '</span>',
+                "ekleyen" => $ekleyenHtml,
+                "ekleyen_adi" => $ekleyenAdi,
                 "actions" => $actions
             ];
         }
@@ -303,6 +330,7 @@ if ($action == "hizli-hareket-kaydet") {
     $cari_id = Security::decrypt($_POST["cari_id"]);
     $type = $_POST["type"]; // aldim | verdim
     $tutar = Helper::formattedMoneyToNumber($_POST["tutar"]);
+    $currentUserId = (int)($_SESSION["id"] ?? $_SESSION["user_id"] ?? ($_SESSION["user"]->id ?? 0));
     
     // Flatpickr d.m.Y H:i gönderir, DB için Y-m-d H:i:s yapalım.
     $tarih_str = $_POST["islem_tarihi"];
@@ -335,7 +363,8 @@ if ($action == "hizli-hareket-kaydet") {
             "belge_no" => $belge_no,
             "aciklama" => $aciklama,
             "borc" => ($type == 'aldim' ? $tutar : 0),
-            "alacak" => ($type == 'verdim' ? $tutar : 0)
+            "alacak" => ($type == 'verdim' ? $tutar : 0),
+            "ekleyen_kullanici" => $currentUserId ?: null
         ];
 
         // Eğer yeni dosya yüklendiyse dataya ekle
@@ -558,7 +587,7 @@ if ($action == "hareket-pdf-kaydet") {
         }
 
         try {
-            $eklenen = $CariHareket->topluEkle($cari_id, $kayitlar);
+            $eklenen = $CariHareket->topluEkle($cari_id, $kayitlar, $kullanici_id);
         } catch (\Throwable $t) {
             error_log("Cari PDF toplu kayıt hatası: " . $t->getMessage());
             throw new Exception("Kayıt sırasında hata oluştu, hiçbir hareket eklenmedi.");
@@ -671,3 +700,54 @@ if ($action == "tum-hareketler-getir") {
     }
     exit;
 }
+
+// Son Hesap Hareketlerini Getir (Cariler Listesi Altındaki Kart İçin)
+if ($action == "son-hareketler-getir") {
+    $limit = isset($_POST["limit"]) ? max(1, min(100, (int)$_POST["limit"])) : 10;
+    $type = $_POST["type"] ?? "all";
+    $search = $_POST["search"] ?? "";
+
+    try {
+        $rows = $CariHareket->getSonHareketler($limit, $type, $search);
+        $formatted = [];
+        foreach ($rows as $row) {
+            $encCariId = Security::encrypt($row->cari_id);
+            $encHareketId = Security::encrypt($row->id);
+            $isBorc = (float)$row->borc > 0;
+            $tutar = $isBorc ? (float)$row->borc : (float)$row->alacak;
+            
+            $formatted[] = [
+                "id" => (int)$row->id,
+                "hareket_id_enc" => $encHareketId,
+                "cari_id_enc" => $encCariId,
+                "CariAdi" => $row->CariAdi,
+                "firma" => $row->firma,
+                "vkn_tckn" => $row->vkn_tckn,
+                "islem_tarihi_fmt" => date('d.m.Y H:i', strtotime($row->islem_tarihi)),
+                "islem_tarih_gun" => date('d.m.Y', strtotime($row->islem_tarihi)),
+                "islem_tarih_saat" => date('H:i', strtotime($row->islem_tarihi)),
+                "belge_no" => $row->belge_no,
+                "aciklama" => $row->aciklama,
+                "is_borc" => $isBorc,
+                "type_label" => $isBorc ? 'Aldım (Borç)' : 'Verdim (Alacak)',
+                "type_badge" => $isBorc 
+                    ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-minus-circle me-1"></i>Aldım</span>'
+                    : '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-plus-circle me-1"></i>Verdim</span>',
+                "tutar_raw" => $tutar,
+                "tutar_fmt" => ($isBorc ? '- ' : '+ ') . Helper::formattedMoney($tutar),
+                "tutar_color" => $isBorc ? 'text-danger' : 'text-success',
+                "ekleyen" => !empty($row->ekleyen_kullanici_adi) ? $row->ekleyen_kullanici_adi : (!empty($row->ekleyen_user_name) ? $row->ekleyen_user_name : '-'),
+                "dosya" => $row->dosya,
+                "fatura_id" => $row->fatura_id,
+                "ref_fatura_no" => $row->ref_fatura_no,
+                "ref_fatura_yon" => $row->ref_fatura_yon,
+                "hareket_link" => "index.php?p=cari/hesap-hareketleri&id=" . $encCariId
+            ];
+        }
+        echo json_encode(["status" => "success", "data" => $formatted]);
+    } catch (Exception $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+

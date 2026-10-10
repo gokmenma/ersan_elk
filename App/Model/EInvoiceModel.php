@@ -148,6 +148,13 @@ class EInvoiceModel extends Model
             }
 
             $this->db->commit();
+
+            try {
+                (new \App\Model\CariHareketleriModel())->syncFaturaHareketi($faturaId, $userId);
+            } catch (\Throwable $th) {
+                error_log("EInvoiceModel::createInvoice syncFaturaHareketi warning: " . $th->getMessage());
+            }
+
             return $faturaId;
         } catch (\Exception $e) {
             $this->db->rollBack();
@@ -1865,7 +1872,15 @@ class EInvoiceModel extends Model
                 $stmt = $this->db->prepare("INSERT INTO fatura_satirlari ($columns) VALUES ($values)");
                 $stmt->execute($data);
             }
-            $this->db->commit(); return $id;
+            $this->db->commit();
+
+            try {
+                (new \App\Model\CariHareketleriModel())->syncFaturaHareketi($id, $userId);
+            } catch (\Throwable $th) {
+                error_log("EInvoiceModel::importInvoice syncFaturaHareketi warning: " . $th->getMessage());
+            }
+
+            return $id;
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;

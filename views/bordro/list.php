@@ -137,6 +137,23 @@ if (!empty($dbGelirler)) {
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
     <style>
+        /* Dropdown Item Sol Yaslama & Düzen */
+        .dropdown-menu .dropdown-item {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            text-align: left !important;
+            gap: 8px !important;
+            width: 100% !important;
+        }
+        .dropdown-menu .dropdown-item > i {
+            margin-right: 0 !important;
+            flex-shrink: 0 !important;
+        }
+        .dropdown-menu .dropdown-item span {
+            text-align: left !important;
+        }
+
         /* Hover Popover Styles */
         .hover-popover-trigger { cursor: help; position: relative; }
         .ref-popover-content {
@@ -1074,25 +1091,25 @@ if (!empty($dbGelirler)) {
                                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 250px;">
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);" id="btnExportExcel">
-                                                <i class="mdi mdi-file-excel me-2 text-success fs-5"></i> Excel'e İndir
+                                                <i class="mdi mdi-file-excel text-success fs-5"></i> <span>Excel'e İndir</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);"
                                                 id="btnExportExcelBanka">
-                                                <i class="mdi mdi-bank me-2 text-primary fs-5"></i> Excel'e İndir (Banka)
+                                                <i class="mdi mdi-bank text-primary fs-5"></i> <span>Excel'e İndir (Banka)</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);"
                                                 id="btnExportExcelSodexo">
-                                                <i class="mdi mdi-food me-2 text-info fs-5"></i> Excel'e İndir (Sodexo)
+                                                <i class="mdi mdi-food text-info fs-5"></i> <span>Excel'e İndir (Sodexo)</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);"
                                                 id="btnExportExcelYemek">
-                                                <i class="mdi mdi-file-excel me-2 text-success fs-5"></i> Excel'e İndir (Muhasebe)
+                                                <i class="mdi mdi-file-excel text-success fs-5"></i> <span>Excel'e İndir (Muhasebe)</span>
                                             </a>
                                         </li>
                                         <li>
@@ -1102,27 +1119,27 @@ if (!empty($dbGelirler)) {
                                             <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#gelirEkleModal">
-                                                <i class="mdi mdi-plus-box me-2 text-primary fs-5"></i> Gelir Ekle (Excel)
+                                                <i class="mdi mdi-plus-box text-primary fs-5"></i> <span>Gelir Ekle (Excel)</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#kesintiEkleModal">
-                                                <i class="mdi mdi-minus-box me-2 text-danger fs-5"></i> Kesinti Ekle (Excel)
+                                                <i class="mdi mdi-minus-box text-danger fs-5"></i> <span>Kesinti Ekle (Excel)</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" id="btnBulkOdemeReset">
-                                                <i class="mdi mdi-refresh me-2 text-warning fs-5"></i> Tüm Ödeme Dağıtımlarını Sıfırla
+                                                <i class="mdi mdi-refresh text-warning fs-5"></i> <span>Tüm Ödeme Dağıtımlarını Sıfırla</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#odemeEkleModal">
-                                                <i class="mdi mdi-cash-multiple me-2 text-success fs-5"></i> Ödeme Dağıt (Excel)
+                                                <i class="mdi mdi-cash-multiple text-success fs-5"></i> <span>Ödeme Dağıt (Excel)</span>
                                             </a>
                                         </li>
                                         <li>
@@ -1130,7 +1147,7 @@ if (!empty($dbGelirler)) {
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);" id="btnHataliIslemler">
-                                                <i class="mdi mdi-alert-circle me-2 text-warning fs-5"></i> Hatalı İşlemler Sayıları
+                                                <i class="mdi mdi-alert-circle text-warning fs-5"></i> <span>Hatalı İşlemler Sayıları</span>
                                             </a>
                                         </li>
                                     </ul>

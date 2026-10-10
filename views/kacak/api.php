@@ -340,6 +340,9 @@ function kacakExcelTur(string $ham): ?string
         }
     }
 
+    if (strpos($anahtar, 'pasif') !== false) {
+        return 'Pasif Abone';
+    }
     if (strpos($anahtar, 'abonesiz') !== false) {
         return 'Abonesiz';
     }

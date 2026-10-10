@@ -96,26 +96,43 @@ $title = 'Fatura Dashboard';
     border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
-/* Dönem Hızlı Filtre Butonları */
+/* Dönem Hızlı Filtre Butonları (Segmented Control Tasarımı) */
+.period-btn-group {
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    display: inline-flex;
+    gap: 3px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
 .period-btn-group .btn {
     font-size: 12px;
     font-weight: 600;
-    padding: 5px 12px;
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    color: #475569;
+    padding: 5px 13px;
+    border-radius: 6px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: #475569 !important;
     transition: all .15s ease;
+    box-shadow: none !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
 }
 .period-btn-group .btn:hover {
-    background: #f8fafc;
-    color: #1e293b;
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: #0f172a !important;
 }
-.period-btn-group .btn.active {
-    background: #3b82f6;
-    color: #ffffff;
-    border-color: #3b82f6;
-    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+.period-btn-group .btn.active,
+.period-btn-group .btn.active:hover,
+.period-btn-group .btn.active:focus {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border-color: #1d4ed8 !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35) !important;
 }
 
 .chart-card {
@@ -142,7 +159,7 @@ $title = 'Fatura Dashboard';
     border-bottom: 1px solid #f1f5f9;
 }
 
-/* Loading Overlay */
+/* Loading Overlay & Preloader */
 .dash-loading {
     position: absolute;
     inset: 0;
@@ -153,6 +170,65 @@ $title = 'Fatura Dashboard';
     z-index: 20;
     border-radius: 12px;
     backdrop-filter: blur(1px);
+}
+
+.dashboard-content-wrapper {
+    position: relative;
+    min-height: 450px;
+}
+
+.dashboard-preloader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 350px;
+    background: rgba(248, 250, 252, 0.72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 50;
+    border-radius: 12px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.dashboard-preloader.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+}
+
+.dashboard-preloader .loader-content {
+    position: sticky;
+    top: 160px;
+    background: #ffffff;
+    padding: 1.5rem 2rem;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    text-align: center;
+    min-width: 260px;
+    animation: loaderPopIn .2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes loaderPopIn {
+    from {
+        transform: scale(0.92);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 /* Flatpickr Year Dropdown Select */
@@ -204,20 +280,31 @@ html[data-theme-preset="macos-dark"] .stat-sub-label {
 html[data-theme-preset="macos-dark"] .stat-sub-val {
     color: rgba(235, 238, 245, 0.88) !important;
 }
-html[data-theme-preset="macos-dark"] .period-btn-group .btn {
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: rgba(225, 228, 236, 0.78) !important;
-    border-color: rgba(255, 255, 255, 0.11) !important;
+html[data-theme-preset="macos-dark"] .period-btn-group,
+[data-bs-theme="dark"] .period-btn-group {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
 }
-html[data-theme-preset="macos-dark"] .period-btn-group .btn:hover {
+html[data-theme-preset="macos-dark"] .period-btn-group .btn,
+[data-bs-theme="dark"] .period-btn-group .btn {
+    background: transparent !important;
+    color: rgba(225, 228, 236, 0.78) !important;
+    border-color: transparent !important;
+}
+html[data-theme-preset="macos-dark"] .period-btn-group .btn:hover,
+[data-bs-theme="dark"] .period-btn-group .btn:hover {
     background: rgba(255, 255, 255, 0.12) !important;
     color: #ffffff !important;
 }
-html[data-theme-preset="macos-dark"] .period-btn-group .btn.active {
+html[data-theme-preset="macos-dark"] .period-btn-group .btn.active,
+[data-bs-theme="dark"] .period-btn-group .btn.active,
+html[data-theme-preset="macos-dark"] .period-btn-group .btn.active:hover,
+[data-bs-theme="dark"] .period-btn-group .btn.active:hover {
     background: #0a84ff !important;
     color: #ffffff !important;
-    border-color: #0a84ff !important;
-    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.35) !important;
+    font-weight: 700 !important;
+    border-color: #0071e3 !important;
+    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.45) !important;
 }
 html[data-theme-preset="macos-dark"] .date-filter-box {
     background: rgba(35, 36, 42, 0.8) !important;
@@ -252,8 +339,28 @@ html[data-theme-preset="macos-dark"] .kdv-hero-badge.kdv-carried {
     border-color: rgba(16, 185, 129, 0.35) !important;
     color: #34d399 !important;
 }
-html[data-theme-preset="macos-dark"] .dash-loading {
+html[data-theme-preset="macos-dark"] .dash-loading,
+[data-bs-theme="dark"] .dash-loading {
     background: rgba(17, 18, 22, 0.75) !important;
+}
+html[data-theme-preset="macos-dark"] .dashboard-preloader,
+[data-bs-theme="dark"] .dashboard-preloader {
+    background: rgba(18, 20, 26, 0.75) !important;
+}
+html[data-theme-preset="macos-dark"] .dashboard-preloader .loader-content,
+[data-bs-theme="dark"] .dashboard-preloader .loader-content {
+    background: rgba(30, 32, 40, 0.95) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5) !important;
+    color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] .dashboard-preloader .loader-content h5,
+[data-bs-theme="dark"] .dashboard-preloader .loader-content h5 {
+    color: #f3f4f8 !important;
+}
+html[data-theme-preset="macos-dark"] .dashboard-preloader .loader-content p,
+[data-bs-theme="dark"] .dashboard-preloader .loader-content p {
+    color: rgba(200, 205, 218, 0.65) !important;
 }
 html[data-theme-preset="macos-dark"] .card-header h5,
 html[data-theme-preset="macos-dark"] .card-header .card-title,
@@ -325,8 +432,21 @@ html[data-theme-preset="macos-dark"] .accordion-button:not(.collapsed) {
         </div>
     </div>
 
-    <!-- 2. ANA ÖZET VE KDV DENGESİ 4 KPI KARTI -->
-    <div class="row g-3 mb-3" id="kpiCardsContainer" style="position: relative;">
+    <!-- Dashboard İçerik Sarmalayıcısı & Preloader -->
+    <div class="dashboard-content-wrapper position-relative" id="dashboardContentWrapper">
+        <!-- Preloader -->
+        <div class="dashboard-preloader show" id="dashboard-loader">
+            <div class="loader-content">
+                <div class="spinner-border text-primary m-1" role="status" style="width: 2.2rem; height: 2.2rem; border-width: 0.22em;">
+                    <span class="visually-hidden">Yükleniyor...</span>
+                </div>
+                <h5 class="mt-2.5 mb-1 font-size-14 fw-bold">Veriler Yükleniyor...</h5>
+                <p class="text-muted font-size-11 mb-0">Dönem göstergeleri ve grafikler hazırlanıyor...</p>
+            </div>
+        </div>
+
+        <!-- 2. ANA ÖZET VE KDV DENGESİ 4 KPI KARTI -->
+        <div class="row g-3 mb-3" id="kpiCardsContainer" style="position: relative;">
         <!-- Kart 1: TOPLAM GELEN FATURALAR (ALIŞ / GİDER / İNDİRİLECEK KDV) -->
         <div class="col-12 col-md-6 col-xl-3">
             <div class="dashboard-stat-card stat-card-incoming h-100 p-3 d-flex flex-column justify-content-between">
@@ -726,6 +846,7 @@ html[data-theme-preset="macos-dark"] .accordion-button:not(.collapsed) {
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </div>
 

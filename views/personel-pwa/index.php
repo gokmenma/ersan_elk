@@ -789,9 +789,15 @@ if ($page === 'ihbar') {
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
+                navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
                     .then(registration => {
                         console.log('SW registered:', registration);
+                        // Tarayıcının periyodik kontrolünü beklemeden yeni worker'ı denetle.
+                        // updateViaCache=none, sw.js ve importScripts bağımlılıklarının
+                        // eski HTTP önbelleğinden gelmesini engeller.
+                        registration.update().catch(error => {
+                            console.log('SW update check failed:', error);
+                        });
                         cevrimdisiSayfalariHazirla();
                     })
                     .catch(error => {

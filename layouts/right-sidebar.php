@@ -494,6 +494,36 @@
                     </div>
                 </div>
 
+                <!-- Yan Menü Parçacık Animasyonu -->
+                <div class="drawer-group-card sidebar-setting mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="drawer-group-title mb-0">
+                            <i class="mdi mdi-creation-outline text-primary"></i>
+                            <span>Menü Parçacık Efekti</span>
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary small px-2 py-1">Animasyon</span>
+                    </div>
+                    <div class="segmented-option-grid grid-2">
+                        <label class="segmented-card" for="sidebar-particles-off">
+                            <input type="radio" name="sidebar-particles" id="sidebar-particles-off" value="0" checked>
+                            <div class="segmented-card-inner">
+                                <i class="mdi mdi-power-off fs-5 mb-1 text-muted"></i>
+                                <span class="segmented-label">Kapalı</span>
+                            </div>
+                        </label>
+                        <label class="segmented-card" for="sidebar-particles-on">
+                            <input type="radio" name="sidebar-particles" id="sidebar-particles-on" value="1">
+                            <div class="segmented-card-inner">
+                                <i class="mdi mdi-shimmer-outline fs-5 mb-1 text-primary"></i>
+                                <span class="segmented-label">Açık</span>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="small text-muted mt-2 mb-0" style="font-size: 11px;">
+                        <i class="mdi mdi-information-outline me-1"></i>Düşük donanımlı cihazlarda pil ve performans tasarrufu için kapalı tutulması önerilir.
+                    </p>
+                </div>
+
                 <!-- Tipografi (Yazı Tipi) -->
                 <div class="drawer-group-card mb-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">

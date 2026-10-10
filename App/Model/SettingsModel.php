@@ -15,16 +15,35 @@ class SettingsModel extends Model
 
     /**
      * Belirli bir ayarın değerini döndürür.
+     * Öncelik: Firma bazlı ayar -> Global ayar (firma_id IS NULL)
      * @param string $set_name Ayarın adı (set_name)
+     * @param mixed $firma_id Opsiyonel firma ID (belirtilmezse session'daki firma_id kullanılır)
      * @return string|null Ayarın değeri veya bulunamazsa null
      */
-    public function getSettings(string $set_name): ?string
+    public function getSettings(string $set_name, $firma_id = null): ?string
     {
+        if ($firma_id === null && isset($_SESSION['firma_id'])) {
+            $firma_id = $_SESSION['firma_id'];
+        }
+        if ($firma_id === 'null' || empty($firma_id)) {
+            $firma_id = null;
+        } else {
+            $firma_id = (int) $firma_id;
+        }
+
+        if ($firma_id !== null) {
+            $stmt = $this->db->prepare("SELECT set_value FROM {$this->table} WHERE set_name = :set_name AND firma_id = :firma_id AND user_id IS NULL");
+            $stmt->execute([':set_name' => $set_name, ':firma_id' => $firma_id]);
+            $val = $stmt->fetchColumn();
+            if ($val !== false && $val !== null) {
+                return (string) $val;
+            }
+        }
+
         $stmt = $this->db->prepare("SELECT set_value FROM {$this->table} WHERE set_name = :set_name AND firma_id IS NULL AND user_id IS NULL");
-        $stmt->bindParam(':set_name', $set_name, PDO::PARAM_STR);
-        $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_OBJ);
-        return $result ? $result->set_value : null;
+        $stmt->execute([':set_name' => $set_name]);
+        $val = $stmt->fetchColumn();
+        return ($val !== false && $val !== null) ? (string) $val : null;
     }
 
     /**

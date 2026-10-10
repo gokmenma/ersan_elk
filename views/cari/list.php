@@ -84,6 +84,9 @@ $belgeTuruOptions = [
                     <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/giden-list">
                         <i class="bx bx-cloud-upload me-2 text-primary font-size-16"></i> Giden Faturalara Git
                     </a>
+                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/gelen-list">
+                        <i class="bx bx-cloud-download me-2 text-success font-size-16"></i> Gelen Faturalara Git
+                    </a>
                 </div>
             </div>
 
@@ -221,6 +224,66 @@ $belgeTuruOptions = [
                         </tr>
                     </thead>
                     <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Son Hesap Hareketleri Kartı -->
+    <div class="card summary-kpi-card mb-4" id="sonHareketlerCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                    <i class="bx bx-history font-size-20"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Son Hesap Hareketleri</h5>
+                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Tüm cariler genelinde en son gerçekleşen alacak ve borç işlemleri</p>
+                </div>
+            </div>
+
+            <!-- Sağ Araç Çubuğu / Hızlı Filtreler -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <div class="btn-group btn-group-sm p-0.5 bg-light rounded-pill border" role="group" id="sonHareketlerFilterGroup">
+                    <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2.5 py-1 son-hareket-filter-btn active" data-type="all">
+                        Tümü
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light rounded-pill px-2.5 py-1 son-hareket-filter-btn" data-type="aldim">
+                        <i class="bx bx-minus-circle text-danger me-1"></i>Aldım
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light rounded-pill px-2.5 py-1 son-hareket-filter-btn" data-type="verdim">
+                        <i class="bx bx-plus-circle text-success me-1"></i>Verdim
+                    </button>
+                </div>
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnSonHareketlerRefresh" title="Listeyi Yenile">
+                    <i class="bx bx-refresh font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yenile</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-3 pt-0">
+            <div class="table-responsive" style="overflow-x: auto !important;">
+                <table id="sonHareketlerTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 130px;">TARİH & SAAT</th>
+                            <th>CARİ / FİRMA</th>
+                            <th style="width: 100px;" class="text-center">İŞLEM TÜRÜ</th>
+                            <th style="width: 130px;">BELGE NO</th>
+                            <th>AÇIKLAMA</th>
+                            <th class="text-end" style="width: 130px;">TUTAR</th>
+                            <th style="width: 130px;">EKLEYEN</th>
+                            <th style="width: 80px;" class="text-center">GİT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sonHareketlerTbody">
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                Son hareketler yükleniyor...
+                            </td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>

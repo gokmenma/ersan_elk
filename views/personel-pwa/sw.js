@@ -4,10 +4,10 @@
  */
 
 // pwa-offline-queue.js her değiştiğinde bu sürüm artırılmalı: hem eski önbellek
-// temizlenir hem de importScripts URL'i değişir. Kayıt updateViaCache belirtmediği
-// için varsayılan "imports" geçerlidir ve sürümsüz import HTTP önbelleğinden
-// gelip service worker'ı eski kodla çalıştırır.
-const KUYRUK_SURUM = "24";
+// temizlenir hem de importScripts ve precache URL'leri değişir. Kayıt tarafında
+// updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
+// önbelleğinden gelmesi de engellenir.
+const KUYRUK_SURUM = "25";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v2";
 const OFFLINE_URL = "offline.html";
@@ -17,7 +17,7 @@ const PRECACHE_ASSETS = [
   "./assets/css/pwa-style.css",
   "./assets/css/tailwind-build.css",
   "./assets/js/pwa-app.js",
-  "./assets/js/pwa-offline-queue.js",
+  "./assets/js/pwa-offline-queue.js?v=" + KUYRUK_SURUM,
   "./assets/js/exif-cekim.js",
   "./assets/libs/sweetalert2/sweetalert2.all.min.js",
   "./manifest.json",

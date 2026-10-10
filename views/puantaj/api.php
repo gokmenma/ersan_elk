@@ -900,7 +900,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $personelListJson = json_encode($personelPromptArr, JSON_UNESCAPED_UNICODE);
 
             // OpenAI API çağrısı
-            $prompt = "Aşağıdaki " . ($base64Image ? "görseldeki" : "metindeki") . " KASKİ kaçak/abonesiz tutanak verilerinden tarih, ilçe, tür (Kaçak veya Abonesiz), sayı, açıklama ve görevli personel verilerini ayıklamanı istiyorum.
+            $prompt = "Aşağıdaki " . ($base64Image ? "görseldeki" : "metindeki") . " KASKİ kaçak/abonesiz/usülsüz/pasif abone tutanak verilerinden tarih, ilçe, tür (Kaçak, Abonesiz, Usülsüz veya Pasif Abone), sayı, açıklama ve görevli personel verilerini ayıklamanı istiyorum.
 Verileri bana kesinlikle aşağıdaki formatta geçerli bir JSON dizisi (Array) olarak dön. Ek açıklama, markdown veya kod blokları (```json gibi) ekleme. Doğrudan geçerli JSON string döneceksin.
 
 Aşağıda sistemde kayıtlı olan ve bu ekranda seçilebilir olan personel listesi bulunmaktadır (SADECE buradaki ID'leri kullanmalısın, listede olmayan bir ID asla üretme). 'unvan' alanı kişinin görevini, 'sef_mi' alanı ekip şefi olup olmadığını gösterir:
@@ -920,7 +920,7 @@ Kritik Kurallar ve Kontroller:
 Alanlar:
 - tarih (YYYY-MM-DD formatında tutanaktan okunan tarih. Örn: 2026-07-17)
 - ilçe (Tutanaktaki 'İlçesi' kutusundan okunan Kahramanmaraş ilçesi. Örn: 'Onikişubat')
-- tur (Tutanakta Kaçak, kaçak tespiti, kaçak kullanma geçiyorsa 'Kaçak' yaz. Abonesiz, abonesiz kullanım geçiyorsa 'Abonesiz' yaz.)
+- tur (Tutanakta Kaçak, kaçak tespiti, kaçak kullanma geçiyorsa 'Kaçak' yaz. Abonesiz, abonesiz kullanım geçiyorsa 'Abonesiz' yaz. Usülsüz kullanım geçiyorsa 'Usülsüz' yaz. Pasif abone geçiyorsa 'Pasif Abone' yaz.)
 - tutanak_no (Tutanakta el yazısı ile veya basılı şekilde geçen 'SERİ / A Sıra No' kutucuklarındaki 'No' alanını, yani tutanak numarasını oku. Örn: 42697)
 - abone_adi (Tutanakta el yazısı ile 'Adı Soyadı' kutucuğunda yazan kişiyi oku. Örn: Hüseyin Ertanrıdağ)
 - sayac_no (Tutanakta el yazısı ile 'Sayaç Seri No.' kutusunda yazan seri numarasını oku. Örn: 2590726)
@@ -2111,11 +2111,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
                 <td><?= htmlspecialchars($record->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                 <td>
-                    <?php if (($record->tur ?? 'Kaçak') === 'Abonesiz'): ?>
-                        <span class="badge bg-warning text-dark">Abonesiz</span>
-                    <?php else: ?>
-                        <span class="badge bg-danger">Kaçak</span>
-                    <?php endif; ?>
+                    <?php
+                        $turVal = $record->tur ?? 'Kaçak';
+                        $badgeCls = match($turVal) {
+                            'Abonesiz' => 'bg-warning text-dark',
+                            'Usülsüz' => 'bg-info',
+                            'Pasif Abone' => 'bg-purple text-white',
+                            default => 'bg-danger',
+                        };
+                        $styleAttr = $turVal === 'Pasif Abone' ? ' style="background-color:#6f42c1 !important;"' : '';
+                    ?>
+                    <span class="badge <?= $badgeCls ?>"<?= $styleAttr ?>><?= htmlspecialchars($turVal, ENT_QUOTES, 'UTF-8') ?></span>
                 </td>
                 <td><?= htmlspecialchars($record->tutanak_no ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars($record->abone_adi ?? '-', ENT_QUOTES, 'UTF-8') ?></td>

@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
         startPicker = initPicker('#dashStartDate', {
             ...flatpickrConfig,
             onChange: function(selectedDates, dateStr) {
+                if (!dateStr) return;
                 currentStartDate = dateStr;
                 if (endPicker) endPicker.set('minDate', dateStr || '2020-01-01');
                 $('#quickPeriodGroup .btn').removeClass('active');
@@ -103,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
         endPicker = initPicker('#dashEndDate', {
             ...flatpickrConfig,
             onChange: function(selectedDates, dateStr) {
+                if (!dateStr) return;
                 currentEndDate = dateStr;
                 if (startPicker) startPicker.set('maxDate', dateStr || `${curYear}-12-31`);
                 $('#quickPeriodGroup .btn').removeClass('active');
@@ -113,33 +115,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Tarihleri Temizle Butonu
-    $('#btnClearDates').on('click', function() {
+    $('#btnClearDates').on('click', function(e) {
+        e.preventDefault();
         if (startPicker) {
-            startPicker.clear();
+            startPicker.clear(false);
             startPicker.set('maxDate', `${curYear}-12-31`);
         }
         if (endPicker) {
-            endPicker.clear();
+            endPicker.clear(false);
             endPicker.set('minDate', '2020-01-01');
         }
         currentStartDate = '';
         currentEndDate = '';
         $(this).hide();
-        $('#quickPeriodGroup button[data-period="all"]').click();
+        $('#quickPeriodGroup button[data-period="all"]').trigger('click');
     });
 
     // Hızlı Dönem Butonları
-    $('#quickPeriodGroup .btn').on('click', function() {
+    $('#quickPeriodGroup .btn').on('click', function(e) {
+        e.preventDefault();
         $('#quickPeriodGroup .btn').removeClass('active');
         $(this).addClass('active');
         currentPeriod = $(this).data('period');
         
         if (startPicker) {
-            startPicker.clear();
+            startPicker.clear(false);
             startPicker.set('maxDate', `${curYear}-12-31`);
         }
         if (endPicker) {
-            endPicker.clear();
+            endPicker.clear(false);
             endPicker.set('minDate', '2020-01-01');
         }
         $('#btnClearDates').hide();
@@ -167,8 +171,18 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#kdvAccordionChevron').css('transform', 'rotate(0deg)');
     });
 
+    // Preloader Kontrolleri
+    function showDashboardPreloader() {
+        $('#dashboard-loader').addClass('show');
+    }
+
+    function hideDashboardPreloader() {
+        $('#dashboard-loader').removeClass('show');
+    }
+
     // 3. Ana Dashboard Veri Yükleme
     function loadDashboardData() {
+        showDashboardPreloader();
         let url = 'api/efatura-api.php?action=dashboard_stats';
         if (currentStartDate) url += `&baslangic_tarihi=${currentStartDate}`;
         if (currentEndDate) url += `&bitis_tarihi=${currentEndDate}`;
@@ -189,6 +203,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(err => {
                 $('#btnRefreshDashboard i').removeClass('bx-spin');
                 console.error('Dashboard API hatası:', err);
+            })
+            .finally(() => {
+                hideDashboardPreloader();
             });
     }
 

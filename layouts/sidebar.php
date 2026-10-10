@@ -24,7 +24,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 ?>
 
 <div class="vertical-menu" id="navbar">
-    <canvas id="sidebar-particles-canvas" class="sidebar-particles-canvas"></canvas>
+    <canvas id="sidebar-particles-canvas" class="sidebar-particles-canvas" style="display: none;"></canvas>
 
     <style>
         /* Sidebar Parçacık Ağı Tuvali */
@@ -50,12 +50,21 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
         .sidebar > .container-fluid,
         .sidebar > .sidebar-content,
         .sidebar-nav,
-        .sidebar-sticky-top,
         .sidebar-menu-scroll,
         #sidebar-menu,
         #side-menu {
             position: relative !important;
             z-index: 1 !important;
+        }
+
+        .sidebar-sticky-top {
+            position: relative !important;
+            z-index: 1050 !important;
+        }
+
+        .menu-settings-dropdown {
+            position: relative !important;
+            z-index: 1060 !important;
         }
 
         .sidebar-menu-scroll,
@@ -427,29 +436,158 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     color: #ffffff !important;
                 }
 
-                .menu-settings-dropdown .dropdown-menu {
-                    background: var(--bs-card-bg, #ffffff);
-                    border: 1px solid var(--sidebar-border, #e9ecef);
-                    border-radius: 8px;
-                    padding: 6px;
-                    z-index: 1050;
+                /* Sidebar Ayarlar Popover Menüsü - Global & Tema Uyumlu */
+                .menu-settings-dropdown {
+                    position: relative !important;
+                    z-index: 1060 !important;
                 }
 
-                [data-bs-theme="dark"] .menu-settings-dropdown .dropdown-menu {
-                    background: #1c2228 !important;
-                    border-color: #283038 !important;
+                .menu-settings-dropdown .dropdown-menu,
+                .dropdown-menu.mac-popover-menu,
+                .mac-popover-menu {
+                    position: absolute !important;
+                    top: calc(100% + 8px) !important;
+                    right: 0 !important;
+                    left: auto !important;
+                    transform: none !important;
+                    background: #202531 !important;
+                    background-color: #202531 !important;
+                    border: 1px solid #363e52 !important;
+                    border-radius: 10px !important;
+                    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+                    padding: 6px !important;
+                    width: 230px !important;
+                    min-width: 230px !important;
+                    max-width: 230px !important;
+                    margin: 0 !important;
+                    z-index: 99999 !important;
+                    opacity: 1 !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    overflow: visible !important;
                 }
 
-                .menu-settings-dropdown .dropdown-item {
-                    border-radius: 6px;
-                    font-size: 13px;
-                    padding: 6px 10px;
-                    color: var(--sidebar-foreground);
+                /* Tooltip Oku */
+                .menu-settings-dropdown .dropdown-menu::before,
+                .dropdown-menu.mac-popover-menu::before {
+                    content: '' !important;
+                    position: absolute !important;
+                    top: -5px !important;
+                    right: 12px !important;
+                    width: 10px !important;
+                    height: 10px !important;
+                    background: #202531 !important;
+                    border-top: 1px solid #363e52 !important;
+                    border-left: 1px solid #363e52 !important;
+                    transform: rotate(45deg) !important;
+                    z-index: 100000 !important;
+                    border-top-left-radius: 2px !important;
                 }
 
-                .menu-settings-dropdown .dropdown-item:hover {
-                    background-color: rgba(239, 68, 68, 0.1);
-                    color: #ef4444;
+                .mac-dropdown-group {
+                    background: rgba(255, 255, 255, 0.04) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                    border-radius: 7px !important;
+                    padding: 3px !important;
+                    margin-bottom: 5px !important;
+                }
+
+                .mac-dropdown-group:last-child {
+                    margin-bottom: 0 !important;
+                }
+
+                .dropdown-menu.mac-popover-menu .dropdown-item,
+                .menu-settings-dropdown .dropdown-item,
+                .mac-popover-item {
+                    color: #f1f5f9 !important;
+                    font-size: 12.5px !important;
+                    font-weight: 500 !important;
+                    line-height: 1.4 !important;
+                    padding: 6px 10px !important;
+                    border-radius: 5px !important;
+                    margin: 0 !important;
+                    width: 100% !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    background: transparent !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    transition: background 0.15s ease, color 0.15s ease !important;
+                }
+
+                .dropdown-menu.mac-popover-menu .dropdown-item:hover,
+                .dropdown-menu.mac-popover-menu .dropdown-item:focus,
+                .menu-settings-dropdown .dropdown-item:hover,
+                .menu-settings-dropdown .dropdown-item:focus,
+                .mac-popover-item:hover,
+                .mac-popover-item:focus {
+                    background: rgba(255, 255, 255, 0.12) !important;
+                    color: #ffffff !important;
+                }
+
+                .dropdown-menu.mac-popover-menu .dropdown-item.disabled,
+                .menu-settings-dropdown .dropdown-item.disabled,
+                .mac-popover-item.disabled {
+                    color: rgba(255, 255, 255, 0.35) !important;
+                    background: transparent !important;
+                    cursor: default !important;
+                    pointer-events: none !important;
+                }
+
+                .mac-item-shortcut {
+                    font-size: 11px !important;
+                    color: #94a3b8 !important;
+                    font-family: inherit !important;
+                    padding: 1px 6px !important;
+                    border-radius: 4px !important;
+                    background: rgba(255, 255, 255, 0.07) !important;
+                    margin-left: auto !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    line-height: 1.3 !important;
+                }
+
+                /* Açık Sidebar Temaları için Renk Uyarlaması */
+                body[data-sidebar="light"] .menu-settings-dropdown .dropdown-menu,
+                body[data-sidebar="light"] .dropdown-menu.mac-popover-menu {
+                    background: #ffffff !important;
+                    background-color: #ffffff !important;
+                    border: 1px solid #cbd5e1 !important;
+                    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+                }
+
+                body[data-sidebar="light"] .menu-settings-dropdown .dropdown-menu::before,
+                body[data-sidebar="light"] .dropdown-menu.mac-popover-menu::before {
+                    background: #ffffff !important;
+                    border-top: 1px solid #cbd5e1 !important;
+                    border-left: 1px solid #cbd5e1 !important;
+                }
+
+                body[data-sidebar="light"] .mac-dropdown-group {
+                    background: #f8fafc !important;
+                    border: 1px solid #e2e8f0 !important;
+                }
+
+                body[data-sidebar="light"] .dropdown-menu.mac-popover-menu .dropdown-item,
+                body[data-sidebar="light"] .menu-settings-dropdown .dropdown-item,
+                body[data-sidebar="light"] .mac-popover-item {
+                    color: #334155 !important;
+                }
+
+                body[data-sidebar="light"] .dropdown-menu.mac-popover-menu .dropdown-item:hover,
+                body[data-sidebar="light"] .dropdown-menu.mac-popover-menu .dropdown-item:focus,
+                body[data-sidebar="light"] .menu-settings-dropdown .dropdown-item:hover,
+                body[data-sidebar="light"] .menu-settings-dropdown .dropdown-item:focus,
+                body[data-sidebar="light"] .mac-popover-item:hover,
+                body[data-sidebar="light"] .mac-popover-item:focus {
+                    background: #e2e8f0 !important;
+                    color: #0f172a !important;
+                }
+
+                body[data-sidebar="light"] .mac-item-shortcut {
+                    color: #64748b !important;
+                    background: #e2e8f0 !important;
                 }
 
                 body[data-sidebar="red"] .sidebar-search,
@@ -1604,7 +1742,15 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                                     </button>
                                 </div>
 
-                                <!-- Grup 2: Arama & Düzen -->
+                                <!-- Grup 2: Görünüm Efekti -->
+                                <div class="mac-dropdown-group">
+                                    <button class="dropdown-item mac-popover-item" type="button" id="btn-toggle-sidebar-particles">
+                                        <span>Parçacık Animasyonu</span>
+                                        <span class="mac-item-shortcut" id="sidebar-particles-badge">Kapalı</span>
+                                    </button>
+                                </div>
+
+                                <!-- Grup 3: Arama & Düzen -->
                                 <div class="mac-dropdown-group">
                                     <button class="dropdown-item mac-popover-item" type="button" id="btn-focus-menu-search">
                                         <span>Menüde Ara</span>
@@ -1616,7 +1762,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                                     </button>
                                 </div>
 
-                                <!-- Grup 3: Tercihler & Bilgi -->
+                                <!-- Grup 4: Tercihler & Bilgi -->
                                 <div class="mac-dropdown-group">
                                     <button class="dropdown-item mac-popover-item" type="button" id="btn-toggle-shortcuts-info">
                                         <span>Klavye Kısayolları</span>
@@ -2211,6 +2357,53 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
             });
         }
+
+        // 4b. Parçacık Animasyonu Aç/Kapa Butonu
+        function updateSidebarParticlesBadge() {
+            const badge = document.getElementById('sidebar-particles-badge');
+            const isEnabled = localStorage.getItem('sidebar-particles-enabled') === '1';
+            if (badge) {
+                badge.textContent = isEnabled ? 'Açık' : 'Kapalı';
+                badge.style.color = isEnabled ? '#38bdf8' : '#94a3b8';
+                badge.style.fontWeight = isEnabled ? '600' : '400';
+            }
+        }
+
+        const btnParticles = document.getElementById('btn-toggle-sidebar-particles');
+        if (btnParticles) {
+            btnParticles.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currentlyEnabled = localStorage.getItem('sidebar-particles-enabled') === '1';
+                const newState = !currentlyEnabled;
+                localStorage.setItem('sidebar-particles-enabled', newState ? '1' : '0');
+
+                if (window.SidebarParticles) {
+                    if (newState) {
+                        window.SidebarParticles.start();
+                    } else {
+                        window.SidebarParticles.stop();
+                    }
+                }
+
+                // Sağ tema çekmecesindeki radio butonunu da senkronize et
+                const radioOff = document.getElementById('sidebar-particles-off');
+                const radioOn = document.getElementById('sidebar-particles-on');
+                if (radioOff && radioOn) {
+                    if (newState) {
+                        radioOn.checked = true;
+                    } else {
+                        radioOff.checked = true;
+                    }
+                }
+
+                updateSidebarParticlesBadge();
+
+                if (typeof showToast === 'function') {
+                    showToast(newState ? 'Menü parçacık animasyonu açıldı.' : 'Menü parçacık animasyonu kapatıldı (performans modu).', 'info');
+                }
+            });
+        }
+        updateSidebarParticlesBadge();
 
         // 5. Menüde Arama Odağı
         const btnFocusSearch = document.getElementById('btn-focus-menu-search');

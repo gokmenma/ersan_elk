@@ -259,4 +259,69 @@ class CariModel extends Model
             return [];
         }
     }
+
+    /**
+     * Faturadaki VKN/TCKN veya Ünvan bilgisine göre cari tablosunda eşleşen kaydı bulur.
+     */
+    public function findMatchingCari(?string $vkn, ?string $unvan): ?object
+    {
+        $vknClean = preg_replace('/[^0-9]/', '', (string)$vkn);
+        if (!empty($vknClean) && strlen($vknClean) >= 10) {
+            $stmt = $this->db->prepare("SELECT * FROM cari WHERE vkn_tckn = :vkn AND silinme_tarihi IS NULL LIMIT 1");
+            $stmt->execute(['vkn' => $vknClean]);
+            $cari = $stmt->fetch(PDO::FETCH_OBJ);
+            if ($cari) {
+                return $cari;
+            }
+        }
+
+        $unvan = trim((string)$unvan);
+        if ($unvan === '') {
+            return null;
+        }
+
+        // Birebir tam eşleşme
+        $stmt = $this->db->prepare("SELECT * FROM cari WHERE (firma = :unvan OR CariAdi = :unvan) AND silinme_tarihi IS NULL LIMIT 1");
+        $stmt->execute(['unvan' => $unvan]);
+        $cari = $stmt->fetch(PDO::FETCH_OBJ);
+        if ($cari) {
+            return $cari;
+        }
+
+        // Normalizasyon ile akıllı eşleşme
+        $normUnvan = $this->normalizeSearchText($unvan);
+        if (mb_strlen($normUnvan, 'UTF-8') < 3) {
+            return null;
+        }
+
+        $cariler = $this->db->query("SELECT * FROM cari WHERE silinme_tarihi IS NULL")->fetchAll(PDO::FETCH_OBJ);
+        foreach ($cariler as $c) {
+            $normFirma = $this->normalizeSearchText($c->firma ?? '');
+            $normCariAdi = $this->normalizeSearchText($c->CariAdi ?? '');
+
+            if ($normFirma !== '' && mb_strlen($normFirma, 'UTF-8') >= 4) {
+                if (strpos($normUnvan, $normFirma) !== false || strpos($normFirma, $normUnvan) !== false) {
+                    return $c;
+                }
+            }
+            if ($normCariAdi !== '' && mb_strlen($normCariAdi, 'UTF-8') >= 4) {
+                if (strpos($normUnvan, $normCariAdi) !== false || strpos($normCariAdi, $normUnvan) !== false) {
+                    return $c;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Arama ve eşleştirmeler için Türkçe karakterleri normalize eder.
+     */
+    public function normalizeSearchText(string $str): string
+    {
+        $str = mb_strtoupper($str, 'UTF-8');
+        $str = str_replace(['İ', 'I', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['I', 'I', 'S', 'G', 'U', 'O', 'C'], $str);
+        $str = preg_replace('/[^A-Z0-9]/', '', $str);
+        return $str;
+    }
 }

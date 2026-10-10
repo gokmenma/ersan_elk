@@ -224,9 +224,9 @@ class FaturaTahsilatModel extends Model
             if (!empty($invoice['cari_id'])) {
                 $cariHrkStmt = $this->db->prepare("
                     INSERT INTO cari_hareketleri (
-                        cari_id, islem_tarihi, belge_no, aciklama, borc, alacak, kayit_tarihi
+                        cari_id, islem_tarihi, belge_no, aciklama, borc, alacak, ekleyen_kullanici, fatura_id, kayit_tarihi
                     ) VALUES (
-                        :cari_id, :islem_tarihi, :belge_no, :aciklama, 0.00, :alacak, NOW()
+                        :cari_id, :islem_tarihi, :belge_no, :aciklama, 0.00, :alacak, :ekleyen_kullanici, :fatura_id, NOW()
                     )
                 ");
                 $cariHrkStmt->execute([
@@ -234,7 +234,9 @@ class FaturaTahsilatModel extends Model
                     'islem_tarihi' => $islemTarihi . ' ' . date('H:i:s'),
                     'belge_no' => $faturaNo,
                     'aciklama' => $aciklama,
-                    'alacak' => $tutar
+                    'alacak' => $tutar,
+                    'ekleyen_kullanici' => $kullaniciId,
+                    'fatura_id' => $faturaId
                 ]);
                 $cariHareketId = (int)$this->db->lastInsertId();
             }

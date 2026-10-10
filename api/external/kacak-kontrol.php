@@ -106,8 +106,8 @@ try {
     if ($ilce === '') {
         $hatalar[] = 'ilce zorunludur.';
     }
-    if (!in_array($tur, ['Kaçak', 'Abonesiz'], true)) {
-        $hatalar[] = "tur sadece 'Kaçak' veya 'Abonesiz' olabilir.";
+    if (!in_array($tur, \App\Model\KacakKontrolModel::TURLER, true)) {
+        $hatalar[] = "tur sadece " . implode(', ', array_map(fn($t) => "'{$t}'", \App\Model\KacakKontrolModel::TURLER)) . " olabilir.";
     }
     if ($sayi <= 0) {
         $sayi = 1;

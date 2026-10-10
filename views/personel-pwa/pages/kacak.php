@@ -515,7 +515,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         }
 
         function kartHtml(k) {
-            const turRenk = k.tur === 'Kaçak' ? 'text-red-600' : 'text-amber-600';
+            const turRenkMap = {
+                'Kaçak': 'text-red-600',
+                'Abonesiz': 'text-amber-600',
+                'Usülsüz': 'text-blue-600',
+                'Pasif Abone': 'text-purple-600'
+            };
+            const turRenk = turRenkMap[k.tur] || 'text-amber-600';
             const fotoSatiri = parseInt(k.foto_sayisi || 0, 10) > 0
                 ? `<span class="text-xs text-slate-400">· ${k.foto_sayisi} belge</span>` : '';
             const redSatiri = (k.onay_durumu === 'reddedildi' && k.red_nedeni)

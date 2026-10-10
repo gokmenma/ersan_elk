@@ -255,6 +255,7 @@ $bakiye = (float)($ozet->bakiye ?? 0);
                             <th data-filter="number" class="text-end" style="width: 140px;">GİRİŞ (ALD.)</th>
                             <th data-filter="number" class="text-end" style="width: 140px;">ÇIKIŞ (VERD.)</th>
                             <th data-filter="number" class="text-end" style="width: 150px;">YÜRÜYEN BAKİYE</th>
+                            <th data-filter="string" style="width: 140px;">EKLEYEN</th>
                             <th data-filter="none" style="width: 90px;" class="text-center">İŞLEMLER</th>
                         </tr>
                     </thead>

@@ -225,7 +225,7 @@ Kritik Kurallar:
 Alanlar:
 - tarih (YYYY-MM-DD)
 - ilce (yukarıdaki geçerli ilçelerden biri)
-- tur (SADECE şunlardan biri: {$turler}. Tutanakta kaçak tespiti/kaçak kullanma geçiyorsa 'Kaçak'; abonesiz kullanım geçiyorsa 'Abonesiz'; usülsüz kullanım/usulsuz geçiyorsa 'Usülsüz' yaz.)
+- tur (SADECE şunlardan biri: {$turler}. Tutanakta kaçak tespiti/kaçak kullanma geçiyorsa 'Kaçak'; abonesiz kullanım geçiyorsa 'Abonesiz'; usülsüz kullanım/usulsuz geçiyorsa 'Usülsüz'; pasif abone geçiyorsa 'Pasif Abone' yaz.)
 - tutanak_no ('SERİ / A Sıra No' kutusundaki numara)
 - abone_adi ('Adı Soyadı' kutusundaki kişi)
 - abone_tc ('T.C. Kimlik No' veya 'Vergi No' kutusundaki 11 veya 10 haneli rakamlar)

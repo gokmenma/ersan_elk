@@ -77,6 +77,7 @@ $(document).ready(function () {
             { data: "borc", className: "text-end", width: "140px" },
             { data: "alacak", className: "text-end", width: "140px" },
             { data: "yuruyen_bakiye", className: "text-end", width: "150px" },
+            { data: "ekleyen", width: "140px" },
             { data: "actions", className: "text-center", width: "90px", orderable: false, searchable: false }
         ],
         drawCallback: function() {
@@ -156,7 +157,10 @@ $(document).ready(function () {
                         <div class="font-size-13 fw-bold">${amt}</div>
                     </div>
                     <div class="d-flex align-items-center justify-content-between pt-1.5 border-top border-light-subtle">
-                        <span class="text-muted font-size-11">Yürüyen: ${item.yuruyen_bakiye}</span>
+                        <div class="d-flex flex-column gap-0.5">
+                            <span class="text-muted font-size-11">Yürüyen: ${item.yuruyen_bakiye}</span>
+                            ${item.ekleyen ? `<div class="font-size-11 mt-0.5">${item.ekleyen}</div>` : ''}
+                        </div>
                         <div class="d-flex align-items-center gap-1">
                             <button class="btn btn-sm btn-subtle-warning table-action-btn hareket-duzenle" data-id="${id}" title="Düzenle">
                                 <i class="bx bx-edit-alt font-size-14"></i>

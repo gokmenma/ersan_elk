@@ -299,7 +299,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         box-shadow: 0 4px 10px -2px rgba(85, 110, 230, .5);
     }
 
-    .kacak-dashboard { --kd-kacak:#f1b44c; --kd-abonesiz:#f46a6a; --kd-usulsuz:#50a5f1; }
+    .kacak-dashboard { --kd-kacak:#f1b44c; --kd-abonesiz:#f46a6a; --kd-usulsuz:#50a5f1; --kd-pasif:#a855f7; }
     .kacak-dashboard .kd-filter { background:var(--bs-tertiary-bg); border:1px solid var(--bs-border-color); border-radius:12px; padding:12px; }
     .kd-periods { display:flex; gap:6px; flex-wrap:wrap; }
     .kd-period { border:1px solid var(--bs-border-color); background:var(--bs-body-bg); color:var(--bs-secondary-color); border-radius:100px; padding:.38rem .8rem; font-size:.76rem; }
@@ -497,6 +497,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <span class="kacak-ozet-cip text-info border-info-subtle">
                             Usülsüz <b id="ozetUsulsuz">0</b>
                         </span>
+                        <span class="kacak-ozet-cip text-purple border-purple-subtle" style="color:#6f42c1;border-color:rgba(111,66,193,.3);">
+                            Pasif Abone <b id="ozetPasifAbone">0</b>
+                        </span>
                     </div>
                 </div>
 
@@ -590,8 +593,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 <div class="row g-3 mb-3">
                     <div class="col-xl-8"><div class="kd-card kd-kpi">
                         <div class="kd-label">Aktif tutanak <span class="fw-normal text-lowercase">· onayı tamamlanmış</span></div><div class="kd-value" id="dashboardAktif">0</div>
-                        <div class="kd-segbar"><i id="dashboardSegAbonesiz" style="background:var(--kd-abonesiz)"></i><i id="dashboardSegKacak" style="background:var(--kd-kacak)"></i><i id="dashboardSegUsulsuz" style="background:var(--kd-usulsuz)"></i></div>
-                        <div class="kd-legend"><span><i class="kd-dot" style="background:var(--kd-abonesiz)"></i>Abonesiz <b id="dashboardAbonesiz">0</b></span><span><i class="kd-dot" style="background:var(--kd-kacak)"></i>Kaçak <b id="dashboardKacak">0</b></span><span><i class="kd-dot" style="background:var(--kd-usulsuz)"></i>Usülsüz <b id="dashboardUsulsuz">0</b></span></div>
+                        <div class="kd-segbar"><i id="dashboardSegAbonesiz" style="background:var(--kd-abonesiz)"></i><i id="dashboardSegKacak" style="background:var(--kd-kacak)"></i><i id="dashboardSegUsulsuz" style="background:var(--kd-usulsuz)"></i><i id="dashboardSegPasif" style="background:var(--kd-pasif)"></i></div>
+                        <div class="kd-legend"><span><i class="kd-dot" style="background:var(--kd-abonesiz)"></i>Abonesiz <b id="dashboardAbonesiz">0</b></span><span><i class="kd-dot" style="background:var(--kd-kacak)"></i>Kaçak <b id="dashboardKacak">0</b></span><span><i class="kd-dot" style="background:var(--kd-usulsuz)"></i>Usülsüz <b id="dashboardUsulsuz">0</b></span><span><i class="kd-dot" style="background:var(--kd-pasif)"></i>Pasif Abone <b id="dashboardPasifAbone">0</b></span></div>
                         <div class="kd-quiet"><div class="d-flex justify-content-between gap-2 small text-muted"><span>Ayrıca <b id="dashboardBekleyen">0</b> tutanak onay bekliyor · onaylanınca <b id="dashboardPotansiyel">0</b></span><a href="#" id="dashboardOnayaGit">Listeye git →</a></div>
                             <div class="kd-waitbar"><i id="wait02" class="bg-secondary"></i><i id="wait37" style="background:#6b7280"></i><i id="wait814" class="bg-warning"></i><i id="wait15" class="bg-danger"></i></div>
                             <div class="kd-legend"><span>0–2 gün <b id="wait02n">0</b></span><span>3–7 gün <b id="wait37n">0</b></span><span>8–14 gün <b id="wait814n">0</b></span><span>15 gün + <b id="wait15n">0</b></span></div>
@@ -603,7 +606,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 <div class="kd-card mb-3"><div class="kd-panel-head"><h6 class="mb-0">Bekleyen işler</h6><small class="text-muted">Satıra tıklayınca ilgili sekme açılır</small></div><div class="kd-actions" id="dashboardAksiyonlar"></div></div>
                 <div class="row g-3 mb-3">
                     <div class="col-xl-7"><div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">Günlük Tutanak</h6><small class="text-muted">Onaylanmış aktif tutanaklar</small></div><div class="kd-panel-body"><div id="kacakTrendChart"></div></div></div></div>
-                    <div class="col-xl-5"><div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">İlçe × tür dağılımı</h6><small class="text-muted">Aktif + onay bekleyen</small></div><div class="kd-panel-body table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>İlçe</th><th class="kd-stack-col">Dağılım</th><th class="text-end">Kaçak</th><th class="text-end">Abonesiz</th><th class="text-end">Usülsüz</th><th class="text-end">Aktif</th><th class="text-end">+ Bekleyen</th></tr></thead><tbody id="dashboardIlceTablo"></tbody></table></div></div></div>
+                    <div class="col-xl-5"><div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">İlçe × tür dağılımı</h6><small class="text-muted">Aktif + onay bekleyen</small></div><div class="kd-panel-body table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>İlçe</th><th class="kd-stack-col">Dağılım</th><th class="text-end">Kaçak</th><th class="text-end">Abonesiz</th><th class="text-end">Usülsüz</th><th class="text-end">Pasif Abone</th><th class="text-end">Aktif</th><th class="text-end">+ Bekleyen</th></tr></thead><tbody id="dashboardIlceTablo"></tbody></table></div></div></div>
                 </div>
                 <div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">Ekip performansı</h6><small class="text-muted">Günlük verime göre karşılaştırma</small></div><div class="kd-panel-body table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>Ekip</th><th class="text-end">Aktif</th><th class="text-end">Çalışılan gün</th><th>Günlük verim</th><th class="text-end">+ Bekleyen</th><th class="text-end">Son işlem</th></tr></thead><tbody id="dashboardEkipTablo"></tbody></table></div></div>
             </div>
@@ -844,6 +847,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                     <th class="text-end">ABONESİZ</th>
                                     <th class="text-end">KAÇAK</th>
                                     <th class="text-end">USÜLSÜZ</th>
+                                    <th class="text-end">PASİF ABONE</th>
                                     <th class="text-end">TOPLAM</th>
                                 </tr>
                             </thead>
@@ -854,6 +858,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                     <td class="text-end" id="haftalikToplamAbonesiz">0</td>
                                     <td class="text-end" id="haftalikToplamKacak">0</td>
                                     <td class="text-end" id="haftalikToplamUsulsuz">0</td>
+                                    <td class="text-end" id="haftalikToplamPasifAbone">0</td>
                                     <td class="text-end" id="haftalikToplamGenel">0</td>
                                 </tr>
                             </tfoot>
@@ -1789,8 +1794,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         }
 
         function turBadge(tur) {
-            const renkler = { 'Kaçak': 'bg-danger', 'Abonesiz': 'bg-warning text-dark', 'Usülsüz': 'bg-info' };
-            return `<span class="badge ${renkler[tur] || 'bg-secondary'}">${esc(tur)}</span>`;
+            const renkler = { 'Kaçak': 'bg-danger', 'Abonesiz': 'bg-warning text-dark', 'Usülsüz': 'bg-info', 'Pasif Abone': 'bg-purple text-white' };
+            const style = tur === 'Pasif Abone' ? ' style="background-color:#6f42c1 !important;"' : '';
+            return `<span class="badge ${renkler[tur] || 'bg-secondary'}"${style}>${esc(tur)}</span>`;
         }
 
         function tarihHucresi(k) {
@@ -1879,6 +1885,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             $('#ozetKacak').text(ozet.kacak || 0);
             $('#ozetAbonesiz').text(ozet.abonesiz || 0);
             $('#ozetUsulsuz').text(ozet.usulsuz || 0);
+            $('#ozetPasifAbone').text(ozet.pasif_abone || 0);
             $('#ozetIptal').text(ozet.iptal || 0);
             $('#ozetIptalDusulen').text(ozet.iptal_dusulen || 0);
             $('#ozetBekleyen').text(ozet.bekleyen || 0);
@@ -1904,11 +1911,12 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $('#dashboardAktif').text(o.aktif || 0);
                 $('#dashboardBekleyen').text(o.bekleyen || 0);
                 $('#dashboardPotansiyel').text(parseInt(o.aktif || 0, 10) + parseInt(o.bekleyen || 0, 10));
-                $('#dashboardKacak').text(o.kacak || 0); $('#dashboardAbonesiz').text(o.abonesiz || 0); $('#dashboardUsulsuz').text(o.usulsuz || 0);
+                $('#dashboardKacak').text(o.kacak || 0); $('#dashboardAbonesiz').text(o.abonesiz || 0); $('#dashboardUsulsuz').text(o.usulsuz || 0); $('#dashboardPasifAbone').text(o.pasif_abone || 0);
                 const aktifToplam = Math.max(1, parseInt(o.aktif || 0, 10));
                 $('#dashboardSegKacak').css('width', (parseInt(o.kacak || 0, 10) * 100 / aktifToplam) + '%');
                 $('#dashboardSegAbonesiz').css('width', (parseInt(o.abonesiz || 0, 10) * 100 / aktifToplam) + '%');
                 $('#dashboardSegUsulsuz').css('width', (parseInt(o.usulsuz || 0, 10) * 100 / aktifToplam) + '%');
+                $('#dashboardSegPasif').css('width', (parseInt(o.pasif_abone || 0, 10) * 100 / aktifToplam) + '%');
                 const i = d.istatistik || {};
                 $('#dashboardGunlukOrtalama').text(i.gunluk_ortalama || 0);
                 $('#dashboardEkipSayisi').text(i.ekip_sayisi || 0);
@@ -1941,7 +1949,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     xaxis: { categories: (d.trend || []).map(x => x.tarih), tickAmount: 8 }, yaxis: { min: 0, forceNiceScale: true, labels:{show:false} }, legend:{show:false}
                 }));
                 const ilceler = d.ilceler || [], ilceMax = Math.max(1, ...ilceler.map(x => parseInt(x.toplam || 0,10)));
-                $('#dashboardIlceTablo').html(ilceler.length ? ilceler.map(x => { const t=parseInt(x.toplam||0,10)||1; return `<tr><td>${esc(x.ilce||'-')}</td><td class="kd-stack-col"><div class="kd-stack" style="width:${t*100/ilceMax}%"><i style="width:${parseInt(x.abonesiz||0,10)*100/t}%;background:var(--kd-abonesiz)"></i><i style="width:${parseInt(x.kacak||0,10)*100/t}%;background:var(--kd-kacak)"></i><i style="width:${parseInt(x.usulsuz||0,10)*100/t}%;background:var(--kd-usulsuz)"></i></div></td><td class="text-end">${parseInt(x.kacak||0,10)}</td><td class="text-end">${parseInt(x.abonesiz||0,10)}</td><td class="text-end">${parseInt(x.usulsuz||0,10)}</td><td class="text-end fw-bold">${parseInt(x.toplam||0,10)}</td><td class="text-end text-muted">${parseInt(x.bekleyen||0,10)}</td></tr>`; }).join('') : '<tr><td colspan="7" class="text-center text-muted py-3">Bu dönem için ilçe verisi yok.</td></tr>');
+                $('#dashboardIlceTablo').html(ilceler.length ? ilceler.map(x => { const t=parseInt(x.toplam||0,10)||1; return `<tr><td>${esc(x.ilce||'-')}</td><td class="kd-stack-col"><div class="kd-stack" style="width:${t*100/ilceMax}%"><i style="width:${parseInt(x.abonesiz||0,10)*100/t}%;background:var(--kd-abonesiz)"></i><i style="width:${parseInt(x.kacak||0,10)*100/t}%;background:var(--kd-kacak)"></i><i style="width:${parseInt(x.usulsuz||0,10)*100/t}%;background:var(--kd-usulsuz)"></i><i style="width:${parseInt(x.pasif_abone||0,10)*100/t}%;background:var(--kd-pasif)"></i></div></td><td class="text-end">${parseInt(x.kacak||0,10)}</td><td class="text-end">${parseInt(x.abonesiz||0,10)}</td><td class="text-end">${parseInt(x.usulsuz||0,10)}</td><td class="text-end">${parseInt(x.pasif_abone||0,10)}</td><td class="text-end fw-bold">${parseInt(x.toplam||0,10)}</td><td class="text-end text-muted">${parseInt(x.bekleyen||0,10)}</td></tr>`; }).join('') : '<tr><td colspan="8" class="text-center text-muted py-3">Bu dönem için ilçe verisi yok.</td></tr>');
                 const ekipler = d.ekipler || [];
                 const enYuksek = Math.max(1, ...ekipler.map(x => parseInt(x.aktif || 0, 10) / Math.max(1,parseInt(x.calisilan_gun||0,10))));
                 $('#dashboardEkipTablo').html(ekipler.length ? ekipler.map(e => {
@@ -3099,29 +3107,32 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 if (res.status !== 'success') return hataGoster(res);
 
                 const tbody = $('#haftalikTable tbody').empty();
-                let tA = 0, tK = 0, tU = 0;
+                let tA = 0, tK = 0, tU = 0, tP = 0;
 
                 (res.data || []).forEach(r => {
-                    tA += parseInt(r.abonesiz, 10);
-                    tK += parseInt(r.kacak, 10);
-                    tU += parseInt(r.usulsuz, 10);
+                    tA += parseInt(r.abonesiz || 0, 10);
+                    tK += parseInt(r.kacak || 0, 10);
+                    tU += parseInt(r.usulsuz || 0, 10);
+                    tP += parseInt(r.pasif_abone || 0, 10);
                     tbody.append(`<tr>
                         <td class="fw-semibold">${esc((r.ilce || 'Belirtilmemiş').toLocaleUpperCase('tr-TR'))}</td>
-                        <td class="text-end">${esc(r.abonesiz)}</td>
-                        <td class="text-end">${esc(r.kacak)}</td>
-                        <td class="text-end">${esc(r.usulsuz)}</td>
-                        <td class="text-end">${esc(r.toplam)}</td>
+                        <td class="text-end">${esc(r.abonesiz || 0)}</td>
+                        <td class="text-end">${esc(r.kacak || 0)}</td>
+                        <td class="text-end">${esc(r.usulsuz || 0)}</td>
+                        <td class="text-end">${esc(r.pasif_abone || 0)}</td>
+                        <td class="text-end">${esc(r.toplam || 0)}</td>
                     </tr>`);
                 });
 
                 if ((res.data || []).length === 0) {
-                    tbody.append('<tr><td colspan="5" class="text-center text-muted">Kayıt bulunamadı.</td></tr>');
+                    tbody.append('<tr><td colspan="6" class="text-center text-muted">Kayıt bulunamadı.</td></tr>');
                 }
 
                 $('#haftalikToplamAbonesiz').text(tA);
                 $('#haftalikToplamKacak').text(tK);
                 $('#haftalikToplamUsulsuz').text(tU);
-                $('#haftalikToplamGenel').text(tA + tK + tU);
+                $('#haftalikToplamPasifAbone').text(tP);
+                $('#haftalikToplamGenel').text(tA + tK + tU + tP);
             });
         });
 

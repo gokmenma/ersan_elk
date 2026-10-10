@@ -351,7 +351,7 @@ use App\Helper\Helper;
     type="text/css" />
 
 <link href="<?php echo Helper::base_url('assets/libs/select2/css/select2.min.css'); ?>" rel="stylesheet" />
-<link href="<?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>"
+<link href="<?php echo Helper::base_url('assets/css/style.css?v=' . (file_exists(__DIR__ . '/../assets/css/style.css') ? filemtime(__DIR__ . '/../assets/css/style.css') : time())); ?>"
     id="custom-style" rel="stylesheet" type="text/css" />
 <!-- jQuery -->
 <script src="<?php echo Helper::base_url('assets/libs/jquery/jquery.3.7.1.min.js'); ?>"></script>

@@ -48,15 +48,16 @@ if ($search) {
 }
 
 // Yürüyen bakiye ile çekmek için SQL
-$sql = "SELECT *, 
+$sql = "SELECT h.*, u.adi_soyadi as ekleyen_adi,
         (SELECT SUM(alacak - borc) 
          FROM cari_hareketleri h2 
          WHERE h2.cari_id = h.cari_id 
            AND h2.silinme_tarihi IS NULL 
            AND (h2.islem_tarihi < h.islem_tarihi OR (h2.islem_tarihi = h.islem_tarihi AND h2.id <= h.id))) as yuruyen_bakiye
         FROM cari_hareketleri h
+        LEFT JOIN users u ON u.id = h.ekleyen_kullanici
         WHERE $where 
-        ORDER BY islem_tarihi ASC, id ASC";
+        ORDER BY h.islem_tarihi ASC, h.id ASC";
 
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
@@ -81,7 +82,7 @@ $sheet->setCellValue('B3', date('d.m.Y H:i'));
 $sheet->getStyle('A3')->getFont()->setBold(true);
 
 // Başlıklar (5. satırdan başla)
-$headers = ['Tarih', 'Belge No', 'Açıklama', 'Aldım (+)', 'Verdim (-)', 'Bakiye'];
+$headers = ['Tarih', 'Belge No', 'Açıklama', 'Aldım (+)', 'Verdim (-)', 'Bakiye', 'Ekleyen'];
 $col = 'A';
 foreach ($headers as $header) {
     $sheet->setCellValue($col . '5', $header);
@@ -95,7 +96,7 @@ $headerStyle = [
     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
 ];
-$sheet->getStyle('A5:F5')->applyFromArray($headerStyle);
+$sheet->getStyle('A5:G5')->applyFromArray($headerStyle);
 
 // Verileri Yaz
 $rowNum = 6;
@@ -106,6 +107,7 @@ foreach ($data as $row) {
     $sheet->setCellValue('D' . $rowNum, $row->borc > 0 ? (float)$row->borc : 0);
     $sheet->setCellValue('E' . $rowNum, $row->alacak > 0 ? (float)$row->alacak : 0);
     $sheet->setCellValue('F' . $rowNum, (float)$row->yuruyen_bakiye);
+    $sheet->setCellValue('G' . $rowNum, $row->ekleyen_adi ?: (!empty($row->fatura_id) ? 'e-Fatura Entegrasyonu' : '-'));
     
     // Para Formatları
     $sheet->getStyle('D' . $rowNum . ':F' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
@@ -125,7 +127,7 @@ foreach ($data as $row) {
 }
 
 // Sütun genişliklerini otomatik ayarla
-foreach (range('A', 'F') as $col) {
+foreach (range('A', 'G') as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 

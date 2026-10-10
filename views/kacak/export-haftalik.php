@@ -1101,30 +1101,32 @@ if ($tip === 'teslim') {
     $dosyaAdi = 'Kacak_Kontrol_Kayitlari_' . $baslangic . '_' . $bitis . '.xlsx';
 } else {
     $sheet->setTitle('Bölge Bazlı Özet');
-    $sheet->setCellValue('A1', 'BÖLGE (İLÇE) BAZLI ABONESİZ / KAÇAK / USÜLSÜZ ÖZETİ');
-    $sheet->mergeCells('A1:E1');
+    $sheet->setCellValue('A1', 'BÖLGE (İLÇE) BAZLI ABONESİZ / KAÇAK / USÜLSÜZ / PASİF ABONE ÖZETİ');
+    $sheet->mergeCells('A1:F1');
     $sheet->getStyle('A1')->applyFromArray($basligStili);
 
     $sheet->setCellValue('A2', Date::dmY($baslangic) . ' - ' . Date::dmY($bitis));
-    $sheet->mergeCells('A2:E2');
+    $sheet->mergeCells('A2:F2');
     $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-    $sheet->fromArray(['İLÇE', 'ABONESİZ', 'KAÇAK', 'USÜLSÜZ', 'TOPLAM'], null, 'A3');
-    $sheet->getStyle('A3:E3')->applyFromArray($basligStili);
+    $sheet->fromArray(['İLÇE', 'ABONESİZ', 'KAÇAK', 'USÜLSÜZ', 'PASİF ABONE', 'TOPLAM'], null, 'A3');
+    $sheet->getStyle('A3:F3')->applyFromArray($basligStili);
 
     $satir = 4;
-    $toplamAbonesiz = $toplamKacak = $toplamUsulsuz = 0;
+    $toplamAbonesiz = $toplamKacak = $toplamUsulsuz = $toplamPasif = 0;
     foreach ($Kacak->getBolgeBazliOzet($baslangic, $bitis) as $kayit) {
         $sheet->fromArray([
             Helper::trUpper((string) $kayit['ilce']),
-            (int) $kayit['abonesiz'],
-            (int) $kayit['kacak'],
-            (int) $kayit['usulsuz'],
-            (int) $kayit['toplam'],
+            (int) ($kayit['abonesiz'] ?? 0),
+            (int) ($kayit['kacak'] ?? 0),
+            (int) ($kayit['usulsuz'] ?? 0),
+            (int) ($kayit['pasif_abone'] ?? 0),
+            (int) ($kayit['toplam'] ?? 0),
         ], null, 'A' . $satir);
-        $toplamAbonesiz += (int) $kayit['abonesiz'];
-        $toplamKacak += (int) $kayit['kacak'];
-        $toplamUsulsuz += (int) $kayit['usulsuz'];
+        $toplamAbonesiz += (int) ($kayit['abonesiz'] ?? 0);
+        $toplamKacak += (int) ($kayit['kacak'] ?? 0);
+        $toplamUsulsuz += (int) ($kayit['usulsuz'] ?? 0);
+        $toplamPasif += (int) ($kayit['pasif_abone'] ?? 0);
         $satir++;
     }
 
@@ -1133,13 +1135,14 @@ if ($tip === 'teslim') {
         $toplamAbonesiz,
         $toplamKacak,
         $toplamUsulsuz,
-        $toplamAbonesiz + $toplamKacak + $toplamUsulsuz,
+        $toplamPasif,
+        $toplamAbonesiz + $toplamKacak + $toplamUsulsuz + $toplamPasif,
     ], null, 'A' . $satir);
-    $sheet->getStyle('A' . $satir . ':E' . $satir)->getFont()->setBold(true);
+    $sheet->getStyle('A' . $satir . ':F' . $satir)->getFont()->setBold(true);
 
-    $sheet->getStyle('A3:E' . $satir)->applyFromArray($kenarlik);
-    $sheet->getStyle('B4:E' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    foreach (range('A', 'E') as $sutun) {
+    $sheet->getStyle('A3:F' . $satir)->applyFromArray($kenarlik);
+    $sheet->getStyle('B4:F' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    foreach (range('A', 'F') as $sutun) {
         $sheet->getColumnDimension($sutun)->setAutoSize(true);
     }
 

@@ -709,7 +709,8 @@ File: Main Js File
         "data-theme-preset", "data-bs-theme", "data-font-family", "data-theme-mode",
         "custom-primary-color", "custom-topbar-color", "custom-sidebar-color",
         "data-topbar", "data-sidebar", "data-layout", "data-orientation",
-        "data-layout-size", "data-layout-scrollable", "data-sidebar-size"
+        "data-layout-size", "data-layout-scrollable", "data-sidebar-size",
+        "sidebar-particles-enabled"
       ];
       themeKeys.forEach(key => localStorage.removeItem(key));
 
@@ -736,6 +737,18 @@ File: Main Js File
       updateRadio("layout-width-fuild");
       updateRadio("layout-position-fixed");
       updateRadio("sidebar-size-default");
+      updateRadio("sidebar-particles-off");
+
+      if (window.SidebarParticles) {
+        window.SidebarParticles.stop();
+      }
+
+      var badge = document.getElementById("sidebar-particles-badge");
+      if (badge) {
+        badge.textContent = "Kapalı";
+        badge.style.color = "#94a3b8";
+        badge.style.fontWeight = "400";
+      }
 
       if (typeof showToast === "function") {
         showToast("Tema ve görünüm ayarları Ersan Gold varsayılanına sıfırlandı.", "info");
@@ -896,6 +909,13 @@ File: Main Js File
     } else {
       updateRadio("sidebar-color-light");
     }
+    // sidebar particles initialization
+    if (localStorage.getItem("sidebar-particles-enabled") === "1") {
+      updateRadio("sidebar-particles-on");
+    } else {
+      updateRadio("sidebar-particles-off");
+    }
+
     document.getElementsByTagName("html")[0].hasAttribute("dir") &&
     document.getElementsByTagName("html")[0].getAttribute("dir") == "rtl"
       ? updateRadio("layout-direction-rtl")
@@ -1026,6 +1046,25 @@ File: Main Js File
       if (val == "small") size = "sm";
       document.body.setAttribute("data-sidebar-size", size);
       localStorage.setItem("data-sidebar-size", size);
+    });
+
+    // on sidebar particles change
+    $("input[name='sidebar-particles']").on("change", function () {
+      var val = $(this).val();
+      localStorage.setItem("sidebar-particles-enabled", val);
+      if (window.SidebarParticles) {
+        if (val === "1") {
+          window.SidebarParticles.start();
+        } else {
+          window.SidebarParticles.stop();
+        }
+      }
+      var badge = document.getElementById("sidebar-particles-badge");
+      if (badge) {
+        badge.textContent = val === "1" ? "Açık" : "Kapalı";
+        badge.style.color = val === "1" ? "#38bdf8" : "#94a3b8";
+        badge.style.fontWeight = val === "1" ? "600" : "400";
+      }
     });
 
     // on sidebar color change

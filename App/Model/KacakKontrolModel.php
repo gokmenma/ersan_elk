@@ -27,7 +27,7 @@ class KacakKontrolModel extends Model
 
     const MERKEZ_ILCELER = ['Onikişubat', 'Dulkadiroğlu'];
 
-    const TURLER = ['Kaçak', 'Abonesiz', 'Usülsüz'];
+    const TURLER = ['Kaçak', 'Abonesiz', 'Usülsüz', 'Pasif Abone'];
 
     const MAX_SAHA_FOTO = 15;
 
@@ -1077,6 +1077,7 @@ class KacakKontrolModel extends Model
             'Kaçak' => 'Kaçak Tutanak Sayısı:',
             'Abonesiz' => 'Sayaçlı Abonesiz Tutanak Sayısı:',
             'Usülsüz' => 'Usülsüz Tutanak Sayısı:',
+            'Pasif Abone' => 'Pasif Abone Tutanak Sayısı:',
         ];
 
         foreach ($basliklar as $tur => $baslik) {
@@ -1103,6 +1104,7 @@ class KacakKontrolModel extends Model
                                            SUM(CASE WHEN tur = 'Abonesiz' THEN sayi ELSE 0 END) AS abonesiz,
                                            SUM(CASE WHEN tur = 'Kaçak' THEN sayi ELSE 0 END) AS kacak,
                                            SUM(CASE WHEN tur = 'Usülsüz' THEN sayi ELSE 0 END) AS usulsuz,
+                                           SUM(CASE WHEN tur = 'Pasif Abone' THEN sayi ELSE 0 END) AS pasif_abone,
                                            SUM(sayi) AS toplam
                                     FROM kacak_kontrol
                                     WHERE firma_id = ? AND tarih BETWEEN ? AND ?
@@ -1218,6 +1220,7 @@ class KacakKontrolModel extends Model
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Usülsüz' THEN sayi ELSE 0 END) AS usulsuz,
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Kaçak' THEN sayi ELSE 0 END) AS kacak,
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Abonesiz' THEN sayi ELSE 0 END) AS abonesiz,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Pasif Abone' THEN sayi ELSE 0 END) AS pasif_abone,
                     SUM(CASE WHEN durum = 'iptal' THEN sayi ELSE 0 END) AS iptal,
                     SUM(CASE WHEN durum = 'iptal' AND hakedisten_dus = 1 THEN sayi ELSE 0 END) AS iptal_dusulen,
                     SUM(CASE WHEN onay_durumu = 'beklemede' THEN 1 ELSE 0 END) AS bekleyen
@@ -1256,6 +1259,7 @@ class KacakKontrolModel extends Model
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Kaçak' THEN sayi ELSE 0 END) kacak,
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Abonesiz' THEN sayi ELSE 0 END) abonesiz,
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Usülsüz' THEN sayi ELSE 0 END) usulsuz,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Pasif Abone' THEN sayi ELSE 0 END) pasif_abone,
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' THEN sayi ELSE 0 END) toplam,
                     SUM(CASE WHEN onay_durumu = 'beklemede' AND durum = 'aktif' THEN 1 ELSE 0 END) bekleyen
                 FROM kacak_kontrol WHERE {$base}
