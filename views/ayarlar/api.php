@@ -51,11 +51,27 @@ switch ($action) {
         $settingsToUpdate = $_POST ?? [];
         $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
 
-        // Checkbox'lar işaretlenmediğinde POST içinde gönderilmez. 
-        $checkboxKeys = ['email_gonderim_aktif', 'sms_gonderim_aktif', 'online_sorgulama_aktif', 'canli_destek_aktif'];
-        foreach ($checkboxKeys as $cbKey) {
-            if (!isset($settingsToUpdate[$cbKey])) {
-                $settingsToUpdate[$cbKey] = '0';
+        // Checkbox'lar işaretlenmediğinde POST içinde gönderilmez.
+        // Sadece ilgili form gönderildiğinde (alanları POST'ta varsa) 0 olarak atanmalı,
+        // diğer sekmelerin ayarları asla ezilmemelidir.
+        if (isset($settingsToUpdate['smtp_host']) || isset($settingsToUpdate['sms_api_kullanici']) || isset($settingsToUpdate['smtp_port']) || isset($settingsToUpdate['smtp_kullanici'])) {
+            if (!isset($settingsToUpdate['email_gonderim_aktif'])) {
+                $settingsToUpdate['email_gonderim_aktif'] = '0';
+            }
+            if (!isset($settingsToUpdate['sms_gonderim_aktif'])) {
+                $settingsToUpdate['sms_gonderim_aktif'] = '0';
+            }
+        }
+
+        if (isset($settingsToUpdate['online_sorgulama_api_url']) || isset($settingsToUpdate['online_sorgulama_api_kullanici']) || isset($settingsToUpdate['api_endeks_kullanici'])) {
+            if (!isset($settingsToUpdate['online_sorgulama_aktif'])) {
+                $settingsToUpdate['online_sorgulama_aktif'] = '0';
+            }
+        }
+
+        if (isset($settingsToUpdate['canli_destek_baslama_saati']) || isset($settingsToUpdate['canli_destek_bitis_saati']) || isset($settingsToUpdate['canli_destek_yetkili_kullanicilar'])) {
+            if (!isset($settingsToUpdate['canli_destek_aktif'])) {
+                $settingsToUpdate['canli_destek_aktif'] = '0';
             }
         }
 

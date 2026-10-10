@@ -743,6 +743,33 @@ if (!$_destekModel->isWorkingHours()) {
         color: #3b82f6;
         /* Okundu tik */
     }
+
+    @media (max-width: 576px) {
+        .achat-toggle-btn {
+            bottom: 20px;
+            right: 16px;
+            width: 48px;
+            height: 48px;
+            font-size: 22px;
+            z-index: 9998;
+        }
+        .achat-panel {
+            right: 8px;
+            left: 8px;
+            width: auto;
+            max-width: calc(100vw - 16px);
+            height: 80vh;
+            max-height: 520px;
+        }
+        .achat-chat-window {
+            right: 8px !important;
+            left: 8px !important;
+            width: auto !important;
+            max-width: calc(100vw - 16px);
+            height: 80vh;
+            max-height: 520px;
+        }
+    }
 </style>
 
 <!-- Chat Toggle Button -->

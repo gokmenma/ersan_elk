@@ -4407,10 +4407,11 @@ try {
         // =====================================================
         case 'check-chat':
             $DestekModel = new \App\Model\DestekModel();
-            $isWorkingHours = $DestekModel->isWorkingHours();
-            $outOfHoursMsg = $DestekModel->getOutOfHoursMessage();
+            $destekFirmaId = $personel->firma_id ?? ($_SESSION['firma_id'] ?? null);
+            $isWorkingHours = $DestekModel->isWorkingHours($destekFirmaId);
+            $outOfHoursMsg = $DestekModel->getOutOfHoursMessage($destekFirmaId);
             $Settings = new \App\Model\SettingsModel();
-            $adminDurum = $Settings->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
+            $adminDurum = $Settings->getSettings('canli_destek_admin_durum', $destekFirmaId) ?: 'cevrimici';
 
             // Aktif konuşma var mı? (yeni oluşturma!)
             $existing = $DestekModel->getActiveConversation($personel_id);
@@ -4437,9 +4438,10 @@ try {
 
         case 'start-chat':
             $DestekModel = new \App\Model\DestekModel();
+            $destekFirmaId = $personel->firma_id ?? ($_SESSION['firma_id'] ?? null);
             $konu = $_POST['konu'] ?? 'Destek Talebi';
-            $isWorkingHours = $DestekModel->isWorkingHours();
-            $outOfHoursMsg = $DestekModel->getOutOfHoursMessage();
+            $isWorkingHours = $DestekModel->isWorkingHours($destekFirmaId);
+            $outOfHoursMsg = $DestekModel->getOutOfHoursMessage($destekFirmaId);
 
             if (!$isWorkingHours) {
                 response(false, ['is_working_hours' => false, 'out_of_hours_message' => $outOfHoursMsg], 'Mesai saatleri dışında yeni destek talebi başlatılamaz.');
@@ -4447,7 +4449,7 @@ try {
             }
 
             $Settings = new \App\Model\SettingsModel();
-            $adminDurum = $Settings->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
+            $adminDurum = $Settings->getSettings('canli_destek_admin_durum', $destekFirmaId) ?: 'cevrimici';
 
             // Aktif konuşma var mı?
             $existing = $DestekModel->getActiveConversation($personel_id);
@@ -4472,8 +4474,8 @@ try {
             $DestekModel->sendSystemMessage($konusmaId, 'Merhaba ' . ($personel->adi_soyadi ?? '') . '! 👋 Size nasıl yardımcı olabiliriz?');
 
             // Mesai dışı kontrolü
-            if (!$DestekModel->isWorkingHours()) {
-                $DestekModel->sendSystemMessage($konusmaId, $DestekModel->getOutOfHoursMessage());
+            if (!$DestekModel->isWorkingHours($destekFirmaId)) {
+                $DestekModel->sendSystemMessage($konusmaId, $DestekModel->getOutOfHoursMessage($destekFirmaId));
             }
 
             $messages = $DestekModel->getMessages($konusmaId);

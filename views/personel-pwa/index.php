@@ -326,10 +326,11 @@ if ($page === 'ihbar') {
     // Canlı destek ayar kontrolü
     $_pwaSettingsModel = new \App\Model\SettingsModel();
     $_pwaDestekModel = new \App\Model\DestekModel();
-    $_pwaCanliDestekAktif = $_pwaSettingsModel->getSettings('canli_destek_aktif') === '1';
+    $_pwaFirmaId = $personel->firma_id ?? ($_SESSION['firma_id'] ?? null);
+    $_pwaCanliDestekAktif = $_pwaSettingsModel->getSettings('canli_destek_aktif', $_pwaFirmaId) === '1';
 
     // Mesai saatleri dışında chati gizle (Eğer aktif/açık bir konuşması yoksa)
-    if ($_pwaCanliDestekAktif && !$_pwaDestekModel->isWorkingHours()) {
+    if ($_pwaCanliDestekAktif && !$_pwaDestekModel->isWorkingHours($_pwaFirmaId)) {
         $__aktifKonusma = $_pwaDestekModel->getActiveConversation($personel_id);
         if (!$__aktifKonusma) {
             $_pwaCanliDestekAktif = false;
