@@ -265,7 +265,7 @@ if ($action == "tum-hareketler-getir") {
     $baslangic = $_POST["baslangic"] ?? "";
     $bitis = $_POST["bitis"] ?? "";
 
-    $where = "1=1";
+    $where = "g.silinme_tarihi IS NULL";
     $params = [];
 
     if (!empty($search)) {
@@ -291,7 +291,8 @@ if ($action == "tum-hareketler-getir") {
     $sql = "SELECT g.*, 
             (SELECT SUM(CASE WHEN g2.type = 1 THEN CAST(g2.tutar AS DECIMAL(15,2)) ELSE -CAST(g2.tutar AS DECIMAL(15,2)) END) 
              FROM gelir_gider g2 
-             WHERE (g2.tarih < g.tarih OR (g2.tarih = g.tarih AND g2.id <= g.id))) as global_yuruyen_bakiye
+             WHERE g2.silinme_tarihi IS NULL
+               AND (g2.tarih < g.tarih OR (g2.tarih = g.tarih AND g2.id <= g.id))) as global_yuruyen_bakiye
             FROM gelir_gider g
             WHERE $where
             ORDER BY g.tarih DESC, g.id DESC LIMIT 50";
