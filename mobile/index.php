@@ -479,10 +479,11 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
                 });
                 return result.isConfirmed;
             },
-            success(title, text) {
+            success(title, text, timer = null) {
                 return Swal.fire({
                     title: title, text: text, icon: "success",
                     confirmButtonText: "Tamam", showCancelButton: false,
+                    timer: timer,
                     buttonsStyling: false, width: 320, padding: 0,
                     customClass: {
                         popup: "swal-custom-popup", title: "swal-custom-title",
@@ -505,10 +506,45 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
                     },
                 });
             },
+            warning(title, text) {
+                return Swal.fire({
+                    title: title, text: text, icon: "warning",
+                    confirmButtonText: "Tamam", showCancelButton: false,
+                    buttonsStyling: false, width: 320, padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup", title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
+                        confirmButton: "swal-custom-confirm swal-confirm-warning swal-confirm-full",
+                        icon: "swal-custom-icon swal-icon-warning",
+                    },
+                });
+            },
+            loading(title = "İşlem yapılıyor...", text = "Lütfen bekleyin.") {
+                return Swal.fire({
+                    title: title,
+                    text: text,
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    width: 320,
+                    padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup",
+                        title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content pb-6"
+                    },
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            },
+            close() {
+                Swal.close();
+            },
             show(options) {
                 return Swal.fire({
                     title: options.title || "",
-                    html: options.content || "",
+                    html: options.content || options.html || "",
+                    text: options.text || "",
                     icon: options.icon || null,
                     confirmButtonText: options.confirmButtonText || "Tamam",
                     showCancelButton: options.showCancelButton || false,
@@ -516,9 +552,11 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
                     buttonsStyling: false, width: options.width || 320, padding: 0,
                     customClass: {
                         popup: "swal-custom-popup", title: "swal-custom-title",
-                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
-                        confirmButton: "swal-custom-confirm swal-confirm-primary swal-confirm-full",
+                        htmlContainer: "swal-custom-content",
+                        actions: options.showCancelButton ? "swal-custom-actions swal-actions-two" : "swal-custom-actions",
+                        confirmButton: options.isDanger ? "swal-custom-confirm swal-confirm-danger" : "swal-custom-confirm swal-confirm-primary" + (options.showCancelButton ? "" : " swal-confirm-full"),
                         cancelButton: "swal-custom-cancel",
+                        icon: options.icon ? ("swal-custom-icon swal-icon-" + options.icon) : ""
                     },
                 });
             },
@@ -551,6 +589,8 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
                 return false;
             }
         };
+
+        window.MobileSwal = window.Alert;
 
         window.Toast = {
             container: null,

@@ -326,6 +326,56 @@ class CariModel extends Model
     }
 
     /**
+     * Fatura bilgilerinden otomatik yeni cari kart oluşturur.
+     *
+     * @param object $fatura
+     * @param int|null $userId
+     * @return int Oluşturulan cari ID
+     */
+    public function createFromFatura(object $fatura, ?int $userId = null): int
+    {
+        $unvan = trim((string)($fatura->alici_unvan ?? ''));
+        if ($unvan === '') {
+            $unvan = 'Fatura Carisi (' . ($fatura->fatura_no ?: 'Belgesiz') . ')';
+        }
+
+        $vknClean = preg_replace('/[^0-9]/', '', (string)($fatura->alici_vkn_tckn ?? ''));
+        $aliciTuru = (strlen($vknClean) === 11) ? 'BIREYSEL' : 'KURUMSAL';
+        $belgeTuru = (strtoupper(trim((string)($fatura->belge_turu ?? ''))) === 'EFATURA') ? 'EFATURA' : 'EARSIV';
+
+        $sql = "
+            INSERT INTO cari (
+                CariAdi, firma, vkn_tckn, vergi_dairesi, alici_turu, belge_turu,
+                posta_kutusu, Telefon, Email, ulke, il, ilce, Adres,
+                kayit_tarihi, Aktif
+            ) VALUES (
+                :CariAdi, :firma, :vkn_tckn, :vergi_dairesi, :alici_turu, :belge_turu,
+                :posta_kutusu, :Telefon, :Email, :ulke, :il, :ilce, :Adres,
+                NOW(), 1
+            )
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'CariAdi'       => $unvan,
+            'firma'         => $unvan,
+            'vkn_tckn'      => !empty($vknClean) ? $vknClean : null,
+            'vergi_dairesi' => !empty($fatura->alici_vergi_dairesi) ? trim((string)$fatura->alici_vergi_dairesi) : null,
+            'alici_turu'    => $aliciTuru,
+            'belge_turu'    => $belgeTuru,
+            'posta_kutusu'  => !empty($fatura->alici_posta_kutusu) ? trim((string)$fatura->alici_posta_kutusu) : null,
+            'Telefon'       => !empty($fatura->alici_telefon) ? trim((string)$fatura->alici_telefon) : null,
+            'Email'         => !empty($fatura->alici_eposta) ? trim((string)$fatura->alici_eposta) : null,
+            'ulke'          => !empty($fatura->alici_ulke) ? trim((string)$fatura->alici_ulke) : 'Türkiye',
+            'il'            => !empty($fatura->alici_il) ? trim((string)$fatura->alici_il) : null,
+            'ilce'          => !empty($fatura->alici_ilce) ? trim((string)$fatura->alici_ilce) : null,
+            'Adres'         => !empty($fatura->alici_adres) ? trim((string)$fatura->alici_adres) : null
+        ]);
+
+        return (int)$this->db->lastInsertId();
+    }
+
+    /**
      * Cari Finansal Dashboard İstatistiklerini ve Grafik Verilerini Döndürür
      */
     public function getDashboardStats(?string $period = 'all', ?string $startDate = null, ?string $endDate = null): array

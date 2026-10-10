@@ -23,7 +23,8 @@ $cariActions = [
     'cari-not-kaydet', 'cari-getir', 'vkn-sorgula', 'cari-sil',
     'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
     'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
-    'son-hareketler-getir', 'tum-hareketler-ajax-list', 'dashboard-data', 'dashboard_data'
+    'son-hareketler-getir', 'tum-hareketler-ajax-list', 'dashboard-data', 'dashboard_data',
+    'banka-ekstre-analiz', 'banka_ekstre_analiz', 'banka-ekstre-aktar', 'banka_ekstre_aktar'
 ];
 if (!in_array($action, $cariActions, true)) {
     http_response_code(400);
@@ -926,6 +927,111 @@ if ($action == "dashboard-data" || $action == "dashboard_data") {
     }
     exit;
 }
+
+// Banka Ekstresi Analizi (PDF / Excel / CSV Önizleme)
+if ($action == "banka-ekstre-analiz" || $action == "banka_ekstre_analiz") {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        if (empty($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+            throw new Exception("Oturumunuz sonlanmış. Lütfen tekrar giriş yapın.");
+        }
+
+        if (!isset($_FILES['ekstre_dosya']) || $_FILES['ekstre_dosya']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Ekstre dosyası yüklenemedi veya seçilmedi.");
+        }
+
+        $originalName = $_FILES['ekstre_dosya']['name'];
+        $tmpPath = $_FILES['ekstre_dosya']['tmp_name'];
+        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+        if (!in_array($ext, ['pdf', 'xlsx', 'xls', 'csv'], true)) {
+            throw new Exception("Yalnızca PDF veya Excel (.xlsx, .xls, .csv) dosyası yükleyebilirsiniz.");
+        }
+
+        $service = new \App\Service\BankaEkstreImportService();
+        $result = $service->parseFile($tmpPath, $originalName);
+
+        echo json_encode([
+            "status" => "success",
+            "data" => $result
+        ], JSON_UNESCAPED_UNICODE);
+    } catch (Exception $e) {
+        error_log("Banka Ekstre Analiz Hatası: " . $e->getMessage());
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Banka Ekstresi Seçilenleri Carilere Aktar
+if ($action == "banka-ekstre-aktar" || $action == "banka_ekstre_aktar") {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        if (empty($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+            throw new Exception("Oturumunuz sonlanmış. Lütfen tekrar giriş yapın.");
+        }
+
+        $currentUserId = (int)($_SESSION["id"] ?? $_SESSION["user_id"] ?? ($_SESSION["user"]->id ?? 0));
+        
+        $gelenRows = json_decode($_POST["rows"] ?? "[]", true);
+        if (!is_array($gelenRows) || empty($gelenRows)) {
+            throw new Exception("Aktarılacak satır seçilmedi.");
+        }
+
+        $kaydedilecekler = [];
+        foreach ($gelenRows as $row) {
+            $cariId = (int)($row['cari_id'] ?? 0);
+            if ($cariId <= 0) {
+                continue;
+            }
+
+            $tarih = trim($row['tarih'] ?? '');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $tarih)) {
+                continue;
+            }
+
+            $borc = round((float)($row['borc'] ?? 0), 2);
+            $alacak = round((float)($row['alacak'] ?? 0), 2);
+            if ($borc <= 0 && $alacak <= 0) {
+                continue;
+            }
+
+            $kaydedilecekler[] = [
+                'cari_id' => $cariId,
+                'islem_tarihi' => $tarih,
+                'aciklama' => mb_substr(trim((string)($row['aciklama'] ?? '')), 0, 500),
+                'borc' => $borc,
+                'alacak' => $alacak,
+                'belge_no' => !empty($row['referans']) ? mb_substr(trim((string)$row['referans']), 0, 50) : null
+            ];
+        }
+
+        if (empty($kaydedilecekler)) {
+            throw new Exception("Aktarılacak geçerli (ve carisi seçilmiş) hareket satırı bulunamadı.");
+        }
+
+        $eklenen = $CariHareket->topluEkstreHareketleriEkle($kaydedilecekler, $currentUserId);
+
+        // Sistem logu oluştur
+        (new \App\Model\SystemLogModel())->logAction(
+            $currentUserId,
+            'Cari Banka Ekstre Aktarımı',
+            "Banka ekstresinden $eklenen adet hareket carilere başarıyla aktarıldı.",
+            \App\Model\SystemLogModel::LEVEL_IMPORTANT
+        );
+
+        echo json_encode([
+            "status" => "success",
+            "message" => "$eklenen adet banka hareketi başarıyla cari hesaplara aktarıldı.",
+            "eklenen_sayisi" => $eklenen,
+            "summary" => $Cari->summary()
+        ], JSON_UNESCAPED_UNICODE);
+    } catch (Exception $e) {
+        error_log("Banka Ekstre Aktarım Hatası: " . $e->getMessage());
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
 
 
 

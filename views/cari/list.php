@@ -91,18 +91,9 @@ $belgeTuruOptions = [
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/olustur">
-                        <i class="bx bx-receipt me-2 text-primary font-size-16"></i> Yeni Fatura Kes
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/taslak-list">
-                        <i class="bx bx-edit-alt me-2 text-info font-size-16"></i> Taslak Faturalara Git
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/giden-list">
-                        <i class="bx bx-cloud-upload me-2 text-primary font-size-16"></i> Giden Faturalara Git
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="index.php?p=efatura/gelen-list">
-                        <i class="bx bx-cloud-download me-2 text-success font-size-16"></i> Gelen Faturalara Git
-                    </a>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnEkstreYukleModal">
+                        <i class="bx bx-cloud-upload me-2 font-size-16 text-warning"></i> PDF / Excel'den Yükle
+                    </button>
                 </div>
             </div>
 
@@ -542,4 +533,304 @@ $belgeTuruOptions = [
     </div>
 </div>
 
+<style>
+/* Ekstre Yükleme Modalı Özel UI Stilleri */
+#ekstreYukleModal .modal-content {
+    border-radius: 18px;
+    overflow: hidden;
+}
+.ekstre-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+.ekstre-dropzone:hover, .ekstre-dropzone.dragover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+.ekstre-kpi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
+}
+.ekstre-kpi-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+.ekstre-kpi-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.ekstre-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.ekstre-table thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 11.5px;
+    padding: 10px 12px;
+    border-bottom: 2px solid #e2e8f0;
+}
+.ekstre-table tbody td {
+    padding: 8px 12px;
+    vertical-align: middle;
+    font-size: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.ekstre-row {
+    transition: background-color 0.15s ease;
+}
+.ekstre-row:hover {
+    background-color: #f8fafc !important;
+}
+.ekstre-row.row-selected {
+    background-color: rgba(37, 99, 235, 0.035) !important;
+}
+.ekstre-row.row-selected:hover {
+    background-color: rgba(37, 99, 235, 0.07) !important;
+}
+
+/* Select2 Özel Tablo Stilleri */
+.ekstre-cari-select-wrap .select2-container {
+    width: 100% !important;
+}
+.ekstre-cari-select-wrap .select2-container--default .select2-selection--single {
+    height: 34px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 2px 8px !important;
+    background-color: #ffffff;
+    display: flex;
+    align-items: center;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.ekstre-cari-select-wrap .select2-container--default.select2-container--focus .select2-selection--single,
+.ekstre-cari-select-wrap .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+.ekstre-cari-select-wrap .select2-selection__rendered {
+    line-height: 28px !important;
+    padding-left: 0 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+}
+.ekstre-cari-select-wrap .select2-selection__arrow {
+    height: 32px !important;
+}
+
+/* Select2 Dropdown Menüsü (Modal İçi) */
+.select2-dropdown {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    z-index: 999999 !important;
+    font-size: 12px !important;
+}
+.select2-results__option {
+    padding: 6px 10px !important;
+    border-bottom: 1px solid #f8fafc;
+}
+.select2-results__option--highlighted[aria-selected] {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+}
+.select2-results__option--highlighted[aria-selected] .select2-cari-sub,
+.select2-results__option--highlighted[aria-selected] .select2-cari-title {
+    color: #ffffff !important;
+}
+.select2-results__option--highlighted[aria-selected] .badge {
+    background-color: rgba(255,255,255,0.25) !important;
+    color: #ffffff !important;
+    border-color: rgba(255,255,255,0.4) !important;
+}
+.select2-cari-title {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 12.5px;
+}
+.select2-cari-sub {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 1px;
+}
+</style>
+
+<!-- Banka Ekstresi Yükleme ve Önizleme Modalı (PDF / Excel) -->
+<div class="modal fade" id="ekstreYukleModal" tabindex="-1" aria-labelledby="ekstreYukleModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1280px;">
+        <div class="modal-content border-0 shadow-lg">
+            <!-- Modal Başlığı -->
+            <div class="modal-header border-bottom px-4 py-3 align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                        <i class="bx bx-cloud-upload font-size-24 text-primary"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-dark font-size-16" id="ekstreYukleModalLabel">Banka Ekstresi Yükle (PDF / Excel)</h5>
+                        <p class="text-muted small mb-0">Banka hesap hareketlerini otomatik ayrıştırın, carilerle eşleştirin ve seçerek cari hesaplarına aktarın.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <!-- ADIM 1: DOSYA SEÇİMİ VE YÜKLEME -->
+                <div id="ekstreAdim1">
+                    <div class="ekstre-dropzone p-5 text-center mb-3" id="ekstreDropzone">
+                        <div class="mb-3">
+                            <div class="d-inline-flex p-3 bg-primary-subtle text-primary rounded-circle shadow-xs">
+                                <i class="bx bx-file font-size-40"></i>
+                            </div>
+                        </div>
+                        <h6 class="fw-bold text-dark font-size-15 mb-1">Banka Ekstresi veya Hareket Listesini Buraya Sürükleyin</h6>
+                        <p class="text-muted font-size-12 mb-3" style="max-width: 500px; margin: 0 auto;">Kuveyt Türk, Garanti BBVA, İş Bankası, Ziraat, Vakıfbank, Yapı Kredi, Akbank vb. PDF veya Excel (.xlsx, .xls, .csv) dosyalarını yükleyebilirsiniz.</p>
+                        
+                        <div class="d-flex justify-content-center">
+                            <input type="file" id="ekstreDosyaInput" class="d-none" accept=".pdf, .xlsx, .xls, .csv, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                            <button type="button" class="btn btn-primary px-4 py-2 shadow-sm d-flex align-items-center gap-2" id="btnEkstreDosyaSec">
+                                <i class="bx bx-folder-open font-size-18"></i> <span>Bilgisayardan Dosya Seçin</span>
+                            </button>
+                        </div>
+                        
+                        <div id="secilenDosyaBilgi" class="mt-3 d-none">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill font-size-12 fw-semibold d-inline-flex align-items-center gap-2 shadow-xs">
+                                <i class="bx bx-file"></i> <span id="secilenDosyaAdi"></span> (<span id="secilenDosyaBoyut"></span>)
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">İptal</button>
+                        <button type="button" class="btn btn-success px-4 shadow-sm" id="btnEkstreAnalizEt" disabled>
+                            <i class="bx bx-analyse me-1"></i> Dosyayı Analiz Et ve Önizle
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ADIM 2: ÖNİZLEME, CARİ EŞLEŞTİRME VE SEÇİM TABLOSU -->
+                <div id="ekstreAdim2" class="d-none">
+                    <!-- KPI İstatistik Kartları -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-md-3">
+                            <div class="ekstre-kpi-card d-flex align-items-center gap-3">
+                                <div class="ekstre-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                                    <i class="bx bx-list-check"></i>
+                                </div>
+                                <div>
+                                    <div class="font-size-11 text-muted fw-semibold">TOPLAM İŞLEM</div>
+                                    <div class="font-size-16 fw-bold text-dark" id="ekstreStatToplam">0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="ekstre-kpi-card d-flex align-items-center gap-3">
+                                <div class="ekstre-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                    <i class="bx bx-user-check"></i>
+                                </div>
+                                <div>
+                                    <div class="font-size-11 text-muted fw-semibold">EŞLEŞEN CARİ</div>
+                                    <div class="font-size-16 fw-bold text-success" id="ekstreStatEslesen">0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="ekstre-kpi-card d-flex align-items-center gap-3">
+                                <div class="ekstre-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                                    <i class="bx bx-trending-down"></i>
+                                </div>
+                                <div>
+                                    <div class="font-size-11 text-muted fw-semibold">TOPLAM ÇIKIŞ (ÖDEME)</div>
+                                    <div class="font-size-16 fw-bold text-danger" id="ekstreStatCikis">0,00 ₺</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="ekstre-kpi-card d-flex align-items-center gap-3">
+                                <div class="ekstre-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                    <i class="bx bx-trending-up"></i>
+                                </div>
+                                <div>
+                                    <div class="font-size-11 text-muted fw-semibold">TOPLAM GİRİŞ (TAHSİLAT)</div>
+                                    <div class="font-size-16 fw-bold text-info" id="ekstreStatGiris">0,00 ₺</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filtreler ve Arama -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2.5">
+                        <div class="btn-group btn-group-sm p-0.5 bg-light rounded-pill border" role="group" id="ekstreFilterGroup">
+                            <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-3 py-1 ekstre-filter-btn active" data-filter="all">
+                                Tümü (<span id="countFilterAll">0</span>)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light rounded-pill px-3 py-1 ekstre-filter-btn" data-filter="matched">
+                                <i class="bx bx-check-circle text-success me-1"></i>Eşleşenler (<span id="countFilterMatched">0</span>)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light rounded-pill px-3 py-1 ekstre-filter-btn" data-filter="unmatched">
+                                <i class="bx bx-help-circle text-warning me-1"></i>Eşleşmeyenler (<span id="countFilterUnmatched">0</span>)
+                            </button>
+                        </div>
+
+                        <div class="input-group input-group-sm" style="width: 250px;">
+                            <span class="input-group-text bg-white border-end-0"><i class="bx bx-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 ps-0" id="ekstrePreviewSearch" placeholder="Listede ara (açıklama, tutar)...">
+                        </div>
+                    </div>
+
+                    <!-- Önizleme Tablosu -->
+                    <div class="table-responsive" style="max-height: 460px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;">
+                        <table class="table table-hover align-middle w-100 mb-0 ekstre-table" id="ekstrePreviewTable">
+                            <thead class="sticky-top" style="z-index: 5;">
+                                <tr>
+                                    <th style="width: 44px;" class="text-center">
+                                        <input type="checkbox" class="form-check-input" id="checkAllEkstreRows" title="Tümünü Seç / Kaldır" style="cursor: pointer;">
+                                    </th>
+                                    <th style="width: 95px;" class="text-center">TARİH</th>
+                                    <th>AÇIKLAMA / DETAY</th>
+                                    <th style="width: 100px;" class="text-center">İŞLEM TÜRÜ</th>
+                                    <th style="width: 125px;" class="text-end">TUTAR</th>
+                                    <th style="width: 280px;">EŞLEŞEN / SEÇİLEN CARİ</th>
+                                    <th style="width: 130px;" class="text-center">DURUM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ekstrePreviewTbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Alt Bilgi ve Aksiyonlar -->
+            <div class="modal-footer border-top px-4 py-3 justify-content-between" id="ekstreModalFooter">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnEkstreGeri">
+                        <i class="bx bx-arrow-back me-1"></i> Farklı Dosya Seç
+                    </button>
+                    <span class="font-size-12" id="ekstreSecilenInfo"></span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm d-none" id="btnEkstreAktar">
+                        <i class="bx bx-check-double me-1 font-size-16"></i> <span id="btnEkstreAktarText">Seçilenleri Aktar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="views/cari/js/cari.js?v=<?php echo time(); ?>"></script>
+

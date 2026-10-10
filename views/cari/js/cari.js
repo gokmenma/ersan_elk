@@ -622,5 +622,561 @@ $(document).ready(function () {
     $('#btnSonHareketlerModalRefresh').on('click', function () {
         loadSonHareketlerModal();
     });
+
+    // ==========================================
+    // BANKA EKSTRESİ YÜKLEME VE AKTARMA (PDF / EXCEL - SELECT2 & MODERN UI)
+    // ==========================================
+    let parsedEkstreData = null;
+    let ekstreCariler = [];
+    let currentEkstreFilter = 'all';
+
+    // Türkçe Karakter Uyumlu Select2 Arama Eşleştiricisi
+    function select2TurkishMatcher(params, data) {
+        if ($.trim(params.term) === '') {
+            return data;
+        }
+        if (typeof data.text === 'undefined' && typeof data.element === 'undefined') {
+            return null;
+        }
+
+        const term = normalizeTurkishSearch(params.term);
+        const text = normalizeTurkishSearch(data.text || '');
+        const firma = normalizeTurkishSearch($(data.element).data('firma') || '');
+        const vkn = normalizeTurkishSearch($(data.element).data('vkn') || '');
+
+        if (text.indexOf(term) > -1 || firma.indexOf(term) > -1 || vkn.indexOf(term) > -1) {
+            return data;
+        }
+        return null;
+    }
+
+    function normalizeTurkishSearch(str) {
+        if (!str) return '';
+        return str.toString()
+            .replace(/İ/g, 'i')
+            .replace(/I/g, 'ı')
+            .replace(/Ş/g, 'ş')
+            .replace(/Ğ/g, 'ğ')
+            .replace(/Ü/g, 'ü')
+            .replace(/Ö/g, 'ö')
+            .replace(/Ç/g, 'ç')
+            .toLowerCase();
+    }
+
+    // Select2 Seçenek Şablonu (2 Satırlı Modern Görünüm)
+    function formatCariSelect2Result(item) {
+        if (!item.id) {
+            return item.text;
+        }
+        const el = $(item.element);
+        const firma = el.data('firma') || '';
+        const vkn = el.data('vkn') || '';
+        const cariAdi = el.data('cari-adi') || item.text;
+
+        let subParts = [];
+        if (firma) subParts.push(escapeHtml(firma));
+        if (vkn) subParts.push(`<span class="badge bg-light text-secondary border font-monospace font-size-10">${escapeHtml(vkn)}</span>`);
+
+        return $(`
+            <div class="select2-cari-item">
+                <div class="select2-cari-title">${escapeHtml(cariAdi)}</div>
+                ${subParts.length > 0 ? `<div class="select2-cari-sub">${subParts.join(' • ')}</div>` : ''}
+            </div>
+        `);
+    }
+
+    // Select2 Seçili Değer Şablonu
+    function formatCariSelect2Selection(item) {
+        if (!item.id) {
+            return item.text;
+        }
+        const el = $(item.element);
+        const cariAdi = el.data('cari-adi') || item.text;
+        const firma = el.data('firma') || '';
+        return $(`<span><strong class="text-dark">${escapeHtml(cariAdi)}</strong>${firma ? `<span class="text-muted font-size-11 ms-1 d-none d-xl-inline">(${escapeHtml(firma.substring(0, 22))}${firma.length > 22 ? '...' : ''})</span>` : ''}</span>`);
+    }
+
+    // 1. Modalı Aç
+    $('#btnEkstreYukleModal').on('click', function () {
+        resetEkstreModal();
+        $('#ekstreYukleModal').modal('show');
+    });
+
+    function resetEkstreModal() {
+        parsedEkstreData = null;
+        $('#ekstreDosyaInput').val('');
+        $('#secilenDosyaBilgi').addClass('d-none');
+        $('#secilenDosyaAdi').text('');
+        $('#secilenDosyaBoyut').text('');
+        $('#btnEkstreAnalizEt').prop('disabled', true).html('<i class="bx bx-analyse me-1"></i> Dosyayı Analiz Et ve Önizle');
+        $('#ekstreAdim1').removeClass('d-none');
+        $('#ekstreAdim2').addClass('d-none');
+        $('#btnEkstreGeri').addClass('d-none');
+        $('#btnEkstreAktar').addClass('d-none');
+        $('#ekstrePreviewTbody').empty();
+        $('#ekstreSecilenInfo').text('');
+        $('#checkAllEkstreRows').prop('checked', false);
+        currentEkstreFilter = 'all';
+        $('.ekstre-filter-btn').removeClass('active btn-subtle-primary').addClass('btn-light');
+        $('.ekstre-filter-btn[data-filter="all"]').addClass('active btn-subtle-primary').removeClass('btn-light');
+    }
+
+    // 2. Dosya Seçimi & Drag-Drop
+    $('#btnEkstreDosyaSec').on('click', function () {
+        $('#ekstreDosyaInput').click();
+    });
+
+    const dropzone = $('#ekstreDropzone');
+    dropzone.on('dragover dragenter', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.addClass('dragover');
+    });
+    dropzone.on('dragleave dragend drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.removeClass('dragover');
+    });
+    dropzone.on('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const dt = e.originalEvent.dataTransfer;
+        if (dt && dt.files && dt.files.length) {
+            document.getElementById('ekstreDosyaInput').files = dt.files;
+            $('#ekstreDosyaInput').trigger('change');
+        }
+    });
+
+    $('#ekstreDosyaInput').on('change', function () {
+        const file = this.files[0];
+        if (file) {
+            const formatSize = (bytes) => {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / 1048576).toFixed(1) + ' MB';
+            };
+            $('#secilenDosyaAdi').text(file.name);
+            $('#secilenDosyaBoyut').text(formatSize(file.size));
+            $('#secilenDosyaBilgi').removeClass('d-none');
+            $('#btnEkstreAnalizEt').prop('disabled', false);
+        } else {
+            $('#secilenDosyaBilgi').addClass('d-none');
+            $('#btnEkstreAnalizEt').prop('disabled', true);
+        }
+    });
+
+    // Geri Dön Butonu
+    $('#btnEkstreGeri').on('click', function () {
+        $('#ekstreAdim2').addClass('d-none');
+        $('#ekstreAdim1').removeClass('d-none');
+        $('#btnEkstreGeri').addClass('d-none');
+        $('#btnEkstreAktar').addClass('d-none');
+        $('#ekstreSecilenInfo').text('');
+    });
+
+    // 3. Dosyayı Analiz Et
+    $('#btnEkstreAnalizEt').on('click', function () {
+        const fileInput = document.getElementById('ekstreDosyaInput');
+        if (!fileInput.files || !fileInput.files[0]) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Dosya Seçilmedi',
+                text: 'Lütfen analiz edilecek bir PDF veya Excel dosyası seçin.'
+            });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'banka-ekstre-analiz');
+        formData.append('ekstre_dosya', fileInput.files[0]);
+
+        const btn = $(this);
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Analiz Ediliyor...');
+
+        $.ajax({
+            url: 'views/cari/api.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function (res) {
+                btn.prop('disabled', false).html('<i class="bx bx-analyse me-1"></i> Dosyayı Analiz Et ve Önizle');
+                if (res.status === 'success' && res.data) {
+                    parsedEkstreData = res.data;
+                    ekstreCariler = res.data.cariler || [];
+                    renderEkstrePreview(res.data);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Analiz Başarısız',
+                        text: res.message || 'Dosya analizi sırasında bir hata oluştu.'
+                    });
+                }
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false).html('<i class="bx bx-analyse me-1"></i> Dosyayı Analiz Et ve Önizle');
+                let msg = 'Sunucu bağlantısında hata oluştu.';
+                try {
+                    const r = JSON.parse(xhr.responseText);
+                    if (r.message) msg = r.message;
+                } catch(e) {}
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Hata',
+                    text: msg
+                });
+            }
+        });
+    });
+
+    // 4. Önizleme Tablosunu Çiz
+    function renderEkstrePreview(data) {
+        const rows = data.rows || [];
+        const formatMoney = (v) => parseFloat(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+
+        // KPI'ları doldur
+        $('#ekstreStatToplam').text(data.total_rows || 0);
+        $('#ekstreStatEslesen').text(data.matched_count || 0);
+        $('#ekstreStatCikis').text(formatMoney(data.toplam_cikis || 0));
+        $('#ekstreStatGiris').text(formatMoney(data.toplam_giris || 0));
+
+        // Filtre sayaçları
+        $('#countFilterAll').text(data.total_rows || 0);
+        $('#countFilterMatched').text(data.matched_count || 0);
+        $('#countFilterUnmatched').text((data.total_rows || 0) - (data.matched_count || 0));
+
+        const tbody = $('#ekstrePreviewTbody');
+        tbody.empty();
+
+        if (rows.length === 0) {
+            tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">İşlem satırı bulunamadı.</td></tr>');
+            return;
+        }
+
+        // Cari Seçenekleri HTML'i oluştur
+        let cariOptionsHtml = '<option value="">-- Cari Seçiniz --</option>';
+        ekstreCariler.forEach(c => {
+            cariOptionsHtml += `<option value="${c.id}" data-cari-adi="${escapeHtml(c.CariAdi)}" data-firma="${escapeHtml(c.firma || '')}" data-vkn="${escapeHtml(c.vkn_tckn || '')}">${escapeHtml(c.CariAdi)}</option>`;
+        });
+
+        rows.forEach((row, i) => {
+            const isCikis = row.islem_turu === 'cikis';
+            const turBadge = isCikis 
+                ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bx-trending-down me-1"></i>Çıkış (-)</span>'
+                : '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bx-trending-up me-1"></i>Giriş (+)</span>';
+
+            const tutarFmt = formatMoney(row.tutar);
+            const isMatched = !!row.cari_id;
+            const isMukerrer = !!row.is_mukerrer;
+
+            let durumBadge = '';
+            if (isMukerrer) {
+                durumBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold" title="Bu kayıt sistemde zaten var"><i class="bx bx-error-circle me-1"></i>Mükerrer</span>';
+            } else if (isMatched) {
+                durumBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold" title="${escapeHtml(row.match_reason || '')}"><i class="bx bx-check-circle me-1"></i>Eşleşti</span>`;
+            } else {
+                durumBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bx-time-five me-1"></i>Cari Bekleniyor</span>';
+            }
+
+            const refHtml = row.referans ? `<span class="badge bg-light text-dark border font-monospace ms-1.5 font-size-10 px-1.5 py-0.5 shadow-xs" title="Referans / Dekont No">${escapeHtml(row.referans)}</span>` : '';
+
+            const isChecked = row.selected ? 'checked' : '';
+            const rowSelectedClass = row.selected ? 'row-selected' : '';
+
+            const tr = $(`
+                <tr class="ekstre-row ${rowSelectedClass} ${isMatched ? 'row-matched' : 'row-unmatched'} ${isMukerrer ? 'row-mukerrer' : ''}" data-index="${i}" data-matched="${isMatched ? '1' : '0'}" data-mukerrer="${isMukerrer ? '1' : '0'}">
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input row-select-check" ${isChecked} style="cursor: pointer;">
+                    </td>
+                    <td class="text-center font-monospace font-size-12 fw-bold text-dark">${escapeHtml(row.tarih_formatli || row.tarih)}</td>
+                    <td>
+                        <div class="font-size-12 text-dark fw-medium text-break lh-sm">${escapeHtml(row.aciklama)} ${refHtml}</div>
+                    </td>
+                    <td class="text-center">${turBadge}</td>
+                    <td class="text-end font-size-13 fw-bold ${isCikis ? 'text-danger' : 'text-success'}">${tutarFmt}</td>
+                    <td class="ekstre-cari-select-wrap">
+                        <select class="form-select form-select-sm select2-ekstre-cari" data-index="${i}">
+                            ${cariOptionsHtml}
+                        </select>
+                    </td>
+                    <td class="text-center row-status-col">${durumBadge}</td>
+                </tr>
+            `);
+
+            tbody.append(tr);
+        });
+
+        // Select2 Elemanlarını Başlat
+        tbody.find('.select2-ekstre-cari').each(function () {
+            const select = $(this);
+            const idx = select.data('index');
+            const rowData = rows[idx];
+
+            select.select2({
+                dropdownParent: $('#ekstreYukleModal'),
+                width: '100%',
+                placeholder: '-- Cari Seçiniz --',
+                allowClear: true,
+                matcher: select2TurkishMatcher,
+                templateResult: formatCariSelect2Result,
+                templateSelection: formatCariSelect2Selection,
+                escapeMarkup: function (m) { return m; }
+            });
+
+            // Seçili cariyi ayarla
+            if (rowData && rowData.cari_id) {
+                select.val(rowData.cari_id).trigger('change.select2');
+            }
+        });
+
+        // Adım 2'ye geçiş yap
+        $('#ekstreAdim1').addClass('d-none');
+        $('#ekstreAdim2').removeClass('d-none');
+        $('#btnEkstreGeri').removeClass('d-none');
+        $('#btnEkstreAktar').removeClass('d-none');
+
+        updateEkstreSelectionCount();
+    }
+
+    // Yardımcı Escape Fonksiyonu
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // 5. Seçim ve Filtreleme Olayları
+    $('#checkAllEkstreRows').on('change', function () {
+        const isChecked = $(this).is(':checked');
+        $('#ekstrePreviewTbody tr:visible').each(function () {
+            $(this).find('.row-select-check').prop('checked', isChecked);
+            if (isChecked) {
+                $(this).addClass('row-selected');
+            } else {
+                $(this).removeClass('row-selected');
+            }
+            const idx = $(this).data('index');
+            if (parsedEkstreData && parsedEkstreData.rows[idx]) {
+                parsedEkstreData.rows[idx].selected = isChecked;
+            }
+        });
+        updateEkstreSelectionCount();
+    });
+
+    $('#ekstrePreviewTbody').on('change', '.row-select-check', function () {
+        const tr = $(this).closest('tr');
+        const idx = tr.data('index');
+        const isChecked = $(this).is(':checked');
+        
+        if (isChecked) {
+            tr.addClass('row-selected');
+        } else {
+            tr.removeClass('row-selected');
+        }
+
+        if (parsedEkstreData && parsedEkstreData.rows[idx]) {
+            parsedEkstreData.rows[idx].selected = isChecked;
+        }
+        updateEkstreSelectionCount();
+    });
+
+    // Cari Select Değiştiğinde (Select2 Change)
+    $('#ekstrePreviewTbody').on('change', '.select2-ekstre-cari', function () {
+        const tr = $(this).closest('tr');
+        const idx = $(this).data('index');
+        const newCariId = $(this).val();
+
+        if (parsedEkstreData && parsedEkstreData.rows[idx]) {
+            parsedEkstreData.rows[idx].cari_id = newCariId ? parseInt(newCariId) : null;
+            if (newCariId) {
+                // Cari seçildiğinde satırı otomatik seçili yap
+                parsedEkstreData.rows[idx].selected = true;
+                tr.find('.row-select-check').prop('checked', true);
+                tr.addClass('row-selected').removeClass('row-unmatched').addClass('row-matched').attr('data-matched', '1');
+                tr.find('.row-status-col').html('<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bx-check-circle me-1"></i>Eşleşti / Seçildi</span>');
+            } else {
+                parsedEkstreData.rows[idx].selected = false;
+                tr.find('.row-select-check').prop('checked', false);
+                tr.removeClass('row-selected').removeClass('row-matched').addClass('row-unmatched').attr('data-matched', '0');
+                tr.find('.row-status-col').html('<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bx-time-five me-1"></i>Cari Bekleniyor</span>');
+            }
+            updateEkstreStatsAndCounts();
+            updateEkstreSelectionCount();
+        }
+    });
+
+    // İstatistik ve Filtre Sayaçlarını Güncelle
+    function updateEkstreStatsAndCounts() {
+        if (!parsedEkstreData || !parsedEkstreData.rows) return;
+        let matched = 0;
+        parsedEkstreData.rows.forEach(r => {
+            if (r.cari_id) matched++;
+        });
+        $('#ekstreStatEslesen').text(matched);
+        $('#countFilterMatched').text(matched);
+        $('#countFilterUnmatched').text(parsedEkstreData.rows.length - matched);
+    }
+
+    // Seçili Sayısını Güncelle
+    function updateEkstreSelectionCount() {
+        let selectedCount = 0;
+        let totalAmount = 0.0;
+        if (parsedEkstreData && parsedEkstreData.rows) {
+            parsedEkstreData.rows.forEach(r => {
+                if (r.selected && r.cari_id) {
+                    selectedCount++;
+                    totalAmount += parseFloat(r.tutar || 0);
+                }
+            });
+        }
+
+        const formatMoney = (v) => parseFloat(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+
+        if (selectedCount > 0) {
+            $('#ekstreSecilenInfo').html(`<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-semibold font-size-12"><i class="bx bx-check-circle me-1"></i><strong>${selectedCount}</strong> işlem seçildi (Toplam: <strong>${formatMoney(totalAmount)}</strong>)</span>`);
+            $('#btnEkstreAktarText').text(`Seçilen ${selectedCount} Hareketi Aktar`);
+            $('#btnEkstreAktar').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
+        } else {
+            $('#ekstreSecilenInfo').html('<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2.5 py-1 rounded-pill font-size-12"><i class="bx bx-info-circle me-1"></i>Aktarım için carisi seçilmiş en az 1 satır işaretleyin</span>');
+            $('#btnEkstreAktarText').text('Seçilenleri Aktar');
+            $('#btnEkstreAktar').prop('disabled', true);
+        }
+    }
+
+    // Filtre Butonları (Tümü / Eşleşenler / Eşleşmeyenler)
+    $('#ekstreFilterGroup').on('click', '.ekstre-filter-btn', function () {
+        $('.ekstre-filter-btn').removeClass('active btn-subtle-primary').addClass('btn-light');
+        $(this).addClass('active btn-subtle-primary').removeClass('btn-light');
+        currentEkstreFilter = $(this).data('filter') || 'all';
+        applyEkstreFilters();
+    });
+
+    // Tablo İçi Arama
+    $('#ekstrePreviewSearch').on('keyup', function () {
+        applyEkstreFilters();
+    });
+
+    function applyEkstreFilters() {
+        const query = ($('#ekstrePreviewSearch').val() || '').toLowerCase().trim();
+        $('#ekstrePreviewTbody tr').each(function () {
+            const tr = $(this);
+            const isMatched = tr.attr('data-matched') === '1';
+            let showByFilter = true;
+
+            if (currentEkstreFilter === 'matched' && !isMatched) showByFilter = false;
+            if (currentEkstreFilter === 'unmatched' && isMatched) showByFilter = false;
+
+            let showBySearch = true;
+            if (query !== '') {
+                const text = tr.text().toLowerCase();
+                if (text.indexOf(query) === -1) {
+                    showBySearch = false;
+                }
+            }
+
+            if (showByFilter && showBySearch) {
+                tr.removeClass('d-none');
+            } else {
+                tr.addClass('d-none');
+            }
+        });
+    }
+
+    // 6. Seçilenleri Aktar
+    $('#btnEkstreAktar').on('click', function () {
+        if (!parsedEkstreData || !parsedEkstreData.rows) {
+            return;
+        }
+
+        const toImport = [];
+        parsedEkstreData.rows.forEach(r => {
+            if (r.selected && r.cari_id) {
+                toImport.push({
+                    cari_id: r.cari_id,
+                    tarih: r.tarih,
+                    aciklama: r.aciklama,
+                    borc: r.borc,
+                    alacak: r.alacak,
+                    referans: r.referans || ''
+                });
+            }
+        });
+
+        if (toImport.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Seçim Yapılmadı',
+                text: 'Aktarılacak herhangi bir hareket seçilmedi veya carisi belirlenmedi.'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Aktarımı Onaylıyor musunuz?',
+            text: `Seçilen ${toImport.length} adet banka hareketi ilgili cari hesaplara işlenecektir.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bx bx-check me-1"></i> Evet, Aktar',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const btn = $('#btnEkstreAktar');
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Aktarılıyor...');
+
+                $.ajax({
+                    url: 'views/cari/api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'banka-ekstre-aktar',
+                        rows: JSON.stringify(toImport)
+                    },
+                    dataType: 'json',
+                    success: function (res) {
+                        btn.prop('disabled', false).html('<i class="bx bx-check-double me-1 font-size-16"></i> <span id="btnEkstreAktarText">Seçilenleri Aktar</span>');
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Başarılı!',
+                                text: res.message || `${toImport.length} adet hareket başarıyla aktarıldı.`,
+                                timer: 2500,
+                                showConfirmButton: false
+                            });
+                            $('#ekstreYukleModal').modal('hide');
+                            // Cari tablosunu ve özet KPI'ları yenile
+                            table.ajax.reload(null, false);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Hata',
+                                text: res.message || 'Aktarım sırasında bir hata oluştu.'
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        btn.prop('disabled', false).html('<i class="bx bx-check-double me-1 font-size-16"></i> <span id="btnEkstreAktarText">Seçilenleri Aktar</span>');
+                        let msg = 'Sunucu bağlantısında hata oluştu.';
+                        try {
+                            const r = JSON.parse(xhr.responseText);
+                            if (r.message) msg = r.message;
+                        } catch(e) {}
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Hata',
+                            text: msg
+                        });
+                    }
+                });
+            }
+        });
+    });
 });
+
+
 

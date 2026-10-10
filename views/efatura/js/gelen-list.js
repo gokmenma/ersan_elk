@@ -431,6 +431,12 @@ $(document).ready(function() {
                     // 5. Tarihçe
                     btns += `<button type="button" class="btn btn-sm btn-subtle-info table-action-btn btn-history efatura-history" data-id="${row.encrypted_id}" title="Geçmiş / Loglar"><i class="bx bx-history font-size-15"></i></button>`;
 
+                    // 6. Cariye İşle (Cariye işlenmemiş gelen faturalar için)
+                    if (row.cariye_islendi == 0) {
+                        const fNo = (!row.fatura_no || row.fatura_no === 'Taslak') ? '' : row.fatura_no;
+                        btns += `<button type="button" class="btn btn-sm btn-subtle-success table-action-btn btn-cariye-isle" data-id="${row.encrypted_id}" data-fatura-no="${fNo}" title="Cariye İşle"><i class="bx bx-transfer-alt font-size-15"></i></button>`;
+                    }
+
                     btns += `</div>`;
                     return btns;
                 }
@@ -966,4 +972,216 @@ $(document).ready(function() {
             }
         });
     });
+
+    function escapeHtmlText(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Cariye İşle Fonksiyonu (Gelen Fatura -> Alacak)
+    function sendGelenSyncToCari(encId, fNo, force = false, initialPrompt = true) {
+        if (!encId) return;
+
+        const doAjaxCall = () => {
+            Swal.fire({
+                title: 'İşleniyor...',
+                text: 'Fatura cari hareketlerine aktarılıyor, lütfen bekleyin.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: 'api/efatura-api.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'sync_to_cari',
+                    invoice_id: encId,
+                    force: force ? 1 : 0,
+                    csrf_token: $('meta[name="efatura-csrf"]').attr('content')
+                },
+                success: function(res) {
+                    if (res.status === 'success') {
+                        Swal.fire({
+                            title: 'Başarılı!',
+                            text: res.message || 'Fatura cari hesabına başarıyla işlendi.',
+                            icon: 'success',
+                            confirmButtonText: 'Tamam',
+                            customClass: { confirmButton: 'btn btn-primary' },
+                            buttonsStyling: false
+                        });
+                        if (typeof table !== 'undefined' && table.ajax) {
+                            table.ajax.reload(null, false);
+                        }
+                    } else if (res.status === 'warning_duplicate') {
+                        Swal.fire({
+                            title: 'Benzer Hareket Uyarısı',
+                            html: `
+                                <div class="text-start p-2">
+                                    <p class="mb-2 text-warning fw-semibold"><i class="bx bx-error-circle me-1 font-size-18 align-middle"></i> Aynı tarihte aynı tutarda hareket bulundu:</p>
+                                    <p class="mb-3 text-dark font-size-13">${res.message}</p>
+                                    <div class="alert alert-warning py-2 px-3 font-size-12 mb-0">
+                                        Bu fatura zaten cariye manuel veya farklı bir hareketle işlenmiş olabilir. Yine de devam etmek istiyor musunuz?
+                                    </div>
+                                </div>`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: '<i class="bx bx-check me-1"></i> Evet, Yine de İşle',
+                            cancelButtonText: 'Vazgeç',
+                            customClass: {
+                                confirmButton: 'btn btn-warning me-2',
+                                cancelButton: 'btn btn-light'
+                            },
+                            buttonsStyling: false
+                        }).then((dupResult) => {
+                            if (dupResult.isConfirmed) {
+                                sendGelenSyncToCari(encId, fNo, true, false);
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Uyarı',
+                            text: res.message || 'İşlem gerçekleştirilemedi.',
+                            icon: 'warning',
+                            confirmButtonText: 'Tamam',
+                            customClass: { confirmButton: 'btn btn-warning' },
+                            buttonsStyling: false
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    let errMsg = 'İşlem gerçekleştirilemedi.';
+                    try {
+                        const json = JSON.parse(xhr.responseText);
+                        if (json.message) errMsg = json.message;
+                    } catch (e) {}
+                    Swal.fire({
+                        title: 'Hata!',
+                        text: errMsg,
+                        icon: 'error',
+                        confirmButtonText: 'Tamam',
+                        customClass: { confirmButton: 'btn btn-danger' },
+                        buttonsStyling: false
+                    });
+                }
+            });
+        };
+
+        if (initialPrompt) {
+            Swal.fire({
+                title: 'Kontrol Ediliyor...',
+                text: 'Cari bilgisi sorgulanıyor, lütfen bekleyin.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: 'api/efatura-api.php',
+                type: 'GET',
+                dataType: 'json',
+                data: {
+                    action: 'check_invoice_cari',
+                    invoice_id: encId
+                },
+                success: function(checkRes) {
+                    if (checkRes.status !== 'success') {
+                        Swal.fire('Hata!', checkRes.message || 'Fatura bilgisi alınamadı.', 'error');
+                        return;
+                    }
+
+                    const info = checkRes;
+                    let swalTitle = 'Cariye İşle';
+                    let swalHtml = '';
+                    let confirmBtnText = '<i class="bx bx-check me-1"></i> Evet, Cariye İşle';
+                    let confirmBtnClass = 'btn btn-primary me-2';
+
+                    if (info.cari_exists) {
+                        swalTitle = 'Cariye İşle';
+                        swalHtml = `
+                            <div class="text-start p-1">
+                                <p class="mb-3 font-size-14 text-dark">
+                                    <strong>"${escapeHtmlText(info.invoice_no)}"</strong> numaralı gelen fatura, 
+                                    <strong class="text-primary">"${escapeHtmlText(info.cari_name)}"</strong> isimli cari hesabına 
+                                    <strong>(Alacak)</strong> olarak işlenecektir.
+                                </p>
+                                <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border font-size-12">
+                                    <span class="text-muted">Fatura Tutarı:</span>
+                                    <strong class="text-dark font-monospace">${escapeHtmlText(info.odenecek_tutar)}</strong>
+                                </div>
+                            </div>
+                        `;
+                        confirmBtnText = '<i class="bx bx-check me-1"></i> Evet, Cariye İşle';
+                        confirmBtnClass = 'btn btn-primary me-2';
+                    } else {
+                        swalTitle = 'Cari Kart Oluşturulup İşlenecek';
+                        swalHtml = `
+                            <div class="text-start p-1">
+                                <div class="alert alert-info py-2 px-3 font-size-12 mb-3 d-flex align-items-center gap-2">
+                                    <i class="bx bx-info-circle font-size-16 text-info"></i>
+                                    <span>Sistemde <strong>"${escapeHtmlText(info.counterparty_name)}"</strong> adına ait kayıtlı bir cari kart bulunamadı.</span>
+                                </div>
+                                <p class="mb-3 font-size-14 text-dark">
+                                    <strong class="text-primary">"${escapeHtmlText(info.counterparty_name)}"</strong> isimli yeni cari kart <strong>otomatik oluşturulacak</strong> 
+                                    ve <strong>"${escapeHtmlText(info.invoice_no)}"</strong> numaralı fatura bu cari hesabına 
+                                    <strong>(Alacak)</strong> olarak işlenecektir.
+                                </p>
+                                <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border font-size-12">
+                                    <span class="text-muted">İşlenecek Tutar:</span>
+                                    <strong class="text-dark font-monospace">${escapeHtmlText(info.odenecek_tutar)}</strong>
+                                </div>
+                            </div>
+                        `;
+                        confirmBtnText = '<i class="bx bx-user-plus me-1"></i> Cari Oluştur ve İşle';
+                        confirmBtnClass = 'btn btn-success me-2';
+                    }
+
+                    Swal.fire({
+                        title: swalTitle,
+                        html: swalHtml,
+                        icon: info.cari_exists ? 'question' : 'info',
+                        showCancelButton: true,
+                        confirmButtonText: confirmBtnText,
+                        cancelButtonText: 'Vazgeç',
+                        customClass: {
+                            confirmButton: confirmBtnClass,
+                            cancelButton: 'btn btn-light'
+                        },
+                        buttonsStyling: false
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            doAjaxCall();
+                        }
+                    });
+                },
+                error: function() {
+                    Swal.fire('Hata!', 'Cari bilgisi sorgulanamadı.', 'error');
+                }
+            });
+        } else {
+            doAjaxCall();
+        }
+    }
+
+    // Cariye İşle Butonu Tıklama Dinleyicisi
+    $(document).on('click', '.btn-cariye-isle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const encId = $(this).data('id');
+        const fNo = $(this).data('fatura-no') || 'Fatura';
+        if (encId) {
+            sendGelenSyncToCari(encId, fNo, false, true);
+        }
+    });
 });
+

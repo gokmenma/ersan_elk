@@ -99,6 +99,57 @@ class CariHareketleriModel extends Model
     }
 
     /**
+     * Banka ekstresinden seçilen hareketleri farklı carilere toplu kaydeder.
+     *
+     * @param array $rows Her satır: ['cari_id' => int, 'tarih' => 'Y-m-d', 'aciklama' => string, 'borc' => float, 'alacak' => float, 'belge_no' => string|null]
+     * @param int|null $userId Ekleyen kullanıcı ID
+     * @return int Eklenen kayıt sayısı
+     */
+    public function topluEkstreHareketleriEkle(array $rows, ?int $userId = null): int
+    {
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $sql = "INSERT INTO $this->table (cari_id, islem_tarihi, belge_no, aciklama, borc, alacak, ekleyen_kullanici, kayit_tarihi)
+                VALUES (:cari_id, :islem_tarihi, :belge_no, :aciklama, :borc, :alacak, :ekleyen_kullanici, NOW())";
+
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare($sql);
+            $eklenen = 0;
+            foreach ($rows as $row) {
+                $cari_id = (int)($row['cari_id'] ?? 0);
+                if ($cari_id <= 0) {
+                    continue;
+                }
+
+                $islemTarihi = $row['islem_tarihi'] ?? ($row['tarih'] ?? date('Y-m-d H:i:s'));
+                if (strlen($islemTarihi) <= 10) {
+                    $islemTarihi .= ' 00:00:00';
+                }
+
+                $stmt->execute([
+                    'cari_id' => $cari_id,
+                    'islem_tarihi' => $islemTarihi,
+                    'belge_no' => !empty($row['belge_no']) ? mb_substr(trim((string)$row['belge_no']), 0, 50) : null,
+                    'aciklama' => mb_substr(trim((string)($row['aciklama'] ?? '')), 0, 500),
+                    'borc' => (float)($row['borc'] ?? 0),
+                    'alacak' => (float)($row['alacak'] ?? 0),
+                    'ekleyen_kullanici' => $userId
+                ]);
+                $eklenen++;
+            }
+            $this->db->commit();
+            return $eklenen;
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+
+    /**
      * Faturayı cari hareketlerine senkronize eder.
      * Gelen fatura -> Carinin hesabına ALACAK
      * Giden fatura -> Carinin hesabına BORÇ
@@ -130,17 +181,25 @@ class CariHareketleriModel extends Model
             }
 
             $cariId = !empty($fatura->cari_id) ? (int)$fatura->cari_id : 0;
+            $cariModel = new \App\Model\CariModel();
 
             // Cari ID yoksa VKN veya Ünvana göre eşleştir
             if ($cariId <= 0) {
-                $cariModel = new \App\Model\CariModel();
                 $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
                 if ($matchedCari) {
                     $cariId = (int)$matchedCari->id;
-                    // Faturadaki cari_id alanını da güncelle
-                    $updateFat = $this->db->prepare("UPDATE faturalar SET cari_id = :cari_id WHERE id = :id");
-                    $updateFat->execute(['cari_id' => $cariId, 'id' => $faturaId]);
                 }
+            }
+
+            // Eşleşen cari hala yoksa, otomatik olarak yeni cari kart oluştur
+            if ($cariId <= 0) {
+                $cariId = $cariModel->createFromFatura($fatura, $userId);
+            }
+
+            // Faturadaki cari_id alanını da güncelle
+            if ($cariId > 0) {
+                $updateFat = $this->db->prepare("UPDATE faturalar SET cari_id = :cari_id WHERE id = :id");
+                $updateFat->execute(['cari_id' => $cariId, 'id' => $faturaId]);
             }
 
             if ($cariId <= 0) {
@@ -247,6 +306,77 @@ class CariHareketleriModel extends Model
             }
         } catch (\Throwable $e) {
             error_log("CariHareketleriModel::syncFaturaHareketi Error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Fatura tarihi ve tutarı ile eşleşen mevcut cari hareketlerini kontrol eder.
+     *
+     * @param int $faturaId
+     * @return array|null
+     */
+    public function checkSameDateAmount(int $faturaId): ?array
+    {
+        try {
+            $stmt = $this->db->prepare("SELECT * FROM faturalar WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $faturaId]);
+            $fatura = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (!$fatura) {
+                return null;
+            }
+
+            $cariId = !empty($fatura->cari_id) ? (int)$fatura->cari_id : 0;
+            if ($cariId <= 0) {
+                $cariModel = new \App\Model\CariModel();
+                $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
+                if ($matchedCari) {
+                    $cariId = (int)$matchedCari->id;
+                }
+            }
+
+            if ($cariId <= 0) {
+                return null;
+            }
+
+            $yon = strtoupper(trim((string)($fatura->yon ?? 'GIDEN')));
+            $odenecekTutar = round((float)($fatura->odenecek_tutar ?? 0), 2);
+            $faturaTarihi = !empty($fatura->fatura_tarihi) ? $fatura->fatura_tarihi : date('Y-m-d');
+
+            $checkSql = "
+                SELECT id, islem_tarihi, belge_no, aciklama, borc, alacak, fatura_id 
+                FROM $this->table 
+                WHERE cari_id = :cari_id 
+                  AND DATE(islem_tarihi) = :tarih 
+                  AND ((:yon = 'GELEN' AND ABS(alacak - :tutar) < 0.01) OR (:yon = 'GIDEN' AND ABS(borc - :tutar) < 0.01))
+                  AND silinme_tarihi IS NULL
+                  AND (fatura_id IS NULL OR fatura_id != :fatura_id)
+            ";
+
+            $checkStmt = $this->db->prepare($checkSql);
+            $checkStmt->execute([
+                'cari_id'   => $cariId,
+                'tarih'     => $faturaTarihi,
+                'yon'       => $yon,
+                'tutar'     => $odenecekTutar,
+                'fatura_id' => $faturaId
+            ]);
+
+            $existing = $checkStmt->fetchAll(PDO::FETCH_OBJ);
+            if (!empty($existing)) {
+                return [
+                    'cari_id'       => $cariId,
+                    'fatura_tarihi' => date('d.m.Y', strtotime($faturaTarihi)),
+                    'tutar'         => \App\Helper\Helper::formattedMoney($odenecekTutar) . ' ₺',
+                    'count'         => count($existing),
+                    'records'       => $existing
+                ];
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            error_log("CariHareketleriModel::checkSameDateAmount Error: " . $e->getMessage());
             return null;
         }
     }

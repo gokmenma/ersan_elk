@@ -1116,8 +1116,15 @@ class EInvoiceModel extends Model
                 f.belge_turu, f.fatura_profili, f.fatura_tipi, f.odenecek_tutar, f.para_birimi,
                 f.entegrator_durum_kodu, f.gib_durum_kodu, f.gib_durum_aciklamasi, f.ticari_yanit,
                 f.pdf_path, f.ubl_xml_path, f.earsiv_rapor_durum, f.earsiv_iptal_rapor_durum, f.islem_belirsiz,
+                f.yon,
                 COALESCE(t.toplam_tahsilat, 0) AS toplam_tahsilat,
                 COALESCE(t.tahsilat_adedi, 0) AS tahsilat_adedi,
+                (
+                    SELECT COUNT(*)
+                    FROM cari_hareketleri ch
+                    WHERE (ch.fatura_id = f.id OR (ch.belge_no = f.fatura_no AND ch.belge_no IS NOT NULL AND ch.belge_no != ''))
+                      AND ch.silinme_tarihi IS NULL
+                ) AS cariye_islendi,
                 (
                     SELECT {$groupConcatSql}
                     FROM fatura_satirlari fs_sub
@@ -1150,6 +1157,7 @@ class EInvoiceModel extends Model
 
         $data = [];
         if (!empty($rows)) {
+            $monthStart = date('Y-m-01');
             foreach ($rows as $row) {
                 $encryptedId = Security::encrypt((string)$row['id']);
                 $saatFormatted = !empty($row['duzenleme_saati']) ? date('H:i', strtotime($row['duzenleme_saati'])) : '';
@@ -1165,6 +1173,10 @@ class EInvoiceModel extends Model
                     'fatura_no'             => !empty($row['fatura_no']) ? $row['fatura_no'] : 'Taslak',
                     'ettn'                  => $row['ettn'],
                     'fatura_tarihi'         => date('d.m.Y', strtotime($row['fatura_tarihi'])),
+                    'fatura_tarihi_raw'     => $row['fatura_tarihi'],
+                    'is_after_month_start'  => (!empty($row['fatura_tarihi']) && $row['fatura_tarihi'] >= $monthStart) ? 1 : 0,
+                    'cariye_islendi'        => ((int)($row['cariye_islendi'] ?? 0) > 0) ? 1 : 0,
+                    'yon'                   => $row['yon'] ?? $yon,
                     'duzenleme_saati'       => $saatFormatted,
                     'alici_unvan'           => htmlspecialchars($row['alici_unvan'] ?? '', ENT_QUOTES, 'UTF-8'),
                     'alici_vkn_tckn'        => htmlspecialchars($row['alici_vkn_tckn'] ?? '', ENT_QUOTES, 'UTF-8'),

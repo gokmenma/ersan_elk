@@ -702,6 +702,109 @@ try {
             }
             break;
 
+        // 24. Faturayı Cariye İşle (Sync to Cari Movements)
+        case 'sync_to_cari':
+            $rawId = $_POST['invoice_id'] ?? ($_POST['id'] ?? '');
+            $invoiceId = EInvoiceSecurity::invoiceId($rawId);
+            $force = !empty($_POST['force']) && ($_POST['force'] == 1 || $_POST['force'] === 'true' || $_POST['force'] === true || $_POST['force'] === '1');
+
+            $cariHareketModel = new \App\Model\CariHareketleriModel();
+
+            // Eğer zorlama (force) onayı gelmediyse aynı tarihte aynı tutarda mevcut hareket var mı kontrol et
+            if (!$force) {
+                $duplicateCheck = $cariHareketModel->checkSameDateAmount($invoiceId);
+                if ($duplicateCheck) {
+                    echo json_encode([
+                        'status' => 'warning_duplicate',
+                        'message' => "Bu cariye ait {$duplicateCheck['fatura_tarihi']} tarihinde {$duplicateCheck['tutar']} tutarında {$duplicateCheck['count']} adet mevcut hareket kaydı bulunmaktadır. Yine de bu faturayı cariye işlemek istiyor musunuz?",
+                        'data' => $duplicateCheck
+                    ]);
+                    exit;
+                }
+            }
+
+            $movementId = $cariHareketModel->syncFaturaHareketi($invoiceId, $userId);
+
+            if ($movementId) {
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Fatura cari hareketlerine başarıyla işlendi.',
+                    'data' => [
+                        'movement_id' => $movementId,
+                        'invoice_id' => $invoiceId
+                    ]
+                ]);
+            } else {
+                $stmt = (new \App\Model\CariHareketleriModel())->db->prepare("SELECT cari_id, alici_unvan, alici_vkn_tckn, yon FROM faturalar WHERE id = :id AND firm_id = :firm_id");
+                $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+                $fat = $stmt->fetch(PDO::FETCH_OBJ);
+
+                $msg = 'Fatura cariye işlenemedi.';
+                if ($fat) {
+                    $unvanVkn = trim(($fat->alici_unvan ?? '') . ' ' . ($fat->alici_vkn_tckn ?? ''));
+                    $msg = "Fatura ile eşleşen bir cari kart bulunamadı ({$unvanVkn}). Lütfen önce cari kartı oluşturun veya VKN/TCKN bilgisini kontrol edin.";
+                }
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => $msg
+                ]);
+            }
+            break;
+
+        // 25. Fatura Cari Durum Kontrolü (Cariye işle öncesi bilgi getirme)
+        case 'check_invoice_cari':
+            $rawId = $_GET['invoice_id'] ?? ($_GET['id'] ?? ($_POST['invoice_id'] ?? ($_POST['id'] ?? '')));
+            $invoiceId = EInvoiceSecurity::invoiceId($rawId);
+
+            $stmt = (new \App\Model\CariHareketleriModel())->db->prepare("
+                SELECT f.*, c.CariAdi AS cari_adi, c.firma AS cari_firma
+                FROM faturalar f
+                LEFT JOIN cari c ON c.id = f.cari_id AND c.silinme_tarihi IS NULL
+                WHERE f.id = :id AND f.firm_id = :firm_id
+                LIMIT 1
+            ");
+            $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+            $fatura = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (!$fatura) {
+                http_response_code(404);
+                echo json_encode(['status' => 'error', 'message' => 'Fatura bulunamadı.']);
+                exit;
+            }
+
+            $cariModel = new \App\Model\CariModel();
+            $cariName = null;
+            $cariExists = false;
+
+            if (!empty($fatura->cari_id) && (!empty($fatura->cari_adi) || !empty($fatura->cari_firma))) {
+                $cariName = !empty($fatura->cari_adi) ? $fatura->cari_adi : $fatura->cari_firma;
+                $cariExists = true;
+            } else {
+                $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
+                if ($matchedCari) {
+                    $cariName = !empty($matchedCari->CariAdi) ? $matchedCari->CariAdi : $matchedCari->firma;
+                    $cariExists = true;
+                }
+            }
+
+            $unvan = trim((string)($fatura->alici_unvan ?: ($fatura->alici_vkn_tckn ?: 'İsimsiz Müşteri/Tedarikçi')));
+            $yon = strtoupper(trim((string)($fatura->yon ?? 'GIDEN')));
+            $directionText = ($yon === 'GELEN') ? 'Alacak' : 'Borç';
+            $odenecekTutar = (float)($fatura->odenecek_tutar ?? 0);
+
+            echo json_encode([
+                'status'            => 'success',
+                'cari_exists'       => $cariExists,
+                'cari_name'         => $cariName ?: $unvan,
+                'counterparty_name' => $unvan,
+                'invoice_no'        => trim((string)($fatura->fatura_no ?: ($fatura->ettn ?: 'Fatura'))),
+                'fatura_tarihi'     => date('d.m.Y', strtotime($fatura->fatura_tarihi ?: date('Y-m-d'))),
+                'direction'         => $yon,
+                'direction_text'    => $directionText,
+                'odenecek_tutar'    => \App\Helper\Helper::formattedMoney($odenecekTutar) . ' ₺'
+            ]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Bilinmeyen veya desteklenmeyen işlem.']);

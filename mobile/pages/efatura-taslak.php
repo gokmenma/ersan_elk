@@ -246,9 +246,12 @@ function loadTaslakInvoices() {
                             <button type="button" onclick="deleteDraftInvoice('${d.encrypted_id}')" class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center active:scale-95 transition-transform" title="Taslağı Sil">
                                 <span class="material-symbols-outlined text-[18px]">delete</span>
                             </button>
-                            <a href="?p=efatura-olustur&draft_id=${d.encrypted_id}" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold shadow-xs active:scale-95 transition-transform">
-                                <span class="material-symbols-outlined text-[16px]">edit</span> Düzenle / Gönder
+                            <a href="?p=efatura-olustur&draft_id=${d.encrypted_id}" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-transform" title="Taslağı Düzenle">
+                                <span class="material-symbols-outlined text-[16px]">edit</span> Düzenle
                             </a>
+                            <button type="button" onclick="sendDraftInvoice('${d.encrypted_id}')" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold shadow-xs active:scale-95 transition-transform" title="EDM / GİB'e Gönder">
+                                <span class="material-symbols-outlined text-[16px]">send</span> Gönder
+                            </button>
                         </div>
                     </div>
                 </div>`;
@@ -359,7 +362,7 @@ function applyTaslakCustomRange() {
     const sDate = document.getElementById('taslakStartDateInput').value;
     const eDate = document.getElementById('taslakEndDateInput').value;
     if (!sDate || !eDate) {
-        alert('Lütfen başlangıç ve bitiş tarihlerini seçin.');
+        Alert.warning('Tarih Seçimi', 'Lütfen başlangıç ve bitiş tarihlerini seçin.');
         return;
     }
     const fmtShort = (dStr) => {
@@ -385,8 +388,11 @@ function setCustomTaslakPeriodActive(label) {
     loadTaslakInvoices();
 }
 
-function deleteDraftInvoice(encId) {
-    if (!confirm('Bu taslak faturayı silmek istediğinizden emin misiniz?')) return;
+async function deleteDraftInvoice(encId) {
+    const confirmed = await Alert.confirmDelete('Taslağı Sil', 'Bu taslak faturayı silmek istediğinizden emin misiniz?');
+    if (!confirmed) return;
+
+    Alert.loading('Siliniyor...', 'Taslak fatura siliniyor.');
 
     const fd = new FormData();
     fd.append('csrf_token', '<?= \App\Helper\Security::csrf() ?>');
@@ -400,13 +406,49 @@ function deleteDraftInvoice(encId) {
     .then(r => r.json())
     .then(res => {
         if (res.status === 'success') {
+            Alert.success('Silindi', 'Taslak fatura başarıyla silindi.', 1500);
             loadTaslakInvoices();
         } else {
-            alert(res.message || 'Silme işlemi sırasında hata oluştu.');
+            Alert.error('Hata', res.message || 'Silme işlemi sırasında hata oluştu.');
         }
     })
     .catch(err => {
-        alert('Sunucu ile iletişim hatası.');
+        Alert.error('Bağlantı Hatası', 'Sunucu ile iletişim kurulamadı.');
+    });
+}
+
+async function sendDraftInvoice(encId) {
+    const confirmed = await Alert.confirm('Faturayı Gönder', 'Bu taslak fatura EDM Bilişim ve GİB sistemine iletilecektir. Onaylıyor musunuz?', 'Evet, Gönder', 'Vazgeç');
+    if (!confirmed) return;
+
+    Alert.loading('Gönderiliyor...', 'EDM servisi ile iletişim kuruluyor, lütfen bekleyin.');
+
+    const fd = new FormData();
+    fd.append('csrf_token', '<?= \App\Helper\Security::csrf() ?>');
+    fd.append('invoice_id', encId);
+
+    fetch('../api/efatura-api.php?action=send_invoice', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': '<?= \App\Helper\Security::csrf() ?>' },
+        body: fd
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            Alert.show({
+                icon: 'success',
+                title: 'Başarıyla Gönderildi!',
+                html: `Fatura EDM ve GİB sistemine iletildi.<br><strong>Fatura No:</strong> ${res.fatura_no || '-'}<br><br><span class="text-xs text-slate-500">Fatura Giden Faturalar ekranına aktarıldı.</span>`,
+                confirmButtonText: 'Tamam'
+            }).then(() => {
+                loadTaslakInvoices();
+            });
+        } else {
+            Alert.error('Gönderim Başarısız', res.message || 'Fatura gönderilirken bir hata oluştu.');
+        }
+    })
+    .catch(err => {
+        Alert.error('Bağlantı Hatası', 'Sunucu ile iletişim kurulurken hata oluştu.');
     });
 }
 </script>

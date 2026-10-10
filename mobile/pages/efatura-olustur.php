@@ -31,9 +31,31 @@ if (!empty($draftId)) {
     try {
         $rawDraftId = Security::decrypt($draftId);
         if ($rawDraftId && is_numeric($rawDraftId)) {
-            $existingDraft = $invoiceModel->getInvoiceWithLines((int)$rawDraftId, $firmId);
+            $existingDraft = $invoiceModel->getInvoiceById((int)$rawDraftId, $firmId);
         }
     } catch (\Exception $e) {}
+}
+
+if (!function_exists('cleanInvoiceNotes')) {
+    function cleanInvoiceNotes(?string $notes): string {
+        if (empty($notes)) return '';
+        if (preg_match('/<[a-z][\s\S]*>/i', $notes)) {
+            $n = preg_replace('/<\s*br\s*\/?>/i', "\n", $notes);
+            $n = preg_replace('/<\s*\/\s*tr\s*>/i', "\n", $n);
+            $n = preg_replace('/<\s*\/\s*td\s*>/i', " - ", $n);
+            $n = preg_replace('/<\s*\/\s*th\s*>/i', " - ", $n);
+            $n = preg_replace('/<\s*\/\s*(?:p|div|li|h[1-6])\s*>/i', "\n", $n);
+            $n = strip_tags($n);
+            $n = html_entity_decode($n, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $lines = array_map(function($line) {
+                $line = trim(preg_replace('/\s+/', ' ', $line));
+                return trim($line, " -");
+            }, explode("\n", $n));
+            $lines = array_filter($lines, fn($l) => $l !== '');
+            return implode("\n", $lines);
+        }
+        return html_entity_decode($notes, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
 }
 
 $unitCodes = [
@@ -402,7 +424,7 @@ $unitCodes = [
             <div>
                 <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Fatura Üzerinde Görünecek Notlar</label>
                 <textarea id="inpFaturaNotlar" rows="3" placeholder="Banka IBAN, ödeme vadesi veya diğer açıklamalar..."
-                          class="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"><?= htmlspecialchars($existingDraft['notlar'] ?? '') ?></textarea>
+                          class="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"><?= htmlspecialchars(cleanInvoiceNotes($existingDraft['notlar'] ?? '')) ?></textarea>
             </div>
         </div>
 
@@ -563,14 +585,38 @@ let currentStep = 1;
 let invoiceLines = [];
 let selectedCariId = null;
 
-// Mevcut taslak varsa kalemleri doldur
-<?php if (!empty($existingDraft['kalemler'])): ?>
-invoiceLines = <?= json_encode($existingDraft['kalemler'], JSON_UNESCAPED_UNICODE) ?>;
+// Mevcut taslak varsa satırları / kalemleri doldur
+<?php if (!empty($existingDraft['satirlar'])): ?>
+invoiceLines = <?= json_encode(array_map(function($row) {
+    return [
+        'urun_hizmet_adi' => $row['urun_hizmet_adi'] ?? '',
+        'miktar'          => (float)($row['miktar'] ?? 1),
+        'birim'           => $row['birim'] ?? 'C62',
+        'birim_fiyat'     => (float)($row['birim_fiyat'] ?? 0),
+        'kdv_orani'       => (float)($row['kdv_orani'] ?? 20),
+        'iskonto_orani'   => (float)($row['iskonto_orani'] ?? 0),
+        'iskonto_tutari'  => (float)($row['iskonto_tutari'] ?? 0),
+        'tevkifat_kodu'   => $row['tevkifat_kodu'] ?? '',
+        'tevkifat_orani'  => (float)($row['tevkifat_orani'] ?? 0),
+        'tevkifat_tutari' => (float)($row['tevkifat_tutari'] ?? 0),
+        'satir_toplami'   => (float)($row['satir_toplami'] ?? 0)
+    ];
+}, $existingDraft['satirlar']), JSON_UNESCAPED_UNICODE) ?>;
 <?php endif; ?>
 
 document.addEventListener('DOMContentLoaded', function() {
     renderLines();
     recalcInvoice();
+
+    <?php if (!empty($existingDraft['cari_id'])): 
+        $encCariId = Security::encrypt((string)$existingDraft['cari_id']);
+    ?>
+    selectedCariId = <?= json_encode($encCariId) ?>;
+    const existingCariSel = document.getElementById('selRegisteredCari');
+    if (existingCariSel) {
+        existingCariSel.value = <?= json_encode($encCariId) ?>;
+    }
+    <?php endif; ?>
 
     <?php if (!empty($_GET['cari_id'])): ?>
     const preCariId = <?= json_encode($_GET['cari_id']) ?>;
@@ -590,14 +636,14 @@ function goToStep(step) {
         const vkn = document.getElementById('inpAliciVkn').value.trim();
         const unvan = document.getElementById('inpAliciUnvan').value.trim();
         if (!vkn || !unvan) {
-            alert('Lütfen önce Alıcı VKN ve Ünvan bilgilerini doldurun.');
+            Alert.warning('Eksik Bilgi', 'Lütfen önce Alıcı VKN ve Ünvan bilgilerini doldurun.');
             return;
         }
     }
 
     if (step === 4) {
         if (invoiceLines.length === 0) {
-            alert('Lütfen faturaya en az 1 kalem ekleyin.');
+            Alert.warning('Kalem Eklenmedi', 'Lütfen faturaya en az 1 mal / hizmet kalemi ekleyin.');
             return;
         }
     }
@@ -711,11 +757,49 @@ function onFaturaTipiChange(val) {
     }
 }
 
+// HTML metinlerini temiz, okunabilir düz metne dönüştürme fonksiyonu (Tablolar, paragraflar, br etiketleri)
+function htmlToPlainText(html) {
+    if (!html) return '';
+    if (!/<[a-z][\s\S]*>/i.test(html)) {
+        return html.replace(/&nbsp;/g, ' ').trim();
+    }
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+
+    // Tabloları temiz satır formatına çevir
+    const tables = tempDiv.querySelectorAll('table');
+    tables.forEach(table => {
+        const rows = table.querySelectorAll('tr');
+        const rowTexts = [];
+        rows.forEach(tr => {
+            const cells = Array.from(tr.querySelectorAll('th, td'))
+                .map(td => td.textContent.trim().replace(/\u00a0/g, ' '))
+                .filter(txt => txt.length > 0);
+            if (cells.length > 0) {
+                rowTexts.push(cells.join(' - '));
+            }
+        });
+        const tableTextNode = document.createTextNode('\n' + rowTexts.join('\n') + '\n');
+        table.parentNode.replaceChild(tableTextNode, table);
+    });
+
+    tempDiv.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    tempDiv.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6').forEach(el => {
+        el.prepend(document.createTextNode('\n'));
+        el.append(document.createTextNode('\n'));
+    });
+
+    let text = tempDiv.textContent || tempDiv.innerText || '';
+    text = text.replace(/\r\n/g, '\n').replace(/\n\s*\n\s*\n+/g, '\n\n').trim();
+    return text;
+}
+
 function onSelectNoteTemplate(sel) {
-    const txt = sel.value;
-    if (txt) {
-        const cur = document.getElementById('inpFaturaNotlar').value;
-        document.getElementById('inpFaturaNotlar').value = cur ? (cur + '\n' + txt) : txt;
+    const rawVal = sel.value;
+    if (rawVal) {
+        const cleanTxt = htmlToPlainText(rawVal);
+        const cur = document.getElementById('inpFaturaNotlar').value.trim();
+        document.getElementById('inpFaturaNotlar').value = cur ? (cur + '\n' + cleanTxt) : cleanTxt;
     }
 }
 
@@ -798,15 +882,15 @@ function saveLineFromModal() {
     const idx = parseInt(document.getElementById('modalLineIndex').value);
 
     if (!ad) {
-        alert('Lütfen Ürün / Hizmet adını girin.');
+        Alert.warning('Eksik Bilgi', 'Lütfen Ürün / Hizmet adını girin.');
         return;
     }
     if (miktar <= 0) {
-        alert('Miktar 0 dan büyük olmalıdır.');
+        Alert.warning('Geçersiz Miktar', 'Miktar 0 dan büyük olmalıdır.');
         return;
     }
     if (birimFiyat <= 0) {
-        alert('Birim fiyat 0 dan büyük olmalıdır.');
+        Alert.warning('Geçersiz Fiyat', 'Birim fiyat 0 dan büyük olmalıdır.');
         return;
     }
 
@@ -833,8 +917,9 @@ function saveLineFromModal() {
     recalcInvoice();
 }
 
-function removeLine(idx) {
-    if (confirm('Bu kalemi faturadan çıkarmak istediğinize emin misiniz?')) {
+async function removeLine(idx) {
+    const confirmed = await Alert.confirmDelete('Kalemi Çıkar', 'Bu kalemi faturadan çıkarmak istediğinize emin misiniz?');
+    if (confirmed) {
         invoiceLines.splice(idx, 1);
         renderLines();
         recalcInvoice();
@@ -874,10 +959,10 @@ function renderLines() {
                 <div class="text-right shrink-0">
                     <div class="text-xs font-black text-primary">${Number(total).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</div>
                     <div class="flex items-center gap-1 mt-1 justify-end">
-                        <button type="button" onclick="openAddLineSheet(${i})" class="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                        <button type="button" onclick="openAddLineSheet(${i})" class="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="Düzenle">
                             <span class="material-symbols-outlined text-[14px]">edit</span>
                         </button>
-                        <button type="button" onclick="removeLine(${i})" class="w-6 h-6 rounded-md bg-rose-50 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center">
+                        <button type="button" onclick="removeLine(${i})" class="w-6 h-6 rounded-md bg-rose-50 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center" title="Sil">
                             <span class="material-symbols-outlined text-[14px]">delete</span>
                         </button>
                     </div>
@@ -959,15 +1044,19 @@ function buildInvoicePayload() {
 function saveDraftInvoice() {
     const payload = buildInvoicePayload();
     if (!payload.header.alici_vkn_tckn || !payload.header.alici_unvan) {
-        alert('Lütfen Alıcı VKN ve Unvan bilgilerini doldurun.');
-        goToStep(1);
+        Alert.warning('Eksik Bilgi', 'Lütfen Alıcı VKN ve Unvan bilgilerini doldurun.').then(() => {
+            goToStep(1);
+        });
         return;
     }
     if (payload.lines.length === 0) {
-        alert('Lütfen en az bir kalem ekleyin.');
-        goToStep(3);
+        Alert.warning('Kalem Eklenmedi', 'Lütfen faturaya en az bir kalem ekleyin.').then(() => {
+            goToStep(3);
+        });
         return;
     }
+
+    Alert.loading('Kaydediliyor...', 'Taslak fatura kaydediliyor, lütfen bekleyin.');
 
     fetch('../api/efatura-api.php?action=save_draft', {
         method: 'POST',
@@ -977,31 +1066,42 @@ function saveDraftInvoice() {
     .then(r => r.json())
     .then(res => {
         if (res.status === 'success') {
-            alert('Fatura başarıyla taslak olarak kaydedildi.');
-            window.location.href = '?p=efatura-taslak';
+            Alert.show({
+                icon: 'success',
+                title: 'Başarılı',
+                text: 'Fatura başarıyla taslak olarak kaydedildi.',
+                confirmButtonText: 'Taslaklara Git'
+            }).then(() => {
+                window.location.href = '?p=efatura-taslak';
+            });
         } else {
-            alert(res.message || 'Taslak kaydedilirken hata oluştu.');
+            Alert.error('Hata', res.message || 'Taslak kaydedilirken hata oluştu.');
         }
     })
     .catch(err => {
-        alert('Sunucu hatası oluştu.');
+        Alert.error('Bağlantı Hatası', 'Sunucu ile iletişim kurulurken bir hata oluştu.');
     });
 }
 
-function sendInvoiceGib() {
+async function sendInvoiceGib() {
     const payload = buildInvoicePayload();
     if (!payload.header.alici_vkn_tckn || !payload.header.alici_unvan) {
-        alert('Lütfen Alıcı VKN ve Unvan bilgilerini doldurun.');
-        goToStep(1);
+        Alert.warning('Eksik Bilgi', 'Lütfen Alıcı VKN ve Unvan bilgilerini doldurun.').then(() => {
+            goToStep(1);
+        });
         return;
     }
     if (payload.lines.length === 0) {
-        alert('Lütfen en az bir kalem ekleyin.');
-        goToStep(3);
+        Alert.warning('Kalem Eklenmedi', 'Lütfen faturaya en az bir kalem ekleyin.').then(() => {
+            goToStep(3);
+        });
         return;
     }
 
-    if (!confirm('Fatura kaydedilip EDM Bilişim & GİB sistemine iletilecektir. Onaylıyor musunuz?')) return;
+    const confirmed = await Alert.confirm('Faturayı Gönder', 'Fatura kaydedilip EDM Bilişim & GİB sistemine iletilecektir. Onaylıyor musunuz?', 'Evet, Gönder', 'Vazgeç');
+    if (!confirmed) return;
+
+    Alert.loading('Gönderiliyor...', 'Fatura kaydedilip EDM servisine iletiliyor, lütfen bekleyin.');
 
     fetch('../api/efatura-api.php?action=save_draft', {
         method: 'POST',
@@ -1010,10 +1110,11 @@ function sendInvoiceGib() {
     })
     .then(r => r.json())
     .then(resDraft => {
-        if (resDraft.status === 'success' && resDraft.encrypted_id) {
+        if (resDraft.status === 'success' && (resDraft.encrypted_id || resDraft.invoice_id)) {
+            const targetId = resDraft.encrypted_id || resDraft.invoice_id;
             const fd = new FormData();
             fd.append('csrf_token', '<?= \App\Helper\Security::csrf() ?>');
-            fd.append('invoice_id', resDraft.encrypted_id);
+            fd.append('invoice_id', targetId);
 
             return fetch('../api/efatura-api.php?action=send_invoice', {
                 method: 'POST',
@@ -1027,15 +1128,27 @@ function sendInvoiceGib() {
     .then(r => r.json())
     .then(resSend => {
         if (resSend.status === 'success') {
-            alert('Fatura başarıyla EDM ve GİB sistemine iletildi!');
-            window.location.href = '?p=efatura-giden';
+            Alert.show({
+                icon: 'success',
+                title: 'Başarıyla Gönderildi!',
+                html: `Fatura başarıyla EDM ve GİB sistemine iletildi.<br><strong>Fatura No:</strong> ${resSend.fatura_no || '-'}<br><br><span class="text-xs text-slate-500">Fatura Giden Faturalar ekranına aktarıldı.</span>`,
+                confirmButtonText: 'Giden Faturalara Git'
+            }).then(() => {
+                window.location.href = '?p=efatura-giden';
+            });
         } else {
-            alert('Fatura taslak olarak kaydedildi ancak GİB gönderiminde hata oluştu: ' + (resSend.message || ''));
-            window.location.href = '?p=efatura-taslak';
+            Alert.show({
+                icon: 'warning',
+                title: 'Taslak Kaydedildi, Gönderim Hatası',
+                text: 'Fatura taslak olarak kaydedildi ancak GİB gönderiminde hata oluştu: ' + (resSend.message || ''),
+                confirmButtonText: 'Taslaklara Git'
+            }).then(() => {
+                window.location.href = '?p=efatura-taslak';
+            });
         }
     })
     .catch(err => {
-        alert(err.message || 'Gönderim sırasında hata oluştu.');
+        Alert.error('Hata', err.message || 'Gönderim sırasında hata oluştu.');
     });
 }
 </script>

@@ -66,7 +66,7 @@ class GelirGiderModel extends Model
             $id = Security::decrypt($id);
         }
         $userId = $_SESSION['id'] ?? 0;
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = :uid WHERE id = :id");
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = :uid, duplicate_hash = NULL WHERE id = :id");
         return $stmt->execute(['uid' => $userId, 'id' => $id]);
     }
 
@@ -81,7 +81,7 @@ class GelirGiderModel extends Model
         if (empty($cleanIds)) return false;
 
         $inClause = implode(',', array_fill(0, count($cleanIds), '?'));
-        $sql = "UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = ? WHERE id IN ($inClause)";
+        $sql = "UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = ?, duplicate_hash = NULL WHERE id IN ($inClause)";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(array_merge([$userId], $cleanIds));
     }
@@ -428,15 +428,32 @@ class GelirGiderModel extends Model
      *
      * @param string $filePath Geçici dosya yolu
      * @param int $userId İşlemi yapan kullanıcı ID
+     * @param string $originalFilename Kullanıcının yüklediği dosyanın adı
      * @return array [status => 'success'|'error', 'message' => string, 'count' => int]
      */
-    public function importFromExcel(string $filePath, int $userId = 0): array
+    public function importFromExcel(string $filePath, int $userId = 0, string $originalFilename = ''): array
     {
         if (!file_exists($filePath)) {
             return ['status' => 'error', 'message' => 'Excel dosyası bulunamadı.', 'count' => 0];
         }
 
         try {
+            $fileHash = hash_file('sha256', $filePath);
+            if ($fileHash === false) {
+                return ['status' => 'error', 'message' => 'Excel dosyasının özeti oluşturulamadı.', 'count' => 0];
+            }
+
+            $fileCheck = $this->db->prepare("SELECT id FROM gelir_gider_excel_imports WHERE file_hash = :file_hash LIMIT 1");
+            $fileCheck->execute(['file_hash' => $fileHash]);
+            if ($fileCheck->fetchColumn()) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Bu Excel dosyası daha önce yüklenmiş. Aynı dosya tekrar içe aktarılamaz.',
+                    'count' => 0,
+                    'duplicate_count' => 0
+                ];
+            }
+
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, false);
@@ -491,6 +508,7 @@ class GelirGiderModel extends Model
             $idxKayitTarihi = $headerMap['kayit_tarihi'] ?? 11;
 
             $insertData = [];
+            $seenHashes = [];
             $skipped = 0;
 
             foreach ($rows as $rowIndex => $row) {
@@ -564,7 +582,7 @@ class GelirGiderModel extends Model
                     $kayitTarihi = date('Y-m-d H:i:s');
                 }
 
-                $insertData[] = [
+                $data = [
                     'type' => $type,
                     'tarih' => $tarih,
                     'kategori' => $rawKategori,
@@ -577,6 +595,14 @@ class GelirGiderModel extends Model
                     'kayit_tarihi' => $kayitTarihi,
                     'kayit_yapan' => $userId > 0 ? $userId : 0
                 ];
+
+                $data['duplicate_hash'] = $this->buildExcelDuplicateHash($data);
+                if (isset($seenHashes[$data['duplicate_hash']])) {
+                    $skipped++;
+                    continue;
+                }
+                $seenHashes[$data['duplicate_hash']] = true;
+                $insertData[] = $data;
             }
 
             if (empty($insertData)) {
@@ -584,34 +610,140 @@ class GelirGiderModel extends Model
             }
 
             $this->db->beginTransaction();
+
+            $importStmt = $this->db->prepare("
+                INSERT INTO gelir_gider_excel_imports
+                    (file_hash, original_filename, total_rows, imported_rows, duplicate_rows, uploaded_by)
+                VALUES
+                    (:file_hash, :original_filename, :total_rows, 0, 0, :uploaded_by)
+            ");
+            $importStmt->execute([
+                'file_hash' => $fileHash,
+                'original_filename' => mb_substr(basename($originalFilename ?: $filePath), 0, 255, 'UTF-8'),
+                'total_rows' => count($insertData) + $skipped,
+                'uploaded_by' => $userId
+            ]);
+            $importId = (int)$this->db->lastInsertId();
+
             $stmt = $this->db->prepare("
                 INSERT INTO {$this->table} 
-                (type, tarih, kategori, hesap_adi, tutar, aciklama, plaka, odeme_sekli, banka_adi, kayit_tarihi, kayit_yapan) 
+                (type, tarih, kategori, hesap_adi, tutar, aciklama, plaka, odeme_sekli, banka_adi, kayit_tarihi, kayit_yapan, duplicate_hash, excel_import_id) 
                 VALUES 
-                (:type, :tarih, :kategori, :hesap_adi, :tutar, :aciklama, :plaka, :odeme_sekli, :banka_adi, :kayit_tarihi, :kayit_yapan)
+                (:type, :tarih, :kategori, :hesap_adi, :tutar, :aciklama, :plaka, :odeme_sekli, :banka_adi, :kayit_tarihi, :kayit_yapan, :duplicate_hash, :excel_import_id)
             ");
 
+            $existsStmt = $this->db->prepare("
+                SELECT id
+                FROM {$this->table}
+                WHERE silinme_tarihi IS NULL
+                  AND (
+                    duplicate_hash = :duplicate_hash
+                    OR (
+                        type = :type AND tarih = :tarih
+                        AND ROUND(CAST(tutar AS DECIMAL(15,2)), 2) = :tutar
+                        AND TRIM(COALESCE(kategori, '')) = :kategori
+                        AND TRIM(COALESCE(hesap_adi, '')) = :hesap_adi
+                        AND TRIM(COALESCE(aciklama, '')) = :aciklama
+                        AND TRIM(COALESCE(plaka, '')) = :plaka
+                        AND TRIM(COALESCE(odeme_sekli, '')) = :odeme_sekli
+                        AND TRIM(COALESCE(banka_adi, '')) = :banka_adi
+                    )
+                  )
+                LIMIT 1
+            ");
+
+            $imported = 0;
             foreach ($insertData as $data) {
-                $stmt->execute($data);
+                $existsStmt->execute([
+                    'duplicate_hash' => $data['duplicate_hash'],
+                    'type' => $data['type'],
+                    'tarih' => $data['tarih'],
+                    'tutar' => number_format((float)$data['tutar'], 2, '.', ''),
+                    'kategori' => $data['kategori'],
+                    'hesap_adi' => $data['hesap_adi'],
+                    'aciklama' => $data['aciklama'],
+                    'plaka' => $data['plaka'],
+                    'odeme_sekli' => $data['odeme_sekli'],
+                    'banka_adi' => $data['banka_adi']
+                ]);
+                if ($existsStmt->fetchColumn()) {
+                    $skipped++;
+                    continue;
+                }
+
+                $data['excel_import_id'] = $importId;
+                try {
+                    $stmt->execute($data);
+                    $imported++;
+                } catch (\PDOException $insertException) {
+                    if ($insertException->getCode() === '23000') {
+                        $skipped++;
+                        continue;
+                    }
+                    throw $insertException;
+                }
             }
+
+            $updateImport = $this->db->prepare("
+                UPDATE gelir_gider_excel_imports
+                SET imported_rows = :imported_rows, duplicate_rows = :duplicate_rows
+                WHERE id = :id
+            ");
+            $updateImport->execute([
+                'imported_rows' => $imported,
+                'duplicate_rows' => $skipped,
+                'id' => $importId
+            ]);
 
             $this->db->commit();
 
             return [
                 'status' => 'success',
-                'message' => count($insertData) . ' adet gelir-gider kaydı başarıyla yüklendi.',
-                'count' => count($insertData)
+                'message' => $imported . ' kayıt yüklendi, ' . $skipped . ' mükerrer/geçersiz satır atlandı.',
+                'count' => $imported,
+                'duplicate_count' => $skipped
             ];
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
             error_log("GelirGiderModel::importFromExcel error: " . $e->getMessage());
+            if ($e instanceof \PDOException && $e->getCode() === '23000') {
+                return [
+                    'status' => 'error',
+                    'message' => 'Bu Excel dosyası daha önce yüklenmiş. Aynı dosya tekrar içe aktarılamaz.',
+                    'count' => 0,
+                    'duplicate_count' => 0
+                ];
+            }
             return [
                 'status' => 'error',
                 'message' => 'Excel dosyası işlenirken bir hata oluştu: ' . $e->getMessage(),
                 'count' => 0
             ];
         }
+    }
+
+    private function buildExcelDuplicateHash(array $data): string
+    {
+        $normalize = static function ($value): string {
+            $value = trim((string)$value);
+            $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+            return mb_strtolower($value, 'UTF-8');
+        };
+
+        $parts = [
+            (string)(int)$data['type'],
+            date('Y-m-d H:i:s', strtotime((string)$data['tarih'])),
+            $normalize($data['kategori']),
+            $normalize($data['hesap_adi']),
+            number_format((float)$data['tutar'], 2, '.', ''),
+            $normalize($data['aciklama']),
+            $normalize($data['plaka']),
+            $normalize($data['odeme_sekli']),
+            $normalize($data['banka_adi'])
+        ];
+
+        return hash('sha256', implode('|', $parts));
     }
 }

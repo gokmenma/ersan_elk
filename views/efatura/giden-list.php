@@ -438,6 +438,9 @@ $title = 'Giden Faturalar';
     <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-tahsilat-action text-success" data-action="tahsilat" href="javascript:void(0)">
         <i class="bx bx-money me-2 text-success font-size-15"></i> Tahsilat Ekle / Yönet
     </a>
+    <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-cariye-isle-action text-success" data-action="cariye-isle" href="javascript:void(0)">
+        <i class="bx bx-transfer-alt me-2 text-success font-size-15"></i> Cariye İşle
+    </a>
     <a class="dropdown-item d-flex align-items-center py-1.5 font-size-12 cm-action cm-sync-action text-warning" data-action="sync" href="javascript:void(0)">
         <i class="bx bx-refresh me-2 text-warning font-size-15"></i> GİB Durumu Sorgula
     </a>

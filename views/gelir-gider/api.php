@@ -68,6 +68,10 @@ if ($_POST["action"] == "gelir-gider-kaydet") {
         //yeni kayıt olduğu zaman kayıt yapanı al
         if ($id == 0) {
             $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
+        } else {
+            // Düzenlenen Excel kaydı artık eski satırın parmak izini temsil etmez.
+            $data["duplicate_hash"] = null;
+            $data["excel_import_id"] = null;
         }
 
         $lastInsertId = $GelirGider->saveWithAttr($data) ?? $_POST["gelir_gider_id"];
@@ -338,7 +342,7 @@ if ($action == "gelir-gider-excel-kaydet") {
     }
 
     $userId = (int)($_SESSION['id'] ?? ($_SESSION['user_id'] ?? 0));
-    $result = $GelirGider->importFromExcel($fileTmpPath, $userId);
+    $result = $GelirGider->importFromExcel($fileTmpPath, $userId, $fileName);
 
     if ($result['status'] === 'success') {
         try {
