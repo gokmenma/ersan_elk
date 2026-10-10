@@ -273,6 +273,11 @@ class KacakKontrolModel extends Model
                             $v = \App\Helper\Date::dttoeng($v);
                             $orClause[] = "DATE($dbCol) = ?";
                             $params[] = $v;
+                        } elseif ($column === 'ekip_adi') {
+                            foreach (self::ekipAdiSiralamalari($v) as $ekipAdi) {
+                                $orClause[] = "$dbCol = ?";
+                                $params[] = $ekipAdi;
+                            }
                         } else {
                             $orClause[] = "$dbCol LIKE ?";
                             $params[] = '%' . $v . '%';
@@ -287,6 +292,10 @@ class KacakKontrolModel extends Model
                     if ($isDateCol) {
                         $where[] = "DATE($dbCol) = ?";
                         $params[] = $firstVal;
+                    } elseif ($column === 'ekip_adi') {
+                        $ekipSiralamalari = self::ekipAdiSiralamalari($firstVal);
+                        $where[] = '(' . implode(' OR ', array_fill(0, count($ekipSiralamalari), "$dbCol = ?")) . ')';
+                        array_push($params, ...$ekipSiralamalari);
                     } else {
                         $where[] = "$dbCol = ?";
                         $params[] = $firstVal;
@@ -341,8 +350,16 @@ class KacakKontrolModel extends Model
 
                 case 'contains':
                 default:
-                    $where[] = "$dbCol LIKE ?";
-                    $params[] = '%' . $firstVal . '%';
+                    if ($column === 'ekip_adi' && strpos($firstVal, ',') !== false) {
+                        $ekipSiralamalari = self::ekipAdiSiralamalari($firstVal);
+                        $where[] = '(' . implode(' OR ', array_fill(0, count($ekipSiralamalari), "$dbCol LIKE ?")) . ')';
+                        foreach ($ekipSiralamalari as $ekipAdi) {
+                            $params[] = '%' . $ekipAdi . '%';
+                        }
+                    } else {
+                        $where[] = "$dbCol LIKE ?";
+                        $params[] = '%' . $firstVal . '%';
+                    }
                     break;
             }
         }
@@ -1375,6 +1392,23 @@ class KacakKontrolModel extends Model
             return mb_strtolower($a, 'UTF-8') <=> mb_strtolower($b, 'UTF-8');
         });
         return implode(', ', $parcalar);
+    }
+
+    /**
+     * Ekip filtresinin personellerin kaydedilme sırasından etkilenmemesi için
+     * iki kişilik ekibin olası ad sıralamalarını döndürür.
+     */
+    private static function ekipAdiSiralamalari(string $ekipAdi): array
+    {
+        $parcalar = array_values(array_filter(array_map('trim', explode(',', $ekipAdi))));
+        if (count($parcalar) !== 2) {
+            return [trim($ekipAdi)];
+        }
+
+        return array_values(array_unique([
+            implode(', ', $parcalar),
+            implode(', ', array_reverse($parcalar)),
+        ]));
     }
 
     /**
