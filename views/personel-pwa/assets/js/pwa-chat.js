@@ -922,7 +922,7 @@ const LiveChat = {
     this.checkUnread(); // Hemen kontrol et
     this.unreadInterval = setInterval(() => {
       this.checkUnread();
-    }, 10000); // 10 saniye
+    }, 4000); // 4 saniye
   },
 
   stopUnreadPolling() {
@@ -941,6 +941,10 @@ const LiveChat = {
 
         if (count > this.lastUnreadCount && count > 0) {
           this.playSound();
+          // Yeni mesaj geldiğinde chat penceresini otomatik aç
+          if (!this.isOpen) {
+            this.open();
+          }
         }
         this.lastUnreadCount = count;
 

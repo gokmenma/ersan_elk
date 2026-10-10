@@ -7,9 +7,9 @@
 // temizlenir hem de importScripts ve precache URL'leri değişir. Kayıt tarafında
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
-const KUYRUK_SURUM = "29";
+const KUYRUK_SURUM = "31";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
-const SAYFA_CACHE = "personel-pwa-sayfa-v3";
+const SAYFA_CACHE = "personel-pwa-sayfa-v5";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar

@@ -325,17 +325,8 @@ if ($page === 'ihbar') {
     <?php
     // Canlı destek ayar kontrolü
     $_pwaSettingsModel = new \App\Model\SettingsModel();
-    $_pwaDestekModel = new \App\Model\DestekModel();
     $_pwaFirmaId = $personel->firma_id ?? ($_SESSION['firma_id'] ?? null);
     $_pwaCanliDestekAktif = $_pwaSettingsModel->getSettings('canli_destek_aktif', $_pwaFirmaId) === '1';
-
-    // Mesai saatleri dışında chati gizle (Eğer aktif/açık bir konuşması yoksa)
-    if ($_pwaCanliDestekAktif && !$_pwaDestekModel->isWorkingHours($_pwaFirmaId)) {
-        $__aktifKonusma = $_pwaDestekModel->getActiveConversation($personel_id);
-        if (!$__aktifKonusma) {
-            $_pwaCanliDestekAktif = false;
-        }
-    }
 
     if ($_pwaCanliDestekAktif): ?>
         <link rel="stylesheet" href="assets/css/pwa-chat.css?v=<?= filemtime(__DIR__ . '/assets/css/pwa-chat.css') ?>">

@@ -21,14 +21,6 @@ if (!empty($_yetkiliKullanicilar)) {
         return;
     }
 }
-
-// Mesai dışındaysa widgetı gizle
-$_destekModel = new \App\Model\DestekModel();
-if (!$_destekModel->isWorkingHours()) {
-    // Sadece mevcut açık/beklemede olan işlemler için açık kalsın mı? Yok, yönetici tarafı isteniyor:
-    // "yönetici tarafında da mesai saatleri dışında chat butonu gizlensin"
-    return;
-}
 ?>
 
 <style>
@@ -1576,10 +1568,9 @@ if (!$_destekModel->isWorkingHours()) {
                             hasNew = true;
                             const konusmaId = nm.konusma_id;
 
-                            // Panel kapalıysa veya pencere kapalıysa bildirim göster
-                            if (!this.openWindows[konusmaId]) {
-                                this.showNotification(nm);
-                            }
+                            // Yeni mesaj geldiğinde sohbet penceresini otomatik aç
+                            this.openChatWindow(konusmaId);
+                            this.showNotification(nm);
                         }
                     });
 
@@ -1629,8 +1620,10 @@ if (!$_destekModel->isWorkingHours()) {
                         const msgContainer = document.getElementById(`achat-msgs-${konusmaId}`);
                         if (!msgContainer) return;
 
+                        let hasNewIncoming = false;
                         response.messages.forEach(msg => {
                             if (msg.gonderen_tip !== 'yonetici' && !msgContainer.querySelector(`[data-msg-id="${msg.id}"]`)) {
+                                hasNewIncoming = true;
                                 msgContainer.insertAdjacentHTML('beforeend', this.renderMessage(msg, konusmaId));
                                 if (msg.id > this.openWindows[konusmaId].lastMessageId) {
                                     this.openWindows[konusmaId].lastMessageId = msg.id;
@@ -1644,6 +1637,14 @@ if (!$_destekModel->isWorkingHours()) {
                                 }
                             }
                         });
+
+                        if (hasNewIncoming) {
+                            const winEl = document.getElementById(`achat-win-${konusmaId}`);
+                            if (winEl && winEl.classList.contains('minimized')) {
+                                winEl.classList.remove('minimized');
+                                this.openWindows[konusmaId].minimized = false;
+                            }
+                        }
 
                         this.scrollToBottom(konusmaId);
                     }
