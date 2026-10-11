@@ -23,10 +23,12 @@ class AracZimmetModel extends Model
         $sql = $this->db->prepare("
             SELECT az.*, 
                    a.plaka, a.marka, a.model,
-                   p.adi_soyadi as personel_adi
+                   p.adi_soyadi as personel_adi,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} az
             INNER JOIN araclar a ON az.arac_id = a.id
             LEFT JOIN personel p ON az.personel_id = p.id
+            LEFT JOIN users u ON az.olusturan_kullanici_id = u.id
             WHERE az.firma_id = :firma_id
             ORDER BY az.zimmet_tarihi DESC
         ");
@@ -42,10 +44,12 @@ class AracZimmetModel extends Model
         $sql = $this->db->prepare("
             SELECT az.*, 
                    a.plaka, a.marka, a.model,
-                   p.adi_soyadi as personel_adi
+                   p.adi_soyadi as personel_adi,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} az
             INNER JOIN araclar a ON az.arac_id = a.id
             LEFT JOIN personel p ON az.personel_id = p.id
+            LEFT JOIN users u ON az.olusturan_kullanici_id = u.id
             WHERE az.firma_id = :firma_id
             AND az.zimmet_tarihi BETWEEN :baslangic AND :bitis
             ORDER BY az.zimmet_tarihi DESC

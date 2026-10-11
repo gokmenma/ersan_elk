@@ -205,11 +205,11 @@ if (!function_exists('formatKmMobile')) {
              <div class="relative z-10 grid grid-cols-2 gap-4">
                  <div>
                      <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Toplam Tutar</span>
-                     <h4 class="text-xl font-black"><?= formatMoneyMobile($totalYakitTutar) ?></h4>
+                     <h4 class="text-xl font-black" id="mobile-yakit-total-tutar"><?= formatMoneyMobile($totalYakitTutar) ?></h4>
                  </div>
                  <div>
                      <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Toplam Litre</span>
-                     <h4 class="text-xl font-black"><?= number_format($totalYakitLitre, 2, ',', '.') ?> <small class="text-[10px] font-normal">L</small></h4>
+                     <h4 class="text-xl font-black" id="mobile-yakit-total-litre"><?= number_format($totalYakitLitre, 2, ',', '.') ?> <small class="text-[10px] font-normal">L</small></h4>
                  </div>
              </div>
         </div>
@@ -222,7 +222,7 @@ if (!function_exists('formatKmMobile')) {
              </div>
              <div class="relative z-10">
                  <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Toplam Yapılan KM</span>
-                 <h4 class="text-2xl font-black"><?= formatKmMobile($totalYapilanKm) ?></h4>
+                 <h4 class="text-2xl font-black" id="mobile-km-total-yapilan"><?= formatKmMobile($totalYapilanKm) ?></h4>
              </div>
         </div>
     </div>
@@ -450,7 +450,9 @@ if (!function_exists('formatKmMobile')) {
             <?php foreach ($yakitlar_list as $yak): ?>
                 <div onclick="openYakitDetay(<?= (int)$yak->id ?>, '<?= htmlspecialchars($yak->plaka, ENT_QUOTES) ?>')" 
                     class="cursor-pointer bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.99]"
-                    data-tags="<?= htmlspecialchars(($yak->plaka ?? '') . ' ' . ($yak->marka ?? '') . ' ' . ($yak->model ?? '') . ' ' . ($yak->zimmetli_personel ?? '') . ' ' . ($yak->istasyon ?? '')) ?>">
+                    data-tags="<?= htmlspecialchars(($yak->plaka ?? '') . ' ' . ($yak->marka ?? '') . ' ' . ($yak->model ?? '') . ' ' . ($yak->zimmetli_personel ?? '') . ' ' . ($yak->istasyon ?? '')) ?>"
+                    data-tutar="<?= (float)($yak->toplam_tutar ?? 0) ?>"
+                    data-litre="<?= (float)($yak->yakit_miktari ?? 0) ?>">
                     <div class="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
                         <div class="flex items-center gap-2">
                              <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-900/30 flex items-center justify-center">
@@ -497,7 +499,7 @@ if (!function_exists('formatKmMobile')) {
             </div>
         <?php else: ?>
             <?php foreach ($kmlar_list as $kmData): ?>
-                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
+                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4" data-km="<?= (float)($kmData->yapilan_km ?? 0) ?>">
                      <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
                              <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 flex items-center justify-center">
@@ -771,6 +773,52 @@ if (!function_exists('formatKmMobile')) {
 
             card.style.display = hasMatch ? '' : 'none';
         });
+
+        // Filtrelenmiş kartlara göre özetleri anlık güncelle
+        updateMobileSummaries(activeTab);
+    }
+
+    function updateMobileSummaries(activeTab) {
+        if (!activeTab) activeTab = document.querySelector('.tab-content.block');
+        if (!activeTab) return;
+
+        if (activeTab.id === 'tab-content-yakit') {
+            const cards = activeTab.querySelectorAll('.bg-white.dark\\:bg-card-dark.rounded-2xl');
+            let sumTutar = 0;
+            let sumLitre = 0;
+
+            cards.forEach(card => {
+                if (card.classList.contains('text-center') && card.classList.contains('p-6')) return;
+                if (card.style.display !== 'none') {
+                    sumTutar += parseFloat(card.getAttribute('data-tutar')) || 0;
+                    sumLitre += parseFloat(card.getAttribute('data-litre')) || 0;
+                }
+            });
+
+            const tutarEl = document.getElementById('mobile-yakit-total-tutar');
+            const litreEl = document.getElementById('mobile-yakit-total-litre');
+            if (tutarEl) {
+                tutarEl.innerText = Number(sumTutar).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+            }
+            if (litreEl) {
+                litreEl.innerHTML = Number(sumLitre).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' <small class="text-[10px] font-normal">L</small>';
+            }
+        } else if (activeTab.id === 'tab-content-km') {
+            const cards = activeTab.querySelectorAll('.bg-white.dark\\:bg-card-dark.rounded-2xl');
+            let sumKm = 0;
+
+            cards.forEach(card => {
+                if (card.classList.contains('text-center') && card.classList.contains('p-6')) return;
+                if (card.style.display !== 'none') {
+                    sumKm += parseFloat(card.getAttribute('data-km')) || 0;
+                }
+            });
+
+            const kmEl = document.getElementById('mobile-km-total-yapilan');
+            if (kmEl) {
+                kmEl.innerText = Number(sumKm).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' km';
+            }
+        }
     }
 
     // Badge butonlarına tıklandığında çalışacak fonksiyon

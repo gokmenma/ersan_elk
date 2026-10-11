@@ -26,9 +26,11 @@ class AracKmModel extends Model
                    p1.adi_soyadi as sabah_personel,
                    p2.adi_soyadi as aksam_personel,
                    s.sabah_durum,
-                   ak.aksam_durum
+                   ak.aksam_durum,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
+            LEFT JOIN users u ON k.olusturan_kullanici_id = u.id
             LEFT JOIN (
                 SELECT arac_id, tarih, personel_id, durum as sabah_durum
                 FROM arac_km_bildirimleri 
@@ -119,9 +121,11 @@ class AracKmModel extends Model
                    p1.adi_soyadi as sabah_personel,
                    p2.adi_soyadi as aksam_personel,
                    s.sabah_durum,
-                   ak.aksam_durum
+                   ak.aksam_durum,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
+            LEFT JOIN users u ON k.olusturan_kullanici_id = u.id
             LEFT JOIN (
                 SELECT arac_id, tarih, personel_id, durum as sabah_durum
                 FROM arac_km_bildirimleri 

@@ -22,9 +22,11 @@ class AracServisModel extends Model
         $sql = $this->db->prepare("
             SELECT s.*, a.plaka, a.marka, a.model,
                    s.ikame_arac_id, s.ikame_plaka, s.ikame_marka, s.ikame_model,
-                   s.ikame_alis_tarihi, s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi
+                   s.ikame_alis_tarihi, s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} s
             INNER JOIN araclar a ON s.arac_id = a.id
+            LEFT JOIN users u ON s.olusturan_kullanici_id = u.id
             WHERE s.firma_id = :firma_id 
             AND s.silinme_tarihi IS NULL
             ORDER BY s.servis_tarihi DESC
@@ -41,9 +43,11 @@ class AracServisModel extends Model
         $sql = $this->db->prepare("
             SELECT s.*, a.plaka, a.marka, a.model,
                    s.ikame_arac_id, s.ikame_plaka, s.ikame_marka, s.ikame_model,
-                   s.ikame_alis_tarihi, s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi
+                   s.ikame_alis_tarihi, s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} s
             INNER JOIN araclar a ON s.arac_id = a.id
+            LEFT JOIN users u ON s.olusturan_kullanici_id = u.id
             WHERE s.arac_id = :arac_id 
             AND s.firma_id = :firma_id
             AND s.silinme_tarihi IS NULL
@@ -63,9 +67,11 @@ class AracServisModel extends Model
     {
         $sqlStr = "SELECT s.*, a.plaka, a.marka, a.model,
                           s.ikame_arac_id, s.ikame_plaka, s.ikame_marka, s.ikame_model,
-                          s.ikame_alis_tarihi, s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi
+                          s.ikame_alis_tarihi, s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi,
+                          COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
                   FROM {$this->table} s
                   INNER JOIN araclar a ON s.arac_id = a.id
+                  LEFT JOIN users u ON s.olusturan_kullanici_id = u.id
                   WHERE s.firma_id = :firma_id 
                   AND s.silinme_tarihi IS NULL
                   AND s.servis_tarihi BETWEEN :baslangic AND :bitis";

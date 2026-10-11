@@ -1163,6 +1163,24 @@ div.DTCR_pointer {
   align-items: center;
 }
 
+.custom-context-menu .cm-meta-user {
+  padding: 6px 16px;
+  font-size: 11px;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(248, 250, 252, 0.85);
+  line-height: 1.35;
+}
+
+.custom-context-menu .cm-meta-user strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
 .custom-context-menu a,
 .custom-context-menu button {
   display: flex;
@@ -1228,6 +1246,16 @@ tr.context-menu-active > td {
 [data-bs-theme="dark"] .custom-context-menu .cm-header {
   color: #94a3b8 !important;
   border-bottom-color: #334155 !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu .cm-meta-user {
+  color: #94a3b8 !important;
+  border-bottom-color: #334155 !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+}
+
+[data-bs-theme="dark"] .custom-context-menu .cm-meta-user strong {
+  color: #e2e8f0 !important;
 }
 
 [data-bs-theme="dark"] .custom-context-menu a,

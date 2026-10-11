@@ -740,7 +740,7 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                                 'hibrit' => '<span class="badge bg-warning text-dark">Hibrit</span>'
                                             ];
                                             ?>
-                                            <tr>
+                                            <tr data-created-by="<?php echo htmlspecialchars($arac->olusturan_kullanici_adi ?? ''); ?>" data-created-at="<?php echo !empty($arac->olusturma_tarihi) ? htmlspecialchars(date('d.m.Y H:i', strtotime($arac->olusturma_tarihi))) : ''; ?>">
                                                 <td class="text-center">
                                                     <?php echo $i; ?>
                                                 </td>
@@ -1518,9 +1518,16 @@ if (!function_exists('getEvrakBadgeStatus')) {
 <?php include_once "modal/zimmet-iade-modal.php"; ?>
 
 <!-- Shadcn Style Context Menu -->
-<div id="arac-context-menu" class="dropdown-menu shadow-sm border" style="display: none; position: fixed; z-index: 9999; min-width: 180px; border-radius: 8px; padding: 4px; background: #ffffff; border-color: #e2e8f0 !important;">
-    <div class="dropdown-header py-2 px-2 mb-1" style="font-size: 12px; font-weight: 500; color: #64748b; letter-spacing: -0.01em;">
-        <span id="context-arac-plaka">İşlemler</span>
+<div id="arac-context-menu" class="dropdown-menu shadow-sm border" style="display: none; position: fixed; z-index: 9999; min-width: 200px; border-radius: 8px; padding: 4px; background: #ffffff; border-color: #e2e8f0 !important;">
+    <div class="dropdown-header py-2 px-2 mb-1 border-bottom" style="font-size: 12px; font-weight: 500; color: #64748b; letter-spacing: -0.01em;">
+        <div class="fw-bold text-dark d-flex align-items-center">
+            <i class="bx bx-layer text-primary me-1-5"></i>
+            <span id="context-arac-plaka">İşlemler</span>
+        </div>
+        <div id="context-arac-user-info" class="text-muted font-size-11 mt-1 d-none d-flex align-items-center" style="font-weight: normal;">
+            <i class="bx bx-user-circle text-primary me-1 font-size-13"></i>
+            <span id="context-arac-user-text"></span>
+        </div>
     </div>
     <div id="context-menu-items">
         <!-- JS ile doldurulacak -->

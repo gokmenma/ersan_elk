@@ -241,7 +241,27 @@ $(document).ready(function () {
       menuItemsHtml = `<button type="button" class="cm-row-click"><i class="bx bx-right-arrow-alt text-primary"></i> <span>Detaya Git</span></button>`;
     }
 
-    const menuHeader = `<div class="cm-header"><i class="bx bx-layer text-primary me-2 font-size-15"></i> <span class="text-truncate">${dtEscapeHtml(rowTitle)}</span></div>`;
+    // Ekleyen / Yükleyen Kullanıcı ve Tarih Bilgisi
+    let createdBy = $tr.attr('data-created-by') || $tr.data('created-by') || $tr.attr('data-olusturan') || $tr.data('olusturan') || '';
+    let createdAt = $tr.attr('data-created-at') || $tr.data('created-at') || '';
+    if (!createdBy) {
+      const $userEl = $tr.find('[data-created-by], [data-olusturan]').first();
+      if ($userEl.length) {
+        createdBy = $userEl.attr('data-created-by') || $userEl.attr('data-olusturan') || '';
+        createdAt = $userEl.attr('data-created-at') || createdAt;
+      }
+    }
+
+    let metaUserHtml = '';
+    if (createdBy) {
+      let metaText = `Ekleyen: <strong>${dtEscapeHtml(createdBy)}</strong>`;
+      if (createdAt) {
+        metaText += ` <span class="cm-meta-date text-muted ms-1 font-size-10">(${dtEscapeHtml(createdAt)})</span>`;
+      }
+      metaUserHtml = `<div class="cm-meta-user"><i class="bx bx-user-circle text-primary font-size-14"></i> <span class="text-truncate">${metaText}</span></div>`;
+    }
+
+    const menuHeader = `<div class="cm-header"><i class="bx bx-layer text-primary me-2 font-size-15"></i> <span class="text-truncate">${dtEscapeHtml(rowTitle)}</span></div>` + metaUserHtml;
     const fullMenuHtml = menuHeader + menuItemsHtml;
 
     let $contextMenu = $('#customContextMenu');

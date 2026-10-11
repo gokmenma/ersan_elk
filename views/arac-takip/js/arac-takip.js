@@ -925,7 +925,7 @@ const AracTakip = {
                 ? '<span class="badge bg-success">Aktif</span>'
                 : '<span class="badge bg-secondary">İade Edildi</span>';
 
-            html += `<tr>
+            html += `<tr data-created-by="${z.olusturan_kullanici_adi || ''}" data-created-at="${self.formatDateTime(z.olusturma_tarihi) || ''}">
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${z.plaka}</strong><br><small class="text-muted">${z.marka || ""} ${z.model || ""}</small></td>
                             <td>${z.personel_adi}</td>
@@ -1151,7 +1151,7 @@ const AracTakip = {
         let html = "";
         if (response.data && response.data.length > 0) {
           response.data.forEach(function (y, index) {
-            html += `<tr>
+            html += `<tr data-litre="${parseFloat(y.yakit_miktari) || 0}" data-tutar="${parseFloat(y.toplam_tutar) || 0}" data-created-by="${y.olusturan_kullanici_adi || ''}" data-created-at="${self.formatDateTime(y.olusturma_tarihi) || ''}">
                             <td class="text-center">
                                 <input type="checkbox" class="form-check-input yakit-checkbox" value="${y.id}">
                             </td>
@@ -1179,19 +1179,14 @@ const AracTakip = {
         tbody.html(html);
         self.initDataTable("#yakitTable");
 
-        // İstatistikleri güncelle
-        if (response.stats) {
-          $("#yakit-toplam-litre").text(
-            self.formatNumber(response.stats.toplam_litre) + " L",
-          );
-          $("#yakit-toplam-maliyet").text(
-            self.formatMoney(response.stats.toplam_tutar),
-          );
-          $("#yakit-ortalama-fiyat").text(
-            self.formatMoney(response.stats.ortalama_birim_fiyat),
-          );
-          $("#yakit-kayit-sayisi").text(response.stats.toplam_kayit);
-        }
+        // Genel arama ve kolon filtreleri tabloyu her yeniden çizdiğinde
+        // özet kartlarını ekranda kalan kayıtlar üzerinden güncelle.
+        $("#yakitTable")
+          .off("draw.dt.yakitSummary")
+          .on("draw.dt.yakitSummary", function () {
+            self.updateYakitSummaryCards();
+          });
+        self.updateYakitSummaryCards();
       } else {
         const colCount = $("#yakitTable").find("thead tr:first th").length || 14;
         let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
@@ -1328,7 +1323,7 @@ const AracTakip = {
             let yapilanKm = parseFloat(k.yapilan_km) || 0;
             if (yapilanKm < 0) yapilanKm = 0;
 
-            html += `<tr>
+            html += `<tr data-km="${yapilanKm}" data-created-by="${k.olusturan_kullanici_adi || ''}" data-created-at="${self.formatDateTime(k.olusturma_tarihi) || ''}">
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${k.plaka}</strong></td>
                             <td>${self.formatDate(k.tarih)}</td>
@@ -1357,18 +1352,11 @@ const AracTakip = {
         tbody.html(html);
         self.initDataTable("#kmTable");
 
-        // İstatistikleri güncelle
-        if (response.stats) {
-          $("#km-toplam-yol").text(
-            self.formatNumber(response.stats.toplam_km) + " km",
-          );
-          $("#km-ortalama-yol").text(
-            self.formatNumber(
-              parseFloat(response.stats.ortalama_gunluk_km).toFixed(1),
-            ) + " km",
-          );
-          $("#km-kayit-sayisi").text(response.stats.toplam_kayit);
-        }
+        // DataTables draw eventine özet kart hesaplama fonksiyonunu bağla
+        $("#kmTable").off("draw.dt_summary").on("draw.dt_summary", function () {
+          self.updateKmSummaryCards();
+        });
+        self.updateKmSummaryCards();
       } else {
         const colCount = $("#kmTable").find("thead tr:first th").length || 6;
         let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
@@ -1529,7 +1517,7 @@ const AracTakip = {
     const contextMenu = $("#arac-context-menu");
     if (!contextMenu.length) return;
 
-    $(document).on("contextmenu", "#aracTable tbody tr, #zimmetTable tbody tr", function (e) {
+    $(document).on("contextmenu", "#aracTable tbody tr, #zimmetTable tbody tr, #servisTable tbody tr", function (e) {
       // Input veya textarea üzerinde sağ tıklandığında engelleme
       if ($(e.target).is("input, textarea, select")) return;
 
@@ -1556,6 +1544,21 @@ const AracTakip = {
           plaka = tr.find("td:nth-child(2) strong").text();
       }
       $("#context-arac-plaka").text(plaka || "Seçili Araç");
+
+      // Ekleyen kullanıcı bilgisi
+      const createdBy = tr.attr("data-created-by") || tr.data("created-by") || "";
+      const createdAt = tr.attr("data-created-at") || tr.data("created-at") || "";
+      const userInfoEl = $("#context-arac-user-info");
+      const userTextEl = $("#context-arac-user-text");
+
+      if (createdBy) {
+          let text = `Ekleyen: <strong class="text-dark">${createdBy}</strong>`;
+          if (createdAt) text += ` <span class="text-muted ms-1 font-size-10">(${createdAt})</span>`;
+          userTextEl.html(text);
+          userInfoEl.removeClass("d-none");
+      } else {
+          userInfoEl.addClass("d-none");
+      }
 
       dropdownMenu.find("li").each(function() {
           const li = $(this);
@@ -2119,7 +2122,7 @@ const AracTakip = {
                 </div>
             `;
 
-            html += `<tr>
+            html += `<tr data-tutar="${parseFloat(s.tutar) || 0}" data-durum="${s.iade_tarihi ? 'tamamlandi' : 'devam'}" data-created-by="${s.olusturan_kullanici_adi || ''}" data-created-at="${self.formatDateTime(s.olusturma_tarihi) || ''}">
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${s.plaka || "-"}</strong><br><small>${s.marka || ""} ${s.model || ""}</small></td>
                             <td>${self.formatDate(s.servis_tarihi)}</td>
@@ -2144,19 +2147,11 @@ const AracTakip = {
         tbody.html(html);
         self.initDataTable("#servisTable");
 
-        // İstatistikleri güncelle
-        if (response.stats) {
-          $("#servis-toplam-kayit").text(response.stats.toplam_kayit || 0);
-          $("#servis-servisteki-arac").text(
-            response.stats.servisteki_arac_sayisi || 0,
-          );
-          $("#badge-servisteki-arac").html(
-            `<i class="bx bx-wrench me-1"></i> Servisteki: ${response.stats.servisteki_arac_sayisi || 0}`,
-          );
-          $("#servis-toplam-maliyet").html(
-            `${self.formatMoney(response.stats.toplam_maliyet || 0)}`,
-          );
-        }
+        // DataTables draw eventine özet kart hesaplama fonksiyonunu bağla
+        $("#servisTable").off("draw.dt_summary").on("draw.dt_summary", function () {
+          self.updateServisSummaryCards();
+        });
+        self.updateServisSummaryCards();
       } else {
         const colCount =
           $("#servisTable").find("thead tr:first th").length || 8;
@@ -2774,6 +2769,53 @@ const AracTakip = {
       .always(function () {
         btn.html(originalText).prop("disabled", false);
       });
+  },
+
+  updateYakitSummaryCards: function () {
+    const tableEl = $("#yakitTable");
+    if (!tableEl.length || !$.fn.DataTable.isDataTable(tableEl)) return;
+    const table = tableEl.DataTable();
+    let totalLitre = 0, totalTutar = 0, count = 0;
+    table.rows({ search: "applied" }).nodes().each(function (tr) {
+      totalLitre += parseFloat(tr.getAttribute("data-litre")) || 0;
+      totalTutar += parseFloat(tr.getAttribute("data-tutar")) || 0;
+      count++;
+    });
+    const avgPrice = totalLitre > 0 ? totalTutar / totalLitre : 0;
+    $("#yakit-toplam-litre").html(AracTakip.formatNumber(totalLitre) + ' <span style="font-size: 0.85rem; font-weight: 600;">L</span>');
+    $("#yakit-toplam-maliyet").html(AracTakip.formatMoney(totalTutar));
+    $("#yakit-ortalama-fiyat").html(AracTakip.formatMoney(avgPrice));
+    $("#yakit-kayit-sayisi").text(count);
+  },
+
+  updateKmSummaryCards: function () {
+    const tableEl = $("#kmTable");
+    if (!tableEl.length || !$.fn.DataTable.isDataTable(tableEl)) return;
+    const table = tableEl.DataTable();
+    let totalKm = 0, count = 0;
+    table.rows({ search: "applied" }).nodes().each(function (tr) {
+      totalKm += parseFloat(tr.getAttribute("data-km")) || 0;
+      count++;
+    });
+    const avgKm = count > 0 ? totalKm / count : 0;
+    $("#km-toplam-yol").html(AracTakip.formatNumber(totalKm) + ' <span style="font-size: 0.85rem; font-weight: 600;">km</span>');
+    $("#km-ortalama-yol").html(AracTakip.formatNumber(avgKm) + ' <span style="font-size: 0.85rem; font-weight: 600;">km</span>');
+    $("#km-kayit-sayisi").text(count);
+  },
+
+  updateServisSummaryCards: function () {
+    const tableEl = $("#servisTable");
+    if (!tableEl.length || !$.fn.DataTable.isDataTable(tableEl)) return;
+    const table = tableEl.DataTable();
+    let totalMaliyet = 0, count = 0, servistekiCount = 0;
+    table.rows({ search: "applied" }).nodes().each(function (tr) {
+      totalMaliyet += parseFloat(tr.getAttribute("data-tutar")) || 0;
+      if (tr.getAttribute("data-durum") === "devam") servistekiCount++;
+      count++;
+    });
+    $("#servis-toplam-maliyet").html(AracTakip.formatMoney(totalMaliyet));
+    $("#servis-toplam-kayit").text(count);
+    $("#servis-servisteki-arac").text(servistekiCount);
   },
 };
 

@@ -31,9 +31,11 @@ class AracYakitModel extends Model
                     AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= y.tarih)
                     AND az2.durum != 'iptal'
                     AND az2.silinme_tarihi IS NULL
-                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel
+                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} y
             INNER JOIN araclar a ON y.arac_id = a.id
+            LEFT JOIN users u ON y.olusturan_kullanici_id = u.id
             WHERE y.firma_id = :firma_id
             AND y.silinme_tarihi IS NULL
         ";
@@ -97,9 +99,11 @@ class AracYakitModel extends Model
                     AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= y.tarih)
                     AND az2.durum != 'iptal'
                     AND az2.silinme_tarihi IS NULL
-                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel
+                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} y
             INNER JOIN araclar a ON y.arac_id = a.id
+            LEFT JOIN users u ON y.olusturan_kullanici_id = u.id
             WHERE y.arac_id = :arac_id
             AND y.firma_id = :firma_id
             AND y.silinme_tarihi IS NULL
@@ -140,9 +144,11 @@ class AracYakitModel extends Model
                     AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= y.tarih)
                     AND az2.durum != 'iptal'
                     AND az2.silinme_tarihi IS NULL
-                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel
+                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} y
             INNER JOIN araclar a ON y.arac_id = a.id
+            LEFT JOIN users u ON y.olusturan_kullanici_id = u.id
             WHERE y.firma_id = :firma_id
             AND y.tarih BETWEEN :baslangic AND :bitis
             AND y.silinme_tarihi IS NULL
