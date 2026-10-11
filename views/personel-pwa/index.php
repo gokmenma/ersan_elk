@@ -182,6 +182,49 @@ if ($isKaskiKacak) {
     }
 }
 
+// Yatay kaydırma sırası, sabit bir istemci listesinden değil personelin gerçekten
+// görebildiği menü öğelerinden üretilir. Detay sayfaları bu sıraya dahil edilmez.
+if ($isKaskiKacak) {
+    $pwaNavigationPages = ['kacak', 'bordro', 'profil'];
+} else {
+    $pwaNavigationPages = [
+        'ana-sayfa',
+        $isBuro ? 'izin' : 'puantaj',
+        ($isEndeksOkuma && $isEkipSefi) ? 'ekip-takibi' : ($isKesmeAcma ? 'nobet' : 'zimmetler'),
+        'talep',
+        'profil',
+        'yardim',
+        'ihbar',
+    ];
+
+    if ($isKacakKontrol) {
+        $pwaNavigationPages[] = 'kacak';
+    }
+    if ($isKesmeAcma) {
+        $pwaNavigationPages[] = 'aparat';
+    }
+
+    $pwaNavigationPages[] = 'km-bildirimleri';
+    $pwaNavigationPages[] = 'etkinlikler';
+    $pwaNavigationPages[] = 'bordro';
+
+    // Büro dışındaki personelde İzinler alt menüde değil, Diğer menüsündedir.
+    if (!$isBuro) {
+        $pwaNavigationPages[] = 'izin';
+    }
+    if ($hasIcra) {
+        $pwaNavigationPages[] = 'icralar';
+    }
+    if (($isEndeksOkuma && $isEkipSefi) || $isKesmeAcma) {
+        $pwaNavigationPages[] = 'zimmetler';
+    }
+
+    $pwaNavigationPages = array_values(array_unique(array_filter(
+        $pwaNavigationPages,
+        static fn ($navigationPage) => in_array($navigationPage, $allowed_pages, true)
+    )));
+}
+
 // Service worker'ın çevrimdışı kullanım için önden çektiği sayfa gerçekten
 // görüntülenmiş sayılmaz; log kirlenmesin.
 $onbellekIcin = isset($_GET['onbellek']);
@@ -251,6 +294,21 @@ if ($page === 'ihbar') {
     <!-- Theme & Dark Mode Pre-init -->
     <script>
         (function () {
+            // Uygulama içindeki sayfa geçişlerinde tam ekran yükleyici, View
+            // Transition animasyonunun üzerini kapatmasın. İlk açılışta gösterilir.
+            try {
+                const navigationMarker = JSON.parse(sessionStorage.getItem('pwaInternalNavigation') || 'null');
+                const currentUrl = new URL(window.location.href);
+                if (
+                    navigationMarker &&
+                    Date.now() - Number(navigationMarker.time || 0) < 10000 &&
+                    navigationMarker.path === currentUrl.pathname + currentUrl.search
+                ) {
+                    document.documentElement.classList.add('pwa-internal-navigation');
+                }
+                sessionStorage.removeItem('pwaInternalNavigation');
+            } catch (e) {}
+
             const themes = {
                 blue: { primary: '#135bec', dark: '#0d47c1', light: '#4a87f5' },
                 purple: { primary: '#5156be', dark: '#414598', light: '#868ae0' },
@@ -354,7 +412,8 @@ if ($page === 'ihbar') {
     <!-- Bottom Navigation -->
     <?php if ($isKaskiKacak): ?>
     <nav
-        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
+        aria-label="Ana gezinme"
+        class="pwa-bottom-navigation fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
         <a href="?page=kacak"
             class="nav-item flex flex-col items-center gap-1 py-2 px-6 rounded-xl transition-all <?php echo $page === 'kacak' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'kacak' ? 'filled' : ''; ?>">gpp_maybe</span>
@@ -376,7 +435,8 @@ if ($page === 'ihbar') {
     </nav>
     <?php else: ?>
     <nav
-        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
+        aria-label="Ana gezinme"
+        class="pwa-bottom-navigation fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
         <a href="?page=ana-sayfa"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'ana-sayfa' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'ana-sayfa' ? 'filled' : ''; ?>">home</span>
@@ -724,7 +784,10 @@ if ($page === 'ihbar') {
     <!-- SweetAlert2 -->
     <script src="assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="assets/js/exif-cekim.js?v=<?= filemtime(__DIR__ . '/assets/js/exif-cekim.js') ?>"></script>
-    <script>window.PWA_ACCOUNT_KEY = <?= json_encode(hash('sha256', 'pwa:' . (int) $_SESSION['firma_id'] . ':' . (int) $personel_id)) ?>;</script>
+    <script>
+        window.PWA_ACCOUNT_KEY = <?= json_encode(hash('sha256', 'pwa:' . (int) $_SESSION['firma_id'] . ':' . (int) $personel_id)) ?>;
+        window.PWA_NAVIGATION_PAGES = <?= json_encode($pwaNavigationPages, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    </script>
     <script>
         // Eski PWA JavaScript'i sabit IndexedDB sürümüyle açılırsa Safari mevcut
         // daha yüksek sürümü reddeder. Kuyruk veritabanında sürüm seçimini daima

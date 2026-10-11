@@ -768,6 +768,74 @@ div:where(.swal2-container) .swal2-cancel {
 }
 
 /* ===== Animations ===== */
+/*
+ * Çok sayfalı PHP yapısını koruyarak aynı origin'deki sayfalar arasında
+ * uygulama benzeri geçiş sağlar. Desteklemeyen tarayıcılar bu bloğu yok sayar.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+#main-content {
+  view-transition-name: pwa-main-content;
+}
+
+.pwa-bottom-navigation {
+  view-transition-name: pwa-bottom-navigation;
+}
+
+html.pwa-internal-navigation #loading-overlay {
+  display: none !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(pwa-main-content) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(pwa-main-content) {
+  animation: pwa-page-leave 180ms ease-in both;
+}
+
+::view-transition-new(pwa-main-content) {
+  animation: pwa-page-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+::view-transition-old(pwa-bottom-navigation),
+::view-transition-new(pwa-bottom-navigation) {
+  animation-duration: 140ms;
+  mix-blend-mode: normal;
+}
+
+@keyframes pwa-page-leave {
+  to {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+@keyframes pwa-page-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+  }
+}
+
 .fade-in {
   animation: fadeIn 0.3s ease-out;
 }

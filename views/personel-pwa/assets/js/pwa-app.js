@@ -235,20 +235,39 @@ const Theme = {
 
 // ===== Navigation Functions =====
 const Navigation = {
-  pages: [
-    "ana-sayfa",
-    "puantaj",
-    "nobet",
-    "talep",
-    "etkinlikler",
-    "profil",
-    "bordro",
-    "izin",
-    "zimmetler",
-  ],
+  pages: Array.isArray(window.PWA_NAVIGATION_PAGES)
+    ? window.PWA_NAVIGATION_PAGES
+    : [],
 
   init() {
+    this.setupLinkTransitions();
     this.setupSwipe();
+  },
+
+  setupLinkTransitions() {
+    document.addEventListener("click", (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      const link = e.target.closest("a[href]");
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+
+      try {
+        const targetUrl = new URL(link.href, window.location.href);
+        const targetPage = targetUrl.searchParams.get("page") || "ana-sayfa";
+        if (targetUrl.origin !== window.location.origin || !this.pages.includes(targetPage)) return;
+        this.markInternalNavigation(targetUrl);
+      } catch (error) {}
+    });
+  },
+
+  markInternalNavigation(target) {
+    try {
+      const targetUrl = target instanceof URL ? target : new URL(target, window.location.href);
+      sessionStorage.setItem(
+        "pwaInternalNavigation",
+        JSON.stringify({ path: targetUrl.pathname + targetUrl.search, time: Date.now() }),
+      );
+    } catch (error) {}
   },
 
   setupSwipe() {
@@ -264,11 +283,18 @@ const Navigation = {
     document.addEventListener(
       "touchstart",
       (e) => {
-        // Slider vb. elementlerdeysen sayfa kaydırmasını iptal et
+        // Formlar, modallar ve yatay kaydırılan alanlar kendi dokunma
+        // hareketlerini kullanır; bu alanlarda sayfa değiştirilmez.
         if (
+          e.touches.length !== 1 ||
+          e.target.closest("form") ||
+          e.target.closest("input, textarea, select, [contenteditable='true']") ||
           e.target.closest("#etkinlik-slider-container") ||
           e.target.closest(".overflow-x-auto") ||
-          e.target.closest(".swipe-ignore")
+          e.target.closest(".swipe-ignore") ||
+          document.querySelector(".modal-overlay.active, .swal2-container") ||
+          this.isFullScreenModalOpen() ||
+          this.isMoreMenuOpen()
         ) {
           ignoreSwipe = true;
           return;
@@ -297,6 +323,16 @@ const Navigation = {
       },
       { passive: true },
     );
+  },
+
+  isFullScreenModalOpen() {
+    const modal = document.getElementById("pwa-full-modal");
+    return modal && modal.style.display !== "none";
+  },
+
+  isMoreMenuOpen() {
+    const overlay = document.getElementById("more-menu-overlay");
+    return overlay && !overlay.classList.contains("pointer-events-none");
   },
 
   handleSwipe(
@@ -337,9 +373,10 @@ const Navigation = {
   },
 
   navigateTo(page) {
-    // Add slide animation class to body before navigating?
-    // For now just simple navigation
-    window.location.href = `?page=${page}`;
+    if (!this.pages.includes(page)) return;
+    const targetUrl = new URL(`?page=${page}`, window.location.href);
+    this.markInternalNavigation(targetUrl);
+    window.location.href = targetUrl.href;
   },
 };
 
