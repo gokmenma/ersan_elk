@@ -129,6 +129,13 @@ if (!is_array($firma_option)) {
                     </div>
                 </div>
             </div>
+            <?php else: ?>
+            <div class="d-none d-md-inline-block ms-0 ms-lg-1">
+                <a href="index?p=tanimlamalar/donem-tanimlari&donem_yok=1" class="btn btn-warning-subtle text-warning border border-warning-subtle rounded-3 px-2.5 py-1 d-flex align-items-center gap-1.5 font-size-12 fw-semibold" title="Bu firma için tanımlı çalışma dönemi bulunmuyor">
+                    <i class="bx bx-calendar-plus font-size-14"></i>
+                    <span>Dönem Tanımla</span>
+                </a>
+            </div>
             <?php endif; ?>
         </div>
 

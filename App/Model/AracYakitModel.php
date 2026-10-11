@@ -49,6 +49,39 @@ class AracYakitModel extends Model
     }
 
     /**
+     * ID'ye göre yakıt kaydı detayını araç ve personel bilgileriyle birlikte getirir
+     */
+    public function getDetay($id)
+    {
+        $sql = "
+            SELECT y.*, 
+                   a.plaka, a.marka, a.model, a.yakit_tipi as arac_yakit_tipi,
+                   (SELECT p2.adi_soyadi 
+                    FROM arac_zimmetleri az2 
+                    INNER JOIN personel p2 ON az2.personel_id = p2.id
+                    WHERE az2.arac_id = y.arac_id 
+                    AND az2.zimmet_tarihi <= y.tarih 
+                    AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= y.tarih)
+                    AND az2.durum != 'iptal'
+                    AND az2.silinme_tarihi IS NULL
+                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel,
+                   u.adi_soyadi as olusturan_kullanici_adi
+            FROM {$this->table} y
+            INNER JOIN araclar a ON y.arac_id = a.id
+            LEFT JOIN users u ON y.olusturan_kullanici_id = u.id
+            WHERE y.id = :id
+            AND y.firma_id = :firma_id
+            AND y.silinme_tarihi IS NULL
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'id' => $id,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Araca göre yakıt kayıtları
      */
     public function getByArac($aracId, $limit = null, $departman = null)

@@ -314,10 +314,20 @@ $title = "Evrak Listesi";
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <?php
+                                $tarihRaw = !empty($evrak->tarih) ? (string) $evrak->tarih : '1970-01-01';
+                                $saatRaw = !empty($evrak->olusturma_tarihi)
+                                    ? date('H:i:s', strtotime((string) $evrak->olusturma_tarihi))
+                                    : (!empty($evrak->olusturulma_tarihi) ? date('H:i:s', strtotime((string) $evrak->olusturulma_tarihi)) : '00:00:00');
+                                $orderTarih = date('Y-m-d H:i:s', strtotime($tarihRaw . ' ' . $saatRaw));
+                                $saatGosterim = !empty($evrak->olusturma_tarihi)
+                                    ? date('H:i', strtotime((string) $evrak->olusturma_tarihi))
+                                    : (!empty($evrak->olusturulma_tarihi) ? date('H:i', strtotime((string) $evrak->olusturulma_tarihi)) : '');
+                                ?>
+                                <td data-order="<?= htmlspecialchars($orderTarih, ENT_QUOTES, 'UTF-8'); ?>">
                                     <div class="d-flex flex-column">
-                                        <span class="fw-semibold text-dark font-size-12"><?= date('d.m.Y', strtotime($evrak->tarih)); ?></span>
-                                        <span class="text-muted font-size-11"><?= date('H:i', strtotime($evrak->olusturulma_tarihi ?? 'now')); ?></span>
+                                        <span class="fw-semibold text-dark font-size-12"><?= !empty($evrak->tarih) ? date('d.m.Y', strtotime((string) $evrak->tarih)) : '-'; ?></span>
+                                        <span class="text-muted font-size-11"><?= htmlspecialchars($saatGosterim !== '' ? $saatGosterim : '-', ENT_QUOTES, 'UTF-8'); ?></span>
                                     </div>
                                 </td>
                                 <td>

@@ -1042,13 +1042,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'yakit-detay':
                 $id = intval($_POST['id'] ?? 0);
-                $kayit = $Yakit->find($id);
-                /**tarihi çevir */
-                $kayit->tarih = Date::dmY($kayit->tarih);
+                $kayit = $Yakit->getDetay($id);
+                if (!$kayit) {
+                    $kayit = $Yakit->find($id);
+                }
 
                 if (!$kayit) {
                     throw new Exception("Yakıt kaydı bulunamadı.");
                 }
+
+                /**tarihi çevir */
+                $kayit->tarih_ham = $kayit->tarih;
+                $kayit->tarih = Date::dmY($kayit->tarih);
 
                 echo json_encode(['status' => 'success', 'data' => $kayit]);
                 break;

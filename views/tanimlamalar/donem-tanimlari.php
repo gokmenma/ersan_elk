@@ -11,7 +11,10 @@ $maintitle = "Tanımlamalar";
 $title = "Dönem Tanımları";
 
 $SozlesmeDonem = new SozlesmeDonemModel();
+$FirmaModel = new \App\Model\FirmaModel();
 $firma_id = (int) ($_SESSION['firma_id'] ?? 0);
+$currentFirma = $firma_id > 0 ? $FirmaModel->find($firma_id) : null;
+$firmaAdi = $currentFirma->firma_adi ?? 'Belirtilmemiş Firma';
 $summary = $SozlesmeDonem->summary($firma_id);
 ?>
 
@@ -156,8 +159,13 @@ $summary = $SozlesmeDonem->summary($firma_id);
                 <i class="bx bx-calendar-event fs-4 text-primary"></i>
             </div>
             <div>
-                <h4 class="mb-0 fw-bold text-dark font-size-16">Dönem Tanımları</h4>
-                <p class="text-muted mb-0 font-size-12">Sözleşme ve çalışma dönemleri, geçerlilik tarihleri ve aktif dönem yönetimi</p>
+                <div class="d-flex align-items-center gap-2">
+                    <h4 class="mb-0 fw-bold text-dark font-size-16">Dönem Tanımları</h4>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-size-11 px-2.5 py-0.5 fw-semibold" id="activeFirmaBadge" title="İşlem yapılan firma">
+                        <i class="bx bx-buildings me-1"></i><?php echo htmlspecialchars($firmaAdi, ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 font-size-12"><strong><?php echo htmlspecialchars($firmaAdi, ENT_QUOTES, 'UTF-8'); ?></strong> firmasına ait sözleşme/çalışma dönemleri ve aktif dönem yönetimi</p>
             </div>
         </div>
 
@@ -340,7 +348,7 @@ $summary = $SozlesmeDonem->summary($firma_id);
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold font-size-15 text-dark" id="modalDonemTitle">Yeni Dönem Tanımla</h5>
-                        <p class="text-muted font-size-11 mb-0">Sözleşme/çalışma dönemi bilgilerini giriniz</p>
+                        <p class="text-muted font-size-11 mb-0"><strong class="text-primary"><?php echo htmlspecialchars($firmaAdi, ENT_QUOTES, 'UTF-8'); ?></strong> firması için çalışma dönemi bilgilerini giriniz</p>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
@@ -722,5 +730,22 @@ $(document).ready(function() {
     $('#btnPrintTable, #btnHeaderPrint, #btnDropdownPrint').on('click', function() {
         window.print();
     });
+
+    // 11. Dönemi Olmayan Firmadan Yönlendirilmişse Ekleme Modalı Otomatik Açılsın
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('donem_yok') === '1') {
+        setTimeout(function() {
+            resetDonemModal();
+            $('#modalDonem').modal('show');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Çalışma Dönemi Bulunamadı',
+                    html: `<strong>"${<?php echo json_encode($firmaAdi); ?>}"</strong> firmasına ait tanımlı bir çalışma/sözleşme dönemi bulunmamaktadır.<br><small class="text-muted">Lütfen firmanız için ilk çalışma dönemini tanımlayınız.</small>`,
+                    confirmButtonText: 'Tamam'
+                });
+            }
+        }, 300);
+    }
 });
 </script>

@@ -76,11 +76,12 @@ foreach($kmlar as $k) {
     $totalYapilanKm += (float)($k->yapilan_km ?? 0);
 }
 
-// Mobil görünüm için sadece son 20 kaydı alalım, sayfa şişmesin
-$zimmetler = array_slice($zimmetler, 0, 20);
-$yakitlar_list = array_slice($yakitlar, 0, 20);
-$kmlar_list = array_slice($kmlar, 0, 20);
-$servisler = array_slice($servisler, 0, 20);
+// Dönem filtrelerinde seçilen döneme ait tüm kayıtlar listelenir.
+// Yalnızca 'Tümü' seçeneğinde mobil performansı korumak için makul bir üst sınır (son 300 kayıt) tutulur.
+$zimmetler = ($z_period === 'all') ? array_slice($zimmetler, 0, 200) : $zimmetler;
+$yakitlar_list = ($y_period === 'all') ? array_slice($yakitlar, 0, 300) : $yakitlar;
+$kmlar_list = ($k_period === 'all') ? array_slice($kmlar, 0, 300) : $kmlar;
+$servisler = ($s_period === 'all') ? array_slice($servisler, 0, 200) : $servisler;
 
 // Format helper
 if (!function_exists('formatMoneyMobile')) {
@@ -447,7 +448,9 @@ if (!function_exists('formatKmMobile')) {
             </div>
         <?php else: ?>
             <?php foreach ($yakitlar_list as $yak): ?>
-                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
+                <div onclick="openYakitDetay(<?= (int)$yak->id ?>, '<?= htmlspecialchars($yak->plaka, ENT_QUOTES) ?>')" 
+                    class="cursor-pointer bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.99]"
+                    data-tags="<?= htmlspecialchars(($yak->plaka ?? '') . ' ' . ($yak->marka ?? '') . ' ' . ($yak->model ?? '') . ' ' . ($yak->zimmetli_personel ?? '') . ' ' . ($yak->istasyon ?? '')) ?>">
                     <div class="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
                         <div class="flex items-center gap-2">
                              <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-900/30 flex items-center justify-center">
@@ -455,11 +458,12 @@ if (!function_exists('formatKmMobile')) {
                              </div>
                              <div>
                                  <h3 class="font-bold text-teal-600 text-sm"><?= htmlspecialchars($yak->plaka) ?></h3>
-                                 <p class="text-[10px] text-slate-500"><?= formatDateMobile($yak->tarih) ?></p>
+                                 <p class="text-[10px] text-slate-500"><?= formatDateMobile($yak->tarih) ?><?= !empty($yak->zimmetli_personel) ? ' • ' . htmlspecialchars($yak->zimmetli_personel) : '' ?></p>
                              </div>
                         </div>
-                        <div class="text-right">
+                        <div class="text-right flex items-center gap-1">
                              <span class="font-bold text-slate-800 dark:text-white text-sm"><?= formatMoneyMobile($yak->toplam_tutar) ?></span>
+                             <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-base">chevron_right</span>
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-2 text-center text-[10px]">
@@ -605,6 +609,7 @@ if (!function_exists('formatKmMobile')) {
             <?php include 'sheets/servis-sheet.php'; ?>
             <?php include 'sheets/zimmet-gecmisi-sheet.php'; ?>
             <?php include 'sheets/servis-detay-sheet.php'; ?>
+            <?php include 'sheets/yakit-detay-sheet.php'; ?>
         </div>
         
     </div>
@@ -924,6 +929,9 @@ if (!function_exists('formatKmMobile')) {
         } else if (id === 'servis-detay') {
             titleText = "Servis Detayı";
             iconHtml = '<span class="material-symbols-outlined text-indigo-500">handyman</span>';
+        } else if (id === 'yakit-detay') {
+            titleText = "Yakıt Detayı";
+            iconHtml = '<span class="material-symbols-outlined text-emerald-500">local_gas_station</span>';
         }
         titleEl.innerHTML = iconHtml + ' ' + titleText;
 
@@ -1245,6 +1253,191 @@ if (!function_exists('formatKmMobile')) {
                 container.innerHTML = `
                     <div class="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs text-center border border-rose-100 dark:border-rose-900/40">
                         Hata: ${res.message || 'Servis detayı yüklenirken hata oluştu.'}
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {
+            container.innerHTML = `
+                <div class="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs text-center border border-rose-100 dark:border-rose-900/40">
+                    Bağlantı hatası oluştu.
+                </div>
+            `;
+        });
+    }
+
+    function openYakitDetay(id, plaka) {
+        // 1. Önce sheet'i açalım
+        openSheet('yakit-detay');
+        
+        // Title güncelleyelim
+        const titleEl = document.getElementById('bs-title');
+        titleEl.innerHTML = `<span class="material-symbols-outlined text-emerald-500">local_gas_station</span> Yakıt Detayı: <span class="text-emerald-600 dark:text-emerald-400 font-black">${plaka}</span>`;
+        
+        const container = document.getElementById('yakitDetayContent');
+        container.innerHTML = `
+            <div class="text-center p-8 text-slate-400">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent mb-2"></div>
+                <p class="text-xs">Yakıt detayı yükleniyor...</p>
+            </div>
+        `;
+
+        // 2. Fetch data
+        const formData = new URLSearchParams();
+        formData.append("action", "yakit-detay");
+        formData.append("id", id);
+
+        fetch('../views/arac-takip/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success' && res.data) {
+                const y = res.data;
+                const formatMoney = (amount) => Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+                const formatKm = (km) => km ? Number(km).toLocaleString('tr-TR') + ' km' : '-';
+                const formatNum = (n, dec = 2) => Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+                
+                const depoBadge = (y.tam_depo_mu == '1' || y.tam_depo_mu == 1)
+                    ? '<span class="inline-flex items-center bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold">Tam Depo</span>'
+                    : '<span class="inline-flex items-center bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-bold">Kısmi Dolum</span>';
+
+                const yakitTipiMap = {
+                    'dizel': 'Dizel',
+                    'benzin': 'Benzin',
+                    'lpg': 'LPG',
+                    'elektrik': 'Elektrik'
+                };
+                const yakitTipiAd = yakitTipiMap[y.yakit_tipi] || (y.yakit_tipi ? y.yakit_tipi.toUpperCase() : '-');
+
+                let html = `
+                <div class="space-y-4">
+                    <!-- Tutar & Litre Kartı -->
+                    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-md flex justify-between items-center">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Net Toplam Tutar</span>
+                            <h4 class="text-2xl font-black">${formatMoney(y.toplam_tutar)}</h4>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-3 py-1.5 flex flex-col items-center text-right">
+                            <span class="text-[9px] uppercase font-bold text-white/80 block mb-0.5">Miktar</span>
+                            <span class="text-lg font-black">${formatNum(y.yakit_miktari)} <small class="text-[10px] font-normal">L</small></span>
+                        </div>
+                    </div>
+
+                    <!-- Araç & Sürücü Bilgileri -->
+                    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-emerald-500 text-lg align-middle">directions_car</span>
+                                <span class="font-bold text-sm text-slate-700 dark:text-slate-300">Araç & Zimmet Bilgisi</span>
+                            </div>
+                            ${depoBadge}
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Plaka</span>
+                                    <h3 class="font-black text-slate-800 dark:text-white text-base">${y.plaka || plaka}</h3>
+                                    <p class="text-[11px] text-slate-500 font-medium">${(y.marka || '') + ' ' + (y.model || '')}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Zimmetli Personel</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-200 text-xs">${y.zimmetli_personel || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alım Detayları -->
+                    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-emerald-500 text-lg align-middle">receipt_long</span>
+                            <span class="font-bold text-sm text-slate-700 dark:text-slate-300">Alım Detayları</span>
+                        </div>
+                        <div class="p-4 space-y-3 text-xs">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/40">
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Tarih</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${y.tarih || '-'}</span>
+                                </div>
+                                <div class="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/40">
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Alım KM</span>
+                                    <span class="font-bold text-indigo-600 dark:text-indigo-400">${formatKm(y.km)}</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/40">
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Yakıt Tipi</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${yakitTipiAd}</span>
+                                </div>
+                                <div class="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/40">
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Fiş / Fatura No</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${y.fatura_no || '-'}</span>
+                                </div>
+                            </div>
+
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                                <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">İstasyon</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-300 text-xs">${y.istasyon || '-'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Maliyet Dökümü -->
+                    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-emerald-500 text-lg align-middle">payments</span>
+                            <span class="font-bold text-sm text-slate-700 dark:text-slate-300">Maliyet & Fiyatlama</span>
+                        </div>
+                        <div class="p-4 space-y-2 text-xs">
+                            <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/40">
+                                <span class="text-slate-500">Miktar</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-300">${formatNum(y.yakit_miktari)} L</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/40">
+                                <span class="text-slate-500">Birim Fiyat</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-300">${y.birim_fiyat ? formatMoney(y.birim_fiyat) : '-'}</span>
+                            </div>
+                            ${Number(y.brut_tutar || 0) > 0 ? `
+                            <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/40">
+                                <span class="text-slate-500">Brüt Tutar</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-300">${formatMoney(y.brut_tutar)}</span>
+                            </div>` : ''}
+                            ${Number(y.iskonto || 0) > 0 ? `
+                            <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/40">
+                                <span class="text-slate-500">İskonto</span>
+                                <span class="font-bold text-rose-500">%${formatNum(y.iskonto)}</span>
+                            </div>` : ''}
+                            <div class="flex justify-between items-center pt-2">
+                                <span class="font-bold text-slate-800 dark:text-white">Net Tutar</span>
+                                <span class="font-black text-emerald-600 dark:text-emerald-400 text-sm">${formatMoney(y.toplam_tutar)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Varsa Notlar -->
+                    ${y.notlar ? `
+                    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
+                        <span class="text-slate-400 block text-[9px] uppercase font-bold mb-1">Notlar / Açıklama</span>
+                        <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">${y.notlar}</p>
+                    </div>` : ''}
+
+                    <!-- Alt Meta Bilgi -->
+                    <div class="text-center pt-1 text-[10px] text-slate-400 dark:text-slate-500">
+                        Kayıt ID: #${y.id} ${y.olusturan_kullanici_adi ? '• Ekleyen: ' + y.olusturan_kullanici_adi : ''}
+                    </div>
+                </div>
+                `;
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = `
+                    <div class="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs text-center border border-rose-100 dark:border-rose-900/40">
+                        Hata: ${res.message || 'Yakıt detayı yüklenirken hata oluştu.'}
                     </div>
                 `;
             }

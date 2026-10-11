@@ -797,10 +797,15 @@ $(document).ready(function () {
       ...baseOptions,
       order: [[2, "desc"]],
       columnDefs: [
+        { targets: 2, type: "date" },
         { targets: [0, 1, 7, 8, 9, 10], orderable: false }
       ]
     }) : {
       order: [[2, "desc"]],
+      columnDefs: [
+        { targets: 2, type: "date" },
+        { targets: [0, 1, 7, 8, 9, 10], orderable: false }
+      ],
       language: { url: "assets/libs/datatables.net/js/tr.json" }
     };
 

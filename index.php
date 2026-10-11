@@ -97,6 +97,25 @@ if (isset($routeAliases[$page])) {
     $page = $routeAliases[$page];
 }
 
+// Firmanın çalışma/sözleşme dönemi kontrolü
+$currentFirmaId = (int) ($_SESSION['firma_id'] ?? 0);
+if ($currentFirmaId > 0) {
+    $sozlesmeDonemModel = new \App\Model\SozlesmeDonemModel();
+    $activeDonem = $sozlesmeDonemModel->getActiveDonem($currentFirmaId);
+
+    if ($activeDonem) {
+        $_SESSION['aktif_donem_id'] = (int) $activeDonem->id;
+        $_SESSION['aktif_donem_adi'] = $activeDonem->donem_adi;
+    } else {
+        unset($_SESSION['aktif_donem_id'], $_SESSION['aktif_donem_adi']);
+        // Firmanın tanımlı dönemi yoksa ve zaten dönem tanımları sayfasında değilse oraya yönlendir
+        if ($page !== 'tanimlamalar/donem-tanimlari') {
+            header("Location: index?p=tanimlamalar/donem-tanimlari&donem_yok=1");
+            exit();
+        }
+    }
+}
+
 // Yetki kontrolü herhangi bir HTML çıktısı üretilmeden önce yapılmalıdır.
 $publicPages = ['home'];
 if (!in_array($page, $publicPages, true)) {

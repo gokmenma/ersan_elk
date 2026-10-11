@@ -10,13 +10,26 @@ if (isset($_SESSION["id"]) && !empty($_SESSION["id"])) {
         $firma = $FirmaModel->find($_GET["firma_id"]);
         $_SESSION["firma_kodu"] = $firma->firma_kodu;
     }
-    $page = $_GET["p"] ?? "home";
+    $targetPage = $_GET["p"] ?? "home";
 
+    // Firmanın çalışma/sözleşme dönemini kontrol et ve ayarla
+    require_once "vendor/autoload.php";
+    $targetFirmaId = (int) $_GET["firma_id"];
+    $SozlesmeDonemModel = new \App\Model\SozlesmeDonemModel();
+    $activeDonem = $SozlesmeDonemModel->getActiveDonem($targetFirmaId);
+
+    if ($activeDonem) {
+        $_SESSION['aktif_donem_id'] = (int) $activeDonem->id;
+        $_SESSION['aktif_donem_adi'] = $activeDonem->donem_adi;
+    } else {
+        unset($_SESSION['aktif_donem_id'], $_SESSION['aktif_donem_adi']);
+        // Eğer firmanın hiç dönemi yoksa dönem tanımlama sayfasına yönlendir
+        $targetPage = "tanimlamalar/donem-tanimlari&donem_yok=1";
+    }
 
     // Varsayılan firma olarak kaydet (30 gün geçerli)
     if (isset($_GET["varsayilan"]) && $_GET["varsayilan"] == "1") {
         // Veritabanını güncelle
-        require_once "vendor/autoload.php";
         $FirmaModel = new \App\Model\FirmaModel();
         $FirmaModel->setDefault($_GET["firma_id"]);
 
@@ -39,7 +52,7 @@ if (isset($_SESSION["id"]) && !empty($_SESSION["id"])) {
         }
     }
 
-    header("location:index?p=$page");
+    header("location:index?p=$targetPage");
 } else {
     header("location:login.php");
 }
