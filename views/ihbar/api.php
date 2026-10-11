@@ -43,6 +43,13 @@ function ihbarNormalizeKonumLink(?string $link): ?string
     return in_array($scheme, ['http', 'https'], true) ? $link : null;
 }
 
+function ihbarResolveId($value): int
+{
+    $value = (string) $value;
+    if ($value === '') return 0;
+    return ctype_digit($value) ? (int) $value : (int) Security::decrypt($value);
+}
+
 /**
  * "İhbar Yönetimi" yetkisine sahip (Kaçak Kontrol Sorumlusu vb.) kullanıcıları döndürür.
  */
@@ -181,6 +188,80 @@ try {
 
     switch ($action) {
 
+        case 'listData':
+            Gate::authorizeOrDie('ihbar/list');
+            $result = $IhbarModel->ajaxList($_GET, (int) ($_SESSION['firma_id'] ?? 1));
+            $canEdit = Gate::allows('ihbar_duzenle') || Gate::isSuperAdmin();
+            $data = [];
+            foreach ($result['rows'] as $row) {
+                $id = (int) $row['id'];
+                $token = Security::encrypt($id);
+                $durum = (string) $row['durum'];
+                $badgeMap = ['yeni' => ['secondary', 'Yeni'], 'yonlendirildi' => ['info', 'Yönlendirildi'],
+                    'islemde' => ['warning', 'İşlemde'], 'olumlu' => ['success', 'Olumlu'], 'olumsuz' => ['danger', 'Olumsuz']];
+                [$badgeClass, $badgeText] = $badgeMap[$durum] ?? ['secondary', $durum];
+                $cells = [];
+                if ($canEdit) {
+                    $selectable = in_array($durum, ['yeni', 'yonlendirildi'], true);
+                    $cells[] = $selectable
+                        ? '<input type="checkbox" class="form-check-input ihbar-row-check" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '" data-id="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8')
+                            . '" data-token="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8')
+                            . '" data-ilce="' . htmlspecialchars((string) ($row['ilce'] ?: '-'), ENT_QUOTES, 'UTF-8')
+                            . '" data-mahalle="' . htmlspecialchars((string) ($row['mahalle'] ?: '-'), ENT_QUOTES, 'UTF-8')
+                            . '" data-durum="' . htmlspecialchars($durum, ENT_QUOTES, 'UTF-8')
+                            . '" data-ekip="' . htmlspecialchars((string) ($row['atanan_ekip_adi'] ?: 'Atanmamış'), ENT_QUOTES, 'UTF-8') . '">'
+                        : '<input type="checkbox" class="form-check-input" disabled>';
+                }
+                $cells[] = date('d.m.Y H:i', strtotime($row['created_at']));
+                $cells[] = $row['sonuclanma_tarihi'] ? date('d.m.Y H:i', strtotime($row['sonuclanma_tarihi'])) : '<span class="text-muted">-</span>';
+                foreach (['ilce', 'mahalle', 'telefon', 'bildiren_adi', 'atanan_ekip_adi'] as $field) {
+                    $cells[] = htmlspecialchars((string) ($row[$field] ?: '-'), ENT_QUOTES, 'UTF-8');
+                }
+                $cells[] = '<span class="badge bg-' . $badgeClass . '">' . htmlspecialchars($badgeText, ENT_QUOTES, 'UTF-8') . '</span>';
+                $jsToken = htmlspecialchars(json_encode($token), ENT_QUOTES, 'UTF-8');
+                $actions = '<button type="button" class="btn btn-sm btn-info text-white" onclick="ihbarDetay(' . $jsToken . ')" title="Detay"><i class="bx bx-detail"></i></button>';
+                if ($canEdit) {
+                    $actions .= '<button type="button" class="btn btn-sm btn-outline-primary" onclick="ihbarDuzenle(' . $jsToken . ')" title="Düzenle"><i class="bx bx-edit"></i></button>'
+                        . '<button type="button" class="btn btn-sm btn-outline-danger" onclick="ihbarSil(' . $jsToken . ')" title="Sil"><i class="bx bx-trash"></i></button>';
+                }
+                $cells[] = '<div class="d-inline-flex gap-1">' . $actions . '</div>';
+                $data[] = $cells;
+            }
+            echo json_encode(['draw' => (int) ($_GET['draw'] ?? 0), 'recordsTotal' => $result['recordsTotal'],
+                'recordsFiltered' => $result['recordsFiltered'], 'data' => $data], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        case 'personelData':
+            Gate::authorizeOrDie('ihbar/list');
+            $result = $IhbarModel->ajaxPersonelList($_GET, (int) ($_SESSION['firma_id'] ?? 1));
+            $data = [];
+            foreach ($result['rows'] as $row) {
+                $name = htmlspecialchars((string) $row->adi_soyadi, ENT_QUOTES, 'UTF-8');
+                $sonuclanan = (int) $row->olumlu_sayisi + (int) $row->olumsuz_sayisi;
+                $oran = $sonuclanan > 0 ? (int) round(((int) $row->olumlu_sayisi / $sonuclanan) * 100) : 0;
+                $progressClass = $oran >= 80 ? 'success' : ($oran >= 50 ? 'warning' : 'danger');
+                $toplamBadge = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">'
+                    . (int) $row->toplam_ihbar . '</span>';
+                $olumluBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">'
+                    . (int) $row->olumlu_sayisi . '</span>';
+                $olumsuzBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">'
+                    . (int) $row->olumsuz_sayisi . '</span>';
+                $bekleyenBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">'
+                    . (int) $row->bekleyen_sayisi . '</span>';
+                $oranProgress = '<div class="d-flex align-items-center gap-2" style="min-width:130px">'
+                    . '<div class="progress flex-grow-1" style="height:7px" role="progressbar" aria-label="Başarı oranı" aria-valuenow="' . $oran . '" aria-valuemin="0" aria-valuemax="100">'
+                    . '<div class="progress-bar bg-' . $progressClass . '" style="width:' . $oran . '%"></div></div>'
+                    . '<span class="badge bg-' . $progressClass . '-subtle text-' . $progressClass . ' border border-' . $progressClass . '-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">%' . $oran . '</span></div>';
+                $data[] = [$name, $toplamBadge, $olumluBadge, $olumsuzBadge,
+                    $bekleyenBadge, $oranProgress,
+                    $row->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($row->son_ihbar_tarihi)) : '-',
+                    $row->son_sonuclanma_tarihi ? date('d.m.Y H:i', strtotime($row->son_sonuclanma_tarihi)) : '-',
+                    '<button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="personelIhbarlariniFiltrele(' . htmlspecialchars(json_encode((string) $row->adi_soyadi, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') . ')"><i class="bx bx-search-alt me-1"></i>İhbarları Gör</button>'];
+            }
+            echo json_encode(['draw' => (int) ($_GET['draw'] ?? 0), 'recordsTotal' => $result['recordsTotal'],
+                'recordsFiltered' => $result['recordsFiltered'], 'data' => $data, 'summary' => $result['summary']], JSON_UNESCAPED_UNICODE);
+            exit;
+
         case 'foto':
             Gate::authorizeOrDie('ihbar/list');
 
@@ -275,7 +356,7 @@ try {
         case 'update':
             ihbarYetkiKontrol('ihbar_duzenle');
 
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = ihbarResolveId($_POST['id'] ?? '');
             $ilce = trim($_POST['ilce'] ?? '');
             if ($ilce === '') {
                 throw new Exception('İlçe seçimi zorunludur.');
@@ -318,7 +399,7 @@ try {
         case 'delete':
             ihbarYetkiKontrol('ihbar_duzenle');
 
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = ihbarResolveId($_POST['id'] ?? '');
             if ($id <= 0 || !$IhbarModel->softDeleteForDashboard($id)) {
                 throw new Exception('İhbar bulunamadı veya daha önce silinmiş.');
             }
@@ -329,7 +410,7 @@ try {
         case 'detay':
             Gate::authorizeOrDie('ihbar/list');
 
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = ihbarResolveId($_POST['id'] ?? '');
             $ihbar = $IhbarModel->getById($id);
             if (!$ihbar) {
                 throw new Exception('Kayıt bulunamadı.');
@@ -340,7 +421,7 @@ try {
         case 'assign':
             ihbarYetkiKontrol('ihbar_duzenle');
 
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = ihbarResolveId($_POST['id'] ?? '');
             $personelIds = $_POST['personel_ids'] ?? [];
             if (!is_array($personelIds)) {
                 $personelIds = [$personelIds];
@@ -531,7 +612,7 @@ try {
         case 'addNote':
             ihbarYetkiKontrol('ihbar_duzenle');
 
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = ihbarResolveId($_POST['id'] ?? '');
             $aciklama = trim($_POST['aciklama'] ?? '');
             if ($aciklama === '') {
                 throw new Exception('Not boş olamaz.');
@@ -544,7 +625,7 @@ try {
         case 'close':
             ihbarYetkiKontrol('ihbar_duzenle');
 
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = ihbarResolveId($_POST['id'] ?? '');
             $durum = $_POST['durum'] ?? '';
             $tutanakNo = trim($_POST['tutanak_no'] ?? '') ?: null;
             $sebep = trim($_POST['sebep'] ?? '') ?: null;
@@ -556,7 +637,7 @@ try {
         case 'cancelResult':
             ihbarYetkiKontrol('ihbar_duzenle');
 
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = ihbarResolveId($_POST['id'] ?? '');
             $IhbarModel->cancelResult($id, $currentUserId);
             ihbarResponse(true, 'İhbar sonucu iptal edildi ve kayıt yeniden işlem bekliyor.');
             break;

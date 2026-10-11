@@ -576,25 +576,33 @@ class IhbarModel extends Model
         $sql = "SELECT i.*,
                 bp.adi_soyadi AS bildiren_personel_adi,
                 ou.adi_soyadi AS olusturan_user_adi,
-                (SELECT GROUP_CONCAT(p.adi_soyadi SEPARATOR ', ')
-                    FROM ihbar_atamalar a
-                    JOIN personel p ON p.id = a.personel_id
-                    WHERE a.ihbar_id = i.id AND a.silinme_tarihi IS NULL) AS atanan_ekip_adi,
-                (SELECT COUNT(*) FROM ihbar_fotograflari f WHERE f.ihbar_id = i.id AND f.medya_tipi = 'foto') AS foto_sayisi,
-                (SELECT COUNT(*) FROM ihbar_fotograflari fv WHERE fv.ihbar_id = i.id AND fv.medya_tipi = 'video') AS video_sayisi,
-                (SELECT MAX(t.created_at) FROM ihbar_tarihce t WHERE t.ihbar_id = i.id AND t.tip = 'durum_degisti') AS sonuclanma_tarihi
+                ekip.atanan_ekip_adi,
+                sonuc.sonuclanma_tarihi
             FROM ihbarlar i
             LEFT JOIN personel bp ON bp.id = i.bildiren_personel_id
             LEFT JOIN users ou ON ou.id = i.olusturan_user_id
+            LEFT JOIN (
+                SELECT a.ihbar_id, GROUP_CONCAT(p.adi_soyadi ORDER BY a.created_at SEPARATOR ', ') AS atanan_ekip_adi
+                FROM ihbar_atamalar a
+                JOIN personel p ON p.id = a.personel_id
+                WHERE a.silinme_tarihi IS NULL
+                GROUP BY a.ihbar_id
+            ) ekip ON ekip.ihbar_id = i.id
+            LEFT JOIN (
+                SELECT t.ihbar_id, MAX(t.created_at) AS sonuclanma_tarihi
+                FROM ihbar_tarihce t
+                WHERE t.tip = 'durum_degisti'
+                GROUP BY t.ihbar_id
+            ) sonuc ON sonuc.ihbar_id = i.id
             WHERE i.silinme_tarihi IS NULL AND i.firma_id = ?";
 
         $params = [$this->firmaId()];
         if ($baslangic !== null && $baslangic !== '') {
-            $sql .= " AND DATE(i.created_at) >= ?";
-            $params[] = $baslangic;
+            $sql .= " AND i.created_at >= ?";
+            $params[] = $baslangic . ' 00:00:00';
         }
         if ($bitis !== null && $bitis !== '') {
-            $sql .= " AND DATE(i.created_at) <= ?";
+            $sql .= " AND i.created_at < DATE_ADD(?, INTERVAL 1 DAY)";
             $params[] = $bitis;
         }
 
@@ -604,6 +612,162 @@ class IhbarModel extends Model
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /** Dashboard açılışında liste kayıtlarını taşımadan gereken özetleri üretir. */
+    public function dashboardSummary(): array
+    {
+        $firmaId = $this->firmaId();
+        $stmt = $this->db->prepare("SELECT
+                COUNT(*) AS toplam,
+                COALESCE(SUM(durum = 'yeni'), 0) AS yeni,
+                COALESCE(SUM(durum IN ('yonlendirildi', 'islemde')), 0) AS devam_eden,
+                COALESCE(SUM(durum = 'olumlu'), 0) AS olumlu,
+                COALESCE(SUM(durum = 'olumsuz'), 0) AS olumsuz
+            FROM ihbarlar
+            WHERE firma_id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$firmaId]);
+        $ozet = (array) ($stmt->fetch(PDO::FETCH_ASSOC) ?: []);
+
+        $trendStmt = $this->db->prepare("SELECT DATE_FORMAT(created_at, '%Y-%m') AS ay,
+                COUNT(*) AS toplam,
+                COALESCE(SUM(durum IN ('olumlu', 'olumsuz')), 0) AS sonuclanan
+            FROM ihbarlar
+            WHERE firma_id = ? AND silinme_tarihi IS NULL
+              AND created_at >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m')");
+        $trendStmt->execute([$firmaId]);
+        $trend = [];
+        foreach ($trendStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $trend[$row['ay']] = $row;
+        }
+
+        $ilceStmt = $this->db->prepare("SELECT COALESCE(NULLIF(TRIM(ilce), ''), 'Belirtilmemiş') AS ilce,
+                COUNT(*) AS toplam
+            FROM ihbarlar
+            WHERE firma_id = ? AND silinme_tarihi IS NULL
+            GROUP BY COALESCE(NULLIF(TRIM(ilce), ''), 'Belirtilmemiş')
+            ORDER BY toplam DESC
+            LIMIT 6");
+        $ilceStmt->execute([$firmaId]);
+
+        $personelStmt = $this->db->prepare("SELECT COUNT(DISTINCT bildiren_personel_id)
+            FROM ihbarlar
+            WHERE firma_id = ? AND silinme_tarihi IS NULL AND bildiren_personel_id IS NOT NULL");
+        $personelStmt->execute([$firmaId]);
+
+        return [
+            'ozet' => $ozet,
+            'trend' => $trend,
+            'ilceler' => $ilceStmt->fetchAll(PDO::FETCH_ASSOC),
+            'personel_sayisi' => (int) $personelStmt->fetchColumn(),
+        ];
+    }
+
+    public function getDashboardReporterNames(): array
+    {
+        $stmt = $this->db->prepare("SELECT DISTINCT COALESCE(p.adi_soyadi, u.adi_soyadi) AS adi_soyadi
+            FROM ihbarlar i
+            LEFT JOIN personel p ON p.id = i.bildiren_personel_id
+            LEFT JOIN users u ON u.id = i.olusturan_user_id
+            WHERE i.firma_id = ? AND i.silinme_tarihi IS NULL
+              AND COALESCE(p.adi_soyadi, u.adi_soyadi) IS NOT NULL
+            ORDER BY adi_soyadi");
+        $stmt->execute([$this->firmaId()]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /** DataTables server-side ihbar listesi. */
+    public function ajaxList(array $params, int $firmaId): array
+    {
+        $start = max(0, (int) ($params['start'] ?? 0));
+        $length = min(100, max(10, (int) ($params['length'] ?? 10)));
+        $search = trim((string) ($params['search']['value'] ?? ''));
+        $filters = $params['filters'] ?? [];
+        $where = ['i.firma_id = :firma_id', 'i.silinme_tarihi IS NULL'];
+        $bindings = [':firma_id' => $firmaId];
+
+        if ($search !== '') {
+            $where[] = "(i.ilce LIKE :search OR i.mahalle LIKE :search OR i.telefon LIKE :search
+                OR bp.adi_soyadi LIKE :search OR ou.adi_soyadi LIKE :search OR ekip.atanan_ekip_adi LIKE :search)";
+            $bindings[':search'] = '%' . $search . '%';
+        }
+        $columnExpressions = !empty($params['has_select'])
+            ? [1 => "DATE_FORMAT(i.created_at, '%d.%m.%Y')", 2 => "DATE_FORMAT(sonuc.sonuclanma_tarihi, '%d.%m.%Y')",
+                3 => 'i.ilce', 4 => 'i.mahalle', 5 => 'i.telefon', 6 => 'COALESCE(bp.adi_soyadi, ou.adi_soyadi)',
+                7 => 'ekip.atanan_ekip_adi', 8 => 'i.durum']
+            : [0 => "DATE_FORMAT(i.created_at, '%d.%m.%Y')", 1 => "DATE_FORMAT(sonuc.sonuclanma_tarihi, '%d.%m.%Y')",
+                2 => 'i.ilce', 3 => 'i.mahalle', 4 => 'i.telefon', 5 => 'COALESCE(bp.adi_soyadi, ou.adi_soyadi)',
+                6 => 'ekip.atanan_ekip_adi', 7 => 'i.durum'];
+        foreach (($params['columns'] ?? []) as $index => $column) {
+            $value = trim((string) ($column['search']['value'] ?? ''));
+            if ($value === '' || !isset($columnExpressions[$index])) continue;
+            $key = ':column_search_' . (int) $index;
+            $where[] = $columnExpressions[$index] . ' LIKE ' . $key;
+            $bindings[$key] = '%' . $value . '%';
+        }
+        $filterMap = ['baslangic' => 'i.created_at >= :baslangic', 'bitis' => 'i.created_at < DATE_ADD(:bitis, INTERVAL 1 DAY)',
+            'sonuc_baslangic' => 'sonuc.sonuclanma_tarihi >= :sonuc_baslangic', 'sonuc_bitis' => 'sonuc.sonuclanma_tarihi < DATE_ADD(:sonuc_bitis, INTERVAL 1 DAY)'];
+        foreach ($filterMap as $key => $condition) {
+            if (!empty($filters[$key])) {
+                $where[] = $condition;
+                $bindings[':' . $key] = (string) $filters[$key];
+            }
+        }
+        foreach (['ilce' => 'i.ilce', 'durum' => 'i.durum'] as $key => $column) {
+            if (!empty($filters[$key]) && $filters[$key] !== 'all') {
+                $where[] = $column . ' = :' . $key;
+                $bindings[':' . $key] = (string) $filters[$key];
+            }
+        }
+        if (!empty($filters['bildiren']) && $filters['bildiren'] !== 'all') {
+            $where[] = 'COALESCE(bp.adi_soyadi, ou.adi_soyadi) = :bildiren';
+            $bindings[':bildiren'] = (string) $filters['bildiren'];
+        }
+        if (!empty($filters['atanan']) && $filters['atanan'] !== 'all') {
+            if ($filters['atanan'] === 'atanmamis') {
+                $where[] = 'ekip.atanan_ekip_adi IS NULL';
+            } else {
+                $where[] = 'FIND_IN_SET(:atanan, REPLACE(ekip.atanan_ekip_adi, ", ", ",")) > 0';
+                $bindings[':atanan'] = (string) $filters['atanan'];
+            }
+        }
+
+        $joins = " FROM ihbarlar i
+            LEFT JOIN personel bp ON bp.id = i.bildiren_personel_id
+            LEFT JOIN users ou ON ou.id = i.olusturan_user_id
+            LEFT JOIN (SELECT a.ihbar_id, GROUP_CONCAT(p.adi_soyadi ORDER BY a.created_at SEPARATOR ', ') AS atanan_ekip_adi
+                FROM ihbar_atamalar a JOIN personel p ON p.id = a.personel_id
+                WHERE a.silinme_tarihi IS NULL GROUP BY a.ihbar_id) ekip ON ekip.ihbar_id = i.id
+            LEFT JOIN (SELECT ihbar_id, MAX(created_at) AS sonuclanma_tarihi FROM ihbar_tarihce
+                WHERE tip = 'durum_degisti' GROUP BY ihbar_id) sonuc ON sonuc.ihbar_id = i.id";
+        $whereSql = ' WHERE ' . implode(' AND ', $where);
+
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM ihbarlar i WHERE i.firma_id = ? AND i.silinme_tarihi IS NULL");
+        $totalStmt->execute([$firmaId]);
+        $total = (int) $totalStmt->fetchColumn();
+        $filteredStmt = $this->db->prepare('SELECT COUNT(*)' . $joins . $whereSql);
+        $filteredStmt->execute($bindings);
+        $filtered = (int) $filteredStmt->fetchColumn();
+
+        $columns = !empty($params['has_select'])
+            ? ['i.id', 'i.created_at', 'sonuc.sonuclanma_tarihi', 'i.ilce', 'i.mahalle', 'i.telefon',
+                'COALESCE(bp.adi_soyadi, ou.adi_soyadi)', 'ekip.atanan_ekip_adi', 'i.durum', 'i.id']
+            : ['i.created_at', 'sonuc.sonuclanma_tarihi', 'i.ilce', 'i.mahalle', 'i.telefon',
+                'COALESCE(bp.adi_soyadi, ou.adi_soyadi)', 'ekip.atanan_ekip_adi', 'i.durum', 'i.id'];
+        $orderIndex = (int) ($params['order'][0]['column'] ?? 1);
+        $orderColumn = $columns[$orderIndex] ?? 'i.created_at';
+        $orderDirection = strtolower((string) ($params['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $sql = "SELECT i.id, i.created_at, i.ilce, i.mahalle, i.telefon, i.durum,
+                COALESCE(bp.adi_soyadi, ou.adi_soyadi) AS bildiren_adi,
+                ekip.atanan_ekip_adi, sonuc.sonuclanma_tarihi" . $joins . $whereSql .
+            " ORDER BY {$orderColumn} {$orderDirection} LIMIT :limit OFFSET :offset";
+        $stmt = $this->db->prepare($sql);
+        foreach ($bindings as $key => $value) $stmt->bindValue($key, $value);
+        $stmt->bindValue(':limit', $length, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $start, PDO::PARAM_INT);
+        $stmt->execute();
+        return ['recordsTotal' => $total, 'recordsFiltered' => $filtered, 'rows' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
     }
 
     public function softDeleteForDashboard(int $id): bool
@@ -819,19 +983,25 @@ class IhbarModel extends Model
                     COALESCE(SUM(CASE WHEN i.durum = 'olumsuz' THEN 1 ELSE 0 END), 0) AS olumsuz_sayisi,
                     COALESCE(SUM(CASE WHEN i.durum IN ('yeni', 'yonlendirildi', 'islemde') THEN 1 ELSE 0 END), 0) AS bekleyen_sayisi,
                     MAX(i.created_at) AS son_ihbar_tarihi,
-                    MAX(CASE WHEN i.durum IN ('olumlu', 'olumsuz') THEN (SELECT MAX(t.created_at) FROM ihbar_tarihce t WHERE t.ihbar_id = i.id AND t.tip = 'durum_degisti') ELSE NULL END) AS son_sonuclanma_tarihi
+                    MAX(CASE WHEN i.durum IN ('olumlu', 'olumsuz') THEN sonuc.sonuclanma_tarihi ELSE NULL END) AS son_sonuclanma_tarihi
                 FROM ihbarlar i
                 JOIN personel p ON p.id = i.bildiren_personel_id
+                LEFT JOIN (
+                    SELECT t.ihbar_id, MAX(t.created_at) AS sonuclanma_tarihi
+                    FROM ihbar_tarihce t
+                    WHERE t.tip = 'durum_degisti'
+                    GROUP BY t.ihbar_id
+                ) sonuc ON sonuc.ihbar_id = i.id
                 WHERE i.silinme_tarihi IS NULL 
                   AND i.firma_id = ?";
 
         $params = [$firmaId];
         if ($baslangic !== null && $baslangic !== '') {
-            $sql .= " AND DATE(i.created_at) >= ?";
-            $params[] = $baslangic;
+            $sql .= " AND i.created_at >= ?";
+            $params[] = $baslangic . ' 00:00:00';
         }
         if ($bitis !== null && $bitis !== '') {
-            $sql .= " AND DATE(i.created_at) <= ?";
+            $sql .= " AND i.created_at < DATE_ADD(?, INTERVAL 1 DAY)";
             $params[] = $bitis;
         }
 
@@ -841,5 +1011,60 @@ class IhbarModel extends Model
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function ajaxPersonelList(array $params, int $firmaId): array
+    {
+        if ($firmaId !== $this->firmaId()) return ['recordsTotal' => 0, 'recordsFiltered' => 0, 'rows' => []];
+        $filters = $params['filters'] ?? [];
+        $rows = $this->getPersonelIhbarIstatistikleri(
+            !empty($filters['baslangic']) ? (string) $filters['baslangic'] : null,
+            !empty($filters['bitis']) ? (string) $filters['bitis'] : null
+        );
+        $total = count($rows);
+        $toplamIhbar = array_sum(array_map(static fn($row) => (int) $row->toplam_ihbar, $rows));
+        $enCok = $rows[0] ?? null;
+        $enBasarili = null;
+        $enBasariliOran = -1;
+        foreach ($rows as $row) {
+            $sonuclanan = (int) $row->olumlu_sayisi + (int) $row->olumsuz_sayisi;
+            if ($sonuclanan > 0) {
+                $oran = (int) round(((int) $row->olumlu_sayisi / $sonuclanan) * 100);
+                if ($oran > $enBasariliOran) {
+                    $enBasariliOran = $oran;
+                    $enBasarili = $row;
+                }
+            }
+        }
+        $search = mb_strtolower(trim((string) ($params['search']['value'] ?? '')), 'UTF-8');
+        $personel = (string) ($filters['personel'] ?? 'all');
+        $basari = (string) ($filters['basari'] ?? 'all');
+        $sonucBas = (string) ($filters['sonuc_baslangic'] ?? '');
+        $sonucBit = (string) ($filters['sonuc_bitis'] ?? '');
+        $rows = array_values(array_filter($rows, static function ($row) use ($search, $personel, $basari, $sonucBas, $sonucBit) {
+            $name = (string) $row->adi_soyadi;
+            $sonuclanan = (int) $row->olumlu_sayisi + (int) $row->olumsuz_sayisi;
+            $oran = $sonuclanan > 0 ? (int) round(((int) $row->olumlu_sayisi / $sonuclanan) * 100) : 0;
+            $sonucDate = !empty($row->son_sonuclanma_tarihi) ? substr($row->son_sonuclanma_tarihi, 0, 10) : '';
+            if ($search !== '' && mb_strpos(mb_strtolower($name, 'UTF-8'), $search) === false) return false;
+            if ($personel !== '' && $personel !== 'all' && $name !== $personel) return false;
+            if ($basari === '80plus' && $oran < 80) return false;
+            if ($basari === '50_79' && ($oran < 50 || $oran >= 80)) return false;
+            if ($basari === 'under50' && $oran >= 50) return false;
+            if ($sonucBas !== '' && ($sonucDate === '' || $sonucDate < $sonucBas)) return false;
+            if ($sonucBit !== '' && ($sonucDate === '' || $sonucDate > $sonucBit)) return false;
+            return true;
+        }));
+        $filtered = count($rows);
+        $columns = ['adi_soyadi', 'toplam_ihbar', 'olumlu_sayisi', 'olumsuz_sayisi', 'bekleyen_sayisi'];
+        $orderIndex = (int) ($params['order'][0]['column'] ?? 1);
+        $orderKey = $columns[$orderIndex] ?? 'toplam_ihbar';
+        $direction = strtolower((string) ($params['order'][0]['dir'] ?? 'desc')) === 'asc' ? 1 : -1;
+        usort($rows, static fn($a, $b) => $direction * (($a->{$orderKey} <=> $b->{$orderKey})));
+        $start = max(0, (int) ($params['start'] ?? 0));
+        $length = min(100, max(10, (int) ($params['length'] ?? 10)));
+        return ['recordsTotal' => $total, 'recordsFiltered' => $filtered, 'rows' => array_slice($rows, $start, $length),
+            'summary' => ['personel_sayisi' => $total, 'toplam_ihbar' => $toplamIhbar, 'en_cok' => $enCok,
+                'en_basarili' => $enBasarili, 'en_basarili_oran' => max(0, $enBasariliOran)]];
     }
 }

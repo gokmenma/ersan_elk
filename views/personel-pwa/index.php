@@ -275,6 +275,9 @@ if ($page === 'ihbar') {
     <meta name="theme-color" content="<?= htmlspecialchars($pageStatusColor ?? ($pageStatusMode === 'surface' ? '#ffffff' : '#135bec'), ENT_QUOTES, 'UTF-8') ?>">
     <meta name="description" content="Ersan Elektrik - Mobil Uygulama">
 
+    <!-- Harici CSS önbellekte kalsa bile uygulama içi geçişte loader görünmez. -->
+    <style>html.pwa-internal-navigation #loading-overlay{display:none!important}</style>
+
     <title>Ersan Elektrik | Personel Yönetimi</title>
 
     <!-- PWA Manifest -->
@@ -299,13 +302,17 @@ if ($page === 'ihbar') {
             try {
                 const navigationMarker = JSON.parse(sessionStorage.getItem('pwaInternalNavigation') || 'null');
                 const currentUrl = new URL(window.location.href);
-                if (
+                const markedInternalNavigation =
                     navigationMarker &&
                     Date.now() - Number(navigationMarker.time || 0) < 10000 &&
-                    navigationMarker.path === currentUrl.pathname + currentUrl.search
-                ) {
+                    navigationMarker.path === currentUrl.pathname + currentUrl.search;
+                const appAlreadyStarted = sessionStorage.getItem('pwaSessionStarted') === '1';
+
+                if (markedInternalNavigation || appAlreadyStarted) {
                     document.documentElement.classList.add('pwa-internal-navigation');
                 }
+
+                sessionStorage.setItem('pwaSessionStarted', '1');
                 sessionStorage.removeItem('pwaInternalNavigation');
             } catch (e) {}
 
@@ -927,6 +934,11 @@ if ($page === 'ihbar') {
             );
 
             if (!isConfirmed) return;
+
+            try {
+                sessionStorage.removeItem('pwaSessionStarted');
+                sessionStorage.removeItem('pwaInternalNavigation');
+            } catch (e) { }
 
             try {
                 if (navigator.serviceWorker && navigator.serviceWorker.controller) {
