@@ -11,6 +11,20 @@ class TalepDashboardModel extends Model
         parent::__construct('personel_talepleri');
     }
 
+    public function emptySummary(): array
+    {
+        $months = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $key = date('Y-m', strtotime("-{$i} months"));
+            $months[] = ['label' => date('m/Y', strtotime($key . '-01')), 'Avans' => 0, 'İzin' => 0, 'Talep' => 0];
+        }
+        return ['total' => 0, 'pending' => 0, 'completed' => 0, 'approval_rate' => 0,
+            'avg_resolution_hours' => 0, 'oldest_pending_days' => 0, 'pending_advance_amount' => 0,
+            'months' => $months, 'types' => ['Avans' => 0, 'İzin' => 0, 'Talep' => 0],
+            'departments' => [], 'top_requesters' => [], 'themes' => [], 'complaint_signals' => [],
+            'categories' => [], 'high_priority' => 0];
+    }
+
     public function getYoneticiOzeti(bool $canAvans, bool $canIzin, bool $canTalep): array
     {
         $parts = [];

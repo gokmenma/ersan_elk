@@ -723,7 +723,7 @@ try {
                 }
             }
 
-            $movementId = $cariHareketModel->syncFaturaHareketi($invoiceId, $userId);
+            $movementId = $cariHareketModel->syncFaturaHareketi($invoiceId, $userId, true);
 
             if ($movementId) {
                 echo json_encode([

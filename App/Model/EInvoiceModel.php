@@ -1886,8 +1886,11 @@ class EInvoiceModel extends Model
             }
             $this->db->commit();
 
+            // Otomatik içe aktarım / cron sırasında cari senkronizasyonu:
+            // Sistemde bu faturanın carisi zaten varsa (VKN/TCKN veya ünvan eşleşmesiyle) cari hareketlerine işlenir.
+            // Ancak cari kart sistemde henüz yoksa otomatik yeni cari kart OLUŞTURULMAZ ($autoCreateCari = false).
             try {
-                (new \App\Model\CariHareketleriModel())->syncFaturaHareketi($id, $userId);
+                (new \App\Model\CariHareketleriModel())->syncFaturaHareketi($id, $userId, false);
             } catch (\Throwable $th) {
                 error_log("EInvoiceModel::importInvoice syncFaturaHareketi warning: " . $th->getMessage());
             }

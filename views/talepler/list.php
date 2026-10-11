@@ -26,7 +26,6 @@ $talepModel = new TalepModel();
 $avansModel = new AvansModel();
 $izinModel = new PersonelIzinleriModel();
 $dashboardModel = new TalepDashboardModel();
-$dashboardData = $dashboardModel->getYoneticiOzeti($canAvans, $canIzin, $canAriza);
 
 // URL parametresi ile görünüm tipi
 $showApproved = isset($_GET['show']) && $_GET['show'] === 'approved';
@@ -50,17 +49,28 @@ if ($canAriza) $toplamCount += $talepCount;
 // Hangi tabın aktif olacağını belirle:
 // Eğer URL'de tab belirtilmemişse, bekleyen kaydı olan sekmeye veya Dashboard'a yönlendir
 $currentTab = $_GET['tab'] ?? '';
+$tabAliases = [
+    'dashboard' => 'dashboard',
+    'tabDashboard' => 'dashboard',
+    '#tabDashboard' => 'dashboard',
+    'avans' => 'avans',
+    'tabAvans' => 'avans',
+    '#tabAvans' => 'avans',
+    'izin' => 'izin',
+    'tabIzin' => 'izin',
+    '#tabIzin' => 'izin',
+    'talepler' => 'talepler',
+    'talep' => 'talepler',
+    'tabTalepler' => 'talepler',
+    '#tabTalepler' => 'talepler',
+];
+$currentTab = $tabAliases[$currentTab] ?? $currentTab;
 if (empty($currentTab)) {
-    if ($avansCount > 0 && $canAvans) {
-        $currentTab = 'avans';
-    } elseif ($izinCount > 0 && $canIzin) {
-        $currentTab = 'izin';
-    } elseif ($talepCount > 0 && $canAriza) {
-        $currentTab = 'talepler';
-    } else {
+    $currentTab = 'dashboard';
+} else {
+    if (!in_array($currentTab, ['dashboard', 'avans', 'izin', 'talepler'], true)) {
         $currentTab = 'dashboard';
     }
-} else {
     // Yetki kontrolü
     if (($currentTab == 'dashboard' && !$canAvans && !$canIzin && !$canAriza) ||
         ($currentTab == 'avans' && !$canAvans) || 
@@ -70,30 +80,37 @@ if (empty($currentTab)) {
     }
 }
 
+$dashboardData = $currentTab === 'dashboard'
+    ? $dashboardModel->getYoneticiOzeti($canAvans, $canIzin, $canAriza)
+    : $dashboardModel->emptySummary();
+
+$avanslar = [];
+$izinler = [];
+$talepler = [];
 if ($showApproved) {
-    $avanslar = $avansModel->getIslenmisAvanslar(50);
+    if ($currentTab === 'avans' && $canAvans) $avanslar = $avansModel->getIslenmisAvanslar(50);
     try {
-        $izinler = $izinModel->getIslenmisIzinler(50);
+        if ($currentTab === 'izin' && $canIzin) $izinler = $izinModel->getIslenmisIzinler(50);
     } catch (\Exception $e) {
         $izinler = [];
     }
-    $talepler = $talepModel->getCozulmusTalepler(50);
+    if ($currentTab === 'talepler' && $canAriza) $talepler = $talepModel->getCozulmusTalepler(50);
 } elseif ($showDeleted) {
-    $avanslar = $avansModel->getSilinmisAvanslar(50);
+    if ($currentTab === 'avans' && $canAvans) $avanslar = $avansModel->getSilinmisAvanslar(50);
     try {
-        $izinler = $izinModel->getSilinmisIzinler(50);
+        if ($currentTab === 'izin' && $canIzin) $izinler = $izinModel->getSilinmisIzinler(50);
     } catch (\Exception $e) {
         $izinler = [];
     }
-    $talepler = $talepModel->getSilinmisTalepler(50);
+    if ($currentTab === 'talepler' && $canAriza) $talepler = $talepModel->getSilinmisTalepler(50);
 } else {
-    $avanslar = $avansModel->getButunBekleyenAvanslar();
+    if ($currentTab === 'avans' && $canAvans) $avanslar = $avansModel->getButunBekleyenAvanslar();
     try {
-        $izinler = $izinModel->getButunBekleyenIzinler();
+        if ($currentTab === 'izin' && $canIzin) $izinler = $izinModel->getButunBekleyenIzinler();
     } catch (\Exception $e) {
         $izinler = [];
     }
-    $talepler = $talepModel->getButunBekleyenTalepler();
+    if ($currentTab === 'talepler' && $canAriza) $talepler = $talepModel->getButunBekleyenTalepler();
 }
 
 $maintitle = "Talepler";
@@ -224,13 +241,13 @@ $title = "Talep Yönetimi";
             <!-- Sol: Renkli ve Net Okunur Tab Menüsü -->
             <ul class="nav nav-pills talep-nav-pills mb-0" id="talepTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link tab-dashboard <?= $currentTab == 'dashboard' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabDashboard" role="tab">
+                    <a class="nav-link tab-dashboard <?= $currentTab == 'dashboard' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabDashboard" data-tab-name="dashboard" role="tab">
                         <i class="bx bx-grid-alt font-size-16"></i> <span>Dashboard</span>
                     </a>
                 </li>
                 <?php if ($canAvans): ?>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link tab-avans <?= $currentTab == 'avans' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabAvans" role="tab">
+                    <a class="nav-link tab-avans <?= $currentTab == 'avans' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabAvans" data-tab-name="avans" role="tab">
                         <i class="bx bx-money font-size-16"></i> <span>Avans Talepleri</span>
                         <?php if (!$showApproved && !$showDeleted && $avansCount > 0): ?>
                             <span class="badge ms-1"><?= $avansCount ?></span>
@@ -240,7 +257,7 @@ $title = "Talep Yönetimi";
                 <?php endif; ?>
                 <?php if ($canIzin): ?>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link tab-izin <?= $currentTab == 'izin' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabIzin" role="tab">
+                    <a class="nav-link tab-izin <?= $currentTab == 'izin' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabIzin" data-tab-name="izin" role="tab">
                         <i class="bx bx-calendar-check font-size-16"></i> <span>İzin Talepleri</span>
                         <?php if (!$showApproved && !$showDeleted && $izinCount > 0): ?>
                             <span class="badge ms-1"><?= $izinCount ?></span>
@@ -250,7 +267,7 @@ $title = "Talep Yönetimi";
                 <?php endif; ?>
                 <?php if ($canAriza): ?>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link tab-talepler <?= $currentTab == 'talepler' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabTalepler" role="tab">
+                    <a class="nav-link tab-talepler <?= $currentTab == 'talepler' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabTalepler" data-tab-name="talepler" role="tab">
                         <i class="bx bx-message-square-detail font-size-16"></i> <span>Genel Talepler</span>
                         <?php if (!$showApproved && !$showDeleted && $talepCount > 0): ?>
                             <span class="badge ms-1"><?= $talepCount ?></span>
@@ -309,7 +326,7 @@ $title = "Talep Yönetimi";
             <div class="tab-content">
                 <!-- 1. TAB: DASHBOARD -->
                 <div class="tab-pane fade <?= $currentTab == 'dashboard' ? 'show active' : '' ?>" id="tabDashboard" role="tabpanel">
-                    <div class="dashboard-metric-grid mb-3">
+                    <div class="dashboard-metric-grid mt-3 mb-3">
                         <article class="dashboard-metric metric-blue">
                             <div class="metric-icon"><i class="bx bx-layer"></i></div>
                             <div><span>6 Aylık Toplam</span><strong><?= (int) $dashboardData['total'] ?></strong><small>Tüm talep türleri</small></div>
@@ -1483,13 +1500,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // KPI Kartlarındaki Butonlara basınca ilgili sekmeye geçiş
+    function talepSekmesineGit(tabName) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tabName);
+        window.location.assign(url.toString());
+    }
+
+    document.querySelectorAll('.talep-nav-pills a[data-tab-name]').forEach(link => {
+        link.addEventListener('click', function (event) {
+            const tabName = this.getAttribute('data-tab-name');
+            if (!tabName || this.classList.contains('active')) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            talepSekmesineGit(tabName);
+        }, true);
+    });
+
     document.querySelectorAll('.tab-switch-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const targetSelector = this.getAttribute('data-tab-target');
             if (targetSelector) {
                 const tabLink = document.querySelector(`.talep-nav-pills a[href="${targetSelector}"]`);
                 if (tabLink) {
-                    new bootstrap.Tab(tabLink).show();
+                    talepSekmesineGit(tabLink.getAttribute('data-tab-name'));
                 }
             }
         });

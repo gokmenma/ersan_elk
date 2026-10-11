@@ -159,7 +159,7 @@ class CariHareketleriModel extends Model
      * @param int|null $userId
      * @return int|null Eklenen/güncellenen cari hareket ID'si
      */
-    public function syncFaturaHareketi(int $faturaId, ?int $userId = null): ?int
+    public function syncFaturaHareketi(int $faturaId, ?int $userId = null, bool $autoCreateCari = false): ?int
     {
         try {
             $stmt = $this->db->prepare("SELECT * FROM faturalar WHERE id = :id LIMIT 1");
@@ -191,8 +191,9 @@ class CariHareketleriModel extends Model
                 }
             }
 
-            // Eşleşen cari hala yoksa, otomatik olarak yeni cari kart oluştur
-            if ($cariId <= 0) {
+            // Eşleşen cari hala yoksa ve $autoCreateCari true ise (yalnızca kullanıcı arayüzden onayladığında) yeni cari kart oluştur
+            // Cron veya otomatik içe aktarımlarda asla otomatik cari oluşturulmaz.
+            if ($cariId <= 0 && $autoCreateCari) {
                 $cariId = $cariModel->createFromFatura($fatura, $userId);
             }
 
