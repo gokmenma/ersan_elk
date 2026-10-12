@@ -120,6 +120,9 @@ $firmId = (int)($_SESSION['firm_id'] ?? $_SESSION['firma_id'] ?? 0);
                 <button type="button" onclick="printMobileInvoice()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="Yazdır">
                     <span class="material-symbols-outlined text-[18px]">print</span>
                 </button>
+                <button type="button" onclick="shareCurrentInvoice(event)" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="Faturayı Paylaş" aria-label="Faturayı paylaş">
+                    <span class="material-symbols-outlined text-[18px]">share</span>
+                </button>
                 <a href="#" id="mobPdfDownloadBtn" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="PDF İndir">
                     <span class="material-symbols-outlined text-[18px]">download</span>
                 </a>
@@ -139,6 +142,7 @@ let currentGidenStartDate = '';
 let currentGidenEndDate = '';
 let currentGidenStatus = '';
 let gidenSearchTimer = null;
+let currentPreviewInvoice = null;
 
 const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
 
@@ -319,6 +323,9 @@ function loadGidenInvoices() {
                             <span class="text-[10px] font-bold ${tahsilatDurumu === 'ODENDI' ? 'text-emerald-600' : (tahsilatDurumu === 'KISMI_ODENDI' ? 'text-amber-600' : 'text-slate-400')}">
                                 ${tahsilatDurumu === 'ODENDI' ? '✓ Ödendi' : (tahsilatDurumu === 'KISMI_ODENDI' ? '◑ Kısmi' : '○ Ödenmedi')}
                             </span>
+                            <button type="button" onclick="event.stopPropagation(); shareInvoice('${inv.encrypted_id}', '${inv.fatura_no || ''}', this)" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary font-bold text-[10px]" title="Faturayı paylaş">
+                                <span class="material-symbols-outlined text-[14px]">share</span> Paylaş
+                            </button>
                             <button type="button" onclick="event.stopPropagation(); openInvoicePreview('${inv.encrypted_id}', '${inv.fatura_no || ''}')" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
                                 <span class="material-symbols-outlined text-[14px]">visibility</span> PDF
                             </button>
@@ -341,6 +348,8 @@ function openInvoicePreview(encId, faturaNo) {
     const title = document.getElementById('mobPdfTitle');
     const dlBtn = document.getElementById('mobPdfDownloadBtn');
     const newTabBtn = document.getElementById('mobPdfNewTabBtn');
+
+    currentPreviewInvoice = { id: encId, number: faturaNo || 'Fatura' };
 
     title.textContent = faturaNo || 'Fatura Önizleme';
     if (dlBtn) dlBtn.href = `../api/efatura-api.php?action=download_pdf&invoice_id=${encodeURIComponent(encId)}`;
@@ -384,6 +393,80 @@ function printMobileInvoice() {
         frame.contentWindow.print();
     }
 }
+
+function closeInvoicePreview() {
+    const modal = document.getElementById('mobPdfModal');
+    const sheet = document.getElementById('mobPdfSheet');
+    const frame = document.getElementById('mobPdfFrame');
+    if (!modal || !sheet) return;
+
+    sheet.classList.add('translate-y-full');
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        if (frame) {
+            frame.srcdoc = '';
+            frame.src = 'about:blank';
+        }
+        currentPreviewInvoice = null;
+    }, 300);
+}
+
+async function shareInvoice(encId, faturaNo, button) {
+    if (!navigator.share) {
+        Swal.fire('Paylaşım desteklenmiyor', 'Cihazınızın tarayıcısı sistem paylaşım menüsünü desteklemiyor.', 'info');
+        return;
+    }
+
+    const originalHtml = button ? button.innerHTML : '';
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>';
+    }
+
+    try {
+        const response = await fetch(`../api/efatura-api.php?action=download_pdf&invoice_id=${encodeURIComponent(encId)}`, {
+            credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error('Fatura PDF dosyası hazırlanamadı.');
+
+        const blob = await response.blob();
+        if (!blob.type.includes('pdf')) throw new Error('Fatura PDF dosyası alınamadı.');
+
+        const safeName = String(faturaNo || 'fatura').replace(/[^a-zA-Z0-9._-]+/g, '_');
+        const file = new File([blob], `${safeName}.pdf`, { type: 'application/pdf' });
+        const shareData = { title: `${faturaNo || 'Fatura'} PDF`, files: [file] };
+
+        if (navigator.canShare && !navigator.canShare(shareData)) {
+            throw new Error('Cihazınız PDF dosyası paylaşımını desteklemiyor.');
+        }
+        await navigator.share(shareData);
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            Swal.fire('Fatura paylaşılamadı', error.message || 'Paylaşım sırasında bir hata oluştu.', 'warning');
+        }
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        }
+    }
+}
+
+function shareCurrentInvoice(event) {
+    if (!currentPreviewInvoice) return;
+    shareInvoice(currentPreviewInvoice.id, currentPreviewInvoice.number, event.currentTarget);
+}
+
+document.getElementById('mobPdfModal')?.addEventListener('click', function (event) {
+    if (event.target === this) closeInvoicePreview();
+});
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !document.getElementById('mobPdfModal')?.classList.contains('hidden')) {
+        closeInvoicePreview();
+    }
+});
 </script>
 
 <!-- 7. Dönem Seçim Modal / Bottom Sheet -->
