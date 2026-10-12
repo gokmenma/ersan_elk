@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ersan-mobile-shell-v2'
+const CACHE_NAME = 'ersan-mobile-shell-v3'
 const SHELL = ['/', '/manifest.webmanifest', '/pwa-icons/icon-192.png', '/pwa-icons/icon-512.png']
 
 self.addEventListener('install', event => {
