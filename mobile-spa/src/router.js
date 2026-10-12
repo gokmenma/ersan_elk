@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from './views/HomeView.vue'
 import TasksView from './views/TasksView.vue'
 import ReportsView from './views/ReportsView.vue'
@@ -10,7 +10,7 @@ import PersonnelFormView from './views/PersonnelFormView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     { path: '/giris', name: 'login', component: LoginView, meta: { guest: true, chrome: false } },
     { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
@@ -21,6 +21,7 @@ const router = createRouter({
     { path: '/personel', name: 'personnel', component: PersonnelView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, chrome: false } },
     { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, chrome: false } },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),
 })
