@@ -37,8 +37,11 @@ function personnelPublicRow(array $row): array
 {
     $active = empty($row['isten_cikis_tarihi']) || $row['isten_cikis_tarihi'] === '0000-00-00';
     $name = trim((string) ($row['adi_soyadi'] ?? '')) ?: 'İsimsiz Personel';
+    $encryptedId = Security::encrypt((string) $row['id']);
+    $hasPhoto = trim((string) ($row['personel_resim_yolu'] ?? $row['resim_yolu'] ?? '')) !== '';
     return [
-        'id' => Security::encrypt((string) $row['id']),
+        'id' => $encryptedId,
+        'avatar' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode($encryptedId) : null,
         'name' => $name,
         'initials' => personnelInitials($name),
         'phone' => trim((string) ($row['cep_telefonu'] ?? '')),

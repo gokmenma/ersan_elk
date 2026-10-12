@@ -54,7 +54,7 @@ class MobilePersonelModel extends Model
         $stmt->execute($params);
         $total = (int) $stmt->fetchColumn();
 
-        $sql = "SELECT p.id,p.adi_soyadi,p.cep_telefonu,p.email_adresi,p.gorev,p.departman,p.ekip_bolge,
+        $sql = "SELECT p.id,p.adi_soyadi,p.cep_telefonu,p.email_adresi,p.gorev,p.departman,p.ekip_bolge,p.resim_yolu,p.personel_resim_yolu,
             p.ise_giris_tarihi,p.isten_cikis_tarihi,
             GROUP_CONCAT(DISTINCT REPLACE(t.tur_adi,'ER-SAN ELEKTRİK ','') ORDER BY t.tur_adi SEPARATOR ', ') team,
             GROUP_CONCAT(DISTINCT t.ekip_bolge ORDER BY t.ekip_bolge SEPARATOR ', ') team_region
@@ -79,7 +79,7 @@ class MobilePersonelModel extends Model
     {
         $params = ['id'=>$id,'firma_id'=>$firmaId,'modul'=>'personel'];
         $where = $this->baseWhere($params);
-        $stmt = $this->db->prepare("SELECT p.id,p.adi_soyadi,p.cep_telefonu,p.email_adresi,p.gorev,p.departman,p.ekip_bolge,
+        $stmt = $this->db->prepare("SELECT p.id,p.adi_soyadi,p.cep_telefonu,p.email_adresi,p.gorev,p.departman,p.ekip_bolge,p.resim_yolu,p.personel_resim_yolu,
             p.ise_giris_tarihi,p.isten_cikis_tarihi,
             GROUP_CONCAT(DISTINCT REPLACE(t.tur_adi,'ER-SAN ELEKTRİK ','') SEPARATOR ', ') team,
             GROUP_CONCAT(DISTINCT t.ekip_bolge SEPARATOR ', ') team_region
