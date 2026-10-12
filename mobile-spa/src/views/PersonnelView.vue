@@ -62,17 +62,7 @@ watch(search, () => {
 })
 
 async function openDetail(person) {
-  selected.value = person
-  detailLoading.value = true
-  try {
-    const result = await personnelApi.detail(person.id)
-    selected.value = result.personnel
-  } catch (reason) {
-    error.value = reason.message
-    selected.value = null
-  } finally {
-    detailLoading.value = false
-  }
+  await router.push(`/personel/${encodeURIComponent(person.id)}`)
 }
 
 function closeDetail() { selected.value = null }
@@ -87,7 +77,7 @@ onMounted(() => load(true))
 </script>
 
 <template>
-  <section class="personnel-screen">
+  <section class="personnel-screen ds-screen ds-personnel-directory">
     <header class="personnel-hero">
       <div class="directory-topbar">
         <button type="button" aria-label="Geri dön" @click="router.back()"><ArrowLeft :size="25" /></button>

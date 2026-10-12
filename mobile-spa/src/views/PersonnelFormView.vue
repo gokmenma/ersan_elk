@@ -57,7 +57,7 @@ onMounted(prepare)
 </script>
 
 <template>
-  <section class="personnel-workspace">
+  <section class="personnel-workspace ds-screen ds-personnel-workspace">
     <header class="workspace-header">
       <button aria-label="Personel listesine dön" @click="router.push('/personel')"><ArrowLeft :size="20" /></button>
       <div><span>{{ editing ? 'PERSONEL PROFİLİ' : 'YENİ PERSONEL' }}</span><h1>{{ form.name || 'Personel oluştur' }}</h1></div>

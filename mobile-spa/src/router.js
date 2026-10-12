@@ -8,6 +8,8 @@ import LoginView from './views/LoginView.vue'
 import CompanySelectView from './views/CompanySelectView.vue'
 import PersonnelView from './views/PersonnelView.vue'
 import PersonnelFormView from './views/PersonnelFormView.vue'
+import PersonnelDetailView from './views/PersonnelDetailView.vue'
+import PersonnelSectionView from './views/PersonnelSectionView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -21,6 +23,8 @@ const router = createRouter({
     { path: '/talepler', name: 'requests', component: TaleplerView, meta: { requiresAuth: true, requiresCompany: true, permission: 'requests' } },
     { path: '/profil', name: 'profile', component: ProfileView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/personel', name: 'personnel', component: PersonnelView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
+    { path: '/personel/:id', name: 'personnel-detail', component: PersonnelDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
+    { path: '/personel/:id/bolum/:section', name: 'personnel-section', component: PersonnelSectionView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
     { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel', chrome: false } },
     { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel', chrome: false } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
