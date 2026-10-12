@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Ersan Elektrik Mobil Yönetim",
+  "short_name": "Ersan Mobile",
+  "description": "Ersan Elektrik personel ve saha yönetim uygulaması",
+  "lang": "tr",
+  "start_url": "/#/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f6f7",
+  "theme_color": "#1f65dc",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/pwa-icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

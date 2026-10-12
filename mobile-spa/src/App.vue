@@ -1,6 +1,7 @@
 <script setup>
 import { RouterView } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
+import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 </script>
 
 <template>
@@ -13,6 +14,7 @@ import BottomNav from './components/BottomNav.vue'
           </Transition>
         </RouterView>
       </main>
+      <PwaInstallPrompt />
       <BottomNav v-if="$route.meta.chrome !== false" />
     </div>
   </div>

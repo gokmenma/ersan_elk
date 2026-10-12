@@ -37,6 +37,14 @@ class UserModel extends Model
         return $sql->fetch(PDO::FETCH_OBJ) ?? null;
     }
 
+    /** Mobil yönetim uygulaması için yalnızca gerçek kullanıcı adıyla giriş. */
+    public function findByUsername(string $username): ?object
+    {
+        $sql = $this->db->prepare("SELECT * FROM {$this->table} WHERE user_name = :username LIMIT 1");
+        $sql->execute(['username' => trim($username)]);
+        return $sql->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
     /**
      * Kullanıcının adı verilen yetki grubuna bağlı olup olmadığını döndürür.
      * Portal girişleri gibi oturum kurulmadan önce yapılması gereken kontrollerde

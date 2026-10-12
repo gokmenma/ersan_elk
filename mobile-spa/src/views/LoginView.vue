@@ -46,8 +46,8 @@ async function submit() {
       <div><span class="section-kicker">GÜVENLİ GİRİŞ</span><h2>Tekrar hoş geldiniz</h2><p>Hesabınıza kaldığınız yerden devam edin.</p></div>
       <div v-if="error" class="form-alert" role="alert">{{ error }}</div>
       <label class="auth-field">
-        <span>Kullanıcı adı, e-posta veya telefon</span>
-        <div><UserRound :size="18" /><input v-model.trim="username" autocomplete="username" inputmode="text" required placeholder="Kullanıcı bilginiz" /></div>
+        <span>Kullanıcı adı</span>
+        <div><UserRound :size="18" /><input v-model.trim="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="text" required placeholder="Gerçek kullanıcı adınız" /></div>
       </label>
       <label class="auth-field">
         <span>Şifre</span>

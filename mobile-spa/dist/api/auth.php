@@ -175,7 +175,7 @@ try {
             $attempt = ['count' => 0, 'first_attempt' => time()];
         }
 
-        $user = (new UserModel())->checkUser($username);
+        $user = (new UserModel())->findByUsername($username);
         if (!$user || ($user->durum ?? 'Aktif') === 'Pasif' || !password_verify($password, (string) $user->password)) {
             $attempt['count']++;
             if ($attempt['count'] === 1) {
