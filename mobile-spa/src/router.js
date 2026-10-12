@@ -3,6 +3,7 @@ import HomeView from './views/HomeView.vue'
 import TasksView from './views/TasksView.vue'
 import ReportsView from './views/ReportsView.vue'
 import ProfileView from './views/ProfileView.vue'
+import TaleplerView from './views/TaleplerView.vue'
 import LoginView from './views/LoginView.vue'
 import CompanySelectView from './views/CompanySelectView.vue'
 import PersonnelView from './views/PersonnelView.vue'
@@ -17,6 +18,7 @@ const router = createRouter({
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/talepler', name: 'requests', component: TaleplerView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/profil', name: 'profile', component: ProfileView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/personel', name: 'personnel', component: PersonnelView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, chrome: false } },
