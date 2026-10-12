@@ -1,0 +1,39 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from './views/HomeView.vue'
+import TasksView from './views/TasksView.vue'
+import ReportsView from './views/ReportsView.vue'
+import ProfileView from './views/ProfileView.vue'
+import LoginView from './views/LoginView.vue'
+import CompanySelectView from './views/CompanySelectView.vue'
+import PersonnelView from './views/PersonnelView.vue'
+import PersonnelFormView from './views/PersonnelFormView.vue'
+import { auth } from './services/auth.js'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/giris', name: 'login', component: LoginView, meta: { guest: true, chrome: false } },
+    { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
+    { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/profil', name: 'profile', component: ProfileView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/personel', name: 'personnel', component: PersonnelView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, chrome: false } },
+    { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, chrome: false } },
+  ],
+  scrollBehavior: () => ({ top: 0 }),
+})
+
+router.beforeEach(async (to) => {
+  try {
+    await auth.bootstrap()
+  } catch {
+    if (to.name !== 'login') return { name: 'login' }
+  }
+  if (to.meta.guest && auth.state.authenticated) return auth.state.company ? { name: 'home' } : { name: 'company-select' }
+  if (to.meta.requiresAuth && !auth.state.authenticated) return { name: 'login' }
+  if (to.meta.requiresCompany && !auth.state.company) return { name: 'company-select' }
+})
+
+export default router

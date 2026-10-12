@@ -23,6 +23,8 @@ graphify-out/
 
 # Playwright
 node_modules/
+.DS_Store
+*.local
 /test-results/
 /playwright-report/
 /blob-report/
