@@ -373,6 +373,13 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
     <!-- Tema & Dark Mode ön yüklemesi (personel-pwa ile aynı) -->
     <script>
         (function () {
+            try {
+                if (sessionStorage.getItem('mobileUiStarted') === '1') {
+                    document.documentElement.classList.add('mobile-page-transition');
+                }
+                sessionStorage.setItem('mobileUiStarted', '1');
+            } catch (e) {}
+
             const themes = {
                 blue:   { primary: '#135bec', dark: '#0d47c1', light: '#4a87f5' },
                 purple: { primary: '#5156be', dark: '#414598', light: '#868ae0' },
@@ -639,12 +646,36 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
         .pb-nav {
             padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
         }
-        /* Başlık ve sayfa içeriği birlikte geçer; alt navigasyon sabit kalır. */
+        /*
+         * Mobil yönetimde cross-document snapshot kullanılmaz. Yeni içerik
+         * gerçek DOM üzerinde açılır; böylece sabit alt navigasyon kaybolmaz.
+         */
+        @view-transition {
+            navigation: none;
+        }
         #mobile-page-shell {
-            view-transition-name: pwa-main-content;
+            view-transition-name: none;
         }
         #mobile-page-shell > #main-content {
             view-transition-name: none;
+        }
+        html.mobile-page-transition #mobile-page-shell {
+            animation: mobile-page-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @keyframes mobile-page-enter {
+            from {
+                opacity: 0;
+                transform: translateX(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html.mobile-page-transition #mobile-page-shell {
+                animation: none;
+            }
         }
         /* Dolu ikonlar için Material Symbols */
         .filled { font-variation-settings: 'FILL' 1; }
@@ -854,7 +885,7 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
     </div>
 
     <!-- Alt Navigasyon -->
-    <nav aria-label="Ana gezinme" class="pwa-bottom-navigation fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-700 safe-area-bottom z-50 shadow-lg">
+    <nav aria-label="Ana gezinme" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-700 safe-area-bottom z-50 shadow-lg">
         <div class="flex items-center justify-around px-2 py-1">
             <?php foreach ($nav_items as $item): 
                 $isActive = ($page === $item['page']);
