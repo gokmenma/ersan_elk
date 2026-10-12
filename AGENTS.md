@@ -114,4 +114,15 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
 - **Ekran Sınırı Koruması**: Menü açılırken ekranın sağ ve alt kenarlarından taşmayacak şekilde koordinat düzeltmesi yapılır.
 - **Tema Desteği**: Hem açık (Light) hem de koyu (Dark) temada sorunsuz çalışır.
 
+## 9. macOS Teması ve Form Stilleri Standardı
+- **Tema Tanımı ve CSS Dosyası**: Sistemdeki macOS Koyu teması `html[data-theme-preset="macos-dark"]` ve `[data-theme-preset="macos-dark"]` seçicileriyle yönetilir. Tüm global tema kuralları `assets/css/style.css` dosyasında yer alır.
+- **Form Bileşenleri Mimarisi**:
+  - Masaüstü form alanları doğrudan ham HTML yerine `App\Helper\Form` üzerinden üretilir (`Form::FormFloatInput()`, `Form::FormSelect2()`, `Form::FormFloatTextarea()`).
+  - Çıktı `.form-floating.form-floating-custom` veya `.form-floating-select2` hiyerarşisiyle sunulur.
+- **Görsel Hiyerarşi (Soluk Label & Değer Odağı)**:
+  - Form input, textarea ve select alanlarındaki üst açıklama başlıkları (`label`), kullanıcının dikkatinin doğrudan girilen/seçilen değere odaklanması için soluk mat tonda (`rgba(215, 220, 232, 0.46)`) tutulur.
+  - Asıl değer metinleri (`.form-control`, `.form-select`, `.select2-selection__rendered`) net ve parlak (`#f5f7fa`) olarak ön planda görünür.
+  - Elemana odaklanıldığında (focus / focus-within) üst label macOS mavisi (`rgba(10, 132, 255, 0.78)`) ile hafifçe aydınlanır; sol ikonlar (`.form-floating-icon`) da bu renkle uyumlu çalışır.
+
+
 

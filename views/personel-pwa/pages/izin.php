@@ -182,11 +182,11 @@
 </div>
 
 <!-- Yeni İzin Talebi Modal -->
-<div id="izin-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3 max-h-[85vh] overflow-y-auto">
-        <div class="modal-handle"></div>
+<div id="izin-modal" class="modal-overlay" style="z-index: 200;">
+    <div class="modal-content p-6 pt-3 max-h-[92vh] h-[85vh] flex flex-col">
+        <div class="modal-handle flex-shrink-0"></div>
 
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
             <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-primary text-2xl">edit_calendar</span>
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white">Yeni İzin Talebi</h3>
@@ -197,49 +197,64 @@
             </button>
         </div>
 
-        <form id="izin-form" class="flex flex-col gap-4">
-            <div>
-                <label class="form-label">İzin Türü</label>
-                <select name="izin_tipi" class="form-input form-select" required>
-                    <option value="">Yükleniyor...</option>
-                </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
+        <form id="izin-form" class="flex flex-col flex-1 min-h-0">
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1">
                 <div>
-                    <label class="form-label">Başlangıç Tarihi</label>
-                    <input type="date" name="baslangic_tarihi" class="form-input" required>
+                    <label class="form-label">İzin Türü</label>
+                    <select name="izin_tipi" class="form-input form-select" required>
+                        <option value="">Yükleniyor...</option>
+                    </select>
                 </div>
-                <div>
-                    <label class="form-label">Bitiş Tarihi</label>
-                    <input type="date" name="bitis_tarihi" class="form-input" required>
+
+                <!-- Hastalık İzni Bilgilendirme / Uyarı Kutusu -->
+                <div id="hastalik-izni-uyari" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl transition-all" style="display: none; padding: 18px 20px;">
+                    <div class="flex items-start gap-3.5">
+                        <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl flex-shrink-0 mt-0.5">medical_services</span>
+                        <div class="flex-1">
+                            <p class="text-sm font-bold text-amber-800 dark:text-amber-300">Önemli Bilgilendirme (Sağlık Raporu)</p>
+                            <p class="text-xs text-amber-900/85 dark:text-amber-200/90 mt-1.5 leading-relaxed">
+                                Hastalık izni talebi oluşturabilmeniz için hekim veya sağlık kurulu tarafından verilmiş geçerli bir <strong>sağlık raporunuzun bulunması gerekmektedir</strong>. Raporunuz olmadan hastalık izni seçilmemelidir.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div>
-                <label class="form-label">Açıklama</label>
-                <textarea name="aciklama" class="form-input min-h-[80px]"
-                    placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
-            </div>
-
-            <!-- Info Box -->
-            <div class="bg-primary/5 border border-primary/20 rounded-xl p-4">
-                <div class="flex items-start gap-3">
-                    <span class="material-symbols-outlined text-primary">info</span>
+                <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Hatırlatma</p>
-                        <p class="text-xs text-slate-500 mt-1">3 günden uzun süreli izin talepleri en az 2 hafta önceden
-                            bildirilmelidir.</p>
+                        <label class="form-label">Başlangıç Tarihi</label>
+                        <input type="date" name="baslangic_tarihi" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Bitiş Tarihi</label>
+                        <input type="date" name="bitis_tarihi" class="form-input" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Açıklama</label>
+                    <textarea name="aciklama" class="form-input min-h-[80px]"
+                        placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
+                </div>
+
+                <!-- Info Box -->
+                <div class="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-primary">info</span>
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Hatırlatma</p>
+                            <p class="text-xs text-slate-500 mt-1">3 günden uzun süreli izin talepleri en az 2 hafta önceden bildirilmelidir.</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex gap-3 mt-2">
+            <!-- Sabit Alt Butonlar -->
+            <div class="flex gap-3 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
                 <button type="button" onclick="Modal.close('izin-modal')"
                     class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
                     İptal
                 </button>
-                <button type="submit" class="flex-1 btn-primary py-3">
+                <button type="submit" class="flex-1 btn-primary py-3 font-semibold shadow-md shadow-primary/20">
                     Talebi Gönder
                 </button>
             </div>
@@ -313,6 +328,7 @@
     let hakedisData = null;
     const iseGirisTarihi = '<?= $personel->ise_giris_tarihi ?? "" ?>';
     const istenCikisTarihi = '<?= $personel->isten_cikis_tarihi ?? "" ?>';
+    const personelMedeniDurum = '<?= htmlspecialchars($personel->medeni_durum ?? "", ENT_QUOTES, "UTF-8") ?>';
 
     // Calendar State
     let currentView = 'calendar';
@@ -326,6 +342,14 @@
         loadIzinler();
         updatePeriodLabel();
         setView('calendar');
+
+        // İzin türü değişiminde hastalık izni uyarısı kontrolü
+        const selectIzinTipi = document.querySelector('#izin-form select[name="izin_tipi"]');
+        if (selectIzinTipi) {
+            selectIzinTipi.addEventListener('change', function () {
+                checkHastalikIzniUyarisi(this.value, true);
+            });
+        }
 
         // İzin form submit
         document.getElementById('izin-form').addEventListener('submit', async function (e) {
@@ -394,6 +418,8 @@
     function openNewIzinModal(dateStr) {
         document.querySelector('#izin-form input[name="baslangic_tarihi"]').value = dateStr;
         document.querySelector('#izin-form input[name="bitis_tarihi"]').value = dateStr;
+        const currentIzinTipi = document.querySelector('#izin-form select[name="izin_tipi"]')?.value || '';
+        checkHastalikIzniUyarisi(currentIzinTipi, false);
         Modal.open('izin-modal');
     }
 
@@ -628,15 +654,64 @@
         return !isMazeretIzinTuru(tur) && (yillikMi || Number(tur.ucretli_mi) === 1);
     }
 
+    function isHastalikIzinTuru(tur) {
+        if (!tur) return false;
+        if (tur.is_hastalik !== undefined) return Boolean(tur.is_hastalik);
+        const ad = normalizeIzinMetni(tur.tur_adi);
+        const kod = normalizeIzinMetni(tur.kisa_kod);
+        return ad.includes('hastalık') || ad.includes('hastalik') || ad.includes('rapor') || kod === 'rp';
+    }
+
+    function isBabalikIzinTuru(tur) {
+        if (!tur) return false;
+        if (tur.is_babalik !== undefined) return Boolean(tur.is_babalik);
+        const ad = normalizeIzinMetni(tur.tur_adi);
+        const kod = normalizeIzinMetni(tur.kisa_kod);
+        return ad.includes('babalık') || ad.includes('babalik') || kod === 'bi';
+    }
+
+    function isEvlilikIzinTuru(tur) {
+        if (!tur) return false;
+        if (tur.is_evlilik !== undefined) return Boolean(tur.is_evlilik);
+        const ad = normalizeIzinMetni(tur.tur_adi);
+        const kod = normalizeIzinMetni(tur.kisa_kod);
+        return ad.includes('evlilik') || kod === 'ei';
+    }
+
+    function checkHastalikIzniUyarisi(selectedId, showToast = true) {
+        const uyariEl = document.getElementById('hastalik-izni-uyari');
+        if (!uyariEl) return;
+
+        const secilenTur = izinTurleri.find(tur => String(tur.id) === String(selectedId));
+        if (secilenTur && isHastalikIzinTuru(secilenTur)) {
+            uyariEl.style.display = 'block';
+            if (showToast) {
+                Toast.show('Hastalık izni seçtiniz. Rapor olmadan hastalık izni seçilmemelidir.', 'warning');
+            }
+        } else {
+            uyariEl.style.display = 'none';
+        }
+    }
+
     function renderIzinTurleri() {
         const select = document.querySelector('select[name="izin_tipi"]');
         if (!select || !Array.isArray(izinTurleri)) return;
 
         const seciliDeger = select.value;
         const hakYok = hakedisData && Number(hakedisData.kalan_izin) <= 0;
+        const normMedeni = normalizeIzinMetni(personelMedeniDurum);
         select.innerHTML = '<option value="">Seçiniz...</option>';
 
         izinTurleri.forEach(tur => {
+            // Bekar olanlarda babalık izni gelmesin
+            if (normMedeni === 'bekar' && isBabalikIzinTuru(tur)) {
+                return;
+            }
+            // Evli olanlarda evlilik izni gelmesin
+            if (normMedeni === 'evli' && isEvlilikIzinTuru(tur)) {
+                return;
+            }
+
             const option = document.createElement('option');
             option.value = tur.id;
             option.disabled = Boolean(hakYok && isHakEdisGerektirenIzinTuru(tur));
@@ -646,7 +721,11 @@
 
         if ([...select.options].some(option => option.value === seciliDeger && !option.disabled)) {
             select.value = seciliDeger;
+        } else {
+            select.value = '';
         }
+
+        checkHastalikIzniUyarisi(select.value, false);
     }
 
     async function showHakedisDetay() {
@@ -1048,6 +1127,19 @@
             return;
         }
 
+        // Hastalık izni seçildiyse sağlık raporu teyidi
+        if (secilenIzinTuru && isHastalikIzinTuru(secilenIzinTuru)) {
+            const onay = await Alert.confirm(
+                'Sağlık Raporu Bildirimi',
+                'Hastalık izni talebi için geçerli bir sağlık raporunuz olması zorunludur. Rapor olmadan hastalık izni seçilmemelidir. Geçerli bir sağlık raporunuz var mı?',
+                'Evet, Raporum Var',
+                'Vazgeç'
+            );
+            if (!onay) {
+                return;
+            }
+        }
+
         try {
             const response = await API.request('createIzinTalebi', formData);
 
@@ -1055,6 +1147,7 @@
                 Toast.show('İzin talebiniz başarıyla gönderildi', 'success');
                 Modal.close('izin-modal');
                 form.reset();
+                checkHastalikIzniUyarisi('', false);
                 loadIzinler(false);
                 loadIzinStats(false);
             } else {

@@ -5,11 +5,11 @@
  */
 use App\Helper\Helper;
 use App\Helper\Date;
+use App\Model\EkipTakibiModel;
 
 // En son endeks okuma tarihini bul (varsayılan akıllı tarih için)
 try {
-    $db = (new \App\Model\Model('endeks_okuma'))->getDb();
-    $sonOkumaTarihi = $db->query("SELECT MAX(tarih) FROM endeks_okuma WHERE silinme_tarihi IS NULL")->fetchColumn();
+    $sonOkumaTarihi = (new EkipTakibiModel())->getSonOkumaTarihi((int) ($_SESSION['firma_id'] ?? 0));
 } catch (\Throwable $e) {
     $sonOkumaTarihi = null;
 }
@@ -94,7 +94,7 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
     </section>
 
     <!-- Delayed Readings Alert (Slim) -->
-    <section class="px-4 mt-4 hidden" id="delayed-readings-section" onclick="Modal.open('delayed-readings-modal')">
+    <section class="px-4 mt-4 hidden" id="delayed-readings-section" onclick="openDelayedReadings()">
         <div
             class="bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/20 rounded-xl p-3 flex items-center justify-between cursor-pointer active:scale-95 transition-transform">
             <div class="flex items-center gap-2">
@@ -246,13 +246,13 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
     </div>
 </div>
 
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
 <script>
     let ekipTakibiData = null;
     let ekipChart = null;
     let currentChartType = 'total'; // 'total' veya 'avg'
+    let delayedReadingsLoaded = false;
+    let delayedReadingsPromise = null;
+    let chartLoadPromise = null;
     const lastDataDate = '<?= !empty($sonOkumaTarihi) ? $sonOkumaTarihi : date('Y-m-d') ?>';
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -364,9 +364,6 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
         const endDate = document.getElementById('filter-end-date').value;
 
         try {
-            // Load delayed readings first
-            loadDelayedReadings();
-
             const response = await API.request('getEkipTakibiData', {
                 start_date: startDate,
                 end_date: endDate
@@ -386,6 +383,13 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
 
                 // Chart'ı güncelle
                 updateChart();
+
+                // Kritik olmayan geciken-okuma sorgusunu ilk ekran çizildikten sonra başlat.
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(() => loadDelayedReadings(), { timeout: 2000 });
+                } else {
+                    window.setTimeout(loadDelayedReadings, 500);
+                }
             } else {
                 listContainer.innerHTML = '';
                 emptyState.classList.remove('hidden');
@@ -399,12 +403,16 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
     }
 
     async function loadDelayedReadings() {
+        if (delayedReadingsLoaded) return;
+        if (delayedReadingsPromise) return delayedReadingsPromise;
+
         const section = document.getElementById('delayed-readings-section');
         const badge = document.getElementById('delayed-count-badge');
         const listContainer = document.getElementById('delayed-readings-modal-list');
 
-        try {
+        delayedReadingsPromise = (async () => { try {
             const response = await API.request('getDelayedReadings');
+            delayedReadingsLoaded = true;
             if (response.success && response.data && response.data.length > 0) {
                 section.classList.remove('hidden');
                 badge.textContent = response.data.length;
@@ -436,7 +444,16 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
         } catch (error) {
             console.error('Geciken okuma verisi yükleme hatası:', error);
             section.classList.add('hidden');
-        }
+        } finally {
+            delayedReadingsPromise = null;
+        } })();
+
+        return delayedReadingsPromise;
+    }
+
+    async function openDelayedReadings() {
+        Modal.open('delayed-readings-modal');
+        await loadDelayedReadings();
     }
 
     function updateSummary() {
@@ -688,6 +705,12 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
 
     function updateChart() {
         if (!ekipTakibiData || !ekipTakibiData.ekipler) return;
+        if (typeof Chart === 'undefined') {
+            ensureChartLoaded().then(updateChart).catch(error => {
+                console.error('Grafik kütüphanesi yüklenemedi:', error);
+            });
+            return;
+        }
 
         const ekipler = ekipTakibiData.ekipler || [];
         const isSingleDay = Boolean(ekipTakibiData.is_single_day);
@@ -766,6 +789,22 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
                 }
             }
         });
+    }
+
+    function ensureChartLoaded() {
+        if (typeof Chart !== 'undefined') return Promise.resolve();
+        if (chartLoadPromise) return chartLoadPromise;
+
+        chartLoadPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Chart.js indirilemedi'));
+            document.head.appendChild(script);
+        });
+
+        return chartLoadPromise;
     }
 
     function formatDate(dateStr) {

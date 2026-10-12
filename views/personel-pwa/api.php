@@ -30,6 +30,7 @@ use App\Model\PersonelIcralariModel;
 use App\Model\AracZimmetModel;
 use App\Model\AracKmBildirimModel;
 use App\Model\PermissionPolicyModel;
+use App\Model\EkipTakibiModel;
 use App\Service\PushNotificationService;
 use App\Service\Gate;
 use App\Helper\Security;
@@ -1086,6 +1087,7 @@ try {
         case 'getEkipTakibiData':
             $PersonelModel = new PersonelModel();
             $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+            $EkipTakibiModel = new EkipTakibiModel();
 
             // 1. Personelin ekip şefi olduğu aktif ekip kodunu bul
             $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
@@ -1124,104 +1126,13 @@ try {
                 $endDate = $temp;
             }
             $isSingleDay = ($startDate === $endDate);
-            $bugun = date('Y-m-d');
-
-            $db = (new \App\Model\Model('endeks_okuma'))->getDb();
             $firmaId = $_SESSION['firma_id'] ?? 0;
-
-            $ekiplerData = [];
-
-            foreach ($bolgeEkipleri as $ekip) {
-                $ekipId = $ekip->id;
-
-                // Seçilen tarih aralığı toplamı ve çalışılan gün sayısı
-                $stmtMonthly = $db->prepare("SELECT COALESCE(SUM(okunan_abone_sayisi), 0) as toplam, COUNT(DISTINCT tarih) as gun_sayisi
-                    FROM endeks_okuma 
-                    WHERE ekip_kodu_id = ? AND tarih BETWEEN ? AND ? AND firma_id = ? AND silinme_tarihi IS NULL");
-                $stmtMonthly->execute([$ekipId, $startDate, $endDate, $firmaId]);
-                $monthlyResult = $stmtMonthly->fetch(PDO::FETCH_OBJ);
-                $donemToplam = (int) ($monthlyResult->toplam ?? 0);
-                $calisilanGun = (int) ($monthlyResult->gun_sayisi ?? 0);
-                $gunlukOrt = $calisilanGun > 0 ? (int) round($donemToplam / $calisilanGun) : 0;
-
-                // Günlük toplam: Tek gün ise dönemin toplamı; aralık ise hedef günün (varsa bugün, yoksa bitiş tarihi) toplamı
-                if ($isSingleDay) {
-                    $gunlukToplam = $donemToplam;
-                } else {
-                    $hedefGun = ($bugun >= $startDate && $bugun <= $endDate) ? $bugun : $endDate;
-                    $stmtDaily = $db->prepare("SELECT COALESCE(SUM(okunan_abone_sayisi), 0) as toplam 
-                        FROM endeks_okuma 
-                        WHERE ekip_kodu_id = ? AND tarih = ? AND firma_id = ? AND silinme_tarihi IS NULL");
-                    $stmtDaily->execute([$ekipId, $hedefGun, $firmaId]);
-                    $gunlukToplam = (int) ($stmtDaily->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
-                }
-
-                // Günlük detay (seçilen tarih aralığı)
-                $stmtDetail = $db->prepare("SELECT tarih, SUM(okunan_abone_sayisi) as toplam
-                    FROM endeks_okuma 
-                    WHERE ekip_kodu_id = ? AND tarih BETWEEN ? AND ? AND firma_id = ? AND silinme_tarihi IS NULL
-                    GROUP BY tarih
-                    ORDER BY tarih DESC");
-                $stmtDetail->execute([$ekipId, $startDate, $endDate, $firmaId]);
-                $gunlukDetay = $stmtDetail->fetchAll(PDO::FETCH_OBJ);
-
-                // Bu ekip koduna atanmış personeli bul
-                // 1. Öncelik: O dönemde endeks_okuma kaydı girmiş personel
-                $stmtEndeksPersonel = $db->prepare("SELECT p.adi_soyadi, p.departman 
-                    FROM endeks_okuma eo 
-                    JOIN personel p ON eo.personel_id = p.id 
-                    WHERE eo.ekip_kodu_id = ? AND eo.tarih BETWEEN ? AND ? AND eo.firma_id = ? AND eo.silinme_tarihi IS NULL 
-                    ORDER BY eo.id DESC LIMIT 1");
-                $stmtEndeksPersonel->execute([$ekipId, $startDate, $endDate, $firmaId]);
-                $personelResult = $stmtEndeksPersonel->fetch(PDO::FETCH_OBJ);
-
-                // 2. Öncelik: O dönemde ekip geçmişinde aktif olan personel
-                if (!$personelResult) {
-                    $stmtPersonel = $db->prepare("SELECT p.adi_soyadi, p.departman 
-                        FROM personel_ekip_gecmisi pg
-                        JOIN personel p ON pg.personel_id = p.id
-                        WHERE pg.ekip_kodu_id = ? AND pg.firma_id = ?
-                        AND (pg.baslangic_tarihi <= ? AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?))
-                        ORDER BY pg.id DESC LIMIT 1");
-                    $stmtPersonel->execute([$ekipId, $firmaId, $endDate, $startDate]);
-                    $personelResult = $stmtPersonel->fetch(PDO::FETCH_OBJ);
-                }
-
-                // 3. Öncelik: En güncel atanmış personel
-                if (!$personelResult) {
-                    $stmtSonPersonel = $db->prepare("SELECT p.adi_soyadi, p.departman 
-                        FROM personel_ekip_gecmisi pg
-                        JOIN personel p ON pg.personel_id = p.id
-                        WHERE pg.ekip_kodu_id = ? AND pg.firma_id = ?
-                        ORDER BY pg.id DESC LIMIT 1");
-                    $stmtSonPersonel->execute([$ekipId, $firmaId]);
-                    $personelResult = $stmtSonPersonel->fetch(PDO::FETCH_OBJ);
-                }
-
-                // Eğer ekibe atanmış personel varsa ve o dönemde hiç okuma yoksa departman kontrolü
-                if ($personelResult && $donemToplam === 0) {
-                    $dep = $personelResult->departman ?? '';
-                    if (!empty($dep) && stripos($dep, 'Endeks Okuma') === false) {
-                        continue;
-                    }
-                }
-
-                $personelAdi = $personelResult ? $personelResult->adi_soyadi : '—';
-
-                $ekiplerData[] = [
-                    'ekip_kodu_id' => $ekipId,
-                    'ekip_adi' => $ekip->tur_adi,
-                    'personel_adi' => $personelAdi,
-                    'gunluk_toplam' => $gunlukToplam,
-                    'aylik_toplam' => $donemToplam,
-                    'donem_toplam' => $donemToplam,
-                    'calisilan_gun' => $calisilanGun,
-                    'gunluk_ort' => $gunlukOrt,
-                    'gunluk_detay' => array_map(function ($d) {
-                        return ['tarih' => $d->tarih, 'toplam' => (int) $d->toplam];
-                    }, $gunlukDetay)
-                ];
-            }
+            $ekiplerData = $EkipTakibiModel->getEkipPerformansi(
+                $bolgeEkipleri,
+                (int) $firmaId,
+                $startDate,
+                $endDate
+            );
 
             response(true, [
                 'bolge' => $bolge,
@@ -1235,6 +1146,7 @@ try {
         case 'getDelayedReadings':
             $PersonelModel = new PersonelModel();
             $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+            $EkipTakibiModel = new EkipTakibiModel();
 
             // 1. Personelin ekip şefi olduğu aktif ekip kodunu bul
             $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
@@ -1261,53 +1173,8 @@ try {
                 response(false, null, 'Bölge bilgisi tanımlı değil');
             }
 
-            $db = (new \App\Model\Model('tanimlamalar'))->getDb();
             $firmaId = $_SESSION['firma_id'] ?? 0;
-
-            // 3. Bölgedeki defterleri ve son okuma tarihlerini bul
-            $sql = "SELECT 
-                        t.id, 
-                        t.tur_adi as defter_kodu, 
-                        t.defter_mahalle as mahalle,
-                        t.baslangic_tarihi,
-                        (SELECT MAX(eo.tarih) 
-                         FROM endeks_okuma eo 
-                         WHERE eo.defter = t.tur_adi 
-                         AND eo.firma_id = :firma_id 
-                         AND eo.silinme_tarihi IS NULL) as son_okuma_tarihi
-                    FROM tanimlamalar t
-                    WHERE t.grup = 'defter_kodu' 
-                    AND t.defter_bolge = :bolge 
-                    AND t.firma_id = :firma_id 
-                    AND t.silinme_tarihi IS NULL";
-
-            $stmt = $db->prepare($sql);
-            $stmt->execute(['bolge' => $bolge, 'firma_id' => $firmaId]);
-            $defterler = $stmt->fetchAll(PDO::FETCH_OBJ);
-
-            $delayed = [];
-            $bugun = new DateTime();
-
-            foreach ($defterler as $d) {
-                $sonOkuma = $d->son_okuma_tarihi ?: $d->baslangic_tarihi;
-
-                if ($sonOkuma) {
-                    $sonTarih = new DateTime($sonOkuma);
-                    $interval = $bugun->diff($sonTarih);
-                    $gunFarki = $interval->days;
-
-                    if ($gunFarki > 35) {
-                        $delayed[] = [
-                            'defter_kodu' => $d->defter_kodu,
-                            'mahalle' => $d->mahalle,
-                            'gun' => $gunFarki,
-                            'son_okuma' => date('d.m.Y', strtotime($sonOkuma))
-                        ];
-                    }
-                }
-            }
-
-            response(true, $delayed);
+            response(true, $EkipTakibiModel->getGecikenOkumalar($bolge, (int) $firmaId));
             break;
 
         // ===== Bordro İşlemleri =====
@@ -1518,9 +1385,10 @@ try {
         // ===== İzin İşlemleri =====
         case 'getIzinTurleri':
             $IzinModel = new PersonelIzinleriModel();
-            $izinTurleri = $IzinModel->getPersonnelVisibleLeaveTypes((int) $_SESSION['firma_id']);
+            $medeniDurum = $personel->medeni_durum ?? null;
+            $izinTurleri = $IzinModel->getPersonnelVisibleLeaveTypes((int) $_SESSION['firma_id'], $medeniDurum);
 
-            $data = array_map(function ($item) {
+            $data = array_map(function ($item) use ($IzinModel) {
                 return [
                     'id' => $item->id, // ID'yi value olarak kullanacağız
                     'tur_adi' => $item->tur_adi,
@@ -1528,7 +1396,10 @@ try {
                     'ikon' => $item->ikon ?? 'event',
                     'aciklama' => $item->aciklama,
                     'kisa_kod' => $item->kisa_kod,
-                    'ucretli_mi' => (int) ($item->ucretli_mi ?? 0)
+                    'ucretli_mi' => (int) ($item->ucretli_mi ?? 0),
+                    'is_hastalik' => $IzinModel->isSickLeaveType($item),
+                    'is_babalik' => $IzinModel->isPaternityLeaveType($item),
+                    'is_evlilik' => $IzinModel->isMarriageLeaveType($item)
                 ];
             }, $izinTurleri);
 
@@ -1760,6 +1631,14 @@ try {
 
             if ($IzinModel->isExcuseLeaveType($izinTuru) && trim(htmlspecialchars_decode($aciklama, ENT_QUOTES)) === '') {
                 response(false, null, 'Mazeret izni için açıklama girmeniz zorunludur.');
+            }
+
+            $normMedeni = mb_strtolower(trim((string) ($personel->medeni_durum ?? '')), 'UTF-8');
+            if ($normMedeni === 'bekar' && $IzinModel->isPaternityLeaveType($izinTuru)) {
+                response(false, null, 'Bekar personeller babalık izni talebinde bulunamaz.');
+            }
+            if ($normMedeni === 'evli' && $IzinModel->isMarriageLeaveType($izinTuru)) {
+                response(false, null, 'Evli personeller evlilik izni talebinde bulunamaz.');
             }
 
             // Çakışma Kontrolü

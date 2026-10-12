@@ -6825,6 +6825,107 @@ html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled .mac-item-s
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25) !important;
 }
 
+/* macOS Temada Input ve Select Üst Açıklama Label'larının Soluklaştırılması */
+html[data-theme-preset="macos-dark"] .form-floating > label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > label,
+html[data-theme-preset="macos-dark"] .form-floating-select2 > label,
+html[data-theme-preset="macos-dark"] .form-floating > .form-control ~ label,
+html[data-theme-preset="macos-dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
+html[data-theme-preset="macos-dark"] .form-floating > .form-select ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > .form-control ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > .form-control:not(:placeholder-shown) ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > .form-control:not([placeholder]) ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > textarea ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > textarea:not(:placeholder-shown) ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > textarea:not([placeholder]) ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom:has(.select2-container) > label,
+html[data-theme-preset="macos-dark"] .form-floating-select2:has(.select2-container) > label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > select.select2-hidden-accessible ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-select2 > select.select2-hidden-accessible ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > .select2-container ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-select2 > .select2-container ~ label,
+html[data-theme-preset="macos-dark"] .form-floating .select2-container + label,
+html[data-theme-preset="macos-dark"] label.form-label,
+html[data-theme-preset="macos-dark"] .form-label,
+html[data-theme-preset="macos-dark"] .col-form-label,
+[data-theme-preset="macos-dark"] .form-floating > label,
+[data-theme-preset="macos-dark"] .form-floating-custom > label,
+[data-theme-preset="macos-dark"] .form-floating-select2 > label,
+[data-theme-preset="macos-dark"] .form-floating > .form-control ~ label,
+[data-theme-preset="macos-dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
+[data-theme-preset="macos-dark"] .form-floating > .form-select ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > .form-control ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > .form-control:not(:placeholder-shown) ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > .form-control:not([placeholder]) ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > textarea ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > textarea:not(:placeholder-shown) ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > textarea:not([placeholder]) ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom:has(.select2-container) > label,
+[data-theme-preset="macos-dark"] .form-floating-select2:has(.select2-container) > label,
+[data-theme-preset="macos-dark"] .form-floating-custom > select.select2-hidden-accessible ~ label,
+[data-theme-preset="macos-dark"] .form-floating-select2 > select.select2-hidden-accessible ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > .select2-container ~ label,
+[data-theme-preset="macos-dark"] .form-floating-select2 > .select2-container ~ label,
+[data-theme-preset="macos-dark"] .form-floating .select2-container + label,
+[data-theme-preset="macos-dark"] label.form-label,
+[data-theme-preset="macos-dark"] .form-label,
+[data-theme-preset="macos-dark"] .col-form-label {
+  color: rgba(215, 220, 232, 0.46) !important;
+  font-weight: 450 !important;
+}
+
+html[data-theme-preset="macos-dark"] .form-floating > label::after,
+html[data-theme-preset="macos-dark"] .form-floating-custom > label::after,
+html[data-theme-preset="macos-dark"] .form-floating-select2 > label::after,
+[data-theme-preset="macos-dark"] .form-floating > label::after,
+[data-theme-preset="macos-dark"] .form-floating-custom > label::after,
+[data-theme-preset="macos-dark"] .form-floating-select2 > label::after {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Odaklanıldığında (Focus) form alanının üst label'ı hafifçe canlansın */
+html[data-theme-preset="macos-dark"] .form-floating > .form-control:focus ~ label,
+html[data-theme-preset="macos-dark"] .form-floating > .form-select:focus ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > .form-control:focus ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom > textarea:focus ~ label,
+html[data-theme-preset="macos-dark"] .form-floating-custom:focus-within > label,
+html[data-theme-preset="macos-dark"] .form-floating-select2:focus-within > label,
+[data-theme-preset="macos-dark"] .form-floating > .form-control:focus ~ label,
+[data-theme-preset="macos-dark"] .form-floating > .form-select:focus ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > .form-control:focus ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom > textarea:focus ~ label,
+[data-theme-preset="macos-dark"] .form-floating-custom:focus-within > label,
+[data-theme-preset="macos-dark"] .form-floating-select2:focus-within > label {
+  color: rgba(10, 132, 255, 0.78) !important;
+}
+
+/* Değer metninin parlak ve net olarak öne çıkması */
+html[data-theme-preset="macos-dark"] body .form-control,
+html[data-theme-preset="macos-dark"] body .form-select,
+html[data-theme-preset="macos-dark"] body .select2-container--default .select2-selection--single .select2-selection__rendered,
+[data-theme-preset="macos-dark"] .form-control,
+[data-theme-preset="macos-dark"] .form-select,
+[data-theme-preset="macos-dark"] .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: #f5f7fa !important;
+}
+
+/* Form ikonlarının da soluk label diliyle uyumlu olması */
+html[data-theme-preset="macos-dark"] .form-floating-custom .form-floating-icon i,
+html[data-theme-preset="macos-dark"] .form-floating-custom .form-floating-icon svg,
+[data-theme-preset="macos-dark"] .form-floating-custom .form-floating-icon i,
+[data-theme-preset="macos-dark"] .form-floating-custom .form-floating-icon svg {
+  color: rgba(215, 220, 232, 0.42) !important;
+}
+
+html[data-theme-preset="macos-dark"] .form-floating-custom:focus-within .form-floating-icon i,
+html[data-theme-preset="macos-dark"] .form-floating-custom:focus-within .form-floating-icon svg,
+[data-theme-preset="macos-dark"] .form-floating-custom:focus-within .form-floating-icon i,
+[data-theme-preset="macos-dark"] .form-floating-custom:focus-within .form-floating-icon svg {
+  color: #0a84ff !important;
+}
+
+
 /* macOS Buttons */
 [data-theme-preset="macos-dark"] .btn:not(.btn-link):not(.btn-close) {
   border-radius: 8px !important;

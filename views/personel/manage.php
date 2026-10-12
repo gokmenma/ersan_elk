@@ -274,19 +274,17 @@ foreach ($tabCategories as $catKey => $cat) {
                                     <h6 class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1 mb-1">
                                         Sekme Düzeni
                                     </h6>
-                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt is-selected" data-mode="grouped" onmousedown="window.applyTabLayout('grouped', true);" onclick="window.applyTabLayout('grouped', true);">
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt is-selected" data-mode="grouped">
                                         <span class="d-flex align-items-center gap-2 font-size-13">
                                             <i class="bx bx-layer font-size-16 text-primary"></i>
                                             <span>Gruplu</span>
                                         </span>
-                                        <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
                                     </button>
-                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt" data-mode="single" onmousedown="window.applyTabLayout('single', true);" onclick="window.applyTabLayout('single', true);">
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt" data-mode="single">
                                         <span class="d-flex align-items-center gap-2 font-size-13">
                                             <i class="bx bx-list-ul font-size-16 text-primary"></i>
                                             <span>Tek Sıra</span>
                                         </span>
-                                        <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
                                     </button>
                                 </div>
                             </div>
@@ -377,19 +375,17 @@ foreach ($tabCategories as $catKey => $cat) {
                                     <h6 class="dropdown-header text-uppercase font-size-11 fw-bold text-muted px-3 py-1 mb-1">
                                         Sekme Düzeni
                                     </h6>
-                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt is-selected" data-mode="grouped" onmousedown="window.applyTabLayout('grouped', true);" onclick="window.applyTabLayout('grouped', true);">
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt is-selected" data-mode="grouped">
                                         <span class="d-flex align-items-center gap-2 font-size-13">
                                             <i class="bx bx-layer font-size-16 text-primary"></i>
                                             <span>Gruplu</span>
                                         </span>
-                                        <i class="bx bx-check font-size-18 text-primary mode-check-grouped"></i>
                                     </button>
-                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt" data-mode="single" onmousedown="window.applyTabLayout('single', true);" onclick="window.applyTabLayout('single', true);">
+                                    <button type="button" class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2 tab-layout-switcher tab-layout-opt" data-mode="single">
                                         <span class="d-flex align-items-center gap-2 font-size-13">
                                             <i class="bx bx-list-ul font-size-16 text-primary"></i>
                                             <span>Tek Sıra</span>
                                         </span>
-                                        <i class="bx bx-check font-size-18 text-primary mode-check-single d-none"></i>
                                     </button>
                                 </div>
                             </div>
@@ -419,8 +415,6 @@ foreach ($tabCategories as $catKey => $cat) {
                         if (mode === 'single') {
                             if (groupedEl) groupedEl.classList.add('d-none');
                             if (singleEl) singleEl.classList.remove('d-none');
-                            document.querySelectorAll('.mode-check-grouped').forEach(function(el){ el.classList.add('d-none'); });
-                            document.querySelectorAll('.mode-check-single').forEach(function(el){ el.classList.remove('d-none'); });
                             document.querySelectorAll('.tab-layout-opt[data-mode="single"]').forEach(function(el){ el.classList.add('is-selected'); });
                             document.querySelectorAll('.tab-layout-opt[data-mode="grouped"]').forEach(function(el){ el.classList.remove('is-selected'); });
 
@@ -440,8 +434,6 @@ foreach ($tabCategories as $catKey => $cat) {
                         } else {
                             if (singleEl) singleEl.classList.add('d-none');
                             if (groupedEl) groupedEl.classList.remove('d-none');
-                            document.querySelectorAll('.mode-check-grouped').forEach(function(el){ el.classList.remove('d-none'); });
-                            document.querySelectorAll('.mode-check-single').forEach(function(el){ el.classList.add('d-none'); });
                             document.querySelectorAll('.tab-layout-opt[data-mode="grouped"]').forEach(function(el){ el.classList.add('is-selected'); });
                             document.querySelectorAll('.tab-layout-opt[data-mode="single"]').forEach(function(el){ el.classList.remove('is-selected'); });
 
@@ -472,6 +464,22 @@ foreach ($tabCategories as $catKey => $cat) {
                         } catch(e) {}
                     };
 
+                    document.querySelectorAll('.tab-layout-switcher').forEach(function(option) {
+                        option.addEventListener('click', function(event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+
+                            var dropdown = option.closest('.dropdown');
+                            var dropdownButton = dropdown ? dropdown.querySelector('[data-bs-toggle="dropdown"]') : null;
+                            window.applyTabLayout(option.getAttribute('data-mode'), true);
+
+                            if (dropdownButton && window.bootstrap && bootstrap.Dropdown) {
+                                var instance = bootstrap.Dropdown.getInstance(dropdownButton);
+                                if (instance) instance.hide();
+                            }
+                        });
+                    });
+
                     (function() {
                         try {
                             var savedMode = localStorage.getItem('personel_tab_layout_mode') || 'grouped';
@@ -480,6 +488,32 @@ foreach ($tabCategories as $catKey => $cat) {
                     })();
                 </script>
                 <style>
+                    /* Dropdown, bir sonraki tab-content alanının üzerine taşar.
+                       macOS temasında .card > * elemanlarının tamamı z-index: 1
+                       aldığı için sonraki kardeş görünmez bir tıklama katmanı
+                       oluşturuyordu. Navigasyonu ayrı ve üst bir katmana al. */
+                    #personelTabNavigationWrapper {
+                        position: relative !important;
+                        z-index: 1080 !important;
+                        overflow: visible !important;
+                    }
+
+                    #personelTabNavigationWrapper .personel-tab-layout-view,
+                    #personelTabNavigationWrapper .dropdown,
+                    #personelTabNavigationWrapper .tab-layout-dropdown-menu {
+                        overflow: visible !important;
+                    }
+
+                    #personelTabNavigationWrapper .tab-layout-dropdown-menu.show {
+                        z-index: 1090 !important;
+                        pointer-events: auto !important;
+                    }
+
+                    #personelTabContent {
+                        position: relative;
+                        z-index: 1;
+                    }
+
                     #personelTabContent > .tab-pane,
                     #personelTabContent > form > .tab-pane {
                         display: none !important;
@@ -590,6 +624,21 @@ foreach ($tabCategories as $catKey => $cat) {
                         background-color: rgba(var(--bs-primary-rgb), 0.12) !important;
                         color: var(--bs-primary) !important;
                         font-weight: 600 !important;
+                    }
+
+                    /* Tek onay işaretini doğrudan aktif seçenek üretir. Böylece
+                       ikon kütüphanesinin display kuralları ikinci bir işareti
+                       görünür hale getiremez. */
+                    .tab-layout-opt.is-selected::after {
+                        content: "\2713";
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin-left: auto;
+                        color: var(--bs-primary);
+                        font-size: 18px;
+                        font-weight: 700;
+                        line-height: 1;
                     }
 
                     html[data-bs-theme="dark"] .tab-layout-opt.is-selected {
@@ -744,12 +793,27 @@ foreach ($tabCategories as $catKey => $cat) {
                         color: rgba(235, 238, 245, 0.9) !important;
                         background: transparent !important;
                         border: 1px solid transparent !important;
+                        position: relative !important;
+                        z-index: 1 !important;
+                        pointer-events: auto !important;
+                        cursor: pointer !important;
                     }
 
-                    html[data-theme-preset*="macos"] .tab-layout-opt:hover,
-                    html[data-theme-preset="macos-dark"] .tab-layout-opt:hover {
-                        background: rgba(255, 255, 255, 0.1) !important;
+                    html[data-theme-preset*="macos"] body .tab-layout-dropdown-menu .tab-layout-opt:hover,
+                    html[data-theme-preset*="macos"] body .tab-layout-dropdown-menu .tab-layout-opt:focus-visible,
+                    html[data-theme-preset="macos-dark"] body .tab-layout-dropdown-menu .tab-layout-opt:hover,
+                    html[data-theme-preset="macos-dark"] body .tab-layout-dropdown-menu .tab-layout-opt:focus-visible {
+                        background: rgba(255, 255, 255, 0.14) !important;
                         color: #ffffff !important;
+                        border-color: rgba(255, 255, 255, 0.18) !important;
+                        outline: none !important;
+                    }
+
+                    /* İkon/metin fare olayını üstlenmesin; tıklama doğrudan
+                       düzen seçeneği butonuna ulaşsın. */
+                    html[data-theme-preset*="macos"] .tab-layout-opt > *,
+                    html[data-theme-preset="macos-dark"] .tab-layout-opt > * {
+                        pointer-events: none !important;
                     }
 
                     html[data-theme-preset*="macos"] .tab-layout-opt.is-selected,
@@ -758,6 +822,12 @@ foreach ($tabCategories as $catKey => $cat) {
                         color: #60a5fa !important;
                         border-color: rgba(10, 132, 255, 0.45) !important;
                         font-weight: 600 !important;
+                    }
+
+                    html[data-theme-preset*="macos"] body .tab-layout-dropdown-menu .tab-layout-opt.is-selected:hover,
+                    html[data-theme-preset="macos-dark"] body .tab-layout-dropdown-menu .tab-layout-opt.is-selected:hover {
+                        background: rgba(10, 132, 255, 0.38) !important;
+                        border-color: rgba(96, 165, 250, 0.7) !important;
                     }
 
                     html[data-theme-preset*="macos"] .personel-category-pills .btn-category-pill,
@@ -1275,8 +1345,6 @@ foreach ($tabCategories as $catKey => $cat) {
         if (mode === 'single') {
             $('#personelTabLayoutGrouped').addClass('d-none');
             $('#personelTabLayoutSingle').removeClass('d-none');
-            $('.mode-check-grouped').addClass('d-none');
-            $('.mode-check-single').removeClass('d-none');
             
             // Tek sıra görünümünde aktif sekmenin senkronizasyonu
             var activeLink = $('.subtab-nav-link.active, .single-tab-link.active, #personelTabContent > .tab-pane.active, #personelTabContent > form > .tab-pane.active').first();
@@ -1291,8 +1359,6 @@ foreach ($tabCategories as $catKey => $cat) {
         } else {
             $('#personelTabLayoutSingle').addClass('d-none');
             $('#personelTabLayoutGrouped').removeClass('d-none');
-            $('.mode-check-grouped').removeClass('d-none');
-            $('.mode-check-single').addClass('d-none');
 
             // Gruplu görünümde aktif sekmenin kategorisini ve alt sekmesini senkronize et
             var activeLink = $('.single-tab-link.active, .subtab-nav-link.active, #personelTabContent > .tab-pane.active, #personelTabContent > form > .tab-pane.active').first();
@@ -1316,23 +1382,6 @@ foreach ($tabCategories as $catKey => $cat) {
         } catch (e) {}
     }
     window.applyTabLayout = applyTabLayout;
-
-    // Layout Değiştirici Butonları Delegasyonu
-    $(document).off('click.tabLayoutSwitcher', '.tab-layout-switcher').on('click.tabLayoutSwitcher', '.tab-layout-switcher', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var targetMode = $(this).attr('data-mode') || $(this).data('mode') || 'grouped';
-        applyTabLayout(targetMode, true);
-
-        // Bootstrap dropdown menüsünü kapat
-        try {
-            var dropdownBtn = $(this).closest('.dropdown').find('[data-bs-toggle="dropdown"]');
-            if (dropdownBtn.length && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
-                var inst = bootstrap.Dropdown.getInstance(dropdownBtn[0]) || new bootstrap.Dropdown(dropdownBtn[0]);
-                if (inst) inst.hide();
-            }
-        } catch (err) {}
-    });
 
     // Tek sıra tab kaydırma butonları
     const scrollAmount = 250;

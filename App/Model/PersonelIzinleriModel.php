@@ -477,7 +477,7 @@ class PersonelIzinleriModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
     }
 
-    public function getPersonnelVisibleLeaveTypes($firmaId)
+    public function getPersonnelVisibleLeaveTypes($firmaId, $medeniDurum = null)
     {
         $sql = "SELECT id, tur_adi, kisa_kod, renk, ikon, aciklama, ucretli_mi
                 FROM tanimlamalar
@@ -489,7 +489,63 @@ class PersonelIzinleriModel extends Model
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':firma_id' => $firmaId]);
 
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        if ($medeniDurum !== null && $medeniDurum !== '') {
+            $normMedeni = mb_strtolower(trim((string) $medeniDurum), 'UTF-8');
+            $rows = array_values(array_filter($rows, function ($tur) use ($normMedeni) {
+                // Bekar olanlarda babalık izni gelmesin
+                if ($normMedeni === 'bekar' && $this->isPaternityLeaveType($tur)) {
+                    return false;
+                }
+                // Evli olanlarda evlilik izni gelmesin
+                if ($normMedeni === 'evli' && $this->isMarriageLeaveType($tur)) {
+                    return false;
+                }
+                return true;
+            }));
+        }
+
+        return $rows;
+    }
+
+    /**
+     * İzin türünün babalık izni olup olmadığını kontrol eder.
+     */
+    public function isPaternityLeaveType($izinTuru): bool
+    {
+        if (!$izinTuru) {
+            return false;
+        }
+        $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
+        $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
+        return mb_strpos($ad, 'babalık') !== false || mb_strpos($ad, 'babalik') !== false || $kod === 'bi' || $kod === 'bİ';
+    }
+
+    /**
+     * İzin türünün evlilik izni olup olmadığını kontrol eder.
+     */
+    public function isMarriageLeaveType($izinTuru): bool
+    {
+        if (!$izinTuru) {
+            return false;
+        }
+        $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
+        $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
+        return mb_strpos($ad, 'evlilik') !== false || $kod === 'ei' || $kod === 'eİ';
+    }
+
+    /**
+     * İzin türünün hastalık / rapor izni olup olmadığını kontrol eder.
+     */
+    public function isSickLeaveType($izinTuru): bool
+    {
+        if (!$izinTuru) {
+            return false;
+        }
+        $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
+        $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
+        return mb_strpos($ad, 'hastalık') !== false || mb_strpos($ad, 'hastalik') !== false || mb_strpos($ad, 'rapor') !== false || $kod === 'rp';
     }
 
     /**

@@ -625,6 +625,7 @@ const Modal = window.Modal = {
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.add("active");
+      document.body.classList.add("modal-open");
       document.body.style.overflow = "hidden";
     }
   },
@@ -633,7 +634,10 @@ const Modal = window.Modal = {
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.remove("active");
-      document.body.style.overflow = "";
+      if (!document.querySelector(".modal-overlay.active")) {
+        document.body.classList.remove("modal-open");
+        document.body.style.overflow = "";
+      }
     }
   },
 
@@ -641,6 +645,7 @@ const Modal = window.Modal = {
     document.querySelectorAll(".modal-overlay").forEach((modal) => {
       modal.classList.remove("active");
     });
+    document.body.classList.remove("modal-open");
     document.body.style.overflow = "";
   },
 };
