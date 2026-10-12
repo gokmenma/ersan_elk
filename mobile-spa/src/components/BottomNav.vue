@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   Banknote,
   CalendarCheck,
@@ -28,6 +28,7 @@ import {
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 
+const route = useRoute()
 const router = useRouter()
 const menuOpen = ref(false)
 
@@ -38,6 +39,13 @@ const items = [
   { to: '/raporlar', label: 'Raporlar', icon: ChartNoAxesCombined },
   { to: '/talepler', label: 'Talepler', icon: ClipboardList },
 ]
+
+function isItemActive(item) {
+  if (item.center) return menuOpen.value
+  if (menuOpen.value) return false
+  if (item.to === '/') return route.path === '/'
+  return route.path.startsWith(item.to)
+}
 
 const operations = [
   { label: 'Görev Takibi', icon: ClipboardCheck, bg: '#f5f3ff', color: '#7c3aed', to: '/gorevler' },
@@ -146,28 +154,36 @@ async function handleLogout() {
   </Transition>
 
   <nav class="bottom-nav" aria-label="Ana gezinme">
-    <template v-for="item in items" :key="item.label">
-      <button
-        v-if="item.center"
-        class="nav-link nav-link--center"
-        type="button"
-        aria-label="Daha fazla menüsünü aç"
-        :aria-expanded="menuOpen"
-        @click="menuOpen = !menuOpen"
-      >
-        <span class="nav-icon"><component :is="item.icon" :size="24" :stroke-width="2.2" /></span>
-        <span class="nav-label">{{ item.label }}</span>
-      </button>
-      <RouterLink
-        v-else
-        :to="item.to"
-        class="nav-link"
-        :class="{ 'is-active': item.to === '/' ? $route.path === '/' : $route.path.startsWith(item.to) }"
-        :aria-label="item.label"
-      >
-        <span class="nav-icon"><component :is="item.icon" :size="21" :stroke-width="item.to === '/' ? ($route.path === '/' ? 2.3 : 1.9) : ($route.path.startsWith(item.to) ? 2.3 : 1.9)" /></span>
-        <span class="nav-label">{{ item.label }}</span>
-      </RouterLink>
-    </template>
+    <div class="bottom-nav__tabs">
+      <template v-for="item in items" :key="item.label">
+        <button
+          v-if="item.center"
+          class="nav-link nav-link--center"
+          :class="{ 'is-active': isItemActive(item) }"
+          type="button"
+          aria-label="Daha fazla menüsünü aç"
+          :aria-expanded="menuOpen"
+          @click="menuOpen = !menuOpen"
+        >
+          <span class="nav-icon">
+            <component :is="item.icon" :size="22" :stroke-width="2.3" />
+          </span>
+          <span class="nav-label">{{ item.label }}</span>
+        </button>
+        <RouterLink
+          v-else
+          :to="item.to"
+          class="nav-link"
+          :class="{ 'is-active': isItemActive(item) }"
+          :aria-label="item.label"
+        >
+          <span class="nav-icon">
+            <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
+          </span>
+          <span class="nav-label">{{ item.label }}</span>
+        </RouterLink>
+      </template>
+    </div>
+    <div class="bottom-nav__home-bar" aria-hidden="true"></div>
   </nav>
 </template>
