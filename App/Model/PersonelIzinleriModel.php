@@ -550,11 +550,16 @@ class PersonelIzinleriModel extends Model
 
     /**
      * Hakedişi bulunmayan personelin seçemeyeceği ücretli/yıllık izinleri belirler.
-     * Mazeret izni, ücretli olarak tanımlanmış olsa dahi bu kısıttan muaftır.
+     * Mazeret, evlilik ve babalık izinleri bu kısıttan muaftır.
      */
     public function isEntitlementRequiredLeaveType($izinTuru)
     {
         if (!$izinTuru) {
+            return false;
+        }
+
+        // Evlilik ve babalık izinleri yasal mazeret iznidir, yıllık izin hakedişine bağlı değildir
+        if ($this->isMarriageLeaveType($izinTuru) || $this->isPaternityLeaveType($izinTuru)) {
             return false;
         }
 

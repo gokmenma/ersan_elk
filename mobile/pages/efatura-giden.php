@@ -143,6 +143,8 @@ let currentGidenEndDate = '';
 let currentGidenStatus = '';
 let gidenSearchTimer = null;
 let currentPreviewInvoice = null;
+const invoiceShareFileCache = new Map();
+const invoiceShareReadyFiles = new Map();
 
 const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
 
@@ -350,6 +352,7 @@ function openInvoicePreview(encId, faturaNo) {
     const newTabBtn = document.getElementById('mobPdfNewTabBtn');
 
     currentPreviewInvoice = { id: encId, number: faturaNo || 'Fatura' };
+    prepareInvoiceShareFile(encId, faturaNo).catch(() => {});
 
     title.textContent = faturaNo || 'Fatura Önizleme';
     if (dlBtn) dlBtn.href = `../api/efatura-api.php?action=download_pdf&invoice_id=${encodeURIComponent(encId)}`;
@@ -412,9 +415,90 @@ function closeInvoicePreview() {
     }, 300);
 }
 
+async function prepareInvoiceShareFile(encId, faturaNo) {
+    if (invoiceShareFileCache.has(encId)) return invoiceShareFileCache.get(encId);
+
+    const request = fetch(`../api/efatura-api.php?action=download_pdf&invoice_id=${encodeURIComponent(encId)}`, {
+        credentials: 'same-origin'
+    }).then(async response => {
+        if (!response.ok) throw new Error('Fatura PDF dosyası hazırlanamadı.');
+        const blob = await response.blob();
+        if (!blob.type.includes('pdf')) throw new Error('Fatura PDF dosyası alınamadı.');
+
+        const safeName = String(faturaNo || 'fatura').replace(/[^a-zA-Z0-9._-]+/g, '_');
+        const file = new File([blob], `${safeName}.pdf`, { type: 'application/pdf' });
+        invoiceShareReadyFiles.set(encId, file);
+        return file;
+    }).catch(error => {
+        invoiceShareFileCache.delete(encId);
+        invoiceShareReadyFiles.delete(encId);
+        throw error;
+    });
+
+    invoiceShareFileCache.set(encId, request);
+    return request;
+}
+
+function openDesktopShareFallback(encId, faturaNo) {
+    const viewUrl = new URL(`../api/efatura-api.php?action=show_invoice&invoice_id=${encodeURIComponent(encId)}`, window.location.href).href;
+    Swal.fire({
+        icon: 'question',
+        title: 'Tarayıcı paylaşımı kullanılamıyor',
+        html: 'Bu tarayıcı sistem paylaşım menüsünü desteklemiyor. Faturayı yeni sekmede açabilir veya oturum bağlantısını kopyalayabilirsiniz.<br><small class="text-slate-500">Bağlantıyı açan kişinin sistemde oturum açmış olması gerekir.</small>',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Faturayı Aç',
+        denyButtonText: 'Bağlantıyı Kopyala',
+        cancelButtonText: 'Vazgeç',
+        buttonsStyling: false,
+        reverseButtons: true,
+        width: 320,
+        padding: 0,
+        customClass: {
+            popup: 'swal-custom-popup',
+            title: 'swal-custom-title',
+            htmlContainer: 'swal-custom-content',
+            actions: 'swal-custom-actions',
+            confirmButton: 'swal-custom-confirm swal-confirm-primary',
+            denyButton: 'swal-custom-cancel',
+            cancelButton: 'swal-custom-cancel',
+            icon: 'swal-custom-icon swal-icon-question'
+        }
+    }).then(async result => {
+        if (result.isConfirmed) {
+            window.open(viewUrl, '_blank', 'noopener');
+        } else if (result.isDenied) {
+            try {
+                await navigator.clipboard.writeText(viewUrl);
+                Alert.success('Kopyalandı', `${faturaNo || 'Fatura'} bağlantısı panoya kopyalandı.`);
+            } catch (error) {
+                Alert.warning('Kopyalanamadı', 'Tarayıcı pano erişimine izin vermedi.');
+            }
+        }
+    });
+}
+
+function launchNativeInvoiceShare(file, faturaNo) {
+    const shareData = { title: `${faturaNo || 'Fatura'} PDF`, files: [file] };
+    if (navigator.canShare && !navigator.canShare(shareData)) {
+        throw new Error('Cihazınız PDF dosyası paylaşımını desteklemiyor.');
+    }
+    return navigator.share(shareData);
+}
+
 async function shareInvoice(encId, faturaNo, button) {
     if (!navigator.share) {
-        Swal.fire('Paylaşım desteklenmiyor', 'Cihazınızın tarayıcısı sistem paylaşım menüsünü desteklemiyor.', 'info');
+        openDesktopShareFallback(encId, faturaNo);
+        return;
+    }
+
+    const cachedFile = invoiceShareReadyFiles.get(encId);
+    if (cachedFile) {
+        try {
+            await launchNativeInvoiceShare(cachedFile, faturaNo);
+        } catch (error) {
+            if (error.name !== 'AbortError') Alert.warning('Fatura paylaşılamadı', error.message);
+        }
         return;
     }
 
@@ -425,25 +509,41 @@ async function shareInvoice(encId, faturaNo, button) {
     }
 
     try {
-        const response = await fetch(`../api/efatura-api.php?action=download_pdf&invoice_id=${encodeURIComponent(encId)}`, {
-            credentials: 'same-origin'
+        const file = await prepareInvoiceShareFile(encId, faturaNo);
+        Swal.fire({
+            icon: 'success',
+            title: 'Fatura hazır',
+            html: '<p>PDF paylaşılmaya hazır.</p><button type="button" id="btnNativeInvoiceShare" class="swal-custom-confirm swal-confirm-primary mt-4 w-full inline-flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">share</span> Paylaş</button>',
+            showConfirmButton: false,
+            showCancelButton: true,
+            cancelButtonText: 'Vazgeç',
+            buttonsStyling: false,
+            width: 320,
+            padding: 0,
+            customClass: {
+                popup: 'swal-custom-popup',
+                title: 'swal-custom-title',
+                htmlContainer: 'swal-custom-content',
+                actions: 'swal-custom-actions',
+                cancelButton: 'swal-custom-cancel swal-confirm-full',
+                icon: 'swal-custom-icon swal-icon-success'
+            },
+            didOpen: () => {
+                document.getElementById('btnNativeInvoiceShare')?.addEventListener('click', async function () {
+                    try {
+                        await launchNativeInvoiceShare(file, faturaNo);
+                        Swal.close();
+                    } catch (error) {
+                        if (error.name !== 'AbortError') {
+                            Swal.showValidationMessage(error.message || 'Fatura paylaşılamadı.');
+                        }
+                    }
+                });
+            }
         });
-        if (!response.ok) throw new Error('Fatura PDF dosyası hazırlanamadı.');
-
-        const blob = await response.blob();
-        if (!blob.type.includes('pdf')) throw new Error('Fatura PDF dosyası alınamadı.');
-
-        const safeName = String(faturaNo || 'fatura').replace(/[^a-zA-Z0-9._-]+/g, '_');
-        const file = new File([blob], `${safeName}.pdf`, { type: 'application/pdf' });
-        const shareData = { title: `${faturaNo || 'Fatura'} PDF`, files: [file] };
-
-        if (navigator.canShare && !navigator.canShare(shareData)) {
-            throw new Error('Cihazınız PDF dosyası paylaşımını desteklemiyor.');
-        }
-        await navigator.share(shareData);
     } catch (error) {
         if (error.name !== 'AbortError') {
-            Swal.fire('Fatura paylaşılamadı', error.message || 'Paylaşım sırasında bir hata oluştu.', 'warning');
+            Alert.warning('Fatura paylaşılamadı', error.message || 'Paylaşım sırasında bir hata oluştu.');
         }
     } finally {
         if (button) {

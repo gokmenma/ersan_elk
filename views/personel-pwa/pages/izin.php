@@ -644,14 +644,8 @@
     }
 
     function isMazeretIzinTuru(tur) {
+        if (!tur) return false;
         return normalizeIzinMetni(tur.tur_adi).includes('mazeret') || normalizeIzinMetni(tur.kisa_kod) === 'mazeret';
-    }
-
-    function isHakEdisGerektirenIzinTuru(tur) {
-        const ad = normalizeIzinMetni(tur.tur_adi);
-        const kod = normalizeIzinMetni(tur.kisa_kod);
-        const yillikMi = ad.includes('yıllık') || ad.includes('yillik') || kod === 'yillik';
-        return !isMazeretIzinTuru(tur) && (yillikMi || Number(tur.ucretli_mi) === 1);
     }
 
     function isHastalikIzinTuru(tur) {
@@ -676,6 +670,18 @@
         const ad = normalizeIzinMetni(tur.tur_adi);
         const kod = normalizeIzinMetni(tur.kisa_kod);
         return ad.includes('evlilik') || kod === 'ei';
+    }
+
+    function isHakEdisGerektirenIzinTuru(tur) {
+        if (!tur) return false;
+        // Evlilik ve babalık izinleri yasal mazeret izinleridir, yıllık izin hakedişine bağlı değildir
+        if (isEvlilikIzinTuru(tur) || isBabalikIzinTuru(tur)) {
+            return false;
+        }
+        const ad = normalizeIzinMetni(tur.tur_adi);
+        const kod = normalizeIzinMetni(tur.kisa_kod);
+        const yillikMi = ad.includes('yıllık') || ad.includes('yillik') || kod === 'yillik';
+        return !isMazeretIzinTuru(tur) && (yillikMi || Number(tur.ucretli_mi) === 1);
     }
 
     function checkHastalikIzniUyarisi(selectedId, showToast = true) {
