@@ -639,6 +639,13 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
         .pb-nav {
             padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
         }
+        /* Başlık ve sayfa içeriği birlikte geçer; alt navigasyon sabit kalır. */
+        #mobile-page-shell {
+            view-transition-name: pwa-main-content;
+        }
+        #mobile-page-shell > #main-content {
+            view-transition-name: none;
+        }
         /* Dolu ikonlar için Material Symbols */
         .filled { font-variation-settings: 'FILL' 1; }
 
@@ -776,6 +783,7 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
     </header>
     -->
 
+    <div id="mobile-page-shell">
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
     $no_header_pages = [
@@ -843,9 +851,10 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
             </div>
         <?php endif; ?>
     </main>
+    </div>
 
     <!-- Alt Navigasyon -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-700 safe-area-bottom z-50 shadow-lg">
+    <nav aria-label="Ana gezinme" class="pwa-bottom-navigation fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-700 safe-area-bottom z-50 shadow-lg">
         <div class="flex items-center justify-around px-2 py-1">
             <?php foreach ($nav_items as $item): 
                 $isActive = ($page === $item['page']);
