@@ -7,6 +7,7 @@ const state = reactive({
   user: null,
   company: null,
   companies: [],
+  permissions: {},
 })
 
 function applySession(payload) {
@@ -15,6 +16,7 @@ function applySession(payload) {
   state.user = payload.user || null
   state.company = payload.company || null
   state.companies = payload.companies || []
+  state.permissions = payload.permissions || {}
 }
 
 async function request(action = 'session', options = {}) {
@@ -70,6 +72,7 @@ export const auth = {
     state.user = null
     state.company = null
     state.companies = []
+    state.permissions = {}
     state.csrfToken = ''
     state.ready = false
     await this.bootstrap(true)

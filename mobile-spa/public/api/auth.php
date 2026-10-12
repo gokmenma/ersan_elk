@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Helper\Security;
 use App\Model\FirmaModel;
+use App\Model\MenuModel;
 use App\Model\SozlesmeDonemModel;
 use App\Model\SystemLogModel;
 use App\Model\UserModel;
+use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -60,6 +62,18 @@ function requireCsrf(array $data): void
     }
 }
 
+function mobileCan(array $permissionKeys, array $menuLinks = []): bool
+{
+    if (Gate::allowsAny($permissionKeys)) return true;
+    $userId = (int) ($_SESSION['user_id'] ?? 0);
+    if ($userId <= 0) return false;
+    $menus = new MenuModel();
+    foreach ($menuLinks as $link) {
+        if ($menus->userCanAccessMenuLink($userId, $link)) return true;
+    }
+    return false;
+}
+
 function publicUser(object $user): array
 {
     $name = trim((string) ($user->adi_soyadi ?? $user->user_name ?? 'Kullanıcı'));
@@ -76,7 +90,7 @@ function publicUser(object $user): array
     ];
 }
 
-function allowedCompanies(object $user): array
+function rawAllowedCompanies(object $user): array
 {
     $companies = (new FirmaModel())->listActive();
     $rawIds = trim((string) ($user->firma_ids ?? ''));
@@ -87,12 +101,77 @@ function allowedCompanies(object $user): array
             static fn(object $company): bool => in_array((int) $company->id, $allowedIds, true)
         ));
     }
+    return $companies;
+}
+
+function allowedCompanies(object $user): array
+{
+    $companies = rawAllowedCompanies($user);
 
     return array_map(static fn(object $company): array => [
         'id' => Security::encrypt((string) $company->id),
         'name' => (string) $company->firma_adi,
         'code' => (string) ($company->firma_kodu ?? ''),
     ], $companies);
+}
+
+function selectCompanySession(object $company): void
+{
+    $companyId = (int) $company->id;
+    $_SESSION['firma_id'] = $companyId;
+    $_SESSION['sube_id'] = $companyId;
+    $_SESSION['firma_adi'] = (string) $company->firma_adi;
+    $_SESSION['firma_kodu'] = (string) ($company->firma_kodu ?? '');
+
+    // 30 günlük varsayılan firma çerezi (web paneli ve mobil uyumlu)
+    setcookie('varsayilan_firma_id', (string) $companyId, [
+        'expires'  => time() + (30 * 24 * 60 * 60),
+        'path'     => '/',
+        'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    if (!empty($company->firma_kodu)) {
+        setcookie('varsayilan_firma_kodu', (string) $company->firma_kodu, [
+            'expires'  => time() + (30 * 24 * 60 * 60),
+            'path'     => '/',
+            'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    $period = (new SozlesmeDonemModel())->getActiveDonem($companyId);
+    if ($period) {
+        $_SESSION['aktif_donem_id'] = (int) $period->id;
+        $_SESSION['aktif_donem_adi'] = (string) $period->donem_adi;
+    } else {
+        unset($_SESSION['aktif_donem_id'], $_SESSION['aktif_donem_adi']);
+    }
+}
+
+function resolveDefaultCompany(object $user): ?object
+{
+    $companies = rawAllowedCompanies($user);
+    if (empty($companies)) {
+        return null;
+    }
+
+    // 1. Çerezde kayıtlı varsayılan firma
+    $fromCookies = (new FirmaModel())->resolveDefaultFirmaFromCookies($_COOKIE, $companies);
+    if ($fromCookies) {
+        return $fromCookies;
+    }
+
+    // 2. Veritabanında varsayilan_mi = 1 olan firma
+    foreach ($companies as $comp) {
+        if (!empty($comp->varsayilan_mi)) {
+            return $comp;
+        }
+    }
+
+    // 3. Kullanıcının tek firması varsa veya listenin ilk firması
+    return $companies[0] ?? null;
 }
 
 function sessionPayload(): array
@@ -129,6 +208,31 @@ function sessionPayload(): array
     }
 
     $_SESSION['user'] = $freshUser;
+
+    // Firma seçili değilse varsayılan firmayı otomatik bağla
+    if (empty($_SESSION['firma_id'])) {
+        $defaultCompany = resolveDefaultCompany($freshUser);
+        if ($defaultCompany) {
+            selectCompanySession($defaultCompany);
+        }
+    }
+
+    $permissions = [
+        'personnel' => mobileCan(['personel_listesi'], ['personel/list']),
+        'tasks' => mobileCan(['gorevler'], ['gorevler/list']),
+        'reports' => mobileCan(['puantaj_raporlama', 'puantaj_yonetim', 'puantaj/raporlar', 'puantaj/list'], ['puantaj/raporlar', 'puantaj/list']),
+        'requests' => mobileCan(['talepler'], ['talepler/list']),
+        'vehicles' => mobileCan(['arac_takip_yonetim'], ['arac-takip/list']),
+        'invoices' => mobileCan(['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list', 'efatura/olustur'], ['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list']),
+        'cash' => mobileCan(['gelir-gider/list'], ['gelir-gider/list']),
+        'current_accounts' => mobileCan(['cari/list'], ['cari/list']),
+        'documents' => mobileCan(['evrak-takip/list'], ['evrak-takip/list']),
+        'shifts' => mobileCan(['nobet/onay-islemleri'], ['nobet/onay-islemleri']),
+        'payroll' => mobileCan(['bordro/list'], ['bordro/list']),
+        'notices' => mobileCan(['ihbar/list'], ['ihbar/list']),
+        'illegal' => mobileCan(['kacak_islemleri', 'kacak/list'], ['kacak/list']),
+        'support' => mobileCan(['yardim/list', 'yardim/user-list'], ['yardim/list', 'yardim/user-list']),
+    ];
     return [
         'authenticated' => true,
         'csrf_token' => csrfToken(),
@@ -140,6 +244,7 @@ function sessionPayload(): array
             'code' => (string) ($_SESSION['firma_kodu'] ?? ''),
         ] : null,
         'companies' => allowedCompanies($freshUser),
+        'permissions' => $permissions,
     ];
 }
 
@@ -246,17 +351,7 @@ try {
         if (!$company || !is_null($company->silinme_tarihi ?? null)) {
             respond(['success' => false, 'message' => 'Çalışma alanı aktif değil.'], 404);
         }
-        $_SESSION['firma_id'] = $companyId;
-        $_SESSION['sube_id'] = $companyId;
-        $_SESSION['firma_adi'] = (string) $company->firma_adi;
-        $_SESSION['firma_kodu'] = (string) ($company->firma_kodu ?? '');
-        $period = (new SozlesmeDonemModel())->getActiveDonem($companyId);
-        if ($period) {
-            $_SESSION['aktif_donem_id'] = (int) $period->id;
-            $_SESSION['aktif_donem_adi'] = (string) $period->donem_adi;
-        } else {
-            unset($_SESSION['aktif_donem_id'], $_SESSION['aktif_donem_adi']);
-        }
+        selectCompanySession($company);
         respond(['success' => true, ...sessionPayload()]);
     }
 

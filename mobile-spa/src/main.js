@@ -2,10 +2,12 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router.js'
 import './styles.css'
+import './design-system.css'
 
 // Android/Chromium PWA durum çubuğunu aktif ekranın yüzeyiyle bütünleştirir.
 router.afterEach((to) => {
-  const theme = to.meta.chrome === false && to.name === 'login' ? '#0b1c3b' : '#f7f7f4'
+  const routeThemes = { login: '#0b1c3b', personnel: '#174b82', 'personnel-create': '#17345f', 'personnel-edit': '#17345f' }
+  const theme = routeThemes[to.name] || '#f7f7f4'
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme)
 })
 

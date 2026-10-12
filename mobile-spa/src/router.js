@@ -16,13 +16,13 @@ const router = createRouter({
     { path: '/giris', name: 'login', component: LoginView, meta: { guest: true, chrome: false } },
     { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
-    { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true } },
-    { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true } },
-    { path: '/talepler', name: 'requests', component: TaleplerView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true, permission: 'tasks' } },
+    { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
+    { path: '/talepler', name: 'requests', component: TaleplerView, meta: { requiresAuth: true, requiresCompany: true, permission: 'requests' } },
     { path: '/profil', name: 'profile', component: ProfileView, meta: { requiresAuth: true, requiresCompany: true } },
-    { path: '/personel', name: 'personnel', component: PersonnelView, meta: { requiresAuth: true, requiresCompany: true } },
-    { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, chrome: false } },
-    { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, chrome: false } },
+    { path: '/personel', name: 'personnel', component: PersonnelView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
+    { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel', chrome: false } },
+    { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel', chrome: false } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),
@@ -37,6 +37,7 @@ router.beforeEach(async (to) => {
   if (to.meta.guest && auth.state.authenticated) return auth.state.company ? { name: 'home' } : { name: 'company-select' }
   if (to.meta.requiresAuth && !auth.state.authenticated) return { name: 'login' }
   if (to.meta.requiresCompany && !auth.state.company) return { name: 'company-select' }
+  if (to.meta.permission && !auth.state.permissions[to.meta.permission]) return { name: 'home' }
 })
 
 export default router

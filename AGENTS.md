@@ -8,6 +8,7 @@
 
 ## 2. Yetkilendirme ve Güvenlik
 - Yetki kontrolü olmayan işlem yapılmayacak.
+- Mobil SPA'da yetkisi bulunmayan sayfa, menü, hızlı işlem, özet kartı ve veri alanı kullanıcıya çizilmeyecek; yalnızca istemci tarafında gizlemek yeterli değildir. İlgili API aksiyonu da aynı `Gate` yetkisini sunucu tarafında doğrulayacak ve yetkisiz veriyi yanıta dahil etmeyecektir. Rotalar, navbar ve “Daha Fazla” menüsü oturum API'sinin döndürdüğü sunucu kaynaklı yetki haritasından üretilecektir.
 - Yalnızca Superadmin yetkisindeki sayfalar ve API aksiyonları `Gate::isSuperAdmin()` ile korunacak.
 - Hassas nesne ve kayıt ID'leri `Security::encrypt()` ve `Security::decrypt()` ile şifrelenecek.
 - HTML çıktısında değişkenler `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')` ile sarılacak.
@@ -123,6 +124,13 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
   - Form input, textarea ve select alanlarındaki üst açıklama başlıkları (`label`), kullanıcının dikkatinin doğrudan girilen/seçilen değere odaklanması için soluk mat tonda (`rgba(215, 220, 232, 0.46)`) tutulur.
   - Asıl değer metinleri (`.form-control`, `.form-select`, `.select2-selection__rendered`) net ve parlak (`#f5f7fa`) olarak ön planda görünür.
   - Elemana odaklanıldığında (focus / focus-within) üst label macOS mavisi (`rgba(10, 132, 255, 0.78)`) ile hafifçe aydınlanır; sol ikonlar (`.form-floating-icon`) da bu renkle uyumlu çalışır.
+
+## 10. Mobil SPA Design System Standardı
+- `mobile-spa` içindeki yeni veya yenilenen ekranlar renk, yüzey, tipografi, boşluk, radius ve gölge değerlerini `src/design-system.css` içindeki `--ds-*` tokenlarından alacaktır.
+- Mobil ekranlar küçültülmüş masaüstü paneli gibi tasarlanmayacak; bilgi hiyerarşisi, en az 44px dokunma alanı, safe-area boşlukları ve tek elle kullanım esas alınacaktır.
+- Ana uygulama zemini `--ds-canvas`, kartlar `--ds-surface`, ana metin `--ds-ink`, ikincil metin `--ds-muted` üzerinden kullanılacaktır.
+- Ağır gradient, kalın çerçeve ve birbiriyle yarışan renkli kartlar yerine açık yüzey, düşük kontrastlı sınır, kontrollü gölge ve tek vurgu rengi kullanılacaktır.
+- Alt navigasyon sabit uygulama dock'udur; yetkisiz öğeler çizilmez ve merkez aksiyon yalnızca yetkili ek işlemleri açar.
 
 
 

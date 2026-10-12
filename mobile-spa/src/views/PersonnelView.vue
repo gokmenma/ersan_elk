@@ -90,13 +90,13 @@ onMounted(() => load(true))
   <section class="personnel-screen">
     <header class="personnel-hero">
       <div class="directory-topbar">
-        <button type="button" aria-label="Geri dön" @click="router.back()"><ArrowLeft :size="20" /></button>
+        <button type="button" aria-label="Geri dön" @click="router.back()"><ArrowLeft :size="25" /></button>
         <div><span>EKİP REHBERİ</span><h1>Personel</h1></div>
-        <button type="button" aria-label="Listeyi yenile" :class="{ spinning: loading }" @click="load(true)"><RefreshCw :size="19" /></button>
+        <button type="button" aria-label="Listeyi yenile" :class="{ spinning: loading }" @click="load(true)"><RefreshCw :size="23" /></button>
       </div>
       <div class="personnel-summary">
         <button :class="{ active: status === 'active' }" @click="status = 'active'"><strong>{{ summary.active }}</strong><span><i class="dot-active"></i> Aktif</span></button>
-        <button :class="{ active: status === 'all' }" @click="status = 'all'"><strong>{{ summary.total }}</strong><span><UsersRound :size="12" /> Toplam</span></button>
+        <button :class="{ active: status === 'all' }" @click="status = 'all'"><strong>{{ summary.total }}</strong><span><UsersRound :size="15" /> Toplam</span></button>
         <button :class="{ active: status === 'passive' }" @click="status = 'passive'"><strong>{{ summary.passive }}</strong><span><i class="dot-passive"></i> Ayrılan</span></button>
       </div>
     </header>
@@ -127,11 +127,15 @@ onMounted(() => load(true))
       </div>
 
       <div v-else class="personnel-list">
-        <button v-for="person in items" :key="person.id" class="personnel-row" type="button" @click="openDetail(person)">
+        <article v-for="person in items" :key="person.id" class="personnel-row" role="button" tabindex="0" @click="openDetail(person)" @keydown.enter="openDetail(person)">
           <span class="personnel-avatar">{{ person.initials }}<i :class="person.active ? 'online' : 'offline'"></i></span>
-          <span class="personnel-main"><strong>{{ person.name }}</strong><small>{{ [person.job, person.department].filter(Boolean).join(' · ') || 'Görev bilgisi bulunmuyor' }}</small><em v-if="person.team || person.region"><MapPin :size="11" /> {{ person.team || person.region }}</em></span>
-          <span class="row-arrow"><ChevronRight :size="18" /></span>
-        </button>
+          <span class="personnel-main">
+            <strong>{{ person.name }}</strong>
+            <small>{{ [person.job, person.department].filter(Boolean).join(' · ') || 'Görev bilgisi bulunmuyor' }}</small>
+            <em v-if="person.team || person.region"><MapPin :size="16" /> {{ [person.team, person.region].filter(Boolean).join(' · ') }}</em>
+          </span>
+          <span class="row-arrow"><ChevronRight :size="24" /></span>
+        </article>
         <button v-if="pagination.has_more" class="load-more" :disabled="loadingMore" @click="load(false)">{{ loadingMore ? 'Yükleniyor…' : 'Daha fazla göster' }}</button>
       </div>
     </div>
