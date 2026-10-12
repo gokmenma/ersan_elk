@@ -118,7 +118,7 @@ onMounted(() => load(true))
 
       <div v-else class="personnel-list">
         <article v-for="person in items" :key="person.id" class="personnel-row" role="button" tabindex="0" @click="openDetail(person)" @keydown.enter="openDetail(person)">
-          <span class="personnel-avatar"><img v-if="person.avatar" :src="person.avatar" :alt="person.name" /><template v-else>{{ person.initials }}</template><i :class="person.active ? 'online' : 'offline'"></i></span>
+          <span class="personnel-avatar"><img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" /><template v-else>{{ person.initials }}</template><i :class="person.active ? 'online' : 'offline'"></i></span>
           <span class="personnel-main">
             <strong>{{ person.name }}</strong>
             <small>{{ [person.job, person.department].filter(Boolean).join(' · ') || 'Görev bilgisi bulunmuyor' }}</small>

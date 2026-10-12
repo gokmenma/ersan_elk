@@ -29,7 +29,7 @@ onMounted(load)
     <div v-if="loading" class="ds-loading"><i></i><i></i><i></i></div>
     <div v-else-if="error" class="ds-state"><RefreshCw :size="22"/><strong>Bilgiler alınamadı</strong><p>{{ error }}</p><button @click="load">Tekrar dene</button></div>
     <template v-else-if="person && section">
-      <section class="personnel-section-profile"><span><img v-if="person.avatar" :src="person.avatar" :alt="person.name" /><template v-else>{{ person.initials }}</template></span><div><small>{{ person.active?'AKTİF PERSONEL':'AYRILMIŞ PERSONEL' }}</small><h2>{{ person.name }}</h2><p>{{ section.description }}</p></div></section>
+      <section class="personnel-section-profile"><span><img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" /><template v-else>{{ person.initials }}</template></span><div><small>{{ person.active?'AKTİF PERSONEL':'AYRILMIŞ PERSONEL' }}</small><h2>{{ person.name }}</h2><p>{{ section.description }}</p></div></section>
 
       <section v-if="route.params.section==='genel'" class="section-native-card">
         <header><span>GÜNCEL BİLGİLER</span><small>Profil özeti</small></header>

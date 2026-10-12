@@ -40,7 +40,7 @@ onMounted(load)
     <div v-else-if="error" class="ds-state"><RefreshCw :size="22" /><strong>Personel alınamadı</strong><p>{{ error }}</p><button type="button" @click="load">Tekrar dene</button></div>
     <template v-else-if="person">
       <section class="personnel-detail-hero">
-        <div class="personnel-detail-avatar"><img v-if="person.avatar" :src="person.avatar" :alt="person.name" /><template v-else>{{ person.initials }}</template></div>
+        <div class="personnel-detail-avatar"><img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" /><template v-else>{{ person.initials }}</template></div>
         <div class="personnel-detail-identity"><span :class="person.active ? 'is-active' : 'is-passive'">{{ person.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}</span><h2>{{ person.name }}</h2><p>{{ [person.job,person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}</p></div>
         <div class="personnel-detail-actions"><a v-if="person.phone" :href="phoneHref(person.phone)"><Phone :size="18" /><span>Ara</span></a><a v-if="person.email" :href="`mailto:${person.email}`"><Mail :size="18" /><span>E-posta</span></a></div>
       </section>
