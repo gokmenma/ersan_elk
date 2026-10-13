@@ -24,6 +24,11 @@ Bu kurallar bordro/list ekranindaki gosterim, detay modalı, Excel export ve maa
 
 ### Bordro Detayında Banka ve Fazla Çalışma Gösterimi
 
+- Eski/kompakt bordro detay görünümünün sol sütununda alt alta iki açılır hesap başlığı bulunur: **Sözleşme Alacağı Hesabı** ve **Resmî Alacağı Hesabı**. Başlık tıklanınca ilgili hesap kartı açılır. Sözleşme alacağı kartı, yeni detay görünümündeki Brüt Toplamı açılımıyla; resmî alacağı kartı ise Banka Ödemesi açılımındaki kesinti öncesi resmî kalemlerle aynı veriyi kullanır. Kesintiler, eski yerleşimdeki gibi sağ sütunda ayrı kırmızı kartta gösterilir.
+- Kendi alacağı hesabında sözleşme günlük ücreti, maaş hesap günü, sözleşme üzerine eklenen tam HTÇ hakedişi ve diğer kazançlar ayrı gösterilir. Puantaj hakedişlerinde toplam işlem/adet rozeti korunur.
+- Resmî alacak hesabında günlük net asgari ücret × banka günü, yemek, eş yardımı ve diğer resmî eklemeler gösterilir ve panel kesinti öncesi resmî alacakla tamamlanır. Banka kesintileri sağdaki **Kesintiler** kartında kırmızı eksi kalemler olarak, net banka ödemesi ise alt ödeme sonucunda gösterilir.
+- Açılır panel başlıklarındaki tutarlar kesinti sonrası ödeme değildir: **Sözleşme Alacağı Hesabı** başlığı resmî + gayriresmî kesinti öncesi toplam hakedişi, **Resmî Alacağı Hesabı** başlığı kesinti öncesi resmî hakedişi gösterir. Kesintiler uygulandıktan sonra oluşan net banka ve toplam net ödeme panel/footer içinde ayrıca gösterilir.
+
 - Banka ödeme detayındaki **Asgari Ücret (Net)** satırı, net banka sonucundan kalan tutar değildir. Her zaman dönem parametresindeki günlük net asgari ücret ile bankaya esas hak edilmiş günün çarpımıdır: `round(asgari_ucret_net / 30, 2) × banka_asgari_gun`.
 - Yemek, eş yardımı, RTÇ/HTÇ ve diğer banka kalemleri asgari tabandan ayrı olarak **Eklenenler** bölümünde yeşil `+` tutarlarla gösterilir.
 - Avans, icra ve diğer banka mahsupları **Çıkarılanlar** bölümünde kendi adlarıyla kırmızı `-` tutarlarla gösterilir. Kalem detayı bulunmayan eski snapshot kayıtlarında kalan tutar `Diğer banka kesintileri` adıyla gösterilir.
