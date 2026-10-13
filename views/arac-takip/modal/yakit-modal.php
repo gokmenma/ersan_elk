@@ -45,7 +45,7 @@
                                 <?php
                                 // Araç haritası oluştur (JS için)
                                 $aracMap = [];
-                                foreach ($araclar as $arac) {
+                                foreach ($yakitAraclar as $arac) {
                                     $arac->display_name = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
                                     $aracMap[$arac->id] = ['km' => $arac->guncel_km, 'yakit_tipi' => $arac->yakit_tipi];
                                 }
@@ -53,7 +53,7 @@
 
                                 <div class="row g-3">
                                     <div class="col-md-8 mb-2">
-                                        <?php echo \App\Helper\Form::FormSelect2('arac_id', $araclar, '', 'Araç Seçin *', 'truck', 'id', 'display_name', 'form-select select2', true); ?>
+                                        <?php echo \App\Helper\Form::FormSelect2('arac_id', $yakitAraclar, '', 'Araç Seçin *', 'truck', 'id', 'display_name', 'form-select select2', true); ?>
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <?php echo \App\Helper\Form::FormFloatInput('text', 'tarih', date('d.m.Y'), '', 'Tarih *', 'calendar', 'form-control flatpickr', true); ?>

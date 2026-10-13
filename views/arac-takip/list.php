@@ -91,6 +91,17 @@ if ($filter === 'muayene') {
     $araclar = $Arac->getAktifAraclar();
 }
 
+// Yakıt işlemlerindeki araç kaynağı, araç listesi sekmesinin aktif filtresinden
+// bağımsızdır. İkame araçlar ana listede bilinçli olarak gizlense de yakıt
+// filtresinde ve yakıt kayıt formunda seçilebilir olmalıdır.
+$yakitAraclar = [];
+foreach (array_merge($Arac->getAktifAraclar(), $Arac->getIkameAraclar()) as $yakitArac) {
+    $yakitAraclar[(int) $yakitArac->id] = $yakitArac;
+}
+usort($yakitAraclar, static function ($a, $b) {
+    return strcasecmp((string) $a->plaka, (string) $b->plaka);
+});
+
 if (!function_exists('getInitials')) {
     function getInitials($name) {
         $name = trim((string)$name);
@@ -1067,7 +1078,7 @@ if (!function_exists('getEvrakBadgeStatus')) {
 
                                             <?php
                                             $aracOptions = ['' => 'Tüm Araçlar'];
-                                            foreach ($araclar as $arac) {
+                                            foreach ($yakitAraclar as $arac) {
                                                 $aracOptions[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
                                             }
                                             echo App\Helper\Form::FormSelect2('yakit-filtre-arac', $aracOptions, '', 'Plaka', 'truck', 'key', '', 'form-select select2');
