@@ -695,26 +695,11 @@ class IhbarModel extends Model
         $columnExpressions = !empty($params['has_select'])
             ? [1 => 'DATE(i.created_at)', 2 => 'DATE(sonuc.sonuclanma_tarihi)',
                 3 => 'i.ilce', 4 => 'i.mahalle', 5 => 'i.telefon', 6 => 'COALESCE(bp.adi_soyadi, ou.adi_soyadi)',
-                7 => 'ekip.atanan_ekip_adi', 8 => 'i.durum']
+                7 => 'ekip.atanan_ekip_adi', 8 => "CASE i.durum WHEN 'yeni' THEN 'Yeni' WHEN 'yonlendirildi' THEN 'Yönlendirildi' WHEN 'islemde' THEN 'İşlemde' WHEN 'olumlu' THEN 'Olumlu' WHEN 'olumsuz' THEN 'Olumsuz' ELSE i.durum END"]
             : [0 => 'DATE(i.created_at)', 1 => 'DATE(sonuc.sonuclanma_tarihi)',
                 2 => 'i.ilce', 3 => 'i.mahalle', 4 => 'i.telefon', 5 => 'COALESCE(bp.adi_soyadi, ou.adi_soyadi)',
-                6 => 'ekip.atanan_ekip_adi', 7 => 'i.durum'];
+                6 => 'ekip.atanan_ekip_adi', 7 => "CASE i.durum WHEN 'yeni' THEN 'Yeni' WHEN 'yonlendirildi' THEN 'Yönlendirildi' WHEN 'islemde' THEN 'İşlemde' WHEN 'olumlu' THEN 'Olumlu' WHEN 'olumsuz' THEN 'Olumsuz' ELSE i.durum END"];
         $dateColumnIndexes = !empty($params['has_select']) ? [1, 2] : [0, 1];
-        $statusColumnIndex = !empty($params['has_select']) ? 8 : 7;
-        $statusValues = [
-            'Yeni' => 'yeni',
-            'Yönlendirildi' => 'yonlendirildi',
-            'İşlemde' => 'islemde',
-            'Olumlu' => 'olumlu',
-            'Olumsuz' => 'olumsuz',
-            'yeni' => 'yeni',
-            'yönlendirildi' => 'yonlendirildi',
-            'yonlendirildi' => 'yonlendirildi',
-            'işlemde' => 'islemde',
-            'islemde' => 'islemde',
-            'olumlu' => 'olumlu',
-            'olumsuz' => 'olumsuz',
-        ];
         foreach (($params['columns'] ?? []) as $index => $column) {
             $value = trim((string) ($column['search']['value'] ?? ''));
             if ($value === '' || !isset($columnExpressions[$index])) continue;
@@ -736,12 +721,6 @@ class IhbarModel extends Model
             $values = $mode === 'multi' ? explode('|', $filterValue) : [$filterValue];
             $values = array_values(array_filter(array_map('trim', $values), static fn(string $item): bool => $item !== ''));
 
-            if ($index === $statusColumnIndex) {
-                $values = array_map(static function (string $item) use ($statusValues): string {
-                    $normalized = mb_strtolower($item, 'UTF-8');
-                    return $statusValues[$item] ?? $statusValues[$normalized] ?? $item;
-                }, $values);
-            }
             if (in_array($index, $dateColumnIndexes, true)) {
                 $values = array_map(static function (string $item): string {
                     $date = \DateTime::createFromFormat('!d.m.Y', $item);

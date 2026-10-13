@@ -429,6 +429,10 @@
       if (filterType === "select") {
         let uniqueVals = [];
         const isServerSide = !!settings.oFeatures.bServerSide;
+        const configuredOptions = ($header.attr("data-filter-options") || "")
+          .split("|")
+          .map((value) => value.trim())
+          .filter(Boolean);
 
         const populateOptions = (vals) => {
           const currentChecked = Array.isArray(cellInfo.value)
@@ -507,7 +511,11 @@
             uniqueVals = [];
           }
         }
-        uniqueVals.sort((a, b) => a.localeCompare(b, "tr"));
+        if (configuredOptions.length > 0) {
+          uniqueVals = configuredOptions;
+        } else {
+          uniqueVals.sort((a, b) => a.localeCompare(b, "tr"));
+        }
 
         const $excelDpy = $('<div class="dt-filter-excel-dropdown"></div>').attr(
           "data-table-id",
@@ -540,7 +548,7 @@
         cellInfo.$excelDropdown = $excelDpy;
 
         // Server-side lazy load for entire table unique values
-        let hasLoadedFullList = !isServerSide;
+        let hasLoadedFullList = !isServerSide || configuredOptions.length > 0;
         const loadFullList = () => {
           if (hasLoadedFullList) return;
           const ajaxUrl =

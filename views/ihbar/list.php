@@ -521,7 +521,7 @@ if (!empty($_GET['ihbar_id'])) {
                                     <th data-filter="string">Telefon</th>
                                     <th data-filter="string">Bildiren</th>
                                     <th data-filter="string">Atanan Ekip</th>
-                                    <th data-filter="select">Durum</th>
+                                    <th data-filter="select" data-filter-options="Yeni|Yönlendirildi|İşlemde|Olumlu|Olumsuz">Durum</th>
                                     <th class="text-center" style="width:210px">İşlemler</th>
                                 </tr>
                             </thead>
