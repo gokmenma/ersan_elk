@@ -128,7 +128,8 @@ if (!isset($_SESSION['firma_id']) && isset($personel->firma_id)) {
 
 // Araç zimmet kontrolü
 $AracZimmetModel = new AracZimmetModel();
-$aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
+$aktifAracZimmetleri = $AracZimmetModel->getAktifZimmetlerByPersonel($personel_id);
+$aktifAracZimmeti = $aktifAracZimmetleri[0] ?? null;
 
 // Departman & Görev bazlı kontrol
 $isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);

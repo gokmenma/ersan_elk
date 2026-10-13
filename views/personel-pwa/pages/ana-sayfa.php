@@ -200,7 +200,7 @@ use App\Helper\Helper;
                         </div>
                         <div class="flex-1">
                             <h3 class="text-base font-bold text-slate-800 dark:text-white line-clamp-1">Araç KM Yönetimi</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Aktif Araç: <span class="text-indigo-600 dark:text-indigo-400 font-bold"><?= $aktifAracZimmeti->plaka ?? 'Zimmetli Araç' ?></span></p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Aktif Araçlar: <span class="text-indigo-600 dark:text-indigo-400 font-bold"><?php echo htmlspecialchars(implode(', ', array_map(static fn($zimmet) => (string) $zimmet->plaka, $aktifAracZimmetleri ?? [])), ENT_QUOTES, 'UTF-8'); ?></span></p>
                         </div>
                         <div class="text-right">
                             <div class="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">

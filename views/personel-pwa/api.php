@@ -3668,8 +3668,8 @@ try {
             // tamamlamadan goreve baslayamaz. Beklemedeki/onayli kayit yeterlidir;
             // reddedilen kayit yeniden girilmelidir.
             $AracZimmetModel = new AracZimmetModel();
-            $aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
-            if ($aktifAracZimmeti) {
+            $aktifAracZimmetleri = $AracZimmetModel->getAktifZimmetlerByPersonel($personel_id);
+            foreach ($aktifAracZimmetleri as $aktifAracZimmeti) {
                 $KmBildirimModel = new AracKmBildirimModel();
                 $bugun = date('Y-m-d');
                 $sabahKmVar = $KmBildirimModel->hasValidReport(
@@ -3731,9 +3731,9 @@ try {
 
         case 'get-evening-km-status':
             $AracZimmetModel = new AracZimmetModel();
-            $aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
+            $aktifAracZimmetleri = $AracZimmetModel->getAktifZimmetlerByPersonel($personel_id);
 
-            if (!$aktifAracZimmeti) {
+            if (!$aktifAracZimmetleri) {
                 response(true, [
                     'has_active_vehicle' => false,
                     'reported' => true
@@ -3741,26 +3741,34 @@ try {
             }
 
             $KmBildirimModel = new AracKmBildirimModel();
-            response(true, [
-                'has_active_vehicle' => true,
-                'reported' => $KmBildirimModel->hasValidReport(
+            $eksikAksamZimmeti = null;
+            foreach ($aktifAracZimmetleri as $aktifAracZimmeti) {
+                if (!$KmBildirimModel->hasValidReport(
                     $personel_id,
                     $aktifAracZimmeti->arac_id,
                     date('Y-m-d'),
                     'aksam'
-                ),
-                'plaka' => $aktifAracZimmeti->plaka
+                )) {
+                    $eksikAksamZimmeti = $aktifAracZimmeti;
+                    break;
+                }
+            }
+            response(true, [
+                'has_active_vehicle' => true,
+                'reported' => $eksikAksamZimmeti === null,
+                'plaka' => $eksikAksamZimmeti->plaka ?? ($aktifAracZimmetleri[0]->plaka ?? '')
             ]);
             break;
 
         case 'log-evening-km-skip':
             $AracZimmetModel = new AracZimmetModel();
-            $aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
-            if ($aktifAracZimmeti) {
+            $aktifAracZimmetleri = $AracZimmetModel->getAktifZimmetlerByPersonel($personel_id);
+            if ($aktifAracZimmetleri) {
+                $plakalar = implode(', ', array_map(static fn($zimmet) => (string) $zimmet->plaka, $aktifAracZimmetleri));
                 (new \App\Model\SystemLogModel())->logAction(
                     (int) ($_SESSION['user_id'] ?? 0),
                     'Akşam KM Hatırlatması Atlandı',
-                    'Personel #' . $personel_id . ', ' . $aktifAracZimmeti->plaka . ' plakalı araç için akşam KM bildirimini "Şimdi Değil" seçeneğiyle erteledi.',
+                    'Personel #' . $personel_id . ', ' . $plakalar . ' plakalı araçlar için akşam KM bildirimini "Şimdi Değil" seçeneğiyle erteledi.',
                     \App\Model\SystemLogModel::LEVEL_INFO
                 );
             }
@@ -5497,6 +5505,7 @@ try {
         // ============ Araç KM Bildirim İşlemleri ============
         case 'save-km-report':
             $KmBildirim = new \App\Model\AracKmBildirimModel();
+            $AracZimmetModel = new \App\Model\AracZimmetModel();
             $data = $_POST;
             unset($data['action']);
             $id = isset($data['id']) ? intval($data['id']) : 0;
@@ -5506,6 +5515,10 @@ try {
             $tarih = $data['tarih'];
             $tur = $data['tur'];
             $bitis_km = intval($data['bitis_km']);
+
+            if ($arac_id <= 0 || !$AracZimmetModel->hasAktifZimmet((int) $personel_id, $arac_id)) {
+                response(false, null, 'Seçilen araç aktif olarak size zimmetli değil.');
+            }
 
             // KM Doğrulaması (Backend)
             $lastKm = $KmBildirim->getLastKm($arac_id, $tarih, $tur, $id);

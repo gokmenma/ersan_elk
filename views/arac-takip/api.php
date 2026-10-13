@@ -221,6 +221,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $pdo = $Arac->getDb();
                 $kullaniciId = $_SESSION['user_id'] ?? null;
 
+                $bagimliKayitlar = $Arac->getDeleteDependencyCounts($id);
+
+                $yakitSayisi = (int) ($bagimliKayitlar->yakit_sayisi ?? 0);
+                $kmSayisi = (int) ($bagimliKayitlar->km_sayisi ?? 0);
+                if ($yakitSayisi > 0 || $kmSayisi > 0) {
+                    $engeller = [];
+                    if ($yakitSayisi > 0) {
+                        $engeller[] = "{$yakitSayisi} yakıt kaydı";
+                    }
+                    if ($kmSayisi > 0) {
+                        $engeller[] = "{$kmSayisi} KM kaydı";
+                    }
+                    (new SystemLogModel())->logAction(
+                        (int) ($kullaniciId ?? 0),
+                        'Araç Silme Engellendi',
+                        implode("\n", [
+                            'Araç ID: ' . $id,
+                            'Plaka: ' . ($silinecekArac->plaka ?? 'Bilinmiyor'),
+                            'Engel: ' . implode(' ve ', $engeller),
+                            'Talep eden kullanıcı ID: ' . (int) ($kullaniciId ?? 0),
+                            'IP: ' . ($_SERVER['REMOTE_ADDR'] ?? '-'),
+                            'Açıklama: ' . $aciklama,
+                        ]),
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
+                    throw new Exception(
+                        ($silinecekArac->plaka ?? 'Bu araç') . ' silinemez; araca ait ' . implode(' ve ', $engeller) . ' bulunuyor.'
+                    );
+                }
+
                 try {
                     $pdo->beginTransaction();
 
@@ -228,8 +258,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $tablesWithUser = [
                         'arac_zimmetleri',
                         'arac_yakit_kayitlari',
+                        'arac_km_kayitlari',
                         'arac_servis_kayitlari',
-                        'arac_sigorta_kayitlari'
+                        'arac_sigorta_kayitlari',
+                        'arac_bakim_kayitlari'
                     ];
 
                     foreach ($tablesWithUser as $table) {
@@ -237,28 +269,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         $stmt->execute([$kullaniciId, $id]);
                     }
 
-                    // 2. Sadece silinme_tarihi sütunu olan tablolar
-                    $tablesWithoutUser = [
-                        'arac_km_kayitlari',
-                        'arac_bakim_kayitlari'
-                    ];
-
-                    foreach ($tablesWithoutUser as $table) {
-                        $stmt = $pdo->prepare("UPDATE {$table} SET silinme_tarihi = NOW() WHERE arac_id = ? AND silinme_tarihi IS NULL");
-                        $stmt->execute([$id]);
-                    }
-
-                    // 3. En son ana tabloyu sil (araclar tablosunda silen_kullanici yok)
+                    // 2. En son ana tabloyu sil (araclar tablosunda silen_kullanici yok)
                     $stmtArac = $pdo->prepare("UPDATE araclar SET silinme_tarihi = NOW() WHERE id = ? AND silinme_tarihi IS NULL");
                     $stmtArac->execute([$id]);
 
-                    $pdo->commit();
-
-                    // Logla
+                    // Ayrıntılı silme logunu aynı transaction içinde kaydet.
                     $SystemLog = new SystemLogModel();
                     $userId = $_SESSION['user_id'] ?? 0;
                     $plaka = $silinecekArac->plaka ?? 'Bilinmiyor';
-                    $SystemLog->logAction($userId, 'Araç Silme', "{$plaka} plakalı araç tüm verileriyle beraber silindi.\nAçıklama: {$aciklama}", SystemLogModel::LEVEL_IMPORTANT);
+                    $logDetayi = implode("\n", [
+                        "Araç ID: {$id}",
+                        "Plaka: {$plaka}",
+                        'Marka/Model: ' . trim(($silinecekArac->marka ?? '-') . ' ' . ($silinecekArac->model ?? '')),
+                        'Mülkiyet: ' . ($silinecekArac->mulkiyet ?? '-'),
+                        'Departman: ' . ($silinecekArac->departmani ?? '-'),
+                        'Aktif: ' . ((int) ($silinecekArac->aktif_mi ?? 0) === 1 ? 'Evet' : 'Hayır'),
+                        'İkame: ' . ((int) ($silinecekArac->ikame_mi ?? 0) === 1 ? 'Evet' : 'Hayır'),
+                        'Bağlı kayıtlar: zimmet=' . (int) ($bagimliKayitlar->zimmet_sayisi ?? 0)
+                            . ', servis=' . (int) ($bagimliKayitlar->servis_sayisi ?? 0)
+                            . ', sigorta=' . (int) ($bagimliKayitlar->sigorta_sayisi ?? 0)
+                            . ', bakım=' . (int) ($bagimliKayitlar->bakim_sayisi ?? 0)
+                            . ", yakıt={$yakitSayisi}, KM={$kmSayisi}",
+                        'Silen kullanıcı ID: ' . (int) $userId,
+                        'IP: ' . ($_SERVER['REMOTE_ADDR'] ?? '-'),
+                        'Açıklama: ' . $aciklama,
+                    ]);
+                    $SystemLog->logAction($userId, 'Araç Silme', $logDetayi, SystemLogModel::LEVEL_IMPORTANT);
+
+                    $pdo->commit();
 
                     echo json_encode(['status' => 'success', 'message' => 'Araç başarıyla silindi.']);
 
@@ -536,12 +574,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 if ($aktifZimmetArac) {
                     $personelIsim = $aktifZimmetArac->personel_adi ?? 'Bilinmeyen Personel';
                     throw new Exception("Bu araç zaten {$personelIsim} adlı personele zimmetli. Önce iade alınmalı.");
-                }
-
-                // Personel aktif zimmet kontrolü
-                $aktifZimmetPersonel = $Zimmet->getAktifZimmetByPersonel($personel_id);
-                if ($aktifZimmetPersonel) {
-                    throw new Exception("Bu personelin üzerine zaten aktif bir araç ({$aktifZimmetPersonel->plaka}) zimmetli. Önce o araç iade edilmeli.");
                 }
 
                 $data = [
@@ -2264,9 +2296,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             $Arac->updateKm($ikame_arac_id, $data['ikame_iade_km']);
                         }
 
-                        // 3. Asıl aracı personele geri zimmetle (eğer personel başka araca zimmetli değilse)
-                        $personelMevcutZimmet = $Zimmet->getAktifZimmetByPersonel($personel_id_iade);
-                        if (!$personelMevcutZimmet) {
+                        // 3. Asıl aracı personele geri zimmetle. Personelin başka aktif
+                        // araçları olabilir; burada yalnızca asıl aracın boşta olması gerekir.
+                        $asilAracMevcutZimmet = $Zimmet->getAktifZimmetByArac($arac_id);
+                        if (!$asilAracMevcutZimmet) {
                             $geriZimmetData = [
                                 'firma_id' => $_SESSION['firma_id'],
                                 'arac_id' => $arac_id,

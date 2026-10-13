@@ -279,6 +279,38 @@ class AracModel extends Model
     }
 
     /**
+     * Araç silme kararı ve audit kaydı için aktif bağlı kayıt adetleri.
+     */
+    public function getDeleteDependencyCounts(int $aracId): object
+    {
+        $sql = $this->db->prepare("
+            SELECT
+                (SELECT COUNT(*) FROM arac_yakit_kayitlari WHERE arac_id = :yakit_arac_id AND firma_id = :yakit_firma_id AND silinme_tarihi IS NULL) AS yakit_sayisi,
+                (SELECT COUNT(*) FROM arac_km_kayitlari WHERE arac_id = :km_arac_id AND firma_id = :km_firma_id AND silinme_tarihi IS NULL) AS km_sayisi,
+                (SELECT COUNT(*) FROM arac_zimmetleri WHERE arac_id = :zimmet_arac_id AND firma_id = :zimmet_firma_id AND silinme_tarihi IS NULL) AS zimmet_sayisi,
+                (SELECT COUNT(*) FROM arac_servis_kayitlari WHERE arac_id = :servis_arac_id AND firma_id = :servis_firma_id AND silinme_tarihi IS NULL) AS servis_sayisi,
+                (SELECT COUNT(*) FROM arac_sigorta_kayitlari WHERE arac_id = :sigorta_arac_id AND firma_id = :sigorta_firma_id AND silinme_tarihi IS NULL) AS sigorta_sayisi,
+                (SELECT COUNT(*) FROM arac_bakim_kayitlari WHERE arac_id = :bakim_arac_id AND firma_id = :bakim_firma_id AND silinme_tarihi IS NULL) AS bakim_sayisi
+        ");
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $sql->execute([
+            'yakit_arac_id' => $aracId,
+            'yakit_firma_id' => $firmaId,
+            'km_arac_id' => $aracId,
+            'km_firma_id' => $firmaId,
+            'zimmet_arac_id' => $aracId,
+            'zimmet_firma_id' => $firmaId,
+            'servis_arac_id' => $aracId,
+            'servis_firma_id' => $firmaId,
+            'sigorta_arac_id' => $aracId,
+            'sigorta_firma_id' => $firmaId,
+            'bakim_arac_id' => $aracId,
+            'bakim_firma_id' => $firmaId,
+        ]);
+        return $sql->fetch(PDO::FETCH_OBJ) ?: (object) [];
+    }
+
+    /**
      * Boşta olan araçları getirir
      */
     public function getBostaAraclar()

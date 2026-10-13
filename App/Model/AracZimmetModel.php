@@ -129,6 +129,55 @@ class AracZimmetModel extends Model
     }
 
     /**
+     * Personele ait silinmemiş tüm aktif araç zimmetlerini getirir.
+     */
+    public function getAktifZimmetlerByPersonel($personelId): array
+    {
+        $sql = $this->db->prepare("
+            SELECT az.*, a.plaka, a.marka, a.model
+            FROM {$this->table} az
+            INNER JOIN araclar a ON az.arac_id = a.id
+            WHERE az.personel_id = :personel_id
+            AND az.durum = 'aktif'
+            AND az.firma_id = :firma_id
+            AND az.silinme_tarihi IS NULL
+            AND a.silinme_tarihi IS NULL
+            AND az.zimmet_tarihi <= CURDATE()
+            ORDER BY az.zimmet_tarihi DESC, az.id DESC
+        ");
+        $sql->execute([
+            'personel_id' => $personelId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Belirtilen aracın ilgili personele aktif olarak zimmetli olduğunu doğrular.
+     */
+    public function hasAktifZimmet(int $personelId, int $aracId): bool
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(*)
+            FROM {$this->table} az
+            INNER JOIN araclar a ON az.arac_id = a.id
+            WHERE az.personel_id = :personel_id
+            AND az.arac_id = :arac_id
+            AND az.firma_id = :firma_id
+            AND az.durum = 'aktif'
+            AND az.silinme_tarihi IS NULL
+            AND a.silinme_tarihi IS NULL
+            AND az.zimmet_tarihi <= CURDATE()
+        ");
+        $sql->execute([
+            'personel_id' => $personelId,
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return (int) $sql->fetchColumn() > 0;
+    }
+
+    /**
      * Araca ait tüm zimmet geçmişini getirir
      */
     public function getByArac($aracId)

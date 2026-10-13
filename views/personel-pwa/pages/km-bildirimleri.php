@@ -1,5 +1,6 @@
 <?php
-$aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
+$aktifAracZimmetleri = $AracZimmetModel->getAktifZimmetlerByPersonel($personel_id);
+$aktifAracZimmeti = $aktifAracZimmetleri[0] ?? null;
 ?>
 <div class="flex flex-col min-h-screen bg-slate-50 dark:bg-background-dark pb-20">
     <!-- Header -->

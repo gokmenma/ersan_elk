@@ -6,8 +6,11 @@
 ?>
 <script>
     // Global Değişkenler (Ana Sayfadan veya İlgili Sayfadan Alınabilir)
-    var sharedAktifAracId = <?php echo json_encode($aktifAracZimmeti->arac_id ?? null); ?>;
-    var sharedAktifAracPlaka = <?php echo json_encode($aktifAracZimmeti->plaka ?? ''); ?>;
+    var sharedAktifAraclar = <?php echo json_encode(array_map(static function ($zimmet) {
+        return ['id' => (int) $zimmet->arac_id, 'plaka' => (string) $zimmet->plaka];
+    }, $aktifAracZimmetleri ?? []), JSON_UNESCAPED_UNICODE); ?>;
+    var sharedAktifAracId = sharedAktifAraclar[0]?.id || null;
+    var sharedAktifAracPlaka = sharedAktifAraclar[0]?.plaka || '';
     var sharedPersonelAdi = <?php echo json_encode($_SESSION['personel_adi'] ?? 'Bilinmeyen'); ?>;
 
     /**
@@ -96,8 +99,23 @@
             return;
         }
 
-        const plaka = editData ? editData.plaka : sharedAktifAracPlaka;
-        const aracId = editData ? editData.arac_id : sharedAktifAracId;
+        let plaka = editData ? editData.plaka : sharedAktifAracPlaka;
+        let aracId = editData ? editData.arac_id : sharedAktifAracId;
+        if (!editData && sharedAktifAraclar.length > 1) {
+            const aracSecimi = await Swal.fire({
+                title: 'Araç Seçin',
+                input: 'select',
+                inputOptions: Object.fromEntries(sharedAktifAraclar.map(arac => [arac.id, arac.plaka])),
+                inputPlaceholder: 'KM bildirimi yapılacak araç',
+                showCancelButton: true,
+                confirmButtonText: 'Devam Et',
+                cancelButtonText: 'İptal',
+                inputValidator: value => value ? undefined : 'Lütfen bir araç seçin.'
+            });
+            if (!aracSecimi.isConfirmed) return;
+            aracId = parseInt(aracSecimi.value, 10);
+            plaka = sharedAktifAraclar.find(arac => arac.id === aracId)?.plaka || '';
+        }
 
         showPwaFullModal({
             html: `
