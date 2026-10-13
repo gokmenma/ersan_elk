@@ -1735,6 +1735,11 @@ if ($action == "zimmet-listesi") {
                         </div>';
 
             $disabledCheckbox = ($effectiveDurum === 'iade') ? 'disabled' : '';
+            $mukerrerSeri = (int) ($z->mukerrer_seri ?? 0) === 1;
+            $seriNo = trim((string) ($z->seri_no ?? ''));
+            $mukerrerUyari = $mukerrerSeri
+                ? '<div class="mt-1"><span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-10 fw-semibold"><i class="bx bx-error-circle me-1"></i>Mükerrer seri numarası</span></div>'
+                : '';
             $data[] = [
                 "checkbox" => '
                     <div class="custom-checkbox-container">
@@ -1745,9 +1750,12 @@ if ($action == "zimmet-listesi") {
                 "enc_id" => $enc_id,
                 "kategori_adi" => '<span class="badge bg-soft-primary text-primary">' . ($z->kategori_adi ?? '-') . '</span>',
                 "demirbas_adi" => ($z->demirbas_adi ?? '-'),
-                "marka_model" => '<div>' . ($z->marka ?? '-') . ' ' . ($z->model ?? '') . '</div>' . ($z->seri_no ? '<small class="text-muted">SN: ' . $z->seri_no . '</small>' : ''),
+                "marka_model" => '<div>' . htmlspecialchars(($z->marka ?? '-') . ' ' . ($z->model ?? ''), ENT_QUOTES, 'UTF-8') . '</div>'
+                    . ($seriNo !== '' ? '<small class="text-muted">SN: ' . htmlspecialchars($seriNo, ENT_QUOTES, 'UTF-8') . '</small>' : '')
+                    . $mukerrerUyari,
                 "personel_adi" => ($z->personel_adi ?? '-'),
                 "seri_no" => $z->seri_no ?? '-',
+                "mukerrer_seri" => $mukerrerSeri ? 1 : 0,
                 "teslim_miktar" => '<div class="text-center">' . $z->teslim_miktar . '</div>',
                 "teslim_tarihi" => $teslimTarihi,
                 "durum" => '<div class="text-center">' . $durumBadge . '</div>',

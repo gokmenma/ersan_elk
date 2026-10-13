@@ -614,6 +614,25 @@ class DemirbasZimmetModel extends Model
                         d.marka,
                         d.model,
                         d.seri_no,
+                        CASE
+                            WHEN z.durum = 'teslim'
+                             AND LOWER(TRIM(COALESCE(d.seri_no, ''))) NOT IN ('', '0', '-', '--', 'yok', 'yoktur', 'belirsiz', 'n/a', 'na')
+                             AND EXISTS (
+                                 SELECT 1
+                                 FROM demirbas_zimmet z_dup
+                                 INNER JOIN demirbas d_dup
+                                     ON d_dup.id = z_dup.demirbas_id
+                                    AND d_dup.silinme_tarihi IS NULL
+                                 WHERE z_dup.id <> z.id
+                                   AND z_dup.personel_id = z.personel_id
+                                   AND z_dup.teslim_tarihi = z.teslim_tarihi
+                                   AND z_dup.durum = 'teslim'
+                                   AND z_dup.silinme_tarihi IS NULL
+                                   AND d_dup.firma_id = d.firma_id
+                                   AND LOWER(TRIM(d_dup.seri_no)) = LOWER(TRIM(d.seri_no))
+                             )
+                            THEN 1 ELSE 0
+                        END AS mukerrer_seri,
                         k.tur_adi as kategori_adi,
                         p.adi_soyadi AS personel_adi,
                         p.cep_telefonu AS personel_telefon
@@ -832,7 +851,7 @@ class DemirbasZimmetModel extends Model
         $colMapOrder = [
             0 => 'z.id',
             1 => 'z.id',
-            2 => 'k.kategori_adi',
+            2 => 'k.tur_adi',
             3 => 'd.demirbas_adi',
             4 => 'd.marka',
             5 => 'p.adi_soyadi',

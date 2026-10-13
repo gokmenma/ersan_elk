@@ -126,6 +126,11 @@ $(document).ready(function () {
       order: [[0, "desc"]],
       createdRow: function (row, data, dataIndex) {
         $(row).attr("data-id", data.enc_id);
+        if (Number(data.mukerrer_seri) === 1) {
+          $(row)
+            .addClass("zimmet-duplicate-row")
+            .attr("title", "Aynı seri numarası bu personel ve teslim tarihinde birden fazla aktif zimmette bulunuyor.");
+        }
       },
       language: {
         ...getDatatableOptions().language,
@@ -432,6 +437,36 @@ $(document).ready(function () {
       locale: "tr",
     });
   }
+});
+
+// Zimmet listesini ekrandaki filtrelerle Excel'e aktar.
+$(document).on("click", "#btnZimmetExportExcel", function () {
+  if (typeof zimmetTable === "undefined" || !zimmetTable) return;
+
+  const request = zimmetTable.ajax.params() || {};
+  const params = new URLSearchParams();
+  params.set("tab", "zimmet");
+  params.set("filter_type", request.filter_type || "all");
+  params.set("status_filter", request.status_filter || "");
+  params.set("personel_id", request.personel_id || "all");
+  params.set("sayac_kat_ids", JSON.stringify(request.sayac_kat_ids || []));
+  params.set("aparat_kat_ids", JSON.stringify(request.aparat_kat_ids || []));
+
+  if (request.search && request.search.value) {
+    params.set("search", request.search.value);
+  }
+
+  const columnSearches = {};
+  (request.columns || []).forEach(function (column, index) {
+    if (column.search && column.search.value) {
+      columnSearches[index] = column.search.value;
+    }
+  });
+  if (Object.keys(columnSearches).length > 0) {
+    params.set("col_search", JSON.stringify(columnSearches));
+  }
+
+  window.location.href = "views/demirbas/export-excel.php?" + params.toString();
 });
 
 function updateButtonVisibility() {

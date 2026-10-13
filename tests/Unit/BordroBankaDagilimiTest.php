@@ -205,6 +205,28 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertEquals(7500, $capped['yemek_toplam']);
     }
 
+    public function testMaasaDahilYardimdaYemekEsYardimindanOnceKullanilir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $params = $this->getMockBuilder(BordroParametreModel::class)->disableOriginalConstructor()
+            ->onlyMethods(['getByKod', 'getGenelAyar'])->getMock();
+        $params->method('getByKod')->willReturn(null);
+        $params->method('getGenelAyar')->willReturn(0);
+        $this->setProperty($model, 'cachedParametreModel', $params);
+        $record = (object) [
+            'yemek_yardimi_dahil' => 1,
+            'yemek_yardimi_tutari' => 300,
+            'es_yardimi_dahil' => 1,
+            'es_yardimi_tutari' => 3300,
+        ];
+        $method = new ReflectionMethod($model, 'hesaplaMaasaDahilYardimDagilimi');
+        $result = $method->invoke($model, $record, 28075.5, 30, 20, 0, 0, 0, 35000);
+
+        self::assertSame(6000.0, $result['yemek_toplam']);
+        self::assertSame(924.5, $result['es_toplam']);
+        self::assertEquals(0.0, $result['kalan_fark']);
+    }
+
     public function testKayitVeOrtakGosterimBankaSecimiVeKesintilerdeAyniSonucuVerir(): void
     {
         // HesaplaMaas gerçek hesap akışı çalışır; sadece veri kaynakları ve yazma sınırı sahtedir.
@@ -388,6 +410,41 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(661.5, $detay['sozlesme_farki']);
         self::assertSame(36000.0, round(
             $detay['asgari'] + $detay['yemek'] + $detay['sozlesme_farki'],
+            2
+        ));
+    }
+
+    public function testBankaDetayindaAvansAsgariUcretSatiriniKucultmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 20760.40,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 8000,
+            'asgariYatacak' => 21524.55,
+            'bankaAsgariGun' => 23,
+            'mealAllowanceDeduction' => 3000,
+            'spouseAllowanceDeduction' => 3300,
+            'bankaEkOdemeDetaylari' => [
+                ['etiket' => 'Hafta Tatili Çalışması (Net)', 'tutar' => 935.85],
+            ],
+            'bankaKesintiKalemleri' => [
+                ['etiket' => 'Avans', 'tutar' => 8000],
+            ],
+        ]);
+
+        self::assertSame(21524.55, $detay['asgari']);
+        self::assertSame(23, $detay['asgari_gun']);
+        self::assertSame(935.85, $detay['asgari_gunluk']);
+        self::assertSame(['etiket' => 'Avans', 'tutar' => 8000.0], $detay['kesinti_kalemleri'][0]);
+        self::assertSame(20760.40, round(
+            $detay['asgari']
+            + $detay['yemek']
+            + $detay['es_yardimi']
+            + array_sum(array_column($detay['ek_odemeler'], 'tutar'))
+            + $detay['sozlesme_farki']
+            - $detay['kesinti']
+            - $detay['matrah_siniri'],
             2
         ));
     }

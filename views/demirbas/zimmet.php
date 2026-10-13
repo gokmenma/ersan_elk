@@ -137,6 +137,14 @@ $title = 'Zimmet Kayıtları';
             white-space: nowrap;
         }
 
+        #zimmetTable tbody tr.zimmet-duplicate-row > td {
+            background-color: rgba(239, 68, 68, 0.06) !important;
+        }
+
+        #zimmetTable tbody tr.zimmet-duplicate-row:hover > td {
+            background-color: rgba(239, 68, 68, 0.11) !important;
+        }
+
         @media (max-width: 992px) {
             .zimmet-top-actions {
                 width: 100%;
@@ -169,6 +177,13 @@ $title = 'Zimmet Kayıtları';
                 </h5>
 
                 <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 ms-auto zimmet-top-actions">
+                    <button type="button" id="btnZimmetExportExcel"
+                        class="btn btn-success btn-sm px-3 py-2 fw-bold d-flex align-items-center shadow-sm">
+                        <i class="bx bx-spreadsheet fs-5 me-1"></i> Excel'e Aktar
+                    </button>
+
+                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+
                     <button type="button" id="btnTopluIadeAl"
                         class="btn btn-info btn-sm px-3 py-2 fw-bold d-flex align-items-center shadow-sm">
                         <i class="bx bx-undo fs-5 me-1"></i> Toplu İade Al

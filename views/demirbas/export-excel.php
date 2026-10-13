@@ -54,10 +54,14 @@ try {
     }
 
     $tab = $_GET['tab'] ?? 'demirbas';
+    if ($tab === 'zimmet' && !\App\Service\Gate::allowsAny(['demirbas/zimmet'])) {
+        http_response_code(403);
+        throw new Exception('Zimmet kayıtlarını dışa aktarma yetkiniz bulunmamaktadır.');
+    }
     $term = $_GET['search'] ?? null;
     $colSearches = [];
     if (isset($_GET['col_search'])) {
-        $colSearches = json_decode($_GET['col_search'], true);
+        $colSearches = json_decode($_GET['col_search'], true) ?: [];
     }
     $statusFilter = $_GET['status_filter'] ?? '';
     $viewMode = $_GET['view_mode'] ?? 'list';
@@ -89,17 +93,37 @@ try {
         $filename = 'demirbas_listesi_' . date('Y-m-d') . '.xlsx';
     } elseif ($tab === 'zimmet') {
         $model = new \App\Model\DemirbasZimmetModel();
-        $data = $model->filter($term, $colSearches);
+        $request = [
+            'start' => 0,
+            'length' => 1000000,
+            'search' => ['value' => (string) ($term ?? '')],
+            'filter_type' => $_GET['filter_type'] ?? 'all',
+            'status_filter' => $_GET['status_filter'] ?? '',
+            'personel_id' => $_GET['personel_id'] ?? 'all',
+            'sayac_kat_ids' => json_decode($_GET['sayac_kat_ids'] ?? '[]', true) ?: [],
+            'aparat_kat_ids' => json_decode($_GET['aparat_kat_ids'] ?? '[]', true) ?: [],
+            'columns' => []
+        ];
+        foreach ($colSearches as $columnIndex => $searchValue) {
+            $request['columns'][(int) $columnIndex] = ['search' => ['value' => (string) $searchValue]];
+        }
+        $exportResult = $model->getDatatableList($request);
+        $data = $exportResult['data'] ?? [];
+        foreach ($data as $row) {
+            $row->mukerrer_uyarisi = (int) ($row->mukerrer_seri ?? 0) === 1 ? 'Mükerrer seri numarası' : '';
+        }
         $columns = [
             'ID' => 'id',
             'Kategori' => 'kategori_adi',
             'Demirbaş' => 'demirbas_adi',
             'Marka' => 'marka',
             'Model' => 'model',
+            'Seri No' => 'seri_no',
             'Personel' => 'personel_adi',
             'Miktar' => 'teslim_miktar',
             'Teslim Tarihi' => 'teslim_tarihi',
-            'Durum' => 'durum'
+            'Durum' => 'durum',
+            'Uyarı' => 'mukerrer_uyarisi'
         ];
         $filename = 'zimmet_kayitlari_' . date('Y-m-d') . '.xlsx';
     } elseif ($tab === 'sayac_kaski') {
@@ -313,6 +337,9 @@ try {
             } elseif ($field === 'hareket_tipi') {
                 $tipler = ['zimmet' => 'Zimmet', 'iade' => 'İade', 'sarf' => 'Sarf/Takılan', 'giris' => 'Giriş', 'kayip' => 'Kayıp'];
                 $val = $tipler[$val] ?? $val;
+            } elseif ($field === 'durum') {
+                $durumlar = ['teslim' => 'Zimmetli', 'iade' => 'İade Edildi', 'kayip' => 'Kayıp', 'arizali' => 'Arızalı'];
+                $val = $durumlar[$val] ?? $val;
             } elseif ($field === 'yon') {
                 $val = $val === 'gelen' ? 'Giriş' : 'Çıkış';
             }

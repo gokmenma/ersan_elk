@@ -1025,6 +1025,8 @@ class BordroPersonelModel extends Model
 
         $snapshotBankaDetaylari = [];
         $snapshotPrimDetaylari = [];
+        $snapshotBankaKesintiKalemleri = [];
+        $snapshotBankaKesintiToplam = 0.0;
         foreach (($detay['ek_odemeler'] ?? []) as $ekOdeme) {
             if (!is_array($ekOdeme)) {
                 continue;
@@ -1045,6 +1047,36 @@ class BordroPersonelModel extends Model
             } else {
                 $snapshotBankaDetaylari[] = $kalem;
             }
+        }
+
+        foreach (($detay['kesintiler'] ?? []) as $snapshotKesinti) {
+            if (!is_array($snapshotKesinti)) {
+                continue;
+            }
+            $hesaplamaTipi = (string) ($snapshotKesinti['hesaplama_tipi'] ?? 'sabit');
+            $bankadanDus = !array_key_exists('banka_matrahina_ekle', $snapshotKesinti)
+                || (int) $snapshotKesinti['banka_matrahina_ekle'] === 1;
+            if (!$bankadanDus || $hesaplamaTipi === 'elden_tutardan') {
+                continue;
+            }
+            $tutar = max(0.0, round((float) ($snapshotKesinti['tutar'] ?? 0), 2));
+            if ($tutar <= 0) {
+                continue;
+            }
+            $etiket = trim((string) ($snapshotKesinti['etiket'] ?? ''));
+            $kesintiKodu = mb_strtolower((string) ($snapshotKesinti['kod'] ?? ''), 'UTF-8');
+            if ($etiket === '' || mb_strtolower($etiket, 'UTF-8') === $kesintiKodu) {
+                $etiket = match ($kesintiKodu) {
+                    'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
+                    'nafaka' => 'Nafaka', 'ceza' => 'Ceza', 'izin_kesinti' => 'Ücretsiz izin',
+                    default => 'Banka kesintisi',
+                };
+            }
+            $snapshotBankaKesintiKalemleri[] = ['etiket' => $etiket, 'tutar' => $tutar];
+            $snapshotBankaKesintiToplam += $tutar;
+        }
+        if ($snapshotBankaKesintiToplam <= 0 && ($kesinti + $icra) > 0) {
+            $snapshotBankaKesintiToplam = round($kesinti + $icra, 2);
         }
 
         $donemBaslangic = (string) ($detay['donem']['baslangic'] ?? '');
@@ -1092,9 +1124,12 @@ class BordroPersonelModel extends Model
             'isInclusive' => $yemek > 0 || $es > 0, 'karisikMaasGecmisi' => !empty($detay['gorev_gecmisi_parcali']),
             'sabitMaasGun' => $calismaGunu, 'manualDagitimVar' => !empty($p->dagitim_manuel),
             'asgariYatacak' => round(($asgariNet / 30) * $calismaGunu, 2),
+            'bankaAsgariGun' => $calismaGunu,
             'resmiNetTaban' => round(($asgariNet / 30) * $calismaGunu, 2),
-            'bankaMatrahi' => round($banka + $icra, 2), 'bankaOncelikliKesinti' => $icra,
-            'bankaAktarilanKesinti' => 0.0, 'bankaEkOdemeDetaylari' => $snapshotBankaDetaylari, 'bankaKesintiKalemleri' => [],
+            'bankaMatrahi' => round($banka + $snapshotBankaKesintiToplam, 2), 'bankaOncelikliKesinti' => 0.0,
+            'bankaAktarilanKesinti' => round($snapshotBankaKesintiToplam, 2),
+            'bankaEkOdemeDetaylari' => $snapshotBankaDetaylari,
+            'bankaKesintiKalemleri' => $snapshotBankaKesintiKalemleri,
         ];
     }
 
@@ -1611,14 +1646,16 @@ class BordroPersonelModel extends Model
                     + max(0, $bankaKarsilanabilirEkOdemeGosterim ?? 0),
                     2
                 );
-            $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $spouseAllowanceDeduction - $rtcHtcBankaNetiGosterim,
+            $yardimlarIcinKalanSozlesmeLimiti = max(0, round(
+                $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $rtcHtcBankaNetiGosterim,
                 2
             ));
-            $yemekHamToplam = min($mealAllowanceDeduction, $yemekIcinKalanSozlesmeLimiti);
+            $yemekHamToplam = min($mealAllowanceDeduction, $yardimlarIcinKalanSozlesmeLimiti);
             $yemekFiiliGun = max(1, intval($dahilDagilim['fiili_gun'] ?? $fiiliGunSayisi));
             $yemekGunlukYuvarlanan = ceil($yemekHamToplam / $yemekFiiliGun);
             $mealAllowanceDeduction = $yemekGunlukYuvarlanan * $yemekFiiliGun;
+            $esIcinKalanSozlesmeLimiti = max(0, round($yardimlarIcinKalanSozlesmeLimiti - $mealAllowanceDeduction, 2));
+            $spouseAllowanceDeduction = min($spouseAllowanceDeduction, $esIcinKalanSozlesmeLimiti);
             $includedAllowanceDeduction = round($mealAllowanceDeduction + $spouseAllowanceDeduction, 2);
             $yuvarlamaFarki = max(0, round($mealAllowanceDeduction - $yemekHamToplam, 2));
 
@@ -1845,6 +1882,7 @@ class BordroPersonelModel extends Model
             'sabitMaasGun' => intval($karisikMaasOzeti['sabit_gun'] ?? 0),
             'manualDagitimVar' => $manualDagitimVar,
             'asgariYatacak' => $asgariYatacak,
+            'bankaAsgariGun' => $nonKurUcretGunu,
             'resmiNetTaban' => round(($asgariUcretNet / 30) * $nonKurUcretGunu, 2),
             'bankaMatrahi' => $bankaMatrahi,
             'bankaOncelikliKesinti' => $bankaOncelikliKesinti,
@@ -1869,7 +1907,10 @@ class BordroPersonelModel extends Model
         $brutBanka = max(0.0, round((float) ($hesap['bankaOdemesi'] ?? 0) + $kesinti, 2));
         $kalan = $brutBanka;
 
-        $asgari = min($kalan, max(0.0, round((float) ($hesap['asgariYatacak'] ?? 0), 2)));
+        // Asgari taban net banka sonucundan kalan tutar değildir. Kesintiler ve
+        // banka tavanı ayrı eksi kalemlerdir; aksi halde avans sonrası kalan
+        // yanlış biçimde "Asgari Ücret" etiketiyle görünür.
+        $asgari = max(0.0, round((float) ($hesap['asgariYatacak'] ?? $hesap['resmiNetTaban'] ?? 0), 2));
         $kalan = max(0.0, round($kalan - $asgari, 2));
 
         $esYardimi = min($kalan, max(0.0, round((float) ($hesap['spouseAllowanceDeduction'] ?? 0), 2)));
@@ -1895,13 +1936,40 @@ class BordroPersonelModel extends Model
             $kalan = max(0.0, round($kalan - $ayriBankaTutari, 2));
         }
 
+        $matrahSiniri = max(0.0, round($asgari - $brutBanka, 2));
+        $kesintiKalemleri = [];
+        $kesintiKalani = $kesinti;
+        foreach (($hesap['bankaKesintiKalemleri'] ?? []) as $kesintiKalemi) {
+            if ($kesintiKalani <= 0) {
+                break;
+            }
+            $tutar = min($kesintiKalani, max(0.0, round((float) ($kesintiKalemi['tutar'] ?? 0), 2)));
+            if ($tutar <= 0) {
+                continue;
+            }
+            $kesintiKalemleri[] = [
+                'etiket' => (string) ($kesintiKalemi['etiket'] ?? 'Banka kesintisi'),
+                'tutar' => $tutar,
+            ];
+            $kesintiKalani = max(0.0, round($kesintiKalani - $tutar, 2));
+        }
+        if ($kesintiKalani > 0) {
+            $kesintiKalemleri[] = ['etiket' => 'Diğer banka kesintileri', 'tutar' => $kesintiKalani];
+        }
+
         return [
             'asgari' => $asgari,
+            'asgari_gun' => max(0, (int) ($hesap['bankaAsgariGun'] ?? $hesap['calismaGunu'] ?? 0)),
+            'asgari_gunluk' => (($hesap['bankaAsgariGun'] ?? 0) > 0)
+                ? round($asgari / (int) $hesap['bankaAsgariGun'], 2)
+                : 0.0,
             'yemek' => $yemek,
             'es_yardimi' => $esYardimi,
             'ek_odemeler' => $ekOdemeler,
             'sozlesme_farki' => $kalan,
             'kesinti' => $kesinti,
+            'kesinti_kalemleri' => $kesintiKalemleri,
+            'matrah_siniri' => $matrahSiniri,
             'brut_banka' => $brutBanka,
             'net_banka' => round((float) ($hesap['bankaOdemesi'] ?? 0), 2),
         ];
@@ -4326,16 +4394,17 @@ class BordroPersonelModel extends Model
         $personel_id = (int)$personel_id;
         $aktifBaslangic = $baslangic_tarihi;
         $aktifBitis = $bitis_tarihi;
+        $aktifGunler = null;
 
         $calismaRows = $this->getCalismaGecmisiRows($personel_id, $baslangic_tarihi, $bitis_tarihi);
         if (!empty($calismaRows)) {
-            $lastCalisma = end($calismaRows);
-            if (!empty($lastCalisma['ise_giris_tarihi']) && $lastCalisma['ise_giris_tarihi'] !== '0000-00-00' && $lastCalisma['ise_giris_tarihi'] > $aktifBaslangic) {
-                $aktifBaslangic = $lastCalisma['ise_giris_tarihi'];
+            $aktifGunler = $this->birlesikTarihAraligiGunleri($calismaRows, $baslangic_tarihi, $bitis_tarihi);
+            if (empty($aktifGunler)) {
+                return 0;
             }
-            if (!empty($lastCalisma['isten_cikis_tarihi']) && $lastCalisma['isten_cikis_tarihi'] !== '0000-00-00' && $lastCalisma['isten_cikis_tarihi'] < $aktifBitis) {
-                $aktifBitis = $lastCalisma['isten_cikis_tarihi'];
-            }
+            $aktifTarihler = array_keys($aktifGunler);
+            $aktifBaslangic = reset($aktifTarihler);
+            $aktifBitis = end($aktifTarihler);
         } else {
             if ($this->personelModelCache === null) {
                 $this->personelModelCache = new \App\Model\PersonelModel();
@@ -4363,7 +4432,7 @@ class BordroPersonelModel extends Model
             $end = strtotime($k->bitis_tarihi);
             while ($cur <= $end) {
                 $d = date('Y-m-d', $cur);
-                if ($d >= $aktifBaslangic && $d <= $aktifBitis) {
+                if ($d >= $aktifBaslangic && $d <= $aktifBitis && ($aktifGunler === null || isset($aktifGunler[$d]))) {
                     $gunluk_durum[$d] = [
                         'kod' => strtoupper($k->kisa_kod ?? ''),
                         'calisiyor' => (int) ($k->normal_mesai_sayilir ?? 0),
@@ -4381,9 +4450,15 @@ class BordroPersonelModel extends Model
             $d = date('Y-m-d', $cur);
             $isSunday = date('w', $cur) == 0;
 
+            if ($aktifGunler !== null && !isset($aktifGunler[$d])) {
+                $cur = strtotime('+1 day', $cur);
+                continue;
+            }
+
             if (isset($gunluk_durum[$d])) {
-                // 'X' (Çalışılan Gün) veya "çalışıyor say" (RTÇ/HTÇ) işaretli günler fiili sayılır
-                if ($gunluk_durum[$d]['kod'] === 'X' || $gunluk_durum[$d]['calisiyor'] === 1) {
+                // Yemek fiilî günü yalnız X'tir; HTÇ/RTÇ ayrı kazançtır ve yemek
+                // gün sayısını artırmaz.
+                if ($gunluk_durum[$d]['kod'] === 'X') {
                     $x_sayisi++;
                 }
             } elseif (!$isSunday) {
@@ -6310,14 +6385,16 @@ class BordroPersonelModel extends Model
                 : round($targetNetHakedis + $netMaasPuantajHakedisi
                     + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                     + max(0, $bankayaTasinabilirEkOdeme), 2);
-            $yemekIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - $hesaplananEsToplam - floatval($rtcHtcBankaNetiHesap ?? 0),
+            $yardimlarIcinKalanSozlesmeLimiti = max(0, round(
+                $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - floatval($rtcHtcBankaNetiHesap ?? 0),
                 2
             ));
-            $yemekHamToplam = min($hesaplananYemekToplam, $yemekIcinKalanSozlesmeLimiti);
+            $yemekHamToplam = min($hesaplananYemekToplam, $yardimlarIcinKalanSozlesmeLimiti);
             $yemekFiiliGun = max(1, intval($dahilDagilim['fiili_gun'] ?? $fiiliCalismaGunu));
             $yemekGunlukYuvarlanan = ceil($yemekHamToplam / $yemekFiiliGun);
             $hesaplananYemekToplam = $yemekGunlukYuvarlanan * $yemekFiiliGun;
+            $esIcinKalanSozlesmeLimiti = max(0, round($yardimlarIcinKalanSozlesmeLimiti - $hesaplananYemekToplam, 2));
+            $hesaplananEsToplam = min($hesaplananEsToplam, $esIcinKalanSozlesmeLimiti);
             $dahilDagilim['yemek_gunluk'] = $yemekGunlukYuvarlanan;
             $toplamDahilYardim = round($hesaplananYemekToplam + $hesaplananEsToplam, 2);
             $yuvarlamaFarki = max(0, round($hesaplananYemekToplam - $yemekHamToplam, 2));

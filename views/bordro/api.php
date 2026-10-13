@@ -2173,6 +2173,8 @@ $donemYilModal2 = (int) date('Y', strtotime($donemBaslangic));
                     }
                 }
                 $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
+                $rtcNetGosterim = $rtcHedefNetModal;
+                $htcNetGosterim = round($htcEldenTutar + $htcHedefNetModal, 2);
 
                 // Calculate SGK and Gelir Vergisi matrahs correctly including taxable overtime
                 $sgkMatrah = floatval($matrahlar['sgk_matrahi'] ?? (floatval($bp->brut_maas ?? 0) + floatval($ozetDetay['sgk_matrah_ekleri'] ?? 0)));
@@ -2191,7 +2193,9 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $asgariMatrarhGoster = !empty($bp->yemek_yardimi_dahil)
                     || !empty($bp->es_yardimi_dahil)
                     || stripos($maasDurumuGosterim, 'Net') !== false;
-                $asgariMatrarhGoster = $asgariMatrarhGoster && !$isKarisikMaasGecmisi;
+                // Net maaşta görev geçmişi birden fazla parçaya bölünmüş olsa da
+                // Normal Kazançlar kartının tabanı sözleşme günlüğü değil, günlük
+                // net asgari ücrettir. Sözleşmeyi tamamlayan tutar ayrı kalemdir.
 
                 if ($asgariMatrarhGoster) {
                     $asgariHakedisYazdir = round(($asgariUcretNet / 30) * $sskGun, 2);
@@ -2280,6 +2284,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     }
                 }
                 $fazlaMesaiTutar = floatval($bp->fazla_mesai_tutar ?? 0) + $nobetResmiBrutToplam;
+                $fazlaMesaiNetGosterim = floatval($bp->fazla_mesai_tutar ?? 0) + $toplamNobetTutar;
                 $displayFazlaMesaiSaat = floatval($bp->fazla_mesai_saat ?? 0) + $nobetResmiSaatToplam;
 
                 // Start primTutar from 0.0 to prevent double-counting of toplam_ek_odeme
@@ -2773,7 +2778,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $html .= '</div>';
 
                 // --- SECTION 1: BRÜT KAZANÇLAR VE GELİRLER (ÜST SIRA) ---
-                $html .= '<div class="section-title gains"><i class="bx bx-plus-circle me-1"></i>BRÜT KAZANÇLAR VE GELİRLER (ÜST SIRA)</div>';
+                $html .= '<div class="section-title gains"><i class="bx bx-plus-circle me-1"></i>KAZANÇLAR VE GELİRLER</div>';
                 $html .= '<div class="row row-cols-1 row-cols-md-4 g-3">';
 
                 // 1. Normal Kazançlar Card
@@ -2791,13 +2796,13 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $html .= '</div></div>';
 
                 // 2. Fazla Çalışmalar Card
-                $fazlaCalismaToplam = $rtcResmiTutar + $htcToplamTutar + $fazlaMesaiTutar;
+                $fazlaCalismaToplam = $rtcNetGosterim + $htcNetGosterim + $fazlaMesaiNetGosterim;
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">2. FAZLA ÇALIŞMALAR</div>';
                 $html .= '<div class="ref-card-list">';
-                $html .= '<div class="ref-card-item' . ($rtcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Resmi Tatil Çalışma' . ($rtcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($rtcGunModal > 0 ? '<span class="subval">' . $rtcGunModal . ' Gün</span>' : '') . $fmt($rtcResmiTutar) . '</span>' . ($rtcGunModal > 0 ? $rtcPopoverHtml : '') . '</div>';
-                $html .= '<div class="ref-card-item' . ($htcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Hafta Tatili Çalışma' . ($htcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($htcGunModal > 0 ? '<span class="subval">' . $htcGunModal . ' Gün</span>' : '') . $fmt($htcToplamTutar) . '</span>' . ($htcGunModal > 0 ? $htcPopoverHtml : '') . '</div>';
-                $html .= '<div class="ref-card-item' . ($nobetGrossModal ? ' hover-popover-trigger' : '') . '"><span class="label">Fazla Mesai Ücreti' . ($nobetGrossModal ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($displayFazlaMesaiSaat > 0 ? '<span class="subval">' . number_format($displayFazlaMesaiSaat, 2, ',', '.') . ' Saat</span>' : '') . $fmt($fazlaMesaiTutar) . '</span>' . ($nobetGrossModal ? $nobetPopoverHtml : '') . '</div>';
+                $html .= '<div class="ref-card-item' . ($rtcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Resmi Tatil Çalışma (Net)' . ($rtcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($rtcGunModal > 0 ? '<span class="subval">' . $rtcGunModal . ' Gün</span>' : '') . $fmt($rtcNetGosterim) . '</span>' . ($rtcGunModal > 0 ? $rtcPopoverHtml : '') . '</div>';
+                $html .= '<div class="ref-card-item' . ($htcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Hafta Tatili Çalışma (Net)' . ($htcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($htcGunModal > 0 ? '<span class="subval">' . $htcGunModal . ' Gün</span>' : '') . $fmt($htcNetGosterim) . '</span>' . ($htcGunModal > 0 ? $htcPopoverHtml : '') . '</div>';
+                $html .= '<div class="ref-card-item' . ($nobetGrossModal ? ' hover-popover-trigger' : '') . '"><span class="label">Fazla Mesai Ücreti (Net)' . ($nobetGrossModal ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($displayFazlaMesaiSaat > 0 ? '<span class="subval">' . number_format($displayFazlaMesaiSaat, 2, ',', '.') . ' Saat</span>' : '') . $fmt($fazlaMesaiNetGosterim) . '</span>' . ($nobetGrossModal ? $nobetPopoverHtml : '') . '</div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">' . $fmt($fazlaCalismaToplam) . '</span></div>';
                 $html .= '</div></div>';
@@ -3141,6 +3146,37 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     $html .= '</div>';
                 }
 
+                $brutToplamDetayHtml = '<div style="min-width:270px;">';
+                $brutToplamDetayHtml .= '<div class="pop-header"><i class="bx bx-calculator text-warning me-1"></i> Brüt Toplam Hesabı</div>';
+                $brutDetayKalan = round($displayToplamAlacak, 2);
+                $sozlesmeDetayTutar = min($brutDetayKalan, max(0.0, round($contractHakedisForRounding, 2)));
+                if ($sozlesmeDetayTutar > 0) {
+                    $sozlesmeFormul = '';
+                    $sozlesmeGunluk = $nominalMaas > 0 ? round($nominalMaas / 30, 2) : 0.0;
+                    $beklenenSozlesme = round($sozlesmeGunluk * $calismaGunu, 2);
+                    if ($sozlesmeGunluk > 0 && abs($beklenenSozlesme - $sozlesmeDetayTutar) < 0.02) {
+                        $sozlesmeFormul = '<small style="display:block;color:#94a3b8;">' . $calismaGunu . ' gün × ' . number_format($sozlesmeGunluk, 2, ',', '.') . ' ₺</small>';
+                    }
+                    $brutToplamDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Sözleşme Hakedişi' . $sozlesmeFormul . '</span><span class="pop-row-val val-green">+' . number_format($sozlesmeDetayTutar, 2, ',', '.') . ' ₺</span></div>';
+                    $brutDetayKalan = max(0.0, round($brutDetayKalan - $sozlesmeDetayTutar, 2));
+                }
+
+                $htcHakEdilenTutar = $htcGunModal > 0
+                    ? round(($nominalMaas / 30) * $htcGunModal, 2)
+                    : 0.0;
+                $htcBrutDetayTutar = min($brutDetayKalan, max(0.0, $htcHakEdilenTutar));
+                if ($htcBrutDetayTutar > 0) {
+                    $htcGunluk = round($nominalMaas / 30, 2);
+                    $brutToplamDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Hafta Tatili Çalışma Hakedişi<small style="display:block;color:#94a3b8;">' . $htcGunModal . ' gün × ' . number_format($htcGunluk, 2, ',', '.') . ' ₺</small></span><span class="pop-row-val val-green">+' . number_format($htcBrutDetayTutar, 2, ',', '.') . ' ₺</span></div>';
+                    $brutDetayKalan = max(0.0, round($brutDetayKalan - $htcBrutDetayTutar, 2));
+                }
+
+                if ($brutDetayKalan > 0) {
+                    $brutToplamDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Diğer Kazançlar</span><span class="pop-row-val val-green">+' . number_format($brutDetayKalan, 2, ',', '.') . ' ₺</span></div>';
+                }
+                $brutToplamDetayHtml .= '<div class="pop-footer"><span style="color:#ffffff;">Brüt Toplamı</span><span class="pop-row-val val-white" style="font-size:.85rem;">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</span></div>';
+                $brutToplamDetayHtml .= '</div>';
+
                 $bankaDetayHtml = '';
                 if ($hesap['manualDagitimVar']) {
                     $bankaDetayHtml = '<div style="color:#e2e8f0; font-size:0.75rem; padding:4px;"><strong style="color:#f1f5f9;">Manuel Dağıtım</strong><br><span style="color:#94a3b8;">Bu tutar kullanıcı tarafından elle düzenlenmiştir.</span></div>';
@@ -3152,16 +3188,30 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                     
                     if ($hesap['isInclusive']) {
-                        $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Asgari Ücret (Net)</span><span class="pop-row-val val-white">' . number_format($bankaDetayDagilimi['asgari'], 2, ',', '.') . ' ₺</span></div>';
+                        $asgariGunAciklama = '';
+                        if (($bankaDetayDagilimi['asgari_gun'] ?? 0) > 0 && ($bankaDetayDagilimi['asgari_gunluk'] ?? 0) > 0) {
+                            $asgariGunAciklama = '<small style="display:block;color:#94a3b8;">' . intval($bankaDetayDagilimi['asgari_gun']) . ' gün × ' . number_format($bankaDetayDagilimi['asgari_gunluk'], 2, ',', '.') . ' ₺</small>';
+                        }
+                        $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Asgari Ücret (Net)' . $asgariGunAciklama . '</span><span class="pop-row-val val-white">' . number_format($bankaDetayDagilimi['asgari'], 2, ',', '.') . ' ₺</span></div>';
+                        $eklenenBaslikYazildi = false;
+                        $eklenenBaslik = function () use (&$bankaDetayHtml, &$eklenenBaslikYazildi) {
+                            if (!$eklenenBaslikYazildi) {
+                                $bankaDetayHtml .= '<div class="pop-section-title" style="color:#34d399;margin:8px 0 5px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.14);font-weight:700;text-transform:uppercase;font-size:.68rem;">Eklenenler</div>';
+                                $eklenenBaslikYazildi = true;
+                            }
+                        };
                         if ($bankaDetayDagilimi['yemek'] > 0) {
+                            $eklenenBaslik();
                             $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Yemek Yardımı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</span></div>';
                         }
                         if ($bankaDetayDagilimi['es_yardimi'] > 0) {
+                            $eklenenBaslik();
                             $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Eş Yardımı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['es_yardimi'], 2, ',', '.') . ' ₺</span></div>';
                         }
                         if (!empty($bankaDetayDagilimi['ek_odemeler'])) {
                             foreach ($bankaDetayDagilimi['ek_odemeler'] as $bed) {
                                 if ($bed['tutar'] > 0) {
+                                    $eklenenBaslik();
                                     $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . '</span><span class="pop-row-val val-green">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</span></div>';
                                 }
                                 if ($bed['yemek_dahil_tutar'] > 0) {
@@ -3171,12 +3221,21 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         }
                         
                         if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
+                            $eklenenBaslik();
                             $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Sözleşme Farkı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['sozlesme_farki'], 2, ',', '.') . ' ₺</span></div>';
                         }
 
+                        $bankaDetayHtml .= '<div class="pop-row" style="border-top:1px solid rgba(255,255,255,.18);padding-top:6px;margin-top:7px;"><span class="pop-row-title" style="color:#f1f5f9!important;font-weight:700!important;">Kesinti Öncesi Banka Toplamı</span><span class="pop-row-val val-white">' . number_format($bankaDetayDagilimi['brut_banka'], 2, ',', '.') . ' ₺</span></div>';
+
                         $toplamKesintiBanka = $bankaDetayDagilimi['kesinti'];
-                        if ($toplamKesintiBanka > 0) {
-                            $bankaDetayHtml .= '<div class="pop-row" style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:4px; margin-top:2px;"><span class="pop-row-title">Düşülen Kesintiler</span><span class="pop-row-val val-red">-' . number_format($toplamKesintiBanka, 2, ',', '.') . ' ₺</span></div>';
+                        if ($toplamKesintiBanka > 0 || ($bankaDetayDagilimi['matrah_siniri'] ?? 0) > 0) {
+                            $bankaDetayHtml .= '<div class="pop-section-title" style="color:#f87171;margin:8px 0 5px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.14);font-weight:700;text-transform:uppercase;font-size:.68rem;">Çıkarılanlar</div>';
+                            foreach (($bankaDetayDagilimi['kesinti_kalemleri'] ?? []) as $kesintiKalemi) {
+                                $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($kesintiKalemi['etiket'], ENT_QUOTES, 'UTF-8') . '</span><span class="pop-row-val val-red">-' . number_format($kesintiKalemi['tutar'], 2, ',', '.') . ' ₺</span></div>';
+                            }
+                            if (($bankaDetayDagilimi['matrah_siniri'] ?? 0) > 0) {
+                                $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Banka / hakediş sınırı</span><span class="pop-row-val val-red">-' . number_format($bankaDetayDagilimi['matrah_siniri'], 2, ',', '.') . ' ₺</span></div>';
+                            }
                         }
                     } else {
                         $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Net Hakediş (Net - Sodexo)</span><span class="pop-row-val val-white">' . number_format(max(0, $hesap['netAlacagi'] - $hesap['sodexoOdemesi'] - $hesap['digerOdeme']), 2, ',', '.') . ' ₺</span></div>';
@@ -3198,6 +3257,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     'html' => $html,
                     'summary' => [
                         'brut_toplam' => '₺' . number_format($displayToplamAlacak, 2, ',', '.'),
+                        'brut_toplam_detay' => $brutToplamDetayHtml,
                         'kesinti_toplam' => ($kesintiTutarOzet > 0 ? '-' : '') . '₺' . number_format($kesintiTutarOzet, 2, ',', '.'),
                         'net_maas' => '₺' . number_format($gorunenNetMaas, 2, ',', '.'),
                         'banka' => $bankaOdemeModal > 0 ? '₺' . number_format($bankaOdemeModal, 2, ',', '.') : null,

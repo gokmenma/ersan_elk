@@ -38,8 +38,15 @@ function renderBordroDetailFooterSummary(summary) {
     
     // Brut Toplam
     footerHtml += `
-      <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center" style="min-width: 120px;">
-        <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Brüt Toplamı</div>
+      <div class="d-flex flex-column bordro-footer-kpi rounded px-3 py-2 text-center"
+           style="min-width: 120px; cursor: pointer;"
+           data-bs-toggle="popover"
+           data-bs-trigger="hover"
+           data-bs-html="true"
+           data-bs-placement="top"
+           data-bs-custom-class="bordro-dark-popover"
+           data-bs-content="${(summary.brut_toplam_detay || '').replace(/"/g, '&quot;')}">
+        <div class="kpi-label small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Brüt Toplamı <i class="bx bx-info-circle"></i></div>
         <div class="kpi-value fw-bold text-dark" style="font-size: 0.95rem;">${summary.brut_toplam}</div>
       </div>
     `;

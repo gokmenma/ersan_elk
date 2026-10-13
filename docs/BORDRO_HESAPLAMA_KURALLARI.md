@@ -22,6 +22,17 @@ Bu kurallar bordro/list ekranindaki gosterim, detay modalı, Excel export ve maa
 - `icraKesintisi`: Odeme dagiliminda ayrica dusulen icra tutaridir.
 - `sodexoOdemesi`, `bankaOdemesi`, `eldenOdeme`, `digerOdeme`: Net maasin odeme kanallarina dagilimidir.
 
+### Bordro Detayında Banka ve Fazla Çalışma Gösterimi
+
+- Banka ödeme detayındaki **Asgari Ücret (Net)** satırı, net banka sonucundan kalan tutar değildir. Her zaman dönem parametresindeki günlük net asgari ücret ile bankaya esas hak edilmiş günün çarpımıdır: `round(asgari_ucret_net / 30, 2) × banka_asgari_gun`.
+- Yemek, eş yardımı, RTÇ/HTÇ ve diğer banka kalemleri asgari tabandan ayrı olarak **Eklenenler** bölümünde yeşil `+` tutarlarla gösterilir.
+- Avans, icra ve diğer banka mahsupları **Çıkarılanlar** bölümünde kendi adlarıyla kırmızı `-` tutarlarla gösterilir. Kalem detayı bulunmayan eski snapshot kayıtlarında kalan tutar `Diğer banka kesintileri` adıyla gösterilir.
+- Gösterilen eklenen ve çıkarılan kalemler `Net Banka Ödemesi` ile kuruş bazında uzlaşır; banka/hakediş tavanı nedeniyle kırpılan bir tutar varsa ayrıca kırmızı bir sınır kalemi olarak açıklanır.
+- Bordro detayındaki **Fazla Çalışmalar** kartının ana satırları personele hak edilen **net** tutarı gösterir. Üzerine gelindiğinde hedef net, SGK/işsizlik/vergi kesintileri ve resmî brüt tutar ayrı satırlarda gösterilir. Böylece brüt resmî matrah, personele ödenecek net kazanç gibi sunulmaz.
+- Net maaşlı personelin **Normal Kazançlar** kartı sözleşme ücretini günle çarpıp asgari taban gibi göstermez. Ana normal çalışma tutarı `günlük net asgari ücret × maaş hesap günü` olur; sözleşme ücretinden, sosyal yardımlardan ve diğer kazançlardan kaynaklanan tamamlayıcı bölüm ayrı **Sözleşme Farkı** satırında gösterilir. Aynı maaş türü/tutarıyla birden fazla görev geçmişi parçası bulunması bu gösterim kuralını değiştirmez.
+- Hesaplanmış bordro snapshot'ındaki `kesintiler` kalemleri banka detayında ödeme kanalıyla birlikte korunur. Böylece kayıtlı avans/icra, yapay bir `Banka / hakediş sınırı` farkına dönüştürülmez.
+- Detay modalı footer'ındaki **Brüt Toplamı** kutusu hesap sonucunu tek başına göstermez; hover açılımında sözleşme hakedişi (`sözleşme günlük ücreti × maaş hesap günü`), sözleşme üzerine eklenen HTÇ hakedişi (`sözleşme günlük ücreti × HTÇ günü`) ve varsa diğer kazançlar ayrı satırlarda gösterilir. Açılımdaki kalemler footer toplamıyla kuruş bazında eşit olmalıdır. Fazla Çalışmalar kartındaki resmî net gösterim bu nedenle değiştirilmez.
+
 ## Gun Hesaplama Kurali
 
 Maas gunu `getMaasHesapGunu()` ile hesaplanir.
@@ -292,9 +303,13 @@ Gunluk limit secimi:
 
 Es yardimi varsa, yemek limitinden sonra kalan farktan hesaplanir.
 
+Yardım önceliği değiştirilemez: sözleşme bakiyesinden önce günlük tavanına kadar yemek yardımı hesaplanır ve günlük yuvarlama tamamlanır; eş yardımı yalnızca yuvarlanmış yemek yardımından sonra hâlâ kalan bakiye üzerinden hesaplanır. Yemek kapasitesi belirlenirken eş yardımı peşinen düşülemez.
+
 ```text
 esYardimiToplam = min(kalanFark, esYardimiAylikLimit)
 ```
+
+Yemek yardımındaki `fiiliGunSayisi` yalnız puantajdaki `X` günlerinin birleşik sayısıdır. Personelin aynı bordro döneminde birden fazla çalışma geçmişi aralığı varsa bütün aralıklar birlikte değerlendirilir; yalnız son çalışma aralığına daraltılmaz. `HT`, `HTÇ`, `RTÇ` ve izin günleri yemek günü sayısına eklenmez.
 
 ## Maasa Dahil Odeme Dagilimi
 
