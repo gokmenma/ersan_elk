@@ -1,8 +1,18 @@
 # Progress
 
+- [x] Mobile SPA (`mobile-spa`): `@mobile` içerisindeki tüm fatura yetenekleri (`efatura.php`, `efatura-giden.php`, `efatura-gelen.php`, `efatura-taslak.php`, `efatura-olustur.php`) Glacier Alpine Design System standartlarında SPA mimarisine aktarıldı.
+  - Backend API (`mobile-spa/public/api/fatura.php`) oluşturuldu; session, Gate yetkileri, CSRF doğrulaması ve Model katmanı ile güvenliği sağlandı.
+  - Frontend servisi (`mobile-spa/src/services/fatura.js`) ve görünüm bileşeni (`mobile-spa/src/views/FaturaView.vue`) oluşturuldu (Özet & KDV, Giden, Gelen, Taslaklar, 4 adımlı fatura sihirbazı, tam ekran HTML/PDF önizleme, ticari yanıt verme sheet'i).
+  - Router (`/fatura` & `/efatura`) ve `BottomNav.vue` "Daha Fazla" menüsündeki "E-Fatura & Finans" butonu SPA rotasına bağlandı.
+  - `npm run build` ile Vite derlemesi başarıyla tamamlandı.
 - [x] Personel PWA Kaçak sayfasında onaylanan aktif tutanaklara ekip üyeleri için fotoğraf/video/açıklama ekleme akışı tamamlandı; açıklama güvenilir kuyruk üzerinden sunucuya taşınıp mevcut tutanak açıklamasına ekleniyor ve API sahiplik/onay/aktiflik kontrollerini uyguluyor.
 
 ## Neler Tamamlandı?
+- [x] Bordro Detay modalında sözleşme farkı ve maaşa dahil ek kazanç dağıtım mantığı düzeltildi; resmî olmayan primlerin yemek tavanı dışındaki kısmı elden ödemeye aktarıldı, yapay sözleşme farkı kaldırıldı.
+- [x] Bordro Detay modalındaki tüm kartların sınırları (border) belirginleştirildi (`1.5px solid #cbd5e1`, macOS Dark uyumlu).
+- [x] Kesintiler kartında (3. kart) "Diğer banka kesintileri" yerine gerçek kesinti adı (örn. "Malzeme Zarar - Ziyan") ve detay açıklaması gösterildi.
+- [x] Ödenecek Net Maaş kartının sağ üst köşesine aşağı çapraz ok butonu (`↘`) eklendi; tıklandığında 3 kolon üstte, Net Maaş kartı altta tam satır (`full-width`) genişletilerek kalıcı `localStorage` durum yönetimi sağlandı.
+- [x] Bordro Kesintiler kartı ve banka ödeme tooltip'inde kesinti açıklaması güvenli HTML çıktısıyla kalem adının altında gösterilir hale getirildi.
 - [x] Kayıtlı bordro detayında banka kanal seçiminin resmî alacak üyeliği sayılması engellendi; resmî olmayan hafta sonu nöbeti ve zaten ana yemek satırında bulunan teknik yemek dengeleme kaydı ek kalemlerden çıkarıldı ve regresyon testleri eklendi.
 - [x] Sabit maaşı olmayan prim usulü personelin eski detayında sıfır günlük/sıfır HTÇ ve negatif sıfır kesinti gösterimleri kaldırıldı; dönem tabanı Puantaj / Prim Hakedişi olarak doğru etiketlendi.
 - [x] Eski bordro detayındaki Resmî Alacak > Yemek Yardımı satırına sözleşme payı ve yemek havuzuna aktarılan ek kazançları gösteren mutabık açılır kaynak kırılımı eklendi.
@@ -33,7 +43,8 @@
 - [x] UETS / KEP modal form elemanları (`uets_adresi`, `api_environment`, `api_key`, `recipient_uets`, `barcode`, `recipient_ref`) `App\Helper\Form` (`Form::FormFloatInput` & `Form::FormSelect2`) standartlarına refactor edildi.
 - [x] Modal Select2 başlatımı `dropdownParent` standardıyla ve dinamik şifre göster/gizle desteğiyle uyarlandı.
 - [x] Mobile SPA TaleplerView ekranındaki mükerrer sekme barı kaldırıldı; üst KPI bento kartı üzerinden tekil ve net kategori geçişi sağlandı.
-- [x] Mobile SPA TaleplerView aktif kategori kartındaki yazı görünürlüğü ve yüksek kontrastı (`color: #ffffff !important`) sağlandı; üretim derlemesi alındı.
+- [x] Mobile SPA TaleplerView üst KPI kartındaki global `min-height: 210px` zorlaması kaldırılarak kart yüksekliği içeriğe tam uyumlu, kompakt ve minimal hale getirildi.
+- [x] Mobile SPA TaleplerView sıralama butonu metinsiz, kompakt dairesel ikon butonuna (`ArrowUpDown`) dönüştürüldü; üretim derlemesi alındı.
 
 ## Neler Kaldı / Devam Edenler?
 - [ ] `sql/2026_10_13_restore_deleted_vehicles_06_dfd_805_46_ala_432.sql` kontrollü araç geri yükleme scripti hedef veritabanına uygulanacak.

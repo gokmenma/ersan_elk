@@ -304,22 +304,15 @@ async function submitSil() {
     <!-- Standart TopBar: Ana Sayfa ile Tam Uyumlu -->
     <TopBar eyebrow="SÜREÇ YÖNETİMİ" title="Talepler" subtitle="Onay bekleyen tüm işlemler" :search="false" />
 
-    <!-- 1. Bento KPI & Overview Card -->
-    <section class="hero-card hero-card--talepler">
-      <div class="hero-glow hero-glow-one"></div>
-      <div class="hero-glow hero-glow-two"></div>
-      <div class="hero-topline">
-        <span><Sparkles :size="15" /> Talep & Onay Merkezi</span>
-        <span class="live-status">
-          Canlı <i class="live-dot"></i>
-        </span>
-      </div>
-
+    <!-- 1. Minimal Bento KPI & Kategori Seçimi -->
+    <section class="hero-card--talepler">
       <div class="talepler-kpi-row">
         <div class="kpi-main">
-          <small>ONAY BEKLEYEN</small>
-          <strong>{{ counts.total }}</strong>
-          <span>Toplam açık talep</span>
+          <span class="kpi-label"><Sparkles :size="11" /> BEKLEYEN</span>
+          <div class="kpi-value-row">
+            <strong>{{ counts.total }}</strong>
+            <small>talep</small>
+          </div>
         </div>
 
         <div class="kpi-mini-grid" role="tablist" aria-label="Talep Kategorileri">
@@ -395,8 +388,9 @@ async function submitSil() {
         </button>
       </div>
 
-      <!-- Sıralama Seçimi -->
-      <div class="sort-dropdown-wrap">
+      <!-- Sıralama Seçimi (Sadece İkon) -->
+      <div class="sort-dropdown-wrap" title="Sıralama">
+        <ArrowUpDown :size="15" class="sort-icon" />
         <select v-model="sortBy" aria-label="Sıralama">
           <option value="newest">En Yeni</option>
           <option value="oldest">En Eski</option>
@@ -404,7 +398,6 @@ async function submitSil() {
           <option value="name_desc">İsim (Z-A)</option>
           <option v-if="activeTab === 'avans'" value="amount_desc">Tutar</option>
         </select>
-        <ArrowUpDown :size="12" class="sort-icon" />
       </div>
     </div>
 
@@ -990,14 +983,16 @@ async function submitSil() {
   backdrop-filter: blur(16px);
 }
 
-/* 1. Bento KPI & Overview Card */
+/* 1. Bento KPI & Overview Card (Minimal & Düşük Yükseklik) */
 .hero-card--talepler {
   position: relative;
-  margin: 0 0 14px;
-  padding: 20px;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 0 12px;
+  padding: 10px 12px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 28px;
+  border-radius: 18px;
   color: #181c1e;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: var(--ds-shadow-card);
@@ -1013,68 +1008,57 @@ async function submitSil() {
   content: '';
 }
 
-.hero-card--talepler .hero-glow { display: none; }
-.hero-card--talepler .hero-topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #516071;
-}
-
-.hero-card--talepler .hero-topline > span:first-child {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font: 600 11px 'Space Grotesk', sans-serif;
-}
-
-.hero-card--talepler .live-status {
-  padding: 6px 9px;
-  border: 1px solid var(--ds-line);
-  border-radius: 999px;
-  color: #516071;
-  background: rgba(255, 255, 255, 0.7);
-  font: 600 9px 'Space Grotesk', sans-serif;
-}
-
-.hero-card--talepler .live-dot { background: #2b9a8a; }
-
 .talepler-kpi-row {
   display: flex;
-  margin-top: 18px;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
-.kpi-main small {
-  display: block;
+.kpi-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+  padding-right: 10px;
+  border-right: 1px solid rgba(140, 155, 174, 0.2);
+}
+
+.kpi-main .kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: #8c9bae;
-  font: 700 9px 'Space Grotesk', sans-serif;
-  letter-spacing: 0.1em;
+  font: 700 8.5px 'Space Grotesk', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.kpi-main strong {
-  display: block;
-  margin-top: 2px;
+.kpi-main .kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.kpi-main .kpi-value-row strong {
   color: #181c1e;
-  font-size: 44px;
-  font-weight: 600;
-  line-height: 48px;
-  letter-spacing: -0.06em;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
 }
 
-.kpi-main span {
-  display: block;
+.kpi-main .kpi-value-row small {
   color: #8c9bae;
-  font-size: 10px;
-  margin-top: 2px;
+  font: 600 9.5px 'Space Grotesk', sans-serif;
 }
 
 .kpi-mini-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
 .kpi-mini-item {
@@ -1082,11 +1066,12 @@ async function submitSil() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  min-width: 58px;
-  padding: 8px 6px;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  padding: 6px 4px;
   border: 1px solid rgba(140, 155, 174, 0.2);
-  border-radius: 14px;
+  border-radius: 12px;
   color: #516071;
   background: rgba(241, 244, 246, 0.85);
   cursor: pointer;
@@ -1103,8 +1088,9 @@ async function submitSil() {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font: 700 9px 'Space Grotesk', sans-serif;
+  font: 700 8.5px 'Space Grotesk', sans-serif;
   color: #516071;
+  white-space: nowrap;
   transition: color 0.15s ease;
 }
 
@@ -1112,7 +1098,7 @@ async function submitSil() {
   display: block;
   margin-top: 1px;
   color: #181c1e;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.1;
   transition: color 0.15s ease;
@@ -1123,7 +1109,7 @@ async function submitSil() {
   border-color: #11161b;
   background: #11161b;
   color: #ffffff !important;
-  box-shadow: 0 6px 16px rgba(17, 22, 27, 0.22);
+  box-shadow: 0 4px 12px rgba(17, 22, 27, 0.2);
 }
 
 .kpi-mini-item.is-active .kpi-mini-label,
@@ -1190,32 +1176,46 @@ async function submitSil() {
 
 .sort-dropdown-wrap {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 34px;
   height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  min-width: 34px;
+  border: 1px solid rgba(140, 155, 174, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
   box-shadow: var(--ds-shadow-card);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
-.sort-dropdown-wrap select {
-  height: 100%;
-  padding: 0 26px 0 10px;
-  color: #516071;
-  background: transparent;
-  border: 0;
-  outline: none;
-  font: 600 10px 'Space Grotesk', sans-serif;
-  appearance: none;
-  cursor: pointer;
+.sort-dropdown-wrap:active {
+  transform: scale(0.95);
 }
 
 .sort-icon {
-  position: absolute;
-  right: 8px;
   pointer-events: none;
-  color: #8c9bae;
+  color: #516071;
+  transition: color 0.15s ease;
+}
+
+.sort-dropdown-wrap:hover .sort-icon {
+  color: #11161b;
+}
+
+.sort-dropdown-wrap select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* 3. Arama */

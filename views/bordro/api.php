@@ -1197,16 +1197,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // ============================================================
                 $html = '<style>
                     .bordro-compact-view { font-family: "Inter", system-ui, -apple-system, sans-serif; }
-                    .bordro-compact-view .main-card { border-radius: 16px; border: 1px solid #eef0f2; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.03); }
-                    .bordro-compact-view .header-glass { background: #ffffff; border: 1px solid #eef0f2; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-                    .bordro-compact-view .card-header-tint { padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); }
+                    .bordro-compact-view .main-card { border-radius: 16px; border: 1.5px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+                    .bordro-compact-view .header-glass { background: #ffffff; border: 1.5px solid #cbd5e1; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+                    .bordro-compact-view .card-header-tint { padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #cbd5e1; }
                     .bordro-compact-view .calculation-toggle { cursor:pointer; user-select:none; }
                     .bordro-compact-view .calculation-toggle:hover { filter:brightness(.985); }
                     .bordro-compact-view .calculation-toggle .panel-chevron { transition:transform .25s ease; font-size:1.25rem; }
                     .bordro-compact-view .calculation-toggle[aria-expanded="true"] .panel-chevron { transform:rotate(180deg); }
-                    .bordro-compact-view .layout-switch { min-height:38px; white-space:nowrap; }
+                    .bordro-compact-view .layout-switch { min-height:38px; white-space:nowrap; border-color: #cbd5e1; }
                     @media (min-width:1200px) {
-                        .bordro-compact-view.layout-side .bordro-detail-card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) minmax(220px,.62fr); gap:1rem; margin:0; align-items:stretch; }
+                        .bordro-compact-view.layout-side .bordro-detail-card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) minmax(220px,.62fr); gap:1rem; margin:0; align-items:stretch; transition: all 0.25s ease; }
                         .bordro-compact-view.layout-side .bordro-calculation-column,
                         .bordro-compact-view.layout-side .calculation-panels { display:contents; }
                         .bordro-compact-view.layout-side .bordro-calculation-panel,
@@ -1220,7 +1220,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr:not(.collapse),
                         .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr.collapse.show { display:table; width:100%; table-layout:fixed; }
                         .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr.footer-row { margin-top:auto; }
-                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner { display:flex; width:100%; height:100%; margin-top:0; padding:20px; background:#f2fbf6; color:#334155; border:1px solid #ccebd9; box-shadow:0 5px 15px rgba(16,185,129,.06); }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner { display:flex; width:100%; height:100%; margin-top:0; padding:20px; background:#f2fbf6; color:#334155; border:1.5px solid #a7f3d0; box-shadow:0 5px 15px rgba(16,185,129,.06); position:relative; border-radius:16px; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner > .row { width:100%; margin:0; flex-direction:column; align-items:stretch !important; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-5,
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-7 { width:100%; padding:0 !important; border:0 !important; text-align:left !important; }
@@ -1232,23 +1232,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge:hover { background:#fff; transform:none; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge i { margin:0 !important; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge .text-white-50 { margin-left:auto; }
+
+                        /* TAM SATIR NET MAAS MODU (net-fullwidth): 3 Kolon Üstte, Net Kartı Altta Tam Satır */
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-detail-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column { grid-column: 1 / -1 !important; width: 100% !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner { padding: 22px 28px !important; margin-top: 6px !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner > .row { flex-direction: row !important; align-items: center !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5 { width: 38% !important; margin-bottom: 0 !important; border-right: 1px solid rgba(0,0,0,0.08) !important; padding-right: 20px !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-7 { width: 62% !important; padding-left: 20px !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-6 { width: 25% !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .dist-badge { flex-direction: column !important; justify-content: center !important; align-items: center !important; text-align: center; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .dist-badge .text-white-50 { margin-left: 0 !important; }
+                    }
+                    .bordro-compact-view .btn-toggle-net-expand {
+                        position: absolute; top: 12px; right: 12px; width: 30px; height: 30px;
+                        padding: 0; display: inline-flex; align-items: center; justify-content: center;
+                        border-radius: 8px; background: rgba(255, 255, 255, 0.85); border: 1.5px solid #cbd5e1;
+                        color: #475569; cursor: pointer; transition: all 0.2s ease; z-index: 10;
+                    }
+                    .bordro-compact-view .btn-toggle-net-expand:hover {
+                        background: #ffffff; color: #0f172a; border-color: #94a3b8; transform: scale(1.05);
                     }
                     .bordro-compact-view .tint-hakedis { background: linear-gradient(to right, #f0fdf4, #ffffff); color: #166534; }
                     .bordro-compact-view .tint-resmi { background: linear-gradient(to right, #eff6ff, #ffffff); color: #1d4ed8; }
                     .bordro-compact-view .calculation-note { display:block; margin-top:3px; font-size:.72rem; font-weight:500; color:#94a3b8; }
-                    .bordro-compact-view .section-row td { padding-top:10px; padding-bottom:8px; background:#f8fafc; color:#64748b; font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+                    .bordro-compact-view .section-row td { padding-top:10px; padding-bottom:8px; background:#f8fafc; color:#64748b; font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; border-bottom: 1px solid #cbd5e1; }
                     .bordro-compact-view .unified-table { width: 100%; margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
-                    .bordro-compact-view .unified-table td { padding: 12px 20px; vertical-align: middle; border-bottom: 1px solid #f1f3f5; font-size: 0.92rem; }
+                    .bordro-compact-view .unified-table td { padding: 12px 20px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; font-size: 0.92rem; }
                     .bordro-compact-view .unified-table .parent-row { cursor: pointer; font-weight: 600; background: white; transition: all 0.2s ease; }
                     .bordro-compact-view .unified-table .parent-row:hover { background: #f8fafc; }
                     .bordro-compact-view .unified-table .child-row { background: #fafbfc; font-size: 0.85rem; color: #64748b; }
-                    .bordro-compact-view .unified-table .child-row td { border-bottom-color: #f1f3f5; padding-top: 8px; padding-bottom: 8px; }
+                    .bordro-compact-view .unified-table .child-row td { border-bottom-color: #e2e8f0; padding-top: 8px; padding-bottom: 8px; }
                     .bordro-compact-view .unified-table .footer-row { background: #f8fafc; font-weight: 800; font-size: 1.05rem; }
-                    .bordro-compact-view .unified-table .footer-row td { border-bottom: none; padding: 16px 20px; }
+                    .bordro-compact-view .unified-table .footer-row td { border-bottom: none; border-top: 1.5px solid #cbd5e1; padding: 16px 20px; }
                     .bordro-compact-view .net-bottom-banner { 
                         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
                         color: white; border-radius: 16px; padding: 30px; margin-top: 25px; 
                         box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+                        position: relative;
+                        border: 1.5px solid #334155;
                     }
                     .bordro-compact-view .net-value-xl { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; color: #22c55e; text-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
                     .bordro-compact-view .dist-badge { 
@@ -1263,19 +1285,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     /* macOS Dark Uyumu */
                     html[data-theme-preset="macos-dark"] .bordro-compact-view .main-card {
                         background: rgba(30, 32, 40, 0.6) !important;
-                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.16) !important;
                         backdrop-filter: blur(20px);
                     }
                     html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass {
                         background: rgba(255, 255, 255, 0.04) !important;
-                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        border: 1px solid rgba(255, 255, 255, 0.16) !important;
                         backdrop-filter: blur(16px);
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .card-header-tint {
+                        border-bottom-color: rgba(255, 255, 255, 0.14) !important;
                     }
                     html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass h5 {
                         color: #ffffff !important;
                     }
                     html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table td {
-                        border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+                        border-bottom-color: rgba(255, 255, 255, 0.1) !important;
                         color: #e2e8f0 !important;
                     }
                     html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row {
@@ -1293,12 +1318,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         background: rgba(255, 255, 255, 0.04) !important;
                         color: #ffffff !important;
                     }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .footer-row td {
+                        border-top-color: rgba(255, 255, 255, 0.14) !important;
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .btn-toggle-net-expand {
+                        background: rgba(255, 255, 255, 0.1) !important;
+                        border-color: rgba(255, 255, 255, 0.18) !important;
+                        color: #f1f5f9 !important;
+                    }
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .btn-toggle-net-expand:hover {
+                        background: rgba(255, 255, 255, 0.2) !important;
+                        color: #ffffff !important;
+                    }
                     @media (min-width:1200px) {
                         html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner {
-                            background:rgba(22,55,43,.72); color:#f1f5f9; border-color:rgba(52,211,153,.2);
+                            background:rgba(22,55,43,.72); color:#f1f5f9; border-color:rgba(52,211,153,.3);
                         }
                         html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge {
                             background:rgba(255,255,255,.04); color:#f1f5f9; border-color:rgba(255,255,255,.08);
+                        }
+                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5 {
+                            border-right-color: rgba(255, 255, 255, 0.14) !important;
                         }
                     }
                 </style>';
@@ -1598,20 +1638,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </tr>';
                 if ($bankaDetayDagilimi['yemek'] > 0) {
                     $yemekGunlukGosterim = $includedAllowanceFiiliGun > 0 ? round($bankaDetayDagilimi['yemek'] / $includedAllowanceFiiliGun, 2) : 0;
-                    $yemekKaynaklari = [];
+                    $yemekKaynaklari = $bankaDetayDagilimi['yemek_kaynaklari'] ?? [];
                     $yemekEkKazancToplami = 0.0;
-                    foreach ($bankaDetayDagilimi['ek_odemeler'] as $yemekEkOdeme) {
-                        $yemekDahilTutar = round(floatval($yemekEkOdeme['yemek_dahil_tutar'] ?? 0), 2);
-                        if ($yemekDahilTutar <= 0) {
-                            continue;
+                    if (empty($yemekKaynaklari)) {
+                        foreach ($bankaDetayDagilimi['ek_odemeler'] as $yemekEkOdeme) {
+                            $yemekDahilTutar = round(floatval($yemekEkOdeme['yemek_dahil_tutar'] ?? 0), 2);
+                            if ($yemekDahilTutar <= 0) {
+                                continue;
+                            }
+                            $yemekKaynaklari[] = [
+                                'etiket' => (string) ($yemekEkOdeme['etiket'] ?? 'Ek kazanç'),
+                                'tutar' => $yemekDahilTutar,
+                            ];
+                            $yemekEkKazancToplami += $yemekDahilTutar;
                         }
-                        $yemekKaynaklari[] = [
-                            'etiket' => (string) ($yemekEkOdeme['etiket'] ?? 'Ek kazanç'),
-                            'tutar' => $yemekDahilTutar,
-                        ];
-                        $yemekEkKazancToplami += $yemekDahilTutar;
+                    } else {
+                        foreach ($yemekKaynaklari as $yk) {
+                            $yemekEkKazancToplami += floatval($yk['tutar'] ?? 0);
+                        }
                     }
-                    $sozlesmeYemekPayi = max(0.0, round($bankaDetayDagilimi['yemek'] - $yemekEkKazancToplami, 2));
+                    $sozlesmeYemekPayi = isset($bankaDetayDagilimi['sozlesme_yemek_payi']) && $bankaDetayDagilimi['sozlesme_yemek_payi'] > 0
+                        ? round($bankaDetayDagilimi['sozlesme_yemek_payi'], 2)
+                        : max(0.0, round($bankaDetayDagilimi['yemek'] - $yemekEkKazancToplami, 2));
                     $yemekDetayId = 'resmiYemekDetay_' . intval($bp->id);
                     $yemekAcilebilir = $sozlesmeYemekPayi > 0 || !empty($yemekKaynaklari);
                     $html .= '<tr class="parent-row"' . ($yemekAcilebilir ? ' data-bs-toggle="collapse" data-bs-target=".' . $yemekDetayId . '" aria-expanded="false"' : '') . '><td><i class="bx bx-restaurant me-2 text-success"></i>Yemek Yardımı' . ($yemekAcilebilir ? '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i>' : '') . '<span class="calculation-note">' . ($includedAllowanceFiiliGun > 0 ? number_format($yemekGunlukGosterim, 2, ',', '.') . ' ₺ × ' . $includedAllowanceFiiliGun . ' fiilî gün' : 'Resmî banka kalemi') . '</span></td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</td></tr>';
@@ -1648,7 +1696,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<table class="unified-table"><tbody>';
                 if (!empty($bankaDetayDagilimi['kesinti_kalemleri'])) {
                     foreach ($bankaDetayDagilimi['kesinti_kalemleri'] as $bankaKesinti) {
-                        $html .= '<tr class="parent-row"><td><i class="bx bx-minus-circle me-2 text-danger"></i>' . htmlspecialchars($bankaKesinti['etiket'], ENT_QUOTES, 'UTF-8') . '</td><td class="text-end text-danger fw-bold">-' . number_format($bankaKesinti['tutar'], 2, ',', '.') . ' ₺</td></tr>';
+                        $kesintiAciklama = trim((string) ($bankaKesinti['aciklama'] ?? ''));
+                        $kesintiEtiket = trim((string) ($bankaKesinti['etiket'] ?? ''));
+
+                        if ($kesintiEtiket === 'Diğer banka kesintileri' && !empty($kesintilerGruplanmis)) {
+                            $ilkGrup = reset($kesintilerGruplanmis);
+                            if ($ilkGrup && !empty($ilkGrup->etiket)) {
+                                $kesintiEtiket = $ilkGrup->etiket;
+                            }
+                        }
+                        if ($kesintiAciklama === '' && !empty($kesintiKayitlari)) {
+                            foreach ($kesintiKayitlari as $kr) {
+                                if (!empty($kr->aciklama)) {
+                                    $kesintiAciklama = trim((string) $kr->aciklama);
+                                    break;
+                                }
+                            }
+                        }
+
+                        $html .= '<tr class="parent-row"><td><div><i class="bx bx-minus-circle me-2 text-danger"></i><span class="fw-semibold">' . htmlspecialchars($kesintiEtiket, ENT_QUOTES, 'UTF-8') . '</span></div>'
+                            . ($kesintiAciklama !== '' ? '<div class="calculation-note text-muted ms-4 mt-1" style="font-size:0.8rem; line-height:1.3;"><i class="bx bx-info-circle me-1 opacity-75"></i>' . htmlspecialchars($kesintiAciklama, ENT_QUOTES, 'UTF-8') . '</div>' : '')
+                            . '</td><td class="text-end text-danger fw-bold align-middle">-' . number_format($bankaKesinti['tutar'], 2, ',', '.') . ' ₺</td></tr>';
                     }
                 } else {
                     $html .= '<tr><td colspan="2" class="text-center py-4 text-muted"><i class="bx bx-smile fs-4 d-block mb-1 opacity-50"></i>Kesinti bulunmuyor.</td></tr>';
@@ -1657,7 +1725,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</tbody></table></div></div>';
 
                 // 3. BOTTOM HERO: NET SALARY + DISTRIBUTION
-                $html .= '<div class="col-12 bordro-net-result-column"><div class="net-bottom-banner">';
+                $html .= '<div class="col-12 bordro-net-result-column"><div class="net-bottom-banner position-relative">';
+                $html .= '<button type="button" class="btn btn-toggle-net-expand" id="btnToggleNetExpand" title="Altta tam satır yap" aria-label="Ödenecek net maaş kartını altta tam satır yap">
+                            <svg class="net-expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .25s ease;">
+                                <line x1="7" y1="7" x2="17" y2="17"></line>
+                                <polyline points="17 7 17 17 7 17"></polyline>
+                            </svg>
+                          </button>';
                 $html .= '<div class="row align-items-center">';
                 
                 $html .= '<div class="col-md-5 border-end border-secondary border-opacity-25 mb-4 mb-md-0 text-center text-md-start">';
@@ -3273,7 +3347,10 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         if ($toplamKesintiBanka > 0 || ($bankaDetayDagilimi['matrah_siniri'] ?? 0) > 0) {
                             $bankaDetayHtml .= '<div class="pop-section-title" style="color:#f87171;margin:8px 0 5px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.14);font-weight:700;text-transform:uppercase;font-size:.68rem;">Çıkarılanlar</div>';
                             foreach (($bankaDetayDagilimi['kesinti_kalemleri'] ?? []) as $kesintiKalemi) {
-                                $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($kesintiKalemi['etiket'], ENT_QUOTES, 'UTF-8') . '</span><span class="pop-row-val val-red">-' . number_format($kesintiKalemi['tutar'], 2, ',', '.') . ' ₺</span></div>';
+                                $kesintiAciklama = trim((string) ($kesintiKalemi['aciklama'] ?? ''));
+                                $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($kesintiKalemi['etiket'], ENT_QUOTES, 'UTF-8')
+                                    . ($kesintiAciklama !== '' ? '<small style="display:block;color:#94a3b8;">' . htmlspecialchars($kesintiAciklama, ENT_QUOTES, 'UTF-8') . '</small>' : '')
+                                    . '</span><span class="pop-row-val val-red">-' . number_format($kesintiKalemi['tutar'], 2, ',', '.') . ' ₺</span></div>';
                             }
                             if (($bankaDetayDagilimi['matrah_siniri'] ?? 0) > 0) {
                                 $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Banka / hakediş sınırı</span><span class="pop-row-val val-red">-' . number_format($bankaDetayDagilimi['matrah_siniri'], 2, ',', '.') . ' ₺</span></div>';

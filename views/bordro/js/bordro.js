@@ -808,6 +808,7 @@ $(document).ready(function () {
 
   const oldDetailLayoutStorageKey = "bordro_old_detail_layout";
   const oldDetailPanelStateStorageKey = "bordro_old_detail_panel_states";
+  const oldDetailNetFullwidthStorageKey = "bordro_old_detail_net_fullwidth";
 
   function applyOldDetailLayout(layout) {
     const normalizedLayout = layout === "side" ? "side" : "stacked";
@@ -826,6 +827,25 @@ $(document).ready(function () {
       return localStorage.getItem(oldDetailLayoutStorageKey) === "side" ? "side" : "stacked";
     } catch (e) {
       return "stacked";
+    }
+  }
+
+  function applyOldDetailNetFullwidth(isFull) {
+    const $view = $("#bordroDetailContent .bordro-compact-view");
+    if (!$view.length) return;
+    $view.toggleClass("net-fullwidth", isFull === true);
+    const $btn = $view.find("#btnToggleNetExpand");
+    if ($btn.length) {
+      $btn.attr("title", isFull ? "Yan yana 4 kolona dön" : "Altta tam satır yap");
+      $btn.attr("aria-label", isFull ? "Yan yana 4 kolona dön" : "Altta tam satır yap");
+    }
+  }
+
+  function getSavedOldDetailNetFullwidth() {
+    try {
+      return localStorage.getItem(oldDetailNetFullwidthStorageKey) === "true";
+    } catch (e) {
+      return false;
     }
   }
 
@@ -905,6 +925,16 @@ $(document).ready(function () {
     applyOldDetailLayout(nextLayout);
   });
 
+  $(document).on("click", "#btnToggleNetExpand", function (event) {
+    event.preventDefault();
+    const $view = $("#bordroDetailContent .bordro-compact-view");
+    const nextFull = !$view.hasClass("net-fullwidth");
+    try {
+      localStorage.setItem(oldDetailNetFullwidthStorageKey, nextFull ? "true" : "false");
+    } catch (e) {}
+    applyOldDetailNetFullwidth(nextFull);
+  });
+
   // Eski Detay Görüntüle (seçilebilir alt alta / yan yana görünüm)
   $(document).on("click", ".btn-detail-old", function () {
     const id = $(this).data("id");
@@ -924,6 +954,7 @@ $(document).ready(function () {
         if (response.status === "success") {
           $("#bordroDetailContent").html(response.html);
           applyOldDetailLayout(getSavedOldDetailLayout());
+          applyOldDetailNetFullwidth(getSavedOldDetailNetFullwidth());
           applyOldDetailPanelStates();
           renderBordroDetailFooterSummary(null);
           showModal("bordroDetailModal");

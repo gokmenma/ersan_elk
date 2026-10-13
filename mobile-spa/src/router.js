@@ -12,6 +12,7 @@ import PersonnelDetailView from './views/PersonnelDetailView.vue'
 import PersonnelSectionView from './views/PersonnelSectionView.vue'
 import CariView from './views/CariView.vue'
 import CariDetailView from './views/CariDetailView.vue'
+import FaturaView from './views/FaturaView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -31,6 +32,8 @@ const router = createRouter({
     { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel', chrome: false } },
     { path: '/cari-takip', name: 'cari-list', component: CariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'current_accounts' } },
     { path: '/cari-takip/:id', name: 'cari-detail', component: CariDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'current_accounts' } },
+    { path: '/fatura', name: 'fatura', component: FaturaView, meta: { requiresAuth: true, requiresCompany: true, permission: 'invoices' } },
+    { path: '/efatura', redirect: '/fatura' },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

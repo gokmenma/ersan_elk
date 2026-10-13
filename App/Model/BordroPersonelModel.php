@@ -1082,14 +1082,13 @@ class BordroPersonelModel extends Model
             }
         }
 
+        $tumSnapshotKesintileri = [];
         foreach (($detay['kesintiler'] ?? []) as $snapshotKesinti) {
             if (!is_array($snapshotKesinti)) {
                 continue;
             }
             $hesaplamaTipi = (string) ($snapshotKesinti['hesaplama_tipi'] ?? 'sabit');
-            $bankadanDus = !array_key_exists('banka_matrahina_ekle', $snapshotKesinti)
-                || (int) $snapshotKesinti['banka_matrahina_ekle'] === 1;
-            if (!$bankadanDus || $hesaplamaTipi === 'elden_tutardan') {
+            if ($hesaplamaTipi === 'elden_tutardan') {
                 continue;
             }
             $tutar = max(0.0, round((float) ($snapshotKesinti['tutar'] ?? 0), 2));
@@ -1102,11 +1101,26 @@ class BordroPersonelModel extends Model
                 $etiket = match ($kesintiKodu) {
                     'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
                     'nafaka' => 'Nafaka', 'ceza' => 'Ceza', 'izin_kesinti' => 'Ücretsiz izin',
-                    default => 'Banka kesintisi',
+                    default => (!empty($snapshotKesinti['kod']) ? (string) $snapshotKesinti['kod'] : 'Banka kesintisi'),
                 };
             }
-            $snapshotBankaKesintiKalemleri[] = ['etiket' => $etiket, 'tutar' => $tutar];
-            $snapshotBankaKesintiToplam += $tutar;
+            $snapshotKesintiKalemi = ['etiket' => $etiket, 'tutar' => $tutar];
+            $aciklama = trim((string) ($snapshotKesinti['aciklama'] ?? ''));
+            if ($aciklama !== '') {
+                $snapshotKesintiKalemi['aciklama'] = $aciklama;
+            }
+            $tumSnapshotKesintileri[] = $snapshotKesintiKalemi;
+
+            $bankadanDus = !array_key_exists('banka_matrahina_ekle', $snapshotKesinti)
+                || (int) $snapshotKesinti['banka_matrahina_ekle'] === 1;
+            if ($bankadanDus) {
+                $snapshotBankaKesintiKalemleri[] = $snapshotKesintiKalemi;
+                $snapshotBankaKesintiToplam += $tutar;
+            }
+        }
+        if (empty($snapshotBankaKesintiKalemleri) && !empty($tumSnapshotKesintileri)) {
+            $snapshotBankaKesintiKalemleri = $tumSnapshotKesintileri;
+            $snapshotBankaKesintiToplam = array_sum(array_column($tumSnapshotKesintileri, 'tutar'));
         }
         if ($snapshotBankaKesintiToplam <= 0 && ($kesinti + $icra) > 0) {
             $snapshotBankaKesintiToplam = round($kesinti + $icra, 2);
@@ -1134,7 +1148,31 @@ class BordroPersonelModel extends Model
                 'resmi_alacagina_dahil' => true,
             ];
         }
-        $snapshotBankaDetaylari = array_merge($snapshotBankaDetaylari, $snapshotPrimDetaylari);
+        $asgariYatacak = round(($asgariNet / 30) * $calismaGunu, 2);
+        $resmiEkOdemeToplami = 0.0;
+        foreach ($snapshotBankaDetaylari as $sbd) {
+            $resmiEkOdemeToplami += floatval($sbd['tutar'] ?? 0);
+        }
+
+        $isInclusive = ($yemek > 0 || $es > 0);
+        if (!$isInclusive) {
+            foreach ($snapshotPrimDetaylari as $spd) {
+                $snapshotBankaDetaylari[] = $spd;
+                $resmiEkOdemeToplami += floatval($spd['tutar'] ?? 0);
+            }
+        }
+
+        if ($isInclusive) {
+            // Maaşa dahil personelde yasal/resmî banka tavanı: asgari + yemek + eş + doğal resmî ek kalemleridir (RTÇ/HTÇ vb.).
+            // Gayriresmî primlerin yemek tavanı dışındaki kısmı resmî banka matrahına giremez; elden kalmalıdır (Kural 5).
+            $resmiBankaTavani = round($asgariYatacak + $yemek + $es + $resmiEkOdemeToplami, 2);
+            $mevcutBrutBanka = round($banka + $snapshotBankaKesintiToplam, 2);
+            if ($mevcutBrutBanka > $resmiBankaTavani) {
+                $eldenAktarilacakFark = round($mevcutBrutBanka - $resmiBankaTavani, 2);
+                $banka = max(0.0, round($banka - $eldenAktarilacakFark, 2));
+                $elden = round($elden + $eldenAktarilacakFark, 2);
+            }
+        }
 
         return [
             'hesaplanmis' => true, 'gosterimKaynagi' => 'kayitli',
@@ -1155,14 +1193,15 @@ class BordroPersonelModel extends Model
             'sozlesmeHakedisi' => round(($nominalMaas / 30) * $calismaGunu, 2),
             'asgariHakedis' => round(($asgariNet / 30) * $calismaGunu, 2),
             'rtcGun' => $rtcGun, 'htcGun' => $htcGun, 'yontemliBankaEki' => 0.0, 'nonKurRatio' => 1.0,
-            'isInclusive' => $yemek > 0 || $es > 0, 'karisikMaasGecmisi' => !empty($detay['gorev_gecmisi_parcali']),
+            'isInclusive' => $isInclusive, 'karisikMaasGecmisi' => !empty($detay['gorev_gecmisi_parcali']),
             'sabitMaasGun' => $calismaGunu, 'manualDagitimVar' => !empty($p->dagitim_manuel),
-            'asgariYatacak' => round(($asgariNet / 30) * $calismaGunu, 2),
+            'asgariYatacak' => $asgariYatacak,
             'bankaAsgariGun' => $calismaGunu,
-            'resmiNetTaban' => round(($asgariNet / 30) * $calismaGunu, 2),
+            'resmiNetTaban' => $asgariYatacak,
             'bankaMatrahi' => round($banka + $snapshotBankaKesintiToplam, 2), 'bankaOncelikliKesinti' => 0.0,
             'bankaAktarilanKesinti' => round($snapshotBankaKesintiToplam, 2),
             'bankaEkOdemeDetaylari' => $snapshotBankaDetaylari,
+            'tumEkOdemeDetaylari' => array_merge($snapshotBankaDetaylari, $snapshotPrimDetaylari),
             'bankaKesintiKalemleri' => $snapshotBankaKesintiKalemleri,
         ];
     }
@@ -1248,7 +1287,7 @@ class BordroPersonelModel extends Model
                     $eldenKesintisiToplam += $tutar;
                 } else {
                     $bankaKesintisiToplam += $tutar;
-                    $bankaKesintiKalemleri[] = [
+                    $bankaKesintiKalemi = [
                         'etiket' => $param->etiket ?? match ((string) $kesintiSatiri->tur) {
                             'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
                             'nafaka' => 'Nafaka', 'ceza' => 'Ceza', 'izin_kesinti' => 'Ücretsiz izin',
@@ -1256,6 +1295,11 @@ class BordroPersonelModel extends Model
                         },
                         'tutar' => $tutar,
                     ];
+                    $aciklama = trim((string) ($kesintiSatiri->aciklama ?? ''));
+                    if ($aciklama !== '') {
+                        $bankaKesintiKalemi['aciklama'] = $aciklama;
+                    }
+                    $bankaKesintiKalemleri[] = $bankaKesintiKalemi;
                 }
                 if (mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8') === 'diger_kesinti') {
                     $puantajMahsupKesintisi += $tutar;
@@ -1448,9 +1492,9 @@ class BordroPersonelModel extends Model
                 if (!$isInclusive && $isMuhasebePrimi && $yontem === 'banka' && $resmiAlacakDahil) {
                     $muhasebeBankaPrimToplami += max(0.0, $tutar);
                 }
-                if ($isInclusive && $isPrimTuru && !$isPuantajOdeme && !$resmiAlacakDahil) {
-                    // Elle girilen prim "Banka" seçiliyse yemek tavanını yükseltir ve tutar
-                    // yemeğe absorbe olur; ayrıca banka kalemi olarak gösterilmez (çift sayım).
+                if ($isInclusive && $isPrimTuru && !$isPuantajOdeme) {
+                    // Elle girilen prim yemek tavanını yükseltir ve tutar yemeğe absorbe olur;
+                    // yemek tavanını aşan kısım resmî banka tavanına taşınmaz, elden kalır (Kural 5).
                     if ($yontem === 'banka') {
                         if ($isMuhasebePrimi) {
                             // Bu prim yemek/banka dağılımının içinde olduğundan muhasebe
@@ -1458,7 +1502,7 @@ class BordroPersonelModel extends Model
                             $muhasebedeGizlenecekPrim += max(0.0, $tutar);
                         }
                     }
-                } elseif ($yontem === 'banka' && !$isPrimOdemeItem && $resmiAlacakDahil) {
+                } elseif ($yontem === 'banka' && !$isPrimOdemeItem && $resmiAlacakDahil && (!$isInclusive || $this->isDogalResmiAlacakTuru($eoTurLower))) {
                     $bankaKatkisi = ($eoTurLower === 'hafta_sonu_nobet')
                         ? 0.0
                         : max($tutar, $this->ekOdemeResmiNetHedefi($eo, $param, $donemBaslangic));
@@ -1926,6 +1970,7 @@ class BordroPersonelModel extends Model
             'bankaOncelikliKesinti' => $bankaOncelikliKesinti,
             'bankaAktarilanKesinti' => $bankaAktarilanKesinti,
             'bankaEkOdemeDetaylari' => $bankaEkOdemeDetaylari,
+            'tumEkOdemeDetaylari' => $bankaEkOdemeDetaylari,
             'bankaKesintiKalemleri' => $bankaKesintiKalemleri,
         ];
     }
@@ -1957,18 +2002,28 @@ class BordroPersonelModel extends Model
         $yemek = min($kalan, max(0.0, round((float) ($hesap['mealAllowanceDeduction'] ?? 0), 2)));
         $kalan = max(0.0, round($kalan - $yemek, 2));
 
+        $sozlesmeHakedisi = floatval($hesap['sozlesmeHakedisi'] ?? 0);
+        $asgariVeYardimlar = round($asgari + $esYardimi + $yemek, 2);
+        $isSozlesmeAsildi = ($sozlesmeHakedisi > 0 && $asgariVeYardimlar >= $sozlesmeHakedisi);
+        $sozlesmeYemekPayi = max(0.0, round($sozlesmeHakedisi - $asgari, 2));
+        $yemegeAktarilabilirLimit = max(0.0, round($yemek - $sozlesmeYemekPayi, 2));
+
         $ekOdemeler = [];
         $bankaEkOdemeDetaylari = array_values($hesap['bankaEkOdemeDetaylari'] ?? []);
         usort($bankaEkOdemeDetaylari, static function (array $a, array $b): int {
             return ((int) !empty($b['resmi_alacagina_dahil'])) <=> ((int) !empty($a['resmi_alacagina_dahil']));
         });
+        $kalanYemekKapasitesi = $yemegeAktarilabilirLimit;
         foreach ($bankaEkOdemeDetaylari as $ekOdeme) {
             $toplamTutar = max(0.0, round((float) ($ekOdeme['tutar'] ?? 0), 2));
             if ($toplamTutar <= 0) {
                 continue;
             }
             $ayriBankaTutari = min($kalan, $toplamTutar);
-            $yemekDahilTutari = max(0.0, round($toplamTutar - $ayriBankaTutari, 2));
+            $hamYemekDahilTutari = max(0.0, round($toplamTutar - $ayriBankaTutari, 2));
+            $yemekDahilTutari = min($kalanYemekKapasitesi, $hamYemekDahilTutari);
+            $kalanYemekKapasitesi = max(0.0, round($kalanYemekKapasitesi - $yemekDahilTutari, 2));
+
             $ekOdemeler[] = [
                 'etiket' => (string) ($ekOdeme['etiket'] ?? ''),
                 'tutar' => $ayriBankaTutari,
@@ -1982,22 +2037,50 @@ class BordroPersonelModel extends Model
         $matrahSiniri = max(0.0, round($asgari - $brutBanka, 2));
         $kesintiKalemleri = [];
         $kesintiKalani = $kesinti;
-        foreach (($hesap['bankaKesintiKalemleri'] ?? []) as $kesintiKalemi) {
+        foreach (($hesap['bankaKesintiKalemleri'] ?? []) as $kKalem) {
             if ($kesintiKalani <= 0) {
                 break;
             }
-            $tutar = min($kesintiKalani, max(0.0, round((float) ($kesintiKalemi['tutar'] ?? 0), 2)));
+            $tutar = min($kesintiKalani, max(0.0, round((float) ($kKalem['tutar'] ?? 0), 2)));
             if ($tutar <= 0) {
                 continue;
             }
-            $kesintiKalemleri[] = [
-                'etiket' => (string) ($kesintiKalemi['etiket'] ?? 'Banka kesintisi'),
+            $aciklama = trim((string) ($kKalem['aciklama'] ?? ''));
+            $yeniKalem = [
+                'etiket' => (string) ($kKalem['etiket'] ?? 'Banka kesintisi'),
                 'tutar' => $tutar,
             ];
+            if ($aciklama !== '') {
+                $yeniKalem['aciklama'] = $aciklama;
+            }
+            $kesintiKalemleri[] = $yeniKalem;
             $kesintiKalani = max(0.0, round($kesintiKalani - $tutar, 2));
         }
         if ($kesintiKalani > 0) {
             $kesintiKalemleri[] = ['etiket' => 'Diğer banka kesintileri', 'tutar' => $kesintiKalani];
+        }
+
+        $sozlesmeFarki = 0.0;
+        if ($kalan > 0 && !$isSozlesmeAsildi) {
+            $sozlesmeFarki = $kalan;
+        }
+
+        $yemekKaynaklari = [];
+        $tumEkOdemelerListesi = array_values($hesap['tumEkOdemeDetaylari'] ?? $hesap['bankaEkOdemeDetaylari'] ?? []);
+        $kalanYemekKapasitesi = $yemegeAktarilabilirLimit;
+        foreach ($tumEkOdemelerListesi as $tumEk) {
+            $tTutar = max(0.0, round((float) ($tumEk['tutar'] ?? 0), 2));
+            if ($tTutar <= 0 || $kalanYemekKapasitesi <= 0) {
+                continue;
+            }
+            $aktarilanYemek = min($kalanYemekKapasitesi, $tTutar);
+            if ($aktarilanYemek > 0) {
+                $yemekKaynaklari[] = [
+                    'etiket' => (string) ($tumEk['etiket'] ?? 'Ek kazanç'),
+                    'tutar' => $aktarilanYemek,
+                ];
+                $kalanYemekKapasitesi = max(0.0, round($kalanYemekKapasitesi - $aktarilanYemek, 2));
+            }
         }
 
         return [
@@ -2007,9 +2090,11 @@ class BordroPersonelModel extends Model
                 ? round($asgari / (int) $hesap['bankaAsgariGun'], 2)
                 : 0.0,
             'yemek' => $yemek,
+            'sozlesme_yemek_payi' => $sozlesmeYemekPayi,
+            'yemek_kaynaklari' => $yemekKaynaklari,
             'es_yardimi' => $esYardimi,
             'ek_odemeler' => $ekOdemeler,
-            'sozlesme_farki' => $kalan,
+            'sozlesme_farki' => $sozlesmeFarki,
             'kesinti' => $kesinti,
             'kesinti_kalemleri' => $kesintiKalemleri,
             'matrah_siniri' => $matrahSiniri,
@@ -6502,7 +6587,16 @@ class BordroPersonelModel extends Model
             $netMaas = floatval($netMaas ?? $hakedisNetBeforeKesinti ?? 0);
             $netMaasIcinDagitim = $netMaas;
             $bankaHakedisTavani = $netMaasIcinDagitim;
-            $ekOdemeBankaNetiHesap = max(0.0, floatval($yontemliOdemeler['banka'] ?? 0) - floatval($rtcHtcBankaNetiHesap ?? 0));
+            $resmiBankaEkOdemeNeti = 0.0;
+            foreach ($ekOdemeDetaylari as $jedo) {
+                $jedoKod = mb_strtolower((string)($jedo['kod'] ?? ''), 'UTF-8');
+                $isPrim = strpos($jedoKod, 'prim') !== false || strpos($jedoKod, 'ikramiye') !== false;
+                // Maaşa dahil personelde primlerin yemek tavanı dışındaki kısmı Kural 5 gereği elden dağıtılır, banka matrahına giremez.
+                if (!empty($jedo['resmi_alacagina_dahil']) && !$isPrim && $this->isDogalResmiAlacakTuru($jedoKod)) {
+                    $resmiBankaEkOdemeNeti += floatval($jedo['net_etki'] ?? $jedo['hesaplanan_tutar'] ?? $jedo['tutar'] ?? 0);
+                }
+            }
+            $ekOdemeBankaNetiHesap = $resmiBankaEkOdemeNeti;
             $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0) + $ekOdemeBankaNetiHesap);
             $dahilBankaDagilimi = $this->hesaplaDahilBankaDagilimi(
                 $netMaasIcinDagitim,

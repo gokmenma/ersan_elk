@@ -40,5 +40,6 @@ final class BordroEskiDetayGosterimTest extends TestCase
         self::assertStringContainsString('Puantaj / Prim Hakedişi', $source);
         self::assertStringContainsString('$htcGunModal > 0 && $nominalMaas > 0', $source);
         self::assertStringContainsString("\$bankaDetayDagilimi['kesinti'] > 0 ? '-' : ''", $source);
+        self::assertStringContainsString("\$bankaKesinti['aciklama']", $source);
     }
 }

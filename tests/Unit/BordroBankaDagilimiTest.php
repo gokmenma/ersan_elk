@@ -497,6 +497,26 @@ final class BordroBankaDagilimiTest extends TestCase
         ));
     }
 
+    public function testBankaKesintisiAciklamasiDetayDagilimindaKorunur(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 900,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 100,
+            'asgariYatacak' => 1000,
+            'mealAllowanceDeduction' => 0,
+            'spouseAllowanceDeduction' => 0,
+            'bankaKesintiKalemleri' => [[
+                'etiket' => 'Diğer Kesinti',
+                'tutar' => 100,
+                'aciklama' => 'Kırılan ekipman bedeli',
+            ]],
+        ]);
+
+        self::assertSame('Kırılan ekipman bedeli', $detay['kesinti_kalemleri'][0]['aciklama']);
+    }
+
     public function testBankaDetayiFazlaMesaiVeHaftaTatiliniSozlesmeFarkinaDonusturmez(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
