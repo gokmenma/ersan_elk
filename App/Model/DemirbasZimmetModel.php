@@ -231,6 +231,7 @@ class DemirbasZimmetModel extends Model
                 SELECT *, 
                 (COALESCE(miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = demirbas.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) as kalan_miktar
                 FROM demirbas WHERE id = ?
+                FOR UPDATE
             ");
             $demirbas->execute([$data['demirbas_id']]);
             $demirbasData = $demirbas->fetch(PDO::FETCH_OBJ);
@@ -241,21 +242,39 @@ class DemirbasZimmetModel extends Model
 
             $teslim_miktar = $data['teslim_miktar'] ?? 1;
 
-            // Mükerrer zimmet kontrolü: Aynı demirbaşa, aynı personele, aynı tarihte aktif zimmet var mı?
+            // Aynı seri numarası farklı demirbaş kartlarında bulunsa bile mükerrer sayaç zimmetini yakala.
+            $normalizedSerial = mb_strtolower(trim((string) ($demirbasData->seri_no ?? '')), 'UTF-8');
+            $invalidSerialValues = ['', '0', '-', '--', 'yok', 'yoktur', 'belirsiz', 'n/a', 'na'];
+            $hasUsableSerial = !in_array($normalizedSerial, $invalidSerialValues, true);
+            $serialCondition = $hasUsableSerial
+                ? " OR (d2.firma_id = ? AND LOWER(TRIM(d2.seri_no)) = ?)"
+                : "";
+
             $dupCheck = $this->db->prepare("
-                SELECT id FROM {$this->table} 
-                WHERE demirbas_id = ? AND personel_id = ? AND teslim_tarihi = ? AND durum = 'teslim' AND silinme_tarihi IS NULL
+                SELECT z.id
+                FROM {$this->table} z
+                INNER JOIN demirbas d2 ON d2.id = z.demirbas_id AND d2.silinme_tarihi IS NULL
+                WHERE z.personel_id = ?
+                  AND z.teslim_tarihi = ?
+                  AND z.durum = 'teslim'
+                  AND z.silinme_tarihi IS NULL
+                  AND (z.demirbas_id = ?{$serialCondition})
                 LIMIT 1
             ");
-            $dupCheck->execute([$data['demirbas_id'], $data['personel_id'], $data['teslim_tarihi']]);
+            $dupParams = [$data['personel_id'], $data['teslim_tarihi'], $data['demirbas_id']];
+            if ($hasUsableSerial) {
+                $dupParams[] = (int) $demirbasData->firma_id;
+                $dupParams[] = $normalizedSerial;
+            }
+            $dupCheck->execute($dupParams);
             $existingZimmet = $dupCheck->fetch(PDO::FETCH_OBJ);
 
             if ($existingZimmet) {
-                // Miktar 1 olan demirbaşlar (sayaç vb.) için tamamen engelle
-                if ((int)($demirbasData->miktar ?? 1) <= 1) {
+                // Tekil varlıklar (sayaç vb.) aynı kayıtla ikinci kez zimmetlenemez.
+                // Miktarlı stoklarda aynı gün ayrı teslimler mevcut iş kuralı gereği mümkündür.
+                if ((int) ($demirbasData->miktar ?? 1) <= 1) {
                     throw new \Exception("Bu demirbaş için aynı personele aynı tarihte zaten aktif bir zimmet kaydı bulunmaktadır. (Zimmet ID: {$existingZimmet->id})");
                 }
-                // Miktar > 1 olanlar (aparat vb.) için uyarı verme, stok kontrolü yeterli
             }
 
             if ($demirbasData->kalan_miktar < $teslim_miktar) {

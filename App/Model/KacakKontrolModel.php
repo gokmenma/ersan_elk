@@ -729,6 +729,26 @@ class KacakKontrolModel extends Model
         ]);
     }
 
+    /** Onaylanan aktif tutanağa saha personelinin sonradan ilettiği açıklamayı ekler. */
+    public function appendApprovedDescription(int $id, string $aciklama): bool
+    {
+        $aciklama = trim($aciklama);
+        if ($aciklama === '') {
+            return true;
+        }
+
+        $stmt = $this->db->prepare("UPDATE kacak_kontrol
+                                    SET aciklama = CASE
+                                        WHEN aciklama IS NULL OR TRIM(aciklama) = '' THEN ?
+                                        ELSE CONCAT(aciklama, CHAR(10), ?)
+                                    END
+                                    WHERE id = ? AND firma_id = ?
+                                      AND onay_durumu = 'onaylandi'
+                                      AND durum <> 'iptal' AND silinme_tarihi IS NULL");
+        $stmt->execute([$aciklama, $aciklama, $id, $this->firmaId()]);
+        return $stmt->rowCount() > 0;
+    }
+
     /** Personelin kendi onay bekleyen kaydını geri alınabilir biçimde siler. */
     public function softDeletePendingByReporter(int $id, int $personelId): bool
     {

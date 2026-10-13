@@ -549,6 +549,23 @@ class PersonelIzinleriModel extends Model
     }
 
     /**
+     * İzin türünün yıllık izin olup olmadığını kontrol eder.
+     */
+    public function isAnnualLeaveType($izinTuru): bool
+    {
+        if (!$izinTuru) {
+            return false;
+        }
+
+        $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
+        $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
+
+        return mb_strpos($ad, 'yıllık') !== false
+            || mb_strpos($ad, 'yillik') !== false
+            || $kod === 'yillik';
+    }
+
+    /**
      * Hakedişi bulunmayan personelin seçemeyeceği ücretli/yıllık izinleri belirler.
      * Mazeret, evlilik ve babalık izinleri bu kısıttan muaftır.
      */
@@ -566,9 +583,8 @@ class PersonelIzinleriModel extends Model
         $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
         $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
         $mazeretMi = mb_strpos($ad, 'mazeret') !== false || $kod === 'mazeret';
-        $yillikMi = mb_strpos($ad, 'yıllık') !== false || mb_strpos($ad, 'yillik') !== false || $kod === 'yillik';
 
-        return !$mazeretMi && ($yillikMi || (int) ($izinTuru->ucretli_mi ?? 0) === 1);
+        return !$mazeretMi && ($this->isAnnualLeaveType($izinTuru) || (int) ($izinTuru->ucretli_mi ?? 0) === 1);
     }
 
     public function isExcuseLeaveType($izinTuru)

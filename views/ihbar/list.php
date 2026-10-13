@@ -34,6 +34,12 @@ $durumEtiketleri = [
     'olumlu' => 'Olumlu',
     'olumsuz' => 'Olumsuz',
 ];
+$mevcutDurumEtiketleri = [];
+foreach ($IhbarModel->getDistinctActiveStatuses() as $durumKodu) {
+    $durumKodu = (string) $durumKodu;
+    $mevcutDurumEtiketleri[] = $durumEtiketleri[$durumKodu] ?? $durumKodu;
+}
+$durumKolonFiltreSecenekleri = implode('|', array_values(array_unique($mevcutDurumEtiketleri)));
 $aylikTrend = [];
 $ilceDagilimi = [];
 
@@ -521,7 +527,8 @@ if (!empty($_GET['ihbar_id'])) {
                                     <th data-filter="string">Telefon</th>
                                     <th data-filter="string">Bildiren</th>
                                     <th data-filter="string">Atanan Ekip</th>
-                                    <th data-filter="select" data-filter-options="Yeni|Yönlendirildi|İşlemde|Olumlu|Olumsuz">Durum</th>
+                                    <th data-filter="select"
+                                        data-filter-options="<?= htmlspecialchars($durumKolonFiltreSecenekleri, ENT_QUOTES, 'UTF-8') ?>">Durum</th>
                                     <th class="text-center" style="width:210px">İşlemler</th>
                                 </tr>
                             </thead>

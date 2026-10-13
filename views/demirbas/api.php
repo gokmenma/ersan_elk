@@ -709,71 +709,36 @@ if ($action == "zimmet-ver") {
             foreach ($secilenIds as $enc_id) {
                 $id = intval(Security::decrypt($enc_id));
                 if ($id > 0) {
-                    // Mükerrer zimmet kontrolü
-                    $dupCheck = $Demirbas->db->prepare("SELECT id FROM demirbas_zimmet WHERE demirbas_id = ? AND personel_id = ? AND teslim_tarihi = ? AND durum = 'teslim' AND silinme_tarihi IS NULL LIMIT 1");
-                    $dupCheck->execute([$id, $personel_id, $tarih]);
-                    if ($dupCheck->fetch()) {
-                        continue; // Zaten aktif zimmet var, atla
+                    try {
+                        $Zimmet->zimmetVer([
+                            "demirbas_id" => $id,
+                            "personel_id" => $personel_id,
+                            "teslim_miktar" => 1,
+                            "teslim_tarihi" => $tarih,
+                            "aciklama" => $aciklama,
+                            "teslim_eden_id" => $_SESSION['id'] ?? null,
+                            "kaynak" => "manuel"
+                        ]);
+                        $successCount++;
+                    } catch (Exception $itemException) {
+                        // Toplu işlemde daha önce kaydedilmiş veya stoku kalmamış sayaçları atla.
+                        continue;
                     }
-
-                    $Zimmet->saveWithAttr([
-                        "id" => 0,
-                        "demirbas_id" => $id,
-                        "personel_id" => $personel_id,
-                        "teslim_miktar" => 1,
-                        "teslim_tarihi" => $tarih,
-                        "aciklama" => $aciklama,
-                        "durum" => 'teslim'
-                    ]);
-                    $Hareket->saveWithAttr([
-                        "id" => 0,
-                        "zimmet_id" => $Zimmet->db->lastInsertId(),
-                        "demirbas_id" => $id,
-                        "personel_id" => $personel_id,
-                        "hareket_tipi" => 'zimmet',
-                        "miktar" => 1,
-                        "aciklama" => $aciklama,
-                        "islem_yapan_id" => $_SESSION['id'] ?? 0,
-                        "tarih" => $tarih
-                    ]);
-                    $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Personelde' WHERE id = ?")->execute([$id]);
-                    $successCount++;
                 }
             }
         } elseif (!empty($_POST['demirbas_id'])) {
             // Tekli
             $id = intval($_POST['demirbas_id']);
             if ($id > 0) {
-                // Mükerrer zimmet kontrolü
-                $dupCheck = $Demirbas->db->prepare("SELECT id FROM demirbas_zimmet WHERE demirbas_id = ? AND personel_id = ? AND teslim_tarihi = ? AND durum = 'teslim' AND silinme_tarihi IS NULL LIMIT 1");
-                $dupCheck->execute([$id, $personel_id, $tarih]);
-                $existingDup = $dupCheck->fetch();
-                if ($existingDup) {
-                    $Demirbas->db->commit();
-                    jsonResponse("error", "Bu demirbaş için aynı personele aynı tarihte zaten aktif bir zimmet kaydı bulunmaktadır.");
-                }
-
-                $Zimmet->saveWithAttr([
-                    "id" => 0,
+                $Zimmet->zimmetVer([
                     "demirbas_id" => $id,
                     "personel_id" => $personel_id,
                     "teslim_miktar" => $teslim_miktar,
                     "teslim_tarihi" => $tarih,
                     "aciklama" => $aciklama,
-                    "durum" => 'teslim'
+                    "teslim_eden_id" => $_SESSION['id'] ?? null,
+                    "kaynak" => "manuel"
                 ]);
-                $Hareket->saveWithAttr([
-                    "id" => 0,
-                    "zimmet_id" => $Zimmet->db->lastInsertId(),
-                    "demirbas_id" => $id,
-                    "personel_id" => $personel_id,
-                    "hareket_tipi" => 'zimmet',
-                    "miktar" => $teslim_miktar,
-                    "aciklama" => $aciklama,
-                    "islem_yapan_id" => $_SESSION['id'] ?? 0,
-                    "tarih" => $tarih
-                ]);
-                $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Personelde' WHERE id = ?")->execute([$id]);
                 $successCount++;
             }
         }

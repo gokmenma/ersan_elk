@@ -242,7 +242,7 @@
                         <span class="material-symbols-outlined text-primary">info</span>
                         <div>
                             <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Hatırlatma</p>
-                            <p class="text-xs text-slate-500 mt-1">3 günden uzun süreli izin talepleri en az 2 hafta önceden bildirilmelidir.</p>
+                            <p class="text-xs text-slate-500 mt-1">3 günden uzun süreli yıllık izin talepleri en az 2 hafta önceden bildirilmelidir.</p>
                         </div>
                     </div>
                 </div>
@@ -646,6 +646,13 @@
     function isMazeretIzinTuru(tur) {
         if (!tur) return false;
         return normalizeIzinMetni(tur.tur_adi).includes('mazeret') || normalizeIzinMetni(tur.kisa_kod) === 'mazeret';
+    }
+
+    function isYillikIzinTuru(tur) {
+        if (!tur) return false;
+        const ad = normalizeIzinMetni(tur.tur_adi);
+        const kod = normalizeIzinMetni(tur.kisa_kod);
+        return ad.includes('yıllık') || ad.includes('yillik') || kod === 'yillik';
     }
 
     function isHastalikIzinTuru(tur) {
@@ -1096,13 +1103,15 @@
         }
 
         // İzin talep limit denetimleri
+        const secilenIzinTuru = izinTurleri.find(tur => String(tur.id) === String(formData.izin_tipi));
+
         if (toplamGun > 3) {
             const bugun = new Date();
             bugun.setHours(0, 0, 0, 0);
             const gunFarki = Math.floor((baslangicD - bugun) / (1000 * 60 * 60 * 24));
             
-            if (gunFarki < 14) {
-                Toast.show('3 günden fazla olan izinlerin en az iki hafta önceden bildirilmesi gerekir.', 'error');
+            if (isYillikIzinTuru(secilenIzinTuru) && gunFarki < 14) {
+                Toast.show('3 günden fazla olan yıllık izinlerin en az iki hafta önceden bildirilmesi gerekir.', 'error');
                 return;
             }
             
@@ -1112,15 +1121,13 @@
             }
         }
 
-        const secilenIzinTuru = izinTurleri.find(tur => String(tur.id) === String(formData.izin_tipi));
-
         if (secilenIzinTuru && isHakEdisGerektirenIzinTuru(secilenIzinTuru) && hakedisData && Number(hakedisData.kalan_izin) <= 0) {
             Toast.show('İzin hakedişiniz bulunmadığı için ücretli veya yıllık izin talep edemezsiniz. Lütfen mazeret izni seçiniz.', 'error');
             return;
         }
 
         // Yıllık izin talebi kalan bakiyeyi aşamaz.
-        if (secilenIzinTuru && (normalizeIzinMetni(secilenIzinTuru.tur_adi).includes('yıllık') || normalizeIzinMetni(secilenIzinTuru.tur_adi).includes('yillik')) && hakedisData && toplamGun > hakedisData.kalan_izin) {
+        if (isYillikIzinTuru(secilenIzinTuru) && hakedisData && toplamGun > hakedisData.kalan_izin) {
             Toast.show(
                 `Yetersiz izin hakkı! Talebiniz: ${toplamGun} gün, Kalan izniniz: ${hakedisData.kalan_izin} gün`,
                 'error'

@@ -376,7 +376,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             <div class="modal-handle mb-4"></div>
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <h3 class="text-lg font-bold text-slate-800 dark:text-white">Fotoğraf / Video Ekle</h3>
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-white">Fotoğraf, Video veya Açıklama Ekle</h3>
                     <p id="kacak-medya-kayit" class="text-xs text-slate-400 mt-1"></p>
                 </div>
                 <button type="button" onclick="Modal.close('kacak-medya-modal')"
@@ -417,8 +417,15 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 </div>
                 <p id="kacak-medya-video-ozet" class="text-xs text-slate-400 mt-2">Video seçilmedi.</p>
             </div>
+            <div>
+                <label for="kacak-medya-aciklama" class="block text-xs font-bold text-slate-500 mb-2 uppercase">Açıklama</label>
+                <textarea id="kacak-medya-aciklama" name="aciklama" rows="3" maxlength="2000"
+                    placeholder="Saha çalışmasıyla ilgili ek açıklamanızı yazın..."
+                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm text-slate-800 dark:text-white"></textarea>
+                <p class="text-xs text-slate-400 mt-1">Fotoğraf veya video seçmeden yalnızca açıklama da gönderebilirsiniz.</p>
+            </div>
             <button type="submit" id="kacak-medya-submit"
-                class="w-full py-4 rounded-xl bg-primary text-white font-black text-sm">DOSYALARI GÖNDER</button>
+                class="w-full py-4 rounded-xl bg-primary text-white font-black text-sm">EK BİLGİLERİ GÖNDER</button>
         </form>
     </div>
 </div>
@@ -589,7 +596,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     class="py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">edit</span>Düzenle</button><button type="button" onclick="event.stopPropagation(); kacakSil('${esc(k.edit_token)}')" class="py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">delete</span>Sil</button></div>` : '';
             const medyaBtn = k.medya_eklenebilir
                 ? `<button type="button" onclick="event.stopPropagation(); kacakMedyaAc(${parseInt(k.id, 10)})"
-                    class="w-full mt-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">add_a_photo</span>Fotoğraf / Video Ekle</button>` : '';
+                    class="w-full mt-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">add_a_photo</span>Fotoğraf / Video / Açıklama Ekle</button>` : '';
 
             return `
             <div onclick="kacakDetayAc(${k.id})"
@@ -929,7 +936,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             ${k.durum === 'iptal' ? satir('İptal Açıklaması', k.iptal_aciklama) : ''}
             ${fotoHtml}
             ${k.medya_eklenebilir ? `<button type="button" onclick="Modal.close('kacak-detay-modal'); kacakMedyaAc(${parseInt(k.id, 10)})"
-                class="w-full mt-4 py-3 bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2"><span class="material-symbols-outlined">add_a_photo</span>Fotoğraf / Video Ekle</button>` : ''}
+                class="w-full mt-4 py-3 bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2"><span class="material-symbols-outlined">add_a_photo</span>Fotoğraf / Video / Açıklama Ekle</button>` : ''}
             <button onclick="Modal.close('kacak-detay-modal')"
                 class="w-full mt-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl">Kapat</button>`;
 
@@ -1002,8 +1009,9 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         document.getElementById('kacak-medya-form').addEventListener('submit', async function (e) {
             e.preventDefault();
             if (!medyaKaydi || !medyaKaydi.media_token) return;
-            if (medyaFotolari.length === 0 && medyaVideolari.length === 0) {
-                return Alert.warning('Dosya Seçilmedi', 'En az bir fotoğraf veya video seçin.');
+            const aciklama = (document.getElementById('kacak-medya-aciklama')?.value || '').trim();
+            if (medyaFotolari.length === 0 && medyaVideolari.length === 0 && aciklama === '') {
+                return Alert.warning('Bilgi Girilmedi', 'En az bir fotoğraf, video veya açıklama ekleyin.');
             }
             const btn = document.getElementById('kacak-medya-submit');
             btn.disabled = true;
@@ -1016,7 +1024,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 }
                 await OfflineQueue.ekle(
                     'appendKacakMedia',
-                    { edit_token: medyaKaydi.media_token },
+                    { edit_token: medyaKaydi.media_token, aciklama },
                     [],
                     { tur: medyaKaydi.tur, ilce: medyaKaydi.ilce, tutanak_no: medyaKaydi.tutanak_no, abone_adi: medyaKaydi.abone_adi },
                     { dosyalar: fotograflar, videolar: medyaVideolari }
@@ -1024,12 +1032,12 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 Modal.close('kacak-medya-modal');
                 await kuyrugaBak();
                 OfflineQueue.flush().then(loadKacakKayitlar).catch(() => {});
-                Alert.success('Gönderime Alındı', 'Fotoğraf ve videolar cihazınıza kaydedildi. Bağlantıya göre otomatik gönderilecek.');
+                Alert.success('Gönderime Alındı', 'Ek açıklama ve seçilen dosyalar cihazınıza kaydedildi. Bağlantıya göre otomatik gönderilecek.');
             } catch (hata) {
                 Alert.error('Kaydedilemedi', (hata && hata.message) || 'Dosyalar gönderim kuyruğuna alınamadı.');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'DOSYALARI GÖNDER';
+                btn.textContent = 'EK BİLGİLERİ GÖNDER';
             }
         });
 

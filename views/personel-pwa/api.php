@@ -1674,8 +1674,8 @@ try {
                 $baslangic_zaman = strtotime($baslangic);
                 $gun_farki = floor(($baslangic_zaman - $bugun) / (60 * 60 * 24));
 
-                if ($gun_farki < 14) {
-                    response(false, null, '3 günden fazla olan izinlerin en az iki hafta önceden bildirilmesi gerekir.');
+                if ($IzinModel->isAnnualLeaveType($izinTuru) && $gun_farki < 14) {
+                    response(false, null, '3 günden fazla olan yıllık izinlerin en az iki hafta önceden bildirilmesi gerekir.');
                 }
 
                 if ($toplam_gun > 20) {
@@ -4964,7 +4964,14 @@ try {
             if (!$kayit || !$isEkip || ($kayit['onay_durumu'] ?? '') !== 'onaylandi' || ($kayit['durum'] ?? '') === 'iptal') {
                 response(false, null, 'Bu tutanağa medya ekleme yetkiniz bulunmuyor.');
             }
-            response(true, ['id' => $kacakId], 'Medya gönderimi başlatıldı.');
+            $ekAciklama = trim((string) ($_POST['aciklama'] ?? ''));
+            if (mb_strlen($ekAciklama, 'UTF-8') > 2000) {
+                response(false, null, 'Açıklama en fazla 2000 karakter olabilir.');
+            }
+            if ($ekAciklama !== '' && !$KacakModel->appendApprovedDescription($kacakId, $ekAciklama)) {
+                response(false, null, 'Açıklama eklenemedi; tutanağın durumu değişmiş olabilir.');
+            }
+            response(true, ['id' => $kacakId], 'Ek bilgiler gönderilmeye hazır.');
             break;
 
         case 'deleteKacakBildirim':

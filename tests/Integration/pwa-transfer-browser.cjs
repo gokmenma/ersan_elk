@@ -40,7 +40,7 @@ const server = http.createServer(async (req, res) => {
   const data = multipart(req, Buffer.concat(chunks));
   const val = key => (data[key] || Buffer.alloc(0)).toString('utf8');
   const action = val('action');
-  state.calls.push({ action, index: val('index'), operation: val('operation_key'), mime: val('mime') });
+  state.calls.push({ action, index: val('index'), operation: val('operation_key'), mime: val('mime'), aciklama: val('aciklama') });
   const reply = (success, value = {}, message = '') => {
     res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ success, data: value, message }));
   };
@@ -117,16 +117,16 @@ async function flush(page) { return page.evaluate(() => { window.testOnline=true
       const start = state.calls.find(c => c.action === 'pwaVideoStart');
       assert.equal(start.mime, 'video/webm');
     });
-    await test('approved record can queue attachment-only photo and video transfer', async page => {
+    await test('approved record can queue photo, video and description transfer', async page => {
       await page.evaluate(async () => {
         const photo = {ad:'after.jpg', blob:new Blob(['after-photo'], {type:'image/jpeg'}), tip:'image/jpeg'};
         const video = new File([new Uint8Array(300000)], 'after.mp4', {type:'video/mp4'});
-        await OfflineQueue.ekle('appendKacakMedia', {edit_token:'approved-record'}, [],
+        await OfflineQueue.ekle('appendKacakMedia', {edit_token:'approved-record',aciklama:'Sayaç mühür bilgisi sahada doğrulandı.'}, [],
           {ilce:'Dulkadiroğlu',tutanak_no:'45267'}, {dosyalar:[photo],videolar:[{dosya:video,sure:10,kapak:''}]});
       });
       assert.equal((await flush(page)).gonderildi,1);
       assert.deepEqual(state.counts,{main:1,photo:1,video:1});
-      assert.ok(state.calls.some(c => c.action === 'appendKacakMedia'));
+      assert.ok(state.calls.some(c => c.action === 'appendKacakMedia' && c.aciklama === 'Sayaç mühür bilgisi sahada doğrulandı.'));
     });
     await test('lost main response reuses fixed operation without duplicate report', async page => {
       const uuid=await record(page,'saveKacakBildirim',false); state.drop='saveKacakBildirim';

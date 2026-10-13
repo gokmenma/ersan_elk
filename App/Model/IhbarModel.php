@@ -677,6 +677,30 @@ class IhbarModel extends Model
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    /** Aktif ihbar kayıtlarında gerçekten kullanılan durum kodlarını döndürür. */
+    public function getDistinctActiveStatuses(): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT durum,
+                    CASE durum
+                        WHEN 'yeni' THEN 1
+                        WHEN 'yonlendirildi' THEN 2
+                        WHEN 'islemde' THEN 3
+                        WHEN 'olumlu' THEN 4
+                        WHEN 'olumsuz' THEN 5
+                        ELSE 99
+                    END AS durum_sira
+             FROM ihbarlar
+             WHERE firma_id = ?
+               AND silinme_tarihi IS NULL
+               AND durum IS NOT NULL
+               AND durum <> ''
+             ORDER BY durum_sira, durum"
+        );
+        $stmt->execute([$this->firmaId()]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     /** DataTables server-side ihbar listesi. */
     public function ajaxList(array $params, int $firmaId): array
     {

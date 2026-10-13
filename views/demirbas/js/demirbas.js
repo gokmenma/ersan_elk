@@ -1874,6 +1874,9 @@ $(document).on("change", "#demirbas_id_zimmet", function () {
 
 // Zimmet Kaydet
 $(document).on("click", "#zimmetKaydet", function () {
+  const $saveButton = $(this);
+  if ($saveButton.data("saving") === true) return;
+
   var form = $("#zimmetForm");
 
   // Koli Modu Kontrolü
@@ -2032,6 +2035,11 @@ $(document).on("click", "#zimmetKaydet", function () {
 
   formData.append("action", "zimmet-kaydet");
 
+  $saveButton
+    .data("saving", true)
+    .prop("disabled", true)
+    .html('<i class="bx bx-loader-alt bx-spin me-1"></i>Kaydediliyor...');
+
   fetch(zimmetUrl, {
     method: "POST",
     body: formData,
@@ -2063,6 +2071,16 @@ $(document).on("click", "#zimmetKaydet", function () {
           confirmButtonText: "Tamam",
         });
       }
+    })
+    .catch(() => {
+      Swal.fire("Hata!", "Kayıt sırasında sunucuya ulaşılamadı.", "error");
+    })
+    .finally(() => {
+      $saveButton
+        .data("saving", false)
+        .prop("disabled", false)
+        .html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
+      if (typeof feather !== "undefined") feather.replace();
     });
 });
 
