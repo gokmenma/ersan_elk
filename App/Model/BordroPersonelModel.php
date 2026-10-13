@@ -154,6 +154,30 @@ class BordroPersonelModel extends Model
             || strpos($kod, 'hafta_tatili') !== false;
     }
 
+    /**
+     * Kayıtlı bordro detayında yalnız gerçekten resmî alacağa dahil edilmiş kalemleri gösterir.
+     * `banka_matrahina_ekle`, ödeme dağıtım tercihini ifade eder; tek başına resmî alacak kanıtı değildir.
+     */
+    private function isSnapshotResmiAlacakKalemi(array $ekOdeme, string $kod, ?object $parametre): bool
+    {
+        // Bu teknik kayıt yukarıda `mealAllowanceDeduction` olarak zaten tek kez gösterilir.
+        // Ayrı banka kalemi yapılırsa yemek yardımı ikinci kez aday listeye girer ve kalan
+        // uzlaştırma tutarı "Yemek Yardımı Dengeleme" adıyla yanıltıcı biçimde görünür.
+        if ($kod === 'yemek_yardimi_dengeleme') {
+            return false;
+        }
+
+        if ($this->isDogalResmiAlacakTuru($kod)) {
+            return true;
+        }
+
+        if (array_key_exists('resmi_alacagina_dahil', $ekOdeme)) {
+            return !empty($ekOdeme['resmi_alacagina_dahil']);
+        }
+
+        return $parametre !== null && !empty($parametre->resmi_alacagina_dahil);
+    }
+
     /** Resmî, elle eklenen gelirlerde kullanıcıdan ikinci bir banka seçimi beklenmez. */
     private function resolveEkOdemeYontemi(?int $kayitSecimi, ?string $parametreYontemi, bool $resmiAlacakDahil, bool $isPuantajOdeme, bool $isPrimUsulu): string
     {
@@ -1027,21 +1051,30 @@ class BordroPersonelModel extends Model
         $snapshotPrimDetaylari = [];
         $snapshotBankaKesintiKalemleri = [];
         $snapshotBankaKesintiToplam = 0.0;
+        $donemBaslangic = (string) ($detay['donem']['baslangic'] ?? '');
         foreach (($detay['ek_odemeler'] ?? []) as $ekOdeme) {
             if (!is_array($ekOdeme)) {
                 continue;
             }
             $tutar = max(0.0, round((float) ($ekOdeme['net_etki'] ?? $ekOdeme['tutar'] ?? 0), 2));
-            $resmiDahil = !empty($ekOdeme['resmi_alacagina_dahil']) || !empty($ekOdeme['banka_matrahina_ekle']);
-            if ($tutar <= 0 || !$resmiDahil) {
+            if ($tutar <= 0) {
                 continue;
             }
             $kod = mb_strtolower((string) ($ekOdeme['kod'] ?? ''), 'UTF-8');
+            $guncelParametre = $kod !== '' ? $this->getParametreCached($kod, $donemBaslangic ?: date('Y-m-01')) : null;
+            $resmiAlacakDahil = $this->isSnapshotResmiAlacakKalemi($ekOdeme, $kod, $guncelParametre);
+            if (!$resmiAlacakDahil) {
+                continue;
+            }
             $etiket = trim((string) ($ekOdeme['etiket'] ?? ''));
             if ($etiket === '') {
                 $etiket = ucwords(str_replace('_', ' ', $kod));
             }
-            $kalem = ['etiket' => $etiket, 'tutar' => $tutar];
+            $kalem = [
+                'etiket' => $etiket,
+                'tutar' => $tutar,
+                'resmi_alacagina_dahil' => $resmiAlacakDahil,
+            ];
             if (strpos($kod, 'prim') !== false || strpos($kod, 'ikramiye') !== false) {
                 $snapshotPrimDetaylari[] = $kalem;
             } else {
@@ -1079,7 +1112,6 @@ class BordroPersonelModel extends Model
             $snapshotBankaKesintiToplam = round($kesinti + $icra, 2);
         }
 
-        $donemBaslangic = (string) ($detay['donem']['baslangic'] ?? '');
         $donemBitis = $donemBaslangic !== '' ? date('Y-m-t', strtotime($donemBaslangic)) : '';
         $rtcGun = 0;
         $htcGun = 0;
@@ -1092,12 +1124,14 @@ class BordroPersonelModel extends Model
             $snapshotBankaDetaylari[] = [
                 'etiket' => 'Resmi Tatil Çalışması (Net)',
                 'tutar' => round($gunlukAsgariNet * $rtcGun, 2),
+                'resmi_alacagina_dahil' => true,
             ];
         }
         if ($htcGun > 0) {
             $snapshotBankaDetaylari[] = [
                 'etiket' => 'Hafta Tatili Çalışması (Net)',
                 'tutar' => round($gunlukAsgariNet * $htcGun, 2),
+                'resmi_alacagina_dahil' => true,
             ];
         }
         $snapshotBankaDetaylari = array_merge($snapshotBankaDetaylari, $snapshotPrimDetaylari);
@@ -1441,7 +1475,8 @@ class BordroPersonelModel extends Model
                         }
                         $bankaEkOdemeDetaylari[] = [
                             'etiket' => $label,
-                            'tutar' => $bankaKatkisi
+                            'tutar' => $bankaKatkisi,
+                            'resmi_alacagina_dahil' => true,
                         ];
                     }
                 } elseif (!$isPrimOdemeItem) {
@@ -1472,7 +1507,8 @@ class BordroPersonelModel extends Model
                         }
                         $bankaEkOdemeDetaylari[] = [
                             'etiket' => $label,
-                            'tutar' => $rNet
+                            'tutar' => $rNet,
+                            'resmi_alacagina_dahil' => $resmiAlacakDahil,
                         ];
                     }
                     if ($yontem === 'sodexo') {
@@ -1575,7 +1611,8 @@ class BordroPersonelModel extends Model
                 $rtcHtcBankaNetiGosterim += $rtcPayGosterim;
                 $bankaEkOdemeDetaylari[] = [
                     'etiket' => 'Resmi Tatil Çalışması (Net)',
-                    'tutar' => $rtcPayGosterim
+                    'tutar' => $rtcPayGosterim,
+                    'resmi_alacagina_dahil' => true,
                 ];
             }
             $htcPayGosterim = $rtcHtcSonucGosterim['htc']['net'];
@@ -1584,7 +1621,8 @@ class BordroPersonelModel extends Model
                 $rtcHtcBankaNetiGosterim += $htcPayGosterim;
                 $bankaEkOdemeDetaylari[] = [
                     'etiket' => 'Hafta Tatili Çalışması (Net)',
-                    'tutar' => $htcPayGosterim
+                    'tutar' => $htcPayGosterim,
+                    'resmi_alacagina_dahil' => true,
                 ];
             }
         }
@@ -1920,7 +1958,11 @@ class BordroPersonelModel extends Model
         $kalan = max(0.0, round($kalan - $yemek, 2));
 
         $ekOdemeler = [];
-        foreach (($hesap['bankaEkOdemeDetaylari'] ?? []) as $ekOdeme) {
+        $bankaEkOdemeDetaylari = array_values($hesap['bankaEkOdemeDetaylari'] ?? []);
+        usort($bankaEkOdemeDetaylari, static function (array $a, array $b): int {
+            return ((int) !empty($b['resmi_alacagina_dahil'])) <=> ((int) !empty($a['resmi_alacagina_dahil']));
+        });
+        foreach ($bankaEkOdemeDetaylari as $ekOdeme) {
             $toplamTutar = max(0.0, round((float) ($ekOdeme['tutar'] ?? 0), 2));
             if ($toplamTutar <= 0) {
                 continue;
@@ -1932,6 +1974,7 @@ class BordroPersonelModel extends Model
                 'tutar' => $ayriBankaTutari,
                 'toplam_tutar' => $toplamTutar,
                 'yemek_dahil_tutar' => $yemekDahilTutari,
+                'resmi_alacagina_dahil' => !empty($ekOdeme['resmi_alacagina_dahil']),
             ];
             $kalan = max(0.0, round($kalan - $ayriBankaTutari, 2));
         }

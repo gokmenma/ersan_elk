@@ -51,6 +51,28 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame('banka', $method->invoke($model, 1, 'diger', true, false, false));
     }
 
+    public function testSnapshotBankaSecimiResmiOlmayanNobetiResmiDetayaTasimasin(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'isSnapshotResmiAlacakKalemi');
+        $parametre = (object) ['resmi_alacagina_dahil' => 0];
+
+        self::assertFalse($method->invoke($model, [
+            'banka_matrahina_ekle' => 1,
+            'resmi_alacagina_dahil' => 0,
+        ], 'hafta_sonu_nobet', $parametre));
+
+        self::assertTrue($method->invoke($model, [
+            'banka_matrahina_ekle' => 1,
+            'resmi_alacagina_dahil' => 1,
+        ], 'hafta_ici_nobet', $parametre));
+
+        self::assertFalse($method->invoke($model, [
+            'banka_matrahina_ekle' => 1,
+            'resmi_alacagina_dahil' => 1,
+        ], 'yemek_yardimi_dengeleme', (object) ['resmi_alacagina_dahil' => 1]));
+    }
+
     public function testSgkFirmaDagilimiIseGirisOncesiniSaymazVeEksikGunleriGercekFirmadanDuser(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
@@ -126,6 +148,32 @@ final class BordroBankaDagilimiTest extends TestCase
             'banka_kesintisi' => 6000.0,
             'elden_kesintisi' => 0.0,
         ], $method->invoke($model, 17300, 16701.90, 6000, 0));
+    }
+
+    public function testBankaDetayindaDogrudanPayOnceResmiKalemeYazilir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $result = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 30000,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 0,
+            'asgariYatacak' => 23396.25,
+            'bankaAsgariGun' => 25,
+            'mealAllowanceDeduction' => 6300,
+            'spouseAllowanceDeduction' => 0,
+            'bankaEkOdemeDetaylari' => [
+                ['etiket' => 'Aylık Araç Kirası', 'tutar' => 2100, 'resmi_alacagina_dahil' => false],
+                ['etiket' => 'Olumlu Kaçak İhbar Primi', 'tutar' => 400, 'resmi_alacagina_dahil' => true],
+            ],
+        ]);
+
+        self::assertSame('Olumlu Kaçak İhbar Primi', $result['ek_odemeler'][0]['etiket']);
+        self::assertSame(303.75, $result['ek_odemeler'][0]['tutar']);
+        self::assertSame(96.25, $result['ek_odemeler'][0]['yemek_dahil_tutar']);
+        self::assertSame('Aylık Araç Kirası', $result['ek_odemeler'][1]['etiket']);
+        self::assertSame(0.0, $result['ek_odemeler'][1]['tutar']);
+        self::assertSame(2100.0, $result['ek_odemeler'][1]['yemek_dahil_tutar']);
+        self::assertSame(30000.0, $result['brut_banka']);
     }
 
     public function testDahilMaasKesintileriSecilenKanaldanOncelikliDuser(): void

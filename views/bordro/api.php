@@ -1204,6 +1204,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     .bordro-compact-view .calculation-toggle:hover { filter:brightness(.985); }
                     .bordro-compact-view .calculation-toggle .panel-chevron { transition:transform .25s ease; font-size:1.25rem; }
                     .bordro-compact-view .calculation-toggle[aria-expanded="true"] .panel-chevron { transform:rotate(180deg); }
+                    .bordro-compact-view .layout-switch { min-height:38px; white-space:nowrap; }
+                    @media (min-width:1200px) {
+                        .bordro-compact-view.layout-side .bordro-detail-card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) minmax(220px,.62fr); gap:1rem; margin:0; align-items:stretch; }
+                        .bordro-compact-view.layout-side .bordro-calculation-column,
+                        .bordro-compact-view.layout-side .calculation-panels { display:contents; }
+                        .bordro-compact-view.layout-side .bordro-calculation-panel,
+                        .bordro-compact-view.layout-side .bordro-deduction-column,
+                        .bordro-compact-view.layout-side .bordro-net-result-column { display:flex; width:auto !important; padding:0 !important; }
+                        .bordro-compact-view.layout-side .bordro-calculation-panel > .main-card { display:flex; flex-direction:column; width:100%; }
+                        .bordro-compact-view.layout-side .bordro-deduction-column > .main-card { width:100%; }
+                        .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show { display:flex !important; flex:1; flex-direction:column; }
+                        .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table { display:flex; flex:1; flex-direction:column; }
+                        .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody { display:flex; flex:1; flex-direction:column; }
+                        .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr:not(.collapse),
+                        .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr.collapse.show { display:table; width:100%; table-layout:fixed; }
+                        .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr.footer-row { margin-top:auto; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner { display:flex; width:100%; height:100%; margin-top:0; padding:20px; background:#f2fbf6; color:#334155; border:1px solid #ccebd9; box-shadow:0 5px 15px rgba(16,185,129,.06); }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner > .row { width:100%; margin:0; flex-direction:column; align-items:stretch !important; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-5,
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-7 { width:100%; padding:0 !important; border:0 !important; text-align:left !important; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-5 { margin-bottom:14px !important; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .text-white-50 { color:#94a3b8 !important; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .net-value-xl { font-size:1.9rem; text-shadow:none; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-6 { width:100%; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge { min-height:58px; padding:10px 12px; background:rgba(255,255,255,.72); color:#334155; border-color:#d6eadf; flex-direction:row; justify-content:flex-start; gap:10px; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge:hover { background:#fff; transform:none; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge i { margin:0 !important; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge .text-white-50 { margin-left:auto; }
+                    }
                     .bordro-compact-view .tint-hakedis { background: linear-gradient(to right, #f0fdf4, #ffffff); color: #166534; }
                     .bordro-compact-view .tint-resmi { background: linear-gradient(to right, #eff6ff, #ffffff); color: #1d4ed8; }
                     .bordro-compact-view .calculation-note { display:block; margin-top:3px; font-size:.72rem; font-weight:500; color:#94a3b8; }
@@ -1264,6 +1293,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         background: rgba(255, 255, 255, 0.04) !important;
                         color: #ffffff !important;
                     }
+                    @media (min-width:1200px) {
+                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner {
+                            background:rgba(22,55,43,.72); color:#f1f5f9; border-color:rgba(52,211,153,.2);
+                        }
+                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge {
+                            background:rgba(255,255,255,.04); color:#f1f5f9; border-color:rgba(255,255,255,.08);
+                        }
+                    }
                 </style>';
 
                 $html .= '<div class="bordro-compact-view container-fluid px-0">';
@@ -1279,9 +1316,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                           </div>';
                 $html .= '<div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+                            <button type="button" class="btn btn-outline-secondary bg-white layout-switch btn-toggle-old-detail-layout" aria-pressed="false" title="Hakediş kartlarının yerleşimini değiştir">
+                                <i class="bx bx-columns me-1"></i><span class="layout-switch-label">Alt Alta</span>
+                            </button>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">GÜNLÜK ÜCRET</small>
-                                <span class="fw-bold text-primary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺</span>
+                                <span class="fw-bold text-primary">' . ($gunlukUcret > 0 ? number_format($gunlukUcret, 2, ',', '.') . ' ₺' : '-') . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">MAAŞ TİPİ</small>
@@ -1299,21 +1339,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</div>';
 
                 // 2. MAIN ROW: 2 COLS
-                $html .= '<div class="row g-3">';
-                $html .= '<div class="col-lg-8"><div class="row g-3">';
+                $html .= '<div class="row g-3 bordro-detail-card-grid">';
+                $html .= '<div class="col-lg-8 bordro-calculation-column"><div class="row g-3 calculation-panels">';
 
                 $topRowValue = $modalBaseRowValue;
                 $topRowLabel = "Asgari Ücret Hakedişi";
 
                 // --- COLUMN 1: PERSONELIN KENDI ALACAGI ---
                 $kendiAlacakPanelId = 'kendiAlacakPanel_' . intval($bp->id);
-                $html .= '<div class="col-12">';
+                $html .= '<div class="col-12 bordro-calculation-panel">';
                 $html .= '<div class="main-card bg-white">';
-                $html .= '<div class="card-header-tint tint-hakedis calculation-toggle" data-bs-toggle="collapse" data-bs-target="#' . $kendiAlacakPanelId . '" aria-expanded="false" aria-controls="' . $kendiAlacakPanelId . '">
+                $html .= '<div class="card-header-tint tint-hakedis calculation-toggle" role="button" tabindex="0" data-collapse-target="#' . $kendiAlacakPanelId . '" aria-expanded="false" aria-controls="' . $kendiAlacakPanelId . '">
                             <span><i class="bx bx-calculator me-2"></i>SÖZLEŞME ALACAĞI HESABI <small class="d-block opacity-75 mt-1">Resmî + gayriresmî, kesinti öncesi</small></span>
                             <span class="d-flex align-items-center gap-2"><span class="badge rounded-pill bg-success">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down panel-chevron"></i></span>
                           </div>';
-                $html .= '<div class="collapse" id="' . $kendiAlacakPanelId . '"><table class="unified-table"><tbody>';
+                $html .= '<div class="collapse bordro-main-calculation-collapse" data-panel-key="contract" id="' . $kendiAlacakPanelId . '"><table class="unified-table"><tbody>';
                 
                 $collBaseId = "cBaseHakedis_" . $bp->id;
                 $asgariMatrarhGoster = false;
@@ -1336,8 +1376,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         || $isPrimUsulu;
 
                     if ($sozlesmeHakedisToplamGosterim > 0) {
+                        $anaHakedisEtiketi = $isPrimUsulu ? 'Puantaj / Prim Hakedişi' : 'Sözleşme Hakedişi';
+                        $anaHakedisIkonu = $isPrimUsulu ? 'bx-briefcase' : 'bx-file';
+                        $anaHakedisAciklamasi = $isPrimUsulu
+                            ? 'Dönem puantaj kazancı ve asgari tabanın yüksek olanı'
+                            : number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün';
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                                    <td><div class="d-flex align-items-center"><i class="bx bx-file me-2 text-dark opacity-75"></i><span>Sözleşme Hakedişi<span class="calculation-note">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td><div class="d-flex align-items-center"><i class="bx ' . $anaHakedisIkonu . ' me-2 text-dark opacity-75"></i><span>' . $anaHakedisEtiketi . '<span class="calculation-note">' . $anaHakedisAciklamasi . '</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($sozlesmeHakedisToplamGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
 
@@ -1347,7 +1392,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <td class="text-end pe-4">' . number_format($sozlesmeTabanGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-                        if ($sozlesmeMaasFarkiGosterim > 0) {
+                        if (!$isPrimUsulu && $sozlesmeMaasFarkiGosterim > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Sözleşme Farkı</td>
                                         <td class="text-end pe-4">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
@@ -1392,7 +1437,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     if ($isPrimUsulu && $contractHakedisForRounding > 0) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                                    <td><div class="d-flex align-items-center"><i class="bx bx-file me-2 text-dark opacity-75"></i><span>Sözleşme Hakedişi<span class="calculation-note">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-dark opacity-75"></i><span>Puantaj / Prim Hakedişi<span class="calculation-note">Dönem puantaj kazancı ve asgari tabanın yüksek olanı</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     } else if ($modalBaseRowValue > 0) {
@@ -1483,7 +1528,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Diğer Ek Ödemeler (Grup Grup)
                 foreach ($ekOdemelerNonPuantaj as $tur => $edata) {
-                    $turE = $ekOdemeTurEtiketleri[$tur] ?? ucfirst($tur);
+                    $turParametre = $BordroParametre->getByKod((string) $tur, $donemBaslangicTarihi);
+                    $turE = trim((string) ($turParametre->etiket ?? ''));
+                    if ($turE === '') {
+                        $turE = $ekOdemeTurEtiketleri[$tur] ?? ucfirst(str_replace('_', ' ', $tur));
+                    }
                     $cId = "cEx_" . md5($tur);
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $cId . '" aria-expanded="false">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-gift me-2 text-success"></i><span>' . htmlspecialchars($turE) . '</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
@@ -1510,7 +1559,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <td class="text-end pe-4 text-warning">' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
                 }
-                if ($htcGunModal > 0) {
+                if ($htcGunModal > 0 && $nominalMaas > 0) {
                     $htcToplamTutar = round($nominalMaas / 30 * $htcGunModal, 2);
                     $collHtc = "cHTC_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collHtc . '" aria-expanded="false">
@@ -1535,13 +1584,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // --- COLUMN 2: RESMI ALACAK / BANKA HESABI ---
                 $resmiAlacakPanelId = 'resmiAlacakPanel_' . intval($bp->id);
-                $html .= '<div class="col-12">';
+                $html .= '<div class="col-12 bordro-calculation-panel">';
                 $html .= '<div class="main-card bg-white">';
-                $html .= '<div class="card-header-tint tint-resmi calculation-toggle" data-bs-toggle="collapse" data-bs-target="#' . $resmiAlacakPanelId . '" aria-expanded="false" aria-controls="' . $resmiAlacakPanelId . '">
+                $html .= '<div class="card-header-tint tint-resmi calculation-toggle" role="button" tabindex="0" data-collapse-target="#' . $resmiAlacakPanelId . '" aria-expanded="false" aria-controls="' . $resmiAlacakPanelId . '">
                             <span><i class="bx bx-building-house me-2"></i>RESMÎ ALACAĞI HESABI <small class="d-block opacity-75 mt-1">Kesinti öncesi resmî hakediş</small></span>
                             <span class="d-flex align-items-center gap-2"><span class="badge rounded-pill bg-primary">' . number_format($bankaDetayDagilimi['brut_banka'], 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down panel-chevron"></i></span>
                           </div>';
-                $html .= '<div class="collapse" id="' . $resmiAlacakPanelId . '"><table class="unified-table"><tbody>';
+                $html .= '<div class="collapse bordro-main-calculation-collapse" data-panel-key="official" id="' . $resmiAlacakPanelId . '"><table class="unified-table"><tbody>';
                 $html .= '<tr class="section-row"><td colspan="2">Eklenenler</td></tr>';
                 $html .= '<tr class="parent-row">
                             <td><i class="bx bx-calendar-check me-2 text-primary"></i>Asgari Ücret (Net)<span class="calculation-note">' . number_format($bankaDetayDagilimi['asgari_gunluk'], 2, ',', '.') . ' ₺ × ' . intval($bankaDetayDagilimi['asgari_gun']) . ' gün</span></td>
@@ -1549,7 +1598,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </tr>';
                 if ($bankaDetayDagilimi['yemek'] > 0) {
                     $yemekGunlukGosterim = $includedAllowanceFiiliGun > 0 ? round($bankaDetayDagilimi['yemek'] / $includedAllowanceFiiliGun, 2) : 0;
-                    $html .= '<tr class="parent-row"><td><i class="bx bx-restaurant me-2 text-success"></i>Yemek Yardımı<span class="calculation-note">' . ($includedAllowanceFiiliGun > 0 ? number_format($yemekGunlukGosterim, 2, ',', '.') . ' ₺ × ' . $includedAllowanceFiiliGun . ' fiilî gün' : 'Resmî banka kalemi') . '</span></td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</td></tr>';
+                    $yemekKaynaklari = [];
+                    $yemekEkKazancToplami = 0.0;
+                    foreach ($bankaDetayDagilimi['ek_odemeler'] as $yemekEkOdeme) {
+                        $yemekDahilTutar = round(floatval($yemekEkOdeme['yemek_dahil_tutar'] ?? 0), 2);
+                        if ($yemekDahilTutar <= 0) {
+                            continue;
+                        }
+                        $yemekKaynaklari[] = [
+                            'etiket' => (string) ($yemekEkOdeme['etiket'] ?? 'Ek kazanç'),
+                            'tutar' => $yemekDahilTutar,
+                        ];
+                        $yemekEkKazancToplami += $yemekDahilTutar;
+                    }
+                    $sozlesmeYemekPayi = max(0.0, round($bankaDetayDagilimi['yemek'] - $yemekEkKazancToplami, 2));
+                    $yemekDetayId = 'resmiYemekDetay_' . intval($bp->id);
+                    $yemekAcilebilir = $sozlesmeYemekPayi > 0 || !empty($yemekKaynaklari);
+                    $html .= '<tr class="parent-row"' . ($yemekAcilebilir ? ' data-bs-toggle="collapse" data-bs-target=".' . $yemekDetayId . '" aria-expanded="false"' : '') . '><td><i class="bx bx-restaurant me-2 text-success"></i>Yemek Yardımı' . ($yemekAcilebilir ? '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i>' : '') . '<span class="calculation-note">' . ($includedAllowanceFiiliGun > 0 ? number_format($yemekGunlukGosterim, 2, ',', '.') . ' ₺ × ' . $includedAllowanceFiiliGun . ' fiilî gün' : 'Resmî banka kalemi') . '</span></td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</td></tr>';
+                    if ($sozlesmeYemekPayi > 0) {
+                        $html .= '<tr class="child-row collapse ' . $yemekDetayId . '"><td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Sözleşme İçindeki Yemek Payı</td><td class="text-end pe-4">+' . number_format($sozlesmeYemekPayi, 2, ',', '.') . ' ₺</td></tr>';
+                    }
+                    foreach ($yemekKaynaklari as $yemekKaynagi) {
+                        $html .= '<tr class="child-row collapse ' . $yemekDetayId . '"><td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($yemekKaynagi['etiket'], ENT_QUOTES, 'UTF-8') . '<small class="calculation-note">Yemek yardımına aktarılan</small></td><td class="text-end pe-4">+' . number_format($yemekKaynagi['tutar'], 2, ',', '.') . ' ₺</td></tr>';
+                    }
                 }
                 if ($bankaDetayDagilimi['es_yardimi'] > 0) {
                     $html .= '<tr class="parent-row"><td><i class="bx bx-group me-2 text-success"></i>Eş Yardımı</td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['es_yardimi'], 2, ',', '.') . ' ₺</td></tr>';
@@ -1568,11 +1639,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</div></div>';
 
                 // --- RIGHT COLUMN: KESINTILER ---
-                $html .= '<div class="col-lg-4">';
+                $html .= '<div class="col-lg-4 bordro-deduction-column">';
                 $html .= '<div class="main-card bg-white">';
                 $html .= '<div class="card-header-tint" style="background:linear-gradient(to right,#fef2f2,#fff);color:#991b1b;">
                             <span><i class="bx bx-minus-circle me-2"></i>KESİNTİLER</span>
-                            <span class="badge rounded-pill bg-danger">-' . number_format($bankaDetayDagilimi['kesinti'], 2, ',', '.') . ' ₺</span>
+                            <span class="badge rounded-pill bg-danger">' . ($bankaDetayDagilimi['kesinti'] > 0 ? '-' : '') . number_format($bankaDetayDagilimi['kesinti'], 2, ',', '.') . ' ₺</span>
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
                 if (!empty($bankaDetayDagilimi['kesinti_kalemleri'])) {
@@ -1582,13 +1653,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     $html .= '<tr><td colspan="2" class="text-center py-4 text-muted"><i class="bx bx-smile fs-4 d-block mb-1 opacity-50"></i>Kesinti bulunmuyor.</td></tr>';
                 }
-                $html .= '<tr class="footer-row"><td class="text-danger fw-bold">TOPLAM KESİNTİ</td><td class="text-end text-danger fw-bolder">-' . number_format($bankaDetayDagilimi['kesinti'], 2, ',', '.') . ' ₺</td></tr>';
+                $html .= '<tr class="footer-row"><td class="text-danger fw-bold">TOPLAM KESİNTİ</td><td class="text-end text-danger fw-bolder">' . ($bankaDetayDagilimi['kesinti'] > 0 ? '-' : '') . number_format($bankaDetayDagilimi['kesinti'], 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '</tbody></table></div></div>';
 
-                $html .= '</div>'; // Close Main Row (Main Columns)
-
                 // 3. BOTTOM HERO: NET SALARY + DISTRIBUTION
-                $html .= '<div class="net-bottom-banner">';
+                $html .= '<div class="col-12 bordro-net-result-column"><div class="net-bottom-banner">';
                 $html .= '<div class="row align-items-center">';
                 
                 $html .= '<div class="col-md-5 border-end border-secondary border-opacity-25 mb-4 mb-md-0 text-center text-md-start">';
@@ -1625,7 +1694,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $html .= '</div></div>'; // Close Grid + Col-md-7
-                $html .= '</div></div>'; // Close Row + Banner
+                $html .= '</div></div></div>'; // Close Row + Banner + Result Column
+                $html .= '</div>'; // Close Main Row (Main Columns)
 
                 if (($personel->maas_durumu ?? '') == 'Brüt') {
                     $html .= '<div class="mt-4 p-3 bg-light rounded-3 border d-flex flex-wrap justify-content-between align-items-center small text-muted">

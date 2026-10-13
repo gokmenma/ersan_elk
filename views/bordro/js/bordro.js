@@ -806,7 +806,106 @@ $(document).ready(function () {
     });
   });
 
-  // Eski Detay Görüntüle (2 Sütunlu Görünüm)
+  const oldDetailLayoutStorageKey = "bordro_old_detail_layout";
+  const oldDetailPanelStateStorageKey = "bordro_old_detail_panel_states";
+
+  function applyOldDetailLayout(layout) {
+    const normalizedLayout = layout === "side" ? "side" : "stacked";
+    const $view = $("#bordroDetailContent .bordro-compact-view");
+    if (!$view.length) return;
+
+    $view.toggleClass("layout-side", normalizedLayout === "side");
+    const $button = $view.find(".btn-toggle-old-detail-layout");
+    $button.attr("aria-pressed", normalizedLayout === "side" ? "true" : "false");
+    $button.find(".layout-switch-label").text(normalizedLayout === "side" ? "Yan Yana" : "Alt Alta");
+    $button.find("i").attr("class", normalizedLayout === "side" ? "bx bx-columns me-1" : "bx bx-list-ul me-1");
+  }
+
+  function getSavedOldDetailLayout() {
+    try {
+      return localStorage.getItem(oldDetailLayoutStorageKey) === "side" ? "side" : "stacked";
+    } catch (e) {
+      return "stacked";
+    }
+  }
+
+  function getSavedOldDetailPanelStates() {
+    const defaults = { contract: false, official: false };
+    try {
+      const saved = JSON.parse(localStorage.getItem(oldDetailPanelStateStorageKey) || "{}");
+      return {
+        contract: saved.contract === true,
+        official: saved.official === true,
+      };
+    } catch (e) {
+      return defaults;
+    }
+  }
+
+  function saveOldDetailPanelState(panelKey, isOpen) {
+    const states = getSavedOldDetailPanelStates();
+    states[panelKey] = isOpen;
+    try {
+      localStorage.setItem(oldDetailPanelStateStorageKey, JSON.stringify(states));
+    } catch (e) {}
+  }
+
+  function applyOldDetailPanelStates() {
+    const states = getSavedOldDetailPanelStates();
+    $("#bordroDetailContent .bordro-main-calculation-collapse").each(function () {
+      const panelKey = $(this).data("panel-key");
+      const collapse = bootstrap.Collapse.getOrCreateInstance(this, { toggle: false });
+      if (states[panelKey] === true) {
+        collapse.show();
+      } else {
+        collapse.hide();
+      }
+    });
+  }
+
+  function toggleOldDetailPanel(trigger) {
+    const targetSelector = $(trigger).attr("data-collapse-target");
+    const target = targetSelector ? document.querySelector(targetSelector) : null;
+    if (!target || target.classList.contains("collapsing")) return;
+
+    const collapse = bootstrap.Collapse.getOrCreateInstance(target, { toggle: false });
+    if (target.classList.contains("show")) {
+      collapse.hide();
+    } else {
+      collapse.show();
+    }
+  }
+
+  $(document).on("click", ".calculation-toggle", function (event) {
+    event.preventDefault();
+    toggleOldDetailPanel(this);
+  });
+
+  $(document).on("keydown", ".calculation-toggle", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleOldDetailPanel(this);
+  });
+
+  $(document).on("shown.bs.collapse hidden.bs.collapse", ".bordro-main-calculation-collapse", function (event) {
+    if (event.target !== this) return;
+    const isOpen = event.type === "shown";
+    saveOldDetailPanelState($(this).data("panel-key"), isOpen);
+    const targetSelector = "#" + this.id;
+    $("#bordroDetailContent .calculation-toggle").filter(function () {
+      return $(this).attr("data-collapse-target") === targetSelector;
+    }).attr("aria-expanded", isOpen ? "true" : "false");
+  });
+
+  $(document).on("click", ".btn-toggle-old-detail-layout", function () {
+    const nextLayout = $("#bordroDetailContent .bordro-compact-view").hasClass("layout-side") ? "stacked" : "side";
+    try {
+      localStorage.setItem(oldDetailLayoutStorageKey, nextLayout);
+    } catch (e) {}
+    applyOldDetailLayout(nextLayout);
+  });
+
+  // Eski Detay Görüntüle (seçilebilir alt alta / yan yana görünüm)
   $(document).on("click", ".btn-detail-old", function () {
     const id = $(this).data("id");
     console.log("Bordro Eski Detay tıklandı, ID:", id);
@@ -824,6 +923,8 @@ $(document).ready(function () {
       success: function (response) {
         if (response.status === "success") {
           $("#bordroDetailContent").html(response.html);
+          applyOldDetailLayout(getSavedOldDetailLayout());
+          applyOldDetailPanelStates();
           renderBordroDetailFooterSummary(null);
           showModal("bordroDetailModal");
         } else {

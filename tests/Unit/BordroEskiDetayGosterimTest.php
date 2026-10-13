@@ -23,5 +23,22 @@ final class BordroEskiDetayGosterimTest extends TestCase
         self::assertStringContainsString('<i class="bx bx-minus-circle me-2"></i>KESİNTİLER', $source);
         self::assertStringContainsString('col-lg-8', $source);
         self::assertStringContainsString('col-lg-4', $source);
+        self::assertStringContainsString('btn-toggle-old-detail-layout', $source);
+        self::assertStringContainsString('calculation-panels', $source);
+        self::assertStringContainsString('data-panel-key="contract"', $source);
+        self::assertStringContainsString('data-panel-key="official"', $source);
+        self::assertStringContainsString('tr.footer-row { margin-top:auto; }', $source);
+        self::assertStringContainsString('grid-template-columns:repeat(3,minmax(0,1fr)) minmax(220px,.62fr)', $source);
+        self::assertStringContainsString('bordro-net-result-column', $source);
+        self::assertStringContainsString('background:#f2fbf6; color:#334155', $source);
+        self::assertStringContainsString('data-collapse-target="#', $source);
+        self::assertStringContainsString('$turParametre->etiket', $source);
+        self::assertStringContainsString('Sözleşme İçindeki Yemek Payı', $source);
+        self::assertStringContainsString('Yemek yardımına aktarılan', $source);
+        self::assertStringContainsString("'resmiYemekDetay_'", $source);
+        self::assertStringContainsString('tbody > tr.collapse.show { display:table;', $source);
+        self::assertStringContainsString('Puantaj / Prim Hakedişi', $source);
+        self::assertStringContainsString('$htcGunModal > 0 && $nominalMaas > 0', $source);
+        self::assertStringContainsString("\$bankaDetayDagilimi['kesinti'] > 0 ? '-' : ''", $source);
     }
 }

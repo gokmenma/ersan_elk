@@ -3,7 +3,12 @@
 - [x] Personel PWA Kaçak sayfasında onaylanan aktif tutanaklara ekip üyeleri için fotoğraf/video/açıklama ekleme akışı tamamlandı; açıklama güvenilir kuyruk üzerinden sunucuya taşınıp mevcut tutanak açıklamasına ekleniyor ve API sahiplik/onay/aktiflik kontrollerini uyguluyor.
 
 ## Neler Tamamlandı?
-- [x] Eski bordro detay penceresinde sözleşme alacağı ve resmî alacağı açılır panelleri sol sütunda alt alta konumlandırıldı; kesintiler tekrar sağdaki ayrı kırmızı karta taşındı, kesinti sonrası ödeme altta bırakıldı ve puantaj toplam adet/iç detay bilgisi korundu.
+- [x] Kayıtlı bordro detayında banka kanal seçiminin resmî alacak üyeliği sayılması engellendi; resmî olmayan hafta sonu nöbeti ve zaten ana yemek satırında bulunan teknik yemek dengeleme kaydı ek kalemlerden çıkarıldı ve regresyon testleri eklendi.
+- [x] Sabit maaşı olmayan prim usulü personelin eski detayında sıfır günlük/sıfır HTÇ ve negatif sıfır kesinti gösterimleri kaldırıldı; dönem tabanı Puantaj / Prim Hakedişi olarak doğru etiketlendi.
+- [x] Eski bordro detayındaki Resmî Alacak > Yemek Yardımı satırına sözleşme payı ve yemek havuzuna aktarılan ek kazançları gösteren mutabık açılır kaynak kırılımı eklendi.
+- [x] Eski bordro detayında ek ödeme teknik kodları parametre etiketleriyle değiştirildi; ana ve satır içi akordeonların kapanmama sorunu açık Bootstrap kontrolü ve kapalı collapse satırlarını ezmeyen eşit-yükseklik CSS seçicisiyle giderildi.
+- [x] Maaşa dahil yemekli bordrolarda araç kirası gibi resmî olmayan kalemlerin kayıt sırası nedeniyle parçalanıp doğrudan resmî banka eki gibi gösterilmesi giderildi; doğrudan banka payı resmî kalemlere öncelikli yazılır hale getirildi.
+- [x] Eski bordro detay penceresinde kalıcı Alt Alta / Yan Yana görünüm ve bağımsız akordeon durumu eklendi; yan yana görünümde Net Ödeme kolonu daraltıldı ve açık/koyu temada hafif yeşil yüzeyle diğer kartlardan ayrıldı.
 - [x] Maaşa dahil yardım sırası yemek → kalan bakiyeden eş yardımı olarak düzeltildi; çoklu çalışma aralıklarında yalnız son aralığı sayan puantaj X günü hatası giderildi ve HTÇ/RTÇ yemek gününden çıkarıldı.
 - [x] Bordro detay modalında asgari ücret satırının kesinti sonrası banka bakiyesine kırpılması giderildi; snapshot kesintileri kalem bazında açıldı, kesinti öncesi ara toplam eklendi, net maaşlı Normal Kazançlar asgari tabana çekildi ve net fazla çalışma/brüt hover ayrımı tamamlandı.
 - [x] Bordro detay footer'ındaki Brüt Toplamı kutusuna toplam hakedişe nasıl ulaşıldığını sözleşme günü, sözleşme günlüğü, tam HTÇ hakedişi ve diğer kazançlarla açıklayan mutabakat tooltip'i eklendi.
