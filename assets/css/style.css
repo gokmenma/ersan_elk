@@ -3069,6 +3069,36 @@ select.select2-hidden-accessible {
   visibility: visible !important;
 }
 
+/* Password Field Wrapper & Toggle Icon for Floating Inputs */
+.password-field-wrapper {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.password-field-wrapper .btn-toggle-password,
+.btn-toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #74788d;
+  padding: 4px;
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.password-field-wrapper .btn-toggle-password:hover,
+.btn-toggle-password:hover {
+  color: #5b73e8;
+}
+
 .form-selectgroup {
   display: inline-flex;
   margin: 0 -0.5rem -0.5rem 0;

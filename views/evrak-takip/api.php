@@ -20,6 +20,12 @@ use App\Model\SystemLogModel;
 use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 use App\Service\EvrakOnayBildirimService;
+use App\Model\UetsSettingsModel;
+use App\Model\UetsMesajModel;
+use App\Model\UetsEvidenceModel;
+use App\Model\UetsRehberModel;
+use App\Service\UetsClientService;
+use App\Service\UetsSyncService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -1083,6 +1089,212 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $icraUstYaziService = new \App\Service\IcraUstYaziService();
                 $draft = $icraUstYaziService->build($icraId);
                 echo json_encode(['status' => 'success', 'data' => $draft], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+
+            case 'uets-ayarlari-getir':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $uetsSettingsModel = new UetsSettingsModel();
+                $uetsSettings = $uetsSettingsModel->getSettings($firmaId);
+                $hasApiKey = !empty($uetsSettings['api_key_decrypted']);
+                $maskedKey = '';
+                if ($hasApiKey) {
+                    $raw = $uetsSettings['api_key_decrypted'];
+                    $maskedKey = mb_substr($raw, 0, 4) . '••••••••' . mb_substr($raw, -4);
+                }
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'uets_adresi' => $uetsSettings['uets_adresi'] ?? '',
+                        'api_key_masked' => $maskedKey,
+                        'has_api_key' => $hasApiKey,
+                        'api_environment' => $uetsSettings['api_environment'] ?? 'test',
+                        'otomatik_senkronizasyon' => (int) ($uetsSettings['otomatik_senkronizasyon'] ?? 1),
+                        'bakiye' => $uetsSettings['bakiye'] ?? null,
+                        'son_gelen_sync_zamani' => !empty($uetsSettings['son_gelen_sync_zamani']) ? date('d.m.Y H:i', strtotime($uetsSettings['son_gelen_sync_zamani'])) : null,
+                    ],
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-ayarlari-kaydet':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $uetsSettingsModel = new UetsSettingsModel();
+                $uetsAdresi = trim((string) ($_POST['uets_adresi'] ?? ''));
+                if ($uetsAdresi === '') {
+                    throw new Exception('UETS adresi zorunludur.');
+                }
+                $saveData = [
+                    'uets_adresi' => $uetsAdresi,
+                    'api_environment' => in_array($_POST['api_environment'] ?? 'test', ['test', 'prod']) ? $_POST['api_environment'] : 'test',
+                    'otomatik_senkronizasyon' => !empty($_POST['otomatik_senkronizasyon']) ? 1 : 0,
+                ];
+                if (!empty($_POST['api_key'])) {
+                    $saveData['api_key'] = trim((string) $_POST['api_key']);
+                }
+                $saved = $uetsSettingsModel->saveSettings($firmaId, $saveData);
+                if (!$saved) {
+                    throw new Exception('UETS ayarları kaydedilemedi.');
+                }
+                echo json_encode(['status' => 'success', 'message' => 'UETS ayarları başarıyla kaydedildi.'], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-baglanti-test':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $uetsSettings = (new UetsSettingsModel())->getSettings($firmaId);
+                $apiKeyToTest = !empty($_POST['api_key']) ? trim((string) $_POST['api_key']) : ($uetsSettings['api_key_decrypted'] ?? '');
+                $envToTest = !empty($_POST['api_environment']) ? $_POST['api_environment'] : ($uetsSettings['api_environment'] ?? 'prod');
+                if (empty($apiKeyToTest)) {
+                    throw new Exception('Test edilecek API anahtarı girilmedi.');
+                }
+                $client = new UetsClientService($apiKeyToTest, $envToTest);
+                $testRes = $client->testConnection();
+                $envLabel = ($envToTest === 'prod') ? 'Canlı Ortam' : 'Test Ortamı';
+
+                if ($testRes['success']) {
+                    $msg = "UETS ({$envLabel}) bağlantısı başarılı! Toplam: {$testRes['total_count']}, Okunmamış: {$testRes['unread_count']}";
+                } else {
+                    $detailMsg = !empty($testRes['message']) ? ': ' . $testRes['message'] : '';
+                    $msg = "Bağlantı kurulamadı (HTTP {$testRes['status_code']}{$detailMsg})";
+                    if ($testRes['status_code'] === 401 && $envToTest === 'test') {
+                        $msg .= ". Girdiğiniz API anahtarı Canlı sisteme ait olabilir. Lütfen 'API Ortamı' alanından 'Canlı Ortam (api.etebligat.gov.tr)' seçeneğini seçip tekrar deneyiniz.";
+                    }
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => $testRes,
+                    'message' => $msg,
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-bakiye-sorgula':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $uetsSettingsModel = new UetsSettingsModel();
+                $uetsSettings = $uetsSettingsModel->getSettings($firmaId);
+                if (!$uetsSettings || empty($uetsSettings['api_key_decrypted'])) {
+                    throw new Exception('UETS API anahtarı tanımlanmamış.');
+                }
+                $formattedAddress = UetsSettingsModel::formatUetsAddress($uetsSettings['uets_adresi'] ?? '');
+                $client = new UetsClientService($uetsSettings['api_key_decrypted'], $uetsSettings['api_environment'] ?? 'prod');
+                $bal = $client->getBalance($formattedAddress);
+                if (isset($bal['balance'])) {
+                    $uetsSettingsModel->updateBalance($firmaId, (float) $bal['balance']);
+                }
+                echo json_encode(['status' => 'success', 'data' => $bal], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-alici-ara':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $query = trim((string) ($_POST['query'] ?? ''));
+                if ($query === '') {
+                    throw new Exception('Aranacak adres veya kimlik numarası giriniz.');
+                }
+                $rehberModel = new UetsRehberModel();
+                $localHits = $rehberModel->searchLocal($firmaId, $query);
+                if (!empty($localHits)) {
+                    echo json_encode(['status' => 'success', 'data' => $localHits, 'source' => 'cache'], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
+                $uetsSettings = (new UetsSettingsModel())->getSettings($firmaId);
+                if (!$uetsSettings || empty($uetsSettings['api_key_decrypted'])) {
+                    echo json_encode(['status' => 'success', 'data' => [], 'message' => 'API ayarları bulunamadı.'], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
+                $client = new UetsClientService($uetsSettings['api_key_decrypted'], $uetsSettings['api_environment'] ?? 'test');
+                $criteria = [];
+                if (preg_match('/^\d{5}-\d{5}-\d{5}$/', $query)) {
+                    $criteria['address'] = $query;
+                } elseif (strlen($query) === 11 && ctype_digit($query)) {
+                    $criteria['tcn'] = $query;
+                } elseif (strlen($query) === 10 && ctype_digit($query)) {
+                    $criteria['vgn'] = $query;
+                } else {
+                    $criteria['address'] = $query;
+                }
+                $searchRes = $client->searchRecipient($criteria);
+                $results = [];
+                if (!empty($searchRes['address'])) {
+                    $rehberModel->saveOrUpdate($firmaId, $searchRes);
+                    $results[] = $searchRes;
+                } elseif (is_array($searchRes)) {
+                    foreach ($searchRes as $item) {
+                        if (is_array($item) && !empty($item['address'])) {
+                            $rehberModel->saveOrUpdate($firmaId, $item);
+                            $results[] = $item;
+                        }
+                    }
+                }
+                echo json_encode(['status' => 'success', 'data' => $results, 'source' => 'api'], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-senkronize-et':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $syncService = new UetsSyncService();
+                $syncRes = $syncService->syncIncoming($firmId);
+                echo json_encode($syncRes, JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-delil-listesi':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $uetsMsgId = trim((string) ($_POST['uets_message_id'] ?? ''));
+                $mesajIdRaw = (string) ($_POST['mesaj_id'] ?? '');
+                $mesajModel = new UetsMesajModel();
+                $mesaj = null;
+                if ($uetsMsgId !== '') {
+                    $mesaj = $mesajModel->getByUetsId($firmaId, $uetsMsgId);
+                } elseif ($mesajIdRaw !== '') {
+                    $localId = $decryptId($mesajIdRaw);
+                    $mesaj = $mesajModel->getById($localId, $firmaId);
+                }
+                if (!$mesaj) {
+                    throw new Exception('Tebligat kaydı bulunamadı.');
+                }
+                $evidenceModel = new UetsEvidenceModel();
+                $evidences = $evidenceModel->getByUetsMesajId((int) $mesaj['id']);
+
+                // Eğer yerelde delil yoksa canlı UETS'ten çekip kaydetmeyi dene
+                if (empty($evidences)) {
+                    $uetsSettings = (new UetsSettingsModel())->getSettings($firmaId);
+                    if ($uetsSettings && !empty($uetsSettings['api_key_decrypted'])) {
+                        try {
+                            $client = new UetsClientService($uetsSettings['api_key_decrypted'], $uetsSettings['api_environment'] ?? 'test');
+                            $liveEvids = $client->getEvidenceList($mesaj['uets_message_id']);
+                            if (is_array($liveEvids)) {
+                                foreach ($liveEvids as $ev) {
+                                    if (!empty($ev['id'])) {
+                                        $evidenceModel->upsertEvidence((int) $mesaj['id'], $ev);
+                                    }
+                                }
+                                $evidences = $evidenceModel->getByUetsMesajId((int) $mesaj['id']);
+                            }
+                        } catch (\Throwable $e) {
+                            error_log("Canlı delil çekme hatası: " . $e->getMessage());
+                        }
+                    }
+                }
+                echo json_encode(['status' => 'success', 'data' => $evidences, 'tebligat' => $mesaj], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-gonder':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $evrakIdRaw = (string) ($_POST['evrak_id'] ?? '');
+                $evrakId = $decryptId($evrakIdRaw);
+                if ($evrakId <= 0 && is_numeric($evrakIdRaw)) {
+                    $evrakId = (int) $evrakIdRaw;
+                }
+                if ($evrakId <= 0) {
+                    throw new Exception('Geçerli bir evrak seçilmedi.');
+                }
+                $recipientUets = trim((string) ($_POST['recipient_uets'] ?? ''));
+                if ($recipientUets === '') {
+                    throw new Exception('Alıcı UETS adresi zorunludur.');
+                }
+                $syncService = new UetsSyncService();
+                $sendRes = $syncService->sendOutgoing($firmaId, $evrakId, [
+                    'recipient_uets' => $recipientUets,
+                    'barcode' => trim((string) ($_POST['barcode'] ?? '')),
+                    'recipient_ref' => trim((string) ($_POST['recipient_ref'] ?? '')),
+                ]);
+                echo json_encode($sendRes, JSON_UNESCAPED_UNICODE);
                 break;
 
             default:

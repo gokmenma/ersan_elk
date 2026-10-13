@@ -127,6 +127,13 @@ $title = "Evrak Listesi";
                     <a class="dropdown-item d-flex align-items-center" href="index?p=evrak-takip/giden-evrak&amp;arac=icra">
                         <i class="bx bx-file-blank me-2 text-warning font-size-16"></i> İcra Üst Yazısı Oluştur
                     </a>
+                    <div class="dropdown-divider"></div>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSync">
+                        <i class="bx bx-sync me-2 text-primary font-size-16"></i> UETS / KEP Senkronize Et
+                    </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSettings">
+                        <i class="bx bx-slider me-2 text-secondary font-size-16"></i> UETS / KEP Ayarları
+                    </button>
                 </div>
             </div>
 
@@ -313,6 +320,13 @@ $title = "Evrak Listesi";
                                             <i class="bx bx-up-arrow-alt"></i> GİDEN
                                         </span>
                                     <?php endif; ?>
+                                    <?php if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)): ?>
+                                        <div class="mt-1">
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-0.5 font-size-10 fw-semibold" title="UETS E-Tebligat">
+                                                <i class="bx bx-envelope"></i> UETS
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <?php
                                 $tarihRaw = !empty($evrak->tarih) ? (string) $evrak->tarih : '1970-01-01';
@@ -493,6 +507,12 @@ $title = "Evrak Listesi";
                                             </button>
                                         <?php endif; ?>
 
+                                        <?php if (!empty($evrak->uets_mesaj_id)): ?>
+                                            <button type="button" class="btn btn-subtle-info table-action-btn btn-uets-deliller" data-uets-id="<?= htmlspecialchars((string) $evrak->uets_mesaj_id, ENT_QUOTES, 'UTF-8'); ?>" title="UETS İspat Delilleri">
+                                                <i class="bx bx-shield-quarter"></i>
+                                            </button>
+                                        <?php endif; ?>
+
                                         <?php if ($siraBende): ?>
                                             <button type="button" class="btn btn-subtle-success table-action-btn evrak-e-imza-onayla" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="E-İmza ile Onayla">
                                                 <i class="bx bx-check"></i>
@@ -641,5 +661,6 @@ $title = "Evrak Listesi";
 </style>
 
 <?php include_once "modal/evrak-modal.php"; ?>
+<?php include_once "modal/uets-modals.php"; ?>
 
 <script src="<?= Helper::assetVersion('views/evrak-takip/js/evrak-takip.js'); ?>"></script>

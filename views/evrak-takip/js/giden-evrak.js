@@ -1152,6 +1152,112 @@ $(document).ready(function () {
     $("#imzaSiraContainer").find("button").prop("disabled", true);
   }
 
+  // ==========================================
+  // UETS / KEP İLE GÖNDERİM İŞLEMLERİ
+  // ==========================================
+  $(document).on("click", "#btnUetsGonderModalAc, #btnUetsHizliGonder", function () {
+    $("#uetsAliciDogrulamaSonuc").html("");
+    $("#modalUetsGonder").modal("show");
+  });
+
+  // Alıcı UETS Doğrulama
+  $("#btnUetsGonderDogrula").on("click", function () {
+    const query = ($("#recipient_uets").length ? $("#recipient_uets") : $("#uetsGonderAlici")).val().trim();
+    if (!query) {
+      $("#uetsAliciDogrulamaSonuc").html('<span class="text-danger">Lütfen UETS adresi giriniz.</span>');
+      return;
+    }
+    const $btn = $(this);
+    const origHtml = $btn.html();
+    $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i>');
+    $("#uetsAliciDogrulamaSonuc").html('<span class="text-muted"><i class="bx bx-loader-alt bx-spin me-1"></i> UETS Rehberi sorgulanıyor...</span>');
+
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "uets-alici-ara", query: query },
+      dataType: "json",
+      success: function (res) {
+        $btn.prop("disabled", false).html(origHtml);
+        if (res.status === "success" && res.data && res.data.length > 0) {
+          const rec = res.data[0];
+          const name = rec.name || rec.unvan || "Kurum/Kişi";
+          $("#uetsAliciDogrulamaSonuc").html(
+            `<span class="text-success"><i class="bx bx-check-circle me-1"></i><strong>Doğrulandı:</strong> ${name} (${rec.address || query})</span>`
+          );
+        } else {
+          $("#uetsAliciDogrulamaSonuc").html(
+            `<span class="text-danger"><i class="bx bx-x-circle me-1"></i>Adres doğrulanamadı. Lütfen kontrol ediniz.</span>`
+          );
+        }
+      },
+      error: function () {
+        $btn.prop("disabled", false).html(origHtml);
+        $("#uetsAliciDogrulamaSonuc").html('<span class="text-danger">Doğrulama servisine bağlanılamadı.</span>');
+      },
+    });
+  });
+
+  // UETS Gönder Form Submit
+  $("#formUetsGonder").on("submit", function (e) {
+    e.preventDefault();
+    const recipient = ($("#recipient_uets").length ? $("#recipient_uets") : $("#uetsGonderAlici")).val().trim();
+    if (!recipient) {
+      Swal.fire("Uyarı", "Alıcı UETS adresi girilmelidir.", "warning");
+      return;
+    }
+
+    Swal.fire({
+      title: "E-Tebligat Gönderilecek",
+      text: "Evrak EYP formatında şifrelenip PTT UETS sistemine iletilecektir. Bu işlem geri alınamaz. Onaylıyor musunuz?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Evet, Gönder",
+      cancelButtonText: "Vazgeç",
+      confirmButtonColor: "#556ee6",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const $btn = $("#btnUetsGonderSubmit");
+        $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Gönderiliyor...');
+        Swal.fire({
+          title: "PTT UETS'e İletiliyor...",
+          text: "EYP paketi oluşturuluyor ve UETS kuyruğuna alınıyor.",
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        const formData = $(this).serialize() + "&action=uets-gonder";
+
+        $.ajax({
+          url: "views/evrak-takip/api.php",
+          type: "POST",
+          data: formData,
+          dataType: "json",
+          success: function (res) {
+            $btn.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> Tebligatı Gönder');
+            if (res.status === "success") {
+              $("#modalUetsGonder").modal("hide");
+              Swal.fire({
+                icon: "success",
+                title: "Tebligat Gönderildi!",
+                html: `<strong>UETS Mesaj ID:</strong> ${res.uets_message_id}<br><strong>Barkod:</strong> ${res.barcode || "-"}`,
+              }).then(() => {
+                window.location.href = "index?p=evrak-takip/list";
+              });
+            } else {
+              Swal.fire("Hata", res.message || "Tebligat gönderilemedi.", "error");
+            }
+          },
+          error: function (xhr) {
+            $btn.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> Tebligatı Gönder');
+            const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : "UETS servisiyle bağlantı kurulamadı.";
+            Swal.fire("Gönderim Hatası", msg, "error");
+          }
+        });
+      }
+    });
+  });
+
   $("#gidenPdfModal").on("hidden.bs.modal", clearPdf);
   renderAttachments();
   if (typeof feather !== "undefined") feather.replace();

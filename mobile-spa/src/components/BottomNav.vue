@@ -52,7 +52,7 @@ const operations = [
   { permission: 'tasks', label: 'Görev Takibi', icon: ClipboardCheck, bg: '#f5f3ff', color: '#7c3aed', to: '/gorevler' },
   { permission: 'invoices', label: 'E-Fatura & Finans', icon: ReceiptText, bg: '#eef2ff', color: '#4f46e5', href: '/mobile/index.php?p=efatura' },
   { permission: 'cash', label: 'Kasa Yönetimi', icon: Landmark, bg: '#fffbeb', color: '#d97706', href: '/mobile/index.php?p=gelir-gider' },
-  { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, bg: '#ecfdf5', color: '#059669', href: '/mobile/index.php?p=cari-takip' },
+  { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, bg: '#ecfdf5', color: '#059669', to: '/cari-takip' },
   { permission: 'vehicles', label: 'Araç Takip', icon: Car, bg: '#f0fdf4', color: '#16a34a', href: '/mobile/index.php?p=arac' },
   { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, bg: '#ecfeff', color: '#0891b2', href: '/mobile/index.php?p=km-onaylari' },
   { permission: 'documents', label: 'Evrak Takip', icon: FileText, bg: '#f0f9ff', color: '#0284c7', href: '/mobile/index.php?p=evrak-takip' },

@@ -502,8 +502,25 @@ if ($record) {
                                     </button>
                                 </li>
                             <?php endif; ?>
+                            <?php if ($record && $onayDurumu === 'onaylandi'): ?>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnUetsGonderModalAc">
+                                        <i data-feather="upload-cloud" class="icon-xs text-primary mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold text-primary">UETS / KEP ile Gönder</span>
+                                            <span class="d-block small text-muted">E-Tebligat olarak alıcının UETS adresine iletir</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            <?php endif; ?>
                         </ul>
                     </div>
+                <?php endif; ?>
+                <?php if ($record && $onayDurumu === 'onaylandi'): ?>
+                    <button type="button" id="btnUetsHizliGonder" class="btn btn-success px-4 me-2">
+                        <i data-feather="upload-cloud" class="icon-xs me-1"></i> UETS ile Gönder
+                    </button>
                 <?php endif; ?>
                 <?php if (!$kilitli): ?>
                     <button type="submit" id="btnGidenKaydet" class="btn btn-primary px-5"><i data-feather="save" class="icon-xs me-1"></i> Kaydet</button>
@@ -635,6 +652,81 @@ window.gidenInitialSelectedSigners = <?php echo json_encode($initialSelectedSign
             <button type="button" class="btn btn-secondary px-4 d-flex align-items-center" data-bs-dismiss="modal"><i class="bx bx-x me-1 fs-5"></i> Kapat</button>
         </div>
     </div></div>
+</div>
+
+<div class="modal fade" id="modalUetsGonder" tabindex="-1" aria-labelledby="modalUetsGonderTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title font-size-15 fw-bold" id="modalUetsGonderTitle">
+                    <i class="bx bx-send me-1"></i> UETS / KEP E-Tebligat Gönder
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formUetsGonder">
+                    <input type="hidden" name="evrak_id" value="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
+                    <div class="mb-3 position-relative">
+                        <?php echo Form::FormFloatInput(
+                            'text',
+                            'recipient_uets',
+                            '',
+                            'Örn: 25059-56257-37271',
+                            'Alıcı UETS Adresi *',
+                            'bx bx-id-card',
+                            'form-control font-monospace pe-5',
+                            true,
+                            null,
+                            'off',
+                            false,
+                            '',
+                            false,
+                            null
+                        ); ?>
+                        <button class="btn btn-sm btn-link text-primary position-absolute end-0 top-50 translate-middle-y me-2" type="button" id="btnUetsGonderDogrula" title="Rehberde Doğrula" style="z-index: 5;">
+                            <i class="bx bx-search fs-5"></i>
+                        </button>
+                        <div id="uetsAliciDogrulamaSonuc" class="font-size-12 mt-1"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput(
+                            'text',
+                            'barcode',
+                            '',
+                            'Otomatik üretilir veya giriniz',
+                            'Barkod Numarası',
+                            'bx bx-barcode',
+                            'form-control font-monospace'
+                        ); ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput(
+                            'text',
+                            'recipient_ref',
+                            '',
+                            'Varsa kurum dosya / esas no',
+                            'Alıcı Referans Kodu',
+                            'bx bx-file',
+                            'form-control'
+                        ); ?>
+                    </div>
+
+                    <div class="alert alert-warning py-2 font-size-12 mb-0">
+                        <i class="bx bx-info-circle me-1"></i> Gönderim yapıldığında evrak standart <strong>EYP (E-Yazışma Paketi)</strong> haline getirilerek UETS kuyruğuna alınır ve 1 tebligat kredisi düşülür.
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="submit" class="btn btn-primary px-4" id="btnUetsGonderSubmit">
+                            <i class="bx bx-paper-plane me-1"></i> Tebligatı Gönder
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/evrak-takip/js/giden-evrak.js'); ?>"></script>

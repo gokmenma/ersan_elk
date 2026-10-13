@@ -927,6 +927,325 @@ $(document).ready(function () {
 
   $(document).on("hidden.bs.modal", "#evrakPdfModal", resetPdfModalState);
 
+  // ==========================================
+  // UETS / KEP İŞLEMLERİ
+  // ==========================================
+
+  // 1. UETS Senkronize Et Butonu
+  $("#btnUetsSync").on("click", function () {
+    Swal.fire({
+      title: "UETS Senkronizasyonu",
+      text: "PTT UETS servisinden yeni gelen tebligatlar çekilecek ve kontrol edilecek. Devam edilsin mi?",
+      icon: "info",
+      showCancelButton: true,
+      confirmButtonText: "Evet, Senkronize Et",
+      cancelButtonText: "Vazgeç",
+      confirmButtonColor: "#556ee6",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Senkronize Ediliyor...",
+          text: "UETS servisleri sorgulanıyor, lütfen bekleyiniz.",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        $.ajax({
+          url: "views/evrak-takip/api.php",
+          type: "POST",
+          data: { action: "uets-senkronize-et" },
+          dataType: "json",
+          success: function (res) {
+            if (res.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Senkronizasyon Tamamlandı",
+                text: res.message || "Tebligatlar başarıyla güncellendi.",
+              }).then(() => {
+                location.reload();
+              });
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Hata",
+                text: res.message || "Senkronizasyon sırasında hata oluştu.",
+              });
+            }
+          },
+          error: function () {
+            Swal.fire({
+              icon: "error",
+              title: "Sunucu Hatası",
+              text: "UETS senkronizasyon servisine bağlanılamadı.",
+            });
+          },
+        });
+      }
+    });
+  });
+
+  // 2. UETS Ayarları Modalı Açma
+  $("#btnUetsSettings").on("click", function () {
+    $("#uetsTestResult").addClass("d-none").html("");
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "uets-ayarlari-getir" },
+      dataType: "json",
+      success: function (res) {
+        if (res.status === "success" && res.data) {
+          $("#uets_adresi").val(res.data.uets_adresi || "");
+          $("#api_environment").val(res.data.api_environment || "prod").trigger("change");
+          $("#uets_otomatik_sync").prop("checked", res.data.otomatik_senkronizasyon == 1);
+          $("#api_key, #uets_api_key").val("");
+          if (res.data.has_api_key) {
+            $("#apiKeyHelpText").text("Mevcut anahtar kayıtlı: " + res.data.api_key_masked + " (Değiştirmeyecekseniz boş bırakınız)");
+          } else {
+            $("#apiKeyHelpText").text("Henüz API anahtarı tanımlanmamış.");
+          }
+          if (res.data.son_gelen_sync_zamani) {
+            $("#uetsSonSyncText").text("Son Senkronizasyon: " + res.data.son_gelen_sync_zamani);
+          }
+          if (res.data.bakiye !== null && res.data.bakiye !== undefined) {
+            $("#uetsBakiyeText").html("• <strong>Bakiye:</strong> " + res.data.bakiye + " Kredi");
+          }
+        }
+        $("#modalUetsAyarlar").modal("show");
+      },
+    });
+  });
+
+  // Modal gösterildiğinde Select2 başlat
+  $("#modalUetsAyarlar").on("shown.bs.modal", function () {
+    if ($("#api_environment").length && !$("#api_environment").hasClass("select2-hidden-accessible")) {
+      $("#api_environment").select2({
+        dropdownParent: $("#modalUetsAyarlar"),
+        width: "100%",
+        minimumResultsForSearch: -1,
+      });
+    }
+  });
+
+  // Modal kapandığında şifre alanını gizli yap
+  $("#modalUetsAyarlar").on("hidden.bs.modal", function () {
+    const $input = $("#api_key").length ? $("#api_key") : $("#uets_api_key");
+    $input.attr("type", "password");
+    $("#btnToggleApiKeyVisibility").find("i").attr("class", "bx bx-show font-size-18");
+  });
+
+  // UETS Adresi 15 haneli girildiğinde tire ile formatla
+  $("#uets_adresi").on("blur", function () {
+    const raw = $(this).val().replace(/[^0-9]/g, "");
+    if (raw.length === 15 && $(this).val().indexOf("-") === -1) {
+      $(this).val(raw.substr(0, 5) + "-" + raw.substr(5, 5) + "-" + raw.substr(10, 5));
+    }
+  });
+
+  // 3. API Anahtarı Göster / Gizle
+  $("#btnToggleApiKeyVisibility").on("click", function (e) {
+    e.preventDefault();
+    const $input = $("#api_key").length ? $("#api_key") : $("#uets_api_key");
+    const isPassword = $input.attr("type") === "password";
+    $input.attr("type", isPassword ? "text" : "password");
+    $(this).find("i").attr("class", isPassword ? "bx bx-hide font-size-18" : "bx bx-show font-size-18");
+  });
+
+  // 4. UETS Ayarları Kaydetme
+  $("#formUetsAyarlar").on("submit", function (e) {
+    e.preventDefault();
+    const formData = $(this).serialize() + "&action=uets-ayarlari-kaydet";
+    const $btn = $("#btnSaveUetsSettings");
+    $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Kaydediliyor...');
+
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: formData,
+      dataType: "json",
+      success: function (res) {
+        $btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i> Ayarları Kaydet');
+        if (res.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı",
+            text: res.message || "UETS ayarları kaydedildi.",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          $("#modalUetsAyarlar").modal("hide");
+        } else {
+          Swal.fire({ icon: "error", title: "Hata", text: res.message });
+        }
+      },
+      error: function () {
+        $btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i> Ayarları Kaydet');
+        Swal.fire({ icon: "error", title: "Hata", text: "Ayarlar kaydedilirken hata oluştu." });
+      },
+    });
+  });
+
+  // 5. UETS Bağlantı Testi
+  $("#btnUetsTestConnection").on("click", function () {
+    const $btn = $(this);
+    const originalText = $btn.html();
+    $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Test ediliyor...');
+    $("#uetsTestResult").removeClass("d-none alert-success alert-danger").addClass("alert alert-info").text("Bağlantı kuruluyor...");
+
+    const apiKeyVal = ($("#api_key").length ? $("#api_key") : $("#uets_api_key")).val();
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: {
+        action: "uets-baglanti-test",
+        api_key: apiKeyVal,
+        api_environment: $("#api_environment").val(),
+      },
+      dataType: "json",
+      success: function (res) {
+        $btn.prop("disabled", false).html(originalText);
+        if (res.status === "success" && res.data && res.data.success) {
+          $("#uetsTestResult")
+            .removeClass("alert-info alert-danger")
+            .addClass("alert alert-success")
+            .html(`<strong><i class="bx bx-check-circle me-1"></i> Başarılı:</strong> PTT UETS API bağlantısı sağlandı. Toplam Tebligat: ${res.data.total_count}, Okunmamış: ${res.data.unread_count}`);
+        } else {
+          $("#uetsTestResult")
+            .removeClass("alert-info alert-success")
+            .addClass("alert alert-danger")
+            .html(`<strong><i class="bx bx-x-circle me-1"></i> Bağlantı Hatası:</strong> ${res.message || "Bağlantı kurulamadı."}`);
+        }
+      },
+      error: function () {
+        $btn.prop("disabled", false).html(originalText);
+        $("#uetsTestResult")
+          .removeClass("alert-info alert-success")
+          .addClass("alert alert-danger")
+          .text("Sunucuya ulaşılamadı.");
+      },
+    });
+  });
+
+  // 6. UETS Bakiye Sorgula
+  $("#btnUetsCheckBalance").on("click", function () {
+    const $btn = $(this);
+    const originalText = $btn.html();
+    $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Sorgulanıyor...');
+
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "uets-bakiye-sorgula" },
+      dataType: "json",
+      success: function (res) {
+        $btn.prop("disabled", false).html(originalText);
+        if (res.status === "success" && res.data) {
+          const bal = res.data.balance !== undefined ? res.data.balance : "Bilinmiyor";
+          $("#uetsBakiyeText").html(`• <strong>Bakiye:</strong> ${bal} Kredi`);
+          Swal.fire({
+            icon: "info",
+            title: "UETS Bakiye Bilgisi",
+            html: `<div class="font-size-14">Mevcut Bakiye: <strong>${bal}</strong> Kredi<br>${res.data.credit_limit ? "Kredi Limiti: " + res.data.credit_limit : ""}</div>`,
+          });
+        } else {
+          Swal.fire({ icon: "error", title: "Hata", text: res.message || "Bakiye alınamadı." });
+        }
+      },
+      error: function () {
+        $btn.prop("disabled", false).html(originalText);
+        Swal.fire({ icon: "error", title: "Hata", text: "Bakiye sorgulanamadı." });
+      },
+    });
+  });
+
+  // 7. Tebligat Delilleri Modalı Açma
+  $(document).on("click", ".btn-uets-deliller", function () {
+    const uetsId = $(this).data("uets-id");
+    if (!uetsId) return;
+
+    $("#delilModalUetsId").text(uetsId);
+    $("#delilModalBarcode").text("-");
+    $("#delilModalSender").text("-");
+    $("#delilModalRecipient").text("-");
+    $("#delilModalSubject").text("Yükleniyor...");
+    $("#delilTimelineContainer").html('<div class="text-center py-4 text-muted"><i class="bx bx-loader-alt bx-spin fs-4"></i> Deliller yükleniyor...</div>');
+    $("#btnDownloadEypPackage").attr("href", `views/evrak-takip/pdf.php?type=uets_eyp&uets_id=${encodeURIComponent(uetsId)}`);
+    $("#modalUetsDeliller").modal("show");
+
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "uets-delil-listesi", uets_message_id: uetsId },
+      dataType: "json",
+      success: function (res) {
+        if (res.status === "success") {
+          const t = res.tebligat || {};
+          $("#delilModalBarcode").text(t.barcode || t.reference_id || "-");
+          $("#delilModalSender").text(t.sender_name || t.sender_uets || "-");
+          $("#delilModalRecipient").text(t.recipient_name || t.recipient_uets || "-");
+          $("#delilModalSubject").text(t.subject || "-");
+
+          const deliller = res.data || [];
+          if (deliller.length === 0) {
+            $("#delilTimelineContainer").html('<div class="alert alert-light border text-center text-muted py-3">Bu tebligata ait henüz delil kaydı oluşmamış.</div>');
+            return;
+          }
+
+          let html = '<ul class="list-group list-group-flush border rounded-3">';
+          deliller.forEach(function (d) {
+            const dateStr = d.olay_zamani ? new Date(d.olay_zamani).toLocaleString("tr-TR") : "-";
+            let eventBadge = '<span class="badge bg-secondary">Bilinmeyen</span>';
+            let icon = "bx-info-circle";
+
+            if (d.olay === "Acceptance") {
+              eventBadge = '<span class="badge bg-primary-subtle text-primary">Sisteme Kabul Edildi</span>';
+              icon = "bx-check";
+            } else if (d.olay === "Delivery") {
+              eventBadge = '<span class="badge bg-success-subtle text-success">Muhataba Teslim Edildi</span>';
+              icon = "bx-down-arrow-circle";
+            } else if (d.olay === "Retrieval") {
+              eventBadge = '<span class="badge bg-info-subtle text-info">Muhatap Tarafından Açıldı / Okundu</span>';
+              icon = "bx-envelope-open";
+            } else if (d.olay === "5Days") {
+              eventBadge = '<span class="badge bg-danger-subtle text-danger">5 Günlük Yasal Süre Doldu</span>';
+              icon = "bx-time-five";
+            }
+
+            html += `
+              <li class="list-group-item d-flex justify-content-between align-items-center py-2.5">
+                <div>
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bx ${icon} text-primary fs-5"></i>
+                    <strong>${d.olay}</strong>
+                    ${eventBadge}
+                  </div>
+                  <div class="font-size-12 text-muted">
+                    <span>Olay Zamanı: ${dateStr}</span>
+                    <span class="ms-2 font-monospace">ID: ${d.evidence_id}</span>
+                  </div>
+                </div>
+                <div>
+                  <a href="views/evrak-takip/pdf.php?type=uets_delil&evidence_id=${encodeURIComponent(d.evidence_id)}" 
+                     class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" target="_blank">
+                    <i class="bx bxs-file-pdf font-size-14"></i> Delil PDF İndir
+                  </a>
+                </div>
+              </li>
+            `;
+          });
+          html += "</ul>";
+          $("#delilTimelineContainer").html(html);
+        } else {
+          $("#delilTimelineContainer").html(`<div class="alert alert-danger py-2">${res.message || "Deliller yüklenemedi."}</div>`);
+        }
+      },
+      error: function () {
+        $("#delilTimelineContainer").html('<div class="alert alert-danger py-2">Sunucu hatası: Deliller yüklenemedi.</div>');
+      },
+    });
+  });
+
   // ---------- Özet kartlarını gizle/göster (Standardized) ----------
   const SUMMARY_STATE_KEY = "evrak_summary_cards_state";
 

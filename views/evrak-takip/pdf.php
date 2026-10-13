@@ -27,7 +27,96 @@ if ($currentUserId <= 0 || !(new MenuModel())->userCanAccessMenuLink($currentUse
 }
 
 try {
-    $model = new EvrakTakipModel();
+    $downloadType = (string) ($_GET['type'] ?? '');
+    $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+
+    // UETS Delil PDF İndirme / Görüntüleme
+    if ($downloadType === 'uets_delil') {
+        $evidenceId = trim((string) ($_GET['evidence_id'] ?? ''));
+        if ($evidenceId === '') {
+            throw new RuntimeException('Delil ID belirtilmedi.');
+        }
+        $evidenceModel = new \App\Model\UetsEvidenceModel();
+        $delil = $evidenceModel->getByEvidenceId($evidenceId);
+        if (!$delil) {
+            throw new RuntimeException('Delil kaydı bulunamadı.');
+        }
+
+        $pdfBytes = '';
+        if (!empty($delil['delil_pdf_yolu'])) {
+            $pdfFullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $delil['delil_pdf_yolu'], '/');
+            if (file_exists($pdfFullPath)) {
+                $raw = file_get_contents($pdfFullPath);
+                try {
+                    $pdfBytes = Security::decryptFile($raw);
+                } catch (\Throwable $e) {
+                    $pdfBytes = $raw;
+                }
+            }
+        }
+
+        if (empty($pdfBytes)) {
+            $settings = (new \App\Model\UetsSettingsModel())->getSettings($firmaId);
+            if (!$settings || empty($settings['api_key_decrypted'])) {
+                throw new RuntimeException('UETS API ayarları yapılandırılmamış.');
+            }
+            $client = new \App\Service\UetsClientService($settings['api_key_decrypted'], $settings['api_environment'] ?? 'test');
+            $pdfBytes = $client->downloadEvidencePdf($evidenceId);
+
+            // Yerel olarak ISO 27001 gereği şifreleyerek önbelleğe al
+            $storageDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/uets';
+            if (!is_dir($storageDir)) {
+                mkdir($storageDir, 0755, true);
+            }
+            $filename = 'delil_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $evidenceId) . '.pdf';
+            $fullPath = $storageDir . '/' . $filename;
+            file_put_contents($fullPath, Security::encryptFile($pdfBytes));
+            $evidenceModel->updatePdfPath($evidenceId, 'uploads/evrak-takip/uets/' . $filename);
+        }
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="uets_delil_' . $evidenceId . '.pdf"');
+        header('Content-Length: ' . strlen($pdfBytes));
+        echo $pdfBytes;
+        exit;
+    }
+
+    // UETS EYP Paketi İndirme
+    if ($downloadType === 'uets_eyp') {
+        $msgIdEnc = (string) ($_GET['msg_id'] ?? '');
+        $uetsMesajId = (string) ($_GET['uets_id'] ?? '');
+        $mesajModel = new \App\Model\UetsMesajModel();
+        
+        $mesaj = null;
+        if ($uetsMesajId !== '') {
+            $mesaj = $mesajModel->getByUetsId($firmaId, $uetsMesajId);
+        } elseif ($msgIdEnc !== '') {
+            $localId = (int) Security::decrypt($msgIdEnc);
+            $mesaj = $mesajModel->getById($localId, $firmaId);
+        }
+
+        if (!$mesaj || empty($mesaj['ham_eyp_yolu'])) {
+            throw new RuntimeException('UETS EYP paketi bulunamadı.');
+        }
+
+        $eypFullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $mesaj['ham_eyp_yolu'], '/');
+        if (!file_exists($eypFullPath)) {
+            throw new RuntimeException('EYP paket dosyası diskte bulunamadı.');
+        }
+
+        $rawEyp = file_get_contents($eypFullPath);
+        try {
+            $eypBytes = Security::decryptFile($rawEyp);
+        } catch (\Throwable $e) {
+            $eypBytes = $rawEyp;
+        }
+
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="uets_' . ($mesaj['uets_message_id'] ?? 'tebligat') . '.eyp"');
+        header('Content-Length: ' . strlen($eypBytes));
+        echo $eypBytes;
+        exit;
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $personelId = (int) ($_POST['personel_id'] ?? 0);

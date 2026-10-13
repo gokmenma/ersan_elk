@@ -132,5 +132,14 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
 - Ağır gradient, kalın çerçeve ve birbiriyle yarışan renkli kartlar yerine açık yüzey, düşük kontrastlı sınır, kontrollü gölge ve tek vurgu rengi kullanılacaktır.
 - Alt navigasyon sabit uygulama dock'udur; yetkisiz öğeler çizilmez ve merkez aksiyon yalnızca yetkili ek işlemleri açar.
 
-
+## 11. Hafıza ve Bağlam Yönetimi (Memory Bank Standardı)
+- Proje oturum hafızası için kök dizindeki `memory-bank/` yapısı kullanılır.
+- Temel dosyalar:
+  - `projectbrief.md`: Projenin amacı ve kapsamı.
+  - `productContext.md`: Nasıl çalışması gerektiği ve kullanıcı deneyimi.
+  - `systemPatterns.md`: Mimari kararlar ve kod düzeni.
+  - `techContext.md`: Kullanılan kütüphaneler ve sürümler.
+  - `activeContext.md`: Şu an ne üzerinde çalışıldığı ve aktif bağlam.
+  - `progress.md`: Neler tamamlandı, neler kaldı.
+- Her işlem ve geliştirme tamamlandığında `memory-bank/activeContext.md` ve `memory-bank/progress.md` dosyaları güncellenerek seans hafızaya alınır.
 
