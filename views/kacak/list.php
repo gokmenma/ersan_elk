@@ -3499,7 +3499,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             $kutu.html('<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Rapor hazırlanıyor...</p></div>');
 
             const params = {
-                action: 'get-report-table',
+                action: 'get-kacak-report-table',
                 tab: 'kacakkontrol',
                 year: y,
                 month: m,
@@ -4669,7 +4669,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             $kutu.html('<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Kaski Ekip Özeti hazırlanıyor...</p></div>');
 
             $.get('views/puantaj/api.php', {
-                action: 'get-report-table',
+                action: 'get-kacak-report-table',
                 tab: 'kacakkontrol',
                 kaski: 1,
                 year: y,

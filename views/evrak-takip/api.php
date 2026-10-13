@@ -1229,7 +1229,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'uets-senkronize-et':
                 $firmaId = (int) $_SESSION['firma_id'];
                 $syncService = new UetsSyncService();
-                $syncRes = $syncService->syncIncoming($firmId);
+                $syncRes = $syncService->previewIncoming($firmaId);
+                echo json_encode($syncRes, JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-secilenleri-aktar':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $encryptedIds = $_POST['selection_ids'] ?? [];
+                if (!is_array($encryptedIds) || count($encryptedIds) < 1 || count($encryptedIds) > 100) {
+                    throw new Exception('Aktarılacak 1 ile 100 arasında UETS evrakı seçiniz.');
+                }
+                $uetsMessageIds = [];
+                foreach ($encryptedIds as $encryptedId) {
+                    $decryptedId = trim((string) Security::decrypt((string) $encryptedId));
+                    if ($decryptedId === '' || mb_strlen($decryptedId) > 64) {
+                        throw new Exception('UETS evrak seçimi geçersiz. Listeyi yenileyip tekrar deneyiniz.');
+                    }
+                    $uetsMessageIds[] = $decryptedId;
+                }
+                $syncRes = (new UetsSyncService())->syncIncoming($firmaId, array_values(array_unique($uetsMessageIds)));
                 echo json_encode($syncRes, JSON_UNESCAPED_UNICODE);
                 break;
 

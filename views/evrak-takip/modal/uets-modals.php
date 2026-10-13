@@ -143,6 +143,50 @@ use App\Helper\Form;
     </div>
 </div>
 
+<!-- UETS Gelen Evrak Seçim Modalı -->
+<div class="modal fade" id="modalUetsGelenSecim" tabindex="-1" aria-labelledby="modalUetsGelenSecimTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalUetsGelenSecimTitle">
+                    <i class="bx bx-envelope-open me-2 fs-5"></i> UETS Gelen Evrakları
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="alert alert-info rounded-0 border-0 mb-0 font-size-12 d-flex align-items-start">
+                    <i class="bx bx-info-circle fs-4 me-2 flex-shrink-0"></i>
+                    <span>Yalnızca seçtiğiniz evraklar sisteme aktarılır. Daha önce aktarılanlar seçilemez; manuel kayıtla eşleşebilecek evraklar sarı uyarıyla gösterilir.</span>
+                </div>
+                <div class="alert alert-warning rounded-0 border-0 mb-0 font-size-12 d-none" id="uetsFetchWarning"></div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle mb-0" id="uetsGelenSecimTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width:48px"><input type="checkbox" class="form-check-input" id="uetsSelectAll" aria-label="Tüm uygun evrakları seç"></th>
+                                <th style="width:110px">Tarih</th>
+                                <th>Konu</th>
+                                <th style="width:240px">Gönderen</th>
+                                <th style="width:170px">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody id="uetsGelenSecimBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span class="text-muted font-size-12" id="uetsSelectionSummary">0 evrak seçildi</span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="button" class="btn btn-primary" id="btnUetsSelectedImport" disabled>
+                        <i class="bx bx-import me-1"></i> Seçilenleri Aktar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- UETS Delil ve İspat Belgeleri Modalı -->
 <div class="modal fade" id="modalUetsDeliller" tabindex="-1" aria-labelledby="modalUetsDelillerTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">

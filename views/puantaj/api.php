@@ -2250,7 +2250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // Rapor Tablosunu Getir
-if (isset($_GET["action"]) && $_GET["action"] == "get-report-table") {
+if (isset($_GET["action"]) && in_array($_GET["action"], ['get-report-table', 'get-kacak-report-table'], true)) {
     require_once 'rapor-getir.php';
     exit;
 }

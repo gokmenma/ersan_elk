@@ -35,7 +35,49 @@ class UetsSyncService
     /**
      * Gelen tebligatları UETS servisinden senkronize eder
      */
-    public function syncIncoming(int $firmId): array
+    public function previewIncoming(int $firmId): array
+    {
+        $messages = $this->fetchIncomingMessages($firmId);
+        $rows = [];
+
+        foreach ($messages['messages'] as $msg) {
+            $uetsMsgId = (string) ($msg['id'] ?? '');
+            if ($uetsMsgId === '') {
+                continue;
+            }
+            $tarih = !empty($msg['inserttime']) ? date('Y-m-d', (int) $msg['inserttime']) : date('Y-m-d');
+            $konu = mb_substr(trim((string) ($msg['subject'] ?? 'UETS Elektronik Tebligat')), 0, 250);
+            $kurumAdi = mb_substr(trim((string) ($msg['sender_name'] ?? $msg['sender'] ?? 'UETS Gönderici')), 0, 250);
+            $duplicate = $this->evrakModel->findPossibleUetsDuplicate($firmId, $uetsMsgId, $tarih, $konu, $kurumAdi);
+            $alreadyImported = $duplicate && (string) ($duplicate->uets_mesaj_id ?? '') === $uetsMsgId;
+
+            $rows[] = [
+                'selection_id' => Security::encrypt($uetsMsgId),
+                'tarih' => date('d.m.Y', strtotime($tarih)),
+                'konu' => $konu,
+                'gonderen' => $kurumAdi,
+                'gonderen_uets' => (string) ($msg['sender'] ?? ''),
+                'durum' => (string) ($msg['status'] ?? ''),
+                'boyut' => (int) ($msg['size'] ?? 0),
+                'aktarildi' => $alreadyImported,
+                'olasi_mukerrer' => $duplicate !== null && !$alreadyImported,
+                'eslesen_evrak' => $duplicate ? [
+                    'id' => Security::encrypt((int) $duplicate->id),
+                    'evrak_no' => (string) ($duplicate->evrak_no ?? ''),
+                    'konu' => (string) ($duplicate->konu ?? ''),
+                ] : null,
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'data' => $rows,
+            'hatalar' => $messages['errors'],
+            'message' => count($rows) . ' UETS evrakı kontrol edildi.',
+        ];
+    }
+
+    public function syncIncoming(int $firmId, ?array $selectedMessageIds = null): array
     {
         $settings = $this->settingsModel->getSettings($firmId);
         if (!$settings || empty($settings['api_key_decrypted'])) {
@@ -63,35 +105,13 @@ class UetsSyncService
         $guncellenenSayisi = 0;
         $hataListesi = [];
 
-        // 1. delivered durumundaki okunmamış tebligatları çek
-        $deliveredMessages = [];
-        try {
-            $respDelivered = $client->getMessages([
-                'type' => 'incoming',
-                'status' => 'delivered',
-                'count' => 100,
-                'sort' => '-inserttime',
-            ]);
-            $deliveredMessages = $respDelivered['messages'] ?? [];
-        } catch (\Throwable $e) {
-            $hataListesi[] = "Delivered tebligatlar alınamadı: " . $e->getMessage();
+        $incomingResult = $this->fetchIncomingMessages($firmId, $client);
+        $allIncoming = $incomingResult['messages'];
+        $hataListesi = $incomingResult['errors'];
+        if ($selectedMessageIds !== null) {
+            $selectedLookup = array_fill_keys(array_values(array_unique($selectedMessageIds)), true);
+            $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => isset($selectedLookup[(string) ($msg['id'] ?? '')])));
         }
-
-        // 2. readtimeout durumundaki (5 gün dolup kanunen tebliğ sayılan) tebligatları çek
-        $timeoutMessages = [];
-        try {
-            $respTimeout = $client->getMessages([
-                'type' => 'incoming',
-                'status' => 'readtimeout',
-                'count' => 100,
-                'sort' => '-inserttime',
-            ]);
-            $timeoutMessages = $respTimeout['messages'] ?? [];
-        } catch (\Throwable $e) {
-            $hataListesi[] = "Readtimeout tebligatlar alınamadı: " . $e->getMessage();
-        }
-
-        $allIncoming = array_merge($deliveredMessages, $timeoutMessages);
 
         $uploadBaseDir = dirname(__DIR__, 2) . '/uploads/evrak-takip';
         $uetsStorageDir = $uploadBaseDir . '/uets';
@@ -160,17 +180,7 @@ class UetsSyncService
                         $konu = mb_substr(trim((string) ($msg['subject'] ?? 'UETS Elektronik Tebligat')), 0, 250);
                         $kurumAdi = mb_substr(trim((string) ($msg['sender_name'] ?? $msg['sender'] ?? 'UETS Gönderici')), 0, 250);
 
-                        $db = (new \App\Core\Db())->getConnection();
-                        $insertEvrak = $db->prepare(
-                            "INSERT INTO evrak_takip 
-                                (firma_id, evrak_tipi, kaynak_tipi, uets_mesaj_id, tarih, evrak_no, konu, kurum_adi, 
-                                 aciklama, dosya_yolu, onay_durumu, olusturma_tarihi)
-                             VALUES 
-                                (:firma_id, 'gelen', 'uets', :uets_mesaj_id, :tarih, :evrak_no, :konu, :kurum_adi, 
-                                 :aciklama, :dosya_yolu, 'onaylandi', NOW())"
-                        );
-                        $insertEvrak->execute([
-                            'firma_id' => $firmId,
+                        $newEvrakId = $this->evrakModel->createFromUets($firmId, [
                             'uets_mesaj_id' => $uetsMsgId,
                             'tarih' => $tarih,
                             'evrak_no' => $evrakNo,
@@ -179,7 +189,6 @@ class UetsSyncService
                             'aciklama' => "UETS Tebligat No: {$uetsMsgId}\nGönderen UETS: " . ($msg['sender'] ?? '') . "\nAlıcı: " . ($msg['recipient'] ?? ''),
                             'dosya_yolu' => $pdfPathToStore,
                         ]);
-                        $newEvrakId = (int) $db->lastInsertId();
 
                         // uets_mesajlar ile evrak_takip'i birbirine bağla
                         $this->mesajModel->linkToEvrak($localMesajId, $newEvrakId);
@@ -272,6 +281,45 @@ class UetsSyncService
             'hatalar' => $hataListesi,
             'message' => "Senkronizasyon tamamlandı: {$yeniGelenSayisi} yeni tebligat alındı, {$guncellenenSayisi} kayıt güncellendi.",
         ];
+    }
+
+    private function fetchIncomingMessages(int $firmId, ?UetsClientService $client = null): array
+    {
+        if ($client === null) {
+            $settings = $this->settingsModel->getSettings($firmId);
+            if (!$settings || empty($settings['api_key_decrypted'])) {
+                throw new Exception('Firma için UETS API anahtarı veya ayarları yapılandırılmamış.');
+            }
+            $client = new UetsClientService($settings['api_key_decrypted'], $settings['api_environment'] ?? 'test');
+        }
+
+        $messagesById = [];
+        $errors = [];
+        // İndirilmiş tebligatlar UETS tarafından "read" durumuna geçirilir. Manuel
+        // kaydedilmiş eski evrakların da karşılaştırılabilmesi için üç gelen durumunu da getir.
+        foreach (['delivered', 'read', 'readtimeout'] as $status) {
+            try {
+                $start = 0;
+                $pageSize = 250;
+                do {
+                    $response = $client->getMessages([
+                        'type' => 'incoming', 'status' => $status, 'start' => $start, 'count' => $pageSize, 'sort' => '-inserttime',
+                    ]);
+                    $pageMessages = $response['messages'] ?? [];
+                    foreach ($pageMessages as $message) {
+                        if (is_array($message) && !empty($message['id'])) {
+                            $messagesById[(string) $message['id']] = $message;
+                        }
+                    }
+                    $start += count($pageMessages);
+                    $totalCount = (int) ($response['total_count'] ?? $start);
+                } while ($pageMessages !== [] && $start < $totalCount);
+            } catch (\Throwable $e) {
+                $errors[] = ucfirst($status) . ' tebligatlar alınamadı: ' . $e->getMessage();
+            }
+        }
+
+        return ['messages' => array_values($messagesById), 'errors' => $errors];
     }
 
     /**

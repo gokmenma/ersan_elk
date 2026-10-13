@@ -931,58 +931,120 @@ $(document).ready(function () {
   // UETS / KEP İŞLEMLERİ
   // ==========================================
 
-  // 1. UETS Senkronize Et Butonu
-  $("#btnUetsSync").on("click", function () {
-    Swal.fire({
-      title: "UETS Senkronizasyonu",
-      text: "PTT UETS servisinden yeni gelen tebligatlar çekilecek ve kontrol edilecek. Devam edilsin mi?",
-      icon: "info",
-      showCancelButton: true,
-      confirmButtonText: "Evet, Senkronize Et",
-      cancelButtonText: "Vazgeç",
-      confirmButtonColor: "#556ee6",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({
-          title: "Senkronize Ediliyor...",
-          text: "UETS servisleri sorgulanıyor, lütfen bekleyiniz.",
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          },
-        });
+  function updateUetsSelectionSummary() {
+    const selectedCount = $(".uets-incoming-check:checked").length;
+    const availableCount = $(".uets-incoming-check:not(:disabled)").length;
+    $("#uetsSelectionSummary").text(selectedCount + " / " + availableCount + " uygun evrak seçildi");
+    $("#btnUetsSelectedImport").prop("disabled", selectedCount === 0);
+    $("#uetsSelectAll").prop("checked", availableCount > 0 && selectedCount === availableCount);
+  }
 
-        $.ajax({
-          url: "views/evrak-takip/api.php",
-          type: "POST",
-          data: { action: "uets-senkronize-et" },
-          dataType: "json",
-          success: function (res) {
-            if (res.status === "success") {
-              Swal.fire({
-                icon: "success",
-                title: "Senkronizasyon Tamamlandı",
-                text: res.message || "Tebligatlar başarıyla güncellendi.",
-              }).then(() => {
-                location.reload();
-              });
-            } else {
-              Swal.fire({
-                icon: "error",
-                title: "Hata",
-                text: res.message || "Senkronizasyon sırasında hata oluştu.",
-              });
-            }
-          },
-          error: function () {
-            Swal.fire({
-              icon: "error",
-              title: "Sunucu Hatası",
-              text: "UETS senkronizasyon servisine bağlanılamadı.",
-            });
-          },
-        });
+  function renderUetsIncomingRows(rows) {
+    const $body = $("#uetsGelenSecimBody").empty();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      $body.append($("<tr>").append($("<td>", {
+        colspan: 5,
+        class: "text-center text-muted py-5",
+        text: "UETS'te aktarılabilecek gelen evrak bulunamadı.",
+      })));
+      updateUetsSelectionSummary();
+      return;
+    }
+
+    rows.forEach(function (row) {
+      const disabled = Boolean(row.aktarildi);
+      const $check = $("<input>", {
+        type: "checkbox",
+        class: "form-check-input uets-incoming-check",
+        value: row.selection_id || "",
+        disabled: disabled,
+        "aria-label": (row.konu || "UETS evrakı") + " seç",
+      });
+      const $status = $("<div>");
+      if (row.aktarildi) {
+        $status.append($("<span>", { class: "badge bg-success-subtle text-success border border-success-subtle", text: "Zaten aktarıldı" }));
+      } else if (row.olasi_mukerrer) {
+        const matchNo = row.eslesen_evrak && row.eslesen_evrak.evrak_no ? " (No: " + row.eslesen_evrak.evrak_no + ")" : "";
+        $status.append($("<span>", { class: "badge bg-warning-subtle text-warning border border-warning-subtle", text: "Manuel kayıt eşleşmesi" }));
+        $status.append($("<small>", { class: "d-block text-muted mt-1", text: "Aktarmadan önce kontrol edin" + matchNo }));
+      } else {
+        $status.append($("<span>", { class: "badge bg-primary-subtle text-primary border border-primary-subtle", text: row.durum || "Yeni" }));
       }
+
+      const $sender = $("<div>").append($("<span>", { class: "d-block fw-semibold", text: row.gonderen || "-" }));
+      if (row.gonderen_uets) {
+        $sender.append($("<small>", { class: "text-muted font-monospace", text: row.gonderen_uets }));
+      }
+      const $tr = $("<tr>").toggleClass("table-warning", Boolean(row.olasi_mukerrer) && !disabled);
+      $tr.append($("<td>", { class: "text-center" }).append($check));
+      $tr.append($("<td>", { text: row.tarih || "-" }));
+      $tr.append($("<td>").append($("<span>", { class: "fw-semibold", text: row.konu || "Konusuz Tebligat" })));
+      $tr.append($("<td>").append($sender));
+      $tr.append($("<td>").append($status));
+      $body.append($tr);
+    });
+    updateUetsSelectionSummary();
+  }
+
+  $(document).on("change", ".uets-incoming-check", updateUetsSelectionSummary);
+  $("#uetsSelectAll").on("change", function () {
+    $(".uets-incoming-check:not(:disabled)").prop("checked", this.checked);
+    updateUetsSelectionSummary();
+  });
+
+  // 1. UETS Senkronize Et: önce canlı listeyi getir, kullanıcı seçimini bekle
+  $("#btnUetsSync").on("click", function () {
+    Swal.fire({ title: "UETS Evrakları Alınıyor...", text: "Gelen evrak listesi kontrol ediliyor.", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "uets-senkronize-et" },
+      dataType: "json",
+    }).done(function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "UETS evrakları alınamadı.", "error");
+        return;
+      }
+      const fetchErrors = Array.isArray(res.hatalar) ? res.hatalar.filter(Boolean) : [];
+      if ((!Array.isArray(res.data) || res.data.length === 0) && fetchErrors.length) {
+        Swal.fire("UETS Evrakları Alınamadı", fetchErrors.join("\n"), "error");
+        return;
+      }
+      Swal.close();
+      $("#uetsSelectAll").prop("checked", false);
+      $("#uetsFetchWarning")
+        .toggleClass("d-none", fetchErrors.length === 0)
+        .text(fetchErrors.length ? "Bazı UETS durumları alınamadı: " + fetchErrors.join(" • ") : "");
+      renderUetsIncomingRows(res.data || []);
+      $("#modalUetsGelenSecim").modal("show");
+    }).fail(function (xhr) {
+      const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "UETS senkronizasyon servisine bağlanılamadı.";
+      Swal.fire("Hata", message, "error");
+    });
+  });
+
+  $("#btnUetsSelectedImport").on("click", function () {
+    const selectionIds = $(".uets-incoming-check:checked").map(function () { return this.value; }).get();
+    if (!selectionIds.length) return;
+    const $button = $(this).prop("disabled", true);
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "uets-secilenleri-aktar", selection_ids: selectionIds },
+      dataType: "json",
+    }).done(function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "Seçilen evraklar aktarılamadı.", "error");
+        return;
+      }
+      $("#modalUetsGelenSecim").modal("hide");
+      Swal.fire("Aktarım Tamamlandı", res.message || "Seçilen UETS evrakları aktarıldı.", "success").then(() => location.reload());
+    }).fail(function (xhr) {
+      const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Aktarım sırasında sunucu hatası oluştu.";
+      Swal.fire("Hata", message, "error");
+    }).always(function () {
+      $button.prop("disabled", false);
+      updateUetsSelectionSummary();
     });
   });
 

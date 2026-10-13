@@ -48,6 +48,11 @@ class UetsClientService
         $endpoint = '/messages' . ($queryParams ? '?' . $queryParams : '');
         $response = $this->request('GET', $endpoint);
 
+        if ($response['status_code'] < 200 || $response['status_code'] >= 300) {
+            $error = json_decode($response['body'], true);
+            throw new Exception($error['message'] ?? ('UETS mesaj listesi alınamadı (HTTP ' . $response['status_code'] . ').'));
+        }
+
         $messages = json_decode($response['body'], true);
         if (!is_array($messages)) {
             $messages = [];

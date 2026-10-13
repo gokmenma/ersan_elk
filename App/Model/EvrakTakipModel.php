@@ -620,6 +620,62 @@ class EvrakTakipModel extends Model
         return (int) $this->db->lastInsertId();
     }
 
+    public function createFromUets(int $firmaId, array $data): int
+    {
+        $sql = $this->db->prepare("
+            INSERT INTO evrak_takip
+                (firma_id, evrak_tipi, kaynak_tipi, uets_mesaj_id, tarih, evrak_no, konu, kurum_adi,
+                 aciklama, dosya_yolu, onay_durumu, olusturma_tarihi)
+            VALUES
+                (:firma_id, 'gelen', 'uets', :uets_mesaj_id, :tarih, :evrak_no, :konu, :kurum_adi,
+                 :aciklama, :dosya_yolu, 'onaylandi', NOW())
+        ");
+        $sql->execute([
+            'firma_id' => $firmaId,
+            'uets_mesaj_id' => (string) $data['uets_mesaj_id'],
+            'tarih' => (string) $data['tarih'],
+            'evrak_no' => (string) $data['evrak_no'],
+            'konu' => (string) $data['konu'],
+            'kurum_adi' => (string) $data['kurum_adi'],
+            'aciklama' => (string) $data['aciklama'],
+            'dosya_yolu' => $data['dosya_yolu'] ?: null,
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function findPossibleUetsDuplicate(int $firmaId, string $uetsMessageId, string $tarih, string $konu, string $kurumAdi): ?object
+    {
+        $sql = $this->db->prepare("
+            SELECT id, evrak_no, tarih, konu, kurum_adi, kaynak_tipi, uets_mesaj_id
+            FROM evrak_takip
+            WHERE firma_id = :firma_id
+              AND evrak_tipi = 'gelen'
+              AND silinme_tarihi IS NULL
+              AND (
+                    uets_mesaj_id = :uets_mesaj_id
+                    OR (
+                        tarih = :tarih
+                        AND LOWER(TRIM(konu)) = LOWER(TRIM(:konu))
+                        AND LOWER(TRIM(kurum_adi)) = LOWER(TRIM(:kurum_adi))
+                    )
+              )
+            ORDER BY (uets_mesaj_id = :uets_message_order) DESC, id DESC
+            LIMIT 1
+        ");
+        $sql->execute([
+            'firma_id' => $firmaId,
+            'uets_mesaj_id' => $uetsMessageId,
+            'tarih' => $tarih,
+            'konu' => $konu,
+            'kurum_adi' => $kurumAdi,
+            'uets_message_order' => $uetsMessageId,
+        ]);
+
+        $row = $sql->fetch(PDO::FETCH_OBJ);
+        return $row ?: null;
+    }
+
     public function syncAttachmentState(int $evrakId, array $orderedIds, array $removedIds): void
     {
         if (!$this->getById($evrakId)) {
