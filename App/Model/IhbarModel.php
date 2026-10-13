@@ -693,18 +693,134 @@ class IhbarModel extends Model
             $bindings[':search'] = '%' . $search . '%';
         }
         $columnExpressions = !empty($params['has_select'])
-            ? [1 => "DATE_FORMAT(i.created_at, '%d.%m.%Y')", 2 => "DATE_FORMAT(sonuc.sonuclanma_tarihi, '%d.%m.%Y')",
+            ? [1 => 'DATE(i.created_at)', 2 => 'DATE(sonuc.sonuclanma_tarihi)',
                 3 => 'i.ilce', 4 => 'i.mahalle', 5 => 'i.telefon', 6 => 'COALESCE(bp.adi_soyadi, ou.adi_soyadi)',
                 7 => 'ekip.atanan_ekip_adi', 8 => 'i.durum']
-            : [0 => "DATE_FORMAT(i.created_at, '%d.%m.%Y')", 1 => "DATE_FORMAT(sonuc.sonuclanma_tarihi, '%d.%m.%Y')",
+            : [0 => 'DATE(i.created_at)', 1 => 'DATE(sonuc.sonuclanma_tarihi)',
                 2 => 'i.ilce', 3 => 'i.mahalle', 4 => 'i.telefon', 5 => 'COALESCE(bp.adi_soyadi, ou.adi_soyadi)',
                 6 => 'ekip.atanan_ekip_adi', 7 => 'i.durum'];
+        $dateColumnIndexes = !empty($params['has_select']) ? [1, 2] : [0, 1];
+        $statusColumnIndex = !empty($params['has_select']) ? 8 : 7;
+        $statusValues = [
+            'Yeni' => 'yeni',
+            'Yönlendirildi' => 'yonlendirildi',
+            'İşlemde' => 'islemde',
+            'Olumlu' => 'olumlu',
+            'Olumsuz' => 'olumsuz',
+            'yeni' => 'yeni',
+            'yönlendirildi' => 'yonlendirildi',
+            'yonlendirildi' => 'yonlendirildi',
+            'işlemde' => 'islemde',
+            'islemde' => 'islemde',
+            'olumlu' => 'olumlu',
+            'olumsuz' => 'olumsuz',
+        ];
         foreach (($params['columns'] ?? []) as $index => $column) {
             $value = trim((string) ($column['search']['value'] ?? ''));
             if ($value === '' || !isset($columnExpressions[$index])) continue;
+
+            $mode = 'contains';
+            $filterValue = $value;
+            if (str_contains($value, ':')) {
+                [$candidateMode, $candidateValue] = explode(':', $value, 2);
+                if (in_array($candidateMode, [
+                    'contains', 'not_contains', 'starts_with', 'ends_with', 'equals', 'not_equals',
+                    'before', 'after', 'between', 'multi', 'null', 'not_null'
+                ], true)) {
+                    $mode = $candidateMode;
+                    $filterValue = $candidateValue;
+                }
+            }
+
+            $expression = $columnExpressions[$index];
+            $values = $mode === 'multi' ? explode('|', $filterValue) : [$filterValue];
+            $values = array_values(array_filter(array_map('trim', $values), static fn(string $item): bool => $item !== ''));
+
+            if ($index === $statusColumnIndex) {
+                $values = array_map(static function (string $item) use ($statusValues): string {
+                    $normalized = mb_strtolower($item, 'UTF-8');
+                    return $statusValues[$item] ?? $statusValues[$normalized] ?? $item;
+                }, $values);
+            }
+            if (in_array($index, $dateColumnIndexes, true)) {
+                $values = array_map(static function (string $item): string {
+                    $date = \DateTime::createFromFormat('!d.m.Y', $item);
+                    return $date ? $date->format('Y-m-d') : $item;
+                }, $values);
+            }
+
+            if ($mode === 'null') {
+                $where[] = "({$expression} IS NULL OR {$expression} = '')";
+                continue;
+            }
+            if ($mode === 'not_null') {
+                $where[] = "({$expression} IS NOT NULL AND {$expression} <> '')";
+                continue;
+            }
+            if ($values === []) continue;
+
+            if ($mode === 'multi') {
+                $multiConditions = [];
+                foreach ($values as $valueIndex => $item) {
+                    $key = ':column_search_' . (int) $index . '_' . $valueIndex;
+                    $multiConditions[] = "{$expression} = {$key}";
+                    $bindings[$key] = $item;
+                }
+                $where[] = '(' . implode(' OR ', $multiConditions) . ')';
+                continue;
+            }
+
             $key = ':column_search_' . (int) $index;
-            $where[] = $columnExpressions[$index] . ' LIKE ' . $key;
-            $bindings[$key] = '%' . $value . '%';
+            $item = $values[0];
+            switch ($mode) {
+                case 'not_contains':
+                    $where[] = "{$expression} NOT LIKE {$key}";
+                    $bindings[$key] = '%' . $item . '%';
+                    break;
+                case 'starts_with':
+                    $where[] = "{$expression} LIKE {$key}";
+                    $bindings[$key] = $item . '%';
+                    break;
+                case 'ends_with':
+                    $where[] = "{$expression} LIKE {$key}";
+                    $bindings[$key] = '%' . $item;
+                    break;
+                case 'equals':
+                    $where[] = "{$expression} = {$key}";
+                    $bindings[$key] = $item;
+                    break;
+                case 'not_equals':
+                    $where[] = "{$expression} <> {$key}";
+                    $bindings[$key] = $item;
+                    break;
+                case 'before':
+                    $where[] = "{$expression} < {$key}";
+                    $bindings[$key] = $item;
+                    break;
+                case 'after':
+                    $where[] = "{$expression} > {$key}";
+                    $bindings[$key] = $item;
+                    break;
+                case 'between':
+                    if (count($values) < 2) {
+                        $rangeValues = array_map('trim', explode('|', $filterValue, 2));
+                        $values = array_map(static function (string $rangeItem): string {
+                            $date = \DateTime::createFromFormat('!d.m.Y', $rangeItem);
+                            return $date ? $date->format('Y-m-d') : $rangeItem;
+                        }, $rangeValues);
+                    }
+                    if (count($values) === 2) {
+                        $endKey = $key . '_end';
+                        $where[] = "{$expression} BETWEEN {$key} AND {$endKey}";
+                        $bindings[$key] = $values[0];
+                        $bindings[$endKey] = $values[1];
+                    }
+                    break;
+                default:
+                    $where[] = "{$expression} LIKE {$key}";
+                    $bindings[$key] = '%' . $item . '%';
+                    break;
+            }
         }
         $filterMap = ['baslangic' => 'i.created_at >= :baslangic', 'bitis' => 'i.created_at < DATE_ADD(:bitis, INTERVAL 1 DAY)',
             'sonuc_baslangic' => 'sonuc.sonuclanma_tarihi >= :sonuc_baslangic', 'sonuc_bitis' => 'sonuc.sonuclanma_tarihi < DATE_ADD(:sonuc_bitis, INTERVAL 1 DAY)'];

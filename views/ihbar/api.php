@@ -188,6 +188,15 @@ try {
 
     switch ($action) {
 
+        case 'get-unique-values':
+            Gate::authorizeOrDie('ihbar/list');
+            $column = trim((string) ($_GET['column'] ?? $_GET['col'] ?? ''));
+            $values = $column === 'durum'
+                ? ['Yeni', 'Yönlendirildi', 'İşlemde', 'Olumlu', 'Olumsuz']
+                : [];
+            echo json_encode(['status' => 'success', 'data' => $values], JSON_UNESCAPED_UNICODE);
+            exit;
+
         case 'listData':
             Gate::authorizeOrDie('ihbar/list');
             $result = $IhbarModel->ajaxList($_GET, (int) ($_SESSION['firma_id'] ?? 1));

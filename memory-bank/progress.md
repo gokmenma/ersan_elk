@@ -1,6 +1,7 @@
 # Progress
 
 ## Neler Tamamlandı?
+- [x] İhbar Yönetimi server-side DataTables kolon filtrelerinde merkezi `mode:value` protokolü desteklenerek metin, tarih ve durum filtreleri çalışır hale getirildi; Durum seçenekleri için yetkili API aksiyonu eklendi.
 - [x] Kaçak İşlemleri Ekip Özeti için `kacak_islemleri` yetkisine bağlı ayrı `get-kacak-report-table` API aksiyonu tanımlandı; genel puantaj raporu yetkisi bulunmayan kullanıcılardaki 403 ayrıştırıldı.
 - [x] Kaçak Ekip Özeti API politikası tekrarlanabilir ayrı SQL scripti olarak eklendi.
 - [x] UETS gelen evrak senkronizasyonu doğrudan toplu kayıt yerine önizleme + seçili aktarım akışına dönüştürüldü.
@@ -15,6 +16,7 @@
 - [x] Mobile SPA TaleplerView aktif kategori kartındaki yazı görünürlüğü ve yüksek kontrastı (`color: #ffffff !important`) sağlandı; üretim derlemesi alındı.
 
 ## Neler Kaldı / Devam Edenler?
+- [ ] `sql/2026_10_13_add_ihbar_column_filter_policy.sql` veritabanına uygulanacak.
 - [ ] `sql/2026_10_13_add_kacak_report_table_policy.sql` veritabanına uygulanacak.
 - [ ] `sql/2026_10_13_uets_selected_import_policy.sql` veritabanına uygulanacak.
 - [ ] Kullanıcı ortamında gerçek UETS API canlı/test tebligat işlemleri takibi.

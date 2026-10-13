@@ -1,6 +1,7 @@
 # Active Context
 
 ## Şu An Ne Üzerinde Çalışılıyor?
+- İhbar Yönetimi listesindeki DataTables kolon filtreleri düzeltildi. `IhbarModel::ajaxList()` artık merkezi filtre bileşeninin gönderdiği metin, tarih, boş/dolu ve çoklu seçim kiplerini ayrıştırıp parametrik SQL koşullarına dönüştürüyor; ekrandaki durum etiketleri veritabanı durum kodlarıyla eşleniyor. Server-side Durum seçenekleri `get-unique-values` aksiyonundan, mevcut `ihbar/list` yetkisiyle sunuluyor.
 - Kaçak İşlemleri > Ekip Özeti ekranındaki 403 hatası giderildi. Kaçak ekranı artık genel `get-report-table` yerine `get-kacak-report-table` aksiyonunu çağırıyor; yeni aksiyon mevcut `kacak_islemleri` yetkisine bağlı bağımsız API politikasıyla korunuyor.
 - Veritabanı politika değişikliği `sql/2026_10_13_add_kacak_report_table_policy.sql` içinde tekrarlanabilir script olarak hazırlandı.
 - Evrak Takip ekranındaki UETS senkronizasyonu iki aşamalı hale getirildi: `UETS / KEP Senkronize Et` önce canlı gelen evrakları seçim modalında listeliyor, ardından yalnızca kullanıcının seçtiği evrakları sisteme aktarıyor.
@@ -19,6 +20,7 @@
 - `npm run build` ile üretim derlemesi başarıyla tamamlandı.
 
 ## Sıradaki Adımlar & Odak Noktaları
+- `sql/2026_10_13_add_ihbar_column_filter_policy.sql` scriptinin hedef veritabanında uygulanması.
 - `sql/2026_10_13_add_kacak_report_table_policy.sql` scriptinin hedef veritabanında uygulanması.
 - `sql/2026_10_13_uets_selected_import_policy.sql` scriptinin hedef veritabanında uygulanması.
 - Kullanıcı ortamında gerçek UETS verisiyle önizleme, olası mükerrer uyarısı ve seçili aktarım testlerinin sürdürülmesi.
