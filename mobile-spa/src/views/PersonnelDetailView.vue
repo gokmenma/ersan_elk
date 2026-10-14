@@ -193,7 +193,7 @@ onMounted(load)
   place-items: center;
   border-radius: 20px;
   background: var(--ds-primary);
-  color: #ffffff;
+  color: var(--ds-surface);
   font: 800 20px var(--ds-font-mono);
   overflow: hidden;
   box-shadow: var(--ds-shadow-pill);
@@ -319,7 +319,7 @@ onMounted(load)
   height: 38px;
   place-items: center;
   border-radius: 12px;
-  color: #ffffff;
+  color: var(--ds-surface);
   flex-shrink: 0;
 }
 

@@ -575,6 +575,10 @@ Bordro hesaplama etki alani:
 
 ### Net ve prim usulü bordroda kesinti özeti
 
+Detay Kesintiler kartı banka ve elden kanallı tüm snapshot personel kesintilerini
+gösterir. Banka ödeme açıklamasındaki kesinti toplamı ise yalnız bankadan mahsup
+edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez.
+
 - Net maaşlı veya prim usulü personelde SGK, gelir vergisi ve damga vergisi net hedefe ulaşmak için brüte tamamlama hesabında zaten karşılanır. Detay ekranındaki `Kesintiler Toplamı`, ödenecek netten gerçekten mahsup edilen icra, avans ve diğer personel kesintilerini gösterir; brüte tamamlama içinde karşılanan yasal kesintiler bu özete ikinci kez eklenmez.
 - Eski bordro detayının `Kesintiler (Düşürücüler)` bölümünde yasal kesintiler ayrıca satır olarak gösterilmez. Bu bölüm ve bölüm toplamı yalnız net ödemeden gerçekten düşülen personel kesintilerinden oluşur.
 - Maaşa dahil yardım dağıtımında kesintinin kayıtlı ödeme kanalı korunur. Banka kesintisi önce resmî banka matrahından, `Elden / Harici` kesinti ise önce elden hakedişten düşülür; ilgili kanaldaki hakediş yetmezse kalan kesinti diğer kanaldan mahsup edilir.

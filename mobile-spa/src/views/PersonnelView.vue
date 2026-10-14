@@ -293,13 +293,13 @@ onMounted(() => load(true))
 .stat-pill-btn.is-active {
   background: var(--ds-primary) !important;
   border-color: var(--ds-primary) !important;
-  color: #ffffff !important;
+  color: var(--ds-surface) !important;
   box-shadow: 0 4px 12px rgba(24, 28, 36, 0.2);
 }
 
 .stat-pill-btn.is-active strong,
 .stat-pill-btn.is-active small {
-  color: #ffffff !important;
+  color: var(--ds-surface) !important;
 }
 
 .pill-dot {
@@ -309,9 +309,9 @@ onMounted(() => load(true))
   flex-shrink: 0;
 }
 
-.dot-active  { background: #10b981; }
-.dot-all     { background: #38bdf8; }
-.dot-passive { background: #fb7185; }
+.dot-active  { background: var(--ds-emerald); }
+.dot-all     { background: var(--ds-blue); }
+.dot-passive { background: var(--ds-coral); }
 
 .stat-pill-copy {
   display: flex;
@@ -400,7 +400,7 @@ onMounted(() => load(true))
   place-items: center;
   border-radius: 14px;
   background: var(--ds-primary);
-  color: #ffffff;
+  color: var(--ds-surface);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -413,7 +413,7 @@ onMounted(() => load(true))
 
 .personnel-initials {
   font: 800 13px var(--ds-font-mono);
-  color: #ffffff;
+  color: var(--ds-surface);
 }
 
 .dot-online, .dot-offline {
@@ -423,11 +423,11 @@ onMounted(() => load(true))
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--ds-surface);
 }
 
-.dot-online  { background: #10b981; }
-.dot-offline { background: #94a3b8; }
+.dot-online  { background: var(--ds-emerald); }
+.dot-offline { background: var(--ds-muted-light); }
 
 .personnel-info {
   flex: 1;
@@ -462,7 +462,7 @@ onMounted(() => load(true))
   margin-top: 4px;
   font-size: 10.5px;
   font-weight: 600;
-  color: #0284c7;
+  color: var(--ds-blue-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -490,9 +490,9 @@ onMounted(() => load(true))
   height: 52px;
   place-items: center;
   border-radius: 18px;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--ds-surface);
   background: var(--ds-primary);
-  color: #ffffff;
+  color: var(--ds-surface);
   box-shadow: var(--ds-shadow-float);
   cursor: pointer;
   transition: transform 0.15s ease;

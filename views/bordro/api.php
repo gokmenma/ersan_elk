@@ -1660,15 +1660,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</div></div>';
 
                 // --- RIGHT COLUMN: KESINTILER ---
+                $personelKesintiOzeti = $BordroPersonel->getPersonelKesintiOzeti($bp);
                 $html .= '<div class="col-lg-4 bordro-deduction-column">';
                 $html .= '<div class="main-card bg-white">';
                 $html .= '<div class="card-header-tint" style="background:linear-gradient(to right,#fef2f2,#fff);color:#991b1b;">
                             <span><i class="bx bx-minus-circle me-2"></i>KESİNTİLER</span>
-                            <span class="badge rounded-pill bg-danger">' . ($bankaDetayDagilimi['kesinti'] > 0 ? '-' : '') . number_format($bankaDetayDagilimi['kesinti'], 2, ',', '.') . ' ₺</span>
+                            <span class="badge rounded-pill bg-danger">' . ($personelKesintiOzeti['toplam'] > 0 ? '-' : '') . number_format($personelKesintiOzeti['toplam'], 2, ',', '.') . ' ₺</span>
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
-                if (!empty($bankaDetayDagilimi['kesinti_kalemleri'])) {
-                    foreach ($bankaDetayDagilimi['kesinti_kalemleri'] as $bankaKesinti) {
+                if (!empty($personelKesintiOzeti['kalemler'])) {
+                    foreach ($personelKesintiOzeti['kalemler'] as $bankaKesinti) {
                         $kesintiAciklama = trim((string) ($bankaKesinti['aciklama'] ?? ''));
                         $kesintiEtiket = trim((string) ($bankaKesinti['etiket'] ?? ''));
 
@@ -1685,7 +1686,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     $html .= '<tr><td colspan="2" class="text-center py-4 text-muted"><i class="bx bx-smile fs-4 d-block mb-1 opacity-50"></i>Kesinti bulunmuyor.</td></tr>';
                 }
-                $html .= '<tr class="footer-row"><td class="text-danger fw-bold">TOPLAM KESİNTİ</td><td class="text-end text-danger fw-bolder">' . ($bankaDetayDagilimi['kesinti'] > 0 ? '-' : '') . number_format($bankaDetayDagilimi['kesinti'], 2, ',', '.') . ' ₺</td></tr>';
+                $html .= '<tr class="footer-row"><td class="text-danger fw-bold">TOPLAM KESİNTİ</td><td class="text-end text-danger fw-bolder">' . ($personelKesintiOzeti['toplam'] > 0 ? '-' : '') . number_format($personelKesintiOzeti['toplam'], 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '</tbody></table></div></div>';
 
                 // 3. BOTTOM HERO: NET SALARY + DISTRIBUTION

@@ -70,7 +70,7 @@ const rows = [
   place-items: center;
   border-radius: 20px;
   background: var(--ds-primary);
-  color: #ffffff;
+  color: var(--ds-surface);
   font: 800 18px var(--ds-font-mono);
   box-shadow: var(--ds-shadow-pill);
   flex-shrink: 0;

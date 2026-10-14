@@ -104,4 +104,20 @@ final class BordroSnapshotAuditTest extends TestCase
         $this->expectException(DomainException::class);
         $model->saveBordroHesaplama(1, (array) $row);
     }
+
+    public function testKesintiKartiEldenMalzemeKesintisiniDeIcerir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = $this->row(0);
+        $snapshot = json_decode($row->hesaplama_detay, true);
+        $snapshot['kesintiler'][] = ['kod' => 'malzeme', 'etiket' => 'Malzeme Zarar - Ziyan', 'tutar' => 4068, 'hesaplama_tipi' => 'elden_tutardan', 'aciklama' => 'Telefon ekranı'];
+        $row->hesaplama_detay = json_encode($snapshot);
+        $before = serialize($row);
+        $summary = $model->getPersonelKesintiOzeti($row);
+        self::assertEquals(5168, $summary['toplam']);
+        self::assertCount(2, $summary['kalemler']);
+        self::assertSame('elden', $summary['kalemler'][1]['kanal']);
+        self::assertSame('Telefon ekranı', $summary['kalemler'][1]['aciklama']);
+        self::assertSame($before, serialize($row));
+    }
 }

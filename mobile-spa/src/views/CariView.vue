@@ -1004,7 +1004,7 @@ async function deleteSelectedMovement() {
 }
 .topbar-btn--primary {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   border-color: var(--ds-primary);
 }
 .topbar-title span {
@@ -1075,15 +1075,15 @@ async function deleteSelectedMovement() {
 }
 .summary-kpi-card--debt .kpi-icon {
   background: #fee2e2;
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 .summary-kpi-card--credit .kpi-icon {
   background: #dcfce7;
-  color: #16a34a;
+  color: var(--ds-emerald-ink);
 }
 .summary-kpi-card--net .kpi-icon {
   background: #e0e7ff;
-  color: #4f46e5;
+  color: var(--ds-indigo-ink);
 }
 .kpi-value {
   font-size: 14px;
@@ -1103,8 +1103,8 @@ async function deleteSelectedMovement() {
 }
 
 /* RENKLER */
-.text-debt { color: #dc2626 !important; }
-.text-credit { color: #16a34a !important; }
+.text-debt { color: var(--ds-danger-ink) !important; }
+.text-credit { color: var(--ds-emerald-ink) !important; }
 .text-neutral { color: var(--ds-slate) !important; }
 
 /* FİLTRE VE ARAMA */
@@ -1171,7 +1171,7 @@ async function deleteSelectedMovement() {
 }
 .tab-btn.active {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   border-color: var(--ds-primary);
 }
 .tab-badge {
@@ -1182,15 +1182,15 @@ async function deleteSelectedMovement() {
 }
 .tab-btn.active .tab-badge {
   background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  color: var(--ds-surface);
 }
 .dot-indicator {
   width: 6px;
   height: 6px;
   border-radius: 50%;
 }
-.dot-credit { background: #16a34a; }
-.dot-debt { background: #dc2626; }
+.dot-credit { background: var(--ds-emerald-ink); }
+.dot-debt { background: var(--ds-danger-ink); }
 
 /* CARİ KARTLARI LİSTESİ */
 .cari-cards-container {
@@ -1221,7 +1221,7 @@ async function deleteSelectedMovement() {
   height: 46px;
   place-items: center;
   border-radius: 15px;
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   font: 700 15px 'Space Grotesk', sans-serif;
   box-shadow: 0 6px 16px rgba(17, 22, 27, 0.15);
@@ -1284,11 +1284,11 @@ async function deleteSelectedMovement() {
 }
 .badge-debt {
   background: #fee2e2;
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 .badge-credit {
   background: #dcfce7;
-  color: #16a34a;
+  color: var(--ds-emerald-ink);
 }
 .badge-neutral {
   background: var(--ds-soft);
@@ -1307,8 +1307,8 @@ async function deleteSelectedMovement() {
   height: 26px;
   border-radius: 8px;
   border: 1px solid rgba(22, 163, 74, 0.2);
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
   cursor: pointer;
 }
 .quick-action-btn:active {
@@ -1356,14 +1356,14 @@ async function deleteSelectedMovement() {
   width: 44px;
   height: 44px;
   background: #334155;
-  color: #fff;
+  color: var(--ds-surface);
   box-shadow: 0 8px 20px rgba(51, 65, 85, 0.32);
 }
 .floating-icon-btn--create {
   width: 52px;
   height: 52px;
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   box-shadow: 0 10px 24px rgba(17, 22, 27, 0.36);
 }
 
@@ -1384,7 +1384,7 @@ async function deleteSelectedMovement() {
   width: 100%;
   max-width: 540px;
   max-height: 88vh;
-  background: #fff;
+  background: var(--ds-surface);
   border-radius: 28px 28px 0 0;
   box-shadow: var(--ds-shadow-float);
   overflow-y: auto;
@@ -1453,8 +1453,8 @@ async function deleteSelectedMovement() {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
   text-decoration: none;
 }
 
@@ -1487,13 +1487,13 @@ async function deleteSelectedMovement() {
   display: none;
 }
 .toggle-option--debt.selected {
-  background: #fff;
-  color: #dc2626;
+  background: var(--ds-surface);
+  color: var(--ds-danger-ink);
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);
 }
 .toggle-option--credit.selected {
-  background: #fff;
-  color: #16a34a;
+  background: var(--ds-surface);
+  color: var(--ds-emerald-ink);
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.12);
 }
 .form-grid-two {
@@ -1515,7 +1515,7 @@ async function deleteSelectedMovement() {
   align-items: center;
   border: 1px solid rgba(140, 155, 174, 0.25);
   border-radius: 14px;
-  background: #fff;
+  background: var(--ds-surface);
   padding: 0 12px;
   height: 46px;
 }
@@ -1568,7 +1568,7 @@ async function deleteSelectedMovement() {
 }
 .form-error {
   margin: 0;
-  color: #dc2626;
+  color: var(--ds-danger-ink);
   font-size: 11px;
   font-weight: 600;
 }
@@ -1581,7 +1581,7 @@ async function deleteSelectedMovement() {
   border: 0;
   border-radius: 999px;
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   font: 700 12px 'Space Grotesk', sans-serif;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(17, 22, 27, 0.18);
@@ -1633,7 +1633,7 @@ async function deleteSelectedMovement() {
   cursor: pointer;
 }
 .history-type-tabs button.active {
-  background: #fff;
+  background: var(--ds-surface);
   color: var(--ds-ink);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
@@ -1653,7 +1653,7 @@ async function deleteSelectedMovement() {
   padding: 10px 12px;
   border: 1px solid var(--ds-line);
   border-radius: 16px;
-  background: #fff;
+  background: var(--ds-surface);
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -1807,8 +1807,8 @@ async function deleteSelectedMovement() {
   height: 44px;
   border: 1px solid #fee2e2;
   border-radius: 999px;
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
   font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
@@ -1816,7 +1816,7 @@ async function deleteSelectedMovement() {
   height: 44px;
   border: 1px solid var(--ds-line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--ds-surface);
   color: var(--ds-slate);
   font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;

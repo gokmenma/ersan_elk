@@ -793,8 +793,8 @@ async function deleteSelectedMovement() {
   transform: scale(0.93);
 }
 .topbar-btn--danger {
-  color: #dc2626;
-  background: #fef2f2;
+  color: var(--ds-danger-ink);
+  background: var(--ds-danger-soft);
   border-color: #fee2e2;
 }
 .topbar-title span {
@@ -840,7 +840,7 @@ async function deleteSelectedMovement() {
   height: 54px;
   place-items: center;
   border-radius: 18px;
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   font: 700 18px 'Space Grotesk', sans-serif;
   box-shadow: 0 8px 20px rgba(17, 22, 27, 0.18);
@@ -998,7 +998,7 @@ async function deleteSelectedMovement() {
   border: 1px solid var(--ds-primary);
   border-radius: 999px;
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   font: 700 10px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
@@ -1034,11 +1034,11 @@ async function deleteSelectedMovement() {
 }
 .type-debt {
   background: #fee2e2;
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 .type-credit {
   background: #dcfce7;
-  color: #16a34a;
+  color: var(--ds-emerald-ink);
 }
 .movement-info {
   min-width: 0;
@@ -1120,7 +1120,7 @@ async function deleteSelectedMovement() {
   padding: 8px 16px;
   border-radius: 999px;
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   border: 0;
   font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;
@@ -1142,15 +1142,15 @@ async function deleteSelectedMovement() {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   box-shadow: var(--ds-shadow-float);
   font: 700 12px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
 
 /* RENKLER */
-.text-debt { color: #dc2626 !important; }
-.text-credit { color: #16a34a !important; }
+.text-debt { color: var(--ds-danger-ink) !important; }
+.text-credit { color: var(--ds-emerald-ink) !important; }
 .text-neutral { color: var(--ds-slate) !important; }
 
 /* MODAL ORTAK */
@@ -1168,7 +1168,7 @@ async function deleteSelectedMovement() {
   width: 100%;
   max-width: 540px;
   max-height: 88vh;
-  background: #fff;
+  background: var(--ds-surface);
   border-radius: 28px 28px 0 0;
   box-shadow: var(--ds-shadow-float);
   overflow-y: auto;
@@ -1253,13 +1253,13 @@ async function deleteSelectedMovement() {
   display: none;
 }
 .toggle-option--debt.selected {
-  background: #fff;
-  color: #dc2626;
+  background: var(--ds-surface);
+  color: var(--ds-danger-ink);
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);
 }
 .toggle-option--credit.selected {
-  background: #fff;
-  color: #16a34a;
+  background: var(--ds-surface);
+  color: var(--ds-emerald-ink);
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.12);
 }
 .form-grid-two {
@@ -1281,7 +1281,7 @@ async function deleteSelectedMovement() {
   align-items: center;
   border: 1px solid rgba(140, 155, 174, 0.25);
   border-radius: 14px;
-  background: #fff;
+  background: var(--ds-surface);
   padding: 0 12px;
   height: 46px;
 }
@@ -1319,7 +1319,7 @@ async function deleteSelectedMovement() {
 }
 .form-error {
   margin: 0;
-  color: #dc2626;
+  color: var(--ds-danger-ink);
   font-size: 11px;
   font-weight: 600;
 }
@@ -1332,7 +1332,7 @@ async function deleteSelectedMovement() {
   border: 0;
   border-radius: 999px;
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   font: 700 12px 'Space Grotesk', sans-serif;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(17, 22, 27, 0.18);
@@ -1411,8 +1411,8 @@ async function deleteSelectedMovement() {
   height: 44px;
   border: 1px solid #fee2e2;
   border-radius: 999px;
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
   font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
@@ -1420,7 +1420,7 @@ async function deleteSelectedMovement() {
   height: 44px;
   border: 1px solid var(--ds-line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--ds-surface);
   color: var(--ds-slate);
   font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;

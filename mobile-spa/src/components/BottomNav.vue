@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Banknote,
@@ -31,6 +31,32 @@ import { auth } from '../services/auth.js'
 const route = useRoute()
 const router = useRouter()
 const menuOpen = ref(false)
+const sheet = ref(null)
+const menuTrigger = ref(null)
+let previousOverflow = ''
+let returnFocus = null
+watch(menuOpen, async (open) => {
+  if (open) {
+    returnFocus = document.activeElement
+    previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    await nextTick()
+    sheet.value?.querySelector('button')?.focus()
+  } else {
+    document.body.style.overflow = previousOverflow
+    if (returnFocus?.isConnected) returnFocus.focus()
+  }
+})
+watch(() => route.fullPath, () => { menuOpen.value = false })
+onBeforeUnmount(() => { if (menuOpen.value) document.body.style.overflow = previousOverflow })
+function handleSheetKeydown(event) {
+  if (event.key === 'Escape') { menuOpen.value = false; return }
+  if (event.key !== 'Tab') return
+  const buttons = [...sheet.value.querySelectorAll('button, a[href], [tabindex="0"]')]
+  const first = buttons[0], last = buttons.at(-1)
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+}
 
 const items = [
   { to: '/', label: 'Ana Sayfa', icon: Home, slot: 1 },
@@ -49,21 +75,21 @@ function isItemActive(item) {
 }
 
 const operations = [
-  { permission: 'tasks', label: 'Görev Takibi', icon: ClipboardCheck, bg: '#f5f3ff', color: '#7c3aed', to: '/gorevler' },
-  { permission: 'invoices', label: 'E-Fatura & Finans', icon: ReceiptText, bg: '#eef2ff', color: '#4f46e5', to: '/fatura' },
-  { permission: 'cash', label: 'Kasa Yönetimi', icon: Landmark, bg: '#fffbeb', color: '#d97706', to: '/kasa' },
-  { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, bg: '#ecfdf5', color: '#059669', to: '/cari-takip' },
-  { permission: 'vehicles', label: 'Araç Takip', icon: Car, bg: '#f0fdf4', color: '#16a34a', href: '/mobile/index.php?p=arac' },
-  { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, bg: '#ecfeff', color: '#0891b2', href: '/mobile/index.php?p=km-onaylari' },
-  { permission: 'documents', label: 'Evrak Takip', icon: FileText, bg: '#f0f9ff', color: '#0284c7', href: '/mobile/index.php?p=evrak-takip' },
-  { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, bg: '#fff1f2', color: '#e11d48', href: '/mobile/index.php?p=nobet' },
-  { permission: 'reports', label: 'Puantaj', icon: CalendarRange, bg: '#ecfdf5', color: '#059669', href: '/mobile/index.php?p=puantaj' },
-  { permission: 'payroll', label: 'Bordro', icon: Banknote, bg: '#eef2ff', color: '#4338ca', href: '/mobile/index.php?p=bordro' },
-  { permission: 'notices', label: 'İhbar Yönetimi', icon: Megaphone, bg: '#fff7ed', color: '#ea580c', href: '/mobile/index.php?p=ihbar' },
-  { permission: 'illegal', label: 'Kaçak Kontrol', icon: ShieldAlert, bg: '#fef2f2', color: '#dc2626', href: '/mobile/index.php?p=kacak' },
-  { permission: 'support', label: 'Destek & Yardım', icon: Headset, bg: '#eef2ff', color: '#4f46e5', href: '/mobile/index.php?p=yardim' },
-  { label: 'Ana Sayfa', icon: Home, bg: '#eff6ff', color: '#2563eb', to: '/' },
-  { label: 'Profil & Ayarlar', icon: UserRound, bg: '#f0fdfa', color: '#0d9488', to: '/profil' },
+  { permission: 'tasks', label: 'Görev Takibi', icon: ClipboardCheck, to: '/gorevler' },
+  { permission: 'invoices', label: 'E-Fatura & Finans', icon: ReceiptText, to: '/fatura' },
+  { permission: 'cash', label: 'Kasa Yönetimi', icon: Landmark, to: '/kasa' },
+  { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, to: '/cari-takip' },
+  { permission: 'vehicles', label: 'Araç Takip', icon: Car, href: '/mobile/index.php?p=arac' },
+  { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, href: '/mobile/index.php?p=km-onaylari' },
+  { permission: 'documents', label: 'Evrak Takip', icon: FileText, href: '/mobile/index.php?p=evrak-takip' },
+  { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, href: '/mobile/index.php?p=nobet' },
+  { permission: 'reports', label: 'Puantaj', icon: CalendarRange, href: '/mobile/index.php?p=puantaj' },
+  { permission: 'payroll', label: 'Bordro', icon: Banknote, href: '/mobile/index.php?p=bordro' },
+  { permission: 'notices', label: 'İhbar Yönetimi', icon: Megaphone, href: '/mobile/index.php?p=ihbar' },
+  { permission: 'illegal', label: 'Kaçak Kontrol', icon: ShieldAlert, href: '/mobile/index.php?p=kacak' },
+  { permission: 'support', label: 'Destek & Yardım', icon: Headset, href: '/mobile/index.php?p=yardim' },
+  { label: 'Ana Sayfa', icon: Home, to: '/' },
+  { label: 'Profil & Ayarlar', icon: UserRound, to: '/profil' },
 ]
 const visibleOperations = computed(() => operations.filter(item => !item.permission || auth.state.permissions[item.permission]))
 
@@ -89,8 +115,8 @@ async function handleLogout() {
 
 <template>
   <Transition name="nav-sheet">
-    <div v-if="menuOpen" class="nav-sheet-layer" @click.self="menuOpen = false">
-      <section class="nav-sheet" role="dialog" aria-modal="true" aria-label="Daha Fazla">
+    <div v-if="menuOpen" class="nav-sheet-layer" @keydown="handleSheetKeydown" @click.self="menuOpen = false">
+      <section id="more-menu" ref="sheet" class="nav-sheet" role="dialog" aria-modal="true" aria-label="Daha Fazla">
         <header>
           <div>
             <span>HIZLI ERİŞİM & MENÜ</span>
@@ -103,7 +129,7 @@ async function handleLogout() {
 
         <div class="nav-sheet__content">
           <!-- Profil Özeti (Mobil görünüm gibi en üstte) -->
-          <div class="nav-sheet-profile" @click="selectOperation({ to: '/profil' })">
+          <button type="button" class="nav-sheet-profile" @click="selectOperation({ to: '/profil' })">
             <div class="nav-sheet-profile__avatar">
               {{ auth.state.user?.initials || 'MA' }}
             </div>
@@ -113,7 +139,7 @@ async function handleLogout() {
               <small>{{ auth.state.company?.name || 'Ersan Elektrik' }}</small>
             </div>
             <ChevronRight :size="18" class="nav-sheet-profile__arrow" />
-          </div>
+          </button>
 
           <!-- Mobil Görünümdeki İşlemler Grid'i -->
           <div class="nav-sheet-grid">
@@ -124,7 +150,7 @@ async function handleLogout() {
               class="nav-sheet-item"
               @click="selectOperation(op)"
             >
-              <span class="nav-sheet-item__icon" :style="{ background: op.bg, color: op.color }">
+              <span class="nav-sheet-item__icon">
                 <component :is="op.icon" :size="20" />
               </span>
               <strong class="nav-sheet-item__label">{{ op.label }}</strong>
@@ -156,14 +182,16 @@ async function handleLogout() {
   </Transition>
 
   <nav class="bottom-nav" aria-label="Ana gezinme">
-    <div class="bottom-nav__tabs">
+    <div class="bottom-nav__tabs" :style="{ '--nav-count': visibleItems.length }">
       <template v-for="item in visibleItems" :key="item.label">
         <button
           v-if="item.center"
           class="nav-link nav-link--center"
-          :style="{ gridColumn: item.slot }"
           :class="{ 'is-active': isItemActive(item) }"
           type="button"
+          ref="menuTrigger"
+          aria-controls="more-menu"
+          aria-haspopup="dialog"
           aria-label="Daha fazla menüsünü aç"
           :aria-expanded="menuOpen"
           @click="menuOpen = !menuOpen"
@@ -177,9 +205,9 @@ async function handleLogout() {
           v-else
           :to="item.to"
           class="nav-link"
-          :style="{ gridColumn: item.slot }"
           :class="{ 'is-active': isItemActive(item) }"
           :aria-label="item.label"
+          :aria-current="isItemActive(item) ? 'page' : undefined"
         >
           <span class="nav-icon">
             <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />

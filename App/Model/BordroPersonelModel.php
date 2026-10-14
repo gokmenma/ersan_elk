@@ -2883,6 +2883,30 @@ class BordroPersonelModel extends Model
         ];
     }
 
+    /** Tüm snapshot personel kesintileri; banka kırılımından bağımsız gösterim. */
+    public function getPersonelKesintiOzeti(object $row): array
+    {
+        $detay = json_decode((string) ($row->hesaplama_detay ?? ''), true);
+        $kalemler = [];
+        $toplamKurus = 0;
+        foreach (($detay['kesintiler'] ?? []) as $kalem) {
+            if (!is_array($kalem)) continue;
+            $kurus = (int) round((float) ($kalem['tutar'] ?? 0) * 100);
+            if ($kurus <= 0) continue;
+            $kod = (string) ($kalem['kod'] ?? '');
+            $kalemler[] = [
+                'etiket' => (string) ($kalem['etiket'] ?? $kod),
+                'tutar' => $kurus / 100,
+                'aciklama' => $this->normalizeKesintiAciklamasi($kod, $kalem['aciklama'] ?? ''),
+                'kanal' => ($kalem['hesaplama_tipi'] ?? '') === 'elden_tutardan'
+                    || (isset($kalem['banka_matrahina_ekle']) && (int) $kalem['banka_matrahina_ekle'] === 0)
+                    ? 'elden' : 'banka',
+            ];
+            $toplamKurus += $kurus;
+        }
+        return ['toplam' => $toplamKurus / 100, 'kalemler' => $kalemler];
+    }
+
     public function validateDonemKapanis(int $donemId, int $firmaId): array
     {
         $stmt = $this->db->prepare("

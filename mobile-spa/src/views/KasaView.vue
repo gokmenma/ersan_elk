@@ -1124,7 +1124,7 @@ onMounted(() => {
   padding: 22px 20px 18px;
   border-radius: var(--ds-radius-card, 28px);
   border: 1px solid rgba(255, 255, 255, 0.9);
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.18s ease;
@@ -1150,7 +1150,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #64748b;
+  color: var(--ds-muted);
   text-transform: uppercase;
 }
 
@@ -1166,12 +1166,12 @@ onMounted(() => {
 
 .bento-pill-status.is-positive {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 
 .bento-pill-status.is-negative {
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 .pill-dot {
@@ -1190,18 +1190,18 @@ onMounted(() => {
 }
 
 .bento-icon-badge--blue {
-  background: #f1f5f9;
+  background: var(--ds-surface-subtle);
   color: #1e293b;
 }
 
 .bento-icon-badge--emerald {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 
 .bento-icon-badge--rose {
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 .bento-main-card__amount {
@@ -1228,20 +1228,20 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: #64748b;
+  color: var(--ds-muted);
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   padding-top: 12px;
 }
 
 .bento-main-card__footer b {
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 .bento-link {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  color: #11161b;
+  color: var(--ds-ink);
   font-weight: 700;
 }
 
@@ -1256,7 +1256,7 @@ onMounted(() => {
   padding: 16px 18px;
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
@@ -1269,7 +1269,7 @@ onMounted(() => {
 }
 
 .bento-sub-card.is-active-tab {
-  border-color: var(--ds-surface-dark, #191d24);
+  border-color: var(--ds-surface-dark, var(--ds-surface-dark));
   box-shadow: 0 10px 26px rgba(25, 29, 36, 0.16);
 }
 
@@ -1292,7 +1292,7 @@ onMounted(() => {
 
 .bento-sub-card__meta {
   font-size: 11px;
-  color: #64748b;
+  color: var(--ds-muted);
   margin-top: 4px;
 }
 
@@ -1301,7 +1301,7 @@ onMounted(() => {
   padding: 16px;
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   display: flex;
   flex-direction: column;
@@ -1318,7 +1318,7 @@ onMounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  background: #f1f5f9;
+  background: var(--ds-surface-subtle);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   padding: 0 12px;
@@ -1326,7 +1326,7 @@ onMounted(() => {
 }
 
 .select-pill-icon {
-  color: #64748b;
+  color: var(--ds-muted);
   margin-right: 8px;
   flex-shrink: 0;
 }
@@ -1337,7 +1337,7 @@ onMounted(() => {
   background: transparent;
   font-size: 12px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
   outline: none;
   cursor: pointer;
 }
@@ -1345,7 +1345,7 @@ onMounted(() => {
 .clay-tabs-wrap {
   display: flex;
   gap: 6px;
-  background: #f1f5f9;
+  background: var(--ds-surface-subtle);
   padding: 4px;
   border-radius: 16px;
 }
@@ -1355,7 +1355,7 @@ onMounted(() => {
   height: 36px;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--ds-muted);
   font-size: 11px;
   font-weight: 700;
   border-radius: 12px;
@@ -1364,20 +1364,20 @@ onMounted(() => {
 }
 
 .clay-tab-pill.active {
-  background: var(--ds-surface-dark, #191d24);
-  color: #ffffff;
+  background: var(--ds-surface-dark, var(--ds-surface-dark));
+  color: var(--ds-surface);
   box-shadow: 0 4px 12px rgba(25, 29, 36, 0.22);
 }
 
 .clay-tab-pill--income.active {
-  background: #059669;
-  color: #ffffff;
+  background: var(--ds-emerald-ink);
+  color: var(--ds-surface);
   box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
 }
 
 .clay-tab-pill--expense.active {
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--ds-danger-ink);
+  color: var(--ds-surface);
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
 }
 
@@ -1390,7 +1390,7 @@ onMounted(() => {
   right: 12px;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--ds-muted-light);
   padding: 4px;
   cursor: pointer;
 }
@@ -1406,7 +1406,7 @@ onMounted(() => {
   padding: 16px 18px;
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.15s ease;
@@ -1447,12 +1447,12 @@ onMounted(() => {
 
 .kasa-status-pill.is-income {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 
 .kasa-status-pill.is-expense {
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 .status-dot {
@@ -1467,11 +1467,11 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 .kasa-date-tag small {
-  color: #11161b;
+  color: var(--ds-ink);
   font-weight: 700;
 }
 
@@ -1493,7 +1493,7 @@ onMounted(() => {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
   line-height: 1.3;
 }
 
@@ -1502,18 +1502,18 @@ onMounted(() => {
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 .account-icon {
-  color: #94a3b8;
+  color: var(--ds-muted-light);
   flex-shrink: 0;
 }
 
 .kasa-row-card__desc {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #64748b;
+  color: var(--ds-muted);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1535,7 +1535,7 @@ onMounted(() => {
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 .kasa-balance-chip b {
@@ -1543,11 +1543,11 @@ onMounted(() => {
 }
 
 .kasa-balance-chip.is-borc b {
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 .kasa-balance-chip.is-alacak b {
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 
 .kasa-action-pill {
@@ -1556,7 +1556,7 @@ onMounted(() => {
   gap: 4px;
   font-size: 12px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 /* Load More */
@@ -1570,9 +1570,9 @@ onMounted(() => {
   height: 46px;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
-  color: #11161b;
+  color: var(--ds-ink);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -1590,8 +1590,8 @@ onMounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--ds-surface-dark, #191d24);
-  color: #ffffff;
+  background: var(--ds-surface-dark, var(--ds-surface-dark));
+  color: var(--ds-surface);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 12px 28px rgba(25, 29, 36, 0.35);
   display: grid;
@@ -1615,17 +1615,17 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 .empty-icon-wrap {
   width: 68px;
   height: 68px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--ds-surface-subtle);
   display: grid;
   place-items: center;
-  color: #64748b;
+  color: var(--ds-muted);
   margin-bottom: 4px;
 }
 
@@ -1633,7 +1633,7 @@ onMounted(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 .ds-empty-card p {
@@ -1650,8 +1650,8 @@ onMounted(() => {
   padding: 12px 20px;
   border-radius: 16px;
   border: none;
-  background: var(--ds-surface-dark, #191d24);
-  color: #ffffff;
+  background: var(--ds-surface-dark, var(--ds-surface-dark));
+  color: var(--ds-surface);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -1662,7 +1662,7 @@ onMounted(() => {
   width: 32px;
   height: 32px;
   border: 3px solid rgba(0, 0, 0, 0.08);
-  border-top-color: #11161b;
+  border-top-color: var(--ds-ink);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1671,7 +1671,7 @@ onMounted(() => {
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #ffffff;
+  border-top-color: var(--ds-surface);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1698,7 +1698,7 @@ onMounted(() => {
   width: 100%;
   max-width: 600px;
   max-height: 92vh;
-  background: #ffffff;
+  background: var(--ds-surface);
   border-radius: 32px 32px 0 0;
   box-shadow: 0 -12px 36px rgba(16, 24, 40, 0.18);
   display: flex;
@@ -1739,25 +1739,25 @@ onMounted(() => {
 
 .sheet-badge-icon.is-income {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 
 .sheet-badge-icon.is-expense {
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 .sheet-head h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
   letter-spacing: -0.02em;
 }
 
 .sheet-head small {
   font-size: 12px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 .sheet-close {
@@ -1765,8 +1765,8 @@ onMounted(() => {
   height: 36px;
   border-radius: 50%;
   border: none;
-  background: #f1f5f9;
-  color: #11161b;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-ink);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1790,8 +1790,8 @@ onMounted(() => {
   height: 48px;
   border-radius: 16px;
   border: 1.5px solid rgba(0, 0, 0, 0.08);
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1803,19 +1803,19 @@ onMounted(() => {
 }
 
 .fintech-type-pill--income.is-selected {
-  border-color: #10b981;
+  border-color: var(--ds-emerald);
   background: rgba(16, 185, 129, 0.1);
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 
 .fintech-type-pill--expense.is-selected {
-  border-color: #ef4444;
+  border-color: var(--ds-danger);
   background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 .fintech-hero-input-wrap {
-  background: #f8fafc;
+  background: var(--ds-surface-subtle);
   border: 1.5px solid rgba(0, 0, 0, 0.08);
   border-radius: 20px;
   padding: 12px 18px;
@@ -1824,7 +1824,7 @@ onMounted(() => {
 
 .fintech-hero-input-wrap:focus-within {
   border-color: #3b82f6;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
@@ -1833,7 +1833,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #64748b;
+  color: var(--ds-muted);
   text-transform: uppercase;
   margin-bottom: 4px;
 }
@@ -1846,7 +1846,7 @@ onMounted(() => {
 .currency-symbol {
   font-size: 28px;
   font-weight: 800;
-  color: #64748b;
+  color: var(--ds-muted);
   margin-right: 6px;
 }
 
@@ -1856,7 +1856,7 @@ onMounted(() => {
   background: transparent;
   font-size: 28px;
   font-weight: 800;
-  color: #11161b;
+  color: var(--ds-ink);
   outline: none;
 }
 
@@ -1870,7 +1870,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: var(--ds-muted);
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -1883,8 +1883,8 @@ onMounted(() => {
   width: 100%;
   border: 1.5px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
-  background: #f8fafc;
-  color: #11161b;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-ink);
   font-size: 13px;
   outline: none;
   padding: 12px 16px;
@@ -1896,7 +1896,7 @@ onMounted(() => {
 .glass-form-select:focus,
 .glass-form-textarea:focus {
   border-color: #3b82f6;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
@@ -1917,8 +1917,8 @@ onMounted(() => {
   height: 50px;
   border-radius: 18px;
   border: none;
-  background: var(--ds-surface-dark, #191d24);
-  color: #ffffff;
+  background: var(--ds-surface-dark, var(--ds-surface-dark));
+  color: var(--ds-surface);
   font-size: 14px;
   font-weight: 700;
   display: flex;
@@ -1938,8 +1938,8 @@ onMounted(() => {
   height: 50px;
   border-radius: 18px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -1949,14 +1949,14 @@ onMounted(() => {
   padding: 12px 16px;
   border-radius: 14px;
   background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
   font-size: 12px;
   font-weight: 700;
 }
 
 /* Fiş Detay Kartı */
 .fintech-receipt-card {
-  background: #f8fafc;
+  background: var(--ds-surface-subtle);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 24px;
   padding: 24px 20px;
@@ -1986,12 +1986,12 @@ onMounted(() => {
 
 .receipt-status-pill.is-income {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 
 .receipt-status-pill.is-expense {
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 .receipt-hero-amount {
@@ -2004,7 +2004,7 @@ onMounted(() => {
 .receipt-hero-category {
   font-size: 15px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 .receipt-meta-grid {
@@ -2025,18 +2025,18 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: var(--ds-muted);
   text-transform: uppercase;
 }
 
 .receipt-cell__val {
   font-size: 13px;
   font-weight: 600;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 .receipt-note-box {
-  background: #ffffff;
+  background: var(--ds-surface);
   padding: 12px 16px;
   border-radius: 16px;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -2045,7 +2045,7 @@ onMounted(() => {
 .receipt-note-box p {
   margin: 4px 0 0;
   font-size: 13px;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 .receipt-action-buttons {
@@ -2069,12 +2069,12 @@ onMounted(() => {
 
 .btn-action-pill--edit {
   background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
+  color: var(--ds-amber-ink);
 }
 
 .btn-action-pill--delete {
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 
 /* İşlem Geçmişi */
@@ -2104,14 +2104,14 @@ onMounted(() => {
   gap: 12px;
   padding: 12px 16px;
   border-radius: 18px;
-  background: #ffffff;
+  background: var(--ds-surface);
   border: 1px solid rgba(0, 0, 0, 0.06);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 .history-card:active {
-  background: #f8fafc;
+  background: var(--ds-surface-subtle);
 }
 
 .history-card__date {
@@ -2119,7 +2119,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   padding: 6px 8px;
-  background: #f1f5f9;
+  background: var(--ds-surface-subtle);
   border-radius: 12px;
   font-size: 10px;
   font-weight: 700;
@@ -2127,8 +2127,8 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.day-str { color: #11161b; }
-.time-str { color: #64748b; }
+.day-str { color: var(--ds-ink); }
+.time-str { color: var(--ds-muted); }
 
 .history-card__body {
   flex: 1;
@@ -2139,7 +2139,7 @@ onMounted(() => {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2147,7 +2147,7 @@ onMounted(() => {
 
 .history-card__body small {
   font-size: 11px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 .history-card__right {
@@ -2163,7 +2163,7 @@ onMounted(() => {
 
 .history-card__right small {
   font-size: 10px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 /* Silme Onay Dialog */
@@ -2179,7 +2179,7 @@ onMounted(() => {
 }
 
 .glass-dialog {
-  background: #ffffff;
+  background: var(--ds-surface);
   border-radius: 28px;
   padding: 24px;
   max-width: 360px;
@@ -2193,7 +2193,7 @@ onMounted(() => {
   height: 54px;
   border-radius: 50%;
   background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  color: var(--ds-danger-ink);
   display: grid;
   place-items: center;
   margin: 0 auto 12px;
@@ -2203,13 +2203,13 @@ onMounted(() => {
   margin: 0 0 6px;
   font-size: 18px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 .glass-dialog p {
   margin: 0 0 18px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--ds-muted);
   line-height: 1.4;
 }
 
@@ -2223,8 +2223,8 @@ onMounted(() => {
   height: 46px;
   border-radius: 16px;
   border: none;
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--ds-danger-ink);
+  color: var(--ds-surface);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -2238,8 +2238,8 @@ onMounted(() => {
   height: 46px;
   border-radius: 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -2277,8 +2277,8 @@ onMounted(() => {
 }
 
 /* Yardımcı Renkler */
-.text-emerald { color: #059669 !important; }
-.text-rose { color: #dc2626 !important; }
+.text-emerald { color: var(--ds-emerald-ink) !important; }
+.text-rose { color: var(--ds-danger-ink) !important; }
 .text-xs { font-size: 11px !important; }
 .py-6 { padding-top: 24px; padding-bottom: 24px; }
 </style>

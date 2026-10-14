@@ -2145,7 +2145,7 @@ onMounted(() => {
   padding: 13px 18px;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   font-size: 13px;
   font-weight: 600;
   box-shadow: var(--ds-shadow-float);
@@ -2172,8 +2172,8 @@ onMounted(() => {
   padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  background: #ffffff;
-  color: #64748b;
+  background: var(--ds-surface);
+  color: var(--ds-muted);
   font-size: 11px;
   font-weight: 700;
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
@@ -2181,9 +2181,9 @@ onMounted(() => {
   transition: all 0.18s ease;
 }
 .fatura-period-pill.is-active {
-  background: var(--ds-surface-dark, #191d24);
-  color: #ffffff;
-  border-color: var(--ds-surface-dark, #191d24);
+  background: var(--ds-surface-dark, var(--ds-surface-dark));
+  color: var(--ds-surface);
+  border-color: var(--ds-surface-dark, var(--ds-surface-dark));
   box-shadow: 0 4px 12px rgba(25, 29, 36, 0.25);
 }
 .fatura-period-pill--custom {
@@ -2222,7 +2222,7 @@ onMounted(() => {
   padding: 18px 16px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 22px;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.18s ease;
@@ -2240,7 +2240,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: var(--ds-muted);
   text-transform: uppercase;
 }
 .fatura-kpi-icon {
@@ -2251,12 +2251,12 @@ onMounted(() => {
   border-radius: 10px;
 }
 .fatura-kpi-icon--emerald {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
 }
 .fatura-kpi-icon--sky {
-  background: #f0f9ff;
-  color: #0284c7;
+  background: var(--ds-blue-soft);
+  color: var(--ds-blue-ink);
 }
 .fatura-kpi-amount {
   display: block;
@@ -2264,13 +2264,13 @@ onMounted(() => {
   font-weight: 800;
   line-height: 22px;
   letter-spacing: -0.03em;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 .fatura-kpi-count {
   display: block;
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ds-muted);
   margin-top: 3px;
 }
 .fatura-kpi-sub {
@@ -2283,7 +2283,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   margin-top: 3px;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 .fatura-kpi-card footer {
   display: flex;
@@ -2292,7 +2292,7 @@ onMounted(() => {
   margin-top: 10px;
   font-size: 11px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 /* Net KDV Durumu Kartı */
@@ -2300,15 +2300,15 @@ onMounted(() => {
   padding: 20px 20px 18px;
   border-radius: var(--ds-radius-card, 28px);
   margin-bottom: 16px;
-  background: #ffffff;
+  background: var(--ds-surface);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
 }
 .fatura-kdv-card--payable {
-  border-top: 4px solid #ef4444;
+  border-top: 4px solid var(--ds-danger);
 }
 .fatura-kdv-card--devreden {
-  border-top: 4px solid #10b981;
+  border-top: 4px solid var(--ds-emerald);
 }
 .fatura-kdv-card header {
   display: flex;
@@ -2322,10 +2322,10 @@ onMounted(() => {
   gap: 6px;
 }
 .fatura-kdv-card--payable .fatura-kdv-card__badge {
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 .fatura-kdv-card--devreden .fatura-kdv-card__badge {
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 .fatura-kdv-card__badge strong {
   font-size: 11px;
@@ -2336,7 +2336,7 @@ onMounted(() => {
 .fatura-kdv-status {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 .fatura-kdv-amount {
   font-size: 28px;
@@ -2346,10 +2346,10 @@ onMounted(() => {
   margin-top: 6px;
 }
 .fatura-kdv-card--payable .fatura-kdv-amount {
-  color: #dc2626;
+  color: var(--ds-danger-ink);
 }
 .fatura-kdv-card--devreden .fatura-kdv-amount {
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 .fatura-kdv-breakdown {
   display: grid;
@@ -2362,14 +2362,14 @@ onMounted(() => {
 }
 .fatura-kdv-breakdown span {
   display: block;
-  color: #64748b;
+  color: var(--ds-muted);
   font-size: 11px;
 }
 .fatura-kdv-breakdown b {
   display: block;
   margin-top: 2px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
 }
 
 /* Hızlı Modül Menüleri Grid */
@@ -2385,7 +2385,7 @@ onMounted(() => {
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 20px;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   text-align: left;
   cursor: pointer;
@@ -2449,7 +2449,7 @@ onMounted(() => {
 }
 .fatura-recent-pills button.is-active {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
 }
 .fatura-recent-list {
   display: grid;
@@ -2462,7 +2462,7 @@ onMounted(() => {
   padding: 16px 18px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 22px;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.18s ease;
@@ -2494,13 +2494,13 @@ onMounted(() => {
   letter-spacing: -0.01em;
 }
 .fatura-no-tag--sky {
-  background: #f0f9ff;
-  color: #0284c7;
+  background: var(--ds-blue-soft);
+  color: var(--ds-blue-ink);
   border: 1px solid rgba(2, 132, 199, 0.16);
 }
 .fatura-no-tag--emerald {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
   border: 1px solid rgba(5, 150, 105, 0.16);
 }
 .fatura-date-pill {
@@ -2509,7 +2509,7 @@ onMounted(() => {
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 .fatura-row-card__body {
   min-width: 0;
@@ -2518,7 +2518,7 @@ onMounted(() => {
   margin: 0;
   font-size: 13.5px;
   font-weight: 700;
-  color: #11161b;
+  color: var(--ds-ink);
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -2543,14 +2543,14 @@ onMounted(() => {
 .fatura-amount-label {
   font-size: 10px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--ds-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .fatura-amount-value {
   font-size: 16px;
   font-weight: 800;
-  color: #11161b;
+  color: var(--ds-ink);
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
@@ -2560,8 +2560,8 @@ onMounted(() => {
   gap: 5px;
   padding: 6px 11px;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #11161b;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-ink);
   font-size: 11px;
   font-weight: 700;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -2569,7 +2569,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .fatura-view-pill:active {
-  background: #e2e8f0;
+  background: var(--ds-canvas);
 }
 
 /* Liste Sekmeleri Ortak Elemanları */
@@ -2580,7 +2580,7 @@ onMounted(() => {
   padding: 14px 12px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 22px;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   margin-bottom: 14px;
   text-align: center;
@@ -2589,7 +2589,7 @@ onMounted(() => {
   display: block;
   font-size: 10px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--ds-muted);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -2597,14 +2597,14 @@ onMounted(() => {
   display: block;
   font-size: 15px;
   font-weight: 800;
-  color: #11161b;
+  color: var(--ds-ink);
   margin-top: 2px;
 }
 .fatura-summary-strip__item span {
   display: block;
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ds-muted);
 }
 
 .fatura-search-group {
@@ -2619,13 +2619,13 @@ onMounted(() => {
   height: 46px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   padding: 0 16px;
 }
 .fatura-search-box__icon {
   flex-shrink: 0;
-  color: #64748b;
+  color: var(--ds-muted);
   margin-right: 8px;
 }
 .fatura-search-box input {
@@ -2633,18 +2633,18 @@ onMounted(() => {
   border: 0;
   outline: 0;
   background: transparent;
-  color: #11161b;
+  color: var(--ds-ink);
   font-size: 13px;
   font-weight: 600;
 }
 .fatura-search-box button {
   border: 0;
   background: transparent;
-  color: #94a3b8;
+  color: var(--ds-muted-light);
   cursor: pointer;
 }
 .fatura-search-box--product {
-  background: #f8fafc;
+  background: var(--ds-surface-subtle);
   border-color: rgba(0, 0, 0, 0.08);
 }
 .fatura-product-badge {
@@ -2653,8 +2653,8 @@ onMounted(() => {
   gap: 5px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: var(--ds-purple-soft);
+  color: var(--ds-purple-ink);
   font-size: 11px;
   font-weight: 700;
 }
@@ -2674,8 +2674,8 @@ onMounted(() => {
   padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  background: #ffffff;
-  color: #64748b;
+  background: var(--ds-surface);
+  color: var(--ds-muted);
   font-size: 11px;
   font-weight: 700;
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
@@ -2683,9 +2683,9 @@ onMounted(() => {
   transition: all 0.18s ease;
 }
 .fatura-filter-pills button.is-active {
-  background: var(--ds-surface-dark, #191d24);
-  color: #ffffff;
-  border-color: var(--ds-surface-dark, #191d24);
+  background: var(--ds-surface-dark, var(--ds-surface-dark));
+  color: var(--ds-surface);
+  border-color: var(--ds-surface-dark, var(--ds-surface-dark));
   box-shadow: 0 4px 12px rgba(25, 29, 36, 0.25);
 }
 
@@ -2712,7 +2712,7 @@ onMounted(() => {
   padding: 16px 18px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 22px;
-  background: #ffffff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.18s ease;
@@ -2746,7 +2746,7 @@ onMounted(() => {
   color: var(--ds-primary);
 }
 .fatura-no--emerald {
-  color: #059669;
+  color: var(--ds-emerald-ink);
 }
 .fatura-type-tag {
   padding: 2.5px 7px;
@@ -2801,7 +2801,7 @@ onMounted(() => {
 .fatura-card__items-preview strong {
   flex-shrink: 0;
   font-weight: 700;
-  color: #7c3aed;
+  color: var(--ds-purple-ink);
 }
 .fatura-card__items-preview span {
   display: block;
@@ -2846,12 +2846,12 @@ onMounted(() => {
   color: var(--ds-muted);
 }
 .fatura-payment-tag.is-paid {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
 }
 .fatura-payment-tag.is-partial {
-  background: #fffbeb;
-  color: #d97706;
+  background: var(--ds-amber-soft);
+  color: var(--ds-amber-ink);
 }
 
 .fatura-mini-btn {
@@ -2862,14 +2862,14 @@ onMounted(() => {
   padding: 0 10px;
   border: 1px solid var(--ds-line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--ds-surface);
   color: var(--ds-slate);
   font: 700 10px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
 .fatura-mini-btn--primary {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
   border-color: var(--ds-primary);
 }
 .fatura-icon-action-btn {
@@ -2879,7 +2879,7 @@ onMounted(() => {
   height: 32px;
   border: 1px solid var(--ds-line);
   border-radius: 50%;
-  background: #fff;
+  background: var(--ds-surface);
   color: var(--ds-slate);
   cursor: pointer;
 }
@@ -2908,22 +2908,22 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .fatura-badge--success {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
   border: 1px solid rgba(5, 150, 105, 0.2);
 }
 .fatura-badge--warning {
-  background: #fffbeb;
-  color: #d97706;
+  background: var(--ds-amber-soft);
+  color: var(--ds-amber-ink);
   border: 1px solid rgba(217, 119, 6, 0.2);
 }
 .fatura-badge--danger {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
   border: 1px solid rgba(220, 38, 38, 0.2);
 }
 .fatura-badge--neutral {
-  background: #f1f5f9;
+  background: var(--ds-surface-subtle);
   color: #475569;
   border: 1px solid rgba(100, 116, 139, 0.15);
 }
@@ -2945,7 +2945,7 @@ onMounted(() => {
 .fatura-wizard-sheet {
   width: 100%;
   max-width: 520px;
-  background: #fff;
+  background: var(--ds-surface);
   border-radius: 28px 28px 0 0;
   box-shadow: var(--ds-shadow-float);
   overflow: hidden;
@@ -2986,7 +2986,7 @@ onMounted(() => {
 }
 .fatura-preview-body {
   flex: 1;
-  background: #f8fafc;
+  background: var(--ds-surface-subtle);
   overflow: hidden;
   position: relative;
 }
@@ -2994,7 +2994,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   border: 0;
-  background: #fff;
+  background: var(--ds-surface);
 }
 .fatura-preview-loading {
   position: absolute;
@@ -3064,7 +3064,7 @@ onMounted(() => {
 }
 .fatura-month-btn:active {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
 }
 .fatura-custom-range h4 {
   margin: 0 0 8px;
@@ -3121,7 +3121,7 @@ onMounted(() => {
   padding: 14px;
   border: 1.5px solid var(--ds-line);
   border-radius: 18px;
-  background: #fff;
+  background: var(--ds-surface);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3129,14 +3129,14 @@ onMounted(() => {
   cursor: pointer;
 }
 .fatura-response-type-btn.is-selected.is-kabul {
-  border-color: #059669;
-  background: #ecfdf5;
-  color: #059669;
+  border-color: var(--ds-emerald-ink);
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
 }
 .fatura-response-type-btn.is-selected.is-red {
-  border-color: #dc2626;
-  background: #fef2f2;
-  color: #dc2626;
+  border-color: var(--ds-danger-ink);
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
 }
 
 /* Sihirbaz (Wizard) */
@@ -3164,7 +3164,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   padding: 8px 16px;
-  background: #f8fafc;
+  background: var(--ds-surface-subtle);
   border-bottom: 1px solid var(--ds-line);
 }
 .fatura-wizard-step-item {
@@ -3188,11 +3188,11 @@ onMounted(() => {
 }
 .fatura-wizard-step-item.is-active .step-num {
   background: var(--ds-primary);
-  color: #fff;
+  color: var(--ds-surface);
 }
 .fatura-wizard-step-item.is-done .step-num {
-  background: #059669;
-  color: #fff;
+  background: var(--ds-emerald-ink);
+  color: var(--ds-surface);
 }
 .step-name {
   font: 600 9px 'Space Grotesk', sans-serif;
@@ -3213,7 +3213,7 @@ onMounted(() => {
   gap: 8px;
   padding: 14px 20px;
   border-top: 1px solid var(--ds-line);
-  background: #fff;
+  background: var(--ds-surface);
 }
 
 /* Form Elemanları */
@@ -3243,7 +3243,7 @@ onMounted(() => {
 .fatura-form-field select:focus,
 .fatura-form-field textarea:focus {
   border-color: var(--ds-primary);
-  background: #fff;
+  background: var(--ds-surface);
 }
 .fatura-form-grid-2 {
   display: grid;
@@ -3265,7 +3265,7 @@ onMounted(() => {
   border: 1px solid var(--ds-line);
   border-radius: 14px;
   margin-top: 6px;
-  background: #fff;
+  background: var(--ds-surface);
   box-shadow: var(--ds-shadow-card);
 }
 .fatura-customer-item {
@@ -3295,8 +3295,8 @@ onMounted(() => {
   gap: 8px;
   padding: 10px 14px;
   border-radius: 14px;
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
   font-size: 11px;
 }
 .fatura-taxpayer-alert strong {
@@ -3339,7 +3339,7 @@ onMounted(() => {
   padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid var(--ds-line);
-  background: #fff;
+  background: var(--ds-surface);
   font-size: 10px;
   cursor: pointer;
 }
@@ -3443,16 +3443,16 @@ onMounted(() => {
 
 /* Renk Yardımcıları */
 .text-primary { color: var(--ds-primary) !important; }
-.text-emerald { color: #059669 !important; }
-.text-sky { color: #0284c7 !important; }
-.text-amber { color: #d97706 !important; }
-.text-rose { color: #dc2626 !important; }
-.text-purple { color: #7c3aed !important; }
+.text-emerald { color: var(--ds-emerald-ink) !important; }
+.text-sky { color: var(--ds-blue-ink) !important; }
+.text-amber { color: var(--ds-amber-ink) !important; }
+.text-rose { color: var(--ds-danger-ink) !important; }
+.text-purple { color: var(--ds-purple-ink) !important; }
 
 .bg-primary-soft { background: var(--ds-soft) !important; }
-.bg-emerald-soft { background: #ecfdf5 !important; }
-.bg-sky-soft { background: #f0f9ff !important; }
-.bg-amber-soft { background: #fffbeb !important; }
+.bg-emerald-soft { background: var(--ds-emerald-soft) !important; }
+.bg-sky-soft { background: var(--ds-blue-soft) !important; }
+.bg-amber-soft { background: var(--ds-amber-soft) !important; }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }

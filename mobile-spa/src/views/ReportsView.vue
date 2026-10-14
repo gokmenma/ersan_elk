@@ -199,7 +199,7 @@ import TopBar from '../components/TopBar.vue'
   display: block;
   font-size: 12.5px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ds-surface);
   margin-top: 3px;
   line-height: 1.4;
 }

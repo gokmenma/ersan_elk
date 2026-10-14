@@ -1057,7 +1057,7 @@ async function submitSil() {
 .kpi-mini-item.is-active {
   background: var(--ds-primary) !important;
   border-color: var(--ds-primary) !important;
-  color: #ffffff !important;
+  color: var(--ds-surface) !important;
   box-shadow: 0 4px 12px rgba(24, 28, 36, 0.2);
 }
 
@@ -1103,7 +1103,7 @@ async function submitSil() {
 
 .pill-btn.active {
   border-color: var(--ds-primary);
-  color: #ffffff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   box-shadow: 0 4px 12px rgba(24, 28, 36, 0.2);
 }
@@ -1228,7 +1228,7 @@ async function submitSil() {
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   font: 700 13px var(--ds-font-mono);
   display: grid;
@@ -1365,7 +1365,7 @@ async function submitSil() {
 .act-btn:active { transform: scale(0.97); }
 
 .act-btn--approve, .act-btn--primary, .act-btn--purple {
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   box-shadow: 0 2px 8px rgba(24, 28, 36, 0.2);
 }
@@ -1377,7 +1377,7 @@ async function submitSil() {
 
 .act-btn--neutral {
   color: var(--ds-muted);
-  background: #ffffff;
+  background: var(--ds-surface);
 }
 
 .act-btn-delete {
@@ -1414,8 +1414,8 @@ async function submitSil() {
 }
 
 .empty-icon-bubble.is-pending {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
 }
 
 .empty-state-card h3 {
@@ -1438,7 +1438,7 @@ async function submitSil() {
   padding: 8px 16px;
   border: 0;
   border-radius: var(--ds-radius-pill);
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   font-size: 11px;
   font-weight: 700;
@@ -1451,7 +1451,7 @@ async function submitSil() {
   gap: 7px;
   padding: 10px 16px;
   border-radius: var(--ds-radius-pill);
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   box-shadow: var(--ds-shadow-float);
   margin-bottom: 12px;
@@ -1498,7 +1498,7 @@ async function submitSil() {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   box-shadow: 0 4px 12px rgba(24, 28, 36, 0.2);
   display: grid;
@@ -1545,7 +1545,7 @@ async function submitSil() {
 }
 
 .segmented-choice button.active {
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
 }
 
@@ -1573,7 +1573,7 @@ async function submitSil() {
 }
 
 .form-input:focus, .form-textarea:focus {
-  background: #ffffff;
+  background: var(--ds-surface);
   border-color: var(--ds-primary);
   box-shadow: 0 0 0 3px rgba(24, 28, 36, 0.08);
 }
@@ -1584,7 +1584,7 @@ async function submitSil() {
   gap: 9px;
   padding: 10px 12px;
   border-radius: 14px;
-  background: #ecfdf5;
+  background: var(--ds-emerald-soft);
   border: 1px solid #a7f3d0;
   cursor: pointer;
 }
@@ -1628,7 +1628,7 @@ async function submitSil() {
 }
 
 .btn-submit {
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
 }
 
@@ -1689,7 +1689,7 @@ async function submitSil() {
   height: 36px;
   border-radius: 50%;
   border: 0;
-  color: #fff;
+  color: var(--ds-surface);
   background: var(--ds-primary);
   display: grid;
   place-items: center;
@@ -1734,7 +1734,7 @@ async function submitSil() {
 }
 
 .sheet-box.box-success {
-  background: #ecfdf5;
+  background: var(--ds-emerald-soft);
   border-color: #a7f3d0;
 }
 
