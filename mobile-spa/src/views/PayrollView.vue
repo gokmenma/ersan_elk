@@ -178,7 +178,7 @@ async function loadBordro(donemToken = null, showLoader = true) {
     const res = await bordroApi.init(params)
     donemler.value = res.donemler || []
     selectedDonem.value = res.selected_donem || null
-    selectedDonemId.value = res.selected_donem?.id || ''
+    selectedDonemId.value = res.selected_donem?.id || (res.donemler?.[0]?.id || '')
     isClosed.value = Boolean(res.is_closed)
     summary.value = res.summary || {
       personel: 0,
@@ -318,6 +318,13 @@ async function openDetail(person) {
 
   try {
     const res = await bordroApi.getDetail(person.token)
+    if (res && res.html) {
+      const host = document.createElement('div')
+      host.innerHTML = res.html
+      host.querySelector('.person-header-card')?.remove()
+      host.querySelector('.summary-badge')?.remove()
+      res.html = host.innerHTML
+    }
     detailData.value = res
   } catch (err) {
     showToast(err.message || 'Bordro detayı alınamadı.', 'error')
@@ -517,9 +524,9 @@ onMounted(() => {
           <div class="payroll-select-wrapper">
             <select
               id="bordroPeriodSelect"
+              v-model="selectedDonemId"
               aria-label="Bordro dönemi seçin"
               class="payroll-select"
-              :value="selectedDonemId"
               @change="handlePeriodChange"
             >
               <option v-if="!donemler.length" value="">Dönem bulunamadı</option>
@@ -552,11 +559,11 @@ onMounted(() => {
           <span class="dark-pill-tag">
             <span class="bento-status-dot"></span> TOPLAM NET DAĞITIM
           </span>
-          <Banknote :size="22" aria-hidden="true" />
+          <Banknote :size="20" aria-hidden="true" />
         </div>
-        <div class="bento-overview-value">
-          <strong>{{ formatMoney(summary.net) }}</strong>
-          <span>ele geçen<br />net toplam</span>
+        <div class="payroll-hero-main">
+          <strong class="payroll-hero-amount">{{ formatMoney(summary.net) }}</strong>
+          <span class="payroll-hero-sublabel">ele geçen net toplam</span>
         </div>
         <div class="bento-overview-footer">
           <span>Toplam Hakediş: <b>{{ formatMoney(summary.alacak) }}</b></span>
@@ -855,8 +862,8 @@ onMounted(() => {
                   <span class="dark-pill-tag">ELE GEÇEN NET TUTAR</span>
                   <Banknote :size="20" />
                 </div>
-                <div class="bento-overview-value">
-                  <strong>{{ detailData.summary?.net_maas || formatMoney(selectedPersonForDetail?.net) }}</strong>
+                <div class="payroll-hero-main">
+                  <strong class="payroll-hero-amount">{{ detailData.summary?.net_maas || formatMoney(selectedPersonForDetail?.net) }}</strong>
                 </div>
                 <div class="detail-hero-subgrid">
                   <div>
@@ -1322,11 +1329,18 @@ onMounted(() => {
   border-radius: var(--ds-radius-pill, 9999px);
   padding: 0 38px 0 16px;
   font-size: 14px;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 800;
+  color: #0f172a;
   appearance: none;
+  -webkit-appearance: none;
   outline: none;
   transition: border-color var(--ds-transition-fast), background-color var(--ds-transition-fast);
+}
+
+.payroll-select option {
+  background-color: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
 }
 
 .payroll-select:focus {
@@ -1368,7 +1382,33 @@ onMounted(() => {
 
 /* ==================== KPI KARTLARI ==================== */
 .payroll-kpi-hero {
-  padding: 20px;
+  padding: 18px 20px;
+}
+
+.payroll-hero-main {
+  margin: 12px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.payroll-hero-amount {
+  font-size: clamp(22px, 6.2vw, 28px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.payroll-hero-sublabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.02em;
 }
 
 .payroll-deduction-badge {

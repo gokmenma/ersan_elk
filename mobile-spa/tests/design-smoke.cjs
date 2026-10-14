@@ -31,7 +31,10 @@ const baseUrl=process.env.MOBILE_SPA_TEST_URL || 'http://localhost:5173';
  assert(await page.locator('h1').count()>0,`${path} no heading`);
  }
  }
- await page.setViewportSize({width:390,height:844});await page.goto(baseUrl + '/');await page.getByText('BUGÜN SAHADA').waitFor();
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(baseUrl + '/#/bordro');await page.waitForTimeout(400);
+ await page.screenshot({path:path.join(os.tmpdir(), 'ersan-mobile-bordro.png'),fullPage:true});
+ await page.goto(baseUrl + '/');await page.getByText('BUGÜN SAHADA').waitFor();
  const more=page.getByRole('button',{name:'Daha fazla menüsünü aç'});await more.click();
  await page.getByRole('dialog').waitFor();await page.waitForTimeout(300);await page.screenshot({path:path.join(os.tmpdir(), 'ersan-mobile-menu.png'),fullPage:false});
  assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden');

@@ -565,6 +565,10 @@ final class BordroBankaDagilimiTest extends TestCase
             'netAlacagi' => 22300,
             'bankaOncelikliKesinti' => 0,
             'bankaAktarilanKesinti' => 15000,
+            'bankaKesintiKalemleri' => [
+                ['kod' => 'icra', 'etiket' => 'İcra', 'tutar' => 9000],
+                ['kod' => 'diger_kesinti', 'etiket' => 'Diğer Kesinti', 'tutar' => 2500],
+            ],
             'bankaEkOdemeDetaylari' => [
                 ['etiket' => 'Resmi Tatil Çalışması (Net)', 'tutar' => 935.85],
                 ['etiket' => 'Hafta Tatili Çalışması (Net)', 'tutar' => 935.85],
@@ -586,6 +590,11 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(250.0, $ozet['resmi_fazla_mesai_net']);
         self::assertSame(37111.35, $ozet['resmi_banka_matrahi']);
         self::assertSame(15000.0, $ozet['bankadan_dusulen_kesinti']);
+        self::assertSame(0.0, $ozet['muhasebe_banka_avans']);
+        self::assertSame(9000.0, $ozet['muhasebe_banka_icra']);
+        self::assertSame(2500.0, $ozet['muhasebe_banka_diger_kesinti']);
+        self::assertSame(11500.0, $ozet['muhasebe_bankadan_dusulecek']);
+        self::assertSame(33611.35, $ozet['muhasebe_resmi_banka_matrahi']);
         self::assertSame(22111.35, $ozet['banka_odemesi']);
         self::assertSame(188.65, $ozet['elden_odeme']);
         self::assertSame(22300.0, $ozet['dagitim_toplami']);

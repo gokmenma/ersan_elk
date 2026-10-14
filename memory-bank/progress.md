@@ -144,3 +144,4 @@
 - [x] Maaşa dahil nihai toplamın yükseltilmiş nöbet `net_etki` değeri yerine ham tutarı tekrar kullanması düzeltildi.
 - [x] Bordro detayındaki nöbet satırı yükseltilmiş snapshot tutarıyla eşlendi.
 - [x] Muhasebe Mutabakat Excel'ine Toplam Gün ve İzin Günü kolonları eklendi; ücretli/ücretsiz izin toplamı ortak ödeme özetinden aktarılır hale getirildi.
+- [x] Muhasebe Mutabakat Excel'inde elden kanallı kesintilerin banka kesinti kolonlarına taşınması engellendi; resmî eklenenler eksi gösterilen banka kesintileri kayıtlı banka tutarıyla eşlendi.

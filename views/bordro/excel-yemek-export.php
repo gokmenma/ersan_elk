@@ -646,7 +646,7 @@ try {
     ];
     $mutabakatSatir = 3;
     foreach ($yemekVerileri as $veri) {
-        $resmiKalan = max(0.0, round((float) $veri['resmi_banka_matrahi'], 2));
+        $resmiKalan = max(0.0, round((float) $veri['muhasebe_resmi_banka_matrahi'], 2));
         $resmiEklenenPayi = static function (float $aday) use (&$resmiKalan): float {
             $pay = min(max(0.0, round($aday, 2)), $resmiKalan);
             $resmiKalan = round($resmiKalan - $pay, 2);
@@ -661,12 +661,11 @@ try {
         $resmiPrim = $resmiEklenenPayi((float) ($veri['resmi_prim_ikramiye'] ?? 0));
         $resmiYemek = $resmiEklenenPayi((float) ($veri['resmi_yemek_yardimi'] ?? 0));
         $digerResmiEklenen = $resmiKalan;
-        $kesintiKalan = max(0.0, round((float) $veri['toplam_personel_kesintisi'], 2));
-        $avansKesintiDetayi = min(max(0.0, round((float) $veri['avans'], 2)), $kesintiKalan);
-        $kesintiKalan = round($kesintiKalan - $avansKesintiDetayi, 2);
-        $icraKesintiDetayi = min(max(0.0, round((float) $veri['icra'], 2)), $kesintiKalan);
-        $kesintiKalan = round($kesintiKalan - $icraKesintiDetayi, 2);
-        $digerKesintiDetayi = $kesintiKalan;
+        // Mutabakat yalnız bankadan düşülecek kesintileri içerir. Elden kanallı
+        // kesintiler bu kırmızı bölüme taşınmaz ve banka tutarını bozmaz.
+        $avansKesintiDetayi = (float) $veri['muhasebe_banka_avans'];
+        $icraKesintiDetayi = (float) $veri['muhasebe_banka_icra'];
+        $digerKesintiDetayi = (float) $veri['muhasebe_banka_diger_kesinti'];
         $mutabakatSheet->setCellValue('A' . $mutabakatSatir, $veri['adi_soyadi']);
         $mutabakatSheet->setCellValueExplicit('B' . $mutabakatSatir, $veri['tc_kimlik'], DataType::TYPE_STRING);
         $mutabakatSheet->setCellValue('C' . $mutabakatSatir, $veri['toplam_gun']);

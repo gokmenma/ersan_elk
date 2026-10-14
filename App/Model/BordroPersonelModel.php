@@ -1217,7 +1217,7 @@ class BordroPersonelModel extends Model
                     default => (!empty($snapshotKesinti['kod']) ? (string) $snapshotKesinti['kod'] : 'Banka kesintisi'),
                 };
             }
-            $snapshotKesintiKalemi = ['etiket' => $etiket, 'tutar' => $tutar];
+            $snapshotKesintiKalemi = ['kod' => $kesintiKodu, 'etiket' => $etiket, 'tutar' => $tutar];
             $aciklama = $this->normalizeKesintiAciklamasi($kesintiKodu, $snapshotKesinti['aciklama'] ?? null);
             if ($aciklama !== '') {
                 $snapshotKesintiKalemi['aciklama'] = $aciklama;
@@ -1406,6 +1406,7 @@ class BordroPersonelModel extends Model
                 } else {
                     $bankaKesintisiToplam += $tutar;
                     $bankaKesintiKalemi = [
+                        'kod' => mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8'),
                         'etiket' => $param->etiket ?? match ((string) $kesintiSatiri->tur) {
                             'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
                             'nafaka' => 'Nafaka', 'ceza' => 'Ceza', 'izin_kesinti' => 'Ücretsiz izin',
@@ -2316,6 +2317,31 @@ class BordroPersonelModel extends Model
         }
         $eldenKesintisi = max(0.0, round($toplamKesinti - $bankaKesintisi, 2));
         $dagitimToplami = round($bankaOdemesi + $eldenOdeme + $kart + $digerOdeme, 2);
+        $muhasebeBankaKesintileri = ['avans' => 0.0, 'icra' => 0.0, 'diger' => 0.0];
+        $muhasebeBankaKesintiKalani = $bankaKesintisi;
+        foreach (($hesap['bankaKesintiKalemleri'] ?? []) as $bankaKesintiKalemi) {
+            if ($muhasebeBankaKesintiKalani <= 0) {
+                break;
+            }
+            $kalemTutari = min(
+                $muhasebeBankaKesintiKalani,
+                max(0.0, round((float) ($bankaKesintiKalemi['tutar'] ?? 0), 2))
+            );
+            if ($kalemTutari <= 0) {
+                continue;
+            }
+            $kalemKodu = mb_strtolower((string) ($bankaKesintiKalemi['kod'] ?? ''), 'UTF-8');
+            $kalemEtiketi = mb_strtolower((string) ($bankaKesintiKalemi['etiket'] ?? ''), 'UTF-8');
+            if ($kalemKodu === 'avans' || strpos($kalemEtiketi, 'avans') !== false) {
+                $muhasebeBankaKesintileri['avans'] += $kalemTutari;
+            } elseif ($kalemKodu === 'icra' || strpos($kalemEtiketi, 'icra') !== false) {
+                $muhasebeBankaKesintileri['icra'] += $kalemTutari;
+            } else {
+                $muhasebeBankaKesintileri['diger'] += $kalemTutari;
+            }
+            $muhasebeBankaKesintiKalani = round($muhasebeBankaKesintiKalani - $kalemTutari, 2);
+        }
+        $muhasebeBankadanDusulecek = round(array_sum($muhasebeBankaKesintileri), 2);
         return [
             'toplam_gun' => (int) $hesap['calismaGunu'],
             'fiili_gun' => $gun,
@@ -2343,6 +2369,11 @@ class BordroPersonelModel extends Model
             'net_odenecek_toplam' => $netOdenecek,
             'resmi_banka_matrahi' => $resmiBankaMatrahi,
             'bankadan_dusulen_kesinti' => $bankaKesintisi,
+            'muhasebe_banka_avans' => round($muhasebeBankaKesintileri['avans'], 2),
+            'muhasebe_banka_icra' => round($muhasebeBankaKesintileri['icra'], 2),
+            'muhasebe_banka_diger_kesinti' => round($muhasebeBankaKesintileri['diger'], 2),
+            'muhasebe_bankadan_dusulecek' => $muhasebeBankadanDusulecek,
+            'muhasebe_resmi_banka_matrahi' => round($bankaOdemesi + $muhasebeBankadanDusulecek, 2),
             'elden_dusulen_kesinti' => $eldenKesintisi,
             'banka_odemesi' => $bankaOdemesi,
             'elden_odeme' => $eldenOdeme,

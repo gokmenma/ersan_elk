@@ -106,6 +106,7 @@ if ($method === 'GET') {
             }
 
             $selectedDonem = null;
+            $selectedDonemToken = '';
             $donemOptions = [];
             foreach ($allDonemler as $donem) {
                 $dId = (int) $donem->id;
@@ -122,9 +123,7 @@ if ($method === 'GET') {
 
                 if (($selectedId > 0 && $dId === $selectedId) || ($selectedId === 0 && $selectedDonem === null)) {
                     $selectedDonem = $donem;
-                    if ($selectedId > 0) {
-                        // Seçilen bulundu
-                    }
+                    $selectedDonemToken = $encToken;
                 }
             }
 
@@ -148,7 +147,7 @@ if ($method === 'GET') {
             if ($selectedDonem && (int) $selectedDonem->firma_id === $firmaId) {
                 $closed = (int) ($selectedDonem->kapali_mi ?? 0) === 1;
                 $selectedDonemData = [
-                    'id' => Security::encrypt((string) $selectedDonem->id),
+                    'id' => $selectedDonemToken ?: Security::encrypt((string) $selectedDonem->id),
                     'raw_id' => (int) $selectedDonem->id,
                     'name' => (string) ($selectedDonem->donem_adi ?? ''),
                     'closed' => $closed,
