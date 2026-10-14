@@ -86,15 +86,6 @@ try {
         $ekOdemeler = $bordroModel->getDonemEkOdemeleriListe((int) $personel->personel_id, $donemId);
         $kesintiler = $bordroModel->getDonemKesintileriListe((int) $personel->personel_id, $donemId);
 
-        $sheet->mergeCells("A{$row}:P{$row}");
-        $sheet->setCellValue("A{$row}", 'BORDRO KONTROL  |  ' . ($donem->donem_adi ?? ''));
-        $sheet->getStyle("A{$row}:P{$row}")->applyFromArray([
-            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '334155']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-        ]);
-        $row++;
-
         $sheet->mergeCells("A{$row}:H{$row}");
         $sheet->mergeCells("I{$row}:L{$row}");
         $sheet->mergeCells("M{$row}:P{$row}");
@@ -102,10 +93,14 @@ try {
         $sheet->setCellValueExplicit("I{$row}", 'TC: ' . (string) ($personel->tc_kimlik_no ?? '-'), DataType::TYPE_STRING);
         $sheet->setCellValue("M{$row}", 'Fiilî Gün: ' . (int) ($odemeOzeti['fiili_gun'] ?? 0));
         $sheet->getStyle("A{$row}:P{$row}")->applyFromArray([
-            'font' => ['bold' => true, 'size' => 11],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']],
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '334155']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             'borders' => $thinBorder,
         ]);
+        $sheet->getStyle("I{$row}:L{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("M{$row}:P{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getRowDimension($row)->setRowHeight(26);
         $row += 2;
 
         $headerRow = $row;
@@ -242,6 +237,18 @@ try {
             $sheet->getStyle("{$column}{$row}")->getNumberFormat()->setFormatCode($moneyFormat);
         }
         $sheet->getStyle("P{$row}")->getFont()->getColor()->setRGB('16A34A');
+        // Dört kontrol kartının dış sınırı iç ızgaradan daha belirgin olsun.
+        foreach (['A:D', 'E:H', 'I:L', 'M:P'] as $cardColumns) {
+            [$cardFrom, $cardTo] = explode(':', $cardColumns);
+            $sheet->getStyle("{$cardFrom}{$headerRow}:{$cardTo}{$row}")->applyFromArray([
+                'borders' => [
+                    'outline' => [
+                        'borderStyle' => Border::BORDER_MEDIUM,
+                        'color' => ['rgb' => '64748B'],
+                    ],
+                ],
+            ]);
+        }
         $sheet->getRowDimension($headerRow)->setRowHeight(24);
         $sheet->setBreak("A" . ($row + 2), \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::BREAK_ROW);
         $row += 3;

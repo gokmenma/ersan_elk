@@ -76,3 +76,5 @@
 - [x] Bordro Kontrol indirmesindeki PhpSpreadsheet gridline metot uyumsuzluğu giderildi.
 - [x] Bordro Kontrol dosyasındaki puantaj/sayaç ve kaçak kontrol hareketleri özet satırlarda gruplandı.
 - [x] Bordro Kontrol yemek/eş yardımı ve yuvarlama farkı yerleşimi detay modalıyla aynı hale getirildi.
+- [x] Bordro Kontrol başlığı kaldırılarak personel bilgileri koyu ve okunaklı üst satıra taşındı.
+- [x] Bordro Kontrol kartlarının dış sınırları daha belirgin hale getirildi.
