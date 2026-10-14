@@ -20,7 +20,11 @@
     - Kullanıcının "toplam net dağıtım çok büyük, ayrıca dönem adı görünmüyor" geri bildirimi çözüldü.
     - Dönem Adı: API'de `Security::encrypt` çağrısı rastgele IV nedeniyle iki kez çağrıldığında farklı token üretiyordu; `donemOptions` içindeki token ile `selectedDonemData.id` tokenı birebir senkronize edildi. `<select>` elemanına `v-model="selectedDonemId"` bağlandı ve yazı rengi netleştirildi (`#0f172a`), böylece seçili dönem adı ("EYLÜL 2026") select kutusunda eksiksiz göründü.
     - Toplam Net Dağıtım: `.bento-overview-value strong` varsayılan 60px'lik boyutu nedeniyle milyonluk tutarlarda oluşan taşma ve satır kırılması giderildi. `.payroll-hero-amount` için `font-size: clamp(22px, 6.2vw, 28px)`, `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis` uygulandı; tutar kart içine dengeli biçimde oturtuldu.
-  - Smoke Test & Derleme: `design-smoke.cjs` içine `/bordro` rotası ve mock API yanıtı dahil edildi; Playwright ile 320/390/480px ekran boyutlarında 27 kontrol başarıyla (`PASS`) tamamlandı. `npm run build` ile hatasız üretim çıktısı alındı.
+    - Bordro Detay Modalı (Sheet) Şıklaştırması:
+      - Modal içerisindeki obsidian hero kartında ele geçen net tutarın (`₺53.405,00`) sağdan taşması `.payroll-hero-amount` sınıfı uygulanarak giderildi (`clamp(22px, 6.5vw, 28px)`).
+      - "Resmî Hesaplama Kalemleri" akordeonunda masaüstünden gelen kaba, mükerrer personel bilgi kutusu (`.person-header-card`) ve alt özet rozeti DOM parser ile temizlendi.
+      - `.payroll-legacy-container` ve `.bordro-ref-view` için özel Soft Bento stilleri yazıldı: Kazançlar ve kesintiler bölümleri pastel zeminli (`#f0fdf4` yeşil / `#fff1f2` kırmızı), 14px kavisli beyaz kartlar, ince kesikli ayırıcılar, net hizalı sayılar ve mobil ekran genişliğine tam uyumlu kart ızgarasıyla baştan aşağı modernize edildi.
+  - Smoke Test & Derleme: `design-smoke.cjs` içine `/bordro` rotası, detay modalı açma adımı ve mock API yanıtı dahil edildi; Playwright ile 320/390/480px ekran boyutlarında 27 kontrol başarıyla (`PASS`) tamamlandı. `npm run build` ile hatasız üretim çıktısı alındı.
 
 ## Mobil SPA — mobil uygulama tasarımı (2026-10-14)
 - Pinterest `558939003771833803` referansının sade beyaz/koyu yüzeyleri ve alt panel yaklaşımı mevcut Vue SPA'ya uygulandı. Ana sayfa gerçek API verisinden saha özeti, hızlı erişim, ekip/filo dağılımı ve operasyon kartları çiziyor; önceki sabit personel avatarları ve işlevsiz bildirim düğmesi kaldırıldı.

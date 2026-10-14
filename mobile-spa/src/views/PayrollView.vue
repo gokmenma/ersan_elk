@@ -1988,29 +1988,36 @@ onMounted(() => {
   font-size: 10px;
 }
 
-/* Accordion Kalemler */
+/* Accordion Kalemler ve Resmî Detay */
 .detail-legacy-details {
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
   background: #ffffff;
+  box-shadow: var(--ds-shadow-bento);
 }
 
 .detail-legacy-summary {
-  padding: 12px 14px;
-  font-size: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
   font-weight: 800;
-  color: #1e293b;
+  color: #0f172a;
   background: #f8fafc;
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   list-style: none;
+  border-bottom: 1px solid transparent;
+  transition: background-color var(--ds-transition-fast);
 }
 
 .detail-legacy-summary::-webkit-details-marker {
   display: none;
+}
+
+.detail-legacy-details[open] .detail-legacy-summary {
+  border-bottom-color: #e2e8f0;
 }
 
 .legacy-chevron {
@@ -2027,27 +2034,161 @@ onMounted(() => {
   font-size: 11px;
   color: #334155;
   line-height: 1.5;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
-.payroll-legacy-container :deep(table) {
-  width: 100%;
-  min-width: 320px;
-  border-collapse: collapse;
+/* ==================== BORDRO REFERANS GÖRÜNÜMÜ MOBİL HARMONİZASYONU ==================== */
+.payroll-legacy-container :deep(.bordro-ref-view) {
+  padding: 0 !important;
+  font-family: inherit !important;
+  background: transparent !important;
 }
 
-.payroll-legacy-container :deep(th),
-.payroll-legacy-container :deep(td) {
-  padding: 6px 8px;
-  border-bottom: 1px solid #f1f5f9;
+.payroll-legacy-container :deep(.row) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  margin: 0 !important;
 }
 
-.payroll-legacy-container :deep(th) {
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: #64748b;
-  background: #f8fafc;
+.payroll-legacy-container :deep(.col),
+.payroll-legacy-container :deep(.col-md-3),
+.payroll-legacy-container :deep(.col-md-4),
+.payroll-legacy-container :deep(.col-md-6) {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+.payroll-legacy-container :deep(.section-title) {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  margin: 16px 0 10px !important;
+  padding: 7px 12px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.payroll-legacy-container :deep(.section-title.gains) {
+  color: #15803d !important;
+  background: #f0fdf4 !important;
+  border-left: 3px solid #16a34a !important;
+}
+
+.payroll-legacy-container :deep(.section-title.deductions) {
+  color: #be123c !important;
+  background: #fff1f2 !important;
+  border-left: 3px solid #e11d48 !important;
+}
+
+.payroll-legacy-container :deep(.ref-card) {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-title) {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #475569 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px dashed #e2e8f0 !important;
+  padding-bottom: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-list) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-item) {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-size: 11px !important;
+  color: #334155 !important;
+  padding: 3px 0 !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-item .label) {
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-item .value) {
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  text-align: right !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-item .value .subval) {
+  font-size: 10px !important;
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+  margin-right: 6px !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-item.total-row) {
+  border-top: 1px solid #e2e8f0 !important;
+  padding-top: 6px !important;
+  margin-top: 4px !important;
+  font-weight: 800 !important;
+  font-size: 12px !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-item.total-row .label) {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.payroll-legacy-container :deep(.bottom-panels) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  margin-top: 16px !important;
+}
+
+.payroll-legacy-container :deep(.panel-card) {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+}
+
+.payroll-legacy-container :deep(.panel-card-title) {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #475569 !important;
+  border-bottom: 1px dashed #e2e8f0 !important;
+  padding-bottom: 6px !important;
+  margin-bottom: 8px !important;
+}
+
+.payroll-legacy-container :deep(.green-text) {
+  color: #16a34a !important;
+  font-weight: 700 !important;
+}
+
+.payroll-legacy-container :deep(.red-text) {
+  color: #dc2626 !important;
+  font-weight: 700 !important;
+}
+
+.payroll-legacy-container :deep(.yuvarlama-box) {
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
 }
 
 /* ==================== FORM VE GİRİŞ ALANLARI ==================== */

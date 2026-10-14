@@ -1116,7 +1116,7 @@ class BordroPersonelModel extends Model
                     throw new \DomainException('Kayıtlı bordro ile ortak sonuç ödeme kanalları uyuşmuyor.');
                 }
             }
-            return $sonuc;
+            return $this->normalizeKayitliBankaGosterimi($sonuc, $detay);
         }
         $odeme = is_array($detay['odeme_dagilimi'] ?? null) ? $detay['odeme_dagilimi'] : [];
         $ozet = is_array($detay['ozet'] ?? null) ? $detay['ozet'] : [];
@@ -1291,7 +1291,7 @@ class BordroPersonelModel extends Model
         // bordro_personel kolonlarına yazılır. Burada tekrar tavan uygulamak geçmiş
         // ödemeyi bugünkü kurallarla yeniden dağıtmak anlamına gelir.
 
-        return [
+        $sonuc = [
             'hesaplanmis' => true, 'gosterimKaynagi' => 'kayitli',
             'muhasebePrimTutari' => round((float) ($p->prim_tutar ?? 0), 2),
             'muhasebePrimHakedisi' => round((float) ($p->prim_tutar ?? 0), 2),
@@ -1322,6 +1322,78 @@ class BordroPersonelModel extends Model
             'tumEkOdemeDetaylari' => array_merge($snapshotBankaDetaylari, $snapshotPrimDetaylari),
             'bankaKesintiKalemleri' => $snapshotBankaKesintiKalemleri,
         ];
+        return $this->normalizeKayitliBankaGosterimi($sonuc, $detay);
+    }
+
+    /**
+     * Snapshot ödeme kanallarını değiştirmeden kesinti öncesi banka matrahını
+     * kayıtlı resmî kalemlerden yeniden kurar. Elden kanallı kesintinin elden
+     * hakedişi aşan kısmı bankadan karşılanabilir; ancak kesintinin tamamı banka
+     * matrahına eklenemez.
+     */
+    private function normalizeKayitliBankaGosterimi(array $sonuc, array $detay): array
+    {
+        if (!empty($sonuc['manualDagitimVar'])) {
+            return $sonuc;
+        }
+
+        $toplamHakedis = max(0.0, round((float) ($sonuc['toplamAlacagi'] ?? 0), 2));
+        $banka = max(0.0, round((float) ($sonuc['bankaOdemesi'] ?? 0), 2));
+        $resmiKalemToplami = max(0.0, (float) ($sonuc['asgariYatacak'] ?? 0))
+            + max(0.0, (float) ($sonuc['mealAllowanceDeduction'] ?? 0))
+            + max(0.0, (float) ($sonuc['spouseAllowanceDeduction'] ?? 0));
+        foreach (($sonuc['bankaEkOdemeDetaylari'] ?? []) as $ekOdeme) {
+            if (!is_array($ekOdeme) || empty($ekOdeme['resmi_alacagina_dahil'])) {
+                continue;
+            }
+            $resmiKalemToplami += max(0.0, (float) ($ekOdeme['tutar'] ?? 0));
+        }
+
+        $bankaMatrahi = min($toplamHakedis, round($resmiKalemToplami, 2));
+        // Eski/eksik açıklayıcı kırılım kayıtlı banka ödemesinin altına inemez.
+        $bankaMatrahi = max($banka, $bankaMatrahi);
+        $bankadanKarsilananKesinti = max(0.0, round($bankaMatrahi - $banka, 2));
+
+        $bankaKesintiKalemleri = [];
+        $aciklananBankaKesintisi = 0.0;
+        foreach (($detay['kesintiler'] ?? []) as $kesinti) {
+            if (!is_array($kesinti)) {
+                continue;
+            }
+            $hesaplamaTipi = (string) ($kesinti['hesaplama_tipi'] ?? 'sabit');
+            $bankadanDus = $hesaplamaTipi !== 'elden_tutardan'
+                && (!array_key_exists('banka_matrahina_ekle', $kesinti) || (int) $kesinti['banka_matrahina_ekle'] === 1);
+            if (!$bankadanDus || $aciklananBankaKesintisi >= $bankadanKarsilananKesinti) {
+                continue;
+            }
+            $tutar = min(
+                $bankadanKarsilananKesinti - $aciklananBankaKesintisi,
+                max(0.0, round((float) ($kesinti['tutar'] ?? 0), 2))
+            );
+            if ($tutar <= 0) {
+                continue;
+            }
+            $kod = mb_strtolower((string) ($kesinti['kod'] ?? ''), 'UTF-8');
+            $kalem = [
+                'kod' => $kod,
+                'etiket' => (string) ($kesinti['etiket'] ?? $kesinti['kod'] ?? 'Banka kesintisi'),
+                'tutar' => $tutar,
+            ];
+            $aciklama = $this->normalizeKesintiAciklamasi($kod, $kesinti['aciklama'] ?? null);
+            if ($aciklama !== '') {
+                $kalem['aciklama'] = $aciklama;
+            }
+            $bankaKesintiKalemleri[] = $kalem;
+            $aciklananBankaKesintisi = round($aciklananBankaKesintisi + $tutar, 2);
+        }
+
+        $sonuc['bankaMatrahi'] = round($bankaMatrahi, 2);
+        $sonuc['resmiAlacagi'] = round($banka, 2);
+        $sonuc['bankaOncelikliKesinti'] = round($aciklananBankaKesintisi, 2);
+        $sonuc['bankaAktarilanKesinti'] = round($bankadanKarsilananKesinti - $aciklananBankaKesintisi, 2);
+        $sonuc['bankaKesintiKalemleri'] = $bankaKesintiKalemleri;
+
+        return $sonuc;
     }
 
     public function hesaplaOrtakGosterimDegerleri(object $p, ?object $donemBilgi, float $asgariUcretNet): array
