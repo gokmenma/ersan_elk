@@ -75,3 +75,4 @@
 - [x] Seçili personeller için toplu `Bordro Kontrol` Excel dökümü eklendi.
 - [x] Bordro Kontrol indirmesindeki PhpSpreadsheet gridline metot uyumsuzluğu giderildi.
 - [x] Bordro Kontrol dosyasındaki puantaj/sayaç ve kaçak kontrol hareketleri özet satırlarda gruplandı.
+- [x] Bordro Kontrol yemek/eş yardımı ve yuvarlama farkı yerleşimi detay modalıyla aynı hale getirildi.

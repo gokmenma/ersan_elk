@@ -130,6 +130,10 @@ try {
         $contractItems = [
             ['Sözleşme Hakedişi', (float) ($hesap['sozlesmeHakedisi'] ?? $hesap['toplamAlacagi'] ?? 0)],
         ];
+        $yuvarlamaFarki = round((float) ($hesap['yuvarlamaFarki'] ?? 0), 2);
+        if (abs($yuvarlamaFarki) >= 0.01) {
+            $contractItems[] = ['Yuvarlama Farkı', $yuvarlamaFarki];
+        }
         $officialItems = [
             ['Asgari Ücret (Net)', (float) ($hesap['asgariHakedis'] ?? 0)],
             ['Yemek Yardımı', (float) ($hesap['mealAllowanceDeduction'] ?? 0)],
@@ -154,7 +158,20 @@ try {
                 $kacakKontrolHakedisi += $tutar;
                 continue;
             }
-            // Toplamlarda zaten yer alan teknik yuvarlama satırını detay listesinde tekrarlama.
+            // Detay modalında yemek ve eş yardımı yalnızca Resmî Alacak
+            // tarafında gösterilir; kaynak ek ödeme kaydını sözleşmede tekrarlama.
+            $aciklamaLower = mb_strtolower($aciklama, 'UTF-8');
+            $isYemekYardimi = strpos($tur, 'yemek') !== false
+                || strpos($tur, 'yy') === 0
+                || strpos($aciklamaLower, '[yemek yardımı]') === 0;
+            $isEsYardimi = strpos($tur, 'es_yardimi') !== false
+                || strpos($tur, 'eş_yardımı') !== false
+                || strpos($tur, 'aile') !== false
+                || strpos($aciklamaLower, '[eş yardımı]') === 0;
+            if ($isYemekYardimi || $isEsYardimi) {
+                continue;
+            }
+            // Ortak hesaptaki yuvarlama farkı yukarıda tek satır olarak kullanılır.
             if ($tur === 'yuvarlama_farki' || stripos($aciklama, 'Yuvarlama Farkı') !== false) {
                 continue;
             }
