@@ -214,10 +214,10 @@ ek calisma hakedisi resmi net hedefini asiyorsa asan bakiye elden odemede kalir;
 yemek yardimi artirilmaz veya azaltilmaz. Bu kural liste, detay, Excel ve kayit
 hesabinda ayni ortak dagilimdan uygulanir.
 
-Hesaplanmis eski snapshot'larda kayitli banka/elden kanallari degistirilmez. Aciklayici
-resmi satirlar yeni hedef netle gosterildiginde kayitli banka toplamiyla olusan fark,
-`Eski snapshot dagitim farki` satirinda acikca uzlastirilir. Parasal dagilim ancak
-donem yetkili bicimde acilip bordro yeniden hesaplandiginda yeni kurala gore degisir.
+Hesaplanmis eski snapshot'larda kayitli banka/elden kanallari ve bunlarin kayitli
+kalem dagilimi degistirilmez. Yeni muhasebe hedefi eski satirin yerine gosterilmez;
+parasal dagilim ancak donem yetkili bicimde acilip bordro yeniden hesaplandiginda
+yeni kurala gore degisir.
 
 ```text
 htcHamTutar = (maas_tutari / 30) * htcGun          (personelin kendi gunlugu)

@@ -2043,8 +2043,9 @@ class BordroPersonelModel extends Model
             $kalan = max(0.0, round($kalan - $ayriBankaTutari, 2));
         }
 
-        // Banka toplamı snapshot olarak aynen korunur; hafta içi nöbet satırında
-        // muhasebenin bordroya gireceği resmî fazla mesai hedef neti gösterilir.
+        // Snapshot satırları kayıtlı banka toplamıyla aynı dağılımı göstermelidir.
+        // Yeni muhasebe hedefi eski kaydın satırını ekranda değiştiremez; hedef ancak
+        // bordro yeniden hesaplandığında kayıtlı dağılıma girer.
         $fazlaMesaiHedefNet = max(0.0, round((float) ($muhasebeFazlaMesaiOzeti['tutar'] ?? 0), 2));
         if ($fazlaMesaiHedefNet > 0) {
             $duzeltilmisEkOdemeler = [];
@@ -2059,6 +2060,12 @@ class BordroPersonelModel extends Model
                     continue;
                 }
                 if ($fazlaMesaiEklendi) {
+                    continue;
+                }
+                $kayitliBankaPayi = (float) ($ekOdeme['tutar'] ?? 0);
+                if (abs($kayitliBankaPayi - $fazlaMesaiHedefNet) >= 0.01) {
+                    $duzeltilmisEkOdemeler[] = $ekOdeme;
+                    $fazlaMesaiEklendi = true;
                     continue;
                 }
                 $ekOdeme['odeme_tutari'] = (float) ($ekOdeme['tutar'] ?? 0);
@@ -2111,16 +2118,6 @@ class BordroPersonelModel extends Model
             $sozlesmeFarki = $kalan;
         }
 
-        $gosterilenEkOdemeToplami = array_reduce($ekOdemeler, static function (float $toplam, array $kalem): float {
-            return $toplam + (float) ($kalem['tutar'] ?? 0);
-        }, 0.0);
-        // Eski snapshot'ın kanalları değiştirilmez. Yeni muhasebe hedefi eski dağılımdan
-        // farklıysa satırlar ile kayıtlı resmî toplam arasındaki fark açıkça gösterilir.
-        $snapshotDagitimFarki = round(
-            $brutBanka - ($asgari + $yemek + $esYardimi + $gosterilenEkOdemeToplami + $sozlesmeFarki),
-            2
-        );
-
         $yemekKaynaklari = [];
         $tumEkOdemelerListesi = array_values($hesap['tumEkOdemeDetaylari'] ?? $hesap['bankaEkOdemeDetaylari'] ?? []);
         $kalanYemekKapasitesi = $yemegeAktarilabilirLimit;
@@ -2151,7 +2148,6 @@ class BordroPersonelModel extends Model
             'es_yardimi' => $esYardimi,
             'ek_odemeler' => $ekOdemeler,
             'sozlesme_farki' => $sozlesmeFarki,
-            'snapshot_dagitim_farki' => $snapshotDagitimFarki,
             'kesinti' => $kesinti,
             'kesinti_kalemleri' => $kesintiKalemleri,
             'matrah_siniri' => $matrahSiniri,

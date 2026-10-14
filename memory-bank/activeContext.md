@@ -105,7 +105,7 @@
   - **Hızlı İşlemler & Operasyon Sayaçları**: Yuvarlatılmış beyaz bento kutuları, renkli simgeler ve temiz tipografi ile güncellendi.
 - `npm run build` ile üretim derlemesi başarıyla tamamlandı.
 - Bordro ek çalışma dağılımı netleştirildi: fazla mesai/hafta içi nöbet, RTÇ ve HTÇ maaşa dahil yemek havuzunu artık artırmıyor veya azaltmıyor. Muhasebe hedef neti ayrı banka kalemi, hedefi aşan gerçek hakediş elden bakiye olarak dağıtılıyor.
-- Eski bordro snapshot'larının kayıtlı banka/elden tutarları korunuyor. Muhasebe hedef satırları ile eski banka toplamı farklıysa detay kartında ve banka tooltip'inde `Eski snapshot dağıtım farkı` satırıyla kuruş bazında uzlaştırılıyor.
+- Eski bordro snapshot'larının kayıtlı banka/elden tutarları ve kalem dağılımı aynen gösteriliyor. Yeni muhasebe hedefi eski kaydın satırına gösterim sırasında uygulanmıyor; teknik snapshot farkı satırı kaldırıldı.
 
 ## Sıradaki Adımlar & Odak Noktaları
 - Kullanıcıdan Ana Sayfa'nın yeni Clay/Bento tasarımı hakkında geri bildirim alınması.

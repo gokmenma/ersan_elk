@@ -43,7 +43,7 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(4679.25, $method->invoke($model, 4120, 0, 4679.25));
     }
 
-    public function testMuhasebeHaftaIciNobetiSnapshotHedefNetiyleFazlaMesaiGosterir(): void
+    public function testMuhasebeHedefiHesaplanirAmaEskiSnapshotBankaSatiriKorunur(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
         $bordro = (object) [
@@ -90,9 +90,8 @@ final class BordroBankaDagilimiTest extends TestCase
 
         self::assertSame(25680.78, $bankaDetayi['net_banka']);
         self::assertSame(31680.78, $bankaDetayi['brut_banka']);
-        self::assertSame('Fazla Mesai Ücreti (Net)', $bankaDetayi['ek_odemeler'][0]['etiket']);
-        self::assertSame(748.68, $bankaDetayi['ek_odemeler'][0]['tutar']);
-        self::assertSame(500.0, $bankaDetayi['ek_odemeler'][0]['odeme_tutari']);
+        self::assertSame('Hafta İçi Nöbet', $bankaDetayi['ek_odemeler'][0]['etiket']);
+        self::assertSame(500.0, $bankaDetayi['ek_odemeler'][0]['tutar']);
     }
 
     public function testResmiManuelPrimMaasaDahilYardimdaDogrudanBankaKalemidir(): void
@@ -323,7 +322,7 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame($normal['yemek_gunluk'], $ekCalismali['yemek_gunluk']);
     }
 
-    public function testEskiSnapshotMuhasebeFazlaMesaiHedefiyleAcikcaUzlasir(): void
+    public function testEskiSnapshotMuhasebeHedefiyleEkrandaDegistirilmez(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
         $detay = $model->getBankaOdemeDetayDagilimi([
@@ -339,11 +338,11 @@ final class BordroBankaDagilimiTest extends TestCase
             ],
         ], ['tutar' => 748.68, 'etiket' => 'Fazla Mesai Ücreti (Net)']);
 
-        self::assertSame(-248.68, $detay['snapshot_dagitim_farki']);
+        self::assertSame(500.0, $detay['ek_odemeler'][0]['tutar']);
         self::assertSame($detay['brut_banka'], round(
             $detay['asgari'] + $detay['yemek'] + $detay['es_yardimi']
             + array_sum(array_column($detay['ek_odemeler'], 'tutar'))
-            + $detay['sozlesme_farki'] + $detay['snapshot_dagitim_farki'],
+            + $detay['sozlesme_farki'],
             2
         ));
     }
