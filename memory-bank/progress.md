@@ -95,3 +95,4 @@
 - [x] Teknik `Eski snapshot dağıtım farkı` satırı kaldırıldı; geçmiş bordrolarda kayıtlı banka kalemleri, yeni hedeflerle ekranda değiştirilmeden mutabık gösteriliyor.
 - [x] HTÇ'nin hafta içi nöbet satırından sonra kalan banka boşluğuna kırpılması giderildi; ek çalışmanın resmî banka neti snapshot detayında ayrı saklanıp elden/banka dağımında kullanılıyor.
 - [x] Hafta içi nöbetin nihai resmî banka filtresinden düşmesine yol açan eksik tür kontrolü tamamlandı; detay okuyucusu `resmi_banka_net` alanını öncelikli kullanıyor.
+- [x] Kompakt bordro detayında Yemek Yardımı açılımı kaldırıldı; Fazla Mesai ve HTÇ satırlarına saat/gün ve birim net formülü içeren açılır detay eklendi.

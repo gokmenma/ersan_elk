@@ -33,9 +33,12 @@ final class BordroEskiDetayGosterimTest extends TestCase
         self::assertStringContainsString('background:#f2fbf6; color:#334155', $source);
         self::assertStringContainsString('data-collapse-target="#', $source);
         self::assertStringContainsString('$turParametre->etiket', $source);
-        self::assertStringContainsString('Sözleşme İçindeki Yemek Payı', $source);
-        self::assertStringContainsString('Yemek yardımına aktarılan', $source);
-        self::assertStringContainsString("'resmiYemekDetay_'", $source);
+        self::assertStringNotContainsString('Sözleşme İçindeki Yemek Payı', $source);
+        self::assertStringNotContainsString('Yemek yardımına aktarılan', $source);
+        self::assertStringNotContainsString("'resmiYemekDetay_'", $source);
+        self::assertStringContainsString("'resmiCalismaDetay_'", $source);
+        self::assertStringContainsString('Toplam Fazla Mesai', $source);
+        self::assertStringContainsString('Hafta Tatili Çalışması', $source);
         self::assertStringContainsString('tbody > tr.collapse.show { display:table;', $source);
         self::assertStringContainsString('Puantaj / Prim Hakedişi', $source);
         self::assertStringContainsString('$htcGunModal > 0 && $nominalMaas > 0', $source);

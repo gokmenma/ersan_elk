@@ -1640,44 +1640,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </tr>';
                 if ($bankaDetayDagilimi['yemek'] > 0) {
                     $yemekGunlukGosterim = $includedAllowanceFiiliGun > 0 ? round($bankaDetayDagilimi['yemek'] / $includedAllowanceFiiliGun, 2) : 0;
-                    $yemekKaynaklari = $bankaDetayDagilimi['yemek_kaynaklari'] ?? [];
-                    $yemekEkKazancToplami = 0.0;
-                    if (empty($yemekKaynaklari)) {
-                        foreach ($bankaDetayDagilimi['ek_odemeler'] as $yemekEkOdeme) {
-                            $yemekDahilTutar = round(floatval($yemekEkOdeme['yemek_dahil_tutar'] ?? 0), 2);
-                            if ($yemekDahilTutar <= 0) {
-                                continue;
-                            }
-                            $yemekKaynaklari[] = [
-                                'etiket' => (string) ($yemekEkOdeme['etiket'] ?? 'Ek kazanç'),
-                                'tutar' => $yemekDahilTutar,
-                            ];
-                            $yemekEkKazancToplami += $yemekDahilTutar;
-                        }
-                    } else {
-                        foreach ($yemekKaynaklari as $yk) {
-                            $yemekEkKazancToplami += floatval($yk['tutar'] ?? 0);
-                        }
-                    }
-                    $sozlesmeYemekPayi = isset($bankaDetayDagilimi['sozlesme_yemek_payi']) && $bankaDetayDagilimi['sozlesme_yemek_payi'] > 0
-                        ? round($bankaDetayDagilimi['sozlesme_yemek_payi'], 2)
-                        : max(0.0, round($bankaDetayDagilimi['yemek'] - $yemekEkKazancToplami, 2));
-                    $yemekDetayId = 'resmiYemekDetay_' . intval($bp->id);
-                    $yemekAcilebilir = $sozlesmeYemekPayi > 0 || !empty($yemekKaynaklari);
-                    $html .= '<tr class="parent-row"' . ($yemekAcilebilir ? ' data-bs-toggle="collapse" data-bs-target=".' . $yemekDetayId . '" aria-expanded="false"' : '') . '><td><i class="bx bx-restaurant me-2 text-success"></i>Yemek Yardımı' . ($yemekAcilebilir ? '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i>' : '') . '<span class="calculation-note">' . ($includedAllowanceFiiliGun > 0 ? number_format($yemekGunlukGosterim, 2, ',', '.') . ' ₺ × ' . $includedAllowanceFiiliGun . ' fiilî gün' : 'Resmî banka kalemi') . '</span></td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</td></tr>';
-                    if ($sozlesmeYemekPayi > 0) {
-                        $html .= '<tr class="child-row collapse ' . $yemekDetayId . '"><td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Sözleşme İçindeki Yemek Payı</td><td class="text-end pe-4">+' . number_format($sozlesmeYemekPayi, 2, ',', '.') . ' ₺</td></tr>';
-                    }
-                    foreach ($yemekKaynaklari as $yemekKaynagi) {
-                        $html .= '<tr class="child-row collapse ' . $yemekDetayId . '"><td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($yemekKaynagi['etiket'], ENT_QUOTES, 'UTF-8') . '<small class="calculation-note">Yemek yardımına aktarılan</small></td><td class="text-end pe-4">+' . number_format($yemekKaynagi['tutar'], 2, ',', '.') . ' ₺</td></tr>';
-                    }
+                    $html .= '<tr class="parent-row"><td><i class="bx bx-restaurant me-2 text-success"></i>Yemek Yardımı<span class="calculation-note">' . ($includedAllowanceFiiliGun > 0 ? number_format($yemekGunlukGosterim, 2, ',', '.') . ' ₺ × ' . $includedAllowanceFiiliGun . ' fiilî gün' : 'Resmî banka kalemi') . '</span></td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['yemek'], 2, ',', '.') . ' ₺</td></tr>';
                 }
                 if ($bankaDetayDagilimi['es_yardimi'] > 0) {
                     $html .= '<tr class="parent-row"><td><i class="bx bx-group me-2 text-success"></i>Eş Yardımı</td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['es_yardimi'], 2, ',', '.') . ' ₺</td></tr>';
                 }
                 foreach ($bankaDetayDagilimi['ek_odemeler'] as $bed) {
                     if ($bed['tutar'] > 0) {
-                        $html .= '<tr class="parent-row"><td><i class="bx bx-plus-circle me-2 text-success"></i>' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . '</td><td class="text-end text-success fw-bold">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</td></tr>';
+                        $bedEtiket = (string) ($bed['etiket'] ?? 'Ek Ödeme');
+                        $bedEtiketLower = mb_strtolower($bedEtiket, 'UTF-8');
+                        $isFazlaMesai = strpos($bedEtiketLower, 'fazla mesai') !== false || strpos($bedEtiketLower, 'hafta içi') !== false;
+                        $isHtc = strpos($bedEtiketLower, 'hafta tatili') !== false;
+                        $detayAcilebilir = ($isFazlaMesai && floatval($muhasebeFazlaMesaiOzeti['saat'] ?? 0) > 0) || ($isHtc && $htcGunModal > 0);
+                        $calismaDetayId = 'resmiCalismaDetay_' . intval($bp->id) . '_' . md5($bedEtiket);
+                        $html .= '<tr class="parent-row"' . ($detayAcilebilir ? ' data-bs-toggle="collapse" data-bs-target=".' . $calismaDetayId . '" aria-expanded="false"' : '') . '><td><i class="bx bx-plus-circle me-2 text-success"></i>' . htmlspecialchars($bedEtiket, ENT_QUOTES, 'UTF-8') . ($detayAcilebilir ? '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i>' : '') . '</td><td class="text-end text-success fw-bold">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</td></tr>';
+                        if ($detayAcilebilir) {
+                            if ($isFazlaMesai) {
+                                $mesaiSaat = floatval($muhasebeFazlaMesaiOzeti['saat'] ?? 0);
+                                $saatlikNet = $mesaiSaat > 0 ? round(floatval($bed['tutar']) / $mesaiSaat, 2) : 0.0;
+                                $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-time-five me-1 opacity-50"></i>Toplam Fazla Mesai<span class="calculation-note">' . number_format($saatlikNet, 2, ',', '.') . ' ₺ × ' . number_format($mesaiSaat, 2, ',', '.') . ' saat</span></td><td class="text-end pe-4 fw-semibold">' . number_format($mesaiSaat, 2, ',', '.') . ' Saat</td></tr>';
+                            } else {
+                                $htcGunlukNet = $htcGunModal > 0 ? round(floatval($bed['tutar']) / $htcGunModal, 2) : 0.0;
+                                $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-calendar-check me-1 opacity-50"></i>Hafta Tatili Çalışması<span class="calculation-note">' . number_format($htcGunlukNet, 2, ',', '.') . ' ₺ × ' . $htcGunModal . ' gün</span></td><td class="text-end pe-4 fw-semibold">' . $htcGunModal . ' Gün</td></tr>';
+                            }
+                        }
                     }
                 }
                 if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
