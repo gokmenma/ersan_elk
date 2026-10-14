@@ -118,6 +118,11 @@ final class BordroBankaDagilimiTest extends TestCase
             'resmi_alacagina_dahil' => 1,
         ], 'hafta_ici_nobet', $parametre));
 
+        self::assertTrue($method->invoke($model, [
+            'banka_matrahina_ekle' => 1,
+            'resmi_alacagina_dahil' => 0,
+        ], 'mesai', $parametre));
+
         self::assertFalse($method->invoke($model, [
             'banka_matrahina_ekle' => 1,
             'resmi_alacagina_dahil' => 1,
@@ -329,6 +334,15 @@ final class BordroBankaDagilimiTest extends TestCase
 
         self::assertSame(1871.70, $method->invoke($model, 935.85, 935.85, 935.85));
         self::assertSame(1871.70, $method->invoke($model, 1871.70, 935.85, 935.85));
+    }
+
+    public function testOtomatikDagitimdaEksikBakiyeEldenOdemeyeTamamlanir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'eksikEldenOdemeTamamlama');
+
+        self::assertSame(4068.0, $method->invoke($model, 30000, 24832, 0, 0, 0, 1100));
+        self::assertSame(0.0, $method->invoke($model, 23115, 22950.85, 164.15, 0, 0, 0));
     }
 
     public function testEskiSnapshotMuhasebeHedefiyleEkrandaDegistirilmez(): void

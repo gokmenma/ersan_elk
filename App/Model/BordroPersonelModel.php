@@ -146,7 +146,8 @@ class BordroPersonelModel extends Model
     private function isDogalResmiAlacakTuru(string $kod): bool
     {
         $kod = mb_strtolower($kod, 'UTF-8');
-        return strpos($kod, 'yemek') !== false
+        return $kod === 'mesai'
+            || strpos($kod, 'yemek') !== false
             || strpos($kod, 'es_yardimi') !== false
             || strpos($kod, 'aile_yardimi') !== false
             || strpos($kod, 'fazla_mesai') !== false
@@ -158,7 +159,8 @@ class BordroPersonelModel extends Model
     private function isYemektenBagimsizEkCalismaTuru(string $kod): bool
     {
         $kod = mb_strtolower($kod, 'UTF-8');
-        return strpos($kod, 'fazla_mesai') !== false
+        return $kod === 'mesai'
+            || strpos($kod, 'fazla_mesai') !== false
             || strpos($kod, 'hafta_ici_nobet') !== false
             || strpos($kod, 'hafta_sonu_nobet') !== false
             || strpos($kod, 'resmi_tatil') !== false
@@ -302,6 +304,20 @@ class BordroPersonelModel extends Model
     private function garantiResmiOzelCalismaNeti(float $hesaplananNet, float $rtcHedefNet, float $htcHedefNet): float
     {
         return round(max(0.0, $hesaplananNet, $rtcHedefNet + $htcHedefNet), 2);
+    }
+
+    /** Otomatik dağıtımda hiçbir net hakedişin ödeme kanalları dışında kalmamasını sağlar. */
+    private function eksikEldenOdemeTamamlama(
+        float $toplamNetHakedis,
+        float $banka,
+        float $elden,
+        float $sodexo,
+        float $diger,
+        float $personelKesintisi
+    ): float {
+        $odenecekNet = max(0.0, round($toplamNetHakedis - $personelKesintisi, 2));
+        $dagitilan = round($banka + $elden + $sodexo + $diger, 2);
+        return max(0.0, round($odenecekNet - $dagitilan, 2));
     }
 
     private function getAktifTakvimGunSayisi($donemBaslangic, $donemBitis, $iseGirisTarihi = null, $istenCikisTarihi = null): int
@@ -7002,6 +7018,16 @@ class BordroPersonelModel extends Model
                 ];
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             }
+
+            $gercekPersonelKesintisi = round($bankaKesintisiToplam + $eldenKesintisiToplam, 2);
+            $eldenOdeme += $this->eksikEldenOdemeTamamlama(
+                $netMaas,
+                $bankaOdemesi,
+                $eldenOdeme,
+                $sodexoOdemesi,
+                floatval($kayit->diger_odeme ?? 0),
+                $gercekPersonelKesintisi
+            );
         }
 
         if ($htcGunHesap > 0) {
@@ -7098,7 +7124,7 @@ class BordroPersonelModel extends Model
             'brut_maas' => round($brutMaas, 2), 'sgk_isci' => round($sgkIsci, 2), 'issizlik_isci' => round($issizlikIsci, 2),
             'gelir_vergisi' => round($gelirVergisi, 2), 'damga_vergisi' => round($damgaVergisi, 2), 'net_maas' => round($netMaas, 2),
             'sgk_isveren' => round($sgkIsveren, 2), 'issizlik_isveren' => round($issizlikIsveren, 2), 'toplam_maliyet' => round($toplamMaliyet, 2),
-            'toplam_kesinti' => round(($toplamKesinti - $icraKesintisi), 2), 'toplam_ek_odeme' => round($toplamEkOdeme, 2), 'fazla_mesai_tutar' => round($toplamMesaiTutar, 2),
+            'toplam_kesinti' => round(max(0.0, $bankaKesintisiToplam + $eldenKesintisiToplam - $icraKesintisi), 2), 'toplam_ek_odeme' => round($toplamEkOdeme, 2), 'fazla_mesai_tutar' => round($toplamMesaiTutar, 2),
             'calisan_gun' => $maasHesapGunu, 'sodexo_odemesi' => round($sodexoOdemesi, 2), 'banka_odemesi' => round($bankaOdemesi, 2),
             'elden_odeme' => round($eldenOdeme, 2), 'diger_odeme' => round($kayit->diger_odeme ?? 0, 2),
             'kumulatif_matrah' => round($yeniKumulatifMatrah, 2), 'hesaplayan_id' => $hesaplayan_id,

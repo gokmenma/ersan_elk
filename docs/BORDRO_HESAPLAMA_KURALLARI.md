@@ -576,8 +576,11 @@ Bordro hesaplama etki alani:
 - Maaşa dahil yardım dağıtımında kesintinin kayıtlı ödeme kanalı korunur. Banka kesintisi önce resmî banka matrahından, `Elden / Harici` kesinti ise önce elden hakedişten düşülür; ilgili kanaldaki hakediş yetmezse kalan kesinti diğer kanaldan mahsup edilir.
 - Hesaplanmış bordroda liste ve detayın personel kesintisi toplamı, snapshot içindeki `kesintiler` kalemlerinden alınır. Eski `bordro_personel.kesinti_tutar` alanında kalmış brüte tamamlama/yasal kesintiler, icra-avans-diğer personel kesintisi gibi gösterilmez.
 - Kesinti açıklaması kesinti türüyle uyumlu olmalıdır. `avans` veya başka bir türdeki satıra yanlışlıkla taşınmış `[İcra]` açıklaması gösterilmez; yeniden hesaplanan avans satırının açıklaması ilgili avans kaynağından yenilenir.
+- Açıklaması bulunmayan bir kesinti satırı, aynı personelin başka bir kesintisinin açıklamasıyla doldurulmaz. Her satır yalnız kendi snapshot açıklamasını gösterebilir.
 - Maaşa dahil yemekte yemek, sözleşme netini tamamlayan bakiyedir. HTÇ/fazla çalışma yemek tutarına yedirilmez; personelin tam ek çalışma hakedişi ile resmî banka neti arasındaki fark elden ödeme bakiyesidir.
 - HTÇ günü bulunan bordroda resmî banka matrahı, diğer fazla çalışma kalemlerinden bağımsız olarak en az `asgari ücret net / 30 × HTÇ günü` kadar artırılır. HTÇ hedef neti snapshot'a ayrı kod ve gün sayısıyla yazılır; aynı tutarlı fazla mesai satırı HTÇ'nin yerine geçemez.
+- Fazla çalışma parametresi `fazla_mesai` veya sistemdeki kısa kodu olan `mesai` ile kaydedilmiş olabilir. İki kod da yemek yardımından bağımsız, ayrı resmî banka kalemi olarak aynı kurala tabidir.
+- Otomatik dağıtımda ödeme kanalları zorunlu olarak mutabık olmalıdır: `banka + elden + Sodexo + diğer = toplam net hakediş - gerçek personel kesintileri`. Brüte tamamlama içindeki SGK/vergi tutarları bu mutabakatta personel kesintisi sayılmaz. Resmî banka matrahına sığmayan pozitif bakiye kaybolamaz; elden ödemeye tamamlanır.
 
 
 ### Personel PWA resmî döküm yayını

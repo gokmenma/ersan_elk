@@ -100,3 +100,6 @@
 - [x] Avans satırında yanlış icra açıklamasının gösterilmesi engellendi; otomatik avans açıklaması kaynak kayıttan yenilenir hale getirildi.
 - [x] Bordro liste ve detay personel kesintileri aynı snapshot kalemlerine bağlandı; eski kesinti kolonundaki yasal/brüte tamamlama farkı ayıklandı.
 - [x] HTÇ'nin aynı tutarlı fazla mesai satırı nedeniyle resmî alacaktan düşmesi engellendi; hedef net ayrı snapshot kalemi ve banka matrahı alt sınırı yapıldı.
+- [x] Açıklaması boş avans satırına ilk icra açıklamasını kopyalayan detay ekranı fallback'i kaldırıldı.
+- [x] `mesai` kodlu fazla çalışma resmî banka kalemine dahil edilerek HTÇ ile ayrı ayrı gösterilmesi sağlandı.
+- [x] Otomatik ödeme dağılımında kaybolan pozitif bakiye elden kanalına tamamlandı; brüte tamamlama vergilerinin personel kesintisi alanına yazılması engellendi.

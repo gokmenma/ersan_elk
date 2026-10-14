@@ -1678,15 +1678,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $kesintiEtiket = $ilkGrup->etiket;
                             }
                         }
-                        if ($kesintiAciklama === '' && !empty($kesintiKayitlari)) {
-                            foreach ($kesintiKayitlari as $kr) {
-                                if (!empty($kr->aciklama)) {
-                                    $kesintiAciklama = trim((string) $kr->aciklama);
-                                    break;
-                                }
-                            }
-                        }
-
                         $html .= '<tr class="parent-row"><td><div><i class="bx bx-minus-circle me-2 text-danger"></i><span class="fw-semibold">' . htmlspecialchars($kesintiEtiket, ENT_QUOTES, 'UTF-8') . '</span></div>'
                             . ($kesintiAciklama !== '' ? '<div class="calculation-note text-muted ms-4 mt-1" style="font-size:0.8rem; line-height:1.3;"><i class="bx bx-info-circle me-1 opacity-75"></i>' . htmlspecialchars($kesintiAciklama, ENT_QUOTES, 'UTF-8') . '</div>' : '')
                             . '</td><td class="text-end text-danger fw-bold align-middle">-' . number_format($bankaKesinti['tutar'], 2, ',', '.') . ' ₺</td></tr>';
