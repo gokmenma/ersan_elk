@@ -1091,6 +1091,15 @@ class BordroPersonelModel extends Model
         }
 
         $matrah = is_array($detay['matrahlar'] ?? null) ? $detay['matrahlar'] : [];
+        if (isset($detay['ortak_sonuc']) && ($detay['ortak_sonuc']['surum'] ?? null) === 1) {
+            $sonuc = $detay['ortak_sonuc']['gosterim'];
+            foreach (['bankaOdemesi' => 'banka_odemesi', 'eldenOdeme' => 'elden_odeme', 'sodexoOdemesi' => 'sodexo_odemesi', 'digerOdeme' => 'diger_odeme'] as $key => $column) {
+                if ((int) round((float) ($p->$column ?? 0) * 100) !== (int) round((float) ($sonuc[$key] ?? 0) * 100)) {
+                    throw new \DomainException('Kayıtlı bordro ile ortak sonuç ödeme kanalları uyuşmuyor.');
+                }
+            }
+            return $sonuc;
+        }
         $odeme = is_array($detay['odeme_dagilimi'] ?? null) ? $detay['odeme_dagilimi'] : [];
         $ozet = is_array($detay['ozet'] ?? null) ? $detay['ozet'] : [];
         $parametreler = is_array($detay['parametreler'] ?? null) ? $detay['parametreler'] : [];
@@ -1217,9 +1226,9 @@ class BordroPersonelModel extends Model
         // olarak yazılmadığı için detay/muhasebe kırılımında dönem kaynağından
         // tamamlanır. Ana ödeme kanalları ise aşağıda kayıtlı kolonlardan aynen korunur.
         $donemBitis = $donemBaslangic !== '' ? date('Y-m-t', strtotime($donemBaslangic)) : '';
-        $rtcGun = 0;
-        $htcGun = 0;
-        if ($donemBaslangic !== '' && $donemBitis !== '') {
+        $rtcGun = (int) ($matrah['rtc_gun'] ?? 0);
+        $htcGun = (int) ($matrah['htc_gun'] ?? 0);
+        if (!array_key_exists('htc_gun', $matrah) && $donemBaslangic !== '' && $donemBitis !== '') {
             $rtcGun = $this->getOzelCalismaGunSayisi((int) $p->personel_id, $donemBaslangic, $donemBitis, 'resmi_tatil_calismasi');
             $htcGun = $this->getOzelCalismaGunSayisi((int) $p->personel_id, $donemBaslangic, $donemBitis, 'hafta_tatili_calismasi');
         }
@@ -2615,6 +2624,20 @@ class BordroPersonelModel extends Model
             $detay['odeme_dagilimi']['banka_net'] = $banka;
             $detay['odeme_dagilimi']['sodexo'] = $sodexo;
             $detay['odeme_dagilimi']['elden'] = $elden;
+            $detay['odeme_dagilimi']['diger'] = $diger;
+            if (isset($detay['ortak_sonuc']['gosterim'])) {
+                $common = &$detay['ortak_sonuc']['gosterim'];
+                if ((int) round(($banka + $elden + $sodexo + $diger) * 100) !== (int) round((float) $common['netAlacagi'] * 100)) {
+                    throw new \DomainException('Manuel dağıtım toplamı ödenecek netle uyuşmuyor.');
+                }
+                $common['bankaOdemesi'] = $banka;
+                $common['eldenOdeme'] = $elden;
+                $common['sodexoOdemesi'] = $sodexo;
+                $common['digerOdeme'] = $diger;
+                $common['manualDagitimVar'] = true;
+                $common['bankaMatrahi'] = round($banka + (float) ($common['bankaAktarilanKesinti'] ?? 0), 2);
+                unset($common);
+            }
             $detay['mutabakat'] = [
                 'net_maas' => round((float) $bordro->net_maas, 2),
                 'icra_kesintisi' => $icra,
@@ -2674,6 +2697,15 @@ class BordroPersonelModel extends Model
      */
     public function saveBordroHesaplama($id, $hesaplamaData)
     {
+        $snapshot = json_decode((string) ($hesaplamaData['hesaplama_detay'] ?? ''), true);
+        if (isset($snapshot['ortak_sonuc'])) {
+            $audit = $this->auditKayitliBordro((object) array_merge($hesaplamaData, [
+                'hesaplama_tarihi' => $snapshot['hesaplama_tarihi'] ?? date('Y-m-d H:i:s'),
+            ]));
+            if (!$audit['mutabik']) {
+                throw new \DomainException('Bordro kayıt mutabakatı başarısız: ' . implode(', ', $audit['hatalar']));
+            }
+        }
         $sql = $this->db->prepare("
         UPDATE {$this->table} 
         SET brut_maas = :brut_maas,
@@ -2739,6 +2771,118 @@ class BordroPersonelModel extends Model
      * Dönem kapanmadan önce hukuki snapshot ve ödeme mutabakatını doğrular.
      * Dönen hatalar bloklayıcıdır; kullanıcı onayıyla atlanamaz.
      */
+    /** Geçiş için salt okunur sürümlü sonuç; geçmiş kayıtta belirsiz tutarı tahmin etmez. */
+    public function getSurumluBordroKarsilastirma(object $row): array
+    {
+        $audit = $this->auditKayitliBordro($row);
+        if (!$audit['hesaplanmis']) {
+            return ['surum' => 1, 'durum' => 'hesaplanmadi', 'denetim' => $audit];
+        }
+        $detay = json_decode((string) $row->hesaplama_detay, true);
+        $kurus = static fn ($value): int => (int) round((float) $value * 100);
+        $kalemler = [];
+        foreach (['ek_odemeler' => 'kazanc', 'kesintiler' => 'kesinti'] as $source => $type) {
+            foreach (($detay[$source] ?? []) as $index => $kalem) {
+                if (!is_array($kalem)) {
+                    continue;
+                }
+                $kalemler[] = [
+                    'kaynak' => $source,
+                    'kaynak_id' => $kalem['id'] ?? null,
+                    'snapshot_sira' => $index,
+                    'tur' => $type,
+                    'kod' => (string) ($kalem['kod'] ?? ''),
+                    'etiket' => (string) ($kalem['etiket'] ?? ''),
+                    'aciklama' => (string) ($kalem['aciklama'] ?? ''),
+                    'hakedis_kurus' => $kurus($kalem['net_etki'] ?? $kalem['hesaplanan_tutar'] ?? $kalem['tutar'] ?? 0),
+                    'resmi_net_kurus' => array_key_exists('resmi_banka_net', $kalem) ? $kurus($kalem['resmi_banka_net']) : null,
+                    'gun' => $kalem['gun_sayisi'] ?? null,
+                    'saat' => $kalem['saat'] ?? null,
+                ];
+            }
+        }
+        $ozet = is_array($detay['ozet'] ?? null) ? $detay['ozet'] : [];
+        // Sürüm etiketi tek başına net_maas'ın anlamını kanıtlamaz.
+        $belirsiz = $audit['fark'] != 0;
+        return [
+            'surum' => 1,
+            'durum' => $audit['mutabik'] ? 'mutabik' : 'inceleme_gerekli',
+            'kaynak' => 'kayitli_snapshot',
+            'toplam_hakedis_kurus' => $belirsiz ? null : $kurus($row->net_maas),
+            'kayitli_net_maas_kurus' => $kurus($row->net_maas),
+            'personel_kesintisi_kurus' => $kurus($audit['personel_kesintisi']),
+            'odenecek_net_kurus' => $belirsiz ? null : $kurus($audit['beklenen_odeme']),
+            'kanallar_kurus' => [
+                'banka' => $kurus($row->banka_odemesi ?? 0),
+                'elden' => $kurus($row->elden_odeme ?? 0),
+                'kart' => $kurus($row->sodexo_odemesi ?? 0),
+                'diger' => $kurus($row->diger_odeme ?? 0),
+            ],
+            'yemek' => [
+                'toplam_kurus' => $kurus($ozet['dahil_yemek_yardimi'] ?? 0),
+                'gunluk_kurus' => isset($ozet['dahil_yemek_gunluk']) ? $kurus($ozet['dahil_yemek_gunluk']) : null,
+                'fiili_gun' => $ozet['dahil_yemek_gun'] ?? null,
+                'yuvarlama_kurus' => $kurus($ozet['yuvarlama_farki'] ?? 0),
+            ],
+            'kalemler' => $kalemler,
+            'denetim' => $audit,
+        ];
+    }
+
+    public function auditKayitliBordro(object $row): array
+    {
+        $issues = [];
+        $detay = json_decode((string) ($row->hesaplama_detay ?? ''), true);
+        if (empty($row->hesaplama_tarihi) || !is_array($detay)) {
+            return ['hesaplanmis' => false, 'mutabik' => false, 'hatalar' => ['snapshot_eksik']];
+        }
+        $kurus = static fn ($value): int => (int) round((float) $value * 100);
+        $channels = ['banka_odemesi' => 'banka_net', 'elden_odeme' => 'elden', 'sodexo_odemesi' => 'sodexo', 'diger_odeme' => 'diger'];
+        $odeme = is_array($detay['odeme_dagilimi'] ?? null) ? $detay['odeme_dagilimi'] : [];
+        $dagitim = 0;
+        foreach ($channels as $column => $key) {
+            $value = $kurus($row->$column ?? 0);
+            $dagitim += $value;
+            if ($value < 0) {
+                $issues[] = 'negatif_kanal:' . $column;
+            }
+            if (array_key_exists($key, $odeme) && $kurus($odeme[$key]) !== $value) {
+                $issues[] = 'snapshot_kanal_farki:' . $column;
+            }
+        }
+        $kesinti = 0;
+        foreach (($detay['kesintiler'] ?? []) as $kalem) {
+            if (is_array($kalem)) {
+                $kesinti += max(0, $kurus($kalem['tutar'] ?? 0));
+            }
+        }
+        $hakedis = $kurus($row->net_maas ?? 0);
+        if (isset($detay['ortak_sonuc']['gosterim'])) {
+            $common = $detay['ortak_sonuc']['gosterim'];
+            foreach (['bankaOdemesi' => 'banka_odemesi', 'eldenOdeme' => 'elden_odeme', 'sodexoOdemesi' => 'sodexo_odemesi', 'digerOdeme' => 'diger_odeme'] as $key => $column) {
+                if ($kurus($common[$key] ?? 0) !== $kurus($row->$column ?? 0)) {
+                    $issues[] = 'ortak_sonuc_kanal_farki:' . $column;
+                }
+            }
+            if ($kurus($common['toplamAlacagi'] ?? 0) !== $hakedis
+                || $kurus(($common['kesintiHaricIcra'] ?? 0) + ($common['icraKesintisi'] ?? 0)) !== $kesinti) {
+                $issues[] = 'ortak_sonuc_toplam_farki';
+            }
+        }
+        $beklenen = max(0, $hakedis - $kesinti);
+        $fark = $beklenen - $dagitim;
+        if ($fark !== 0) {
+            $issues[] = 'odeme_toplami_farki';
+        }
+        return [
+            'hesaplanmis' => true, 'mutabik' => empty($issues), 'hatalar' => $issues,
+            'hakedis' => $hakedis / 100, 'personel_kesintisi' => $kesinti / 100,
+            'beklenen_odeme' => $beklenen / 100, 'kayitli_odeme' => $dagitim / 100,
+            'fark' => $fark / 100,
+            'net_maas_anlami_belirsiz' => $fark !== 0 && !isset($detay['surum']),
+        ];
+    }
+
     public function validateDonemKapanis(int $donemId, int $firmaId): array
     {
         $stmt = $this->db->prepare("
@@ -2775,9 +2919,18 @@ class BordroPersonelModel extends Model
                 continue;
             }
 
+            if (isset($detay['ortak_sonuc'])) {
+                $audit = $this->auditKayitliBordro($row);
+                if (!$audit['mutabik']) {
+                    $errors[] = $ad . ': ' . implode(', ', $audit['hatalar']);
+                }
+            }
+
             $odeme = is_array($detay['odeme_dagilimi'] ?? null) ? $detay['odeme_dagilimi'] : [];
             $icra = round((float) ($odeme['icra_kesintisi'] ?? 0), 2);
-            $odenecek = round(max(0, (float) $row->net_maas - $icra), 2);
+            $odenecek = isset($detay['ortak_sonuc'])
+                ? (float) $audit['beklenen_odeme']
+                : round(max(0, (float) $row->net_maas - $icra), 2);
             $dagitim = round(
                 (float) $row->banka_odemesi + (float) $row->sodexo_odemesi
                 + (float) $row->diger_odeme + (float) $row->elden_odeme,
@@ -7101,6 +7254,7 @@ class BordroPersonelModel extends Model
                 'brut_maas' => round($brutMaas, 2), 'nominal_maas' => round($nominalBrutMaas, 2), 'ssk_gunu' => $maasHesapGunu, 'normal_gun' => $normGun,
                 'rapor_gunu' => $raporGunu, 'ucretsiz_izin_gunu' => $ucretsizIzinGunu, 'ucretsiz_izin_dusumu' => round($ucretsizIzinDusumu, 2),
                 'maas_hesap_gunu' => $maasHesapGunu, 'fiili_calisma_gunu' => $fiiliCalismaGunu, 'calisan_brut_maas' => round($calisanBrutMaas, 2),
+                'rtc_gun' => $rtcGunHesap, 'htc_gun' => $htcGunHesap,
                 'sgk_matrahi' => round($sgkMatrahi, 2), 'gelir_vergisi_matrahi' => round($gelirVergisiMatrahi, 2), 'damga_vergisi_matrahi' => round($damgaVergisiMatrahi, 2),
                 'onceki_kumulatif' => round($kumulatifMatrah, 2), 'yeni_kumulatif' => round($yeniKumulatifMatrah, 2)
             ],
@@ -7134,7 +7288,7 @@ class BordroPersonelModel extends Model
             ]
         ];
 
-        return $this->saveBordroHesaplama($bordro_personel_id, [
+        $hesaplamaData = [
             'brut_maas' => round($brutMaas, 2), 'sgk_isci' => round($sgkIsci, 2), 'issizlik_isci' => round($issizlikIsci, 2),
             'gelir_vergisi' => round($gelirVergisi, 2), 'damga_vergisi' => round($damgaVergisi, 2), 'net_maas' => round($netMaas, 2),
             'sgk_isveren' => round($sgkIsveren, 2), 'issizlik_isveren' => round($issizlikIsveren, 2), 'toplam_maliyet' => round($toplamMaliyet, 2),
@@ -7143,7 +7297,27 @@ class BordroPersonelModel extends Model
             'elden_odeme' => round($eldenOdeme, 2), 'diger_odeme' => round($kayit->diger_odeme ?? 0, 2),
             'kumulatif_matrah' => round($yeniKumulatifMatrah, 2), 'hesaplayan_id' => $hesaplayan_id,
             'hesaplayan_ad_soyad' => $hesaplayan_ad_soyad, 'hesaplama_detay' => json_encode($hesaplamaDetay, JSON_UNESCAPED_UNICODE)
+        ];
+        $snapshotRow = (object) array_merge($hesaplamaData, [
+            'personel_id' => $kayit->personel_id,
+            'donem_id' => $kayit->donem_id,
+            'hesaplama_tarihi' => $hesaplamaDetay['hesaplama_tarihi'],
+            'kesinti_tutar' => $hesaplamaData['toplam_kesinti'],
+            'maas_durumu' => $maasDurumuRaw,
+            'maas_tutari' => $nominalBrutMaas,
+            'prim_tutar' => $hesaplamaData['toplam_ek_odeme'],
+            'dagitim_manuel' => $kayit->dagitim_manuel ?? 0,
         ]);
+        $audit = $this->auditKayitliBordro($snapshotRow);
+        if (!$audit['mutabik']) {
+            throw new \DomainException('Bordro ödeme mutabakatı sağlanamadı: ' . implode(', ', $audit['hatalar']));
+        }
+        $hesaplamaDetay['ortak_sonuc'] = [
+            'surum' => 1,
+            'gosterim' => $this->kayitliGosterimDegerleri($snapshotRow, floatval($asgariUcretNet ?? 0)),
+        ];
+        $hesaplamaData['hesaplama_detay'] = json_encode($hesaplamaDetay, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        return $this->saveBordroHesaplama($bordro_personel_id, $hesaplamaData);
     }
 
     /**

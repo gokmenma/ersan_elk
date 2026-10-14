@@ -1,4 +1,11 @@
 # Progress
+- [x] Aşama 2 temel sonuç sözleşmesi ve salt okunur karşılaştırma okuyucusu eklendi; kayıtlı kanallar korunuyor, belirsiz parasal alanlar null taşınıyor.
+
+- [x] Bordro aşamalı geçişinin ilk aşaması: salt okunur snapshot/ödeme denetimi, geçiş riskleri belgesi ve 3 davranış testi eklendi (7 doğrulama başarılı). Hesap kayıtları değiştirilmedi.
+- [x] Aşama 2: yeni Model hesaplarının sürümlü ortak gösterim sonucu ve ödeme denetimine bağlanması.
+- [x] Aşama 3: liste–detay–Excel ortak okuyucusunun yeni sonuç sözleşmesine bağlanması; eski snapshot uyumluluğu korunuyor.
+- [x] Aşama 4: yeni sürümlü kayıt/kapanış denetimi ve manuel dağıtım tutarlılığı; 88 test, 652 doğrulama başarılı.
+- [ ] Hedef sunucuda dönem bazlı canlı mutabakat ve yetkili yeniden hesaplama doğrulaması.
 
 - [x] Personel kesinti düzenleme ekranında sürekli kesinti başlangıç/bitiş tarihlerinin kaydedilmemesine yol açan `GG.AA.YYYY` → MySQL `DATE` biçim uyuşmazlığı giderildi; Flatpickr görünür/gerçek input senkronizasyonu ve sunucu tarafı tarih normalizasyonu eklendi.
 

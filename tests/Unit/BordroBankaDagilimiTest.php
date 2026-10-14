@@ -815,7 +815,7 @@ final class BordroBankaDagilimiTest extends TestCase
             self::assertEquals($meal, $display['mealAllowanceDeduction']);
             self::assertEquals($isKacakIhbarPrimi ? 0.0 : ($bankaSecimi ? 0.0 : $primAmount), $display['muhasebePrimTutari']);
         }
-        if ($isKacakIhbarPrimi) {
+        if ($isKacakIhbarPrimi && !$inclusive) {
             $expectedBank += $primAmount;
         }
         $excel = $model->getMuhasebeOdemeOzeti($display);
