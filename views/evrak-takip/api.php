@@ -74,7 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'evrak-sablon-kaydet':
-                $templateId = !empty($_POST['sablon_id']) ? $decryptId($_POST['sablon_id']) : 0;
+                $saveMode = (string) ($_POST['kayit_modu'] ?? 'create');
+                if (!in_array($saveMode, ['create', 'update'], true)) {
+                    throw new Exception('Şablon kayıt modu geçersiz.');
+                }
+                $templateId = $saveMode === 'update' && !empty($_POST['sablon_id']) ? $decryptId($_POST['sablon_id']) : 0;
+                if ($saveMode === 'update' && $templateId <= 0) {
+                    throw new Exception('Güncellenecek şablon bulunamadı.');
+                }
                 $templateName = trim((string) ($_POST['sablon_adi'] ?? ''));
                 if ($templateName === '' || mb_strlen($templateName) > 150) {
                     throw new Exception('Şablon adı zorunludur ve en fazla 150 karakter olabilir.');

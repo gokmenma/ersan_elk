@@ -1,5 +1,7 @@
 # Progress
 
+- [x] `bordro/list` geçmiş dönem gösteriminde kayıtlı banka/elden dağılımını yeniden hesaplayan gösterim tavanı kaldırıldı; kapanmış/ödenmiş bordronun kayıtlı ödeme kanalları aynen gösterilir hale getirildi ve regresyon testi eklendi.
+
 - [x] Mobile SPA (`mobile-spa`): Soft Bento & Claymorphic UI mimarisi tüm mobil uygulama için merkezi varsayılan tasarım standardı yapıldı.
   - Merkezi `src/design-system.css` kütüphanesi oluşturuldu: `--ds-canvas: #e6eaef` (mat gri/arduvaz), `--ds-surface: #ffffff` (saf beyaz bento kart), `--ds-surface-dark: #191d24` (obsidian bento kart), 28px kart kavisleri, 3D yumuşak gölgeler, segmentli barlar, metrik ızgaraları, hap butonlar ve modallar merkezi tokenlara bağlandı.
   - Tek noktadan yönetim (Single Source of Truth) sağlandı: Gelecekte bir tasarım değişikliği yapıldığında sadece `design-system.css` üzerinden tüm sayfaların anında güncellenmesi garanti altına alındı.
@@ -24,6 +26,7 @@
 - [x] Personel PWA Kaçak sayfasında onaylanan aktif tutanaklara ekip üyeleri için fotoğraf/video/açıklama ekleme akışı tamamlandı; açıklama güvenilir kuyruk üzerinden sunucuya taşınıp mevcut tutanak açıklamasına ekleniyor ve API sahiplik/onay/aktiflik kontrollerini uyguluyor.
 
 ## Neler Tamamlandı?
+- [x] Giden Evrak şablonlarında yeni kayıt sonrası bir sonraki kaydın önceki şablonu güncellemesine yol açan kalıcı gizli ID sorunu giderildi; oluşturma/güncelleme kipleri istemci ve sunucuda ayrıldı, seçim ve düzenleme durumu görünür hale getirildi.
 - [x] Evrak Takip listesindeki ve Giden Evrak formundaki ortak PDF önizleme hatası, `pdf.php` içinde eksik kalan `EvrakTakipModel` başlatması geri eklenerek giderildi.
 - [x] Bordro Detay modalında sözleşme farkı ve maaşa dahil ek kazanç dağıtım mantığı düzeltildi; resmî olmayan primlerin yemek tavanı dışındaki kısmı elden ödemeye aktarıldı, yapay sözleşme farkı kaldırıldı.
 - [x] Bordro Detay modalındaki tüm kartların sınırları (border) belirginleştirildi (`1.5px solid #cbd5e1`, macOS Dark uyumlu).

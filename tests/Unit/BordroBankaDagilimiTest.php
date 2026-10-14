@@ -330,6 +330,33 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(19, $hesap['calismaGunu']);
     }
 
+    public function testKapanmisBordronunKayitliOdemeDagilimiGosterimdeYenidenDengelenmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $record = (object) [
+            'hesaplama_tarihi' => '2026-01-31 18:00:00',
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Net',
+                'matrahlar' => ['nominal_maas' => 30000, 'maas_hesap_gunu' => 30],
+                'odeme_dagilimi' => ['icra_kesintisi' => 0, 'banka_net' => 30000, 'elden' => 1250, 'sodexo' => 0],
+                'ozet' => ['dahil_yemek_yardimi' => 1000],
+                'parametreler' => ['asgari_ucret_net' => 20000],
+                'ek_odemeler' => [],
+                'kesintiler' => [],
+            ], JSON_UNESCAPED_UNICODE),
+            'net_maas' => 31250, 'kesinti_tutar' => 0,
+            'banka_odemesi' => 30000, 'sodexo_odemesi' => 0,
+            'diger_odeme' => 0, 'elden_odeme' => 1250, 'prim_tutar' => 0,
+            'dagitim_manuel' => 1,
+        ];
+
+        $hesap = $model->hesaplaOrtakGosterimDegerleri($record, null, 99999);
+
+        self::assertSame('kayitli', $hesap['gosterimKaynagi']);
+        self::assertSame(30000.0, $hesap['bankaOdemesi']);
+        self::assertSame(1250.0, $hesap['eldenOdeme']);
+    }
+
     public function testHesaplanmamisSatirCanliHesaplanmaz(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

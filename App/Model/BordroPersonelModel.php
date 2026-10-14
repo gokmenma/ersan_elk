@@ -1126,6 +1126,9 @@ class BordroPersonelModel extends Model
             $snapshotBankaKesintiToplam = round($kesinti + $icra, 2);
         }
 
+        // Eski snapshot sürümlerinde otomatik RTÇ/HTÇ kalemleri JSON'a ayrı satır
+        // olarak yazılmadığı için detay/muhasebe kırılımında dönem kaynağından
+        // tamamlanır. Ana ödeme kanalları ise aşağıda kayıtlı kolonlardan aynen korunur.
         $donemBitis = $donemBaslangic !== '' ? date('Y-m-t', strtotime($donemBaslangic)) : '';
         $rtcGun = 0;
         $htcGun = 0;
@@ -1162,17 +1165,10 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($isInclusive) {
-            // Maaşa dahil personelde yasal/resmî banka tavanı: asgari + yemek + eş + doğal resmî ek kalemleridir (RTÇ/HTÇ vb.).
-            // Gayriresmî primlerin yemek tavanı dışındaki kısmı resmî banka matrahına giremez; elden kalmalıdır (Kural 5).
-            $resmiBankaTavani = round($asgariYatacak + $yemek + $es + $resmiEkOdemeToplami, 2);
-            $mevcutBrutBanka = round($banka + $snapshotBankaKesintiToplam, 2);
-            if ($mevcutBrutBanka > $resmiBankaTavani) {
-                $eldenAktarilacakFark = round($mevcutBrutBanka - $resmiBankaTavani, 2);
-                $banka = max(0.0, round($banka - $eldenAktarilacakFark, 2));
-                $elden = round($elden + $eldenAktarilacakFark, 2);
-            }
-        }
+        // Kayıtlı banka/elden/Sodexo dağılımına gösterim sırasında müdahale edilmez.
+        // İş kuralı hesaplaMaas() aşamasında uygulanır ve ödeme anındaki sonuç
+        // bordro_personel kolonlarına yazılır. Burada tekrar tavan uygulamak geçmiş
+        // ödemeyi bugünkü kurallarla yeniden dağıtmak anlamına gelir.
 
         return [
             'hesaplanmis' => true, 'gosterimKaynagi' => 'kayitli',

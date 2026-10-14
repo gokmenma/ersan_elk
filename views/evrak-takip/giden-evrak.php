@@ -572,6 +572,7 @@ window.gidenInitialSelectedSigners = <?php echo json_encode($initialSelectedSign
                     <input type="hidden" id="evrakSablonId">
                     <label for="evrakSablonAdi" class="form-label fw-semibold">Şablon adı</label>
                     <input type="text" id="evrakSablonAdi" class="form-control" maxlength="150" placeholder="Örn. Personel görevlendirme yazısı">
+                    <div id="evrakSablonKayitModu" class="alert alert-primary py-2 px-3 small mt-2 mb-2">Yeni şablon oluşturulacak.</div>
                     <div class="form-text mb-3">Tarih, evrak no, metin, muhatap, imzacılar ve ek dosyalar birlikte saklanır.</div>
                     <button type="button" id="btnEvrakSablonKaydet" class="btn btn-primary w-100"><i data-feather="save" class="icon-xs me-1"></i> Mevcut Formu Şablon Olarak Kaydet</button>
                     <button type="button" id="btnEvrakSablonYeni" class="btn btn-light w-100 mt-2">Yeni şablon adı gir</button>

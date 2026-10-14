@@ -124,8 +124,12 @@ use App\Helper\Security;
                                 }
 
                                 // OTOMATİK MESAJ/HOLIDAY NET HESAPLARI
-                                $rtcGunModal = $BordroPersonel->getOzelCalismaGunSayisiCached($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'resmi_tatil_calismasi');
-                                $htcGunModal = $BordroPersonel->getOzelCalismaGunSayisiCached($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'hafta_tatili_calismasi');
+                                // Hesaplanmış bordronun popover kırılımını güncel izin
+                                // kayıtlarından tekrar üretme. Snapshot RTÇ/HTÇ kalemleri
+                                // aşağıdaki hesaplama_detay.ek_odemeler listesinden gelir.
+                                $kayitliSnapshotGosterimi = ($hesap['gosterimKaynagi'] ?? '') === 'kayitli';
+                                $rtcGunModal = $kayitliSnapshotGosterimi ? 0 : $BordroPersonel->getOzelCalismaGunSayisiCached($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'resmi_tatil_calismasi');
+                                $htcGunModal = $kayitliSnapshotGosterimi ? 0 : $BordroPersonel->getOzelCalismaGunSayisiCached($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'hafta_tatili_calismasi');
                                 
                                 $rtcHedefNetModal = $rtcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2) : 0.0;
                                 $htcHedefNetModal = $htcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2) : 0.0;

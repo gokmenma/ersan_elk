@@ -758,6 +758,18 @@ $(document).ready(function () {
 
   const templateModal = $("#evrakSablonModal");
   let documentTemplates = [];
+  function setTemplateSaveMode(template) {
+    const isEdit = Boolean(template && template.id);
+    $("#evrakSablonId").val(isEdit ? template.id : "");
+    $("#evrakSablonAdi").val(isEdit ? template.adi : "");
+    $("#evrakSablonKayitModu")
+      .toggleClass("alert-warning", isEdit)
+      .toggleClass("alert-primary", !isEdit)
+      .text(isEdit ? '"' + template.adi + '" şablonu güncellenecek.' : "Yeni şablon oluşturulacak.");
+    $("#btnEvrakSablonKaydet").html(isEdit
+      ? '<i class="bx bx-save me-1"></i> Seçili Şablonu Güncelle'
+      : '<i class="bx bx-plus me-1"></i> Yeni Şablon Olarak Kaydet');
+  }
   function loadDocumentTemplates() {
     $("#evrakSablonListesi").html('<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Şablonlar yükleniyor...</div>');
     return $.post("views/evrak-takip/api.php", { action: "evrak-sablon-listele" }).done(function (response) {
@@ -769,14 +781,14 @@ $(document).ready(function () {
         const row = $('<div class="list-group-item d-flex align-items-center justify-content-between gap-2"></div>');
         $('<button type="button" class="btn btn-link text-start text-decoration-none flex-grow-1 p-0"></button>').html('<span class="d-block fw-bold text-dark">' + escapeHtml(template.adi) + '</span><span class="small text-muted">' + escapeHtml(template.guncelleme_tarihi) + ' · ' + (template.ek_dosyalar || []).length + ' ek</span>').on("click", () => applyDocumentTemplate(template)).appendTo(row);
         const actions = $('<div class="btn-group btn-group-sm"></div>');
-        $('<button type="button" class="btn btn-outline-secondary"><i class="bx bx-edit"></i></button>').on("click", function () { $("#evrakSablonId").val(template.id); $("#evrakSablonAdi").val(template.adi).focus(); }).appendTo(actions);
+        $('<button type="button" class="btn btn-outline-secondary" title="Şablonu güncelle"><i class="bx bx-edit"></i></button>').on("click", function () { setTemplateSaveMode(template); $("#evrakSablonAdi").focus(); }).appendTo(actions);
         $('<button type="button" class="btn btn-outline-danger"><i class="bx bx-trash"></i></button>').on("click", () => deleteDocumentTemplate(template)).appendTo(actions);
         row.append(actions).appendTo(list);
       });
     });
   }
   function applyDocumentTemplate(template) {
-    Swal.fire({ title: "Şablon yüklensin mi?", text: "Formdaki mevcut bilgiler tam evrak şablonuyla değiştirilecek.", icon: "question", showCancelButton: true, confirmButtonText: "Yükle", cancelButtonText: "Vazgeç" }).then(function (result) {
+    Swal.fire({ title: '"' + template.adi + '" şablonu yüklensin mi?', text: "Formdaki mevcut bilgiler bu şablonun içeriğiyle değiştirilecek.", icon: "question", showCancelButton: true, confirmButtonText: "Yükle", cancelButtonText: "Vazgeç" }).then(function (result) {
       if (!result.isConfirmed) return;
       const data = template.veri || {};
       ["tarih", "evrak_no", "konu", "kurum_adi", "muhatap_alt_birim", "muhatap_adres", "ilgiler", "ekler"].forEach(field => $("#" + field).val(data[field] || "").trigger("input").trigger("change"));
@@ -796,17 +808,18 @@ $(document).ready(function () {
       $.post("views/evrak-takip/api.php", { action: "evrak-sablon-sil", sablon_id: template.id }).done(response => response.status === "success" ? loadDocumentTemplates() : Swal.fire("Hata", response.message, "error"));
     });
   }
-  $("#btnEvrakSablonlari").on("click", function () { $("#evrakSablonId, #evrakSablonAdi").val(""); templateModal.modal("show"); loadDocumentTemplates(); });
-  $("#btnEvrakSablonYeni").on("click", function () { $("#evrakSablonId, #evrakSablonAdi").val(""); $("#evrakSablonAdi").focus(); });
+  $("#btnEvrakSablonlari").on("click", function () { setTemplateSaveMode(null); templateModal.modal("show"); loadDocumentTemplates(); });
+  $("#btnEvrakSablonYeni").on("click", function () { setTemplateSaveMode(null); $("#evrakSablonAdi").focus(); });
   $("#btnEvrakSablonKaydet").on("click", function () {
     const name = $("#evrakSablonAdi").val().trim(); if (!name) return Swal.fire("Eksik Bilgi", "Şablon adını giriniz.", "warning");
+    const templateId = $("#evrakSablonId").val();
     syncContent();
     const payload = { tarih: $("#tarih").val(), evrak_no: $("#evrak_no").val(), konu: $("#konu").val(), kurum_adi: $("#kurum_adi").val(), muhatap_alt_birim: $("#muhatap_alt_birim").val(), muhatap_adres: $("#muhatap_adres").val(), ilgiler: $("#ilgiler").val(), ekler: $("#ekler").val(), aciklama: $("#giden_evrak_icerik").summernote("code"), ust_yazi_gerekli_degil: $("#ust_yazi_gerekli_degil").is(":checked") ? 1 : 0, ilgili_evrak_id: $("#ilgili_evrak_id").val(), personel_id: $("#personel_id").val(), ilgili_personel_id: $("#ilgili_personel_id").val(), imza_kullanici_ids: selectedSigners.map(item => item.raw_id), imza_kimin_adina: selectedSigners.map(item => item.kimin_adina || "") };
-    const data = new FormData(); data.append("action", "evrak-sablon-kaydet"); data.append("sablon_id", $("#evrakSablonId").val()); data.append("sablon_adi", name); data.append("sablon_verisi", JSON.stringify(payload));
+    const data = new FormData(); data.append("action", "evrak-sablon-kaydet"); data.append("kayit_modu", templateId ? "update" : "create"); data.append("sablon_id", templateId); data.append("sablon_adi", name); data.append("sablon_verisi", JSON.stringify(payload));
     data.append("sablon_mevcut_ekler", JSON.stringify(attachments.filter(item => item.type !== "new" && item.id).map(item => ({ type: item.type, id: item.id }))));
     attachments.filter(item => item.type === "new").forEach((item, index) => data.append("sablon_yeni_ekler[" + index + "]", item.file, item.name));
     const button = $(this).prop("disabled", true);
-    $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data, contentType: false, processData: false }).done(function (response) { if (response.status === "success") { $("#evrakSablonId").val(response.id); Swal.fire("Başarılı", response.message, "success"); loadDocumentTemplates(); } else Swal.fire("Hata", response.message, "error"); }).always(() => button.prop("disabled", false));
+    $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data, contentType: false, processData: false }).done(function (response) { if (response.status === "success") { setTemplateSaveMode(null); Swal.fire("Başarılı", response.message, "success"); loadDocumentTemplates(); } else Swal.fire("Hata", response.message, "error"); }).always(() => button.prop("disabled", false));
   });
 
   function buildFormData() {
