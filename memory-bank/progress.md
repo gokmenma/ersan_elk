@@ -103,3 +103,4 @@
 - [x] Açıklaması boş avans satırına ilk icra açıklamasını kopyalayan detay ekranı fallback'i kaldırıldı.
 - [x] `mesai` kodlu fazla çalışma resmî banka kalemine dahil edilerek HTÇ ile ayrı ayrı gösterilmesi sağlandı.
 - [x] Otomatik ödeme dağılımında kaybolan pozitif bakiye elden kanalına tamamlandı; brüte tamamlama vergilerinin personel kesintisi alanına yazılması engellendi.
+- [x] Banka matrahına dahil ek çalışmaların resmî net üstü payı yeniden maaşa dahil yemek tavanını dolduracak şekilde hesaplamaya bağlandı; tavan üstü bakiye elden bırakıldı.

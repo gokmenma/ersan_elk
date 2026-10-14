@@ -309,7 +309,7 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertEquals(7500, $capped['yemek_toplam']);
     }
 
-    public function testFazlaCalismaVeHaftaTatiliYemekYardiminiDegistirmez(): void
+    public function testBankaMatrahinaDahilEkCalismaFarkiOnceYemekTavaniniDoldurur(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
         $params = $this->getMockBuilder(BordroParametreModel::class)->disableOriginalConstructor()
@@ -323,8 +323,13 @@ final class BordroBankaDagilimiTest extends TestCase
         $normal = $method->invoke($model, $record, 28075.50, 8, 7, 0, 0, 0, 7486.80, 0, 0);
         $ekCalismali = $method->invoke($model, $record, 28075.50, 8, 7, 0, 0, 0, 7486.80, 1184.53, 684.53);
 
-        self::assertSame($normal['yemek_toplam'], $ekCalismali['yemek_toplam']);
-        self::assertSame($normal['yemek_gunluk'], $ekCalismali['yemek_gunluk']);
+        self::assertSame(0.0, $normal['yemek_toplam']);
+        self::assertSame(686.0, $ekCalismali['yemek_toplam']);
+        self::assertSame(98.0, $ekCalismali['yemek_gunluk']);
+
+        $murataBenzer = $method->invoke($model, $record, 28075.50, 20, 17, 0, 0, 0, 22000, 0, 164.15);
+        self::assertSame(3451.0, $murataBenzer['yemek_toplam']);
+        self::assertSame(203.0, $murataBenzer['yemek_gunluk']);
     }
 
     public function testHaftaTatiliResmiNetiDigerFazlaCalismadanBagimsizGarantiEdilir(): void

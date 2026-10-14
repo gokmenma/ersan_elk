@@ -208,12 +208,11 @@ Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşama
 HTÇ, personelin kendi gunluk ucretinden hesaplanir ve **sozlesme netinin uzerine eklenir**.
 Bu kural hem maasa dahil hem de maasa dahil olmayan personelde gecerlidir.
 
-Fazla mesai, hafta ici nobet, resmi tatil calismasi ve hafta tatili calismasi **yemek
-yardimi havuzuna aktarilmaz**. Bu kalemlerin muhasebeye bildirilecek resmi netleri
-asgari ucret ve yemek yardimindan bagimsiz birer banka kalemidir. Personelin gercek
-ek calisma hakedisi resmi net hedefini asiyorsa asan bakiye elden odemede kalir;
-yemek yardimi artirilmaz veya azaltilmaz. Bu kural liste, detay, Excel ve kayit
-hesabinda ayni ortak dagilimdan uygulanir.
+Fazla mesai, hafta ici nobet, resmi tatil calismasi ve hafta tatili calismasinin
+muhasebeye bildirilecek resmi netleri ayri banka kalemidir. Personelin gercek ek
+calisma hakedisinin resmi net hedefini asan kismi, maasa dahil yardim kuralina gore
+once gunluk yemek tavanini doldurur; yalniz yemek tavanini asan bakiye elden kalir.
+Bu kural liste, detay, Excel ve kayit hesabinda ayni ortak dagilimdan uygulanir.
 
 Hesaplanmis eski snapshot'larda kayitli banka/elden kanallari ve bunlarin kayitli
 kalem dagilimi degistirilmez. Yeni muhasebe hedefi eski satirin yerine gosterilmez;
@@ -230,16 +229,16 @@ toplamHakedis = sozlesmeHakedisi + hariciEkOdeme + yuvarlamaFarki    (hariciEkOd
 HTÇ **banka matrahini da yukseltir**. Iki kanaldan girer:
 
 - Resmi neti (`asgari_ucret_net / 30 * htcGun`) dogrudan banka kalemi olarak `yontemliBankaEki`'ne,
-- Resmi neti asan fazlasi (`htcNetFazla`) yemek havuzuna eklenmez; elden odemede kalir.
+- Resmi neti asan fazlasi (`htcNetFazla`) once yemek havuzuna eklenir; gunluk yemek tavanini asan bakiye elden odemede kalir.
 
-Banka matrahi HTÇ resmi neti kadar buyur; yemek tavani ise HTÇ nedeniyle degismez:
+Banka matrahi HTÇ resmi neti kadar buyur; HTÇ'nin resmi neti asan kismi yemek tavanini doldurabilir:
 
 ```text
 yemekIcinKalanSozlesmeLimiti = max(0, yemekTavanHedefi - asgariHakedis - esYardimi)
 ```
 
 HTÇ'nin resmi neti bu limitin disinda bankaya eklenir; resmi neti asan personel hakedisi
-elden kalir. Boylece ek calisma yemek yardimini ne azaltir ne de yapay bicimde artirir.
+once yemek kapasitesine, kapasite doluysa elden odemeye gider.
 Elden bakiye bulunduğu sürece HTÇ resmî neti "bankada kalan boşluk" kadar kırpılmaz;
 gerekli tutar elden bakiyeden bankaya aktarılır ve toplam net hakediş değişmez.
 
@@ -577,7 +576,7 @@ Bordro hesaplama etki alani:
 - Hesaplanmış bordroda liste ve detayın personel kesintisi toplamı, snapshot içindeki `kesintiler` kalemlerinden alınır. Eski `bordro_personel.kesinti_tutar` alanında kalmış brüte tamamlama/yasal kesintiler, icra-avans-diğer personel kesintisi gibi gösterilmez.
 - Kesinti açıklaması kesinti türüyle uyumlu olmalıdır. `avans` veya başka bir türdeki satıra yanlışlıkla taşınmış `[İcra]` açıklaması gösterilmez; yeniden hesaplanan avans satırının açıklaması ilgili avans kaynağından yenilenir.
 - Açıklaması bulunmayan bir kesinti satırı, aynı personelin başka bir kesintisinin açıklamasıyla doldurulmaz. Her satır yalnız kendi snapshot açıklamasını gösterebilir.
-- Maaşa dahil yemekte yemek, sözleşme netini tamamlayan bakiyedir. HTÇ/fazla çalışma yemek tutarına yedirilmez; personelin tam ek çalışma hakedişi ile resmî banka neti arasındaki fark elden ödeme bakiyesidir.
+- Maaşa dahil yemekte yemek, sözleşme netini ve banka matrahına dahil kazançların uygun bakiyesini günlük tavana kadar tamamlar. HTÇ/fazla çalışmanın resmî neti ayrı banka kalemidir; gerçek hakediş ile resmî net arasındaki fark önce yemek tavanını doldurur, yalnız artan bakiye elden ödenir.
 - HTÇ günü bulunan bordroda resmî banka matrahı, diğer fazla çalışma kalemlerinden bağımsız olarak en az `asgari ücret net / 30 × HTÇ günü` kadar artırılır. HTÇ hedef neti snapshot'a ayrı kod ve gün sayısıyla yazılır; aynı tutarlı fazla mesai satırı HTÇ'nin yerine geçemez.
 - Fazla çalışma parametresi `fazla_mesai` veya sistemdeki kısa kodu olan `mesai` ile kaydedilmiş olabilir. İki kod da yemek yardımından bağımsız, ayrı resmî banka kalemi olarak aynı kurala tabidir.
 - Otomatik dağıtımda ödeme kanalları zorunlu olarak mutabık olmalıdır: `banka + elden + Sodexo + diğer = toplam net hakediş - gerçek personel kesintileri`. Brüte tamamlama içindeki SGK/vergi tutarları bu mutabakatta personel kesintisi sayılmaz. Resmî banka matrahına sığmayan pozitif bakiye kaybolamaz; elden ödemeye tamamlanır.
