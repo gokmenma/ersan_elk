@@ -239,6 +239,8 @@ yemekIcinKalanSozlesmeLimiti = max(0, yemekTavanHedefi - asgariHakedis - esYardi
 
 HTÇ'nin resmi neti bu limitin disinda bankaya eklenir; resmi neti asan personel hakedisi
 elden kalir. Boylece ek calisma yemek yardimini ne azaltir ne de yapay bicimde artirir.
+Elden bakiye bulunduğu sürece HTÇ resmî neti "bankada kalan boşluk" kadar kırpılmaz;
+gerekli tutar elden bakiyeden bankaya aktarılır ve toplam net hakediş değişmez.
 
 Ayrica `resmiDahilEkToplam` asgari **net** uzerinden biriktigi icin, ondan dusulen
 `htcResmiTutarDagilim` de asgari **net** olmalidir (brut kullanilirsa RTÇ + HTÇ birlikteyken

@@ -6166,6 +6166,8 @@ class BordroPersonelModel extends Model
             $resmiAlacakDahil = $this->isDogalResmiAlacakTuru((string) ($odeme->tur ?? ''))
                 || !empty($parametre->resmi_alacagina_dahil)
                 || $rTutar > 0;
+            $detay['resmi_alacagina_dahil'] = $resmiAlacakDahil ? 1 : 0;
+            $detay['resmi_banka_net'] = 0.0;
             $rNet = 0.0;
             if ($rTutar > 0) {
                 $rSgk = $rTutar * 0.15;
@@ -6208,6 +6210,7 @@ class BordroPersonelModel extends Model
                     ? max(0.0, $resmiNetHedefi)
                     : max($ekOdemeTutari, $resmiNetHedefi);
                 $yontemliOdemeler['banka'] += $bankaKatkisi;
+                $detay['resmi_banka_net'] = round($bankaKatkisi, 2);
                 if ($this->isYemektenBagimsizEkCalismaTuru($turLower) && $ekOdemeTutari > $bankaKatkisi) {
                     $yontemliOdemeler['elden'] += round($ekOdemeTutari - $bankaKatkisi, 2);
                 }
@@ -6218,6 +6221,7 @@ class BordroPersonelModel extends Model
             } else {
                 $bankaPay = ($isPrimUsulu || $isNetMaas) ? $rNet : $rTutar;
                 $yontemliOdemeler['banka'] += $bankaPay;
+                $detay['resmi_banka_net'] = round(max(0.0, $bankaPay), 2);
                 if (isset($yontemliOdemeler[$yontem])) {
                     $yontemliOdemeler[$yontem] += ($ekOdemeTutari - $bankaPay);
                     if ($yontem === 'sodexo') {
@@ -6815,7 +6819,13 @@ class BordroPersonelModel extends Model
                 $isPrim = strpos($jedoKod, 'prim') !== false || strpos($jedoKod, 'ikramiye') !== false;
                 // Maaşa dahil personelde primlerin yemek tavanı dışındaki kısmı Kural 5 gereği elden dağıtılır, banka matrahına giremez.
                 if (!empty($jedo['resmi_alacagina_dahil']) && !$isPrim && $this->isDogalResmiAlacakTuru($jedoKod)) {
-                    $resmiBankaEkOdemeNeti += floatval($jedo['net_etki'] ?? $jedo['hesaplanan_tutar'] ?? $jedo['tutar'] ?? 0);
+                    $resmiBankaEkOdemeNeti += floatval(
+                        $jedo['resmi_banka_net']
+                        ?? $jedo['net_etki']
+                        ?? $jedo['hesaplanan_tutar']
+                        ?? $jedo['tutar']
+                        ?? 0
+                    );
                 }
             }
             $ekOdemeBankaNetiHesap = $resmiBankaEkOdemeNeti;

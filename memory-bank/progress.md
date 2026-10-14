@@ -93,3 +93,4 @@
 - [x] Prim usulü personelde HTÇ net gösterimi ve yardımsız profilde banka detay kırılımı geri getirildi.
 - [x] Fazla mesai/hafta içi nöbet ile RTÇ/HTÇ yemek yardımı havuzundan ayrıştırıldı; resmî hedef banka, hedef üstü hakediş elden dağıtılır hale getirildi.
 - [x] Teknik `Eski snapshot dağıtım farkı` satırı kaldırıldı; geçmiş bordrolarda kayıtlı banka kalemleri, yeni hedeflerle ekranda değiştirilmeden mutabık gösteriliyor.
+- [x] HTÇ'nin hafta içi nöbet satırından sonra kalan banka boşluğuna kırpılması giderildi; ek çalışmanın resmî banka neti snapshot detayında ayrı saklanıp elden/banka dağımında kullanılıyor.
