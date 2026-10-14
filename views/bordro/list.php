@@ -1119,6 +1119,12 @@ if (!empty($dbGelirler)) {
                                             </a>
                                         </li>
                                         <li>
+                                            <a class="dropdown-item py-2" href="javascript:void(0);"
+                                                id="btnExportBordroArsiv">
+                                                <i class="mdi mdi-archive-lock-outline text-danger fs-5"></i> <span>Geçmiş Bordro Arşivi (ZIP)</span>
+                                            </a>
+                                        </li>
+                                        <li>
                                             <hr class="dropdown-divider">
                                         </li>
                                         <li>

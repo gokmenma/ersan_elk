@@ -1346,6 +1346,67 @@ $(document).ready(function () {
       + encodeURIComponent(donemId) + "&ids=" + encodeURIComponent(ids.join(","));
   });
 
+  $("#btnExportBordroArsiv").on("click", async function () {
+    try {
+      const response = await fetch("views/bordro/excel-arsiv-export.php?action=periods", {
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.status !== "success") throw new Error(payload.message || "Dönemler alınamadı.");
+      if (!payload.data.length) throw new Error("Dışa aktarılabilecek kapalı bordro dönemi bulunamadı.");
+
+      const result = await Swal.fire({
+        title: "Bordro Dönemlerini Seçin",
+        html: '<div class="text-start small text-muted mb-2">İndirmek istediğiniz bir veya birden fazla dönemi seçin.</div><div class="form-check border-bottom pb-2 mb-2"><input class="form-check-input" type="checkbox" id="archivePeriodAll"><label class="form-check-label fw-semibold" for="archivePeriodAll">Tüm dönemleri seç</label></div><div id="archivePeriodList" class="text-start" style="max-height:320px;overflow-y:auto"></div>',
+        width: 560,
+        showCancelButton: true,
+        confirmButtonText: '<i class="mdi mdi-download me-1"></i>Seçilenleri İndir',
+        cancelButtonText: "Vazgeç",
+        focusConfirm: false,
+        didOpen: function () {
+          const list = document.getElementById("archivePeriodList");
+          payload.data.forEach(function (period) {
+            const row = document.createElement("div");
+            row.className = "form-check py-2 border-bottom";
+            const input = document.createElement("input");
+            input.className = "form-check-input archive-period-check";
+            input.type = "checkbox";
+            input.value = String(period.id);
+            input.id = "archivePeriod" + period.id;
+            const label = document.createElement("label");
+            label.className = "form-check-label d-flex justify-content-between gap-2";
+            label.htmlFor = input.id;
+            const name = document.createElement("span");
+            name.textContent = period.donem_adi;
+            const status = document.createElement("span");
+            status.className = period.muhurlu == 1 ? "badge bg-success-subtle text-success" : "badge bg-warning-subtle text-warning";
+            status.textContent = period.muhurlu == 1 ? "Mühürlü" : "Eski kayıt";
+            label.append(name, status);
+            row.append(input, label);
+            list.appendChild(row);
+          });
+          document.getElementById("archivePeriodAll").addEventListener("change", function () {
+            document.querySelectorAll(".archive-period-check").forEach((item) => { item.checked = this.checked; });
+          });
+        },
+        preConfirm: function () {
+          const ids = Array.from(document.querySelectorAll(".archive-period-check:checked")).map((item) => item.value);
+          if (!ids.length) {
+            Swal.showValidationMessage("En az bir dönem seçmelisiniz.");
+            return false;
+          }
+          return ids;
+        },
+      });
+      if (result.isConfirmed) {
+        window.location.href = "views/bordro/excel-arsiv-export.php?donem_ids=" + encodeURIComponent(result.value.join(","));
+      }
+    } catch (error) {
+      Swal.fire({ icon: "error", title: "Arşiv Hazırlanamadı", text: error.message });
+    }
+  });
+
   $(document).on("click", ".btn-odeme", function () {
     const id = $(this).data("id");
     const ad = $(this).data("ad");

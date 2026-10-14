@@ -795,7 +795,7 @@ async function deleteSelectedMovement() {
 .topbar-btn--danger {
   color: var(--ds-danger-ink);
   background: var(--ds-danger-soft);
-  border-color: #fee2e2;
+  border-color: var(--ds-danger-soft);
 }
 .topbar-title span {
   display: block;
@@ -956,9 +956,9 @@ async function deleteSelectedMovement() {
   margin-top: 12px;
   padding: 10px 12px;
   border-radius: 14px;
-  background: #fefce8;
-  border: 1px solid #fef08a;
-  color: #854d0e;
+  background: var(--ds-amber-soft);
+  border: 1px solid var(--ds-yellow);
+  color: var(--ds-amber-ink);
   cursor: pointer;
 }
 .hero-note-banner p {
@@ -968,7 +968,7 @@ async function deleteSelectedMovement() {
   flex: 1;
 }
 .note-edit-icon {
-  color: #ca8a04;
+  color: var(--ds-amber-ink);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -1033,11 +1033,11 @@ async function deleteSelectedMovement() {
   border-radius: 12px;
 }
 .type-debt {
-  background: #fee2e2;
+  background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);
 }
 .type-credit {
-  background: #dcfce7;
+  background: var(--ds-emerald-soft);
   color: var(--ds-emerald-ink);
 }
 .movement-info {
@@ -1394,7 +1394,7 @@ async function deleteSelectedMovement() {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #2563eb;
+  color: var(--ds-blue-ink);
   font-weight: 700;
   text-decoration: none;
 }
@@ -1409,7 +1409,7 @@ async function deleteSelectedMovement() {
   justify-content: center;
   gap: 6px;
   height: 44px;
-  border: 1px solid #fee2e2;
+  border: 1px solid var(--ds-danger-soft);
   border-radius: 999px;
   background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);

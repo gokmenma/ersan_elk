@@ -14,6 +14,7 @@ import CariView from './views/CariView.vue'
 import CariDetailView from './views/CariDetailView.vue'
 import FaturaView from './views/FaturaView.vue'
 import KasaView from './views/KasaView.vue'
+import PayrollView from './views/PayrollView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -38,6 +39,8 @@ const router = createRouter({
     { path: '/kasa', name: 'kasa', component: KasaView, meta: { requiresAuth: true, requiresCompany: true, permission: 'cash' } },
     { path: '/gelir-gider', redirect: '/kasa' },
     { path: '/kasa-yonetimi', redirect: '/kasa' },
+    { path: '/bordro', name: 'payroll', component: PayrollView, meta: { requiresAuth: true, requiresCompany: true, permission: 'payroll' } },
+    { path: '/maas', redirect: '/bordro' },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

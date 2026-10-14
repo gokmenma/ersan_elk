@@ -1271,13 +1271,13 @@ async function submitSil() {
 }
 
 .badge-amount {
-  color: #047857;
-  background: #d1fae5;
+  color: var(--ds-emerald-ink);
+  background: var(--ds-emerald-soft);
 }
 
 .badge-days {
-  color: #1d4ed8;
-  background: #dbeafe;
+  color: var(--ds-blue-ink);
+  background: var(--ds-blue-soft);
 }
 
 .status-chip {
@@ -1287,9 +1287,9 @@ async function submitSil() {
 }
 
 .status-chip--pending { background: var(--ds-surface-subtle); color: var(--ds-muted); }
-.status-chip--approved { background: #dcfce7; color: #15803d; }
-.status-chip--rejected { background: #fee2e2; color: #b91c1c; }
-.status-chip--deleted { background: #fee2e2; color: #ba1a1a; }
+.status-chip--approved { background: var(--ds-emerald-soft); color: var(--ds-emerald-ink); }
+.status-chip--rejected { background: var(--ds-danger-soft); color: var(--ds-danger-ink); }
+.status-chip--deleted { background: var(--ds-danger-soft); color: var(--ds-danger-ink); }
 
 .t-card__body {
   padding: 0 16px 14px;
@@ -1372,7 +1372,7 @@ async function submitSil() {
 
 .act-btn--reject {
   color: var(--ds-danger);
-  background: #fee2e2;
+  background: var(--ds-danger-soft);
 }
 
 .act-btn--neutral {
@@ -1386,7 +1386,7 @@ async function submitSil() {
   border: 0;
   border-radius: 50%;
   color: var(--ds-danger);
-  background: #fee2e2;
+  background: var(--ds-danger-soft);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1585,20 +1585,20 @@ async function submitSil() {
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--ds-emerald-soft);
-  border: 1px solid #a7f3d0;
+  border: 1px solid var(--ds-emerald-soft);
   cursor: pointer;
 }
 
 .toggle-bar strong {
   display: block;
   font-size: 11px;
-  color: #065f46;
+  color: var(--ds-emerald-ink);
 }
 
 .toggle-bar small {
   display: block;
   font-size: 9px;
-  color: #047857;
+  color: var(--ds-emerald-ink);
 }
 
 .date-pickers-row {
@@ -1652,7 +1652,7 @@ async function submitSil() {
 .sheet-handle {
   width: 40px;
   height: 4px;
-  background: #cbd5e1;
+  background: var(--ds-muted-light);
   border-radius: var(--ds-radius-pill);
   margin: 0 auto 14px;
   cursor: pointer;
@@ -1735,11 +1735,11 @@ async function submitSil() {
 
 .sheet-box.box-success {
   background: var(--ds-emerald-soft);
-  border-color: #a7f3d0;
+  border-color: var(--ds-emerald-soft);
 }
 
 .sheet-box.box-success p {
-  color: #065f46;
+  color: var(--ds-emerald-ink);
 }
 
 .sheet-photo img {

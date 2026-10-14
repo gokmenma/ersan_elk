@@ -120,4 +120,44 @@ final class BordroSnapshotAuditTest extends TestCase
         self::assertSame('Telefon ekranı', $summary['kalemler'][1]['aciklama']);
         self::assertSame($before, serialize($row));
     }
+
+    public function testEldenKesintisiResmiAlacakMatrahinaEklenmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_tarihi' => '2026-10-14 18:31:00',
+            'personel_id' => 1,
+            'net_maas' => 40700.0,
+            'kesinti_tutar' => 3000.0,
+            'banka_odemesi' => 36811.35,
+            'elden_odeme' => 888.65,
+            'sodexo_odemesi' => 0.0,
+            'diger_odeme' => 0.0,
+            'maas_durumu' => 'Net',
+            'maas_tutari' => 36000.0,
+            'prim_tutar' => 3500.0,
+            'hesaplama_detay' => json_encode([
+                'matrahlar' => ['maas_hesap_gunu' => 30, 'nominal_maas' => 36000, 'htc_gun' => 0, 'rtc_gun' => 0],
+                'parametreler' => ['asgari_ucret_net' => 28075.50],
+                'ozet' => ['dahil_yemek_yardimi' => 7800, 'dahil_es_yardimi' => 0, 'dahil_yemek_gun' => 26],
+                'odeme_dagilimi' => ['banka_net' => 36811.35, 'elden' => 888.65],
+                'kesintiler' => [[
+                    'kod' => 'trafik_cezasi',
+                    'etiket' => 'Trafik Cezası',
+                    'tutar' => 3000,
+                    'hesaplama_tipi' => 'elden_tutardan',
+                    'banka_matrahina_ekle' => 0,
+                ]],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $hesap = $model->hesaplaOrtakGosterimDegerleri($row, null, 99999);
+        $detay = $model->getBankaOdemeDetayDagilimi($hesap);
+
+        self::assertSame(36811.35, $hesap['bankaMatrahi']);
+        self::assertSame(0.0, $hesap['bankaAktarilanKesinti']);
+        self::assertSame(37700.0, $hesap['netAlacagi']);
+        self::assertSame(36811.35, $detay['brut_banka']);
+        self::assertSame(0.0, $detay['kesinti']);
+    }
 }

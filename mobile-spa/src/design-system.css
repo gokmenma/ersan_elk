@@ -65,6 +65,7 @@
   --ds-danger-soft: #fef2f2;
   --ds-overlay: rgba(15, 23, 42, 0.42);
   --ds-focus: #0284c7;
+  --ds-line: var(--ds-border-subtle);
   --ds-on-dark-muted: rgba(255, 255, 255, 0.65);
   --ds-on-dark-surface: rgba(255, 255, 255, 0.1);
   --ds-gutter: 20px;
@@ -1391,7 +1392,7 @@
   --line: var(--ds-border-subtle);
   --primary: var(--ds-primary);
   --accent: var(--ds-amber);
-  --nav-height: 0px;
+  --nav-height: 84px;
   color: var(--ds-ink);
   background: var(--ds-canvas);
   font-family: var(--ds-font-main);
@@ -1434,8 +1435,8 @@
 .quick-action-text strong { font-size: 11px; font-weight: 600; }
 .bento-team-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .bento-team-heading > strong { font-size: 28px; font-weight: 600; letter-spacing: -.04em; }
-.bento-team-heading small { font-weight: 500; color: var(--ds-muted); }
-.segmented-track { height: 10px; gap: 4px; margin-bottom: 20px; background: var(--ds-surface-subtle); }
+.bento-team-heading small { margin-left: 4px; font-weight: 500; color: var(--ds-muted); }
+.segmented-track { padding: 0; height: 10px; gap: 4px; margin-bottom: 20px; background: var(--ds-surface-subtle); }
 .seg-pill { min-width: 0; flex-shrink: 1; }
 .bento-team-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .bento-team-metrics > div { min-width: 0; border-right: 1px solid var(--ds-border-subtle); }
@@ -1489,3 +1490,35 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Entry screens use the same surfaces and controls as the app. */
+.auth-screen, .company-screen { background: var(--ds-canvas); }
+.auth-visual { background: var(--ds-surface-dark); color: var(--ds-ink-light); }
+.auth-visual::before, .auth-visual::after, .auth-orbit { display: none; }
+.auth-message h1 em { color: var(--ds-ink-light); }
+.auth-message p, .auth-kicker { color: var(--ds-on-dark-muted); }
+.auth-status { background: var(--ds-on-dark-surface); color: var(--ds-on-dark-muted); }
+.auth-status i { background: var(--ds-emerald); box-shadow: none; }
+.auth-screen .brand-mark { background: var(--ds-surface); color: var(--ds-ink); }
+.auth-form { background: var(--ds-surface); box-shadow: var(--ds-shadow-bento); }
+.auth-field { color: var(--ds-muted); }
+.auth-field > div { background: var(--ds-surface-subtle); border-color: var(--ds-border-subtle); border-radius: var(--ds-radius-sm); }
+.auth-field button { min-width: 44px; min-height: 44px; }
+.auth-options label, .auth-options a { display: inline-flex; min-height: 44px; align-items: center; }
+.auth-options a { color: var(--ds-ink); }
+.login-button { background: var(--ds-primary); color: var(--ds-ink-light); border-radius: var(--ds-radius-pill); box-shadow: var(--ds-shadow-btn); }
+.login-button:active { box-shadow: var(--ds-shadow-pill); }
+.company-icon { color: var(--ds-ink); background: var(--ds-surface-subtle); border-radius: 50%; }
+.company-head .brand-mark { background: var(--ds-surface-dark); color: var(--ds-ink-light); }
+.company-list > button { border-color: var(--ds-border); border-radius: var(--ds-radius-tile); background: var(--ds-surface); box-shadow: var(--ds-shadow-tile); min-height: 80px; }
+.company-head > button { width: 44px; height: 44px; background: var(--ds-surface); color: var(--ds-ink); }
+.company-arrow { background: var(--ds-surface-dark); }
+.pwa-install { bottom: calc(var(--ds-nav-clearance) + var(--ds-safe-bottom)); background: var(--ds-surface); border-color: var(--ds-border); box-shadow: var(--ds-shadow-bento); }
+.app-shell button.bento-mini-btn { width: 44px; height: 44px; }
+.app-shell .stat-pill-btn, .app-shell .sort-icon-btn { min-height: 44px; }
+
+.auth-form { grid-template-columns: minmax(0, 1fr); }
+.auth-form > *, .auth-field, .auth-field > div { min-width: 0; }
+.auth-field input:focus-visible { outline: none; }
+.auth-field > div:focus-within { border-color: var(--ds-focus); background: var(--ds-surface); box-shadow: none; }
+.bottom-nav, .nav-sheet-layer, .nav-sheet, .nav-sheet-item { -webkit-backdrop-filter: none; }

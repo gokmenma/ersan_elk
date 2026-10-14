@@ -35,6 +35,27 @@ final class BordroKapanisButunlukTest extends TestCase
         self::assertStringContainsString('verifyArchive(', $source);
     }
 
+    public function testArsivExceliMuhurVeLegacyKayitlariAyirir(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../../views/bordro/excel-arsiv-export.php');
+        $modelSource = file_get_contents(__DIR__ . '/../../App/Model/BordroKapanisArsivModel.php');
+        self::assertIsString($source);
+        self::assertIsString($modelSource);
+        foreach (['Arşiv Özeti', 'Maaş Bordroları', 'Ek Ödeme Detayları', 'Kesinti Detayları', 'Ödeme Mutabakatı', 'Maaş Kaynakları', 'Doğrulama'] as $sheet) {
+            self::assertStringContainsString($sheet, $source);
+        }
+        self::assertStringContainsString('SHA256SUMS.txt', $source);
+        self::assertStringContainsString('bordro-export-recovery-v1', $source);
+        self::assertStringContainsString('geri_yukleme/manifest.json', $source);
+        self::assertStringContainsString("'content' => (string) \$doc['snapshot_json']", $source);
+        self::assertStringContainsString('Arşiv sistemi öncesi mevcut kayıt', $source);
+        self::assertStringContainsString('Eski / Mühürsüz Kayıt', $modelSource);
+        self::assertStringContainsString('getExportPeriods(', $modelSource);
+        self::assertStringContainsString('$donemIds', $modelSource);
+        self::assertStringContainsString("\$_GET['donem_ids']", $source);
+        self::assertStringContainsString("preg_match('/^[=+\\-@]/u'", $source);
+    }
+
     private function modelWithDatabase(float $nominalMaas): BordroPersonelModel
     {
         $db = new PDO('sqlite::memory:');

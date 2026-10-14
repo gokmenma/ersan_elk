@@ -126,7 +126,7 @@ onMounted(load)
   font-size: 11px;
   font-weight: 700;
   background: var(--ds-surface-subtle);
-  color: #475569;
+  color: var(--ds-muted);
 }
 .personnel-section-profile h2 {
   margin-top: 4px;

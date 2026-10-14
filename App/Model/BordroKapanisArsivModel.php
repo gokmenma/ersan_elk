@@ -127,4 +127,90 @@ final class BordroKapanisArsivModel extends Model
             'version' => (int) $arsiv['surum_no'],
         ];
     }
+
+    /** Dışa aktarılabilecek mühürlü veya kapalı legacy dönemleri listeler. */
+    public function getExportPeriods(int $firmaId): array
+    {
+        $stmt = $this->db->prepare("SELECT bd.id, bd.donem_adi, bd.baslangic_tarihi, bd.bitis_tarihi,
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM bordro_kapanis_arsiv a
+                       WHERE a.firma_id = bd.firma_id AND a.donem_id = bd.id
+                   ) THEN 1 ELSE 0 END AS muhurlu
+            FROM bordro_donemi bd
+            WHERE bd.firma_id = :firma_id AND bd.silinme_tarihi IS NULL
+              AND (
+                  EXISTS (SELECT 1 FROM bordro_kapanis_arsiv a WHERE a.firma_id = bd.firma_id AND a.donem_id = bd.id)
+                  OR (bd.kapali_mi = 1 AND EXISTS (
+                      SELECT 1 FROM bordro_personel bp
+                      WHERE bp.donem_id = bd.id AND bp.silinme_tarihi IS NULL
+                  ))
+              )
+            ORDER BY bd.baslangic_tarihi DESC, bd.id DESC");
+        $stmt->execute(['firma_id' => $firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Mühürlü sürümler ile henüz arşivlenmemiş kapalı legacy kayıtları dışa aktarır. */
+    public function getExportDocuments(int $firmaId, array $donemIds = []): array
+    {
+        $donemIds = array_values(array_unique(array_filter(array_map('intval', $donemIds), static fn (int $id): bool => $id > 0)));
+        $donemFilter = '';
+        $params = ['firma_id' => $firmaId];
+        if ($donemIds) {
+            $placeholders = [];
+            foreach ($donemIds as $index => $donemId) {
+                $key = 'donem_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = $donemId;
+            }
+            $donemFilter = ' AND bd.id IN (' . implode(',', $placeholders) . ')';
+        }
+        $stmt = $this->db->prepare("SELECT a.id arsiv_id, a.donem_id, a.surum_no, a.kapatan_adi, a.manifest_hash,
+                   a.onceki_arsiv_hash, a.created_at kapanis_tarihi, d.bordro_personel_id, d.personel_id,
+                   d.dokum_hash, d.snapshot_json,
+                   bd.donem_adi, bd.baslangic_tarihi, bd.bitis_tarihi, p.adi_soyadi
+            FROM bordro_kapanis_arsiv a
+            INNER JOIN bordro_kapanis_arsiv_dokum d ON d.arsiv_id = a.id
+            INNER JOIN bordro_donemi bd ON bd.id = a.donem_id
+            INNER JOIN personel p ON p.id = d.personel_id
+            WHERE a.firma_id = :firma_id" . $donemFilter . "
+            ORDER BY bd.baslangic_tarihi, a.surum_no, p.adi_soyadi");
+        $stmt->execute($params);
+        $documents = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $row['archive_status'] = 'Mühürlü Arşiv';
+            $documents[] = $row;
+        }
+
+        $stmt = $this->db->prepare("SELECT NULL arsiv_id, bd.id donem_id, NULL surum_no, NULL kapatan_adi,
+                   NULL manifest_hash, NULL onceki_arsiv_hash, NULL kapanis_tarihi, NULL dokum_hash,
+                   bp.id bordro_personel_id, bp.personel_id,
+                   JSON_OBJECT('id', bp.id, 'personel_id', bp.personel_id, 'brut_maas', bp.brut_maas,
+                     'net_maas', bp.net_maas, 'sgk_isci', bp.sgk_isci, 'issizlik_isci', bp.issizlik_isci,
+                     'gelir_vergisi', bp.gelir_vergisi, 'damga_vergisi', bp.damga_vergisi,
+                     'sgk_isveren', bp.sgk_isveren, 'issizlik_isveren', bp.issizlik_isveren,
+                     'toplam_maliyet', bp.toplam_maliyet, 'kumulatif_matrah', bp.kumulatif_matrah,
+                     'calisan_gun', bp.calisan_gun, 'fazla_mesai_saat', bp.fazla_mesai_saat,
+                     'fazla_mesai_tutar', bp.fazla_mesai_tutar, 'kesinti_tutar', bp.kesinti_tutar,
+                     'prim_tutar', bp.prim_tutar,
+                     'banka_odemesi', bp.banka_odemesi, 'sodexo_odemesi', bp.sodexo_odemesi,
+                     'diger_odeme', bp.diger_odeme, 'elden_odeme', bp.elden_odeme,
+                     'dagitim_manuel', bp.dagitim_manuel, 'hesaplama_tarihi', bp.hesaplama_tarihi,
+                     'hesaplayan_id', bp.hesaplayan_id,
+                     'hesaplayan_ad_soyad', bp.hesaplayan_ad_soyad, 'hesaplama_detay', bp.hesaplama_detay) snapshot_json,
+                   bd.donem_adi, bd.baslangic_tarihi, bd.bitis_tarihi, p.adi_soyadi
+            FROM bordro_personel bp
+            INNER JOIN bordro_donemi bd ON bd.id = bp.donem_id
+            INNER JOIN personel p ON p.id = bp.personel_id
+            WHERE bd.firma_id = :firma_id AND bd.kapali_mi = 1 AND bd.silinme_tarihi IS NULL" . $donemFilter . "
+              AND bp.silinme_tarihi IS NULL
+              AND NOT EXISTS (SELECT 1 FROM bordro_kapanis_arsiv a WHERE a.firma_id = bd.firma_id AND a.donem_id = bd.id)
+            ORDER BY bd.baslangic_tarihi, p.adi_soyadi");
+        $stmt->execute($params);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $row['archive_status'] = 'Eski / Mühürsüz Kayıt';
+            $documents[] = $row;
+        }
+        return $documents;
+    }
 }

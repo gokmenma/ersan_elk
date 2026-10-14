@@ -425,6 +425,17 @@ ile mühürlenir. Sonraki kapanış sürümü önceki manifest hash'ini taşıya
 açılması veya yeniden hesaplanması önceki arşiv sürümünü güncellemez/silmez. Arşiv ve dönem kapatma aynı transaction
 içindedir; arşiv yazılamazsa dönem kapanamaz.
 
+`Geçmiş Bordro Arşivi (ZIP)` aktarımında kullanıcı bir veya birden fazla dönemi seçer ve yalnız seçilen dönemler dışa verilir. Mühürlü kapanış sürümleri ile arşiv sistemi
+öncesindeki eski/mühürsüz kayıtlar açıkça ayrılır. Excel; arşiv özeti, personel bordroları, ek ödeme, kesinti, ödeme
+mutabakatı, maaş kaynakları ve doğrulama sayfalarını içerir. ZIP içindeki `SHA256SUMS.txt`, Excel dosyasının indirme
+anındaki SHA-256 değerini taşır. Kullanıcı kaynaklı hücre metinleri Excel formül enjeksiyonuna karşı güvenli yazılır.
+
+`Maaş Bordroları` sayfası bordro/personel/dönem/arşiv kimliklerini, bütün yasal matrah ve kesintileri, işveren
+maliyetlerini, hakedişi ve kayıtlı ödeme kanallarını geri yükleme denetimine uygun ayrıntıda taşır. Excel raporlama
+katmanıdır; kayıpsız geri yükleme kaynağı ZIP içindeki `geri_yukleme/manifest.json` ile kişi bazlı tam snapshot JSON
+dosyalarıdır. Bu dosyaların tamamı `SHA256SUMS.txt` içine alınır. Geri yükleme ancak firma/dönem yetkisi, hash,
+mevcut kayıt yedeği ve transaction kontrolleriyle ayrı bir yetkili işlem olarak yürütülebilir.
+
 Snapshot bulunmayan satırlar canlı hesaplanmaz; tutar yerine `Hesaplanmadı` durumu gösterilir ve ödeme/rapor
 çıktılarına dahil edilmez.
 
@@ -475,6 +486,7 @@ vergiliKisim = max(0, tutar - muafLimit)
 
 - Resmi banka alacaginin dogal kalemleri maas/asgari ucret, maasa dahil yemek yardimi, es yardimi, fazla calisma ile resmi tatil/hafta tatili calismasidir.
 - Genel bir ek odemede `banka_matrahina_ekle = 1` secimi tek basina odemeyi resmi alacaga donusturmez. Bu secim, maasa dahil yemek/es yardimi kapasitesinin hesabinda ek kazancin dikkate alinmasini saglar.
+- Snapshot'ta `elden_tutardan` olarak kaydedilmiş kesinti, kesintiler kartında toplam kesintiye dahil edilir; ancak banka kesintisi veya kesinti öncesi resmî alacak gibi değerlendirilemez. Eski snapshot yedek hesabı yalnız kesinti kırılımı hiç bulunmayan kayıtlarda kullanılabilir.
 - Genel ek odemenin kendisinin resmi banka alacagina eklenmesi icin ilgili bordro parametresinde `resmi_alacagina_dahil = 1` olmasi veya kayitta pozitif `resmi_tutar` bulunmasi gerekir.
 - Elle eklenen puantaj disi bir odemenin parametresinde `resmi_alacagina_dahil = 1` ise kullanicidan ayrica odeme kanali secmesi beklenmez; sistem bu kalemi otomatik olarak banka kanalinda degerlendirir. Maasa dahil yardimli personelin prim/puantaj kazancinda yemek tavanini asan bakiyenin elden odenmesi kurali saklidir.
 - Resmi alacaga dahil olmayan ek odeme toplam net hak edisi arttirir; resmi banka matrahina eklenmeyen bakiye elden odemeye aktarilir.

@@ -1191,7 +1191,7 @@ onMounted(() => {
 
 .bento-icon-badge--blue {
   background: var(--ds-surface-subtle);
-  color: #1e293b;
+  color: var(--ds-ink);
 }
 
 .bento-icon-badge--emerald {
@@ -1711,7 +1711,7 @@ onMounted(() => {
   width: 44px;
   height: 5px;
   border-radius: 999px;
-  background: #cbd5e1;
+  background: var(--ds-muted-light);
   margin: 10px auto 0;
 }
 
@@ -1823,7 +1823,7 @@ onMounted(() => {
 }
 
 .fintech-hero-input-wrap:focus-within {
-  border-color: #3b82f6;
+  border-color: var(--ds-blue-ink);
   background: var(--ds-surface);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
@@ -1895,7 +1895,7 @@ onMounted(() => {
 .glass-form-input:focus,
 .glass-form-select:focus,
 .glass-form-textarea:focus {
-  border-color: #3b82f6;
+  border-color: var(--ds-blue-ink);
   background: var(--ds-surface);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }

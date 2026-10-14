@@ -1074,15 +1074,15 @@ async function deleteSelectedMovement() {
   color: var(--ds-slate);
 }
 .summary-kpi-card--debt .kpi-icon {
-  background: #fee2e2;
+  background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);
 }
 .summary-kpi-card--credit .kpi-icon {
-  background: #dcfce7;
+  background: var(--ds-emerald-soft);
   color: var(--ds-emerald-ink);
 }
 .summary-kpi-card--net .kpi-icon {
-  background: #e0e7ff;
+  background: var(--ds-indigo-soft);
   color: var(--ds-indigo-ink);
 }
 .kpi-value {
@@ -1283,11 +1283,11 @@ async function deleteSelectedMovement() {
   text-transform: uppercase;
 }
 .badge-debt {
-  background: #fee2e2;
+  background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);
 }
 .badge-credit {
-  background: #dcfce7;
+  background: var(--ds-emerald-soft);
   color: var(--ds-emerald-ink);
 }
 .badge-neutral {
@@ -1355,7 +1355,7 @@ async function deleteSelectedMovement() {
 .floating-icon-btn--history {
   width: 44px;
   height: 44px;
-  background: #334155;
+  background: var(--ds-ink);
   color: var(--ds-surface);
   box-shadow: 0 8px 20px rgba(51, 65, 85, 0.32);
 }
@@ -1790,7 +1790,7 @@ async function deleteSelectedMovement() {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #2563eb;
+  color: var(--ds-blue-ink);
   font-weight: 700;
   text-decoration: none;
 }
@@ -1805,7 +1805,7 @@ async function deleteSelectedMovement() {
   justify-content: center;
   gap: 6px;
   height: 44px;
-  border: 1px solid #fee2e2;
+  border: 1px solid var(--ds-danger-soft);
   border-radius: 999px;
   background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);

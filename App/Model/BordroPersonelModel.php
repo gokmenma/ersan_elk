@@ -1124,6 +1124,7 @@ class BordroPersonelModel extends Model
         $snapshotIcraKesintiToplam = 0.0;
         $snapshotDigerKesintiToplam = 0.0;
         $snapshotKesintiDetayiVar = false;
+        $snapshotKesintiKanalBilgisiVar = false;
         $snapshotHtcKalemiVar = false;
         $donemBaslangic = (string) ($detay['donem']['baslangic'] ?? '');
         foreach (($detay['ek_odemeler'] ?? []) as $ekOdeme) {
@@ -1169,22 +1170,28 @@ class BordroPersonelModel extends Model
             if (!is_array($snapshotKesinti)) {
                 continue;
             }
-            $hesaplamaTipi = (string) ($snapshotKesinti['hesaplama_tipi'] ?? 'sabit');
-            if ($hesaplamaTipi === 'elden_tutardan') {
-                continue;
-            }
             $tutar = max(0.0, round((float) ($snapshotKesinti['tutar'] ?? 0), 2));
             if ($tutar <= 0) {
                 continue;
             }
-            $etiket = trim((string) ($snapshotKesinti['etiket'] ?? ''));
-            $kesintiKodu = mb_strtolower((string) ($snapshotKesinti['kod'] ?? ''), 'UTF-8');
+            // Snapshot'ta bir kesinti satırı varsa kanal bilgisi de snapshot'ın
+            // parçasıdır. Elden kesintisini banka kırılımından çıkarsak bile eski
+            // kayıt fallback'i bu tutarı yeniden banka kesintisi saymamalıdır.
             $snapshotKesintiDetayiVar = true;
+            $snapshotKesintiKanalBilgisiVar = array_key_exists('hesaplama_tipi', $snapshotKesinti)
+                || array_key_exists('banka_matrahina_ekle', $snapshotKesinti)
+                || $snapshotKesintiKanalBilgisiVar;
+            $kesintiKodu = mb_strtolower((string) ($snapshotKesinti['kod'] ?? ''), 'UTF-8');
             if ($kesintiKodu === 'icra') {
                 $snapshotIcraKesintiToplam += $tutar;
             } else {
                 $snapshotDigerKesintiToplam += $tutar;
             }
+            $hesaplamaTipi = (string) ($snapshotKesinti['hesaplama_tipi'] ?? 'sabit');
+            if ($hesaplamaTipi === 'elden_tutardan') {
+                continue;
+            }
+            $etiket = trim((string) ($snapshotKesinti['etiket'] ?? ''));
             if ($etiket === '' || mb_strtolower($etiket, 'UTF-8') === $kesintiKodu) {
                 $etiket = match ($kesintiKodu) {
                     'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
@@ -1206,11 +1213,11 @@ class BordroPersonelModel extends Model
                 $snapshotBankaKesintiToplam += $tutar;
             }
         }
-        if (empty($snapshotBankaKesintiKalemleri) && !empty($tumSnapshotKesintileri)) {
+        if (!$snapshotKesintiKanalBilgisiVar && empty($snapshotBankaKesintiKalemleri) && !empty($tumSnapshotKesintileri)) {
             $snapshotBankaKesintiKalemleri = $tumSnapshotKesintileri;
             $snapshotBankaKesintiToplam = array_sum(array_column($tumSnapshotKesintileri, 'tutar'));
         }
-        if ($snapshotBankaKesintiToplam <= 0 && ($kesinti + $icra) > 0) {
+        if (!$snapshotKesintiDetayiVar && $snapshotBankaKesintiToplam <= 0 && ($kesinti + $icra) > 0) {
             $snapshotBankaKesintiToplam = round($kesinti + $icra, 2);
         }
         if ($snapshotKesintiDetayiVar) {

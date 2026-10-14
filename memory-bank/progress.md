@@ -1,4 +1,10 @@
 # Progress
+- [x] Mobile SPA (`mobile-spa`): `@mobile` içerisindeki Bordro modülü (`mobile/pages/bordro.php` & `mobile/api/bordro.php`) Soft Bento & Claymorphic UI mimarisine uyarlandı.
+  - Backend API: `mobile-spa/public/api/bordro.php` ve `dist/api/bordro.php` oluşturuldu. Session, Gate (`bordro/list`, `bordro/parametreler`), CSRF token denetimi, PDO ve Model katmanı (`BordroDonemModel`, `BordroPersonelModel`, `BordroParametreModel`) ile merkezi `views/bordro/api.php` entegrasyonu sağlandı.
+  - Frontend Servisi: `mobile-spa/src/services/bordro.js` oluşturuldu (`init`, `getDetail`, `calculate`, `togglePeriod`, `distribute`, `resetAllPayments`, `resetSinglePayment`, `addAdjustment`).
+  - Görünüm Bileşeni: `mobile-spa/src/views/PayrollView.vue` geliştirildi (TopBar aksiyonları, Bento dönem seçici ve rozeti, Obsidian hero net tutar kartı, 3'lü Bento KPI ızgarası, canlı personel arama ve 5 sekmeli durum filtreleme, 2x3 kırılım ızgaralı personel kartları, bordro detay sheet'i, ödeme dağıtımı modalı, ek gelir/kesinti modalları, diğer işlemler sheet'i ve yerleşik Bento onay penceresi).
+  - Router & Navigasyon: `/bordro` ve `/maas` rotaları tanımlandı; `BottomNav.vue` menüsündeki "Bordro" öğesi `to: '/bordro'` olarak bağlandı.
+  - Test & Derleme: `design-smoke.cjs` 320/390/480px ekran boyutlarında 27 kontrol başarıyla (`PASS`) tamamlandı; `npm run build` ile hatasız üretim çıktısı alındı.
 - [x] Bordro detayındaki elden kanallı malzeme kesintisinin gizlenmesi giderildi; kart tüm personel kesintilerini gösteriyor.
 - [x] Prim usulünde banka işaretli yol/ek kazancın son yemek tavanından düşmesi düzeltildi; yemek dağılımının toplam hakedişi ikinci kez artırması önlendi. İlgili 43 test geçti.
 - [x] Aşama 2 temel sonuç sözleşmesi ve salt okunur karşılaştırma okuyucusu eklendi; kayıtlı kanallar korunuyor, belirsiz parasal alanlar null taşınıyor.
@@ -14,6 +20,8 @@
 - [x] Bordro kapanışına hukuki snapshot/mutabakat kontrolü eklendi; dönemsel maaş kaynağı ve ödeme kanalı tutarsızlıkları zorlanamaz biçimde kapanışı engelliyor, yeni snapshot kaynakları kaydediliyor ve manuel/Excel dağıtımları snapshot ile birlikte atomik güncelleniyor.
 - [x] Bordro kapanışındaki çoklu mutabakat hataları personel bazlı, numaralı ve kaydırılabilir kullanıcı dostu kontrol penceresine dönüştürüldü.
 - [x] `bordro_kapanis_arsiv` ve kişi doküm tabloları oluşturuldu; SHA-256 mühürlü, önceki hash'e bağlı sürüm zinciri ve atomik arşivle-kapat akışı devreye alındı.
+- [x] Seçilen bir veya birden fazla kapalı dönemi mühürlü/mühürsüz ayrımıyla Excel + SHA256SUMS içeren ZIP olarak dışa aktaran Geçmiş Bordro Arşivi aksiyonu eklendi.
+- [x] Maaş Bordroları Excel sayfası tam mali/yasal alanlarla genişletildi; ZIP'e kayıpsız kişi snapshot JSON'ları ve `bordro-export-recovery-v1` manifesti eklendi.
 - [x] `bordro/list` geçmiş dönem gösteriminde kayıtlı banka/elden dağılımını yeniden hesaplayan gösterim tavanı kaldırıldı; kapanmış/ödenmiş bordronun kayıtlı ödeme kanalları aynen gösterilir hale getirildi ve regresyon testi eklendi.
 - [x] Hesaplanmış/kapanmış bordroların kayıtlı hakediş, kesinti ve ödeme kanallarının gösterimde değiştirilemeyeceği snapshot ilkesi `AGENTS.md` ve bordro hesaplama kuralları dokümanında kalıcı proje kuralı yapıldı.
 
@@ -113,3 +121,17 @@
 - [x] `mesai` kodlu fazla çalışma resmî banka kalemine dahil edilerek HTÇ ile ayrı ayrı gösterilmesi sağlandı.
 - [x] Otomatik ödeme dağılımında kaybolan pozitif bakiye elden kanalına tamamlandı; brüte tamamlama vergilerinin personel kesintisi alanına yazılması engellendi.
 - [x] Banka matrahına dahil ek çalışmaların resmî net üstü payı yeniden maaşa dahil yemek tavanını dolduracak şekilde hesaplamaya bağlandı; tavan üstü bakiye elden bırakıldı.
+
+## 2026-10-14 — Mobil SPA tasarım yenilemesi
+- [x] Referans görsel incelendi; ana sayfa sade mobil uygulama düzenine taşındı.
+- [x] Ortak üst bar, yetkiye göre sıkışan koyu dock ve erişilebilir Daha Fazla alt paneli yenilendi.
+- [x] Giriş/firma seçimi ortak tasarıma uyarlandı; 320px giriş formu iç taşması düzeltildi.
+- [x] Mevcut modüllerin temel/durum paletleri merkezi `--ds-*` tokenlarına bağlandı; dokunma alanları, 16px form değerleri ve safe-area payları güncellendi.
+- [x] API mock'larıyla 27 rota/genişlik kontrolü, izinli/izinsiz gezinme, alt panel odağı ve giriş kontrolleri geçti; üretim build alındı. PWA cache v18.
+- [x] Tekrar çalıştırılabilir tarayıcı kontrolü `mobile-spa/tests/design-smoke.cjs` ve güncel tasarım belgesi eklendi.
+- Canlı API/veritabanı doğrulaması veya sunucu deploy işlemi yapılmadı; mevcut Görev/Rapor prototip verileri aynı kapsamda kaldı.
+# Elden kesintisi / resmî alacak regresyonu
+
+- [x] Snapshot'taki elden kesintisinin banka kesintisi fallback'ine girmesi engellendi.
+- [x] Kesinti kartının tüm kesintileri göstermesi ile banka detayının yalnız banka kanalını göstermesi ayrıştırıldı.
+- [x] 3.000 TL elden kesintinin 36.811,35 TL kayıtlı resmî alacağı 39.811,35 TL'ye yükseltmediğini doğrulayan regresyon testi eklendi.

@@ -2151,7 +2151,7 @@ onMounted(() => {
   box-shadow: var(--ds-shadow-float);
 }
 .fatura-toast--error {
-  background: #ba1a1a;
+  background: var(--ds-danger-ink);
 }
 
 /* 2. Dönem Filtreleri Çubuğu */
@@ -2205,8 +2205,8 @@ onMounted(() => {
   padding: 12px 16px;
   margin-bottom: 14px;
   border-radius: 16px;
-  background: #ffdad6;
-  color: #93000a;
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
   font-size: 12px;
   font-weight: 700;
 }
@@ -2884,9 +2884,9 @@ onMounted(() => {
   cursor: pointer;
 }
 .fatura-icon-action-btn--danger {
-  color: #ba1a1a;
-  background: #fff5f5;
-  border-color: #ffdad6;
+  color: var(--ds-danger-ink);
+  background: var(--ds-danger-soft);
+  border-color: var(--ds-danger-soft);
 }
 
 /* Rozetler */
@@ -2924,7 +2924,7 @@ onMounted(() => {
 }
 .fatura-badge--neutral {
   background: var(--ds-surface-subtle);
-  color: #475569;
+  color: var(--ds-muted);
   border: 1px solid rgba(100, 116, 139, 0.15);
 }
 
@@ -3408,7 +3408,7 @@ onMounted(() => {
 .fatura-skeleton-card {
   height: 90px;
   border-radius: 20px;
-  background: linear-gradient(100deg, #e7ecef 20%, #f7f9fa 40%, #e7ecef 60%);
+  background: linear-gradient(100deg, var(--ds-canvas) 20%, var(--ds-surface-subtle) 40%, var(--ds-canvas) 60%);
   background-size: 220% 100%;
   animation: ds-shimmer 1.3s infinite;
 }

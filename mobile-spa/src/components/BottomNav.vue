@@ -32,7 +32,6 @@ const route = useRoute()
 const router = useRouter()
 const menuOpen = ref(false)
 const sheet = ref(null)
-const menuTrigger = ref(null)
 let previousOverflow = ''
 let returnFocus = null
 watch(menuOpen, async (open) => {
@@ -59,11 +58,11 @@ function handleSheetKeydown(event) {
 }
 
 const items = [
-  { to: '/', label: 'Ana Sayfa', icon: Home, slot: 1 },
-  { to: '/personel', label: 'Personel', icon: UsersRound, permission: 'personnel', slot: 2 },
-  { label: 'Daha Fazla', icon: LayoutGrid, center: true, slot: 3 },
-  { to: '/raporlar', label: 'Raporlar', icon: ChartNoAxesCombined, permission: 'reports', slot: 4 },
-  { to: '/talepler', label: 'Talepler', icon: ClipboardList, permission: 'requests', slot: 5 },
+  { to: '/', label: 'Ana Sayfa', icon: Home },
+  { to: '/personel', label: 'Personel', icon: UsersRound, permission: 'personnel' },
+  { label: 'Daha Fazla', icon: LayoutGrid, center: true },
+  { to: '/raporlar', label: 'Raporlar', icon: ChartNoAxesCombined, permission: 'reports' },
+  { to: '/talepler', label: 'Talepler', icon: ClipboardList, permission: 'requests' },
 ]
 const visibleItems = computed(() => items.filter(item => !item.permission || auth.state.permissions[item.permission]))
 
@@ -84,7 +83,7 @@ const operations = [
   { permission: 'documents', label: 'Evrak Takip', icon: FileText, href: '/mobile/index.php?p=evrak-takip' },
   { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, href: '/mobile/index.php?p=nobet' },
   { permission: 'reports', label: 'Puantaj', icon: CalendarRange, href: '/mobile/index.php?p=puantaj' },
-  { permission: 'payroll', label: 'Bordro', icon: Banknote, href: '/mobile/index.php?p=bordro' },
+  { permission: 'payroll', label: 'Bordro', icon: Banknote, to: '/bordro' },
   { permission: 'notices', label: 'İhbar Yönetimi', icon: Megaphone, href: '/mobile/index.php?p=ihbar' },
   { permission: 'illegal', label: 'Kaçak Kontrol', icon: ShieldAlert, href: '/mobile/index.php?p=kacak' },
   { permission: 'support', label: 'Destek & Yardım', icon: Headset, href: '/mobile/index.php?p=yardim' },
@@ -131,7 +130,7 @@ async function handleLogout() {
           <!-- Profil Özeti (Mobil görünüm gibi en üstte) -->
           <button type="button" class="nav-sheet-profile" @click="selectOperation({ to: '/profil' })">
             <div class="nav-sheet-profile__avatar">
-              {{ auth.state.user?.initials || 'MA' }}
+              {{ auth.state.user?.initials || 'EE' }}
             </div>
             <div class="nav-sheet-profile__info">
               <span class="nav-sheet-profile__badge">KULLANICI PROFİLİ</span>
@@ -189,7 +188,6 @@ async function handleLogout() {
           class="nav-link nav-link--center"
           :class="{ 'is-active': isItemActive(item) }"
           type="button"
-          ref="menuTrigger"
           aria-controls="more-menu"
           aria-haspopup="dialog"
           aria-label="Daha fazla menüsünü aç"

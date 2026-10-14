@@ -23,7 +23,7 @@ import TopBar from '../components/TopBar.vue'
     <!-- 3. 2'li KPI Bento Kartları -->
     <div class="report-kpi-grid">
       <article class="bento-card bento-card--white report-kpi-card">
-        <span class="op-icon-bubble" style="background: #0284c7;">
+        <span class="op-icon-bubble" style="background: var(--ds-blue-ink); color: var(--ds-ink-light);">
           <Zap :size="16" />
         </span>
         <small class="kpi-label">Tamamlanan iş</small>
@@ -34,7 +34,7 @@ import TopBar from '../components/TopBar.vue'
       </article>
 
       <article class="bento-card bento-card--white report-kpi-card">
-        <span class="op-icon-bubble" style="background: #10b981;">
+        <span class="op-icon-bubble" style="background: var(--ds-emerald-ink); color: var(--ds-ink-light);">
           <UsersRound :size="16" />
         </span>
         <small class="kpi-label">Aktif personel</small>
@@ -57,12 +57,12 @@ import TopBar from '../components/TopBar.vue'
         <svg viewBox="0 0 320 150" role="img" aria-label="Aylık saha üretkenliği grafiği">
           <defs>
             <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#181c24" stop-opacity=".18" />
-              <stop offset="1" stop-color="#181c24" stop-opacity="0" />
+              <stop offset="0" stop-color="var(--ds-primary)" stop-opacity=".18" />
+              <stop offset="1" stop-color="var(--ds-primary)" stop-opacity="0" />
             </linearGradient>
           </defs>
           <path d="M0,121 C35,105 44,112 70,88 S118,101 145,69 S190,78 216,48 S264,67 320,22 L320,150 L0,150 Z" fill="url(#fill)" />
-          <path d="M0,121 C35,105 44,112 70,88 S118,101 145,69 S190,78 216,48 S264,67 320,22" fill="none" stroke="#181c24" stroke-width="3" stroke-linecap="round" />
+          <path d="M0,121 C35,105 44,112 70,88 S118,101 145,69 S190,78 216,48 S264,67 320,22" fill="none" stroke="var(--ds-primary)" stroke-width="3" stroke-linecap="round" />
         </svg>
       </div>
       <footer class="chart-footer">
