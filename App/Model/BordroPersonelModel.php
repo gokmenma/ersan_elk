@@ -1069,7 +1069,12 @@ class BordroPersonelModel extends Model
             if (!is_array($ekOdeme)) {
                 continue;
             }
-            $tutar = max(0.0, round((float) ($ekOdeme['net_etki'] ?? $ekOdeme['tutar'] ?? 0), 2));
+            $tutar = max(0.0, round((float) (
+                $ekOdeme['resmi_banka_net']
+                ?? $ekOdeme['net_etki']
+                ?? $ekOdeme['tutar']
+                ?? 0
+            ), 2));
             if ($tutar <= 0) {
                 continue;
             }
@@ -6818,7 +6823,9 @@ class BordroPersonelModel extends Model
                 $jedoKod = mb_strtolower((string)($jedo['kod'] ?? ''), 'UTF-8');
                 $isPrim = strpos($jedoKod, 'prim') !== false || strpos($jedoKod, 'ikramiye') !== false;
                 // Maaşa dahil personelde primlerin yemek tavanı dışındaki kısmı Kural 5 gereği elden dağıtılır, banka matrahına giremez.
-                if (!empty($jedo['resmi_alacagina_dahil']) && !$isPrim && $this->isDogalResmiAlacakTuru($jedoKod)) {
+                $resmiEkCalisma = $this->isDogalResmiAlacakTuru($jedoKod)
+                    || $this->isYemektenBagimsizEkCalismaTuru($jedoKod);
+                if (!empty($jedo['resmi_alacagina_dahil']) && !$isPrim && $resmiEkCalisma) {
                     $resmiBankaEkOdemeNeti += floatval(
                         $jedo['resmi_banka_net']
                         ?? $jedo['net_etki']
