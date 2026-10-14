@@ -6961,6 +6961,9 @@ class BordroPersonelModel extends Model
             $puantajHedefToplamiDahil = ($isPrimUsuluDahilYardim || $karisikMaasOzeti !== null)
                 ? $primUsuluPuantajHedefToplami
                 : ($netMaasPuantajHakedisi > 0 ? $netMaasPuantajHakedisi : 0.0);
+            if ($isPrimUsuluDahilYardim) {
+                $puantajHedefToplamiDahil = max($puantajHedefToplamiDahil, round($asgariNetNominal / 30 * $maasHesapGunu, 2));
+            }
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
                 $kayit,
                 $asgariNetNominal,
@@ -6978,7 +6981,8 @@ class BordroPersonelModel extends Model
             $asgariSozlesmePayi = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             // Prim usulü veya net maaşlı personelde yemek tavanı hedefi (puantaj ve banka ek ödemeleri yemek limitine absorbe edilir)
             $yemekTavanHedefi = $isPrimUsuluDahilYardim
-                ? $primUsuluPuantajHedefToplami
+                ? round($puantajHedefToplamiDahil + max(0, $bankayaTasinabilirEkOdeme)
+                    + max(0, $yemekHavuzunaTasinabilirEkOdeme) + max(0, $htcNetFazlaHesap), 2)
                 : round($targetNetHakedis + $netMaasPuantajHakedisi
                     + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                     + max(0, $bankayaTasinabilirEkOdeme)
@@ -7026,7 +7030,7 @@ class BordroPersonelModel extends Model
             if ($isPrimUsuluDahilYardim && $karisikMaasOzeti === null) {
                 $primUsuluTabanHakedisi = max(
                     $primUsuluPuantajHedefToplami,
-                    $asgariYatacak + $toplamDahilYardim
+                    $asgariYatacak
                 );
                 $baseHakedis = $primUsuluTabanHakedisi
                     + $bankayaTasinabilirEkOdeme

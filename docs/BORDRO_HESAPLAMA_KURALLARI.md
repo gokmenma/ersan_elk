@@ -148,6 +148,11 @@ matrahinda iki kez sayilir.
 
 ### Prim Usulu
 
+Maaşa dahil yemek profili etkin prim usulü personelde yemek hedefi
+`max(puantaj hakedişi, asgari net taban) + banka işaretli uygun ek kazanç`
+üzerinden kurulur. Yol yardımı gibi kazançlar son yemek tavanında dışlanamaz.
+Yemek bir ödeme dağılımıdır; aynı ek kazanç toplam hakedişe ikinci kez eklenmez.
+
 Prim usulu net gibi islenir. Varsayilan ek odeme kanali `elden` kabul edilir; parametrede odeme yontemi varsa o yontem kullanilir.
 
 - Prim usulunde kanuni asgari net taban yalniz normal puantaj/calisma hakedisini tamamlar. Fazla mesai, nobet, resmi tatil ve hafta tatili calismasi gibi ek calisma kazanclari bu tabanin icinde eritilemez; `max(normal puantaj hakedisi, gunluk asgari net taban) + ek calisma kazanclari` sirasi ile toplam hakedise eklenir.

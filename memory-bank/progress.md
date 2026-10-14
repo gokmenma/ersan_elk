@@ -1,4 +1,5 @@
 # Progress
+- [x] Prim usulünde banka işaretli yol/ek kazancın son yemek tavanından düşmesi düzeltildi; yemek dağılımının toplam hakedişi ikinci kez artırması önlendi. İlgili 43 test geçti.
 - [x] Aşama 2 temel sonuç sözleşmesi ve salt okunur karşılaştırma okuyucusu eklendi; kayıtlı kanallar korunuyor, belirsiz parasal alanlar null taşınıyor.
 
 - [x] Bordro aşamalı geçişinin ilk aşaması: salt okunur snapshot/ödeme denetimi, geçiş riskleri belgesi ve 3 davranış testi eklendi (7 doğrulama başarılı). Hesap kayıtları değiştirilmedi.
