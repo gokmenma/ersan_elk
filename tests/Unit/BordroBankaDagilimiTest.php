@@ -305,6 +305,49 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertEquals(7500, $capped['yemek_toplam']);
     }
 
+    public function testFazlaCalismaVeHaftaTatiliYemekYardiminiDegistirmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $params = $this->getMockBuilder(BordroParametreModel::class)->disableOriginalConstructor()
+            ->onlyMethods(['getByKod', 'getGenelAyar'])->getMock();
+        $params->method('getByKod')->willReturn(null);
+        $params->method('getGenelAyar')->willReturn(0);
+        $this->setProperty($model, 'cachedParametreModel', $params);
+        $record = (object) ['yemek_yardimi_dahil' => 1, 'yemek_yardimi_tutari' => 300];
+        $method = new ReflectionMethod($model, 'hesaplaMaasaDahilYardimDagilimi');
+
+        $normal = $method->invoke($model, $record, 28075.50, 8, 7, 0, 0, 0, 7486.80, 0, 0);
+        $ekCalismali = $method->invoke($model, $record, 28075.50, 8, 7, 0, 0, 0, 7486.80, 1184.53, 684.53);
+
+        self::assertSame($normal['yemek_toplam'], $ekCalismali['yemek_toplam']);
+        self::assertSame($normal['yemek_gunluk'], $ekCalismali['yemek_gunluk']);
+    }
+
+    public function testEskiSnapshotMuhasebeFazlaMesaiHedefiyleAcikcaUzlasir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 10522.65,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 0,
+            'asgariYatacak' => 7486.80,
+            'mealAllowanceDeduction' => 2100,
+            'spouseAllowanceDeduction' => 0,
+            'bankaEkOdemeDetaylari' => [
+                ['etiket' => 'Hafta İçi Nöbet', 'tutar' => 500],
+                ['etiket' => 'Hafta Tatili Çalışması (Net)', 'tutar' => 435.85],
+            ],
+        ], ['tutar' => 748.68, 'etiket' => 'Fazla Mesai Ücreti (Net)']);
+
+        self::assertSame(-248.68, $detay['snapshot_dagitim_farki']);
+        self::assertSame($detay['brut_banka'], round(
+            $detay['asgari'] + $detay['yemek'] + $detay['es_yardimi']
+            + array_sum(array_column($detay['ek_odemeler'], 'tutar'))
+            + $detay['sozlesme_farki'] + $detay['snapshot_dagitim_farki'],
+            2
+        ));
+    }
+
     public function testMaasaDahilYardimdaYemekEsYardimindanOnceKullanilir(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

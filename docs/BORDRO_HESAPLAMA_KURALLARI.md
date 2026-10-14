@@ -207,6 +207,18 @@ Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşama
 HTÇ, personelin kendi gunluk ucretinden hesaplanir ve **sozlesme netinin uzerine eklenir**.
 Bu kural hem maasa dahil hem de maasa dahil olmayan personelde gecerlidir.
 
+Fazla mesai, hafta ici nobet, resmi tatil calismasi ve hafta tatili calismasi **yemek
+yardimi havuzuna aktarilmaz**. Bu kalemlerin muhasebeye bildirilecek resmi netleri
+asgari ucret ve yemek yardimindan bagimsiz birer banka kalemidir. Personelin gercek
+ek calisma hakedisi resmi net hedefini asiyorsa asan bakiye elden odemede kalir;
+yemek yardimi artirilmaz veya azaltilmaz. Bu kural liste, detay, Excel ve kayit
+hesabinda ayni ortak dagilimdan uygulanir.
+
+Hesaplanmis eski snapshot'larda kayitli banka/elden kanallari degistirilmez. Aciklayici
+resmi satirlar yeni hedef netle gosterildiginde kayitli banka toplamiyla olusan fark,
+`Eski snapshot dagitim farki` satirinda acikca uzlastirilir. Parasal dagilim ancak
+donem yetkili bicimde acilip bordro yeniden hesaplandiginda yeni kurala gore degisir.
+
 ```text
 htcHamTutar = (maas_tutari / 30) * htcGun          (personelin kendi gunlugu)
 htcResmiNet = (asgari_ucret_net / 30) * htcGun     (bankaya yatan, gross-up edilen kisim)
@@ -217,18 +229,16 @@ toplamHakedis = sozlesmeHakedisi + hariciEkOdeme + yuvarlamaFarki    (hariciEkOd
 HTÇ **banka matrahini da yukseltir**. Iki kanaldan girer:
 
 - Resmi neti (`asgari_ucret_net / 30 * htcGun`) dogrudan banka kalemi olarak `yontemliBankaEki`'ne,
-- Resmi neti asan fazlasi (`htcNetFazla`) yemek havuzuna eklenir ve yine bankadan odenir.
+- Resmi neti asan fazlasi (`htcNetFazla`) yemek havuzuna eklenmez; elden odemede kalir.
 
-Bunun calisabilmesi icin yemek/banka tavani HTÇ'nin ham tutari kadar buyutulur:
+Banka matrahi HTÇ resmi neti kadar buyur; yemek tavani ise HTÇ nedeniyle degismez:
 
 ```text
-yemekIcinKalanSozlesmeLimiti = max(0,
-    yemekTavanHedefi + htcHamTutar - asgariHakedis - esYardimi - bankaUzerindenOdenecekRtcHtc)
+yemekIcinKalanSozlesmeLimiti = max(0, yemekTavanHedefi - asgariHakedis - esYardimi)
 ```
 
-`+ htcHamTutar` terimi olmazsa HTÇ'nin resmi neti yemek yardimindan dusulur; banka toplami
-degismez ve HTÇ fiilen elden odenmis olur. Bu terim toplam hakedis formulundeki
-`+ htcHamTutar` ile birlikte durur, biri olmadan digeri anlamsizdir.
+HTÇ'nin resmi neti bu limitin disinda bankaya eklenir; resmi neti asan personel hakedisi
+elden kalir. Boylece ek calisma yemek yardimini ne azaltir ne de yapay bicimde artirir.
 
 Ayrica `resmiDahilEkToplam` asgari **net** uzerinden biriktigi icin, ondan dusulen
 `htcResmiTutarDagilim` de asgari **net** olmalidir (brut kullanilirsa RTÇ + HTÇ birlikteyken

@@ -1680,6 +1680,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $html .= '<tr class="parent-row"><td><i class="bx bx-plus-circle me-2 text-success"></i>' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . '</td><td class="text-end text-success fw-bold">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</td></tr>';
                     }
                 }
+                if (abs((float) ($bankaDetayDagilimi['snapshot_dagitim_farki'] ?? 0)) >= 0.01) {
+                    $snapshotFarki = (float) $bankaDetayDagilimi['snapshot_dagitim_farki'];
+                    $snapshotSinif = $snapshotFarki < 0 ? 'text-danger' : 'text-success';
+                    $snapshotIsaret = $snapshotFarki > 0 ? '+' : '';
+                    $html .= '<tr class="parent-row"><td><i class="bx bx-history me-2 text-warning"></i>Eski snapshot dağıtım farkı<span class="calculation-note">Kayıtlı banka toplamı korunur</span></td><td class="text-end fw-bold ' . $snapshotSinif . '">' . $snapshotIsaret . number_format($snapshotFarki, 2, ',', '.') . ' ₺</td></tr>';
+                }
                 if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
                     $html .= '<tr class="parent-row"><td><i class="bx bx-trending-up me-2 text-success"></i>Sözleşme Farkı</td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['sozlesme_farki'], 2, ',', '.') . ' ₺</td></tr>';
                 }
@@ -3345,6 +3351,12 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                                     $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">' . htmlspecialchars($bed['etiket'], ENT_QUOTES, 'UTF-8') . '<small style="display:block;color:#94a3b8;">Yemek yardımına dahil</small></span><span class="pop-row-val" style="color:#94a3b8;">' . number_format($bed['yemek_dahil_tutar'], 2, ',', '.') . ' ₺ <small>(bilgi)</small></span></div>';
                                 }
                             }
+                        }
+                        if (abs((float) ($bankaDetayDagilimi['snapshot_dagitim_farki'] ?? 0)) >= 0.01) {
+                            $snapshotFarki = (float) $bankaDetayDagilimi['snapshot_dagitim_farki'];
+                            $snapshotRenk = $snapshotFarki < 0 ? 'val-red' : 'val-green';
+                            $snapshotIsaret = $snapshotFarki > 0 ? '+' : '';
+                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Eski snapshot dağıtım farkı<small style="display:block;color:#94a3b8;">Kayıtlı banka toplamı korunur</small></span><span class="pop-row-val ' . $snapshotRenk . '">' . $snapshotIsaret . number_format($snapshotFarki, 2, ',', '.') . ' ₺</span></div>';
                         }
                         
                         if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {

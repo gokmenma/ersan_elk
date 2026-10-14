@@ -154,6 +154,17 @@ class BordroPersonelModel extends Model
             || strpos($kod, 'hafta_tatili') !== false;
     }
 
+    /** Yemek yardımından bağımsız olarak resmî/elden dağıtılan ek çalışmalar. */
+    private function isYemektenBagimsizEkCalismaTuru(string $kod): bool
+    {
+        $kod = mb_strtolower($kod, 'UTF-8');
+        return strpos($kod, 'fazla_mesai') !== false
+            || strpos($kod, 'hafta_ici_nobet') !== false
+            || strpos($kod, 'hafta_sonu_nobet') !== false
+            || strpos($kod, 'resmi_tatil') !== false
+            || strpos($kod, 'hafta_tatili') !== false;
+    }
+
     /**
      * Kayıtlı bordro detayında yalnız gerçekten resmî alacağa dahil edilmiş kalemleri gösterir.
      * `banka_matrahina_ekle`, ödeme dağıtım tercihini ifade eder; tek başına resmî alacak kanıtı değildir.
@@ -790,8 +801,8 @@ class BordroPersonelModel extends Model
 
         $sonuc['aktif'] = true;
 
-        // Asgari Ücretin Dönemlik (Pro-rated) Neti + Resmi alacağa dahil ek ödemelerin toplamı
-        $sonuc['asgari_hakedis'] = round(($asgariUcretNet / 30) * $maasHesapGunu + $resmiDahilEkToplam, 2);
+        // Ek çalışmalar yemek yardımını azaltmaz; asgari tabandan bağımsız dağıtılır.
+        $sonuc['asgari_hakedis'] = round(($asgariUcretNet / 30) * $maasHesapGunu, 2);
 
         // Hedef Maaşın Dönemlik (Pro-rated) Neti
         // Hedef hakediş: Sözleşme (Sabit) + Puantaj (Prim) + Diğer (Nöbet vb.) hakedişlerin toplamı
@@ -800,12 +811,14 @@ class BordroPersonelModel extends Model
             $sozlesmeHakedisi = round(($hedefMaasTutari / 30) * $maasHesapGunu, 2);
         }
         
+        // Prim ve diğer uygun kazançlar yemek tavanını doldurabilir; ek çalışmalar
+        // çağıran akışta bu parametreden ayrıştırılmış olarak gelir.
         $targetHakedis = round($sozlesmeHakedisi + $puantajToplami + max(0, $bankayaTasinabilirEkOdeme), 2);
 
         // Maaşa dahil yardım, sözleşme netini asgari ücretten sonra tamamlayan bakiyedir.
         // Kesintiler yemek kapasitesini düşürmez; ödeme dağıtımında banka matrahından mahsup edilir.
-        // HTÇ net fazla (brüt/30 - asgari/30) × gün yemek havuzuna dahildir.
-        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'] + $htcNetFazla, 2));
+        // Fazla mesai/RTÇ/HTÇ ve bunların resmî netleri yemek havuzuna girmez.
+        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'], 2));
         
         $calcFiiliGun = max(1, $fiiliGunSayisi);
         $sonuc['yemek_gunluk_ham'] = $yemekHesapMatrahi / $calcFiiliGun;
@@ -1473,7 +1486,7 @@ class BordroPersonelModel extends Model
                 // Banka seçimi, dahil yemek/eş yardımının kapasite hesabını etkiler;
                 // ödemenin kendisini resmî banka alacağına taşımak için ayrıca
                 // parametrenin "resmî alacağa dahil" olması gerekir.
-                if ($yontem === 'banka' && !$isPuantajOdeme) {
+                if ($yontem === 'banka' && !$isPuantajOdeme && !$this->isYemektenBagimsizEkCalismaTuru($eoTurLower)) {
                     $bankayaTasinabilirEkOdemeGosterim += $tutar;
                     if (!$isPrimTuru) {
                         $bankaMahsupEdilebilirEkOdemeGosterim += $tutar;
@@ -1725,7 +1738,7 @@ class BordroPersonelModel extends Model
                     2
                 );
             $yardimlarIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi + $htcEkOdemeTutarDagilim - $asgariTabanVal - $rtcHtcBankaNetiGosterim,
+                $yemekTavanHedefi - $asgariTabanVal,
                 2
             ));
             $yemekHamToplam = min($mealAllowanceDeduction, $yardimlarIcinKalanSozlesmeLimiti);
@@ -2098,6 +2111,16 @@ class BordroPersonelModel extends Model
             $sozlesmeFarki = $kalan;
         }
 
+        $gosterilenEkOdemeToplami = array_reduce($ekOdemeler, static function (float $toplam, array $kalem): float {
+            return $toplam + (float) ($kalem['tutar'] ?? 0);
+        }, 0.0);
+        // Eski snapshot'ın kanalları değiştirilmez. Yeni muhasebe hedefi eski dağılımdan
+        // farklıysa satırlar ile kayıtlı resmî toplam arasındaki fark açıkça gösterilir.
+        $snapshotDagitimFarki = round(
+            $brutBanka - ($asgari + $yemek + $esYardimi + $gosterilenEkOdemeToplami + $sozlesmeFarki),
+            2
+        );
+
         $yemekKaynaklari = [];
         $tumEkOdemelerListesi = array_values($hesap['tumEkOdemeDetaylari'] ?? $hesap['bankaEkOdemeDetaylari'] ?? []);
         $kalanYemekKapasitesi = $yemegeAktarilabilirLimit;
@@ -2128,6 +2151,7 @@ class BordroPersonelModel extends Model
             'es_yardimi' => $esYardimi,
             'ek_odemeler' => $ekOdemeler,
             'sozlesme_farki' => $sozlesmeFarki,
+            'snapshot_dagitim_farki' => $snapshotDagitimFarki,
             'kesinti' => $kesinti,
             'kesinti_kalemleri' => $kesintiKalemleri,
             'matrah_siniri' => $matrahSiniri,
@@ -6183,10 +6207,14 @@ class BordroPersonelModel extends Model
                     $yontemliOdemeler['elden'] += $ekOdemeTutari;
                 }
             } elseif ($yontem === 'banka' && $resmiAlacakDahil) {
-                $bankaKatkisi = ($turLower === 'hafta_sonu_nobet')
-                    ? 0.0
-                    : max($ekOdemeTutari, $this->ekOdemeResmiNetHedefi($odeme, $parametre, $kayit->baslangic_tarihi));
+                $resmiNetHedefi = $this->ekOdemeResmiNetHedefi($odeme, $parametre, $kayit->baslangic_tarihi);
+                $bankaKatkisi = $this->isYemektenBagimsizEkCalismaTuru($turLower)
+                    ? max(0.0, $resmiNetHedefi)
+                    : max($ekOdemeTutari, $resmiNetHedefi);
                 $yontemliOdemeler['banka'] += $bankaKatkisi;
+                if ($this->isYemektenBagimsizEkCalismaTuru($turLower) && $ekOdemeTutari > $bankaKatkisi) {
+                    $yontemliOdemeler['elden'] += round($ekOdemeTutari - $bankaKatkisi, 2);
+                }
             } elseif ($yontem === 'banka') {
                 // Banka seçimi yardım hesabını etkiler; parametre resmî değilse
                 // ek ödemenin kendisi resmî banka alacağına girmez ve elden kalır.
@@ -6662,7 +6690,7 @@ class BordroPersonelModel extends Model
                 $isBankaMatrahi = !isset($ek['banka_matrahina_ekle']) || intval($ek['banka_matrahina_ekle']) === 1;
                 if (!$isPuantajEk && !$isDahilYardimEk) {
                     $ekTutar = floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
-                    if ($isBankaMatrahi) {
+                    if ($isBankaMatrahi && !$this->isYemektenBagimsizEkCalismaTuru($kod)) {
                         $bankayaTasinabilirEkOdeme += $ekTutar;
                         if (!$isPrimEk) {
                             $bankaMahsupEdilebilirEkOdeme += $ekTutar;
@@ -6712,7 +6740,7 @@ class BordroPersonelModel extends Model
                     + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                     + max(0, $bankayaTasinabilirEkOdeme), 2);
             $yardimlarIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi + $htcEkOdeme - $asgariSozlesmePayi - floatval($rtcHtcBankaNetiHesap ?? 0),
+                $yemekTavanHedefi - $asgariSozlesmePayi,
                 2
             ));
             $yemekHamToplam = min($hesaplananYemekToplam, $yardimlarIcinKalanSozlesmeLimiti);
