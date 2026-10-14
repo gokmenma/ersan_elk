@@ -96,3 +96,7 @@
 - [x] HTÇ'nin hafta içi nöbet satırından sonra kalan banka boşluğuna kırpılması giderildi; ek çalışmanın resmî banka neti snapshot detayında ayrı saklanıp elden/banka dağımında kullanılıyor.
 - [x] Hafta içi nöbetin nihai resmî banka filtresinden düşmesine yol açan eksik tür kontrolü tamamlandı; detay okuyucusu `resmi_banka_net` alanını öncelikli kullanıyor.
 - [x] Kompakt bordro detayında Yemek Yardımı açılımı kaldırıldı; Fazla Mesai ve HTÇ satırlarına saat/gün ve birim net formülü içeren açılır detay eklendi.
+- [x] Sözleşme hakedişinin iç bileşeni olan teknik `Sözleşme Farkı` satırı kompakt/yeni detay ve banka açılımlarından kaldırıldı.
+- [x] Avans satırında yanlış icra açıklamasının gösterilmesi engellendi; otomatik avans açıklaması kaynak kayıttan yenilenir hale getirildi.
+- [x] Bordro liste ve detay personel kesintileri aynı snapshot kalemlerine bağlandı; eski kesinti kolonundaki yasal/brüte tamamlama farkı ayıklandı.
+- [x] HTÇ'nin aynı tutarlı fazla mesai satırı nedeniyle resmî alacaktan düşmesi engellendi; hedef net ayrı snapshot kalemi ve banka matrahı alt sınırı yapıldı.

@@ -322,6 +322,15 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame($normal['yemek_gunluk'], $ekCalismali['yemek_gunluk']);
     }
 
+    public function testHaftaTatiliResmiNetiDigerFazlaCalismadanBagimsizGarantiEdilir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'garantiResmiOzelCalismaNeti');
+
+        self::assertSame(1871.70, $method->invoke($model, 935.85, 935.85, 935.85));
+        self::assertSame(1871.70, $method->invoke($model, 1871.70, 935.85, 935.85));
+    }
+
     public function testEskiSnapshotMuhasebeHedefiyleEkrandaDegistirilmez(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
@@ -636,6 +645,16 @@ final class BordroBankaDagilimiTest extends TestCase
         ]);
 
         self::assertSame('Kırılan ekipman bedeli', $detay['kesinti_kalemleri'][0]['aciklama']);
+    }
+
+    public function testKesintiTuruyleCelisenIcraAciklamasiGizlenir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'normalizeKesintiAciklamasi');
+
+        self::assertSame('', $method->invoke($model, 'avans', '[İcra] ANKARA BANKA ALACAKLARI'));
+        self::assertSame('[İcra] ANKARA BANKA ALACAKLARI', $method->invoke($model, 'icra', '[İcra] ANKARA BANKA ALACAKLARI'));
+        self::assertSame('26.09.2026 ilaç alacağı', $method->invoke($model, 'avans', '26.09.2026 ilaç alacağı'));
     }
 
     public function testBankaDetayiFazlaMesaiVeHaftaTatiliniSozlesmeFarkinaDonusturmez(): void

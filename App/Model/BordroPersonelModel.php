@@ -279,6 +279,31 @@ class BordroPersonelModel extends Model
         return !empty($date) && $date !== '0000-00-00';
     }
 
+    /**
+     * Kesinti türü ile açıkça çelişen eski açıklamaları ekrana/snapshot'a taşıma.
+     * Parasal değeri değiştirmez; yalnızca yanlış kaynağa ait metni ayıklar.
+     */
+    private function normalizeKesintiAciklamasi(string $kesintiKodu, mixed $aciklama): string
+    {
+        $aciklama = trim((string) $aciklama);
+        $kesintiKodu = mb_strtolower(trim($kesintiKodu), 'UTF-8');
+        if ($aciklama === '') {
+            return '';
+        }
+
+        if ($kesintiKodu !== 'icra' && preg_match('/^\[(?:İ|I)cra\]\s*/u', $aciklama) === 1) {
+            return '';
+        }
+
+        return $aciklama;
+    }
+
+    /** HTÇ/RTÇ hedef netlerinin başka bir ek çalışma satırı içinde kaybolmasını engeller. */
+    private function garantiResmiOzelCalismaNeti(float $hesaplananNet, float $rtcHedefNet, float $htcHedefNet): float
+    {
+        return round(max(0.0, $hesaplananNet, $rtcHedefNet + $htcHedefNet), 2);
+    }
+
     private function getAktifTakvimGunSayisi($donemBaslangic, $donemBitis, $iseGirisTarihi = null, $istenCikisTarihi = null): int
     {
         $donemBasTs = strtotime($donemBaslangic);
@@ -1064,6 +1089,10 @@ class BordroPersonelModel extends Model
         $snapshotPrimDetaylari = [];
         $snapshotBankaKesintiKalemleri = [];
         $snapshotBankaKesintiToplam = 0.0;
+        $snapshotIcraKesintiToplam = 0.0;
+        $snapshotDigerKesintiToplam = 0.0;
+        $snapshotKesintiDetayiVar = false;
+        $snapshotHtcKalemiVar = false;
         $donemBaslangic = (string) ($detay['donem']['baslangic'] ?? '');
         foreach (($detay['ek_odemeler'] ?? []) as $ekOdeme) {
             if (!is_array($ekOdeme)) {
@@ -1079,6 +1108,9 @@ class BordroPersonelModel extends Model
                 continue;
             }
             $kod = mb_strtolower((string) ($ekOdeme['kod'] ?? ''), 'UTF-8');
+            if (strpos($kod, 'hafta_tatili') !== false) {
+                $snapshotHtcKalemiVar = true;
+            }
             $guncelParametre = $kod !== '' ? $this->getParametreCached($kod, $donemBaslangic ?: date('Y-m-01')) : null;
             $resmiAlacakDahil = $this->isSnapshotResmiAlacakKalemi($ekOdeme, $kod, $guncelParametre);
             if (!$resmiAlacakDahil) {
@@ -1115,6 +1147,12 @@ class BordroPersonelModel extends Model
             }
             $etiket = trim((string) ($snapshotKesinti['etiket'] ?? ''));
             $kesintiKodu = mb_strtolower((string) ($snapshotKesinti['kod'] ?? ''), 'UTF-8');
+            $snapshotKesintiDetayiVar = true;
+            if ($kesintiKodu === 'icra') {
+                $snapshotIcraKesintiToplam += $tutar;
+            } else {
+                $snapshotDigerKesintiToplam += $tutar;
+            }
             if ($etiket === '' || mb_strtolower($etiket, 'UTF-8') === $kesintiKodu) {
                 $etiket = match ($kesintiKodu) {
                     'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
@@ -1123,7 +1161,7 @@ class BordroPersonelModel extends Model
                 };
             }
             $snapshotKesintiKalemi = ['etiket' => $etiket, 'tutar' => $tutar];
-            $aciklama = trim((string) ($snapshotKesinti['aciklama'] ?? ''));
+            $aciklama = $this->normalizeKesintiAciklamasi($kesintiKodu, $snapshotKesinti['aciklama'] ?? null);
             if ($aciklama !== '') {
                 $snapshotKesintiKalemi['aciklama'] = $aciklama;
             }
@@ -1142,6 +1180,14 @@ class BordroPersonelModel extends Model
         }
         if ($snapshotBankaKesintiToplam <= 0 && ($kesinti + $icra) > 0) {
             $snapshotBankaKesintiToplam = round($kesinti + $icra, 2);
+        }
+        if ($snapshotKesintiDetayiVar) {
+            // Liste ve detay aynı değişmez snapshot kalemlerini kullanır. Eski
+            // kesinti_tutar kolonunda brüte tamamlama/yasal kesinti kalmış olsa
+            // bile bunu personel kesintisi gibi tekrar göstermeyiz.
+            $kesinti = round($snapshotDigerKesintiToplam, 2);
+            $icra = round($snapshotIcraKesintiToplam, 2);
+            $netAlacak = round(max(0.0, $toplamAlacak - $kesinti - $icra), 2);
         }
 
         // Eski snapshot sürümlerinde otomatik RTÇ/HTÇ kalemleri JSON'a ayrı satır
@@ -1162,7 +1208,7 @@ class BordroPersonelModel extends Model
                 'resmi_alacagina_dahil' => true,
             ];
         }
-        if ($htcGun > 0) {
+        if ($htcGun > 0 && !$snapshotHtcKalemiVar) {
             $snapshotBankaDetaylari[] = [
                 'etiket' => 'Hafta Tatili Çalışması (Net)',
                 'tutar' => round($gunlukAsgariNet * $htcGun, 2),
@@ -1309,7 +1355,10 @@ class BordroPersonelModel extends Model
                         },
                         'tutar' => $tutar,
                     ];
-                    $aciklama = trim((string) ($kesintiSatiri->aciklama ?? ''));
+                    $aciklama = $this->normalizeKesintiAciklamasi(
+                        mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8'),
+                        $kesintiSatiri->aciklama ?? null
+                    );
                     if ($aciklama !== '') {
                         $bankaKesintiKalemi['aciklama'] = $aciklama;
                     }
@@ -4136,6 +4185,9 @@ class BordroPersonelModel extends Model
                     : $parcaTutar;
 
                 $aciklamaPattern = "[Avans] #{$avans->id}/{$taksitNo}-{$taksitSayisi} - %";
+                $kullaniciAciklama = trim((string) ($avans->aciklama ?? ''));
+                $kullaniciAciklama = $kullaniciAciklama !== '' ? $kullaniciAciklama : 'Avans Talebi';
+                $aciklama = "[Avans] #{$avans->id}/{$taksitNo}-{$taksitSayisi} - {$tarih} - {$kullaniciAciklama}";
 
                 // Bu taksit için dönemde kayıt var mı kontrol et,
                 // varsa (soft-delete edilmiş de olabilir) geri getir.
@@ -4151,17 +4203,14 @@ class BordroPersonelModel extends Model
                 if ($mevcut) {
                     $restoreSql = $this->db->prepare("
                         UPDATE personel_kesintileri 
-                        SET silinme_tarihi = NULL, tutar = ?, durum = 'onaylandi', updated_at = NOW()
+                        SET silinme_tarihi = NULL, tutar = ?, aciklama = ?, durum = 'onaylandi', updated_at = NOW()
                         WHERE id = ?
                     ");
-                    $restoreSql->execute([$tutar, $mevcut['id']]);
+                    $restoreSql->execute([$tutar, $aciklama, $mevcut['id']]);
                     $toplamAvans += $tutar;
                     continue;
                 }
 
-                $kullaniciAciklama = trim((string) ($avans->aciklama ?? ''));
-                $kullaniciAciklama = $kullaniciAciklama !== '' ? $kullaniciAciklama : 'Avans Talebi';
-                $aciklama = "[Avans] #{$avans->id}/{$taksitNo}-{$taksitSayisi} - {$tarih} - {$kullaniciAciklama}";
                 $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'onaylandi');
                 $toplamAvans += $tutar;
             }
@@ -6355,7 +6404,10 @@ class BordroPersonelModel extends Model
                 'kod' => $kesinti->tur,
                 'etiket' => $parametre ? $parametre->etiket : $kesinti->tur,
                 'tutar' => $tutar,
-                'aciklama' => $kesinti->aciklama ?? null,
+                'aciklama' => $this->normalizeKesintiAciklamasi(
+                    mb_strtolower((string) $kesinti->tur, 'UTF-8'),
+                    $kesinti->aciklama ?? null
+                ) ?: null,
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'oran' => floatval($kesinti->oran ?? 0),
                 'banka_matrahina_ekle' => $isBankaMatrahi ? 1 : 0
@@ -6494,6 +6546,11 @@ class BordroPersonelModel extends Model
             $yontemliOdemeler['banka'] += $rtcHtcSonuc['rtc']['net'];
             $yontemliOdemeler['banka'] += $rtcHtcSonuc['htc']['net'];
             $rtcHtcBankaNetiHesap = round(floatval($rtcHtcSonuc['rtc']['net']) + floatval($rtcHtcSonuc['htc']['net']), 2);
+            $rtcHtcBankaNetiHesap = $this->garantiResmiOzelCalismaNeti(
+                $rtcHtcBankaNetiHesap,
+                $rtcHedefNetHesap,
+                $htcResmiHedefNetHesap
+            );
 
             // HTÇ'nin ham/brüt karşılığı ile bankaya GERÇEKTEN yatan net karşılığı (gross-up sonrası,
             // basit asgari-net formülünden değil) arasındaki fark yemek havuzuna yönlendirilir.
@@ -6944,6 +7001,29 @@ class BordroPersonelModel extends Model
                     'tur' => 'yuvarlama_farki'
                 ];
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
+            }
+        }
+
+        if ($htcGunHesap > 0) {
+            $htcSnapshotVar = false;
+            foreach ($ekOdemeDetaylari as $ekOdemeDetay) {
+                $ekOdemeKodu = mb_strtolower((string) ($ekOdemeDetay['kod'] ?? ''), 'UTF-8');
+                if (strpos($ekOdemeKodu, 'hafta_tatili') !== false) {
+                    $htcSnapshotVar = true;
+                    break;
+                }
+            }
+            if (!$htcSnapshotVar) {
+                $ekOdemeDetaylari[] = [
+                    'id' => 0,
+                    'kod' => 'hafta_tatili_calisma',
+                    'etiket' => 'Hafta Tatili Çalışması (Net)',
+                    'tutar' => round($htcEkOdeme, 2),
+                    'net_etki' => round($htcEkOdeme, 2),
+                    'resmi_banka_net' => round($htcResmiHedefNetHesap, 2),
+                    'resmi_alacagina_dahil' => 1,
+                    'gun_sayisi' => $htcGunHesap,
+                ];
             }
         }
 

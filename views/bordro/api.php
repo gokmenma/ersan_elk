@@ -1434,12 +1434,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <td class="text-end pe-4">' . number_format($sozlesmeTabanGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-                        if (!$isPrimUsulu && $sozlesmeMaasFarkiGosterim > 0) {
-                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Sözleşme Farkı</td>
-                                        <td class="text-end pe-4">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
-                                      </tr>';
-                        }
                         if ($displayMealDeduction > 0 && !$asgariMatrarhGoster) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Yemek Yardımı <small class="text-muted">(Dahil)</small></td>
@@ -1486,12 +1480,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
                                     <td><div class="d-flex align-items-center"><i class="bx bx-receipt me-2 text-muted opacity-75"></i><span>' . $topRowLabel . '<span class="calculation-note">' . number_format($asgariUcretNet / 30, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($topRowValue, 2, ',', '.') . ' ₺</td>
-                                  </tr>';
-                    }
-                    if (!$isPrimUsulu && $modalMaasFarkiGosterim > 0) {
-                        $html .= '<tr class="parent-row">
-                                    <td><div class="d-flex align-items-center ps-2"><i class="bx bx-trending-up text-primary me-2 opacity-75" style="font-size: 14px;"></i><span>Sözleşme Farkı</span></div></td>
-                                    <td class="text-end fw-medium text-primary">' . number_format($modalMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     }
                     if ($ucretsizIzinGunu > 0) {
@@ -1665,9 +1653,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             }
                         }
                     }
-                }
-                if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
-                    $html .= '<tr class="parent-row"><td><i class="bx bx-trending-up me-2 text-success"></i>Sözleşme Farkı</td><td class="text-end text-success fw-bold">+' . number_format($bankaDetayDagilimi['sozlesme_farki'], 2, ',', '.') . ' ₺</td></tr>';
                 }
                 $html .= '<tr class="footer-row"><td class="text-primary fw-bold">KESİNTİ ÖNCESİ RESMÎ ALACAK</td><td class="text-end text-primary fw-bolder">' . number_format($bankaDetayDagilimi['brut_banka'], 2, ',', '.') . ' ₺</td></tr>';
 
@@ -2964,22 +2949,6 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $primPop = $buildEkOdemePopoverHtml($primListesi, 'Prim / İkramiye Detayları');
                 $digerKazancPop = $buildEkOdemePopoverHtml($digerKazancListesi, 'Diğer Ek Ödeme Detayları');
 
-                $sozlesmeFarkiPop = '';
-                if ($sozlesmeFarki > 0) {
-                    $sozlesmeFarkiPop = '<div class="ref-popover-content">';
-                    $sozlesmeFarkiPop .= '<div style="margin-bottom:6px; color:#cbd5e1; font-size:0.75rem; border-bottom:1px dashed rgba(255,255,255,0.15); padding-bottom:4px; font-weight:600;">SÖZLEŞME FARKI DETAYI</div>';
-                    $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Sözleşme Hakedişi:</span><span style="color:#ffffff; font-weight:bold;">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</span></div>';
-                    $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Asgari Taban:</span><span style="color:#ffffff;">-' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺</span></div>';
-                    if ($sosyalYardimToplam > 0) {
-                        $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Sosyal Yardımlar:</span><span style="color:#ffffff;">-' . number_format($sosyalYardimToplam, 2, ',', '.') . ' ₺</span></div>';
-                    }
-                    if ($fazlaCalismaToplam > 0) {
-                        $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:4px;"><span style="color:#94a3b8;">Fazla Çalışmalar:</span><span style="color:#ffffff;">-' . number_format($fazlaCalismaToplam, 2, ',', '.') . ' ₺</span></div>';
-                    }
-                    $sozlesmeFarkiPop .= '<div style="display:flex; justify-content:space-between; gap:20px; border-top:1px dashed rgba(255,255,255,0.15); padding-top:4px;"><span style="color:#38bdf8; font-weight:bold;">Kalan Sözleşme Farkı:</span><span style="color:#10b981; font-weight:bold;">+' . number_format($sozlesmeFarki, 2, ',', '.') . ' ₺</span></div>';
-                    $sozlesmeFarkiPop .= '</div>';
-                }
-
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">4. DİĞER KAZANÇLAR / İKRAMİYELER</div>';
                 $html .= '<div class="ref-card-list">';
@@ -2989,7 +2958,6 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $html .= '<div class="ref-card-item' . (!empty($puantajPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Puantaj Hakedişi' . $puantajBaslikDetay . (!empty($puantajPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($puantajTutar) . '</span>' . $puantajPop . '</div>';
                 $html .= '<div class="ref-card-item' . (!empty($primPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Prim / İkramiye' . (!empty($primPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($primTutar) . '</span>' . $primPop . '</div>';
                 $html .= '<div class="ref-card-item' . (!empty($digerKazancPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Diğer Ek Ödemeler' . (!empty($digerKazancPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($digerKazancTutar) . '</span>' . $digerKazancPop . '</div>';
-                $html .= '<div class="ref-card-item' . (!empty($sozlesmeFarkiPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Sözleşme Farkı' . (!empty($sozlesmeFarkiPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($sozlesmeFarki) . '</span>' . $sozlesmeFarkiPop . '</div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">' . $fmt($digerKazancToplam) . '</span></div>';
                 $html .= '</div></div>';
@@ -3333,10 +3301,6 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                             }
                         }
                         
-                        if ($bankaDetayDagilimi['sozlesme_farki'] > 0) {
-                            $eklenenBaslik();
-                            $bankaDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Sözleşme Farkı</span><span class="pop-row-val val-green">+' . number_format($bankaDetayDagilimi['sozlesme_farki'], 2, ',', '.') . ' ₺</span></div>';
-                        }
 
                         $bankaDetayHtml .= '<div class="pop-row" style="border-top:1px solid rgba(255,255,255,.18);padding-top:6px;margin-top:7px;"><span class="pop-row-title" style="color:#f1f5f9!important;font-weight:700!important;">Kesinti Öncesi Banka Toplamı</span><span class="pop-row-val val-white">' . number_format($bankaDetayDagilimi['brut_banka'], 2, ',', '.') . ' ₺</span></div>';
 
