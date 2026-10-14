@@ -13,6 +13,7 @@ import PersonnelSectionView from './views/PersonnelSectionView.vue'
 import CariView from './views/CariView.vue'
 import CariDetailView from './views/CariDetailView.vue'
 import FaturaView from './views/FaturaView.vue'
+import KasaView from './views/KasaView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -34,6 +35,9 @@ const router = createRouter({
     { path: '/cari-takip/:id', name: 'cari-detail', component: CariDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'current_accounts' } },
     { path: '/fatura', name: 'fatura', component: FaturaView, meta: { requiresAuth: true, requiresCompany: true, permission: 'invoices' } },
     { path: '/efatura', redirect: '/fatura' },
+    { path: '/kasa', name: 'kasa', component: KasaView, meta: { requiresAuth: true, requiresCompany: true, permission: 'cash' } },
+    { path: '/gelir-gider', redirect: '/kasa' },
+    { path: '/kasa-yonetimi', redirect: '/kasa' },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

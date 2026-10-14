@@ -1,8 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck, CalendarDays, ChevronRight, FileText, Gavel, History, Mail, MapPin, PackageCheck, Pencil, Phone, RefreshCw, UserRoundCheck } from '@lucide/vue'
+import {
+  ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck, CalendarDays,
+  ChevronRight, FileText, Gavel, History, Mail, MapPin, PackageCheck, Pencil,
+  Phone, RefreshCw, UserRoundCheck,
+} from '@lucide/vue'
 import { personnelApi } from '../services/personnel.js'
+import TopBar from '../components/TopBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,54 +17,331 @@ const person = ref(null)
 const canEdit = ref(false)
 
 const modules = [
-  { tab: 'genel', label: 'Genel bilgiler', meta: 'İletişim, kimlik ve giriş bilgileri', icon: UserRoundCheck },
-  { tab: 'calisma', label: 'Çalışma bilgileri', meta: 'Görev, ekip ve çalışma geçmişi', icon: BriefcaseBusiness },
-  { tab: 'izinler', label: 'İzin ve raporlar', meta: 'Hak ediş ve izin geçmişi', icon: CalendarDays },
-  { tab: 'zimmetler', label: 'Zimmetler', meta: 'Araç, cihaz ve demirbaşlar', icon: PackageCheck },
-  { tab: 'finansal', label: 'Maaş ve finans', meta: 'Ücret, ek ödeme ve kesintiler', icon: BadgeDollarSign },
-  { tab: 'evraklar', label: 'Personel evrakları', meta: 'Belgeler ve dijital arşiv', icon: FileText },
-  { tab: 'icralar', label: 'İcra dosyaları', meta: 'Borç ve kesinti takibi', icon: Gavel },
-  { tab: 'puantaj', label: 'İş ve puantaj', meta: 'Çalışma ve görev kayıtları', icon: CalendarCheck },
+  { tab: 'genel', label: 'Genel bilgiler', meta: 'İletişim, kimlik ve giriş bilgileri', icon: UserRoundCheck, color: '#181c24' },
+  { tab: 'calisma', label: 'Çalışma bilgileri', meta: 'Görev, ekip ve çalışma geçmişi', icon: BriefcaseBusiness, color: '#0284c7' },
+  { tab: 'izinler', label: 'İzin ve raporlar', meta: 'Hak ediş ve izin geçmişi', icon: CalendarDays, color: '#059669' },
+  { tab: 'zimmetler', label: 'Zimmetler', meta: 'Araç, cihaz ve demirbaşlar', icon: PackageCheck, color: '#d97706' },
+  { tab: 'finansal', label: 'Maaş ve finans', meta: 'Ücret, ek ödeme ve kesintiler', icon: BadgeDollarSign, color: '#7c3aed' },
+  { tab: 'evraklar', label: 'Personel evrakları', meta: 'Belgeler ve dijital arşiv', icon: FileText, color: '#e11d48' },
+  { tab: 'icralar', label: 'İcra dosyaları', meta: 'Borç ve kesinti takibi', icon: Gavel, color: '#f97316' },
+  { tab: 'puantaj', label: 'İş ve puantaj', meta: 'Çalışma ve görev kayıtları', icon: CalendarCheck, color: '#0891b2' },
 ]
-function phoneHref(value) { return `tel:${String(value || '').replace(/[^+\d]/g, '')}` }
-function formatDate(value) { if (!value) return 'Belirtilmemiş'; return new Intl.DateTimeFormat('tr-TR',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(`${value}T00:00:00`)) }
-async function load() { loading.value=true; error.value=''; try { const result=await personnelApi.detail(route.params.id); person.value=result.personnel; canEdit.value=Boolean(result.can_edit) } catch(reason) { error.value=reason.message } finally { loading.value=false } }
+
+function phoneHref(value) {
+  return `tel:${String(value || '').replace(/[^+\d]/g, '')}`
+}
+
+function formatDate(value) {
+  if (!value) return 'Belirtilmemiş'
+  return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(`${value}T00:00:00`))
+}
+
+async function load() {
+  loading.value = true
+  error.value = ''
+  try {
+    const result = await personnelApi.detail(route.params.id)
+    person.value = result.personnel
+    canEdit.value = Boolean(result.can_edit)
+  } catch (reason) {
+    error.value = reason.message
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
 <template>
   <section class="ds-screen personnel-detail-screen">
-    <header class="personnel-detail-topbar">
-      <button type="button" aria-label="Personel listesine dön" @click="router.push('/personel')"><ArrowLeft :size="20" /></button>
-      <div><span>PERSONEL PROFİLİ</span><h1>Personel detayı</h1></div>
-      <button v-if="canEdit && person" type="button" aria-label="Personeli düzenle" @click="router.push(`/personel/${route.params.id}/duzenle`)"><Pencil :size="18" /></button>
-      <span v-else></span>
-    </header>
+    <!-- 1. Standart TopBar -->
+    <TopBar eyebrow="PERSONEL PROFİLİ" title="Personel Detayı" :back="true" />
 
-    <div v-if="loading" class="ds-loading"><i></i><i></i><i></i></div>
-    <div v-else-if="error" class="ds-state"><RefreshCw :size="22" /><strong>Personel alınamadı</strong><p>{{ error }}</p><button type="button" @click="load">Tekrar dene</button></div>
+    <div v-if="loading" class="clay-skeleton-grid">
+      <div class="clay-skeleton-card clay-skeleton-card--lg"></div>
+      <div class="clay-skeleton-card clay-skeleton-card--md"></div>
+    </div>
+
+    <div v-else-if="error" class="clay-state-card">
+      <RefreshCw :size="24" class="clay-spin-icon" />
+      <strong>Personel alınamadı</strong>
+      <p>{{ error }}</p>
+      <button type="button" class="clay-retry-btn" @click="load">Tekrar dene</button>
+    </div>
+
     <template v-else-if="person">
-      <section class="personnel-detail-hero">
-        <div class="personnel-detail-avatar"><img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" /><template v-else>{{ person.initials }}</template></div>
-        <div class="personnel-detail-identity"><span :class="person.active ? 'is-active' : 'is-passive'">{{ person.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}</span><h2>{{ person.name }}</h2><p>{{ [person.job,person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}</p></div>
-        <div class="personnel-detail-actions"><a v-if="person.phone" :href="phoneHref(person.phone)"><Phone :size="18" /><span>Ara</span></a><a v-if="person.email" :href="`mailto:${person.email}`"><Mail :size="18" /><span>E-posta</span></a></div>
+      <!-- 2. Hero Bento Kart (Kimlik ve İletişim) -->
+      <section class="bento-card bento-card--white detail-hero-bento">
+        <div class="detail-avatar-row">
+          <div class="detail-avatar-box">
+            <img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" />
+            <span v-else class="initials">{{ person.initials }}</span>
+          </div>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="clay-circle-btn edit-btn"
+            title="Düzenle"
+            @click="router.push(`/personel/${route.params.id}/duzenle`)"
+          >
+            <Pencil :size="16" />
+          </button>
+        </div>
+
+        <div class="detail-identity">
+          <span
+            class="clay-badge mb-1"
+            :class="person.active ? 'clay-badge--emerald' : 'clay-badge--coral'"
+          >
+            {{ person.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}
+          </span>
+          <h2 class="person-name">{{ person.name }}</h2>
+          <p class="person-role">{{ [person.job, person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}</p>
+        </div>
+
+        <!-- İletişim Butonları -->
+        <div class="detail-contact-row">
+          <a v-if="person.phone" :href="phoneHref(person.phone)" class="clay-btn clay-btn--primary contact-link">
+            <Phone :size="16" />
+            <span>Ara</span>
+          </a>
+          <a v-if="person.email" :href="`mailto:${person.email}`" class="clay-btn clay-btn--secondary contact-link">
+            <Mail :size="16" />
+            <span>E-posta</span>
+          </a>
+        </div>
       </section>
 
-      <section class="personnel-detail-facts">
-        <article><span><BriefcaseBusiness :size="18" /></span><small>Departman</small><strong>{{ person.department || 'Belirtilmemiş' }}</strong></article>
-        <article><span><MapPin :size="18" /></span><small>Ekip / Bölge</small><strong>{{ [person.team,person.region].filter(Boolean).join(' · ') || 'Atanmamış' }}</strong></article>
-        <article><span><History :size="18" /></span><small>İşe giriş</small><strong>{{ formatDate(person.start_date) }}</strong></article>
+      <!-- 3. Bilgi Özet Bento Kartı -->
+      <section class="bento-card bento-card--white detail-facts-bento">
+        <div class="fact-cell">
+          <span class="fact-icon"><BriefcaseBusiness :size="16" /></span>
+          <div class="fact-text">
+            <small>Departman</small>
+            <strong>{{ person.department || 'Belirtilmemiş' }}</strong>
+          </div>
+        </div>
+
+        <div class="fact-cell">
+          <span class="fact-icon"><MapPin :size="16" /></span>
+          <div class="fact-text">
+            <small>Ekip / Bölge</small>
+            <strong>{{ [person.team, person.region].filter(Boolean).join(' · ') || 'Atanmamış' }}</strong>
+          </div>
+        </div>
+
+        <div class="fact-cell fact-cell--full">
+          <span class="fact-icon"><History :size="16" /></span>
+          <div class="fact-text">
+            <small>İşe giriş tarihi</small>
+            <strong>{{ formatDate(person.start_date) }}</strong>
+          </div>
+        </div>
       </section>
 
-      <section class="personnel-detail-modules">
-        <header><div><span>PERSONEL İŞLEMLERİ</span><h2>Tüm bilgiler ve işlemler</h2></div><small>8 bölüm</small></header>
-        <RouterLink v-for="module in modules" :key="module.tab" :to="`/personel/${encodeURIComponent(route.params.id)}/bolum/${module.tab}`"><span><component :is="module.icon" :size="20" /></span><div><strong>{{ module.label }}</strong><small>{{ module.meta }}</small></div><ChevronRight :size="18" /></RouterLink>
+      <!-- 4. Modül ve İşlemler Listesi (Bento Tiles) -->
+      <section class="detail-modules-section">
+        <div class="clay-section-head">
+          <h2>Tüm Bilgiler ve İşlemler</h2>
+          <span class="clay-pill-tag">8 Bölüm</span>
+        </div>
+
+        <div class="detail-modules-stack">
+          <RouterLink
+            v-for="module in modules"
+            :key="module.tab"
+            :to="`/personel/${encodeURIComponent(route.params.id)}/bolum/${module.tab}`"
+            class="module-tile"
+          >
+            <span class="module-icon" :style="{ background: module.color }">
+              <component :is="module.icon" :size="18" />
+            </span>
+            <div class="module-text">
+              <strong>{{ module.label }}</strong>
+              <small>{{ module.meta }}</small>
+            </div>
+            <ChevronRight :size="16" class="module-arrow" />
+          </RouterLink>
+        </div>
       </section>
     </template>
   </section>
 </template>
 
 <style scoped>
-.personnel-detail-screen{font-family:'Plus Jakarta Sans',sans-serif}.personnel-detail-topbar{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:12px;margin-bottom:22px}.personnel-detail-topbar>button{display:grid;width:42px;height:42px;place-items:center;border:1px solid rgba(255,255,255,.9);border-radius:50%;color:#11161b;background:rgba(255,255,255,.76);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.personnel-detail-topbar>div span,.personnel-detail-modules>header span{color:#8c9bae;font:700 9px 'Space Grotesk',sans-serif;letter-spacing:.1em}.personnel-detail-topbar h1{margin-top:2px;font-size:18px;line-height:24px;letter-spacing:-.03em}.personnel-detail-hero{padding:20px;border:1px solid rgba(255,255,255,.9);border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.8),rgba(213,228,249,.62));box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.personnel-detail-avatar{display:grid;width:68px;height:68px;place-items:center;border-radius:22px;color:#fff;background:#11161b;font:600 19px 'Space Grotesk',sans-serif;box-shadow:0 12px 26px rgba(17,22,27,.18)}.personnel-detail-identity{margin-top:16px}.personnel-detail-identity>span{display:inline-flex;padding:5px 8px;border-radius:999px;font:700 8px 'Space Grotesk',sans-serif;letter-spacing:.08em}.personnel-detail-identity .is-active{color:#126b5d;background:#d9f2eb}.personnel-detail-identity .is-passive{color:#93000a;background:#ffdad6}.personnel-detail-identity h2{margin-top:8px;font-size:26px;line-height:32px;letter-spacing:-.04em}.personnel-detail-identity p{margin-top:3px;color:#516071;font-size:11px}.personnel-detail-actions{display:grid;margin-top:18px;grid-template-columns:repeat(2,1fr);gap:9px}.personnel-detail-actions a{display:flex;height:44px;align-items:center;justify-content:center;gap:7px;border-radius:999px;color:#fff;background:#11161b;font:600 10px 'Space Grotesk',sans-serif;text-decoration:none}.personnel-detail-facts{display:grid;margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.personnel-detail-facts article{min-width:0;padding:14px;border:1px solid rgba(255,255,255,.9);border-radius:20px;background:rgba(255,255,255,.72);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.personnel-detail-facts article:last-child{grid-column:1/-1}.personnel-detail-facts article>span{display:grid;width:34px;height:34px;place-items:center;border-radius:12px;color:#fff;background:#516071}.personnel-detail-facts small,.personnel-detail-facts strong{display:block}.personnel-detail-facts small{margin-top:10px;color:#8c9bae;font:600 8px 'Space Grotesk',sans-serif;text-transform:uppercase;letter-spacing:.07em}.personnel-detail-facts strong{margin-top:3px;overflow:hidden;font-size:11px;line-height:16px;text-overflow:ellipsis}.personnel-detail-modules{margin-top:28px}.personnel-detail-modules>header{display:flex;margin:0 2px 13px;align-items:flex-end;justify-content:space-between}.personnel-detail-modules h2{margin-top:3px;font-size:18px;line-height:24px;letter-spacing:-.025em}.personnel-detail-modules>header>small{color:#8c9bae;font:500 9px 'Space Grotesk',sans-serif}.personnel-detail-modules>a{display:grid;min-height:72px;padding:13px 14px;grid-template-columns:42px 1fr 20px;align-items:center;gap:11px;border:1px solid rgba(255,255,255,.9);border-bottom-color:rgba(140,155,174,.12);color:#181c1e;background:rgba(255,255,255,.72);text-decoration:none;backdrop-filter:blur(16px)}.personnel-detail-modules>a:first-of-type{border-radius:22px 22px 0 0}.personnel-detail-modules>a:last-child{border-radius:0 0 22px 22px}.personnel-detail-modules>a>span{display:grid;width:42px;height:42px;place-items:center;border-radius:15px;color:#11161b;background:#f1f4f6}.personnel-detail-modules>a>div{min-width:0}.personnel-detail-modules strong,.personnel-detail-modules small{display:block}.personnel-detail-modules strong{font-size:12px}.personnel-detail-modules a small{margin-top:3px;overflow:hidden;color:#8c9bae;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.personnel-detail-modules>a:nth-of-type(2) span{color:#3676d8}.personnel-detail-modules>a:nth-of-type(3) span{color:#2b9a8a}.personnel-detail-modules>a:nth-of-type(4) span{color:#d49a31}.personnel-detail-modules>a:nth-of-type(5) span{color:#6c63cf}.personnel-detail-modules>a:nth-of-type(6) span{color:#be5578}.personnel-detail-modules>a:nth-of-type(7) span{color:#df7049}
-.personnel-detail-avatar{overflow:hidden}.personnel-detail-avatar img{width:100%;height:100%;object-fit:cover}
+.personnel-detail-screen {
+  padding-bottom: calc(var(--nav-height) + 24px + env(safe-area-inset-bottom));
+}
+
+.detail-hero-bento {
+  padding: 20px;
+}
+
+.detail-avatar-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.detail-avatar-box {
+  position: relative;
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--ds-primary);
+  color: #ffffff;
+  font: 800 20px var(--ds-font-mono);
+  overflow: hidden;
+  box-shadow: var(--ds-shadow-pill);
+}
+
+.detail-avatar-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-btn {
+  margin-left: auto;
+}
+
+.detail-identity {
+  margin-bottom: 16px;
+}
+
+.person-name {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ds-ink);
+}
+
+.person-role {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--ds-muted);
+}
+
+.detail-contact-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.contact-link {
+  height: 44px;
+  text-decoration: none;
+}
+
+/* Bilgi Özet Kartı */
+.detail-facts-bento {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.fact-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-subtle);
+}
+
+.fact-cell--full {
+  grid-column: 1 / -1;
+}
+
+.fact-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--ds-surface);
+  color: var(--ds-primary);
+  flex-shrink: 0;
+}
+
+.fact-text small {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+}
+
+.fact-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  margin-top: 1px;
+}
+
+/* Modül Listesi */
+.detail-modules-section {
+  margin-top: 20px;
+}
+
+.detail-modules-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.module-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-tile);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-tile);
+  text-decoration: none;
+  color: var(--ds-ink);
+  transition: transform 0.15s ease;
+}
+
+.module-tile:active {
+  transform: scale(0.985);
+}
+
+.module-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.module-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.module-text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.module-text small {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ds-muted);
+  margin-top: 2px;
+}
+
+.module-arrow {
+  color: var(--ds-muted);
+}
 </style>

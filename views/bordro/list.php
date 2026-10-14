@@ -1113,6 +1113,12 @@ if (!empty($dbGelirler)) {
                                             </a>
                                         </li>
                                         <li>
+                                            <a class="dropdown-item py-2" href="javascript:void(0);"
+                                                id="btnExportBordroKontrol">
+                                                <i class="mdi mdi-clipboard-check-outline text-warning fs-5"></i> <span>Bordro Kontrol (Excel)</span>
+                                            </a>
+                                        </li>
+                                        <li>
                                             <hr class="dropdown-divider">
                                         </li>
                                         <li>

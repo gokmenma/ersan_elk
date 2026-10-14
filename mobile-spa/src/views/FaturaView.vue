@@ -37,6 +37,7 @@ import {
 } from '@lucide/vue'
 import { faturaApi } from '../services/fatura.js'
 import { auth } from '../services/auth.js'
+import TopBar from '../components/TopBar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -154,10 +155,24 @@ const availableProducts = ref([])
 const productSearchResults = ref([])
 const productSearching = ref(false)
 
+function parseMoneyAmount(amount) {
+  if (amount === undefined || amount === null || amount === '') return 0
+  if (typeof amount === 'number') return isNaN(amount) ? 0 : amount
+  let str = String(amount).trim()
+  str = str.replace(/[^0-9,.-]/g, '').trim()
+  if (!str) return 0
+  if (str.includes(',') && str.includes('.')) {
+    str = str.replace(/\./g, '').replace(',', '.')
+  } else if (str.includes(',')) {
+    str = str.replace(',', '.')
+  }
+  const num = Number(str)
+  return isNaN(num) ? 0 : num
+}
+
 // Yardımcı Para ve Tarih Formatlayıcıları
 function formatMoney(amount) {
-  if (amount === undefined || amount === null) return '0,00 ₺'
-  const val = Number(amount) || 0
+  const val = parseMoneyAmount(amount)
   return new Intl.NumberFormat('tr-TR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -165,8 +180,7 @@ function formatMoney(amount) {
 }
 
 function formatInvoiceMoney(amount, currency = 'TRY') {
-  if (amount === undefined || amount === null) return '0,00 ₺'
-  const val = Number(amount) || 0
+  const val = parseMoneyAmount(amount)
   const formatted = new Intl.NumberFormat('tr-TR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -785,44 +799,34 @@ onMounted(() => {
       </div>
     </Transition>
 
-    <!-- 1. Üst Başlık & Hızlı Aksiyonlar -->
-    <header class="fatura-topbar">
-      <button
-        type="button"
-        class="fatura-icon-btn"
-        aria-label="Ana sayfaya dön"
-        @click="router.push('/')"
-      >
-        <ArrowLeft :size="20" />
-      </button>
-
-      <div class="fatura-topbar__title">
-        <span>E-DÖNÜŞÜM & MALİ YÖNETİM</span>
-        <h1>E-Fatura & Finans</h1>
-      </div>
-
-      <div class="fatura-topbar__actions">
+    <!-- 1. Üst Navigasyon & Aksiyonlar (TopBar) -->
+    <TopBar
+      title="E-Fatura & Finans"
+      eyebrow="E-DÖNÜŞÜM & MALİ YÖNETİM"
+      subtitle="E-Fatura, E-Arşiv ve KDV Yönetimi"
+    >
+      <template #actions>
         <button
           type="button"
-          class="fatura-icon-btn"
+          class="clay-circle-btn"
           :class="{ 'is-spinning': refreshing }"
           aria-label="Yenile"
           title="Yenile"
           @click="refreshAll"
         >
-          <RefreshCw :size="18" />
+          <RefreshCw :size="17" />
         </button>
-
         <button
           type="button"
-          class="fatura-primary-btn"
+          class="clay-circle-btn"
+          title="Fatura Kes"
+          aria-label="Fatura Kes"
           @click="openNewInvoiceWizard()"
         >
-          <Plus :size="16" />
-          <span>Fatura Kes</span>
+          <Plus :size="18" />
         </button>
-      </div>
-    </header>
+      </template>
+    </TopBar>
 
     <!-- 2. Hızlı Dönem Filtreleri Çubuğu -->
     <section class="fatura-periods-bar" aria-label="Dönem filtreleri">
@@ -878,41 +882,41 @@ onMounted(() => {
     </section>
 
     <!-- 3. Sekmeli Navigasyon (Segmented Tabs) -->
-    <nav class="fatura-tabs" aria-label="Fatura modülleri">
+    <nav class="clay-tabs-wrap fatura-tabs" aria-label="Fatura modülleri">
       <button
         type="button"
-        class="fatura-tab-btn"
-        :class="{ 'is-active': activeTab === 'ozet' }"
+        class="clay-tab-pill"
+        :class="{ active: activeTab === 'ozet' }"
         @click="switchTab('ozet')"
       >
-        <ReceiptText :size="16" />
+        <ReceiptText :size="15" />
         <span>Özet & KDV</span>
       </button>
       <button
         type="button"
-        class="fatura-tab-btn"
-        :class="{ 'is-active': activeTab === 'giden' }"
+        class="clay-tab-pill"
+        :class="{ active: activeTab === 'giden' }"
         @click="switchTab('giden')"
       >
-        <ArrowUpRight :size="16" />
-        <span>Giden (Satış)</span>
+        <ArrowUpRight :size="15" />
+        <span>Giden</span>
       </button>
       <button
         type="button"
-        class="fatura-tab-btn"
-        :class="{ 'is-active': activeTab === 'gelen' }"
+        class="clay-tab-pill"
+        :class="{ active: activeTab === 'gelen' }"
         @click="switchTab('gelen')"
       >
-        <ArrowDownLeft :size="16" />
-        <span>Gelen (Alış)</span>
+        <ArrowDownLeft :size="15" />
+        <span>Gelen</span>
       </button>
       <button
         type="button"
-        class="fatura-tab-btn"
-        :class="{ 'is-active': activeTab === 'taslak' }"
+        class="clay-tab-pill"
+        :class="{ active: activeTab === 'taslak' }"
         @click="switchTab('taslak')"
       >
-        <Edit3 :size="16" />
+        <Edit3 :size="15" />
         <span>Taslaklar</span>
       </button>
     </nav>
@@ -1089,24 +1093,44 @@ onMounted(() => {
             <article
               v-for="rg in dashData.recent_gelen"
               :key="rg.encrypted_id || rg.id"
-              class="fatura-recent-item"
+              class="fatura-row-card"
               @click="openPreview(rg.encrypted_id, rg.fatura_no)"
             >
-              <div class="fatura-recent-item__main">
-                <div class="fatura-recent-item__top">
-                  <span class="fatura-no">{{ rg.fatura_no || 'Taslak' }}</span>
-                  <span class="fatura-date">{{ rg.fatura_tarihi_fmt || formatDate(rg.fatura_tarihi) }}</span>
+              <div class="fatura-row-card__header">
+                <div class="fatura-row-card__meta">
+                  <span class="fatura-no-tag fatura-no-tag--sky">{{ rg.fatura_no || 'Taslak' }}</span>
+                  <span class="fatura-date-pill">
+                    <Calendar :size="12" />
+                    <span>{{ rg.fatura_tarihi_fmt || formatDate(rg.fatura_tarihi) }}</span>
+                  </span>
                 </div>
-                <strong class="fatura-customer">{{ rg.alici_unvan || 'Tedarikçi' }}</strong>
-              </div>
-              <div class="fatura-recent-item__aside">
-                <strong class="fatura-amount">{{ rg.odenecek_tutar_fmt || formatMoney(rg.odenecek_tutar) }}</strong>
                 <span
                   class="fatura-badge"
                   :class="rg.ticari_yanit === 'KABUL' ? 'fatura-badge--success' : (rg.ticari_yanit === 'RED' ? 'fatura-badge--danger' : 'fatura-badge--warning')"
                 >
-                  {{ rg.ticari_yanit || 'Bekliyor' }}
+                  <span class="fatura-badge-dot"></span>
+                  <span>{{ rg.ticari_yanit === 'KABUL' ? 'Kabul Edildi' : (rg.ticari_yanit === 'RED' ? 'Reddedildi' : 'Bekliyor') }}</span>
                 </span>
+              </div>
+
+              <div class="fatura-row-card__body">
+                <h3 class="fatura-row-card__customer" :title="rg.alici_unvan || 'Tedarikçi'">
+                  {{ rg.alici_unvan || 'Tedarikçi' }}
+                </h3>
+              </div>
+
+              <div class="fatura-row-card__footer">
+                <div class="fatura-row-card__amount-wrap">
+                  <span class="fatura-amount-label">Ödenecek Tutar</span>
+                  <strong class="fatura-amount-value">
+                    {{ formatInvoiceMoney(rg.odenecek_tutar, rg.para_birimi) }}
+                  </strong>
+                </div>
+                <div class="fatura-view-pill">
+                  <Eye :size="13" />
+                  <span>Fatura Gör</span>
+                  <ChevronRight :size="13" />
+                </div>
               </div>
             </article>
           </div>
@@ -1119,24 +1143,44 @@ onMounted(() => {
             <article
               v-for="rg in dashData.recent_giden"
               :key="rg.encrypted_id || rg.id"
-              class="fatura-recent-item"
+              class="fatura-row-card"
               @click="openPreview(rg.encrypted_id, rg.fatura_no)"
             >
-              <div class="fatura-recent-item__main">
-                <div class="fatura-recent-item__top">
-                  <span class="fatura-no fatura-no--emerald">{{ rg.fatura_no || 'Taslak' }}</span>
-                  <span class="fatura-date">{{ rg.fatura_tarihi_fmt || formatDate(rg.fatura_tarihi) }}</span>
+              <div class="fatura-row-card__header">
+                <div class="fatura-row-card__meta">
+                  <span class="fatura-no-tag fatura-no-tag--emerald">{{ rg.fatura_no || 'Taslak' }}</span>
+                  <span class="fatura-date-pill">
+                    <Calendar :size="12" />
+                    <span>{{ rg.fatura_tarihi_fmt || formatDate(rg.fatura_tarihi) }}</span>
+                  </span>
                 </div>
-                <strong class="fatura-customer">{{ rg.alici_unvan || 'Müşteri' }}</strong>
-              </div>
-              <div class="fatura-recent-item__aside">
-                <strong class="fatura-amount">{{ rg.odenecek_tutar_fmt || formatMoney(rg.odenecek_tutar) }}</strong>
                 <span
                   class="fatura-badge"
-                  :class="rg.entegrator_durum_kodu === 'ONAYLANDI' ? 'fatura-badge--success' : 'fatura-badge--neutral'"
+                  :class="rg.entegrator_durum_kodu === 'ONAYLANDI' ? 'fatura-badge--success' : (rg.entegrator_durum_kodu === 'HATALI' ? 'fatura-badge--danger' : 'fatura-badge--neutral')"
                 >
-                  {{ rg.entegrator_durum_kodu === 'ONAYLANDI' ? 'Onaylı' : (rg.entegrator_durum_kodu || 'İletildi') }}
+                  <span class="fatura-badge-dot"></span>
+                  <span>{{ rg.entegrator_durum_kodu === 'ONAYLANDI' ? 'Onaylandı' : (rg.entegrator_durum_kodu || 'İletildi') }}</span>
                 </span>
+              </div>
+
+              <div class="fatura-row-card__body">
+                <h3 class="fatura-row-card__customer" :title="rg.alici_unvan || 'Müşteri'">
+                  {{ rg.alici_unvan || 'Müşteri' }}
+                </h3>
+              </div>
+
+              <div class="fatura-row-card__footer">
+                <div class="fatura-row-card__amount-wrap">
+                  <span class="fatura-amount-label">Ödenecek Tutar</span>
+                  <strong class="fatura-amount-value">
+                    {{ formatInvoiceMoney(rg.odenecek_tutar, rg.para_birimi) }}
+                  </strong>
+                </div>
+                <div class="fatura-view-pill">
+                  <Eye :size="13" />
+                  <span>Fatura Gör</span>
+                  <ChevronRight :size="13" />
+                </div>
               </div>
             </article>
           </div>
@@ -1307,9 +1351,9 @@ onMounted(() => {
           <!-- Kart Üst Başlık -->
           <div class="fatura-card__header">
             <div class="fatura-card__badge-group">
-              <strong class="fatura-no" :class="{ 'fatura-no--emerald': activeTab === 'giden' }">
+              <span class="fatura-no-tag" :class="activeTab === 'giden' ? 'fatura-no-tag--emerald' : 'fatura-no-tag--sky'">
                 {{ inv.fatura_no || 'Taslak' }}
-              </strong>
+              </span>
               <span class="fatura-type-tag">
                 {{ inv.belge_turu || (activeTab === 'gelen' ? 'GELEN' : 'EFATURA') }}
               </span>
@@ -1322,7 +1366,8 @@ onMounted(() => {
                   class="fatura-badge"
                   :class="inv.ticari_yanit === 'KABUL' ? 'fatura-badge--success' : (inv.ticari_yanit === 'RED' ? 'fatura-badge--danger' : 'fatura-badge--warning')"
                 >
-                  {{ inv.ticari_yanit || 'Yanıt Bekliyor' }}
+                  <span class="fatura-badge-dot"></span>
+                  <span>{{ inv.ticari_yanit === 'KABUL' ? 'Kabul Edildi' : (inv.ticari_yanit === 'RED' ? 'Reddedildi' : 'Bekliyor') }}</span>
                 </span>
               </template>
               <template v-else-if="activeTab === 'giden'">
@@ -1330,18 +1375,22 @@ onMounted(() => {
                   class="fatura-badge"
                   :class="inv.entegrator_durum_kodu === 'ONAYLANDI' ? 'fatura-badge--success' : (inv.entegrator_durum_kodu === 'HATALI' ? 'fatura-badge--danger' : 'fatura-badge--warning')"
                 >
-                  {{ inv.entegrator_durum_kodu === 'ONAYLANDI' ? 'Onaylı' : (inv.entegrator_durum_kodu || 'İletildi') }}
+                  <span class="fatura-badge-dot"></span>
+                  <span>{{ inv.entegrator_durum_kodu === 'ONAYLANDI' ? 'Onaylandı' : (inv.entegrator_durum_kodu || 'İletildi') }}</span>
                 </span>
               </template>
               <template v-else>
-                <span class="fatura-badge fatura-badge--warning">Taslak</span>
+                <span class="fatura-badge fatura-badge--warning">
+                  <span class="fatura-badge-dot"></span>
+                  <span>Taslak</span>
+                </span>
               </template>
             </div>
           </div>
 
           <!-- Alıcı / Tedarikçi Detay -->
           <div class="fatura-card__body">
-            <h3 class="fatura-customer-name">
+            <h3 class="fatura-customer-name" :title="inv.alici_unvan || 'İsimsiz Cari'">
               {{ inv.alici_unvan || 'İsimsiz Cari' }}
             </h3>
             <p class="fatura-customer-meta">
@@ -1360,8 +1409,8 @@ onMounted(() => {
           <!-- Kart Altı & Aksiyonlar -->
           <div class="fatura-card__footer" @click.stop>
             <div class="fatura-card__amount-box">
-              <small>Tutar:</small>
-              <strong>{{ inv.odenecek_tutar_fmt || formatMoney(inv.odenecek_tutar) }}</strong>
+              <small class="fatura-amount-label">Ödenecek Tutar</small>
+              <strong class="fatura-amount-value">{{ formatInvoiceMoney(inv.odenecek_tutar_raw ?? inv.odenecek_tutar, inv.para_birimi) }}</strong>
             </div>
 
             <div class="fatura-card__actions">
@@ -2069,7 +2118,18 @@ onMounted(() => {
    GLACIER ALPINE DESIGN SYSTEM — FATURA MODÜLÜ
    ========================================================================== */
 .fatura-screen {
-  padding-bottom: calc(120px + var(--ds-safe-bottom));
+  padding-bottom: calc(140px + var(--ds-safe-bottom, 24px)) !important;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.fatura-tab-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* Toast Bildirimi */
@@ -2094,96 +2154,6 @@ onMounted(() => {
   background: #ba1a1a;
 }
 
-/* 1. Üst Bar */
-.fatura-topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.fatura-topbar__title {
-  flex: 1;
-  min-width: 0;
-}
-.fatura-topbar__title span {
-  display: block;
-  color: var(--ds-muted);
-  font: 700 9px/12px 'Space Grotesk', sans-serif;
-  letter-spacing: 0.1em;
-}
-.fatura-topbar__title h1 {
-  margin: 1px 0 0;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 24px;
-  letter-spacing: -0.03em;
-  color: var(--ds-ink);
-}
-.fatura-topbar__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.fatura-icon-btn {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  color: var(--ds-primary);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
-  cursor: pointer;
-  transition: transform 0.18s ease;
-}
-.fatura-icon-btn:active {
-  transform: scale(0.94);
-}
-.fatura-icon-btn.is-spinning {
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.fatura-primary-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--ds-primary);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 8px 20px rgba(17, 22, 27, 0.16);
-  cursor: pointer;
-  transition: transform 0.18s ease, opacity 0.18s ease;
-}
-.fatura-primary-btn:active {
-  transform: scale(0.96);
-  opacity: 0.9;
-}
-.fatura-secondary-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 40px;
-  padding: 0 16px;
-  border: 1px solid var(--ds-line);
-  border-radius: 999px;
-  background: var(--ds-surface);
-  color: var(--ds-ink);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* 2. Dönem Filtreleri Çubuğu */
 .fatura-periods-bar {
   display: flex;
@@ -2202,18 +2172,19 @@ onMounted(() => {
   padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
-  color: var(--ds-slate);
-  font: 600 11px/1.2 'Space Grotesk', sans-serif;
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(12px);
+  background: #ffffff;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: all 0.18s ease;
 }
 .fatura-period-pill.is-active {
-  background: var(--ds-primary);
-  color: #fff;
-  border-color: var(--ds-primary);
+  background: var(--ds-surface-dark, #191d24);
+  color: #ffffff;
+  border-color: var(--ds-surface-dark, #191d24);
+  box-shadow: 0 4px 12px rgba(25, 29, 36, 0.25);
 }
 .fatura-period-pill--custom {
   display: inline-flex;
@@ -2221,37 +2192,9 @@ onMounted(() => {
   gap: 5px;
 }
 
-/* 3. Sekmeli Navigasyon (Segmented Control) */
+/* 3. Sekmeli Navigasyon */
 .fatura-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
-  margin-bottom: 20px;
-}
-.fatura-tab-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  height: 38px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ds-muted);
-  font: 600 11px/1 'Space Grotesk', sans-serif;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-.fatura-tab-btn.is-active {
-  background: var(--ds-primary);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(17, 22, 27, 0.15);
+  margin-bottom: 18px;
 }
 
 /* Hata Kutusu */
@@ -2261,11 +2204,11 @@ onMounted(() => {
   gap: 8px;
   padding: 12px 16px;
   margin-bottom: 14px;
-  border-radius: var(--ds-radius-sm);
+  border-radius: 16px;
   background: #ffdad6;
   color: #93000a;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* KPI Kartları (Giden & Gelen) */
@@ -2276,12 +2219,11 @@ onMounted(() => {
   margin-bottom: 14px;
 }
 .fatura-kpi-card {
-  padding: 16px;
+  padding: 18px 16px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.18s ease;
 }
@@ -2295,15 +2237,17 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 .fatura-kpi-tag {
-  font: 700 9px 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--ds-slate);
+  color: #64748b;
+  text-transform: uppercase;
 }
 .fatura-kpi-icon {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 10px;
 }
 .fatura-kpi-icon--emerald {
@@ -2317,53 +2261,54 @@ onMounted(() => {
 .fatura-kpi-amount {
   display: block;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 22px;
   letter-spacing: -0.03em;
-  color: var(--ds-ink);
+  color: #11161b;
 }
 .fatura-kpi-count {
   display: block;
-  font: 500 10px 'Space Grotesk', sans-serif;
-  color: var(--ds-muted);
-  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 3px;
 }
 .fatura-kpi-sub {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--ds-line);
-  font-size: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 11px;
 }
 .fatura-kpi-sub div {
   display: flex;
   justify-content: space-between;
   margin-top: 3px;
-  color: var(--ds-slate);
+  color: #64748b;
 }
 .fatura-kpi-card footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 10px;
-  font: 700 10px 'Space Grotesk', sans-serif;
-  color: var(--ds-muted);
+  font-size: 11px;
+  font-weight: 700;
+  color: #11161b;
 }
 
 /* Net KDV Durumu Kartı */
 .fatura-kdv-card {
-  padding: 18px;
-  border-radius: 24px;
+  padding: 20px 20px 18px;
+  border-radius: var(--ds-radius-card, 28px);
   margin-bottom: 16px;
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
 }
 .fatura-kdv-card--payable {
-  background: linear-gradient(145deg, rgba(255, 237, 235, 0.85), rgba(255, 245, 245, 0.75));
-  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-top: 4px solid #ef4444;
 }
 .fatura-kdv-card--devreden {
-  background: linear-gradient(145deg, rgba(236, 253, 245, 0.85), rgba(240, 253, 244, 0.75));
-  border: 1px solid rgba(5, 150, 105, 0.2);
+  border-top: 4px solid #10b981;
 }
 .fatura-kdv-card header {
   display: flex;
@@ -2383,19 +2328,22 @@ onMounted(() => {
   color: #059669;
 }
 .fatura-kdv-card__badge strong {
-  font: 700 10px/1 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .fatura-kdv-status {
-  font: 500 10px 'Space Grotesk', sans-serif;
-  color: var(--ds-muted);
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
 }
 .fatura-kdv-amount {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   line-height: 32px;
   letter-spacing: -0.04em;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .fatura-kdv-card--payable .fatura-kdv-amount {
   color: #dc2626;
@@ -2406,40 +2354,39 @@ onMounted(() => {
 .fatura-kdv-breakdown {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  font-size: 11px;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 12px;
 }
 .fatura-kdv-breakdown span {
   display: block;
-  color: var(--ds-muted);
-  font-size: 10px;
+  color: #64748b;
+  font-size: 11px;
 }
 .fatura-kdv-breakdown b {
   display: block;
   margin-top: 2px;
   font-weight: 700;
-  color: var(--ds-ink);
+  color: #11161b;
 }
 
 /* Hızlı Modül Menüleri Grid */
 .fatura-quick-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 22px;
 }
 .fatura-quick-item {
   display: flex;
   flex-direction: column;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   text-align: left;
   cursor: pointer;
   transition: transform 0.18s ease;
@@ -2450,10 +2397,10 @@ onMounted(() => {
 .fatura-quick-item__icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .fatura-quick-item strong {
   font-size: 13px;
@@ -2508,36 +2455,121 @@ onMounted(() => {
   display: grid;
   gap: 9px;
 }
-.fatura-recent-item {
+.fatura-row-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+.fatura-row-card:active {
+  transform: scale(0.985);
+}
+.fatura-row-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fatura-row-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.fatura-no-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.fatura-no-tag--sky {
+  background: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.16);
+}
+.fatura-no-tag--emerald {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid rgba(5, 150, 105, 0.16);
+}
+.fatura-date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+.fatura-row-card__body {
+  min-width: 0;
+}
+.fatura-row-card__customer {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #11161b;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.fatura-row-card__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 13px 15px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
-  cursor: pointer;
-  transition: transform 0.18s ease;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
-.fatura-recent-item:active {
-  transform: scale(0.985);
-}
-.fatura-recent-item__main {
-  min-width: 0;
-  flex: 1;
-}
-.fatura-recent-item__top {
+.fatura-row-card__amount-wrap {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
-.fatura-recent-item__aside {
-  text-align: right;
+.fatura-amount-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.fatura-amount-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #11161b;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.fatura-view-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #11161b;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: background 0.15s ease, color 0.15s ease;
   flex-shrink: 0;
+}
+.fatura-view-pill:active {
+  background: #e2e8f0;
 }
 
 /* Liste Sekmeleri Ortak Elemanları */
@@ -2545,32 +2577,34 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  padding: 12px;
+  padding: 14px 12px;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   margin-bottom: 14px;
   text-align: center;
 }
 .fatura-summary-strip__item small {
   display: block;
-  font: 700 8px 'Space Grotesk', sans-serif;
-  color: var(--ds-muted);
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
   letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 .fatura-summary-strip__item strong {
   display: block;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ds-ink);
-  margin-top: 1px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #11161b;
+  margin-top: 2px;
 }
 .fatura-summary-strip__item span {
   display: block;
-  font: 500 10px 'Space Grotesk', sans-serif;
-  color: var(--ds-slate);
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .fatura-search-group {
@@ -2582,17 +2616,16 @@ onMounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  height: 44px;
+  height: 46px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
-  padding: 0 14px;
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
+  padding: 0 16px;
 }
 .fatura-search-box__icon {
   flex-shrink: 0;
-  color: var(--ds-muted);
+  color: #64748b;
   margin-right: 8px;
 }
 .fatura-search-box input {
@@ -2600,18 +2633,19 @@ onMounted(() => {
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--ds-ink);
-  font: 500 12px 'Plus Jakarta Sans', sans-serif;
+  color: #11161b;
+  font-size: 13px;
+  font-weight: 600;
 }
 .fatura-search-box button {
   border: 0;
   background: transparent;
-  color: var(--ds-muted);
+  color: #94a3b8;
   cursor: pointer;
 }
 .fatura-search-box--product {
-  background: rgba(245, 243, 255, 0.7);
-  border-color: rgba(196, 181, 253, 0.4);
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.08);
 }
 .fatura-product-badge {
   display: inline-flex;
@@ -2621,7 +2655,8 @@ onMounted(() => {
   border-radius: 999px;
   background: #f5f3ff;
   color: #7c3aed;
-  font: 600 10px 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .fatura-filter-pills {
@@ -2636,48 +2671,73 @@ onMounted(() => {
 }
 .fatura-filter-pills button {
   flex-shrink: 0;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
-  color: var(--ds-slate);
-  font: 600 10px 'Space Grotesk', sans-serif;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
+  transition: all 0.18s ease;
 }
 .fatura-filter-pills button.is-active {
-  background: var(--ds-primary);
-  color: #fff;
-  border-color: var(--ds-primary);
+  background: var(--ds-surface-dark, #191d24);
+  color: #ffffff;
+  border-color: var(--ds-surface-dark, #191d24);
+  box-shadow: 0 4px 12px rgba(25, 29, 36, 0.25);
 }
 
 /* Fatura Kartları */
 .fatura-cards-list {
-  display: grid;
-  gap: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-bottom: 50px;
 }
 .fatura-card {
-  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 16px 18px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
   cursor: pointer;
   transition: transform 0.18s ease;
 }
 .fatura-card:active {
-  transform: scale(0.99);
+  transform: scale(0.985);
 }
 .fatura-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .fatura-card__badge-group {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.fatura-card__status {
+  flex-shrink: 0;
 }
 .fatura-no {
   font-family: monospace;
@@ -2689,60 +2749,94 @@ onMounted(() => {
   color: #059669;
 }
 .fatura-type-tag {
-  padding: 2px 6px;
+  padding: 2.5px 7px;
   border-radius: 6px;
-  background: var(--ds-soft);
+  background: rgba(100, 116, 139, 0.08);
   color: var(--ds-slate);
-  font: 700 8px 'Space Grotesk', sans-serif;
+  font: 700 8.5px 'Space Grotesk', sans-serif;
+  letter-spacing: 0.04em;
+}
+.fatura-card__body {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .fatura-customer-name {
   margin: 0;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--ds-ink);
-  line-height: 1.25;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 .fatura-customer-meta {
-  margin: 3px 0 0;
-  font: 500 10px 'Space Grotesk', sans-serif;
+  margin: 4px 0 0;
+  font: 500 10.5px 'Space Grotesk', sans-serif;
   color: var(--ds-muted);
   display: flex;
+  align-items: center;
   gap: 5px;
+  flex-wrap: wrap;
 }
 .fatura-card__items-preview {
-  margin-top: 8px;
-  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 6px 11px;
   border-radius: 10px;
-  background: rgba(245, 243, 255, 0.6);
-  font-size: 10px;
+  background: rgba(245, 243, 255, 0.7);
+  font-size: 11px;
   color: var(--ds-slate);
+  overflow: hidden;
+}
+.fatura-card__items-preview strong {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: #7c3aed;
+}
+.fatura-card__items-preview span {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 .fatura-card__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 11px;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 6px;
   padding-top: 10px;
-  border-top: 1px solid var(--ds-line);
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
 }
-.fatura-card__amount-box small {
-  display: block;
-  font-size: 9px;
-  color: var(--ds-muted);
-}
-.fatura-card__amount-box strong {
-  display: block;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--ds-ink);
+.fatura-card__amount-box {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex-shrink: 0;
 }
 .fatura-card__actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .fatura-payment-tag {
   padding: 3px 7px;
@@ -2797,25 +2891,41 @@ onMounted(() => {
 
 /* Rozetler */
 .fatura-badge {
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3.5px 9px;
   border-radius: 999px;
-  font: 700 9px 'Space Grotesk', sans-serif;
+  font: 700 9.5px 'Space Grotesk', sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.fatura-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
 }
 .fatura-badge--success {
   background: #ecfdf5;
   color: #059669;
+  border: 1px solid rgba(5, 150, 105, 0.2);
 }
 .fatura-badge--warning {
   background: #fffbeb;
   color: #d97706;
+  border: 1px solid rgba(217, 119, 6, 0.2);
 }
 .fatura-badge--danger {
   background: #fef2f2;
   color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 .fatura-badge--neutral {
-  background: var(--ds-soft);
-  color: var(--ds-slate);
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.15);
 }
 
 /* Modallar & Bottom Sheet Taban */

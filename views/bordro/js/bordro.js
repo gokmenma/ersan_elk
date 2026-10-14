@@ -1286,6 +1286,23 @@ $(document).ready(function () {
     }
   });
 
+  // Seçili personellerin bordro detaylarını tek kontrol dosyasında gösterir.
+  $("#btnExportBordroKontrol").on("click", function () {
+    const donemId = $("#donemSelect").val();
+    const ids = typeof getSelectedIds === "function" ? getSelectedIds() : [];
+    if (!donemId) return;
+    if (!ids.length) {
+      Swal.fire({
+        icon: "info",
+        title: "Personel Seçimi Gerekli",
+        text: "Bordro Kontrol dosyası için tablodan en az bir personel seçin.",
+      });
+      return;
+    }
+    window.location.href = "views/bordro/excel-kontrol-export.php?donem_id="
+      + encodeURIComponent(donemId) + "&ids=" + encodeURIComponent(ids.join(","));
+  });
+
   $(document).on("click", ".btn-odeme", function () {
     const id = $(this).data("id");
     const ad = $(this).data("ad");

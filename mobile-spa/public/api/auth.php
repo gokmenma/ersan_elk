@@ -224,7 +224,7 @@ function sessionPayload(): array
         'requests' => mobileCan(['talepler'], ['talepler/list']),
         'vehicles' => mobileCan(['arac_takip_yonetim'], ['arac-takip/list']),
         'invoices' => mobileCan(['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list', 'efatura/olustur'], ['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list']),
-        'cash' => mobileCan(['gelir-gider/list'], ['gelir-gider/list']),
+        'cash' => mobileCan(['gelir_gider_takibi', 'gelir-gider/list', 'kasa/list', 'legacy.permission.13'], ['gelir-gider/list', 'gelir-gider', 'kasa/list']),
         'current_accounts' => mobileCan(['cari/list'], ['cari/list']),
         'documents' => mobileCan(['evrak-takip/list'], ['evrak-takip/list']),
         'shifts' => mobileCan(['nobet/onay-islemleri'], ['nobet/onay-islemleri']),

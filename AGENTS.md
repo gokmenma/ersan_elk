@@ -125,12 +125,18 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
   - Asıl değer metinleri (`.form-control`, `.form-select`, `.select2-selection__rendered`) net ve parlak (`#f5f7fa`) olarak ön planda görünür.
   - Elemana odaklanıldığında (focus / focus-within) üst label macOS mavisi (`rgba(10, 132, 255, 0.78)`) ile hafifçe aydınlanır; sol ikonlar (`.form-floating-icon`) da bu renkle uyumlu çalışır.
 
-## 10. Mobil SPA Design System Standardı
-- `mobile-spa` içindeki yeni veya yenilenen ekranlar renk, yüzey, tipografi, boşluk, radius ve gölge değerlerini `src/design-system.css` içindeki `--ds-*` tokenlarından alacaktır.
-- Mobil ekranlar küçültülmüş masaüstü paneli gibi tasarlanmayacak; bilgi hiyerarşisi, en az 44px dokunma alanı, safe-area boşlukları ve tek elle kullanım esas alınacaktır.
-- Ana uygulama zemini `--ds-canvas`, kartlar `--ds-surface`, ana metin `--ds-ink`, ikincil metin `--ds-muted` üzerinden kullanılacaktır.
-- Ağır gradient, kalın çerçeve ve birbiriyle yarışan renkli kartlar yerine açık yüzey, düşük kontrastlı sınır, kontrollü gölge ve tek vurgu rengi kullanılacaktır.
-- Alt navigasyon sabit uygulama dock'udur; yetkisiz öğeler çizilmez ve merkez aksiyon yalnızca yetkili ek işlemleri açar.
+## 10. Mobil SPA Design System Standardı (Soft Bento & Claymorphic UI)
+- **Merkezi Mimari**: `mobile-spa` içerisindeki tüm mevcut sayfalar ve yeni oluşturulacak sayfalar, görsel ve yapısal özelliklerini doğrudan `src/design-system.css` içerisindeki merkezi `--ds-*` tokenlarından ve `.bento-*`, `.clay-*` bileşen sınıflarından alacaktır. Sayfa bazında bağımsız renk/gölge paleti veya ayrık glassmorphism tanımlanmayacaktır.
+- **Tek Noktadan Yönetim (Single Source of Truth)**: Gelecekte bir tasarım, renk veya tipografi değişikliği gerektiğinde yalnızca `src/design-system.css` güncellenecek; bu değişiklik tüm program genelindeki sayfalara merkezi olarak anında yansıyacaktır.
+- **Temel Tasarım Karakteri (Varsayılan Standart)**:
+  - **Ana Canvas Zemini**: `--ds-canvas: #e6eaef;` (Mat, dingin arduvaz/gri ton). Blurry/cam radial orb gradientler kullanılmayacaktır.
+  - **Ana Bento Kartları**: Saf beyaz zemin (`#ffffff`), 28px kavisli köşeler (`--ds-radius-card`), ince zarif sınır çizgisi (`1px solid rgba(255, 255, 255, 0.9)`) ve yumuşak 3D elevation gölgesi (`--ds-shadow-bento`).
+  - **Kontrast Bento Kartları**: Obsidian koyu zemin (`#191d24`), koyu hap etiketleri ve canlı segmentli ilerleme çubukları (`--ds-shadow-bento-dark`).
+  - **İlerleme Çubukları**: Tam yuvarlatılmış kapsül formunda segmentli dağılım (`.segmented-track`, `.seg-pill`).
+  - **Metrik Izgaraları**: 2x2 veya 3x1 kutu ızgaraları ve dairesel aksiyon butonları (`.bento-metrics-grid`, `.bento-round-action-btn`).
+  - **Butonlar ve Filtreler**: Dairesel veya hap formunda bağımsız eylem butonları (`.clay-circle-btn`, `.clay-filter-pill`, `.clay-tabs-wrap`).
+  - **Alt Navigasyon**: Ekranın altında yüzen koyu obsidian dock (`.bottom-nav`).
+- **Dokunma Alanı ve Ergonomi**: En az 44px dokunma alanı, safe-area boşlukları (`--ds-safe-top`, `--ds-safe-bottom`) ve tek elle mobil kullanım esas alınacaktır.
 
 ## 11. Hafıza ve Bağlam Yönetimi (Memory Bank Standardı)
 - Proje oturum hafızası için kök dizindeki `memory-bank/` yapısı kullanılır.

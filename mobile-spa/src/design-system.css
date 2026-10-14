@@ -1,21 +1,1409 @@
-/* Glacier Alpine — DESIGN.md uygulaması */
-:root{--ds-canvas:#f7fafc;--ds-surface:#fff;--ds-soft:#f1f4f6;--ds-ink:#181c1e;--ds-muted:#8c9bae;--ds-slate:#516071;--ds-primary:#11161b;--ds-line:rgba(140,155,174,.15);--ds-radius-sm:16px;--ds-radius-md:24px;--ds-radius-lg:28px;--ds-shadow-card:0 12px 32px -8px rgba(17,22,27,.06),0 4px 12px -2px rgba(140,155,174,.08);--ds-shadow-float:0 16px 40px -10px rgba(17,22,27,.35);--ds-safe-top:env(safe-area-inset-top,0px);--ds-safe-bottom:env(safe-area-inset-bottom,0px)}
-.ds-screen,.ds-screen *{box-sizing:border-box}.ds-screen{min-height:100svh;padding:calc(var(--ds-safe-top) + 24px) 20px calc(118px + var(--ds-safe-bottom));color:var(--ds-ink);background:radial-gradient(circle at 88% 7%,rgba(181,200,224,.42),transparent 27%),radial-gradient(circle at 4% 44%,rgba(213,228,249,.48),transparent 31%),linear-gradient(155deg,#f7fafc 0%,#eef3f6 50%,#f7fafc 100%);font-family:'Plus Jakarta Sans',sans-serif}
-.ds-home-header{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:12px;margin-bottom:24px}.ds-avatar{display:grid;width:44px;height:44px;place-items:center;border-radius:50%;color:#fff;background:var(--ds-primary);font:600 11px/1 'Space Grotesk',sans-serif;box-shadow:0 9px 20px rgba(17,22,27,.16)}.ds-home-header>div{min-width:0}.ds-home-header small{display:block;color:var(--ds-muted);font-size:11px;line-height:15px}.ds-home-header h1{margin:1px 0 0;overflow:hidden;color:var(--ds-ink);font-size:18px;font-weight:700;line-height:24px;letter-spacing:-.03em;text-overflow:ellipsis;white-space:nowrap}.ds-home-header>button{position:relative;display:grid;width:44px;height:44px;place-items:center;border:1px solid rgba(255,255,255,.9);border-radius:50%;color:var(--ds-primary);background:rgba(255,255,255,.78);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.ds-home-header>button i{position:absolute;top:9px;right:9px;width:7px;height:7px;border:2px solid #fff;border-radius:50%;background:#ba1a1a}
-.ds-summary-grid{display:grid;margin-bottom:12px;gap:12px}.ds-summary-card{display:block;width:100%;padding:17px 18px;border:1px solid rgba(255,255,255,.9);border-radius:24px;color:var(--ds-ink);background:rgba(255,255,255,.76);box-shadow:var(--ds-shadow-card);text-align:left;text-decoration:none;backdrop-filter:blur(16px);transition:transform .18s ease,opacity .18s ease}.ds-summary-card:active{opacity:.86;transform:scale(.985)}.ds-summary-card header{display:flex;align-items:center;justify-content:space-between;color:var(--ds-slate)}.ds-summary-card header span{font:700 9px/12px 'Space Grotesk',sans-serif;letter-spacing:.1em}.ds-summary-card header svg{padding:4px;border-radius:50%;color:#fff;background:var(--ds-primary)}.ds-summary-value{display:flex;margin-top:7px;align-items:baseline;gap:6px}.ds-summary-value strong{font-size:27px;line-height:32px;letter-spacing:-.04em}.ds-summary-value span{color:var(--ds-muted);font-size:11px}.ds-summary-progress,.ds-summary-segments{display:flex;height:7px;margin-top:10px;overflow:hidden;border-radius:999px;background:#e5e9eb}.ds-summary-progress i{display:block;border-radius:999px;background:linear-gradient(90deg,#3676d8,#65a5ee)}.ds-summary-segments i{display:block}.ds-summary-segments i:first-child{background:#2b9a8a}.ds-summary-segments i:nth-child(2){background:#df7049}.ds-summary-segments i:nth-child(3){background:#d49a31}.ds-summary-card footer{display:grid;margin-top:13px;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.ds-summary-card footer>span{position:relative;display:grid;padding-left:9px}.ds-summary-card footer>span>i{position:absolute;top:2px;bottom:2px;left:0;width:3px;border-radius:999px;background:#3676d8}.ds-summary-card footer>span:nth-child(2)>i{background:#df7049}.ds-summary-card footer>span:nth-child(3)>i{background:#d49a31}.ds-summary-card footer small{overflow:hidden;color:var(--ds-muted);font:500 8px/11px 'Space Grotesk',sans-serif;text-overflow:ellipsis;white-space:nowrap}.ds-summary-card footer b{margin-top:2px;font-size:11px;line-height:14px}.ds-summary-card--vehicles footer>span:first-child>i{background:#2b9a8a}
-.ds-overview-card{position:relative;padding:14px;overflow:hidden;border:1px solid rgba(255,255,255,.9);border-radius:28px 8px 28px 28px;background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(229,238,244,.72));box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px);isolation:isolate}.ds-overview-card::before{position:absolute;z-index:-1;inset:0;background:linear-gradient(138deg,rgba(255,255,255,.42),transparent 52%,rgba(181,200,224,.15));content:''}
-.ds-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ds-stat-grid article{min-width:0;min-height:104px;padding:13px;border:1px solid rgba(255,255,255,.9);border-radius:20px;background:rgba(255,255,255,.8);box-shadow:0 8px 24px -10px rgba(17,22,27,.12);backdrop-filter:blur(16px)}.ds-stat-grid article header{display:flex;min-width:0;align-items:center;gap:8px}.ds-stat-grid article header>span{display:grid;width:32px;height:32px;flex:0 0 auto;place-items:center;border-radius:12px;color:#fff;background:#3676d8;box-shadow:0 6px 14px rgba(54,118,216,.2)}.ds-stat-grid article:nth-child(2) header>span{background:#df7049;box-shadow:0 6px 14px rgba(223,112,73,.2)}.ds-stat-grid article:nth-child(3) header>span{background:#6c63cf;box-shadow:0 6px 14px rgba(108,99,207,.2)}.ds-stat-grid article:nth-child(4) header>span{background:#2b9a8a;box-shadow:0 6px 14px rgba(43,154,138,.2)}.ds-stat-grid article:nth-child(5) header>span{background:#d49a31;box-shadow:0 6px 14px rgba(212,154,49,.2)}.ds-stat-grid article:nth-child(6) header>span{background:#be5578;box-shadow:0 6px 14px rgba(190,85,120,.2)}.ds-stat-grid article header small{overflow:hidden;color:var(--ds-slate);font:600 10px/14px 'Space Grotesk',sans-serif;text-overflow:ellipsis;white-space:nowrap}.ds-stat-grid article>div{display:flex;margin-top:12px;align-items:flex-end;justify-content:space-between;gap:5px}.ds-stat-grid article>div>strong{font-size:24px;font-weight:700;line-height:1;letter-spacing:-.04em}.ds-stat-grid article p{color:var(--ds-muted);font:500 8px/12px 'Space Grotesk',sans-serif;white-space:nowrap}.ds-stat-grid article p b{color:var(--ds-slate);font-size:10px}
-.ds-section{margin-top:32px}.ds-section-title{display:flex;align-items:baseline;justify-content:space-between;margin:0 2px 14px}.ds-section-title h2{font-size:18px;font-weight:600;line-height:24px;letter-spacing:-.025em}.ds-section-title span{color:var(--ds-muted);font:500 10px/14px 'Space Grotesk',sans-serif}.ds-quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ds-quick-actions button{position:relative;display:grid;min-height:78px;padding:14px;grid-template-columns:36px 1fr 24px;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.9);border-radius:20px;color:var(--ds-ink);background:rgba(255,255,255,.72);box-shadow:var(--ds-shadow-card);text-align:left;backdrop-filter:blur(16px);transition:transform .18s ease,opacity .18s ease}.ds-quick-actions button:active{opacity:.84;transform:scale(.98)}.ds-quick-actions button>span{display:grid;width:36px;height:36px;place-items:center;border-radius:50%;color:var(--ds-primary);background:var(--ds-soft)}.ds-quick-actions strong{overflow:hidden;font-size:11px;font-weight:600;line-height:15px;text-overflow:ellipsis;white-space:nowrap}.ds-quick-actions i{display:grid;width:24px;height:24px;place-items:center;border-radius:50%;color:#fff;background:var(--ds-primary)}
-.ds-status-list{overflow:hidden;border:1px solid rgba(255,255,255,.9);border-radius:var(--ds-radius-md);background:rgba(255,255,255,.72);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.ds-status-list button,.ds-status-list a{display:flex;width:100%;min-height:76px;align-items:center;gap:12px;padding:14px;border:0;border-bottom:1px solid var(--ds-line);color:inherit;background:transparent;text-align:left;text-decoration:none}.ds-status-list>*:last-child{border-bottom:0}.ds-list-icon{display:grid;width:42px;height:42px;flex:0 0 auto;place-items:center;border-radius:16px;color:var(--ds-primary);background:var(--ds-soft)}.ds-status-list button>div,.ds-status-list a>div{min-width:0;flex:1}.ds-status-list strong,.ds-status-list small{display:block}.ds-status-list strong{font-size:13px}.ds-status-list small{margin-top:3px;overflow:hidden;color:var(--ds-muted);font-size:10px;text-overflow:ellipsis;white-space:nowrap}.ds-status-list>a>b,.ds-status-list>button>b{font-size:18px}
-.ds-announcements article{display:grid;min-height:72px;padding:13px 2px;grid-template-columns:38px 1fr auto;align-items:center;gap:11px;border-bottom:1px solid var(--ds-line)}.ds-announcements article>span{display:grid;width:38px;height:38px;place-items:center;border-radius:16px;color:var(--ds-primary);background:rgba(255,255,255,.74)}.ds-announcements article>div{min-width:0}.ds-announcements strong,.ds-announcements p{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-announcements strong{font-size:12px}.ds-announcements p{margin-top:3px;color:var(--ds-muted);font-size:10px}.ds-announcements time{color:var(--ds-muted);font:500 9px 'Space Grotesk',sans-serif}
-.ds-loading{display:grid;gap:12px}.ds-loading i{height:84px;border-radius:var(--ds-radius-md);background:linear-gradient(100deg,#e7ecef 20%,#f7f9fa 40%,#e7ecef 60%);background-size:220% 100%;animation:ds-shimmer 1.3s infinite}.ds-loading i:first-child{height:420px}@keyframes ds-shimmer{to{background-position-x:-220%}}.ds-state{display:flex;min-height:190px;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:25px;border:1px solid rgba(255,255,255,.9);border-radius:var(--ds-radius-md);background:rgba(255,255,255,.72);box-shadow:var(--ds-shadow-card);text-align:center;backdrop-filter:blur(16px)}.ds-state strong{font-size:14px}.ds-state p{color:var(--ds-muted);font-size:11px}.ds-state button{margin-top:5px;padding:10px 15px;border-radius:999px;color:#fff;background:var(--ds-primary);font-weight:700}
-/* DESIGN.md: koyu, bağımsız floating navigation dock */
-.bottom-nav{bottom:max(14px,var(--ds-safe-bottom));width:min(calc(100% - 40px),440px);min-height:66px;padding:7px 9px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(17,22,27,.92);box-shadow:var(--ds-shadow-float);backdrop-filter:blur(20px) saturate(1.2)}.bottom-nav__tabs{align-items:center}.bottom-nav__home-bar{display:none}.nav-link,.nav-link--center{height:50px;justify-content:center;gap:3px;color:rgba(238,241,243,.58)}.nav-icon{width:25px;height:25px;color:inherit}.app-shell .nav-label{color:inherit;font:500 8px/11px 'Space Grotesk',sans-serif}.nav-link.is-active .nav-icon,.nav-link.is-active .nav-label,.nav-link--center[aria-expanded=true] .nav-icon,.nav-link--center[aria-expanded=true] .nav-label{color:#fff}.nav-link.is-active::after{position:absolute;bottom:1px;width:4px;height:4px;border-radius:50%;background:#fff;content:''}.nav-link--center{position:relative;padding-bottom:0}.nav-link--center .nav-icon{position:static;width:32px;height:32px;border:0;color:inherit!important;background:transparent;box-shadow:none}.nav-link--center.is-active .nav-icon,.nav-link--center[aria-expanded=true] .nav-icon{color:#fff!important;background:transparent;box-shadow:none;transform:none}
-.ds-overview-card{border-radius:28px}
-/* Personel dizini ve profil formu */
-.ds-personnel-directory{padding-right:20px;padding-left:20px;font-family:'Plus Jakarta Sans',sans-serif}.ds-personnel-directory .personnel-hero{min-height:0;padding:0;overflow:visible;color:#181c1e;background:transparent;border-radius:0;box-shadow:none}.ds-personnel-directory .personnel-hero::after{display:none}.ds-personnel-directory .directory-topbar{position:static;display:grid;grid-template-columns:42px 1fr 42px;gap:12px}.ds-personnel-directory .directory-topbar>button{display:grid;width:42px;height:42px;place-items:center;border:1px solid rgba(255,255,255,.9);border-radius:50%;color:#11161b;background:rgba(255,255,255,.76);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.ds-personnel-directory .directory-topbar>div span{color:#8c9bae;font:700 9px 'Space Grotesk',sans-serif;letter-spacing:.1em}.ds-personnel-directory .directory-topbar h1{margin-top:2px;font-size:22px;line-height:28px;letter-spacing:-.03em}.ds-personnel-directory .personnel-summary{position:static;display:grid;margin-top:20px;grid-template-columns:repeat(3,1fr);gap:8px}.ds-personnel-directory .personnel-summary button{min-width:0;padding:13px 8px;border:1px solid rgba(255,255,255,.9);border-radius:18px;color:#516071;background:rgba(255,255,255,.7);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.ds-personnel-directory .personnel-summary button.active{border-color:#11161b;color:#fff;background:#11161b}.ds-personnel-directory .personnel-summary strong{font-size:22px;line-height:26px}.ds-personnel-directory .personnel-summary span{font:600 8px 'Space Grotesk',sans-serif}.ds-personnel-directory .directory-body{margin:14px 0 0;padding:0;background:transparent}.ds-personnel-directory .directory-search{position:relative;top:auto;height:50px;margin:0;padding:0 15px;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:rgba(255,255,255,.74);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.ds-personnel-directory .directory-search input{font:500 11px 'Plus Jakarta Sans',sans-serif}.ds-personnel-directory .directory-filters{margin:11px 2px 15px}.ds-personnel-directory .directory-filters label{height:36px;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:rgba(255,255,255,.72)}.ds-personnel-directory .directory-filters select{font:600 9px 'Space Grotesk',sans-serif}.ds-personnel-directory .directory-filters small{color:#8c9bae;font:500 9px 'Space Grotesk',sans-serif}.ds-personnel-directory .personnel-list{display:grid;gap:10px}.ds-personnel-directory .personnel-row{min-height:86px;padding:14px;border:1px solid rgba(255,255,255,.9);border-radius:22px;background:rgba(255,255,255,.76);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.ds-personnel-directory .personnel-avatar{width:52px;height:52px;border-radius:17px;color:#fff;background:#11161b;font:600 15px 'Space Grotesk',sans-serif}.ds-personnel-directory .personnel-main strong{font-size:13px;letter-spacing:-.02em}.ds-personnel-directory .personnel-main small{margin-top:3px;color:#8c9bae;font-size:9px}.ds-personnel-directory .personnel-main em{margin-top:7px;color:#516071;font:600 9px 'Space Grotesk',sans-serif}.ds-personnel-directory .row-arrow{display:grid;width:32px;height:32px;place-items:center;border-radius:50%;color:#fff;background:#11161b}.ds-personnel-directory .personnel-fab{right:max(22px,calc((100vw - 480px)/2 + 22px));bottom:94px;width:52px;height:52px;border-radius:18px;background:#11161b;box-shadow:var(--ds-shadow-float)}
-.ds-personnel-workspace{padding-right:20px;padding-left:20px;font-family:'Plus Jakarta Sans',sans-serif}.ds-personnel-workspace .workspace-header{position:static;padding:0;grid-template-columns:42px 1fr 42px;border:0;background:transparent;box-shadow:none}.ds-personnel-workspace .workspace-header>button,.ds-personnel-workspace .workspace-security{display:grid;width:42px;height:42px;place-items:center;border:1px solid rgba(255,255,255,.9);border-radius:50%;color:#11161b;background:rgba(255,255,255,.76);box-shadow:var(--ds-shadow-card)}.ds-personnel-workspace .workspace-header>div span{color:#8c9bae;font:700 9px 'Space Grotesk',sans-serif;letter-spacing:.1em}.ds-personnel-workspace .workspace-header h1{font-size:18px;letter-spacing:-.03em}.ds-personnel-workspace main{padding:0}.ds-personnel-workspace .workspace-profile-card{margin-top:22px;padding:18px;border:1px solid rgba(255,255,255,.9);border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.8),rgba(213,228,249,.62));box-shadow:var(--ds-shadow-card)}.ds-personnel-workspace .workspace-avatar{width:58px;height:58px;border-radius:19px;color:#fff;background:#11161b}.ds-personnel-workspace .workspace-groups{margin:12px 0;padding:4px;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:rgba(255,255,255,.7);box-shadow:var(--ds-shadow-card)}.ds-personnel-workspace .workspace-groups button{border-radius:999px;color:#8c9bae;font:600 9px 'Space Grotesk',sans-serif}.ds-personnel-workspace .workspace-groups button.active{color:#fff;background:#11161b}.ds-personnel-workspace .workspace-panel{padding:18px;border:1px solid rgba(255,255,255,.9);border-radius:24px;background:rgba(255,255,255,.72);box-shadow:var(--ds-shadow-card);backdrop-filter:blur(16px)}.ds-personnel-workspace .workspace-title>span{color:#8c9bae;font:700 9px 'Space Grotesk',sans-serif;letter-spacing:.1em}.ds-personnel-workspace .workspace-title h2{font-size:20px;letter-spacing:-.03em}.ds-personnel-workspace .workspace-title p{color:#8c9bae;font-size:10px}.ds-personnel-workspace .mobile-form-fields label>span{color:#516071;font:700 9px 'Space Grotesk',sans-serif;letter-spacing:.06em}.ds-personnel-workspace .mobile-form-fields label>div{height:48px;border:1px solid rgba(140,155,174,.2);border-radius:16px;background:#fff}.ds-personnel-workspace .mobile-form-fields input{font-size:12px}.ds-personnel-workspace .workspace-save{height:48px;border-radius:999px;background:#11161b;box-shadow:0 10px 24px rgba(17,22,27,.18)}.ds-personnel-workspace .workspace-module-list button{border-color:rgba(140,155,174,.15);background:#fff}.ds-personnel-workspace .workspace-module-list button>span{border-radius:15px;color:#11161b;background:#f1f4f6}
-.ds-personnel-directory{padding-bottom:calc(170px + var(--ds-safe-bottom))}.ds-personnel-directory .directory-topbar h1{color:#181c1e}.ds-personnel-directory .personnel-summary button:not(.active) strong{color:#516071}.ds-personnel-directory .personnel-summary button:not(.active) span{color:#8c9bae}.ds-personnel-directory .personnel-summary button.active strong,.ds-personnel-directory .personnel-summary button.active span{color:#fff}.ds-personnel-directory .directory-body{padding-bottom:40px}.ds-personnel-directory .personnel-list{padding-bottom:60px}.ds-personnel-directory .personnel-row:last-of-type{margin-bottom:20px}
-.ds-personnel-directory{width:100%;max-width:100%;padding-right:24px;overflow-x:hidden}.ds-personnel-directory .personnel-hero,.ds-personnel-directory .directory-body,.ds-personnel-directory .personnel-list{width:100%;max-width:100%;min-width:0}.ds-personnel-directory .personnel-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.ds-personnel-directory .personnel-row{width:100%;max-width:100%;min-width:0}.ds-personnel-directory .personnel-main{min-width:0}.ds-personnel-directory .row-arrow{flex:0 0 32px}
-.ds-personnel-directory .personnel-avatar{position:relative;overflow:visible}.ds-personnel-directory .personnel-avatar img{position:absolute;z-index:1;inset:0;display:block;width:100%;height:100%;max-width:none;border-radius:17px;object-fit:cover;object-position:center}.ds-personnel-directory .personnel-avatar i{z-index:2}
-@media (max-width:699px){.app-stage,.app-shell{background:#f7fafc}.app-shell{box-shadow:none}}@media (min-width:430px){.ds-screen{padding-right:32px;padding-left:32px}.ds-personnel-directory{padding-right:36px}}
+/* ==========================================================================
+   ERSAN MOBIL SPA — CENTRAL BENTO & CLAYMORPHIC DESIGN SYSTEM
+   Tüm Mobil SPA Ekranları İçin Merkezi Tasarım Sistemi ve Değişken Kütüphanesi
+   ========================================================================== */
+
+:root {
+  /* 1. Zemin ve Yüzeyler (Canvas & Surfaces) */
+  --ds-canvas: #e6eaef;             /* Mat, dingin arduvaz/gri ana canvas zemini */
+  --ds-surface: #ffffff;            /* Saf beyaz ana Bento kart yüzeyi */
+  --ds-surface-dark: #191d24;       /* Kontrast Obsidian koyu Bento kart yüzeyi */
+  --ds-surface-subtle: #f1f5f9;     /* İkincil yumuşak zemin */
+  --ds-surface-translucent: rgba(255, 255, 255, 0.85);
+
+  /* 2. Tipografi ve Renkler (Inks & Text) */
+  --ds-ink: #161920;                /* Ana koyu metin */
+  --ds-ink-light: #ffffff;          /* Koyu kartlar üzeri beyaz metin */
+  --ds-muted: #64748b;              /* Soluk ikincil açıklama metni */
+  --ds-muted-light: #94a3b8;        /* Koyu kart içi ikincil metin */
+  --ds-font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --ds-font-mono: 'Space Grotesk', monospace;
+
+  /* 3. Sınır Çizgileri (Borders) */
+  --ds-border: rgba(255, 255, 255, 0.9);
+  --ds-border-subtle: rgba(15, 23, 42, 0.06);
+  --ds-border-dark: rgba(255, 255, 255, 0.08);
+
+  /* 4. Yumuşak 3D Gölgeler (Clay & Bento Elevation) */
+  --ds-shadow-bento: 0 16px 36px -6px rgba(15, 23, 42, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+  --ds-shadow-bento-dark: 0 20px 40px -8px rgba(0, 0, 0, 0.35);
+  --ds-shadow-tile: 0 6px 16px rgba(15, 23, 42, 0.05);
+  --ds-shadow-pill: 0 3px 10px rgba(15, 23, 42, 0.04);
+  --ds-shadow-btn: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --ds-shadow-float: 0 20px 48px -8px rgba(0, 0, 0, 0.45);
+
+  /* 5. Yuvarlatma Değerleri (Radii) */
+  --ds-radius-card: 28px;           /* Ana Bento kart kavis yarıçapı */
+  --ds-radius-tile: 20px;           /* Küçük modül ve işlem kutuları */
+  --ds-radius-sm: 14px;             /* Butonlar ve küçük rozetler */
+  --ds-radius-pill: 9999px;         /* Tam dairesel hap/kapsül elemanlar */
+
+  /* 6. Renk Paleti ve Vurgular (Vibrant Accent System) */
+  --ds-primary: #181c24;            /* Birincil marka koyu lacivert/siyahı */
+  --ds-blue: #38bdf8;               /* Mavi segment / vurgu */
+  --ds-yellow: #facc15;             /* Sarı segment / uyarı */
+  --ds-coral: #fb7185;              /* Mercan / pembe segment */
+  --ds-emerald: #10b981;            /* Zümrüt yeşili / onay */
+  --ds-amber: #f59e0b;              /* Kehribar / beklemede */
+  --ds-purple: #a855f7;             /* Mor segment */
+  --ds-indigo: #6366f1;             /* İndigo segment */
+  --ds-danger: #ef4444;             /* Kırmızı hata / silme */
+
+  /* 7. Mobil Güvenli Alanlar (Safe Area Insets) */
+  --ds-safe-top: env(safe-area-inset-top, 0px);
+  --ds-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ==========================================================================
+   GENEL VE KABUK (SCAFFOLDING & LAYOUT)
+   ========================================================================== */
+
+.app-stage, .app-shell {
+  background: var(--ds-canvas) !important;
+}
+
+.ds-screen, .ds-screen * {
+  box-sizing: border-box;
+}
+
+.ds-screen {
+  min-height: 100svh;
+  padding: calc(var(--ds-safe-top) + 16px) 16px calc(118px + var(--ds-safe-bottom));
+  background: var(--ds-canvas);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   1. ÜST MARKA & EYLEM ÇUBUĞU (CLAY TOPBAR)
+   ========================================================================== */
+
+.clay-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.clay-brand-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.clay-brand-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--ds-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(24, 28, 36, 0.2);
+}
+
+.clay-brand-name {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--ds-primary);
+}
+
+.clay-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clay-circle-btn {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: #4b5563;
+  box-shadow: var(--ds-shadow-pill);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.clay-circle-btn:active {
+  transform: scale(0.95);
+}
+
+.clay-unread-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ds-danger);
+  border: 1.5px solid #ffffff;
+}
+
+.clay-avatar-circle {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: linear-gradient(135deg, var(--ds-primary), #374151);
+  color: #ffffff;
+  font: 700 12px var(--ds-font-mono);
+  box-shadow: var(--ds-shadow-pill);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.clay-avatar-circle:active {
+  transform: scale(0.95);
+}
+
+/* ==========================================================================
+   2. SAYFA BAŞLIKLARI (PAGE HEADERS)
+   ========================================================================== */
+
+.clay-page-header {
+  margin-bottom: 18px;
+}
+
+.clay-page-eyebrow {
+  display: block;
+  font: 700 10px var(--ds-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--ds-muted);
+  text-transform: uppercase;
+}
+
+.clay-page-title {
+  margin: 3px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--ds-ink);
+}
+
+.clay-page-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ds-muted);
+}
+
+/* ==========================================================================
+   3. BENTO KART SİSTEMİ (HERO BENTO CARDS)
+   ========================================================================== */
+
+.bento-card {
+  border-radius: var(--ds-radius-card);
+  padding: 20px 20px 22px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.bento-card:active {
+  transform: scale(0.985);
+}
+
+.bento-card--white {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-bento);
+  color: var(--ds-ink);
+}
+
+.bento-card--dark {
+  background: var(--ds-surface-dark);
+  border: 1px solid var(--ds-border-dark);
+  box-shadow: var(--ds-shadow-bento-dark);
+  color: var(--ds-ink-light);
+}
+
+.bento-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.bento-head-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.bento-head-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bento-mini-btn {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-surface-subtle);
+  color: #4b5563;
+}
+
+.bento-mini-btn--dark {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.dark-pill-tag {
+  display: inline-block;
+  font: 700 9px var(--ds-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--ds-amber);
+  background: rgba(245, 158, 11, 0.12);
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-pill);
+  margin-bottom: 4px;
+}
+
+/* ==========================================================================
+   4. AVATAR YIĞINI (AVATAR STACK)
+   ========================================================================== */
+
+.avatar-stack-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.avatar-stack {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-item {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  border: 2.5px solid #ffffff;
+  background: #cbd5e1;
+  margin-left: -8px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.avatar-item:first-child {
+  margin-left: 0;
+}
+
+.avatar-item i {
+  font-style: normal;
+  font: 700 11px var(--ds-font-mono);
+  color: #334155;
+}
+
+.avatar-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+  color: #ffffff;
+  font: 700 8px var(--ds-font-mono);
+}
+
+.badge-cyan   { background: #06b6d4; }
+.badge-orange { background: #f97316; }
+.badge-blue   { background: #3b82f6; }
+.badge-purple { background: #8b5cf6; }
+.badge-amber  { background: #f59e0b; }
+
+.avatar-stack-label {
+  font: 600 11px var(--ds-font-mono);
+  color: var(--ds-muted);
+}
+
+/* ==========================================================================
+   5. SEGMENTLİ İLERLEME ÇUBUĞU (SEGMENTED PILL PROGRESS TRACK)
+   ========================================================================== */
+
+.segmented-track {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 13px;
+  padding: 2.5px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-subtle);
+  margin-bottom: 20px;
+}
+
+.segmented-track--dark {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.seg-pill {
+  height: 100%;
+  border-radius: var(--ds-radius-pill);
+  transition: width 0.4s ease;
+  min-width: 8px;
+}
+
+.seg-pill--blue    { background: var(--ds-blue); }
+.seg-pill--yellow  { background: var(--ds-yellow); }
+.seg-pill--coral   { background: var(--ds-coral); }
+.seg-pill--emerald { background: var(--ds-emerald); }
+.seg-pill--amber   { background: var(--ds-amber); }
+.seg-pill--purple  { background: var(--ds-purple); }
+
+/* ==========================================================================
+   6. 2x2 METRİK IZGARASI (BENTO METRICS GRID)
+   ========================================================================== */
+
+.bento-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.metric-cell {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-subtle);
+}
+
+.bento-metrics-grid--dark .metric-cell {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.metric-cell strong {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ds-ink);
+}
+
+.bento-metrics-grid--dark .metric-cell strong {
+  color: var(--ds-ink-light);
+}
+
+.metric-cell strong small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ds-muted);
+}
+
+.metric-cell span {
+  font-size: 11px;
+  color: var(--ds-muted);
+  margin-top: 3px;
+}
+
+.bento-metrics-grid--dark .metric-cell span {
+  color: var(--ds-muted-light);
+}
+
+.metric-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.metric-cell--action {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metric-val-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-round-action-btn {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(24, 28, 36, 0.2);
+  flex-shrink: 0;
+}
+
+.bento-round-action-btn--white {
+  background: #ffffff;
+  color: var(--ds-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.text-emerald { color: #34d399 !important; }
+.text-coral   { color: #fb7185 !important; }
+.text-amber   { color: #fbbf24 !important; }
+
+/* ==========================================================================
+   7. BÖLÜM VE BAŞLIK STANDARTLARI (CLAY SECTIONS)
+   ========================================================================== */
+
+.clay-section {
+  margin-top: 24px;
+}
+
+.clay-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.clay-section-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--ds-ink);
+}
+
+.clay-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  font: 700 10px var(--ds-font-mono);
+  color: var(--ds-muted);
+  background: rgba(100, 116, 139, 0.1);
+  padding: 3px 9px;
+  border-radius: var(--ds-radius-pill);
+}
+
+/* ==========================================================================
+   8. HIZLI İŞLEMLER (QUICK ACTION TILES)
+   ========================================================================== */
+
+.quick-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.quick-action-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-tile);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-tile);
+  color: var(--ds-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.quick-action-tile:active {
+  transform: scale(0.975);
+}
+
+.quick-action-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-primary);
+  flex-shrink: 0;
+}
+
+.quick-action-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-action-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-action-text small {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+  margin-top: 1px;
+}
+
+.quick-action-arrow {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   9. OPERASYON VE SAYAÇ IZGARASI (OPERATIONS GRID)
+   ========================================================================== */
+
+.operations-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.operation-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 108px;
+  padding: 14px;
+  border-radius: var(--ds-radius-tile);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-tile);
+}
+
+.operation-tile-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.op-icon-bubble {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 10px;
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+  flex-shrink: 0;
+}
+
+.op-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operation-tile-bottom strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--ds-ink);
+  line-height: 1.1;
+}
+
+.operation-tile-bottom span {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+  margin-top: 3px;
+}
+
+.operation-tile-bottom span b {
+  color: var(--ds-ink);
+}
+
+/* ==========================================================================
+   10. DUYURULAR & LİSTE KARTLARI (ANNOUNCEMENTS & STACKS)
+   ========================================================================== */
+
+.announcements-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.announcement-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-tile);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-tile);
+}
+
+.announcement-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-primary);
+  flex-shrink: 0;
+}
+
+.announcement-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.announcement-body strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.announcement-body p {
+  margin: 2px 0 0;
+  font-size: 10px;
+  color: var(--ds-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.announcement-date {
+  font: 600 10px var(--ds-font-mono);
+  color: var(--ds-muted);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   11. MERKEZİ TAB & FİLTRE PİLLERİ (CLAY TABS & FILTERS)
+   ========================================================================== */
+
+.clay-tabs-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-pill);
+  margin-bottom: 14px;
+}
+
+.clay-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--ds-radius-pill);
+  border: 0;
+  background: transparent;
+  color: var(--ds-muted);
+  font: 700 12px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.clay-tab-btn.is-active {
+  background: var(--ds-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(24, 28, 36, 0.2);
+}
+
+.clay-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: var(--ds-radius-pill);
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+  font: 700 10px var(--ds-font-mono);
+}
+
+.clay-tab-btn.is-active .clay-tab-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.clay-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 14px;
+  scrollbar-width: none;
+}
+
+.clay-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.clay-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border-radius: var(--ds-radius-pill);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-muted);
+  font: 600 11px var(--ds-font-main);
+  box-shadow: var(--ds-shadow-pill);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.clay-filter-pill:active {
+  transform: scale(0.96);
+}
+
+.clay-filter-pill.is-active {
+  background: var(--ds-primary);
+  color: #ffffff;
+  border-color: var(--ds-primary);
+  box-shadow: 0 4px 12px rgba(24, 28, 36, 0.2);
+}
+
+/* ==========================================================================
+   12. ARAMA VE FORM ELEMANLARI (CLAY SEARCH & INPUTS)
+   ========================================================================== */
+
+.clay-search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-pill);
+  margin-bottom: 14px;
+}
+
+.clay-search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ds-ink);
+  font: 600 13px var(--ds-font-main);
+  outline: none;
+}
+
+.clay-search-input::placeholder {
+  color: var(--ds-muted);
+  font-weight: 500;
+}
+
+.clay-search-action {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.clay-search-action:active {
+  background: #e2e8f0;
+}
+
+.clay-form-group {
+  margin-bottom: 14px;
+}
+
+.clay-form-label {
+  display: block;
+  font: 700 11px var(--ds-font-main);
+  color: var(--ds-muted);
+  margin-bottom: 6px;
+}
+
+.clay-input, .clay-select, .clay-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-border-subtle);
+  color: var(--ds-ink);
+  font: 600 13px var(--ds-font-main);
+  outline: none;
+  transition: all 0.18s ease;
+}
+
+.clay-input:focus, .clay-select:focus, .clay-textarea:focus {
+  background: #ffffff;
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(24, 28, 36, 0.08);
+}
+
+/* ==========================================================================
+   13. GENEL LİSTE KARTI & DETAY ELEMANLARI (CLAY CARD)
+   ========================================================================== */
+
+.clay-card {
+  padding: 16px;
+  border-radius: var(--ds-radius-tile);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-tile);
+  margin-bottom: 12px;
+  transition: transform 0.15s ease;
+}
+
+.clay-card:active {
+  transform: scale(0.985);
+}
+
+.clay-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.clay-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ds-ink);
+}
+
+.clay-card-subtitle {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--ds-muted);
+}
+
+.clay-card-body {
+  font-size: 12px;
+  color: var(--ds-ink);
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.clay-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--ds-border-subtle);
+}
+
+/* ==========================================================================
+   14. ROZETLER & BUTONLAR (CLAY BADGES & BUTTONS)
+   ========================================================================== */
+
+.clay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-pill);
+  font: 700 10px var(--ds-font-main);
+}
+
+.clay-badge--blue    { background: rgba(56, 189, 248, 0.12); color: #0284c7; }
+.clay-badge--emerald { background: rgba(16, 185, 129, 0.12); color: #059669; }
+.clay-badge--amber   { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+.clay-badge--coral   { background: rgba(251, 113, 133, 0.12); color: #e11d48; }
+.clay-badge--purple  { background: rgba(168, 85, 247, 0.12); color: #7c3aed; }
+
+.clay-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: var(--ds-radius-sm);
+  border: 0;
+  font: 700 12px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clay-btn:active {
+  transform: scale(0.97);
+}
+
+.clay-btn--primary {
+  background: var(--ds-primary);
+  color: #ffffff;
+  box-shadow: var(--ds-shadow-btn);
+}
+
+.clay-btn--secondary {
+  background: var(--ds-surface-subtle);
+  color: var(--ds-ink);
+}
+
+.clay-btn--danger {
+  background: #fee2e2;
+  color: var(--ds-danger);
+}
+
+.clay-btn--pill {
+  border-radius: var(--ds-radius-pill);
+}
+
+/* ==========================================================================
+   15. BOTTOM SHEET / MODAL SİSTEMİ (CLAY MODALS)
+   ========================================================================== */
+
+.clay-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.clay-modal-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: var(--ds-surface);
+  border-radius: 28px 28px 0 0;
+  padding: 20px 20px calc(24px + var(--ds-safe-bottom));
+  box-shadow: var(--ds-shadow-float);
+  border-top: 1px solid var(--ds-border);
+  max-height: 90svh;
+  overflow-y: auto;
+}
+
+.clay-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--ds-radius-pill);
+  background: #cbd5e1;
+  margin: 0 auto 16px;
+}
+
+.clay-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.clay-sheet-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ds-ink);
+}
+
+.clay-sheet-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.clay-sheet-actions .clay-btn {
+  flex: 1;
+}
+
+/* ==========================================================================
+   16. DURUM KARTLARI & İSKELETLER (STATE CARDS & SKELETONS)
+   ========================================================================== */
+
+.clay-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 20px;
+  text-align: center;
+  border-radius: var(--ds-radius-tile);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-tile);
+  color: var(--ds-muted);
+}
+
+.clay-state-card strong {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.clay-state-card p {
+  margin: 4px 0 14px;
+  font-size: 11px;
+  color: var(--ds-muted);
+}
+
+.clay-retry-btn {
+  padding: 8px 18px;
+  border-radius: var(--ds-radius-pill);
+  border: 0;
+  background: var(--ds-primary);
+  color: #ffffff;
+  font: 700 11px var(--ds-font-main);
+  cursor: pointer;
+}
+
+.clay-spin-icon {
+  animation: clay-spin 1s linear infinite;
+}
+
+@keyframes clay-spin {
+  to { transform: rotate(360deg); }
+}
+
+.clay-skeleton-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.clay-skeleton-card {
+  border-radius: var(--ds-radius-card);
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: clay-shimmer 1.5s infinite;
+}
+
+.clay-skeleton-card--lg { height: 260px; }
+.clay-skeleton-card--md { height: 200px; }
+
+@keyframes clay-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   17. OBSIDIAN GLASS BOTTOM DOCK (STANDART DOCK)
+   ========================================================================== */
+
+.bottom-nav {
+  bottom: max(14px, var(--ds-safe-bottom));
+  width: min(calc(100% - 32px), 440px);
+  min-height: 66px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--ds-radius-pill);
+  background: rgba(17, 22, 27, 0.9);
+  box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.45), inset 0 1px 1.5px rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+}
+
+.bottom-nav__tabs {
+  align-items: center;
+}
+
+.bottom-nav__home-bar {
+  display: none;
+}
+
+.nav-link, .nav-link--center {
+  height: 50px;
+  justify-content: center;
+  gap: 3px;
+  color: rgba(238, 241, 243, 0.58);
+}
+
+.nav-icon {
+  width: 25px;
+  height: 25px;
+  color: inherit;
+}
+
+.app-shell .nav-label {
+  color: inherit;
+  font: 500 8px/11px var(--ds-font-mono);
+}
+
+.nav-link.is-active .nav-icon,
+.nav-link.is-active .nav-label,
+.nav-link--center[aria-expanded=true] .nav-icon,
+.nav-link--center[aria-expanded=true] .nav-label {
+  color: #ffffff;
+}
+
+.nav-link.is-active::after {
+  position: absolute;
+  bottom: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  content: '';
+}
+
+.nav-link--center {
+  position: relative;
+  padding-bottom: 0;
+}
+
+.nav-link--center .nav-icon {
+  position: static;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  color: inherit !important;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-link--center.is-active .nav-icon,
+.nav-link--center[aria-expanded=true] .nav-icon {
+  color: #ffffff !important;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ==========================================================================
+   18. GERİYE DÖNÜK PERSONEL DİZİNİ UYUMLULUĞU
+   ========================================================================== */
+
+.ds-personnel-directory {
+  padding-right: 16px;
+  padding-left: 16px;
+  font-family: var(--ds-font-main);
+  padding-bottom: calc(170px + var(--ds-safe-bottom));
+}
+
+.ds-personnel-directory .directory-topbar {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  gap: 12px;
+}
+
+.ds-personnel-directory .directory-topbar > button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--ds-border);
+  border-radius: 50%;
+  color: var(--ds-primary);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-pill);
+}
+
+.ds-personnel-directory .personnel-summary {
+  display: grid;
+  margin-top: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ds-personnel-directory .personnel-summary button {
+  padding: 13px 8px;
+  border: 1px solid var(--ds-border);
+  border-radius: 18px;
+  color: var(--ds-muted);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-pill);
+}
+
+.ds-personnel-directory .personnel-summary button.active {
+  border-color: var(--ds-primary);
+  color: #fff;
+  background: var(--ds-primary);
+}
+
+.ds-personnel-directory .directory-search {
+  height: 48px;
+  padding: 0 15px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-pill);
+}
+
+.ds-personnel-directory .personnel-row {
+  min-height: 84px;
+  padding: 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: 22px;
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-tile);
+  margin-bottom: 10px;
+}
+
+.ds-personnel-directory .personnel-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  color: #fff;
+  background: var(--ds-primary);
+}
+
+.ds-personnel-directory .personnel-fab {
+  right: max(22px, calc((100vw - 480px)/2 + 22px));
+  bottom: 94px;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: var(--ds-primary);
+  box-shadow: var(--ds-shadow-float);
+}
+
+/* ==========================================================================
+   19. MERKEZİ TOPBAR BİLEŞENİ (SHARED TOPBAR COMPONENT)
+   ========================================================================== */
+
+.topbar {
+  margin-bottom: 20px;
+}
+
+.topbar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-row .avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: linear-gradient(135deg, var(--ds-primary), #374151);
+  color: #ffffff;
+  font: 700 12px var(--ds-font-mono);
+  box-shadow: var(--ds-shadow-pill);
+  flex-shrink: 0;
+}
+
+.topbar-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-copy .eyebrow {
+  display: block;
+  font: 700 10px var(--ds-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--ds-muted);
+  text-transform: uppercase;
+}
+
+.topbar-copy h1 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--ds-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-copy p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ds-muted);
+}
+
+.topbar-row .icon-button {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: #4b5563;
+  box-shadow: var(--ds-shadow-pill);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.topbar-row .icon-button.has-dot::after {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ds-danger);
+  border: 1.5px solid #ffffff;
+  content: '';
+}
+
+.topbar .search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  margin-top: 14px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  box-shadow: var(--ds-shadow-pill);
+}
+
+.topbar .search-box input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--ds-ink);
+  background: transparent;
+  font: 600 13px var(--ds-font-main);
+}
+
+.topbar .search-box input::placeholder {
+  color: var(--ds-muted);
+}
+
+.topbar .search-box button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
+}
+
+@media (min-width: 430px) {
+  .ds-screen {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
+

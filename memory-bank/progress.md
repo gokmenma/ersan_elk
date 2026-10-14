@@ -1,8 +1,24 @@
 # Progress
 
+- [x] Mobile SPA (`mobile-spa`): Soft Bento & Claymorphic UI mimarisi tüm mobil uygulama için merkezi varsayılan tasarım standardı yapıldı.
+  - Merkezi `src/design-system.css` kütüphanesi oluşturuldu: `--ds-canvas: #e6eaef` (mat gri/arduvaz), `--ds-surface: #ffffff` (saf beyaz bento kart), `--ds-surface-dark: #191d24` (obsidian bento kart), 28px kart kavisleri, 3D yumuşak gölgeler, segmentli barlar, metrik ızgaraları, hap butonlar ve modallar merkezi tokenlara bağlandı.
+  - Tek noktadan yönetim (Single Source of Truth) sağlandı: Gelecekte bir tasarım değişikliği yapıldığında sadece `design-system.css` üzerinden tüm sayfaların anında güncellenmesi garanti altına alındı.
+  - Ekran Görüntüsü & Uyumsuzluk Temizliği: Eski `.personnel-hero`, `.form-topbar` ve `.workspace-header` lacivert/mavi degrade dalgalı başlıkları `styles.css` içinden tamamen temizlendi.
+  - Sayfa Modernizasyonları: `PersonnelView.vue`, `PersonnelDetailView.vue`, `PersonnelSectionView.vue`, `PersonnelFormView.vue`, `HomeView.vue`, `TaleplerView.vue`, `ReportsView.vue`, `TasksView.vue`, `ProfileView.vue`, `KasaView.vue`, `FaturaView.vue` ve `TopBar.vue` merkezi Soft Bento standartlarına dönüştürüldü.
+  - `TopBar.vue` `#actions` slotu ile tüm sayfaların özel aksiyon butonları tek tip dairesel clay buton yapısına bağlandı.
+  - `AGENTS.md` (Madde 10) tasarım standardı kural olarak tescillendi.
+  - `npm run build` ile üretim paketi başarıyla derlendi.
+
+  - Backend API (`mobile-spa/public/api/kasa.php` & `dist/api/kasa.php`) oluşturuldu; session, Gate yetkileri (`gelir_gider_takibi`, `gelir-gider/list`, `kasa/list`), CSRF doğrulaması, Model katmanı (`GelirGiderModel`, `SystemLogModel`) ve `sql_gelir_gider` view entegrasyonu sağlandı.
+  - Frontend servisi (`mobile-spa/src/services/kasa.js`) ve görünüm bileşeni (`mobile-spa/src/views/KasaView.vue`) oluşturuldu (3 KPI özet kartı, son 4 yıl & ay ve tip filtreleri, canlı arama, gelir/gider listesi, yeni/düzenle bottom sheet form modalı, şık makbuz/detay modalı, tüm hareketler modalı, güvenli silme diyaloğu, FAB butonu).
+  - Router (`/kasa`, `/gelir-gider`, `/kasa-yonetimi`) ve `BottomNav.vue` "Daha Fazla" menüsündeki "Kasa Yönetimi" butonu doğrudan SPA içi `to: '/kasa'` rotasına bağlandı.
+  - `npm run build` ile Vite derlemesi başarıyla tamamlandı.
+
+
 - [x] Mobile SPA (`mobile-spa`): `@mobile` içerisindeki tüm fatura yetenekleri (`efatura.php`, `efatura-giden.php`, `efatura-gelen.php`, `efatura-taslak.php`, `efatura-olustur.php`) Glacier Alpine Design System standartlarında SPA mimarisine aktarıldı.
-  - Backend API (`mobile-spa/public/api/fatura.php`) oluşturuldu; session, Gate yetkileri, CSRF doğrulaması ve Model katmanı ile güvenliği sağlandı.
+  - Backend API (`mobile-spa/public/api/fatura.php` & `dist/api/fatura.php`) oluşturuldu; session, Gate yetkileri, CSRF doğrulaması ve Model katmanı ile güvenliği sağlandı.
   - Frontend servisi (`mobile-spa/src/services/fatura.js`) ve görünüm bileşeni (`mobile-spa/src/views/FaturaView.vue`) oluşturuldu (Özet & KDV, Giden, Gelen, Taslaklar, 4 adımlı fatura sihirbazı, tam ekran HTML/PDF önizleme, ticari yanıt verme sheet'i).
+  - Fatura kartları & satırları Glacier Alpine Design System standartlarında yeniden tasarlandı: 3 katmanlı (.fatura-row-card), 2 satır sınırlamalı müşteri unvanı, renkli mono no tag, tarih hapı, canlı durum noktalı rozet, 16px bold sembollü tutar ve "Fatura Gör" aksiyon hapı eklendi.
   - Router (`/fatura` & `/efatura`) ve `BottomNav.vue` "Daha Fazla" menüsündeki "E-Fatura & Finans" butonu SPA rotasına bağlandı.
   - `npm run build` ile Vite derlemesi başarıyla tamamlandı.
 - [x] Personel PWA Kaçak sayfasında onaylanan aktif tutanaklara ekip üyeleri için fotoğraf/video/açıklama ekleme akışı tamamlandı; açıklama güvenilir kuyruk üzerinden sunucuya taşınıp mevcut tutanak açıklamasına ekleniyor ve API sahiplik/onay/aktiflik kontrollerini uyguluyor.
@@ -45,9 +61,17 @@
 - [x] Mobile SPA TaleplerView ekranındaki mükerrer sekme barı kaldırıldı; üst KPI bento kartı üzerinden tekil ve net kategori geçişi sağlandı.
 - [x] Mobile SPA TaleplerView üst KPI kartındaki global `min-height: 210px` zorlaması kaldırılarak kart yüksekliği içeriğe tam uyumlu, kompakt ve minimal hale getirildi.
 - [x] Mobile SPA TaleplerView sıralama butonu metinsiz, kompakt dairesel ikon butonuna (`ArrowUpDown`) dönüştürüldü; üretim derlemesi alındı.
+- [x] Mobil SPA genelinde Glassmorphism (buzlu cam) deseni uygulandı: zemin ambient mesh gradient küreleri, `backdrop-filter: blur(20px-28px) saturate(180%-200%)`, 1px beyaz ışık kenarlığı, bento KPI kartı, durum pilleri, arama alanı, liste kartları ve alt dock/çekmece cam dokusu tamamlandı; üretim derlemesi alındı.
 
 ## Neler Kaldı / Devam Edenler?
 - [ ] `sql/2026_10_13_restore_deleted_vehicles_06_dfd_805_46_ala_432.sql` kontrollü araç geri yükleme scripti hedef veritabanına uygulanacak.
 - [ ] `sql/2026_10_13_add_kacak_report_table_policy.sql` veritabanına uygulanacak.
 - [ ] `sql/2026_10_13_uets_selected_import_policy.sql` veritabanına uygulanacak.
 - [ ] Kullanıcı ortamında gerçek UETS API canlı/test tebligat işlemleri takibi.
+
+## 2026-10-14
+- [x] Muhasebe Excel'i tek ve sade `Mutabakat` sayfasına dönüştürüldü.
+- [x] Fiilî gün ve rapor günü TC kolonundan sonra eklendi.
+- [x] Seçili personeller için toplu `Bordro Kontrol` Excel dökümü eklendi.
+- [x] Bordro Kontrol indirmesindeki PhpSpreadsheet gridline metot uyumsuzluğu giderildi.
+- [x] Bordro Kontrol dosyasındaki puantaj/sayaç ve kaçak kontrol hareketleri özet satırlarda gruplandı.
