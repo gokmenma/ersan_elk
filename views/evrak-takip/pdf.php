@@ -29,6 +29,7 @@ if ($currentUserId <= 0 || !(new MenuModel())->userCanAccessMenuLink($currentUse
 try {
     $downloadType = (string) ($_GET['type'] ?? '');
     $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+    $model = new EvrakTakipModel();
 
     // UETS Delil PDF İndirme / Görüntüleme
     if ($downloadType === 'uets_delil') {
