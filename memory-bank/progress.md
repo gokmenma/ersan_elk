@@ -135,3 +135,12 @@
 - [x] Snapshot'taki elden kesintisinin banka kesintisi fallback'ine girmesi engellendi.
 - [x] Kesinti kartının tüm kesintileri göstermesi ile banka detayının yalnız banka kanalını göstermesi ayrıştırıldı.
 - [x] 3.000 TL elden kesintinin 36.811,35 TL kayıtlı resmî alacağı 39.811,35 TL'ye yükseltmediğini doğrulayan regresyon testi eklendi.
+
+# Hafta içi nöbet geri alma
+
+- [x] `prim` açıklamasından otomatik fazla mesai sınıflandırması yapan son değişiklikler geri alındı.
+- [x] Önceki elden kesintisi/resmî alacak düzeltmesi korundu ve ilgili bordro testleri yeniden çalıştırıldı.
+- [x] Gerçek `hafta_ici_nobet` hakedişi fazla mesai hedef netinin altında kalmayacak ve tabanın üstüne eklenecek şekilde düzenlendi.
+- [x] Maaşa dahil nihai toplamın yükseltilmiş nöbet `net_etki` değeri yerine ham tutarı tekrar kullanması düzeltildi.
+- [x] Bordro detayındaki nöbet satırı yükseltilmiş snapshot tutarıyla eşlendi.
+- [x] Muhasebe Mutabakat Excel'ine Toplam Gün ve İzin Günü kolonları eklendi; ücretli/ücretsiz izin toplamı ortak ödeme özetinden aktarılır hale getirildi.

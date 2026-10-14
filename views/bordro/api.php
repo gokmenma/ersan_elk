@@ -1030,6 +1030,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                 $detayData = json_decode($bp->hesaplama_detay ?? '', true);
+                $snapshotEkOdemeNetleri = [];
+                foreach (($detayData['ek_odemeler'] ?? []) as $snapshotEkOdeme) {
+                    if (isset($snapshotEkOdeme['id'], $snapshotEkOdeme['net_etki'])) {
+                        $snapshotEkOdemeNetleri[(int) $snapshotEkOdeme['id']] = (float) $snapshotEkOdeme['net_etki'];
+                    }
+                }
 
                 foreach ($tumEkOdemeler as $odeme) {
                     $parsedAdet = 0;
@@ -1042,8 +1048,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
                     if (strpos($aciklama, '[Nöbet]') === 0) {
-                        $nobetOdemeler[] = $odeme;
-                        $toplamNobetTutar += floatval($odeme->tutar);
+                        $nobetGosterim = clone $odeme;
+                        $nobetGosterim->tutar = $snapshotEkOdemeNetleri[(int) ($odeme->id ?? 0)] ?? floatval($odeme->tutar);
+                        $nobetOdemeler[] = $nobetGosterim;
+                        $toplamNobetTutar += floatval($nobetGosterim->tutar);
                     } elseif (strpos($aciklama, '[Kaçak Kontrol]') === 0) {
                         $kacakKontrolOdemeler[] = $odeme;
                         $toplamKacakTutar += floatval($odeme->tutar);
@@ -2009,6 +2017,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                 $detayData = json_decode($bp->hesaplama_detay ?? '', true);
+                $snapshotEkOdemeNetleri = [];
+                foreach (($detayData['ek_odemeler'] ?? []) as $snapshotEkOdeme) {
+                    if (isset($snapshotEkOdeme['id'], $snapshotEkOdeme['net_etki'])) {
+                        $snapshotEkOdemeNetleri[(int) $snapshotEkOdeme['id']] = (float) $snapshotEkOdeme['net_etki'];
+                    }
+                }
 
                 foreach ($tumEkOdemeler as $odeme) {
                     $parsedAdet = 0;
@@ -2021,8 +2035,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
                     if (strpos($aciklama, '[Nöbet]') === 0) {
-                        $nobetOdemeler[] = $odeme;
-                        $toplamNobetTutar += floatval($odeme->tutar);
+                        $nobetGosterim = clone $odeme;
+                        $nobetGosterim->tutar = $snapshotEkOdemeNetleri[(int) ($odeme->id ?? 0)] ?? floatval($odeme->tutar);
+                        $nobetOdemeler[] = $nobetGosterim;
+                        $toplamNobetTutar += floatval($nobetGosterim->tutar);
                     } elseif (strpos($aciklama, '[Kaçak Kontrol]') === 0) {
                         $kacakKontrolOdemeler[] = $odeme;
                         $toplamKacakTutar += floatval($odeme->tutar);

@@ -207,6 +207,23 @@ class BordroPersonelModel extends Model
         return round(max(0.0, $normalPuantajHakedisi, $asgariNetTaban) + max(0.0, $ekCalismaHakedisi), 2);
     }
 
+    /** Hafta içi nöbet için kayıtlı net ile kanuni fazla mesai hedefinin yüksek olanını uygular. */
+    private function hesaplaHaftaIciNobetHakedisi(float $kayitliNet, float $fazlaMesaiHedefNet): float
+    {
+        return round(max(0.0, $kayitliNet, $fazlaMesaiHedefNet), 2);
+    }
+
+    /** Hesaplama sırasında yükseltilmiş net etki varsa ham ek ödeme tutarına geri dönmez. */
+    private function ekOdemeUygulananNet(array $ekOdeme): float
+    {
+        return max(0.0, (float) (
+            $ekOdeme['net_etki']
+            ?? $ekOdeme['hesaplanan_tutar']
+            ?? $ekOdeme['tutar']
+            ?? 0
+        ));
+    }
+
     // Net/prim maaşta yalnız resmî alacak kalemleri bankaya eklenir, personel kesintileri sonra düşülür.
     // Banka kesintileri önce bankadan (yetmezse elden'den), Elden kesintileri önce elden'den (yetmezse bankadan) düşülür.
     private function hesaplaNormalBankaDagilimi(float $asgariTaban, float $bankaEkleri, float $bankaKesintisi, float $netAlacagi, float $sodexo, float $diger, float $eldenKesintisi = 0.0): array
@@ -1071,7 +1088,8 @@ class BordroPersonelModel extends Model
                 'muhasebeBankaPrimTutari' => 0.0, 'muhasebeDagilimaDahilPrim' => 0.0,
                 'muhasebeHariciYemekTutari' => 0.0, 'muhasebeBankaYemekTutari' => 0.0,
                 'maasDurumu' => (string) ($p->maas_durumu ?? ''), 'maasTutari' => 0.0, 'rawEkOdeme' => 0.0,
-                'ucretsizIzinGunu' => 0, 'calismaGunu' => 0, 'kesintiHaricIcra' => 0.0, 'icraKesintisi' => 0.0,
+                'ucretliIzinGunu' => 0, 'ucretsizIzinGunu' => 0, 'calismaGunu' => 0,
+                'kesintiHaricIcra' => 0.0, 'icraKesintisi' => 0.0,
                 'toplamAlacagi' => 0.0, 'netAlacagi' => 0.0, 'netMaasGercek' => 0.0,
                 'bankaOdemesi' => 0.0, 'sodexoOdemesi' => 0.0, 'digerOdeme' => 0.0, 'eldenOdeme' => 0.0,
                 'mealAllowanceDeduction' => 0.0, 'spouseAllowanceDeduction' => 0.0, 'includedAllowanceDeduction' => 0.0,
@@ -1281,6 +1299,7 @@ class BordroPersonelModel extends Model
             'muhasebeHariciYemekTutari' => 0.0, 'muhasebeBankaYemekTutari' => 0.0,
             'maasDurumu' => (string) ($detay['maas_durumu'] ?? $p->maas_durumu ?? ''),
             'maasTutari' => $nominalMaas, 'rawEkOdeme' => round((float) ($p->prim_tutar ?? 0), 2),
+            'ucretliIzinGunu' => (int) ($matrah['ucretli_izin_gunu'] ?? 0),
             'ucretsizIzinGunu' => (int) ($matrah['ucretsiz_izin_gunu'] ?? 0), 'calismaGunu' => $calismaGunu,
             'kesintiHaricIcra' => $kesinti, 'icraKesintisi' => $icra,
             'toplamAlacagi' => $toplamAlacak, 'netAlacagi' => $netAlacak, 'netMaasGercek' => $netAlacak,
@@ -2048,6 +2067,7 @@ class BordroPersonelModel extends Model
             'muhasebeHariciYemekTutari' => round($muhasebeHariciYemekToplami, 2),
             'muhasebeBankaYemekTutari' => round($muhasebeBankaYemekToplami, 2),
             'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
+            'ucretliIzinGunu' => $ucretliIzinGunu,
             'ucretsizIzinGunu' => $ucretsizIzinGunu, 'calismaGunu' => $calismaGunu,
             'kesintiHaricIcra' => $kesintiHaricIcra, 'icraKesintisi' => $icraKesintisi,
             'toplamAlacagi' => $gosterimToplamAlacagi, 'netAlacagi' => $netAlacagi, 'netMaasGercek' => $netMaasGercek,
@@ -2299,6 +2319,8 @@ class BordroPersonelModel extends Model
         return [
             'toplam_gun' => (int) $hesap['calismaGunu'],
             'fiili_gun' => $gun,
+            'izin_gun' => max(0, (int) ($hesap['ucretliIzinGunu'] ?? 0))
+                + max(0, (int) ($hesap['ucretsizIzinGunu'] ?? 0)),
             'gunluk_nakit' => $gun > 0 ? round(($yemek > 0 ? $yemek : $kart) / $gun, 2) : 0.0,
             'nakit_yemek' => $yemek,
             'resmi_yemek_yardimi' => $resmiYemek,
@@ -6445,6 +6467,17 @@ class BordroPersonelModel extends Model
             }
             $turLower = mb_strtolower((string) ($odeme->tur ?? ''), 'UTF-8');
             $aciklamaLower = mb_strtolower((string) ($odeme->aciklama ?? ''), 'UTF-8');
+            if ($turLower === 'hafta_ici_nobet' && $rNet > 0) {
+                $uygulanacakNobetHakedisi = $this->hesaplaHaftaIciNobetHakedisi($ekOdemeTutari, $rNet);
+                $nobetHakedisFarki = round($uygulanacakNobetHakedisi - $ekOdemeTutari, 2);
+                if ($nobetHakedisFarki > 0) {
+                    $netEkOdemeler += $nobetHakedisFarki;
+                    $ekOdemeTutari = $uygulanacakNobetHakedisi;
+                    $detay['net_etki'] = $uygulanacakNobetHakedisi;
+                    $detay['kayitli_nobet_neti'] = round($tutar, 2);
+                    $detay['fazla_mesai_hedef_neti'] = round($rNet, 2);
+                }
+            }
             // Yalnızca otomatik üretilen puantaj/sayaç/kaçak kalemleri resmî banka tavanına
             // taşınmaz. Elle girilen primlerde kullanıcının Banka/Elden seçimi geçerlidir.
             $isPrimOdemeItem = $this->isPuantajEkOdeme($aciklamaLower);
@@ -6959,7 +6992,7 @@ class BordroPersonelModel extends Model
                 $isPrimEk = strpos($kod, 'prim') !== false;
                 $isBankaMatrahi = !isset($ek['banka_matrahina_ekle']) || intval($ek['banka_matrahina_ekle']) === 1;
                 if (!$isPuantajEk && !$isDahilYardimEk) {
-                    $ekTutar = floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                    $ekTutar = $this->ekOdemeUygulananNet($ek);
                     if ($isBankaMatrahi && !$this->isYemektenBagimsizEkCalismaTuru($kod)) {
                         $bankayaTasinabilirEkOdeme += $ekTutar;
                         if (!$isPrimEk) {
@@ -7287,7 +7320,8 @@ class BordroPersonelModel extends Model
             ],
             'matrahlar' => [
                 'brut_maas' => round($brutMaas, 2), 'nominal_maas' => round($nominalBrutMaas, 2), 'ssk_gunu' => $maasHesapGunu, 'normal_gun' => $normGun,
-                'rapor_gunu' => $raporGunu, 'ucretsiz_izin_gunu' => $ucretsizIzinGunu, 'ucretsiz_izin_dusumu' => round($ucretsizIzinDusumu, 2),
+                'rapor_gunu' => $raporGunu, 'ucretli_izin_gunu' => $ucretliIzinGunu,
+                'ucretsiz_izin_gunu' => $ucretsizIzinGunu, 'ucretsiz_izin_dusumu' => round($ucretsizIzinDusumu, 2),
                 'maas_hesap_gunu' => $maasHesapGunu, 'fiili_calisma_gunu' => $fiiliCalismaGunu, 'calisan_brut_maas' => round($calisanBrutMaas, 2),
                 'rtc_gun' => $rtcGunHesap, 'htc_gun' => $htcGunHesap,
                 'sgk_matrahi' => round($sgkMatrahi, 2), 'gelir_vergisi_matrahi' => round($gelirVergisiMatrahi, 2), 'damga_vergisi_matrahi' => round($damgaVergisiMatrahi, 2),

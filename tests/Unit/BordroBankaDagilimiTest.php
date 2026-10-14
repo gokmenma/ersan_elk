@@ -43,6 +43,29 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(4679.25, $method->invoke($model, 4120, 0, 4679.25));
     }
 
+    public function testHaftaIciNobetFazlaMesaiHedefininAltindaKalamaz(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'hesaplaHaftaIciNobetHakedisi');
+
+        self::assertSame(748.68, $method->invoke($model, 500, 748.68));
+        self::assertSame(1500.0, $method->invoke($model, 1500, 748.68));
+        self::assertSame(0.0, $method->invoke($model, 0, 0));
+    }
+
+    public function testYukseltilmisNobetNetiHamTutaraGeriDonmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'ekOdemeUygulananNet');
+
+        self::assertSame(748.68, $method->invoke($model, [
+            'tutar' => 500,
+            'net_etki' => 748.68,
+            'resmi_banka_net' => 748.68,
+        ]));
+        self::assertSame(500.0, $method->invoke($model, ['tutar' => 500]));
+    }
+
     public function testMuhasebeHedefiHesaplanirAmaEskiSnapshotBankaSatiriKorunur(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
@@ -526,6 +549,8 @@ final class BordroBankaDagilimiTest extends TestCase
             'sodexoOdemesi' => 0,
             'includedAllowanceFiiliGun' => 27,
             'calismaGunu' => 30,
+            'ucretliIzinGunu' => 2,
+            'ucretsizIzinGunu' => 1,
             'spouseAllowanceDeduction' => 0,
             'icraKesintisi' => 0,
             'asgariHakedis' => 28075.50,
@@ -549,6 +574,9 @@ final class BordroBankaDagilimiTest extends TestCase
         ]);
 
         self::assertSame(100.0, $ozet['prim_hakedisi_bilgi']);
+        self::assertSame(30, $ozet['toplam_gun']);
+        self::assertSame(27, $ozet['fiili_gun']);
+        self::assertSame(3, $ozet['izin_gun']);
         self::assertSame(100.0, $ozet['dagilima_dahil_prim_bilgi']);
         self::assertSame(0.0, $ozet['prim']);
         self::assertSame(8100.0, $ozet['resmi_yemek_yardimi']);
