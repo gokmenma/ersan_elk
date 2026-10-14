@@ -42,6 +42,12 @@ try {
         case 'save_kesinti':
             $tekrarTipi = $_POST['tekrar_tipi'] ?? 'tek_sefer';
             $hesaplamaTipi = $_POST['hesaplama_tipi'] ?? 'sabit';
+            $islemTarihi = Date::dttoeng($_POST['tarih'] ?? date('d.m.Y'));
+
+            if (!$islemTarihi) {
+                echo json_encode(['error' => 'Geçerli bir işlem tarihi giriniz.']);
+                break;
+            }
 
             if ($tekrarTipi === 'taksitli') {
                 $taksitSayisi = intval($_POST['taksit_sayisi'] ?? 1);
@@ -62,7 +68,7 @@ try {
                     'hesaplama_tipi' => $hesaplamaTipi,
                     'tutar' => $toplamTutar,
                     'oran' => floatval($_POST['oran'] ?? 0),
-                    'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
+                    'tarih' => $islemTarihi,
                     'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1,
                     'aciklama' => $_POST['aciklama'] ?? '',
                     'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
@@ -98,7 +104,7 @@ try {
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'tutar' => floatval($_POST['tutar'] ?? 0),
                 'oran' => floatval($_POST['oran'] ?? 0),
-                'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
+                'tarih' => $islemTarihi,
                 'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1,
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
@@ -112,9 +118,15 @@ try {
                 $data['baslangic_donemi'] = null;
                 $data['bitis_donemi'] = null;
             } else {
+                $baslangicDonemi = Date::dttoeng($_POST['baslangic_donemi'] ?? '');
+                $bitisDonemi = !empty($_POST['bitis_donemi']) ? Date::dttoeng($_POST['bitis_donemi']) : null;
+                if (!$baslangicDonemi || (!empty($_POST['bitis_donemi']) && !$bitisDonemi)) {
+                    echo json_encode(['error' => 'Geçerli bir başlangıç ve bitiş tarihi giriniz.']);
+                    break;
+                }
                 $data['donem_id'] = null;
-                $data['baslangic_donemi'] = $_POST['baslangic_donemi'] ?? date('Y-m');
-                $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? $_POST['bitis_donemi'] : null;
+                $data['baslangic_donemi'] = $baslangicDonemi;
+                $data['bitis_donemi'] = $bitisDonemi;
             }
 
             $result = $kesintiModel->saveWithAttr($data);
@@ -134,6 +146,12 @@ try {
 
             $tekrarTipi = $_POST['tekrar_tipi'] ?? 'tek_sefer';
             $hesaplamaTipi = $_POST['hesaplama_tipi'] ?? 'sabit';
+            $islemTarihi = Date::dttoeng($_POST['tarih'] ?? date('d.m.Y'));
+
+            if (!$islemTarihi) {
+                echo json_encode(['error' => 'Geçerli bir işlem tarihi giriniz.']);
+                break;
+            }
 
             $data = [
                 'tur' => $_POST['tur'] ?? 'diger',
@@ -141,7 +159,7 @@ try {
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'tutar' => floatval($_POST['tutar'] ?? 0),
                 'oran' => floatval($_POST['oran'] ?? 0),
-                'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
+                'tarih' => $islemTarihi,
                 'banka_matrahina_ekle' => isset($_POST['banka_matrahina_ekle']) ? intval($_POST['banka_matrahina_ekle']) : 1,
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
@@ -154,9 +172,15 @@ try {
                 $data['baslangic_donemi'] = null;
                 $data['bitis_donemi'] = null;
             } else {
+                $baslangicDonemi = Date::dttoeng($_POST['baslangic_donemi'] ?? '');
+                $bitisDonemi = !empty($_POST['bitis_donemi']) ? Date::dttoeng($_POST['bitis_donemi']) : null;
+                if (!$baslangicDonemi || (!empty($_POST['bitis_donemi']) && !$bitisDonemi)) {
+                    echo json_encode(['error' => 'Geçerli bir başlangıç ve bitiş tarihi giriniz.']);
+                    break;
+                }
                 $data['donem_id'] = null;
-                $data['baslangic_donemi'] = $_POST['baslangic_donemi'] ?? date('Y-m');
-                $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? $_POST['bitis_donemi'] : null;
+                $data['baslangic_donemi'] = $baslangicDonemi;
+                $data['bitis_donemi'] = $bitisDonemi;
             }
 
             $mevcutKesinti = $kesintiModel->getKesinti($id);

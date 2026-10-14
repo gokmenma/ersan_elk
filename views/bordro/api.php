@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
+use App\Model\BordroKapanisArsivModel;
 use App\Model\PersonelModel;
 use App\Model\BordroParametreModel;
 use App\Model\SystemLogModel;
@@ -864,7 +865,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (empty($hesap['hesaplanmis'])) {
                     throw new Exception('Bu personelin bordrosu henüz hesaplanmadı. Önce Maaş Hesapla işlemini çalıştırın.');
                 }
-                $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap);
+                $muhasebeFazlaMesaiOzeti = $BordroPersonel->getMuhasebeFazlaMesaiNetOzeti($bp, $donemBilgi);
+                $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap, $muhasebeFazlaMesaiOzeti);
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
                 $isInclusive = (bool) $hesap['isInclusive'];
@@ -1879,7 +1881,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (empty($hesap['hesaplanmis'])) {
                     throw new Exception('Bu personelin bordrosu henüz hesaplanmadı. Önce Maaş Hesapla işlemini çalıştırın.');
                 }
-                $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap);
+                $muhasebeFazlaMesaiOzeti = $BordroPersonel->getMuhasebeFazlaMesaiNetOzeti($bp, $donemBilgi);
+                $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap, $muhasebeFazlaMesaiOzeti);
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
                 $isInclusive = (bool) $hesap['isInclusive'];
@@ -2262,7 +2265,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // SONRA tam olarak bu hedefe ulaşacak şekilde brüte tamamlanır (bruteUpForNetTarget).
                 $rtcHedefNetModal = $rtcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2) : 0.0;
                 $htcHedefNetModal = $htcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2) : 0.0;
-                $htcEldenTutar = ($htcGunModal > 0) ? ($isInclusive ? 0.0 : round(($nominalMaas - floatval($asgariUcretNet)) / 30 * $htcGunModal, 2)) : 0.0;
+                $htcEldenTutar = ($htcGunModal > 0)
+                    ? ($isInclusive ? 0.0 : max(0.0, round(($nominalMaas - floatval($asgariUcretNet)) / 30 * $htcGunModal, 2)))
+                    : 0.0;
 
                 $rtcResmiTutar = 0.0;
                 $htcResmiTutar = 0.0;
@@ -2400,7 +2405,10 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     }
                 }
                 $fazlaMesaiTutar = floatval($bp->fazla_mesai_tutar ?? 0) + $nobetResmiBrutToplam;
-                $fazlaMesaiNetGosterim = floatval($bp->fazla_mesai_tutar ?? 0) + $toplamNobetTutar;
+                $fazlaMesaiNetGosterim = (float) ($muhasebeFazlaMesaiOzeti['tutar'] ?? 0);
+                if ($fazlaMesaiNetGosterim <= 0) {
+                    $fazlaMesaiNetGosterim = floatval($bp->fazla_mesai_tutar ?? 0) + $toplamNobetTutar;
+                }
                 $displayFazlaMesaiSaat = floatval($bp->fazla_mesai_saat ?? 0) + $nobetResmiSaatToplam;
 
                 // Start primTutar from 0.0 to prevent double-counting of toplam_ek_odeme
@@ -3303,7 +3311,10 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     $bankaDetayHtml .= '<div class="pop-header"><i class="bx bxs-bank text-info me-1"></i> Banka Ödemesi Detayı</div>';
 
                     
-                    if ($hesap['isInclusive']) {
+                    if (($bankaDetayDagilimi['asgari'] ?? 0) > 0
+                        || ($bankaDetayDagilimi['yemek'] ?? 0) > 0
+                        || ($bankaDetayDagilimi['es_yardimi'] ?? 0) > 0
+                        || !empty($bankaDetayDagilimi['ek_odemeler'])) {
                         $asgariGunAciklama = '';
                         if (($bankaDetayDagilimi['asgari_gun'] ?? 0) > 0 && ($bankaDetayDagilimi['asgari_gunluk'] ?? 0) > 0) {
                             $asgariGunAciklama = '<small style="display:block;color:#94a3b8;">' . intval($bankaDetayDagilimi['asgari_gun']) . ' gün × ' . number_format($bankaDetayDagilimi['asgari_gunluk'], 2, ',', '.') . ' ₺</small>';
@@ -3402,6 +3413,30 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     throw new Exception('Dönem bulunamadı.');
                 }
 
+                // Mali/snapshot tutarsızlıkları hukuki kayıt bütünlüğü nedeniyle
+                // bloklayıcıdır ve force_close ile geçilemez.
+                $kapanisHatalari = $BordroPersonel->validateDonemKapanis(
+                    $donem_id,
+                    (int) ($_SESSION['firma_id'] ?? 0)
+                );
+                if (!empty($kapanisHatalari)) {
+                    $hataSatirlari = array_map(static function (string $hata): array {
+                        $parcalar = explode(':', $hata, 2);
+                        return [
+                            'personel' => trim($parcalar[0] ?? 'Bordro kaydı'),
+                            'detay' => trim($parcalar[1] ?? $hata),
+                        ];
+                    }, $kapanisHatalari);
+                    echo json_encode([
+                        'status' => 'validation_error',
+                        'title' => 'Bordro Mutabakatı Tamamlanmadı',
+                        'message' => 'Dönemi kapatmadan önce aşağıdaki mali farkları düzeltin ve ilgili personelleri yeniden hesaplayın.',
+                        'error_count' => count($hataSatirlari),
+                        'errors' => $hataSatirlari,
+                    ], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
+
                 // Döneme ait onaylanmamış avans ve izinleri kontrol et
                 $warnings = [];
 
@@ -3473,20 +3508,29 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 }
 
                 // Dönemi kapat
-                $sql = $BordroDonem->getDb()->prepare("UPDATE bordro_donemi SET kapali_mi = 1 WHERE id = ?");
-                $sql->execute([$donem_id]);
+                $arsivSonucu = (new BordroKapanisArsivModel())->arsivleVeKapat(
+                    (int) ($_SESSION['firma_id'] ?? 0),
+                    $donem_id,
+                    (int) $userId,
+                    (string) ($_SESSION['user_full_name'] ?? ($_SESSION['user']->adi_soyadi ?? 'Sistem'))
+                );
 
-                $message = 'Dönem kapatıldı. Artık bu dönemde değişiklik yapılamaz.';
+                $message = 'Dönem kapatıldı ve değişmez bordro arşivi oluşturuldu (Sürüm ' . (int) $arsivSonucu['surum_no'] . ').';
                 if (!empty($warnings)) {
                     $message .= ' (Uyarılar göz ardı edildi)';
                 }
 
                 echo json_encode([
                     'status' => 'success',
-                    'message' => $message
+                    'message' => $message,
+                    'archive' => [
+                        'version' => (int) $arsivSonucu['surum_no'],
+                        'hash' => (string) $arsivSonucu['manifest_hash'],
+                        'document_count' => (int) $arsivSonucu['dokum_sayisi'],
+                    ],
                 ]);
 
-                $SystemLog->logAction($userId, 'Maaş Dönem Kapama', "Dönem kapatıldı (ID: $donem_id).", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Maaş Dönem Kapama', "Dönem kapatıldı ve arşivlendi (ID: $donem_id, Sürüm: {$arsivSonucu['surum_no']}, Hash: {$arsivSonucu['manifest_hash']}).", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // Dönemi Aç
@@ -4472,18 +4516,12 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         $elden = Helper::formattedMoneyToNumber($row[7] ?? 0);
 
                         // Güncelle
-                        $updateData = [
-                            'banka_odemesi' => $banka,
-                            'sodexo_odemesi' => $sodexo,
-                            'diger_odeme' => $diger,
-                            'elden_odeme' => $elden,
-                            'sodexo_manuel' => 1,
-                            'dagitim_manuel' => 1
-                        ];
-
-                        if ($BordroPersonel->updateBordro($bp_id, $updateData)) {
-                            $guncellenenSayisi++;
-                        }
+                        $BordroPersonel->saveAcikDonemManuelDagilim(
+                            (int) ($_SESSION['firma_id'] ?? 0),
+                            (int) $bp_id,
+                            [$banka, $sodexo, $diger, $elden]
+                        );
+                        $guncellenenSayisi++;
                     }
 
                     echo json_encode([

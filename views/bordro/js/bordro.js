@@ -1146,6 +1146,49 @@ $(document).ready(function () {
               $("#switchDonemDurum").prop("checked", false);
             }
           });
+        } else if (response.status === "validation_error") {
+          const errors = Array.isArray(response.errors) ? response.errors : [];
+          let errorHtml = `
+            <div class="text-start">
+              <div class="alert alert-danger border-0 py-2 px-3 mb-3" style="font-size:13px;">
+                <i class="bx bx-shield-x me-1"></i>
+                ${escapeBordroHtml(response.message || "Bordro mutabakat hataları giderilmelidir.")}
+              </div>
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-semibold text-dark">Kontrol Sonuçları</span>
+                <span class="badge bg-danger-subtle text-danger rounded-pill">${Number(response.error_count || errors.length)} hata</span>
+              </div>
+              <div class="bordro-validation-error-list" style="max-height:340px; overflow-y:auto; padding-right:4px;">
+          `;
+          errors.forEach(function (item, index) {
+            errorHtml += `
+              <div class="border rounded-3 p-3 mb-2 bg-white text-start">
+                <div class="d-flex align-items-start gap-2">
+                  <span class="badge bg-danger-subtle text-danger rounded-circle flex-shrink-0">${index + 1}</span>
+                  <div class="min-w-0">
+                    <div class="fw-bold text-dark mb-1">${escapeBordroHtml(item.personel || "Bordro kaydı")}</div>
+                    <div class="text-muted" style="font-size:12px; line-height:1.45;">${escapeBordroHtml(item.detay || "Mutabakat hatası")}</div>
+                  </div>
+                </div>
+              </div>`;
+          });
+          errorHtml += `
+              </div>
+              <div class="text-muted mt-3" style="font-size:12px;">
+                <i class="bx bx-info-circle me-1"></i>
+                Hatalı personelleri yeniden hesapladıktan sonra dönem kapatma işlemini tekrar deneyin.
+              </div>
+            </div>`;
+
+          Swal.fire({
+            icon: "error",
+            title: escapeBordroHtml(response.title || "Bordro Mutabakatı Tamamlanmadı"),
+            html: errorHtml,
+            width: 680,
+            confirmButtonText: '<i class="bx bx-check me-1"></i>Tamam',
+            customClass: { popup: "bordro-validation-popup" },
+          });
+          $("#switchDonemDurum").prop("checked", !isChecked);
         } else {
           Swal.fire({
             icon: "error",

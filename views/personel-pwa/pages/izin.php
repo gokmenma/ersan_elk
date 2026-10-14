@@ -14,7 +14,7 @@
                 <h1 class="text-xl font-bold text-slate-900 dark:text-white">İzin İşlemleri</h1>
                 <p class="text-sm text-slate-500">İzinlerinizi yönetin</p>
             </div>
-            <button onclick="Modal.open('izin-modal')" class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
+            <button onclick="openNewIzinModal()" class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
                 <span class="material-symbols-outlined text-lg">add</span>
                 <span>Yeni</span>
             </button>
@@ -236,8 +236,8 @@
                         placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
                 </div>
 
-                <!-- Info Box -->
-                <div class="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                <!-- Info Box (Sadece Yıllık İzin için) -->
+                <div id="yillik-izin-hatirlatma" class="bg-primary/5 border border-primary/20 rounded-xl p-4 transition-all" style="display: none;">
                     <div class="flex items-start gap-3">
                         <span class="material-symbols-outlined text-primary">info</span>
                         <div>
@@ -343,11 +343,11 @@
         updatePeriodLabel();
         setView('calendar');
 
-        // İzin türü değişiminde hastalık izni uyarısı kontrolü
+        // İzin türü değişiminde bilgilendirme ve uyarı kontrolleri
         const selectIzinTipi = document.querySelector('#izin-form select[name="izin_tipi"]');
         if (selectIzinTipi) {
             selectIzinTipi.addEventListener('change', function () {
-                checkHastalikIzniUyarisi(this.value, true);
+                updateIzinTuruUyarilari(this.value, true);
             });
         }
 
@@ -415,11 +415,13 @@
         return new Date(str);
     }
 
-    function openNewIzinModal(dateStr) {
-        document.querySelector('#izin-form input[name="baslangic_tarihi"]').value = dateStr;
-        document.querySelector('#izin-form input[name="bitis_tarihi"]').value = dateStr;
+    function openNewIzinModal(dateStr = '') {
+        if (dateStr) {
+            document.querySelector('#izin-form input[name="baslangic_tarihi"]').value = dateStr;
+            document.querySelector('#izin-form input[name="bitis_tarihi"]').value = dateStr;
+        }
         const currentIzinTipi = document.querySelector('#izin-form select[name="izin_tipi"]')?.value || '';
-        checkHastalikIzniUyarisi(currentIzinTipi, false);
+        updateIzinTuruUyarilari(currentIzinTipi, false);
         Modal.open('izin-modal');
     }
 
@@ -650,9 +652,10 @@
 
     function isYillikIzinTuru(tur) {
         if (!tur) return false;
+        if (tur.is_yillik !== undefined) return Boolean(tur.is_yillik);
         const ad = normalizeIzinMetni(tur.tur_adi);
         const kod = normalizeIzinMetni(tur.kisa_kod);
-        return ad.includes('yıllık') || ad.includes('yillik') || kod === 'yillik';
+        return ad.includes('yıllık') || ad.includes('yillik') || kod === 'yillik' || kod === 'yi';
     }
 
     function isHastalikIzinTuru(tur) {
@@ -691,19 +694,36 @@
         return !isMazeretIzinTuru(tur) && (yillikMi || Number(tur.ucretli_mi) === 1);
     }
 
-    function checkHastalikIzniUyarisi(selectedId, showToast = true) {
-        const uyariEl = document.getElementById('hastalik-izni-uyari');
-        if (!uyariEl) return;
+    function updateIzinTuruUyarilari(selectedId, showToast = true) {
+        const hastalikUyariEl = document.getElementById('hastalik-izni-uyari');
+        const yillikHatirlatmaEl = document.getElementById('yillik-izin-hatirlatma');
 
         const secilenTur = izinTurleri.find(tur => String(tur.id) === String(selectedId));
-        if (secilenTur && isHastalikIzinTuru(secilenTur)) {
-            uyariEl.style.display = 'block';
-            if (showToast) {
-                Toast.show('Hastalık izni seçtiniz. Rapor olmadan hastalık izni seçilmemelidir.', 'warning');
+
+        // Hastalık izni bilgilendirmesi
+        if (hastalikUyariEl) {
+            if (secilenTur && isHastalikIzinTuru(secilenTur)) {
+                hastalikUyariEl.style.display = 'block';
+                if (showToast) {
+                    Toast.show('Hastalık izni seçtiniz. Rapor olmadan hastalık izni seçilmemelidir.', 'warning');
+                }
+            } else {
+                hastalikUyariEl.style.display = 'none';
             }
-        } else {
-            uyariEl.style.display = 'none';
         }
+
+        // Yıllık izin hatırlatması (SADECE yıllık izin seçildiğinde gösterilir)
+        if (yillikHatirlatmaEl) {
+            if (secilenTur && isYillikIzinTuru(secilenTur)) {
+                yillikHatirlatmaEl.style.display = 'block';
+            } else {
+                yillikHatirlatmaEl.style.display = 'none';
+            }
+        }
+    }
+
+    function checkHastalikIzniUyarisi(selectedId, showToast = true) {
+        updateIzinTuruUyarilari(selectedId, showToast);
     }
 
     function renderIzinTurleri() {
@@ -738,7 +758,7 @@
             select.value = '';
         }
 
-        checkHastalikIzniUyarisi(select.value, false);
+        updateIzinTuruUyarilari(select.value, false);
     }
 
     async function showHakedisDetay() {
@@ -1102,22 +1122,24 @@
             return;
         }
 
-        // İzin talep limit denetimleri
+        // İzin talep limit denetimleri (SADECE yıllık izin için geçerlidir)
         const secilenIzinTuru = izinTurleri.find(tur => String(tur.id) === String(formData.izin_tipi));
 
-        if (toplamGun > 3) {
-            const bugun = new Date();
-            bugun.setHours(0, 0, 0, 0);
-            const gunFarki = Math.floor((baslangicD - bugun) / (1000 * 60 * 60 * 24));
-            
-            if (isYillikIzinTuru(secilenIzinTuru) && gunFarki < 14) {
-                Toast.show('3 günden fazla olan yıllık izinlerin en az iki hafta önceden bildirilmesi gerekir.', 'error');
-                return;
-            }
-            
-            if (toplamGun > 20) {
-                Toast.show('İki haftadan uzun süre öncesinden yapılan izin talepleri en fazla 20 gün olabilir.', 'error');
-                return;
+        if (isYillikIzinTuru(secilenIzinTuru)) {
+            if (toplamGun > 3) {
+                const bugun = new Date();
+                bugun.setHours(0, 0, 0, 0);
+                const gunFarki = Math.floor((baslangicD - bugun) / (1000 * 60 * 60 * 24));
+                
+                if (gunFarki < 14) {
+                    Toast.show('3 günden fazla olan yıllık izinlerin en az iki hafta önceden bildirilmesi gerekir.', 'error');
+                    return;
+                }
+                
+                if (toplamGun > 20) {
+                    Toast.show('İki haftadan uzun süre öncesinden yapılan yıllık izin talepleri en fazla 20 gün olabilir.', 'error');
+                    return;
+                }
             }
         }
 
@@ -1160,7 +1182,7 @@
                 Toast.show('İzin talebiniz başarıyla gönderildi', 'success');
                 Modal.close('izin-modal');
                 form.reset();
-                checkHastalikIzniUyarisi('', false);
+                updateIzinTuruUyarilari('', false);
                 loadIzinler(false);
                 loadIzinStats(false);
             } else {

@@ -562,7 +562,9 @@ class PersonelIzinleriModel extends Model
 
         return mb_strpos($ad, 'yıllık') !== false
             || mb_strpos($ad, 'yillik') !== false
-            || $kod === 'yillik';
+            || $kod === 'yillik'
+            || $kod === 'yi'
+            || $kod === 'yİ';
     }
 
     /**

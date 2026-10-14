@@ -1976,7 +1976,7 @@ class BordroPersonelModel extends Model
      * Maaşa dahil yemek havuzunu büyüten ek ödeme ayrıca listelendiğinde yemek satırında
      * ikinci kez görünmesini engeller; hesaplanan/kaydedilen ödeme tutarını değiştirmez.
      */
-    public function getBankaOdemeDetayDagilimi(array $hesap): array
+    public function getBankaOdemeDetayDagilimi(array $hesap, array $muhasebeFazlaMesaiOzeti = []): array
     {
         $kesinti = max(0.0, round(
             (float) ($hesap['bankaOncelikliKesinti'] ?? 0)
@@ -2028,6 +2028,43 @@ class BordroPersonelModel extends Model
                 'resmi_alacagina_dahil' => !empty($ekOdeme['resmi_alacagina_dahil']),
             ];
             $kalan = max(0.0, round($kalan - $ayriBankaTutari, 2));
+        }
+
+        // Banka toplamı snapshot olarak aynen korunur; hafta içi nöbet satırında
+        // muhasebenin bordroya gireceği resmî fazla mesai hedef neti gösterilir.
+        $fazlaMesaiHedefNet = max(0.0, round((float) ($muhasebeFazlaMesaiOzeti['tutar'] ?? 0), 2));
+        if ($fazlaMesaiHedefNet > 0) {
+            $duzeltilmisEkOdemeler = [];
+            $fazlaMesaiEklendi = false;
+            foreach ($ekOdemeler as $ekOdeme) {
+                $etiketLower = mb_strtolower((string) ($ekOdeme['etiket'] ?? ''), 'UTF-8');
+                $isHaftaIciNobet = strpos($etiketLower, 'hafta içi') !== false
+                    || strpos($etiketLower, 'fazla mesai') !== false
+                    || strpos($etiketLower, 'nöbet') !== false;
+                if (!$isHaftaIciNobet) {
+                    $duzeltilmisEkOdemeler[] = $ekOdeme;
+                    continue;
+                }
+                if ($fazlaMesaiEklendi) {
+                    continue;
+                }
+                $ekOdeme['odeme_tutari'] = (float) ($ekOdeme['tutar'] ?? 0);
+                $ekOdeme['etiket'] = (string) ($muhasebeFazlaMesaiOzeti['etiket'] ?? 'Fazla Mesai Ücreti (Net)');
+                $ekOdeme['tutar'] = $fazlaMesaiHedefNet;
+                $ekOdeme['yemek_dahil_tutar'] = 0.0;
+                $duzeltilmisEkOdemeler[] = $ekOdeme;
+                $fazlaMesaiEklendi = true;
+            }
+            if (!$fazlaMesaiEklendi) {
+                $duzeltilmisEkOdemeler[] = [
+                    'etiket' => (string) ($muhasebeFazlaMesaiOzeti['etiket'] ?? 'Fazla Mesai Ücreti (Net)'),
+                    'tutar' => $fazlaMesaiHedefNet,
+                    'toplam_tutar' => $fazlaMesaiHedefNet,
+                    'yemek_dahil_tutar' => 0.0,
+                    'resmi_alacagina_dahil' => true,
+                ];
+            }
+            $ekOdemeler = $duzeltilmisEkOdemeler;
         }
 
         $matrahSiniri = max(0.0, round($asgari - $brutBanka, 2));
@@ -2464,15 +2501,38 @@ class BordroPersonelModel extends Model
     {
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare('SELECT donem_id FROM bordro_personel WHERE id = ? AND silinme_tarihi IS NULL');
+            $stmt = $this->db->prepare('SELECT donem_id, net_maas, hesaplama_detay FROM bordro_personel WHERE id = ? AND silinme_tarihi IS NULL FOR UPDATE');
             $stmt->execute([$id]);
-            $donem = $stmt->fetchColumn();
+            $bordro = $stmt->fetch(PDO::FETCH_OBJ);
+            if (!$bordro) throw new \DomainException('Bordro kaydı bulunamadı.');
+            $donem = (int) $bordro->donem_id;
             $stmt = $this->db->prepare('SELECT kapali_mi FROM bordro_donemi WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL FOR UPDATE');
             $stmt->execute([$donem, $firmaId]);
             $kapali = $stmt->fetchColumn();
             if ($kapali === false || (int) $kapali !== 0) throw new \DomainException('Kapalı veya yetkisiz dönemde ödeme dağılımı değiştirilemez.');
-            $stmt = $this->db->prepare('UPDATE bordro_personel SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?, sodexo_manuel = 1, dagitim_manuel = 1 WHERE id = ? AND silinme_tarihi IS NULL');
-            $stmt->execute([...$tutarlar, $id]);
+
+            [$banka, $sodexo, $diger, $elden] = array_map(static fn ($v) => round((float) $v, 2), $tutarlar);
+            $detay = json_decode((string) ($bordro->hesaplama_detay ?? ''), true);
+            if (!is_array($detay)) throw new \DomainException('Ödeme dağılımı için önce bordro hesaplanmalıdır.');
+            $icra = round((float) ($detay['odeme_dagilimi']['icra_kesintisi'] ?? 0), 2);
+            $detay['odeme_dagilimi']['banka_net'] = $banka;
+            $detay['odeme_dagilimi']['sodexo'] = $sodexo;
+            $detay['odeme_dagilimi']['elden'] = $elden;
+            $detay['mutabakat'] = [
+                'net_maas' => round((float) $bordro->net_maas, 2),
+                'icra_kesintisi' => $icra,
+                'odenecek_net' => round(max(0, (float) $bordro->net_maas - $icra), 2),
+                'banka' => $banka,
+                'sodexo' => $sodexo,
+                'diger' => $diger,
+                'elden' => $elden,
+                'dagitim_toplami' => round($banka + $sodexo + $diger + $elden, 2),
+                'dagitim_manuel' => true,
+            ];
+            $detayJson = json_encode($detay, JSON_UNESCAPED_UNICODE);
+
+            $stmt = $this->db->prepare('UPDATE bordro_personel SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?, hesaplama_detay = ?, sodexo_manuel = 1, dagitim_manuel = 1 WHERE id = ? AND silinme_tarihi IS NULL');
+            $stmt->execute([$banka, $sodexo, $diger, $elden, $detayJson, $id]);
             $this->db->commit();
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
@@ -2576,6 +2636,91 @@ class BordroPersonelModel extends Model
         $sql->bindParam(':hesaplama_detay', $hesaplamaDetay);
 
         return $sql->execute();
+    }
+
+    /**
+     * Dönem kapanmadan önce hukuki snapshot ve ödeme mutabakatını doğrular.
+     * Dönen hatalar bloklayıcıdır; kullanıcı onayıyla atlanamaz.
+     */
+    public function validateDonemKapanis(int $donemId, int $firmaId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT bp.id, bp.personel_id, bp.net_maas, bp.banka_odemesi, bp.sodexo_odemesi,
+                   bp.diger_odeme, bp.elden_odeme, bp.hesaplama_tarihi, bp.hesaplama_detay,
+                   p.adi_soyadi, bd.baslangic_tarihi, bd.bitis_tarihi
+            FROM bordro_personel bp
+            INNER JOIN bordro_donemi bd ON bd.id = bp.donem_id
+            INNER JOIN personel p ON p.id = bp.personel_id
+            WHERE bp.donem_id = :donem_id
+              AND bd.firma_id = :firma_id
+              AND bd.silinme_tarihi IS NULL
+              AND bp.silinme_tarihi IS NULL
+            ORDER BY p.adi_soyadi
+        ");
+        $stmt->execute(['donem_id' => $donemId, 'firma_id' => $firmaId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $errors = [];
+        if (empty($rows)) {
+            return ['Dönemde kapatılabilecek aktif bordro kaydı bulunmuyor.'];
+        }
+
+        foreach ($rows as $row) {
+            $ad = (string) ($row->adi_soyadi ?? ('Personel #' . $row->personel_id));
+            if (empty($row->hesaplama_tarihi)) {
+                $errors[] = $ad . ': bordro hesaplanmamış.';
+                continue;
+            }
+
+            $detay = json_decode((string) ($row->hesaplama_detay ?? ''), true);
+            if (!is_array($detay)) {
+                $errors[] = $ad . ': hesaplama snapshot\'ı geçersiz veya eksik.';
+                continue;
+            }
+
+            $odeme = is_array($detay['odeme_dagilimi'] ?? null) ? $detay['odeme_dagilimi'] : [];
+            $icra = round((float) ($odeme['icra_kesintisi'] ?? 0), 2);
+            $odenecek = round(max(0, (float) $row->net_maas - $icra), 2);
+            $dagitim = round(
+                (float) $row->banka_odemesi + (float) $row->sodexo_odemesi
+                + (float) $row->diger_odeme + (float) $row->elden_odeme,
+                2
+            );
+            if (abs($odenecek - $dagitim) > 0.01) {
+                $errors[] = sprintf('%s: ödenecek net %.2f TL ile ödeme kanalları toplamı %.2f TL uyuşmuyor.', $ad, $odenecek, $dagitim);
+            }
+
+            $snapshotBanka = round((float) ($odeme['banka_net'] ?? $row->banka_odemesi), 2);
+            $snapshotSodexo = round((float) ($odeme['sodexo'] ?? $row->sodexo_odemesi), 2);
+            $snapshotElden = round((float) ($odeme['elden'] ?? $row->elden_odeme), 2);
+            if (abs($snapshotBanka - (float) $row->banka_odemesi) > 0.01
+                || abs($snapshotSodexo - (float) $row->sodexo_odemesi) > 0.01
+                || abs($snapshotElden - (float) $row->elden_odeme) > 0.01) {
+                $errors[] = $ad . ': snapshot ödeme dağılımı ile kayıtlı ödeme kanalları uyuşmuyor.';
+            }
+
+            $hist = $this->getHistoricalGorevGecmisi(
+                (int) $row->personel_id,
+                (string) $row->baslangic_tarihi,
+                (string) $row->bitis_tarihi
+            );
+            if ($hist && empty($hist->is_parcali)) {
+                $histMaas = round((float) ($hist->maas_tutari ?? 0), 2);
+                $histTur = mb_strtolower((string) ($hist->maas_durumu ?? ''), 'UTF-8');
+                $nominal = round((float) ($detay['matrahlar']['nominal_maas'] ?? 0), 2);
+                $primUsulu = str_contains($histTur, 'prim');
+                if (!$primUsulu && $histMaas > 0 && abs($histMaas - $nominal) > 0.01) {
+                    $errors[] = sprintf(
+                        '%s: dönemsel sözleşme maaşı %.2f TL, snapshot nominal maaşı %.2f TL.',
+                        $ad,
+                        $histMaas,
+                        $nominal
+                    );
+                }
+            }
+        }
+
+        return $errors;
     }
 
     /**
@@ -3580,19 +3725,76 @@ class BordroPersonelModel extends Model
     }
 
     /** Hafta içi nöbetin resmi net hedefi: asgari net / 225 × 1,5 × toplam saat. */
-    public function hesaplaHaftaIciNobetNetHedef(string $aciklama, string $donemTarihi): float
+    public function hesaplaHaftaIciNobetNetHedef(string $aciklama, string $donemTarihi, ?float $asgariNetOverride = null): float
     {
         if (!preg_match('/(\d+)\s*Gün\s*x\s*(\d+)\s*Saat/iu', $aciklama, $eslesme)) {
             return 0.0;
         }
 
-        if ($this->cachedParametreModel === null) {
-            $this->cachedParametreModel = new BordroParametreModel();
+        $toplamSaat = intval($eslesme[1]) * intval($eslesme[2]);
+        $asgariNet = max(0.0, (float) ($asgariNetOverride ?? 0));
+        if ($asgariNet <= 0) {
+            if ($this->cachedParametreModel === null) {
+                $this->cachedParametreModel = new BordroParametreModel();
+            }
+            $asgariNet = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 0);
+        }
+        return round(($asgariNet / 225) * 1.5 * $toplamSaat, 2);
+    }
+
+    /**
+     * Muhasebeye bildirilecek hafta içi nöbet/fazla mesai hedef netini verir.
+     * Hesaplanmış kayıtta açıklama ve asgari net daima snapshot'tan okunur;
+     * personelin asıl nöbet hakedişi ile kayıtlı ödeme kanalları değiştirilmez.
+     */
+    public function getMuhasebeFazlaMesaiNetOzeti(object $bordroKaydi, ?object $donem): array
+    {
+        $donemTarihi = (string) ($donem->baslangic_tarihi ?? date('Y-m-01'));
+        $detay = !empty($bordroKaydi->hesaplama_detay)
+            ? json_decode((string) $bordroKaydi->hesaplama_detay, true)
+            : [];
+        $snapshotVar = !empty($bordroKaydi->hesaplama_tarihi)
+            && is_array($detay)
+            && isset($detay['ek_odemeler'])
+            && is_array($detay['ek_odemeler']);
+
+        $asgariNet = $snapshotVar
+            ? (float) ($detay['parametreler']['asgari_ucret_net'] ?? 0)
+            : 0.0;
+        $kalemler = $snapshotVar
+            ? $detay['ek_odemeler']
+            : $this->getDonemEkOdemeleriListe((int) ($bordroKaydi->personel_id ?? 0), (int) ($bordroKaydi->donem_id ?? 0));
+
+        $toplamNet = 0.0;
+        $toplamSaat = 0;
+        foreach ($kalemler as $kalem) {
+            $veri = is_array($kalem) ? $kalem : get_object_vars($kalem);
+            $tur = mb_strtolower((string) ($veri['tur'] ?? $veri['kod'] ?? ''), 'UTF-8');
+            $aciklama = (string) ($veri['aciklama'] ?? '');
+
+            if ($tur === 'hafta_ici_nobet' || (strpos($tur, 'nobet') !== false && strpos($tur, 'hafta_sonu') === false)) {
+                $hedefNet = $this->hesaplaHaftaIciNobetNetHedef($aciklama, $donemTarihi, $asgariNet > 0 ? $asgariNet : null);
+                if ($hedefNet <= 0) {
+                    $hedefNet = (float) ($veri['net_etki'] ?? $veri['tutar'] ?? 0);
+                }
+                if (preg_match('/(\d+)\s*Gün\s*x\s*(\d+)\s*Saat/iu', $aciklama, $eslesme)) {
+                    $toplamSaat += intval($eslesme[1]) * intval($eslesme[2]);
+                }
+                $toplamNet += max(0.0, $hedefNet);
+                continue;
+            }
+
+            if ($tur === 'mesai' || $tur === 'fazla_mesai') {
+                $toplamNet += max(0.0, (float) ($veri['net_etki'] ?? $veri['tutar'] ?? 0));
+            }
         }
 
-        $toplamSaat = intval($eslesme[1]) * intval($eslesme[2]);
-        $asgariNet = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 0);
-        return round(($asgariNet / 225) * 1.5 * $toplamSaat, 2);
+        return [
+            'etiket' => 'Fazla Mesai Ücreti (Net)',
+            'tutar' => round($toplamNet, 2),
+            'saat' => $toplamSaat,
+            'snapshot' => $snapshotVar,
+        ];
     }
 
     private function ekOdemeResmiNetHedefi($ekOdeme, $param, string $donemTarihi): float
@@ -5042,7 +5244,7 @@ class BordroPersonelModel extends Model
         // ---------------- GEÇİŞ SÜRECİ STRATEJİSİ VE PARÇALI MAAŞ HESAPLAMASI ----------------
         // Yeni görev (maaş) geçmişi tablosundan DÖNEM İÇİNDE GEÇERLİ OLAN TÜM KAYITLARI alıyoruz
         $sqlGecmis = $this->db->prepare("
-            SELECT maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi
+            SELECT id, departman, gorev, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi
             FROM personel_gorev_gecmisi 
             WHERE personel_id = ? 
             AND baslangic_tarihi <= ? 
@@ -6714,6 +6916,21 @@ class BordroPersonelModel extends Model
             'is_net_maas' => $isNetMaas,
             'is_prim_usulu' => $isPrimUsulu,
             'donem' => ['id' => $kayit->donem_id, 'baslangic' => $donemTarihi, 'ay' => $donemAy, 'yil' => $donemYil],
+            'kaynaklar' => [
+                'gorev_maas_gecmisi' => array_map(static function ($g) use ($donemTarihi, $donemBitis) {
+                    return [
+                        'id' => isset($g->id) ? (int) $g->id : null,
+                        'baslangic' => (string) ($g->baslangic_tarihi ?? ''),
+                        'bitis' => !empty($g->bitis_tarihi) ? (string) $g->bitis_tarihi : null,
+                        'donem_kesisim_baslangic' => max($donemTarihi, (string) ($g->baslangic_tarihi ?? $donemTarihi)),
+                        'donem_kesisim_bitis' => min($donemBitis, !empty($g->bitis_tarihi) ? (string) $g->bitis_tarihi : $donemBitis),
+                        'maas_durumu' => (string) ($g->maas_durumu ?? ''),
+                        'maas_tutari' => round((float) ($g->maas_tutari ?? 0), 2),
+                    ];
+                }, $gecmisKayitlar),
+                'nominal_maas' => round($nominalBrutMaas, 2),
+                'hedef_net_maas' => round((float) ($kayit->hedef_net_maas_tutari ?? 0), 2),
+            ],
             'parametreler' => [
                 'sgk_isci_orani' => $sgkIsciOrani * 100, 'issizlik_isci_orani' => $issizlikIsciOrani * 100, 'sgk_isveren_orani' => $sgkIsverenOrani * 100,
                 'issizlik_isveren_orani' => $issizlikIsverenOrani * 100, 'damga_vergisi_orani' => $damgaVergisiOrani * 100, 'calisma_gunu_sayisi' => $calismaGunuSayisi,
@@ -6732,6 +6949,16 @@ class BordroPersonelModel extends Model
                 'asgari_ucret_toplam_gv_matrahi' => round($asgariUcretIstisnaHesabi['toplam_matrah'] ?? 0, 2),
             ],
             'odeme_dagilimi' => ['icra_kesintisi' => round($icraKesintisi, 2), 'banka_net' => round($bankaOdemesi, 2), 'sodexo' => round($sodexoOdemesi, 2), 'elden' => round($eldenOdeme, 2)],
+            'mutabakat' => [
+                'net_maas' => round($netMaas, 2),
+                'icra_kesintisi' => round($icraKesintisi, 2),
+                'odenecek_net' => round($netMaas - $icraKesintisi, 2),
+                'banka' => round($bankaOdemesi, 2),
+                'sodexo' => round($sodexoOdemesi, 2),
+                'diger' => round((float) ($kayit->diger_odeme ?? 0), 2),
+                'elden' => round($eldenOdeme, 2),
+                'dagitim_toplami' => round($bankaOdemesi + $sodexoOdemesi + (float) ($kayit->diger_odeme ?? 0) + $eldenOdeme, 2),
+            ],
             'ek_odemeler' => $ekOdemeDetaylari, 'kesintiler' => $kesintiDetaylari,
             'ozet' => [
                 'brut_ek_odemeler' => round($brutEkOdemeler, 2), 'net_ek_odemeler' => round($netEkOdemeler, 2),

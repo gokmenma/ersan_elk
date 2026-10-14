@@ -83,6 +83,7 @@ try {
             continue;
         }
         $odemeOzeti = $bordroModel->getMuhasebeOdemeOzeti($hesap);
+        $fazlaMesaiOzeti = $bordroModel->getMuhasebeFazlaMesaiNetOzeti($personel, $donem);
         $ekOdemeler = $bordroModel->getDonemEkOdemeleriListe((int) $personel->personel_id, $donemId);
         $kesintiler = $bordroModel->getDonemKesintileriListe((int) $personel->personel_id, $donemId);
 
@@ -135,7 +136,23 @@ try {
             ['Eş Yardımı', (float) ($hesap['spouseAllowanceDeduction'] ?? 0)],
         ];
         foreach (($hesap['bankaEkOdemeDetaylari'] ?? []) as $item) {
+            $resmiEtiket = (string) ($item['etiket'] ?? 'Resmî Ek Ödeme');
+            $resmiEtiketLower = mb_strtolower($resmiEtiket, 'UTF-8');
+            if ((float) ($fazlaMesaiOzeti['tutar'] ?? 0) > 0 && (
+                strpos($resmiEtiketLower, 'hafta içi') !== false
+                || strpos($resmiEtiketLower, 'fazla mesai') !== false
+                || strpos($resmiEtiketLower, 'nöbet') !== false
+            )) {
+                continue;
+            }
             $officialItems[] = [(string) ($item['etiket'] ?? 'Resmî Ek Ödeme'), (float) ($item['tutar'] ?? 0)];
+        }
+        if ((float) ($fazlaMesaiOzeti['tutar'] ?? 0) > 0) {
+            $fazlaMesaiEtiketi = (string) ($fazlaMesaiOzeti['etiket'] ?? 'Fazla Mesai Ücreti (Net)');
+            if ((int) ($fazlaMesaiOzeti['saat'] ?? 0) > 0) {
+                $fazlaMesaiEtiketi .= ' (' . (int) $fazlaMesaiOzeti['saat'] . ' Saat)';
+            }
+            $officialItems[] = [$fazlaMesaiEtiketi, (float) $fazlaMesaiOzeti['tutar']];
         }
         $puantajHakedisi = 0.0;
         $kacakKontrolHakedisi = 0.0;

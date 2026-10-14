@@ -56,6 +56,16 @@
 - Net ücretli ve puantaj/ek ödeme üreten personelde kazanç sözleşme netinin **üzerine ayrıca eklenir**. Maaşa dahil yemek yardımı alan personelde kazançlar **öncelikle personelin günlük yemek tavanını (günlük yemek limiti tavanına kadar) doldurur** ve yemek yardımına dahil edilerek bankadan ödenir. Günlük yemek limitini aşan bakiye tutar ise **elden ödeme** olarak dağıtılır. Kesinti, önce resmî banka tavanından mahsup edilir; banka tavanını aşan kesinti varsa ancak bu bakiye elden tutardan düşülür.
 - Bu kuralları değiştiren her çalışma, önce `docs/BORDRO_HESAPLAMA_KURALLARI.md` dosyasını güncellemek ve liste–detay–kayıt hesaplarının aynı çıktıyı verdiğini doğrulamak zorundadır.
 
+### 5.1. Bordro — Hesaplanmış/Kapanmış Dönem Snapshot'ı (Değiştirilemez İş Kuralı)
+- `hesaplama_tarihi` ve geçerli `hesaplama_detay` bulunan bordro kaydı, dönem açık veya kapalı olsa da hesaplama/ödeme anının değişmez snapshot'ıdır.
+- Liste, özet kartları, detay modalı, Excel, banka/ödeme raporları ve bordro yayını; `bordro_personel` üzerindeki kayıtlı hakediş, kesinti ve ödeme kanalı değerlerini (`banka_odemesi`, `elden_odeme`, `sodexo_odemesi`, `diger_odeme`) aynen kullanacaktır.
+- Gösterim sırasında güncel personel, puantaj, izin, görev geçmişi, parametre veya yeni hesaplama kuralları kullanılarak geçmiş bordronun parasal sonucu yeniden hesaplanamaz; banka–elden dağılımına yeniden tavan uygulanamaz ve kanallar arasında tutar aktarılamaz.
+- Eski snapshot sürümlerinde eksik olan açıklayıcı kırılımlar dönem kaynağından tamamlanabilir; ancak bu tamamlama kayıtlı toplam hakedişi, net alacağı, kesintiyi veya ödeme kanalı tutarlarını değiştiremez.
+- Geçmiş bordroya yeni kuralların yansıması yalnız kullanıcının yetkili biçimde dönemi açıp bordroyu yeniden hesaplamasıyla mümkündür. Snapshot bulunmayan satır canlı hesaplanmayacak, `Hesaplanmadı` olarak gösterilecektir.
+- Bu davranışı değiştiren çalışma; kayıtlı banka/elden/Sodexo/diğer ödeme değerlerinin gösterimde aynen korunduğunu liste–detay–Excel/yayın yollarında regresyon testleriyle doğrulamadan tamamlanmış sayılmaz.
+- Dönem kapatma öncesinde her personel için snapshot, dönemsel maaş kaynağı ve ödeme kanalı mutabakatı sunucu tarafında doğrulanacaktır. Hesaplanmamış kayıt, geçersiz snapshot, dönemsel maaşla nominal maaş farkı veya ödeme toplamı farkı bloklayıcıdır ve `force_close` ile aşılamaz.
+- Her başarılı dönem kapanışı kişi dokümanlarını ve dönem manifestini SHA-256 ile mühürleyen, önceki manifest hash'ine bağlanan yeni bir `bordro_kapanis_arsiv` sürümü oluşturacaktır. Arşivleme ile dönem kapatma tek transaction olacaktır; dönem yeniden açılsa veya yeniden hesaplansa bile önceki arşiv sürümü değiştirilemez ve silinemez.
+
 ## 6. Bordro — Gün Bazlı Sürekli Ek Ödemeler (Tarih Aralığı Kuralı)
 - Sürekli ek ödemelerden (araç kirası vb.) dönem kaydı üretilirken `baslangic_donemi` ve `bitis_donemi` alanları korunacaktır.
 - Gün bazlı ek ödemelerde (`aylik_fiili_gun_net`, `aylik_gun_net`, vb.) personelin ay içindeki fiili veya çalışılan gün sayısı doğrudan tüm döneme çarpılmaz; ek ödemenin geçerlilik aralığı ile bordro döneminin kesişim aralığındaki (`max(donemBas, odemeBas)` ve `min(donemBit, odemeBit)`) fiili gün sayısı esas alınır.

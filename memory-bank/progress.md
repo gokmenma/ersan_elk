@@ -1,6 +1,12 @@
 # Progress
 
+- [x] Personel kesinti düzenleme ekranında sürekli kesinti başlangıç/bitiş tarihlerinin kaydedilmemesine yol açan `GG.AA.YYYY` → MySQL `DATE` biçim uyuşmazlığı giderildi; Flatpickr görünür/gerçek input senkronizasyonu ve sunucu tarafı tarih normalizasyonu eklendi.
+
+- [x] Bordro kapanışına hukuki snapshot/mutabakat kontrolü eklendi; dönemsel maaş kaynağı ve ödeme kanalı tutarsızlıkları zorlanamaz biçimde kapanışı engelliyor, yeni snapshot kaynakları kaydediliyor ve manuel/Excel dağıtımları snapshot ile birlikte atomik güncelleniyor.
+- [x] Bordro kapanışındaki çoklu mutabakat hataları personel bazlı, numaralı ve kaydırılabilir kullanıcı dostu kontrol penceresine dönüştürüldü.
+- [x] `bordro_kapanis_arsiv` ve kişi doküm tabloları oluşturuldu; SHA-256 mühürlü, önceki hash'e bağlı sürüm zinciri ve atomik arşivle-kapat akışı devreye alındı.
 - [x] `bordro/list` geçmiş dönem gösteriminde kayıtlı banka/elden dağılımını yeniden hesaplayan gösterim tavanı kaldırıldı; kapanmış/ödenmiş bordronun kayıtlı ödeme kanalları aynen gösterilir hale getirildi ve regresyon testi eklendi.
+- [x] Hesaplanmış/kapanmış bordroların kayıtlı hakediş, kesinti ve ödeme kanallarının gösterimde değiştirilemeyeceği snapshot ilkesi `AGENTS.md` ve bordro hesaplama kuralları dokümanında kalıcı proje kuralı yapıldı.
 
 - [x] Mobile SPA (`mobile-spa`): Soft Bento & Claymorphic UI mimarisi tüm mobil uygulama için merkezi varsayılan tasarım standardı yapıldı.
   - Merkezi `src/design-system.css` kütüphanesi oluşturuldu: `--ds-canvas: #e6eaef` (mat gri/arduvaz), `--ds-surface: #ffffff` (saf beyaz bento kart), `--ds-surface-dark: #191d24` (obsidian bento kart), 28px kart kavisleri, 3D yumuşak gölgeler, segmentli barlar, metrik ızgaraları, hap butonlar ve modallar merkezi tokenlara bağlandı.
@@ -25,7 +31,7 @@
   - `npm run build` ile Vite derlemesi başarıyla tamamlandı.
 - [x] Personel PWA Kaçak sayfasında onaylanan aktif tutanaklara ekip üyeleri için fotoğraf/video/açıklama ekleme akışı tamamlandı; açıklama güvenilir kuyruk üzerinden sunucuya taşınıp mevcut tutanak açıklamasına ekleniyor ve API sahiplik/onay/aktiflik kontrollerini uyguluyor.
 
-## Neler Tamamlandı?
+- [x] Personel PWA İzin Modülü (`page=izin`): 3 günden uzun izinlerin en az 2 hafta önceden bildirilmesi ve 20 gün sınırı kuralı mazeret izninden kaldırılarak yalnızca yıllık izin türüyle sınırlandırıldı. Hatırlatma kutusu arayüzde yalnızca yıllık izin seçildiğinde görünecek şekilde dinamikleştirildi.
 - [x] Giden Evrak şablonlarında yeni kayıt sonrası bir sonraki kaydın önceki şablonu güncellemesine yol açan kalıcı gizli ID sorunu giderildi; oluşturma/güncelleme kipleri istemci ve sunucuda ayrıldı, seçim ve düzenleme durumu görünür hale getirildi.
 - [x] Evrak Takip listesindeki ve Giden Evrak formundaki ortak PDF önizleme hatası, `pdf.php` içinde eksik kalan `EvrakTakipModel` başlatması geri eklenerek giderildi.
 - [x] Bordro Detay modalında sözleşme farkı ve maaşa dahil ek kazanç dağıtım mantığı düzeltildi; resmî olmayan primlerin yemek tavanı dışındaki kısmı elden ödemeye aktarıldı, yapay sözleşme farkı kaldırıldı.
@@ -82,3 +88,6 @@
 - [x] Bordro Kontrol yemek/eş yardımı ve yuvarlama farkı yerleşimi detay modalıyla aynı hale getirildi.
 - [x] Bordro Kontrol başlığı kaldırılarak personel bilgileri koyu ve okunaklı üst satıra taşındı.
 - [x] Bordro Kontrol kartlarının dış sınırları daha belirgin hale getirildi.
+- [x] Hafta içi nöbet muhasebe hedef neti Model katmanında ortaklaştırılarak Bordro Kontrol ve Mutabakat Excel'lerinde `Fazla Mesai Ücreti (Net)` olarak kullanıldı.
+- [x] Bordro detayındaki Fazla Mesai satırı ve Banka Ödemesi Detayı hafta içi nöbet resmî hedef netiyle eşlendi.
+- [x] Prim usulü personelde HTÇ net gösterimi ve yardımsız profilde banka detay kırılımı geri getirildi.

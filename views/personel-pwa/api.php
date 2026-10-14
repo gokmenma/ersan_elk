@@ -1397,6 +1397,7 @@ try {
                     'aciklama' => $item->aciklama,
                     'kisa_kod' => $item->kisa_kod,
                     'ucretli_mi' => (int) ($item->ucretli_mi ?? 0),
+                    'is_yillik' => $IzinModel->isAnnualLeaveType($item),
                     'is_hastalik' => $IzinModel->isSickLeaveType($item),
                     'is_babalik' => $IzinModel->isPaternityLeaveType($item),
                     'is_evlilik' => $IzinModel->isMarriageLeaveType($item)
@@ -1668,18 +1669,20 @@ try {
             $diff = strtotime($bitis) - strtotime($baslangic);
             $toplam_gun = round($diff / (60 * 60 * 24)) + 1;
 
-            // İzin talep limit denetimleri
-            if ($toplam_gun > 3) {
-                $bugun = strtotime(date('Y-m-d'));
-                $baslangic_zaman = strtotime($baslangic);
-                $gun_farki = floor(($baslangic_zaman - $bugun) / (60 * 60 * 24));
+            // İzin talep limit denetimleri (SADECE yıllık izin için geçerlidir)
+            if ($IzinModel->isAnnualLeaveType($izinTuru)) {
+                if ($toplam_gun > 3) {
+                    $bugun = strtotime(date('Y-m-d'));
+                    $baslangic_zaman = strtotime($baslangic);
+                    $gun_farki = floor(($baslangic_zaman - $bugun) / (60 * 60 * 24));
 
-                if ($IzinModel->isAnnualLeaveType($izinTuru) && $gun_farki < 14) {
-                    response(false, null, '3 günden fazla olan yıllık izinlerin en az iki hafta önceden bildirilmesi gerekir.');
-                }
+                    if ($gun_farki < 14) {
+                        response(false, null, '3 günden fazla olan yıllık izinlerin en az iki hafta önceden bildirilmesi gerekir.');
+                    }
 
-                if ($toplam_gun > 20) {
-                    response(false, null, 'İki haftadan uzun süre öncesinden yapılan izin talepleri en fazla 20 gün olabilir.');
+                    if ($toplam_gun > 20) {
+                        response(false, null, 'İki haftadan uzun süre öncesinden yapılan yıllık izin talepleri en fazla 20 gün olabilir.');
+                    }
                 }
             }
 

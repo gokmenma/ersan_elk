@@ -43,6 +43,58 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(4679.25, $method->invoke($model, 4120, 0, 4679.25));
     }
 
+    public function testMuhasebeHaftaIciNobetiSnapshotHedefNetiyleFazlaMesaiGosterir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $bordro = (object) [
+            'personel_id' => 10,
+            'donem_id' => 26,
+            'hesaplama_tarihi' => '2026-10-09 14:48:00',
+            'hesaplama_detay' => json_encode([
+                'parametreler' => ['asgari_ucret_net' => 28075.50],
+                'ek_odemeler' => [[
+                    'kod' => 'hafta_ici_nobet',
+                    'aciklama' => '[Nöbet] Hafta İçi (1 Gün x 4 Saat x 500,00 ₺)',
+                    'tutar' => 1500.00,
+                    'net_etki' => 1500.00,
+                ]],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+        $donem = (object) ['baslangic_tarihi' => '2026-09-01'];
+
+        $ozet = $model->getMuhasebeFazlaMesaiNetOzeti($bordro, $donem);
+
+        self::assertSame('Fazla Mesai Ücreti (Net)', $ozet['etiket']);
+        self::assertSame(748.68, $ozet['tutar']);
+        self::assertSame(4, $ozet['saat']);
+        self::assertTrue($ozet['snapshot']);
+
+        $bankaDetayi = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 25680.78,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 6000,
+            'asgariYatacak' => 24332.10,
+            'bankaAsgariGun' => 26,
+            'calismaGunu' => 26,
+            'spouseAllowanceDeduction' => 0,
+            'mealAllowanceDeduction' => 6600,
+            'sozlesmeHakedisi' => 0,
+            'bankaEkOdemeDetaylari' => [[
+                'etiket' => 'Hafta İçi Nöbet',
+                'tutar' => 500,
+                'resmi_alacagina_dahil' => true,
+            ]],
+            'tumEkOdemeDetaylari' => [],
+            'bankaKesintiKalemleri' => [],
+        ], $ozet);
+
+        self::assertSame(25680.78, $bankaDetayi['net_banka']);
+        self::assertSame(31680.78, $bankaDetayi['brut_banka']);
+        self::assertSame('Fazla Mesai Ücreti (Net)', $bankaDetayi['ek_odemeler'][0]['etiket']);
+        self::assertSame(748.68, $bankaDetayi['ek_odemeler'][0]['tutar']);
+        self::assertSame(500.0, $bankaDetayi['ek_odemeler'][0]['odeme_tutari']);
+    }
+
     public function testResmiManuelPrimMaasaDahilYardimdaDogrudanBankaKalemidir(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

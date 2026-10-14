@@ -1,4 +1,34 @@
 $(document).ready(function () {
+  // Flatpickr altInput kullandığında ekranda görünen alan ile gerçek input
+  // ayrışabilir. Tarihleri daima flatpickr örneği üzerinden okuyup yaz.
+  function kesintiSetTarih(selector, deger) {
+    var el = $(selector)[0];
+    if (!el) return;
+    if (el._flatpickr) {
+      if (deger) {
+        el._flatpickr.setDate(deger, false, "d.m.Y");
+      } else {
+        el._flatpickr.clear();
+      }
+    }
+    $(selector).val(deger || "");
+  }
+
+  function kesintiGetTarih(selector) {
+    var el = $(selector)[0];
+    if (!el) return "";
+    if (el._flatpickr && el._flatpickr.selectedDates && el._flatpickr.selectedDates.length) {
+      return el._flatpickr.formatDate(el._flatpickr.selectedDates[0], "d.m.Y");
+    }
+    return $(selector).val() || "";
+  }
+
+  function kesintiTarihiGoster(deger) {
+    if (!deger || deger === "0000-00-00") return "";
+    var parcalar = String(deger).split("-");
+    return parcalar.length === 3 ? parcalar[2] + "." + parcalar[1] + "." + parcalar[0] : deger;
+  }
+
   // Select2 başlat (event delegation ile)
   function initKesintiSelect2() {
     if ($.fn.select2) {
@@ -209,8 +239,8 @@ $(document).ready(function () {
           form.find('input[name="tekrar_tipi"]').prop("checked", false).removeAttr("checked");
           if (response.tekrar_tipi === 'surekli') {
             form.find("#tekrar_surekli").prop("checked", true).attr("checked", "checked");
-            modal.find("#baslangic_donemi").val(response.baslangic_donemi || '');
-            modal.find("#bitis_donemi").val(response.bitis_donemi || '');
+            kesintiSetTarih("#baslangic_donemi", kesintiTarihiGoster(response.baslangic_donemi));
+            kesintiSetTarih("#bitis_donemi", kesintiTarihiGoster(response.bitis_donemi));
           } else if (response.tekrar_tipi === 'taksitli') {
             form.find("#tekrar_taksitli").prop("checked", true).attr("checked", "checked");
             modal.find("select[name='kesinti_donem']").val(response.donem_id).trigger('change');
@@ -668,7 +698,7 @@ $(document).ready(function () {
       }
     } else {
       // Sürekli ise başlangıç dönemi zorunlu (Y-m formatında date inputu)
-      var baslangicDonemi = form.find("#baslangic_donemi").val();
+      var baslangicDonemi = kesintiGetTarih("#baslangic_donemi");
       if (!baslangicDonemi) {
         Swal.fire("Hata", "Lütfen başlangıç dönemini giriniz.", "error");
         return;
@@ -713,7 +743,7 @@ $(document).ready(function () {
       hesaplama_tipi: hesaplamaTipi,
       tutar: hesaplamaTipi === "sabit" ? form.find("input[name='kesinti_tutar']").val() : 0,
       oran: hesaplamaTipi !== "sabit" ? form.find("input[name='oran']").val() : 0,
-      tarih: form.find("#kesinti_tarih").val() || $("#kesinti_tarih").val(),
+      tarih: kesintiGetTarih("#kesinti_tarih"),
       banka_matrahina_ekle: bankaMatrah,
       aciklama: form.find("input[name='aciklama']").val(),
       icra_id: form.find("#kesinti_icra_id").val() || null,
@@ -735,8 +765,8 @@ $(document).ready(function () {
     if (tekrarTipi === "tek_sefer" || tekrarTipi === "taksitli") {
       data.donem_id = form.find("select[name='kesinti_donem']").val();
     } else {
-      data.baslangic_donemi = form.find("#baslangic_donemi").val();
-      data.bitis_donemi = form.find("#bitis_donemi").val() || null;
+      data.baslangic_donemi = kesintiGetTarih("#baslangic_donemi");
+      data.bitis_donemi = kesintiGetTarih("#bitis_donemi") || null;
     }
 
     // Disable button and show spinner to prevent multiple submissions

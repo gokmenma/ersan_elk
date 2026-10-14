@@ -386,6 +386,28 @@ bordro satırları liste, detay, özet, Excel ve ödeme raporlarında kayıtlı 
 Personel, puantaj, parametre veya hesaplama kodundaki sonraki değişiklikler kayıtlı bordronun görünümünü kendiliğinden
 değiştiremez. Yeni değerler yalnızca kullanıcı bordroyu yeniden hesapladığında kaydedilir ve gösterime girer.
 
+Kayıtlı hakediş, kesinti ve ödeme kanalları değişmez parasal sonuçtur. Özellikle `banka_odemesi`, `elden_odeme`,
+`sodexo_odemesi` ve `diger_odeme` değerlerine gösterim sırasında tekrar banka tavanı uygulanmaz; tutarlar banka ile
+elden arasında yeniden dağıtılmaz. Bu zorunluluk liste, özet, detay modalı, Excel, banka/ödeme raporları ve bordro
+yayını için aynıdır.
+
+Eski snapshot sürümlerinde bulunmayan açıklayıcı RTÇ/HTÇ gibi kırılımlar dönem kaynağından tamamlanabilir. Bu geriye
+uyumluluk yalnız açıklama ve mutabakat kırılımı içindir; kayıtlı toplam hakedişi, net alacağı, kesintiyi veya ödeme
+kanalı tutarlarını değiştiremez. Yeni hesaplama kuralları geçmiş bordroya ancak kullanıcı dönemi yetkili biçimde açıp
+bordroyu yeniden hesapladığında uygulanır.
+
+Yeni hesaplamalarda snapshot, kullanılan dönemsel görev/maaş geçmişi kayıtlarının ID, tarih aralığı, maaş türü ve
+maaş tutarını `kaynaklar.gorev_maas_gecmisi` altında; kayıtlı ödeme kanalları mutabakatını da `mutabakat` altında taşır.
+Dönem kapatılırken hesaplanmamış/geçersiz snapshot, dönemsel maaş bulunduğu halde sıfır veya farklı nominal maaş,
+snapshot ile kayıtlı ödeme kanalı farkı ya da `banka + elden + Sodexo + diğer != net maaş - icra` durumu bloklayıcı
+hata sayılır. Bu mali hatalar `force_close` ile geçilemez.
+
+Başarılı her dönem kapanışı ayrıca değişmez kapanış arşivi üretir. Arşiv kişi bazlı tam `bordro_personel` parasal
+alanlarını ve `hesaplama_detay` snapshot'ını saklar; her kişi dokümanı SHA-256 ile, dönem manifesti de ayrı SHA-256
+ile mühürlenir. Sonraki kapanış sürümü önceki manifest hash'ini taşıyarak sürüm zinciri oluşturur. Dönemin yeniden
+açılması veya yeniden hesaplanması önceki arşiv sürümünü güncellemez/silmez. Arşiv ve dönem kapatma aynı transaction
+içindedir; arşiv yazılamazsa dönem kapanamaz.
+
 Snapshot bulunmayan satırlar canlı hesaplanmaz; tutar yerine `Hesaplanmadı` durumu gösterilir ve ödeme/rapor
 çıktılarına dahil edilmez.
 
@@ -507,6 +529,12 @@ Bordro hesaplama etki alani:
 ```
 
 ### Muhasebe Excel — ortak ödeme özeti ve prim tekrarı
+
+- Hafta içi nöbetin personel hakedişindeki net tutarı ile muhasebeye bildirilecek resmî fazla mesai neti aynı kavram değildir. Personelin nöbet alacağı sözleşme/diğer kazanç tarafında aynen korunur; resmî tarafta `Fazla Mesai Ücreti (Net)` olarak `asgari_net / 225 × 1,5 × toplam_saat` hedef neti gösterilir. Brütleştirme bu hedef net üzerinden yapılır. Bu açıklayıcı kırılım kayıtlı banka/elden/Sodexo/diğer snapshot toplamlarını değiştirmez.
+- Hesaplanmış bordroda hafta içi nöbet hedef neti, `hesaplama_detay` içindeki ek ödeme açıklaması ve snapshot `asgari_ucret_net` parametresinden üretilir. Güncel personel veya güncel parametre kullanılarak geçmiş parasal sonuç yeniden hesaplanmaz.
+- Bordro detayındaki `Fazla Mesai Ücreti (Net)` satırı ve Banka Ödemesi Detayındaki hafta içi nöbet satırı da aynı resmî hedef neti ve `Fazla Mesai Ücreti (Net)` etiketini kullanır. `Diğer Kazançlar / İkramiyeler` altındaki `Nöbet Ödemesi`, personelin gerçek hakedişi olarak ayrıca korunur.
+- Prim usulü veya nominal sözleşme maaşı bulunmayan personelde hafta tatili çalışmasının maaş farkı negatif hesaplanamaz. Resmî hedef net (`asgari_net / 30 × HTÇ günü`) gösterilir; nominal maaş farkı yalnızca pozitifse buna eklenir.
+- Banka Ödemesi Detayı, maaşa dahil yemek/eş yardımı bulunup bulunmamasından bağımsız olarak mevcut asgari, yardım, resmî ek ödeme, kesinti ve banka toplamı kırılımlarını gösterir.
 
 - Muhasebe Excel'i yalnızca `Mutabakat` sayfasını içerir. Bu sayfada personel ve TC bilgisinden hemen sonra fiilî gün ile rapor günü; ardından muhasebenin yazacağı resmî kazanç kalemleri, uygulayacağı kesintiler ve bankaya yatacak tutar yer alır. Eski geniş bilgi sayfası, ara banka matrahı/bankadan düşülecek kontrol kolonları, elden ödeme/elden kesinti, kart ve diğer ödeme kanalları aktarılmaz.
 - Hesaplama tarihi dolu olsa da muhasebe Excel ödeme özeti liste ve detayın kullandığı `hesaplaOrtakGosterimDegerleri()` sonucundan alınır. Eski `banka_odemesi` kaydı otomatik dağıtımda güncel hesabın yerine geçmez; manuel dağıtım ortak hesabın kurallarıyla korunur.

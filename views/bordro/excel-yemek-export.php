@@ -154,7 +154,7 @@ try {
                 $htcHedefNet = round($kayitliAsgariNet / 30 * $htcGun, 2);
                 $nominalMaas = floatval($matrahlar['nominal_maas'] ?? ($p->maas_tutari ?? 0));
                 $isInclusive = (intval($p->yemek_yardimi_dahil ?? 0) === 1 || intval($p->es_yardimi_dahil ?? 0) === 1);
-                $htcEldenTutar = $isInclusive ? 0.0 : round(($nominalMaas - $kayitliAsgariNet) / 30 * $htcGun, 2);
+                $htcEldenTutar = $isInclusive ? 0.0 : max(0.0, round(($nominalMaas - $kayitliAsgariNet) / 30 * $htcGun, 2));
                 $htcNet += round($htcEldenTutar + $htcHedefNet, 2);
 
                 $htcGross = $BordroParametre->bruteUpForNetTarget($htcHedefNet, $kumulatifMatrahGrossUp + $rtcMatrahGrossUp, $sgkOrani, $issizlikOrani, $damgaOrani, $donemYil, true);
@@ -270,7 +270,7 @@ try {
                 $htcHedefNet = round(floatval($asgariUcretNet) / 30 * $htcGun, 2);
                 $nominalMaas = floatval($hesap['maasTutari'] ?? 0);
                 $isInclusive = (intval($p->yemek_yardimi_dahil ?? 0) === 1 || intval($p->es_yardimi_dahil ?? 0) === 1);
-                $htcEldenTutar = $isInclusive ? 0.0 : round(($nominalMaas - floatval($asgariUcretNet)) / 30 * $htcGun, 2);
+                $htcEldenTutar = $isInclusive ? 0.0 : max(0.0, round(($nominalMaas - floatval($asgariUcretNet)) / 30 * $htcGun, 2));
                 $htcNet = round($htcEldenTutar + $htcHedefNet, 2);
 
                 $htcGross = $BordroParametre->bruteUpForNetTarget($htcHedefNet, $oncekiKumulatif, $sgkOrani, $issizlikOrani, $damgaOrani, $donemYil, true);
@@ -358,9 +358,11 @@ try {
                 })(),
             ];
         }
+        $fazlaMesaiOzeti = $BordroPersonel->getMuhasebeFazlaMesaiNetOzeti($p, $donem);
         $yemekVerileri[] = array_merge(
             $muhasebeSatiri,
-            $BordroPersonel->getMuhasebeOdemeOzeti($hesap)
+            $BordroPersonel->getMuhasebeOdemeOzeti($hesap),
+            ['muhasebe_fazla_mesai_net' => (float) ($fazlaMesaiOzeti['tutar'] ?? 0)]
         );
     }
 
@@ -643,7 +645,7 @@ try {
         $resmiEsYardimi = $resmiEklenenPayi((float) $veri['es_yardimi']);
         $resmiRtc = $resmiEklenenPayi((float) ($veri['resmi_rtc_net'] ?? 0));
         $resmiHtc = $resmiEklenenPayi((float) ($veri['resmi_htc_net'] ?? 0));
-        $resmiFazlaMesai = $resmiEklenenPayi((float) ($veri['resmi_fazla_mesai_net'] ?? 0));
+        $resmiFazlaMesai = $resmiEklenenPayi((float) ($veri['muhasebe_fazla_mesai_net'] ?? 0));
         $resmiPrim = $resmiEklenenPayi((float) ($veri['resmi_prim_ikramiye'] ?? 0));
         $resmiYemek = $resmiEklenenPayi((float) ($veri['resmi_yemek_yardimi'] ?? 0));
         $digerResmiEklenen = $resmiKalan;
