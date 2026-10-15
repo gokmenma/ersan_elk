@@ -34,7 +34,7 @@ final class BordroEskiDetayGosterimTest extends TestCase
         self::assertStringContainsString('tr.footer-row { margin-top:auto; }', $source);
         self::assertStringContainsString('grid-template-columns:repeat(3,minmax(0,1fr)) minmax(220px,.62fr)', $source);
         self::assertStringContainsString('bordro-net-result-column', $source);
-        self::assertStringContainsString('background:#f2fbf6; color:#334155', $source);
+        self::assertStringContainsString('background:#14243e; color:#f1f5f9', $source);
         self::assertStringContainsString('data-collapse-target="#', $source);
         self::assertStringContainsString('$turParametre->etiket', $source);
         self::assertStringNotContainsString('Sözleşme İçindeki Yemek Payı', $source);
