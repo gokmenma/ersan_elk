@@ -15,6 +15,7 @@ import CariDetailView from './views/CariDetailView.vue'
 import FaturaView from './views/FaturaView.vue'
 import KasaView from './views/KasaView.vue'
 import PayrollView from './views/PayrollView.vue'
+import AracView from './views/AracView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -23,6 +24,8 @@ const router = createRouter({
     { path: '/giris', name: 'login', component: LoginView, meta: { guest: true, chrome: false } },
     { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/arac-takip', name: 'arac-takip', component: AracView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
+    { path: '/arac', redirect: '/arac-takip' },
     { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true, permission: 'tasks' } },
     { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
     { path: '/talepler', name: 'requests', component: TaleplerView, meta: { requiresAuth: true, requiresCompany: true, permission: 'requests' } },

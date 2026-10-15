@@ -26,6 +26,7 @@ if (!empty($bordrolar)) {
             $transactions[] = [
                 'id' => $bordro->id,
                 'personel_id' => $bordro->personel_id,
+                'donem_id' => $bordro->donem_id,
                 'tarih' => $bordro->baslangic_tarihi,
                 'islem_turu' => 'Maaş Ödemesi',
                 'aciklama' => ($bordro->donem_adi ?? '') . ' Maaş Ödemesi',
@@ -152,8 +153,8 @@ usort($transactions, function ($a, $b) {
                                     </td>
                                     <td>
                                         <?php echo $trans['durum']; ?>
-                                        <?php if ($trans['islem_turu'] === 'Maaş Ödemesi'): ?>
-                                            <a href="views/bordro/bordro-yazdir.php?id=<?php echo $trans['id']; ?>&personel_id=<?php echo $trans['personel_id']; ?>"
+                                        <?php if ($trans['islem_turu'] === 'Maaş Ödemesi' && \App\Service\Gate::allows('bordro/raporlar')): ?>
+                                            <a href="views/bordro/bordro-yazdir.php?donem=<?= htmlspecialchars(\App\Helper\Security::encrypt($trans['donem_id']), ENT_QUOTES, 'UTF-8') ?>&amp;id=<?= htmlspecialchars(\App\Helper\Security::encrypt($trans['id']), ENT_QUOTES, 'UTF-8') ?>"
                                                 target="_blank" class="btn btn-sm btn-outline-secondary ms-2"
                                                 title="Bordro Yazdır">
                                                 <i class="bx bx-printer"></i>

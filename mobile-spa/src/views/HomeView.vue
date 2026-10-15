@@ -13,7 +13,7 @@ const dashboard = ref({})
 const today = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', weekday: 'long', timeZone: 'Europe/Istanbul' }).format(new Date())
 const actionDefinitions = [
   { permission: 'personnel', label: 'Personel', icon: UsersRound, to: '/personel' },
-  { permission: 'vehicles', label: 'Araçlar', icon: CarFront, href: '/mobile/index.php?p=arac' },
+  { permission: 'vehicles', label: 'Araçlar', icon: CarFront, to: '/arac-takip' },
   { permission: 'reports', label: 'Puantaj', icon: CalendarDays, href: '/mobile/index.php?p=puantaj' },
   { permission: 'documents', label: 'Evraklar', icon: FileText, href: '/mobile/index.php?p=evrak-takip' },
   { permission: 'tasks', label: 'Görevler', icon: ClipboardCheck, to: '/gorevler' },
@@ -108,9 +108,9 @@ onMounted(load)
         </div>
       </section>
       <section v-if="vehicles" class="clay-section">
-        <div class="clay-section-head"><h2>Araç & filo</h2><a href="/mobile/index.php?p=arac" class="clay-section-link">Filoyu gör <ChevronRight :size="14" /></a></div>
+        <div class="clay-section-head"><h2>Araç & filo</h2><RouterLink to="/arac-takip" class="clay-section-link">Filoyu gör <ChevronRight :size="14" /></RouterLink></div>
         <div class="bento-card bento-card--white">
-          <div class="bento-fleet-heading"><span class="quick-action-icon"><CarFront :size="22" /></span><div><strong>{{ vehicles.total }} araç</strong><span>Filo durum dağılımı</span></div><a class="clay-circle-btn" href="/mobile/index.php?p=arac" aria-label="Araç takip ekranını aç"><ArrowUpRight :size="20" /></a></div>
+          <div class="bento-fleet-heading"><span class="quick-action-icon"><CarFront :size="22" /></span><div><strong>{{ vehicles.total }} araç</strong><span>Filo durum dağılımı</span></div><RouterLink class="clay-circle-btn" to="/arac-takip" aria-label="Araç takip ekranını aç"><ArrowUpRight :size="20" /></RouterLink></div>
           <div class="segmented-track" role="img" :aria-label="`Sahada ${vehicles.field}, serviste ${vehicles.service}, boşta ${vehicles.idle} araç`"><span class="seg-pill seg-pill--emerald" :style="{ width: vehicleSegments.field }"></span><span class="seg-pill seg-pill--coral" :style="{ width: vehicleSegments.service }"></span><span class="seg-pill seg-pill--amber" :style="{ width: vehicleSegments.idle }"></span></div>
           <div class="bento-team-metrics"><div><span>Sahada</span><strong>{{ vehicles.field }}</strong></div><div><span>Serviste</span><strong>{{ vehicles.service }}</strong></div><div><span>Boşta</span><strong>{{ vehicles.idle }}</strong></div></div>
         </div>

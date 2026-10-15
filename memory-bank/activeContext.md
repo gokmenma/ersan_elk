@@ -1,5 +1,52 @@
 # Active Context
 
+## Mobil SPA Araç Takip Modülü ve Gelişmiş Bento UI Geliştirmesi (2026-10-15)
+- **Kullanıcı Talebi**:
+  1. `mobile-spa` altında Araç Takip modülünün yapılması, `mobile` altındaki eski modülden işlevlerin alınması ve UI/UX Pro Max tasarım standartlarında Bento / Claymorphic UI ile çok daha gelişmiş ve estetik bir SPA modülü olarak inşa edilmesi.
+  2. KM ve Araç kartlarının kullanıcı dostu, okunabilir ve modern Bento standartlarına yükseltilmesi (kaba görünüm ve metin sıkışmalarının giderilmesi).
+- **Mimari & Geliştirmeler**:
+  1. **Backend API (`mobile-spa/public/api/arac.php`)**:
+     - `checkAracAuth()` ile Gate yetkisi (`arac_takip_yonetim`, `arac-takip/list`, `vehicles`) ve oturum doğrulaması.
+     - `verifyCsrfToken()` ile CSRF koruması.
+     - `Security::encrypt` ve `Security::decrypt` ile hassas ID koruması.
+     - AES-256-GCM dosya şifreleme ve güvenli stream deşifre indirme entegrasyonu (ruhsat belgesi).
+     - `araclar`, `zimmet`, `yakit`, `km`, `servis` sekmeleri için zenginleştirilmiş veri listeleme ve özet KPI hesabı.
+     - Araç kaydetme/güncelleme, soft-delete, ruhsat yükleme/silme, zimmet verme/iade alma, yakıt fişi ekleme/silme, KM kaydı, servis bakım kaydı ve tamamlama aksiyonları.
+     - Tüm veri işlemlerinde parametrik PDO ve `SystemLogModel` ile denetim loglaması.
+  2. **Frontend API Servisi (`mobile-spa/src/services/arac.js`)**:
+     - Modern fetch istemcisi, multipart FormData desteği ve CSRF token yönetimi.
+  3. **Frontend Görünümü (`mobile-spa/src/views/AracView.vue`) & UI/UX Pro Max Kart Yenilemesi**:
+     - **KM Yolculuk Kartı (`.km-journey-card`)**:
+       - Üst Kısım: Türk plaka rozeti (`.tr-plate-badge`), canlı mor gradient `+KM` fark hapı (`.km-diff-pill`) ve takvim ikonlu tarih rozeti.
+       - Orta Yolculuk Çizelgesi (`.km-journey-box`): Başlangıç KM ve Bitiş KM için iki ayrı kutucuk ve aralarında dikey kesikli yön göstergesi.
+       - Alt Bilgi: Dairesel avatarlı sürücü künyesi ve görev notu çipi (`.journey-task-chip`).
+     - **Ana Araç Kartı (`.vehicle-master-card`)**:
+       - Başlık: Mavi TR şeritli plaka, marka/model/yıl alt başlığı, durum renk noktasıyla canlı rozet (`Zimmetli`, `Boşta`, `Serviste`, `İkame`).
+       - Metrik Kutuları (`.vehicle-bento-grid`): 2'li Bento kutusu (Güncel KM sayacı & Zimmetli Personel).
+       - Kritik Evrak Hapları: Muayene, Sigorta ve Kasko için 3'lü akıllı renk kodlu hap rozetleri (geçen kırmızı, yaklaşan sarı, geçerli yeşil).
+       - Aksiyon Çubuğu: 44px dokunmatik butonlar (Detay & Ruhsat, Düzenle, Servis/KM/Zimmet eylemleri).
+     - **Araç Detay Kartı (Modal / Bottom Sheet)**:
+       - Üst Kısım: Sürükleme tutamacı (`.sheet-drag-handle`), 38px dairesel araç ikonu, başlık ve plaka alt başlığı.
+       - Kimlik Hero Kutusu (`.detail-hero-box`): Mavi TR şeritli plaka rozeti, canlı renkli durum hapı (`Zimmetli`, `Boşta`, `Serviste`), marka/model ve 4'lü özellik çipleri (model yılı, renk, araç tipi, ikame durumu).
+       - 2x2 Bento Metrik Izgarası (`.detail-metrics-grid`): Sayaç (indigo), Yakıt tipi (amber), Şase no (monospace, blue), Mülkiyet/Departman (purple) için ayrık Bento kutuları.
+       - Güncel Zimmet Sahibi Paneli (`.detail-person-row`): İki harfli gradyan dairesel personel avatarı, personel adı ve departman künyesi; zimmet yoksa yeşil boşta havuz çipi.
+       - 3'lü Evrak Takip Izgarası (`.detail-docs-grid`): Muayene, Sigorta ve Kasko için ayrık takvim kutuları ve akıllı renk kodlu (kırmızı süresi doldu, sarı yaklaşan, yeşil geçerli) gün sayaç rozetleri.
+       - Şifreli Ruhsat Belgesi Kartı (`.ruhsat-file-card`): ISO 27001 yeşil kalkanlı "AES-256 Şifreli" çipi, dosya adı, doğrudan şifresiz stream indiren/açan "Görüntüle" ve "Sil" aksiyonları; ruhsat yoksa kesikli modern yükleme kutusu.
+       - Alt Aksiyon Çubuğu: 48px dokunmatik "Aracı Düzenle" (koyu obsidian bento buton) ve "Sil" (danger buton) çubuğu.
+     - **Merkezi Layout Micro-Utilities (`src/design-system.css`)**:
+       - SPA genelinde grid, flex, gap, padding, margin, text ve font sınıfları eklenerek form ve modalların hizalama/boşluk kararlılığı sağlandı.
+     - **Yakıt, Zimmet ve Servis Kartları**:
+       - 2'li Bento kutuları (Toplam Tutar, Litre, Birim Fiyat, Sayaç), personel avatarları ve servis durumu rozetleri.
+     - **Bento Hero & Uyarı Kartları**:
+       - Koyu Obsidian Canlı Filo Bento Hero Kartı (`.bento-card--dark`), Segmented Progress Track, 4'lü metrik ızgarası.
+       - Kritik Evrak Uyarı Kartı (`.announcement-card`) ile tek tıkla filtreleme.
+     - **Bottom Sheet & Modallar**: 9 adet tam uyumlu ergonomik modal/sheet penceresi.
+  4. **Entegrasyon & Build**:
+     - `mobile-spa/src/router.js`: `/arac-takip` rotası eklendi (`permission: 'vehicles'`).
+     - `mobile-spa/src/components/BottomNav.vue`: "Daha Fazla" menüsündeki Araç Takip butonu SPA rotasına bağlandı (`to: '/arac-takip'`).
+     - `mobile-spa/src/views/HomeView.vue`: Ana sayfadaki araç hızlı eylemleri ve filo kartı SPA rotasına bağlandı.
+     - `npm run build` ile üretim derlemesi 0 hata ile tamamlandı.
+
 ## Zimmet sayfası performans analizi (2026-10-15)
 - `demirbas/zimmet` ilk yükü ayrıştırıldı: personel seçenekleri yaklaşık 34 ms, kategoriler yaklaşık 5 ms; DataTables AJAX sorgusu ise 5,8–8,5 saniye sürdü.
 - SQL profiling sonucunda toplam sayım 136 ms, filtreli sayım 151 ms, ilk 10 satırın veri sorgusu 7,84 saniye ölçüldü. Ana darboğaz veri sorgusudur.
@@ -307,3 +354,22 @@
 ## 2026-10-15 — Bordro fotoğrafsız personel avatarları
 - Fotoğrafı olmayan personelde ilk ad ve soyadın baş harfleri 32×32px yuvarlak mavi avatarla gösteriliyor. Türkçe i/ı dönüşümü, tek/çoklu ad ve boş ad destekleniyor. Yüklenemeyen fotoğraf da aynı avatara dönüyor.
 - Ad sıralamasındaki `data-order` korundu. PHP sözdizimi, Türkçe baş harf örnekleri ve Chromium üzerinde fotoğraf hata fallback/boyut kontrolü geçti.
+
+## Resmî ücret hesap pusulası / toplu PDF (2026-10-15)
+- Muhasebenin `files/ucret_hesap_pusulasi_ersan_elkt İHALE 3.pdf` dosyası incelendi. A4 düzenindeki kimlik/işyeri, çalışma günleri, yasal kesintiler, ek kazançlar ve özet bölümleri yeni ortak şablona alındı.
+- `views/bordro/raporlar/bordro.php` dönem seçimi, hazır/hatalı durumları, kayıtlı resmî banka neti, tekil PDF, tümünü yazdır ve toplu PDF indirme olarak düzenlendi. Üst Raporlar kartının doğrudan yazdırma bağlantısı da düzeltildi.
+- Eski PDF'deki oturum/yetki, ham ID ve canlı hesap yolları kaldırıldı. `BordroPusulaModel` firma sınırında kayıtlı dönem satırlarını okur; pasif/ayrılmış personeli dışlamaz. Sayfa ve PDF mevcut `bordro/raporlar` Gate yetkisini kullanır. PDF URL'lerinde dönem ve kayıt ID'leri şifrelenir.
+- `BordroPusulaService` ortak kayıtlı sonuç ve `BordroYayinIcerikService` ile aynı resmî kalemleri sunar; elden/kart/diğer kanalları PDF'ye taşımaz, neti kayıtlı bankadan alır. Geçersiz/eksik snapshot canlı hesaplanmaz; toplu çıktı eksik personeli sessizce atlamaz, engellenir.
+- Kaynak farkı: Muhasebe PDF'si 103 sayfa / 102 tekil kişidir (Fahri Ayaz iki sayfa). Sistem Eylül döneminde 102 kayıt içerir. Bazı yasal kesintiler, yemek ve işyeri bilgileri muhasebe dosyasıyla farklı/eksiktir; bunları muhasebe dosyasına uydurmak için geçmiş bordro değiştirilmedi. Eksik açıklayıcı alanlar `—` ile gösterilir. Muhasebeyle tutar eşitliği için ayrı mutabakat gerekir.
+- Kontroller: 103 bordro birim testi / 805 doğrulama geçti (önceden mevcut 7 uyarı); 102 kaydın liste/yayın/PDF kalem eşitliği, tekil/toplu eşitliği, firma izolasyonu ve snapshot değişmezliği salt okunur entegrasyonla doğrulandı. Toplu PDF 102 A4 sayfa ve taşmasız. Chromium'da 102 satır, Select2 ve indirme bağlantıları hatasız; oturumsuz HTTP isteği 403.
+- PDF geçici dosyaları web kökü dışında işletim sistemi kullanıcısına özel dizinde tutulur. Yeni SQL/yetki veya bordro hesap kuralı değişikliği yoktur.
+- Son bağlantı taramasında Raporlar hızlı indirme ve personel finansal işlemlerindeki eski ham ID bağlantıları da yeni şifreli dönem/kayıt URL'sine geçirildi; finansal sekmedeki yazdır butonu rapor Gate yetkisine bağlandı. Tekil PDF endpointi gerçek servis yoluyla bir A4 olarak doğrulandı.
+
+## Muhasebe bordro Excel karşılaştırması (2026-10-15)
+- Resmî Ücret Hesap Pusulaları ekranına geçici `.xlsx` yükleme ve kayıtlı dönem snapshot'ıyla kişi/alan bazında karşılaştırma alanı eklendi. Dosya diske kalıcı kaydedilmez ve sistem bordroları değiştirilmez.
+- Eşleştirme önce T.C. kimlik numarasıyla, bulunamazsa benzersiz normalize ad-soyadla yapılır. API yanıtında kimlik numarası maskelenir. Mükerrer Excel satırları atlanmaz; ilk eşleşmeden sonraki satır `Yalnız Muhasebede` olarak görünür.
+- Karşılaştırılan alanlar: toplam gün, SGK matrahı, SGK işçi primi, işsizlik işçi primi, gelir vergisi matrahı, gelir vergisi, özel kesinti, damga vergisi, net ödenen/resmî banka, normal gün, yemek, ücretli izin günü ve rapor günü. Para alanları kuruş olarak karşılaştırılır.
+- Ekranda toplam/eşleşen/farklı/yalnız muhasebede/yalnız sistemde sayaçları, durum filtreleri ve kişi satırından açılan muhasebe–sistem–fark tablosu bulunur.
+- Yüklenen örnekte 103 Excel satırına karşı 102 sistem bordrosu analiz edildi: 102 kayıt farklı, Fahri Ayaz'ın mükerrer ikinci satırı yalnız muhasebede, yalnız sistemde kayıt yok. Farklar özellikle SGK/vergi, yemek ve net ödenen alanlarında yoğunlaşıyor.
+- Güvenlik: mevcut `bordro/raporlar` Gate yetkisi, firma/dönem izolasyonu, şifreli dönem ID, CSRF, yalnız `.xlsx`, MIME doğrulama ve 10 MB sınırı uygulandı. Yetkisiz/CSRF/geçersiz dosya senaryoları sırasıyla 403/419/422 döndü.
+- Doğrulama: gerçek dosya gerçek HTTP upload akışıyla analiz edildi; 103 sonuç, açılır 6 alan farkı, durum filtresinde tek mükerrer satır ve maskeli T.C. tarayıcıda doğrulandı. Bordro testleri 105 geçti / 817 doğrulama; önceden mevcut 7 legacy uyarı sürüyor.

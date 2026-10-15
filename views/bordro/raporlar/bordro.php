@@ -1,220 +1,165 @@
 <?php
-/**
- * Bordro Listesi Raporu
- * Personel bazlı detaylı bordro listesini görüntüler
- */
-
-use App\Model\BordroDonemModel;
-use App\Model\BordroPersonelModel;
 use App\Helper\Form;
+use App\Helper\Security;
+use App\Model\BordroDonemModel;
+use App\Model\BordroPusulaModel;
+use App\Service\Gate;
 
-$BordroDonem = new BordroDonemModel();
-$BordroPersonel = new BordroPersonelModel();
-
-// Seçili dönem
-$selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
-
-$selectedDonem = null;
-$personeller = [];
-
-if ($selectedDonemId) {
-    $selectedDonem = $BordroDonem->getDonemById($selectedDonemId);
-    if ($selectedDonem) {
-        // getPersonellerByDonem kullanarak personelleri alıyoruz
-        $personeller = $BordroPersonel->getPersonellerByDonem($selectedDonemId);
-    }
+if (!Gate::allows('bordro/raporlar')) { http_response_code(403); return; }
+$e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$donemModel = new BordroDonemModel();
+$selectedYil = (int) ($_GET['yil'] ?? date('Y'));
+$selectedDonemId = (int) ($_GET['donem'] ?? (isset($_GET['yil']) ? 0 : ($_SESSION['selectedDonemId'] ?? 0)));
+// Firma sınırı tüm dönem seçeneklerinde ve rapor modelinde uygulanır.
+$tumDonemler = $donemModel->getAllDonemsForFilter();
+$yillar = []; $donemler = []; $selectedDonem = null;
+foreach ($tumDonemler as $d) {
+    $y = (int) date('Y', strtotime($d->baslangic_tarihi));
+    $yillar[$y] = $y;
+    if ((int) $d->id === $selectedDonemId) { $selectedDonem = $d; $selectedYil = $y; }
 }
-
-// Yılları ve dönemleri getir (dönem seçimi için)
-$selectedYil = $selectedDonem ? date('Y', strtotime($selectedDonem->baslangic_tarihi)) : date('Y');
-$donemler = $BordroDonem->getAllDonems($selectedYil);
-$yil_option = $BordroDonem->getYearsByDonem();
-
-$donem_option = [];
-foreach ($donemler as $donem) {
-    $donem_option[$donem->id] = $donem->donem_adi;
+foreach ($tumDonemler as $d) {
+    if ((int) date('Y', strtotime($d->baslangic_tarihi)) === $selectedYil) $donemler[$d->id] = $d->donem_adi;
 }
+if (!$selectedDonem && !$selectedDonemId && $donemler) {
+    $selectedDonemId = (int) array_key_first($donemler);
+    foreach ($tumDonemler as $d) if ((int) $d->id === $selectedDonemId) $selectedDonem = $d;
+}
+$rapor = $selectedDonem ? (new BordroPusulaModel())->rapor((int) $_SESSION['firma_id'], $selectedDonemId) : null;
+$kayitlar = $rapor['kayitlar'] ?? [];
+$hazir = count(array_filter($kayitlar, static fn($k) => $k['pusula'] !== null));
+$token = $selectedDonem ? Security::encrypt($selectedDonemId) : '';
+$pdfUrl = 'views/bordro/bordro-yazdir.php?donem=' . $token;
+$maintitle = 'Bordro'; $subtitle = 'Raporlar'; $title = 'Resmî Ücret Hesap Pusulaları';
 ?>
-
 <div class="container-fluid">
-    <?php
-    $maintitle = "Bordro";
-    $subtitle = "Raporlar";
-    $title = "Bordro Çıktıları";
-    ?>
-    <?php include 'layouts/breadcrumb.php'; ?>
-
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header border-bottom">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <h5 class="card-title mb-0">
-                                <i class="bx bx-receipt text-success me-2"></i>Bordro Çıktıları
-                            </h5>
-                            <?php if ($selectedDonem): ?>
-                                <span class="badge bg-primary text-white shadow-sm border"><?= htmlspecialchars($selectedDonem->donem_adi) ?></span>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-2">
-                            <?php echo Form::FormSelect2(
-                                name: 'yilSelectBordro',
-                                options: $yil_option,
-                                selectedValue: $selectedYil,
-                                label: 'Yıl',
-                                icon: 'calendar',
-                                style: 'min-width: 120px;'
-                            ); ?>
-
-                            <?php echo Form::FormSelect2(
-                                name: 'donemSelectBordro',
-                                options: $donem_option,
-                                selectedValue: $selectedDonemId,
-                                label: 'Dönem',
-                                icon: 'calendar',
-                                style: 'min-width: 180px;'
-                            ); ?>
-
-                            <?php if ($selectedDonem): ?>
-                                <a target="_blank" href="views/bordro/bordro-yazdir.php?donem=<?= $selectedDonemId ?>"
-                                    class="btn btn-success">
-                                    <i class="bx bx-printer me-1"></i> Tümünü Yazdır
-                                </a>
-                            <?php endif; ?>
-
-                            <a href="index?p=bordro/raporlar&donem=<?= $selectedDonemId ?>" class="btn btn-secondary shadow-sm">
-                                <i class="bx bx-arrow-back me-1"></i> Raporlara Dön
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-body">
-                    <?php if ($selectedDonem && !empty($personeller)): ?>
-                        <!-- Bordro Listesi Tablosu -->
-                        <div class="table-responsive">
-                            <table id="bordroListesiTable" class="table table-hover table-bordered nowrap w-100 align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 50px;" class="text-center">#</th>
-                                        <th>Personel Bilgileri</th>
-                                        <th>Departman / Görev</th>
-                                        <th class="text-end">Brüt Maaş</th>
-                                        <th class="text-end">Net Maaş</th>
-                                        <th class="text-center" style="width: 120px;">İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    $sira = 1;
-                                    foreach ($personeller as $personel):
-                                        $bordroId = $personel->id; // bordro_personel id
-                                        $personelId = $personel->personel_id;
-                                        ?>
-                                        <tr>
-                                            <td class="text-center fw-medium"><?= $sira++ ?></td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <img src="<?= (!empty($personel->resim_yolu) && is_file($personel->resim_yolu)) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
-                                                        alt="" class="rounded-circle avatar-sm me-3 border shadow-sm">
-                                                    <div>
-                                                        <h6 class="mb-0 fw-bold"><?= htmlspecialchars($personel->adi_soyadi) ?></h6>
-                                                        <span class="text-muted small">TC: <code class="text-dark bg-light px-1 rounded"><?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></code></span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="fw-medium text-dark"><?= htmlspecialchars($personel->departman ?? '-') ?></div>
-                                                <div class="small text-muted"><?= htmlspecialchars($personel->gorev ?? '-') ?></div>
-                                            </td>
-                                            <td class="text-end fw-medium text-secondary">
-                                                <?= number_format(floatval($personel->brut_maas ?? 0), 2, ',', '.') ?> ₺
-                                            </td>
-                                            <td class="text-end text-success fw-bold" style="font-size: 1.05rem;">
-                                                <?= number_format(floatval($personel->net_maas ?? 0), 2, ',', '.') ?> ₺
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="views/bordro/bordro-yazdir.php?id=<?= $bordroId ?>&personel_id=<?= $personelId ?>" 
-                                                   target="_blank" 
-                                                   class="btn btn-sm btn-outline-primary fw-medium px-3 shadow-sm rounded-pill btn-hover-scale"
-                                                   data-bs-toggle="tooltip" title="Bordroyu Yazdır/Görüntüle">
-                                                    <i class="bx bx-printer fs-5 align-middle"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-
-                    <?php elseif ($selectedDonem): ?>
-                        <div class="text-center py-5">
-                            <i class="bx bx-user-x display-1 text-muted opacity-50"></i>
-                            <h5 class="mt-3">Personel Bulunamadı</h5>
-                            <p class="text-muted">Bu dönemde henüz bordrosu hesaplanmış personel bulunmamaktadır.</p>
-                        </div>
-                    <?php else: ?>
-                        <div class="text-center py-5">
-                            <i class="bx bx-calendar-x display-1 text-muted opacity-50"></i>
-                            <h5 class="mt-3">Dönem Seçimi Bekleniyor</h5>
-                            <p class="text-muted">Bordro listesini görüntülemek için yukarıdan bir dönem seçiniz.</p>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
+<?php include 'layouts/breadcrumb.php'; ?>
+<div class="row align-items-center mb-3">
+    <div class="col-md-6 d-flex align-items-center gap-2">
+        <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center" style="width:44px;height:44px"><i class="bx bx-receipt font-size-24"></i></div>
+        <div><h4 class="font-size-16 fw-bold text-dark mb-1">Resmî Ücret Hesap Pusulaları</h4><p class="font-size-12 text-muted mb-0">Her personel için ayrı A4 sayfa; tüm dönem tek PDF.</p></div>
+    </div>
+    <div class="col-md-6 personel-action-toolbar d-flex justify-content-end gap-2 flex-wrap mt-2 mt-md-0">
+    <?php if ($hazir > 0 && $hazir === count($kayitlar)): ?>
+        <a href="<?= $e($pdfUrl) ?>" target="_blank" rel="noopener" class="btn btn-primary top-action-btn shadow-sm text-white"><i class="bx bx-printer me-1"></i>Tümünü Yazdır (<?= $hazir ?>)</a>
+        <a href="<?= $e($pdfUrl . '&indir=1') ?>" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm"><i class="bx bxs-file-pdf me-1"></i>Toplu PDF İndir</a>
+    <?php endif; ?>
+        <a href="index?p=bordro/raporlar&amp;donem=<?= $selectedDonemId ?>" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm">Raporlara Dön</a>
     </div>
 </div>
-
-<style>
-    .avatar-sm { width: 2.5rem; height: 2.5rem; }
-    .btn-hover-scale { transition: transform 0.2s ease; }
-    .btn-hover-scale:hover { transform: scale(1.05); }
-    table.dataTable.nowrap th, table.dataTable.nowrap td { white-space: normal; }
-</style>
-
+<div class="card"><div class="card-body"><div class="row g-3 align-items-center">
+<div class="col-md-3"><?= Form::FormSelect2(name: 'yilSelectBordro', options: $yillar, selectedValue: $selectedYil, label: 'Yıl', icon: 'calendar', class: 'form-select select2') ?></div>
+<div class="col-md-5"><?= Form::FormSelect2(name: 'donemSelectBordro', options: $donemler, selectedValue: $selectedDonemId, label: 'Dönem', icon: 'calendar', class: 'form-select select2') ?></div>
+<div class="col-md-4 text-muted font-size-12"><?= count($kayitlar) ?> personel · <?= $hazir ?> çıktı hazır · <?= count($kayitlar) - $hazir ?> hesaplanmadı / kontrol gerekli</div>
+</div></div></div>
+<div class="alert alert-info font-size-12">Resmî banka tutarları ve yasal kesintiler kayıtlı bordrodan alınır. Dönemde işten ayrılan personel dahildir. Muhasebe kaydıyla farklılık varsa önce mutabakat yapılmalıdır. Dönem kaydında bulunmayan alanlar “—” gösterilir.</div>
+<?php if ($hazir < count($kayitlar)): ?><div class="alert alert-warning">Toplu PDF için tüm personelin geçerli hesaplanmış bordrosu bulunmalıdır. Aşağıdaki uyarılı kayıtları kontrol edin; hazır kayıtları tek tek indirebilirsiniz.</div><?php endif; ?>
+<div class="card mb-3" id="muhasebeKarsilastirmaCard">
+<div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2"><div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle"><i class="bx bx-git-compare font-size-20"></i></div><div><h5 class="font-size-14 fw-bold mb-1">Muhasebe Excel Karşılaştırması</h5><p class="font-size-12 text-muted mb-0">Muhasebeden gelen .xlsx bordroyu seçili dönem snapshot'ıyla karşılaştırır; kayıtları değiştirmez.</p></div></div>
+</div>
+<div class="card-body pt-0">
+    <form id="muhasebeKarsilastirmaForm" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?= $e(Security::csrf()) ?>">
+        <input type="hidden" name="donem" value="<?= $e($token) ?>">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-8"><?= Form::FormFileInput('muhasebe_excel', 'Muhasebe bordro Exceli (.xlsx)', 'bx bx-spreadsheet', 'form-control', true, 'accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"', 'muhasebeExcel') ?></div>
+            <div class="col-md-4"><button type="submit" id="btnMuhasebeKarsilastir" class="btn btn-info text-white w-100 top-action-btn shadow-sm" style="height:48px"><i class="bx bx-search-alt me-1"></i>Exceli Analiz Et ve Karşılaştır</button></div>
+        </div>
+    </form>
+    <div id="muhasebeKarsilastirmaHata" class="alert alert-danger mt-3 mb-0 d-none"></div>
+    <div id="muhasebeKarsilastirmaSonuc" class="d-none mt-3">
+        <div class="row g-2 mb-3" id="muhasebeKarsilastirmaOzet"></div>
+        <div class="d-flex gap-2 flex-wrap mb-2" id="muhasebeDurumFiltreleri"></div>
+        <div class="table-responsive"><table id="muhasebeKarsilastirmaTable" class="table table-bordered table-hover align-middle w-100 mb-0">
+            <thead><tr><th>Personel</th><th>T.C.</th><th>Durum</th><th>Fark Sayısı</th><th>Açıklama</th><th class="text-center">Detay</th></tr></thead><tbody></tbody>
+        </table></div>
+    </div>
+</div></div>
+<div class="card" id="bordroPusulaListCard">
+<div class="card-header bg-transparent border-0 d-flex align-items-center gap-2"><div class="p-2 bg-primary-subtle text-primary rounded-3"><i class="bx bx-list-ul font-size-20"></i></div><div><h5 class="font-size-14 fw-bold mb-1">Personel Pusulaları</h5><p class="font-size-12 text-muted mb-0"><?= $e($selectedDonem->donem_adi ?? 'Dönem seçiniz') ?></p></div></div>
+<div class="card-body"><div class="table-responsive">
+<table id="bordroListesiTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+<thead><tr><th data-filter="number">#</th><th data-filter="string">Ad Soyad</th><th data-filter="select">Departman</th><th data-filter="string">Görev</th><th data-filter="number">Resmî Net / Banka</th><th data-filter="select">Durum</th><th data-filter="none" class="text-center">İşlemler</th></tr></thead>
+<tbody>
+<?php foreach ($kayitlar as $i => $item): $row = $item['kayit']; $p = $item['pusula']; $url = $pdfUrl . '&id=' . Security::encrypt($row->id); ?>
+<tr<?= $p ? ' data-href="' . $e($url) . '"' : '' ?>>
+<td><?= $i + 1 ?></td><td><?= $e($row->adi_soyadi) ?></td><td><?= $e($p['departman'] ?? $row->departman ?? '') ?></td><td><?= $e($p['gorev'] ?? $row->gorev ?? '') ?></td>
+<td class="text-end" data-order="<?= $p ? $p['resmi']['banka_net_kurus'] : -1 ?>"><?= $p ? number_format($p['resmi']['banka_net_kurus'] / 100, 2, ',', '.') . ' ₺' : '—' ?></td>
+<td><?php if ($p): ?><span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Hazır</span><?php else: ?><span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="<?= $e($item['hata']) ?>">Hesaplanmadı / Kontrol gerekli</span><div class="small text-muted"><?= $e($item['hata']) ?></div><?php endif; ?></td>
+<td class="text-center"><div class="action-btn-group"><?php if ($p): ?><a href="<?= $e($url) ?>" target="_blank" rel="noopener" class="table-action-btn btn-subtle-primary" title="Pusulayı Görüntüle" aria-label="Pusulayı Görüntüle"><i class="bx bx-show"></i></a><a href="<?= $e($url . '&indir=1') ?>" class="table-action-btn btn-subtle-success" title="PDF İndir" aria-label="PDF İndir"><i class="bx bx-download"></i></a><?php endif; ?></div></td>
+</tr>
+<?php endforeach; ?>
+</tbody></table></div></div></div></div>
+<style>#bordroListesiTable tr[data-href] td:not(:last-child) { cursor: pointer !important; }</style>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Tooltip başlat
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-          return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-
-        // DataTable başlat
-        if (document.getElementById('bordroListesiTable')) {
-            destroyAndInitDataTable('#bordroListesiTable', {
-                pageLength: 25,
-                order: [[1, 'asc']],
-                dom: '<"row align-items-center mb-3"<"col-md-6"B><"col-md-6"f>>rt<"row align-items-center mt-3"<"col-md-6"i><"col-md-6"p>>',
-                buttons: [
-                    {
-                        extend: 'print',
-                        text: '<i class="bx bx-printer me-1"></i> Listeyi Yazdır',
-                        className: 'btn btn-outline-secondary btn-sm',
-                        exportOptions: {
-                            columns: [0, 1, 2, 3, 4]
-                        }
-                    }
-                ]
-            });
-        }
-
-        const yilSelect = document.querySelector('[name="yilSelectBordro"]');
-        const donemSelect = document.querySelector('[name="donemSelectBordro"]');
-
-        if (yilSelect) {
-            yilSelect.addEventListener('change', function () {
-                window.location.href = 'index?p=bordro/raporlar/bordro&yil=' + this.value;
-            });
-        }
-
-        if (donemSelect) {
-            donemSelect.addEventListener('change', function () {
-                window.location.href = 'index?p=bordro/raporlar/bordro&donem=' + this.value;
-            });
-        }
+document.addEventListener('DOMContentLoaded', function () {
+    $('#yilSelectBordro, #donemSelectBordro').select2({width: '100%'});
+    $('#yilSelectBordro').on('change', function () { window.location.href = 'index?p=bordro/raporlar/bordro&yil=' + encodeURIComponent(this.value); });
+    $('#donemSelectBordro').on('change', function () { window.location.href = 'index?p=bordro/raporlar/bordro&donem=' + encodeURIComponent(this.value); });
+    $('#bordroListesiTable').DataTable(applyLengthStateSave({...getDatatableOptions(), responsive: false, order: [[1, 'asc']], columnDefs: [{targets: 6, width: '120px', orderable: false, searchable: false}]}));
+    $('#bordroListesiTable tbody').on('click', 'tr[data-href] td:not(:last-child)', function (event) {
+        if ($(event.target).closest('a,button,input,.custom-context-menu').length) return;
+        window.open(this.parentElement.dataset.href, '_blank', 'noopener');
     });
+
+    let muhasebeTable = null;
+    let karsilastirmaData = null;
+    let muhasebeStatusFilter = null;
+    const durumBilgisi = {
+        farkli: ['Farklı', 'danger'], eslesen: ['Eşleşen', 'success'],
+        yalniz_muhasebe: ['Yalnız Muhasebede', 'warning'], yalniz_sistem: ['Yalnız Sistemde', 'info']
+    };
+    const esc = value => $('<div>').text(value == null ? '' : String(value)).html();
+    const formatValue = (value, type) => type === 'para'
+        ? (Number(value || 0) / 100).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₺'
+        : Number(value || 0).toLocaleString('tr-TR');
+    function renderDetay(row) {
+        if (!row.farklar.length) return '<div class="p-3 text-muted font-size-12">Alan farkı bulunmadı.</div>';
+        return `<div class="p-2"><table class="table table-sm table-bordered mb-0"><thead><tr><th>Alan</th><th class="text-end">Muhasebe</th><th class="text-end">Sistem</th><th class="text-end">Fark</th></tr></thead><tbody>${row.farklar.map(f => `<tr><td>${esc(f.etiket)}</td><td class="text-end">${esc(formatValue(f.muhasebe, f.tur))}</td><td class="text-end">${esc(formatValue(f.sistem, f.tur))}</td><td class="text-end fw-semibold ${f.fark ? 'text-danger' : ''}">${esc(formatValue(f.fark, f.tur))}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    function renderKarsilastirma(data) {
+        karsilastirmaData = data;
+        if (muhasebeStatusFilter) {
+            $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(fn => fn !== muhasebeStatusFilter);
+            muhasebeStatusFilter = null;
+        }
+        const cards = [
+            ['toplam', 'Toplam Sonuç', 'primary'], ['farkli', 'Farklı', 'danger'],
+            ['yalniz_muhasebe', 'Yalnız Muhasebede', 'warning'], ['yalniz_sistem', 'Yalnız Sistemde', 'info'], ['eslesen', 'Eşleşen', 'success']
+        ];
+        $('#muhasebeKarsilastirmaOzet').html(cards.map(([key, label, color]) => `<div class="col-6 col-lg"><div class="border rounded-3 p-2 h-100 bg-${color}-subtle"><div class="font-size-11 text-muted">${label}</div><div class="font-size-18 fw-bold text-${color}">${data.sayilar[key]}</div></div></div>`).join(''));
+        $('#muhasebeDurumFiltreleri').html(`<button type="button" class="btn btn-sm btn-dark muhasebe-filter active" data-status="">Tümü</button>${cards.slice(1).map(([key, label, color]) => `<button type="button" class="btn btn-sm btn-subtle-${color} muhasebe-filter" data-status="${key}">${label} (${data.sayilar[key]})</button>`).join('')}`);
+        if (muhasebeTable) { muhasebeTable.destroy(); $('#muhasebeKarsilastirmaTable tbody').empty(); }
+        data.sonuclar.forEach((row, index) => {
+            const [label, color] = durumBilgisi[row.durum];
+            $('#muhasebeKarsilastirmaTable tbody').append(`<tr data-index="${index}" data-status="${row.durum}"><td class="fw-semibold">${esc(row.personel)}</td><td>${esc(row.tc || '—')}</td><td><span class="badge bg-${color}-subtle text-${color} border border-${color}-subtle rounded-pill">${label}</span></td><td class="text-center">${row.fark_sayisi}</td><td class="font-size-12">${esc(row.aciklama)}</td><td class="text-center"><button type="button" class="table-action-btn btn-subtle-primary btn-karsilastirma-detay" aria-label="Fark detayını aç"><i class="bx bx-chevron-down"></i></button></td></tr>`);
+        });
+        muhasebeTable = $('#muhasebeKarsilastirmaTable').DataTable(applyLengthStateSave({...getDatatableOptions(), responsive: false, pageLength: 25, order: [[2, 'asc'], [0, 'asc']], columnDefs: [{targets: 5, orderable: false, searchable: false}]}));
+        $('#muhasebeKarsilastirmaSonuc').removeClass('d-none');
+    }
+    $('#muhasebeKarsilastirmaForm').on('submit', function (event) {
+        event.preventDefault();
+        const button = $('#btnMuhasebeKarsilastir');
+        const original = button.html();
+        $('#muhasebeKarsilastirmaHata').addClass('d-none').text('');
+        button.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin me-1"></i>Analiz ediliyor...');
+        $.ajax({url: 'views/bordro/raporlar/bordro-karsilastir.php', method: 'POST', data: new FormData(this), processData: false, contentType: false, dataType: 'json'})
+            .done(response => { if (response.status !== 'success') throw new Error(response.message || 'Karşılaştırma tamamlanamadı.'); renderKarsilastirma(response.data); })
+            .fail(xhr => { const message = xhr.responseJSON?.message || 'Excel karşılaştırması tamamlanamadı.'; $('#muhasebeKarsilastirmaHata').removeClass('d-none').text(message); })
+            .always(() => button.prop('disabled', false).html(original));
+    });
+    $(document).on('click', '.muhasebe-filter', function () {
+        $('.muhasebe-filter').removeClass('active'); $(this).addClass('active');
+        const status = this.dataset.status;
+        if (muhasebeStatusFilter) $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(fn => fn !== muhasebeStatusFilter);
+        muhasebeStatusFilter = function (settings, data, dataIndex) { return settings.nTable.id !== 'muhasebeKarsilastirmaTable' || !status || $(settings.aoData[dataIndex].nTr).data('status') === status; };
+        $.fn.dataTable.ext.search.push(muhasebeStatusFilter); muhasebeTable.draw();
+    });
+    $('#muhasebeKarsilastirmaTable tbody').on('click', '.btn-karsilastirma-detay', function () {
+        const tr = $(this).closest('tr'); const dtRow = muhasebeTable.row(tr); const index = Number(tr.data('index'));
+        if (dtRow.child.isShown()) { dtRow.child.hide(); $(this).find('i').attr('class', 'bx bx-chevron-down'); }
+        else { dtRow.child(renderDetay(karsilastirmaData.sonuclar[index]), 'bg-light').show(); $(this).find('i').attr('class', 'bx bx-chevron-up'); }
+    });
+});
 </script>

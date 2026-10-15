@@ -78,7 +78,7 @@ const operations = [
   { permission: 'invoices', label: 'E-Fatura & Finans', icon: ReceiptText, to: '/fatura' },
   { permission: 'cash', label: 'Kasa Yönetimi', icon: Landmark, to: '/kasa' },
   { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, to: '/cari-takip' },
-  { permission: 'vehicles', label: 'Araç Takip', icon: Car, href: '/mobile/index.php?p=arac' },
+  { permission: 'vehicles', label: 'Araç Takip', icon: Car, to: '/arac-takip' },
   { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, href: '/mobile/index.php?p=km-onaylari' },
   { permission: 'documents', label: 'Evrak Takip', icon: FileText, href: '/mobile/index.php?p=evrak-takip' },
   { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, href: '/mobile/index.php?p=nobet' },

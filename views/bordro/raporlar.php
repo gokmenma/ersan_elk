@@ -75,8 +75,8 @@ $raporlar = [
     ],
     [
         'id' => 'bordro',
-        'baslik' => 'Bordro',
-        'aciklama' => 'Personel bazlı detaylı bordro çıktısı. Yazdırılabilir ve PDF formatında indirilebilir.',
+        'baslik' => 'Resmî Ücret Hesap Pusulaları',
+        'aciklama' => 'Muhasebe düzeninde kişi başına bir A4 pusula. Tüm personelin kayıtlı resmî banka dökümlerini tek PDF olarak alın.',
         'icon' => 'bx-receipt',
         'renk' => 'success',
         'url' => 'index?p=bordro/raporlar/bordro&donem=',
@@ -264,7 +264,7 @@ $raporlar = [
                                             <i class="bx bx-show me-1"></i> Görüntüle
                                         </a>
                                         <?php if (!empty($rapor['download_url'])): ?>
-                                            <a href="<?= $rapor['download_url'] . $selectedDonemId ?>"
+                                            <a href="<?= htmlspecialchars($rapor['download_url'] . ($rapor['id'] === 'bordro' ? \App\Helper\Security::encrypt($selectedDonemId) : $selectedDonemId), ENT_QUOTES, 'UTF-8') ?>"
                                                 class="btn btn-outline-<?= $rapor['renk'] ?> btn-sm"
                                                 <?= $rapor['download_type'] === 'print' ? 'target="_blank"' : '' ?>
                                                 title="<?= $rapor['download_type'] === 'excel' ? 'Excel İndir' : ($rapor['download_type'] === 'print' ? 'Yazdır' : 'İndir') ?>">
@@ -310,7 +310,7 @@ $raporlar = [
                                 </a>
                             </div>
                             <div class="col-md-3">
-                                <a href="views/bordro/bordro-yazdir.php?donem=<?= $selectedDonemId ?>" target="_blank"
+                                <a href="views/bordro/bordro-yazdir.php?donem=<?= htmlspecialchars(\App\Helper\Security::encrypt($selectedDonemId), ENT_QUOTES, 'UTF-8') ?>" target="_blank"
                                     class="btn btn-outline-primary w-100">
                                     <i class="bx bx-printer me-2"></i>
                                     Tüm Bordroları Yazdır
