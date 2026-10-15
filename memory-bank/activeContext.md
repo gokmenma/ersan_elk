@@ -1,5 +1,108 @@
 # Active Context
 
+## Mobil SPA Evrak Takip (E-Fatura & Finans) Sekmelerinin Talepler Gibi Alt Menüye Taşınması (2026-10-15)
+- **Kullanıcı Talebi**:
+  - Evrak takip (E-Fatura & Finans) sayfasındaki üstte bulunan menünün (Özet, Giden, Gelen, Taslaklar), Talepler sayfasındaki alt menü (obsidian floating dock drawer) gibi yapılması.
+- **Mimari & Geliştirmeler**:
+  1. **Servis & Reaktif Durum Yönetimi (`mobile-spa/src/services/fatura.js`)**:
+     - `faturaState` reaktif nesnesi tanımlandı (`activeTab: 'ozet'`, `drawerOpen: true`, `counts: { giden: 0, gelen: 0, taslak: 0 }`).
+     - `setFaturaTab(tab)`, `openFaturaDrawer()`, `closeFaturaDrawer()`, `toggleFaturaDrawer()` yardımcı fonksiyonları eklendi.
+  2. **Alt Navigasyon Çekmecesi (`mobile-spa/src/components/BottomNav.vue`)**:
+     - `showFaturaDrawer` computed özelliği eklendi (`route.path === '/fatura'` ve `faturaState.drawerOpen`).
+     - 5 kolonlu (`fatura-nav-tabs`, `--nav-count: 5`) çekmece yapısı kuruldu:
+       - 1. Özet & KDV (`ReceiptText` ikonu)
+       - 2. Giden (`ArrowUpRight` ikonu, rozet: `faturaState.counts.giden`)
+       - 3. Gelen (`ArrowDownLeft` ikonu, rozet: `faturaState.counts.gelen`)
+       - 4. Taslaklar (`Edit3` ikonu, rozet: `faturaState.counts.taslak`)
+       - 5. Kapat (`X` ikonu, menüyü kapatıp standart BottomNav'a döner)
+     - `handleCenterNavClick` içine Fatura sayfası desteği eklendi; alt menü kapalıyken orta "Diğer" butonuna tıklandığında menü anında tekrar açılır.
+     - "Daha Fazla" menüsünden E-Fatura'ya tıklandığında menünün açık gelmesi garanti edildi.
+  3. **Fatura Görünümü & Sekme Senkronizasyonu (`mobile-spa/src/views/FaturaView.vue`)**:
+     - Üst kısımdaki eski `.clay-tabs-wrap.fatura-tabs` bloğu kaldırılarak ekran dikeyde ferahlatıldı.
+     - `activeTab` ve `faturaState.activeTab` iki yönlü reaktif senkronize edildi.
+     - Menü kapatıldığında kullanıcının tek dokunuşla geri açabilmesi için `.floating-fatura-dock-btn` yüzen açma butonu eklendi.
+     - `loadDashboard` ve `loadInvoices` içinde Giden, Gelen ve Taslak fatura sayıları `faturaState.counts` nesnesine aktarılarak alt menü ikonları üzerinde dinamik badge gösterimi sağlandı.
+     - `onMounted` aşamasında `openFaturaDrawer()` çağrıldı; `onBeforeUnmount` aşamasında `closeFaturaDrawer()` ile temizlik yapıldı.
+  4. **Tasarım Sistemi (`mobile-spa/src/design-system.css`)**:
+     - `.fatura-nav-tabs` ve `.floating-fatura-dock-btn` stilleri merkezi CSS'e entegre edildi.
+  5. **Üretim Derlemesi (`npm run build`)**:
+     - Vite derlemesi 0 hata ile başarıyla tamamlandı.
+
+## Mobil SPA Araç Takip Minimal Üst Özet Kartı ve TR Plaka Mavi Alanı Yuvarlatma (2026-10-15)
+- **Kullanıcı Talebi**:
+  1. Üstteki özet kartının (Koyu Bento Hero kartı) biraz daha minimal (dikeyde daha kompakt, daha az yer kaplayan) yapılması.
+  2. Plaka görseli (`.tr-plate-badge`) içindeki mavi "TR" alanının (`.tr-band`) kenarlarının biraz `border-radius` (yuvarlatılmış) olması.
+- **Mimari & Geliştirmeler**:
+  1. **Minimal Koyu Hero Bento Kartı (`mobile-spa/src/views/AracView.vue`)**:
+     - `<section class="bento-card bento-card--dark arac-hero-bento">` sınıfı eklendi.
+     - `.arac-hero-bento` ile kart dikeyde ~%40 sıkılaştırıldı:
+       - İç dolgu: `padding: 13px 15px 14px !important; border-radius: 20px !important;`
+       - Başlık alanı: `margin-bottom: 8px !important;`, başlık fontu `15px`, etiket `8px` (`padding: 2px 6px`).
+       - Mini aksiyon ikonu: `width: 28px; height: 28px;`
+       - Segmentli ilerleme çubuğu: `height: 5px; margin-bottom: 9px; gap: 2.5px;`
+       - 4'lü Metrik Izgarası: `gap: 7px;`
+       - Metrik hücreleri: `padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.04);`
+       - Rakamlar: `font-size: 14.5px;`, etiketler: `font-size: 9.5px;`
+  2. **Plaka Görseli TR Mavi Alanı Yuvarlatma (`.tr-plate-badge`, `.tr-band`)**:
+     - `.tr-plate-badge` içine `padding: 1.5px; border-radius: 7px;` uygulandı.
+     - `.tr-band` mavi alanı için `border-radius: 4px; padding: 3px 5px;` tanımlandı.
+     - Böylece mavi TR alanı plaka içinde köşeleri zarifçe yuvarlatılmış ayrı ve net bir rozet kimliği kazandı.
+  3. **KM Gösterim Güvenliği**:
+     - `formatKm` fonksiyonu ve `km-diff-pill` / form alanlarında `Math.max(0, ...)` ve `Math.abs(...)` kullanılarak olası negatif gösterimlerin önüne geçildi.
+  4. **Derleme**:
+     - `npm run build` başarıyla tamamlandı.
+
+## Mobil SPA Araç Takip Üst Koyu Bento Kartının Dinamikleştirilmesi ve Alttaki Özet Kartlarının Kaldırılması (2026-10-15)
+- **Kullanıcı Talebi**:
+  1. Üstteki koyu Bento kartta her sekmenin (Araçlar, Zimmet, Yakıt, KM, Servis) özet verilerinin gelmesi.
+  2. Evrak yenileme uyarısının yalnızca "Araçlar" sekmesinde görünmesi.
+  3. Alttaki beyaz özet kartlarının (Yakıt toplamı, KM mesafesi) tamamen kaldırılması (çünkü zaten üstte gösterilecek).
+- **Mimari & Geliştirmeler**:
+  1. **Backend Özet Metrikleri (`mobile-spa/public/api/arac.php` & `dist/api/arac.php`)**:
+     - `$tabTotals` dizisi her sekme için zenginleştirildi:
+       - `zimmet`: aktif zimmet sayısı, iade zimmet sayısı, toplam hareket sayısı.
+       - `yakit`: toplam tutar, toplam litre, toplam fiş sayısı, ortalama dolum tutarı.
+       - `km`: toplam yapılan net km, toplam yolculuk kayıt sayısı, ortalama sürüş mesafesi.
+       - `servis`: aktif servisteki araç sayısı, tamamlanan bakım sayısı, toplam servis tutarı, toplam servis kayıt sayısı.
+  2. **Dinamik Koyu Hero Bento Kartı (`mobile-spa/src/views/AracView.vue`)**:
+     - `heroCardMeta` computed özelliği ile sekmeye özel etiket, başlık ve ikon dinamik hale getirildi:
+       - `araclar`: CANLI FİLO DURUMU / Filo Operasyon Özeti (`Car` ikonu)
+       - `zimmet`: ZİMMET DURUMU / Zimmet Operasyon Özeti (`UserCheck` ikonu)
+       - `yakit`: AKARYAKIT & TÜKETİM / Yakıt Operasyon Özeti (`Fuel` ikonu)
+       - `km`: YOLCULUK & KİLOMETRE / KM Operasyon Özeti (`Gauge` ikonu)
+       - `servis`: BAKIM & ONARIM / Servis Operasyon Özeti (`Wrench` ikonu)
+     - Her sekmeye özel segmentli progress track (Zimmet, Filo, Servis oranları) entegre edildi.
+     - 4'lü Koyu Metrik Izgarası (`.bento-metrics-grid--dark`) her sekmenin kritik operasyon verilerini tam olarak dolduracak şekilde dinamikleştirildi.
+  3. **Evrak Uyarısının Araçlar Sekmesiyle Sınırlandırılması**:
+     - `v-if="activeTab === 'araclar' && summary.evrak_uyari_sayisi > 0"` koşulu ile yalnızca Araçlar sekmesinde gösterilmesi sağlandı.
+  4. **Alttaki Beyaz Özet Kartlarının Temizlenmesi**:
+     - `.yakit-summary-bento` ve `.km-summary-bento` blokları kaldırıldı; mükerrer bilgi ve sayfa kalabalığı ortadan kalktı.
+  5. **Derleme & Doğrulama**:
+     - `npm run build` ile Vite üretim derlemesi 0 hata ile tamamlandı (`dist/assets/index-DNaGdPfR.js`, `dist/assets/index-CXfrJ4ZP.css`).
+
+## Mobil SPA Araç Takip Sekmelerinin Navbar Alt Menüsüne Taşınması (Scrollable & Sabit Kapat Butonlu) (2026-10-15)
+- **Kullanıcı Talebi**:
+  - Araç takip sayfasındaki üstte bulunan menünün (Araçlar, Zimmet, Yakıt, KM, Servis...), Talepler sayfasındaki alt menü gibi yapılması; sekmelerin yatayda kaydırılabilir (scrollable) olması ve Kapat butonunun sağ tarafta sabit kalması.
+- **Mimari & Geliştirmeler**:
+  1. **Servis & Durum Yönetimi (`mobile-spa/src/services/arac.js`)**:
+     - `aracState` reaktif nesnesi oluşturuldu (`activeTab: 'araclar'`, `drawerOpen: true`).
+     - `setAracTab`, `openAracDrawer`, `closeAracDrawer`, `toggleAracDrawer` yardımcı fonksiyonları tanımlandı.
+  2. **Navbar Çekmecesi & Kaydırma Yönetimi (`mobile-spa/src/components/BottomNav.vue`)**:
+     - Araç Takip modülü için alt çekmece (`showAracDrawer`) entegre edildi.
+     - Sekmeler (`Araçlar`, `Zimmet`, `Yakıt`, `KM`, `Servis`) scrollable alana (`.arac-nav-tabs__scroll`) yerleştirildi.
+     - Seçili sekme tıklandığında veya aktif tab değiştiğinde `scrollIntoView` ile otomatik odaklama/hizalama sağlandı.
+     - En sağdaki `Kapat` butonu (`.arac-nav-tabs__close`) `sticky`/sabit flex elemanı olarak solundaki derinlik gölgesi ve obsidian zemin ile kayan sekmelerin arkasında kalmasını sağladı.
+     - Kapat'a basıldığında `closeAracDrawer` ile alt menü kapanarak standart ana navbar sekmelerine dönülmesi sağlandı; kullanıcı Araç sayfasındayken ana bardaki butona bastığında çekmece yeniden açılıyor.
+  3. **Tasarım Sistemi & CSS Tokenları (`mobile-spa/src/design-system.css`)**:
+     - `.arac-nav-tabs`, `.arac-nav-tabs__scroll`, `.arac-nav-tabs__close` ve `.floating-arac-dock-btn` sınıfları eklendi.
+     - Dokunmatik kaydırma optimizasyonları (`-webkit-overflow-scrolling: touch`, `scrollbar-width: none`) uygulandı.
+  4. **Araç Takip Görünümü Temizliği (`mobile-spa/src/views/AracView.vue`)**:
+     - Sayfa gövdesindeki kaba ve sağa taşan eski `clay-tabs-wrap` menüsü kaldırıldı.
+     - `onMounted` ve `onBeforeUnmount` lifecycle hook'ları ile drawer açılış/kapanış senkronizasyonu sağlandı.
+     - Alt çekmece kapalıyken kullanıcının dilediğinde menüyü tekrar açabilmesi için yüzen zarif bir tetikleyici buton eklendi.
+  5. **Derleme & Doğrulama**:
+     - `npm run build` ile Vite üretim derlemesi 0 hata ile tamamlandı (`dist/assets/index-Dla54YOr.js`, `dist/assets/index-Cc4s4sZN.css`).
+
 ## Mobil SPA Ana Navbar "Diğer" İkonu ve Talepler Sayfası Üst Çubuk İyileştirmesi (2026-10-15)
 - **Kullanıcı Talebi**:
   1. "ana navbarda diğer ikonu düzensiz geldi": Ana navbardaki "Diğer" (LayoutGrid) ikonunun diğer 4 sekme (Ana Sayfa, Personel, Raporlar, Talepler) ile aynı hiza, aynı boyut ve düzenli görünmesi.

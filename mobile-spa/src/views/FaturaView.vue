@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   AlertCircle,
@@ -35,7 +35,13 @@ import {
   X,
   XCircle,
 } from '@lucide/vue'
-import { faturaApi } from '../services/fatura.js'
+import {
+  faturaApi,
+  faturaState,
+  openFaturaDrawer,
+  closeFaturaDrawer,
+  setFaturaTab,
+} from '../services/fatura.js'
 import { auth } from '../services/auth.js'
 import TopBar from '../components/TopBar.vue'
 
@@ -43,7 +49,19 @@ const router = useRouter()
 const route = useRoute()
 
 // 1. Ana Durumlar & Sekmeler
-const activeTab = ref(route.query.tab || 'ozet') // ozet, giden, gelen, taslak
+const activeTab = ref(route.query.tab || faturaState.activeTab || 'ozet') // ozet, giden, gelen, taslak
+
+watch(() => faturaState.activeTab, (newTab) => {
+  if (activeTab.value !== newTab) {
+    switchTab(newTab)
+  }
+})
+
+watch(activeTab, (newTab) => {
+  if (faturaState.activeTab !== newTab) {
+    faturaState.activeTab = newTab
+  }
+})
 const loading = ref(true)
 const refreshing = ref(false)
 const errorMessage = ref('')
@@ -291,6 +309,8 @@ async function loadDashboard() {
     const res = await faturaApi.dashboard(params)
     if (res.success && res.data) {
       dashData.value = res.data
+      faturaState.counts.giden = res.data.giden?.toplam_adet || 0
+      faturaState.counts.gelen = res.data.gelen?.toplam_adet || 0
     }
   } catch (err) {
     errorMessage.value = err.message || 'Dashboard verisi yüklenirken hata oluştu.'
@@ -335,6 +355,13 @@ async function loadInvoices(reset = true) {
       }
       listSummary.value = res.summary || {}
       listPagination.value = res.pagination || listPagination.value
+      if (activeTab.value === 'taslak') {
+        faturaState.counts.taslak = res.pagination?.total || 0
+      } else if (activeTab.value === 'giden' && !statusFilter.value && !searchQuery.value) {
+        faturaState.counts.giden = res.pagination?.total || 0
+      } else if (activeTab.value === 'gelen' && !responseFilter.value && !searchQuery.value) {
+        faturaState.counts.gelen = res.pagination?.total || 0
+      }
     }
   } catch (err) {
     errorMessage.value = err.message || 'Fatura listesi yüklenemedi.'
@@ -354,6 +381,9 @@ function loadCurrentTab(reset = true) {
 
 function switchTab(tab) {
   activeTab.value = tab
+  if (faturaState.activeTab !== tab) {
+    faturaState.activeTab = tab
+  }
   router.replace({ query: { ...route.query, tab } })
   // Arama ve filtreleri sıfırla
   searchQuery.value = ''
@@ -780,8 +810,19 @@ async function saveWizardInvoice(sendDirect = false) {
 // YAŞAM DÖNGÜSÜ
 // ----------------------------------------------------
 onMounted(() => {
+  openFaturaDrawer()
+  if (route.query.tab && ['ozet', 'giden', 'gelen', 'taslak'].includes(route.query.tab)) {
+    faturaState.activeTab = route.query.tab
+    activeTab.value = route.query.tab
+  } else {
+    faturaState.activeTab = activeTab.value
+  }
   initDatesForPeriod('this_month')
   loadCurrentTab(true)
+})
+
+onBeforeUnmount(() => {
+  closeFaturaDrawer()
 })
 </script>
 
@@ -881,45 +922,20 @@ onMounted(() => {
       </button>
     </section>
 
-    <!-- 3. Sekmeli Navigasyon (Segmented Tabs) -->
-    <nav class="clay-tabs-wrap fatura-tabs" aria-label="Fatura modülleri">
+    <!-- Alt Menü Kapalıyken Yüzen Açma Butonu -->
+    <Transition name="fade">
       <button
+        v-if="!faturaState.drawerOpen"
         type="button"
-        class="clay-tab-pill"
-        :class="{ active: activeTab === 'ozet' }"
-        @click="switchTab('ozet')"
+        class="floating-fatura-dock-btn"
+        title="Fatura Menüsünü Aç"
+        aria-label="Fatura Menüsünü Aç"
+        @click="openFaturaDrawer"
       >
-        <ReceiptText :size="15" />
-        <span>Özet & KDV</span>
+        <ReceiptText :size="17" />
+        <span>Menü</span>
       </button>
-      <button
-        type="button"
-        class="clay-tab-pill"
-        :class="{ active: activeTab === 'giden' }"
-        @click="switchTab('giden')"
-      >
-        <ArrowUpRight :size="15" />
-        <span>Giden</span>
-      </button>
-      <button
-        type="button"
-        class="clay-tab-pill"
-        :class="{ active: activeTab === 'gelen' }"
-        @click="switchTab('gelen')"
-      >
-        <ArrowDownLeft :size="15" />
-        <span>Gelen</span>
-      </button>
-      <button
-        type="button"
-        class="clay-tab-pill"
-        :class="{ active: activeTab === 'taslak' }"
-        @click="switchTab('taslak')"
-      >
-        <Edit3 :size="15" />
-        <span>Taslaklar</span>
-      </button>
-    </nav>
+    </Transition>
 
     <!-- Hata Bildirimi -->
     <div v-if="errorMessage" class="fatura-error-box">

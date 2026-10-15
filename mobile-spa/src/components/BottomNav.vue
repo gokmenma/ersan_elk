@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  ArrowDownLeft,
+  ArrowUpRight,
   Banknote,
   CalendarCheck,
   CalendarDays,
@@ -12,7 +14,9 @@ import {
   ClipboardCheck,
   ClipboardList,
   CreditCard,
+  Edit3,
   FileText,
+  Fuel,
   Gauge,
   Headset,
   Home,
@@ -25,9 +29,11 @@ import {
   ReceiptText,
   ShieldAlert,
   Sparkles,
+  UserCheck,
   UserRound,
   UsersRound,
   Wallet,
+  Wrench,
   X,
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
@@ -37,6 +43,17 @@ import {
   toggleRequestsDrawer,
   setRequestsTab,
 } from '../services/requests.js'
+import {
+  aracState,
+  closeAracDrawer,
+  toggleAracDrawer,
+  setAracTab,
+} from '../services/arac.js'
+import {
+  faturaState,
+  closeFaturaDrawer,
+  setFaturaTab,
+} from '../services/fatura.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,9 +87,43 @@ function handleSheetKeydown(event) {
 const isTaleplerPage = computed(() => route.path === '/talepler')
 const showTaleplerDrawer = computed(() => isTaleplerPage.value && requestsState.drawerOpen)
 
+const isAracPage = computed(() => route.path === '/arac-takip')
+const showAracDrawer = computed(() => isAracPage.value && aracState.drawerOpen)
+
+const isFaturaPage = computed(() => route.path === '/fatura' || route.path === '/efatura')
+const showFaturaDrawer = computed(() => isFaturaPage.value && faturaState.drawerOpen)
+
+const aracScrollEl = ref(null)
+
+function handleAracTabClick(tab) {
+  setAracTab(tab)
+  nextTick(() => {
+    scrollActiveAracTab()
+  })
+}
+
+function scrollActiveAracTab() {
+  const activeEl = aracScrollEl.value?.querySelector('.nav-link.is-active')
+  if (activeEl) {
+    activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }
+}
+
+watch(() => aracState.activeTab, () => {
+  nextTick(() => {
+    scrollActiveAracTab()
+  })
+} )
+
 watch(() => route.path, (newPath) => {
   if (newPath !== '/talepler') {
     requestsState.drawerOpen = false
+  }
+  if (newPath !== '/arac-takip') {
+    aracState.drawerOpen = false
+  }
+  if (newPath !== '/fatura' && newPath !== '/efatura') {
+    faturaState.drawerOpen = false
   }
 })
 
@@ -85,6 +136,16 @@ function handleNavClick(item, event) {
     } else {
       toggleRequestsDrawer()
     }
+  }
+}
+
+function handleCenterNavClick() {
+  if (isAracPage.value && !aracState.drawerOpen) {
+    aracState.drawerOpen = true
+  } else if (isFaturaPage.value && !faturaState.drawerOpen) {
+    faturaState.drawerOpen = true
+  } else {
+    menuOpen.value = !menuOpen.value
   }
 }
 
@@ -126,6 +187,11 @@ const visibleOperations = computed(() => operations.filter(item => !item.permiss
 function selectOperation(op) {
   menuOpen.value = false
   if (op.to) {
+    if (op.to === '/arac-takip') {
+      aracState.drawerOpen = true
+    } else if (op.to === '/fatura') {
+      faturaState.drawerOpen = true
+    }
     router.push(op.to)
   } else if (op.href) {
     window.location.href = op.href
@@ -211,12 +277,12 @@ async function handleLogout() {
     </div>
   </Transition>
 
-  <nav class="bottom-nav" :class="{ 'has-drawer': showTaleplerDrawer }" aria-label="Ana gezinme">
+  <nav class="bottom-nav" :class="{ 'has-drawer': showTaleplerDrawer || showAracDrawer || showFaturaDrawer }" aria-label="Ana gezinme">
     <div class="bottom-nav__inner">
       <!-- Normal Navigasyon Sekmeleri -->
       <Transition name="nav-slide-tabs">
         <div
-          v-if="!showTaleplerDrawer"
+          v-if="!showTaleplerDrawer && !showAracDrawer && !showFaturaDrawer"
           class="bottom-nav__tabs"
           :style="{ '--nav-count': visibleItems.length }"
         >
@@ -230,7 +296,7 @@ async function handleLogout() {
               aria-haspopup="dialog"
               :aria-label="`${item.label} menüsünü aç`"
               :aria-expanded="menuOpen"
-              @click="menuOpen = !menuOpen"
+              @click="handleCenterNavClick"
             >
               <span class="nav-icon">
                 <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
@@ -348,6 +414,182 @@ async function handleLogout() {
             aria-label="Talep türleri menüsünü kapat"
             title="Kapat"
             @click="closeRequestsDrawer"
+          >
+            <span class="nav-icon">
+              <X :size="22" :stroke-width="2.3" />
+            </span>
+            <span class="nav-label">Kapat</span>
+          </button>
+        </div>
+      </Transition>
+
+      <!-- Fatura / Evrak Takip Sekmeleri Çekmecesi (Tam Nav Menü Formatında ve İkonlu) -->
+      <Transition name="nav-slide-drawer">
+        <div v-if="showFaturaDrawer" class="bottom-nav__tabs fatura-nav-tabs" style="--nav-count: 5;">
+          <!-- 1. Özet & KDV -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': faturaState.activeTab === 'ozet' }"
+            aria-label="Özet ve KDV"
+            @click="setFaturaTab('ozet')"
+          >
+            <span class="nav-icon">
+              <ReceiptText :size="21" :stroke-width="faturaState.activeTab === 'ozet' ? 2.4 : 1.9" />
+            </span>
+            <span class="nav-label">Özet</span>
+          </button>
+
+          <!-- 2. Giden -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': faturaState.activeTab === 'giden' }"
+            aria-label="Giden Faturalar"
+            @click="setFaturaTab('giden')"
+          >
+            <span class="nav-icon">
+              <ArrowUpRight :size="21" :stroke-width="faturaState.activeTab === 'giden' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': faturaState.counts.giden > 0 }">
+                {{ faturaState.counts.giden }}
+              </span>
+            </span>
+            <span class="nav-label">Giden</span>
+          </button>
+
+          <!-- 3. Gelen -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': faturaState.activeTab === 'gelen' }"
+            aria-label="Gelen Faturalar"
+            @click="setFaturaTab('gelen')"
+          >
+            <span class="nav-icon">
+              <ArrowDownLeft :size="21" :stroke-width="faturaState.activeTab === 'gelen' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': faturaState.counts.gelen > 0 }">
+                {{ faturaState.counts.gelen }}
+              </span>
+            </span>
+            <span class="nav-label">Gelen</span>
+          </button>
+
+          <!-- 4. Taslaklar -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': faturaState.activeTab === 'taslak' }"
+            aria-label="Taslak Faturalar"
+            @click="setFaturaTab('taslak')"
+          >
+            <span class="nav-icon">
+              <Edit3 :size="21" :stroke-width="faturaState.activeTab === 'taslak' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': faturaState.counts.taslak > 0 }">
+                {{ faturaState.counts.taslak }}
+              </span>
+            </span>
+            <span class="nav-label">Taslak</span>
+          </button>
+
+          <!-- 5. Kapat -->
+          <button
+            type="button"
+            class="nav-link nav-link--close"
+            aria-label="Fatura menüsünü kapat"
+            title="Kapat"
+            @click="closeFaturaDrawer"
+          >
+            <span class="nav-icon">
+              <X :size="22" :stroke-width="2.3" />
+            </span>
+            <span class="nav-label">Kapat</span>
+          </button>
+        </div>
+      </Transition>
+
+      <!-- Araç Takip Sekmeleri Çekmecesi (Scrollable & Sabit Kapat Butonlu) -->
+      <Transition name="nav-slide-drawer">
+        <div v-if="showAracDrawer" class="bottom-nav__tabs arac-nav-tabs">
+          <!-- Scrollable Sekmeler -->
+          <div ref="aracScrollEl" class="arac-nav-tabs__scroll">
+            <!-- 1. Araçlar -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': aracState.activeTab === 'araclar' }"
+              aria-label="Araçlar"
+              @click="handleAracTabClick('araclar')"
+            >
+              <span class="nav-icon">
+                <Car :size="21" :stroke-width="aracState.activeTab === 'araclar' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Araçlar</span>
+            </button>
+
+            <!-- 2. Zimmet -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': aracState.activeTab === 'zimmet' }"
+              aria-label="Zimmet"
+              @click="handleAracTabClick('zimmet')"
+            >
+              <span class="nav-icon">
+                <UserCheck :size="21" :stroke-width="aracState.activeTab === 'zimmet' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Zimmet</span>
+            </button>
+
+            <!-- 3. Yakıt -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': aracState.activeTab === 'yakit' }"
+              aria-label="Yakıt"
+              @click="handleAracTabClick('yakit')"
+            >
+              <span class="nav-icon">
+                <Fuel :size="21" :stroke-width="aracState.activeTab === 'yakit' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Yakıt</span>
+            </button>
+
+            <!-- 4. KM -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': aracState.activeTab === 'km' }"
+              aria-label="KM"
+              @click="handleAracTabClick('km')"
+            >
+              <span class="nav-icon">
+                <Gauge :size="21" :stroke-width="aracState.activeTab === 'km' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">KM</span>
+            </button>
+
+            <!-- 5. Servis -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': aracState.activeTab === 'servis' }"
+              aria-label="Servis"
+              @click="handleAracTabClick('servis')"
+            >
+              <span class="nav-icon">
+                <Wrench :size="21" :stroke-width="aracState.activeTab === 'servis' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Servis</span>
+            </button>
+          </div>
+
+          <!-- Sabit Kapat Butonu -->
+          <button
+            type="button"
+            class="nav-link nav-link--close arac-nav-tabs__close"
+            aria-label="Araç menüsünü kapat"
+            title="Kapat"
+            @click="closeAracDrawer"
           >
             <span class="nav-icon">
               <X :size="22" :stroke-width="2.3" />

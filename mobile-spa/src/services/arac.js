@@ -1,3 +1,26 @@
+import { reactive } from 'vue'
+
+export const aracState = reactive({
+  activeTab: 'araclar', // 'araclar' | 'zimmet' | 'yakit' | 'km' | 'servis'
+  drawerOpen: true,
+})
+
+export function setAracTab(tab) {
+  aracState.activeTab = tab
+}
+
+export function openAracDrawer() {
+  aracState.drawerOpen = true
+}
+
+export function closeAracDrawer() {
+  aracState.drawerOpen = false
+}
+
+export function toggleAracDrawer() {
+  aracState.drawerOpen = !aracState.drawerOpen
+}
+
 async function request(action, options = {}) {
   const method = options.method || 'GET'
   let url = `/api/arac.php?action=${encodeURIComponent(action)}`

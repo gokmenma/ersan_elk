@@ -1251,12 +1251,89 @@
   align-items: center;
 }
 
-/* Talepler Drawer inside BottomNav */
-.talepler-nav-tabs {
+/* Talepler & Fatura Drawers inside BottomNav */
+.talepler-nav-tabs,
+.fatura-nav-tabs {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
+}
+
+/* Araç Takip Drawer inside BottomNav (Scrollable Sekmeler & Sabit Kapat Butonlu) */
+.arac-nav-tabs {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.arac-nav-tabs__scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0 4px;
+  scroll-behavior: smooth;
+}
+
+.arac-nav-tabs__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.arac-nav-tabs__scroll .nav-link {
+  flex: 0 0 68px;
+  min-width: 68px;
+  width: 68px;
+  height: 54px;
+  padding: 5px 2px;
+}
+
+.arac-nav-tabs__close {
+  flex: 0 0 62px;
+  min-width: 62px;
+  width: 62px;
+  height: 54px;
+  position: relative;
+  z-index: 3;
+  background: var(--ds-surface-dark);
+  border-radius: var(--ds-radius-pill);
+  box-shadow: -10px 0 16px rgba(25, 29, 36, 0.96), -2px 0 6px rgba(25, 29, 36, 0.8);
+  margin-left: 2px;
+}
+
+/* Floating Dock Opener for Araç Takip & Fatura */
+.floating-arac-dock-btn,
+.floating-fatura-dock-btn {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--ds-safe-bottom, 16px) + 80px);
+  z-index: 990;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px 0 14px;
+  background: var(--ds-surface-dark);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--ds-radius-pill);
+  box-shadow: var(--ds-shadow-bento-dark);
+  font: 700 13px/1 var(--ds-font-main);
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.floating-arac-dock-btn:active,
+.floating-fatura-dock-btn:active {
+  transform: scale(0.96);
 }
 
 .bottom-nav__home-bar { display: none; }

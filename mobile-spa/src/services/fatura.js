@@ -1,3 +1,31 @@
+import { reactive } from 'vue'
+
+export const faturaState = reactive({
+  activeTab: 'ozet', // 'ozet' | 'giden' | 'gelen' | 'taslak'
+  drawerOpen: true,
+  counts: {
+    giden: 0,
+    gelen: 0,
+    taslak: 0,
+  },
+})
+
+export function setFaturaTab(tab) {
+  faturaState.activeTab = tab
+}
+
+export function openFaturaDrawer() {
+  faturaState.drawerOpen = true
+}
+
+export function closeFaturaDrawer() {
+  faturaState.drawerOpen = false
+}
+
+export function toggleFaturaDrawer() {
+  faturaState.drawerOpen = !faturaState.drawerOpen
+}
+
 async function request(action, options = {}) {
   const method = options.method || 'GET'
   let url = `/api/fatura.php?action=${encodeURIComponent(action)}`

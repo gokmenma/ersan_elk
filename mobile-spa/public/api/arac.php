@@ -144,8 +144,18 @@ try {
         $tabTotals = [
             'total_yakit_tutar' => 0,
             'total_yakit_litre' => 0,
+            'total_yakit_sayisi' => 0,
+            'ortalama_yakit_tutar' => 0,
             'total_yapilan_km' => 0,
+            'total_km_kayit_sayisi' => 0,
+            'ortalama_yapilan_km' => 0,
             'aktif_servis_sayisi' => $servistekiSayi,
+            'tamamlanan_servis_sayisi' => 0,
+            'total_servis_tutar' => 0,
+            'total_servis_sayisi' => 0,
+            'zimmet_aktif_sayisi' => $zimmetliSayi,
+            'zimmet_iade_sayisi' => 0,
+            'zimmet_toplam_sayisi' => 0,
         ];
 
         if ($tab === 'araclar') {
@@ -285,7 +295,14 @@ try {
             $stmt->execute($params);
             $rawList = $stmt->fetchAll(PDO::FETCH_OBJ);
 
+            $aktifZimmetSayisi = 0;
+            $iadeZimmetSayisi = 0;
             foreach ($rawList as $row) {
+                if ($row->durum === 'aktif' && empty($row->iade_tarihi)) {
+                    $aktifZimmetSayisi++;
+                } else {
+                    $iadeZimmetSayisi++;
+                }
                 $items[] = [
                     'id' => Security::encrypt((string) $row->id),
                     'raw_id' => (int) $row->id,
@@ -305,6 +322,9 @@ try {
                     'notlar' => (string) ($row->notlar ?? ''),
                 ];
             }
+            $tabTotals['zimmet_aktif_sayisi'] = $aktifZimmetSayisi;
+            $tabTotals['zimmet_iade_sayisi'] = $iadeZimmetSayisi;
+            $tabTotals['zimmet_toplam_sayisi'] = count($rawList);
         } elseif ($tab === 'yakit') {
             $sql = "
                 SELECT y.*, 
@@ -369,6 +389,8 @@ try {
             }
             $tabTotals['total_yakit_tutar'] = $totTutar;
             $tabTotals['total_yakit_litre'] = $totLitre;
+            $tabTotals['total_yakit_sayisi'] = count($rawList);
+            $tabTotals['ortalama_yakit_tutar'] = count($rawList) > 0 ? ($totTutar / count($rawList)) : 0;
         } elseif ($tab === 'km') {
             $sql = "
                 SELECT k.*, 
@@ -409,7 +431,12 @@ try {
 
             $totKm = 0;
             foreach ($rawList as $row) {
-                $totKm += (int) ($row->yapilan_km ?? 0);
+                $rawKm = (int) ($row->yapilan_km ?? 0);
+                if ($rawKm < 0 && (int) $row->bitis_km > (int) $row->baslangic_km) {
+                    $rawKm = (int) $row->bitis_km - (int) $row->baslangic_km;
+                }
+                $cleanKm = max(0, $rawKm);
+                $totKm += $cleanKm;
                 $items[] = [
                     'id' => Security::encrypt((string) $row->id),
                     'raw_id' => (int) $row->id,
@@ -420,11 +447,13 @@ try {
                     'tarih' => (string) $row->tarih,
                     'baslangic_km' => (int) ($row->baslangic_km ?? 0),
                     'bitis_km' => (int) ($row->bitis_km ?? 0),
-                    'yapilan_km' => (int) ($row->yapilan_km ?? 0),
+                    'yapilan_km' => $cleanKm,
                     'aciklama' => (string) ($row->aciklama ?? $row->notlar ?? ''),
                 ];
             }
             $tabTotals['total_yapilan_km'] = $totKm;
+            $tabTotals['total_km_kayit_sayisi'] = count($rawList);
+            $tabTotals['ortalama_yapilan_km'] = count($rawList) > 0 ? round($totKm / count($rawList)) : 0;
         } elseif ($tab === 'servis') {
             $sql = "
                 SELECT s.*, 
@@ -454,8 +483,17 @@ try {
             $stmt->execute($params);
             $rawList = $stmt->fetchAll(PDO::FETCH_OBJ);
 
+            $totServisTutar = 0.0;
+            $aktifServis = 0;
+            $tamamlananServis = 0;
             foreach ($rawList as $row) {
                 $isAktif = empty($row->iade_tarihi);
+                if ($isAktif) {
+                    $aktifServis++;
+                } else {
+                    $tamamlananServis++;
+                }
+                $totServisTutar += (float) ($row->tutar ?? 0);
                 $items[] = [
                     'id' => Security::encrypt((string) $row->id),
                     'raw_id' => (int) $row->id,
@@ -482,6 +520,10 @@ try {
                     ] : null,
                 ];
             }
+            $tabTotals['total_servis_tutar'] = $totServisTutar;
+            $tabTotals['aktif_servis_sayisi'] = $aktifServis;
+            $tabTotals['tamamlanan_servis_sayisi'] = $tamamlananServis;
+            $tabTotals['total_servis_sayisi'] = count($rawList);
         }
 
         aracApiResponse([

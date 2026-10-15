@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AlertTriangle,
@@ -36,14 +36,33 @@ import {
   Wrench,
   X,
 } from '@lucide/vue'
-import { aracApi } from '../services/arac.js'
+import {
+  aracApi,
+  aracState,
+  openAracDrawer,
+  closeAracDrawer,
+  toggleAracDrawer,
+  setAracTab,
+} from '../services/arac.js'
 import { auth } from '../services/auth.js'
 import TopBar from '../components/TopBar.vue'
 
 const router = useRouter()
 
 // Aktif Sekme: 'araclar' | 'zimmet' | 'yakit' | 'km' | 'servis'
-const activeTab = ref('araclar')
+const activeTab = ref(aracState.activeTab || 'araclar')
+
+watch(() => aracState.activeTab, (newTab) => {
+  if (activeTab.value !== newTab) {
+    switchTab(newTab)
+  }
+})
+
+watch(activeTab, (newTab) => {
+  if (aracState.activeTab !== newTab) {
+    aracState.activeTab = newTab
+  }
+})
 
 // Veri Durumları
 const loading = ref(true)
@@ -61,8 +80,18 @@ const summary = ref({
   totals: {
     total_yakit_tutar: 0,
     total_yakit_litre: 0,
+    total_yakit_sayisi: 0,
+    ortalama_yakit_tutar: 0,
     total_yapilan_km: 0,
+    total_km_kayit_sayisi: 0,
+    ortalama_yapilan_km: 0,
     aktif_servis_sayisi: 0,
+    tamamlanan_servis_sayisi: 0,
+    total_servis_tutar: 0,
+    total_servis_sayisi: 0,
+    zimmet_aktif_sayisi: 0,
+    zimmet_iade_sayisi: 0,
+    zimmet_toplam_sayisi: 0,
   },
 })
 
@@ -232,7 +261,7 @@ function formatMoney(amount) {
 
 function formatKm(km) {
   if (km === undefined || km === null) return '0 km'
-  const val = Number(km) || 0
+  const val = Math.max(0, Number(km) || 0)
   return new Intl.NumberFormat('tr-TR').format(val) + ' km'
 }
 
@@ -259,6 +288,65 @@ const fleetRatio = computed(() => {
     bosta: Math.min(100, Math.round((bosta / total) * 100)) || 0,
     serviste: Math.min(100, Math.round((serviste / total) * 100)) || 0,
     ikame: Math.min(100, Math.round((ikame / total) * 100)) || 0,
+  }
+})
+
+// Dinamik Koyu Bento Başlık & İkon
+const heroCardMeta = computed(() => {
+  switch (activeTab.value) {
+    case 'zimmet':
+      return {
+        tag: 'ZİMMET DURUMU',
+        title: 'Zimmet Operasyon Özeti',
+        icon: UserCheck,
+      }
+    case 'yakit':
+      return {
+        tag: 'AKARYAKIT & TÜKETİM',
+        title: 'Yakıt Operasyon Özeti',
+        icon: Fuel,
+      }
+    case 'km':
+      return {
+        tag: 'YOLCULUK & KİLOMETRE',
+        title: 'KM Operasyon Özeti',
+        icon: Gauge,
+      }
+    case 'servis':
+      return {
+        tag: 'BAKIM & ONARIM',
+        title: 'Servis Operasyon Özeti',
+        icon: Wrench,
+      }
+    case 'araclar':
+    default:
+      return {
+        tag: 'CANLI FİLO DURUMU',
+        title: 'Filo Operasyon Özeti',
+        icon: Car,
+      }
+  }
+})
+
+// Zimmet Segment Oranları
+const zimmetRatio = computed(() => {
+  const total = Number(summary.value.aktif_arac) || 1
+  const zimmetli = Number(summary.value.zimmetli_sayisi) || 0
+  const bosta = Number(summary.value.bosta_arac) || 0
+  return {
+    zimmetli: Math.min(100, Math.round((zimmetli / total) * 100)) || 0,
+    bosta: Math.min(100, Math.round((bosta / total) * 100)) || 0,
+  }
+})
+
+// Servis Segment Oranları
+const servisRatio = computed(() => {
+  const aktif = Number(summary.value.totals.aktif_servis_sayisi ?? summary.value.servisteki_sayisi) || 0
+  const tamamlanan = Number(summary.value.totals.tamamlanan_servis_sayisi) || 0
+  const total = aktif + tamamlanan || 1
+  return {
+    aktif: Math.min(100, Math.round((aktif / total) * 100)) || 0,
+    tamamlanan: Math.min(100, Math.round((tamamlanan / total) * 100)) || 0,
   }
 })
 
@@ -304,6 +392,7 @@ async function loadPersoneller() {
 function switchTab(tab) {
   if (activeTab.value === tab) return
   activeTab.value = tab
+  aracState.activeTab = tab
   statusFilter.value = 'all'
   loadData()
 }
@@ -769,8 +858,16 @@ async function executeDelete() {
 }
 
 onMounted(() => {
+  openAracDrawer()
+  if (aracState.activeTab && aracState.activeTab !== activeTab.value) {
+    activeTab.value = aracState.activeTab
+  }
   loadData()
   loadPersoneller()
+})
+
+onBeforeUnmount(() => {
+  closeAracDrawer()
 })
 </script>
 
@@ -850,22 +947,23 @@ onMounted(() => {
       </template>
     </TopBar>
 
-    <!-- 2. Hero Bento Koyu Kart: Canlı Filo Operasyon Durumu -->
-    <section class="bento-card bento-card--dark" aria-label="Canlı Filo Durumu">
+    <!-- 2. Hero Bento Koyu Kart: Dinamik Operasyon Durumu (Her Sekmeye Özel) -->
+    <section class="bento-card bento-card--dark arac-hero-bento" :aria-label="heroCardMeta.title">
       <div class="bento-head">
         <div class="bento-head-title">
-          <span class="dark-pill-tag">CANLI FİLO DURUMU</span>
-          <h3>Filo Operasyon Özeti</h3>
+          <span class="dark-pill-tag">{{ heroCardMeta.tag }}</span>
+          <h3>{{ heroCardMeta.title }}</h3>
         </div>
         <div class="bento-head-icons">
-          <span class="bento-mini-btn bento-mini-btn--dark" title="Toplam Filo">
-            <Car :size="16" />
+          <span class="bento-mini-btn bento-mini-btn--dark" :title="heroCardMeta.title">
+            <component :is="heroCardMeta.icon" :size="16" />
           </span>
         </div>
       </div>
 
       <!-- Segmentli Dağılım İlerleme Çubuğu -->
-      <div class="segmented-track segmented-track--dark" title="Filo Durum Dağılımı">
+      <!-- A) Araçlar Sekmesi Dağılımı -->
+      <div v-if="activeTab === 'araclar'" class="segmented-track segmented-track--dark" title="Filo Durum Dağılımı">
         <div
           class="seg-pill seg-pill--blue"
           :style="{ width: `${fleetRatio.zimmetli}%` }"
@@ -889,30 +987,157 @@ onMounted(() => {
         ></div>
       </div>
 
-      <!-- 4'lü Metrik Izgarası -->
-      <div class="bento-metrics-grid bento-metrics-grid--dark">
-        <div class="metric-cell" @click="activeTab = 'araclar'; statusFilter = 'all'">
+      <!-- B) Zimmet Sekmesi Dağılımı -->
+      <div v-else-if="activeTab === 'zimmet'" class="segmented-track segmented-track--dark" title="Zimmet Durum Dağılımı">
+        <div
+          class="seg-pill seg-pill--blue"
+          :style="{ width: `${zimmetRatio.zimmetli}%` }"
+          :title="`Zimmetli: %${zimmetRatio.zimmetli}`"
+        ></div>
+        <div
+          class="seg-pill seg-pill--emerald"
+          :style="{ width: `${zimmetRatio.bosta}%` }"
+          :title="`Boşta: %${zimmetRatio.bosta}`"
+        ></div>
+      </div>
+
+      <!-- C) Yakıt Sekmesi Göstergesi -->
+      <div v-else-if="activeTab === 'yakit'" class="segmented-track segmented-track--dark" title="Yakıt Tüketim Dağılımı">
+        <div
+          class="seg-pill seg-pill--emerald"
+          style="width: 100%"
+          title="Seçili Dönem Toplam Akaryakıt Tüketimi"
+        ></div>
+      </div>
+
+      <!-- D) KM Sekmesi Göstergesi -->
+      <div v-else-if="activeTab === 'km'" class="segmented-track segmented-track--dark" title="KM Sürüş Dağılımı">
+        <div
+          class="seg-pill seg-pill--indigo"
+          style="width: 100%"
+          title="Seçili Dönem Toplam Sürüş Mesafesi"
+        ></div>
+      </div>
+
+      <!-- E) Servis Sekmesi Dağılımı -->
+      <div v-else-if="activeTab === 'servis'" class="segmented-track segmented-track--dark" title="Servis Durum Dağılımı">
+        <div
+          class="seg-pill seg-pill--coral"
+          :style="{ width: `${servisRatio.aktif}%` }"
+          :title="`Serviste: %${servisRatio.aktif}`"
+        ></div>
+        <div
+          class="seg-pill seg-pill--emerald"
+          :style="{ width: `${servisRatio.tamamlanan}%` }"
+          :title="`Tamamlandı: %${servisRatio.tamamlanan}`"
+        ></div>
+      </div>
+
+      <!-- 4'lü Metrik Izgarası (Sekmeye Özel) -->
+      <!-- 1. Araçlar Metrikleri -->
+      <div v-if="activeTab === 'araclar'" class="bento-metrics-grid bento-metrics-grid--dark">
+        <div class="metric-cell" @click="statusFilter = 'all'">
           <strong>{{ summary.toplam_arac }} <small>Araç</small></strong>
           <span>Toplam Filo ({{ summary.aktif_arac }} Aktif)</span>
         </div>
-        <div class="metric-cell" @click="activeTab = 'araclar'; statusFilter = 'zimmetli'">
+        <div class="metric-cell" @click="statusFilter = 'zimmetli'">
           <strong class="text-blue">{{ summary.zimmetli_sayisi }} <small>Zimmetli</small></strong>
           <span>Personelde Görevde</span>
         </div>
-        <div class="metric-cell" @click="activeTab = 'araclar'; statusFilter = 'bosta'">
+        <div class="metric-cell" @click="statusFilter = 'bosta'">
           <strong class="text-emerald">{{ summary.bosta_arac }} <small>Boşta</small></strong>
           <span>Kullanıma Hazır</span>
         </div>
-        <div class="metric-cell" @click="activeTab = 'araclar'; statusFilter = 'serviste'">
+        <div class="metric-cell" @click="statusFilter = 'serviste'">
           <strong class="text-coral">{{ summary.servisteki_sayisi }} <small>Serviste</small></strong>
           <span>Bakım / Onarımda</span>
         </div>
       </div>
+
+      <!-- 2. Zimmet Metrikleri -->
+      <div v-else-if="activeTab === 'zimmet'" class="bento-metrics-grid bento-metrics-grid--dark">
+        <div class="metric-cell">
+          <strong class="text-blue">{{ summary.zimmetli_sayisi }} <small>Araç</small></strong>
+          <span>Aktif Görevde</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-emerald">{{ summary.bosta_arac }} <small>Boşta</small></strong>
+          <span>Zimmetlenebilir</span>
+        </div>
+        <div class="metric-cell">
+          <strong>{{ summary.totals.zimmet_toplam_sayisi || items.length }} <small>Kayıt</small></strong>
+          <span>Dönem Hareketi</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-amber">{{ summary.totals.zimmet_iade_sayisi || 0 }} <small>İade</small></strong>
+          <span>Teslim Alınan</span>
+        </div>
+      </div>
+
+      <!-- 3. Yakıt Metrikleri -->
+      <div v-else-if="activeTab === 'yakit'" class="bento-metrics-grid bento-metrics-grid--dark">
+        <div class="metric-cell">
+          <strong class="text-emerald">{{ formatMoney(summary.totals.total_yakit_tutar) }}</strong>
+          <span>Dönem Yakıt Tutarı</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-blue">{{ Number(summary.totals.total_yakit_litre || 0).toFixed(1) }} <small>Litre</small></strong>
+          <span>Toplam Tüketim</span>
+        </div>
+        <div class="metric-cell">
+          <strong>{{ summary.totals.total_yakit_sayisi || items.length }} <small>Fiş</small></strong>
+          <span>Yakıt Alımı</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-amber">{{ formatMoney(summary.totals.ortalama_yakit_tutar || 0) }}</strong>
+          <span>Ort. Dolum Tutarı</span>
+        </div>
+      </div>
+
+      <!-- 4. KM Metrikleri -->
+      <div v-else-if="activeTab === 'km'" class="bento-metrics-grid bento-metrics-grid--dark">
+        <div class="metric-cell">
+          <strong class="text-indigo">{{ formatKm(summary.totals.total_yapilan_km) }}</strong>
+          <span>Dönem Net KM</span>
+        </div>
+        <div class="metric-cell">
+          <strong>{{ summary.totals.total_km_kayit_sayisi || items.length }} <small>Kayıt</small></strong>
+          <span>Yolculuk Bildirimi</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-blue">{{ formatKm(summary.totals.ortalama_yapilan_km || 0) }}</strong>
+          <span>Ortalama Sürüş</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-emerald">{{ summary.aktif_arac }} <small>Araç</small></strong>
+          <span>Kateden Aktif Filo</span>
+        </div>
+      </div>
+
+      <!-- 5. Servis Metrikleri -->
+      <div v-else-if="activeTab === 'servis'" class="bento-metrics-grid bento-metrics-grid--dark">
+        <div class="metric-cell">
+          <strong class="text-coral">{{ summary.totals.aktif_servis_sayisi ?? summary.servisteki_sayisi }} <small>Araç</small></strong>
+          <span>Şu An Serviste</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-emerald">{{ summary.totals.tamamlanan_servis_sayisi || 0 }} <small>İşlem</small></strong>
+          <span>Tamamlanan Bakım</span>
+        </div>
+        <div class="metric-cell">
+          <strong class="text-amber">{{ formatMoney(summary.totals.total_servis_tutar || 0) }}</strong>
+          <span>Toplam Servis Maliyeti</span>
+        </div>
+        <div class="metric-cell">
+          <strong>{{ summary.totals.total_servis_sayisi || items.length }} <small>Kayıt</small></strong>
+          <span>Toplam Servis Girişi</span>
+        </div>
+      </div>
     </section>
 
-    <!-- 3. Kritik Evrak Uyarı Kartı (Eğer süresi dolan veya yaklaşan varsa) -->
+    <!-- 3. Kritik Evrak Uyarı Kartı (Yalnızca Araçlar Sekmesinde Gösterilir) -->
     <article
-      v-if="summary.evrak_uyari_sayisi > 0"
+      v-if="activeTab === 'araclar' && summary.evrak_uyari_sayisi > 0"
       class="announcement-card evrak-alert-card"
       @click="activeTab = 'araclar'; statusFilter = 'evrak_uyari'"
     >
@@ -928,54 +1153,20 @@ onMounted(() => {
       </button>
     </article>
 
-    <!-- 4. Claymorphic Sekme Seçici -->
-    <nav class="clay-tabs-wrap" aria-label="Araç Takip Sekmeleri">
+    <!-- Alt Menü Kapalıyken Yüzen Açma Butonu -->
+    <Transition name="fade">
       <button
+        v-if="!aracState.drawerOpen"
         type="button"
-        class="clay-tab-btn"
-        :class="{ 'is-active': activeTab === 'araclar' }"
-        @click="switchTab('araclar')"
+        class="floating-arac-dock-btn"
+        title="Araç Menüsünü Aç"
+        aria-label="Araç Menüsünü Aç"
+        @click="openAracDrawer"
       >
-        <Car :size="15" />
-        <span>Araçlar</span>
+        <Car :size="17" />
+        <span>Menü</span>
       </button>
-      <button
-        type="button"
-        class="clay-tab-btn"
-        :class="{ 'is-active': activeTab === 'zimmet' }"
-        @click="switchTab('zimmet')"
-      >
-        <UserCheck :size="15" />
-        <span>Zimmet</span>
-      </button>
-      <button
-        type="button"
-        class="clay-tab-btn"
-        :class="{ 'is-active': activeTab === 'yakit' }"
-        @click="switchTab('yakit')"
-      >
-        <Fuel :size="15" />
-        <span>Yakıt</span>
-      </button>
-      <button
-        type="button"
-        class="clay-tab-btn"
-        :class="{ 'is-active': activeTab === 'km' }"
-        @click="switchTab('km')"
-      >
-        <Gauge :size="15" />
-        <span>KM</span>
-      </button>
-      <button
-        type="button"
-        class="clay-tab-btn"
-        :class="{ 'is-active': activeTab === 'servis' }"
-        @click="switchTab('servis')"
-      >
-        <Wrench :size="15" />
-        <span>Servis</span>
-      </button>
-    </nav>
+    </Transition>
 
     <!-- 5. Dönem Seçici (Zimmet, Yakıt, KM, Servis Sekmelerinde) -->
     <div v-if="activeTab !== 'araclar'" class="clay-pills-scroll mb-3">
@@ -1015,29 +1206,7 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- 6. Dinamik Sekme Özetleri (Yakıt ve KM için) -->
-    <div v-if="activeTab === 'yakit'" class="bento-card bento-card--white yakit-summary-bento">
-      <div class="flex items-center justify-between">
-        <div>
-          <span class="ds-kicker">SEÇİLİ DÖNEM YAKIT TOPLAMI</span>
-          <h4 class="text-xl font-black text-emerald">{{ formatMoney(summary.totals.total_yakit_tutar) }}</h4>
-        </div>
-        <div class="text-right">
-          <span class="ds-kicker">TOPLAM TÜKETİM</span>
-          <h4 class="text-xl font-black text-ink">{{ Number(summary.totals.total_yakit_litre || 0).toFixed(1) }} <small class="text-xs font-normal">Litre</small></h4>
-        </div>
-      </div>
-    </div>
 
-    <div v-if="activeTab === 'km'" class="bento-card bento-card--white km-summary-bento">
-      <div class="flex items-center justify-between">
-        <div>
-          <span class="ds-kicker">SEÇİLİ DÖNEM YAPILAN NET MESAFE</span>
-          <h4 class="text-2xl font-black text-indigo">{{ formatKm(summary.totals.total_yapilan_km) }}</h4>
-        </div>
-        <span class="bento-mini-btn bg-indigo-subtle text-indigo"><Gauge :size="20" /></span>
-      </div>
-    </div>
 
     <!-- 7. Arama & Durum Filtre Hapları -->
     <div class="search-filter-section mb-3">
@@ -1468,7 +1637,7 @@ onMounted(() => {
           <!-- Sağ Taraf: Net KM Vurgusu ve Ayrık Tarih Rozeti -->
           <div class="km-badge-wrap">
             <span class="km-diff-pill">
-              +{{ formatKm(item.yapilan_km) }}
+              +{{ formatKm(Math.abs(item.yapilan_km || 0)) }}
             </span>
             <span class="km-date-badge">
               <Calendar :size="11" />
@@ -2367,7 +2536,7 @@ onMounted(() => {
             <div>
               <label class="form-label">Hesaplanan Net KM</label>
               <div class="p-2 rounded-xl bg-surface-subtle font-black text-ink text-sm text-center">
-                +{{ formatKm(kmFormData.yapilan_km) }}
+                +{{ formatKm(Math.abs(kmFormData.yapilan_km || 0)) }}
               </div>
             </div>
           </div>
@@ -2664,31 +2833,96 @@ onMounted(() => {
   padding-bottom: 120px;
 }
 
+/* Minimal Hero Bento Kartı (Üst Özet Kartı) */
+.arac-hero-bento {
+  padding: 13px 15px 14px !important;
+  border-radius: 20px !important;
+}
+
+.arac-hero-bento .bento-head {
+  margin-bottom: 8px !important;
+}
+
+.arac-hero-bento .bento-head-title h3 {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+}
+
+.arac-hero-bento .dark-pill-tag {
+  font-size: 8px !important;
+  padding: 2px 6px !important;
+  margin-bottom: 2px !important;
+}
+
+.arac-hero-bento .bento-mini-btn {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.arac-hero-bento .segmented-track {
+  height: 5px !important;
+  margin-bottom: 9px !important;
+  gap: 2.5px !important;
+}
+
+.arac-hero-bento .bento-metrics-grid {
+  gap: 7px !important;
+}
+
+.arac-hero-bento .metric-cell {
+  padding: 7px 10px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.arac-hero-bento .metric-cell strong {
+  font-size: 14.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+.arac-hero-bento .metric-cell strong small {
+  font-size: 9.5px !important;
+  font-weight: 500 !important;
+}
+
+.arac-hero-bento .metric-cell span {
+  font-size: 9.5px !important;
+  margin-top: 1px !important;
+  line-height: 1.2 !important;
+  opacity: 0.85;
+}
+
 /* Türk Plaka Rozeti */
 .tr-plate-badge {
   display: inline-flex;
   align-items: center;
   border: 1.5px solid #1e293b;
-  border-radius: 6px;
+  border-radius: 7px;
   background: #ffffff;
-  overflow: hidden;
+  padding: 1.5px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  vertical-align: middle;
 }
 
 .tr-band {
   background: #0284c7;
   color: #ffffff;
   font: 900 9px sans-serif;
-  padding: 4px 5px;
+  padding: 3px 5px;
+  border-radius: 4px;
   display: grid;
   place-items: center;
+  letter-spacing: 0.02em;
 }
 
 .plate-text {
-  font: 900 14px 'Space Grotesk', monospace;
+  font: 900 13.5px 'Space Grotesk', monospace;
   letter-spacing: 0.05em;
   color: #0f172a;
-  padding: 2px 8px;
+  padding: 1px 7px 1px 6px;
+  line-height: 1.1;
 }
 
 /* Durum Hapları & Noktaları */
