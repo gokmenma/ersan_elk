@@ -24,7 +24,7 @@ if ($userId <= 0 || $firmaId <= 0 || !$menuModel->userCanAccessMenuLink($userId,
 }
 
 $action = (string) ($_POST['action'] ?? '');
-$allowedActions = ['get-detail', 'maas-hesapla', 'donem-kapat', 'donem-ac', 'odeme-dagit', 'odeme-reset', 'odeme-reset-all', 'personel-gelir-ekle', 'personel-kesinti-ekle'];
+$allowedActions = ['get-detail', 'get-detail-old', 'maas-hesapla', 'donem-kapat', 'donem-ac', 'odeme-dagit', 'odeme-reset', 'odeme-reset-all', 'personel-gelir-ekle', 'personel-kesinti-ekle'];
 if (!in_array($action, $allowedActions, true)) {
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Mobil bordro için geçersiz işlem.']);
@@ -96,7 +96,7 @@ if (!empty($_POST['personel_id'])) {
 }
 
 // Kapalı dönemlerde yalnız görüntüleme ve dönemi yeniden açma işlemi yapılabilir.
-if (!in_array($action, ['get-detail', 'donem-ac', 'donem-kapat'], true)) {
+if (!in_array($action, ['get-detail', 'get-detail-old', 'donem-ac', 'donem-kapat'], true)) {
     $targetPeriodId = (int) ($_POST['donem_id'] ?? 0);
     if ($targetPeriodId === 0 && !empty($_POST['id'])) {
         $stmt = $db->prepare('SELECT donem_id FROM bordro_personel WHERE id = ? AND silinme_tarihi IS NULL');

@@ -1,5 +1,25 @@
 # Active Context
 
+## Sistem Logları Menü ve Yetkilendirme Çalışması (2026-10-15)
+- **Kullanıcı Talebi**:
+  `views/logs/list.php` sayfası için menü yapılması ve Süper Admin ile Firma Sahibi için yetki verilmesi.
+- **Yapılan İnceleme ve Analiz**:
+  - `views/logs/list.php` sayfasının `Gate::allows("log_kayitlari")` kontrolü ile korunduğu tespit edildi.
+  - Sayfanın kullandığı `views/logs/api.php` dosyasında `Gate::allows("log_kayitlari")` ve `Gate::authorizeApiPolicy('logs/api', $action)` kontrollerinin bulunduğu görüldü.
+  - Veritabanında `permission_key = 'log_kayitlari'` (ID: 923) yetkisinin ve `permission_policies` tablosunda `logs/list` (GET) ile `logs/api` (POST) aksiyonlarının tanımlı olduğu, ancak `menus` tablosunda bu sayfa için menü kaydı bulunmadığı tespit edildi.
+- **Uygulanan Geliştirmeler ve Standartlar**:
+  - **SQL Migration**: `sql/2026_10_15_add_sistem_loglari_menu_and_permissions.sql` oluşturuldu ve PDO üzerinden çalıştırıldı.
+  - **Permissions**: `log_kayitlari` yetkisi `name = 'Sistem Logları'`, `group_name = 'Yönetim'` olarak güncellendi.
+  - **User Role Permissions**: Süper Admin (`role_type = 'superadmin' OR superadmin = 1`) ve Firma Sahibi rollerine `NOT EXISTS` kontrollü yetki tanımlaması sağlandı.
+  - **Menus**: `menus` tablosuna `menu_name = 'Sistem Logları'`, `menu_link = 'logs/list'`, `parent_id = 0`, `group_name = 'Yönetim'`, `group_order = 5`, `menu_order = 84`, `menu_icon = 'shield'`, `permission_id = @log_kayitlari_permission_id` kaydı eklendi.
+  - **Permission Policies**: `logs/list` (page GET) ve `logs/api` (api POST/all actions) kayıtları `@log_kayitlari_permission_id` ile senkronize edildi.
+  - **Cache Temizliği**: Menü cache'leri (`cache/tenant_*`) temizlendi.
+  - **Doğrulama & Test**:
+    - `MenuModel::getHierarchicalMenuForRole`: Süper Admin (user 1) ve Firma Sahibi (user 62) için `Yönetim` grubu altında `Sistem Logları` menüsü doğrulandı.
+    - `PermissionsModel::getGroupedPermissions`: Yetki grubu düzenleme ekranında `Yönetim` altında `Sistem Logları` eksiksiz listelendi.
+    - `PermissionCatalogModel::getCatalog`: Yetki Kataloğu'nda `mapping_type: "explicit"` ve `protected: true` olarak eşleşti.
+    - `Gate::allowsPolicy` & `Gate::allows`: Süper Admin ve Firma Sahibi için `true`, yetkisiz roller için `false` döndüğü test edilerek onaylandı.
+
 ## Bordro — Elden Kesinti Dağılımı ve Muhasebe Exceli İyileştirmesi (2026-10-14)
 - **Kullanıcı Talebi**:
   `views/bordro/list.php` sayfasında kesintilerde:
@@ -245,3 +265,11 @@
 - Hesaplanmış 164 prim usulü bordro salt okunur tarandı; sözleşme kaynak satırları ile kart/Excel toplamı arasında fark ve negatif satır bulunmadı. Mehmet Durdu Eylül 2026 sözleşme tarafı `0,00 TL Puantaj Hakedişi + 3.500,00 TL Nöbet = 3.500,00 TL`, resmî banka ve ödeme `32.380,41 TL` olarak doğrulandı.
 - Eski snapshot'larda eksik veya fazla açıklayıcı kalemler negatif teknik satır üretmeden kayıtlı footer toplamına bağlandı.
 - 817 hesaplanmış snapshot taramasında sözleşme satır/footer farkı, kesinti satır/footer farkı ve liste–Muhasebe Excel banka farkı sıfır çıktı. 93 bordro testi ve 749 doğrulama geçti; mevcut 7 legacy uyarı devam ediyor.
+
+
+## 2026-10-15 — Mobil PHP bordro detay modalı
+- `mobile/index.php?p=bordro` detay paneli animasyonlu sayfa kapsayıcısından `body` altına taşındı; açılış/kapanış görünürlüğü ve transform durumu bağımsız CSS ile yönetiliyor. Ekran yüksekliği, iç kaydırma ve safe-area uygulandı.
+- Mobil API mevcut `get-detail-old` aksiyonunu firma/kayıt kontrolleri ve masaüstü Gate politikası üzerinden sunuyor; kapalı dönemlerde salt okunur detay açılabiliyor.
+- Masaüstünün sözleşme alacağı, resmî alacak, kesintiler ve net ödeme/kanal görünümü aynı HTML/snapshot kaynağından mobilde alt alta sunuluyor. Hesap bölümleri başlangıçta açık; satır detayları ve resmî/elden kesinti kırılımları açılıp kapanıyor. Hesaplama ve ödeme tutarları değiştirilmedi.
+- Escape, odak geri dönüşü, odak döngüsü, güvenli hata metni ve geciken isteklerin başka paneli değiştirmemesi sağlandı.
+- Doğrulama: 390×844 Chromium kontrolü (gerçek salt okunur API yanıtı), 3 Playwright regresyon testi geçti; bordro birim testleri 94 geçti / 751 doğrulama, önceden mevcut 7 legacy uyarı. PHP sözdizimi kontrolü geçti.

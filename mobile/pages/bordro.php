@@ -199,77 +199,77 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
     </div>
 <?php endif; ?>
 
-<div id="bordroSheet" class="fixed inset-0 z-[200] hidden items-end bg-slate-900/60 backdrop-blur-sm" onclick="handleBordroSheetBackdrop(event)">
-    <div id="bordroSheetPanel" class="mx-auto flex max-h-[90vh] w-full max-w-lg translate-y-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-card-dark">
+<div id="bordroSheet" class="bg-slate-900/60 backdrop-blur-sm" hidden onclick="handleBordroSheetBackdrop(event)">
+    <div id="bordroSheetPanel" class="bg-white shadow-2xl dark:bg-card-dark" role="dialog" aria-modal="true" aria-labelledby="bordroSheetTitle" tabindex="-1">
         <div class="flex justify-center pb-1 pt-3"><span class="h-1 w-11 rounded-full bg-slate-200 dark:bg-slate-700"></span></div>
-        <div class="flex items-start gap-2 border-b border-slate-100 px-4 pb-3 pt-1 dark:border-slate-800">
+        <div class="flex shrink-0 items-start gap-2 border-b border-slate-100 px-4 pb-3 pt-1 dark:border-slate-800">
             <div class="min-w-0 flex-1">
                 <h2 id="bordroSheetTitle" class="text-sm font-black dark:text-white"></h2>
-                <div id="bordroSheetPerson" class="mobile-payroll-person hidden"></div>
             </div>
-            <button type="button" onclick="closeBordroSheet()" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" aria-label="Paneli kapat"><span class="material-symbols-outlined text-lg">close</span></button>
+            <button type="button" onclick="closeBordroSheet()" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" aria-label="Paneli kapat"><span class="material-symbols-outlined text-lg">close</span></button>
         </div>
         <div id="bordroSheetBody" class="overflow-y-auto p-4 text-sm dark:text-slate-200"></div>
     </div>
 </div>
 
+<link rel="stylesheet" href="../assets/css/icons.css">
 <style>
-    #bordroSheetBody .mobile-payroll-legacy { color: #334155; font-size: 11px; line-height: 1.45; }
-    #bordroSheetBody .mobile-payroll-legacy .table-responsive { overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
-    #bordroSheetBody .mobile-payroll-legacy table { width: 100%; min-width: 520px; border-collapse: collapse; background: #fff; }
-    #bordroSheetBody .mobile-payroll-legacy th { padding: 9px 10px; background: #f8fafc; color: #64748b; font-size: 9px; text-align: left; text-transform: uppercase; letter-spacing: .04em; }
-    #bordroSheetBody .mobile-payroll-legacy td { padding: 9px 10px; border-top: 1px solid #eef2f7; vertical-align: middle; }
-    #bordroSheetBody .mobile-payroll-legacy h5,
-    #bordroSheetBody .mobile-payroll-legacy h6 { margin: 12px 0 7px; color: #1e293b; font-weight: 800; }
-    #bordroSheetBody .mobile-payroll-legacy .card { margin-bottom: 10px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff; }
-    #bordroSheetBody .mobile-payroll-legacy .card-header,
-    #bordroSheetBody .mobile-payroll-legacy .card-body { padding: 10px; }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view { padding: 4px !important; background: transparent !important; }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .row { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 18px; }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .col { min-width: 0; }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .ref-card,
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .panel-card { margin: 0; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px; background: #eff6ff; box-shadow: 0 4px 14px rgba(59, 130, 246, .06); }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .section-title.gains + .row .ref-card { border-color: #bbf7d0; background: #f0fdf4; box-shadow: 0 4px 14px rgba(34, 197, 94, .06); }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .section-title.deductions + .row .ref-card { border-color: #fecdd3; background: #fff1f2; box-shadow: 0 4px 14px rgba(244, 63, 94, .06); }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .ref-card { margin: 0; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px; background: #eff6ff; box-shadow: 0 4px 14px rgba(59, 130, 246, .06); }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .section-title { margin: 20px 0 10px; }
-    #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .bottom-panels { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
-    .mobile-payroll-person .bg-white { background: transparent !important; }
-    .mobile-payroll-person > div { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 7px; margin: 0 !important; border: 0 !important; padding: 0 !important; }
-    .mobile-payroll-person h5 { margin: 0 0 4px; color: #0f172a; font-size: 12px; line-height: 1.25; font-weight: 900; }
-    .mobile-payroll-person .small { display: flex; flex-wrap: wrap; gap: 4px 10px; color: #64748b; font-size: 9px; line-height: 1.35; font-weight: 700; }
-    .mobile-payroll-person > div > div:last-child { display: flex !important; flex-wrap: wrap; gap: 6px; }
-    .mobile-payroll-person .badge { display: inline-flex; min-width: 76px; flex-direction: column; align-items: flex-start !important; margin: 0; border: 1px solid #dbeafe; border-radius: 9px; padding: 5px 8px; color: #1e3a8a; background: #eff6ff; font-size: 9px; line-height: 1.3; }
-    .mobile-payroll-person .badge small { margin-bottom: 2px; font-size: 8px !important; }
-    #bordroSheetBody .mobile-payroll-legacy .text-end { text-align: right; }
-    #bordroSheetBody .mobile-payroll-legacy .text-center { text-align: center; }
-    #bordroSheetBody .mobile-payroll-legacy .fw-bold { font-weight: 800; }
-    #bordroSheetBody .mobile-payroll-legacy .text-danger,
-    #bordroSheetBody .mobile-payroll-legacy .red-text { color: #e11d48; }
-    #bordroSheetBody .mobile-payroll-legacy .text-success,
-    #bordroSheetBody .mobile-payroll-legacy .green-text { color: #059669; }
-    #bordroSheetBody .mobile-payroll-legacy .text-primary { color: #4f46e5; }
-    .dark #bordroSheetBody .mobile-payroll-legacy { color: #cbd5e1; }
-    .dark #bordroSheetBody .mobile-payroll-legacy table,
-    .dark #bordroSheetBody .mobile-payroll-legacy .card { background: #111827; border-color: #334155; }
-    .dark #bordroSheetBody .mobile-payroll-legacy th { background: #1e293b; color: #94a3b8; }
-    .dark #bordroSheetBody .mobile-payroll-legacy td { border-color: #334155; }
-    .dark .mobile-payroll-person h5 { color: #f8fafc; }
-    .dark .mobile-payroll-person .badge { border-color: #1e40af; background: rgba(30,58,138,.25); color: #dbeafe; }
-    .dark #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .section-title.gains + .row .ref-card { border-color: rgba(34,197,94,.3); background: rgba(20,83,45,.18); }
-    .dark #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .section-title.deductions + .row .ref-card { border-color: rgba(244,63,94,.3); background: rgba(136,19,55,.18); }
-    .dark #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .ref-card,
-    .dark #bordroSheetBody .mobile-payroll-legacy .bordro-ref-view .panel-card { border-color: rgba(59,130,246,.3); background: rgba(30,64,175,.14); }
-    #bordroSheetBody .mobile-bank-tooltip > div { min-width: 0 !important; padding: 0 !important; font-size: 10px !important; }
-    #bordroSheetBody .mobile-bank-tooltip h6 { margin: 0 0 8px !important; padding: 0 0 7px !important; border-bottom: 1px solid rgba(148,163,184,.22) !important; color: #cbd5e1 !important; font-size: 10px !important; font-weight: 800 !important; }
-    #bordroSheetBody .mobile-bank-tooltip .d-flex { display: flex !important; }
-    #bordroSheetBody .mobile-bank-tooltip .flex-column { flex-direction: column !important; }
-    #bordroSheetBody .mobile-bank-tooltip .justify-content-between { justify-content: space-between !important; gap: 14px; }
-    #bordroSheetBody .mobile-bank-tooltip .border-top { margin-top: 6px !important; padding-top: 6px !important; border-top: 1px solid rgba(148,163,184,.22) !important; }
-    #bordroSheetBody .mobile-bank-tooltip .fw-bold { font-weight: 900 !important; }
-    #bordroSheetBody .mobile-bank-tooltip .text-danger { color: #fb7185 !important; }
-    #bordroSheetBody .mobile-bank-tooltip .text-success { color: #34d399 !important; }
-    #bordroSheetBody .mobile-bank-tooltip .text-primary { color: #60a5fa !important; }
+    #bordroSheet { position: fixed; inset: 0; z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+    #bordroSheet[hidden] { display: none; }
+    #bordroSheetPanel { display: flex; flex-direction: column; width: 100%; max-width: 640px; max-height: 94vh; max-height: 94dvh; overflow: hidden; border-radius: 28px 28px 0 0; transform: translateY(100%); transition: transform .3s ease; }
+    #bordroSheet.is-open #bordroSheetPanel { transform: translateY(0); }
+    #bordroSheetBody { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+    #bordroSheetBody .mobile-payroll-desktop { color: #334155; }
+    #bordroSheetBody .mobile-payroll-desktop .row { display: flex; flex-wrap: wrap; gap: 12px; }
+    #bordroSheetBody .mobile-payroll-desktop [class*="col-"] { width: 100%; min-width: 0; }
+    #bordroSheetBody .mobile-payroll-desktop .d-flex { display: flex; }
+    #bordroSheetBody .mobile-payroll-desktop .flex-wrap { flex-wrap: wrap; }
+    #bordroSheetBody .mobile-payroll-desktop .flex-column { flex-direction: column; }
+    #bordroSheetBody .mobile-payroll-desktop .justify-content-between { justify-content: space-between; }
+    #bordroSheetBody .mobile-payroll-desktop .align-items-center { align-items: center; }
+    #bordroSheetBody .mobile-payroll-desktop .align-items-end { align-items: flex-end; }
+    #bordroSheetBody .mobile-payroll-desktop .text-end { text-align: right; }
+    #bordroSheetBody .mobile-payroll-desktop .d-block { display: block; }
+    #bordroSheetBody .mobile-payroll-desktop .calculation-toggle > span:last-child { flex-shrink: 0; white-space: nowrap; }
+    #bordroSheetBody .mobile-payroll-desktop .calculation-toggle .badge { padding: 4px 8px; border: 1px solid currentColor; border-radius: 999px; font-size: 11px; }
+    #bordroSheetBody .mobile-payroll-desktop .card-header-tint { padding: 14px 12px; }
+    #bordroSheetBody .mobile-payroll-desktop .calculation-note { color: inherit; opacity: .7; }
+    #bordroSheetBody .mobile-payroll-desktop .net-bottom-banner .text-white-50 { color: #64748b; }
+    #bordroSheetBody .mobile-payroll-desktop .me-1 { margin-right: 4px; }
+    #bordroSheetBody .mobile-payroll-desktop .me-2 { margin-right: 6px; }
+    #bordroSheetBody .mobile-payroll-desktop .ps-4 { padding-left: 24px; }
+
+    #bordroSheetBody .mobile-payroll-desktop .fw-bold, #bordroSheetBody .mobile-payroll-desktop .fw-bolder { font-weight: 800; }
+    #bordroSheetBody .mobile-payroll-desktop .fw-semibold { font-weight: 600; }
+    #bordroSheetBody .mobile-payroll-desktop .text-muted, #bordroSheetBody .mobile-payroll-desktop .small { color: #64748b; font-size: 11px; }
+    #bordroSheetBody .mobile-payroll-desktop .text-success { color: #10b981; }
+    #bordroSheetBody .mobile-payroll-desktop .text-danger { color: #ef4444; }
+    #bordroSheetBody .mobile-payroll-desktop .text-warning { color: #d97706; }
+    #bordroSheetBody .mobile-payroll-desktop .text-primary { color: #2563eb; }
+    #bordroSheetBody .mobile-payroll-desktop .header-glass { display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 14px; }
+    #bordroSheetBody .mobile-payroll-desktop .header-glass h5 { font-weight: 800; margin-bottom: 6px; }
+    #bordroSheetBody .mobile-payroll-desktop .header-glass .badge { display: flex; flex-direction: column; padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; font-size: 11px; }
+    #bordroSheetBody .mobile-payroll-desktop .btn-toggle-old-detail-layout, #bordroSheetBody .mobile-payroll-desktop .btn-toggle-net-expand { display: none; }
+    #bordroSheetBody .mobile-payroll-desktop .collapse { visibility: visible; }
+    #bordroSheetBody .mobile-payroll-desktop .collapse:not(.show) { display: none; }
+    #bordroSheetBody .mobile-payroll-desktop tr.collapse.show { display: table-row; }
+    #bordroSheetBody .mobile-payroll-desktop .calculation-toggle { min-height: 64px; gap: 8px; font-size: 12px; }
+    #bordroSheetBody .mobile-payroll-desktop .unified-table { table-layout: fixed; }
+    #bordroSheetBody .mobile-payroll-desktop .unified-table td { padding: 12px; font-size: 12px; overflow-wrap: anywhere; }
+    #bordroSheetBody .mobile-payroll-desktop .unified-table td:last-child:not([colspan]) { width: 38%; }
+    #bordroSheetBody .mobile-payroll-desktop .unified-table .footer-row td { padding: 14px 12px; }
+    #bordroSheetBody .mobile-payroll-desktop .net-bottom-banner { padding: 18px; margin-top: 0; background: #f2fbf6; color: #334155; border-color: #a7f3d0; }
+    #bordroSheetBody .mobile-payroll-desktop .dist-badge { flex-direction: row; gap: 10px; background: #fff; border-color: #d6eadf; }
+    #bordroSheetBody .mobile-payroll-desktop .net-value-xl { font-size: 28px; }
+    .dark #bordroSheetBody .mobile-payroll-desktop { color: #e2e8f0; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .main-card, .dark #bordroSheetBody .mobile-payroll-desktop .header-glass,
+    .dark #bordroSheetBody .mobile-payroll-desktop .unified-table .parent-row, .dark #bordroSheetBody .mobile-payroll-desktop .dist-badge { background: #1e293b; border-color: #475569; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .unified-table .child-row, .dark #bordroSheetBody .mobile-payroll-desktop .unified-table .footer-row,
+    .dark #bordroSheetBody .mobile-payroll-desktop .section-row td, .dark #bordroSheetBody .mobile-payroll-desktop .header-glass .badge { background: #0f172a; color: #cbd5e1; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .net-bottom-banner { background: #14352b; color: #f1f5f9; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .tint-hakedis { background: #14352b; color: #86efac; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .tint-resmi { background: #172554; color: #93c5fd; }
+    @media (prefers-reduced-motion: reduce) { #bordroSheetPanel { transition: none; } }
 </style>
 
 <script>
@@ -285,11 +285,57 @@ document.getElementById('bordroSearch')?.addEventListener('input', function () {
     document.getElementById('bordroEmptySearch')?.classList.toggle('hidden', visible !== 0);
 });
 function togglePayrollCard(button) { const detail = button.parentElement.nextElementSibling; const opening = detail.classList.contains('hidden'); detail.classList.toggle('hidden'); button.setAttribute('aria-expanded', opening ? 'true' : 'false'); button.querySelector('.card-chevron')?.classList.toggle('rotate-180', opening); }
-function closeBordroSheet() { const sheet=document.getElementById('bordroSheet'), panel=document.getElementById('bordroSheetPanel'); panel.classList.add('translate-y-full'); setTimeout(()=>{sheet.classList.add('hidden'); sheet.classList.remove('flex'); document.body.classList.remove('overflow-hidden');},300); }
-function showBordroSheet(title, html) { const sheet=document.getElementById('bordroSheet'), panel=document.getElementById('bordroSheetPanel'), person=document.getElementById('bordroSheetPerson'), titleEl=document.getElementById('bordroSheetTitle'); titleEl.textContent=title; titleEl.classList.toggle('hidden',!title); document.getElementById('bordroSheetBody').innerHTML=html; person.innerHTML=''; person.classList.add('hidden'); sheet.classList.remove('hidden'); sheet.classList.add('flex'); document.body.classList.add('overflow-hidden'); requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.remove('translate-y-full'))); }
-function handleBordroSheetBackdrop(event) { if(event.target===document.getElementById('bordroSheet'))closeBordroSheet(); }
-function toggleBankTooltip(event) { event.stopPropagation(); const tooltip=document.getElementById('mobileBankTooltip'); if(!tooltip)return; const willOpen=tooltip.classList.contains('hidden'); document.querySelectorAll('.mobile-bank-tooltip').forEach(item=>item.classList.add('hidden')); tooltip.classList.toggle('hidden',!willOpen); event.currentTarget.setAttribute('aria-expanded',willOpen?'true':'false'); }
-document.addEventListener('click',event=>{ if(!event.target.closest('.bank-tooltip-wrap'))document.querySelectorAll('.mobile-bank-tooltip').forEach(item=>item.classList.add('hidden')); });
+// Keep the fixed dialog outside the animated page shell's stacking context.
+const bordroSheet = document.getElementById('bordroSheet');
+document.body.appendChild(bordroSheet);
+let bordroSheetVersion = 0;
+let bordroSheetReturnFocus = null;
+function closeBordroSheet() {
+    ++bordroSheetVersion;
+    bordroSheet.classList.remove('is-open');
+    bordroSheet.hidden = true;
+    document.body.classList.remove('overflow-hidden');
+    bordroSheetReturnFocus?.focus();
+}
+function showBordroSheet(title, html) {
+    ++bordroSheetVersion;
+    if (bordroSheet.hidden) bordroSheetReturnFocus = document.activeElement;
+    document.getElementById('bordroSheetTitle').textContent = title;
+    document.getElementById('bordroSheetBody').innerHTML = html;
+    document.getElementById('bordroSheetBody').scrollTop = 0;
+    bordroSheet.hidden = false;
+    document.body.classList.add('overflow-hidden');
+    // Force the initial translated position before starting the transition.
+    void bordroSheet.offsetHeight;
+    bordroSheet.classList.add('is-open');
+    document.getElementById('bordroSheetPanel').focus();
+}
+function handleBordroSheetBackdrop(event) { if (event.target === bordroSheet) closeBordroSheet(); }
+bordroSheet.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeBordroSheet();
+    if (event.key !== 'Tab') return;
+    const items = [...bordroSheet.querySelectorAll('button, [href], input, select, textarea, [tabindex="0"]')].filter(el => el.getClientRects().length);
+    if (!items.length) { event.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement.id === 'bordroSheetPanel')) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
+function toggleMobilePayrollDetail(trigger) {
+    const selector = trigger.dataset.collapseTarget || trigger.dataset.bsTarget;
+    if (!selector) return;
+    const targets = bordroSheet.querySelectorAll(selector);
+    const opening = [...targets].some(el => !el.classList.contains('show'));
+    targets.forEach(el => el.classList.toggle('show', opening));
+    trigger.setAttribute('aria-expanded', String(opening));
+}
+bordroSheet.addEventListener('click', event => {
+    const trigger = event.target.closest('[data-collapse-target], [data-bs-toggle="collapse"]');
+    if (trigger) toggleMobilePayrollDetail(trigger);
+});
+bordroSheet.addEventListener('keydown', event => {
+    const trigger = event.target.closest('.calculation-toggle');
+    if (trigger && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggleMobilePayrollDetail(trigger); }
+});
 function openOtherPayrollActions() { showBordroSheet('Diğer Bordro İşlemleri', `<div class="space-y-2">
     <button type="button" onclick="closeBordroSheet(); togglePeriod()" class="flex h-12 w-full items-center gap-3 rounded-xl <?= $closed ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' ?> px-4 text-left text-xs font-black"><span class="material-symbols-outlined"><?= $closed ? 'lock_open' : 'lock' ?></span><span><?= $closed ? 'Dönemi Yeniden Aç' : 'Dönemi Kapat' ?></span><span class="material-symbols-outlined ml-auto text-base">chevron_right</span></button>
     <button type="button" <?= $closed ? 'disabled' : '' ?> onclick="resetAllPayments()" class="flex h-12 w-full items-center gap-3 rounded-xl bg-amber-50 px-4 text-left text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:opacity-40"><span class="material-symbols-outlined">restart_alt</span><span>Ödeme Dağılımlarını Sıfırla</span><span class="material-symbols-outlined ml-auto text-base">chevron_right</span></button>
@@ -308,43 +354,26 @@ async function confirmBordro({title, text, icon='question', confirmText='Devam E
 async function calculatePayroll() { const approved=await confirmBordro({title:'Maaşlar hesaplansın mı?', text:'Bu dönemdeki tüm personellerin maaşı yeniden hesaplanacak.', icon:'question', confirmText:'Hesapla'}); if(!approved)return; try { const result = await bordroPost({action:'maas-hesapla', donem_token:bordroPeriodToken, personel_tokens:bordroTokens}); await notifyBordro(result.message); location.reload(); } catch(e) { notifyBordro(e.message, true); } }
 async function togglePeriod(force = false) { if(!force){const approved=await confirmBordro({title:bordroIsClosed?'Dönem yeniden açılsın mı?':'Dönem kapatılsın mı?', text:bordroIsClosed?'Dönem yeniden düzenlemeye açılacak.':'Kapalı dönemde bordro verileri değiştirilemez.', icon:'warning', confirmText:bordroIsClosed?'Dönemi Aç':'Dönemi Kapat', danger:!bordroIsClosed}); if(!approved)return;} try { const data = {action:bordroIsClosed?'donem-ac':'donem-kapat', donem_token:bordroPeriodToken}; if(force)data.force_close='1'; const result=await bordroPost(data); if(result.status==='warning'){const warnings=(result.warnings||[]).map(item=>`<li class="mb-1">${item}</li>`).join(''); const approved=await confirmBordro({title:'Bekleyen işlemler var', icon:'warning', confirmText:'Yine de Kapat', danger:true, html:`<div class="text-left text-sm"><p class="mb-2">Bu döneme ait tamamlanmamış işlemler bulundu:</p><ul class="list-disc pl-5">${warnings}</ul></div>`}); if(approved)return togglePeriod(true); return;} await notifyBordro(result.message); location.reload(); } catch(e) { notifyBordro(e.message,true); } }
 async function resetAllPayments() { const approved=await confirmBordro({title:'Ödeme dağılımları sıfırlansın mı?', text:'Tüm manuel ödeme dağılımları kaldırılıp varsayılan değerler yeniden hesaplanacak.', icon:'warning', confirmText:'Sıfırla', danger:true}); if(!approved)return; try { const result=await bordroPost({action:'odeme-reset-all', donem_token:bordroPeriodToken}); await notifyBordro(result.message); location.reload(); } catch(e) { notifyBordro(e.message,true); } }
-function payrollSummaryValue(value) { return value || '—'; }
 async function openPayrollDetail(token) {
-    showBordroSheet('', '<div class="flex flex-col items-center py-12 text-slate-400"><div class="mb-3 h-8 w-8 animate-spin rounded-full border-3 border-indigo-200 border-t-indigo-600"></div><span class="text-xs font-bold">Bordro hazırlanıyor…</span></div>');
+    showBordroSheet('Bordro Detayı', '<p class="py-12 text-center text-slate-400" role="status">Bordro hazırlanıyor…</p>');
+    const version = bordroSheetVersion;
     try {
-        const result = await bordroPost({action:'get-detail', bordro_token:token});
-        const s = result.summary || {};
-        const legacyHost = document.createElement('div');
-        legacyHost.innerHTML = result.html || '';
-        const personInfo = legacyHost.querySelector('.bordro-ref-view > div');
-        const personHtml = personInfo ? personInfo.outerHTML : '';
-        if (personInfo) personInfo.remove();
-        const legacyHtml = legacyHost.innerHTML;
-        const sheetPerson = document.getElementById('bordroSheetPerson');
-        if (personHtml) { sheetPerson.innerHTML = personHtml; sheetPerson.classList.remove('hidden'); }
-        document.getElementById('bordroSheetBody').innerHTML = `<div class="space-y-3">
-            <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-lg shadow-indigo-600/20">
-                <div class="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/10"></div>
-                <p class="relative text-[9px] font-black uppercase tracking-[.16em] text-indigo-100">Ele Geçen Net Tutar</p>
-                <p class="relative mt-1 text-2xl font-black">${payrollSummaryValue(s.net_maas)}</p>
-                <div class="relative mt-3 grid grid-cols-2 gap-2 border-t border-white/20 pt-3">
-                    <div><span class="block text-[9px] font-bold text-indigo-100">TOPLAM HAKEDİŞ</span><b class="text-sm">${payrollSummaryValue(s.brut_toplam)}</b></div>
-                    <div class="text-right"><span class="block text-[9px] font-bold text-indigo-100">TOPLAM KESİNTİ</span><b class="text-sm text-rose-200">${payrollSummaryValue(s.kesinti_toplam)}</b></div>
-                </div>
-            </section>
-            <section class="grid grid-cols-2 gap-2">
-                ${s.banka ? `<div class="bank-tooltip-wrap relative rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-900/30 dark:bg-blue-900/15"><div class="flex items-start justify-between gap-2"><span class="material-symbols-outlined text-lg text-blue-500">account_balance</span>${s.banka_detay ? `<button type="button" onclick="toggleBankTooltip(event)" class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600 active:scale-95 dark:bg-blue-900/40 dark:text-blue-300" aria-label="Banka ödemesi açıklaması" aria-expanded="false"><span class="material-symbols-outlined text-[16px]">info</span></button>` : ''}</div><span class="mt-1 block text-[9px] font-black uppercase text-blue-400">Banka</span><b class="text-sm text-blue-700 dark:text-blue-300">${s.banka}</b>${s.banka_detay ? `<div id="mobileBankTooltip" class="mobile-bank-tooltip absolute left-0 top-[calc(100%+8px)] z-40 hidden w-[300px] max-w-[calc(100vw-64px)] rounded-xl border border-slate-700 bg-slate-800 p-3 text-[10px] leading-relaxed text-slate-300 shadow-2xl">${s.banka_detay}</div>` : ''}</div>` : ''}
-                ${s.elden ? `<div class="rounded-xl border border-amber-100 bg-amber-50 p-3 dark:border-amber-900/30 dark:bg-amber-900/15"><span class="material-symbols-outlined text-lg text-amber-500">payments</span><span class="mt-1 block text-[9px] font-black uppercase text-amber-500">Elden</span><b class="text-sm text-amber-700 dark:text-amber-300">${s.elden}</b></div>` : ''}
-                ${s.sodexo ? `<div class="rounded-xl border border-cyan-100 bg-cyan-50 p-3 dark:border-cyan-900/30 dark:bg-cyan-900/15"><span class="material-symbols-outlined text-lg text-cyan-500">restaurant</span><span class="mt-1 block text-[9px] font-black uppercase text-cyan-500">Sodexo</span><b class="text-sm text-cyan-700 dark:text-cyan-300">${s.sodexo}</b></div>` : ''}
-                ${s.diger ? `<div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"><span class="material-symbols-outlined text-lg text-slate-500">wallet</span><span class="mt-1 block text-[9px] font-black uppercase text-slate-400">Diğer</span><b class="text-sm text-slate-700 dark:text-slate-200">${s.diger}</b></div>` : ''}
-            </section>
-            <details open class="group overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/40">
-                <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-200"><span class="material-symbols-outlined text-lg text-indigo-500">receipt_long</span>Hesaplama Kalemleri<span class="material-symbols-outlined ml-auto text-lg transition-transform group-open:rotate-180">expand_more</span></summary>
-                <div class="mobile-payroll-legacy border-t border-slate-100 p-3 dark:border-slate-800">${legacyHtml || '<p>Detay bulunamadı.</p>'}</div>
-            </details>
-        </div>`;
-    } catch(e) {
-        document.getElementById('bordroSheetBody').innerHTML = '<p class="rounded-xl bg-rose-50 p-3 font-bold text-rose-600">'+e.message+'</p>';
+        const result = await bordroPost({action:'get-detail-old', bordro_token:token});
+        if (version !== bordroSheetVersion) return;
+        const host = document.createElement('div');
+        host.className = 'mobile-payroll-desktop';
+        host.innerHTML = result.html || '<p>Detay bulunamadı.</p>';
+        // Desktop starts panels collapsed; show both accounts on mobile initially.
+        host.querySelectorAll('.bordro-main-calculation-collapse').forEach(el => el.classList.add('show'));
+        host.querySelectorAll('.calculation-toggle').forEach(el => el.setAttribute('aria-expanded', 'true'));
+        document.getElementById('bordroSheetBody').replaceChildren(host);
+    } catch (e) {
+        if (version !== bordroSheetVersion) return;
+        const error = document.createElement('p');
+        error.className = 'rounded-xl bg-rose-50 p-3 font-bold text-rose-600';
+        error.setAttribute('role', 'alert');
+        error.textContent = e.message;
+        document.getElementById('bordroSheetBody').replaceChildren(error);
     }
 }
 function openPaymentModal(button) { const d=button.dataset; showBordroSheet('Ödeme Dağıt · '+d.name, `<form onsubmit="savePayment(event)" data-token="${d.token}" class="space-y-3"><label class="block text-xs font-bold">Banka<input name="banka" inputmode="decimal" value="${d.banka}" class="mt-1 w-full rounded-xl border-slate-200 dark:bg-slate-900"></label><label class="block text-xs font-bold">Sodexo<input name="sodexo" inputmode="decimal" value="${d.sodexo}" class="mt-1 w-full rounded-xl border-slate-200 dark:bg-slate-900"></label><label class="block text-xs font-bold">Diğer ödeme<input name="diger" inputmode="decimal" value="${d.diger}" class="mt-1 w-full rounded-xl border-slate-200 dark:bg-slate-900"></label><button class="h-11 w-full rounded-xl bg-indigo-600 text-xs font-black text-white">Dağılımı Kaydet</button></form>`); }

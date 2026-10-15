@@ -1,4 +1,11 @@
 # Progress
+- [x] Sistem Logları (`views/logs/list.php`) Menü ve Yetkilendirme Çalışması (2026-10-15):
+  - `views/logs/list.php` sayfası için `menus` tablosuna `menu_name = 'Sistem Logları'`, `menu_link = 'logs/list'`, `parent_id = 0`, `group_name = 'Yönetim'`, `menu_icon = 'shield'`, `menu_order = 84` menü kaydı eklendi.
+  - `permissions` tablosunda `permission_key = 'log_kayitlari'` kaydı `group_name = 'Yönetim'` ve `name = 'Sistem Logları'` olarak güncellendi; `permission_id` menüye bağlandı.
+  - `user_role_permissions` tablosunda Süper Admin ve Firma Sahibi rollerine `NOT EXISTS` kontrolüyle yetki tanımlaması sağlandı.
+  - `permission_policies` tablosunda sayfa (`logs/list` GET) ve API (`logs/api` tüm aksiyonlar) kuralları eksiksiz bağlandı.
+  - Menü önbellekleri temizlendi; Süper Admin, Firma Sahibi ve yetkisiz roller ile Yetki Kataloğu ve Yetki Grubu Düzenleme ekranlarındaki görünürlük test edilerek doğrulandı.
+  - SQL scripti: `sql/2026_10_15_add_sistem_loglari_menu_and_permissions.sql`.
 - [x] Bordro — Elden Kesintilerin Elden Hakedişi Aşan Kısmının Bankadan Kesilmesi ve Muhasebe Exceli İyileştirmesi (2026-10-14):
   - Elden kanallı kesintilerde (`banka_matrahina_ekle = 0`) kesinti öncelikle personelin elden hakedişinin maksimum tutarı kadar elden tutardan düşülüyor; elden hakedişin yetmediği bakiye kesinti ise bankadan mahsup ediliyor.
   - Muhasebe Excel çıktısında (`excel-yemek-export.php` ve Mutabakat sayfası): Bankadan kesilen bu bakiye yeşil resmî hakediş sütunlarından (asgari ücret / yemek) düşürülmeyip kırmızı Diğer Kesintiler sütununda (`muhasebe_banka_diger_kesinti`) gösteriliyor.
@@ -171,3 +178,11 @@
 - [x] Hesaplanmış 164 prim usulü bordroda sözleşme kaynak satırları/toplamları tarandı; fark veya negatif satır bulunmadı. Mehmet Durdu Eylül 2026 için sözleşme kaynak toplamı 3.500,00 TL, kayıtlı resmî banka ve net ödeme 32.380,41 TL doğrulandı.
 - [x] 817 snapshot taraması sıfır sözleşme/kesinti/footer ve liste–Excel banka farkıyla tamamlandı.
 - [x] Bordro testleri: 93 test, 749 doğrulama geçti; sözdizimi ve diff kontrolleri geçti.
+
+
+## 2026-10-15 — Mobil PHP bordro detay modalı
+- `mobile/index.php?p=bordro` detay paneli animasyonlu sayfa kapsayıcısından `body` altına taşındı; açılış/kapanış görünürlüğü ve transform durumu bağımsız CSS ile yönetiliyor. Ekran yüksekliği, iç kaydırma ve safe-area uygulandı.
+- Mobil API mevcut `get-detail-old` aksiyonunu firma/kayıt kontrolleri ve masaüstü Gate politikası üzerinden sunuyor; kapalı dönemlerde salt okunur detay açılabiliyor.
+- Masaüstünün sözleşme alacağı, resmî alacak, kesintiler ve net ödeme/kanal görünümü aynı HTML/snapshot kaynağından mobilde alt alta sunuluyor. Hesap bölümleri başlangıçta açık; satır detayları ve resmî/elden kesinti kırılımları açılıp kapanıyor. Hesaplama ve ödeme tutarları değiştirilmedi.
+- Escape, odak geri dönüşü, odak döngüsü, güvenli hata metni ve geciken isteklerin başka paneli değiştirmemesi sağlandı.
+- Doğrulama: 390×844 Chromium kontrolü (gerçek salt okunur API yanıtı), 3 Playwright regresyon testi geçti; bordro birim testleri 94 geçti / 751 doğrulama, önceden mevcut 7 legacy uyarı. PHP sözdizimi kontrolü geçti.
