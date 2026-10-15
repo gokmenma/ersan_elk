@@ -1810,6 +1810,7 @@ $(document).ready(function () {
         $("#div_kesinti_gun").addClass("d-none");
         $("#div_kesinti_tutar").removeClass("d-none");
         $("#kesinti_tip_tutar").prop("checked", true);
+        $("#kesinti_kanal_banka").prop("checked", true);
       } else {
         console.error("Form #formPersonelKesintiEkle bulunamadı!");
       }
@@ -1875,6 +1876,7 @@ $(document).ready(function () {
     const tutar = $(this).data("tutar");
     const aciklama = $(this).data("aciklama");
     const tarih = $(this).data("tarih");
+    const bankaMatrahi = $(this).data("banka-matrahi");
 
     // Önceki aktif karttan class'ı kaldır
     $(".card.border-danger").removeClass(
@@ -1888,6 +1890,14 @@ $(document).ready(function () {
     $("#formPersonelKesintiEkle select[name='kesinti_tur']")
       .val(tur)
       .trigger("change");
+
+    // Edit modunda kanal bilgisini buton niteliğinden al
+    if (bankaMatrahi !== undefined && (bankaMatrahi === 0 || bankaMatrahi === "0")) {
+      $("#kesinti_kanal_elden").prop("checked", true);
+    } else {
+      $("#kesinti_kanal_banka").prop("checked", true);
+    }
+
     $("#formPersonelKesintiEkle input[name='kesinti_tutar']").val(tutar);
     $("#formPersonelKesintiEkle input[name='aciklama']").val(aciklama);
     const kesintiTarihInput = document.getElementById("kesinti_tarih");
@@ -2013,6 +2023,7 @@ $(document).ready(function () {
               if ($("#kesinti_edit_id").val() == id) {
                 $("#kesinti_edit_id").val(0);
                 $("#formPersonelKesintiEkle")[0].reset();
+                $("#kesinti_kanal_banka").prop("checked", true);
                 $("#formPersonelKesintiEkle button[type='submit']").html(
                   '<i class="bx bx-save me-1"></i>Kaydet',
                 );
@@ -2129,6 +2140,15 @@ $(document).ready(function () {
     const tur = $(this).val();
     const form = $("#formPersonelKesintiEkle");
     const maasDurumu = form.attr("data-maas-durumu");
+
+    // Kesinti kanalı otomatik eşleştirme (Tanımlı parametreye göre)
+    if (tur && window.kesintiKanallari && window.kesintiKanallari[tur]) {
+      if (window.kesintiKanallari[tur] === "elden") {
+        $("#kesinti_kanal_elden").prop("checked", true);
+      } else {
+        $("#kesinti_kanal_banka").prop("checked", true);
+      }
+    }
 
     if (tur === "izin_kesinti") {
       $("#div_ucretsiz_izin_secenek").removeClass("d-none");
@@ -2461,6 +2481,10 @@ function loadKesintiListesi(personelId, donemId) {
             if (item.tur === 'icra' || item.tur === 'İCRA' || item.tur === 'ICRA') return;
             const turLabel = item.parametre_adi || kesintiMap[item.tur] || item.tur.replace(/_/g, " ");
             const statusBadge = item.durum === 'beklemede' ? ' <span class="badge bg-warning small ms-1" style="font-size:10px;">Beklemede</span>' : '';
+            const isElden = (item.banka_matrahina_ekle !== null && parseInt(item.banka_matrahina_ekle, 10) === 0);
+            const kanalBadge = isElden
+              ? '<span class="badge bg-warning bg-opacity-25 text-warning border border-warning ms-1" style="font-size:10px;"><i class="bx bx-wallet me-1"></i>Elden</span>'
+              : '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle ms-1" style="font-size:10px;"><i class="bx bx-building-house me-1"></i>Banka</span>';
             const fullDate = item.tarih || item.olusturma_tarihi || "";
             const dateStr = fullDate.split(" ")[0];
             let formattedDate = "";
@@ -2484,6 +2508,7 @@ function loadKesintiListesi(personelId, donemId) {
                     <td>
                         <span class="badge bg-danger bg-opacity-10 text-danger">${escapeBordroHtml(turLabel)}</span>
                         ${statusBadge}
+                        ${kanalBadge}
                     </td>
                     <td class="small">${escapeBordroHtml(item.aciklama || "-")}</td>
                     <td class="text-end fw-bold text-danger">-${formatMoney(item.tutar)} ₺</td>
@@ -2498,7 +2523,8 @@ function loadKesintiListesi(personelId, donemId) {
                             data-tur="${item.tur}" 
                             data-tutar="${item.tutar}" 
                             data-tarih="${dateStr || ""}" 
-                            data-aciklama="${item.aciklama || ""}">
+                            data-aciklama="${item.aciklama || ""}"
+                            data-banka-matrahi="${item.banka_matrahina_ekle !== undefined && item.banka_matrahina_ekle !== null ? item.banka_matrahina_ekle : 1}">
                             <i class="bx bx-edit"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger btn-delete-kesinti" data-id="${item.id}">

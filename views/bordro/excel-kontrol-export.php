@@ -84,8 +84,8 @@ try {
         }
         $odemeOzeti = $bordroModel->getMuhasebeOdemeOzeti($hesap);
         $fazlaMesaiOzeti = $bordroModel->getMuhasebeFazlaMesaiNetOzeti($personel, $donem);
-        $ekOdemeler = $bordroModel->getDonemEkOdemeleriListe((int) $personel->personel_id, $donemId);
-        $kesintiler = $bordroModel->getDonemKesintileriListe((int) $personel->personel_id, $donemId);
+        $sozlesmeOzeti = $bordroModel->getSozlesmeAlacagiKalemleri($hesap, $personel);
+        $kesintiOzeti = $bordroModel->getBordroKontrolKesintiKalemleri($hesap, $personel);
 
         $sheet->mergeCells("A{$row}:H{$row}");
         $sheet->mergeCells("I{$row}:L{$row}");
@@ -123,13 +123,13 @@ try {
         }
         $row++;
 
-        $contractItems = [
-            ['Sözleşme Hakedişi', (float) ($hesap['sozlesmeHakedisi'] ?? $hesap['toplamAlacagi'] ?? 0)],
-        ];
-        $yuvarlamaFarki = round((float) ($hesap['yuvarlamaFarki'] ?? 0), 2);
-        if (abs($yuvarlamaFarki) >= 0.01) {
-            $contractItems[] = ['Yuvarlama Farkı', $yuvarlamaFarki];
-        }
+        $contractItems = array_map(
+            static fn (array $item): array => [
+                (string) ($item['etiket'] ?? 'Sözleşme Hakedişi'),
+                (float) ($item['tutar'] ?? 0),
+            ],
+            $sozlesmeOzeti['kalemler'] ?? []
+        );
         $officialItems = [
             ['Asgari Ücret (Net)', (float) ($hesap['asgariHakedis'] ?? 0)],
             ['Yemek Yardımı', (float) ($hesap['mealAllowanceDeduction'] ?? 0)],
@@ -154,59 +154,10 @@ try {
             }
             $officialItems[] = [$fazlaMesaiEtiketi, (float) $fazlaMesaiOzeti['tutar']];
         }
-        $puantajHakedisi = 0.0;
-        $kacakKontrolHakedisi = 0.0;
-        $digerEkOdemeItems = [];
-        foreach ($ekOdemeler as $item) {
-            $aciklama = trim((string) ($item->aciklama ?? ''));
-            $tur = mb_strtolower((string) ($item->tur ?? ''), 'UTF-8');
-            $tutar = (float) ($item->tutar ?? 0);
-
-            if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0) {
-                $puantajHakedisi += $tutar;
-                continue;
-            }
-            if (strpos($aciklama, '[Kaçak Kontrol]') === 0) {
-                $kacakKontrolHakedisi += $tutar;
-                continue;
-            }
-            // Detay modalında yemek ve eş yardımı yalnızca Resmî Alacak
-            // tarafında gösterilir; kaynak ek ödeme kaydını sözleşmede tekrarlama.
-            $aciklamaLower = mb_strtolower($aciklama, 'UTF-8');
-            $isYemekYardimi = strpos($tur, 'yemek') !== false
-                || strpos($tur, 'yy') === 0
-                || strpos($aciklamaLower, '[yemek yardımı]') === 0;
-            $isEsYardimi = strpos($tur, 'es_yardimi') !== false
-                || strpos($tur, 'eş_yardımı') !== false
-                || strpos($tur, 'aile') !== false
-                || strpos($aciklamaLower, '[eş yardımı]') === 0;
-            if ($isYemekYardimi || $isEsYardimi) {
-                continue;
-            }
-            // Ortak hesaptaki yuvarlama farkı yukarıda tek satır olarak kullanılır.
-            if ($tur === 'yuvarlama_farki' || stripos($aciklama, 'Yuvarlama Farkı') !== false) {
-                continue;
-            }
-
-            $label = $aciklama ?: ucfirst(str_replace('_', ' ', (string) ($item->tur ?? 'Ek Ödeme')));
-            $digerEkOdemeItems[] = [$label, $tutar];
-        }
-        if (abs($puantajHakedisi) >= 0.01) {
-            $contractItems[] = ['Puantaj Hakedişi', round($puantajHakedisi, 2)];
-        }
-        if (abs($kacakKontrolHakedisi) >= 0.01) {
-            $contractItems[] = ['Kaçak Kontrol Hakedişi', round($kacakKontrolHakedisi, 2)];
-        }
-        foreach ($digerEkOdemeItems as $ekOdemeItem) {
-            $contractItems[] = $ekOdemeItem;
-        }
         $deductionItems = [];
-        foreach ($kesintiler as $item) {
-            if ((string) ($item->tur ?? '') === 'izin_kesinti') {
-                continue;
-            }
-            $label = trim((string) ($item->aciklama ?? '')) ?: ucfirst(str_replace('_', ' ', (string) ($item->tur ?? 'Kesinti')));
-            $deductionItems[] = [$label, -(float) ($item->tutar ?? 0)];
+        foreach (($kesintiOzeti['kalemler'] ?? []) as $item) {
+            $label = trim((string) ($item['aciklama'] ?? '')) ?: (string) ($item['etiket'] ?? 'Kesinti');
+            $deductionItems[] = [$label, -(float) ($item['tutar'] ?? 0)];
         }
         if (!$deductionItems) {
             $deductionItems[] = ['Kesinti Yok', 0.0];
@@ -235,7 +186,7 @@ try {
 
         $sheet->mergeCells("A{$row}:C{$row}");
         $sheet->setCellValue("A{$row}", 'KESİNTİ ÖNCESİ TOPLAM ALACAĞI');
-        $sheet->setCellValue("D{$row}", (float) ($hesap['toplamAlacagi'] ?? 0));
+        $sheet->setCellValue("D{$row}", (float) ($sozlesmeOzeti['toplam'] ?? 0));
         $sheet->mergeCells("E{$row}:G{$row}");
         $sheet->setCellValue("E{$row}", 'RESMÎ BANKA MATRAHI');
         $sheet->setCellValue("H{$row}", (float) ($odemeOzeti['resmi_banka_matrahi'] ?? 0));

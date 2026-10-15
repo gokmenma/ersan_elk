@@ -47,10 +47,10 @@ export const bordroApi = {
   init(params = {}) {
     return request('init', { params })
   },
-  getDetail(token) {
-    return request('get-detail', {
+  getDetail(token, action = 'get-detail-old') {
+    return request(action, {
       method: 'POST',
-      body: { action: 'get-detail', bordro_token: token },
+      body: { action, bordro_token: token },
     })
   },
   calculate(donemToken, personelTokens = [], csrfToken) {

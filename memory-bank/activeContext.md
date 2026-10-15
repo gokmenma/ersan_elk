@@ -1,6 +1,32 @@
 # Active Context
 
-## Mobil SPA — Bordro Modülü Entegrasyonu (2026-10-14)
+## Bordro — Elden Kesinti Dağılımı ve Muhasebe Exceli İyileştirmesi (2026-10-14)
+- **Kullanıcı Talebi**:
+  `views/bordro/list.php` sayfasında kesintilerde:
+  1. Eğer kesinti türü "elden" ise, personelin elden hakedişinin maksimum tutarı kadar elden tutar kesilecek, kalan tutar bankadan kesilecek.
+  2. Muhasebe Excel'inde (`views/bordro/excel-yemek-export.php` ve Mutabakat sayfası): Bankadan kesilen bu bakiye tutar kesinti tarafında (Q sütunu: Diğer Kesintiler) gösterilecek; yeşil resmî hakediş sütunlarından (asgari ücret / yemek) düşmeyecek.
+- **Yapılan Geliştirmeler**:
+  - `App/Model/BordroPersonelModel.php`:
+    - `kayitliGosterimDegerleri` ve `normalizeKayitliBankaGosterimi`: Bankadan karşılanan kesinti miktarı banka kanallı kesintilerden fazla olduğunda, elden kanallı kesintilerden bankaya aktarılan pay tespit edilerek `$bankaKesintiKalemleri` içine eklendi.
+    - `hesaplaOrtakGosterimDegerleri`: Canlı hesaplamada da elden kesintiden bankaya taşan kısım (`bankayaTasanElden`) `$bankaKesintiKalemleri`'ne eklendi.
+    - `getMuhasebeOdemeOzeti`: `$bankaKesintisi` hesaplanırken `bankaKesintiKalemleri` toplamı fallback olarak desteklendi; böylece elden kesintiden bankaya aktarılan tutar `muhasebe_banka_diger_kesinti` ve `muhasebe_bankadan_dusulecek` olarak tam yansıtıldı.
+    - `hesaplaMaas`: `$isEldenKesinti` tespiti parametre `odeme_yontemi`, `hesaplama_tipi` ve `banka_matrahina_ekle` ile tam senkronize edildi.
+  - `views/bordro/excel-yemek-export.php`:
+    - 1. sayfadaki Diğer Kesintiler sütunu (M kolonu) ve Mutabakat sayfasındaki Diğer Kesintiler sütunu (Q kolonu) `$veri['muhasebe_banka_diger_kesinti']` üzerinden bankadan düşülen kesintiyi tam yansıtacak şekilde doğrulandı.
+  - `views/bordro/list.php` & `views/bordro/js/bordro.js`:
+    - Modal formuna kesinti kanalı (Banka / Elden) radio seçimi eklendi (`banka_matrahina_ekle`).
+    - Sayfaya `window.kesintiKanallari` eklendi; kesinti türü seçildiğinde parametre tanımına göre radyo butonu otomatik seçiliyor.
+    - Kesinti listesinde her satıra "Banka" veya "Elden" rozeti (`kanalBadge`) ve düzenleme butonuna `data-banka-matrahi` niteliği eklendi. Form resetlendiğinde radyo varsayılana dönüyor.
+  - Test & Doğrulama:
+    - Ömer Faruk Dağ (Personel ID: 236, Dönem ID: 26, Kesinti ID: 7851) üzerinde doğrulandı:
+      - Sözleşme: 30.800 TL, Prim: 3.100 TL -> Toplam: 33.900 TL
+      - Resmî Asgari: 26.203,80 TL, Yemek: 7.200 TL -> Resmî Matrah: 33.403,80 TL (düşmedi, tam kaldı)
+      - Kesinti: 4.624,00 TL -> Eldenden kesilen: 496,20 TL (Elden Net: 0 TL), Bankadan kesilen: 4.127,80 TL
+      - Muhasebe Excelinde: Yeşil kalemler düşmedi, Kırmızı Diğer Kesintiler: 4.127,80 TL, Bankaya Yatacak: 29.276,00 TL.
+    - `tests/Unit/BordroBankaDagilimiTest.php` içine yeni birim test eklendi (`testEldenKesintiEldenHakedisiAstigindaBankadanKesilirVeMuhasebedeKesintiOlarakGosterilir`). Tüm 94 bordro birim testi başarıyla geçti.
+  - SQL & Dokümantasyon:
+    - `sql/2026_10_14_elden_kesinti_ve_omer_faruk_dag_guncelleme.sql` scripti oluşturuldu.
+    - `docs/BORDRO_HESAPLAMA_KURALLARI.md` ve `AGENTS.md` Kural 5 güncellendi.
 - Kullanıcının `@mobile-spa sayfasında bordro sayfasını yapalım @[mobile] burada bordro modülünden alacağız` talebi üzerine:
   - `@mobile` içindeki `mobile/pages/bordro.php` ve `mobile/api/bordro.php` mimarisi incelendi; Soft Bento & Claymorphic UI standartlarına tam uyumlu olarak SPA modülüne dönüştürüldü.
   - Backend API: `mobile-spa/public/api/bordro.php` (ve derleme kopyası `mobile-spa/dist/api/bordro.php`) yazıldı. PDO, Model katmanı (`BordroDonemModel`, `BordroPersonelModel`, `BordroParametreModel`), firma izolasyonu, `Security::encrypt`/`decrypt`, CSRF token denetimi ve merkezi `views/bordro/api.php` entegrasyonu sağlandı.
@@ -20,11 +46,18 @@
     - Kullanıcının "toplam net dağıtım çok büyük, ayrıca dönem adı görünmüyor" geri bildirimi çözüldü.
     - Dönem Adı: API'de `Security::encrypt` çağrısı rastgele IV nedeniyle iki kez çağrıldığında farklı token üretiyordu; `donemOptions` içindeki token ile `selectedDonemData.id` tokenı birebir senkronize edildi. `<select>` elemanına `v-model="selectedDonemId"` bağlandı ve yazı rengi netleştirildi (`#0f172a`), böylece seçili dönem adı ("EYLÜL 2026") select kutusunda eksiksiz göründü.
     - Toplam Net Dağıtım: `.bento-overview-value strong` varsayılan 60px'lik boyutu nedeniyle milyonluk tutarlarda oluşan taşma ve satır kırılması giderildi. `.payroll-hero-amount` için `font-size: clamp(22px, 6.2vw, 28px)`, `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis` uygulandı; tutar kart içine dengeli biçimde oturtuldu.
-    - Bordro Detay Modalı (Sheet) Şıklaştırması:
-      - Modal içerisindeki obsidian hero kartında ele geçen net tutarın (`₺53.405,00`) sağdan taşması `.payroll-hero-amount` sınıfı uygulanarak giderildi (`clamp(22px, 6.5vw, 28px)`).
-      - "Resmî Hesaplama Kalemleri" akordeonunda masaüstünden gelen kaba, mükerrer personel bilgi kutusu (`.person-header-card`) ve alt özet rozeti DOM parser ile temizlendi.
-      - `.payroll-legacy-container` ve `.bordro-ref-view` için özel Soft Bento stilleri yazıldı: Kazançlar ve kesintiler bölümleri pastel zeminli (`#f0fdf4` yeşil / `#fff1f2` kırmızı), 14px kavisli beyaz kartlar, ince kesikli ayırıcılar, net hizalı sayılar ve mobil ekran genişliğine tam uyumlu kart ızgarasıyla baştan aşağı modernize edildi.
-  - Smoke Test & Derleme: `design-smoke.cjs` içine `/bordro` rotası, detay modalı açma adımı ve mock API yanıtı dahil edildi; Playwright ile 320/390/480px ekran boyutlarında 27 kontrol başarıyla (`PASS`) tamamlandı. `npm run build` ile hatasız üretim çıktısı alındı.
+    - Bordro Detay Modalı (Sheet) Şıklaştırması, İki Sekme ve Kompakt Özet İyileştirmesi:
+      - Masaüstündeki (`views/bordro/list.php`) gibi iki ayrı gösterim eklendi:
+        1. **Karşılaştırmalı Hesap** (`get-detail-old`): Sözleşme Alacağı Hesabı, Resmî Alacak Hesabı, Kesintiler.
+        2. **Resmî Bordro Dökümü** (`get-detail`): Normal kazançlar, fazla çalışmalar, yasal kesintiler.
+      - **UI/UX Pro Max Standartları Uygulaması**:
+        - **Apple iOS Segmented Control**: Sekmeler kaba butonlar yerine modern gri ray üzerinde saf beyaz kabartmalı aktif hap kontrolüne dönüştürüldü.
+        - **Ultra-Kompakt Bento Özet Bandı (`.detail-summary-strip`)**: Ekranın %60'ını kaplayan hantal kutular yerine ~58px'lik şık bir bant yerleştirildi; Net Maaş (`₺53.405,00`), Banka (`₺35.875,50`), Elden (`₺17.529,50`) tek satırda sunuldu, chevron ile detaylı kırılım açılabilir hale getirildi. Modal yüksekliği `94vh` yapılarak döküm alanına ~210px net alan kazandırıldı.
+        - **Başlık Rozeti Kırılması Giderildi**: `53.405,00 \n ₺` olarak iki satıra bölünen yeşil rozet `white-space: nowrap !important; font-size: 12.5px; border-radius: 9999px;` ile tek satırda kusursuz hap rozet haline getirildi.
+        - **Masaüstü Tablosu → Fintech Kart Listesi Dönüşümü**: Masaüstünden gelen `<table>` ve `<tr><td>` yapısı CSS flexbox ve fintech kart listesi standartlarına dönüştürüldü:
+          - Masaüstü `.pe-4` ve `.ps-5` padding'leri sıfırlandı; alt satırlar sol kenarında ince zarif bir gösterge çizgisi (`border-left indicator`), sağ kenarda ise milimetrik hizalı tabular tutarlarla sunuldu.
+          - Satırlar arası ince ayırıcılar, koyu okunabilir tipografi (`#0f172a`), zarif birim açıklamaları ve belirgin toplam şeritleri uygulandı.
+  - Smoke Test & Derleme: `design-smoke.cjs` içine detay sekmeleri geçişi, puantaj alt döküm kalemleri doğrulamaları dahil edildi. 320/390/480px ekran boyutlarında 27 kontrol başarıyla (`PASS`) tamamlandı. `npm run build` ile hatasız üretim çıktısı alındı.
 
 ## Mobil SPA — mobil uygulama tasarımı (2026-10-14)
 - Pinterest `558939003771833803` referansının sade beyaz/koyu yüzeyleri ve alt panel yaklaşımı mevcut Vue SPA'ya uygulandı. Ana sayfa gerçek API verisinden saha özeti, hızlı erişim, ekip/filo dağılımı ve operasyon kartları çiziyor; önceki sabit personel avatarları ve işlevsiz bildirim düğmesi kaldırıldı.
@@ -199,3 +232,16 @@
 - Muhasebe listesinin `Mutabakat` sayfasına TC sonrasında `Toplam Gün` ve `İzin Günü` eklendi; mevcut `Fiilî Gün` ve `Rapor Günü` korundu.
 - İzin günü ücretli ve ücretsiz izinlerin toplamıdır. Yeni bordro snapshot'ları ücretli izin gününü de saklar; eski snapshot'lardaki eksik açıklayıcı kırılım dönem kaynağından tamamlanır ve kayıtlı parasal/ödeme kanalı değerleri değiştirilmez.
 - Mutabakat kesinti kolonları yalnız banka kanallı snapshot kesintilerinden üretiliyor. Elden kesintisi kırmızı alana eklenmiyor; resmî kalem dağılımı gösterilen banka kesintileriyle birlikte kayıtlı banka tutarına mutabık kalıyor.
+
+## 2026-10-14 — Sözleşme nöbeti / resmî banka regresyonu
+- Sözleşme hafta içi nöbeti kayıtlı netiyle korunurken resmî hedefin toplam hakediş tavanına kırpılması düzeltildi. Yeni hesaplamada resmî banka tabanının karşılanamayan bakiyesi `ozet.resmi_taban_tamamlama` olarak saklanıyor; nöbet `net_etki` ve yuvarlama farkı değişmiyor. Elden hakediş yeterliyse ek tamamlama yok.
+- Ortak snapshot sonucu `sozlesmeToplamAlacagi` ile sözleşme toplamını ödeme toplamından ayırıyor. Kompakt detay ve Bordro Kontrol sözleşme footer'ı bu tutarı kullanıyor; diğer detayda farkın sözleşme kalemine eklenmesi engellendi. Eski snapshot ödeme kanalları korunuyor.
+- Gerçek `hesaplaMaas` akışı için dahil yardımlı ve yardımsız prim usulü nöbet testleri eklendi; kaydedilen snapshot, detay banka kırılımı, muhasebe ve ödeme mutabakatı doğrulandı. Artık kullanılmayan nöbeti sözleşmede yükselten helper ve eski beklenti testi kaldırıldı.
+- `vendor/bin/pest tests/Unit --filter 'Bordro|MaasaDahil' --compact`: 90 test, 741 doğrulama geçti. Mevcut canlı legacy gösterimde tanımsız ücretli izin günü için 7 uyarı bulunuyor. PHP sözdizimi ve diff kontrolleri geçti. Veritabanında kayıt değiştirilmedi; mevcut bordro yetkili yeniden hesaplamayla yeni hesabı alır.
+
+## 2026-10-14 — Liste / detay / Excel snapshot mutabakatı
+- Bordro Kontrol Excel'i canlı ek ödeme ve kesinti tablolarından ayrıldı; sözleşme ve kesinti kırılımları Model katmanında kayıtlı bordro snapshot'ından üretiliyor.
+- Prim usulü sözleşme kartındaki `Puantaj Hakedişi`, tüm personellerde snapshot'a kaydedilmiş gerçek `[Puantaj]`/`[Sayaç]` kaynaklarından üretiliyor; resmî asgari taban bu satıra eklenmiyor. Resmî taraftaki `Asgari Ücret (Net)` ve kayıtlı ödeme kanalları değişmiyor. Aynı puantajın prim usulü kartta ikinci kez ek ödeme satırı olarak çizilmesi engellendi; detay ve Bordro Kontrol Excel'i aynı model özetini kullanıyor.
+- Hesaplanmış 164 prim usulü bordro salt okunur tarandı; sözleşme kaynak satırları ile kart/Excel toplamı arasında fark ve negatif satır bulunmadı. Mehmet Durdu Eylül 2026 sözleşme tarafı `0,00 TL Puantaj Hakedişi + 3.500,00 TL Nöbet = 3.500,00 TL`, resmî banka ve ödeme `32.380,41 TL` olarak doğrulandı.
+- Eski snapshot'larda eksik veya fazla açıklayıcı kalemler negatif teknik satır üretmeden kayıtlı footer toplamına bağlandı.
+- 817 hesaplanmış snapshot taramasında sözleşme satır/footer farkı, kesinti satır/footer farkı ve liste–Muhasebe Excel banka farkı sıfır çıktı. 93 bordro testi ve 749 doğrulama geçti; mevcut 7 legacy uyarı devam ediyor.

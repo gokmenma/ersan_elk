@@ -93,10 +93,16 @@ $donemKapali = $selectedDonem ? ($selectedDonem->kapali_mi ?? 0) : 0;
 $paramTarih = $selectedDonem ? $selectedDonem->baslangic_tarihi : date('Y-m-d');
 
 $kesinti_turleri = ['' => 'Seçiniz'];
+$kesinti_kanallari = [];
 $dbKesintiler = $BordroParametre->getKesintiTurleri($paramTarih);
 if (!empty($dbKesintiler)) {
     foreach ($dbKesintiler as $k) {
         $kesinti_turleri[$k->kod] = $k->etiket;
+        $isEldenParam = ($k->odeme_yontemi ?? '') === 'elden'
+            || ($k->hesaplama_tipi ?? '') === 'elden_tutardan'
+            || $k->kod === 'elden_tutar_kesintisi'
+            || strpos(mb_strtolower($k->kod, 'UTF-8'), 'elden') !== false;
+        $kesinti_kanallari[$k->kod] = $isEldenParam ? 'elden' : 'banka';
     }
 } else {
     // Veritabanında henüz tanımlı değilse varsayılan liste
@@ -136,6 +142,9 @@ if (!empty($dbGelirler)) {
     $title = "Bordro Yönetimi";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
+    <script>
+        window.kesintiKanallari = <?= json_encode($kesinti_kanallari ?? []) ?>;
+    </script>
     <style>
         /* Dropdown Item Sol Yaslama & Düzen */
         .dropdown-menu .dropdown-item {
@@ -1695,6 +1704,25 @@ if (!empty($dbGelirler)) {
                                                     textField: '',
                                                     required: true
                                                 ) ?>
+                                            </div>
+
+                                            <div class="mb-3" id="div_kesinti_kanali">
+                                                <label class="form-label fw-bold d-block mb-2"><i
+                                                        class="bx bx-transfer me-1"></i>Kesinti Kanalı</label>
+                                                <div class="btn-group w-100" role="group">
+                                                    <input type="radio" class="btn-check" name="banka_matrahina_ekle"
+                                                        id="kesinti_kanal_banka" value="1" checked>
+                                                    <label class="btn btn-outline-primary" for="kesinti_kanal_banka"><i
+                                                            class="bx bx-building-house me-1"></i> Banka Kesintisi</label>
+
+                                                    <input type="radio" class="btn-check" name="banka_matrahina_ekle"
+                                                        id="kesinti_kanal_elden" value="0">
+                                                    <label class="btn btn-outline-warning" for="kesinti_kanal_elden"><i
+                                                            class="bx bx-wallet me-1"></i> Elden Kesinti</label>
+                                                </div>
+                                                <small class="text-muted mt-1 d-block" style="font-size: 0.72rem;">
+                                                    <i class="bx bx-info-circle me-1"></i>Elden kesintilerde önce elden tutar kesilir, yetmeyen bakiye bankadan kesilir.
+                                                </small>
                                             </div>
 
                                             <div class="mb-3 d-none" id="div_ucretsiz_izin_secenek">

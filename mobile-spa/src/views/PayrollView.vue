@@ -29,6 +29,7 @@ import {
   Receipt,
   RefreshCw,
   RotateCcw,
+  Scale,
   Search,
   SlidersHorizontal,
   TrendingDown,
@@ -80,6 +81,12 @@ const detailLoading = ref(false)
 const detailData = ref(null)
 const selectedPersonForDetail = ref(null)
 const showBankTooltip = ref(false)
+const activeDetailTab = ref('comparison') // 'comparison' | 'official'
+const isSummaryExpanded = ref(false)
+const detailCache = ref({
+  comparison: null,
+  official: null,
+})
 
 const isPaymentModalOpen = ref(false)
 const paymentLoading = ref(false)
@@ -308,28 +315,69 @@ function handleResetAllPayments() {
   })
 }
 
-// Bordro Detayını Aç
-async function openDetail(person) {
-  selectedPersonForDetail.value = person
-  isDetailOpen.value = true
-  detailLoading.value = true
-  detailData.value = null
-  showBankTooltip.value = false
+// Detay HTML Temizleyici (Masaüstü gereksiz başlık ve alt banner'ları temizler)
+function sanitizeDetailHtml(html, tabType) {
+  if (!html) return ''
+  const host = document.createElement('div')
+  host.innerHTML = html
 
+  if (tabType === 'comparison') {
+    // get-detail-old temizliği: masaüstü header kartı, banner ve layout butonları
+    host.querySelector('.header-glass')?.remove()
+    host.querySelector('.net-bottom-banner')?.remove()
+    host.querySelector('.btn-toggle-net-expand')?.remove()
+    host.querySelector('.layout-switch')?.remove()
+  } else {
+    // get-detail (resmî döküm) temizliği
+    host.querySelector('.person-header-card')?.remove()
+    host.querySelector('.summary-badge')?.remove()
+  }
+
+  return host.innerHTML
+}
+
+// Belirli bir detay sekmesini yükle (cache destekli)
+async function loadDetailContent(person, tabType) {
+  if (detailCache.value[tabType]) {
+    detailData.value = detailCache.value[tabType]
+    return
+  }
+
+  detailLoading.value = true
   try {
-    const res = await bordroApi.getDetail(person.token)
+    const action = tabType === 'comparison' ? 'get-detail-old' : 'get-detail'
+    const res = await bordroApi.getDetail(person.token, action)
     if (res && res.html) {
-      const host = document.createElement('div')
-      host.innerHTML = res.html
-      host.querySelector('.person-header-card')?.remove()
-      host.querySelector('.summary-badge')?.remove()
-      res.html = host.innerHTML
+      res.html = sanitizeDetailHtml(res.html, tabType)
     }
+    detailCache.value[tabType] = res
     detailData.value = res
   } catch (err) {
     showToast(err.message || 'Bordro detayı alınamadı.', 'error')
   } finally {
     detailLoading.value = false
+  }
+}
+
+// Bordro Detayını Aç
+async function openDetail(person) {
+  selectedPersonForDetail.value = person
+  isDetailOpen.value = true
+  detailCache.value = { comparison: null, official: null }
+  detailData.value = null
+  showBankTooltip.value = false
+  isSummaryExpanded.value = false
+  // Masaüstündeki gibi varsayılan olarak Karşılaştırmalı Hesap ile başla
+  activeDetailTab.value = 'comparison'
+  await loadDetailContent(person, 'comparison')
+}
+
+// Sekme Değiştir (Karşılaştırmalı Hesap <-> Resmî Bordro Dökümü)
+async function switchDetailTab(tabType) {
+  if (activeDetailTab.value === tabType) return
+  activeDetailTab.value = tabType
+  if (selectedPersonForDetail.value) {
+    await loadDetailContent(selectedPersonForDetail.value, tabType)
   }
 }
 
@@ -849,103 +897,113 @@ onMounted(() => {
           </header>
 
           <div class="payroll-sheet-body">
-            <!-- Yükleniyor Göstergesi -->
-            <div v-if="detailLoading" class="payroll-detail-loading">
+            <!-- İlk Açılış Yükleniyor Göstergesi -->
+            <div v-if="detailLoading && !detailData" class="payroll-detail-loading">
               <div class="payroll-spinner"></div>
               <span>Bordro hesaplama kalemleri hazırlanıyor…</span>
             </div>
 
             <template v-else-if="detailData">
-              <!-- Obsidian Hero Kartı -->
-              <section class="bento-card bento-card--dark detail-hero-card">
-                <div class="bento-overview-head">
-                  <span class="dark-pill-tag">ELE GEÇEN NET TUTAR</span>
-                  <Banknote :size="20" />
-                </div>
-                <div class="payroll-hero-main">
-                  <strong class="payroll-hero-amount">{{ detailData.summary?.net_maas || formatMoney(selectedPersonForDetail?.net) }}</strong>
-                </div>
-                <div class="detail-hero-subgrid">
-                  <div>
-                    <span class="detail-hero-sublabel">TOPLAM HAKEDİŞ</span>
-                    <strong>{{ detailData.summary?.brut_toplam || '—' }}</strong>
+              <!-- Kompakt & Katlanabilir Bento Özet Bandı (Yer Tasarruflu) -->
+              <section class="detail-summary-strip bento-card">
+                <div class="summary-strip-main" @click="isSummaryExpanded = !isSummaryExpanded">
+                  <div class="strip-net-badge">
+                    <span class="strip-net-eyebrow">ELE GEÇEN NET</span>
+                    <strong class="strip-net-val">{{ detailData.summary?.net_maas || formatMoney(selectedPersonForDetail?.net) }}</strong>
                   </div>
-                  <div class="text-right">
-                    <span class="detail-hero-sublabel">TOPLAM KESİNTİ</span>
-                    <strong class="text-rose-300">{{ detailData.summary?.kesinti_toplam || '—' }}</strong>
-                  </div>
-                </div>
-              </section>
 
-              <!-- Dağılım Kartları -->
-              <div class="detail-channels-grid">
-                <div
-                  v-if="detailData.summary?.banka"
-                  class="detail-channel-card detail-channel-card--bank"
-                >
-                  <div class="channel-card-top">
-                    <span class="channel-icon"><Landmark :size="16" /></span>
-                    <button
-                      v-if="detailData.summary?.banka_detay"
-                      type="button"
-                      class="channel-info-btn"
-                      aria-label="Banka Detayı Bilgisi"
-                      @click="showBankTooltip = !showBankTooltip"
-                    >
-                      <Info :size="14" />
-                    </button>
+                  <div class="strip-chips-scroll">
+                    <span v-if="detailData.summary?.banka" class="strip-pill strip-pill--bank">
+                      <Landmark :size="12" />
+                      <strong>Banka:</strong> {{ detailData.summary?.banka }}
+                    </span>
+                    <span v-if="detailData.summary?.elden" class="strip-pill strip-pill--cash">
+                      <Banknote :size="12" />
+                      <strong>Elden:</strong> {{ detailData.summary?.elden }}
+                    </span>
+                    <span v-if="detailData.summary?.sodexo" class="strip-pill strip-pill--sodexo">
+                      <UtensilsCrossed :size="12" />
+                      <strong>Sodexo:</strong> {{ detailData.summary?.sodexo }}
+                    </span>
+                    <span v-if="detailData.summary?.diger" class="strip-pill strip-pill--other">
+                      <Wallet :size="12" />
+                      <strong>Diğer:</strong> {{ detailData.summary?.diger }}
+                    </span>
                   </div>
-                  <span class="channel-label">BANKA</span>
-                  <strong class="channel-val">{{ detailData.summary?.banka }}</strong>
 
-                  <!-- Banka Detay Açıklaması -->
+                  <button
+                    type="button"
+                    class="strip-toggle-btn"
+                    :class="{ 'is-expanded': isSummaryExpanded }"
+                    :title="isSummaryExpanded ? 'Özeti Daralt' : 'Hakediş & Kesinti Detayını Göster'"
+                    aria-label="Detaylı Özeti Aç/Kapat"
+                  >
+                    <ChevronDown :size="16" />
+                  </button>
+                </div>
+
+                <!-- İsteğe Bağlı Genişleyen Kırılım (Hakediş, Kesinti, Banka Detayı) -->
+                <div v-if="isSummaryExpanded" class="summary-expanded-drawer">
+                  <div class="drawer-stats-grid">
+                    <div class="drawer-stat-item">
+                      <span class="drawer-stat-label">TOPLAM HAKEDİŞ</span>
+                      <strong class="drawer-stat-val text-emerald-600">{{ detailData.summary?.brut_toplam || '—' }}</strong>
+                    </div>
+                    <div class="drawer-stat-item">
+                      <span class="drawer-stat-label">TOPLAM KESİNTİ</span>
+                      <strong class="drawer-stat-val text-rose-500">{{ detailData.summary?.kesinti_toplam || '—' }}</strong>
+                    </div>
+                  </div>
+
                   <div
-                    v-if="showBankTooltip && detailData.summary?.banka_detay"
-                    class="banka-tooltip-box"
+                    v-if="detailData.summary?.banka_detay"
+                    class="banka-tooltip-box mt-2"
                     v-html="detailData.summary?.banka_detay"
                   ></div>
                 </div>
+              </section>
 
-                <div
-                  v-if="detailData.summary?.elden"
-                  class="detail-channel-card detail-channel-card--cash"
+              <!-- İki Türlü Gösterim Sekmeleri (Masaüstündeki gibi) -->
+              <div class="payroll-detail-tabs-bar clay-tabs-wrap">
+                <button
+                  type="button"
+                  class="clay-filter-pill"
+                  :class="{ active: activeDetailTab === 'comparison' }"
+                  @click="switchDetailTab('comparison')"
                 >
-                  <span class="channel-icon"><Banknote :size="16" /></span>
-                  <span class="channel-label">ELDEN</span>
-                  <strong class="channel-val">{{ detailData.summary?.elden }}</strong>
-                </div>
-
-                <div
-                  v-if="detailData.summary?.sodexo"
-                  class="detail-channel-card detail-channel-card--sodexo"
+                  <Scale :size="14" />
+                  <span>Karşılaştırmalı Hesap</span>
+                </button>
+                <button
+                  type="button"
+                  class="clay-filter-pill"
+                  :class="{ active: activeDetailTab === 'official' }"
+                  @click="switchDetailTab('official')"
                 >
-                  <span class="channel-icon"><UtensilsCrossed :size="16" /></span>
-                  <span class="channel-label">SODEXO</span>
-                  <strong class="channel-val">{{ detailData.summary?.sodexo }}</strong>
-                </div>
-
-                <div
-                  v-if="detailData.summary?.diger"
-                  class="detail-channel-card detail-channel-card--other"
-                >
-                  <span class="channel-icon"><Wallet :size="16" /></span>
-                  <span class="channel-label">DİĞER</span>
-                  <strong class="channel-val">{{ detailData.summary?.diger }}</strong>
-                </div>
+                  <FileText :size="14" />
+                  <span>Resmî Bordro Dökümü</span>
+                </button>
               </div>
 
-              <!-- Kalemler ve Resmi Kırılımlar HTML Entegrasyonu -->
-              <details class="detail-legacy-details" open>
-                <summary class="detail-legacy-summary">
-                  <Receipt :size="16" />
-                  <span>Resmî Hesaplama Kalemleri</span>
-                  <ChevronDown :size="16" class="legacy-chevron" />
-                </summary>
-                <div
-                  class="payroll-legacy-container"
-                  v-html="detailData.html || '<p class=\'p-3 text-slate-400\'>Kalem detayı bulunamadı.</p>'"
-                ></div>
-              </details>
+              <!-- Sekme İçerik Yükleniyor -->
+              <div v-if="detailLoading" class="payroll-detail-loading payroll-tab-loading">
+                <div class="payroll-spinner"></div>
+                <span>{{ activeDetailTab === 'comparison' ? 'Karşılaştırmalı hesap tablosu hazırlanıyor…' : 'Resmî bordro dökümü hazırlanıyor…' }}</span>
+              </div>
+
+              <!-- Sekme 1: Karşılaştırmalı Hesap Gösterimi (get-detail-old) -->
+              <div
+                v-else-if="activeDetailTab === 'comparison'"
+                class="payroll-legacy-container payroll-comparison-container"
+                v-html="detailData.html || '<p class=\'p-3 text-slate-400\'>Hesap dökümü bulunamadı.</p>'"
+              ></div>
+
+              <!-- Sekme 2: Resmî Bordro Dökümü Gösterimi (get-detail) -->
+              <div
+                v-else-if="activeDetailTab === 'official'"
+                class="payroll-legacy-container payroll-official-container"
+                v-html="detailData.html || '<p class=\'p-3 text-slate-400\'>Resmî bordro dökümü bulunamadı.</p>'"
+              ></div>
             </template>
           </div>
         </div>
@@ -1796,7 +1854,8 @@ onMounted(() => {
 .payroll-modal-sheet {
   width: 100%;
   max-width: 540px;
-  max-height: 88vh;
+  height: 94vh;
+  max-height: 94vh;
   background: #ffffff;
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
@@ -1817,15 +1876,15 @@ onMounted(() => {
 }
 
 .sheet-drag-handle {
-  width: 40px;
+  width: 36px;
   height: 4px;
   background: #cbd5e1;
   border-radius: 9999px;
-  margin: 10px auto 4px;
+  margin: 8px auto 2px;
 }
 
 .payroll-sheet-header {
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   align-items: flex-start;
@@ -1834,25 +1893,26 @@ onMounted(() => {
 }
 
 .payroll-sheet-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   color: #0f172a;
-  margin: 2px 0 0;
+  margin: 1px 0 0;
 }
 
 .payroll-sheet-subtitle {
   font-size: 11px;
   font-weight: 600;
   color: #64748b;
-  margin: 2px 0 0;
+  margin: 1px 0 0;
 }
 
 .payroll-sheet-body {
-  padding: 16px 20px 28px;
+  padding: 10px 12px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
+  flex: 1;
 }
 
 /* Detay Yükleniyor */
@@ -1882,104 +1942,174 @@ onMounted(() => {
   }
 }
 
-.detail-hero-card {
-  padding: 18px;
-}
-
-.detail-hero-subgrid {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  font-size: 13px;
-}
-
-.detail-hero-sublabel {
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
-  letter-spacing: 0.05em;
-}
-
-.detail-channels-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.detail-channel-card {
+/* ==================== KOMPAKT BENTO ÖZET BANDI ==================== */
+.detail-summary-strip {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 16px;
-  padding: 12px;
+  padding: 8px 10px;
+  box-shadow: var(--ds-shadow-bento);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  position: relative;
+  transition: all 0.2s ease;
 }
 
-.detail-channel-card--bank {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1e40af;
-}
-
-.detail-channel-card--cash {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #92400e;
-}
-
-.detail-channel-card--sodexo {
-  background: #ecfeff;
-  border: 1px solid #a5f3fc;
-  color: #155e75;
-}
-
-.detail-channel-card--other {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #334155;
-}
-
-.channel-card-top {
+.summary-strip-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
 }
 
-.channel-info-btn {
-  background: rgba(30, 64, 175, 0.1);
-  border: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+.strip-net-badge {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 5px 10px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 105px;
+}
+
+.strip-net-eyebrow {
+  font-size: 8px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.strip-net-val {
+  font-size: 14.5px;
+  font-weight: 900;
+  color: #34d399;
+  line-height: 1.15;
+}
+
+.strip-chips-scroll {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.strip-pill {
+  font-size: 10.5px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.strip-pill strong {
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+.strip-pill--bank {
+  background: #eff6ff;
   color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+.strip-pill--cash {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.strip-pill--sodexo {
+  background: #ecfeff;
+  color: #155e75;
+  border-color: #a5f3fc;
+}
+
+.strip-pill--other {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #e2e8f0;
+}
+
+.strip-toggle-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.channel-label {
-  font-size: 9px;
+.strip-toggle-btn.is-expanded {
+  transform: rotate(180deg);
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.summary-expanded-drawer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.drawer-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.drawer-stat-item {
+  background: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #edf2f7;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.drawer-stat-label {
+  font-size: 8.5px;
   font-weight: 800;
-  letter-spacing: 0.05em;
-  opacity: 0.75;
+  color: #64748b;
+  letter-spacing: 0.04em;
 }
 
-.channel-val {
-  font-size: 14px;
+.drawer-stat-val {
+  font-size: 13px;
   font-weight: 900;
 }
 
 .banka-tooltip-box {
-  margin-top: 8px;
-  padding: 10px;
+  margin-top: 4px;
+  padding: 8px 10px;
   background: #1e293b;
   color: #f1f5f9;
-  font-size: 11px;
+  font-size: 10.5px;
   line-height: 1.4;
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
@@ -1988,53 +2118,387 @@ onMounted(() => {
   font-size: 10px;
 }
 
-/* Accordion Kalemler ve Resmî Detay */
-.detail-legacy-details {
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  overflow: hidden;
-  background: #ffffff;
-  box-shadow: var(--ds-shadow-bento);
-}
-
-.detail-legacy-summary {
-  padding: 14px 16px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #0f172a;
-  background: #f8fafc;
+/* Detay Sekme Çubuğu (Apple iOS Segmented Control) */
+.payroll-detail-tabs-bar {
+  background: #e2e8f0;
+  border-radius: 14px;
+  padding: 3px;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  list-style: none;
-  border-bottom: 1px solid transparent;
-  transition: background-color var(--ds-transition-fast);
+  gap: 3px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  width: 100%;
 }
 
-.detail-legacy-summary::-webkit-details-marker {
-  display: none;
+.payroll-detail-tabs-bar .clay-filter-pill {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  color: #64748b !important;
+  border-radius: 11px !important;
+  min-height: 38px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  box-shadow: none !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
 }
 
-.detail-legacy-details[open] .detail-legacy-summary {
-  border-bottom-color: #e2e8f0;
+.payroll-detail-tabs-bar .clay-filter-pill.active {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
 }
 
-.legacy-chevron {
-  margin-left: auto;
-  transition: transform 0.2s ease;
-}
-
-.detail-legacy-details[open] .legacy-chevron {
-  transform: rotate(180deg);
+.payroll-tab-loading {
+  min-height: 180px;
+  margin: 16px 0;
 }
 
 .payroll-legacy-container {
-  padding: 12px;
+  padding: 4px 0 12px 0;
   font-size: 11px;
   color: #334155;
   line-height: 1.5;
   overflow-x: hidden;
+}
+
+/* ==================== KARŞILAŞTIRMALI HESAP (COMPACT VIEW) MOBİL STİLLERİ ==================== */
+.payroll-comparison-container {
+  padding: 0 !important;
+}
+
+.payroll-comparison-container :deep(.bordro-compact-view) {
+  font-family: inherit !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* Masaüstü gereksiz öğeleri mobilde gizle */
+.payroll-comparison-container :deep(.header-glass),
+.payroll-comparison-container :deep(.net-bottom-banner),
+.payroll-comparison-container :deep(.layout-switch),
+.payroll-comparison-container :deep(.btn-toggle-net-expand),
+.payroll-comparison-container :deep(.panel-chevron) {
+  display: none !important;
+}
+
+/* Grid kolonlarını mobilde tam genişlikte dikey yığına çevir */
+.payroll-comparison-container :deep(.bordro-detail-card-grid),
+.payroll-comparison-container :deep(.bordro-calculation-column),
+.payroll-comparison-container :deep(.calculation-panels) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+.payroll-comparison-container :deep(.bordro-calculation-panel),
+.payroll-comparison-container :deep(.bordro-deduction-column),
+.payroll-comparison-container :deep(.col-12),
+.payroll-comparison-container :deep(.col-lg-8) {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex: 1 1 100% !important;
+}
+
+/* Bento Kart Görünümü */
+.payroll-comparison-container :deep(.main-card) {
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: var(--ds-shadow-bento, 0 4px 14px rgba(0, 0, 0, 0.03)) !important;
+  overflow: hidden !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
+}
+
+/* Kart Başlıkları (Renkli Tint Başlıklar) */
+.payroll-comparison-container :deep(.card-header-tint) {
+  padding: 11px 14px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid #eef2f6 !important;
+  letter-spacing: 0.02em !important;
+  gap: 10px !important;
+  min-height: 48px !important;
+}
+
+.payroll-comparison-container :deep(.card-header-tint > span:first-child) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  line-height: 1.25 !important;
+}
+
+.payroll-comparison-container :deep(.card-header-tint > span:first-child small) {
+  display: block !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  opacity: 0.8 !important;
+  margin-top: 2px !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+.payroll-comparison-container :deep(.card-header-tint > span:last-child) {
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.payroll-comparison-container :deep(.card-header-tint .badge) {
+  white-space: nowrap !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  padding: 4px 10px !important;
+  border-radius: 9999px !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.01em !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+.payroll-comparison-container :deep(.tint-hakedis) {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%) !important;
+  color: #166534 !important;
+  border-left: 4px solid #10b981 !important;
+}
+
+.payroll-comparison-container :deep(.tint-resmi) {
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%) !important;
+  color: #1e40af !important;
+  border-left: 4px solid #3b82f6 !important;
+}
+
+.payroll-comparison-container :deep(.card-header-tint:has(.text-danger)),
+.payroll-comparison-container :deep(.card-header-tint.bg-danger-subtle) {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%) !important;
+  color: #9f1239 !important;
+  border-left: 4px solid #f43f5e !important;
+}
+
+/* Collapse panelleri mobilde daima açık tut */
+.payroll-comparison-container :deep(.collapse),
+.payroll-comparison-container :deep(.bordro-main-calculation-collapse) {
+  display: block !important;
+  visibility: visible !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Unified Tablo Tasarımı -> Mobil Kart Listesi Dönüşümü */
+.payroll-comparison-container :deep(.unified-table) {
+  width: 100% !important;
+  margin-bottom: 0 !important;
+  border-collapse: collapse !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.payroll-comparison-container :deep(.unified-table tbody) {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.payroll-comparison-container :deep(.unified-table tr) {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  padding: 10px 14px !important;
+  box-sizing: border-box !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.payroll-comparison-container :deep(.unified-table tr:last-child) {
+  border-bottom: none !important;
+}
+
+.payroll-comparison-container :deep(.unified-table tr > td:first-child) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.payroll-comparison-container :deep(.unified-table tr > td:last-child) {
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  text-align: right !important;
+  margin-left: 12px !important;
+  font-variant-numeric: tabular-nums !important;
+  white-space: nowrap !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+}
+
+/* Parent Row (Ana Başlık Satırı) */
+.payroll-comparison-container :deep(.unified-table .parent-row) {
+  background: #ffffff !important;
+  cursor: pointer !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .parent-row > td:first-child) {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .parent-row .calculation-note) {
+  display: block !important;
+  font-size: 10.5px !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  margin-top: 3px !important;
+  line-height: 1.35 !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .parent-row .badge) {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 7px !important;
+  border-radius: 6px !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Child Row (Alt Kırılım / Puantaj Kalemleri) */
+.payroll-comparison-container :deep(.unified-table .child-row) {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #edf2f7 !important;
+  padding: 8px 14px 8px 20px !important;
+  position: relative !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .child-row::before) {
+  content: "" !important;
+  position: absolute !important;
+  left: 10px !important;
+  top: 10px !important;
+  bottom: 10px !important;
+  width: 3px !important;
+  background: #cbd5e1 !important;
+  border-radius: 9999px !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .child-row > td:first-child) {
+  font-size: 11.5px !important;
+  color: #334155 !important;
+  line-height: 1.35 !important;
+  padding-left: 0 !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .child-row small) {
+  display: block !important;
+  font-size: 10.5px !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  margin-top: 2px !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .child-row > td:last-child) {
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  padding-right: 0 !important;
+}
+
+/* Footer Row (Toplam Satırı) */
+.payroll-comparison-container :deep(.unified-table .footer-row) {
+  background: #f8fafc !important;
+  border-top: 1.5px solid #e2e8f0 !important;
+  border-bottom: none !important;
+  padding: 12px 14px !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .footer-row > td:first-child) {
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .footer-row > td:last-child) {
+  font-size: 14.5px !important;
+  font-weight: 900 !important;
+}
+
+/* Section Row (Eklenenler / Kesilenler Başlık Şeridi) */
+.payroll-comparison-container :deep(.unified-table .section-row) {
+  background: #f1f5f9 !important;
+  padding: 6px 14px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .section-row > td) {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: #475569 !important;
+  width: 100% !important;
+}
+
+.payroll-comparison-container :deep(.text-end) {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.payroll-comparison-container :deep(.calculation-note) {
+  font-size: 10.5px !important;
+  color: #64748b !important;
+  margin-top: 2px !important;
+  font-weight: 500 !important;
+  display: block !important;
+}
+
+.payroll-comparison-container :deep(.badge) {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  padding: 4px 8px !important;
+  border-radius: 8px !important;
+}
+
+.payroll-comparison-container :deep(.badge.bg-success) {
+  background: #10b981 !important;
+  color: #ffffff !important;
+}
+
+.payroll-comparison-container :deep(.badge.bg-primary) {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.payroll-comparison-container :deep(.badge.bg-danger) {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.payroll-comparison-container :deep(.badge.bg-light) {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
 /* ==================== BORDRO REFERANS GÖRÜNÜMÜ MOBİL HARMONİZASYONU ==================== */
@@ -2088,42 +2552,47 @@ onMounted(() => {
 .payroll-legacy-container :deep(.ref-card) {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
-  border-radius: 14px !important;
+  border-radius: 16px !important;
   padding: 12px 14px !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  box-shadow: var(--ds-shadow-bento, 0 2px 8px rgba(0, 0, 0, 0.04)) !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 6px !important;
+  gap: 8px !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-title) {
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 800 !important;
-  color: #475569 !important;
+  color: #334155 !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
-  border-bottom: 1px dashed #e2e8f0 !important;
-  padding-bottom: 6px !important;
-  margin-bottom: 6px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding-bottom: 8px !important;
+  margin-bottom: 4px !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-list) {
   display: flex !important;
   flex-direction: column !important;
-  gap: 5px !important;
+  gap: 6px !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-item) {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  font-size: 11px !important;
-  color: #334155 !important;
-  padding: 3px 0 !important;
+  font-size: 12px !important;
+  color: #1e293b !important;
+  padding: 5px 0 !important;
+  border-bottom: 1px solid #f8fafc !important;
+}
+
+.payroll-legacy-container :deep(.ref-card-item:last-child) {
+  border-bottom: none !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-item .label) {
-  color: #64748b !important;
+  color: #475569 !important;
   font-weight: 600 !important;
 }
 
@@ -2131,21 +2600,25 @@ onMounted(() => {
   font-weight: 800 !important;
   color: #0f172a !important;
   text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-item .value .subval) {
-  font-size: 10px !important;
-  color: #94a3b8 !important;
+  font-size: 10.5px !important;
+  color: #64748b !important;
   font-weight: 600 !important;
-  margin-right: 6px !important;
+  margin-right: 8px !important;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 
 .payroll-legacy-container :deep(.ref-card-item.total-row) {
-  border-top: 1px solid #e2e8f0 !important;
-  padding-top: 6px !important;
-  margin-top: 4px !important;
+  border-top: 1.5px solid #e2e8f0 !important;
+  padding-top: 8px !important;
+  margin-top: 6px !important;
   font-weight: 800 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-item.total-row .label) {

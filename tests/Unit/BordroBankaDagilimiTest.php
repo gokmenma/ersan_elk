@@ -43,16 +43,6 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(4679.25, $method->invoke($model, 4120, 0, 4679.25));
     }
 
-    public function testHaftaIciNobetFazlaMesaiHedefininAltindaKalamaz(): void
-    {
-        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
-        $method = new ReflectionMethod($model, 'hesaplaHaftaIciNobetHakedisi');
-
-        self::assertSame(748.68, $method->invoke($model, 500, 748.68));
-        self::assertSame(1500.0, $method->invoke($model, 1500, 748.68));
-        self::assertSame(0.0, $method->invoke($model, 0, 0));
-    }
-
     public function testYukseltilmisNobetNetiHamTutaraGeriDonmez(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
@@ -737,7 +727,7 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame(0.0, $detay['sozlesme_farki']);
     }
 
-    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false, bool $disardanSigortali = false): void
+    private function assertKayitGosterim(string $maasTuru, int $bankaSecimi, string $primAciklama, float $kesinti = 500, bool $eldenKesinti = false, bool $manuel = false, bool $karma = false, bool $inclusive = false, float $primAmount = 600, bool $hariciYemek = false, bool $disardanSigortali = false, bool $nobet = false): void
     {
         $isKacakIhbarPrimi = str_starts_with($primAciklama, '[Kaçak İhbar Primi]');
         $record = (object) [
@@ -753,8 +743,8 @@ final class BordroBankaDagilimiTest extends TestCase
             'hesaplama_tarihi' => '2026-09-01 12:00:00',
         ];
         $payments = [
-            (object) ['id' => 1, 'tur' => $isKacakIhbarPrimi ? 'kacak_ihbar_primi' : 'prim', 'tutar' => $primAmount, 'resmi_tutar' => 0, 'aciklama' => $primAciklama, 'banka_matrahina_ekle' => $bankaSecimi],
-            (object) ['id' => 2, 'tur' => 'diger', 'tutar' => $inclusive ? 0 : 1200, 'resmi_tutar' => 0, 'aciklama' => 'Diğer ödeme', 'banka_matrahina_ekle' => 0],
+            (object) ['id' => 1, 'tur' => $nobet ? 'hafta_ici_nobet' : ($isKacakIhbarPrimi ? 'kacak_ihbar_primi' : 'prim'), 'tutar' => $primAmount, 'resmi_tutar' => $nobet ? 7000 : 0, 'aciklama' => $primAciklama, 'banka_matrahina_ekle' => $bankaSecimi],
+            (object) ['id' => 2, 'tur' => 'diger', 'tutar' => ($inclusive || $nobet) ? 0 : 1200, 'resmi_tutar' => 0, 'aciklama' => 'Diğer ödeme', 'banka_matrahina_ekle' => 0],
         ];
         if ($hariciYemek) {
             $payments[] = (object) ['id' => 3, 'tur' => 'yemek_yardimi_tum', 'tutar' => 300, 'resmi_tutar' => 0, 'aciklama' => '[Yemek Yardımı] Günlük', 'banka_matrahina_ekle' => 1];
@@ -810,12 +800,12 @@ final class BordroBankaDagilimiTest extends TestCase
         });
         $this->setProperty($model, 'db', $pdo);
         $params = [];
-        foreach (['prim', 'kacak_ihbar_primi', 'diger', 'yemek_yardimi_tum'] as $code) {
-            $params[$code] = (object) ['etiket' => $code, 'hesaplama_tipi' => 'net', 'odeme_yontemi' => $code === 'kacak_ihbar_primi' ? 'banka' : 'elden', 'resmi_alacagina_dahil' => $code === 'kacak_ihbar_primi' ? 1 : 0, 'sgk_matrahi_dahil' => 0, 'gelir_vergisi_dahil' => 0, 'damga_vergisi_dahil' => 0];
+        foreach (['prim', 'kacak_ihbar_primi', 'diger', 'yemek_yardimi_tum', 'hafta_ici_nobet'] as $code) {
+            $params[$code] = (object) ['etiket' => $code, 'hesaplama_tipi' => 'net', 'odeme_yontemi' => $code === 'kacak_ihbar_primi' ? 'banka' : 'elden', 'resmi_alacagina_dahil' => in_array($code, ['kacak_ihbar_primi', 'hafta_ici_nobet'], true) ? 1 : 0, 'sgk_matrahi_dahil' => 0, 'gelir_vergisi_dahil' => 0, 'damga_vergisi_dahil' => 0];
         }
         $paramModel = $this->getMockBuilder(BordroParametreModel::class)->disableOriginalConstructor()->onlyMethods(['getByKod', 'getGenelAyar', 'hesaplaGelirVergisi', 'hesaplaAsgariUcretGelirVergisiIstisnasi'])->getMock();
         $paramModel->method('getByKod')->willReturn(null);
-        $paramModel->method('getGenelAyar')->willReturn(0);
+        $paramModel->method('getGenelAyar')->willReturnCallback(fn ($code) => $nobet && $code === 'asgari_ucret_net' ? 28075.5 : 0);
         $paramModel->method('hesaplaGelirVergisi')->willReturn(0.0);
         $paramModel->method('hesaplaAsgariUcretGelirVergisiIstisnasi')->willReturn(['aylik_matrah' => 0, 'istisna' => 0, 'toplam_matrah' => 0]);
         $this->setProperty($model, 'cachedParametreModel', $paramModel);
@@ -826,7 +816,30 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertTrue($model->hesaplaMaas(1));
         $record->net_maas = $saved['net_maas'];
         $record->banka_odemesi = $saved['banka_odemesi'];
+        if ($nobet) {
+            $record = (object) array_merge((array) $record, $saved);
+        }
         $display = $model->hesaplaOrtakGosterimDegerleri(clone $record, $record, 28075.5);
+        if ($nobet) {
+            $snapshot = json_decode($saved['hesaplama_detay'], true);
+            self::assertEquals(3500.0, $snapshot['ek_odemeler'][0]['net_etki']);
+            self::assertSame(5240.76, $snapshot['ek_odemeler'][0]['resmi_banka_net']);
+            self::assertEquals($inclusive ? 1740.76 : 0.0, $snapshot['ozet']['resmi_taban_tamamlama']);
+            self::assertSame(33316.26, $saved['banka_odemesi']);
+            self::assertEquals($inclusive ? 33316.26 : 33500.0, $display['toplamAlacagi']);
+            self::assertSame($inclusive ? 31575.5 : 33500.0, $display['sozlesmeToplamAlacagi']);
+            self::assertSame($inclusive ? 0.0 : 183.74, $saved['elden_odeme']);
+            $excel = $model->getMuhasebeOdemeOzeti($display);
+            self::assertSame(33316.26, $excel['banka_odemesi']);
+            self::assertSame(0.0, $excel['dagitim_farki']);
+            $bankaDetay = $model->getBankaOdemeDetayDagilimi($display);
+            self::assertSame(33316.26, $bankaDetay['net_banka']);
+            self::assertSame(5240.76, $bankaDetay['ek_odemeler'][0]['tutar']);
+            self::assertTrue($model->auditKayitliBordro((object) array_merge($saved, [
+                'hesaplama_tarihi' => $snapshot['hesaplama_tarihi'],
+            ]))['mutabik']);
+            return;
+        }
         if ($karma) {
             self::assertTrue($display['karisikMaasGecmisi']);
             self::assertTrue($display['isInclusive']);
@@ -884,5 +897,258 @@ final class BordroBankaDagilimiTest extends TestCase
         self::assertSame($expectedNet, $display['netAlacagi']);
         $detail = json_decode($saved['hesaplama_detay'], true);
         self::assertEquals($expectedBank, $detail['odeme_dagilimi']['banka_net']);
+    }
+
+    public function testEldenKesintiEldenHakedisiAstigindaBankadanKesilirVeMuhasebedeKesintiOlarakGosterilir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+
+        // Ömer Faruk Dağ vakası:
+        // Sözleşme: 30.800 TL, Prim: 3.100 TL -> Toplam: 33.900 TL
+        // Resmî Asgari: 26.203,80 TL, Yemek: 7.200 TL -> Resmî Banka Matrahı: 33.403,80 TL
+        // Elden Hakedişi: 33.900 - 33.403,80 = 496,20 TL
+        // Elden Kesinti: 4.624,00 TL
+        // Beklenen: Elden kesilen 496,20 TL, Bankadan kesilen 4.127,80 TL, Net Banka: 29.276,00 TL
+        $hesap = [
+            'hesaplanmis' => true,
+            'gosterimKaynagi' => 'kayitli',
+            'toplamAlacagi' => 33900.0,
+            'netAlacagi' => 29276.0,
+            'sozlesmeHakedisi' => 30800.0,
+            'muhasebePrimTutari' => 3100.0,
+            'muhasebeBankaPrimTutari' => 0.0,
+            'muhasebeHariciYemekTutari' => 0.0,
+            'muhasebeBankaYemekTutari' => 0.0,
+            'asgariHakedis' => 26203.80,
+            'asgariYatacak' => 26203.80,
+            'mealAllowanceDeduction' => 7200.0,
+            'spouseAllowanceDeduction' => 0.0,
+            'includedAllowanceFiiliGun' => 24,
+            'calismaGunu' => 28,
+            'ucretsizIzinGunu' => 2,
+            'bankaOdemesi' => 29276.0,
+            'eldenOdeme' => 0.0,
+            'sodexoOdemesi' => 0.0,
+            'digerOdeme' => 0.0,
+            'kesintiHaricIcra' => 4624.0,
+            'icraKesintisi' => 0.0,
+            'bankaMatrahi' => 33403.80,
+            'bankaKesintiKalemleri' => [
+                [
+                    'kod' => 'malzeme zarar - ziyan',
+                    'etiket' => 'Malzeme Zarar - Ziyan',
+                    'tutar' => 4127.80,
+                    'aciklama' => 'Ömer Faruk Dağ tablet ekranı kırık',
+                ],
+            ],
+            'bankaEkOdemeDetaylari' => [],
+        ];
+
+        $muhasebe = $model->getMuhasebeOdemeOzeti($hesap);
+
+        // 1. Resmî kalemler (Asgari Ücret ve Yemek) eksilmemeli, tam kalmalı
+        self::assertEquals(26203.80, $muhasebe['resmi_alacak_asgari']);
+        self::assertEquals(7200.0, $muhasebe['resmi_yemek_yardimi']);
+        self::assertEquals(33403.80, $muhasebe['resmi_banka_matrahi']);
+        self::assertEquals(33403.80, $muhasebe['muhasebe_resmi_banka_matrahi']);
+
+        // 2. Bankadan kesilen bakiye muhasebe kesinti sütununa (kırmızı) yazılmalı
+        self::assertEquals(4127.80, $muhasebe['muhasebe_banka_diger_kesinti']);
+        self::assertEquals(4127.80, $muhasebe['muhasebe_bankadan_dusulecek']);
+        self::assertEquals(4127.80, $muhasebe['bankadan_dusulen_kesinti']);
+
+        // 3. Eldenden kesilen tutar doğru hesaplanmalı
+        self::assertEquals(496.20, $muhasebe['elden_dusulen_kesinti']);
+
+        // 4. Net banka ve elden ödemeler
+        self::assertEquals(29276.0, $muhasebe['banka_odemesi']);
+        self::assertEquals(29276.0, $muhasebe['net_maas']);
+        self::assertEquals(0.0, $muhasebe['elden_odeme']);
+        self::assertEquals(0.0, $muhasebe['dagitim_farki']);
+        self::assertEquals(0.0, $muhasebe['banka_kontrol_farki']);
+    }
+
+    public function testKesintiOzetiResmiVeEldenDetayiniAyristirir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'kesintiler' => [
+                    [
+                        'kod' => 'malzeme zarar - ziyan',
+                        'etiket' => 'Malzeme Zarar - Ziyan',
+                        'tutar' => 4624.0,
+                        'aciklama' => 'Tablet ekranı',
+                        'banka_matrahina_ekle' => 0,
+                    ],
+                ],
+                'ortak_sonuc' => [
+                    'gosterim' => [
+                        'bankaKesintiKalemleri' => [
+                            [
+                                'kod' => 'malzeme zarar - ziyan',
+                                'etiket' => 'Malzeme Zarar - Ziyan',
+                                'tutar' => 4127.80,
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ];
+
+        $ozet = $model->getPersonelKesintiOzeti($row);
+        self::assertEquals(4624.0, $ozet['toplam']);
+        self::assertCount(1, $ozet['kalemler']);
+        $kalem = $ozet['kalemler'][0];
+        self::assertEquals(4624.0, $kalem['tutar']);
+        self::assertEquals(4127.80, $kalem['resmi_kesinti']);
+        self::assertEquals(496.20, $kalem['elden_kesinti']);
+        self::assertEquals('elden', $kalem['kanal']);
+    }
+
+    public function testHaftaIciNobetSozlesmeNetiKorunurkenResmiBankaKirpilmaz(): void
+    {
+        $this->assertKayitGosterim('Prim Usülü', 1, '[Nöbet] Hafta İçi (7 Gün x 4 Saat x 500,00 ₺)',
+            kesinti: 0, inclusive: true, primAmount: 3500, nobet: true);
+    }
+
+    public function testYardimsizPrimUsuluNobetteResmiBankaKirpilmaz(): void
+    {
+        $this->assertKayitGosterim('Prim Usülü', 1, '[Nöbet] Hafta İçi (7 Gün x 4 Saat x 500,00 ₺)',
+            kesinti: 0, primAmount: 3500, nobet: true);
+    }
+
+    public function testNobetResmiTabaniYeterliEldenHakedisteEkKazancUretmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'nobetResmiTabanTamamlama');
+        $ekler = [['kod' => 'hafta_ici_nobet', 'resmi_banka_net' => 5240.76]];
+        self::assertSame(1740.76, $method->invoke($model, 30639.65, 32380.41, $ekler));
+        self::assertSame(0.0, $method->invoke($model, 40000, 32380.41, $ekler));
+        self::assertSame(0.0, $method->invoke($model, 30639.65, 32380.41, []));
+    }
+
+    public function testPrimUsuluBordroKontrolundeGercekPuantajVeNobetGosterilir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Prim Usülü',
+                'ek_odemeler' => [[
+                    'id' => 91,
+                    'kod' => 'hafta_ici_nobet',
+                    'aciklama' => '[Nöbet] Hafta İçi (7 Gün x 4 Saat x 500,00 ₺)',
+                    'tutar' => 3500,
+                    'net_etki' => 3500,
+                    'resmi_banka_net' => 5240.76,
+                ]],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+        $hesap = [
+            'maasDurumu' => 'Prim Usülü',
+            'sozlesmeToplamAlacagi' => 30639.65,
+            'toplamAlacagi' => 32380.41,
+            'yuvarlamaFarki' => 0,
+        ];
+
+        $ozet = $model->getSozlesmeAlacagiKalemleri($hesap, $row);
+
+        self::assertSame(3500.0, $ozet['toplam']);
+        self::assertSame([
+            ['etiket' => 'Puantaj Hakedişi', 'tutar' => 0.0],
+            ['etiket' => 'Nöbet Ödemeleri', 'tutar' => 3500.0],
+        ], $ozet['kalemler']);
+        self::assertSame(
+            $ozet['toplam'],
+            round(array_sum(array_column($ozet['kalemler'], 'tutar')), 2)
+        );
+    }
+
+    public function testPrimUsuluSozlesmeOzetindeSnapshotPuantajHedefNetiKullanilir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Prim Usülü',
+                'ek_odemeler' => [
+                    [
+                        'kod' => 'prim',
+                        'aciklama' => '[Puantaj] Sayaç Montajı',
+                        'tutar' => 12000,
+                        'hedef_net_adayi' => 12000,
+                        'net_etki' => 0,
+                    ],
+                    [
+                        'kod' => 'hafta_ici_nobet',
+                        'aciklama' => '[Nöbet] Hafta İçi',
+                        'tutar' => 3500,
+                        'net_etki' => 3500,
+                    ],
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $ozet = $model->getSozlesmeAlacagiKalemleri([
+            'maasDurumu' => 'Prim Usülü',
+            'sozlesmeToplamAlacagi' => 30639.65,
+            'toplamAlacagi' => 32380.41,
+            'yuvarlamaFarki' => 0,
+        ], $row);
+
+        self::assertSame(15500.0, $ozet['toplam']);
+        self::assertSame([
+            ['etiket' => 'Puantaj Hakedişi', 'tutar' => 12000.0],
+            ['etiket' => 'Nöbet Ödemeleri', 'tutar' => 3500.0],
+        ], $ozet['kalemler']);
+    }
+
+    public function testEskiSnapshotAsiriKalemlerindeNegatifDengelemeGosterilmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Net',
+                'ek_odemeler' => [
+                    ['kod' => 'prim', 'net_etki' => 20000, 'aciklama' => 'Eski prim'],
+                    ['kod' => 'diger', 'net_etki' => 15000, 'aciklama' => 'Eski diğer ödeme'],
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $ozet = $model->getSozlesmeAlacagiKalemleri([
+            'maasDurumu' => 'Net',
+            'sozlesmeToplamAlacagi' => 30000,
+            'yuvarlamaFarki' => 0,
+        ], $row);
+
+        self::assertSame(30000.0, $ozet['toplam']);
+        self::assertSame([
+            ['etiket' => 'Sözleşme Hakedişi', 'tutar' => 30000.0],
+        ], $ozet['kalemler']);
+    }
+
+    public function testBordroKontrolKesintiKalemleriFooterToplaminaTamamlanir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'kesintiler' => [[
+                    'kod' => 'avans',
+                    'etiket' => 'Avans',
+                    'tutar' => 500,
+                ]],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $ozet = $model->getBordroKontrolKesintiKalemleri([
+            'toplamAlacagi' => 30000,
+            'netAlacagi' => 28900,
+        ], $row);
+
+        self::assertSame(1100.0, $ozet['toplam']);
+        self::assertSame([
+            ['kod' => 'avans', 'etiket' => 'Avans', 'aciklama' => '', 'tutar' => 500.0],
+            ['kod' => '', 'etiket' => 'Diğer Kesintiler', 'aciklama' => '', 'tutar' => 600.0],
+        ], $ozet['kalemler']);
     }
 }

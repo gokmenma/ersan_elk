@@ -207,10 +207,15 @@ class BordroPersonelModel extends Model
         return round(max(0.0, $normalPuantajHakedisi, $asgariNetTaban) + max(0.0, $ekCalismaHakedisi), 2);
     }
 
-    /** Hafta içi nöbet için kayıtlı net ile kanuni fazla mesai hedefinin yüksek olanını uygular. */
-    private function hesaplaHaftaIciNobetHakedisi(float $kayitliNet, float $fazlaMesaiHedefNet): float
+    /** Nöbet satırını değiştirmeden, resmî banka tabanının eksik kalan hakedişini tamamlar. */
+    private function nobetResmiTabanTamamlama(float $hakedis, float $resmiTaban, array $ekOdemeler): float
     {
-        return round(max(0.0, $kayitliNet, $fazlaMesaiHedefNet), 2);
+        foreach ($ekOdemeler as $ek) {
+            if (($ek['kod'] ?? '') === 'hafta_ici_nobet' && (float) ($ek['resmi_banka_net'] ?? 0) > 0) {
+                return max(0.0, round($resmiTaban - $hakedis, 2));
+            }
+        }
+        return 0.0;
     }
 
     /** Hesaplama sırasında yükseltilmiş net etki varsa ham ek ödeme tutarına geri dönmez. */
@@ -1116,7 +1121,10 @@ class BordroPersonelModel extends Model
                     throw new \DomainException('Kayıtlı bordro ile ortak sonuç ödeme kanalları uyuşmuyor.');
                 }
             }
-            return $this->normalizeKayitliBankaGosterimi($sonuc, $detay);
+            if (isset($detay['ozet']['resmi_taban_tamamlama'])) {
+                $sonuc['sozlesmeToplamAlacagi'] = round((float) $sonuc['toplamAlacagi'] - (float) $detay['ozet']['resmi_taban_tamamlama'], 2);
+            }
+            return $sonuc;
         }
         $odeme = is_array($detay['odeme_dagilimi'] ?? null) ? $detay['odeme_dagilimi'] : [];
         $ozet = is_array($detay['ozet'] ?? null) ? $detay['ozet'] : [];
@@ -1322,6 +1330,7 @@ class BordroPersonelModel extends Model
             'tumEkOdemeDetaylari' => array_merge($snapshotBankaDetaylari, $snapshotPrimDetaylari),
             'bankaKesintiKalemleri' => $snapshotBankaKesintiKalemleri,
         ];
+        $sonuc['sozlesmeToplamAlacagi'] = round((float) $sonuc['toplamAlacagi'] - (float) ($ozet['resmi_taban_tamamlama'] ?? 0), 2);
         return $this->normalizeKayitliBankaGosterimi($sonuc, $detay);
     }
 
@@ -1385,6 +1394,39 @@ class BordroPersonelModel extends Model
             }
             $bankaKesintiKalemleri[] = $kalem;
             $aciklananBankaKesintisi = round($aciklananBankaKesintisi + $tutar, 2);
+        }
+
+        // Eğer bankadan karşılanan kesinti henüz tam açıklanmadıysa, elden kesintilerinden bankaya mahsup edilen kısmı ekle
+        if ($aciklananBankaKesintisi < $bankadanKarsilananKesinti) {
+            foreach (($detay['kesintiler'] ?? []) as $kesinti) {
+                if (!is_array($kesinti) || $aciklananBankaKesintisi >= $bankadanKarsilananKesinti) {
+                    continue;
+                }
+                $hesaplamaTipi = (string) ($kesinti['hesaplama_tipi'] ?? 'sabit');
+                $isElden = $hesaplamaTipi === 'elden_tutardan'
+                    || (isset($kesinti['banka_matrahina_ekle']) && (int) $kesinti['banka_matrahina_ekle'] === 0);
+                if (!$isElden) {
+                    continue;
+                }
+                $kalanIhtiyac = round($bankadanKarsilananKesinti - $aciklananBankaKesintisi, 2);
+                $kesintiTutar = max(0.0, round((float) ($kesinti['tutar'] ?? 0), 2));
+                $tutar = min($kalanIhtiyac, $kesintiTutar);
+                if ($tutar <= 0) {
+                    continue;
+                }
+                $kod = mb_strtolower((string) ($kesinti['kod'] ?? ''), 'UTF-8');
+                $kalem = [
+                    'kod' => $kod,
+                    'etiket' => (string) ($kesinti['etiket'] ?? $kesinti['kod'] ?? 'Personel kesintisi'),
+                    'tutar' => $tutar,
+                ];
+                $aciklama = $this->normalizeKesintiAciklamasi($kod, $kesinti['aciklama'] ?? null);
+                if ($aciklama !== '') {
+                    $kalem['aciklama'] = $aciklama;
+                }
+                $bankaKesintiKalemleri[] = $kalem;
+                $aciklananBankaKesintisi = round($aciklananBankaKesintisi + $tutar, 2);
+            }
         }
 
         $sonuc['bankaMatrahi'] = round($bankaMatrahi, 2);
@@ -1466,36 +1508,43 @@ class BordroPersonelModel extends Model
                 $this->parametrelerCache = $this->cachedParametreModel->getAllParametrelerMap($donemBaslangic);
             }
             $parametrelerMap = $this->parametrelerCache;
+            $eldenKesintiKalemleri = [];
             foreach ($kesintiSatirlari as $kesintiSatiri) {
                 $tutar = floatval($kesintiSatiri->tutar);
                 $param = $parametrelerMap[$kesintiSatiri->tur] ?? null;
                 $hTipi = $kesintiSatiri->hesaplama_tipi ?? 'sabit';
                 $isElden = (isset($kesintiSatiri->banka_matrahina_ekle) && intval($kesintiSatiri->banka_matrahina_ekle) === 0)
                     || ($param && $param->hesaplama_tipi === 'elden_tutardan')
-                    || $hTipi === 'elden_tutardan';
+                    || ($param && ($param->odeme_yontemi ?? '') === 'elden')
+                    || $hTipi === 'elden_tutardan'
+                    || mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8') === 'elden_tutar_kesintisi';
+                $kod = mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8');
+                $etiket = $param->etiket ?? match ((string) $kesintiSatiri->tur) {
+                    'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
+                    'nafaka' => 'Nafaka', 'ceza' => 'Ceza', 'izin_kesinti' => 'Ücretsiz izin',
+                    default => 'Personel kesintisi',
+                };
+                $aciklama = $this->normalizeKesintiAciklamasi(
+                    $kod,
+                    $kesintiSatiri->aciklama ?? null
+                );
+                $kesintiKalemObj = [
+                    'kod' => $kod,
+                    'etiket' => $etiket,
+                    'tutar' => $tutar,
+                ];
+                if ($aciklama !== '') {
+                    $kesintiKalemObj['aciklama'] = $aciklama;
+                }
+
                 if ($isElden) {
                     $eldenKesintisiToplam += $tutar;
+                    $eldenKesintiKalemleri[] = $kesintiKalemObj;
                 } else {
                     $bankaKesintisiToplam += $tutar;
-                    $bankaKesintiKalemi = [
-                        'kod' => mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8'),
-                        'etiket' => $param->etiket ?? match ((string) $kesintiSatiri->tur) {
-                            'avans' => 'Avans', 'icra' => 'İcra', 'bes_kesinti' => 'BES',
-                            'nafaka' => 'Nafaka', 'ceza' => 'Ceza', 'izin_kesinti' => 'Ücretsiz izin',
-                            default => 'Personel kesintisi',
-                        },
-                        'tutar' => $tutar,
-                    ];
-                    $aciklama = $this->normalizeKesintiAciklamasi(
-                        mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8'),
-                        $kesintiSatiri->aciklama ?? null
-                    );
-                    if ($aciklama !== '') {
-                        $bankaKesintiKalemi['aciklama'] = $aciklama;
-                    }
-                    $bankaKesintiKalemleri[] = $bankaKesintiKalemi;
+                    $bankaKesintiKalemleri[] = $kesintiKalemObj;
                 }
-                if (mb_strtolower((string) ($kesintiSatiri->tur ?? ''), 'UTF-8') === 'diger_kesinti') {
+                if ($kod === 'diger_kesinti') {
                     $puantajMahsupKesintisi += $tutar;
                 }
             }
@@ -2068,6 +2117,21 @@ class BordroPersonelModel extends Model
             $sodexoOdemesi = 0;
             $digerOdeme = 0;
             $eldenOdeme = $dahilBankaDagilimi['elden'];
+
+            // Elden kesintisinden bankaya taşan kısım varsa bankaKesintiKalemleri'ne ekle
+            $bankayaTasanElden = max(0.0, round($dahilBankaDagilimi['banka_kesintisi'] - $bankaKesintisiToplam, 2));
+            if ($bankayaTasanElden > 0 && !empty($eldenKesintiKalemleri)) {
+                $kalanTasan = $bankayaTasanElden;
+                foreach ($eldenKesintiKalemleri as $ek) {
+                    if ($kalanTasan <= 0) break;
+                    $pay = min($kalanTasan, $ek['tutar']);
+                    if ($pay <= 0) continue;
+                    $kalem = $ek;
+                    $kalem['tutar'] = $pay;
+                    $bankaKesintiKalemleri[] = $kalem;
+                    $kalanTasan = round($kalanTasan - $pay, 2);
+                }
+            }
         } else {
             $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $digerOdeme = floatval($p->diger_odeme ?? 0);
@@ -2079,13 +2143,28 @@ class BordroPersonelModel extends Model
                     max(0.0, $asgariUcretYatacak + $yontemliBankaEki),
                     max(0.0, $toplamAlacagi - $sodexoOdemesi - $digerOdeme)
                 );
-                $bankaAktarilanKesinti = min($bankaMatrahi, $bankaKesintisiToplam);
                 $normalDagilim = $this->hesaplaNormalBankaDagilimi(
                     $asgariUcretYatacak, $yontemliBankaEki, $bankaKesintisiToplam,
                     $netAlacagi, $sodexoOdemesi, $digerOdeme, $eldenKesintisiToplam
                 );
+                $toplamBankaKesintisi = max(0.0, round($bankaMatrahi - $normalDagilim['banka'], 2));
+                $bankaAktarilanKesinti = $toplamBankaKesintisi;
                 $bankaOdemesi = $normalDagilim['banka'];
                 $eldenOdeme = $normalDagilim['elden'];
+
+                $bankayaTasanElden = max(0.0, round($toplamBankaKesintisi - $bankaKesintisiToplam, 2));
+                if ($bankayaTasanElden > 0 && !empty($eldenKesintiKalemleri)) {
+                    $kalanTasan = $bankayaTasanElden;
+                    foreach ($eldenKesintiKalemleri as $ek) {
+                        if ($kalanTasan <= 0) break;
+                        $pay = min($kalanTasan, $ek['tutar']);
+                        if ($pay <= 0) continue;
+                        $kalem = $ek;
+                        $kalem['tutar'] = $pay;
+                        $bankaKesintiKalemleri[] = $kalem;
+                        $kalanTasan = round($kalanTasan - $pay, 2);
+                    }
+                }
             } else {
                 $bankaBaz = min($asgariUcretYatacak + $yontemliBankaEki, max(0, $netAlacagi - $sodexoOdemesi));
                 $eldenBrut = max(0.0, $netAlacagi + $bankaKesintisiToplam + $eldenKesintisiToplam - $bankaBaz - $sodexoOdemesi - $digerOdeme);
@@ -2368,6 +2447,9 @@ class BordroPersonelModel extends Model
             (float) ($hesap['bankaOncelikliKesinti'] ?? 0) + (float) ($hesap['bankaAktarilanKesinti'] ?? 0),
             2
         );
+        if ($bankaKesintisi <= 0 && !empty($hesap['bankaKesintiKalemleri'])) {
+            $bankaKesintisi = round((float) array_sum(array_column($hesap['bankaKesintiKalemleri'], 'tutar')), 2);
+        }
         $resmiBankaMatrahi = round($bankaOdemesi + $bankaKesintisi, 2);
         $resmiRtcNet = 0.0;
         $resmiHtcNet = 0.0;
@@ -3015,10 +3097,176 @@ class BordroPersonelModel extends Model
         ];
     }
 
-    /** Tüm snapshot personel kesintileri; banka kırılımından bağımsız gösterim. */
+    /** Bordro Kontrol ve detay çıktıları için sözleşme kaynaklarını snapshot'tan üretir. */
+    public function getSozlesmeAlacagiKalemleri(array $hesap, object $row): array
+    {
+        $hedefToplam = max(0.0, round((float) (
+            $hesap['sozlesmeToplamAlacagi']
+            ?? $hesap['toplamAlacagi']
+            ?? 0
+        ), 2));
+        $yuvarlamaFarki = round((float) ($hesap['yuvarlamaFarki'] ?? 0), 2);
+        $detay = json_decode((string) ($row->hesaplama_detay ?? ''), true);
+        $snapshotKalemleri = is_array($detay) && is_array($detay['ek_odemeler'] ?? null)
+            ? $detay['ek_odemeler']
+            : [];
+        $maasDurumu = mb_strtolower((string) ($hesap['maasDurumu'] ?? $detay['maas_durumu'] ?? ''), 'UTF-8');
+        $isPrimUsulu = strpos($maasDurumu, 'prim') !== false;
+
+        $gruplar = [];
+        foreach ($snapshotKalemleri as $kalem) {
+            if (!is_array($kalem)) {
+                continue;
+            }
+            $kod = mb_strtolower((string) ($kalem['kod'] ?? $kalem['tur'] ?? ''), 'UTF-8');
+            $aciklama = trim((string) ($kalem['aciklama'] ?? ''));
+            $aciklamaLower = mb_strtolower($aciklama, 'UTF-8');
+            $isYardim = strpos($kod, 'yemek') !== false
+                || strpos($kod, 'es_yardimi') !== false
+                || strpos($kod, 'eş_yardımı') !== false
+                || strpos($kod, 'aile') !== false
+                || strpos($aciklamaLower, '[yemek yardımı]') === 0
+                || strpos($aciklamaLower, '[eş yardımı]') === 0;
+            if ($isYardim || $kod === 'yuvarlama_farki' || stripos($aciklama, 'Yuvarlama Farkı') !== false) {
+                continue;
+            }
+
+            $isPuantaj = $this->isPuantajEkOdeme($aciklama);
+            $tutar = $isPuantaj && $isPrimUsulu
+                ? round((float) ($kalem['hedef_net_adayi'] ?? $kalem['tutar'] ?? 0), 2)
+                : round($this->ekOdemeUygulananNet($kalem), 2);
+            if ($isPuantaj) {
+                $grupKodu = strpos($aciklama, '[Kaçak Kontrol]') === 0 ? 'kacak_kontrol' : 'puantaj';
+                $etiket = $grupKodu === 'kacak_kontrol' ? 'Kaçak Kontrol Hakedişi' : 'Puantaj Hakedişi';
+            } elseif ($kod === 'hafta_ici_nobet' || strpos($kod, 'nobet') !== false) {
+                $grupKodu = 'nobet';
+                $etiket = 'Nöbet Ödemeleri';
+            } else {
+                $grupKodu = 'kalem:' . $kod . ':' . $aciklama;
+                $etiket = trim((string) ($kalem['etiket'] ?? ''));
+                if ($etiket === '') {
+                    $etiket = $aciklama !== '' ? $aciklama : ucwords(str_replace('_', ' ', $kod ?: 'Ek Ödeme'));
+                }
+            }
+
+            if ($tutar <= 0) {
+                continue;
+            }
+            if (!isset($gruplar[$grupKodu])) {
+                $gruplar[$grupKodu] = ['etiket' => $etiket, 'tutar' => 0.0];
+            }
+            $gruplar[$grupKodu]['tutar'] = round($gruplar[$grupKodu]['tutar'] + $tutar, 2);
+        }
+
+        $ekOdemeToplami = round(array_sum(array_column($gruplar, 'tutar')), 2);
+        if ($isPrimUsulu) {
+            $puantajHakedisi = max(0.0, round((float) ($gruplar['puantaj']['tutar'] ?? 0), 2));
+            $kalemler = [[
+                'etiket' => 'Puantaj Hakedişi',
+                'tutar' => $puantajHakedisi,
+            ]];
+            foreach ($gruplar as $grupKodu => $grup) {
+                if ($grupKodu !== 'puantaj') {
+                    $kalemler[] = $grup;
+                }
+            }
+            if (abs($yuvarlamaFarki) >= 0.01) {
+                $kalemler[] = ['etiket' => 'Yuvarlama Farkı', 'tutar' => $yuvarlamaFarki];
+            }
+            $kaynakToplami = round(array_sum(array_column($kalemler, 'tutar')), 2);
+            return [
+                'kalemler' => $kalemler,
+                'toplam' => $kaynakToplami,
+            ];
+        }
+        if (round($ekOdemeToplami + $yuvarlamaFarki, 2) > $hedefToplam) {
+            return [
+                'kalemler' => $hedefToplam > 0
+                    ? [['etiket' => 'Sözleşme Hakedişi', 'tutar' => $hedefToplam]]
+                    : [],
+                'toplam' => $hedefToplam,
+            ];
+        }
+        $anaHakedis = round($hedefToplam - $ekOdemeToplami - $yuvarlamaFarki, 2);
+        $anaEtiket = 'Sözleşme Hakedişi';
+        $kalemler = [];
+        if ($anaHakedis > 0) {
+            $kalemler[] = ['etiket' => $anaEtiket, 'tutar' => $anaHakedis];
+        }
+        foreach ($gruplar as $grup) {
+            $kalemler[] = $grup;
+        }
+        if (abs($yuvarlamaFarki) >= 0.01) {
+            $kalemler[] = ['etiket' => 'Yuvarlama Farkı', 'tutar' => $yuvarlamaFarki];
+        }
+
+        $kalemToplami = round(array_sum(array_column($kalemler, 'tutar')), 2);
+        if ($kalemToplami < $hedefToplam && abs($kalemToplami - $hedefToplam) >= 0.01) {
+            $kalemler[] = [
+                'etiket' => 'Sözleşme Hakedişi',
+                'tutar' => round($hedefToplam - $kalemToplami, 2),
+            ];
+        }
+
+        return [
+            'kalemler' => $kalemler,
+            'toplam' => $hedefToplam,
+        ];
+    }
+
+    /** Bordro Kontrol kesinti satırlarını kayıtlı net alacak toplamıyla mutabık üretir. */
+    public function getBordroKontrolKesintiKalemleri(array $hesap, object $row): array
+    {
+        $hedefToplam = max(0.0, round(
+            (float) ($hesap['toplamAlacagi'] ?? 0) - (float) ($hesap['netAlacagi'] ?? 0),
+            2
+        ));
+        $snapshotOzeti = $this->getPersonelKesintiOzeti($row);
+        $kalemler = [];
+        foreach (($snapshotOzeti['kalemler'] ?? []) as $kalem) {
+            if (($kalem['kod'] ?? '') === 'izin_kesinti') {
+                continue;
+            }
+            $tutar = max(0.0, round((float) ($kalem['tutar'] ?? 0), 2));
+            if ($tutar <= 0) {
+                continue;
+            }
+            $kalemler[] = [
+                'kod' => (string) ($kalem['kod'] ?? ''),
+                'etiket' => (string) ($kalem['etiket'] ?? 'Kesinti'),
+                'aciklama' => (string) ($kalem['aciklama'] ?? ''),
+                'tutar' => $tutar,
+            ];
+        }
+
+        $kalemToplami = round(array_sum(array_column($kalemler, 'tutar')), 2);
+        if ($kalemToplami > $hedefToplam) {
+            $kalemler = $hedefToplam > 0
+                ? [['kod' => '', 'etiket' => 'Toplam Kesinti', 'aciklama' => '', 'tutar' => $hedefToplam]]
+                : [];
+        } elseif ($kalemToplami < $hedefToplam) {
+            $kalemler[] = [
+                'kod' => '',
+                'etiket' => 'Diğer Kesintiler',
+                'aciklama' => '',
+                'tutar' => round($hedefToplam - $kalemToplami, 2),
+            ];
+        }
+
+        return ['kalemler' => $kalemler, 'toplam' => $hedefToplam];
+    }
+
+    /** Tüm snapshot personel kesintileri; banka kırılımından bağımsız gösterim ve resmi/elden ayrımı. */
     public function getPersonelKesintiOzeti(object $row): array
     {
         $detay = json_decode((string) ($row->hesaplama_detay ?? ''), true);
+        $bankaKesintiKalemleri = $detay['ortak_sonuc']['gosterim']['bankaKesintiKalemleri'] ?? [];
+        $kalanBankaKesintileri = [];
+        foreach ($bankaKesintiKalemleri as $bkk) {
+            $bKod = mb_strtolower((string) ($bkk['kod'] ?? ''), 'UTF-8');
+            $kalanBankaKesintileri[$bKod] = ($kalanBankaKesintileri[$bKod] ?? 0.0) + (float) ($bkk['tutar'] ?? 0);
+        }
+
         $kalemler = [];
         $toplamKurus = 0;
         foreach (($detay['kesintiler'] ?? []) as $kalem) {
@@ -3026,13 +3274,29 @@ class BordroPersonelModel extends Model
             $kurus = (int) round((float) ($kalem['tutar'] ?? 0) * 100);
             if ($kurus <= 0) continue;
             $kod = (string) ($kalem['kod'] ?? '');
+            $kodLower = mb_strtolower($kod, 'UTF-8');
+            $tutar = $kurus / 100;
+            $isElden = ($kalem['hesaplama_tipi'] ?? '') === 'elden_tutardan'
+                || (isset($kalem['banka_matrahina_ekle']) && (int) $kalem['banka_matrahina_ekle'] === 0);
+
+            // Resmî ve elden kesinti tutarlarının tespiti
+            $resmiKesinti = 0.0;
+            if (isset($kalanBankaKesintileri[$kodLower]) && $kalanBankaKesintileri[$kodLower] > 0) {
+                $resmiKesinti = min($tutar, $kalanBankaKesintileri[$kodLower]);
+                $kalanBankaKesintileri[$kodLower] = round($kalanBankaKesintileri[$kodLower] - $resmiKesinti, 2);
+            } elseif (!$isElden) {
+                $resmiKesinti = $tutar;
+            }
+            $eldenKesinti = max(0.0, round($tutar - $resmiKesinti, 2));
+
             $kalemler[] = [
+                'kod' => $kodLower,
                 'etiket' => (string) ($kalem['etiket'] ?? $kod),
-                'tutar' => $kurus / 100,
+                'tutar' => $tutar,
+                'resmi_kesinti' => $resmiKesinti,
+                'elden_kesinti' => $eldenKesinti,
                 'aciklama' => $this->normalizeKesintiAciklamasi($kod, $kalem['aciklama'] ?? ''),
-                'kanal' => ($kalem['hesaplama_tipi'] ?? '') === 'elden_tutardan'
-                    || (isset($kalem['banka_matrahina_ekle']) && (int) $kalem['banka_matrahina_ekle'] === 0)
-                    ? 'elden' : 'banka',
+                'kanal' => $isElden ? 'elden' : 'banka',
             ];
             $toplamKurus += $kurus;
         }
@@ -6570,16 +6834,12 @@ class BordroPersonelModel extends Model
             }
             $turLower = mb_strtolower((string) ($odeme->tur ?? ''), 'UTF-8');
             $aciklamaLower = mb_strtolower((string) ($odeme->aciklama ?? ''), 'UTF-8');
-            if ($turLower === 'hafta_ici_nobet' && $rNet > 0) {
-                $uygulanacakNobetHakedisi = $this->hesaplaHaftaIciNobetHakedisi($ekOdemeTutari, $rNet);
-                $nobetHakedisFarki = round($uygulanacakNobetHakedisi - $ekOdemeTutari, 2);
-                if ($nobetHakedisFarki > 0) {
-                    $netEkOdemeler += $nobetHakedisFarki;
-                    $ekOdemeTutari = $uygulanacakNobetHakedisi;
-                    $detay['net_etki'] = $uygulanacakNobetHakedisi;
-                    $detay['kayitli_nobet_neti'] = round($tutar, 2);
-                    $detay['fazla_mesai_hedef_neti'] = round($rNet, 2);
-                }
+            if ($turLower === 'hafta_ici_nobet') {
+                // Hafta içi nöbet sözleşme alacağı personelin kayıtlı tutarıdır (500 TL x gün).
+                // Resmî fazla mesai net hedefi ise banka matrahına yansıtılmak üzere saklanır.
+                $detay['net_etki'] = $ekOdemeTutari;
+                $detay['kayitli_nobet_neti'] = round($tutar, 2);
+                $detay['fazla_mesai_hedef_neti'] = round($rNet, 2);
             }
             // Yalnızca otomatik üretilen puantaj/sayaç/kaçak kalemleri resmî banka tavanına
             // taşınmaz. Elle girilen primlerde kullanıcının Banka/Elden seçimi geçerlidir.
@@ -6739,10 +6999,12 @@ class BordroPersonelModel extends Model
             $tutar = floatval($kesinti->tutar);
             $parametre = $parametrelerMap[$kesinti->tur] ?? null;
             $hesaplamaTipi = $kesinti->hesaplama_tipi ?? 'sabit';
-            $isBankaMatrahi = !isset($kesinti->banka_matrahina_ekle) || intval($kesinti->banka_matrahina_ekle) === 1;
-            if ($parametre && $parametre->hesaplama_tipi === 'elden_tutardan') {
-                $isBankaMatrahi = false;
-            }
+            $isEldenKesinti = (isset($kesinti->banka_matrahina_ekle) && intval($kesinti->banka_matrahina_ekle) === 0)
+                || ($parametre && $parametre->hesaplama_tipi === 'elden_tutardan')
+                || ($parametre && ($parametre->odeme_yontemi ?? '') === 'elden')
+                || $hesaplamaTipi === 'elden_tutardan'
+                || mb_strtolower((string) $kesinti->tur, 'UTF-8') === 'elden_tutar_kesintisi';
+            $isBankaMatrahi = !$isEldenKesinti;
 
             $detay = [
                 'kod' => $kesinti->tur,
@@ -7189,6 +7451,7 @@ class BordroPersonelModel extends Model
             }
         }
 
+        $resmiTabanTamamlama = 0.0;
         if ($maasaDahilYardimAktif) {
             $asgariYatacak = round(($asgariNetNominal / 30) * $nonKurUcretGunu, 2);
             
@@ -7247,7 +7510,12 @@ class BordroPersonelModel extends Model
                 }
             }
             $ekOdemeBankaNetiHesap = $resmiBankaEkOdemeNeti;
-            $bankaMatrahi = min($bankaHakedisTavani, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0) + $ekOdemeBankaNetiHesap);
+            $resmiBankaTabani = round($asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0) + $ekOdemeBankaNetiHesap, 2);
+            $resmiTabanTamamlama = $this->nobetResmiTabanTamamlama($netMaasIcinDagitim, $resmiBankaTabani, $ekOdemeDetaylari);
+            $netMaas += $resmiTabanTamamlama;
+            $netMaasIcinDagitim = $netMaas;
+            $bankaHakedisTavani = $netMaas;
+            $bankaMatrahi = min($bankaHakedisTavani, $resmiBankaTabani);
             $dahilBankaDagilimi = $this->hesaplaDahilBankaDagilimi(
                 $netMaasIcinDagitim,
                 $bankaMatrahi,
@@ -7289,6 +7557,12 @@ class BordroPersonelModel extends Model
                 $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
             } else {
                 $sodexoOdemesi = ((floatval($kayit->sodexo ?? 0) / 30) * $fiiliCalismaGunu) + ($yontemliOdemeler['sodexo'] ?? 0);
+            }
+
+            if ($isPrimUsulu || $isNetMaas) {
+                $resmiBankaTabani = round(($asgariUcretNet / 30) * $nonKurUcretGunu + floatval($yontemliOdemeler['banka'] ?? 0), 2);
+                $resmiTabanTamamlama = $this->nobetResmiTabanTamamlama($netMaas, $resmiBankaTabani, $ekOdemeDetaylari);
+                $netMaas += $resmiTabanTamamlama;
             }
 
             // Kalan net alacağı (tüm kesintiler düştükten sonra)
@@ -7448,6 +7722,7 @@ class BordroPersonelModel extends Model
             ],
             'ek_odemeler' => $ekOdemeDetaylari, 'kesintiler' => $kesintiDetaylari,
             'ozet' => [
+                'resmi_taban_tamamlama' => $resmiTabanTamamlama,
                 'brut_ek_odemeler' => round($brutEkOdemeler, 2), 'net_ek_odemeler' => round($netEkOdemeler, 2),
                 'sgk_matrah_ekleri' => round($sgkMatrahEkleri, 2), 'vergili_matrah_ekleri' => round($vergiliMatrahEkleri, 2),
                 'damga_matrah_ekleri' => round($damgaMatrahEkleri, 2),

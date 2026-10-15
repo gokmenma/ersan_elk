@@ -865,6 +865,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (empty($hesap['hesaplanmis'])) {
                     throw new Exception('Bu personelin bordrosu henüz hesaplanmadı. Önce Maaş Hesapla işlemini çalıştırın.');
                 }
+                $sozlesmeAlacagiOzeti = $BordroPersonel->getSozlesmeAlacagiKalemleri($hesap, $bp);
+                $puantajHakedisiGosterim = 0.0;
+                foreach (($sozlesmeAlacagiOzeti['kalemler'] ?? []) as $sozlesmeKalemi) {
+                    if (($sozlesmeKalemi['etiket'] ?? '') === 'Puantaj Hakedişi') {
+                        $puantajHakedisiGosterim = (float) ($sozlesmeKalemi['tutar'] ?? 0);
+                        break;
+                    }
+                }
                 $muhasebeFazlaMesaiOzeti = $BordroPersonel->getMuhasebeFazlaMesaiNetOzeti($bp, $donemBilgi);
                 $bankaDetayDagilimi = $BordroPersonel->getBankaOdemeDetayDagilimi($hesap, $muhasebeFazlaMesaiOzeti);
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
@@ -920,8 +928,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $puantajToplami += floatval($ek->tutar);
                         }
                     }
-                    $asgariTaban = round(($asgariUcretNet / 30) * $calismaGunu, 2);
-                    $contractHakedisForRounding = max($puantajToplami, $asgariTaban);
+                    $contractHakedisForRounding = $puantajHakedisiGosterim;
                     
                     $nonPuantajExtras = 0;
                     foreach ($ekOdemelerListe as $ek) {
@@ -1049,7 +1056,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     if (strpos($aciklama, '[Nöbet]') === 0) {
                         $nobetGosterim = clone $odeme;
-                        $nobetGosterim->tutar = $snapshotEkOdemeNetleri[(int) ($odeme->id ?? 0)] ?? floatval($odeme->tutar);
+                        $nobetGosterim->tutar = floatval($odeme->tutar);
                         $nobetOdemeler[] = $nobetGosterim;
                         $toplamNobetTutar += floatval($nobetGosterim->tutar);
                     } elseif (strpos($aciklama, '[Kaçak Kontrol]') === 0) {
@@ -1382,7 +1389,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <span class="fw-bold">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME HAKEDİŞİ</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">' . ($isPrimUsulu ? 'PUANTAJ HAKEDİŞİ' : 'SÖZLEŞME HAKEDİŞİ') . '</small>
                                 <span class="fw-bold text-primary">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</span>
                             </div>
                           </div>';
@@ -1401,7 +1408,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="main-card bg-white">';
                 $html .= '<div class="card-header-tint tint-hakedis calculation-toggle" role="button" tabindex="0" data-collapse-target="#' . $kendiAlacakPanelId . '" aria-expanded="false" aria-controls="' . $kendiAlacakPanelId . '">
                             <span><i class="bx bx-calculator me-2"></i>SÖZLEŞME ALACAĞI HESABI <small class="d-block opacity-75 mt-1">Resmî + gayriresmî, kesinti öncesi</small></span>
-                            <span class="d-flex align-items-center gap-2"><span class="badge rounded-pill bg-success">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down panel-chevron"></i></span>
+                            <span class="d-flex align-items-center gap-2"><span class="badge rounded-pill bg-success">' . number_format($sozlesmeAlacagiOzeti['toplam'] ?? 0, 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down panel-chevron"></i></span>
                           </div>';
                 $html .= '<div class="collapse bordro-main-calculation-collapse" data-panel-key="contract" id="' . $kendiAlacakPanelId . '"><table class="unified-table"><tbody>';
                 
@@ -1409,10 +1416,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariMatrarhGoster = false;
 
                 if ($isInclusive) {
-                    $sozlesmeHakedisToplamGosterim = $contractHakedisForRounding > 0
+                    $sozlesmeHakedisToplamGosterim = $isPrimUsulu
                         ? round($contractHakedisForRounding, 2)
-                        : ($isPrimUsulu
-                            ? $displayToplamAlacak
+                        : ($contractHakedisForRounding > 0
+                            ? round($contractHakedisForRounding, 2)
                             : ($modalBaseRowValue + $modalMaasFarkiGosterim + $displayMealDeduction + $spouseDeduction));
                     $resmiTabanGosterim = $isPrimUsulu ? $asgariHakedisModal : $modalBaseRowValue;
                     $sozlesmeTabanGosterim = $resmiTabanGosterim;
@@ -1425,11 +1432,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         || stripos($maasDurumuGosterim, 'Net') !== false
                         || $isPrimUsulu;
 
-                    if ($sozlesmeHakedisToplamGosterim > 0) {
-                        $anaHakedisEtiketi = $isPrimUsulu ? 'Puantaj / Prim Hakedişi' : 'Sözleşme Hakedişi';
+                    if ($sozlesmeHakedisToplamGosterim > 0 || $isPrimUsulu) {
+                        $anaHakedisEtiketi = $isPrimUsulu ? 'Puantaj Hakedişi' : 'Sözleşme Hakedişi';
                         $anaHakedisIkonu = $isPrimUsulu ? 'bx-briefcase' : 'bx-file';
                         $anaHakedisAciklamasi = $isPrimUsulu
-                            ? 'Dönem puantaj kazancı ve asgari tabanın yüksek olanı'
+                            ? 'Dönem puantaj kazancı'
                             : number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün';
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
                                     <td><div class="d-flex align-items-center"><i class="bx ' . $anaHakedisIkonu . ' me-2 text-dark opacity-75"></i><span>' . $anaHakedisEtiketi . '<span class="calculation-note">' . $anaHakedisAciklamasi . '</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
@@ -1479,9 +1486,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
                 } else {
-                    if ($isPrimUsulu && $contractHakedisForRounding > 0) {
+                    if ($isPrimUsulu) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                                    <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-dark opacity-75"></i><span>Puantaj / Prim Hakedişi<span class="calculation-note">Dönem puantaj kazancı ve asgari tabanın yüksek olanı</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-dark opacity-75"></i><span>Puantaj Hakedişi<span class="calculation-note">Dönem puantaj kazancı</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     } else if ($modalBaseRowValue > 0) {
@@ -1510,7 +1517,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                if (!empty($puantajOdemeler) && !($isPrimUsulu && $isInclusive)) {
+                // Prim usulünde gerçek puantaj toplamı yukarıdaki ana satırda gösterilir;
+                // aynı kazancı ikinci kez ek ödeme satırı olarak yazma.
+                if (!empty($puantajOdemeler) && !$isPrimUsulu) {
                     $collId = "colPuantaj_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-success"></i><span>Puantaj Hakedişleri</span>' . $puantajBaslikDetay . '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
@@ -1615,7 +1624,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $html .= '<tr class="footer-row">
                             <td class="text-success fw-bold">KESİNTİ ÖNCESİ TOPLAM ALACAĞI</td>
-                            <td class="text-end text-success fw-bolder">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</td>
+                            <td class="text-end text-success fw-bolder">' . number_format($sozlesmeAlacagiOzeti['toplam'] ?? 0, 2, ',', '.') . ' ₺</td>
                           </tr>';
                 $html .= '</tbody></table></div></div></div>';
 
@@ -1677,7 +1686,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
                 if (!empty($personelKesintiOzeti['kalemler'])) {
+                    $kIndex = 0;
                     foreach ($personelKesintiOzeti['kalemler'] as $bankaKesinti) {
+                        $kIndex++;
                         $kesintiAciklama = trim((string) ($bankaKesinti['aciklama'] ?? ''));
                         $kesintiEtiket = trim((string) ($bankaKesinti['etiket'] ?? ''));
 
@@ -1687,9 +1698,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $kesintiEtiket = $ilkGrup->etiket;
                             }
                         }
-                        $html .= '<tr class="parent-row"><td><div><i class="bx bx-minus-circle me-2 text-danger"></i><span class="fw-semibold">' . htmlspecialchars($kesintiEtiket, ENT_QUOTES, 'UTF-8') . '</span></div>'
-                            . ($kesintiAciklama !== '' ? '<div class="calculation-note text-muted ms-4 mt-1" style="font-size:0.8rem; line-height:1.3;"><i class="bx bx-info-circle me-1 opacity-75"></i>' . htmlspecialchars($kesintiAciklama, ENT_QUOTES, 'UTF-8') . '</div>' : '')
-                            . '</td><td class="text-end text-danger fw-bold align-middle">-' . number_format($bankaKesinti['tutar'], 2, ',', '.') . ' ₺</td></tr>';
+                        $collKesintiId = "colKesinti_" . $bp->id . "_" . $kIndex;
+                        $resmiKesintiTutar = floatval($bankaKesinti['resmi_kesinti'] ?? 0);
+                        $eldenKesintiTutar = floatval($bankaKesinti['elden_kesinti'] ?? 0);
+
+                        $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collKesintiId . '" aria-expanded="false" style="cursor:pointer;">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bx bx-minus-circle me-2 text-danger"></i>
+                                            <span class="fw-semibold">' . htmlspecialchars($kesintiEtiket, ENT_QUOTES, 'UTF-8') . '</span>
+                                            <i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i>
+                                        </div>'
+                                        . ($kesintiAciklama !== '' ? '<div class="calculation-note text-muted ms-4 mt-1" style="font-size:0.8rem; line-height:1.3;"><i class="bx bx-info-circle me-1 opacity-75"></i>' . htmlspecialchars($kesintiAciklama, ENT_QUOTES, 'UTF-8') . '</div>' : '') . '
+                                    </td>
+                                    <td class="text-end text-danger fw-bold align-middle">-' . number_format($bankaKesinti['tutar'], 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+
+                        $html .= '<tr class="child-row collapse ' . $collKesintiId . '">
+                                    <td class="ps-4 text-muted"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmî Tutardan Kesilen</td>
+                                    <td class="text-end pe-4 text-danger fw-semibold">-' . number_format($resmiKesintiTutar, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+
+                        $html .= '<tr class="child-row collapse ' . $collKesintiId . '">
+                                    <td class="ps-4 text-muted"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Elden Kesilen</td>
+                                    <td class="text-end pe-4 text-warning fw-semibold">-' . number_format($eldenKesintiTutar, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
                     }
                 } else {
                     $html .= '<tr><td colspan="2" class="text-center py-4 text-muted"><i class="bx bx-smile fs-4 d-block mb-1 opacity-50"></i>Kesinti bulunmuyor.</td></tr>';
@@ -2944,7 +2977,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $sozlesmeFarki = 0.0;
                 if ($asgariMatrarhGoster) {
                     $kartlarToplami = $calisanBrutMaas + $fazlaCalismaToplam + $sosyalYardimToplam + $primTutar + $nobetTutar + $kacakTutar + $puantajTutar + $digerKazancTutar;
-                    $sozlesmeFarki = max(0.0, round($displayToplamAlacak - $kartlarToplami, 2));
+                    $sozlesmeFarki = max(0.0, round(($hesap['sozlesmeToplamAlacagi'] ?? $displayToplamAlacak) - $kartlarToplami, 2));
                 }
                 if ($sozlesmeFarki <= 0 && $modalMaasFarkiGosterim > 0 && $asgariMatrarhGoster) {
                     $sozlesmeFarki = $modalMaasFarkiGosterim;

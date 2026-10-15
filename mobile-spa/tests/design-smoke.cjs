@@ -16,7 +16,27 @@ const baseUrl=process.env.MOBILE_SPA_TEST_URL || 'http://localhost:5173';
  else if(url.pathname.endsWith('personnel.php')) body={success:true,items:[],summary:{total:128,active:104,passive:24},departments:[],pagination:{page:1,total:0,has_more:false},can_edit:false};
  else if(url.pathname.endsWith('requests.php')) body={success:true,counts:{avans:0,izin:0,talep:0,total:0},permissions:{avans:true,izin:true,talep:true},data:{avans:[],izin:[],talep:[]}};
  else if(url.pathname.endsWith('fatura.php')) body={success:true,data:undefined,summary:{},pagination:{page:1,total:0,has_more:false}};
- else if(url.pathname.endsWith('bordro.php')) body={success:true,donemler:[{id:'enc-d1',name:'Ocak 2026',closed:false,start_date:'01.01.2026',end_date:'31.01.2026'}],selected_donem:{id:'enc-d1',name:'Ocak 2026',closed:false,start_date:'01.01.2026',end_date:'31.01.2026'},is_closed:false,summary:{personel:2,net:65000,alacak:70000,kesinti:5000,banka:45000,elden:15000,sodexo:5000,diger:0,hesaplanan:2,hesaplanmayan:0,net_maas:'₺53.405,00',brut_toplam:'₺53.405,00',kesinti_toplam:'₺0,00',banka:'₺35.875,50',elden:'₺17.529,50'},items:[{token:'bp-1',personel_token:'p-1',name:'Abdullah Doğan',initials:'AD',avatar:null,department:'Kesme Açma',job:'Memur',is_calculated:true,net:53405,alacak:53405,kesinti:0,icra:0,banka:35875.5,sodexo:0,elden:17529.5,diger:0,work_days:30}],html:'<div class="bordro-ref-view"><div class="section-title gains">KAZANÇLAR VE GELİRLER</div><div class="row"><div class="col"><div class="ref-card"><div class="ref-card-title">1. NORMAL KAZANÇLAR</div><div class="ref-card-list"><div class="ref-card-item"><span class="label">Normal Çalışma</span><span class="value"><span class="subval">30 Gün</span>35.000,00 ₺</span></div></div><div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">35.000,00 ₺</span></div></div></div></div><div class="section-title deductions">KESİNTİLER</div><div class="row"><div class="col"><div class="ref-card"><div class="ref-card-title">YASAL KESİNTİLER</div><div class="ref-card-list"><div class="ref-card-item"><span class="label">SGK Primi</span><span class="value">5.000,00 ₺</span></div></div></div></div></div></div>'};
+ else if(url.pathname.endsWith('bordro.php')) {
+   const postData = route.request().postDataJSON() || {};
+   const reqAction = url.searchParams.get('action') || postData.action || 'init';
+   if (reqAction === 'get-detail-old') {
+     body = {
+       success: true,
+       status: 'success',
+       summary: { brut_toplam: '₺53.405,00', kesinti_toplam: '₺0,00', net_maas: '₺53.405,00', banka: '₺35.875,50', elden: '₺17.529,50' },
+       html: '<div class="bordro-compact-view"><div class="row g-3 bordro-detail-card-grid"><div class="col-12 bordro-calculation-panel"><div class="main-card"><div class="card-header-tint tint-hakedis"><span>SÖZLEŞME ALACAĞI HESABI</span><span class="badge bg-success">53.405,00 ₺</span></div><table class="unified-table"><tbody><tr class="parent-row"><td><div class="d-flex align-items-center"><span>Puantaj / Prim Hakedişi<span class="calculation-note">Dönem puantaj kazancı ve asgari tabanın yüksek olanı</span></span><span class="badge bg-light text-dark fw-normal ms-2">30 Gün</span></div></td><td class="text-end fw-bold text-dark">53.405,00 ₺</td></tr><tr class="child-row"><td class="ps-4">Puantaj Hakedişleri <small class="text-muted">971 Adet</small></td><td class="text-end pe-4">53.405,00 ₺</td></tr><tr class="child-row"><td class="ps-5">APARATLA KESİM YAPILDI. <small class="text-muted">412 Adet x 55,00 ₺</small></td><td class="text-end pe-4">22.660,00 ₺</td></tr><tr class="child-row"><td class="ps-5">Sayaç Kullanıma açıldı <small class="text-muted">297 Adet x 55,00 ₺</small></td><td class="text-end pe-4">16.335,00 ₺</td></tr><tr class="child-row"><td class="ps-5">Ödeme Yaptırıldı <small class="text-muted">157 Adet x 55,00 ₺</small></td><td class="text-end pe-4">8.635,00 ₺</td></tr><tr class="footer-row"><td>KESİNTİ ÖNCESİ TOPLAM ALACAĞI</td><td class="text-end">53.405,00 ₺</td></tr></tbody></table></div></div><div class="col-12 bordro-calculation-panel"><div class="main-card"><div class="card-header-tint tint-resmi"><span>RESMÎ ALACAĞI HESABI</span><span class="badge bg-primary">35.875,50 ₺</span></div><table class="unified-table"><tbody><tr class="parent-row"><td>Asgari Net</td><td class="text-end">28.075,50 ₺</td></tr></tbody></table></div></div><div class="col-12 bordro-deduction-column"><div class="main-card"><div class="card-header-tint bg-danger-subtle"><span>KESİNTİLER</span><span class="badge bg-danger">0,00 ₺</span></div><table class="unified-table"><tbody><tr><td colspan="2" class="text-center py-2 text-muted">Kesinti bulunmuyor.</td></tr></tbody></table></div></div></div></div>'
+     };
+   } else if (reqAction === 'get-detail') {
+     body = {
+       success: true,
+       status: 'success',
+       summary: { brut_toplam: '₺53.405,00', kesinti_toplam: '₺0,00', net_maas: '₺53.405,00', banka: '₺35.875,50', elden: '₺17.529,50' },
+       html: '<div class="bordro-ref-view"><div class="section-title gains">KAZANÇLAR VE GELİRLER</div><div class="row"><div class="col"><div class="ref-card"><div class="ref-card-title">1. NORMAL KAZANÇLAR</div><div class="ref-card-list"><div class="ref-card-item"><span class="label">Normal Çalışma</span><span class="value"><span class="subval">30 Gün</span>35.000,00 ₺</span></div></div><div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">35.000,00 ₺</span></div></div></div></div><div class="section-title deductions">KESİNTİLER</div><div class="row"><div class="col"><div class="ref-card"><div class="ref-card-title">YASAL KESİNTİLER</div><div class="ref-card-list"><div class="ref-card-item"><span class="label">SGK Primi</span><span class="value">5.000,00 ₺</span></div></div></div></div></div></div>'
+     };
+   } else {
+     body={success:true,donemler:[{id:'enc-d1',name:'Ocak 2026',closed:false,start_date:'01.01.2026',end_date:'31.01.2026'}],selected_donem:{id:'enc-d1',name:'Ocak 2026',closed:false,start_date:'01.01.2026',end_date:'31.01.2026'},is_closed:false,summary:{personel:2,net:65000,alacak:70000,kesinti:5000,banka:45000,elden:15000,sodexo:5000,diger:0,hesaplanan:2,hesaplanmayan:0,net_maas:'₺53.405,00',brut_toplam:'₺53.405,00',kesinti_toplam:'₺0,00',banka:'₺35.875,50',elden:'₺17.529,50'},items:[{token:'bp-1',personel_token:'p-1',name:'Abdullah Doğan',initials:'AD',avatar:null,department:'Kesme Açma',job:'Memur',is_calculated:true,net:53405,alacak:53405,kesinti:0,icra:0,banka:35875.5,sodexo:0,elden:17529.5,diger:0,work_days:30}]};
+   }
+ }
  else body={success:true,items:[],summary:undefined,pagination:{page:1,total:0,has_more:false},kategoriler:[],hesap_adlari:[]};
  await route.fulfill({json:body});
  });
@@ -36,8 +56,15 @@ const baseUrl=process.env.MOBILE_SPA_TEST_URL || 'http://localhost:5173';
  await page.screenshot({path:path.join(os.tmpdir(), 'ersan-mobile-bordro.png'),fullPage:true});
  await page.getByRole('button', { name: 'Bordro Detayını Görüntüle' }).first().click();
  await page.waitForTimeout(400);
- await page.screenshot({path:path.join(os.tmpdir(), 'ersan-mobile-bordro-detail.png'),fullPage:false});
- await page.getByRole('button', { name: 'Kapat' }).click();
+ assert(await page.getByText('SÖZLEŞME ALACAĞI HESABI').count() > 0, 'Karşılaştırmalı hesap görünmedi');
+ await page.screenshot({path:path.join(os.tmpdir(), 'ersan-mobile-bordro-detail-comparison.png'),fullPage:false});
+ await page.getByRole('button', { name: 'Resmî Bordro Dökümü' }).click();
+ await page.waitForTimeout(400);
+ assert(await page.getByText('KAZANÇLAR VE GELİRLER').count() > 0, 'Resmî bordro dökümü görünmedi');
+ await page.screenshot({path:path.join(os.tmpdir(), 'ersan-mobile-bordro-detail-official.png'),fullPage:false});
+ await page.getByRole('button', { name: 'Karşılaştırmalı Hesap' }).click();
+ await page.waitForTimeout(300);
+ await page.getByRole('button', { name: 'Kapat', exact: true }).click();
  await page.waitForTimeout(300);
  await page.goto(baseUrl + '/');await page.getByText('BUGÜN SAHADA').waitFor();
  const more=page.getByRole('button',{name:'Daha fazla menüsünü aç'});await more.click();

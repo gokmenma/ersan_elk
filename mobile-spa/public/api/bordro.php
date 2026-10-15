@@ -225,14 +225,16 @@ if ($method === 'GET') {
         }
     }
 
-    if ($action === 'detail' || $action === 'get-detail') {
+    if ($action === 'detail' || $action === 'get-detail' || $action === 'get-detail-old') {
         $token = (string) ($_GET['bordro_token'] ?? $_GET['token'] ?? '');
         $bordroId = $decryptId($token);
         if ($bordroId <= 0) {
             bordroApiResponse(['success' => false, 'message' => 'Geçersiz bordro kaydı.'], 400);
         }
 
-        $_POST['action'] = 'get-detail';
+        $detailAction = ($action === 'get-detail-old' || ($_GET['type'] ?? '') === 'old') ? 'get-detail-old' : 'get-detail';
+        $action = $detailAction;
+        $_POST['action'] = $detailAction;
         $_POST['id'] = $bordroId;
         // Devamında POST bloğu işleyecek
     }
@@ -241,6 +243,7 @@ if ($method === 'GET') {
 // 2. POST İŞLEMLERİ (Detay, Hesaplama, Dağıtım, Dönem Aç/Kapat, vb.)
 $allowedActions = [
     'get-detail',
+    'get-detail-old',
     'maas-hesapla',
     'donem-kapat',
     'donem-ac',
@@ -255,8 +258,8 @@ if (!in_array($action, $allowedActions, true)) {
     bordroApiResponse(['success' => false, 'message' => 'Geçersiz bordro işlemi.'], 400);
 }
 
-// get-detail hariç CSRF zorunlu
-if ($action !== 'get-detail') {
+// get-detail ve get-detail-old hariç CSRF zorunlu
+if ($action !== 'get-detail' && $action !== 'get-detail-old') {
     verifyBordroCsrf();
 }
 
@@ -312,7 +315,7 @@ if (!empty($_POST['personel_id'])) {
 }
 
 // Kapalı dönem koruması
-if (!in_array($action, ['get-detail', 'donem-ac', 'donem-kapat'], true)) {
+if (!in_array($action, ['get-detail', 'get-detail-old', 'donem-ac', 'donem-kapat'], true)) {
     $targetPeriodId = (int) ($_POST['donem_id'] ?? 0);
     if ($targetPeriodId === 0 && !empty($_POST['id'])) {
         $stmt = $db->prepare('SELECT donem_id FROM bordro_personel WHERE id = ? AND silinme_tarihi IS NULL');

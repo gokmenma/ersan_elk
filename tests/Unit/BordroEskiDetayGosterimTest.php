@@ -40,9 +40,10 @@ final class BordroEskiDetayGosterimTest extends TestCase
         self::assertStringContainsString('Toplam Fazla Mesai', $source);
         self::assertStringContainsString('Hafta Tatili Çalışması', $source);
         self::assertStringContainsString('tbody > tr.collapse.show { display:table;', $source);
-        self::assertStringContainsString('Puantaj / Prim Hakedişi', $source);
+        self::assertStringContainsString('Puantaj Hakedişi', $source);
+        self::assertStringContainsString('Dönem puantaj kazancı', $source);
         self::assertStringContainsString('$htcGunModal > 0 && $nominalMaas > 0', $source);
-        self::assertStringContainsString("\$bankaDetayDagilimi['kesinti'] > 0 ? '-' : ''", $source);
+        self::assertStringContainsString("\$personelKesintiOzeti['toplam'] > 0 ? '-' : ''", $source);
         self::assertStringContainsString("\$bankaKesinti['aciklama']", $source);
     }
 }

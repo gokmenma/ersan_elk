@@ -480,14 +480,14 @@ try {
         $sheet->setCellValue('C' . $satir, $veri['toplam_gun']);
         $sheet->setCellValue('D' . $satir, $veri['nakit_yemek']);
         $sheet->setCellValue('E' . $satir, $veri['es_yardimi']);
-        $sheet->setCellValue('F' . $satir, $veri['avans']);
-        $sheet->setCellValue('G' . $satir, $veri['icra']);
+        $sheet->setCellValue('F' . $satir, $veri['muhasebe_banka_avans'] ?? $veri['avans']);
+        $sheet->setCellValue('G' . $satir, $veri['muhasebe_banka_icra'] ?? $veri['icra']);
         $sheet->setCellValue('H' . $satir, $veri['rtc_net']);
         $sheet->setCellValue('I' . $satir, $veri['htc_net']);
         $sheet->setCellValue('J' . $satir, $veri['prim']);
         $sheet->setCellValue('K' . $satir, $veri['fm_net']);
         $sheet->setCellValue('L' . $satir, $veri['net_maas']);
-        $sheet->setCellValue('M' . $satir, $veri['diger_kesintiler']);
+        $sheet->setCellValue('M' . $satir, $veri['muhasebe_banka_diger_kesinti'] ?? $veri['diger_kesintiler']);
         $sheet->setCellValueExplicit('N' . $satir, $veri['tc_kimlik'], DataType::TYPE_STRING);
         $sheet->setCellValue('O' . $satir, $veri['fiili_gun']);
         $sheet->setCellValue('P' . $satir, $veri['gunluk_nakit']);
