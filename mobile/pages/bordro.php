@@ -232,6 +232,8 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
     #bordroSheetBody .mobile-payroll-desktop .d-block { display: block; }
     #bordroSheetBody .mobile-payroll-desktop .calculation-toggle > span:last-child { flex-shrink: 0; white-space: nowrap; }
     #bordroSheetBody .mobile-payroll-desktop .calculation-toggle .badge { padding: 4px 8px; border: 1px solid currentColor; border-radius: 999px; font-size: 11px; }
+    #bordroSheetBody .mobile-payroll-desktop .calculation-toggle .badge.bg-primary { background: #2563eb !important; border-color: #2563eb !important; color: #ffffff !important; }
+    #bordroSheetBody .mobile-payroll-desktop .calculation-toggle .badge.bg-success { background: #ecfdf5 !important; border-color: #15803d !important; color: #166534 !important; }
     #bordroSheetBody .mobile-payroll-desktop .card-header-tint { padding: 14px 12px; }
     #bordroSheetBody .mobile-payroll-desktop .calculation-note { color: inherit; opacity: .7; }
     #bordroSheetBody .mobile-payroll-desktop .net-bottom-banner .text-white-50 { color: #64748b; }
@@ -254,6 +256,13 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
     #bordroSheetBody .mobile-payroll-desktop .collapse:not(.show) { display: none; }
     #bordroSheetBody .mobile-payroll-desktop tr.collapse.show { display: table-row; }
     #bordroSheetBody .mobile-payroll-desktop .calculation-toggle { min-height: 64px; gap: 8px; font-size: 12px; }
+    #bordroSheetBody .mobile-payroll-desktop .mobile-person-summary { margin-bottom: 20px; overflow: hidden; border: 1.5px solid #cbd5e1; border-radius: 16px; background: #ffffff; }
+    #bordroSheetBody .mobile-payroll-desktop .person-summary-toggle { display: flex; width: 100%; min-height: 64px; align-items: center; gap: 10px; padding: 12px 14px; border: 0; background: #f8fafc; color: #334155; text-align: left; }
+    #bordroSheetBody .mobile-payroll-desktop .person-summary-toggle .person-summary-name { min-width: 0; flex: 1; overflow: hidden; color: #0f172a; font-size: 12px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    #bordroSheetBody .mobile-payroll-desktop .person-summary-toggle .person-summary-label { display: block; margin-bottom: 2px; color: #64748b; font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    #bordroSheetBody .mobile-payroll-desktop .person-summary-toggle .person-summary-chevron { flex-shrink: 0; transition: transform .2s ease; }
+    #bordroSheetBody .mobile-payroll-desktop .person-summary-toggle[aria-expanded="true"] .person-summary-chevron { transform: rotate(180deg); }
+    #bordroSheetBody .mobile-payroll-desktop .mobile-person-summary-content .header-glass { margin: 0; border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; box-shadow: none; }
     #bordroSheetBody .mobile-payroll-desktop .unified-table { table-layout: fixed; }
     #bordroSheetBody .mobile-payroll-desktop .unified-table td { padding: 12px; font-size: 12px; overflow-wrap: anywhere; }
     #bordroSheetBody .mobile-payroll-desktop .unified-table td:last-child:not([colspan]) { width: 38%; }
@@ -269,6 +278,10 @@ $closed = $selectedDonem && (int) ($selectedDonem->kapali_mi ?? 0) === 1;
     .dark #bordroSheetBody .mobile-payroll-desktop .net-bottom-banner { background: #14352b; color: #f1f5f9; }
     .dark #bordroSheetBody .mobile-payroll-desktop .tint-hakedis { background: #14352b; color: #86efac; }
     .dark #bordroSheetBody .mobile-payroll-desktop .tint-resmi { background: #172554; color: #93c5fd; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .mobile-person-summary { border-color: #475569; background: #1e293b; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .person-summary-toggle { background: #0f172a; color: #cbd5e1; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .person-summary-toggle .person-summary-name { color: #f8fafc; }
+    .dark #bordroSheetBody .mobile-payroll-desktop .mobile-person-summary-content .header-glass { border-top-color: #334155; }
     @media (prefers-reduced-motion: reduce) { #bordroSheetPanel { transition: none; } }
 </style>
 
@@ -333,7 +346,7 @@ bordroSheet.addEventListener('click', event => {
     if (trigger) toggleMobilePayrollDetail(trigger);
 });
 bordroSheet.addEventListener('keydown', event => {
-    const trigger = event.target.closest('.calculation-toggle');
+    const trigger = event.target.closest('.calculation-toggle, .person-summary-toggle');
     if (trigger && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggleMobilePayrollDetail(trigger); }
 });
 function openOtherPayrollActions() { showBordroSheet('Diğer Bordro İşlemleri', `<div class="space-y-2">
@@ -363,7 +376,16 @@ async function openPayrollDetail(token) {
         const host = document.createElement('div');
         host.className = 'mobile-payroll-desktop';
         host.innerHTML = result.html || '<p>Detay bulunamadı.</p>';
-        // Desktop starts panels collapsed; show both accounts on mobile initially.
+        const personCard = host.querySelector('.header-glass');
+        if (personCard) {
+            const personName = personCard.querySelector('h5')?.textContent?.trim() || 'Personel';
+            const personSummary = document.createElement('section');
+            personSummary.className = 'mobile-person-summary';
+            personSummary.innerHTML = `<button type="button" class="person-summary-toggle" data-collapse-target="#mobilePersonSummaryContent" aria-expanded="false" aria-controls="mobilePersonSummaryContent"><i class="bx bxs-user-circle text-primary"></i><span class="person-summary-name"><small class="person-summary-label">Personel Bilgileri</small>${personName}</span><i class="bx bx-chevron-down person-summary-chevron"></i></button><div id="mobilePersonSummaryContent" class="collapse mobile-person-summary-content"></div>`;
+            personCard.replaceWith(personSummary);
+            personSummary.querySelector('.mobile-person-summary-content').appendChild(personCard);
+        }
+        // Personel bilgisi kapalı kalırken hesap kartları varsayılan olarak açık başlar.
         host.querySelectorAll('.bordro-main-calculation-collapse').forEach(el => el.classList.add('show'));
         host.querySelectorAll('.calculation-toggle').forEach(el => el.setAttribute('aria-expanded', 'true'));
         document.getElementById('bordroSheetBody').replaceChildren(host);

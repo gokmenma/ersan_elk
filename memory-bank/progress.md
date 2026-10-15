@@ -186,3 +186,5 @@
 - Masaüstünün sözleşme alacağı, resmî alacak, kesintiler ve net ödeme/kanal görünümü aynı HTML/snapshot kaynağından mobilde alt alta sunuluyor. Hesap bölümleri başlangıçta açık; satır detayları ve resmî/elden kesinti kırılımları açılıp kapanıyor. Hesaplama ve ödeme tutarları değiştirilmedi.
 - Escape, odak geri dönüşü, odak döngüsü, güvenli hata metni ve geciken isteklerin başka paneli değiştirmemesi sağlandı.
 - Doğrulama: 390×844 Chromium kontrolü (gerçek salt okunur API yanıtı), 3 Playwright regresyon testi geçti; bordro birim testleri 94 geçti / 751 doğrulama, önceden mevcut 7 legacy uyarı. PHP sözdizimi kontrolü geçti.
+- [x] Personel bilgisi kapalı tutulurken sözleşme ve resmî alacak accordionları başlangıçta açık yapıldı; resmî alacak badge kontrastı beyaz metin/mavi zemin olarak düzeltildi ve tarayıcı testiyle doğrulandı.
+- [x] Personel bilgi kartı başlangıçta kapalı gelen accordion yapısına dönüştürüldü; fare/dokunma ve klavye etkileşimi doğrulandı.
