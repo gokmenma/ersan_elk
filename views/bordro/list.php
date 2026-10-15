@@ -253,6 +253,16 @@ if (!empty($dbGelirler)) {
             display: inline-block;
         }
 
+        #bordroTable .bordro-personel-initials {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .3px;
+        }
+
         .img-preview-tooltip {
             position: absolute;
             z-index: 1070;

@@ -14,6 +14,10 @@ final class BordroEskiDetayGosterimTest extends TestCase
         self::assertStringContainsString('KESİNTİ ÖNCESİ RESMÎ ALACAK', $source);
         self::assertStringContainsString('ÖDENECEK NET MAAŞ', $source);
         self::assertStringContainsString('$puantajToplamIslemSayisi . \' Adet</span>\'', $source);
+        self::assertStringContainsString("' . \$puantajBaslikDetay . '<span class=\"badge bg-light text-dark fw-normal ms-2\">' . \$calismaGunu . ' Gün", $source);
+        self::assertStringContainsString('$puantajIslemSatirlariHtml .= \'<tr class="child-row collapse \' . $collBaseId', $source);
+        self::assertStringContainsString('$html .= $puantajIslemSatirlariHtml;', $source);
+        self::assertStringNotContainsString('cPuantajBase_', $source);
         self::assertStringContainsString("'kendiAlacakPanel_'", $source);
         self::assertStringContainsString("'resmiAlacakPanel_'", $source);
         self::assertStringContainsString('calculation-toggle', $source);

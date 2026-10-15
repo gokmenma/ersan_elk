@@ -1237,16 +1237,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr:not(.collapse),
                         .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr.collapse.show { display:table; width:100%; table-layout:fixed; }
                         .bordro-compact-view.layout-side .bordro-main-calculation-collapse.show > .unified-table > tbody > tr.footer-row { margin-top:auto; }
-                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner { display:flex; width:100%; height:100%; margin-top:0; padding:20px; background:#f2fbf6; color:#334155; border:1.5px solid #a7f3d0; box-shadow:0 5px 15px rgba(16,185,129,.06); position:relative; border-radius:16px; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner { display:flex; width:100%; height:100%; margin-top:0; padding:20px; background:#14243e; color:#f1f5f9; border:1.5px solid #2c4263; box-shadow:0 5px 15px rgba(15,23,42,.15); position:relative; border-radius:16px; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner > .row { width:100%; margin:0; flex-direction:column; align-items:stretch !important; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-5,
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-7 { width:100%; padding:0 !important; border:0 !important; text-align:left !important; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-md-5 { margin-bottom:14px !important; }
-                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .text-white-50 { color:#94a3b8 !important; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .text-white-50 { color:#bdcbe0 !important; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .net-value-xl { font-size:1.9rem; text-shadow:none; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner .col-6 { width:100%; }
-                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge { min-height:58px; padding:10px 12px; background:rgba(255,255,255,.72); color:#334155; border-color:#d6eadf; flex-direction:row; justify-content:flex-start; gap:10px; }
-                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge:hover { background:#fff; transform:none; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge { min-height:58px; padding:10px 12px; background:rgba(255,255,255,.06); color:#f1f5f9; border-color:rgba(255,255,255,.16); flex-direction:row; justify-content:flex-start; gap:10px; }
+                        .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge:hover { background:rgba(255,255,255,.1); transform:none; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge i { margin:0 !important; }
                         .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge .text-white-50 { margin-left:auto; }
 
@@ -1255,7 +1255,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column { grid-column: 1 / -1 !important; width: 100% !important; }
                         .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner { padding: 22px 28px !important; margin-top: 6px !important; }
                         .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner > .row { flex-direction: row !important; align-items: center !important; }
-                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5 { width: 38% !important; margin-bottom: 0 !important; border-right: 1px solid rgba(0,0,0,0.08) !important; padding-right: 20px !important; }
+                        .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5 { width: 38% !important; margin-bottom: 0 !important; border-right: 1px solid rgba(255,255,255,0.14) !important; padding-right: 20px !important; }
                         .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-7 { width: 62% !important; padding-left: 20px !important; }
                         .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-6 { width: 25% !important; }
                         .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .dist-badge { flex-direction: column !important; justify-content: center !important; align-items: center !important; text-align: center; }
@@ -1283,11 +1283,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     .bordro-compact-view .unified-table .footer-row { background: #f8fafc; font-weight: 800; font-size: 1.05rem; }
                     .bordro-compact-view .unified-table .footer-row td { border-bottom: none; border-top: 1.5px solid #cbd5e1; padding: 16px 20px; }
                     .bordro-compact-view .net-bottom-banner { 
-                        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
+                        background: #14243e;
                         color: white; border-radius: 16px; padding: 30px; margin-top: 25px; 
                         box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
                         position: relative;
-                        border: 1.5px solid #334155;
+                        border: 1.5px solid #2c4263;
                     }
                     .bordro-compact-view .net-value-xl { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; color: #22c55e; text-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
                     .bordro-compact-view .dist-badge { 
@@ -1349,7 +1349,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     @media (min-width:1200px) {
                         html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner {
-                            background:rgba(22,55,43,.72); color:#f1f5f9; border-color:rgba(52,211,153,.3);
+                            background:#14243e; color:#f1f5f9; border-color:#2c4263;
                         }
                         html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge {
                             background:rgba(255,255,255,.04); color:#f1f5f9; border-color:rgba(255,255,255,.08);
@@ -1414,6 +1414,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 $collBaseId = "cBaseHakedis_" . $bp->id;
                 $asgariMatrarhGoster = false;
+                $puantajIslemSatirlariHtml = '';
+                if ($isPrimUsulu && !empty($puantajGruplu)) {
+                    foreach ($puantajGruplu as $grup) {
+                        foreach ($grup['fiyat_kirilim'] as $kirilim) {
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $birim = $kirilim['birim_fiyat'] !== '' ? ' × ' . $kirilim['birim_fiyat'] . ' ₺' : '';
+                            $puantajIslemSatirlariHtml .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana'], ENT_QUOTES, 'UTF-8') . ' <small class="text-muted">' . htmlspecialchars($detStr . $birim, ENT_QUOTES, 'UTF-8') . '</small></td>
+                                        <td class="text-end pe-4">' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
+                    }
+                }
 
                 if ($isInclusive) {
                     $sozlesmeHakedisToplamGosterim = $isPrimUsulu
@@ -1439,7 +1452,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             ? 'Dönem puantaj kazancı'
                             : number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün';
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                                    <td><div class="d-flex align-items-center"><i class="bx ' . $anaHakedisIkonu . ' me-2 text-dark opacity-75"></i><span>' . $anaHakedisEtiketi . '<span class="calculation-note">' . $anaHakedisAciklamasi . '</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td><div class="d-flex align-items-center"><i class="bx ' . $anaHakedisIkonu . ' me-2 text-dark opacity-75"></i><span>' . $anaHakedisEtiketi . '<span class="calculation-note">' . $anaHakedisAciklamasi . '</span></span>' . ($isPrimUsulu ? $puantajBaslikDetay : '') . '<span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($sozlesmeHakedisToplamGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
 
@@ -1467,28 +1480,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <td class="text-end pe-4 text-warning">-' . $ucretsizIzinGunu . ' Gün</td>
                                       </tr>';
                         }
-                        if ($isPrimUsulu && !empty($puantajGruplu)) {
-                            $collPuantajBaseId = "cPuantajBase_" . $bp->id;
-                            $html .= '<tr class="child-row collapse ' . $collBaseId . '" data-bs-toggle="collapse" data-bs-target=".' . $collPuantajBaseId . '" aria-expanded="false">
-                                        <td class="ps-4 fw-semibold text-success"><i class="bx bx-briefcase me-1 opacity-75"></i><span>Puantaj Hakedişleri</span>' . $puantajBaslikDetay . '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></td>
-                                        <td class="text-end pe-4 fw-semibold text-success">' . number_format($toplamPuantajTutar, 2, ',', '.') . ' ₺</td>
-                                      </tr>';
-                            foreach ($puantajGruplu as $grup) {
-                                foreach ($grup['fiyat_kirilim'] as $kirilim) {
-                                    $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
-                                    $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
-                                    $html .= '<tr class="child-row collapse ' . $collPuantajBaseId . '">
-                                                <td class="ps-5"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
-                                                <td class="text-end pe-4">' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td>
-                                              </tr>';
-                                }
-                            }
-                        }
+                        $html .= $puantajIslemSatirlariHtml;
                     }
                 } else {
                     if ($isPrimUsulu) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                                    <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-dark opacity-75"></i><span>Puantaj Hakedişi<span class="calculation-note">Dönem puantaj kazancı</span></span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-dark opacity-75"></i><span>Puantaj Hakedişi<span class="calculation-note">Dönem puantaj kazancı</span></span>' . $puantajBaslikDetay . '<span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     } else if ($modalBaseRowValue > 0) {
@@ -1503,6 +1500,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <td class="text-end pe-4 text-warning">-' . $ucretsizIzinGunu . ' Gün</td>
                                   </tr>';
                     }
+                    $html .= $puantajIslemSatirlariHtml;
                     if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
                         $html .= '<tr class="parent-row">
                                     <td><i class="bx bx-restaurant me-2 text-muted opacity-75"></i>Yemek Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>

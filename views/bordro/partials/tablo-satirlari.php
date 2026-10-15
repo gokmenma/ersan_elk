@@ -14,6 +14,15 @@ foreach ($personeller as $personel):
     $eldenOdeme = $pc['eldenOdeme'];
     $bankaOdemesi = $pc['bankaOdemesi'];
     $sodexoOdemesi = $pc['sodexoOdemesi'];
+    $personelAdParcalari = preg_split('/\s+/u', trim((string) $personel->adi_soyadi), -1, PREG_SPLIT_NO_EMPTY);
+    $personelBasHarfleri = '';
+    if (!empty($personelAdParcalari)) {
+        $personelBasHarfleri = mb_substr($personelAdParcalari[0], 0, 1, 'UTF-8');
+        if (count($personelAdParcalari) > 1) {
+            $personelBasHarfleri .= mb_substr(end($personelAdParcalari), 0, 1, 'UTF-8');
+        }
+        $personelBasHarfleri = mb_strtoupper(str_replace(['i', 'ı'], ['İ', 'I'], $personelBasHarfleri), 'UTF-8');
+    }
     // Eksik dosyanın URL'sini HTML'e koyma: onerror ilk 404 isteğini önleyemez.
     $personelResimYolu = ltrim(trim((string) ($personel->resim_yolu ?? '')), '/');
     $personelResimDosyasi = $personelResimYolu !== ''
@@ -90,12 +99,12 @@ foreach ($personeller as $personel):
         }
         ?>
     </td>
-    <td>
+    <td data-order="<?= htmlspecialchars($personel->adi_soyadi, ENT_QUOTES, 'UTF-8') ?>">
         <div class="d-flex align-items-center">
             <?php if ($personelResimVar): ?>
             <div class="personel-img-zoom-container">
                 <img src="<?= htmlspecialchars($personelResimYolu, ENT_QUOTES, 'UTF-8') ?>"
-                    onerror="this.onerror=null;this.closest('.personel-img-zoom-container').remove();"
+                    onerror="this.onerror=null;const container=this.closest('.personel-img-zoom-container');container.nextElementSibling.classList.remove('d-none');container.remove();"
                     alt="" class="rounded-circle avatar-sm me-2 personel-img-zoom cursor-pointer" loading="lazy">
                 <div class="img-preview-tooltip">
                     <img data-src="<?= htmlspecialchars($personelResimYolu, ENT_QUOTES, 'UTF-8') ?>"
@@ -103,6 +112,7 @@ foreach ($personeller as $personel):
                 </div>
             </div>
             <?php endif; ?>
+            <span class="bordro-personel-initials avatar-sm rounded-circle me-2 bg-primary-subtle text-primary<?= $personelResimVar ? ' d-none' : '' ?>" aria-hidden="true"><?= htmlspecialchars($personelBasHarfleri ?: '?', ENT_QUOTES, 'UTF-8') ?></span>
             <div>
                 <div class="fw-medium">
                     <a target="_blank" href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a>
