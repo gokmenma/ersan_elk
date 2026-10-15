@@ -9,6 +9,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Clock,
   Download,
@@ -312,16 +313,50 @@ function setPeriod(p) {
   loadData()
 }
 
-function handleMonthChange(e) {
-  const val = e.target.value
-  if (val) {
-    const [y, m] = val.split('-')
-    customYear.value = y
-    customMonth.value = m
-    periodFilter.value = 'custom'
-    loadData()
-  }
+// Ay & Dönem Seçici Modalı
+const isMonthModalOpen = ref(false)
+const pickerYear = ref(Number(currentYear))
+
+const monthList = [
+  { value: '01', name: 'Ocak', short: 'Oca' },
+  { value: '02', name: 'Şubat', short: 'Şub' },
+  { value: '03', name: 'Mart', short: 'Mar' },
+  { value: '04', name: 'Nisan', short: 'Nis' },
+  { value: '05', name: 'Mayıs', short: 'May' },
+  { value: '06', name: 'Haziran', short: 'Haz' },
+  { value: '07', name: 'Temmuz', short: 'Tem' },
+  { value: '08', name: 'Ağustos', short: 'Ağu' },
+  { value: '09', name: 'Eylül', short: 'Eyl' },
+  { value: '10', name: 'Ekim', short: 'Eki' },
+  { value: '11', name: 'Kasım', short: 'Kas' },
+  { value: '12', name: 'Aralık', short: 'Ara' },
+]
+
+function openMonthModal() {
+  pickerYear.value = Number(customYear.value) || currentYear
+  isMonthModalOpen.value = true
 }
+
+function selectMonth(mVal) {
+  customYear.value = String(pickerYear.value)
+  customMonth.value = mVal
+  periodFilter.value = 'custom'
+  isMonthModalOpen.value = false
+  loadData()
+}
+
+function prevPickerYear() {
+  pickerYear.value--
+}
+
+function nextPickerYear() {
+  pickerYear.value++
+}
+
+const customPeriodDisplay = computed(() => {
+  const m = monthList.find((item) => item.value === customMonth.value)
+  return m ? `${m.short} ${customYear.value}` : `${customMonth.value}/${customYear.value}`
+})
 
 watch(statusFilter, () => {
   loadData()
@@ -968,22 +1003,16 @@ onMounted(() => {
       >
         Tümü
       </button>
-      <div class="relative inline-block">
-        <input
-          type="month"
-          class="month-picker-overlay"
-          :value="`${customYear}-${customMonth}`"
-          @change="handleMonthChange"
-        />
-        <button
-          type="button"
-          class="clay-filter-pill flex items-center gap-1.5"
-          :class="{ 'is-active': periodFilter === 'custom' }"
-        >
-          <Calendar :size="13" />
-          <span>{{ periodFilter === 'custom' ? `${customMonth}/${customYear}` : 'Ay Seç' }}</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        class="clay-filter-pill flex items-center gap-1.5"
+        :class="{ 'is-active': periodFilter === 'custom' }"
+        @click="openMonthModal"
+      >
+        <Calendar :size="13" />
+        <span>{{ periodFilter === 'custom' ? customPeriodDisplay : 'Ay Seç' }}</span>
+        <ChevronDown :size="12" class="opacity-70" />
+      </button>
     </div>
 
     <!-- 6. Dinamik Sekme Özetleri (Yakıt ve KM için) -->
@@ -2545,6 +2574,85 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 10: DÖNEM & AY SEÇİCİ BOTTOM SHEET -->
+    <!-- ======================================================== -->
+    <div
+      v-if="isMonthModalOpen"
+      class="clay-modal-overlay"
+      @click.self="isMonthModalOpen = false"
+    >
+      <div class="clay-bottom-sheet month-picker-sheet">
+        <div class="sheet-drag-handle"></div>
+
+        <header class="sheet-header">
+          <div class="flex items-center gap-2">
+            <span class="detail-header-icon bg-indigo-subtle text-indigo">
+              <Calendar :size="18" />
+            </span>
+            <div>
+              <h3 class="font-bold text-base text-ink">Dönem & Ay Seçimi</h3>
+              <p class="text-[11px] text-muted">Görüntülemek istediğiniz ayı seçin</p>
+            </div>
+          </div>
+          <button type="button" class="sheet-close-btn" title="Kapat" @click="isMonthModalOpen = false">
+            <X :size="18" />
+          </button>
+        </header>
+
+        <div class="month-picker-body">
+          <!-- Yıl Navigasyonu -->
+          <div class="year-nav-row">
+            <button type="button" class="year-nav-btn" title="Önceki Yıl" @click="prevPickerYear">
+              <ChevronLeft :size="16" />
+            </button>
+            <strong class="year-nav-label">{{ pickerYear }}</strong>
+            <button type="button" class="year-nav-btn" title="Sonraki Yıl" @click="nextPickerYear">
+              <ChevronRight :size="16" />
+            </button>
+          </div>
+
+          <!-- 12 Ay Izgarası (3 Sütun x 4 Satır) -->
+          <div class="month-grid">
+            <button
+              v-for="m in monthList"
+              :key="m.value"
+              type="button"
+              class="month-grid-btn"
+              :class="{
+                'is-active': periodFilter === 'custom' && customYear === String(pickerYear) && customMonth === m.value,
+                'is-current': String(currentYear) === String(pickerYear) && currentMonth === m.value
+              }"
+              @click="selectMonth(m.value)"
+            >
+              <span class="month-name">{{ m.name }}</span>
+              <span v-if="String(currentYear) === String(pickerYear) && currentMonth === m.value" class="current-month-dot" title="Güncel Ay"></span>
+            </button>
+          </div>
+
+          <!-- Hızlı Kısayollar -->
+          <div class="month-shortcuts">
+            <button
+              type="button"
+              class="shortcut-btn"
+              :class="{ 'is-selected': periodFilter === 'this_month' }"
+              @click="setPeriod('this_month'); isMonthModalOpen = false"
+            >
+              Bu Ay ({{ monthList[new Date().getMonth()].name }})
+            </button>
+            <button
+              type="button"
+              class="shortcut-btn"
+              :class="{ 'is-selected': periodFilter === 'all' }"
+              @click="setPeriod('all'); isMonthModalOpen = false"
+            >
+              Tüm Zamanlar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -3049,13 +3157,135 @@ onMounted(() => {
   color: #ffffff;
 }
 
-/* Ay Seçici Overlay */
-.month-picker-overlay {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
+/* Ay & Dönem Seçici Bottom Sheet */
+.month-picker-sheet {
+  max-width: 440px;
+  padding: 14px 18px 28px;
+}
+
+.month-picker-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.year-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: var(--ds-surface-subtle);
+}
+
+.year-nav-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  color: var(--ds-ink);
   cursor: pointer;
-  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.year-nav-btn:active {
+  transform: scale(0.92);
+  background: var(--ds-surface-subtle);
+}
+
+.year-nav-label {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ds-ink);
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.month-grid-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--ds-surface-subtle);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.month-grid-btn:active {
+  transform: scale(0.95);
+}
+
+.month-grid-btn.is-active {
+  background: var(--ds-primary);
+  color: #ffffff;
+  border-color: var(--ds-primary);
+  box-shadow: 0 4px 12px rgba(24, 28, 36, 0.22);
+}
+
+.month-grid-btn.is-current:not(.is-active) {
+  border-color: #38bdf8;
+  color: #0284c7;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.current-month-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #0284c7;
+  position: absolute;
+  bottom: 5px;
+}
+
+.month-grid-btn.is-active .current-month-dot {
+  background: #ffffff;
+}
+
+.month-shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ds-border-subtle);
+}
+
+.shortcut-btn {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ds-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.shortcut-btn:active {
+  background: var(--ds-surface-subtle);
+}
+
+.shortcut-btn.is-selected {
+  background: var(--ds-surface-subtle);
+  color: var(--ds-ink);
+  font-weight: 800;
+  border-color: #94a3b8;
 }
 
 /* FAB Dropdown */

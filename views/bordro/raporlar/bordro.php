@@ -54,28 +54,6 @@ $maintitle = 'Bordro'; $subtitle = 'Raporlar'; $title = 'Resmî Ücret Hesap Pus
 </div></div></div>
 <div class="alert alert-info font-size-12">Resmî banka tutarları ve yasal kesintiler kayıtlı bordrodan alınır. Dönemde işten ayrılan personel dahildir. Muhasebe kaydıyla farklılık varsa önce mutabakat yapılmalıdır. Dönem kaydında bulunmayan alanlar “—” gösterilir.</div>
 <?php if ($hazir < count($kayitlar)): ?><div class="alert alert-warning">Toplu PDF için tüm personelin geçerli hesaplanmış bordrosu bulunmalıdır. Aşağıdaki uyarılı kayıtları kontrol edin; hazır kayıtları tek tek indirebilirsiniz.</div><?php endif; ?>
-<div class="card mb-3" id="muhasebeKarsilastirmaCard">
-<div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div class="d-flex align-items-center gap-2"><div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle"><i class="bx bx-git-compare font-size-20"></i></div><div><h5 class="font-size-14 fw-bold mb-1">Muhasebe Excel Karşılaştırması</h5><p class="font-size-12 text-muted mb-0">Muhasebeden gelen .xlsx bordroyu seçili dönem snapshot'ıyla karşılaştırır; kayıtları değiştirmez.</p></div></div>
-</div>
-<div class="card-body pt-0">
-    <form id="muhasebeKarsilastirmaForm" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="<?= $e(Security::csrf()) ?>">
-        <input type="hidden" name="donem" value="<?= $e($token) ?>">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-8"><?= Form::FormFileInput('muhasebe_excel', 'Muhasebe bordro Exceli (.xlsx)', 'bx bx-spreadsheet', 'form-control', true, 'accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"', 'muhasebeExcel') ?></div>
-            <div class="col-md-4"><button type="submit" id="btnMuhasebeKarsilastir" class="btn btn-info text-white w-100 top-action-btn shadow-sm" style="height:48px"><i class="bx bx-search-alt me-1"></i>Exceli Analiz Et ve Karşılaştır</button></div>
-        </div>
-    </form>
-    <div id="muhasebeKarsilastirmaHata" class="alert alert-danger mt-3 mb-0 d-none"></div>
-    <div id="muhasebeKarsilastirmaSonuc" class="d-none mt-3">
-        <div class="row g-2 mb-3" id="muhasebeKarsilastirmaOzet"></div>
-        <div class="d-flex gap-2 flex-wrap mb-2" id="muhasebeDurumFiltreleri"></div>
-        <div class="table-responsive"><table id="muhasebeKarsilastirmaTable" class="table table-bordered table-hover align-middle w-100 mb-0">
-            <thead><tr><th>Personel</th><th>T.C.</th><th>Durum</th><th>Fark Sayısı</th><th>Açıklama</th><th class="text-center">Detay</th></tr></thead><tbody></tbody>
-        </table></div>
-    </div>
-</div></div>
 <div class="card" id="bordroPusulaListCard">
 <div class="card-header bg-transparent border-0 d-flex align-items-center gap-2"><div class="p-2 bg-primary-subtle text-primary rounded-3"><i class="bx bx-list-ul font-size-20"></i></div><div><h5 class="font-size-14 fw-bold mb-1">Personel Pusulaları</h5><p class="font-size-12 text-muted mb-0"><?= $e($selectedDonem->donem_adi ?? 'Dönem seçiniz') ?></p></div></div>
 <div class="card-body"><div class="table-responsive">
@@ -101,65 +79,6 @@ document.addEventListener('DOMContentLoaded', function () {
     $('#bordroListesiTable tbody').on('click', 'tr[data-href] td:not(:last-child)', function (event) {
         if ($(event.target).closest('a,button,input,.custom-context-menu').length) return;
         window.open(this.parentElement.dataset.href, '_blank', 'noopener');
-    });
-
-    let muhasebeTable = null;
-    let karsilastirmaData = null;
-    let muhasebeStatusFilter = null;
-    const durumBilgisi = {
-        farkli: ['Farklı', 'danger'], eslesen: ['Eşleşen', 'success'],
-        yalniz_muhasebe: ['Yalnız Muhasebede', 'warning'], yalniz_sistem: ['Yalnız Sistemde', 'info']
-    };
-    const esc = value => $('<div>').text(value == null ? '' : String(value)).html();
-    const formatValue = (value, type) => type === 'para'
-        ? (Number(value || 0) / 100).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₺'
-        : Number(value || 0).toLocaleString('tr-TR');
-    function renderDetay(row) {
-        if (!row.farklar.length) return '<div class="p-3 text-muted font-size-12">Alan farkı bulunmadı.</div>';
-        return `<div class="p-2"><table class="table table-sm table-bordered mb-0"><thead><tr><th>Alan</th><th class="text-end">Muhasebe</th><th class="text-end">Sistem</th><th class="text-end">Fark</th></tr></thead><tbody>${row.farklar.map(f => `<tr><td>${esc(f.etiket)}</td><td class="text-end">${esc(formatValue(f.muhasebe, f.tur))}</td><td class="text-end">${esc(formatValue(f.sistem, f.tur))}</td><td class="text-end fw-semibold ${f.fark ? 'text-danger' : ''}">${esc(formatValue(f.fark, f.tur))}</td></tr>`).join('')}</tbody></table></div>`;
-    }
-    function renderKarsilastirma(data) {
-        karsilastirmaData = data;
-        if (muhasebeStatusFilter) {
-            $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(fn => fn !== muhasebeStatusFilter);
-            muhasebeStatusFilter = null;
-        }
-        const cards = [
-            ['toplam', 'Toplam Sonuç', 'primary'], ['farkli', 'Farklı', 'danger'],
-            ['yalniz_muhasebe', 'Yalnız Muhasebede', 'warning'], ['yalniz_sistem', 'Yalnız Sistemde', 'info'], ['eslesen', 'Eşleşen', 'success']
-        ];
-        $('#muhasebeKarsilastirmaOzet').html(cards.map(([key, label, color]) => `<div class="col-6 col-lg"><div class="border rounded-3 p-2 h-100 bg-${color}-subtle"><div class="font-size-11 text-muted">${label}</div><div class="font-size-18 fw-bold text-${color}">${data.sayilar[key]}</div></div></div>`).join(''));
-        $('#muhasebeDurumFiltreleri').html(`<button type="button" class="btn btn-sm btn-dark muhasebe-filter active" data-status="">Tümü</button>${cards.slice(1).map(([key, label, color]) => `<button type="button" class="btn btn-sm btn-subtle-${color} muhasebe-filter" data-status="${key}">${label} (${data.sayilar[key]})</button>`).join('')}`);
-        if (muhasebeTable) { muhasebeTable.destroy(); $('#muhasebeKarsilastirmaTable tbody').empty(); }
-        data.sonuclar.forEach((row, index) => {
-            const [label, color] = durumBilgisi[row.durum];
-            $('#muhasebeKarsilastirmaTable tbody').append(`<tr data-index="${index}" data-status="${row.durum}"><td class="fw-semibold">${esc(row.personel)}</td><td>${esc(row.tc || '—')}</td><td><span class="badge bg-${color}-subtle text-${color} border border-${color}-subtle rounded-pill">${label}</span></td><td class="text-center">${row.fark_sayisi}</td><td class="font-size-12">${esc(row.aciklama)}</td><td class="text-center"><button type="button" class="table-action-btn btn-subtle-primary btn-karsilastirma-detay" aria-label="Fark detayını aç"><i class="bx bx-chevron-down"></i></button></td></tr>`);
-        });
-        muhasebeTable = $('#muhasebeKarsilastirmaTable').DataTable(applyLengthStateSave({...getDatatableOptions(), responsive: false, pageLength: 25, order: [[2, 'asc'], [0, 'asc']], columnDefs: [{targets: 5, orderable: false, searchable: false}]}));
-        $('#muhasebeKarsilastirmaSonuc').removeClass('d-none');
-    }
-    $('#muhasebeKarsilastirmaForm').on('submit', function (event) {
-        event.preventDefault();
-        const button = $('#btnMuhasebeKarsilastir');
-        const original = button.html();
-        $('#muhasebeKarsilastirmaHata').addClass('d-none').text('');
-        button.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin me-1"></i>Analiz ediliyor...');
-        $.ajax({url: 'views/bordro/raporlar/bordro-karsilastir.php', method: 'POST', data: new FormData(this), processData: false, contentType: false, dataType: 'json'})
-            .done(response => { if (response.status !== 'success') throw new Error(response.message || 'Karşılaştırma tamamlanamadı.'); renderKarsilastirma(response.data); })
-            .fail(xhr => { const message = xhr.responseJSON?.message || 'Excel karşılaştırması tamamlanamadı.'; $('#muhasebeKarsilastirmaHata').removeClass('d-none').text(message); })
-            .always(() => button.prop('disabled', false).html(original));
-    });
-    $(document).on('click', '.muhasebe-filter', function () {
-        $('.muhasebe-filter').removeClass('active'); $(this).addClass('active');
-        const status = this.dataset.status;
-        if (muhasebeStatusFilter) $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(fn => fn !== muhasebeStatusFilter);
-        muhasebeStatusFilter = function (settings, data, dataIndex) { return settings.nTable.id !== 'muhasebeKarsilastirmaTable' || !status || $(settings.aoData[dataIndex].nTr).data('status') === status; };
-        $.fn.dataTable.ext.search.push(muhasebeStatusFilter); muhasebeTable.draw();
-    });
-    $('#muhasebeKarsilastirmaTable tbody').on('click', '.btn-karsilastirma-detay', function () {
-        const tr = $(this).closest('tr'); const dtRow = muhasebeTable.row(tr); const index = Number(tr.data('index'));
-        if (dtRow.child.isShown()) { dtRow.child.hide(); $(this).find('i').attr('class', 'bx bx-chevron-down'); }
-        else { dtRow.child(renderDetay(karsilastirmaData.sonuclar[index]), 'bg-light').show(); $(this).find('i').attr('class', 'bx bx-chevron-up'); }
     });
 });
 </script>

@@ -1057,6 +1057,12 @@ if (!empty($dbGelirler)) {
                                         </a>
                                     </li>
                                     <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center" href="javascript:void(0);"
+                                            data-bs-toggle="modal" data-bs-target="#muhasebeKarsilastirmaModal">
+                                            <i class="mdi mdi-file-compare text-info fs-5 me-2"></i> Muhasebe Excel Karşılaştır
+                                        </a>
+                                    </li>
+                                    <li>
                                         <hr class="dropdown-divider">
                                     </li>
                                     <li>
@@ -1228,6 +1234,8 @@ if (!empty($dbGelirler)) {
                         <div id="bordroOzetAlani">
                             <?php include __DIR__ . '/partials/ozet-kartlar.php'; ?>
                         </div>
+
+                        <?php include __DIR__ . '/partials/muhasebe-karsilastirma.php'; ?>
 
                         <div class="position-relative">
                             <div class="table-responsive bordro-table-responsive">

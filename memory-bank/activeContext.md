@@ -35,12 +35,15 @@
        - Alt Aksiyon Çubuğu: 48px dokunmatik "Aracı Düzenle" (koyu obsidian bento buton) ve "Sil" (danger buton) çubuğu.
      - **Merkezi Layout Micro-Utilities (`src/design-system.css`)**:
        - SPA genelinde grid, flex, gap, padding, margin, text ve font sınıfları eklenerek form ve modalların hizalama/boşluk kararlılığı sağlandı.
+     - **Dönem & Ay Seçici Düzeltmesi (Mobil "Ayı Seçin" Tap Hijacking Önlemi)**:
+       - Önceden ekranda görünmeyen, `.relative` kapsayıcısı olmadığı için sayfa geneline yayılan ve kullanıcının alakasız yerlere dokunmasında yerel tarayıcının "Ayı seçin" tekerleğini açan şeffaf `<input type="month">` overlay yapısı tamamen kaldırıldı.
+       - Yerine ergonomik, dokunmatik **Dönem & Ay Seçici Bottom Sheet (`isMonthModalOpen`)** geliştirildi: Yıl navigasyonu (`[ < ] 2026 [ > ]`), 12 ay Bento ızgarası (`Ocak` ... `Aralık`), güncel ay gösterge noktası, seçili ay vurgusu ve "Bu Ay", "Tüm Zamanlar" kısayolları eklendi.
      - **Yakıt, Zimmet ve Servis Kartları**:
        - 2'li Bento kutuları (Toplam Tutar, Litre, Birim Fiyat, Sayaç), personel avatarları ve servis durumu rozetleri.
      - **Bento Hero & Uyarı Kartları**:
        - Koyu Obsidian Canlı Filo Bento Hero Kartı (`.bento-card--dark`), Segmented Progress Track, 4'lü metrik ızgarası.
        - Kritik Evrak Uyarı Kartı (`.announcement-card`) ile tek tıkla filtreleme.
-     - **Bottom Sheet & Modallar**: 9 adet tam uyumlu ergonomik modal/sheet penceresi.
+     - **Bottom Sheet & Modallar**: 10 adet tam uyumlu ergonomik modal/sheet penceresi.
   4. **Entegrasyon & Build**:
      - `mobile-spa/src/router.js`: `/arac-takip` rotası eklendi (`permission: 'vehicles'`).
      - `mobile-spa/src/components/BottomNav.vue`: "Daha Fazla" menüsündeki Araç Takip butonu SPA rotasına bağlandı (`to: '/arac-takip'`).
@@ -373,3 +376,13 @@
 - Yüklenen örnekte 103 Excel satırına karşı 102 sistem bordrosu analiz edildi: 102 kayıt farklı, Fahri Ayaz'ın mükerrer ikinci satırı yalnız muhasebede, yalnız sistemde kayıt yok. Farklar özellikle SGK/vergi, yemek ve net ödenen alanlarında yoğunlaşıyor.
 - Güvenlik: mevcut `bordro/raporlar` Gate yetkisi, firma/dönem izolasyonu, şifreli dönem ID, CSRF, yalnız `.xlsx`, MIME doğrulama ve 10 MB sınırı uygulandı. Yetkisiz/CSRF/geçersiz dosya senaryoları sırasıyla 403/419/422 döndü.
 - Doğrulama: gerçek dosya gerçek HTTP upload akışıyla analiz edildi; 103 sonuç, açılır 6 alan farkı, durum filtresinde tek mükerrer satır ve maskeli T.C. tarayıcıda doğrulandı. Bordro testleri 105 geçti / 817 doğrulama; önceden mevcut 7 legacy uyarı sürüyor.
+
+### Düzeltme — karşılaştırma kaynağı ve ekran konumu
+- Karşılaştırma alanı Resmî Ücret Hesap Pusulaları ekranından kaldırılıp `bordro/list` sayfasında özet kartların altına taşındı; işlem mevcut `bordro/list` Gate politikasıyla korunuyor.
+- Muhasebenin brüt bordro kolonlarıyla snapshot pusulasını karşılaştıran önceki eşleme kaldırıldı. Yüklenen çalışma kitabında A–R başlıklarını taşıyan `Mutabakat` sayfası bulunuyor ve bizim Muhasebe Excel'inde kullandığımız aynı 16 C–R alanı karşılaştırılıyor.
+- Sistem değerleri listeyle aynı ortak hesap, `getMuhasebeOdemeOzeti()`, `getMuhasebeFazlaMesaiNetOzeti()` ve `getMuhasebeResmiKalemDagilimi()` yollarından üretiliyor. Böylece gönderilen Asgari/Yemek/Eş/RTÇ/HTÇ/Fazla Mesai/Prim/Diğer, banka kesintileri ve Bankaya Yatacak tutarı esas alınıyor.
+- Çok sayfalı çalışma kitabında Mutabakat başlıkları sayfa sırasından bağımsız aranıyor; farklı şablona anlaşılır hata veriliyor. T.C. öncelikli eşleştirme, maskeleme, CSRF, şifreli dönem ve geçici yükleme kuralları korundu.
+- Mutabakat ayrıştırma ve kuruş farkı testleri 2 test / 10 doğrulamayla geçti; ilgili PHP dosyalarının sözdizimi ve diff kontrolü temiz.
+- Karşılaştırma bileşeni sürekli görünen liste kartından çıkarıldı. Seçili dönem varken `Dönem İşlemleri > Muhasebe Excel Karşılaştır` menüsüyle açılan geniş, kaydırılabilir modal içinde çalışıyor; sonuçlar ve kişi fark detayları modalda gösteriliyor.
+- Kullanıcının gerçek `bordro_ersan_elkt İHALE 3.xlsx` dosyası Mutabakat sayfası içermeyen Logo/muhasebe maaş bordrosudur. Okuyucu bu şablonu da tanıyor ve brüt/net anlamlarını karıştırmadan ortak alanları eşliyor: `T.Gün → Toplam Gün`, `Normal Gün → Fiilî Gün`, `Ücretli İzin`, `Rapor`, yemek tutarı ve `N.Ödenen → Bankaya Yatacak`.
+- Muhasebe bordrosundaki brüt fazla mesai/tatil/aile tutarları bizim net Mutabakat kolonlarıyla doğrudan kıyaslanmıyor. Gerçek dosya 103 personel olarak okundu; toplam satırı kayıt sayılmıyor. İlk satır 30 toplam gün, 26 fiilî gün, 7.859,65 TL yemek ve 35.875,50 TL banka olarak doğrulandı.

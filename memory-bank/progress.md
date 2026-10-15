@@ -7,8 +7,9 @@
     - **Ana Araç Kartı (`.vehicle-master-card`)**: Üstte mavi TR şeritli plaka ve durum renk noktasıyla canlı durum hapı; ortada güncel sayaç ve zimmetli personel 2'li Bento ızgarası; altta muayene, sigorta, kasko için akıllı renk kodlu (kırmızı/sarı/yeşil) 3'lü hap rozetleri ve 44px dokunmatik aksiyon çubuğu.
     - **Araç Detay Kartı (Modal / Bottom Sheet)**: Üstte drag tutamacı, kimlik hero kutusu (TR plaka rozeti, canlı durum hapı, marka/model ve 4'lü model/renk/tip/ikame özellikleri), 2x2 Bento metrik ızgarası (sayaç, yakıt tipi, şase no, mülkiyet), zimmetli personel için iki harfli gradyan avatar ve departman künyesi, 3'lü evrak takip takvimi (kalan gün rozetleri), AES-256 şifreli güvenli ruhsat kartı (ISO 27001) ve 48px dokunmatik aksiyon butonları.
     - **Merkezi Layout Micro-Utilities (`src/design-system.css`)**: SPA genelinde grid, flex, gap, padding, margin, text ve font yardımcı sınıfları eklenerek tüm modalların ve formların hizalama sorunları giderildi.
+    - **Dönem & Ay Seçici Düzeltmesi (Mobil "Ayı Seçin" Tap Hijacking Önlemi)**: Sayfada gizli/şeffaf duran ve `.relative` eksikliği nedeniyle ekranın farklı yerlerine taşarak dokunmalarda yerel tarayıcının "Ayı seçin" tekerleğini açan şeffaf `<input type="month">` overlay yapısı tamamen temizlendi. Yerine dokunmatik Bento Dönem & Ay Seçici Bottom Sheet (`isMonthModalOpen`, 12 ay ızgarası, yıl navigasyonu, hızlı kısayollar) getirildi.
     - **Yakıt, Zimmet ve Servis Kartları**: 2'li Bento blokları, personel avatarları ve durum rozetleriyle aynı yüksek okunabilirlik standartlarına kavuşturuldu.
-    - **Hero & Filtreler**: Koyu Obsidian Canlı Filo Bento Hero kartı (`.bento-card--dark`), Segmented Progress Track, 4'lü metrik ızgarası, kritik evrak uyarı banner'ı (`.announcement-card`), 5 sekmeli yapı, dinamik periyot seçici ve 9 adet ergonomik Bottom Sheet / modal penceresi.
+    - **Hero & Filtreler**: Koyu Obsidian Canlı Filo Bento Hero kartı (`.bento-card--dark`), Segmented Progress Track, 4'lü metrik ızgarası, kritik evrak uyarı banner'ı (`.announcement-card`), 5 sekmeli yapı, dinamik periyot seçici ve 10 adet ergonomik Bottom Sheet / modal penceresi.
   - **Entegrasyon & Routing**: `router.js` içerisine `/arac-takip` rotası tanımlandı, `BottomNav.vue` "Daha Fazla" menüsü ve `HomeView.vue` hızlı aksiyonları SPA rotasına bağlandı.
   - **Derleme**: `npm run build` ile hatasız üretim çıktısı alındı.
 - [x] Sistem Logları (`views/logs/list.php`) Menü ve Yetkilendirme Çalışması (2026-10-15):
@@ -248,3 +249,9 @@
 - [x] Gate, firma izolasyonu, şifreli dönem, CSRF, MIME/uzantı ve 10 MB dosya sınırı doğrulandı; yüklenen dosya kalıcı saklanmıyor.
 - [x] Gerçek örnek Excel ile 103 sonuç üretildi: 102 farklı, 1 yalnız muhasebede (mükerrer Fahri Ayaz), 0 yalnız sistemde. Tarayıcı ve gerçek HTTP upload kontrolleri geçti.
 - [x] Bordro testleri 105 geçti / 817 doğrulama; önceden mevcut 7 legacy uyarı sürüyor.
+- [x] Kullanıcı düzeltmesiyle Excel karşılaştırması `bordro/list` sayfasına taşındı; pusula rapor ekranındaki karşılaştırma bileşeni kaldırıldı.
+- [x] SGK/vergi brüt bordro karşılaştırması kaldırıldı; muhasebeye gönderilen `Mutabakat` sayfasının C–R kolonları aynı model dağılımıyla karşılaştırılır hale getirildi.
+- [x] Çok sayfalı dosyada Mutabakat başlığı arama, 16 alanın gün/kuruş ayrıştırması ve banka kesintisi/ödeme kolonları için birim testi geçti (2 test, 10 doğrulama).
+- [x] Muhasebe Excel karşılaştırması sayfada yer kaplamayan modal yapısına taşındı ve seçili dönemin `Dönem İşlemleri` menüsüne eklendi.
+- [x] Gerçek muhasebe maaş bordrosu şablonu (`T.Gün`, `Normal Gün`, `N.Ödenen` ve ikili gün/tutar kolonları) desteklenerek gönderilen Mutabakat dosyasındaki altı ortak alanla güvenli biçimde eşlendi.
+- [x] Eklenen şablon testiyle birlikte 3 test / 16 doğrulama geçti; gerçek dosyada 103 personel ve örnek gün/yemek/banka değerleri doğrulandı.
