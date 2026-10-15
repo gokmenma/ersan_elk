@@ -1,5 +1,21 @@
 # Active Context
 
+## Mobil SPA Evrak Takip (E-Fatura & Finans) Rozet Konumlandırma Düzeltmesi ve Giden/Gelen İkonları (2026-10-15)
+- **Kullanıcı Talebi**:
+  1. Alt navigasyon çekmecesindeki sayı badge'lerinin (rozetlerinin) ikonlardan çok uzakta durması sorununun giderilmesi.
+  2. "Giden" ve "Gelen" sekmelerindeki ok ikonlarının değiştirilmesi (anlamlı ve estetik yeni ikonlar).
+- **Mimari & Geliştirmeler**:
+  1. **Rozet Konumlandırması (`mobile-spa/src/design-system.css`)**:
+     - `.bottom-nav .nav-icon` elemanındaki `position: static !important;` kuralı `position: relative !important;` olarak düzeltildi. Daha önce `static` olduğu için `.nav-bubble-badge` rozeti 24px ikona değil ~70px genişliğindeki butonun en sağına kaçarak komşu sekmelerin arasına taşmaktaydı.
+     - `position: relative` ile rozet doğrudan 24x24px ikona çıpalandı (`top: -4px; right: -7px;`). Böylece sayılar (`4`, `15`, `0`) ikonun tam sağ üst köşesine (omuzuna) kusursuz şekilde yapıştı.
+  2. **Giden ve Gelen İkonlarının Yenilenmesi (`BottomNav.vue` & `FaturaView.vue`)**:
+     - Generic çapraz oklar (`ArrowUpRight` / `ArrowDownLeft`) yerine muhasebe/finans dünyasına uygun semantik ikonlar getirildi:
+       - **Giden Faturalar (Satış)**: `Send` (Gönderim / Satış faturası kağıt uçak ikonu).
+       - **Gelen Faturalar (Alış)**: `Inbox` (Gelen kutusu tepsisi ikonu).
+     - Hem alt çekmecede (`BottomNav.vue`) hem de sayfa içindeki 2'li KPI kartlarında ve hızlı işlem butonlarında (`FaturaView.vue`) aynı ikonlar kullanılarak tam tasarım bütünlüğü sağlandı.
+  3. **Üretim Derlemesi (`npm run build`)**:
+     - Vite derlemesi 0 hata ile başarıyla tamamlandı (`dist/assets/index-Cx3WbHf3.js`, `dist/assets/index-B8ybxGju.css`).
+
 ## Mobil SPA Evrak Takip (E-Fatura & Finans) Sekmelerinin Talepler Gibi Alt Menüye Taşınması (2026-10-15)
 - **Kullanıcı Talebi**:
   - Evrak takip (E-Fatura & Finans) sayfasındaki üstte bulunan menünün (Özet, Giden, Gelen, Taslaklar), Talepler sayfasındaki alt menü (obsidian floating dock drawer) gibi yapılması.

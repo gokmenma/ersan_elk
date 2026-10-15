@@ -19,6 +19,7 @@ import {
   Eye,
   FileText,
   Filter,
+  Inbox,
   Layers,
   Package,
   Plus,
@@ -961,7 +962,7 @@ onBeforeUnmount(() => {
             <header>
               <span class="fatura-kpi-tag">GİDEN (SATIŞ)</span>
               <span class="fatura-kpi-icon fatura-kpi-icon--emerald">
-                <ArrowUpRight :size="16" />
+                <Send :size="16" />
               </span>
             </header>
             <div class="fatura-kpi-main">
@@ -989,7 +990,7 @@ onBeforeUnmount(() => {
             <header>
               <span class="fatura-kpi-tag">GELEN (ALIŞ)</span>
               <span class="fatura-kpi-icon fatura-kpi-icon--sky">
-                <ArrowDownLeft :size="16" />
+                <Inbox :size="16" />
               </span>
             </header>
             <div class="fatura-kpi-main">
@@ -1064,7 +1065,7 @@ onBeforeUnmount(() => {
 
           <button type="button" class="fatura-quick-item" @click="switchTab('giden')">
             <span class="fatura-quick-item__icon bg-emerald-soft text-emerald">
-              <ArrowUpRight :size="20" />
+              <Send :size="20" />
             </span>
             <strong>Giden Faturalar</strong>
             <small>EDM/GİB Satışları</small>
@@ -1072,7 +1073,7 @@ onBeforeUnmount(() => {
 
           <button type="button" class="fatura-quick-item" @click="switchTab('gelen')">
             <span class="fatura-quick-item__icon bg-sky-soft text-sky">
-              <ArrowDownLeft :size="20" />
+              <Inbox :size="20" />
             </span>
             <strong>Gelen Faturalar</strong>
             <small>Tedarikçi alışları</small>

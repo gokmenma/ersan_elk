@@ -2,8 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
   Banknote,
   CalendarCheck,
   CalendarDays,
@@ -20,6 +18,7 @@ import {
   Gauge,
   Headset,
   Home,
+  Inbox,
   Landmark,
   Layers,
   LayoutGrid,
@@ -27,6 +26,7 @@ import {
   Megaphone,
   Monitor,
   ReceiptText,
+  Send,
   ShieldAlert,
   Sparkles,
   UserCheck,
@@ -449,7 +449,7 @@ async function handleLogout() {
             @click="setFaturaTab('giden')"
           >
             <span class="nav-icon">
-              <ArrowUpRight :size="21" :stroke-width="faturaState.activeTab === 'giden' ? 2.4 : 1.9" />
+              <Send :size="20" :stroke-width="faturaState.activeTab === 'giden' ? 2.4 : 1.9" />
               <span class="nav-bubble-badge" :class="{ 'has-count': faturaState.counts.giden > 0 }">
                 {{ faturaState.counts.giden }}
               </span>
@@ -466,7 +466,7 @@ async function handleLogout() {
             @click="setFaturaTab('gelen')"
           >
             <span class="nav-icon">
-              <ArrowDownLeft :size="21" :stroke-width="faturaState.activeTab === 'gelen' ? 2.4 : 1.9" />
+              <Inbox :size="20" :stroke-width="faturaState.activeTab === 'gelen' ? 2.4 : 1.9" />
               <span class="nav-bubble-badge" :class="{ 'has-count': faturaState.counts.gelen > 0 }">
                 {{ faturaState.counts.gelen }}
               </span>

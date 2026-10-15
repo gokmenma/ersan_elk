@@ -1,4 +1,8 @@
 # Progress
+- [x] Mobil SPA (`mobile-spa`): E-Fatura alt menü rozet (badge) mesafe düzeltmesi ve Giden/Gelen ikonlarının yenilenmesi (2026-10-15):
+  - **Rozetlerin İkona Çıpalenmesi (`design-system.css`)**: `.bottom-nav .nav-icon` elemanındaki `position: static !important;` kuralı `position: relative !important;` yapıldı. Böylece `.nav-bubble-badge` rozeti butonun en sağına kaçmak yerine 24x24px ikona çıpalandı (`top: -4px; right: -7px;`) ve sayılar tam ikonun sağ üst omuzuna oturdu.
+  - **Giden ve Gelen İkonları (`BottomNav.vue`, `FaturaView.vue`)**: Çapraz oklar yerine e-fatura/muhasebeye uygun ikonlar getirildi: Giden için `Send` (Gönderim / Kağıt uçak), Gelen için `Inbox` (Gelen kutusu tepsisi). Hem alt çekmecede hem de sayfa içi KPI/hızlı işlem kartlarında uygulandı.
+  - **Derleme**: `npm run build` ile Vite üretim derlemesi 0 hata ile tamamlandı (`dist/`).
 - [x] Mobil SPA (`mobile-spa`): Evrak Takip (E-Fatura & Finans) sekmelerinin Talepler gibi alt menüye (obsidian floating dock drawer) taşınması (2026-10-15):
   - **Kullanıcı Talebi**: E-Fatura & Finans (Evrak Takip) sayfasında ekranın üstünde yer alan sekmeli menünün (Özet, Giden, Gelen, Taslaklar), Talepler sayfasındaki alt menü gibi yapılması.
   - **Servis & Reaktif Durum Yönetimi (`services/fatura.js`)**: `faturaState` reaktif nesnesi oluşturuldu (`activeTab: 'ozet'`, `drawerOpen: true`, `counts: { giden: 0, gelen: 0, taslak: 0 }`). `setFaturaTab`, `openFaturaDrawer`, `closeFaturaDrawer` ve `toggleFaturaDrawer` yardımcı fonksiyonları tanımlandı.
