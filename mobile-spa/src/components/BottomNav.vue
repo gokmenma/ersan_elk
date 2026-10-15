@@ -91,7 +91,7 @@ function handleNavClick(item, event) {
 const items = [
   { to: '/', label: 'Ana Sayfa', icon: Home },
   { to: '/personel', label: 'Personel', icon: UsersRound, permission: 'personnel' },
-  { label: 'Daha Fazla', icon: LayoutGrid, center: true },
+  { label: 'Diğer', icon: LayoutGrid, center: true },
   { to: '/raporlar', label: 'Raporlar', icon: ChartNoAxesCombined, permission: 'reports' },
   { to: '/talepler', label: 'Talepler', icon: ClipboardList, permission: 'requests' },
 ]
@@ -223,17 +223,17 @@ async function handleLogout() {
           <template v-for="item in visibleItems" :key="item.label">
             <button
               v-if="item.center"
-              class="nav-link nav-link--center"
+              class="nav-link"
               :class="{ 'is-active': isItemActive(item) }"
               type="button"
               aria-controls="more-menu"
               aria-haspopup="dialog"
-              aria-label="Daha fazla menüsünü aç"
+              :aria-label="`${item.label} menüsünü aç`"
               :aria-expanded="menuOpen"
               @click="menuOpen = !menuOpen"
             >
               <span class="nav-icon">
-                <component :is="item.icon" :size="22" :stroke-width="2.3" />
+                <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
               </span>
               <span class="nav-label">{{ item.label }}</span>
             </button>

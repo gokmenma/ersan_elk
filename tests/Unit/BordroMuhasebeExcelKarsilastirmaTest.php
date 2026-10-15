@@ -1,5 +1,6 @@
 <?php
 use App\Service\BordroMuhasebeExcelKarsilastirmaService;
+use App\Service\BordroMuhasebeKarsilastirmaExcelService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PHPUnit\Framework\TestCase;
@@ -45,5 +46,16 @@ final class BordroMuhasebeExcelKarsilastirmaTest extends TestCase
         self::assertSame('muhasebe_bordro',$meta['format']);self::assertCount(1,$rows);
         self::assertSame(30,$rows[0]['alanlar']['toplam_gun']);self::assertSame(26,$rows[0]['alanlar']['fiili_gun']);
         self::assertSame(785965,$rows[0]['alanlar']['yemek']);self::assertSame(3587550,$rows[0]['alanlar']['banka']);
+    }
+
+    public function testExcelOzetindeAlanKisiSayisiPersonelBasinaBenzersizdir(): void
+    {
+        $result=['sonuclar'=>[
+            ['farklar'=>[['alan'=>'yemek','etiket'=>'Yemek Yardımı'],['alan'=>'yemek','etiket'=>'Yemek Yardımı'],['alan'=>'banka','etiket'=>'Bankaya Yatacak Tutar']]],
+            ['farklar'=>[['alan'=>'yemek','etiket'=>'Yemek Yardımı']]],
+        ]];
+        $counts=(new BordroMuhasebeKarsilastirmaExcelService())->alanSayilari($result);
+        self::assertSame('yemek',$counts[0]['alan']);self::assertSame(2,$counts[0]['adet']);
+        self::assertSame('banka',$counts[1]['alan']);self::assertSame(1,$counts[1]['adet']);
     }
 }

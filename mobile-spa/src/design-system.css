@@ -1260,7 +1260,8 @@
 }
 
 .bottom-nav__home-bar { display: none; }
-.nav-link, .nav-link--center {
+.bottom-nav .nav-link,
+.bottom-nav .nav-link--center {
   position: relative;
   display: flex;
   height: 54px;
@@ -1277,22 +1278,40 @@
   cursor: pointer;
   transition: background .18s ease, color .18s ease;
 }
-.nav-icon, .nav-link--center .nav-icon {
-  position: relative !important;
+.bottom-nav .nav-icon,
+.bottom-nav .nav-link--center .nav-icon {
+  position: static !important;
+  top: 0 !important;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  width: 24px !important;
+  height: 24px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
   color: inherit !important;
 }
-.app-shell .nav-label { color: inherit; font: 600 9px/1.2 var(--ds-font-main); white-space: nowrap; }
-.nav-link.is-active, .nav-link--center[aria-expanded=true] { color: var(--ds-ink); background: var(--ds-surface); }
-.nav-link.is-active .nav-icon, .nav-link.is-active .nav-label { color: inherit; }
-.nav-link.is-active::after { display: none; }
-.nav-link--center.is-active .nav-icon, .nav-link--center[aria-expanded=true] .nav-icon { color: inherit !important; background: transparent; box-shadow: none; transform: none; }
+.bottom-nav .nav-label,
+.app-shell .nav-label {
+  color: inherit;
+  font: 600 9px/1.2 var(--ds-font-main);
+  white-space: nowrap;
+}
+.bottom-nav .nav-link.is-active,
+.bottom-nav .nav-link--center[aria-expanded=true],
+.bottom-nav .nav-link[aria-expanded=true] {
+  color: var(--ds-ink);
+  background: var(--ds-surface);
+}
+.bottom-nav .nav-link.is-active .nav-icon,
+.bottom-nav .nav-link.is-active .nav-label,
+.bottom-nav .nav-link[aria-expanded=true] .nav-icon,
+.bottom-nav .nav-link[aria-expanded=true] .nav-label {
+  color: inherit !important;
+}
+.bottom-nav .nav-link.is-active::after { display: none; }
 
 /* Bildirim Sayaç Rozeti (Nav Bar İkon Rozeti) */
 .nav-bubble-badge {

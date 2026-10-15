@@ -1,10 +1,14 @@
 # Progress
+- [x] Mobil SPA (`mobile-spa`): Ana navbar "Diğer" sekmesi standardizasyonu ve Talepler sayfası üst çubuk düzenlemesi (2026-10-15):
+  - **Ana Navbarda "Diğer" İkonu Standardizasyonu**: Eski `styles.css` içindeki FAB yükselen yuvarlak buton kuralları temizlendi (`.nav-link--center`). `BottomNav.vue` içinde "Diğer" butonu diğer 4 sekme (Ana Sayfa, Personel, Raporlar, Talepler) ile aynı `nav-link` sınıfına, 21px `LayoutGrid` ikonuna ve 54px yüksekliğe getirildi. `design-system.css` içinde `.bottom-nav .nav-icon` için `position: static !important; top: 0 !important;` ile 5 sekmenin de aynı taban çizgisine (baseline) tam oturması sağlandı.
+  - **Talepler Sayfasında Üst "Tümü" Butonunun Kaldırılması**: `TaleplerView.vue` sayfasındaki durum pilleri satırından gereksiz `.pill-category-badge` ("Tümü ▾") kaldırıldı; `Bekleyenler`, `İşlem Görenler` ve `Silinenler` butonları satıra tam simetrik dağıtıldı (`flex: 1`).
+  - **Derleme**: `npm run build` ile Vite derlemesi 0 hata ile tamamlandı.
 - [x] Mobil SPA (`mobile-spa`): Tüm sayfalarda başlık & açıklamanın geri butonu yanına taşınması ve Talepler modülünün alan verimliliği optimizasyonu (2026-10-15):
   - **Tüm Sayfalar İçin Üst Başlık Standardı (`TopBar.vue`, `design-system.css`)**: Geri butonu bulunan tüm sayfalarda sayfa başlığı (`h1`) ve açıklaması (`p`), geri butonunun hemen yanında tek satır/kompakt blok haline getirildi; ayrık büyük `.clay-page-header` alanı kaldırılarak dikeyde ~80-100px ferahlık sağlandı.
   - **Talepler "SÜREÇ YÖNETİMİ" Kaldırıldı**: `eyebrow="SÜREÇ YÖNETİMİ"` kaldırıldı.
   - **Durum Filtreleri En Üstte (`TaleplerView.vue`)**: Bekleyenler, İşlem Görenler, Silinenler butonları başlığın hemen altına konumlandırıldı.
   - **Arama ve Sıralama Yan Yana**: Arama kutusu ile dairesel sıralama butonu yan yana hizalandı (`.talepler-search-sort-row`).
-  - **Navbar İçi Talep Türleri Çekmecesi (`BottomNav.vue`, `requests.js`)**: Sayfa gövdesindeki kaba KPI kartı kaldırılarak Avans, İzin ve Genel kategorileri (`counts` ve `permissions`) alt navigasyon çubuğu içine alındı; Talepler sayfasına girildiğinde veya basıldığında yatay kayma animasyonu (`transition`) ile açılıp Talepler butonunun `X` kapatma simgesine dönmesi, basıldığında ise akıcı animasyonla kapanması sağlandı. Çekmece kapalıyken sayfada hızlı kategori çipi (`.pill-category-badge`) sunuldu.
+  - **Navbar İçi Talep Türleri Nav Menüsü (`BottomNav.vue`, `requests.js`, `design-system.css`)**: Kaba KPI kartı yerine alt navigasyon çubuğu içine tam 5 sütunlu nav menü formatı uygulandı: `Tümü` (`Sparkles`), `Avans` (`Wallet`), `İzin` (`CalendarDays`), `Genel` (`Layers`) ve `Kapat` (`X`). Her sekmede dikey ikon ve metin hiyerarşisi, ikon köşelerinde dinamik sayaç rozetleri (`.nav-bubble-badge`) ve ana navbar ile birebir aynı aktif beyaz hap seçimi (`.nav-link.is-active`) sağlandı.
   - **Derleme**: `npm run build` ile hatasız üretim çıktısı alındı (`dist/`).
 - [x] Mobil SPA (`mobile-spa`): Araç Takip modülü (`AracView.vue`, `arac.js`, `public/api/arac.php`) UI/UX Pro Max ve Soft Bento & Claymorphic UI standartlarında sıfırdan geliştirildi (2026-10-15):
   - **Backend API**: `mobile-spa/public/api/arac.php` ve `dist/api/arac.php` oluşturuldu. Gate yetkilendirmesi (`arac_takip_yonetim`, `arac-takip/list`, `vehicles`), CSRF token denetimi, PDO parametrik binding, Security::encrypt / Security::decrypt ve AES-256-GCM şifreli ruhsat yükleme/stream indirme entegrasyonu sağlandı.
@@ -262,3 +266,6 @@
 - [x] Muhasebe Excel karşılaştırması sayfada yer kaplamayan modal yapısına taşındı ve seçili dönemin `Dönem İşlemleri` menüsüne eklendi.
 - [x] Gerçek muhasebe maaş bordrosu şablonu (`T.Gün`, `Normal Gün`, `N.Ödenen` ve ikili gün/tutar kolonları) desteklenerek gönderilen Mutabakat dosyasındaki altı ortak alanla güvenli biçimde eşlendi.
 - [x] Eklenen şablon testiyle birlikte 3 test / 16 doğrulama geçti; gerçek dosyada 103 personel ve örnek gün/yemek/banka değerleri doğrulandı.
+- [x] Modalda her farklı alan için benzersiz personel sayısını gösteren yatay grafik eklendi.
+- [x] Durum ve alan özetli, tüm farkları açık/filtrelenebilir satırlarda sunan XLSX indirme çıktısı eklendi; test paketi 4 test / 20 doğrulamaya çıktı.
+- [x] Excel detay çıktısı her personel tek satır ve her kalem üç kolon (`Muhasebe / Gönderilen / Fark`) olacak yatay matrise dönüştürüldü; fark hücreleri görünür biçimde vurgulandı.

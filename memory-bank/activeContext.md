@@ -1,5 +1,21 @@
 # Active Context
 
+## Mobil SPA Ana Navbar "Diğer" İkonu ve Talepler Sayfası Üst Çubuk İyileştirmesi (2026-10-15)
+- **Kullanıcı Talebi**:
+  1. "ana navbarda diğer ikonu düzensiz geldi": Ana navbardaki "Diğer" (LayoutGrid) ikonunun diğer 4 sekme (Ana Sayfa, Personel, Raporlar, Talepler) ile aynı hiza, aynı boyut ve düzenli görünmesi.
+  2. "tümü butonu çıkmasın yukarıda gerek yok": Talepler sayfasında durum filtreleri satırında yer alan gereksiz "Tümü ▾" kategori butonunun kaldırılması.
+- **Mimari & Geliştirmeler**:
+  1. **Ana Navbar "Diğer" İkonu Standardizasyonu (`mobile-spa/src/components/BottomNav.vue`, `src/styles.css`, `src/design-system.css`)**:
+     - `styles.css` içindeki eski yükselen yuvarlak buton mirası (`.nav-link--center .nav-icon { position: absolute; top: -20px; width: 48px; ... }`) tamamen kaldırıldı.
+     - `BottomNav.vue` içinde "Diğer" butonu diğer tüm sekmelerle birebir aynı yapıya getirildi: standart `nav-link` sınıfı, `LayoutGrid` ikonu (`size: 21`, `stroke-width: 1.9` / aktifken `2.4`), `nav-label` "Diğer".
+     - `design-system.css` içinde `.bottom-nav .nav-icon` için `position: static !important; top: 0 !important;` ve `24x24px` merkezi hizalama kuralları katı biçimde tanımlandı; 5 buton da aynı dikey baseline ve grid yüksekliğini paylaşıyor.
+  2. **Talepler Sayfasında Üst "Tümü" Butonunun Kaldırılması & Simetrik Durum Pilleri (`mobile-spa/src/views/TaleplerView.vue`)**:
+     - Durum filtreleri satırındaki `.pill-category-badge` ("Tümü ▾") butonu şablondan ve stilden tamamen kaldırıldı.
+     - `Bekleyenler`, `İşlem Görenler` ve `Silinenler` butonları `.status-pills-group .pill-btn` (`flex: 1; justify-content: center;`) ile satıra tam simetrik ve dengeli dağıtıldı.
+     - Kategori filtreleme işlevi alt navbardaki akıcı çekmece menüye (`Tümü`, `Avans`, `İzin`, `Genel`, `Kapat`) devredildi.
+  3. **Derleme & Doğrulama**:
+     - `npm run build` ile Vite derlemesi 0 hata ile tamamlandı (`dist/assets/index-35oEaH-n.js`, `dist/assets/index-BsKW8aWz.css`).
+
 ## Mobil SPA Başlık Hizalama ve Talepler Modülü Navbar/Yerleşim Optimizasyonu (2026-10-15)
 - **Kullanıcı Talebi**:
   1. Tüm sayfalarda sayfa başlık ve açıklamasının üstte, geri butonu yanında yer alması.
@@ -420,3 +436,6 @@
 - Karşılaştırma bileşeni sürekli görünen liste kartından çıkarıldı. Seçili dönem varken `Dönem İşlemleri > Muhasebe Excel Karşılaştır` menüsüyle açılan geniş, kaydırılabilir modal içinde çalışıyor; sonuçlar ve kişi fark detayları modalda gösteriliyor.
 - Kullanıcının gerçek `bordro_ersan_elkt İHALE 3.xlsx` dosyası Mutabakat sayfası içermeyen Logo/muhasebe maaş bordrosudur. Okuyucu bu şablonu da tanıyor ve brüt/net anlamlarını karıştırmadan ortak alanları eşliyor: `T.Gün → Toplam Gün`, `Normal Gün → Fiilî Gün`, `Ücretli İzin`, `Rapor`, yemek tutarı ve `N.Ödenen → Bankaya Yatacak`.
 - Muhasebe bordrosundaki brüt fazla mesai/tatil/aile tutarları bizim net Mutabakat kolonlarıyla doğrudan kıyaslanmıyor. Gerçek dosya 103 personel olarak okundu; toplam satırı kayıt sayılmıyor. İlk satır 30 toplam gün, 26 fiilî gün, 7.859,65 TL yemek ve 35.875,50 TL banka olarak doğrulandı.
+- Modal sonuçlarına alan bazında benzersiz personel sayısı grafiği eklendi. Her personel aynı alan için bir kez sayılıyor; örneğin Yemek Yardımı farkı bulunan kişi adedi yatay çubuk ve sayı olarak gösteriliyor.
+- Karşılaştırma sonrasında `Özet ve Açık Farkları Excel'e İndir` işlemi sunuluyor. XLSX dosyasının Özet sayfasında durum sayaçları ve alan bazında kişi sayıları; Açık Fark Satırları sayfasında personel/T.C./durum/alan/muhasebe/gönderilen/fark değerleri filtrelenebilir, gruplanmamış normal satırlar halinde bulunuyor.
+- Excel detay düzeni kullanıcı talebiyle kişi matrisi olarak değiştirildi: her personel tek satırda; ilk üç kolon Personel/T.C./Durum, devamında her karşılaştırma kalemi için birleştirilmiş kalem başlığı altında `Muhasebe / Gönderilen / Fark` üçlüsü bulunuyor. Fark hücreleri kırmızı vurgulanıyor, başlık filtresi açık ve ilk üç kolon sabitleniyor.

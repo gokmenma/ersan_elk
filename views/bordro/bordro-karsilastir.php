@@ -4,9 +4,9 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Security;
 use App\Service\BordroMuhasebeExcelKarsilastirmaService;
+use App\Service\BordroMuhasebeKarsilastirmaExcelService;
 use App\Service\Gate;
 
-header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); throw new DomainException('Yalnızca POST isteği kabul edilir.'); }
@@ -18,11 +18,15 @@ try {
     $donemId=(int)Security::decrypt((string)($_POST['donem']??''));
     if($donemId<=0)throw new DomainException('Geçersiz dönem seçimi.');
     $data=(new BordroMuhasebeExcelKarsilastirmaService())->karsilastir($_FILES['muhasebe_excel']??[],$firmaId,$donemId);
+    if(($_POST['cikti']??'')==='excel') (new BordroMuhasebeKarsilastirmaExcelService())->indir($data);
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['status'=>'success','data'=>$data],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
 } catch (DomainException $e) {
+    header('Content-Type: application/json; charset=utf-8');
     if(http_response_code()<400)http_response_code(422);
     echo json_encode(['status'=>'error','message'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
+    header('Content-Type: application/json; charset=utf-8');
     error_log('Bordro muhasebe Mutabakat karşılaştırma: '.$e->getMessage());http_response_code(500);
     echo json_encode(['status'=>'error','message'=>'Excel karşılaştırması tamamlanamadı.'],JSON_UNESCAPED_UNICODE);
 }

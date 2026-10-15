@@ -8,7 +8,6 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
   Clock3,
   FileCheck2,
@@ -19,7 +18,6 @@ import {
   MessageSquare,
   RefreshCw,
   Search,
-  Sparkles,
   Trash2,
   User,
   Wallet,
@@ -362,22 +360,6 @@ async function submitSil() {
           <span>Silinenler</span>
         </button>
       </div>
-
-      <!-- Çekmece kapalıyken hızlı kategori göstergesi / açıcı -->
-      <button
-        v-if="!requestsState.drawerOpen"
-        type="button"
-        class="pill-category-badge"
-        title="Talep türünü değiştir"
-        @click="openRequestsDrawer"
-      >
-        <Sparkles v-if="activeTab === 'all'" :size="13" />
-        <Wallet v-else-if="activeTab === 'avans'" :size="13" />
-        <CalendarDays v-else-if="activeTab === 'izin'" :size="13" />
-        <Layers v-else :size="13" />
-        <span>{{ activeTab === 'all' ? 'Tümü' : activeTab === 'avans' ? 'Avans' : activeTab === 'izin' ? 'İzin' : 'Genel' }}</span>
-        <ChevronDown :size="12" />
-      </button>
     </div>
 
     <!-- 2. Arama Kutusu ve Sıralama Yan Yana -->
@@ -1058,25 +1040,31 @@ async function submitSil() {
   display: flex;
   margin-bottom: 12px;
   align-items: center;
-  gap: 8px;
+  width: 100%;
 }
 
 .status-pills-group {
   display: flex;
   min-width: 0;
-  flex: 1;
-  gap: 6px;
+  width: 100%;
+  gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .status-pills-group::-webkit-scrollbar { display: none; }
 
+.status-pills-group .pill-btn {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
 .pill-btn {
   display: inline-flex;
   align-items: center;
   height: 36px;
-  padding: 0 14px;
+  padding: 0 12px;
   gap: 6px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-pill);
@@ -1104,29 +1092,6 @@ async function submitSil() {
   border-color: var(--ds-danger);
   background: var(--ds-danger);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
-}
-
-/* Hızlı Kategori Rozeti (Çekmece Kapalıyken) */
-.pill-category-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-surface);
-  color: var(--ds-primary);
-  box-shadow: var(--ds-shadow-pill);
-  font: 700 11px var(--ds-font-main);
-  white-space: nowrap;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.pill-category-badge:active {
-  transform: scale(0.95);
 }
 
 /* 2. Arama ve Sıralama Yan Yana */

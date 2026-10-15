@@ -13,13 +13,30 @@
         if(statusFilter){$.fn.dataTable.ext.search=$.fn.dataTable.ext.search.filter(fn=>fn!==statusFilter);statusFilter=null;}
         const cards=[['toplam','Toplam Sonuç','primary'],['farkli','Farklı','danger'],['yalniz_muhasebe','Yalnız Muhasebede','warning'],['yalniz_sistem','Yalnız Sistemde','info'],['eslesen','Eşleşen','success']];
         $('#muhasebeKarsilastirmaOzet').html(cards.map(([k,l,c])=>`<div class="col-6 col-lg"><div class="border rounded-3 p-2 h-100 bg-${c}-subtle"><div class="font-size-11 text-muted">${l}</div><div class="font-size-18 fw-bold text-${c}">${data.sayilar[k]}</div></div></div>`).join(''));
+        const fieldCounts={};
+        data.sonuclar.forEach(person=>{const seen=new Set();(person.farklar||[]).forEach(f=>{if(seen.has(f.alan))return;seen.add(f.alan);fieldCounts[f.alan]??={label:f.etiket,count:0};fieldCounts[f.alan].count++;});});
+        const graph=Object.values(fieldCounts).sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,'tr'));
+        const max=Math.max(1,...graph.map(item=>item.count));
+        $('#muhasebeAlanGrafik').html(graph.length?graph.map(item=>`<div class="mb-2"><div class="d-flex justify-content-between gap-2 font-size-12 mb-1"><span>${esc(item.label)}</span><strong>${item.count} kişi</strong></div><div class="progress" style="height:9px"><div class="progress-bar bg-danger" role="progressbar" style="width:${Math.max(2,item.count/max*100)}%" aria-valuenow="${item.count}" aria-valuemin="0" aria-valuemax="${max}"></div></div></div>`).join(''):'<div class="text-success font-size-12"><i class="bx bx-check-circle me-1"></i>Alan farkı bulunmadı.</div>');
         $('#muhasebeDurumFiltreleri').html(`<button type="button" class="btn btn-sm btn-dark muhasebe-filter active" data-status="">Tümü</button>${cards.slice(1).map(([k,l,c])=>`<button type="button" class="btn btn-sm btn-subtle-${c} muhasebe-filter" data-status="${k}">${l} (${data.sayilar[k]})</button>`).join('')}`);
         if(table){table.destroy();$('#muhasebeKarsilastirmaTable tbody').empty();}
         data.sonuclar.forEach((row,index)=>{const [label,color]=statusInfo[row.durum];$('#muhasebeKarsilastirmaTable tbody').append(`<tr data-index="${index}" data-status="${row.durum}"><td class="fw-semibold">${esc(row.personel)}</td><td>${esc(row.tc||'—')}</td><td><span class="badge bg-${color}-subtle text-${color} border border-${color}-subtle rounded-pill">${label}</span></td><td class="text-center">${row.fark_sayisi}</td><td class="font-size-12">${esc(row.aciklama)}</td><td class="text-center"><button type="button" class="table-action-btn btn-subtle-primary btn-karsilastirma-detay" aria-label="Fark detayını aç"><i class="bx bx-chevron-down"></i></button></td></tr>`);});
         table=$('#muhasebeKarsilastirmaTable').DataTable(applyLengthStateSave({...getDatatableOptions(),responsive:false,pageLength:25,order:[[2,'asc'],[0,'asc']],columnDefs:[{targets:5,orderable:false,searchable:false}]}));
         $('#muhasebeKarsilastirmaSonuc').removeClass('d-none');
+        $('#btnMuhasebeKarsilastirmaExcel').removeClass('d-none');
     }
     $(document).on('submit','#muhasebeKarsilastirmaForm',function(e){e.preventDefault();const b=$('#btnMuhasebeKarsilastir'),html=b.html();$('#muhasebeKarsilastirmaHata').addClass('d-none').text('');b.prop('disabled',true).html('<i class="bx bx-loader-alt bx-spin me-1"></i>Analiz ediliyor...');$.ajax({url:'views/bordro/bordro-karsilastir.php',method:'POST',data:new FormData(this),processData:false,contentType:false,dataType:'json'}).done(r=>{if(r.status!=='success')throw new Error(r.message||'Karşılaştırma tamamlanamadı.');render(r.data);}).fail(xhr=>$('#muhasebeKarsilastirmaHata').removeClass('d-none').text(xhr.responseJSON?.message||'Excel karşılaştırması tamamlanamadı.')).always(()=>b.prop('disabled',false).html(html));});
     $(document).on('click','.muhasebe-filter',function(){$('.muhasebe-filter').removeClass('active');$(this).addClass('active');const wanted=this.dataset.status;if(statusFilter)$.fn.dataTable.ext.search=$.fn.dataTable.ext.search.filter(fn=>fn!==statusFilter);statusFilter=(settings,data,index)=>settings.nTable.id!=='muhasebeKarsilastirmaTable'||!wanted||$(settings.aoData[index].nTr).data('status')===wanted;$.fn.dataTable.ext.search.push(statusFilter);table.draw();});
     $(document).on('click','#muhasebeKarsilastirmaTable .btn-karsilastirma-detay',function(){const tr=$(this).closest('tr'),row=table.row(tr),index=Number(tr.data('index'));if(row.child.isShown()){row.child.hide();$(this).find('i').attr('class','bx bx-chevron-down');}else{row.child(detail(result.sonuclar[index]),'bg-light').show();$(this).find('i').attr('class','bx bx-chevron-up');}});
+    $(document).on('click','#btnMuhasebeKarsilastirmaExcel',async function(){
+        const button=$(this),original=button.html(),form=document.getElementById('muhasebeKarsilastirmaForm');if(!form)return;
+        const data=new FormData(form);data.append('cikti','excel');button.prop('disabled',true).html('<i class="bx bx-loader-alt bx-spin me-1"></i>Excel hazırlanıyor...');
+        try{
+            const response=await fetch('views/bordro/bordro-karsilastir.php',{method:'POST',body:data});
+            if(!response.ok){const error=await response.json().catch(()=>({}));throw new Error(error.message||'Excel hazırlanamadı.');}
+            const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement('a');
+            const disposition=response.headers.get('Content-Disposition')||'',match=disposition.match(/filename="?([^";]+)"?/i);link.href=url;link.download=match?.[1]||'muhasebe-karsilastirma.xlsx';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+        }catch(error){$('#muhasebeKarsilastirmaHata').removeClass('d-none').text(error.message||'Excel hazırlanamadı.');}
+        finally{button.prop('disabled',false).html(original);}
+    });
 })(jQuery);

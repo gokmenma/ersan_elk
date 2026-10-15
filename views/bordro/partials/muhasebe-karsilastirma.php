@@ -24,6 +24,10 @@ $eMuhasebe = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 
         <div id="muhasebeKarsilastirmaHata" class="alert alert-danger mt-3 mb-0 d-none"></div>
         <div id="muhasebeKarsilastirmaSonuc" class="d-none mt-3">
             <div class="row g-2 mb-3" id="muhasebeKarsilastirmaOzet"></div>
+            <div class="border rounded-3 p-3 mb-3" id="muhasebeAlanGrafikKarti">
+                <div class="fw-semibold font-size-13 mb-2">Alan Bazında Farklı Personel Sayısı</div>
+                <div id="muhasebeAlanGrafik"></div>
+            </div>
             <div class="d-flex gap-2 flex-wrap mb-2" id="muhasebeDurumFiltreleri"></div>
             <div class="table-responsive"><table id="muhasebeKarsilastirmaTable" class="table table-bordered table-hover align-middle w-100 mb-0">
                 <thead><tr><th data-filter="string">Personel</th><th data-filter="string">T.C.</th><th data-filter="select">Durum</th><th data-filter="number">Fark Sayısı</th><th data-filter="string">Açıklama</th><th data-filter="none" class="text-center">Detay</th></tr></thead><tbody></tbody>
@@ -32,6 +36,7 @@ $eMuhasebe = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 
             </div>
             <div class="modal-footer">
                 <span class="text-muted font-size-11 me-auto"><i class="bx bx-info-circle me-1"></i>Bu işlem bordro kayıtlarını değiştirmez.</span>
+                <button type="button" class="btn btn-success d-none" id="btnMuhasebeKarsilastirmaExcel"><i class="mdi mdi-file-excel me-1"></i>Kişi Bazlı Karşılaştırmayı Excel'e İndir</button>
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>

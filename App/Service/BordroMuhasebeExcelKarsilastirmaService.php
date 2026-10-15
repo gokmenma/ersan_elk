@@ -30,16 +30,17 @@ final class BordroMuhasebeExcelKarsilastirmaService
     {
         [$muhasebe,$meta]=$this->exceliOku($this->dosyayiDogrula($file));
         [$sistem,$donem]=$this->sistemSatirlari($firmaId,$donemId);
+        $alanKeys=array_keys($meta['format']==='muhasebe_bordro'?self::MUHASEBE_BORDRO_ALANLARI:self::ALANLAR);
         $sonuclar=[]; $used=[];
         foreach($muhasebe as $excel){
             [$key,$sys,$match]=$this->eslesenSistemSatiri($excel,$sistem,$used);
-            if(!$sys){$sonuclar[]=$this->sonucSatiri($excel,null,'yalniz_muhasebe','Muhasebe Excelinde var, gönderilen sistem listesinde yok.',[]);continue;}
-            $used[$key]=true; $fark=$this->alanFarklari($excel['alanlar'],$sys['alanlar'],array_keys($meta['format']==='muhasebe_bordro'?self::MUHASEBE_BORDRO_ALANLARI:self::ALANLAR));
+            if(!$sys){$sonuclar[]=$this->sonucSatiri($excel,null,'yalniz_muhasebe','Muhasebe Excelinde var, gönderilen sistem listesinde yok.',[],$alanKeys);continue;}
+            $used[$key]=true; $fark=$this->alanFarklari($excel['alanlar'],$sys['alanlar'],$alanKeys);
             $aciklama=$fark?count($fark).' alanda fark var.':'Mutabakat alanlarının tamamı aynı.';
             if($match==='ad')$aciklama.=' T.C. yerine ad-soyad ile eşleştirildi.';
-            $sonuclar[]=$this->sonucSatiri($excel,$sys,$fark?'farkli':'eslesen',$aciklama,$fark,$match);
+            $sonuclar[]=$this->sonucSatiri($excel,$sys,$fark?'farkli':'eslesen',$aciklama,$fark,$alanKeys,$match);
         }
-        foreach($sistem as $key=>$sys)if(!isset($used[$key]))$sonuclar[]=$this->sonucSatiri(null,$sys,'yalniz_sistem','Gönderilen sistem listesinde var, muhasebe Excelinde yok.',[]);
+        foreach($sistem as $key=>$sys)if(!isset($used[$key]))$sonuclar[]=$this->sonucSatiri(null,$sys,'yalniz_sistem','Gönderilen sistem listesinde var, muhasebe Excelinde yok.',[],$alanKeys);
         $rank=['farkli'=>0,'yalniz_muhasebe'=>1,'yalniz_sistem'=>2,'eslesen'=>3];
         usort($sonuclar,static fn($a,$b)=>[$rank[$a['durum']]??9,$a['personel']]<=>[$rank[$b['durum']]??9,$b['personel']]);
         $sayilar=array_fill_keys(['toplam','eslesen','farkli','yalniz_muhasebe','yalniz_sistem'],0);$sayilar['toplam']=count($sonuclar);
@@ -142,7 +143,12 @@ final class BordroMuhasebeExcelKarsilastirmaService
 
     private function eslesenSistemSatiri(array $e,array $s,array $used): array{if($e['tc']!=='')foreach($s as $k=>$r)if(!isset($used[$k])&&$r['tc']===$e['tc'])return[$k,$r,'tc'];$c=[];foreach($s as $k=>$r)if(!isset($used[$k])&&$r['normalize_ad']===$e['normalize_ad'])$c[$k]=$r;if(count($c)===1){$k=array_key_first($c);return[$k,$c[$k],'ad'];}return[null,null,null];}
     private function alanFarklari(array $e,array $s,?array $keys=null): array{$f=[];foreach($keys??array_keys(self::ALANLAR) as $k){$label=self::ALANLAR[$k]??self::MUHASEBE_BORDRO_ALANLARI[$k]??$k;if($e[$k]===$s[$k])continue;$f[]=['alan'=>$k,'etiket'=>$label,'muhasebe'=>$e[$k],'sistem'=>$s[$k],'fark'=>$e[$k]-$s[$k],'tur'=>in_array($k,self::GUNLER,true)?'sayi':'para'];}return$f;}
-    private function sonucSatiri(?array $e,?array $s,string $durum,string $aciklama,array $fark,?string $match=null): array{return['personel'=>(string)($s['personel']??$e['personel']??''),'tc'=>$this->maskTc((string)($s['tc']??$e['tc']??'')),'durum'=>$durum,'aciklama'=>$aciklama,'eslesme'=>$match,'excel_satir'=>$e['satir']??null,'bordro_id'=>$s['bordro_id']??null,'fark_sayisi'=>count($fark),'farklar'=>$fark];}
+    private function sonucSatiri(?array $e,?array $s,string $durum,string $aciklama,array $fark,array $keys,?string $match=null): array
+    {
+        $values=[];
+        foreach($keys as $key){$money=!in_array($key,self::GUNLER,true);$muhasebe=$e['alanlar'][$key]??null;$sistem=$s['alanlar'][$key]??null;$values[$key]=['muhasebe'=>$muhasebe,'sistem'=>$sistem,'fark'=>$muhasebe!==null&&$sistem!==null?$muhasebe-$sistem:null,'tur'=>$money?'para':'sayi'];}
+        return['personel'=>(string)($s['personel']??$e['personel']??''),'tc'=>$this->maskTc((string)($s['tc']??$e['tc']??'')),'durum'=>$durum,'aciklama'=>$aciklama,'eslesme'=>$match,'excel_satir'=>$e['satir']??null,'bordro_id'=>$s['bordro_id']??null,'fark_sayisi'=>count($fark),'farklar'=>$fark,'degerler'=>$values];
+    }
     private function para(Worksheet $s,int $c,int $r): int{return $this->kurus($s->getCell([$c,$r])->getCalculatedValue());}
     private function gun(Worksheet $s,int $c,int $r): int{return (int)round((float)str_replace(',','.',preg_replace('/[^0-9,.-]/u','',(string)$s->getCell([$c,$r])->getFormattedValue())));}
     private function kurus(mixed $v): int{if($v===null||$v==='')return 0;if(is_numeric($v))return(int)round((float)$v*100);$x=preg_replace('/[^0-9,.-]/u','',(string)$v);if(str_contains($x,',')&&str_contains($x,'.'))$x=strrpos($x,',')>strrpos($x,'.')?str_replace(',','.',str_replace('.','',$x)):str_replace(',','',$x);elseif(str_contains($x,','))$x=str_replace(',','.',$x);return(int)round((float)$x*100);}
