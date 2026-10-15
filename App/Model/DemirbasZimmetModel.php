@@ -605,7 +605,9 @@ class DemirbasZimmetModel extends Model
         $orderCol = $request['order'][0]['column'] ?? null;
         $orderDir = $request['order'][0]['dir'] ?? 'DESC';
 
-        $baseSql = "SELECT 
+        // Zimmet tablosundan başlayarak LIMIT'e erken ulaş. MySQL aksi durumda küçük
+        // personel tablosundan başlayıp tüm zimmetleri temporary/filesort ile tarıyor.
+        $baseSql = "SELECT STRAIGHT_JOIN
                         " . $this->getZimmetCols() . ",
                         " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                         " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -660,6 +662,7 @@ class DemirbasZimmetModel extends Model
 
         // Sütun Bazlı Arama
         $colSearchMap = [
+            1 => 'z.id',
             2 => 'k.tur_adi',
             3 => 'd.demirbas_adi',
             4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
@@ -759,6 +762,22 @@ class DemirbasZimmetModel extends Model
                                     break;
                                 case 'not_equals':
                                     $searchWhere .= " AND $field != :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'greater_than':
+                                    $searchWhere .= " AND $field > :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'less_than':
+                                    $searchWhere .= " AND $field < :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'greater_equal':
+                                    $searchWhere .= " AND $field >= :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'less_equal':
+                                    $searchWhere .= " AND $field <= :$paramKey";
                                     $params[$paramKey] = $val;
                                     break;
                                 case 'before':

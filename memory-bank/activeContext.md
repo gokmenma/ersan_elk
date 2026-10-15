@@ -1,5 +1,23 @@
 # Active Context
 
+## Zimmet sayfası performans analizi (2026-10-15)
+- `demirbas/zimmet` ilk yükü ayrıştırıldı: personel seçenekleri yaklaşık 34 ms, kategoriler yaklaşık 5 ms; DataTables AJAX sorgusu ise 5,8–8,5 saniye sürdü.
+- SQL profiling sonucunda toplam sayım 136 ms, filtreli sayım 151 ms, ilk 10 satırın veri sorgusu 7,84 saniye ölçüldü. Ana darboğaz veri sorgusudur.
+- EXPLAIN çıktısında `demirbas_zimmet` için 27 bin satır tam tarama, personel tablosunda block nested loop, geçici tablo ve filesort görüldü. Aynı temel sorguda join sırası zimmet tablosundan başlayacak şekilde zorlandığında yaklaşık 1 ms ölçüldü.
+- İkincil iyileştirme alanları: hareket toplamlarının üç korelasyonlu alt sorgu yerine sayfa ID'leri için toplu alınması, mükerrer seri kontrolünün sayfa satırlarına toplu uygulanması, uygun bileşik indekslerin ayrı SQL migration ile eklenmesi, 169 KB ortak `demirbas.js` dosyasından zimmet kodunun ayrılması ve kapalı grafik/modalların ihtiyaç anında yüklenmesi.
+- Liste sorgusuna `STRAIGHT_JOIN` uygulanarak MySQL'in zimmet tablosundan ve ID indeksinden başlaması sağlandı. Filtresiz ilk 10 satır isteği 5,8–8,5 saniyeden yaklaşık 225 ms'ye indi.
+- Gelişmiş sayı filtrelerinin API'de eksik olan `greater_than`, `less_than`, `greater_equal` ve `less_equal` operatörleri eklendi. Mevcut ID filtresi 148 ms, sonuçsuz ID filtresi 145 ms, filtreler temizlendikten sonraki liste 225 ms ölçüldü.
+- Görselde filtrelenen `28052` ID'sinin önceki başarısız toplu zimmet transaction'ında üretilip rollback edildiği için veritabanında bulunmadığı doğrulandı; bu ID için boş sonuç doğrudur.
+
+## Zimmet seçim listesinde mükerrer seri görünürlüğü (2026-10-15)
+- `DemirbasModel::getForSelect()` aynı firmada birden fazla aktif demirbaş kartında bulunan kullanılabilir seri numaralarını tespit edecek şekilde güncellendi.
+- Stoku tükenmiş olsa bile mükerrer seri kartları zimmet modalındaki Select2 sonucuna dahil ediliyor; aktif zimmette olan seçenek uyarılı ve devre dışı, stokta olan mükerrer seçenekler ise görünür uyarı metniyle sunuluyor.
+- Geçersiz/temsili seri değerleri (`-`, `0`, `yok`, `n/a` vb.) mükerrer olarak değerlendirilmedi. Mevcut stok uygunluk hesabı ve sunucu tarafındaki zimmet mükerrer kontrolü korundu.
+- Gerçek veride `25930517` seri numarasıyla üç kartın birlikte döndüğü, aktif zimmetteki kartın `disabled: true` ve uyarılı olduğu doğrulandı. PHP sözdizimi kontrolleri geçti.
+- Zimmet listesi ID başlık filtresinin sunucu eşlemesinde eksik olan `1 => z.id` alanı eklendi; gerçek bir zimmet ID'siyle filtre sonucunun tek satıra düştüğü doğrulandı.
+- Toplu sayaç zimmetinde aynı seriye ait tüm demirbaş kartlarının döngüye alınarak transaction içinde yapay mükerrer zimmet oluşturduğu tespit edildi. `26117971–26117980` aralığında 10 seri için 20 kart bulunduğu doğrulandı.
+- Koli kontrolü mükerrer kart sayısını uyarı olarak gösteriyor. Kayıt aşaması her seri için stoktaki tek kartı deterministik seçiyor; 10 seriyle yapılan kayıt denemesi hatasız tamamlanıp test transaction'ı geri alındı.
+
 ## Sistem Logları Menü ve Yetkilendirme Çalışması (2026-10-15)
 - **Kullanıcı Talebi**:
   `views/logs/list.php` sayfası için menü yapılması ve Süper Admin ile Firma Sahibi için yetki verilmesi.
@@ -263,6 +281,9 @@
 - Bordro Kontrol Excel'i canlı ek ödeme ve kesinti tablolarından ayrıldı; sözleşme ve kesinti kırılımları Model katmanında kayıtlı bordro snapshot'ından üretiliyor.
 - Prim usulü sözleşme kartındaki `Puantaj Hakedişi`, tüm personellerde snapshot'a kaydedilmiş gerçek `[Puantaj]`/`[Sayaç]` kaynaklarından üretiliyor; resmî asgari taban bu satıra eklenmiyor. Resmî taraftaki `Asgari Ücret (Net)` ve kayıtlı ödeme kanalları değişmiyor. Aynı puantajın prim usulü kartta ikinci kez ek ödeme satırı olarak çizilmesi engellendi; detay ve Bordro Kontrol Excel'i aynı model özetini kullanıyor.
 - Hesaplanmış 164 prim usulü bordro salt okunur tarandı; sözleşme kaynak satırları ile kart/Excel toplamı arasında fark ve negatif satır bulunmadı. Mehmet Durdu Eylül 2026 sözleşme tarafı `0,00 TL Puantaj Hakedişi + 3.500,00 TL Nöbet = 3.500,00 TL`, resmî banka ve ödeme `32.380,41 TL` olarak doğrulandı.
+- Prim usulü bordro detayındaki `Puantaj Hakedişi` ana akordeonuna toplam işlem adedi rozeti taşındı. Akordeon açıldığında puantaj işlem adı, adet × birim fiyat ve tutar kırılımları doğrudan gösteriliyor; önceki ikinci puantaj toplam satırı geri getirilmedi ve parasal hesaplara dokunulmadı.
+- Resmî Alacak detay dağılımı Muhasebe Excel'iyle aynı önceliğe getirildi: asgari/eş yardımından sonra RTÇ, HTÇ, fazla mesai ve resmî prim ayrılıyor; yemek kalan resmî matrahla sınırlandırılıyor. Böylece Halil İbrahim Karataşlı Eylül 2026 örneğindeki 935,85 TL HTÇ yemek satırında erimeden ayrı gösteriliyor; 14.850,05 TL resmî toplam/banka ödemesi korunuyor. Hesaplanmış 86 HTÇ'li snapshot taramasında detay–Excel HTÇ farkı bulunmadı.
+- Resmî kalem öncelik hesabı `BordroPersonelModel::getMuhasebeResmiKalemDagilimi()` altında tekilleştirildi. Detay modalı ve Muhasebe Excel mutabakat sayfası bu metodu kullanıyor; Excel içinde ikinci dağıtım closure'ı kaldırıldı ve geri eklenmesini engelleyen kaynak testi yazıldı. 743 hesaplanmış snapshot/86 HTÇ kaydı taramasında merkezî toplam ve detay–Excel HTÇ farkı `0` kaldı.
 - Eski snapshot'larda eksik veya fazla açıklayıcı kalemler negatif teknik satır üretmeden kayıtlı footer toplamına bağlandı.
 - 817 hesaplanmış snapshot taramasında sözleşme satır/footer farkı, kesinti satır/footer farkı ve liste–Muhasebe Excel banka farkı sıfır çıktı. 93 bordro testi ve 749 doğrulama geçti; mevcut 7 legacy uyarı devam ediyor.
 

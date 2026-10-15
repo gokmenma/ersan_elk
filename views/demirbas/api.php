@@ -1905,39 +1905,41 @@ if ($action == "koli-kontrol") {
             jsonResponse("error", "Seri listesi boş.");
         }
 
-        // Veritabanından bu serilere sahip ürünleri çek
-        // SQL Injection'a karşı placeholder oluştur
-        $placeholders = implode(',', array_fill(0, count($seriler), '?'));
+        $records = $Demirbas->getZimmetCardsBySerials($seriler);
 
-        $sql = $Demirbas->getDb()->prepare("
-            SELECT id, seri_no, 
-            (COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar, 
-            durum 
-            FROM demirbas 
-            WHERE firma_id = ? AND seri_no IN ($placeholders)
-        ");
-
-        $params = array_merge([$_SESSION['firma_id']], $seriler);
-        $sql->execute($params);
-        $records = $sql->fetchAll(PDO::FETCH_ASSOC);
-
-        // Sonuçları işle (key olarak seri no kullan)
+        // Aynı seri numarası birden fazla demirbaş kartında bulunabilir.
+        // Tüm kartları koru; uygun olan kartı seçerken mükerrer sayısını da istemciye bildir.
         $dbResults = [];
         foreach ($records as $rec) {
-            $dbResults[$rec['seri_no']] = $rec;
+            $dbResults[$rec['seri_no']][] = $rec;
         }
 
         $response = [];
         foreach ($seriler as $seri) {
             if (isset($dbResults[$seri])) {
-                $rec = $dbResults[$seri];
-                $kalan = intval($rec['kalan_miktar']);
-                $durum = strtolower($rec['durum']);
+                $seriRecords = $dbResults[$seri];
+                $rec = null;
+                foreach ($seriRecords as $candidate) {
+                    $kalan = intval($candidate['kalan_miktar']);
+                    $durum = strtolower($candidate['durum']);
+                    if ($kalan > 0 && !in_array($durum, ['hurda', 'arizali'], true)) {
+                        $rec = $candidate;
+                        break;
+                    }
+                }
 
-                if ($kalan > 0 && !in_array($durum, ['hurda', 'arizali'])) {
-                    $response[$seri] = ["status" => "ok", "id" => $rec['id']];
+                if ($rec !== null) {
+                    $response[$seri] = [
+                        "status" => "ok",
+                        "id" => $rec['id'],
+                        "duplicate_count" => max(0, count($seriRecords) - 1)
+                    ];
                 } else {
-                    $response[$seri] = ["status" => "not_in_stock", "id" => $rec['id']];
+                    $response[$seri] = [
+                        "status" => "not_in_stock",
+                        "id" => $seriRecords[0]['id'],
+                        "duplicate_count" => max(0, count($seriRecords) - 1)
+                    ];
                 }
             } else {
                 $response[$seri] = ["status" => "missing"];
@@ -2006,23 +2008,17 @@ if ($action == "zimmet-koli-kaydet-coklu") {
         if (empty($tumSeriler)) {
             jsonResponse("error", "İşlenecek seri numarası bulunamadı.");
         }
+        $tumSeriler = array_values(array_unique($tumSeriler));
 
-        // Veritabanından ID'leri bul
-        $placeholders = implode(',', array_fill(0, count($tumSeriler), '?'));
-        $sql = $Demirbas->getDb()->prepare("
-            SELECT id, seri_no, 
-            (COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar 
-            FROM demirbas 
-            WHERE firma_id = ? AND seri_no IN ($placeholders)
-        ");
-        $params = array_merge([$_SESSION['firma_id']], $tumSeriler);
-        $sql->execute($params);
-        $records = $sql->fetchAll(PDO::FETCH_ASSOC);
+        $records = $Demirbas->getZimmetCardsBySerials($tumSeriler);
 
-        // Stok kontrolü (Backend tarafında da tekrar kontrol edelim)
+        // Her seri için stokta bulunan tek bir kart seç. Aynı seri için tüm kartları
+        // işlemek, transaction içinde yapay bir ikinci zimmet denemesine yol açıyordu.
         $dbRecordsMap = [];
         foreach ($records as $rec) {
-            $dbRecordsMap[$rec['seri_no']] = $rec;
+            if ((int) $rec['kalan_miktar'] > 0 && !isset($dbRecordsMap[$rec['seri_no']])) {
+                $dbRecordsMap[$rec['seri_no']] = $rec;
+            }
         }
 
         $eksikSeriler = [];
@@ -2040,8 +2036,8 @@ if ($action == "zimmet-koli-kaydet-coklu") {
         $Zimmet->getDb()->beginTransaction();
         $successCount = 0;
 
-        foreach ($records as $rec) {
-            $seri = $rec['seri_no'];
+        foreach ($tumSeriler as $seri) {
+            $rec = $dbRecordsMap[$seri];
             $koliBaslangic = $koliMap[$seri] ?? '?';
             $ozelTarih = $koliTarihMap[$koliBaslangic] ?? $teslim_tarihi;
 

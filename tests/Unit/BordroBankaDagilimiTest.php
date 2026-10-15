@@ -237,12 +237,103 @@ final class BordroBankaDagilimiTest extends TestCase
         ]);
 
         self::assertSame('Olumlu Kaçak İhbar Primi', $result['ek_odemeler'][0]['etiket']);
-        self::assertSame(303.75, $result['ek_odemeler'][0]['tutar']);
-        self::assertSame(96.25, $result['ek_odemeler'][0]['yemek_dahil_tutar']);
+        self::assertSame(400.0, $result['ek_odemeler'][0]['tutar']);
+        self::assertSame(0.0, $result['ek_odemeler'][0]['yemek_dahil_tutar']);
         self::assertSame('Aylık Araç Kirası', $result['ek_odemeler'][1]['etiket']);
         self::assertSame(0.0, $result['ek_odemeler'][1]['tutar']);
         self::assertSame(2100.0, $result['ek_odemeler'][1]['yemek_dahil_tutar']);
+        self::assertSame(6203.75, $result['yemek']);
         self::assertSame(30000.0, $result['brut_banka']);
+    }
+
+    public function testBankaDetayiHtcPayiniYemektenAyirarakMuhasebeExceliyleEsitler(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 14850.05,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 0,
+            'asgariYatacak' => 12166.05,
+            'bankaAsgariGun' => 13,
+            'mealAllowanceDeduction' => 2684.0,
+            'spouseAllowanceDeduction' => 0,
+            'bankaEkOdemeDetaylari' => [[
+                'etiket' => 'Hafta Tatili Çalışması (Net)',
+                'tutar' => 935.85,
+                'resmi_alacagina_dahil' => true,
+            ]],
+        ]);
+
+        self::assertSame(12166.05, $detay['asgari']);
+        self::assertSame(1748.15, $detay['yemek']);
+        self::assertSame(935.85, $detay['ek_odemeler'][0]['tutar']);
+        self::assertSame(0.0, $detay['ek_odemeler'][0]['yemek_dahil_tutar']);
+        self::assertSame(14850.05, round(
+            $detay['asgari']
+            + $detay['yemek']
+            + array_sum(array_column($detay['ek_odemeler'], 'tutar')),
+            2
+        ));
+        self::assertSame(14850.05, $detay['brut_banka']);
+    }
+
+    public function testBankaDetayiHtcPayiniNobettenOnceAyirir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $detay = $model->getBankaOdemeDetayDagilimi([
+            'bankaOdemesi' => 12120.0,
+            'bankaOncelikliKesinti' => 0,
+            'bankaAktarilanKesinti' => 0,
+            'asgariYatacak' => 10294.35,
+            'mealAllowanceDeduction' => 891.0,
+            'spouseAllowanceDeduction' => 0,
+            'bankaEkOdemeDetaylari' => [
+                ['etiket' => 'Hafta Sonu Nöbet', 'tutar' => 1000.0, 'resmi_alacagina_dahil' => true],
+                ['etiket' => 'Hafta Tatili Çalışması (Net)', 'tutar' => 935.85, 'resmi_alacagina_dahil' => true],
+            ],
+        ]);
+
+        self::assertSame('Hafta Tatili Çalışması (Net)', $detay['ek_odemeler'][0]['etiket']);
+        self::assertSame(935.85, $detay['ek_odemeler'][0]['tutar']);
+        self::assertSame('Hafta Sonu Nöbet', $detay['ek_odemeler'][1]['etiket']);
+        self::assertSame(889.8, $detay['ek_odemeler'][1]['tutar']);
+        self::assertSame(0.0, $detay['yemek']);
+    }
+
+    public function testMuhasebeResmiKalemDagilimiTekMerkezdenOncelikliVeMutabikUretilir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $dagilim = $model->getMuhasebeResmiKalemDagilimi([
+            'muhasebe_resmi_banka_matrahi' => 14850.05,
+            'resmi_alacak_asgari' => 12166.05,
+            'es_yardimi' => 0,
+            'resmi_rtc_net' => 0,
+            'resmi_htc_net' => 935.85,
+            'muhasebe_fazla_mesai_net' => 0,
+            'resmi_prim_ikramiye' => 0,
+            'resmi_yemek_yardimi' => 2684,
+        ]);
+
+        self::assertSame([
+            'asgari' => 12166.05,
+            'es_yardimi' => 0.0,
+            'rtc' => 0.0,
+            'htc' => 935.85,
+            'fazla_mesai' => 0.0,
+            'prim' => 0.0,
+            'yemek' => 1748.15,
+            'diger' => 0.0,
+            'toplam' => 14850.05,
+        ], $dagilim);
+    }
+
+    public function testMuhasebeExceliMerkeziResmiKalemDagiliminiKullanir(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../../views/bordro/excel-yemek-export.php');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('getMuhasebeResmiKalemDagilimi($veri)', $source);
+        self::assertStringNotContainsString('$resmiEklenenPayi', $source);
     }
 
     public function testDahilMaasKesintileriSecilenKanaldanOncelikliDuser(): void
@@ -379,7 +470,10 @@ final class BordroBankaDagilimiTest extends TestCase
             ],
         ], ['tutar' => 748.68, 'etiket' => 'Fazla Mesai Ücreti (Net)']);
 
-        self::assertSame(500.0, $detay['ek_odemeler'][0]['tutar']);
+        self::assertSame('Hafta Tatili Çalışması (Net)', $detay['ek_odemeler'][0]['etiket']);
+        self::assertSame(435.85, $detay['ek_odemeler'][0]['tutar']);
+        self::assertSame('Hafta İçi Nöbet', $detay['ek_odemeler'][1]['etiket']);
+        self::assertSame(500.0, $detay['ek_odemeler'][1]['tutar']);
         self::assertSame($detay['brut_banka'], round(
             $detay['asgari'] + $detay['yemek'] + $detay['es_yardimi']
             + array_sum(array_column($detay['ek_odemeler'], 'tutar'))
@@ -720,8 +814,10 @@ final class BordroBankaDagilimiTest extends TestCase
             ],
         ]);
 
-        self::assertSame(1200.0, $detay['ek_odemeler'][0]['tutar']);
-        self::assertSame(935.85, $detay['ek_odemeler'][1]['tutar']);
+        self::assertSame('Hafta Tatili Çalışması (Net)', $detay['ek_odemeler'][0]['etiket']);
+        self::assertSame(935.85, $detay['ek_odemeler'][0]['tutar']);
+        self::assertSame('Fazla Mesai', $detay['ek_odemeler'][1]['etiket']);
+        self::assertSame(1200.0, $detay['ek_odemeler'][1]['tutar']);
         self::assertSame(0.0, $detay['ek_odemeler'][2]['tutar']);
         self::assertSame(600.0, $detay['ek_odemeler'][2]['yemek_dahil_tutar']);
         self::assertSame(0.0, $detay['sozlesme_farki']);

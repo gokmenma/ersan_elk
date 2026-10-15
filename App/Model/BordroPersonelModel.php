@@ -2264,16 +2264,73 @@ class BordroPersonelModel extends Model
         $brutBanka = max(0.0, round((float) ($hesap['bankaOdemesi'] ?? 0) + $kesinti, 2));
         $kalan = $brutBanka;
 
+        $bankaEkOdemeDetaylari = array_values($hesap['bankaEkOdemeDetaylari'] ?? []);
+        $resmiKalemOnceligi = static function (array $kalem): int {
+            $etiket = mb_strtolower((string) ($kalem['etiket'] ?? ''), 'UTF-8');
+            if (strpos($etiket, 'resmi tatil') !== false || strpos($etiket, 'resmî tatil') !== false) {
+                return 10;
+            }
+            if (strpos($etiket, 'hafta tatili') !== false) {
+                return 20;
+            }
+            if (strpos($etiket, 'fazla mesai') !== false || strpos($etiket, 'hafta içi') !== false || strpos($etiket, 'nöbet') !== false) {
+                return 30;
+            }
+            if (!empty($kalem['resmi_alacagina_dahil'])
+                && (strpos($etiket, 'prim') !== false || strpos($etiket, 'ikramiye') !== false)) {
+                return 40;
+            }
+            return !empty($kalem['resmi_alacagina_dahil']) ? 50 : 100;
+        };
+        usort($bankaEkOdemeDetaylari, static function (array $a, array $b) use ($resmiKalemOnceligi): int {
+            return $resmiKalemOnceligi($a) <=> $resmiKalemOnceligi($b);
+        });
+
+        $resmiAdaylar = ['rtc' => 0.0, 'htc' => 0.0, 'fazla_mesai' => 0.0, 'prim' => 0.0];
+        foreach ($bankaEkOdemeDetaylari as $bankaEkOdeme) {
+            $tutar = max(0.0, (float) ($bankaEkOdeme['tutar'] ?? 0));
+            $kategori = match ($resmiKalemOnceligi($bankaEkOdeme)) {
+                10 => 'rtc', 20 => 'htc', 30 => 'fazla_mesai', 40 => 'prim', default => null,
+            };
+            if ($kategori !== null) {
+                $resmiAdaylar[$kategori] += $tutar;
+            }
+        }
+        $fazlaMesaiHedefi = max(0.0, (float) ($muhasebeFazlaMesaiOzeti['tutar'] ?? 0));
+        if ($fazlaMesaiHedefi > 0) {
+            $resmiAdaylar['fazla_mesai'] = $fazlaMesaiHedefi;
+        }
+        $kayitliResmiPrim = max(0.0, (float) ($hesap['muhasebeBankaPrimTutari'] ?? 0));
+        if ($kayitliResmiPrim > 0) {
+            $resmiAdaylar['prim'] = $kayitliResmiPrim;
+        }
+        $resmiKalemDagilimi = $this->getMuhasebeResmiKalemDagilimi([
+            'muhasebe_resmi_banka_matrahi' => $brutBanka,
+            'resmi_alacak_asgari' => (float) (
+                $hesap['asgariYatacak']
+                ?? $hesap['resmiNetTaban']
+                ?? $hesap['asgariHakedis']
+                ?? 0
+            ),
+            'es_yardimi' => (float) ($hesap['spouseAllowanceDeduction'] ?? 0),
+            'resmi_rtc_net' => $resmiAdaylar['rtc'],
+            'resmi_htc_net' => $resmiAdaylar['htc'],
+            'muhasebe_fazla_mesai_net' => $resmiAdaylar['fazla_mesai'],
+            'resmi_prim_ikramiye' => $resmiAdaylar['prim'],
+            'resmi_yemek_yardimi' => (float) ($hesap['mealAllowanceDeduction'] ?? 0),
+        ]);
+
         // Asgari taban net banka sonucundan kalan tutar değildir. Kesintiler ve
         // banka tavanı ayrı eksi kalemlerdir; aksi halde avans sonrası kalan
         // yanlış biçimde "Asgari Ücret" etiketiyle görünür.
-        $asgari = max(0.0, round((float) ($hesap['asgariYatacak'] ?? $hesap['resmiNetTaban'] ?? 0), 2));
+        $asgari = (float) $resmiKalemDagilimi['asgari'];
         $kalan = max(0.0, round($kalan - $asgari, 2));
 
-        $esYardimi = min($kalan, max(0.0, round((float) ($hesap['spouseAllowanceDeduction'] ?? 0), 2)));
+        $esYardimi = (float) $resmiKalemDagilimi['es_yardimi'];
         $kalan = max(0.0, round($kalan - $esYardimi, 2));
 
-        $yemek = min($kalan, max(0.0, round((float) ($hesap['mealAllowanceDeduction'] ?? 0), 2)));
+        // Detay ve Excel aynı merkezi dağılım sonucunu kullanır.
+        $yemek = (float) $resmiKalemDagilimi['yemek'];
         $kalan = max(0.0, round($kalan - $yemek, 2));
 
         $sozlesmeHakedisi = floatval($hesap['sozlesmeHakedisi'] ?? 0);
@@ -2283,10 +2340,6 @@ class BordroPersonelModel extends Model
         $yemegeAktarilabilirLimit = max(0.0, round($yemek - $sozlesmeYemekPayi, 2));
 
         $ekOdemeler = [];
-        $bankaEkOdemeDetaylari = array_values($hesap['bankaEkOdemeDetaylari'] ?? []);
-        usort($bankaEkOdemeDetaylari, static function (array $a, array $b): int {
-            return ((int) !empty($b['resmi_alacagina_dahil'])) <=> ((int) !empty($a['resmi_alacagina_dahil']));
-        });
         $kalanYemekKapasitesi = $yemegeAktarilabilirLimit;
         foreach ($bankaEkOdemeDetaylari as $ekOdeme) {
             $toplamTutar = max(0.0, round((float) ($ekOdeme['tutar'] ?? 0), 2));
@@ -2536,6 +2589,38 @@ class BordroPersonelModel extends Model
             'banka_kontrol_farki' => round($resmiBankaMatrahi - $bankaKesintisi - $bankaOdemesi, 2),
             'manuel_dagitim' => !empty($hesap['manualDagitimVar']),
         ];
+    }
+
+    /** Detay modalı ve Muhasebe Excel'i için tek resmî banka kalemi dağılımı. */
+    public function getMuhasebeResmiKalemDagilimi(array $ozet): array
+    {
+        $kalan = max(0.0, round((float) (
+            $ozet['muhasebe_resmi_banka_matrahi']
+            ?? $ozet['resmi_banka_matrahi']
+            ?? 0
+        ), 2));
+        $payAl = static function (float $aday) use (&$kalan): float {
+            $pay = min(max(0.0, round($aday, 2)), $kalan);
+            $kalan = max(0.0, round($kalan - $pay, 2));
+            return $pay;
+        };
+
+        $dagilim = [];
+        $dagilim['asgari'] = $payAl((float) ($ozet['resmi_alacak_asgari'] ?? 0));
+        $dagilim['es_yardimi'] = $payAl((float) ($ozet['es_yardimi'] ?? 0));
+        $dagilim['rtc'] = $payAl((float) ($ozet['resmi_rtc_net'] ?? 0));
+        $dagilim['htc'] = $payAl((float) ($ozet['resmi_htc_net'] ?? 0));
+        $dagilim['fazla_mesai'] = $payAl((float) (
+            $ozet['muhasebe_fazla_mesai_net']
+            ?? $ozet['resmi_fazla_mesai_net']
+            ?? 0
+        ));
+        $dagilim['prim'] = $payAl((float) ($ozet['resmi_prim_ikramiye'] ?? 0));
+        $dagilim['yemek'] = $payAl((float) ($ozet['resmi_yemek_yardimi'] ?? 0));
+        $dagilim['diger'] = $kalan;
+        $dagilim['toplam'] = round(array_sum($dagilim), 2);
+
+        return $dagilim;
     }
 
     /**

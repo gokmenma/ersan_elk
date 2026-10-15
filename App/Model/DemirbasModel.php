@@ -139,6 +139,9 @@ class DemirbasModel extends Model
 
         $markaModelSql = "CASE WHEN d.marka IS NOT NULL AND d.marka != '' AND d.model IS NOT NULL AND d.model != '' THEN CONCAT(' [', d.marka, ' ', d.model, ']') WHEN d.marka IS NOT NULL AND d.marka != '' THEN CONCAT(' [', d.marka, ']') WHEN d.model IS NOT NULL AND d.model != '' THEN CONCAT(' [', d.model, ']') ELSE '' END";
         $noSql = "CASE WHEN d.demirbas_no IS NOT NULL AND d.demirbas_no != '' THEN CONCAT(d.demirbas_no, ' - ') ELSE '' END";
+        $kalanMiktarSql = "(COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0))";
+        $stokUygunlukSql = "(CASE WHEN (LOWER(k.tur_adi) LIKE '%aparat%' OR k.id = 645) THEN (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) ELSE (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND h2.silinme_tarihi IS NULL), 0)) END)";
+        $mukerrerSeriSql = "(LOWER(TRIM(COALESCE(d.seri_no, ''))) NOT IN ('', '0', '-', '--', 'yok', 'yoktur', 'belirsiz', 'n/a', 'na') AND (SELECT COUNT(*) FROM demirbas d_dup WHERE d_dup.firma_id = d.firma_id AND d_dup.silinme_tarihi IS NULL AND LOWER(TRIM(d_dup.seri_no)) = LOWER(TRIM(d.seri_no))) > 1)";
 
         // Sayaç ise seri numarasını da ekle
         $textSelect = "CONCAT($noSql, d.demirbas_adi, $markaModelSql, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')')";
@@ -151,12 +154,8 @@ class DemirbasModel extends Model
 
         $stockFilter = "";
         if ($type !== 'all') {
-            $stockFilter = " AND (
-                CASE WHEN (LOWER(k.tur_adi) LIKE '%aparat%' OR k.id = 645) 
-                     THEN (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0))
-                     ELSE (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND h2.silinme_tarihi IS NULL), 0))
-                END
-            ) > 0";
+            // Stokta kalanı olmayan mükerrer seri kartlarını da teşhis amacıyla göster.
+            $stockFilter = " AND ($stokUygunlukSql > 0 OR $mukerrerSeriSql)";
         }
 
         $lokasyonFilter = "";
@@ -168,8 +167,10 @@ class DemirbasModel extends Model
             SELECT 
                 d.id,
                 $textSelect as text,
-                (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) as kalan_miktar,
-                d.seri_no
+                $kalanMiktarSql as kalan_miktar,
+                $stokUygunlukSql as secilebilir_miktar,
+                d.seri_no,
+                CASE WHEN $mukerrerSeriSql THEN 1 ELSE 0 END AS mukerrer_seri
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.firma_id = ? AND d.silinme_tarihi IS NULL
@@ -183,7 +184,52 @@ class DemirbasModel extends Model
         ");
 
         $sql->execute($params);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        $results = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        if ($type !== 'all') {
+            foreach ($results as $result) {
+                if ((int) ($result->mukerrer_seri ?? 0) !== 1) {
+                    continue;
+                }
+
+                $result->text .= ' — ⚠ Mükerrer seri numarası';
+                if ((int) ($result->secilebilir_miktar ?? 0) <= 0) {
+                    $result->text .= ' (aktif zimmette)';
+                    $result->disabled = true;
+                }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Toplu zimmet kontrolü için seri numaralarına ait tüm demirbaş kartlarını getirir.
+     */
+    public function getZimmetCardsBySerials(array $serials): array
+    {
+        $serials = array_values(array_unique(array_filter(array_map('strval', $serials), static fn($serial) => trim($serial) !== '')));
+        if (empty($serials)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($serials), '?'));
+        $sql = $this->db->prepare("
+            SELECT id, seri_no,
+                (COALESCE(miktar, 1)
+                    - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0)
+                    + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)
+                ) AS kalan_miktar,
+                durum
+            FROM demirbas
+            WHERE firma_id = ?
+              AND silinme_tarihi IS NULL
+              AND seri_no IN ($placeholders)
+            ORDER BY seri_no, id
+        ");
+        $sql->execute(array_merge([(int) $_SESSION['firma_id']], $serials));
+
+        return $sql->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

@@ -176,6 +176,9 @@
 - [x] Bordro Kontrol kesinti kalemleri snapshot kaynağına taşındı; eski eksik kırılımlar kayıtlı toplamı değiştirmeden tamamlandı.
 - [x] Prim usulü tüm personellerde sözleşme ana satırı snapshot'taki gerçek puantaj kaynaklarına bağlandı; asgari taban yalnız resmî `Asgari Ücret (Net)` satırında bırakıldı ve puantajın ikinci kez çizilmesi engellendi.
 - [x] Hesaplanmış 164 prim usulü bordroda sözleşme kaynak satırları/toplamları tarandı; fark veya negatif satır bulunmadı. Mehmet Durdu Eylül 2026 için sözleşme kaynak toplamı 3.500,00 TL, kayıtlı resmî banka ve net ödeme 32.380,41 TL doğrulandı.
+- [x] Prim usulü `Puantaj Hakedişi` akordeon başlığında toplam işlem adedi ve açılan bölümde işlem/adet/birim fiyat/tutar kırılımları gösterildi; hakediş ve ödeme hesapları değiştirilmedi.
+- [x] Resmî Alacak kartındaki HTÇ ayrımı Muhasebe Excel önceliğiyle eşitlendi; Halil İbrahim Karataşlı örneğinde 935,85 TL HTÇ ayrı gösterilirken toplam korundu. 86 HTÇ'li hesaplanmış bordroda detay–Excel farkı `0` doğrulandı.
+- [x] Detay ve Muhasebe Excel resmî dağıtımı tek Model metodunda birleştirildi; Excel'deki kopya hesap kaldırıldı ve tek kaynağı zorunlu tutan regresyon testi eklendi. 743 snapshot taramasında merkezî toplam farkı ve 86 HTÇ kaydında ekran–Excel farkı `0` doğrulandı.
 - [x] 817 snapshot taraması sıfır sözleşme/kesinti/footer ve liste–Excel banka farkıyla tamamlandı.
 - [x] Bordro testleri: 93 test, 749 doğrulama geçti; sözdizimi ve diff kontrolleri geçti.
 
@@ -199,3 +202,20 @@
 ## 2026-10-15 — Bordro fotoğrafsız personel avatarları
 - Fotoğrafı olmayan personelde ilk ad ve soyadın baş harfleri 32×32px yuvarlak mavi avatarla gösteriliyor. Türkçe i/ı dönüşümü, tek/çoklu ad ve boş ad destekleniyor. Yüklenemeyen fotoğraf da aynı avatara dönüyor.
 - Ad sıralamasındaki `data-order` korundu. PHP sözdizimi, Türkçe baş harf örnekleri ve Chromium üzerinde fotoğraf hata fallback/boyut kontrolü geçti.
+# Zimmet sayfası performans analizi
+
+- [x] PHP hazırlığı ve DataTables AJAX süresi ayrı ölçüldü; gecikmenin 5,8–8,5 saniyelik liste veri sorgusundan kaynaklandığı belirlendi.
+- [x] SQL profiling ve EXPLAIN ile tam tarama, block nested loop, geçici tablo ve filesort doğrulandı.
+- [x] Join sırası karşılaştırmasında temel sorgunun yaklaşık 1 ms seviyesine inebildiği görüldü; uygulanacak optimizasyon sırası belirlendi.
+- [x] Liste sorgusunun join sırası zimmet tablosundan başlayacak şekilde düzeltildi; filtresiz DataTables yanıtı yaklaşık 225 ms'ye indirildi.
+- [x] Sayı filtrelerinin büyüktür/küçüktür ve eşitli karşılıkları sunucu tarafına eklendi; mevcut, sonuçsuz ve temizlenmiş filtre senaryoları doğrulandı.
+
+# Zimmet seçim listesinde mükerrer seri uyarısı
+
+- [x] Aynı firmadaki gerçek mükerrer seri numaraları model katmanında tespit edildi.
+- [x] Stoku tükenen mükerrer kartlar seçim sonuçlarına geri eklendi ve aktif zimmette oldukları belirtilerek seçilemez yapıldı.
+- [x] Stokta olan mükerrer kartlara görünür uyarı metni eklendi; geçersiz seri değerleri kapsam dışında bırakıldı.
+- [x] Gerçek mükerrer sayaç verisiyle sonuç kümesi ve `disabled` davranışı doğrulandı; PHP sözdizimi kontrolleri geçti.
+- [x] Zimmet tablosunun ID kolon filtresi sunucu tarafında `z.id` alanına bağlandı ve tek kayıt sonucu doğrulandı.
+- [x] Toplu sayaç zimmetinde aynı seri için birden fazla demirbaş kartının tekrar tekrar işlenmesi engellendi; mükerrer kart sayısı koli satırında uyarı olarak gösterildi.
+- [x] `26117971–26117980` aralığındaki 10 serinin 20 mükerrer karttan 10 tekil karta indirildiği ve kayıt akışının transaction içinde hatasız çalıştığı doğrulandı; test verisi rollback edildi.

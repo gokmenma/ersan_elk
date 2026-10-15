@@ -1642,8 +1642,8 @@ function renderKoliListesi() {
     let icon = "bx-loader-alt bx-spin";
 
     if (koli.durum === "uygun") {
-      badgeClass = "bg-success";
-      icon = "bx-check";
+      badgeClass = koli.mukerrerSayisi > 0 ? "bg-warning" : "bg-success";
+      icon = koli.mukerrerSayisi > 0 ? "bx-error-circle" : "bx-check";
     } else if (koli.durum === "hatali") {
       badgeClass = "bg-danger";
       icon = "bx-x";
@@ -1659,7 +1659,7 @@ function renderKoliListesi() {
                         <i class="bx ${koli.adet > 1 ? 'bx-package' : 'bx-devices'} me-1"></i>${koli.baslangic} <small class="text-muted">(${koli.adet} Adet)</small>
                         <span class="badge bg-soft-info text-info ms-2"><i class="bx bx-calendar me-1"></i>${koli.tarih}</span>
                     </h6>
-                    <small class="${koli.durum === "uygun" ? "text-success" : koli.durum === "hatali" ? "text-danger" : "text-muted"}">
+                    <small class="${koli.durum === "uygun" ? (koli.mukerrerSayisi > 0 ? "text-warning" : "text-success") : koli.durum === "hatali" ? "text-danger" : "text-muted"}">
                         <i class='bx ${icon}'></i> ${koli.mesaj}
                     </small>
                 </div>
@@ -1826,19 +1826,27 @@ function koliKontrolEt(koli) {
       if (data.status === "success") {
         let sonuclar = data.data;
         let uygunSayisi = 0;
+        let mukerrerSayisi = 0;
 
         seriler.forEach((seri) => {
           let info = sonuclar[seri];
           if (info && info.status === "ok") {
             uygunSayisi++;
           }
+          if (info) {
+            mukerrerSayisi += Number(info.duplicate_count || 0);
+          }
         });
 
         koli.uygunSayisi = uygunSayisi;
+        koli.mukerrerSayisi = mukerrerSayisi;
 
         if (uygunSayisi === koli.adet) {
           koli.durum = "uygun";
           koli.mesaj = `${koli.adet}/${koli.adet} Uygun`;
+          if (mukerrerSayisi > 0) {
+            koli.mesaj += ` - ${mukerrerSayisi} mükerrer demirbaş kartı bulundu, kayıt sırasında tekilleştirilecek`;
+          }
         } else {
           koli.durum = "hatali";
           koli.mesaj = `${uygunSayisi}/${koli.adet} Uygun - Stok kontrol ediniz`;

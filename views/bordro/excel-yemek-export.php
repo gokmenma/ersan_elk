@@ -646,21 +646,15 @@ try {
     ];
     $mutabakatSatir = 3;
     foreach ($yemekVerileri as $veri) {
-        $resmiKalan = max(0.0, round((float) $veri['muhasebe_resmi_banka_matrahi'], 2));
-        $resmiEklenenPayi = static function (float $aday) use (&$resmiKalan): float {
-            $pay = min(max(0.0, round($aday, 2)), $resmiKalan);
-            $resmiKalan = round($resmiKalan - $pay, 2);
-            return $pay;
-        };
-        // Banka matrahını resmî öncelik sırasıyla kalemlere dağıt; yeşil bölüm kayıtlı resmî matrahla mutabık kalsın.
-        $resmiAsgari = $resmiEklenenPayi((float) $veri['resmi_alacak_asgari']);
-        $resmiEsYardimi = $resmiEklenenPayi((float) $veri['es_yardimi']);
-        $resmiRtc = $resmiEklenenPayi((float) ($veri['resmi_rtc_net'] ?? 0));
-        $resmiHtc = $resmiEklenenPayi((float) ($veri['resmi_htc_net'] ?? 0));
-        $resmiFazlaMesai = $resmiEklenenPayi((float) ($veri['muhasebe_fazla_mesai_net'] ?? 0));
-        $resmiPrim = $resmiEklenenPayi((float) ($veri['resmi_prim_ikramiye'] ?? 0));
-        $resmiYemek = $resmiEklenenPayi((float) ($veri['resmi_yemek_yardimi'] ?? 0));
-        $digerResmiEklenen = $resmiKalan;
+        $resmiDagilim = $BordroPersonel->getMuhasebeResmiKalemDagilimi($veri);
+        $resmiAsgari = $resmiDagilim['asgari'];
+        $resmiEsYardimi = $resmiDagilim['es_yardimi'];
+        $resmiRtc = $resmiDagilim['rtc'];
+        $resmiHtc = $resmiDagilim['htc'];
+        $resmiFazlaMesai = $resmiDagilim['fazla_mesai'];
+        $resmiPrim = $resmiDagilim['prim'];
+        $resmiYemek = $resmiDagilim['yemek'];
+        $digerResmiEklenen = $resmiDagilim['diger'];
         // Mutabakat yalnız bankadan düşülecek kesintileri içerir. Elden kanallı
         // kesintiler bu kırmızı bölüme taşınmaz ve banka tutarını bozmaz.
         $avansKesintiDetayi = (float) $veri['muhasebe_banka_avans'];
