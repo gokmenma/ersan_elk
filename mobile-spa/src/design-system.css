@@ -108,6 +108,61 @@
   margin-bottom: 20px;
 }
 
+.clay-topbar-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.clay-topbar-title-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  justify-content: center;
+}
+
+.clay-topbar-eyebrow {
+  display: block;
+  font: 700 9px var(--ds-font-main);
+  letter-spacing: 0.08em;
+  color: var(--ds-muted);
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.clay-topbar-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ds-ink);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clay-topbar-subtitle {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: var(--ds-muted);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clay-topbar.has-inline-header {
+  margin-bottom: 14px;
+}
+
+.clay-topbar-wrapper.has-inline-header {
+  margin-bottom: 16px;
+}
+
 .clay-brand-wrap {
   display: inline-flex;
   align-items: center;
@@ -1142,8 +1197,68 @@
   background: var(--ds-surface-dark);
   box-shadow: var(--ds-shadow-bento-dark);
   backdrop-filter: none;
+  overflow: hidden;
+  box-sizing: border-box;
 }
-.bottom-nav__tabs { display: grid; grid-template-columns: repeat(var(--nav-count, 5), minmax(0, 1fr)); align-items: center; }
+
+.bottom-nav__inner {
+  position: relative;
+  width: 100%;
+  height: 54px;
+  display: flex;
+  align-items: center;
+}
+
+/* Tabs and drawer horizontal slide transitions */
+.nav-slide-tabs-enter-active,
+.nav-slide-tabs-leave-active,
+.nav-slide-drawer-enter-active,
+.nav-slide-drawer-leave-active {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+}
+
+.nav-slide-tabs-leave-active,
+.nav-slide-drawer-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.nav-slide-tabs-leave-to {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+.nav-slide-tabs-enter-from {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.nav-slide-drawer-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.nav-slide-drawer-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.bottom-nav__tabs {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--nav-count, 5), minmax(0, 1fr));
+  align-items: center;
+}
+
+/* Talepler Drawer inside BottomNav */
+.talepler-nav-tabs {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+}
+
 .bottom-nav__home-bar { display: none; }
 .nav-link, .nav-link--center {
   position: relative;
@@ -1157,14 +1272,71 @@
   color: var(--ds-on-dark-muted);
   border-radius: var(--ds-radius-pill);
   text-decoration: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
   transition: background .18s ease, color .18s ease;
 }
-.nav-icon, .nav-link--center .nav-icon { position: static; display: grid; place-items: center; width: 24px; height: 24px; border: 0; background: transparent; box-shadow: none; color: inherit !important; }
+.nav-icon, .nav-link--center .nav-icon {
+  position: relative !important;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit !important;
+}
 .app-shell .nav-label { color: inherit; font: 600 9px/1.2 var(--ds-font-main); white-space: nowrap; }
 .nav-link.is-active, .nav-link--center[aria-expanded=true] { color: var(--ds-ink); background: var(--ds-surface); }
 .nav-link.is-active .nav-icon, .nav-link.is-active .nav-label { color: inherit; }
 .nav-link.is-active::after { display: none; }
 .nav-link--center.is-active .nav-icon, .nav-link--center[aria-expanded=true] .nav-icon { color: inherit !important; background: transparent; box-shadow: none; transform: none; }
+
+/* Bildirim Sayaç Rozeti (Nav Bar İkon Rozeti) */
+.nav-bubble-badge {
+  position: absolute;
+  top: -5px;
+  right: -9px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  font: 700 9px/15px var(--ds-font-main);
+  text-align: center;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--ds-on-dark-muted);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.nav-bubble-badge.has-count {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.nav-link.is-active .nav-bubble-badge {
+  background: rgba(24, 28, 36, 0.12);
+  color: var(--ds-ink);
+  border-color: transparent;
+}
+
+.nav-link.is-active .nav-bubble-badge.has-count {
+  background: var(--ds-primary);
+  color: #ffffff;
+}
+
+.nav-link--close {
+  color: var(--ds-on-dark-muted);
+}
+.nav-link--close:active {
+  transform: scale(0.92);
+  color: #ffffff;
+}
 
 /* ==========================================================================
    18. GERİYE DÖNÜK PERSONEL DİZİNİ UYUMLULUĞU

@@ -1,5 +1,39 @@
 # Active Context
 
+## Mobil SPA Başlık Hizalama ve Talepler Modülü Navbar/Yerleşim Optimizasyonu (2026-10-15)
+- **Kullanıcı Talebi**:
+  1. Tüm sayfalarda sayfa başlık ve açıklamasının üstte, geri butonu yanında yer alması.
+  2. Talepler sayfasında "Süreç Yönetimi" yazısının kaldırılması.
+  3. Talepler sayfasına basılınca talep türleri kartının navbar içinde yana doğru transition ile açılması, Talepler menüsünün X kapatma şeklinde olması ve transition ile kapanması.
+  4. Bekleyenler, İşlem Görenler, Silinenler durum filtrelerinin en üstte (başlık altında) olması.
+  5. Arama kutusu ve sıralama butonunun yan yana konumlandırılması.
+  6. Sayfanın en verimli şekilde talep içerikleri için kullanılması.
+- **Mimari & Geliştirmeler**:
+  1. **TopBar & Başlık Standardı (`mobile-spa/src/components/TopBar.vue`, `src/design-system.css`)**:
+     - `showBack` aktif olan tüm sayfalarda (`route.path !== '/'` veya `:back="true"`), sayfa başlığı (`h1.clay-topbar-title`) ve alt açıklama (`p.clay-topbar-subtitle`), geri butonunun hemen yanındaki `.clay-topbar-title-block` içine taşındı.
+     - Ayrık ve fazla dikey alan kaplayan alt `.clay-page-header` alanı yalnızca `showBack` olmayan (ana sayfa vb.) durumlara sınırlandı.
+     - `.clay-topbar.has-inline-header` ile dikey boşluklar kompakt hale getirilerek ~80-100px net dikey alan kazanıldı.
+  2. **Talepler Durum Filtresi ve Arama/Sıralama Yerleşimi (`mobile-spa/src/views/TaleplerView.vue`)**:
+     - "SÜREÇ YÖNETİMİ" eyebrow etiketi kaldırıldı.
+     - Sayfa gövdesindeki kaba `hero-card--talepler` kaldırıldı (~115px dikey alan tasarrufu).
+     - `Bekleyenler`, `İşlem Görenler` ve `Silinenler` butonları başlığın hemen altına en üste alındı.
+     - Arama kutusu ve sıralama butonu `.talepler-search-sort-row` ile yan yana yerleştirildi (`flex: 1` arama kutusu ve 44x44px dairesel sıralama butonu).
+     - Sayfa içeriği (~195px yukarı kayarak) doğrudan görünür hale getirildi.
+  3. **Navbar İçinde Yana Doğru Açılan Talep Türleri Nav Menüsü (`mobile-spa/src/components/BottomNav.vue`, `src/services/requests.js`, `src/design-system.css`)**:
+     - `requests.js` servisinde reaktif `requestsState` (`activeTab`, `counts`, `permissions`, `drawerOpen`) ve aksiyon yardımcıları tanımlandı; varsayılan tab `all` (Tümü) olarak ayarlandı.
+     - Kullanıcının "buradaki biraz daha nav menü gibi olsun, ikon da olsun" geri bildirimi üzerine panel, standart 5 sütunlu `.bottom-nav__tabs` ve `.nav-link` bileşen yapısına dönüştürüldü:
+       - 1. Sekme: `Sparkles` ikonu (21px), `nav-bubble-badge` sayaç rozeti ve `Tümü` etiketi.
+       - 2. Sekme: `Wallet` ikonu (21px), `nav-bubble-badge` sayaç rozeti ve `Avans` etiketi.
+       - 3. Sekme: `CalendarDays` ikonu (21px), `nav-bubble-badge` sayaç rozeti ve `İzin` etiketi.
+       - 4. Sekme: `Layers` ikonu (21px), `nav-bubble-badge` sayaç rozeti ve `Genel` etiketi.
+       - 5. Sekme: `X` ikonu (22px) ve `Kapat` etiketi (`nav-link--close`).
+     - Tıklanan aktif kategori tıpkı ana nav menüdeki gibi saf beyaz hap (`.nav-link.is-active`) zeminine ve koyu metne kavuştu.
+     - İkonların sağ üst köşesine bildirim sayısını gösteren `.nav-bubble-badge` dinamik rozetleri yerleştirildi.
+     - `X` / Kapat butonuna basıldığında talep türleri sağa doğru akıcı biçimde kayarak kapanıyor ve standart navbar menüsü geri geliyor.
+     - `TaleplerView` üzerinde `all` (Tümü) desteği tam entegre edildi; çekmece kapalıyken o anki kategoriyi gösteren `.pill-category-badge` çipi de dinamik olarak senkronize edildi.
+  4. **Derleme & Doğrulama**:
+     - `npm run build` ile Vite üretim derlemesi 0 hata ile başarıyla tamamlandı (`dist/assets/index-a32JNAJ_.css`, `dist/assets/index-C3OXLq7Q.js`).
+
 ## Mobil SPA Araç Takip Modülü ve Gelişmiş Bento UI Geliştirmesi (2026-10-15)
 - **Kullanıcı Talebi**:
   1. `mobile-spa` altında Araç Takip modülünün yapılması, `mobile` altındaki eski modülden işlevlerin alınması ve UI/UX Pro Max tasarım standartlarında Bento / Claymorphic UI ile çok daha gelişmiş ve estetik bir SPA modülü olarak inşa edilmesi.

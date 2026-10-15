@@ -1,4 +1,11 @@
 # Progress
+- [x] Mobil SPA (`mobile-spa`): Tüm sayfalarda başlık & açıklamanın geri butonu yanına taşınması ve Talepler modülünün alan verimliliği optimizasyonu (2026-10-15):
+  - **Tüm Sayfalar İçin Üst Başlık Standardı (`TopBar.vue`, `design-system.css`)**: Geri butonu bulunan tüm sayfalarda sayfa başlığı (`h1`) ve açıklaması (`p`), geri butonunun hemen yanında tek satır/kompakt blok haline getirildi; ayrık büyük `.clay-page-header` alanı kaldırılarak dikeyde ~80-100px ferahlık sağlandı.
+  - **Talepler "SÜREÇ YÖNETİMİ" Kaldırıldı**: `eyebrow="SÜREÇ YÖNETİMİ"` kaldırıldı.
+  - **Durum Filtreleri En Üstte (`TaleplerView.vue`)**: Bekleyenler, İşlem Görenler, Silinenler butonları başlığın hemen altına konumlandırıldı.
+  - **Arama ve Sıralama Yan Yana**: Arama kutusu ile dairesel sıralama butonu yan yana hizalandı (`.talepler-search-sort-row`).
+  - **Navbar İçi Talep Türleri Çekmecesi (`BottomNav.vue`, `requests.js`)**: Sayfa gövdesindeki kaba KPI kartı kaldırılarak Avans, İzin ve Genel kategorileri (`counts` ve `permissions`) alt navigasyon çubuğu içine alındı; Talepler sayfasına girildiğinde veya basıldığında yatay kayma animasyonu (`transition`) ile açılıp Talepler butonunun `X` kapatma simgesine dönmesi, basıldığında ise akıcı animasyonla kapanması sağlandı. Çekmece kapalıyken sayfada hızlı kategori çipi (`.pill-category-badge`) sunuldu.
+  - **Derleme**: `npm run build` ile hatasız üretim çıktısı alındı (`dist/`).
 - [x] Mobil SPA (`mobile-spa`): Araç Takip modülü (`AracView.vue`, `arac.js`, `public/api/arac.php`) UI/UX Pro Max ve Soft Bento & Claymorphic UI standartlarında sıfırdan geliştirildi (2026-10-15):
   - **Backend API**: `mobile-spa/public/api/arac.php` ve `dist/api/arac.php` oluşturuldu. Gate yetkilendirmesi (`arac_takip_yonetim`, `arac-takip/list`, `vehicles`), CSRF token denetimi, PDO parametrik binding, Security::encrypt / Security::decrypt ve AES-256-GCM şifreli ruhsat yükleme/stream indirme entegrasyonu sağlandı.
   - **Frontend Servis**: `mobile-spa/src/services/arac.js` API istemcisi oluşturuldu.

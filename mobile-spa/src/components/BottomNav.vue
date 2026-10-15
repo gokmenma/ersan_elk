@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   Banknote,
   CalendarCheck,
+  CalendarDays,
   CalendarRange,
   Car,
   ChartNoAxesCombined,
@@ -16,17 +17,26 @@ import {
   Headset,
   Home,
   Landmark,
+  Layers,
   LayoutGrid,
   LogOut,
   Megaphone,
   Monitor,
   ReceiptText,
   ShieldAlert,
+  Sparkles,
   UserRound,
   UsersRound,
+  Wallet,
   X,
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
+import {
+  requestsState,
+  closeRequestsDrawer,
+  toggleRequestsDrawer,
+  setRequestsTab,
+} from '../services/requests.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,6 +65,27 @@ function handleSheetKeydown(event) {
   const first = buttons[0], last = buttons.at(-1)
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+}
+
+const isTaleplerPage = computed(() => route.path === '/talepler')
+const showTaleplerDrawer = computed(() => isTaleplerPage.value && requestsState.drawerOpen)
+
+watch(() => route.path, (newPath) => {
+  if (newPath !== '/talepler') {
+    requestsState.drawerOpen = false
+  }
+})
+
+function handleNavClick(item, event) {
+  if (item.to === '/talepler') {
+    event?.preventDefault?.()
+    if (route.path !== '/talepler') {
+      router.push('/talepler')
+      requestsState.drawerOpen = true
+    } else {
+      toggleRequestsDrawer()
+    }
+  }
 }
 
 const items = [
@@ -180,39 +211,151 @@ async function handleLogout() {
     </div>
   </Transition>
 
-  <nav class="bottom-nav" aria-label="Ana gezinme">
-    <div class="bottom-nav__tabs" :style="{ '--nav-count': visibleItems.length }">
-      <template v-for="item in visibleItems" :key="item.label">
-        <button
-          v-if="item.center"
-          class="nav-link nav-link--center"
-          :class="{ 'is-active': isItemActive(item) }"
-          type="button"
-          aria-controls="more-menu"
-          aria-haspopup="dialog"
-          aria-label="Daha fazla menüsünü aç"
-          :aria-expanded="menuOpen"
-          @click="menuOpen = !menuOpen"
+  <nav class="bottom-nav" :class="{ 'has-drawer': showTaleplerDrawer }" aria-label="Ana gezinme">
+    <div class="bottom-nav__inner">
+      <!-- Normal Navigasyon Sekmeleri -->
+      <Transition name="nav-slide-tabs">
+        <div
+          v-if="!showTaleplerDrawer"
+          class="bottom-nav__tabs"
+          :style="{ '--nav-count': visibleItems.length }"
         >
-          <span class="nav-icon">
-            <component :is="item.icon" :size="22" :stroke-width="2.3" />
-          </span>
-          <span class="nav-label">{{ item.label }}</span>
-        </button>
-        <RouterLink
-          v-else
-          :to="item.to"
-          class="nav-link"
-          :class="{ 'is-active': isItemActive(item) }"
-          :aria-label="item.label"
-          :aria-current="isItemActive(item) ? 'page' : undefined"
-        >
-          <span class="nav-icon">
-            <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
-          </span>
-          <span class="nav-label">{{ item.label }}</span>
-        </RouterLink>
-      </template>
+          <template v-for="item in visibleItems" :key="item.label">
+            <button
+              v-if="item.center"
+              class="nav-link nav-link--center"
+              :class="{ 'is-active': isItemActive(item) }"
+              type="button"
+              aria-controls="more-menu"
+              aria-haspopup="dialog"
+              aria-label="Daha fazla menüsünü aç"
+              :aria-expanded="menuOpen"
+              @click="menuOpen = !menuOpen"
+            >
+              <span class="nav-icon">
+                <component :is="item.icon" :size="22" :stroke-width="2.3" />
+              </span>
+              <span class="nav-label">{{ item.label }}</span>
+            </button>
+            <button
+              v-else-if="item.to === '/talepler'"
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': isItemActive(item) }"
+              :aria-label="item.label"
+              @click="handleNavClick(item, $event)"
+            >
+              <span class="nav-icon">
+                <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">{{ item.label }}</span>
+            </button>
+            <RouterLink
+              v-else
+              :to="item.to"
+              class="nav-link"
+              :class="{ 'is-active': isItemActive(item) }"
+              :aria-label="item.label"
+              :aria-current="isItemActive(item) ? 'page' : undefined"
+            >
+              <span class="nav-icon">
+                <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">{{ item.label }}</span>
+            </RouterLink>
+          </template>
+        </div>
+      </Transition>
+
+      <!-- Talep Türleri Çekmecesi (Tam Nav Menü Formatında ve İkonlu) -->
+      <Transition name="nav-slide-drawer">
+        <div v-if="showTaleplerDrawer" class="bottom-nav__tabs talepler-nav-tabs" style="--nav-count: 5;">
+          <!-- 1. Tümü -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': requestsState.activeTab === 'all' }"
+            aria-label="Tüm Talepler"
+            @click="setRequestsTab('all')"
+          >
+            <span class="nav-icon">
+              <Sparkles :size="21" :stroke-width="requestsState.activeTab === 'all' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': requestsState.counts.total > 0 }">
+                {{ requestsState.counts.total }}
+              </span>
+            </span>
+            <span class="nav-label">Tümü</span>
+          </button>
+
+          <!-- 2. Avans -->
+          <button
+            v-if="requestsState.permissions.avans !== false"
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': requestsState.activeTab === 'avans' }"
+            aria-label="Avans Talepleri"
+            @click="setRequestsTab('avans')"
+          >
+            <span class="nav-icon">
+              <Wallet :size="21" :stroke-width="requestsState.activeTab === 'avans' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': requestsState.counts.avans > 0 }">
+                {{ requestsState.counts.avans }}
+              </span>
+            </span>
+            <span class="nav-label">Avans</span>
+          </button>
+
+          <!-- 3. İzin -->
+          <button
+            v-if="requestsState.permissions.izin !== false"
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': requestsState.activeTab === 'izin' }"
+            aria-label="İzin Talepleri"
+            @click="setRequestsTab('izin')"
+          >
+            <span class="nav-icon">
+              <CalendarDays :size="21" :stroke-width="requestsState.activeTab === 'izin' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': requestsState.counts.izin > 0 }">
+                {{ requestsState.counts.izin }}
+              </span>
+            </span>
+            <span class="nav-label">İzin</span>
+          </button>
+
+          <!-- 4. Genel -->
+          <button
+            v-if="requestsState.permissions.talep !== false"
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': requestsState.activeTab === 'talep' }"
+            aria-label="Genel Talepler"
+            @click="setRequestsTab('talep')"
+          >
+            <span class="nav-icon">
+              <Layers :size="21" :stroke-width="requestsState.activeTab === 'talep' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': requestsState.counts.talep > 0 }">
+                {{ requestsState.counts.talep }}
+              </span>
+            </span>
+            <span class="nav-label">Genel</span>
+          </button>
+
+          <!-- 5. Kapat -->
+          <button
+            type="button"
+            class="nav-link nav-link--close"
+            aria-label="Talep türleri menüsünü kapat"
+            title="Kapat"
+            @click="closeRequestsDrawer"
+          >
+            <span class="nav-icon">
+              <X :size="22" :stroke-width="2.3" />
+            </span>
+            <span class="nav-label">Kapat</span>
+          </button>
+        </div>
+      </Transition>
     </div>
     <div class="bottom-nav__home-bar" aria-hidden="true"></div>
   </nav>

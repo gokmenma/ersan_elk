@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   ArrowUpDown,
   Building2,
@@ -28,10 +28,16 @@ import {
   Zap,
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
-import { requestsApi } from '../services/requests.js'
+import {
+  requestsApi,
+  requestsState,
+  openRequestsDrawer,
+  closeRequestsDrawer,
+  setRequestsTab,
+} from '../services/requests.js'
 
 // State
-const activeTab = ref('avans') // 'avans' | 'izin' | 'talep'
+const activeTab = ref(requestsState.activeTab || 'all') // 'all' | 'avans' | 'izin' | 'talep'
 const activeFilter = ref('pending') // 'pending' | 'approved' | 'deleted'
 const sortBy = ref('newest') // 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'amount_desc'
 const searchQuery = ref('')
@@ -84,11 +90,15 @@ async function loadData() {
       permissions.value = res.permissions || { avans: true, izin: true, talep: true }
       items.value = res.data || { avans: [], izin: [], talep: [] }
 
-      if (!permissions.value[activeTab.value]) {
+      if (activeTab.value !== 'all' && !permissions.value[activeTab.value]) {
         if (permissions.value.avans) activeTab.value = 'avans'
         else if (permissions.value.izin) activeTab.value = 'izin'
         else if (permissions.value.talep) activeTab.value = 'talep'
       }
+
+      requestsState.counts = { ...counts.value }
+      requestsState.permissions = { ...permissions.value }
+      requestsState.activeTab = activeTab.value
     }
   } catch (err) {
     errorMessage.value = err.message || 'Talepler yüklenemedi.'
@@ -97,10 +107,25 @@ async function loadData() {
   }
 }
 
-onMounted(loadData)
+watch(() => requestsState.activeTab, async (newTab) => {
+  if (activeTab.value !== newTab) {
+    activeTab.value = newTab
+    await loadData()
+  }
+})
+
+onMounted(async () => {
+  openRequestsDrawer()
+  await loadData()
+})
+
+onBeforeUnmount(() => {
+  closeRequestsDrawer()
+})
 
 async function setTab(tab) {
   activeTab.value = tab
+  setRequestsTab(tab)
   await loadData()
 }
 
@@ -111,7 +136,9 @@ function setFilter(filt) {
 
 // Filtre ve Sıralama
 const currentList = computed(() => {
-  const list = items.value[activeTab.value] || []
+  const list = activeTab.value === 'all'
+    ? [...(items.value.avans || []), ...(items.value.izin || []), ...(items.value.talep || [])]
+    : (items.value[activeTab.value] || [])
   return list.filter((item) => {
     if (!searchQuery.value.trim()) return true
     const q = searchQuery.value.toLowerCase()
@@ -301,62 +328,10 @@ async function submitSil() {
 
 <template>
   <section class="screen ds-screen ds-requests talepler-screen">
-    <!-- Standart TopBar: Ana Sayfa ile Tam Uyumlu -->
-    <TopBar eyebrow="SÜREÇ YÖNETİMİ" title="Talepler" subtitle="Onay bekleyen tüm işlemler" :search="false" />
+    <!-- Standart TopBar: Başlık ve Açıklama Üstte (Geri Butonu Yanında) -->
+    <TopBar title="Talepler" subtitle="Onay bekleyen tüm işlemler" :search="false" />
 
-    <!-- 1. Minimal Bento KPI & Kategori Seçimi -->
-    <section class="hero-card--talepler">
-      <div class="talepler-kpi-row">
-        <div class="kpi-main">
-          <span class="kpi-label"><Sparkles :size="11" /> BEKLEYEN</span>
-          <div class="kpi-value-row">
-            <strong>{{ counts.total }}</strong>
-            <small>talep</small>
-          </div>
-        </div>
-
-        <div class="kpi-mini-grid" role="tablist" aria-label="Talep Kategorileri">
-          <button
-            v-if="permissions.avans"
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'avans'"
-            class="kpi-mini-item"
-            :class="{ 'is-active': activeTab === 'avans' }"
-            @click="setTab('avans')"
-          >
-            <span class="kpi-mini-label"><Wallet :size="12" /> Avans</span>
-            <strong>{{ counts.avans }}</strong>
-          </button>
-          <button
-            v-if="permissions.izin"
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'izin'"
-            class="kpi-mini-item"
-            :class="{ 'is-active': activeTab === 'izin' }"
-            @click="setTab('izin')"
-          >
-            <span class="kpi-mini-label"><CalendarDays :size="12" /> İzin</span>
-            <strong>{{ counts.izin }}</strong>
-          </button>
-          <button
-            v-if="permissions.talep"
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'talep'"
-            class="kpi-mini-item"
-            :class="{ 'is-active': activeTab === 'talep' }"
-            @click="setTab('talep')"
-          >
-            <span class="kpi-mini-label"><Layers :size="12" /> Genel</span>
-            <strong>{{ counts.talep }}</strong>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3. Durum Filtresi Pilleri (Bekleyenler / İşlem Görenler / Silinenler) -->
+    <!-- 1. Durum Filtresi Pilleri (Bekleyenler / İşlem Görenler / Silinenler) - Başlık Altında En Üstte -->
     <div class="status-pills-bar">
       <div class="status-pills-group">
         <button
@@ -388,9 +363,39 @@ async function submitSil() {
         </button>
       </div>
 
-      <!-- Sıralama Seçimi (Sadece İkon) -->
+      <!-- Çekmece kapalıyken hızlı kategori göstergesi / açıcı -->
+      <button
+        v-if="!requestsState.drawerOpen"
+        type="button"
+        class="pill-category-badge"
+        title="Talep türünü değiştir"
+        @click="openRequestsDrawer"
+      >
+        <Sparkles v-if="activeTab === 'all'" :size="13" />
+        <Wallet v-else-if="activeTab === 'avans'" :size="13" />
+        <CalendarDays v-else-if="activeTab === 'izin'" :size="13" />
+        <Layers v-else :size="13" />
+        <span>{{ activeTab === 'all' ? 'Tümü' : activeTab === 'avans' ? 'Avans' : activeTab === 'izin' ? 'İzin' : 'Genel' }}</span>
+        <ChevronDown :size="12" />
+      </button>
+    </div>
+
+    <!-- 2. Arama Kutusu ve Sıralama Yan Yana -->
+    <div class="talepler-search-sort-row">
+      <div class="search-box talepler-search">
+        <Search :size="16" />
+        <input
+          v-model="searchQuery"
+          placeholder="Personel adı, departman veya açıklama ile ara..."
+          aria-label="Taleplerde ara"
+        />
+        <button v-if="searchQuery" type="button" aria-label="Aramayı temizle" @click="searchQuery = ''">
+          <X :size="15" />
+        </button>
+      </div>
+
       <div class="sort-dropdown-wrap" title="Sıralama">
-        <ArrowUpDown :size="15" class="sort-icon" />
+        <ArrowUpDown :size="16" class="sort-icon" />
         <select v-model="sortBy" aria-label="Sıralama">
           <option value="newest">En Yeni</option>
           <option value="oldest">En Eski</option>
@@ -399,19 +404,6 @@ async function submitSil() {
           <option v-if="activeTab === 'avans'" value="amount_desc">Tutar</option>
         </select>
       </div>
-    </div>
-
-    <!-- 4. Canlı Arama Inputu -->
-    <div class="search-box talepler-search">
-      <Search :size="16" />
-      <input
-        v-model="searchQuery"
-        placeholder="Personel adı, departman veya açıklama ile ara..."
-        aria-label="Taleplerde ara"
-      />
-      <button v-if="searchQuery" type="button" @click="searchQuery = ''">
-        <X :size="15" />
-      </button>
     </div>
 
     <!-- Başarı Bildirimi Toast -->
@@ -435,7 +427,7 @@ async function submitSil() {
       <h3>
         {{
           activeFilter === 'pending'
-            ? (activeTab === 'avans' ? 'Bekleyen Avans Yok' : activeTab === 'izin' ? 'Bekleyen İzin Yok' : 'Bekleyen Talep Yok')
+            ? (activeTab === 'all' ? 'Bekleyen Talep Yok' : activeTab === 'avans' ? 'Bekleyen Avans Yok' : activeTab === 'izin' ? 'Bekleyen İzin Yok' : 'Bekleyen Genel Talep Yok')
             : (activeFilter === 'deleted' ? 'Silinmiş Kayıt Bulunmuyor' : 'İşlem Görmüş Kayıt Yok')
         }}
       </h3>
@@ -1114,15 +1106,58 @@ async function submitSil() {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
 }
 
+/* Hızlı Kategori Rozeti (Çekmece Kapalıyken) */
+.pill-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  color: var(--ds-primary);
+  box-shadow: var(--ds-shadow-pill);
+  font: 700 11px var(--ds-font-main);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pill-category-badge:active {
+  transform: scale(0.95);
+}
+
+/* 2. Arama ve Sıralama Yan Yana */
+.talepler-search-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.talepler-search-sort-row .talepler-search {
+  flex: 1;
+  margin-bottom: 0;
+  height: 44px;
+}
+
+.talepler-search-sort-row .sort-dropdown-wrap {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+}
+
 /* Sıralama Butonu */
 .sort-dropdown-wrap {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border: 1px solid var(--ds-border);
   border-radius: 50%;
   background: var(--ds-surface);
@@ -1157,7 +1192,7 @@ async function submitSil() {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 46px;
+  height: 44px;
   margin-bottom: 14px;
   padding: 0 14px;
   border: 1px solid var(--ds-border);

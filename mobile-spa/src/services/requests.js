@@ -1,4 +1,28 @@
+import { reactive } from 'vue'
 import { auth } from './auth.js'
+
+export const requestsState = reactive({
+  activeTab: 'all', // 'all' | 'avans' | 'izin' | 'talep'
+  counts: { avans: 0, izin: 0, talep: 0, total: 0 },
+  permissions: { avans: true, izin: true, talep: true },
+  drawerOpen: false,
+})
+
+export function setRequestsTab(tab) {
+  requestsState.activeTab = tab
+}
+
+export function openRequestsDrawer() {
+  requestsState.drawerOpen = true
+}
+
+export function closeRequestsDrawer() {
+  requestsState.drawerOpen = false
+}
+
+export function toggleRequestsDrawer() {
+  requestsState.drawerOpen = !requestsState.drawerOpen
+}
 
 async function request(action, options = {}) {
   const url = options.params

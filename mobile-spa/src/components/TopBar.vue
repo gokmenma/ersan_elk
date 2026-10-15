@@ -25,16 +25,25 @@ function goBack() {
 </script>
 
 <template>
-  <header class="clay-topbar-wrapper">
-    <div class="clay-topbar">
-      <button v-if="showBack" type="button" class="clay-circle-btn" aria-label="Geri dön" @click="goBack">
-        <ArrowLeft :size="20" />
-      </button>
-      <button v-else type="button" class="clay-company-chip" aria-label="Firma seçimini aç" @click="router.push('/firma-secimi')">
-        <span class="clay-brand-icon"><Zap :size="16" /></span>
-        <span>{{ auth.state.company?.name || 'Ersan Elektrik' }}</span>
-        <ChevronDown :size="14" />
-      </button>
+  <header class="clay-topbar-wrapper" :class="{ 'has-inline-header': showBack && heading }">
+    <div class="clay-topbar" :class="{ 'has-inline-header': showBack && heading }">
+      <div class="clay-topbar-main">
+        <button v-if="showBack" type="button" class="clay-circle-btn" aria-label="Geri dön" @click="goBack">
+          <ArrowLeft :size="20" />
+        </button>
+        <button v-else type="button" class="clay-company-chip" aria-label="Firma seçimini aç" @click="router.push('/firma-secimi')">
+          <span class="clay-brand-icon"><Zap :size="16" /></span>
+          <span>{{ auth.state.company?.name || 'Ersan Elektrik' }}</span>
+          <ChevronDown :size="14" />
+        </button>
+
+        <div v-if="showBack && heading" class="clay-topbar-title-block">
+          <span v-if="eyebrow" class="clay-topbar-eyebrow">{{ eyebrow }}</span>
+          <h1 class="clay-topbar-title">{{ heading }}</h1>
+          <p v-if="subtitle" class="clay-topbar-subtitle">{{ subtitle }}</p>
+        </div>
+      </div>
+
       <div class="clay-actions-row">
         <slot name="actions">
           <button v-if="auth.state.permissions.requests" type="button" class="clay-circle-btn" aria-label="Talepleri aç" @click="router.push('/talepler')">
@@ -46,7 +55,7 @@ function goBack() {
         </slot>
       </div>
     </div>
-    <div v-if="eyebrow || heading || subtitle" class="clay-page-header">
+    <div v-if="!showBack && (eyebrow || heading || subtitle)" class="clay-page-header">
       <span v-if="eyebrow" class="clay-page-eyebrow">{{ eyebrow }}</span>
       <h1 class="clay-page-title">{{ heading }}</h1>
       <p v-if="subtitle" class="clay-page-subtitle">{{ subtitle }}</p>
