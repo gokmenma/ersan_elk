@@ -148,6 +148,7 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
   - **Metrik Izgaraları**: 2x2 veya 3x1 kutu ızgaraları ve dairesel aksiyon butonları (`.bento-metrics-grid`, `.bento-round-action-btn`).
   - **Butonlar ve Filtreler**: Dairesel veya hap formunda bağımsız eylem butonları (`.clay-circle-btn`, `.clay-filter-pill`, `.clay-tabs-wrap`).
   - **Alt Navigasyon**: Ekranın altında yüzen koyu obsidian dock (`.bottom-nav`).
+  - **Tipografi Standardı**: Personel PWA ile uyumlu olarak ana yazı tipi Google Fonts `Roboto Condensed` (`--ds-font-main: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;`) olarak uygulanacaktır.
 - **Dokunma Alanı ve Ergonomi**: En az 44px dokunma alanı, safe-area boşlukları (`--ds-safe-top`, `--ds-safe-bottom`) ve tek elle mobil kullanım esas alınacaktır.
 
 ## 11. Hafıza ve Bağlam Yönetimi (Memory Bank Standardı)

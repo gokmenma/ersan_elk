@@ -57,7 +57,7 @@
   --ds-ink-light: #ffffff;          /* Koyu kartlar üzeri beyaz metin */
   --ds-muted: #64748b;              /* Soluk ikincil açıklama metni */
   --ds-muted-light: #94a3b8;        /* Koyu kart içi ikincil metin */
-  --ds-font-main: -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  --ds-font-main: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ds-font-mono: 'Space Grotesk', monospace;
 
   /* 3. Sınır Çizgileri (Borders) */

@@ -6,8 +6,8 @@ use DomainException;
 /** Yalnız ortak hesap çıktısını sunar; maaş hesabı yapmaz. */
 final class BordroYayinIcerikService
 {
-    public const BEYAN = 'Bu döneme ait resmî alacak dökümümü görüntüledim ve okudum.';
-    public const METIN_SURUMU = 1;
+    public const BEYAN = 'Ücret hesap pusulasını okudum ve onaylıyorum.';
+    public const METIN_SURUMU = 2;
 
     public static function kurus(float $value): int
     {

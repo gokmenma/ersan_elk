@@ -973,7 +973,7 @@ async function deleteSelectedMovement() {
    GLACIER ALPINE OPTICS: CARI DESIGN SYSTEM
    ------------------------------------------------------------------------- */
 .ds-cari-screen {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--ds-font-main);
   padding-bottom: calc(140px + var(--ds-safe-bottom));
 }
 
@@ -1134,7 +1134,7 @@ async function deleteSelectedMovement() {
   border: 0;
   background: transparent;
   color: var(--ds-ink);
-  font: 500 12px 'Plus Jakarta Sans', sans-serif;
+  font: 500 12px var(--ds-font-main);
   outline: none;
 }
 .search-clear-btn {
@@ -1529,7 +1529,7 @@ async function deleteSelectedMovement() {
   width: 100%;
   border: 0;
   outline: none;
-  font: 500 12px 'Plus Jakarta Sans', sans-serif;
+  font: 500 12px var(--ds-font-main);
   color: var(--ds-ink);
   background: transparent;
 }
@@ -1612,7 +1612,7 @@ async function deleteSelectedMovement() {
   border: 0;
   background: transparent;
   outline: none;
-  font: 500 11px 'Plus Jakarta Sans', sans-serif;
+  font: 500 11px var(--ds-font-main);
   color: var(--ds-ink);
 }
 .history-type-tabs {

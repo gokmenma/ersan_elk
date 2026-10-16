@@ -88,4 +88,35 @@ final class BordroPusulaTest extends TestCase
         $d->kapali_mi = 1;
         self::assertSame($acik, BordroPusulaService::olustur($this->row(), $d, $this->model()));
     }
+
+    public function testYayinIcerigiResmiPusulaOzetiniTasiyorVeIcDetayiSizdirmiyor(): void
+    {
+        $row = $this->row();
+        $row->tc_kimlik_no = '12345678901';
+        $row->sgk_no = 'SGK-42';
+        $icerik = BordroPusulaService::yayinIcerigi($row, $this->donem(), (object) ['firma_adi' => 'Test Firma'], $this->model());
+        self::assertSame('ucret_hesap_pusulasi', $icerik['icerik_turu']);
+        self::assertSame(3701415, $icerik['kazanc_toplami_kurus']);
+        self::assertSame(601415, $icerik['toplam_kesinti_kurus']);
+        self::assertSame(3100000, $icerik['banka_net_kurus']);
+        self::assertSame('SGK işçi payı', $icerik['yasal_kesintiler'][0]['etiket']);
+        self::assertArrayNotHasKey('detay', $icerik);
+        self::assertStringNotContainsString('9876.54', json_encode($icerik));
+        self::assertSame('*******8901', $icerik['resmi_pusula']['personel']['tc_kimlik_no']);
+        self::assertSame('SGK-42', $icerik['resmi_pusula']['personel']['sgk_no']);
+        self::assertSame('Test Firma', $icerik['resmi_pusula']['firma']['firma_adi']);
+        self::assertArrayNotHasKey('odeme_dagilimi', $icerik['resmi_pusula']['pusula']['detay']);
+
+        $snapshot = $icerik['resmi_pusula'];
+        $html = BordroPusulaService::html(
+            (object) $snapshot['personel'],
+            (object) $snapshot['donem'],
+            (object) $snapshot['firma'],
+            $snapshot['pusula']
+        );
+        self::assertStringContainsString('ÜCRET HESAP PUSULASI', $html);
+        self::assertStringContainsString('*******8901', $html);
+        self::assertStringContainsString('SGK-42', $html);
+        self::assertStringNotContainsString('12345678901', $html);
+    }
 }

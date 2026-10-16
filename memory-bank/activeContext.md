@@ -1,5 +1,36 @@
 # Active Context
 
+## Mobil SPA Tipografi Standardizasyonu (2026-10-16)
+- **Kullanıcı Talebi**: Mobil SPA (`@mobile-spa`) sayfalarında genel olarak kullanılan fontun `personel-pwa`'da kullanılan font (`Roboto Condensed`) yapılması.
+- **Uygulanan Değişiklikler**:
+  1. **HTML & Font Yükleme**: `mobile-spa/index.html` içine Google Fonts `Roboto Condensed` (`ital,wght@0,100..900;1,100..900`) preconnect ve link etiketleri eklendi.
+  2. **Global Stiller (`mobile-spa/src/styles.css`)**:
+     - `@import` kuralına `Roboto Condensed` eklendi.
+     - `:root` ve `body` font ailesi `'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` olarak ayarlandı.
+     - Başlıklar (`h1, h2, h3, strong`) `var(--ds-font-main)` değişkenine bağlandı.
+  3. **Merkezi Tasarım Sistemi (`mobile-spa/src/design-system.css`)**:
+     - `--ds-font-main` değişkeni `'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` olarak güncellendi. Tüm bento kartları, butonlar, inputlar, formlar ve etiketler tek merkezden `Roboto Condensed` tipografisine kavuştu.
+  4. **Bileşenlerdeki Lokal Geçersiz Kılmalar**: `CariView.vue`, `CariDetailView.vue`, `PersonnelSectionView.vue`, `KasaView.vue` ve `FaturaView.vue` içindeki münferit font-family tanımları merkezi `var(--ds-font-main)` standardına bağlandı.
+  5. **Üretim Derlemesi (`npm run build`)**: Vite derlemesi başarıyla tamamlandı, `dist/` klasörü güncellendi.
+
+## Resmî Ücret Pusulası → Dijital Yayın Entegrasyonu / Adım 1-2 (2026-10-16)
+- `views/bordro/raporlar/bordro.php` tarafından kullanılan `BordroPusulaService`, personel dijital yayın akışının da tek resmî pusula üreticisi yapıldı.
+- Yayın içeriğine sürümlü resmî pusula özeti, kazanç/kesinti toplamları, yasal kesinti kalemleri, matrahlar, çalışma/izin günleri ve vergi istisnaları eklendi.
+- Tam `hesaplama_detay` ile elden/Sodexo/diğer ödeme kanallarının personel API'sine sızmaması korundu.
+- Personel PWA detayında kazanç toplamı, toplam kesinti ve yasal kesinti kalemleri gösterilmeye başlandı.
+- Personelin yeni yayınlardan indirdiği PDF, yönetim raporundaki aynı A4 ücret hesap pusulası şablonundan üretiliyor; dijital beyan, sürüm, yayın zamanı ve SHA-256 bilgisi belgeye ekleniyor.
+- PDF canlı kayıtları yeniden okumuyor; yayın anındaki maskeli T.C., SGK, işe giriş/çıkış, firma, dönem ve resmî pusula sunum snapshot'ını kullanıyor. Eski yayınlar legacy PDF ile açılmaya devam ediyor.
+- Personel durumları `Bekliyor / Görüntülendi – Onay Bekliyor / Onaylandı / İtiraz Edildi / İptal-Revize Edildi` olarak tek iş durumuna bağlandı; yönetim tablosu ve CSV aynı alanı kullanıyor.
+- Beyan metni v2 “Ücret hesap pusulasını okudum ve onaylıyorum” oldu. İçerik hash'i, IP, user-agent ve oturum hash'i onay kanıtına eklendi; tekrar görüntülemeler olay günlüğünde korunuyor.
+- Dönem tabanlı benzersiz pusula numarası ile oluşturma/gönderim zamanları eklendi; eski kayıtlar migration içinde geriye dolduruluyor.
+- İtiraz kategorileri, süreç durumları, gerekçeli sonuç, AES şifreli 10 MB PDF/görsel eki ve sahiplik/yetki kontrollü indirme tamamlandı.
+- Yeni itiraz için bordro yetkililerine uygulama içi bildirim, sonuç için personele push ve yeni sürüm için revizyona özel bildirim metni eklendi.
+- `database/migrations/2026_10_16_expand_bordro_yayin_onay.sql` yerel hedef veritabanına uygulandı; yeni alanlar, itiraz eki tablosu ve aktif kayıtların pusula numarası doluluğu doğrulandı.
+- Personel PWA bordro modalında indirilen resmî pusulanın personel/işyeri bilgileri, çalışma ve izin günleri, yasal matrah-kesintiler, ek kazançlar, resmî düzeltmeler, vergi istisnaları, özet ve SHA-256 belge bilgisi ayrıca indirme gerekmeden görüntüleniyor. Veriler yayın snapshot'ından okunuyor.
+- Aynı modal `Pusula Detayı` ve `İtiraz / İnceleme` sekmelerine ayrıldı. Açık itiraz sayısı sekme rozetinde gösteriliyor; itiraz sonrası kullanıcı ilgili sekmede kalıyor.
+- Pusula detayının görsel önceliği parasal kalemlere taşındı: birleşik yemek yardımı dahil gelirler açık yeşil, yasal/özel kesintiler açık kırmızı kartta en üstte; özet, gün, matrah ve personel bilgileri bunların altında. İşyeri bilgi kartı kaldırıldı. Yemek günlük yuvarlama farkı yalnız sunumda yemek yardımına ekleniyor ve ayrı satır çizilmiyor; snapshot hesabı değişmiyor.
+- Personel talebiyle pusula ayrıntısından personel bilgileri ve teknik belge doğrulama/SHA-256 kartları kaldırıldı. Onay bekleyen elektronik ücret pusulası bildirim kartına mavi border/shadow pulse eklendi; onay sonrası efekt uygulanmıyor ve `prefers-reduced-motion` tercihinde animasyon kapatılıyor.
+
 ## Mobil SPA Evrak Takip Modülü ve Gelişmiş Bento / Claymorphic Sayfası (2026-10-15)
 - **Kullanıcı Talebi**: Mobil SPA üzerinde "Evrak Takip" sayfasının yapılması (`@mobile-spa`), eski `mobile/` modülünden ilham alınarak daha kullanıcı dostu, modern ve şık hale getirilmesi.
 - **Mimari & Geliştirmeler**:
@@ -641,3 +672,8 @@
 - Modal sonuçlarına alan bazında benzersiz personel sayısı grafiği eklendi. Her personel aynı alan için bir kez sayılıyor; örneğin Yemek Yardımı farkı bulunan kişi adedi yatay çubuk ve sayı olarak gösteriliyor.
 - Karşılaştırma sonrasında `Özet ve Açık Farkları Excel'e İndir` işlemi sunuluyor. XLSX dosyasının Özet sayfasında durum sayaçları ve alan bazında kişi sayıları; Açık Fark Satırları sayfasında personel/T.C./durum/alan/muhasebe/gönderilen/fark değerleri filtrelenebilir, gruplanmamış normal satırlar halinde bulunuyor.
 - Excel detay düzeni kullanıcı talebiyle kişi matrisi olarak değiştirildi: her personel tek satırda; ilk üç kolon Personel/T.C./Durum, devamında her karşılaştırma kalemi için birleştirilmiş kalem başlığı altında `Muhasebe / Gönderilen / Fark` üçlüsü bulunuyor. Fark hücreleri kırmızı vurgulanıyor, başlık filtresi açık ve ilk üç kolon sabitleniyor.
+
+## 2026-10-16 — Personel test yayını veritabanı düzeltmesi
+- `Seçilen Personelde Test Et` işleminin genel hata vermesinin nedeni PHP hata günlüğünde `bordro_yayin_dokum.pusula_no` sütununun bulunmaması olarak doğrulandı; ücret pusulası/onay genişletme migrasyonu uygulama kodundan sonra veritabanına uygulanmamıştı.
+- `database/migrations/2026_10_16_expand_bordro_yayin_onay.sql` yerel veritabanına uygulandı. Pusula numarası, oluşturma/gönderim ve onay kanıtı alanları ile itiraz ekleri tablosu oluşturuldu; aktif eski dökümlerin pusula numaraları geriye dönük dolduruldu.
+- Şema kontrolünde beklenen 7 döküm alanı ve ek tablosu mevcut, pusula numarası eksik aktif kayıt sayısı `0`. İlgili ücret pusulası/yayın testleri 30 test ve 117 doğrulamayla geçti.

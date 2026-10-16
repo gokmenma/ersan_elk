@@ -1,4 +1,33 @@
 # Progress
+
+## 2026-10-16 — Mobil SPA Tipografi Standardizasyonu
+- [x] Mobil SPA (`mobile-spa`) genel yazı tipi, Personel PWA standardı olan **Roboto Condensed** ile eşitlendi:
+  - `mobile-spa/index.html` ve `mobile-spa/dist/index.html` içine Google Fonts `Roboto Condensed` (`ital,wght@0,100..900;1,100..900`) preconnect ve link etiketleri eklendi.
+  - `mobile-spa/src/styles.css` içindeki `@import`, `:root` ve `body` font-family tanımları `Roboto Condensed` olarak güncellendi.
+  - `mobile-spa/src/design-system.css` merkezi `--ds-font-main` değişkeni `'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` olarak ayarlandı; tüm Bento kartları, butonlar, inputlar ve formlar merkezi değişkenden miras aldı.
+  - Münferit sayfalardaki hardcoded font tanımları (`CariView.vue`, `CariDetailView.vue`, `PersonnelSectionView.vue`, `KasaView.vue`, `FaturaView.vue`) `var(--ds-font-main)` standardına çekildi.
+  - `npm run build` ile Vite derlemesi başarıyla tamamlandı.
+
+## 2026-10-16 — Resmî Ücret Pusulası Dijital Yayın Entegrasyonu / Adım 1
+- [x] Bordro raporu ile personel yayın önizleme/yayın akışı aynı `BordroPusulaService` kaynağına bağlandı.
+- [x] Resmî kazanç, yasal/özel kesinti, matrah, gün ve vergi istisnası alanları değişmez yayın içeriğine eklendi.
+- [x] Personel PWA bordro detayına resmî toplamlar ve yasal kesinti kırılımı eklendi.
+- [x] İç hesap detayları ile resmî olmayan ödeme kanallarının yayın içeriğine taşınmadığı regresyon testiyle doğrulandı.
+- [x] İlgili bordro pusula/yayın testleri: 35 test, 120 doğrulama geçti.
+- [x] Yeni yayınların personel PDF'i yönetim tarafındaki resmî ücret pusulası şablonuyla ortaklaştırıldı.
+- [x] PDF yalnız mühürlü snapshot'tan üretiliyor; T.C. maskeli, teknik/iç ödeme verileri dışarıda ve eski yayınlar geriye uyumlu.
+- [x] İkinci adım sonrası ilgili testler: 35 test, 128 doğrulama geçti.
+- [ ] Personel pusula durumları ve “Okudum ve Onaylıyorum” beyan metni standartlaştırılacak.
+- [x] Personel pusula durumları ve “Okudum ve Onaylıyorum” beyan metni standartlaştırıldı.
+- [x] Pusula numarası, oluşturma/gönderim zamanı ve onay kanıt alanları ayrı migration ile eklendi.
+- [x] Kategorili itiraz, süreç durumları, şifreli dosya eki, yönetici/personel bildirimleri ve revizyon bildirimi tamamlandı.
+- [x] Genişletilmiş bordro pusula/yayın regresyonu: 38 test, 138 doğrulama geçti.
+- [x] `database/migrations/2026_10_16_expand_bordro_yayin_onay.sql` yerel hedef veritabanına uygulandı.
+- [x] Personel PWA'da PDF indirmeden resmî pusulanın ayrıntılı personel, işyeri, gün, matrah, kesinti, kazanç, istisna, özet ve doğrulama bilgileri incelenebilir hale getirildi.
+- [x] Bordro modalı `Pusula Detayı` ve `İtiraz / İnceleme` sekmelerine ayrıldı; açık talep rozeti ve işlem sonrası sekme devamlılığı eklendi.
+- [x] Pusula detayında gelir/kesinti kartları üste taşındı ve yeşil/kırmızı tonlarla ayrıldı; bilgi kartları alta alındı, işyeri kartı kaldırıldı.
+- [x] Yemek günlük yuvarlama farkı görünümde yemek yardımına birleştirildi; ayrı yuvarlama satırı kaldırılırken kayıtlı hesap ve toplamlar korundu.
+- [x] Personel ve belge doğrulama kartları personel pusula ayrıntısından kaldırıldı; bekleyen onay kartına erişilebilir pulse border efekti eklendi.
 - [x] Mobil SPA (`mobile-spa`): Evrak Takip modülü sıfırdan Soft Bento & Claymorphic UI standartlarında, ISO 27001 şifreli dosya desteği ve E-İmza akışıyla geliştirildi (2026-10-15):
   - **Güvenli Backend API (`public/api/evrak.php`)**: Gate yetkilendirmesi, CSRF doğrulaması, PDO parametrik bağlama ile `EvrakTakipModel` üzerinden tüm işlemler yürütüldü. `list`, `meta`, `detail`, `save`, `delete`, `e-imza-onaya-sun`, `e-imza-onayla`, `e-imza-iade`, `e-imza-geri-al`, `arac-zimmet`, `stream-file` ve `pdf` aksiyonları tamamlandı.
   - **ISO 27001 Belge Şifreleme**: Yüklenen belgeler `Security::encryptFile()` ile diske şifreli kaydediliyor; `stream-file` ile kullanıcı yetkisiyle anlık deşifre edilip MIME türüyle sunuluyor.
@@ -330,3 +359,10 @@
 - [x] Modalda her farklı alan için benzersiz personel sayısını gösteren yatay grafik eklendi.
 - [x] Durum ve alan özetli, tüm farkları açık/filtrelenebilir satırlarda sunan XLSX indirme çıktısı eklendi; test paketi 4 test / 20 doğrulamaya çıktı.
 - [x] Excel detay çıktısı her personel tek satır ve her kalem üç kolon (`Muhasebe / Gönderilen / Fark`) olacak yatay matrise dönüştürüldü; fark hücreleri görünür biçimde vurgulandı.
+
+# 2026-10-16 — Personel test yayını şema hatası
+
+- [x] Genel yayın hatasının günlük kaydı incelendi; eksik `pusula_no` sütunu kesin neden olarak belirlendi.
+- [x] Ücret pusulası ve dijital onay migrasyonu yerel veritabanına uygulandı.
+- [x] Yeni döküm alanları, itiraz eki tablosu ve eski aktif kayıtlardaki pusula numarası doluluğu doğrulandı.
+- [x] İlgili birim testleri geçti: 30 test, 117 doğrulama.

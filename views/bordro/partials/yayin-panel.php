@@ -581,10 +581,10 @@ if (!$yayinUser || !(new \App\Model\MenuModel())->userCanAccessMenuLink($yayinUs
                   <tr>
                     <th data-filter="string">PERSONEL</th>
                     <th data-filter="string" style="width: 80px;">SÜRÜM</th>
-                    <th data-filter="select">YAYIN DURUMU</th>
+                    <th data-filter="select">PUSULA DURUMU</th>
                     <th data-filter="date">YAYIN TARİHİ</th>
                     <th data-filter="date">GÖRÜNTÜLEME</th>
-                    <th data-filter="date">OKUMA BEYANI</th>
+                    <th data-filter="date">ONAY TARİHİ</th>
                     <th data-filter="string">İNCELEME TALEPLERİ</th>
                     <th data-filter="select">PUSH DURUMU</th>
                     <th style="width: 90px;">İŞLEM</th>

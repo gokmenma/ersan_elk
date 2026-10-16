@@ -2,6 +2,7 @@
 namespace App\Model;
 
 use App\Helper\Security;
+use App\Service\BordroPusulaService;
 use App\Service\BordroYayinIcerikService;
 use DomainException;
 use PDO;
@@ -48,9 +49,8 @@ final class BordroYayinModel extends Model
         $d = $this->donem($firma, $donem, true);
         if (!(int) $d->kapali_mi) throw new DomainException('Yalnız kapalı dönem yayınlanabilir.');
         $bordro = new BordroPersonelModel();
-        $parametre = new BordroParametreModel();
-        $asgari = $parametre->getGenelAyar('asgari_ucret_net', $d->baslangic_tarihi);
-        if ($asgari === null || (float) $asgari <= 0) throw new DomainException('Dönemin asgari net ücret ayarı bulunamadı.');
+        $firmaKaydi = $this->sorgu('SELECT * FROM firmalar WHERE id = ? AND silinme_tarihi IS NULL', [$firma])->fetch(PDO::FETCH_OBJ);
+        if (!$firmaKaydi) throw new DomainException('Firma bilgileri bulunamadı.');
         $liste = $bordro->getPersonellerByDonem($donem);
         $hazir = []; $hatalar = []; $dislananlar = [];
         foreach ($liste as $p) {
@@ -72,8 +72,8 @@ final class BordroYayinModel extends Model
                     ];
                     continue;
                 }
-                $h = $bordro->hesaplaOrtakGosterimDegerleri($p, $d, (float) $asgari);
-                $icerik = BordroYayinIcerikService::olustur($p, $d, $h, $bordro->getMuhasebeOdemeOzeti($h));
+                // Yönetim raporu ve dijital onay aynı kayıtlı resmî pusula üreticisini kullanır.
+                $icerik = BordroPusulaService::yayinIcerigi($p, $d, $firmaKaydi, $bordro);
                 $hazir[] = ['personel_id' => (int) $p->personel_id, 'bordro_id' => (int) $p->id, 'icerik' => $icerik];
             } catch (DomainException $e) {
                 $hatalar[] = ['personel' => (string) $p->adi_soyadi, 'mesaj' => $e->getMessage()];
@@ -120,6 +120,7 @@ final class BordroYayinModel extends Model
             $json = json_encode($secili['icerik'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             $this->sorgu('INSERT INTO bordro_yayin_dokum (yayin_id, personel_id, bordro_personel_id, icerik, icerik_hash) VALUES (?, ?, ?, ?, ?)', [$yayin, $personel, $secili['bordro_id'], $json, hash('sha256', $json)]);
             $dokum = (int) $this->db->lastInsertId();
+            $this->sorgu('UPDATE bordro_yayin_dokum SET pusula_no = ?, gonderim_tarihi = NOW() WHERE id = ?', [$this->pusulaNo($secili['icerik'], $dokum), $dokum]);
             $this->olay($dokum, 'test_yayini', 'user', $user, 'Bildirim gönderilmeden tek personel testi');
             return ['yayin_token' => Security::encrypt($yayin), 'surum' => $surum, 'adet' => 1, 'bildirim' => false];
         });
@@ -141,12 +142,19 @@ final class BordroYayinModel extends Model
             $json = json_encode($kayit['icerik'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             $this->sorgu('INSERT INTO bordro_yayin_dokum (yayin_id, personel_id, bordro_personel_id, icerik, icerik_hash) VALUES (?, ?, ?, ?, ?)', [$id, $kayit['personel_id'], $kayit['bordro_id'], $json, hash('sha256', $json)]);
             $dokum = (int) $this->db->lastInsertId();
+            $this->sorgu('UPDATE bordro_yayin_dokum SET pusula_no = ?, gonderim_tarihi = NOW() WHERE id = ?', [$this->pusulaNo($kayit['icerik'], $dokum), $dokum]);
             $this->olay($dokum, 'yayinlandi', 'user', $user, 'Sürüm ' . $surum);
             foreach ([0, 3, 7] as $gun) {
                 $this->sorgu('INSERT INTO bordro_yayin_kuyruk (dokum_id, gun, planlanan) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))', [$dokum, $gun, $gun]);
             }
         }
         return ['yayin_token' => Security::encrypt($id), 'surum' => $surum, 'adet' => count($data['kayitlar'])];
+    }
+
+    private function pusulaNo(array $icerik, int $dokumId): string
+    {
+        $ts = strtotime((string) ($icerik['baslangic'] ?? '')) ?: time();
+        return date('Y/m', $ts) . '/' . str_pad((string) $dokumId, 6, '0', STR_PAD_LEFT);
     }
 
     /** Yayınla/beyan/yeniden aç aynı dönem kilidini kullanır. */
@@ -166,13 +174,26 @@ final class BordroYayinModel extends Model
         $this->sorgu('INSERT INTO bordro_yayin_olay (dokum_id, tur, aktor_tipi, aktor_id, detay) VALUES (?, ?, ?, ?, ?)', [$dokum, $tur, $aktor, $id, $detay]);
     }
 
+    private function islemDurumu(array $row): string
+    {
+        if (in_array($row['durum'] ?? '', ['revizyon', 'arsiv'], true)) return 'revize_edildi';
+        if ((int) ($row['acik_talep'] ?? 0) > 0) return 'itiraz_edildi';
+        if (!empty($row['beyan_tarihi'])) return 'onaylandi';
+        if (!empty($row['goruntuleme_tarihi'])) return 'goruntulendi';
+        return 'bekliyor';
+    }
+
     public function personelListe(int $firma, int $personel): array
     {
-        $rows = $this->sorgu('SELECT d.*, y.surum, y.durum, y.yayin_tarihi FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id JOIN personel p ON p.id = d.personel_id WHERE d.personel_id = ? AND p.firma_id = ? AND y.firma_id = ? AND d.is_active = 1 AND y.is_active = 1 ORDER BY y.yayin_tarihi DESC, y.id DESC', [$personel, $firma, $firma])->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $this->sorgu("SELECT d.*, y.surum, y.durum, y.yayin_tarihi,
+            (SELECT COUNT(*) FROM bordro_yayin_talep t WHERE t.dokum_id = d.id AND t.durum IN ('alindi','inceleniyor','ek_bilgi_bekleniyor','acik') AND t.is_active = 1) acik_talep
+            FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id JOIN personel p ON p.id = d.personel_id
+            WHERE d.personel_id = ? AND p.firma_id = ? AND y.firma_id = ? AND d.is_active = 1 AND y.is_active = 1
+            ORDER BY y.yayin_tarihi DESC, y.id DESC", [$personel, $firma, $firma])->fetchAll(PDO::FETCH_ASSOC);
         return array_map(function ($row) {
             $i = $this->icerik($row);
             $surum = $row['durum'] === 'test' ? 'T' . abs((int) $row['surum']) : (int) $row['surum'];
-            return ['token' => Security::encrypt((int) $row['id']), 'donem' => $i['donem'], 'baslangic' => $i['baslangic'], 'surum' => $surum, 'durum' => $row['durum'], 'yayin_tarihi' => $row['yayin_tarihi'], 'beyan_tarihi' => $row['beyan_tarihi'], 'goruntuleme_tarihi' => $row['goruntuleme_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus']];
+            return ['token' => Security::encrypt((int) $row['id']), 'pusula_no' => $row['pusula_no'], 'donem' => $i['donem'], 'baslangic' => $i['baslangic'], 'surum' => $surum, 'durum' => $row['durum'], 'islem_durumu' => $this->islemDurumu($row), 'yayin_tarihi' => $row['yayin_tarihi'], 'gonderim_tarihi' => $row['gonderim_tarihi'] ?: $row['yayin_tarihi'], 'beyan_tarihi' => $row['beyan_tarihi'], 'goruntuleme_tarihi' => $row['goruntuleme_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus']];
         }, $rows);
     }
 
@@ -196,7 +217,7 @@ final class BordroYayinModel extends Model
     public function detay(int $firma, int $id, ?int $personel = null): array
     {
         $r = $this->dokum($firma, $id, $personel);
-        $talepler = $this->sorgu('SELECT id, mesaj, durum, tarih FROM bordro_yayin_talep WHERE dokum_id = ? AND is_active = 1 ORDER BY id', [$id])->fetchAll(PDO::FETCH_ASSOC);
+        $talepler = $this->sorgu('SELECT id, konu, mesaj, durum, tarih, sonuc_tarihi FROM bordro_yayin_talep WHERE dokum_id = ? AND is_active = 1 ORDER BY id', [$id])->fetchAll(PDO::FETCH_ASSOC);
         foreach ($talepler as &$t) {
             $t['yanitlar'] = $this->sorgu(
                 'SELECT y.mesaj, y.tarih, COALESCE(NULLIF(TRIM(u.adi_soyadi), \'\'), u.user_name, \'Yetkili\') AS kullanici ' .
@@ -206,16 +227,19 @@ final class BordroYayinModel extends Model
                 'ORDER BY y.id',
                 [$t['id']]
             )->fetchAll(PDO::FETCH_ASSOC);
+            $t['ekler'] = $this->sorgu('SELECT id, dosya_adi, mime_tipi, dosya_boyutu, created_at FROM bordro_yayin_talep_ek WHERE talep_id = ? AND is_active = 1 ORDER BY id', [$t['id']])->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($t['ekler'] as &$ek) { $ek['token'] = Security::encrypt((int) $ek['id']); unset($ek['id']); }
             $t['token'] = Security::encrypt((int) $t['id']); unset($t['id']);
         }
         $olaylar = $personel === null ? $this->sorgu('SELECT tur, aktor_tipi, detay, tarih FROM bordro_yayin_olay WHERE dokum_id = ? AND is_active = 1 ORDER BY id', [$id])->fetchAll(PDO::FETCH_ASSOC) : [];
         $surum = $r['durum'] === 'test' ? 'T' . abs((int) $r['surum']) : (int) $r['surum'];
-        return ['olaylar' => $olaylar, 'token' => Security::encrypt($id), 'icerik' => $this->icerik($r), 'icerik_hash' => $r['icerik_hash'], 'surum' => $surum, 'durum' => $r['durum'], 'yayin_tarihi' => $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'beyan_metni' => $r['beyan_metni'] ?: BordroYayinIcerikService::BEYAN, 'beyan_metin_surumu' => (int) ($r['beyan_metin_surumu'] ?: BordroYayinIcerikService::METIN_SURUMU), 'talepler' => $talepler];
+        $r['acik_talep'] = count(array_filter($talepler, static fn($t) => in_array($t['durum'], ['acik','alindi','inceleniyor','ek_bilgi_bekleniyor'], true)));
+        return ['olaylar' => $olaylar, 'token' => Security::encrypt($id), 'pusula_no' => $r['pusula_no'], 'icerik' => $this->icerik($r), 'icerik_hash' => $r['icerik_hash'], 'surum' => $surum, 'durum' => $r['durum'], 'islem_durumu' => $this->islemDurumu($r), 'yayin_tarihi' => $r['yayin_tarihi'], 'gonderim_tarihi' => $r['gonderim_tarihi'] ?: $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'beyan_metni' => $r['beyan_metni'] ?: BordroYayinIcerikService::BEYAN, 'beyan_metin_surumu' => (int) ($r['beyan_metin_surumu'] ?: BordroYayinIcerikService::METIN_SURUMU), 'talepler' => $talepler];
     }
 
-    public function personelIslem(int $firma, int $id, int $personel, string $islem, string $mesaj = ''): void
+    public function personelIslem(int $firma, int $id, int $personel, string $islem, string $mesaj = '', array $kanit = []): ?int
     {
-        $this->atomik(function () use ($firma, $id, $personel, $islem, $mesaj) {
+        return $this->atomik(function () use ($firma, $id, $personel, $islem, $mesaj, $kanit) {
             $ilk = $this->dokum($firma, $id, $personel);
             $d = $this->donem($firma, (int) $ilk['donem_id'], true);
             // Kilitli okuma InnoDB'nin eski transaction snapshot'ını kullanmaz.
@@ -223,49 +247,78 @@ final class BordroYayinModel extends Model
             if ($islem === 'goruntule') {
                 if (!$r['goruntuleme_tarihi']) {
                     $this->sorgu('UPDATE bordro_yayin_dokum SET goruntuleme_tarihi = NOW() WHERE id = ?', [$id]);
-                    $this->olay($id, 'goruntulendi', 'personel', $personel);
                 }
-                return;
+                $this->olay($id, 'goruntulendi', 'personel', $personel);
+                return null;
             }
             if ($islem === 'beyan') {
                 if (!in_array($r['durum'], ['yayinda', 'test'], true) || !(int) $d->kapali_mi) throw new DomainException('Bu sürüm için yeni beyan alınamıyor.');
-                if ($r['beyan_tarihi']) return;
+                if ($r['beyan_tarihi']) return null;
                 if (!$r['goruntuleme_tarihi']) throw new DomainException('Önce dökümü görüntüleyin.');
-                $this->sorgu('UPDATE bordro_yayin_dokum SET beyan_tarihi = NOW(), beyan_metni = ?, beyan_metin_surumu = ? WHERE id = ?', [BordroYayinIcerikService::BEYAN, BordroYayinIcerikService::METIN_SURUMU, $id]);
+                $this->sorgu('UPDATE bordro_yayin_dokum SET beyan_tarihi = NOW(), beyan_metni = ?, beyan_metin_surumu = ?, onay_ip = ?, onay_user_agent = ?, onay_session_hash = ?, onay_icerik_hash = ? WHERE id = ?', [BordroYayinIcerikService::BEYAN, BordroYayinIcerikService::METIN_SURUMU, $kanit['ip'] ?? null, mb_substr((string) ($kanit['user_agent'] ?? ''), 0, 500), $kanit['session_hash'] ?? null, $r['icerik_hash'], $id]);
                 $this->olay($id, 'okuma_beyani', 'personel', $personel, BordroYayinIcerikService::BEYAN);
-                return;
+                return null;
             }
             if ($islem !== 'talep') throw new DomainException('Geçersiz işlem.');
             $mesaj = trim($mesaj);
             if (mb_strlen($mesaj) < 10 || mb_strlen($mesaj) > 4000) throw new DomainException('Talep açıklaması 10–4000 karakter olmalıdır.');
-            $acik = $this->sorgu("SELECT id FROM bordro_yayin_talep WHERE dokum_id = ? AND durum = 'acik' AND is_active = 1 FOR UPDATE", [$id])->fetchColumn();
+            $konu = (string) ($kanit['konu'] ?? 'diger');
+            if (!in_array($konu, ['eksik_calisma','fazla_mesai','prim','avans','kesinti','yemek_yol','diger'], true)) throw new DomainException('Geçersiz itiraz konusu.');
+            $acik = $this->sorgu("SELECT id FROM bordro_yayin_talep WHERE dokum_id = ? AND durum IN ('acik','alindi','inceleniyor','ek_bilgi_bekleniyor') AND is_active = 1 FOR UPDATE", [$id])->fetchColumn();
             if ($acik) throw new DomainException('Bu döküm için açık inceleme talebiniz bulunuyor.');
-            $this->sorgu('INSERT INTO bordro_yayin_talep (dokum_id, mesaj) VALUES (?, ?)', [$id, $mesaj]);
-            $this->olay($id, 'inceleme_talebi', 'personel', $personel, $mesaj);
+            $this->sorgu("INSERT INTO bordro_yayin_talep (dokum_id, konu, mesaj, durum) VALUES (?, ?, ?, 'alindi')", [$id, $konu, $mesaj]);
+            $talepId = (int) $this->db->lastInsertId();
+            $this->olay($id, 'itiraz_alindi', 'personel', $personel, $konu . ': ' . $mesaj);
+            return $talepId;
         });
+    }
+
+    public function talepEkiKaydet(int $firma, int $talep, int $personel, array $dosya): void
+    {
+        $sahip = $this->sorgu('SELECT t.id FROM bordro_yayin_talep t JOIN bordro_yayin_dokum d ON d.id = t.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id WHERE t.id = ? AND d.personel_id = ? AND y.firma_id = ? AND t.is_active = 1 AND d.is_active = 1 AND y.is_active = 1', [$talep, $personel, $firma])->fetchColumn();
+        if (!$sahip) throw new DomainException('İtiraz kaydı bulunamadı.');
+        $this->sorgu('INSERT INTO bordro_yayin_talep_ek (talep_id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu) VALUES (?, ?, ?, ?, ?)', [$talep, $dosya['adi'], $dosya['yol'], $dosya['mime'], $dosya['boyut']]);
+    }
+
+    public function talepEki(int $firma, int $ek, ?int $personel = null): array
+    {
+        $sql = 'SELECT e.* FROM bordro_yayin_talep_ek e JOIN bordro_yayin_talep t ON t.id = e.talep_id JOIN bordro_yayin_dokum d ON d.id = t.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id WHERE e.id = ? AND y.firma_id = ? AND e.is_active = 1 AND t.is_active = 1 AND d.is_active = 1 AND y.is_active = 1';
+        $args = [$ek, $firma];
+        if ($personel !== null) { $sql .= ' AND d.personel_id = ?'; $args[] = $personel; }
+        $row = $this->sorgu($sql, $args)->fetch(PDO::FETCH_ASSOC);
+        if (!$row) throw new DomainException('İtiraz eki bulunamadı.');
+        return $row;
     }
 
     public function takip(int $firma, int $donem): array
     {
         $this->donem($firma, $donem);
-        $rows = $this->sorgu('SELECT d.*, y.surum, y.durum, y.yayin_tarihi, (SELECT COUNT(*) FROM bordro_yayin_talep t WHERE t.dokum_id = d.id AND t.is_active = 1) talep_sayisi, (SELECT COUNT(*) FROM bordro_yayin_talep t WHERE t.dokum_id = d.id AND t.is_active = 1 AND t.durum = \'acik\') acik_talep, (SELECT q.durum FROM bordro_yayin_kuyruk q WHERE q.dokum_id = d.id AND q.gun = 0 AND q.is_active = 1) ilk_bildirim_durumu, (SELECT COUNT(*) FROM bordro_yayin_kuyruk q WHERE q.dokum_id = d.id AND q.durum = \'basarisiz\' AND q.is_active = 1) basarisiz_bildirim FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id WHERE y.firma_id = ? AND y.donem_id = ? AND y.is_active = 1 AND d.is_active = 1 ORDER BY y.surum DESC, d.id', [$firma, $donem])->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $this->sorgu("SELECT d.*, y.surum, y.durum, y.yayin_tarihi,
+            (SELECT COUNT(*) FROM bordro_yayin_talep t WHERE t.dokum_id = d.id AND t.is_active = 1) talep_sayisi,
+            (SELECT COUNT(*) FROM bordro_yayin_talep t WHERE t.dokum_id = d.id AND t.is_active = 1 AND t.durum IN ('acik','alindi','inceleniyor','ek_bilgi_bekleniyor')) acik_talep,
+            (SELECT q.durum FROM bordro_yayin_kuyruk q WHERE q.dokum_id = d.id AND q.gun = 0 AND q.is_active = 1) ilk_bildirim_durumu,
+            (SELECT COUNT(*) FROM bordro_yayin_kuyruk q WHERE q.dokum_id = d.id AND q.durum = 'basarisiz' AND q.is_active = 1) basarisiz_bildirim
+            FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id
+            WHERE y.firma_id = ? AND y.donem_id = ? AND y.is_active = 1 AND d.is_active = 1
+            ORDER BY y.surum DESC, d.id", [$firma, $donem])->fetchAll(PDO::FETCH_ASSOC);
         return array_map(function ($r) {
             $i = $this->icerik($r);
             $surum = $r['durum'] === 'test' ? 'T' . abs((int) $r['surum']) : (int) $r['surum'];
-            return ['token' => Security::encrypt((int) $r['id']), 'personel' => $i['personel'], 'donem' => $i['donem'], 'surum' => $surum, 'durum' => $r['durum'], 'yayin_tarihi' => $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus'], 'talep_sayisi' => (int) $r['talep_sayisi'], 'acik_talep' => (int) $r['acik_talep'], 'ilk_bildirim_durumu' => $r['ilk_bildirim_durumu'], 'basarisiz_bildirim' => (int) $r['basarisiz_bildirim']];
+            return ['token' => Security::encrypt((int) $r['id']), 'pusula_no' => $r['pusula_no'], 'personel' => $i['personel'], 'donem' => $i['donem'], 'surum' => $surum, 'durum' => $r['durum'], 'islem_durumu' => $this->islemDurumu($r), 'yayin_tarihi' => $r['yayin_tarihi'], 'gonderim_tarihi' => $r['gonderim_tarihi'] ?: $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus'], 'talep_sayisi' => (int) $r['talep_sayisi'], 'acik_talep' => (int) $r['acik_talep'], 'ilk_bildirim_durumu' => $r['ilk_bildirim_durumu'], 'basarisiz_bildirim' => (int) $r['basarisiz_bildirim']];
         }, $rows);
     }
 
-    public function yanitla(int $firma, int $talep, int $user, string $mesaj): void
+    public function yanitla(int $firma, int $talep, int $user, string $mesaj): array
     {
         $mesaj = trim($mesaj);
         if (mb_strlen($mesaj) < 10 || mb_strlen($mesaj) > 4000) throw new DomainException('Yanıt 10–4000 karakter olmalıdır.');
-        $this->atomik(function () use ($firma, $talep, $user, $mesaj) {
-            $t = $this->sorgu('SELECT t.* FROM bordro_yayin_talep t JOIN bordro_yayin_dokum d ON d.id = t.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id WHERE t.id = ? AND y.firma_id = ? AND y.is_active = 1 AND d.is_active = 1 AND t.is_active = 1 FOR UPDATE', [$talep, $firma])->fetch(PDO::FETCH_ASSOC);
-            if (!$t || $t['durum'] !== 'acik') throw new DomainException('Açık talep bulunamadı.');
+        return $this->atomik(function () use ($firma, $talep, $user, $mesaj) {
+            $t = $this->sorgu('SELECT t.*, d.personel_id FROM bordro_yayin_talep t JOIN bordro_yayin_dokum d ON d.id = t.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id WHERE t.id = ? AND y.firma_id = ? AND y.is_active = 1 AND d.is_active = 1 AND t.is_active = 1 FOR UPDATE', [$talep, $firma])->fetch(PDO::FETCH_ASSOC);
+            if (!$t || !in_array($t['durum'], ['acik','alindi','inceleniyor','ek_bilgi_bekleniyor'], true)) throw new DomainException('Açık talep bulunamadı.');
             $this->sorgu('INSERT INTO bordro_yayin_yanit (talep_id, kullanici_id, mesaj) VALUES (?, ?, ?)', [$talep, $user, $mesaj]);
-            $this->sorgu("UPDATE bordro_yayin_talep SET durum = 'sonuclandi' WHERE id = ?", [$talep]);
+            $this->sorgu("UPDATE bordro_yayin_talep SET durum = 'sonuclandi', atanan_kullanici_id = COALESCE(atanan_kullanici_id, ?), sonuc_tarihi = NOW() WHERE id = ?", [$user, $talep]);
             $this->olay((int) $t['dokum_id'], 'talep_yanitlandi', 'user', $user, $mesaj);
+            return ['personel_id' => (int) $t['personel_id'], 'dokum_token' => Security::encrypt((int) $t['dokum_id'])];
         });
     }
 
@@ -278,7 +331,7 @@ final class BordroYayinModel extends Model
             if (!$q) return null;
             $token = bin2hex(random_bytes(16));
             $this->sorgu("UPDATE bordro_yayin_kuyruk SET durum = 'isleniyor', deneme = deneme + 1, kilit_tarihi = NOW(), kilit_token = ? WHERE id = ?", [$token, $q]);
-            return $this->sorgu('SELECT q.*, d.personel_id, d.beyan_tarihi, y.durum yayin_durumu, bd.kapali_mi, p.aktif_mi, p.isten_cikis_tarihi, p.silinme_tarihi FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id JOIN bordro_donemi bd ON bd.id = y.donem_id JOIN personel p ON p.id = d.personel_id WHERE q.id = ?', [$q])->fetch(PDO::FETCH_ASSOC);
+            return $this->sorgu('SELECT q.*, d.personel_id, d.beyan_tarihi, y.surum, y.durum yayin_durumu, bd.kapali_mi, p.aktif_mi, p.isten_cikis_tarihi, p.silinme_tarihi FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id JOIN bordro_donemi bd ON bd.id = y.donem_id JOIN personel p ON p.id = d.personel_id WHERE q.id = ?', [$q])->fetch(PDO::FETCH_ASSOC);
         });
     }
 
@@ -288,7 +341,7 @@ final class BordroYayinModel extends Model
             $donem = $this->sorgu('SELECT y.firma_id, y.donem_id FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id WHERE q.id = ?', [$q['id']])->fetch(PDO::FETCH_ASSOC);
             if (!$donem) return 'atlandi';
             $this->donem((int) $donem['firma_id'], (int) $donem['donem_id'], true);
-            $r = $this->sorgu('SELECT q.*, d.personel_id, d.beyan_tarihi, d.is_active dokum_aktif, y.is_active yayin_aktif, y.firma_id, y.durum yayin_durumu, bd.kapali_mi, p.firma_id personel_firma, p.aktif_mi, p.isten_cikis_tarihi, p.silinme_tarihi FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id JOIN bordro_donemi bd ON bd.id = y.donem_id JOIN personel p ON p.id = d.personel_id WHERE q.id = ? AND q.kilit_token = ? FOR UPDATE', [$q['id'], $q['kilit_token']])->fetch(PDO::FETCH_ASSOC);
+            $r = $this->sorgu('SELECT q.*, d.personel_id, d.beyan_tarihi, d.is_active dokum_aktif, y.is_active yayin_aktif, y.firma_id, y.surum, y.durum yayin_durumu, bd.kapali_mi, p.firma_id personel_firma, p.aktif_mi, p.isten_cikis_tarihi, p.silinme_tarihi FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id JOIN bordro_donemi bd ON bd.id = y.donem_id JOIN personel p ON p.id = d.personel_id WHERE q.id = ? AND q.kilit_token = ? FOR UPDATE', [$q['id'], $q['kilit_token']])->fetch(PDO::FETCH_ASSOC);
             if (!$r) return 'atlandi';
             $uygun = $r['yayin_durumu'] === 'yayinda' && (int) $r['kapali_mi'] === 1
                 && $r['dokum_aktif'] && $r['yayin_aktif'] && $r['aktif_mi']

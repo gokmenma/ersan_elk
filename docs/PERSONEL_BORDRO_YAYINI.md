@@ -16,13 +16,16 @@ Mevcut `personel_gorsun` alanı yeni yayın akışını başlatmaz. Eski finansa
 
 ## Hesap ve kayıt ilkeleri
 
+- Yönetim tarafındaki **Resmî Ücret Hesap Pusulası** ile personel dijital yayını aynı `BordroPusulaService` üreticisini kullanır. Yayın snapshot'ında resmî kazanç toplamı, yasal/özel kesinti toplamları, yasal kesinti kalemleri, resmî matrahlar, çalışma/izin günleri ve vergi istisnaları içerik sürümüyle birlikte mühürlenir.
+- Yeni yayınların personel PDF'i, yönetim raporundaki aynı **Ücret Hesap Pusulası** A4 şablonundan ve yalnız mühürlü yayın snapshot'ından üretilir. Canlı personel/firma/bordro kaydı yeniden okunmaz; T.C. kimlik numarası yayın snapshot'ında maskeli saklanır. Eski yayınlar kendi tarihsel PDF görünümüyle geriye uyumlu kalır.
+- Personel yayınına tam `hesaplama_detay`, elden/Sodexo/diğer ödeme kanalları veya teknik iç hesap alanları aktarılmaz. Personel arayüzü ve API yalnız resmî pusulanın sunulabilir alt kümesini döndürür.
 - `hesaplaOrtakGosterimDegerleri()` ve `getMuhasebeOdemeOzeti()` çıktıları kullanılır. Maaş, yemek, RTÇ/HTÇ veya kesinti dağıtım kuralları değiştirilmez.
 - Ortak modelin resmî ücret tabanı ve banka kesinti etiketleri sunum için ayrıca dışa açılır. Elden ve iç hesap bilgileri yayın içeriğine girmez.
 - Kayıtlı `banka_odemesi`, ortak hesap neti ve döküm kalem toplamı kuruş bazında eşit olmalıdır. Eksik hesaplanmış, manuel dağılımı açıklanamayan veya tutarsız kayıtlar yayını durdurur.
 - Günlük yemek yuvarlama farkı ayrı satırdır. Ortak hesabın kazanç tavanı, kazanç kalemlerinden düşükse uygulanmış tavan farkı ayrı satır gösterilir; pozitif açıklanamayan fark yeni kazanç gibi tamamlanmaz.
 - Banka kesinti kalemlerinin toplamı gerçekleşen banka kesintisine eşitse ayrı gösterilir. Tavan/dağılım nedeniyle yalnız bir kısmı bankadan düşmüşse ortak model satır payı üretmediği için gerçekleşen banka kesintisi toplam olarak gösterilir; elden kesinti bilgisi yayınlanmaz.
 - Yayın içeriği personel adı, dönem/görev bilgileri, günler ve resmî kalemleri içerir. Sürüm, SHA-256, yayınlayan, yayın zamanı ve olay geçmişi saklanır. Hash içerik bütünlüğü kontrolüdür.
-- Beyan metni v1: **Bu döneme ait resmî alacak dökümümü görüntüledim ve okudum.** Sunucu zamanı, personel, döküm/sürüm ve metin sürümü kaydedilir. OTP/e-imza veya ödeme/tutar kabulü eklenmemiştir.
+- Onay metni v2: **Ücret hesap pusulasını okudum ve onaylıyorum.** Sunucu zamanı, personel, döküm/sürüm, metin sürümü, içerik hash'i ve teknik işlem kanıtları kaydedilir. OTP/e-imza eklenmemiştir.
 - Yeniden açma aynı dönem satırını kilitleyip mevcut yayını `revizyon` durumuna geçirir. Önceki içerik/beyan korunur. Tekrar kapatıp yayınlama eski sürümü arşivler ve yeni sürümde yeniden beyan ister. Yayın, yeniden açma, beyan ve bildirim işlemleri aynı dönem kilidini kullanır.
 - Döküm/PDF ağdan alınır. Service worker güncellemesi eski sayfa önbelleğini temizler; bordro navigasyonları ve önceden önbellekleme hariç tutulur. Beyan/talep çevrimdışı kuyruğa alınmaz.
 
@@ -32,7 +35,20 @@ Mevcut `personel_gorsun` alanı yeni yayın akışını başlatmaz. Eski finansa
 
 `database/migrations/2026_10_01_bordro_yayin.sql`
 
+Mevcut kurulumlarda durum, onay kanıtı, pusula numarası ve itiraz eki genişletmesini ardından uygulayın:
+
+`database/migrations/2026_10_16_expand_bordro_yayin_onay.sql`
+
 Script altı yeni InnoDB tablo oluşturur; bordro hesaplama tablolarını/verilerini değiştirmez. Canlı veritabanına bu çalışma kapsamında otomatik uygulanmaz. Uygulama dosyalarıyla birlikte dağıtılmalıdır; yeni uç noktalar tablolar olmadan çalışmaz.
+
+Genişletme migration'ı eski dökümlerin pusula numarası ile oluşturma/gönderim zamanlarını mevcut dönem ve yayın kaydından geriye doldurur. İtiraz ekleri `uploads/bordro-itiraz/` altında AES şifreli saklanır; yalnız firma yetkili kullanıcısı veya kaydın sahibi personel şifreli token ile görüntüleyebilir.
+
+## Pusula durumları ve itiraz
+
+- Personel iş durumu veriden türetilir: `bekliyor`, `goruntulendi`, `onaylandi`, `itiraz_edildi`, `revize_edildi`. Görüntüleme onay sayılmaz; ilk görüntüleme tarihi korunurken sonraki görüntülemeler de olay günlüğüne eklenir.
+- Onay metni v2: **Ücret hesap pusulasını okudum ve onaylıyorum.** Onayda sunucu zamanı, personel, pusula sürümü, içerik SHA-256, IP, user-agent ve oturum hash'i kaydedilir.
+- İtiraz konusu; eksik çalışma, fazla mesai, prim, avans, kesinti, yemek/yol veya diğer olarak seçilir. PDF/JPG/PNG/WebP türünde en fazla 10 MB ek AES şifreli saklanabilir.
+- İtiraz durumları `alindi`, `inceleniyor`, `ek_bilgi_bekleniyor`, `sonuclandi` biçimindedir. Yeni itiraz bordro yetkililerine uygulama içi bildirim, sonuç ise personele push bildirimi üretir. Revize edilen sürümün ilk bildirimi normal yayından ayrı metin kullanır.
 
 Bildirim işçisini uygulamanın PHP sürümüyle 5 dakikada bir CLI üzerinden çalıştırın:
 

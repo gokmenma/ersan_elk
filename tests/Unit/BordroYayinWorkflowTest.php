@@ -39,10 +39,11 @@ final class BordroYayinWorkflowTest extends TestCase
 CREATE TABLE personel(id INTEGER PRIMARY KEY, firma_id INT, aktif_mi INT DEFAULT 1, isten_cikis_tarihi TEXT, silinme_tarihi TEXT);
 CREATE TABLE bordro_donemi(id INTEGER PRIMARY KEY, firma_id INT, kapali_mi INT, silinme_tarihi TEXT);
 CREATE TABLE bordro_yayin(id INTEGER PRIMARY KEY, firma_id INT, donem_id INT, surum INT, durum TEXT DEFAULT 'yayinda', yayinlayan_id INT, yayin_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
-CREATE TABLE bordro_yayin_dokum(id INTEGER PRIMARY KEY, yayin_id INT, personel_id INT, bordro_personel_id INT, icerik TEXT, icerik_hash TEXT, goruntuleme_tarihi TEXT, beyan_tarihi TEXT, beyan_metni TEXT, beyan_metin_surumu INT, is_active INT DEFAULT 1, UNIQUE(yayin_id, personel_id));
+CREATE TABLE bordro_yayin_dokum(id INTEGER PRIMARY KEY, yayin_id INT, personel_id INT, bordro_personel_id INT, pusula_no TEXT, icerik TEXT, icerik_hash TEXT, olusturma_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, gonderim_tarihi TEXT, goruntuleme_tarihi TEXT, beyan_tarihi TEXT, beyan_metni TEXT, beyan_metin_surumu INT, onay_ip TEXT, onay_user_agent TEXT, onay_session_hash TEXT, onay_icerik_hash TEXT, is_active INT DEFAULT 1, UNIQUE(yayin_id, personel_id));
 CREATE TABLE bordro_yayin_olay(id INTEGER PRIMARY KEY, dokum_id INT, tur TEXT, aktor_tipi TEXT, aktor_id INT, detay TEXT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
-CREATE TABLE bordro_yayin_talep(id INTEGER PRIMARY KEY, dokum_id INT, mesaj TEXT, durum TEXT DEFAULT 'acik', tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
+CREATE TABLE bordro_yayin_talep(id INTEGER PRIMARY KEY, dokum_id INT, konu TEXT DEFAULT 'diger', mesaj TEXT, durum TEXT DEFAULT 'acik', atanan_kullanici_id INT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, sonuc_tarihi TEXT, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_yanit(id INTEGER PRIMARY KEY, talep_id INT, kullanici_id INT, mesaj TEXT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
+CREATE TABLE bordro_yayin_talep_ek(id INTEGER PRIMARY KEY, talep_id INT, dosya_adi TEXT, dosya_yolu TEXT, mime_tipi TEXT, dosya_boyutu INT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_kuyruk(id INTEGER PRIMARY KEY, dokum_id INT, gun INT, planlanan TEXT, durum TEXT DEFAULT 'bekliyor', deneme INT DEFAULT 0, kilit_token TEXT, son_hata TEXT, gonderim_tarihi TEXT, is_active INT DEFAULT 1);
 CREATE TABLE users(id INTEGER PRIMARY KEY, adi_soyadi TEXT, user_name TEXT);
 INSERT INTO personel(id, firma_id) VALUES (1,1),(2,1),(3,2);
@@ -158,10 +159,44 @@ SQL);
     {
         $this->goruntule(); $this->goruntule();
         $this->model->personelIslem(1,1,1,'beyan'); $this->model->personelIslem(1,1,1,'beyan');
-        self::assertSame(2,$this->kayitAdedi('bordro_yayin_olay'));
+        self::assertSame(3,$this->kayitAdedi('bordro_yayin_olay'));
         $r = $this->db->query('SELECT * FROM bordro_yayin_dokum WHERE id=1')->fetch(PDO::FETCH_ASSOC);
-        self::assertSame(BordroYayinIcerikService::BEYAN,$r['beyan_metni']); self::assertSame(1,(int)$r['beyan_metin_surumu']);
+        self::assertSame(BordroYayinIcerikService::BEYAN,$r['beyan_metni']); self::assertSame(BordroYayinIcerikService::METIN_SURUMU,(int)$r['beyan_metin_surumu']);
         self::assertSame('2026-10-01 12:00:00',$r['beyan_tarihi']);
+    }
+
+    public function testOnayKanitiIcerikHashiVeIslemDurumuKaydedilir(): void
+    {
+        $this->goruntule();
+        $this->model->personelIslem(1,1,1,'beyan','',[
+            'ip' => '127.0.0.1', 'user_agent' => 'PHPUnit', 'session_hash' => str_repeat('a', 64),
+        ]);
+        $r = $this->db->query('SELECT * FROM bordro_yayin_dokum WHERE id=1')->fetch(PDO::FETCH_ASSOC);
+        self::assertSame('127.0.0.1', $r['onay_ip']);
+        self::assertSame('PHPUnit', $r['onay_user_agent']);
+        self::assertSame($r['icerik_hash'], $r['onay_icerik_hash']);
+        self::assertSame('onaylandi', $this->model->detay(1,1,1)['islem_durumu']);
+    }
+
+    public function testItirazKonusuVeDurumuPusulaDurumunaYansir(): void
+    {
+        $this->model->personelIslem(1,1,1,'talep','Fazla mesai saatlerimin kontrolünü istiyorum.', ['konu'=>'fazla_mesai']);
+        $d = $this->model->detay(1,1,1);
+        self::assertSame('itiraz_edildi', $d['islem_durumu']);
+        self::assertSame('fazla_mesai', $d['talepler'][0]['konu']);
+        self::assertSame('alindi', $d['talepler'][0]['durum']);
+    }
+
+    public function testItirazEkiYalnizKayitSahibineDoner(): void
+    {
+        $talep = $this->model->personelIslem(1,1,1,'talep','Kesinti belgesinin kontrolünü istiyorum.', ['konu'=>'kesinti']);
+        $this->model->talepEkiKaydet(1,(int)$talep,1,['adi'=>'belge.pdf','yol'=>'uploads/bordro-itiraz/test.enc','mime'=>'application/pdf','boyut'=>128]);
+        $d = $this->model->detay(1,1,1);
+        self::assertSame('belge.pdf',$d['talepler'][0]['ekler'][0]['dosya_adi']);
+        $ekId = BordroYayinGuvenlik::id($d['talepler'][0]['ekler'][0]['token']);
+        self::assertSame('application/pdf',$this->model->talepEki(1,$ekId,1)['mime_tipi']);
+        $this->expectException(DomainException::class);
+        $this->model->talepEki(1,$ekId,2);
     }
 
     public function testBildrimsizTestSurumundeOkumaBeyaniAlinir(): void

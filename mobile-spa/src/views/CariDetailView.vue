@@ -763,7 +763,7 @@ async function deleteSelectedMovement() {
 
 <style scoped>
 .ds-cari-detail-screen {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--ds-font-main);
   padding-bottom: calc(140px + var(--ds-safe-bottom));
 }
 
@@ -1295,7 +1295,7 @@ async function deleteSelectedMovement() {
   width: 100%;
   border: 0;
   outline: none;
-  font: 500 12px 'Plus Jakarta Sans', sans-serif;
+  font: 500 12px var(--ds-font-main);
   color: var(--ds-ink);
   background: transparent;
 }

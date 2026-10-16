@@ -1110,7 +1110,7 @@ onMounted(() => {
   max-width: 680px;
   margin: 0 auto;
   padding-bottom: calc(var(--nav-height, 68px) + 36px + env(safe-area-inset-bottom)) !important;
-  font-family: var(--font-base, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-family: var(--ds-font-main);
 }
 
 /* 2. Hero Bento Kasa Özeti */

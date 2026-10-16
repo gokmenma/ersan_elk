@@ -4158,7 +4158,7 @@ onBeforeUnmount(() => {
   border-radius: 14px;
   min-height: 44px;
   background: var(--ds-surface);
-  font: 500 12px 'Plus Jakarta Sans', sans-serif;
+  font: 500 12px var(--ds-font-main);
   color: var(--ds-ink);
   outline: 0;
 }

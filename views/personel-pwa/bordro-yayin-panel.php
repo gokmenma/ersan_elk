@@ -1,6 +1,16 @@
 <?php
 if (!isset($personel_id) || !$personel_id) { http_response_code(403); exit; }
 ?>
+<style>
+@keyframes bordro-onay-border-pulse {
+    0%, 100% { border-color: rgba(59, 130, 246, .35); box-shadow: 0 0 0 0 rgba(37, 99, 235, .12); }
+    50% { border-color: rgba(37, 99, 235, .95); box-shadow: 0 0 0 5px rgba(37, 99, 235, .10); }
+}
+.bordro-onay-dikkat { animation: bordro-onay-border-pulse 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+    .bordro-onay-dikkat { animation: none; border-color: rgba(37, 99, 235, .8) !important; }
+}
+</style>
 <section id="resmi-bordro-panel" aria-label="Resmî bordrolarım">
     <div class="card overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm mb-4">
         <div class="p-4 flex items-center gap-3 bg-gradient-to-r from-primary/10 to-transparent">

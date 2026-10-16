@@ -2705,7 +2705,7 @@ class BordroPersonelModel extends Model
                    bp.sgk_isci, bp.issizlik_isci, bp.gelir_vergisi, bp.damga_vergisi,
                    bp.fazla_mesai_saat, bp.fazla_mesai_tutar,
                    bp.sgk_isveren, bp.issizlik_isveren, bp.toplam_maliyet, bp.kumulatif_matrah,
-                   p.adi_soyadi, p.tc_kimlik_no, p.iban_numarasi, p.departman, p.gorev, 
+                   p.adi_soyadi, p.tc_kimlik_no, p.sgk_no, p.iban_numarasi, p.departman, p.gorev,
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
                    p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma, p.disardan_sigortali,
                    p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,

@@ -22,6 +22,17 @@
     }
   };
 
+  const islemDurumuBadge = d => {
+    switch (d) {
+      case 'bekliyor': return '<span class="badge bg-warning-subtle text-warning border border-warning-subtle">Onay Bekliyor</span>';
+      case 'goruntulendi': return '<span class="badge bg-info-subtle text-info border border-info-subtle">Görüntülendi – Onay Bekliyor</span>';
+      case 'onaylandi': return '<span class="badge bg-success-subtle text-success border border-success-subtle">Onaylandı</span>';
+      case 'itiraz_edildi': return '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">İtiraz Edildi</span>';
+      case 'revize_edildi': return '<span class="badge bg-secondary-subtle text-secondary border">İptal / Revize Edildi</span>';
+      default: return durumBadge(d);
+    }
+  };
+
   let tablo, kayitlar = [], onizleme = null, filtre = '', isleniyor = false;
   let seciliOnizlemeIndex = 0;
   let detayModal = null;
@@ -460,8 +471,8 @@
         <div class="px-4 py-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2" style="border-color: #e2e8f0 !important; min-height: 48px;">
           <div class="d-flex align-items-center gap-2">
             <span class="badge bg-secondary-subtle text-secondary border fs-11 fw-bold">Talep #${n + 1}</span>
-            <span class="badge ${t.durum === 'acik' ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-success-subtle text-success border border-success-subtle'} px-2.5 py-1 fs-11 fw-semibold">
-              <i class="bx ${t.durum === 'acik' ? 'bx-time-five' : 'bx-check-double'} me-1"></i>${t.durum === 'acik' ? 'Açık İnceleme Talebi' : 'Sonuçlandı'}
+            <span class="badge ${t.durum !== 'sonuclandi' ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-success-subtle text-success border border-success-subtle'} px-2.5 py-1 fs-11 fw-semibold">
+              <i class="bx ${t.durum !== 'sonuclandi' ? 'bx-time-five' : 'bx-check-double'} me-1"></i>${t.durum !== 'sonuclandi' ? 'Açık İtiraz' : 'Sonuçlandı'}
             </span>
           </div>
           <span class="text-muted fs-11"><i class="bx bx-calendar me-1"></i>${esc(t.tarih)}</span>
@@ -485,6 +496,7 @@
                   </div>
                 </div>
                 <p class="text-dark fs-13 mb-0 mt-0.5" style="line-height: 1.45; white-space: pre-wrap;">${esc(t.mesaj)}</p>
+                ${(t.ekler || []).map(ek => `<a href="views/bordro/bordro-talep-ek.php?token=${encodeURIComponent(ek.token)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-2"><i class="bx bx-paperclip me-1"></i>${esc(ek.dosya_adi)}</a>`).join('')}
               </div>
             </div>
 
@@ -508,7 +520,7 @@
             `).join('')}
 
             <!-- 3. Adım: Talep Açıksa Yanıt Formu -->
-            ${t.durum === 'acik' ? `
+            ${t.durum !== 'sonuclandi' ? `
               <div class="talep-timeline-item">
                 <div class="talep-timeline-marker marker-bekliyor" title="Yetkili Yanıtı Bekleniyor">
                   <i class="bx bx-edit-alt"></i>
@@ -697,8 +709,8 @@
           render: v => `<span class="badge bg-light text-secondary border px-2 py-1">${esc(v)}</span>`
         },
         {
-          data: 'durum',
-          render: v => durumBadge(v)
+          data: 'islem_durumu',
+          render: v => islemDurumuBadge(v)
         },
         {
           data: 'yayin_tarihi',
@@ -836,9 +848,9 @@
     el('bordroYayinCsv')?.addEventListener('click', () => {
       const safe = v => '"' + String(v ?? '').replace(/^[=+@\-\t\r]/, "'$&").replace(/"/g, '""') + '"';
       const rows = [
-        ['Personel', 'Dönem', 'Sürüm', 'Durum', 'Yayın Tarihi', 'Görüntüleme', 'Okuma Beyanı', 'Talep Sayısı', 'Açık Talep', 'Push Durumu', 'Başarısız Bildirim'],
+        ['Personel', 'Pusula No', 'Dönem', 'Sürüm', 'Durum', 'Gönderim Tarihi', 'Görüntüleme', 'Onay Tarihi', 'Talep Sayısı', 'Açık Talep', 'Push Durumu', 'Başarısız Bildirim'],
         ...tablo.rows({search: 'applied'}).data().toArray().map(r => [
-          r.personel, r.donem, r.surum, r.durum, r.yayin_tarihi, r.goruntuleme_tarihi, r.beyan_tarihi, r.talep_sayisi, r.acik_talep, r.ilk_bildirim_durumu, r.basarisiz_bildirim
+          r.personel, r.pusula_no, r.donem, r.surum, r.islem_durumu, r.gonderim_tarihi, r.goruntuleme_tarihi, r.beyan_tarihi, r.talep_sayisi, r.acik_talep, r.ilk_bildirim_durumu, r.basarisiz_bildirim
         ])
       ];
       const url = URL.createObjectURL(new Blob(['\ufeff' + rows.map(r => r.map(safe).join(';')).join('\r\n')], {type: 'text/csv;charset=utf-8'}));

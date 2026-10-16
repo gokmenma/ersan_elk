@@ -25,6 +25,31 @@ try {
         default => (string) $d['durum'],
     };
     $surum = (string) $d['surum'];
+    if (($i['icerik_turu'] ?? '') === 'ucret_hesap_pusulasi' && !empty($i['resmi_pusula'])) {
+        $snapshot = $i['resmi_pusula'];
+        $row = (object) ($snapshot['personel'] ?? []);
+        $donem = (object) ($snapshot['donem'] ?? []);
+        $firma = (object) ($snapshot['firma'] ?? []);
+        $pusula = $snapshot['pusula'] ?? [];
+        if (empty($row->adi_soyadi) || empty($donem->baslangic_tarihi) || empty($pusula['resmi'])) {
+            throw new DomainException('Resmî pusula snapshot bilgileri eksik.');
+        }
+        $html = \App\Service\BordroPusulaService::html($row, $donem, $firma, $pusula);
+        $beyanBaslik = $d['beyan_tarihi'] ? 'Dijital ücret pusulası onayı kaydedildi' : 'Dijital ücret pusulası onayı bekleniyor';
+        $beyanMetni = $d['beyan_tarihi']
+            ? $esc($d['beyan_metni']) . '<br>Kayıt zamanı: ' . $esc($tarih($d['beyan_tarihi'], true))
+            : 'Bu pusula için henüz personel onayı kaydedilmemiştir.';
+        $html .= '<div style="margin-top:12px;padding:9px 11px;border:0.25mm solid #555;font-size:7.5pt;">'
+            . '<b>' . $esc($beyanBaslik) . '</b><br>' . $beyanMetni
+            . '<br>Sürüm: ' . $esc($surum) . ' · Yayın zamanı: ' . $esc($tarih($d['yayin_tarihi'], true))
+            . '<br>İçerik SHA-256: <span style="font-family:dejavusansmono;font-size:6.5pt">' . $esc($d['icerik_hash']) . '</span></div>';
+        $pdf = \App\Service\BordroPusulaService::pdf();
+        $pdf->SetAuthor('ER-SAN Personel Portalı');
+        $pdf->WriteHTML($html);
+        $dosyaSurum = preg_replace('/[^A-Za-z0-9_-]/', '', $surum) ?: '1';
+        $pdf->Output('ucret-hesap-pusulasi-' . $dosyaSurum . '.pdf', \Mpdf\Output\Destination::DOWNLOAD);
+        exit;
+    }
     $kalemler = '';
     foreach ($i['kalemler'] as $k) {
         $kalemler .= '<tr><td>' . $esc($k['etiket']) . '</td><td class="amount">' . $esc($para($k['kurus'])) . '</td></tr>';

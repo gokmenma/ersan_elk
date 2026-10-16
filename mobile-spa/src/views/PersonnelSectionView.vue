@@ -55,7 +55,7 @@ onMounted(load)
   min-height: 100svh;
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
   background: var(--ds-canvas, var(--ds-canvas));
-  font-family: var(--font-base, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-family: var(--ds-font-main);
 }
 .personnel-section-topbar {
   display: grid;
