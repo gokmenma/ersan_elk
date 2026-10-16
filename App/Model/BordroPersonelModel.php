@@ -7783,6 +7783,7 @@ class BordroPersonelModel extends Model
             'matrahlar' => [
                 'brut_maas' => round($brutMaas, 2), 'nominal_maas' => round($nominalBrutMaas, 2), 'ssk_gunu' => $maasHesapGunu, 'normal_gun' => $normGun,
                 'rapor_gunu' => $raporGunu, 'ucretli_izin_gunu' => $ucretliIzinGunu,
+                'hafta_tatili_gunu' => $haftaTatiliGunu, 'genel_tatil_gunu' => $genelTatilGunu,
                 'ucretsiz_izin_gunu' => $ucretsizIzinGunu, 'ucretsiz_izin_dusumu' => round($ucretsizIzinDusumu, 2),
                 'maas_hesap_gunu' => $maasHesapGunu, 'fiili_calisma_gunu' => $fiiliCalismaGunu, 'calisan_brut_maas' => round($calisanBrutMaas, 2),
                 'rtc_gun' => $rtcGunHesap, 'htc_gun' => $htcGunHesap,

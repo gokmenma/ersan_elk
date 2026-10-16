@@ -20,10 +20,11 @@ final class BordroMuhasebeExcelKarsilastirmaService
         'prim'=>'Prim / İkramiye (Resmî)','diger'=>'Diğer Resmî Eklenecek','avans'=>'Avans','icra'=>'İcra',
         'diger_kesinti'=>'Diğer Kesintiler','banka'=>'Bankaya Yatacak Tutar',
     ];
-    private const GUNLER = ['toplam_gun','fiili_gun','izin_gun','rapor_gun'];
+    private const GUNLER = ['toplam_gun','fiili_gun','normal_gun','hafta_tatili_gun','ucretli_izin_gun','izin_gun','rapor_gun'];
     private const MUHASEBE_BORDRO_ALANLARI = [
-        'toplam_gun'=>'Toplam Gün','fiili_gun'=>'Fiilî Gün / Normal Gün','izin_gun'=>'İzin Günü',
-        'rapor_gun'=>'Rapor Günü','yemek'=>'Yemek Yardımı','banka'=>'Net Ödenen / Bankaya Yatacak Tutar',
+        'toplam_gun'=>'Toplam Gün','normal_gun'=>'Normal Gün','hafta_tatili_gun'=>'Hafta Tatili',
+        'ucretli_izin_gun'=>'Ücretli İzin','rapor_gun'=>'Rapor Günü',
+        'yemek'=>'Yemek Yardımı','banka'=>'Net Ödenen / Bankaya Yatacak Tutar',
     ];
 
     public function karsilastir(array $file, int $firmaId, int $donemId): array
@@ -104,8 +105,9 @@ final class BordroMuhasebeExcelKarsilastirmaService
 
     private function muhasebeBordroBasliklariniBul(Worksheet $sheet): array
     {
-        $aliases=['ad'=>['adı soyadı'],'tc'=>['tckn'],'toplam_gun'=>['t.gün'],'fiili_gun'=>['normal gün'],
-            'izin_gun'=>['ücretli izin'],'rapor_gun'=>['rapor'],'yemek'=>['yemek'],'banka'=>['n.ödenen']];
+        $aliases=['ad'=>['adı soyadı'],'tc'=>['tckn'],'toplam_gun'=>['t.gün'],'normal_gun'=>['normal gün'],
+            'hafta_tatili_gun'=>['hafta tatili'],'ucretli_izin_gun'=>['ücretli izin'],
+            'rapor_gun'=>['rapor'],'yemek'=>['yemek'],'banka'=>['n.ödenen']];
         for($r=1;$r<=min(40,$sheet->getHighestDataRow());$r++){
             $found=[];$max=Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
             for($c=1;$c<=$max;$c++){
@@ -130,10 +132,21 @@ final class BordroMuhasebeExcelKarsilastirmaService
             $hesap=$model->hesaplaOrtakGosterimDegerleri($p,$donem,$asgari);if(empty($hesap['hesaplanmis']))continue;
             if(!array_key_exists('ucretliIzinGunu',$hesap))$hesap['ucretliIzinGunu']=$model->getUcretliIzinGunu($p->personel_id,$donem->baslangic_tarihi,$donem->bitis_tarihi);
             $ozet=$model->getMuhasebeOdemeOzeti($hesap);$fm=$model->getMuhasebeFazlaMesaiNetOzeti($p,$donem);$ozet['muhasebe_fazla_mesai_net']=(float)($fm['tutar']??0);$d=$model->getMuhasebeResmiKalemDagilimi($ozet);
-            $detay=!empty($p->hesaplama_detay)?json_decode((string)$p->hesaplama_detay,true):[];$rapor=(int)($detay['matrahlar']['rapor_gunu']??$model->getGunSayisiByKisaKod($p->personel_id,$donem->baslangic_tarihi,$donem->bitis_tarihi,'RP'));
+            $detay=!empty($p->hesaplama_detay)?json_decode((string)$p->hesaplama_detay,true):[];
+            $matrah=is_array($detay['matrahlar']??null)?$detay['matrahlar']:[];
+            $rapor=(int)($matrah['rapor_gunu']??$model->getGunSayisiByKisaKod($p->personel_id,$donem->baslangic_tarihi,$donem->bitis_tarihi,'RP'));
+            $toplamGun=(int)($ozet['toplam_gun']??0);
+            $normalGun=(int)($matrah['normal_gun']??$ozet['fiili_gun']??0);
+            $ucretliIzinGun=(int)($matrah['ucretli_izin_gunu']??$hesap['ucretliIzinGunu']??0);
+            $genelTatilGun=(int)($matrah['genel_tatil_gunu']??0);
+            // Eski snapshotlarda hafta tatili ayrı saklanmamış olabilir. Parasal sonuçlara
+            // dokunmadan, kayıtlı toplamın normal/ücretli izin/genel tatil bakiyesi kullanılır.
+            $haftaTatiliGun=(int)($matrah['hafta_tatili_gunu']??max(0,$toplamGun-$normalGun-$ucretliIzinGun-$genelTatilGun));
             $m=static fn($v)=>(int)round((float)$v*100);$key='b'.(int)$p->id;
             $rows[$key]=['personel'=>(string)$p->adi_soyadi,'tc'=>preg_replace('/\D+/','',(string)($p->tc_kimlik_no??'')),'normalize_ad'=>$this->normalizeAd((string)$p->adi_soyadi),'bordro_id'=>(int)$p->id,
-                'alanlar'=>['toplam_gun'=>(int)$ozet['toplam_gun'],'fiili_gun'=>(int)$ozet['fiili_gun'],'izin_gun'=>(int)$ozet['izin_gun'],'rapor_gun'=>$rapor,
+                'alanlar'=>['toplam_gun'=>$toplamGun,'fiili_gun'=>(int)$ozet['fiili_gun'],'normal_gun'=>$normalGun,
+                'hafta_tatili_gun'=>$haftaTatiliGun,'ucretli_izin_gun'=>$ucretliIzinGun,
+                'izin_gun'=>(int)$ozet['izin_gun'],'rapor_gun'=>$rapor,
                 'asgari'=>$m($d['asgari']),'yemek'=>$m($d['yemek']),'es_yardimi'=>$m($d['es_yardimi']),'rtc'=>$m($d['rtc']),'htc'=>$m($d['htc']),
                 'fazla_mesai'=>$m($d['fazla_mesai']),'prim'=>$m($d['prim']),'diger'=>$m($d['diger']),'avans'=>$m($ozet['muhasebe_banka_avans']),
                 'icra'=>$m($ozet['muhasebe_banka_icra']),'diger_kesinti'=>$m($ozet['muhasebe_banka_diger_kesinti']),'banka'=>$m($ozet['banka_odemesi'])]];

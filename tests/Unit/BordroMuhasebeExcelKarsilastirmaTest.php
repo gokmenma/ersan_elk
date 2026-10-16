@@ -29,9 +29,20 @@ final class BordroMuhasebeExcelKarsilastirmaTest extends TestCase
     public function testFarkMuhasebeEksiGonderilenDegerOlarakUretilir(): void
     {
         $service=new BordroMuhasebeExcelKarsilastirmaService();$method=new ReflectionMethod($service,'alanFarklari');
-        $excel=array_fill_keys(['toplam_gun','fiili_gun','izin_gun','rapor_gun','asgari','yemek','es_yardimi','rtc','htc','fazla_mesai','prim','diger','avans','icra','diger_kesinti','banka'],0);$system=$excel;
+        $excel=array_fill_keys(['toplam_gun','fiili_gun','normal_gun','hafta_tatili_gun','ucretli_izin_gun','izin_gun','rapor_gun','asgari','yemek','es_yardimi','rtc','htc','fazla_mesai','prim','diger','avans','icra','diger_kesinti','banka'],0);$system=$excel;
         $excel['banka']=100050;$system['banka']=90000;$fark=$method->invoke($service,$excel,$system);
         self::assertCount(1,$fark);self::assertSame('banka',$fark[0]['alan']);self::assertSame(10050,$fark[0]['fark']);self::assertSame('para',$fark[0]['tur']);
+    }
+
+    public function testToplamGunEsitkenAltGunFarklariAyriUretilir(): void
+    {
+        $service=new BordroMuhasebeExcelKarsilastirmaService();$method=new ReflectionMethod($service,'alanFarklari');
+        $excel=['toplam_gun'=>30,'normal_gun'=>26,'hafta_tatili_gun'=>4,'ucretli_izin_gun'=>0,'rapor_gun'=>0];
+        $system=['toplam_gun'=>30,'normal_gun'=>25,'hafta_tatili_gun'=>4,'ucretli_izin_gun'=>1,'rapor_gun'=>0];
+        $fark=$method->invoke($service,$excel,$system,array_keys($excel));
+        self::assertSame(['normal_gun','ucretli_izin_gun'],array_column($fark,'alan'));
+        self::assertSame([1,-1],array_column($fark,'fark'));
+        self::assertSame(['sayi','sayi'],array_column($fark,'tur'));
     }
 
     public function testMuhasebeMaasBordrosuOrtakMutabakatAlanlarinaDonusturulur(): void
@@ -39,12 +50,13 @@ final class BordroMuhasebeExcelKarsilastirmaTest extends TestCase
         $book=new Spreadsheet();$sheet=$book->getActiveSheet();$sheet->setTitle('2026-EYLÜL AYI MAAŞ BORDROSU');
         $headers=['#','Adı Soyadı','TCKN','Kanun','Ücret G/S','T.Gün','SSK M.','SSK İşçi','İşs.P.İşçi','G.V.M','Gel.Ver.','Öz.Kesinti','Damga V','N.Ödenen','Normal Gün','Normal Tutar','Hafta Tatili','HT Tutar','Yemek','Yemek Tutar','Ücretli İzin','İzin Tutar','Fazla Mesai','FM Tutar','Rapor'];
         $sheet->fromArray($headers,null,'A10');
-        $sheet->fromArray(['001','ABDULLAH DOĞAN','11522818356','00000','33.030,00G','030','33,030.00','4,624.20','330.30','28,075.50','0.00','0.00','59.65','35,875.50','26G','28,626.00','4G','4,404.00','','7,859.65','','','',null,'0G'],null,'A11');
+        $sheet->fromArray(['001','ABDULLAH DOĞAN','11522818356','00000','33.030,00G','030','33,030.00','4,624.20','330.30','28,075.50','0.00','0.00','59.65','35,875.50','26G','28,626.00','4G','4,404.00','','7,859.65','2G','2,202.00','',null,'1G'],null,'A11');
         $sheet->setCellValue('B12','Toplamlar:');
         (new Xlsx($book))->save($this->path);$book->disconnectWorksheets();
         $service=new BordroMuhasebeExcelKarsilastirmaService();$method=new ReflectionMethod($service,'exceliOku');[$rows,$meta]=$method->invoke($service,$this->path);
         self::assertSame('muhasebe_bordro',$meta['format']);self::assertCount(1,$rows);
-        self::assertSame(30,$rows[0]['alanlar']['toplam_gun']);self::assertSame(26,$rows[0]['alanlar']['fiili_gun']);
+        self::assertSame(30,$rows[0]['alanlar']['toplam_gun']);self::assertSame(26,$rows[0]['alanlar']['normal_gun']);
+        self::assertSame(4,$rows[0]['alanlar']['hafta_tatili_gun']);self::assertSame(2,$rows[0]['alanlar']['ucretli_izin_gun']);self::assertSame(1,$rows[0]['alanlar']['rapor_gun']);
         self::assertSame(785965,$rows[0]['alanlar']['yemek']);self::assertSame(3587550,$rows[0]['alanlar']['banka']);
     }
 

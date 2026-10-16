@@ -374,3 +374,8 @@
 - [x] Sayfa yenilemesi sonrası yayın modalı açıldığında takip ve döküm önizlemesinin sunucudan otomatik yeniden kurulması sağlandı.
 - [x] Bildirimsiz test kayıtları yönetim takip KPI toplamına dahil edildi.
 - [x] Çoklu personel test regresyonu eklendi; ilgili paket 31 test / 120 doğrulama geçti.
+- [x] Muhasebe bordrosundaki toplam, normal, hafta tatili, ücretli izin ve rapor günleri bağımsız karşılaştırma alanlarına dönüştürüldü.
+- [x] Toplam gün eşitken alt gün türlerindeki farkların kaybolmasını engelleyen regresyon testi eklendi.
+- [x] Modal kişi detayına açılır Gün Karşılaştırması tablosu eklendi; parasal farklar ayrı bölümde korundu.
+- [x] Gerçek 103 satırlık muhasebe dosyasında gün kolonları ve 55 adet “toplam eşit / alt kırılım farklı” sonucu doğrulandı.
+- [x] Bordro regresyon paketi: 113 test, 867 doğrulama geçti; önceden mevcut 7 uyarı sürüyor.

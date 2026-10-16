@@ -8,7 +8,7 @@ $eMuhasebe = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 
             <div class="modal-header">
                 <div class="d-flex align-items-center gap-2">
                     <div class="p-2 bg-info-subtle text-info rounded-3 border border-info-subtle"><i class="bx bx-git-compare font-size-20"></i></div>
-                    <div><h5 class="modal-title font-size-14 fw-bold mb-1" id="muhasebeKarsilastirmaModalLabel">Muhasebe Excel Karşılaştırması</h5><p class="font-size-12 text-muted mb-0">Muhasebenin maaş bordrosunu, gönderdiğimiz Mutabakat Excelindeki ortak alanlarla karşılaştırır.</p></div>
+                    <div><h5 class="modal-title font-size-14 fw-bold mb-1" id="muhasebeKarsilastirmaModalLabel">Muhasebe Excel Karşılaştırması</h5><p class="font-size-12 text-muted mb-0">Muhasebe bordrosundaki toplam, normal, hafta tatili, ücretli izin ve rapor günlerini; ortak ödeme alanlarıyla birlikte karşılaştırır.</p></div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
