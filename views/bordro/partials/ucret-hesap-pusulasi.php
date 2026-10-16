@@ -111,8 +111,8 @@ td, th { padding: 2px 3px; vertical-align: top; font-weight: normal; }
 <?php endforeach; ?>
 </table>
 <?php $kesintiler = array_filter($resmi['kalemler'], static fn($k) => $k['kurus'] < 0); if ($kesintiler): ?>
-<table class="p-grid" style="margin-top: 14px;"><tr><th colspan="2" class="p-heading">RESMÎ DÖKÜM DÜZELTME / KESİNTİLERİ</th></tr>
-<?php foreach ($kesintiler as $kalem): ?><tr><td><?= $e($kalem['etiket']) ?></td><td class="p-money"><?= $para($kalem['kurus'] / 100) ?></td></tr><?php endforeach; ?>
+<table class="p-grid" style="margin-top: 14px;"><tr><th colspan="2" class="p-heading">KESİNTİLER</th></tr>
+<?php foreach ($kesintiler as $kalem): ?><tr><td><?= $e($kalem['etiket']) ?></td><td class="p-money"><?= $para(abs($kalem['kurus']) / 100) ?></td></tr><?php endforeach; ?>
 </table>
 <?php endif; ?>
 </td></tr></table>

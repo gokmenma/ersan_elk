@@ -362,6 +362,7 @@
 - [x] Ücret hesap pusulası ve PDF sunumunda yemek günlük yuvarlama farkı ayrı satırdan kaldırılıp yemek yardımına dahil edildi; kayıtlı hesap ve toplamlar değiştirilmedi (6 test / 45 doğrulama).
 - [x] Ücret hesap pusulası/PDF içinde hafta içi nöbet kalemleri `Fazla Mesai Ücreti (Net)` etiketi altında birleştirildi; tutar ve hesap kaynağı korundu (6 test / 47 doğrulama).
 - [x] Büyük Türkçe `İ` kaynaklı Unicode eşleme hatası giderildi; gerçek `Hafta İçi Nöbet` etiketi pusulada artık `Fazla Mesai Ücreti (Net)` olarak doğrulandı.
+- [x] Pusula kesintilerindeki tekrarlı `kesintisi` eki ve eksi işaretli sunum giderildi; başlık `KESİNTİLER`, etiketler kaynak adıyla ve tutarlar pozitif büyüklükle gösteriliyor (14 test / 73 doğrulama).
 
 # 2026-10-16 — Personel test yayını şema hatası
 

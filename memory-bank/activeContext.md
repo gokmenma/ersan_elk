@@ -678,6 +678,7 @@
 - Bu yalnız sunum değişikliğidir; snapshot, `yuvarlama_farki`, banka ödemesi ve kazanç toplamı korunuyor. Pusula testleri 6 test / 45 doğrulamayla geçti.
 - Ücret hesap pusulası/PDF ek kazançlarında `Hafta içi nöbet` etiketi de resmî alacak detayındaki adlandırmayla eşitlenerek `Fazla Mesai Ücreti (Net)` olarak gösteriliyor. Birden fazla hafta içi nöbet kalemi varsa pusulada tek satırda toplanıyor; tutarlar ve snapshot değişmiyor. Pusula testi 6 test / 47 doğrulamaya çıktı.
 - Gerçek etiketteki büyük Türkçe `İ`, küçük harfe dönüşürken Unicode birleşik nokta oluşturduğu için ilk eşleme çalışmıyordu. Karşılaştırma metni birleşik noktadan arındırıldı ve gerçek `Hafta İçi Nöbet` yazımıyla regresyon testi doğrulandı.
+- Pusuladaki kesinti etiketlerine yayın servisi otomatik `kesintisi` son eki eklediği için `İcra Kesintisi kesintisi` gibi tekrarlar oluşuyordu; ayrıca muhasebe işareti olan negatif tutar doğrudan basılıyordu. Otomatik son ek kaldırıldı, bölüm `KESİNTİLER` olarak sadeleştirildi ve pusulada tutarlar pozitif kesinti büyüklüğüyle gösterildi. Net ödeme ve kayıtlı kesinti değerleri değişmedi; pusula/yayın testleri 14 test / 73 doğrulama geçti.
 
 ## 2026-10-16 — Personel test yayını veritabanı düzeltmesi
 - `Seçilen Personelde Test Et` işleminin genel hata vermesinin nedeni PHP hata günlüğünde `bordro_yayin_dokum.pusula_no` sütununun bulunmaması olarak doğrulandı; ücret pusulası/onay genişletme migrasyonu uygulama kodundan sonra veritabanına uygulanmamıştı.

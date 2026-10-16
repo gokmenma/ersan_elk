@@ -24,7 +24,7 @@ final class BordroYayinIcerikTest extends TestCase
         self::assertSame(50, $r['kalemler'][2]['kurus']);
         self::assertSame('Yemek günlük yuvarlama farkı', $r['kalemler'][2]['etiket']);
         self::assertSame('Resmî tatil', $r['kalemler'][4]['etiket']);
-        self::assertSame('Avans kesintisi', $r['kalemler'][5]['etiket']);
+        self::assertSame('Avans', $r['kalemler'][5]['etiket']);
         self::assertArrayNotHasKey('elden_odeme', $r);
         self::assertArrayNotHasKey('tc_kimlik_no', $r);
         self::assertStringNotContainsString('9000', json_encode($r));

@@ -72,6 +72,8 @@ final class BordroPusulaTest extends TestCase
         $row = $this->row();
         $p = BordroPusulaService::olustur($row, $this->donem(), $this->model());
         $p['resmi']['kalemler'][] = ['etiket' => 'Hafta İçi Nöbet (4 Saat)', 'kurus' => 299472];
+        $p['resmi']['kalemler'][] = ['etiket' => 'Avans', 'kurus' => -50000];
+        $p['resmi']['kalemler'][] = ['etiket' => 'İcra', 'kurus' => -50000];
         $html = BordroPusulaService::html($row, $this->donem(), (object) ['firma_adi' => 'Firma <A>'], $p);
         self::assertStringContainsString('&lt;Test Personeli&gt;', $html);
         self::assertStringContainsString('Firma &lt;A&gt;', $html);
@@ -81,6 +83,11 @@ final class BordroPusulaTest extends TestCase
         self::assertMatchesRegularExpression('/Yemek yardımı<\/td><td class="p-money">4\.000,00 N/', $html);
         self::assertStringNotContainsString('Hafta İçi Nöbet', $html);
         self::assertMatchesRegularExpression('/Fazla Mesai Ücreti \(Net\)<\/td><td class="p-money">2\.994,72 N/', $html);
+        self::assertStringContainsString('>KESİNTİLER<', $html);
+        self::assertStringNotContainsString('RESMÎ DÖKÜM DÜZELTME', $html);
+        self::assertMatchesRegularExpression('/Avans<\/td><td class="p-money">500,00/', $html);
+        self::assertMatchesRegularExpression('/İcra<\/td><td class="p-money">500,00/', $html);
+        self::assertStringNotContainsString('>-500,00<', $html);
         foreach (['9.876,54', '1.234,56', '789,12', 'NAKDEN ALDIM'] as $text) self::assertStringNotContainsString($text, $html);
         self::assertStringContainsString('—', $html);
     }

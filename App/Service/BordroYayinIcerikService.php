@@ -50,7 +50,7 @@ final class BordroYayinIcerikService
         $kesintiKalemleri = $hesap['bankaKesintiKalemleri'] ?? [];
         $kesintiKalemToplam = array_sum(array_map(static fn($k) => self::kurus((float) $k['tutar']), $kesintiKalemleri));
         if ($kesinti > 0 && $kesintiKalemToplam === $kesinti) {
-            foreach ($kesintiKalemleri as $k) $ekle((string) $k['etiket'] . ' kesintisi', -self::kurus((float) $k['tutar']));
+            foreach ($kesintiKalemleri as $k) $ekle((string) $k['etiket'], -self::kurus((float) $k['tutar']));
         } else {
             // Tavanı aşan kesintide ortak model satır bazında banka payı üretmez.
             // Elden tutarı sızdırmadan yalnız gerçekleşen banka kesintisini göster.
