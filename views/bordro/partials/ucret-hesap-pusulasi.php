@@ -10,10 +10,11 @@ $ekKazancKalemleri = [];
 $birlesikKalemIndexleri = [];
 foreach (($resmi['kalemler'] ?? []) as $kalem) {
     $etiket = mb_strtolower(trim((string) ($kalem['etiket'] ?? '')), 'UTF-8');
+    $etiketKarsilastirma = str_replace("\u{0307}", '', $etiket);
     $birlesikKalem = null;
     if ($etiket === 'yemek yardımı' || $etiket === 'yemek günlük yuvarlama farkı') {
         $birlesikKalem = ['anahtar' => 'yemek', 'etiket' => 'Yemek yardımı'];
-    } elseif (str_contains($etiket, 'hafta içi') && str_contains($etiket, 'nöbet')) {
+    } elseif (str_contains($etiketKarsilastirma, 'hafta içi') && str_contains($etiketKarsilastirma, 'nöbet')) {
         $birlesikKalem = ['anahtar' => 'fazla_mesai', 'etiket' => 'Fazla Mesai Ücreti (Net)'];
     }
     if ($birlesikKalem === null) {
