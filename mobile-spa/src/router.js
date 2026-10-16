@@ -16,6 +16,7 @@ import FaturaView from './views/FaturaView.vue'
 import KasaView from './views/KasaView.vue'
 import PayrollView from './views/PayrollView.vue'
 import AracView from './views/AracView.vue'
+import EvrakView from './views/EvrakView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -24,6 +25,9 @@ const router = createRouter({
     { path: '/giris', name: 'login', component: LoginView, meta: { guest: true, chrome: false } },
     { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
+    { path: '/evrak-takip', name: 'evrak-takip', component: EvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'documents' } },
+    { path: '/evrak', redirect: '/evrak-takip' },
+    { path: '/evraklar', redirect: '/evrak-takip' },
     { path: '/arac-takip', name: 'arac-takip', component: AracView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
     { path: '/arac', redirect: '/arac-takip' },
     { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true, permission: 'tasks' } },

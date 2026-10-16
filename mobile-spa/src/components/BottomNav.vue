@@ -140,13 +140,7 @@ function handleNavClick(item, event) {
 }
 
 function handleCenterNavClick() {
-  if (isAracPage.value && !aracState.drawerOpen) {
-    aracState.drawerOpen = true
-  } else if (isFaturaPage.value && !faturaState.drawerOpen) {
-    faturaState.drawerOpen = true
-  } else {
-    menuOpen.value = !menuOpen.value
-  }
+  menuOpen.value = !menuOpen.value
 }
 
 const items = [
@@ -172,7 +166,7 @@ const operations = [
   { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, to: '/cari-takip' },
   { permission: 'vehicles', label: 'Araç Takip', icon: Car, to: '/arac-takip' },
   { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, href: '/mobile/index.php?p=km-onaylari' },
-  { permission: 'documents', label: 'Evrak Takip', icon: FileText, href: '/mobile/index.php?p=evrak-takip' },
+  { permission: 'documents', label: 'Evrak Takip', icon: FileText, to: '/evrak-takip' },
   { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, href: '/mobile/index.php?p=nobet' },
   { permission: 'reports', label: 'Puantaj', icon: CalendarRange, href: '/mobile/index.php?p=puantaj' },
   { permission: 'payroll', label: 'Bordro', icon: Banknote, to: '/bordro' },

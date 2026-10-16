@@ -1,5 +1,88 @@
 # Active Context
 
+## Mobil SPA Evrak Takip Modülü ve Gelişmiş Bento / Claymorphic Sayfası (2026-10-15)
+- **Kullanıcı Talebi**: Mobil SPA üzerinde "Evrak Takip" sayfasının yapılması (`@mobile-spa`), eski `mobile/` modülünden ilham alınarak daha kullanıcı dostu, modern ve şık hale getirilmesi.
+- **Mimari & Geliştirmeler**:
+  1. **Güvenli Backend API (`mobile-spa/public/api/evrak.php`)**:
+     - Gate yetki doğrulaması (`evrak-takip/list`, `documents`), CSRF kontrolü ve PDO parametrik bağlama ile `EvrakTakipModel` üzerinden tüm işlemler yürütüldü.
+     - **ISO 27001 Fiziksel Belge Şifreleme**: Yüklenen tüm PDF, görsel ve belgeler diske yazılmadan önce `Security::encryptFile()` ile şifrelendi; `stream-file` aksiyonunda anlık deşifre edilip güvenle sunuldu.
+     - `list`, `meta`, `detail`, `save`, `delete`, `e-imza-onaya-sun`, `e-imza-onayla`, `e-imza-iade`, `e-imza-geri-al`, `arac-zimmet`, `stream-file`, `pdf` uç noktaları eksiksiz oluşturuldu.
+  2. **Frontend Servisi (`mobile-spa/src/services/evrak.js`)**:
+     - Reaktif veri akışı, liste, meta, detay, kaydetme, e-imza onay, iade, geri alma ve akıllı araç-zimmet sorgulama metotları tanımlandı.
+  3. **Mobil Görünüm (`mobile-spa/src/views/EvrakView.vue`)**:
+     - **TopBar**: Geri butonu, modül başlığı ve sağ üstte hızlı `+ Yeni Evrak` butonu.
+     - **Acil E-İmza Bekleyen Bildirimi**: Kullanıcının onay sırası gelen evraklar varsa dinamik kehribar uyarı kartı ve tek dokunuşla "İmzamda" filtresi.
+     - **4 Minimal Bento KPI Kartı**: Toplam Evrak, Gelen Evrak, Giden Evrak, Cevap Bekleyen.
+     - **Canlı Arama & Filtre Hapları**: Evrak no, konu, kurum veya personel araması; Tümü, Gelen, Giden, Cevap Bekleyen, İmzamda filtreleri.
+     - **Evrak Bento Kartları**: Yön rozeti (Gelen/Giden), evrak no ve tarih pilleri, dinamik durum rozetleri (İmzanızda!, E-İmzalı, Onayda X/Y, Cevap Bekliyor, Taslak), konu, muhatap kurum, zimmetli ve ilgili personel çipleri, trafik cezası plakası ve tutarı, ek dosya sayısı ve önizleme butonları, doğrudan e-imza / iade / düzenle / sil aksiyonları.
+     - **Detay Bottom Sheet**: Kapsamlı evrak bilgileri, kurum ve adres detayları, giden evrak için E-İmza Stepper onay akışı (kimler onayladı, kimde bekliyor, iade gerekçesi), Resmî Yazı PDF önizleme butonu, ekli dosyaların in-app lightbox/iframe önizlemesi ve indirilmesi.
+     - **Yeni/Düzenleme Form Sheet**: Gelen/Giden geçişi, otomatik evrak no, hazır konu çipleri (İcra Yazısı, Haciz Kaldırma, Trafik Cezası vb.), kurum adı, ofis ve ilgili personel seçimi, trafik cezalarında araç seçildiğinde otomatik sürücü sorgulama ve %25 erken ödeme indirimini anında hesaplama, giden evraklarda 1-3 imza yetkilisi seçimi, çoklu dosya yükleme.
+  4. **SPA Navigasyon & Yönlendirme**:
+     - `router.js` içerisine `/evrak-takip` rotası (`permission: 'documents'`) tanımlandı.
+     - `BottomNav.vue` "Daha Fazla" menüsündeki "Evrak Takip" öğesi legacy linkten SPA rotasına (`to: '/evrak-takip'`) bağlandı.
+     - `HomeView.vue` hızlı işlem linki SPA rotasına bağlandı.
+  5. **Üretim Derlemesi (`npm run build`)**: Vite derlemesi 0 hata ile tamamlandı (`dist/assets/index-7biQxaKW.js`, `dist/assets/index-DmMLXj9B.css`).
+
+- **Kullanıcı Talebi**: Gelen ve giden sekmelerinin de düzenlenmesi ve özet kartının minimal olması.
+- **Mimari & Geliştirmeler**:
+  1. **Minimal Bento Özet Kartı (`.fatura-mini-bento-strip`)**:
+     - Kaba 3 kutulu dikey alan tüketen eski özet şeridi yerine; tek satırda başlık, sekmeye özel renkli mini ikon (`Send`, `Inbox`, `Edit3`), net toplam tutar (`formatMoney`) ve yan yana durum hapları (`Onaylı`, `Bekliyor`, `İptal` / `Kabul`, `Yanıt Bekliyor`, `Red`) konumlandırıldı.
+     - Kartın en altına 3px yüksekliğinde onay/bekleme oranını gösteren zarif mini segmentli dağılım çizgisi (`.fatura-mini-strip__track`) entegre edildi.
+  2. **Dinamik Sayaçlı Durum Filtreleri (`.fatura-filter-pills`)**:
+     - Filtre butonlarına her durumun anlık adetlerini gösteren mini sayaç rozetleri (`.fatura-pill-num`) eklendi (Örn: `Tümü (14)`, `Onaylı (12)`, `Bekleyen (2)`).
+     - Aktif durum Obsidian koyu zemin ve beyaz sayaçla netleştirildi.
+  3. **Ferahlatılmış Fatura Kartları (`.fatura-card`)**:
+     - No, belge türü ve durum rozeti dengelendi.
+     - Cari adı okunaklı 2 satır tavanlı hale getirildi, takvim ikonu ile tarih ve VKN/TCKN bilgisi ayrıldı.
+     - Kalem özeti için açık mor hafif subtle kutucuk sağlandı.
+     - Kart footer alanında ödenecek tutar ve aksiyon butonları (`Yanıt Ver`, `Fatura Gör`, `Paylaş`, tahsilat etiketi) dokunmatik ergonomisine uygun hale getirildi.
+  4. **Derleme**: `npm run build` ile Vite üretim derlemesi 0 hata ile tamamlandı.
+
+## Fatura sihirbazı okunabilirlik ve aksiyon düzeni (2026-10-15)
+- Merkezi design-system.css üzerinden 16px form değerleri, 13px etiketler, 48px alanlar ve 50px gerçek buton yüzeyleri uygulandı.
+- Özet adımında gönderim tam genişlikte ayrı satıra, uzun alıcı adı tam genişlikte ayrı bloğa taşındı. Kalem birim fiyatı tam satıra alındı; dar ekran alanları tek sütuna geçiyor.
+- Gönderim/kayıt sırasında geri butonu devre dışı; taslak butonunda işlem durumu gösteriliyor.
+
+## Mobil SPA E-Fatura Taslak Sihirbazı Okunabilirlik İyileştirmesi (2026-10-15)
+- Wizard başlığına aktif adım ve o adımın amacı eklendi; adım göstergelerine `aria-current` erişilebilirlik bilgisi tanımlandı.
+- Özet ekranı iki sütunlu grid düzenine taşındı; uzun alıcı adları artık değer alanında kontrollü satır kırarak okunuyor.
+- Adım göstergeleri, header boşlukları ve alt “Geri / Devam Et” aksiyonları daha belirgin hale getirildi; üçüncü adımda ileri aksiyonu “Özeti Gör” olarak adlandırıldı.
+
+## Mobil SPA E-Fatura & Finans Özet Sayfası Grafik Zenginleştirmesi, Yüzen Buton & Diğer Menüsü Düzeltmesi (2026-10-15)
+- **Kullanıcı Talepleri**:
+  1. Yüzen menü açma butonunun (`.floating-fatura-dock-btn`) menü kapalıyken biraz daha yukarıda konumlandırılması (alt dock ile çakışmaması).
+  2. Alt navigasyon çubuğundaki ortada yer alan "Diğer" (LayoutGrid) butonuna basıldığında sayfanın navbar menüsünün (drawer'ının) açılması davranışının iptal edilmesi; doğrudan standart "Daha Fazla" (Diğer) modal sheet'inin açılması.
+  3. E-Fatura & Finans sayfasındaki Özet sekmesinin görsel grafikler, analizler ve Bento kartlarıyla zenginleştirilmesi.
+- **Mimari & Geliştirmeler**:
+  1. **"Diğer" Butonu Düzeltmesi (`mobile-spa/src/components/BottomNav.vue`)**:
+     - `handleCenterNavClick()` içindeki `isFaturaPage` ve `isAracPage` sayfa drawer açma blokları kaldırıldı.
+     - Doğrudan `menuOpen.value = !menuOpen.value` çalıştırılarak kullanıcının her zaman "Daha Fazla" menüsüne ulaşması sağlandı.
+  2. **Yüzen Menü Butonu Konumu (`mobile-spa/src/design-system.css`)**:
+     - `.floating-fatura-dock-btn` ve `.floating-arac-dock-btn` için `bottom: calc(var(--ds-safe-bottom, 16px) + 96px);` tanımlandı.
+     - Buton alt navigasyon barının tam 20px üstünde havada süzülerek ergonomik ve çakışmasız hale getirildi.
+  3. **Özet Sekmesi Görsel Grafik & Bento Zenginleştirmesi (`mobile-spa/src/views/FaturaView.vue`)**:
+     - **Obsidian Black Hero Bento Kartı**: Toplam Ticari İşlem Hacmi (`totalTradeVolume`), Net Ticari Bakiye (`netTradeBalance`) ve pozitif denge / alış ağırlıklı durum rozetleri.
+     - **Çift Yönlü Segmentli Dağılım Çubuk Grafiği**: Satış (Zümrüt Yeşili) ve Alış (Gökyüzü Mavisi) hacim oranlarını gösteren dinamik progress çubuğu (`.fatura-segmented-track`) + interaktif detay lejantı (fatura adetleri ve ciro/maliyet tutarları).
+     - **Gelişmiş KDV & Vergi Sağlığı Kartı**: Ödenecek veya Devreden KDV net tutarı, Alış KDV'sinin Satış KDV'sini karşılama yüzdesi ve renkli görsel ilerleme skalası (`.fatura-kdv-gauge-track`), Hesaplanan KDV ve İndirilecek KDV karşılaştırma kutuları.
+     - **3'lü Finansal Bento Metrikler Şeridi**: Ortalama Satış Faturası tutarı, Ortalama Alış Faturası tutarı ve Efektif KDV Yükü Oranı (`%`).
+  4. **Üretim Derlemesi (`npm run build`)**:
+     - Vite derlemesi 0 hata ile başarıyla alındı (`dist/assets/index-BktlFprB.js`, `dist/assets/index-BOMhkaTH.css`).
+
+## Mobil SPA E-Fatura Mal/Hizmet Adımı ve Wizard Navigasyonu İyileştirmesi (2026-10-15)
+- Mal/hizmet kalem kartları beyaz Bento yüzey, kalem rozeti, daha net toplam satırı ve daha okunur alan aralıklarıyla düzenlendi.
+- Wizard alt navigasyonu sağa hizalı, minimum 44px dokunma alanlı ve gölgeli sabit aksiyon çubuğuna dönüştürüldü; geri/devam butonları dengelendi.
+
+## Mobil SPA E-Fatura Taslak Oluşturma Sheet UX Düzenlemesi (2026-10-15)
+- `FaturaView.vue` içindeki 4 adımlı fatura sihirbazına her adım için açıklayıcı başlık ve renkli bağlam ikonu eklendi.
+- Sheet yüksekliği, içerik alanı, alt aksiyon çubuğu ve güvenli alan boşlukları mobil kullanıma göre düzenlendi.
+- Form alanları 44px dokunma yüksekliği, beyaz yüzey, daha net kontrast ve textarea davranışıyla iyileştirildi.
+
+## Mobil SPA “Daha Fazla” Menüsü Renkli Bento İyileştirmesi (2026-10-15)
+- `mobile-spa/src/design-system.css` içinde menü yapısı korunarak görsel iyileştirme yapıldı.
+- Başlık etiketi mavi vurguya, kapatma butonu mavi çerçeve ve yumuşak gölgeye taşındı.
+- Profil kartı açık mavi gradient ve derinlik gölgesi kazandı.
+- İşlem ikonları 4’lü döngüyle mavi, zümrüt, mor ve kehribar aksanlara ayrıldı; kartlara hafif Bento gölgesi ve dokunma geri bildirimi eklendi.
+
 ## Mobil SPA Evrak Takip (E-Fatura & Finans) Rozet Konumlandırma Düzeltmesi ve Giden/Gelen İkonları (2026-10-15)
 - **Kullanıcı Talebi**:
   1. Alt navigasyon çekmecesindeki sayı badge'lerinin (rozetlerinin) ikonlardan çok uzakta durması sorununun giderilmesi.

@@ -7,6 +7,7 @@ import {
   ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
+  BarChart3,
   Building2,
   Calendar,
   Check,
@@ -22,17 +23,23 @@ import {
   Inbox,
   Layers,
   Package,
+  Percent,
+  PieChart,
   Plus,
   Printer,
   Receipt,
   ReceiptText,
   RefreshCw,
+  Scale,
   Search,
   Send,
   Share2,
   Sparkles,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   User,
+  Wallet,
   X,
   XCircle,
 } from '@lucide/vue'
@@ -208,6 +215,60 @@ function formatInvoiceMoney(amount, currency = 'TRY') {
   const sym = c === 'USD' ? '$' : (c === 'EUR' ? '€' : '₺')
   return `${formatted} ${sym}`
 }
+
+// ====================================================
+// Özet & Grafik Analiz Metrikleri (Computed)
+// ====================================================
+const totalTradeVolume = computed(() => {
+  const giden = parseMoneyAmount(dashData.value.giden?.toplam_tutar)
+  const gelen = parseMoneyAmount(dashData.value.gelen?.toplam_tutar)
+  return giden + gelen
+})
+
+const netTradeBalance = computed(() => {
+  const giden = parseMoneyAmount(dashData.value.giden?.toplam_tutar)
+  const gelen = parseMoneyAmount(dashData.value.gelen?.toplam_tutar)
+  return giden - gelen
+})
+
+const salesRatio = computed(() => {
+  if (totalTradeVolume.value <= 0) return 0
+  const giden = parseMoneyAmount(dashData.value.giden?.toplam_tutar)
+  return Math.round((giden / totalTradeVolume.value) * 100)
+})
+
+const purchaseRatio = computed(() => {
+  if (totalTradeVolume.value <= 0) return 0
+  return 100 - salesRatio.value
+})
+
+const avgInvoiceOutgoing = computed(() => {
+  const count = Number(dashData.value.giden?.toplam_adet || 0)
+  if (count <= 0) return 0
+  return parseMoneyAmount(dashData.value.giden?.toplam_tutar) / count
+})
+
+const avgInvoiceIncoming = computed(() => {
+  const count = Number(dashData.value.gelen?.toplam_adet || 0)
+  if (count <= 0) return 0
+  return parseMoneyAmount(dashData.value.gelen?.toplam_tutar) / count
+})
+
+const kdvCoverageRatio = computed(() => {
+  const hesaplanan = parseMoneyAmount(dashData.value.kdv?.hesaplanan_kdv)
+  const indirilecek = parseMoneyAmount(dashData.value.kdv?.indirilecek_kdv)
+  if (hesaplanan <= 0) {
+    return indirilecek > 0 ? 100 : 0
+  }
+  return Math.min(Math.round((indirilecek / hesaplanan) * 100), 100)
+})
+
+const kdvEffectiveRate = computed(() => {
+  const matrah = parseMoneyAmount(dashData.value.giden?.toplam_matrah)
+  const kdv = parseMoneyAmount(dashData.value.kdv?.hesaplanan_kdv)
+  if (matrah <= 0) return 0
+  return ((kdv / matrah) * 100).toFixed(1)
+})
 
 function formatDate(dateStr) {
   if (!dateStr) return '-'
@@ -955,6 +1016,94 @@ onBeforeUnmount(() => {
       </div>
 
       <template v-else>
+        <!-- 1. Hero Obsidian Bento Kartı: Ticari İşlem Hacmi & Çift Yönlü Dağılım Grafiği -->
+        <article class="fatura-hero-volume-card">
+          <header class="fatura-hero-volume-card__header">
+            <div class="fatura-hero-volume-card__title">
+              <span class="fatura-hero-icon-box">
+                <BarChart3 :size="16" />
+              </span>
+              <div>
+                <span class="fatura-hero-tag">TİCARİ İŞLEM HACMİ</span>
+                <span class="fatura-hero-subtitle">Satış & Alış Dağılım Analizi</span>
+              </div>
+            </div>
+            <span
+              class="fatura-balance-pill"
+              :class="netTradeBalance >= 0 ? 'fatura-balance-pill--positive' : 'fatura-balance-pill--warning'"
+            >
+              <component :is="netTradeBalance >= 0 ? TrendingUp : TrendingDown" :size="13" />
+              <span>{{ netTradeBalance >= 0 ? 'Pozitif Denge' : 'Alış Ağırlıklı' }}</span>
+            </span>
+          </header>
+
+          <div class="fatura-hero-volume-main">
+            <strong class="fatura-hero-volume-amount">{{ formatMoney(totalTradeVolume) }}</strong>
+            <div class="fatura-hero-balance-row">
+              <span class="fatura-hero-balance-label">Net Ticari Bakiye:</span>
+              <strong
+                class="fatura-hero-balance-val"
+                :class="netTradeBalance >= 0 ? 'text-emerald' : 'text-amber'"
+              >
+                {{ (netTradeBalance >= 0 ? '+' : '') + formatMoney(netTradeBalance) }}
+              </strong>
+            </div>
+          </div>
+
+          <!-- Çift Yönlü Segmentli Dağılım Grafiği (Segmented Volume Bar) -->
+          <div class="fatura-chart-container">
+            <div
+              class="fatura-segmented-track"
+              role="progressbar"
+              :aria-valuenow="salesRatio"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <div
+                class="fatura-seg-fill fatura-seg-fill--sales"
+                :style="{ width: `${salesRatio}%` }"
+                :title="`Satış: %${salesRatio}`"
+              >
+                <span v-if="salesRatio >= 18" class="fatura-seg-label">%{{ salesRatio }}</span>
+              </div>
+              <div
+                class="fatura-seg-fill fatura-seg-fill--purchase"
+                :style="{ width: `${purchaseRatio}%` }"
+                :title="`Alış: %${purchaseRatio}`"
+              >
+                <span v-if="purchaseRatio >= 18" class="fatura-seg-label">%{{ purchaseRatio }}</span>
+              </div>
+            </div>
+
+            <!-- Grafik Lejantı (Legend) -->
+            <div class="fatura-chart-legend">
+              <div class="fatura-legend-item" @click="switchTab('giden')">
+                <span class="fatura-legend-dot fatura-legend-dot--sales"></span>
+                <div class="fatura-legend-info">
+                  <div class="fatura-legend-header">
+                    <span class="fatura-legend-title">Giden Satış</span>
+                    <b class="fatura-legend-pct text-emerald">%{{ salesRatio }}</b>
+                  </div>
+                  <strong class="fatura-legend-val">{{ formatMoney(dashData.giden?.toplam_tutar) }}</strong>
+                  <small class="fatura-legend-count">{{ dashData.giden?.toplam_adet || 0 }} adet fatura</small>
+                </div>
+              </div>
+
+              <div class="fatura-legend-item" @click="switchTab('gelen')">
+                <span class="fatura-legend-dot fatura-legend-dot--purchase"></span>
+                <div class="fatura-legend-info">
+                  <div class="fatura-legend-header">
+                    <span class="fatura-legend-title">Gelen Alış</span>
+                    <b class="fatura-legend-pct text-sky">%{{ purchaseRatio }}</b>
+                  </div>
+                  <strong class="fatura-legend-val">{{ formatMoney(dashData.gelen?.toplam_tutar) }}</strong>
+                  <small class="fatura-legend-count">{{ dashData.gelen?.toplam_adet || 0 }} adet fatura</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
         <!-- 2'li Özet Kartları: Giden & Gelen -->
         <div class="fatura-kpi-grid">
           <!-- Giden (Satış) -->
@@ -1014,7 +1163,7 @@ onBeforeUnmount(() => {
           </article>
         </div>
 
-        <!-- Net KDV Durumu Vurgulu Kartı -->
+        <!-- Net KDV Durumu Vurgulu Kartı & Karşılama İlerleme Skalası -->
         <article
           class="fatura-kdv-card"
           :class="dashData.kdv?.net_kdv > 0 ? 'fatura-kdv-card--payable' : 'fatura-kdv-card--devreden'"
@@ -1029,21 +1178,86 @@ onBeforeUnmount(() => {
             <span class="fatura-kdv-status">Dönem Net Durumu</span>
           </header>
 
-          <div class="fatura-kdv-amount">
-            {{ formatMoney(dashData.kdv?.net_kdv > 0 ? dashData.kdv?.odenecek_kdv : dashData.kdv?.devreden_kdv) }}
+          <div class="fatura-kdv-amount-row">
+            <div class="fatura-kdv-amount">
+              {{ formatMoney(dashData.kdv?.net_kdv > 0 ? dashData.kdv?.odenecek_kdv : dashData.kdv?.devreden_kdv) }}
+            </div>
+            <span
+              class="fatura-kdv-indicator-pill"
+              :class="dashData.kdv?.net_kdv > 0 ? 'fatura-kdv-indicator-pill--danger' : 'fatura-kdv-indicator-pill--emerald'"
+            >
+              {{ dashData.kdv?.net_kdv > 0 ? 'Maliye Ödemesi' : 'Devreden Bakiye' }}
+            </span>
+          </div>
+
+          <!-- KDV Karşılama İlerleme Skalası (Coverage Gauge Bar) -->
+          <div class="fatura-kdv-gauge-wrap">
+            <div class="fatura-kdv-gauge-meta">
+              <span class="fatura-kdv-gauge-title">Alış KDV Karşılama Oranı</span>
+              <strong class="fatura-kdv-gauge-pct" :class="kdvCoverageRatio >= 100 ? 'text-emerald' : 'text-amber'">
+                %{{ kdvCoverageRatio }}
+              </strong>
+            </div>
+            <div class="fatura-kdv-gauge-track">
+              <div
+                class="fatura-kdv-gauge-fill"
+                :class="kdvCoverageRatio >= 100 ? 'fatura-kdv-gauge-fill--full' : 'fatura-kdv-gauge-fill--partial'"
+                :style="{ width: `${kdvCoverageRatio}%` }"
+              ></div>
+            </div>
+            <p class="fatura-kdv-gauge-desc">
+              {{
+                kdvCoverageRatio >= 100
+                  ? 'Alış KDV\'niz satış KDV\'sini tamamen karşılıyor ve devreden KDV oluşturuyor.'
+                  : `Alış KDV\'niz satış KDV\'sinin %${kdvCoverageRatio}'ünü dengeliyor; kalan tutar Maliye yükümlülüğüdür.`
+              }}
+            </p>
           </div>
 
           <div class="fatura-kdv-breakdown">
-            <div>
-              <span>Hesaplanan KDV (Satış):</span>
-              <b>{{ formatMoney(dashData.kdv?.hesaplanan_kdv) }}</b>
+            <div class="fatura-kdv-box fatura-kdv-box--hesaplanan">
+              <div class="fatura-kdv-box__icon"><ArrowUpRight :size="14" /></div>
+              <div>
+                <span>Hesaplanan KDV (Satış):</span>
+                <b>{{ formatMoney(dashData.kdv?.hesaplanan_kdv) }}</b>
+              </div>
             </div>
-            <div>
-              <span>İndirilecek KDV (Alış):</span>
-              <b>{{ formatMoney(dashData.kdv?.indirilecek_kdv) }}</b>
+            <div class="fatura-kdv-box fatura-kdv-box--indirilecek">
+              <div class="fatura-kdv-box__icon"><ArrowDownLeft :size="14" /></div>
+              <div>
+                <span>İndirilecek KDV (Alış):</span>
+                <b>{{ formatMoney(dashData.kdv?.indirilecek_kdv) }}</b>
+              </div>
             </div>
           </div>
         </article>
+
+        <!-- 3'lü Finansal Analiz & Ortalama Metrikleri -->
+        <section class="fatura-metrics-strip" aria-label="Finansal ortalamalar">
+          <div class="fatura-metric-cell">
+            <div class="fatura-metric-cell__icon bg-emerald-soft text-emerald">
+              <TrendingUp :size="16" />
+            </div>
+            <span class="fatura-metric-cell__label">Ort. Satış Faturası</span>
+            <strong class="fatura-metric-cell__value">{{ formatMoney(avgInvoiceOutgoing) }}</strong>
+          </div>
+
+          <div class="fatura-metric-cell">
+            <div class="fatura-metric-cell__icon bg-sky-soft text-sky">
+              <TrendingDown :size="16" />
+            </div>
+            <span class="fatura-metric-cell__label">Ort. Alış Faturası</span>
+            <strong class="fatura-metric-cell__value">{{ formatMoney(avgInvoiceIncoming) }}</strong>
+          </div>
+
+          <div class="fatura-metric-cell">
+            <div class="fatura-metric-cell__icon bg-primary-soft text-primary">
+              <Percent :size="16" />
+            </div>
+            <span class="fatura-metric-cell__label">Efektif KDV Oranı</span>
+            <strong class="fatura-metric-cell__value">%{{ kdvEffectiveRate }}</strong>
+          </div>
+        </section>
 
         <!-- Hızlı İşlemler Kartları Grid -->
         <section class="fatura-quick-grid">
@@ -1209,40 +1423,105 @@ onBeforeUnmount(() => {
     <!-- TAB 2, 3, 4: LİSTE GÖRÜNÜMLERİ (GİDEN, GELEN, TASLAK) -->
     <!-- ============================================================== -->
     <main v-else class="fatura-tab-content">
-      <!-- Özet Sayaç Şeridi -->
-      <section v-if="listSummary.toplam_adet" class="fatura-summary-strip">
-        <div class="fatura-summary-strip__item">
-          <small>TOPLAM</small>
-          <strong>{{ formatMoney(listSummary.toplam_tutar) }}</strong>
-          <span>{{ listSummary.toplam_adet || 0 }} Fatura</span>
+      <!-- Minimal Bento Özet Kartı (Giden / Gelen / Taslak) -->
+      <section v-if="listSummary.toplam_adet" class="fatura-mini-bento-strip">
+        <div class="fatura-mini-strip__main">
+          <div class="fatura-mini-strip__info">
+            <span
+              class="fatura-mini-strip__icon"
+              :class="activeTab === 'giden' ? 'fatura-mini-strip__icon--emerald' : (activeTab === 'gelen' ? 'fatura-mini-strip__icon--sky' : 'fatura-mini-strip__icon--amber')"
+            >
+              <component :is="activeTab === 'giden' ? Send : (activeTab === 'gelen' ? Inbox : Edit3)" :size="15" />
+            </span>
+            <div class="fatura-mini-strip__text">
+              <span class="fatura-mini-strip__tag">
+                {{ activeTab === 'giden' ? 'GİDEN SATIŞ' : (activeTab === 'gelen' ? 'GELEN ALIŞ' : 'BEKLEYEN TASLAKLAR') }}
+              </span>
+              <strong class="fatura-mini-strip__amount">{{ formatMoney(listSummary.toplam_tutar) }}</strong>
+            </div>
+          </div>
+
+          <div class="fatura-mini-strip__badges">
+            <span class="fatura-mini-badge fatura-mini-badge--count">
+              {{ listSummary.toplam_adet || 0 }} Fatura
+            </span>
+
+            <!-- Giden Sekmesi Durum Kırılımları -->
+            <template v-if="activeTab === 'giden'">
+              <span v-if="listSummary.onaylanan_adet" class="fatura-mini-badge fatura-mini-badge--success" title="Onaylı Fatura">
+                <span class="fatura-badge-dot"></span>
+                <span>{{ listSummary.onaylanan_adet }} Onaylı</span>
+              </span>
+              <span v-if="listSummary.bekleyen_adet" class="fatura-mini-badge fatura-mini-badge--warning" title="Kuyrukta / Bekleyen">
+                <span class="fatura-badge-dot"></span>
+                <span>{{ listSummary.bekleyen_adet }} Bekliyor</span>
+              </span>
+              <span v-if="listSummary.iptal_adet" class="fatura-mini-badge fatura-mini-badge--danger" title="İptal / Hatalı">
+                <span>{{ listSummary.iptal_adet }} İptal</span>
+              </span>
+            </template>
+
+            <!-- Gelen Sekmesi Durum Kırılımları -->
+            <template v-else-if="activeTab === 'gelen'">
+              <span v-if="listSummary.kabul_adet" class="fatura-mini-badge fatura-mini-badge--success" title="Kabul Edilen">
+                <span class="fatura-badge-dot"></span>
+                <span>{{ listSummary.kabul_adet }} Kabul</span>
+              </span>
+              <span v-if="listSummary.bekleyen_adet" class="fatura-mini-badge fatura-mini-badge--warning" title="Yanıt Bekleyen">
+                <span class="fatura-badge-dot"></span>
+                <span>{{ listSummary.bekleyen_adet }} Yanıt Bekliyor</span>
+              </span>
+              <span v-if="listSummary.red_adet" class="fatura-mini-badge fatura-mini-badge--danger" title="Reddedilen">
+                <span>{{ listSummary.red_adet }} Red</span>
+              </span>
+            </template>
+
+            <!-- Taslak Sekmesi -->
+            <template v-else-if="activeTab === 'taslak'">
+              <span v-if="listSummary.efatura_adet" class="fatura-mini-badge fatura-mini-badge--neutral">
+                {{ listSummary.efatura_adet }} E-Fatura
+              </span>
+              <span v-if="listSummary.earsiv_adet" class="fatura-mini-badge fatura-mini-badge--neutral">
+                {{ listSummary.earsiv_adet }} E-Arşiv
+              </span>
+            </template>
+          </div>
         </div>
-        <div v-if="activeTab === 'giden'" class="fatura-summary-strip__item">
-          <small>ONAYLI</small>
-          <strong class="text-emerald">{{ formatMoney(listSummary.onaylanan_tutar) }}</strong>
-          <span class="text-emerald">{{ listSummary.onaylanan_adet || 0 }} Adet</span>
-        </div>
-        <div v-if="activeTab === 'giden'" class="fatura-summary-strip__item">
-          <small>BEKLEYEN</small>
-          <strong class="text-amber">{{ formatMoney(listSummary.bekleyen_tutar) }}</strong>
-          <span class="text-amber">{{ listSummary.bekleyen_adet || 0 }} Adet</span>
-        </div>
-        <div v-if="activeTab === 'gelen'" class="fatura-summary-strip__item">
-          <small>KABUL</small>
-          <strong class="text-emerald">{{ listSummary.kabul_adet || 0 }}</strong>
-          <span class="text-emerald">Onaylı</span>
-        </div>
-        <div v-if="activeTab === 'gelen'" class="fatura-summary-strip__item">
-          <small>YANIT BEKLEYEN</small>
-          <strong class="text-amber">{{ listSummary.bekleyen_adet || 0 }}</strong>
-          <span class="text-amber">Bekliyor</span>
+
+        <!-- Kart Altındaki Minimal Dağılım Çizgisi (3px) -->
+        <div v-if="listSummary.toplam_adet" class="fatura-mini-strip__track">
+          <template v-if="activeTab === 'giden'">
+            <div
+              class="fatura-mini-strip__fill bg-emerald"
+              :style="{ width: `${Math.round(((listSummary.onaylanan_adet || 0) / listSummary.toplam_adet) * 100)}%` }"
+            ></div>
+            <div
+              class="fatura-mini-strip__fill bg-amber"
+              :style="{ width: `${Math.round(((listSummary.bekleyen_adet || 0) / listSummary.toplam_adet) * 100)}%` }"
+            ></div>
+          </template>
+          <template v-else-if="activeTab === 'gelen'">
+            <div
+              class="fatura-mini-strip__fill bg-emerald"
+              :style="{ width: `${Math.round(((listSummary.kabul_adet || 0) / listSummary.toplam_adet) * 100)}%` }"
+            ></div>
+            <div
+              class="fatura-mini-strip__fill bg-amber"
+              :style="{ width: `${Math.round(((listSummary.bekleyen_adet || 0) / listSummary.toplam_adet) * 100)}%` }"
+            ></div>
+            <div
+              class="fatura-mini-strip__fill bg-danger"
+              :style="{ width: `${Math.round(((listSummary.red_adet || 0) / listSummary.toplam_adet) * 100)}%` }"
+            ></div>
+          </template>
         </div>
       </section>
 
-      <!-- Arama Kutuları -->
+      <!-- Arama ve Filtre Grubu -->
       <div class="fatura-search-group">
         <!-- Genel Arama -->
         <div class="fatura-search-box">
-          <Search :size="17" class="fatura-search-box__icon" />
+          <Search :size="16" class="fatura-search-box__icon" />
           <input
             v-model="searchQuery"
             type="text"
@@ -1256,11 +1535,11 @@ onBeforeUnmount(() => {
 
         <!-- Kalem / Ürün İçi Arama -->
         <div class="fatura-search-box fatura-search-box--product">
-          <Package :size="17" class="fatura-search-box__icon text-purple" />
+          <Package :size="16" class="fatura-search-box__icon text-purple" />
           <input
             v-model="productSearchQuery"
             type="text"
-            placeholder="Fatura içindeki Ürün / Kalem / Marka Ara..."
+            placeholder="Ürün / Kalem / Açıklama Ara..."
             autocomplete="off"
           />
           <button v-if="productSearchQuery" type="button" @click="productSearchQuery = ''">
@@ -1268,84 +1547,92 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <div v-if="productSearchQuery" class="fatura-product-badge">
-          <Sparkles :size="13" />
+          <Sparkles :size="12" />
           <span>Fatura kalemlerinde ve tüm dönemlerde aranıyor</span>
         </div>
 
-        <!-- Hızlı Durum Filtreleri -->
+        <!-- Hızlı Durum Filtreleri (Giden) -->
         <div v-if="activeTab === 'giden'" class="fatura-filter-pills">
           <button
             type="button"
             :class="{ 'is-active': statusFilter === '' }"
             @click="statusFilter = ''"
           >
-            Tümü
+            <span>Tümü</span>
+            <span v-if="listSummary.toplam_adet" class="fatura-pill-num">{{ listSummary.toplam_adet }}</span>
           </button>
           <button
             type="button"
             :class="{ 'is-active': statusFilter === 'ONAYLANDI' }"
             @click="statusFilter = 'ONAYLANDI'"
           >
-            Onaylı
+            <span>Onaylı</span>
+            <span v-if="listSummary.onaylanan_adet" class="fatura-pill-num">{{ listSummary.onaylanan_adet }}</span>
           </button>
           <button
             type="button"
             :class="{ 'is-active': statusFilter === 'BEKLIYOR' }"
             @click="statusFilter = 'BEKLIYOR'"
           >
-            Bekleyen
+            <span>Bekleyen</span>
+            <span v-if="listSummary.bekleyen_adet" class="fatura-pill-num">{{ listSummary.bekleyen_adet }}</span>
           </button>
           <button
             type="button"
             :class="{ 'is-active': statusFilter === 'HATALI' }"
             @click="statusFilter = 'HATALI'"
           >
-            Hatalı
+            <span>Hatalı</span>
           </button>
         </div>
 
+        <!-- Hızlı Durum Filtreleri (Gelen) -->
         <div v-if="activeTab === 'gelen'" class="fatura-filter-pills">
           <button
             type="button"
             :class="{ 'is-active': responseFilter === '' }"
             @click="responseFilter = ''"
           >
-            Tümü
+            <span>Tümü</span>
+            <span v-if="listSummary.toplam_adet" class="fatura-pill-num">{{ listSummary.toplam_adet }}</span>
           </button>
           <button
             type="button"
             :class="{ 'is-active': responseFilter === 'BEKLIYOR' }"
             @click="responseFilter = 'BEKLIYOR'"
           >
-            Yanıt Bekleyen
+            <span>Yanıt Bekleyen</span>
+            <span v-if="listSummary.bekleyen_adet" class="fatura-pill-num">{{ listSummary.bekleyen_adet }}</span>
           </button>
           <button
             type="button"
             :class="{ 'is-active': responseFilter === 'KABUL' }"
             @click="responseFilter = 'KABUL'"
           >
-            Kabul
+            <span>Kabul</span>
+            <span v-if="listSummary.kabul_adet" class="fatura-pill-num">{{ listSummary.kabul_adet }}</span>
           </button>
           <button
             type="button"
             :class="{ 'is-active': responseFilter === 'RED' }"
             @click="responseFilter = 'RED'"
           >
-            Red
+            <span>Red</span>
+            <span v-if="listSummary.red_adet" class="fatura-pill-num">{{ listSummary.red_adet }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Liste Durumları -->
+      <!-- Liste Durumları (Loading & Empty) -->
       <div v-if="listLoading" class="fatura-loading-box">
         <RefreshCw :size="24" class="is-spinning text-primary" />
         <span>Faturalar yükleniyor...</span>
       </div>
 
       <div v-else-if="invoiceList.length === 0" class="fatura-empty-card">
-        <Receipt :size="38" />
+        <Receipt :size="36" />
         <strong>Fatura Bulunamadı</strong>
-        <p>Seçilen dönem veya arama kriterlerine uygun kayıt bulunmuyor.</p>
+        <p>Seçilen dönem veya arama filtrelerine uygun fatura kaydı bulunmuyor.</p>
         <button
           v-if="activeTab === 'taslak'"
           type="button"
@@ -1357,7 +1644,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <!-- Fatura Kartları -->
+      <!-- Fatura Kartları Listesi -->
       <div v-else class="fatura-cards-list">
         <article
           v-for="inv in invoiceList"
@@ -1365,7 +1652,7 @@ onBeforeUnmount(() => {
           class="fatura-card"
           @click="openPreview(inv.encrypted_id, inv.fatura_no)"
         >
-          <!-- Kart Üst Başlık -->
+          <!-- Kart Üst Başlık (No, Belge Türü & Durum) -->
           <div class="fatura-card__header">
             <div class="fatura-card__badge-group">
               <span class="fatura-no-tag" :class="activeTab === 'giden' ? 'fatura-no-tag--emerald' : 'fatura-no-tag--sky'">
@@ -1384,7 +1671,7 @@ onBeforeUnmount(() => {
                   :class="inv.ticari_yanit === 'KABUL' ? 'fatura-badge--success' : (inv.ticari_yanit === 'RED' ? 'fatura-badge--danger' : 'fatura-badge--warning')"
                 >
                   <span class="fatura-badge-dot"></span>
-                  <span>{{ inv.ticari_yanit === 'KABUL' ? 'Kabul Edildi' : (inv.ticari_yanit === 'RED' ? 'Reddedildi' : 'Bekliyor') }}</span>
+                  <span>{{ inv.ticari_yanit === 'KABUL' ? 'Kabul Edildi' : (inv.ticari_yanit === 'RED' ? 'Reddedildi' : 'Yanıt Bekliyor') }}</span>
                 </span>
               </template>
               <template v-else-if="activeTab === 'giden'">
@@ -1410,24 +1697,30 @@ onBeforeUnmount(() => {
             <h3 class="fatura-customer-name" :title="inv.alici_unvan || 'İsimsiz Cari'">
               {{ inv.alici_unvan || 'İsimsiz Cari' }}
             </h3>
-            <p class="fatura-customer-meta">
-              <span>VKN/TCKN: {{ inv.alici_vkn_tckn || '-' }}</span>
-              <span>•</span>
-              <span>{{ formatDate(inv.fatura_tarihi) }}</span>
-            </p>
+            <div class="fatura-customer-meta">
+              <span class="fatura-meta-pill">
+                <Calendar :size="12" />
+                <span>{{ formatDate(inv.fatura_tarihi) }}</span>
+              </span>
+              <span v-if="inv.alici_vkn_tckn" class="fatura-meta-vkn">
+                VKN: {{ inv.alici_vkn_tckn }}
+              </span>
+            </div>
           </div>
 
           <!-- Kalemler Özeti -->
           <div v-if="inv.kalemler_ozet" class="fatura-card__items-preview">
-            <strong class="text-purple">İçerik:</strong>
-            <span>{{ inv.kalemler_ozet }}</span>
+            <Package :size="13" class="text-purple" style="flex-shrink: 0;" />
+            <span :title="inv.kalemler_ozet">{{ inv.kalemler_ozet }}</span>
           </div>
 
-          <!-- Kart Altı & Aksiyonlar -->
+          <!-- Kart Altı (Tutar & Aksiyon Butonları) -->
           <div class="fatura-card__footer" @click.stop>
             <div class="fatura-card__amount-box">
-              <small class="fatura-amount-label">Ödenecek Tutar</small>
-              <strong class="fatura-amount-value">{{ formatInvoiceMoney(inv.odenecek_tutar_raw ?? inv.odenecek_tutar, inv.para_birimi) }}</strong>
+              <span class="fatura-amount-label">Ödenecek Tutar</span>
+              <strong class="fatura-amount-value">
+                {{ formatInvoiceMoney(inv.odenecek_tutar_raw ?? inv.odenecek_tutar, inv.para_birimi) }}
+              </strong>
             </div>
 
             <div class="fatura-card__actions">
@@ -1437,17 +1730,17 @@ onBeforeUnmount(() => {
                 class="fatura-payment-tag"
                 :class="inv.tahsilat_durumu === 'ODENDI' ? 'is-paid' : (inv.tahsilat_durumu === 'KISMI_ODENDI' ? 'is-partial' : '')"
               >
-                {{ inv.tahsilat_durumu === 'ODENDI' ? '✓ Ödendi' : (inv.tahsilat_durumu === 'KISMI_ODENDI' ? '◑ Kısmi' : '○ Ödenmedi') }}
+                {{ inv.tahsilat_durumu === 'ODENDI' ? '✓ Ödendi' : (inv.tahsilat_durumu === 'KISMI_ODENDI' ? '◑ Kısmi' : '○ Bekliyor') }}
               </span>
 
               <!-- Gelen Ticari Yanıt Butonu -->
               <button
                 v-if="activeTab === 'gelen' && (!inv.ticari_yanit || inv.ticari_yanit === 'BEKLIYOR')"
                 type="button"
-                class="fatura-mini-btn fatura-mini-btn--primary"
+                class="fatura-action-btn fatura-action-btn--primary"
                 @click="openResponseModal(inv)"
               >
-                <Check :size="14" />
+                <Check :size="13" />
                 <span>Yanıt Ver</span>
               </button>
 
@@ -1459,24 +1752,24 @@ onBeforeUnmount(() => {
                   title="Taslağı Sil"
                   @click="deleteDraft(inv)"
                 >
-                  <Trash2 :size="16" />
+                  <Trash2 :size="15" />
                 </button>
                 <button
                   type="button"
-                  class="fatura-mini-btn"
+                  class="fatura-action-btn"
                   title="Taslağı Düzenle"
                   @click="openNewInvoiceWizard(inv)"
                 >
-                  <Edit3 :size="14" />
+                  <Edit3 :size="13" />
                   <span>Düzenle</span>
                 </button>
                 <button
                   type="button"
-                  class="fatura-mini-btn fatura-mini-btn--primary"
+                  class="fatura-action-btn fatura-action-btn--primary"
                   title="GİB'e Gönder"
                   @click="sendDraft(inv)"
                 >
-                  <Send :size="14" />
+                  <Send :size="13" />
                   <span>Gönder</span>
                 </button>
               </template>
@@ -1489,15 +1782,15 @@ onBeforeUnmount(() => {
                   title="Paylaş"
                   @click="shareInvoice(inv)"
                 >
-                  <Share2 :size="16" />
+                  <Share2 :size="15" />
                 </button>
                 <button
                   type="button"
-                  class="fatura-mini-btn"
+                  class="fatura-action-btn fatura-action-btn--view"
                   @click="openPreview(inv.encrypted_id, inv.fatura_no)"
                 >
-                  <Eye :size="14" />
-                  <span>PDF Gör</span>
+                  <Eye :size="13" />
+                  <span>Fatura Gör</span>
                 </button>
               </template>
             </div>
@@ -1717,8 +2010,9 @@ onBeforeUnmount(() => {
             <div>
               <span class="fatura-wizard-tag">E-FATURA OLUŞTURUCU</span>
               <h2>{{ wizardEditId ? 'Taslağı Düzenle' : 'Yeni Fatura Kes' }}</h2>
+              <small class="fatura-wizard-progress">{{ wizardStep }} / 4 adım · {{ ['Alıcı bilgileri', 'Fatura ayarları', 'Mal ve hizmetler', 'Kontrol ve gönderim'][wizardStep - 1] }}</small>
             </div>
-            <button type="button" class="fatura-icon-btn" @click="isWizardOpen = false">
+            <button type="button" class="fatura-icon-btn" aria-label="Sihirbazı kapat" @click="isWizardOpen = false">
               <X :size="18" />
             </button>
           </header>
@@ -1729,6 +2023,7 @@ onBeforeUnmount(() => {
               type="button"
               class="fatura-wizard-step-item"
               :class="{ 'is-active': wizardStep === 1, 'is-done': wizardStep > 1 }"
+              :aria-current="wizardStep === 1 ? 'step' : undefined"
               @click="wizardStep = 1"
             >
               <span class="step-num">1</span>
@@ -1738,6 +2033,7 @@ onBeforeUnmount(() => {
               type="button"
               class="fatura-wizard-step-item"
               :class="{ 'is-active': wizardStep === 2, 'is-done': wizardStep > 2 }"
+              :aria-current="wizardStep === 2 ? 'step' : undefined"
               @click="wizardStep = 2"
             >
               <span class="step-num">2</span>
@@ -1747,6 +2043,7 @@ onBeforeUnmount(() => {
               type="button"
               class="fatura-wizard-step-item"
               :class="{ 'is-active': wizardStep === 3, 'is-done': wizardStep > 3 }"
+              :aria-current="wizardStep === 3 ? 'step' : undefined"
               @click="wizardStep = 3"
             >
               <span class="step-num">3</span>
@@ -1756,6 +2053,7 @@ onBeforeUnmount(() => {
               type="button"
               class="fatura-wizard-step-item"
               :class="{ 'is-active': wizardStep === 4 }"
+              :aria-current="wizardStep === 4 ? 'step' : undefined"
               @click="wizardStep = 4"
             >
               <span class="step-num">4</span>
@@ -1767,6 +2065,13 @@ onBeforeUnmount(() => {
           <div class="fatura-wizard-body">
             <!-- ADIM 1: CARİ / ALICI SEÇİMİ -->
             <div v-if="wizardStep === 1" class="wizard-step-panel">
+              <div class="wizard-step-intro">
+                <span class="wizard-step-intro__icon"><UsersRound :size="17" /></span>
+                <div>
+                  <h3>Alıcı bilgileri</h3>
+                  <p>Kayıtlı bir cari seçin veya yeni alıcı bilgilerini girin.</p>
+                </div>
+              </div>
               <!-- Müşteri Arama -->
               <div class="fatura-search-box">
                 <Search :size="17" class="fatura-search-box__icon" />
@@ -1860,6 +2165,13 @@ onBeforeUnmount(() => {
 
             <!-- ADIM 2: FATURA DETAY VE AYARLARI -->
             <div v-else-if="wizardStep === 2" class="wizard-step-panel">
+              <div class="wizard-step-intro">
+                <span class="wizard-step-intro__icon wizard-step-intro__icon--purple"><FileText :size="17" /></span>
+                <div>
+                  <h3>Fatura ayarları</h3>
+                  <p>Tarih, belge türü ve gönderim senaryosunu belirleyin.</p>
+                </div>
+              </div>
               <div class="fatura-form-fields">
                 <div class="fatura-form-grid-2">
                   <div class="fatura-form-field">
@@ -1924,6 +2236,13 @@ onBeforeUnmount(() => {
 
             <!-- ADIM 3: KALEMLER -->
             <div v-else-if="wizardStep === 3" class="wizard-step-panel">
+              <div class="wizard-step-intro">
+                <span class="wizard-step-intro__icon wizard-step-intro__icon--amber"><Layers :size="17" /></span>
+                <div>
+                  <h3>Mal ve hizmetler</h3>
+                  <p>Faturaya eklenecek kalemleri ve KDV oranlarını girin.</p>
+                </div>
+              </div>
               <div class="fatura-lines-container">
                 <article
                   v-for="(line, idx) in invoiceLines"
@@ -2038,10 +2357,17 @@ onBeforeUnmount(() => {
 
             <!-- ADIM 4: ÖZET VE GÖNDER / KAYDET -->
             <div v-else-if="wizardStep === 4" class="wizard-step-panel">
+              <div class="wizard-step-intro">
+                <span class="wizard-step-intro__icon wizard-step-intro__icon--green"><CheckCircle2 :size="17" /></span>
+                <div>
+                  <h3>Kontrol ve gönderim</h3>
+                  <p>Bilgileri kontrol ettikten sonra taslağı kaydedebilir veya gönderebilirsiniz.</p>
+                </div>
+              </div>
               <div class="fatura-wizard-summary-card">
                 <h3>Fatura Özeti</h3>
 
-                <div class="fatura-summary-row">
+                <div class="fatura-summary-row fatura-summary-row--recipient">
                   <span>Alıcı:</span>
                   <strong>{{ invoiceHeader.alici_unvan }}</strong>
                 </div>
@@ -2084,14 +2410,16 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Wizard Footer Aksiyon Butonları -->
-          <footer class="fatura-wizard-footer">
+          <footer class="fatura-wizard-footer" :class="{ 'is-summary': wizardStep === 4 }">
             <button
               v-if="wizardStep > 1"
               type="button"
               class="fatura-secondary-btn"
+              :disabled="wizardSubmitting"
               @click="prevWizardStep"
             >
-              Geri
+              <ArrowLeft :size="16" />
+              <span>Geri</span>
             </button>
 
             <button
@@ -2100,7 +2428,7 @@ onBeforeUnmount(() => {
               class="fatura-primary-btn ml-auto"
               @click="nextWizardStep"
             >
-              <span>Devam Et</span>
+              <span>{{ wizardStep === 3 ? 'Özeti Gör' : 'Devam Et' }}</span>
               <ChevronRight :size="16" />
             </button>
 
@@ -2111,7 +2439,7 @@ onBeforeUnmount(() => {
                 :disabled="wizardSubmitting"
                 @click="saveWizardInvoice(false)"
               >
-                Taslak Olarak Kaydet
+                {{ wizardSubmitting ? 'İşleniyor…' : 'Taslağı Kaydet' }}
               </button>
               <button
                 type="button"
@@ -2228,6 +2556,236 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
+/* ==========================================================================
+   ÖZET SEKME GRAFİKLERİ & BENTO KARTLARI
+   ========================================================================== */
+
+/* 1. Hero Obsidian Bento Kartı: Ticari Hacim & Çift Yönlü Bar */
+.fatura-hero-volume-card {
+  background: var(--ds-surface-dark, #191d24);
+  border-radius: var(--ds-radius-card, 28px);
+  color: #ffffff;
+  padding: 20px 18px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--ds-shadow-bento-dark, 0 16px 36px rgba(0, 0, 0, 0.28));
+}
+
+.fatura-hero-volume-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.fatura-hero-volume-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fatura-hero-icon-box {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.fatura-hero-tag {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+
+.fatura-hero-subtitle {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.fatura-balance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fatura-balance-pill--positive {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.fatura-balance-pill--warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.fatura-hero-volume-main {
+  margin-bottom: 14px;
+}
+
+.fatura-hero-volume-amount {
+  display: block;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.fatura-hero-balance-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+
+.fatura-hero-balance-label {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.fatura-hero-balance-val {
+  font-weight: 700;
+}
+
+/* Çift Yönlü Segmentli Dağılım Grafiği (Segmented Track) */
+.fatura-chart-container {
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fatura-segmented-track {
+  position: relative;
+  display: flex;
+  height: 16px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.fatura-seg-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.4s ease;
+  position: relative;
+}
+
+.fatura-seg-fill--sales {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.fatura-seg-fill--purchase {
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.fatura-seg-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.01em;
+}
+
+/* Lejant (Legend Grid) */
+.fatura-chart-legend {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.fatura-legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.fatura-legend-item:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fatura-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.fatura-legend-dot--sales {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.fatura-legend-dot--purchase {
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.fatura-legend-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.fatura-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.fatura-legend-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.fatura-legend-pct {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fatura-legend-val {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 2px;
+  letter-spacing: -0.02em;
+}
+
+.fatura-legend-count {
+  display: block;
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
 /* KPI Kartları (Giden & Gelen) */
 .fatura-kpi-grid {
   display: grid;
@@ -2312,11 +2870,11 @@ onBeforeUnmount(() => {
   color: var(--ds-ink);
 }
 
-/* Net KDV Durumu Kartı */
+/* Net KDV Durumu & Gauge Kartı */
 .fatura-kdv-card {
   padding: 20px 20px 18px;
   border-radius: var(--ds-radius-card, 28px);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   background: var(--ds-surface);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
@@ -2355,12 +2913,20 @@ onBeforeUnmount(() => {
   font-weight: 600;
   color: var(--ds-muted);
 }
-.fatura-kdv-amount {
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 32px;
-  letter-spacing: -0.04em;
+
+.fatura-kdv-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 6px;
+}
+
+.fatura-kdv-amount {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 30px;
+  letter-spacing: -0.04em;
 }
 .fatura-kdv-card--payable .fatura-kdv-amount {
   color: var(--ds-danger-ink);
@@ -2368,25 +2934,170 @@ onBeforeUnmount(() => {
 .fatura-kdv-card--devreden .fatura-kdv-amount {
   color: var(--ds-emerald-ink);
 }
+
+.fatura-kdv-indicator-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.fatura-kdv-indicator-pill--danger {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
+}
+.fatura-kdv-indicator-pill--emerald {
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
+}
+
+/* KDV Karşılama İlerleme Skalası (Gauge) */
+.fatura-kdv-gauge-wrap {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--ds-surface-subtle);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.fatura-kdv-gauge-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+}
+
+.fatura-kdv-gauge-title {
+  font-weight: 600;
+  color: var(--ds-muted);
+}
+
+.fatura-kdv-gauge-pct {
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.fatura-kdv-gauge-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.fatura-kdv-gauge-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.fatura-kdv-gauge-fill--full {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.fatura-kdv-gauge-fill--partial {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+.fatura-kdv-gauge-desc {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--ds-slate);
+}
+
 .fatura-kdv-breakdown {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  font-size: 12px;
+  margin-top: 12px;
 }
-.fatura-kdv-breakdown span {
+
+.fatura-kdv-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--ds-soft);
+  border: 1px solid var(--ds-line);
+}
+
+.fatura-kdv-box__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.fatura-kdv-box--hesaplanan .fatura-kdv-box__icon {
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
+}
+
+.fatura-kdv-box--indirilecek .fatura-kdv-box__icon {
+  background: var(--ds-blue-soft);
+  color: var(--ds-blue-ink);
+}
+
+.fatura-kdv-box span {
   display: block;
   color: var(--ds-muted);
-  font-size: 11px;
+  font-size: 10.5px;
 }
-.fatura-kdv-breakdown b {
+
+.fatura-kdv-box b {
   display: block;
-  margin-top: 2px;
-  font-weight: 700;
+  margin-top: 1px;
+  font-size: 12.5px;
+  font-weight: 800;
   color: var(--ds-ink);
+}
+
+/* 3'lü Finansal Bento Metrikler Şeridi */
+.fatura-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.fatura-metric-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14px 8px;
+  border-radius: 20px;
+  background: var(--ds-surface);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
+}
+
+.fatura-metric-cell__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+
+.fatura-metric-cell__label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ds-muted);
+  line-height: 1.25;
+}
+
+.fatura-metric-cell__value {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ds-ink);
+  margin-top: 4px;
+  letter-spacing: -0.02em;
 }
 
 /* Hızlı Modül Menüleri Grid */
@@ -2589,56 +3300,151 @@ onBeforeUnmount(() => {
   background: var(--ds-canvas);
 }
 
-/* Liste Sekmeleri Ortak Elemanları */
-.fatura-summary-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding: 14px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 22px;
+/* ==========================================================================
+   LİSTE GÖRÜNÜMÜ: MİNİMAL BENTO ÖZET KARTI & FİLTRELER
+   ========================================================================== */
+
+/* Minimal Bento Özet Kartı (Giden / Gelen / Taslak) */
+.fatura-mini-bento-strip {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
   background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
-  margin-bottom: 14px;
-  text-align: center;
-}
-.fatura-summary-strip__item small {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ds-muted);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.fatura-summary-strip__item strong {
-  display: block;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--ds-ink);
-  margin-top: 2px;
-}
-.fatura-summary-strip__item span {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ds-muted);
+  box-shadow: var(--ds-shadow-bento, 0 8px 20px rgba(16, 24, 40, 0.06));
+  margin-bottom: 12px;
+  overflow: hidden;
 }
 
+.fatura-mini-strip__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+}
+
+.fatura-mini-strip__info {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.fatura-mini-strip__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.fatura-mini-strip__icon--emerald {
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
+}
+.fatura-mini-strip__icon--sky {
+  background: var(--ds-blue-soft);
+  color: var(--ds-blue-ink);
+}
+.fatura-mini-strip__icon--amber {
+  background: var(--ds-amber-soft);
+  color: var(--ds-amber-ink);
+}
+
+.fatura-mini-strip__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fatura-mini-strip__tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ds-muted);
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.fatura-mini-strip__amount {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--ds-ink);
+  letter-spacing: -0.03em;
+  margin-top: 1px;
+  line-height: 1.2;
+}
+
+.fatura-mini-strip__badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fatura-mini-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3.5px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.fatura-mini-badge--count {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ds-ink);
+}
+.fatura-mini-badge--success {
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
+}
+.fatura-mini-badge--warning {
+  background: var(--ds-amber-soft);
+  color: var(--ds-amber-ink);
+}
+.fatura-mini-badge--danger {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
+}
+.fatura-mini-badge--neutral {
+  background: var(--ds-surface-subtle);
+  color: var(--ds-slate);
+}
+
+/* 3px Dağılım Çizgisi */
+.fatura-mini-strip__track {
+  display: flex;
+  height: 3px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.04);
+}
+.fatura-mini-strip__fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+.bg-emerald { background: var(--ds-emerald); }
+.bg-amber { background: var(--ds-amber); }
+.bg-danger { background: var(--ds-danger); }
+
+/* Arama ve Filtre Grubu */
 .fatura-search-group {
   display: grid;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .fatura-search-box {
   position: relative;
   display: flex;
   align-items: center;
-  height: 46px;
+  height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
   background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
-  padding: 0 16px;
+  box-shadow: var(--ds-shadow-bento, 0 6px 18px rgba(16, 24, 40, 0.05));
+  padding: 0 14px;
 }
 .fatura-search-box__icon {
   flex-shrink: 0;
@@ -2662,20 +3468,21 @@ onBeforeUnmount(() => {
 }
 .fatura-search-box--product {
   background: var(--ds-surface-subtle);
-  border-color: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 .fatura-product-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: var(--ds-purple-soft);
   color: var(--ds-purple-ink);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
 }
 
+/* Durum Filtre Hapları */
 .fatura-filter-pills {
   display: flex;
   gap: 6px;
@@ -2688,22 +3495,37 @@ onBeforeUnmount(() => {
 }
 .fatura-filter-pills button {
   flex-shrink: 0;
-  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 13px;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 999px;
   background: var(--ds-surface);
   color: var(--ds-muted);
   font-size: 11px;
   font-weight: 700;
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
+  box-shadow: var(--ds-shadow-bento, 0 6px 16px rgba(16, 24, 40, 0.05));
   cursor: pointer;
   transition: all 0.18s ease;
 }
 .fatura-filter-pills button.is-active {
-  background: var(--ds-surface-dark, var(--ds-surface-dark));
+  background: var(--ds-surface-dark);
   color: var(--ds-surface);
-  border-color: var(--ds-surface-dark, var(--ds-surface-dark));
+  border-color: var(--ds-surface-dark);
   box-shadow: 0 4px 12px rgba(25, 29, 36, 0.25);
+}
+.fatura-pill-num {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.07);
+}
+.fatura-filter-pills button.is-active .fatura-pill-num {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
 }
 
 /* Fatura Kartları */
@@ -2871,17 +3693,59 @@ onBeforeUnmount(() => {
   color: var(--ds-amber-ink);
 }
 
+.fatura-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-slate);
+  font-size: 11px;
+}
+.fatura-meta-vkn {
+  font-family: monospace;
+  font-size: 10.5px;
+  color: var(--ds-muted);
+}
+
+.fatura-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--ds-line);
+  background: var(--ds-surface);
+  color: var(--ds-ink);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.fatura-action-btn:active {
+  transform: scale(0.96);
+}
+.fatura-action-btn--primary {
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.fatura-action-btn--view {
+  background: var(--ds-surface-subtle);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
 .fatura-mini-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 32px;
+  height: 30px;
   padding: 0 10px;
   border: 1px solid var(--ds-line);
   border-radius: 999px;
   background: var(--ds-surface);
   color: var(--ds-slate);
-  font: 700 10px 'Space Grotesk', sans-serif;
+  font: 700 10.5px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
 .fatura-mini-btn--primary {
@@ -2892,13 +3756,17 @@ onBeforeUnmount(() => {
 .fatura-icon-action-btn {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--ds-line);
   border-radius: 50%;
   background: var(--ds-surface);
   color: var(--ds-slate);
   cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.fatura-icon-action-btn:active {
+  transform: scale(0.94);
 }
 .fatura-icon-action-btn--danger {
   color: var(--ds-danger-ink);
@@ -3158,13 +4026,14 @@ onBeforeUnmount(() => {
 
 /* Sihirbaz (Wizard) */
 .fatura-wizard-sheet {
-  height: 90vh;
+  height: min(92vh, 820px);
+  border-radius: 28px 28px 0 0;
 }
 .fatura-wizard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px 12px;
+  padding: 18px 20px 14px;
   border-bottom: 1px solid var(--ds-line);
 }
 .fatura-wizard-tag {
@@ -3177,11 +4046,44 @@ onBeforeUnmount(() => {
   font-size: 18px;
   font-weight: 700;
 }
+.fatura-wizard-progress {
+  display: block;
+  margin-top: 4px;
+  color: var(--ds-muted);
+  font-size: 10px;
+  line-height: 1.3;
+}
+.wizard-step-intro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px 13px;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fbff, #fff);
+}
+.wizard-step-intro__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--ds-blue-ink);
+  background: var(--ds-blue-soft);
+}
+.wizard-step-intro__icon--purple { color: var(--ds-purple-ink); background: var(--ds-purple-soft); }
+.wizard-step-intro__icon--amber { color: var(--ds-amber-ink); background: var(--ds-amber-soft); }
+.wizard-step-intro__icon--green { color: var(--ds-emerald-ink); background: var(--ds-emerald-soft); }
+.wizard-step-intro h3 { margin: 0; font-size: 13px; font-weight: 800; color: var(--ds-ink); }
+.wizard-step-intro p { margin: 2px 0 0; font-size: 10px; line-height: 1.35; color: var(--ds-muted); }
 .fatura-wizard-steps {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  padding: 8px 16px;
-  background: var(--ds-surface-subtle);
+  position: relative;
+  padding: 10px 16px 9px;
+  background: #f3f7fb;
   border-bottom: 1px solid var(--ds-line);
 }
 .fatura-wizard-step-item {
@@ -3192,12 +4094,13 @@ onBeforeUnmount(() => {
   border: 0;
   background: transparent;
   cursor: pointer;
+  min-height: 45px;
 }
 .step-num {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--ds-soft);
   color: var(--ds-muted);
@@ -3219,16 +4122,18 @@ onBeforeUnmount(() => {
   color: var(--ds-primary);
   font-weight: 700;
 }
+.fatura-wizard-step-item.is-done .step-name { color: var(--ds-emerald-ink); }
 .fatura-wizard-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: 18px 20px 24px;
+  background: #fbfcfe;
 }
 .fatura-wizard-footer {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 20px;
+  padding: 12px 20px calc(12px + var(--ds-safe-bottom));
   border-top: 1px solid var(--ds-line);
   background: var(--ds-surface);
 }
@@ -3251,11 +4156,15 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border: 1px solid var(--ds-line);
   border-radius: 14px;
-  background: var(--ds-soft);
+  min-height: 44px;
+  background: var(--ds-surface);
   font: 500 12px 'Plus Jakarta Sans', sans-serif;
   color: var(--ds-ink);
   outline: 0;
 }
+.fatura-form-field textarea { min-height: 76px; resize: vertical; }
+.fatura-search-box { margin-bottom: 14px; box-shadow: var(--ds-shadow-tile); }
+.fatura-mini-btn { min-width: 64px; border-radius: 12px; font-weight: 700; }
 .fatura-form-field input:focus,
 .fatura-form-field select:focus,
 .fatura-form-field textarea:focus {
@@ -3382,12 +4291,57 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
+/* Kalem girişinde hızlı tarama ve dengeli gezinme */
+.wizard-step-panel:has(.fatura-lines-container) .wizard-step-intro { margin-bottom: 14px; }
+.fatura-line-card {
+  padding: 15px;
+  background: var(--ds-surface);
+  border-color: #e4eaf2;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .045);
+}
+.fatura-line-card__header { padding-bottom: 2px; }
+.line-index {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: var(--ds-blue-ink);
+  background: var(--ds-blue-soft);
+}
+.fatura-line-card .fatura-form-field label { color: #475569; }
+.fatura-line-card .fatura-form-grid-3 { gap: 8px; }
+.fatura-line-total {
+  margin-top: 2px;
+  padding: 10px 0 0;
+  color: var(--ds-muted);
+}
+.fatura-line-total strong { color: var(--ds-ink); font-size: 13px; }
+.fatura-wizard-footer {
+  position: relative;
+  z-index: 2;
+  justify-content: flex-end;
+  box-shadow: 0 -6px 18px rgba(15, 23, 42, .05);
+}
+.fatura-wizard-footer .fatura-secondary-btn,
+.fatura-wizard-footer .fatura-primary-btn { min-height: 44px; margin-left: 0 !important; }
+.fatura-wizard-footer .fatura-secondary-btn { min-width: 76px; }
+.fatura-wizard-footer .fatura-primary-btn { min-width: 112px; justify-content: center; }
+
+@media (max-width: 360px) {
+  .fatura-wizard-body { padding-left: 14px; padding-right: 14px; }
+  .fatura-line-card { padding: 12px; }
+  .fatura-wizard-footer { padding-left: 14px; padding-right: 14px; }
+  .fatura-wizard-footer .fatura-primary-btn { min-width: 104px; }
+}
+
 /* Sihirbaz Özet Kartı */
 .fatura-wizard-summary-card {
-  padding: 16px;
-  border: 1px solid var(--ds-line);
+  padding: 18px 16px;
+  border: 1px solid #e1e8f0;
   border-radius: 20px;
-  background: var(--ds-soft);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-tile);
 }
 .fatura-wizard-summary-card h3 {
   margin: 0 0 12px;
@@ -3395,9 +4349,10 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 .fatura-summary-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(88px, .8fr) minmax(0, 1.35fr);
+  align-items: start;
+  gap: 10px;
   margin-bottom: 7px;
   font-size: 12px;
   color: var(--ds-slate);
@@ -3405,9 +4360,14 @@ onBeforeUnmount(() => {
 .fatura-summary-row strong,
 .fatura-summary-row b {
   color: var(--ds-ink);
+  text-align: right;
+  overflow-wrap: anywhere;
 }
+.fatura-summary-row--recipient { margin-bottom: 10px; }
+.fatura-summary-row--recipient strong { line-height: 1.32; }
 .fatura-summary-row--total {
   font-size: 15px;
+  grid-template-columns: 1fr auto;
   margin-top: 8px;
   margin-bottom: 0;
 }

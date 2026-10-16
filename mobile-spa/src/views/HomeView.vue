@@ -15,7 +15,7 @@ const actionDefinitions = [
   { permission: 'personnel', label: 'Personel', icon: UsersRound, to: '/personel' },
   { permission: 'vehicles', label: 'Araçlar', icon: CarFront, to: '/arac-takip' },
   { permission: 'reports', label: 'Puantaj', icon: CalendarDays, href: '/mobile/index.php?p=puantaj' },
-  { permission: 'documents', label: 'Evraklar', icon: FileText, href: '/mobile/index.php?p=evrak-takip' },
+  { permission: 'documents', label: 'Evraklar', icon: FileText, to: '/evrak-takip' },
   { permission: 'tasks', label: 'Görevler', icon: ClipboardCheck, to: '/gorevler' },
   { permission: 'reports', label: 'Raporlar', icon: ChartNoAxesCombined, to: '/raporlar' },
 ]
