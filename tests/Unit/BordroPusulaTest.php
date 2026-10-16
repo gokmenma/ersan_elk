@@ -71,12 +71,16 @@ final class BordroPusulaTest extends TestCase
     {
         $row = $this->row();
         $p = BordroPusulaService::olustur($row, $this->donem(), $this->model());
+        $p['resmi']['kalemler'][] = ['etiket' => 'Hafta içi nöbet (4 Saat)', 'kurus' => 299472];
         $html = BordroPusulaService::html($row, $this->donem(), (object) ['firma_adi' => 'Firma <A>'], $p);
         self::assertStringContainsString('&lt;Test Personeli&gt;', $html);
         self::assertStringContainsString('Firma &lt;A&gt;', $html);
         self::assertStringContainsString('31.000,00', $html);
         self::assertStringContainsString('4.624,20', $html);
-        self::assertStringContainsString('Yemek günlük yuvarlama farkı', $html);
+        self::assertStringNotContainsString('Yemek günlük yuvarlama farkı', $html);
+        self::assertMatchesRegularExpression('/Yemek yardımı<\/td><td class="p-money">4\.000,00 N/', $html);
+        self::assertStringNotContainsString('Hafta içi nöbet', $html);
+        self::assertMatchesRegularExpression('/Fazla Mesai Ücreti \(Net\)<\/td><td class="p-money">2\.994,72 N/', $html);
         foreach (['9.876,54', '1.234,56', '789,12', 'NAKDEN ALDIM'] as $text) self::assertStringNotContainsString($text, $html);
         self::assertStringContainsString('—', $html);
     }

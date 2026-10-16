@@ -6,6 +6,27 @@ $tarih = static fn($v): string => empty($v) || $v === '0000-00-00' ? '' : date('
 $m = $pusula['detay']['matrahlar'];
 $indirim = $pusula['detay']['indirimler'] ?? [];
 $resmi = $pusula['resmi'];
+$ekKazancKalemleri = [];
+$birlesikKalemIndexleri = [];
+foreach (($resmi['kalemler'] ?? []) as $kalem) {
+    $etiket = mb_strtolower(trim((string) ($kalem['etiket'] ?? '')), 'UTF-8');
+    $birlesikKalem = null;
+    if ($etiket === 'yemek yardımı' || $etiket === 'yemek günlük yuvarlama farkı') {
+        $birlesikKalem = ['anahtar' => 'yemek', 'etiket' => 'Yemek yardımı'];
+    } elseif (str_contains($etiket, 'hafta içi') && str_contains($etiket, 'nöbet')) {
+        $birlesikKalem = ['anahtar' => 'fazla_mesai', 'etiket' => 'Fazla Mesai Ücreti (Net)'];
+    }
+    if ($birlesikKalem === null) {
+        $ekKazancKalemleri[] = $kalem;
+        continue;
+    }
+    $anahtar = $birlesikKalem['anahtar'];
+    if (!isset($birlesikKalemIndexleri[$anahtar])) {
+        $birlesikKalemIndexleri[$anahtar] = count($ekKazancKalemleri);
+        $ekKazancKalemleri[] = ['etiket' => $birlesikKalem['etiket'], 'kurus' => 0];
+    }
+    $ekKazancKalemleri[$birlesikKalemIndexleri[$anahtar]]['kurus'] += (int) ($kalem['kurus'] ?? 0);
+}
 $aylar = [1=>'OCAK','ŞUBAT','MART','NİSAN','MAYIS','HAZİRAN','TEMMUZ','AĞUSTOS','EYLÜL','EKİM','KASIM','ARALIK'];
 $bas = strtotime($donem->baslangic_tarihi);
 $bilgiSol = [
@@ -84,7 +105,7 @@ td, th { padding: 2px 3px; vertical-align: top; font-weight: normal; }
 </table>
 </td><td width="2%"></td><td width="49%">
 <table class="p-grid"><tr><th colspan="2" class="p-heading">EK KAZANÇLAR</th></tr>
-<?php foreach ($resmi['kalemler'] as $kalem): if ($kalem['etiket'] === 'Resmî net ücret tabanı' || $kalem['kurus'] <= 0) continue; ?>
+<?php foreach ($ekKazancKalemleri as $kalem): if ($kalem['etiket'] === 'Resmî net ücret tabanı' || $kalem['kurus'] <= 0) continue; ?>
 <tr><td><?= $e($kalem['etiket']) ?></td><td class="p-money"><?= $para($kalem['kurus'] / 100) ?> N</td></tr>
 <?php endforeach; ?>
 </table>
