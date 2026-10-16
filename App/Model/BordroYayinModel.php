@@ -111,19 +111,25 @@ final class BordroYayinModel extends Model
                 if ((int) $kayit['personel_id'] === $personel) { $secili = $kayit; break; }
             }
             if (!$secili) throw new DomainException('Seçilen personelin yayına hazır dökümü bulunamadı.');
-
-            // Dönemde aynı anda yalnızca bir personel test dökümü aktif kalır.
-            $this->sorgu("UPDATE bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id SET d.is_active = 0, d.deleted_at = NOW() WHERE y.firma_id = ? AND y.donem_id = ? AND y.durum = 'test' AND d.is_active = 1", [$firma, $donem]);
-            $surum = (int) $this->sorgu("SELECT COALESCE(MIN(CASE WHEN durum = 'test' THEN surum END), 0) - 1 FROM bordro_yayin WHERE firma_id = ? AND donem_id = ?", [$firma, $donem])->fetchColumn();
-            $this->sorgu("INSERT INTO bordro_yayin (firma_id, donem_id, surum, durum, yayinlayan_id) VALUES (?, ?, ?, 'test', ?)", [$firma, $donem, $surum, $user]);
-            $yayin = (int) $this->db->lastInsertId();
-            $json = json_encode($secili['icerik'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-            $this->sorgu('INSERT INTO bordro_yayin_dokum (yayin_id, personel_id, bordro_personel_id, icerik, icerik_hash) VALUES (?, ?, ?, ?, ?)', [$yayin, $personel, $secili['bordro_id'], $json, hash('sha256', $json)]);
-            $dokum = (int) $this->db->lastInsertId();
-            $this->sorgu('UPDATE bordro_yayin_dokum SET pusula_no = ?, gonderim_tarihi = NOW() WHERE id = ?', [$this->pusulaNo($secili['icerik'], $dokum), $dokum]);
-            $this->olay($dokum, 'test_yayini', 'user', $user, 'Bildirim gönderilmeden tek personel testi');
-            return ['yayin_token' => Security::encrypt($yayin), 'surum' => $surum, 'adet' => 1, 'bildirim' => false];
+            return $this->testYayiniKaydet($firma, $donem, $user, $personel, $secili);
         });
+    }
+
+    /** Hazırlanmış tek personel snapshot'ını diğer personellerin testlerini bozmadan kaydeder. */
+    private function testYayiniKaydet(int $firma, int $donem, int $user, int $personel, array $secili): array
+    {
+        if (!$this->db->inTransaction()) throw new \LogicException('Test yayını transaction gerektirir.');
+        // Her personelin yalnız son test dökümü aktif kalır; başka personellerin testleri korunur.
+        $this->sorgu("UPDATE bordro_yayin_dokum SET is_active = 0, deleted_at = NOW() WHERE personel_id = ? AND is_active = 1 AND yayin_id IN (SELECT id FROM bordro_yayin WHERE firma_id = ? AND donem_id = ? AND durum = 'test' AND is_active = 1)", [$personel, $firma, $donem]);
+        $surum = (int) $this->sorgu("SELECT COALESCE(MIN(CASE WHEN durum = 'test' THEN surum END), 0) - 1 FROM bordro_yayin WHERE firma_id = ? AND donem_id = ?", [$firma, $donem])->fetchColumn();
+        $this->sorgu("INSERT INTO bordro_yayin (firma_id, donem_id, surum, durum, yayinlayan_id) VALUES (?, ?, ?, 'test', ?)", [$firma, $donem, $surum, $user]);
+        $yayin = (int) $this->db->lastInsertId();
+        $json = json_encode($secili['icerik'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $this->sorgu('INSERT INTO bordro_yayin_dokum (yayin_id, personel_id, bordro_personel_id, icerik, icerik_hash) VALUES (?, ?, ?, ?, ?)', [$yayin, $personel, $secili['bordro_id'], $json, hash('sha256', $json)]);
+        $dokum = (int) $this->db->lastInsertId();
+        $this->sorgu('UPDATE bordro_yayin_dokum SET pusula_no = ?, gonderim_tarihi = NOW() WHERE id = ?', [$this->pusulaNo($secili['icerik'], $dokum), $dokum]);
+        $this->olay($dokum, 'test_yayini', 'user', $user, 'Bildirim gönderilmeden tek personel testi');
+        return ['yayin_token' => Security::encrypt($yayin), 'surum' => $surum, 'adet' => 1, 'bildirim' => false];
     }
 
     /** Çağıran hazırlığı aynı transaction ve dönem kilidi altında tamamlar. */

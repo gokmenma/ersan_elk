@@ -80,7 +80,7 @@
   function ciz() {
     const suzulen = suz();
     tablo.clear().rows.add(suzulen).draw();
-    const aktif = kayitlar.filter(r => r.durum === 'yayinda' || r.durum === 'revizyon');
+    const aktif = kayitlar.filter(r => r.durum === 'yayinda' || r.durum === 'revizyon' || r.durum === 'test');
     const goruntuleyen = aktif.filter(r => r.goruntuleme_tarihi && r.goruntuleme_tarihi !== '—').length;
     const beyanVeren = aktif.filter(r => r.beyan_tarihi && r.beyan_tarihi !== 'Bekleniyor' && r.beyan_tarihi !== '—').length;
     const acikTalep = kayitlar.reduce((toplam, r) => toplam + (r.acik_talep || 0), 0);
@@ -407,13 +407,14 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
-  async function hazirlaVeGosterOnizleme() {
+  async function hazirlaVeGosterOnizleme(sekmeyiAc = true) {
     await calistir(async () => {
+      await yukle();
       onizleme = await api('yayin-onizle');
       
       // Sekmeyi aktifleştir
       const onizlemeTabBtn = el('tab-onizleme-btn');
-      if (onizlemeTabBtn) {
+      if (sekmeyiAc && onizlemeTabBtn) {
         bootstrap.Tab.getOrCreateInstance(onizlemeTabBtn).show();
       }
 
@@ -765,7 +766,7 @@
 
     el('bordroYayinAc')?.addEventListener('click', () => {
       new bootstrap.Modal(el('bordroYayinModal')).show();
-      calistir(yukle);
+      hazirlaVeGosterOnizleme(false);
     });
 
     document.querySelectorAll('[data-yayin-filtre]').forEach(b => {
@@ -784,8 +785,8 @@
     el('btnTakipYenile')?.addEventListener('click', () => calistir(yukle));
 
     // Sekme 2 Önizleme Tetikleyicileri
-    el('bordroYayinOnizle')?.addEventListener('click', hazirlaVeGosterOnizleme);
-    el('btnOnizlemeYenile')?.addEventListener('click', hazirlaVeGosterOnizleme);
+    el('bordroYayinOnizle')?.addEventListener('click', () => hazirlaVeGosterOnizleme(true));
+    el('btnOnizlemeYenile')?.addEventListener('click', () => hazirlaVeGosterOnizleme(true));
     el('btnDislananKpiCard')?.addEventListener('click', dislananlariGoster);
     el('btnToolbarDislanan')?.addEventListener('click', dislananlariGoster);
 

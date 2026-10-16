@@ -366,3 +366,7 @@
 - [x] Ücret pusulası ve dijital onay migrasyonu yerel veritabanına uygulandı.
 - [x] Yeni döküm alanları, itiraz eki tablosu ve eski aktif kayıtlardaki pusula numarası doluluğu doğrulandı.
 - [x] İlgili birim testleri geçti: 30 test, 117 doğrulama.
+- [x] İkinci personel testinin birinci personel testini silmesi/pasifleştirmesi giderildi; testler personel bazında bağımsız tutuluyor.
+- [x] Sayfa yenilemesi sonrası yayın modalı açıldığında takip ve döküm önizlemesinin sunucudan otomatik yeniden kurulması sağlandı.
+- [x] Bildirimsiz test kayıtları yönetim takip KPI toplamına dahil edildi.
+- [x] Çoklu personel test regresyonu eklendi; ilgili paket 31 test / 120 doğrulama geçti.

@@ -39,7 +39,7 @@ final class BordroYayinWorkflowTest extends TestCase
 CREATE TABLE personel(id INTEGER PRIMARY KEY, firma_id INT, aktif_mi INT DEFAULT 1, isten_cikis_tarihi TEXT, silinme_tarihi TEXT);
 CREATE TABLE bordro_donemi(id INTEGER PRIMARY KEY, firma_id INT, kapali_mi INT, silinme_tarihi TEXT);
 CREATE TABLE bordro_yayin(id INTEGER PRIMARY KEY, firma_id INT, donem_id INT, surum INT, durum TEXT DEFAULT 'yayinda', yayinlayan_id INT, yayin_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
-CREATE TABLE bordro_yayin_dokum(id INTEGER PRIMARY KEY, yayin_id INT, personel_id INT, bordro_personel_id INT, pusula_no TEXT, icerik TEXT, icerik_hash TEXT, olusturma_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, gonderim_tarihi TEXT, goruntuleme_tarihi TEXT, beyan_tarihi TEXT, beyan_metni TEXT, beyan_metin_surumu INT, onay_ip TEXT, onay_user_agent TEXT, onay_session_hash TEXT, onay_icerik_hash TEXT, is_active INT DEFAULT 1, UNIQUE(yayin_id, personel_id));
+CREATE TABLE bordro_yayin_dokum(id INTEGER PRIMARY KEY, yayin_id INT, personel_id INT, bordro_personel_id INT, pusula_no TEXT, icerik TEXT, icerik_hash TEXT, olusturma_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, gonderim_tarihi TEXT, goruntuleme_tarihi TEXT, beyan_tarihi TEXT, beyan_metni TEXT, beyan_metin_surumu INT, onay_ip TEXT, onay_user_agent TEXT, onay_session_hash TEXT, onay_icerik_hash TEXT, deleted_at TEXT, is_active INT DEFAULT 1, UNIQUE(yayin_id, personel_id));
 CREATE TABLE bordro_yayin_olay(id INTEGER PRIMARY KEY, dokum_id INT, tur TEXT, aktor_tipi TEXT, aktor_id INT, detay TEXT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_talep(id INTEGER PRIMARY KEY, dokum_id INT, konu TEXT DEFAULT 'diger', mesaj TEXT, durum TEXT DEFAULT 'acik', atanan_kullanici_id INT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, sonuc_tarihi TEXT, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_yanit(id INTEGER PRIMARY KEY, talep_id INT, kullanici_id INT, mesaj TEXT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
@@ -77,6 +77,28 @@ SQL);
     private function hazirDokum(): array
     {
         return ['personel_id'=>1, 'bordro_id'=>10, 'icerik'=>['personel'=>'Yeni Test', 'donem'=>'2026/09', 'baslangic'=>'2026-09-01', 'banka_net_kurus'=>120000, 'kalemler'=>[['etiket'=>'Ücret','kurus'=>120000]]]];
+    }
+
+    private function testYayiniKaydet(int $personel): array
+    {
+        $kaydet = new ReflectionMethod($this->model, 'testYayiniKaydet');
+        $atomik = new ReflectionMethod($this->model, 'atomik');
+        $secili = $this->hazirDokum();
+        $secili['personel_id'] = $personel;
+        $secili['bordro_id'] = 10 + $personel;
+        $secili['icerik']['personel'] = 'Test Personel ' . $personel;
+        return $atomik->invoke($this->model, fn() => $kaydet->invoke($this->model, 1, 1, 10, $personel, $secili));
+    }
+
+    public function testFarkliPersonellerinTestYayinlariBirbiriniPasiflestirmez(): void
+    {
+        $this->testYayiniKaydet(1);
+        $this->testYayiniKaydet(2);
+        self::assertSame(2, (int) $this->db->query("SELECT COUNT(*) FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id=d.yayin_id WHERE y.durum='test' AND d.is_active=1")->fetchColumn());
+
+        $this->testYayiniKaydet(1);
+        self::assertSame(2, (int) $this->db->query("SELECT COUNT(*) FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id=d.yayin_id WHERE y.durum='test' AND d.is_active=1")->fetchColumn());
+        self::assertSame(1, (int) $this->db->query("SELECT COUNT(*) FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id=d.yayin_id WHERE y.durum='test' AND d.personel_id=2 AND d.is_active=1")->fetchColumn());
     }
 
     public function testYenidenYayinYeniSurumVeUcBildirimOlustururEskiBeyaniKorur(): void
