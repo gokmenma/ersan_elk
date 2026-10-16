@@ -1,5 +1,67 @@
 # Progress
 
+## 2026-10-16 — Mobil SPA E-Fatura & Finans: Akıllı Tekil Arama & UI/UX Pro Max Taslak / Wizard Yenilemesi
+- [x] E-fatura modülü tekil akıllı arama ve modern UI/UX Pro Max tasarım diliyle yenilendi:
+  - **Tekil Akıllı Arama Çubuğu**: Çift input (fatura no ve ürün arama) kaldırıldı; Fatura No, Müşteri Ünvanı, VKN ve Ürün/Kalem satırlarını tek çubukta tarayan `.fatura-search-box--unified` ve tek dokunuşla sıfırlama butonu (`X`) getirildi.
+  - **Modern Bento Boş Durum (`.fatura-empty-bento`)**: Çift halkalı claymorphic ikon, açıklayıcı başlık/açıklama, belirgin 46px primer CTA (`+ Yeni Taslak Fatura Oluştur`) ve güven rozetleri eklendi.
+  - **Yeni Fatura Kes Sihirbazı (Wizard)**:
+    - Gradient ilerleme çubuğu ve checkmark'lı 4 adımlı interaktif stepper.
+    - Adım 1: `<Building2>` ikonu, baş harf avatarlı müşteri listesi ve input içi entegre `[Sorgula]` mikro butonuyla canlı GİB mükellef sorgulama.
+    - Adım 2: Belge türü için 2'li Segmented Pill (`E-Fatura` / `E-Arşiv`), Fatura Tipi için 4'lü chip butonlar, Senaryo çipleri, seri ve para birimi grid'i.
+    - Adım 3: `#1 Kalem` rozetli bento kartları, hızlı ürün seçici çipleri, 3 sütunlu miktar-birim-fiyat, matrah ve KDV dahil tutar özeti, kesikli yeni kalem butonu.
+    - Adım 4: Termal/bento makbuz kartı, müşteri/VKN/tarih künyesi, finansal döküm, büyük genel toplam ve EDM Bilişim GİB güvenlik onay rozeti.
+    - Dikey gri scrollbar gizlendi (`scrollbar-width: none`), akıcı mobil dokunmatik kaydırma sağlandı.
+  - **Derleme**: `npm run build` ile 0 hata ile derlendi.
+
+- [x] Klasik mobil (`mobile/pages/talepler.php`) talepler sayfasıyla tam parite ve gelişmiş onay özellikleri sağlandı:
+  - **Avans Kısmi Onayı**: Kartlarda `[Kısmi Onay]` butonu, modalda "Aynı Tutar" / "Farklı Tutar" segmentli seçimi, personele otomatik onay notu oluşturma ("Avans talebiniz X TL olarak uygun görülmüştür.") ve dinamik buton etiketi.
+  - **İzin Kısmi Onayı**: Kartlarda `[Kısmi Onay]` butonu, modalda "Aynı Tarih" / "Farklı Tarihler" segmentli seçimi, tarih değişiminde anlık canlı gün hesaplama rozeti ("Yeni Onaylanan Süre: X Gün"), personele otomatik onay notu oluşturma ve dinamik buton etiketi.
+  - **Genel Taleplerde İşleme Al**: Kartlarda sağ üstteki gereksiz "İşlemde" rozeti kaldırıldı; işlev doğrudan sol altta "Çözüldü" butonunun yanına eklenen daha küçük/kompakt açık yeşil `[ ▶ İşleme Al ]` butonuna aktarıldı. Buton her zaman "İşleme Al" yazar, işlemdeyken aktif yeşil ikon/kenarlıkla durumunu korur ve tıklandığında beklemede/işlemde arasında çift yönlü geçiş sağlar.
+  - **Detay Bottom Sheet Zenginleştirmesi**:
+    - **Resmî İzin Formu (Word DOCX) İndirme**: İzin detayında doğrudan Word belgesini indiren `[Resmî İzin Formunu İndir (Word DOCX)]` butonu eklendi.
+    - **Fotoğraf Büyütme**: Ekli fotoğraflara dokunulduğunda tam boy yeni sekmede açılma (`openPhoto`) ve "Büyütmek için dokunun" ipucu eklendi.
+    - **Alt Hızlı Aksiyon Butonları**: Bekleyen veya işlemdeki kayıtlarda altta hızlı Reddet, Kısmi Onay, Onayla / İşleme Al, Çözüldü, Sil butonları eklendi.
+  - **Backend API (`public/api/requests.php` & `dist/api/requests.php`)**: `IzinFormuService` entegrasyonu ile `action=izin-formu-docx-indir` GET uç noktası eklendi; silinmiş kayıtlarda not ve tarih alanları standardize edildi.
+  - **Derleme**: Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+
+## 2026-10-16 — Mobil SPA Raporlar (İşlem Özetleri & Saha Performansı) Modülü
+- [x] Klasik mobil (`mobile/index.php?p=raporlar`) raporlar modülü, `@mobile-spa` mimarisine Soft Bento & Claymorphic UI ve tüm operasyonel özellikleriyle taşındı:
+  - **Backend JSON API (`public/api/reports.php` & `dist/api/reports.php`)**:
+    - Strict types, session ve firma izolasyonu, permission 61 (`puantaj/raporlar`), `puantaj_raporlama`, `puantaj_yonetim`, `puantaj/list` ve Superadmin yetkilendirmesi.
+    - `action=cards`: 5 sekmeye (Okuma, Kesme, Sayaç Sökme/Takma, Mühürleme, Kaçak) ait tüm modelleri (`EndeksOkumaModel`, `PuantajModel`, `SayacDegisimService`, `TanimlamalarModel`, `PersonelModel`, `EkipHelper`) dinamik olarak işleyip bölge ve personel performanslarını JSON döner.
+    - `action=detail`: Tıklanan personelin seçili dönemdeki tüm çalışma günlerini, gün adlarını, işlem türlerini ve toplamlarını döken icmal servisi.
+  - **Frontend Servis Katmanı (`services/reports.js`)**:
+    - Reaktif `reportsState`, hızlı tarih hesaplama (Bugün, Dün, Bu Hafta, Bu Ay, Geçen Ay, Özel) ve `reportsApi` istemci metotları.
+  - **Modern Görünüm (`views/ReportsView.vue`)**:
+    - **TopBar**: Geri butonu, `OPERASYONEL ANALİZ` eyebrow, `İşlem Özetleri` başlığı ve yenileme butonu.
+    - **Hızlı Tarih Hapları & Tarih Aralığı Kartı**: Tek dokunuşla hazır dönem geçişi ve aktif aralık göstergesi.
+    - **5 Rapor Sekmesi**: Endeks Okuma (`Gauge`), Kesme / Açma (`ZapOff`), Sayaç Sökme/Takma (`Wrench`), Mühürleme (`ShieldCheck`), Kaçak Kontrol (`ShieldAlert`).
+    - **4 Bento KPI Kartı**: Toplam İşlem/Okuma, Aktif / Toplam Ekip Kadrosu, En Yüksek Bölge (% ve adet), Kişi Başı Ortalama.
+    - **Bölgesel İş Dağılımı Bento Kartı**: Renkli segment çubukları, bölge adetleri, personelleri ve dokunulduğunda o bölgeye göre anında filtreleme.
+    - **Canlı Arama ve Sıralama**: Personel/ekip/bölge araması, 4 farklı ölçüte göre sıralama (En Çok, En Az, İsim A-Z, Ekip No).
+    - **Personel Performans Kartları**: 1., 2., 3. sıralamada Altın/Gümüş/Bronz kupa rozetleri (`Trophy`), avatar/baş harfler, isim, ekip rozeti (`EKİP-102`), bölge pini, büyük net sayaç ve iş türü alt etiketleri.
+    - **Personel Günlük İcmal Bottom Sheet**: Dönem toplamı, çalışılan gün, günlük ortalama KPI bandı, iş türü dağılımı ve gün gün kronolojik döküm listesi.
+    - **Gelişmiş Tarih Seçici Sheet**: 12 aylık buton matrisi ile tek dokunuşla geçmiş ayları seçebilme, yıl stepper'ı ve özel tarih aralığı formu.
+  - **Derleme & Canlı Doğrulama**: `npm run build` ile 0 hata ile derlendi; `mobile.ersanelektrik.com/api/reports.php` gerçek Apache oturumu ile test edildi.
+
+## 2026-10-16 — Mobil SPA Bildirim Altyapısı ve Web Push Entegrasyonu
+- [x] Mobil SPA (`mobile-spa`) bünyesinde eksik olan bildirim merkezi ve Web Push altyapısı uçtan uca tamamlandı:
+  - **Backend API (`public/api/notifications.php` & `dist/api/notifications.php`)**: `unread-count`, `list`, `vapid-key`, `push-status`, `subscribe`, `unsubscribe`, `mark-read`, `mark-all-read` aksiyonları `BildirimModel`, `PushSubscriptionModel` ve `SystemLogModel` üzerinden yazıldı.
+  - **Service Worker (`sw.js`)**: `push` ve `notificationclick` dinleyicileri eklendi, SPA rotalarına akıllı yönlendirme sağlandı, cache sürümü `ersan-mobile-shell-v19` yapıldı.
+  - **Frontend Servis Katmanı (`services/notifications.js`)**: Reaktif `notificationsState`, VAPID anahtarı yönetimi, push izin ve abonelik fonksiyonları, otomatik periyodik sayaç sorgulaması (polling) uygulandı.
+  - **TopBar Zil İkonu (`TopBar.vue`)**: Sağ üst köşeye dinamik okunmamış sayısı rozetine (`topbar-bell-badge`) sahip `Bell` butonu eklendi.
+  - **Bento Bildirim Çekmecesi (`NotificationsDrawer.vue`)**: Alttan açılan mobil bildirim merkezi, okunmuş/okunmamış filtreleme, tek tıkla okundu işaretleme ve hızlı push aktifleştirme banner'ı entegre edildi.
+  - **Profil Sayfası (`ProfileView.vue`)**: "Bildirim tercihleri" satırı anlık durum rozetine kavuşturuldu, tıklandığında açılan ayar modalı ile push bildirimlerini açıp kapatma işlevi sağlandı.
+  - **Derleme**: Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+
+## 2026-10-16 — Mobil SPA Kaçak Kontrol — İhbar Yönetimi Tasarım Diline Tam Uyumlaştırma
+- [x] Kaçak Kontrol sayfası İhbar Yönetimi sayfasının tasarım şablonu, bento hero kartı ve yerleşim yapısıyla birebir eşleştirildi:
+  - **Obsidian Bento Hero Kartı**: Toplam tutanak, %Onay Oranı yeşil rozeti, 4 renkli segmentli progress barı ve 4'lü interaktif durum hücreleri (`Bekleyen`, `Onaylı`, `Reddedilen`, `İptal`).
+  - **Dönem Gezinme**: "Son 1 Ay", "30 Gün", "Bu Yıl", "Tümü" hap butonları ve tarih göstergesi.
+  - **Arama & Filtre Kartı**: `bento-card--white` içinde tam genişlik arama kutusu, durum hapları, tür hapları ve ilçe dropdown'ı.
+  - **Tutanak Kartları**: `ihbar-card` stiline tam geçirildi (Sol üstte kırmızı ikonu, tutanak no ve ilçe, sağda durum rozeti, abone ve açıklama özeti, etiketler: Tür, Sayaç No, Endeks, Fotoğraf sayısı, ZIP İndir butonu, ekip ve tarih bilgisi).
+  - **Derleme**: Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+
 ## 2026-10-16 — Mobil SPA Puantaj — Personel Kartı İçi Haftalık Kapsül Takvimi ve Ay Görünümü Entegrasyonu
 - [x] Kullanıcının yüklediği görseldeki "Weekly Schedule" haftalık kapsül takvimi her personel kartına entegre edildi:
   - **Haftalık 7 Sütunlu Kapsüller (`.weekly-day-capsule`)**: Pazartesi'den Pazar'a haftanın günleri dikey hap formatında, gün numarası ve yuvarlak durum rozeti ile listelendi.

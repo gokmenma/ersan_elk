@@ -2,78 +2,105 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import {
   AlertCircle,
-  ArrowLeft,
-  Ban,
+  Award,
   Calendar,
   Camera,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
   Download,
+  ExternalLink,
   Eye,
-  FileDown,
+  FileSpreadsheet,
   FileText,
-  Gauge,
+  Filter,
+  Image as ImageIcon,
+  Info,
   MapPin,
+  Maximize2,
+  Navigation,
+  Phone,
+  Plus,
   RefreshCw,
   RotateCcw,
   Search,
+  Send,
   ShieldAlert,
-  SlidersHorizontal,
+  Sparkles,
   Trophy,
+  Trash2,
   User,
+  UserCheck,
   Users,
   X,
   XCircle,
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
-import { kacakApi, kacakState, setKacakTab } from '../services/kacak.js'
+import { kacakApi, kacakState } from '../services/kacak.js'
 
-// Durum değişkenleri
-const loading = ref(true)
-const refreshing = ref(false)
-const error = ref('')
+// UI Yükleme & İşlem Durumları
+const loading = ref(false)
+const actionLoading = ref(false)
 const toastMessage = ref('')
 const toastType = ref('success') // 'success' | 'error' | 'warning'
-let toastTimeout = null
+let toastTimer = null
 
 function showToast(msg, type = 'success') {
   toastMessage.value = msg
   toastType.value = type
-  if (toastTimeout) clearTimeout(toastTimeout)
-  toastTimeout = setTimeout(() => {
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
     toastMessage.value = ''
   }, 3500)
 }
 
-// Filtreler
-const activeStatus = ref('all') // 'all' | 'beklemede' | 'onaylandi' | 'reddedildi' | 'iptal'
-const activeTur = ref('all') // 'all' | 'Kaçak' | 'Abonesiz' | 'Usülsüz' | 'Pasif Abone'
-const searchQuery = ref('')
-const startDate = ref(kacakState.startDate)
-const endDate = ref(kacakState.endDate)
-const showDateFilter = ref(false)
-const showLeaderboardSheet = ref(false)
-
-// Veriler
-const allRecords = ref([])
+// Liste Verileri
+const kayitlar = ref([])
 const counts = ref({ toplam: 0, beklemede: 0, onaylandi: 0, reddedildi: 0, iptal: 0 })
 const leaderboard = ref([])
 const permissions = ref({ can_approve: false, can_cancel: false, can_revert_cancel: false })
 
-// Detay Modal
-const selectedRecord = ref(null)
-const isDetailOpen = ref(false)
+// İlçeler (Sabit İlçe Listesi)
+const ilceler = [
+  'Onikişubat',
+  'Dulkadiroğlu',
+  'Afşin',
+  'Andırın',
+  'Çağlayancerit',
+  'Ekinözü',
+  'Elbistan',
+  'Göksun',
+  'Nurhak',
+  'Pazarcık',
+  'Türkoğlu',
+]
 
-// Galeri & Lightbox
-const isGalleryOpen = ref(false)
+// Filtreler
+const searchInput = ref('')
+const selectedIlce = ref('')
+const selectedTur = ref('') // '' | 'Kaçak' | 'Abonesiz' | 'Usülsüz' | 'Pasif Abone'
+const activeStatus = ref('') // '' (tümü) | 'beklemede' | 'onaylandi' | 'reddedildi' | 'iptal'
+const datePreset = ref('year') // 'month' | '30days' | 'year' | 'all'
+const baslangicTarihi = ref('')
+const bitisTarihi = ref('')
+
+// Tutanak Detayı & Drawer
+const activeDetail = ref(null)
+const drawerOpen = ref(false)
+
+// Ekip Başarı Sıralaması (Stats Sheet)
+const statsSheetOpen = ref(false)
+const statsSearch = ref('')
+
+// Resim Galerisi & Lightbox
+const galleryOpen = ref(false)
 const galleryPhotos = ref([])
 const galleryLoading = ref(false)
-const galleryRecordToken = ref('')
-const isLightboxOpen = ref(false)
+const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
 
 // Aksiyon Modalı (Onayla / Reddet / İptal / Geri Al)
@@ -84,42 +111,47 @@ const actionModal = ref({
   text: '',
   reason: '',
   hakedistenDus: false,
-  submitting: false,
   token: '',
 })
 
-// Hızlı Tarih Seçenekleri
-function applyQuickDate(type) {
+// Tarih Yardımcıları
+function initDates() {
   const now = new Date()
-  const format = (d) => d.toISOString().slice(0, 10)
-
-  if (type === '30days') {
-    endDate.value = format(now)
-    startDate.value = format(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
-  } else if (type === 'thisYear') {
-    endDate.value = format(now)
-    startDate.value = `${now.getFullYear()}-01-01`
-  } else if (type === '1year') {
-    endDate.value = format(now)
-    startDate.value = format(new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000))
-  } else if (type === 'all') {
-    startDate.value = '2020-01-01'
-    endDate.value = format(now)
-  }
-  showDateFilter.value = false
-  loadRecords()
+  bitisTarihi.value = now.toISOString().slice(0, 10)
+  // Varsayılan bu yıl başı (2026-01-01) veya 1 yıl öncesi
+  baslangicTarihi.value = `${now.getFullYear()}-01-01`
 }
 
-// Kayıtları Yükle
-async function loadRecords() {
+function applyDatePreset(preset) {
+  datePreset.value = preset
+  const now = new Date()
+  bitisTarihi.value = now.toISOString().slice(0, 10)
+
+  if (preset === 'month') {
+    const oneMonthAgo = new Date(now)
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    baslangicTarihi.value = oneMonthAgo.toISOString().slice(0, 10)
+  } else if (preset === '30days') {
+    const d30 = new Date(now)
+    d30.setDate(d30.getDate() - 30)
+    baslangicTarihi.value = d30.toISOString().slice(0, 10)
+  } else if (preset === 'year') {
+    baslangicTarihi.value = `${now.getFullYear()}-01-01`
+  } else if (preset === 'all') {
+    baslangicTarihi.value = '2020-01-01'
+  }
+  loadData()
+}
+
+// Ana Veri Yükleme
+async function loadData() {
   loading.value = true
-  error.value = ''
   try {
     const res = await kacakApi.list({
-      baslangic: startDate.value,
-      bitis: endDate.value,
+      baslangic: baslangicTarihi.value,
+      bitis: bitisTarihi.value,
     })
-    allRecords.value = res.data.records || []
+    kayitlar.value = res.data.records || []
     counts.value = res.data.counts || { toplam: 0, beklemede: 0, onaylandi: 0, reddedildi: 0, iptal: 0 }
     leaderboard.value = res.data.leaderboard || []
     permissions.value = res.data.permissions || { can_approve: false, can_cancel: false, can_revert_cancel: false }
@@ -128,33 +160,51 @@ async function loadRecords() {
     kacakState.leaderboard = leaderboard.value
     kacakState.permissions = permissions.value
   } catch (err) {
-    error.value = err.message || 'Kayıtlar yüklenirken bir hata oluştu.'
+    showToast(err.message || 'Kayıtlar yüklenemedi.', 'error')
   } finally {
     loading.value = false
-    refreshing.value = false
   }
 }
 
-async function handleRefresh() {
-  refreshing.value = true
-  await loadRecords()
-}
+// Hero Segment Dağılımları
+const onayOrani = computed(() => {
+  const total = counts.value.toplam || 0
+  if (!total) return 0
+  return Math.round(((counts.value.onaylandi || 0) / total) * 100)
+})
 
-// Filtrelenmiş Liste
-const filteredRecords = computed(() => {
-  const q = searchQuery.value.trim().toLocaleLowerCase('tr-TR')
+const heroSegments = computed(() => {
+  const total = counts.value.toplam || 0
+  if (!total) {
+    return { beklemede: 0, onaylandi: 0, reddedildi: 0, iptal: 0 }
+  }
+  return {
+    beklemede: Math.round(((counts.value.beklemede || 0) / total) * 100),
+    onaylandi: Math.round(((counts.value.onaylandi || 0) / total) * 100),
+    reddedildi: Math.round(((counts.value.reddedildi || 0) / total) * 100),
+    iptal: Math.round(((counts.value.iptal || 0) / total) * 100),
+  }
+})
+
+// Filtrelenmiş Tutanaklar
+const filteredKayitlar = computed(() => {
+  const q = searchInput.value.trim().toLocaleLowerCase('tr-TR')
+  const ilce = selectedIlce.value
+  const tur = selectedTur.value
   const status = activeStatus.value
-  const tur = activeTur.value
 
-  return allRecords.value.filter((item) => {
+  return kayitlar.value.filter((item) => {
     // Durum filtresi
     if (status === 'beklemede' && (item.durum === 'iptal' || item.onay_durumu !== 'beklemede')) return false
     if (status === 'onaylandi' && (item.durum === 'iptal' || item.onay_durumu !== 'onaylandi')) return false
     if (status === 'reddedildi' && (item.durum === 'iptal' || item.onay_durumu !== 'reddedildi')) return false
     if (status === 'iptal' && item.durum !== 'iptal') return false
 
+    // İlçe filtresi
+    if (ilce && item.ilce !== ilce) return false
+
     // Tür filtresi
-    if (tur !== 'all' && item.tur !== tur) return false
+    if (tur && item.tur !== tur) return false
 
     // Arama filtresi
     if (q) {
@@ -166,25 +216,28 @@ const filteredRecords = computed(() => {
   })
 })
 
-// Detay Aç
-function openDetail(record) {
-  selectedRecord.value = record
-  isDetailOpen.value = true
+function setStatus(st) {
+  activeStatus.value = activeStatus.value === st ? '' : st
+}
+
+// Kart Tıklama & Detay Drawer
+function openDetail(item) {
+  activeDetail.value = item
+  drawerOpen.value = true
 }
 
 function closeDetail() {
-  isDetailOpen.value = false
+  drawerOpen.value = false
   setTimeout(() => {
-    selectedRecord.value = null
+    activeDetail.value = null
   }, 250)
 }
 
-// Galeri Aç
+// Galeri & Lightbox
 async function openGallery(token) {
-  galleryRecordToken.value = token
   galleryLoading.value = true
   galleryPhotos.value = []
-  isGalleryOpen.value = true
+  galleryOpen.value = true
 
   try {
     const res = await kacakApi.photos(token)
@@ -197,54 +250,56 @@ async function openGallery(token) {
 }
 
 function closeGallery() {
-  isGalleryOpen.value = false
+  galleryOpen.value = false
   galleryPhotos.value = []
 }
 
-// Lightbox
 const imageOnlyPhotos = computed(() => galleryPhotos.value.filter((p) => !p.pdf))
 
 function openLightbox(photo) {
   const idx = imageOnlyPhotos.value.findIndex((p) => p.token === photo.token)
   if (idx !== -1) {
     lightboxIndex.value = idx
-    isLightboxOpen.value = true
+    lightboxOpen.value = true
   }
 }
 
 function closeLightbox() {
-  isLightboxOpen.value = false
+  lightboxOpen.value = false
 }
 
-function stepLightbox(step) {
-  const len = imageOnlyPhotos.value.length
-  if (len === 0) return
-  lightboxIndex.value = (lightboxIndex.value + step + len) % len
+function nextPhoto() {
+  if (!imageOnlyPhotos.value.length) return
+  lightboxIndex.value = (lightboxIndex.value + 1) % imageOnlyPhotos.value.length
 }
 
-// Aksiyon Diyalogu Başlat
-function promptAction(type, record) {
-  const token = record.token
+function prevPhoto() {
+  if (!imageOnlyPhotos.value.length) return
+  lightboxIndex.value =
+    (lightboxIndex.value - 1 + imageOnlyPhotos.value.length) % imageOnlyPhotos.value.length
+}
+
+// Aksiyon Başlat
+function promptAction(type, item) {
   actionModal.value = {
     open: true,
     type,
-    token,
+    token: item.token,
     title: '',
     text: '',
     reason: '',
     hakedistenDus: false,
-    submitting: false,
   }
 
   if (type === 'approve') {
     actionModal.value.title = 'Bildirimi Onayla'
-    actionModal.value.text = `${record.tutanak_no || 'Bu'} kaçak tutanağını onaylamak üzeresiniz. İşlem onaylanıp sisteme işlenecektir.`
+    actionModal.value.text = `${item.tutanak_no || 'Bu'} kaçak tutanağını onaylamak üzeresiniz. Tutanak onaylanarak hakediş ve sisteme işlenecektir.`
   } else if (type === 'reject') {
     actionModal.value.title = 'Bildirimi Reddet'
     actionModal.value.text = 'Lütfen bildirimin reddedilme gerekçesini belirtin.'
   } else if (type === 'cancel') {
     actionModal.value.title = 'Tutanağı İptal Et'
-    actionModal.value.text = 'Bu tutanak iptal edilecek. Lütfen iptal nedenini girin.'
+    actionModal.value.text = 'Bu tutanak iptal edilecek. Lütfen iptal gerekçesini girin.'
     actionModal.value.hakedistenDus = false
   } else if (type === 'revert_cancel') {
     actionModal.value.title = 'İptali Geri Al'
@@ -256,7 +311,6 @@ function closeActionModal() {
   actionModal.value.open = false
 }
 
-// Aksiyon Gönder
 async function submitAction() {
   const { type, token, reason, hakedistenDus } = actionModal.value
   const csrfToken = auth.state.csrf_token
@@ -266,7 +320,7 @@ async function submitAction() {
     return
   }
 
-  actionModal.value.submitting = true
+  actionLoading.value = true
   try {
     let res
     if (type === 'approve') {
@@ -279,18 +333,34 @@ async function submitAction() {
       res = await kacakApi.revertCancel(token, csrfToken)
     }
 
-    showToast(res.message || 'İşlem başarıyla tamamlandı.', 'success')
+    showToast(res.message || 'İşlem başarıyla tamamlandı.')
     closeActionModal()
     closeDetail()
-    await loadRecords()
+    await loadData()
   } catch (err) {
     showToast(err.message || 'İşlem gerçekleştirilemedi.', 'error')
   } finally {
-    actionModal.value.submitting = false
+    actionLoading.value = false
   }
 }
 
-// Tür rozeti renkleri
+// Ekip Liderlik Sheet
+function openStatsSheet() {
+  statsSheetOpen.value = true
+  statsSearch.value = ''
+}
+
+function closeStatsSheet() {
+  statsSheetOpen.value = false
+}
+
+const filteredLeaderboard = computed(() => {
+  const q = statsSearch.value.trim().toLocaleLowerCase('tr-TR')
+  if (!q) return leaderboard.value
+  return leaderboard.value.filter((team) => team.name.toLocaleLowerCase('tr-TR').includes(q))
+})
+
+// Tür ve Durum Rozet Stilleri
 function getTurBadgeClass(tur) {
   switch (tur) {
     case 'Kaçak':
@@ -306,837 +376,830 @@ function getTurBadgeClass(tur) {
   }
 }
 
-// Durum rozeti metni ve stili
 function getStatusBadge(item) {
   if (item.durum === 'iptal') {
-    return { label: 'İptal', class: 'status-badge--cancelled' }
+    return { label: 'İptal', class: 'badge--slate' }
   }
   switch (item.onay_durumu) {
     case 'onaylandi':
-      return { label: 'Onaylandı', class: 'status-badge--approved' }
+      return { label: 'Onaylandı', class: 'badge--emerald' }
     case 'reddedildi':
-      return { label: 'Reddedildi', class: 'status-badge--rejected' }
+      return { label: 'Reddedildi', class: 'badge--rose' }
     default:
-      return { label: 'Beklemede', class: 'status-badge--pending' }
+      return { label: 'Beklemede', class: 'badge--amber' }
   }
 }
 
-// İlk yükleme
 onMounted(() => {
-  loadRecords()
+  initDates()
+  loadData()
 })
 </script>
 
 <template>
-  <div class="kacak-page ds-screen">
-    <!-- Üst Başlık Barı -->
-    <TopBar eyebrow="Saha İşlemleri & Denetim" subtitle="Kaçak ve abonesiz tutanak kontrolü">
+  <div class="ihbar-view">
+    <!-- TopBar -->
+    <TopBar
+      eyebrow="Saha İşlemleri"
+      title="Kaçak Kontrol"
+      subtitle="Kaçak ve abonesiz tutanak operasyonları"
+    >
       <template #actions>
         <button
           type="button"
           class="clay-circle-btn"
-          title="Ekip Başarı Sıralaması"
-          aria-label="Ekip Başarı Sıralaması"
-          @click="showLeaderboardSheet = true"
+          aria-label="Ekip Performansı"
+          title="Ekip Performansı"
+          @click="openStatsSheet"
         >
           <Trophy :size="20" class="text-amber-500" />
         </button>
         <button
           type="button"
           class="clay-circle-btn"
-          :class="{ 'animate-spin': refreshing }"
-          title="Yenile"
+          :class="{ 'animate-spin': loading }"
           aria-label="Yenile"
-          @click="handleRefresh"
+          title="Yenile"
+          @click="loadData"
         >
-          <RefreshCw :size="19" />
+          <RefreshCw :size="18" />
         </button>
       </template>
     </TopBar>
 
-    <!-- Hızlı Tarih / Dönem Seçici Çubuğu -->
-    <section class="kacak-date-bar">
-      <div class="kacak-date-info">
-        <Calendar :size="15" class="text-slate-400" />
-        <span class="kacak-date-text">{{ startDate }} &ndash; {{ endDate }}</span>
-      </div>
-      <div class="kacak-quick-dates">
-        <button
-          type="button"
-          class="kacak-date-chip"
-          @click="applyQuickDate('30days')"
-        >
-          Son 30 Gün
-        </button>
-        <button
-          type="button"
-          class="kacak-date-chip"
-          @click="applyQuickDate('thisYear')"
-        >
-          Bu Yıl
-        </button>
-        <button
-          type="button"
-          class="kacak-date-chip"
-          @click="applyQuickDate('1year')"
-        >
-          Son 1 Yıl
-        </button>
-        <button
-          type="button"
-          class="kacak-date-chip"
-          @click="applyQuickDate('all')"
-        >
-          Tümü
-        </button>
-        <button
-          type="button"
-          class="kacak-date-chip kacak-date-chip--icon"
-          title="Özel Tarih Seç"
-          @click="showDateFilter = !showDateFilter"
-        >
-          <SlidersHorizontal :size="14" />
-        </button>
-      </div>
-    </section>
-
-    <!-- Açılır Özel Tarih Formu -->
-    <Transition name="fade">
-      <section v-if="showDateFilter" class="kacak-custom-date-card bento-card">
-        <div class="kacak-date-inputs">
-          <label class="kacak-input-group">
-            <span>Başlangıç</span>
-            <input v-model="startDate" type="date" class="kacak-input" />
-          </label>
-          <label class="kacak-input-group">
-            <span>Bitiş</span>
-            <input v-model="endDate" type="date" class="kacak-input" />
-          </label>
+    <div class="ihbar-content">
+      <!-- Obsidian Bento Hero Kartı (Özet Metrikler) -->
+      <section class="bento-card bento-card--obsidian ihbar-hero-card">
+        <div class="ihbar-hero-head">
+          <div>
+            <span class="ihbar-hero-eyebrow">GENEL OPERASYON DURUMU</span>
+            <div class="ihbar-hero-total">
+              <strong>{{ counts.toplam }}</strong>
+              <small>toplam tutanak</small>
+            </div>
+          </div>
+          <div class="ihbar-hero-rate">
+            <span class="rate-value">%{{ onayOrani }}</span>
+            <span class="rate-label">Onay Oranı</span>
+          </div>
         </div>
-        <div class="kacak-date-actions">
-          <button type="button" class="clay-btn-secondary" @click="showDateFilter = false">
-            Vazgeç
+
+        <!-- Segmentli İlerleme Çubuğu -->
+        <div class="segmented-track" role="img" aria-label="Kaçak tutanak durum dağılımı">
+          <span
+            class="seg-pill seg-pill--amber"
+            :style="{ width: `${heroSegments.beklemede}%` }"
+            title="Bekleyen"
+          ></span>
+          <span
+            class="seg-pill seg-pill--emerald"
+            :style="{ width: `${heroSegments.onaylandi}%` }"
+            title="Onaylı"
+          ></span>
+          <span
+            class="seg-pill seg-pill--coral"
+            :style="{ width: `${heroSegments.reddedildi}%` }"
+            title="Reddedilen"
+          ></span>
+          <span
+            class="seg-pill seg-pill--slate"
+            :style="{ width: `${heroSegments.iptal}%` }"
+            title="İptal"
+          ></span>
+        </div>
+
+        <!-- 4'lü Metrik Izgarası -->
+        <div class="ihbar-hero-grid">
+          <button
+            type="button"
+            class="ihbar-hero-cell"
+            :class="{ 'is-active': activeStatus === 'beklemede' }"
+            @click="setStatus('beklemede')"
+          >
+            <span class="cell-label"><i class="ds-dot ds-dot--amber"></i>Bekleyen</span>
+            <strong class="cell-num text-amber-400">{{ counts.beklemede }}</strong>
           </button>
-          <button type="button" class="clay-btn-primary" @click="loadRecords">
-            Tarihi Uygula
+
+          <button
+            type="button"
+            class="ihbar-hero-cell"
+            :class="{ 'is-active': activeStatus === 'onaylandi' }"
+            @click="setStatus('onaylandi')"
+          >
+            <span class="cell-label"><i class="ds-dot ds-dot--emerald"></i>Onaylı</span>
+            <strong class="cell-num text-emerald-400">{{ counts.onaylandi }}</strong>
+          </button>
+
+          <button
+            type="button"
+            class="ihbar-hero-cell"
+            :class="{ 'is-active': activeStatus === 'reddedildi' }"
+            @click="setStatus('reddedildi')"
+          >
+            <span class="cell-label"><i class="ds-dot ds-dot--coral"></i>Reddedilen</span>
+            <strong class="cell-num text-rose-400">{{ counts.reddedildi }}</strong>
+          </button>
+
+          <button
+            type="button"
+            class="ihbar-hero-cell"
+            :class="{ 'is-active': activeStatus === 'iptal' }"
+            @click="setStatus('iptal')"
+          >
+            <span class="cell-label"><i class="ds-dot ds-dot--slate"></i>İptal</span>
+            <strong class="cell-num text-slate-300">{{ counts.iptal }}</strong>
           </button>
         </div>
       </section>
-    </Transition>
 
-    <!-- 4 Adet Minimal Bento KPI Kartı -->
-    <section class="kacak-kpi-grid">
-      <div
-        class="bento-card kpi-card"
-        :class="{ 'kpi-card--active': activeStatus === 'all' }"
-        @click="activeStatus = 'all'"
-      >
-        <div class="kpi-icon-wrap kpi-icon-wrap--primary">
-          <ShieldAlert :size="20" />
+      <!-- Dönem Seçici & Tarih Hapları -->
+      <div class="ihbar-date-bar">
+        <div class="date-preset-group">
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': datePreset === 'month' }"
+            @click="applyDatePreset('month')"
+          >
+            Son 1 Ay
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': datePreset === '30days' }"
+            @click="applyDatePreset('30days')"
+          >
+            30 Gün
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': datePreset === 'year' }"
+            @click="applyDatePreset('year')"
+          >
+            Bu Yıl
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': datePreset === 'all' }"
+            @click="applyDatePreset('all')"
+          >
+            Tümü
+          </button>
         </div>
-        <div class="kpi-body">
-          <span class="kpi-label">Toplam Tutanak</span>
-          <strong class="kpi-val">{{ counts.toplam }}</strong>
-        </div>
-      </div>
-
-      <div
-        class="bento-card kpi-card"
-        :class="{ 'kpi-card--active': activeStatus === 'beklemede' }"
-        @click="activeStatus = 'beklemede'"
-      >
-        <div class="kpi-icon-wrap kpi-icon-wrap--warning">
-          <Clock :size="20" />
-        </div>
-        <div class="kpi-body">
-          <span class="kpi-label">Bekleyen</span>
-          <strong class="kpi-val text-amber-500">{{ counts.beklemede }}</strong>
-        </div>
-      </div>
-
-      <div
-        class="bento-card kpi-card"
-        :class="{ 'kpi-card--active': activeStatus === 'onaylandi' }"
-        @click="activeStatus = 'onaylandi'"
-      >
-        <div class="kpi-icon-wrap kpi-icon-wrap--success">
-          <CheckCircle2 :size="20" />
-        </div>
-        <div class="kpi-body">
-          <span class="kpi-label">Onaylanan</span>
-          <strong class="kpi-val text-emerald-500">{{ counts.onaylandi }}</strong>
+        <div class="date-range-text">
+          <Calendar :size="14" />
+          <span>{{ baslangicTarihi.split('-').reverse().join('.') }} – {{ bitisTarihi.split('-').reverse().join('.') }}</span>
         </div>
       </div>
 
-      <div
-        class="bento-card kpi-card"
-        :class="{ 'kpi-card--active': activeStatus === 'iptal' }"
-        @click="activeStatus = 'iptal'"
-      >
-        <div class="kpi-icon-wrap kpi-icon-wrap--danger">
-          <Ban :size="20" />
+      <!-- Arama ve Filtre Kartı (Bento White) -->
+      <div class="ihbar-search-card bento-card bento-card--white">
+        <!-- Arama Inputu -->
+        <div class="search-input-wrap">
+          <Search :size="18" class="search-icon" />
+          <input
+            v-model="searchInput"
+            type="search"
+            placeholder="Tutanak no, sayaç no, abone, ekip veya ilçe ara…"
+            class="search-input"
+          />
+          <button
+            v-if="searchInput"
+            type="button"
+            class="search-clear-btn"
+            @click="searchInput = ''"
+          >
+            <X :size="16" />
+          </button>
         </div>
-        <div class="kpi-body">
-          <span class="kpi-label">İptal Edilen</span>
-          <strong class="kpi-val text-slate-400">{{ counts.iptal }}</strong>
+
+        <!-- Durum Hap Filtreleri (Scrollable) -->
+        <div class="status-pills-scroll">
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': activeStatus === '' }"
+            @click="activeStatus = ''"
+          >
+            Tümü <span class="pill-badge">{{ counts.toplam }}</span>
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': activeStatus === 'beklemede' }"
+            @click="setStatus('beklemede')"
+          >
+            Bekleyen <span class="pill-badge">{{ counts.beklemede }}</span>
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': activeStatus === 'onaylandi' }"
+            @click="setStatus('onaylandi')"
+          >
+            Onaylı <span class="pill-badge">{{ counts.onaylandi }}</span>
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': activeStatus === 'reddedildi' }"
+            @click="setStatus('reddedildi')"
+          >
+            Reddedilen <span class="pill-badge">{{ counts.reddedildi }}</span>
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': activeStatus === 'iptal' }"
+            @click="setStatus('iptal')"
+          >
+            İptal <span class="pill-badge">{{ counts.iptal }}</span>
+          </button>
         </div>
-      </div>
-    </section>
 
-    <!-- Arama ve Canlı Filtreler -->
-    <section class="kacak-search-section">
-      <div class="kacak-search-wrap">
-        <Search :size="18" class="kacak-search-icon" />
-        <input
-          v-model="searchQuery"
-          type="search"
-          placeholder="Tutanak no, sayaç, abone, ilçe veya ekip ara..."
-          class="kacak-search-input"
-        />
-        <button
-          v-if="searchQuery"
-          type="button"
-          class="kacak-search-clear"
-          @click="searchQuery = ''"
-        >
-          <X :size="16" />
-        </button>
-      </div>
+        <!-- Tür Çipleri (Scrollable) -->
+        <div class="status-pills-scroll">
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': selectedTur === '' }"
+            @click="selectedTur = ''"
+          >
+            Tüm Türler
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': selectedTur === 'Kaçak' }"
+            @click="selectedTur = selectedTur === 'Kaçak' ? '' : 'Kaçak'"
+          >
+            Kaçak
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': selectedTur === 'Abonesiz' }"
+            @click="selectedTur = selectedTur === 'Abonesiz' ? '' : 'Abonesiz'"
+          >
+            Abonesiz
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': selectedTur === 'Usülsüz' }"
+            @click="selectedTur = selectedTur === 'Usülsüz' ? '' : 'Usülsüz'"
+          >
+            Usülsüz
+          </button>
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': selectedTur === 'Pasif Abone' }"
+            @click="selectedTur = selectedTur === 'Pasif Abone' ? '' : 'Pasif Abone'"
+          >
+            Pasif Abone
+          </button>
+        </div>
 
-      <!-- Durum Sekmeleri (Clay Tabs) -->
-      <div class="clay-tabs-wrap kacak-tabs">
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'clay-filter-pill--active': activeStatus === 'all' }"
-          @click="activeStatus = 'all'"
-        >
-          Tümü <small>({{ counts.toplam }})</small>
-        </button>
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'clay-filter-pill--active': activeStatus === 'beklemede' }"
-          @click="activeStatus = 'beklemede'"
-        >
-          Bekleyen <small>({{ counts.beklemede }})</small>
-        </button>
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'clay-filter-pill--active': activeStatus === 'onaylandi' }"
-          @click="activeStatus = 'onaylandi'"
-        >
-          Onaylı <small>({{ counts.onaylandi }})</small>
-        </button>
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'clay-filter-pill--active': activeStatus === 'reddedildi' }"
-          @click="activeStatus = 'reddedildi'"
-        >
-          Reddedilen <small>({{ counts.reddedildi }})</small>
-        </button>
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'clay-filter-pill--active': activeStatus === 'iptal' }"
-          @click="activeStatus = 'iptal'"
-        >
-          İptal <small>({{ counts.iptal }})</small>
-        </button>
-      </div>
-
-      <!-- Tür Filtresi (Haplar) -->
-      <div class="kacak-tur-chips">
-        <button
-          type="button"
-          class="tur-chip"
-          :class="{ 'tur-chip--active': activeTur === 'all' }"
-          @click="activeTur = 'all'"
-        >
-          Tüm Türler
-        </button>
-        <button
-          type="button"
-          class="tur-chip"
-          :class="{ 'tur-chip--active': activeTur === 'Kaçak' }"
-          @click="activeTur = 'Kaçak'"
-        >
-          Kaçak
-        </button>
-        <button
-          type="button"
-          class="tur-chip"
-          :class="{ 'tur-chip--active': activeTur === 'Abonesiz' }"
-          @click="activeTur = 'Abonesiz'"
-        >
-          Abonesiz
-        </button>
-        <button
-          type="button"
-          class="tur-chip"
-          :class="{ 'tur-chip--active': activeTur === 'Usülsüz' }"
-          @click="activeTur = 'Usülsüz'"
-        >
-          Usülsüz
-        </button>
-        <button
-          type="button"
-          class="tur-chip"
-          :class="{ 'tur-chip--active': activeTur === 'Pasif Abone' }"
-          @click="activeTur = 'Pasif Abone'"
-        >
-          Pasif Abone
-        </button>
-      </div>
-    </section>
-
-    <!-- Kayıt Listesi / Boş Durum / Yükleniyor -->
-    <section class="kacak-list-section">
-      <!-- Yükleniyor İskelet Görünümü -->
-      <div v-if="loading" class="kacak-skeletons">
-        <div v-for="i in 4" :key="i" class="bento-card skeleton-card">
-          <div class="skeleton-line skeleton-line--sm"></div>
-          <div class="skeleton-line skeleton-line--md"></div>
-          <div class="skeleton-line skeleton-line--lg"></div>
+        <!-- İlçe Filtresi Dropdown -->
+        <div class="ilce-filter-row">
+          <select v-model="selectedIlce" class="ilce-select">
+            <option value="">Tüm İlçeler (Kahramanmaraş)</option>
+            <option v-for="ilce in ilceler" :key="ilce" :value="ilce">
+              {{ ilce }}
+            </option>
+          </select>
         </div>
       </div>
 
-      <!-- Hata Durumu -->
-      <div v-else-if="error" class="bento-card kacak-error-card">
-        <AlertCircle :size="32" class="text-rose-500" />
-        <strong>Veriler Alınamadı</strong>
-        <p>{{ error }}</p>
-        <button type="button" class="clay-btn-primary" @click="loadRecords">
-          Tekrar Dene
-        </button>
-      </div>
+      <!-- Tutanak Listesi -->
+      <section class="ihbar-list-section">
+        <div class="list-header-row">
+          <span class="list-count-badge">
+            <b>{{ filteredKayitlar.length }}</b> tutanak gösteriliyor
+          </span>
+          <button
+            v-if="searchInput || selectedIlce || selectedTur || activeStatus"
+            type="button"
+            class="clear-all-filter-btn"
+            @click="searchInput = ''; selectedIlce = ''; selectedTur = ''; activeStatus = ''"
+          >
+            Filtreleri Temizle
+          </button>
+        </div>
 
-      <!-- Boş Durum -->
-      <div v-else-if="filteredRecords.length === 0" class="bento-card kacak-empty-card">
-        <Search :size="40" class="text-slate-300" />
-        <strong>Eşleşen Tutanak Bulunamadı</strong>
-        <p>Arama veya tarih kriterlerinizi değiştirerek tekrar deneyebilirsiniz.</p>
-        <button
-          v-if="searchQuery || activeStatus !== 'all' || activeTur !== 'all'"
-          type="button"
-          class="clay-btn-secondary"
-          @click="searchQuery = ''; activeStatus = 'all'; activeTur = 'all'"
-        >
-          Filtreleri Sıfırla
-        </button>
-      </div>
+        <!-- Yükleniyor / Boş Durum -->
+        <div v-if="loading && !kayitlar.length" class="ihbar-state-card">
+          <div class="loading-spinner"></div>
+          <p>Kaçak tutanakları yükleniyor…</p>
+        </div>
 
-      <!-- Tutanak Kartları Listesi -->
-      <div v-else class="kacak-cards-grid">
-        <article
-          v-for="record in filteredRecords"
-          :key="record.token"
-          class="bento-card kacak-record-card"
-          @click="openDetail(record)"
-        >
-          <!-- Kart Üst Barı: Tür, Tarih, Durum Rozeti -->
-          <div class="record-card-header">
-            <div class="record-meta-left">
-              <span class="badge-tur" :class="getTurBadgeClass(record.tur)">
-                {{ record.tur }}
+        <div v-else-if="!filteredKayitlar.length" class="ihbar-state-card">
+          <AlertCircle :size="32" class="text-slate-400" />
+          <strong>Eşleşen tutanak bulunamadı</strong>
+          <p>Arama veya filtre kriterlerinizi değiştirerek tekrar deneyin.</p>
+        </div>
+
+        <!-- Tutanak Kartları Izgarası / Listesi -->
+        <div v-else class="ihbar-cards-stack">
+          <article
+            v-for="item in filteredKayitlar"
+            :key="item.token"
+            class="ihbar-card bento-card bento-card--white active:scale-[.99] transition-transform"
+            @click="openDetail(item)"
+          >
+            <header class="ihbar-card-top">
+              <div class="ihbar-location-wrap">
+                <span class="location-icon-bubble">
+                  <ShieldAlert :size="16" />
+                </span>
+                <div class="location-text">
+                  <h3 class="location-title">
+                    {{ item.tutanak_no ? `Tutanak: ${item.tutanak_no}` : (item.abone_adi || 'Tutanak No Yok') }}
+                    <span v-if="item.ilce" class="location-sub">· {{ item.ilce }}</span>
+                  </h3>
+                </div>
+              </div>
+              <span class="status-badge" :class="getStatusBadge(item).class">
+                {{ getStatusBadge(item).label }}
               </span>
-              <span class="record-date">{{ record.tarih_formatted }}</span>
+            </header>
+
+            <p v-if="item.abone_adi && item.tutanak_no" class="ihbar-card-desc">
+              Abone: <strong>{{ item.abone_adi }}</strong> {{ item.aciklama ? '— ' + item.aciklama : '' }}
+            </p>
+            <p v-else-if="item.aciklama" class="ihbar-card-desc">
+              {{ item.aciklama }}
+            </p>
+
+            <!-- Ek Bilgi Etiketleri (Tür, Sayaç, Fotoğraf, ZIP İndir) -->
+            <div class="ihbar-card-tags">
+              <span class="badge-tur" :class="getTurBadgeClass(item.tur)">
+                {{ item.tur }}
+              </span>
+              <span v-if="item.sayac_no" class="mini-tag">
+                Sayaç: {{ item.sayac_no }}
+              </span>
+              <span v-if="item.endeks" class="mini-tag">
+                Endeks: {{ item.endeks }}
+              </span>
+              <span v-if="item.foto_sayisi > 0" class="mini-tag mini-tag--foto">
+                <ImageIcon :size="12" />
+                {{ item.foto_sayisi }} Fotoğraf
+              </span>
+              <a
+                v-if="item.foto_sayisi > 0"
+                :href="`/views/kacak/api.php?action=download-zip&token=${encodeURIComponent(item.token)}`"
+                target="_blank"
+                class="mini-tag mini-tag--download"
+                title="ZIP İndir"
+                @click.stop
+              >
+                <Download :size="12" /> ZIP İndir
+              </a>
             </div>
-            <span class="status-badge" :class="getStatusBadge(record).class">
-              {{ getStatusBadge(record).label }}
+
+            <!-- Alt Bilgi: Ekip & Tarih -->
+            <footer class="ihbar-card-footer">
+              <div class="footer-left">
+                <span class="footer-item">
+                  <User :size="13" class="footer-icon" />
+                  <span class="truncate">{{ item.ekip_adi || item.bildiren_adi || 'Ekip yok' }}</span>
+                </span>
+              </div>
+              <time class="footer-date">
+                {{ item.tarih_formatted }}
+              </time>
+            </footer>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <!-- Tutanak Detay Bottom Sheet (Drawer) -->
+    <div v-if="drawerOpen" class="ihbar-drawer-backdrop" @click="closeDetail"></div>
+    <div class="ihbar-drawer-sheet" :class="{ 'is-open': drawerOpen && activeDetail }">
+      <div class="drawer-drag-handle"></div>
+
+      <header v-if="activeDetail" class="drawer-header">
+        <div>
+          <span class="drawer-eyebrow">TUTANAK DETAYI</span>
+          <h2 class="drawer-title">
+            {{ activeDetail.tutanak_no ? `Tutanak No: ${activeDetail.tutanak_no}` : (activeDetail.abone_adi || 'Tutanak Detayı') }}
+          </h2>
+        </div>
+        <button type="button" class="clay-circle-btn" @click="closeDetail">
+          <X :size="18" />
+        </button>
+      </header>
+
+      <div v-if="activeDetail" class="drawer-body">
+        <!-- Durum & Tür Rozetleri -->
+        <div class="flex items-center gap-2">
+          <span class="status-badge" :class="getStatusBadge(activeDetail).class">
+            {{ getStatusBadge(activeDetail).label }}
+          </span>
+          <span class="badge-tur" :class="getTurBadgeClass(activeDetail.tur)">
+            {{ activeDetail.tur }}
+          </span>
+        </div>
+
+        <!-- Detay Bilgileri Bento Kartı -->
+        <div class="detail-info-bento bento-card bento-card--white">
+          <div class="detail-row">
+            <span class="detail-label">Tutanak No</span>
+            <strong class="detail-val">{{ activeDetail.tutanak_no || '-' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Tarih</span>
+            <span class="detail-val font-semibold">{{ activeDetail.tarih_formatted }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Abone Adı</span>
+            <strong class="detail-val">{{ activeDetail.abone_adi || '-' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">İlçe</span>
+            <span class="detail-val">{{ activeDetail.ilce || '-' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Sayaç No</span>
+            <span class="detail-val font-semibold">{{ activeDetail.sayac_no || '-' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Endeks</span>
+            <span class="detail-val">{{ activeDetail.endeks || '-' }}</span>
+          </div>
+          <div class="detail-row detail-row--col">
+            <span class="detail-label">Ekip / Bildiren Personel</span>
+            <span class="detail-val font-bold text-slate-800">
+              {{ activeDetail.ekip_adi || activeDetail.bildiren_adi || '-' }}
             </span>
           </div>
-
-          <!-- Tutanak & Abone Bilgisi -->
-          <div class="record-card-main">
-            <h3 class="record-tutanak-no">
-              {{ record.tutanak_no || (record.abone_adi || 'Tutanak No Yok') }}
-            </h3>
-            <p v-if="record.abone_adi && record.tutanak_no" class="record-abone">
-              {{ record.abone_adi }}
-            </p>
-            <div class="record-location-team">
-              <span class="record-location">
-                <MapPin :size="13" />
-                {{ record.ilce }}
-              </span>
-              <span class="record-dot">&bull;</span>
-              <span class="record-team truncate">
-                <Users :size="13" />
-                {{ record.ekip_adi || record.bildiren_adi || 'Ekip Belirtilmemiş' }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Kart Alt Bilgi Çubuğu (Sayaç, Fotoğraf, Hızlı ZIP İndir) -->
-          <div class="record-card-footer" @click.stop>
-            <div class="record-footer-meta">
-              <span v-if="record.sayac_no" class="record-footer-item" title="Sayaç No">
-                <Gauge :size="14" />
-                {{ record.sayac_no }}
-              </span>
-              <span class="record-footer-item" title="Fotoğraf Sayısı">
-                <Camera :size="14" />
-                {{ record.foto_sayisi }} Fotoğraf
-              </span>
-            </div>
-
-            <!-- ZIP İndir Kısayolu -->
-            <div class="record-footer-actions">
-              <a
-                v-if="record.foto_sayisi > 0"
-                :href="`/views/kacak/api.php?action=download-zip&token=${encodeURIComponent(record.token)}`"
-                target="_blank"
-                class="record-action-icon-btn record-action-icon-btn--download"
-                title="Fotoğrafları ZIP İndir"
-                aria-label="Fotoğrafları ZIP İndir"
-              >
-                <Download :size="16" />
-              </a>
-              <button
-                type="button"
-                class="record-action-icon-btn"
-                title="Detay Görüntüle"
-                @click.stop="openDetail(record)"
-              >
-                <ChevronRight :size="16" />
-              </button>
-            </div>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- Ekip Başarı Sıralaması (Leaderboard) Drawer -->
-    <Transition name="sheet">
-      <div
-        v-if="showLeaderboardSheet"
-        class="kacak-modal-backdrop"
-        @click.self="showLeaderboardSheet = false"
-      >
-        <div class="kacak-bottom-sheet">
-          <div class="sheet-handle-bar"></div>
-          <header class="sheet-header">
-            <div>
-              <div class="sheet-eyebrow">PERFORMANS VE SIRALAMA</div>
-              <h2 class="sheet-title">Ekip Kaçak Kontrol Özeti</h2>
-              <p class="sheet-subtitle">{{ startDate }} &ndash; {{ endDate }}</p>
-            </div>
-            <button type="button" class="sheet-close-btn" @click="showLeaderboardSheet = false">
-              <X :size="20" />
-            </button>
-          </header>
-
-          <div class="sheet-content">
-            <div v-if="leaderboard.length === 0" class="leaderboard-empty">
-              <p>Seçili dönemde ekip kaydı bulunamadı.</p>
-            </div>
-            <div v-else class="leaderboard-list">
-              <div
-                v-for="(team, index) in leaderboard"
-                :key="team.name"
-                class="leaderboard-item bento-card"
-              >
-                <div class="leaderboard-top">
-                  <div class="leaderboard-rank-wrap">
-                    <span
-                      class="leaderboard-rank"
-                      :class="{
-                        'leaderboard-rank--first': team.rank === 1,
-                        'leaderboard-rank--second': team.rank === 2,
-                        'leaderboard-rank--third': team.rank === 3,
-                      }"
-                    >
-                      <Trophy v-if="team.rank === 1" :size="14" />
-                      <span v-else>{{ team.rank }}</span>
-                    </span>
-                    <strong class="leaderboard-name">{{ team.name }}</strong>
-                  </div>
-                  <span class="leaderboard-count">{{ team.count }} Tutanak</span>
-                </div>
-                <div class="leaderboard-track">
-                  <div
-                    class="leaderboard-fill"
-                    :style="{
-                      width: `${team.percentage}%`,
-                      backgroundColor:
-                        index === 0
-                          ? '#ef4444'
-                          : index === 1
-                          ? '#f59e0b'
-                          : index === 2
-                          ? '#10b981'
-                          : index === 3
-                          ? '#3b82f6'
-                          : '#8b5cf6',
-                    }"
-                  ></div>
-                </div>
-              </div>
-            </div>
+          <div v-if="activeDetail.aciklama" class="detail-row detail-row--col">
+            <span class="detail-label">Açıklama</span>
+            <p class="text-xs text-slate-600 m-0 whitespace-pre-wrap">{{ activeDetail.aciklama }}</p>
           </div>
         </div>
-      </div>
-    </Transition>
 
-    <!-- Kaçak Tutanak Detay Modalı (Bottom Sheet) -->
-    <Transition name="sheet">
-      <div v-if="isDetailOpen && selectedRecord" class="kacak-modal-backdrop" @click.self="closeDetail">
-        <div class="kacak-bottom-sheet">
-          <div class="sheet-handle-bar"></div>
-          <header class="sheet-header">
-            <div>
-              <div class="sheet-eyebrow">TUTANAK DETAYI</div>
-              <h2 class="sheet-title">
-                {{ selectedRecord.tutanak_no || selectedRecord.abone_adi || 'Tutanak Detayı' }}
-              </h2>
-            </div>
-            <button type="button" class="sheet-close-btn" @click="closeDetail">
-              <X :size="20" />
-            </button>
-          </header>
-
-          <div class="sheet-content detail-content">
-            <!-- Durum & Tür Şeridi -->
-            <div class="detail-status-strip">
-              <span class="badge-tur" :class="getTurBadgeClass(selectedRecord.tur)">
-                {{ selectedRecord.tur }}
-              </span>
-              <span class="status-badge" :class="getStatusBadge(selectedRecord).class">
-                {{ getStatusBadge(selectedRecord).label }}
-              </span>
-            </div>
-
-            <!-- Bilgi Izgarası (Bento Grid) -->
-            <div class="detail-grid">
-              <div class="detail-cell">
-                <span class="detail-cell-label">Tutanak No</span>
-                <strong class="detail-cell-val">{{ selectedRecord.tutanak_no || '-' }}</strong>
-              </div>
-              <div class="detail-cell">
-                <span class="detail-cell-label">Tarih</span>
-                <strong class="detail-cell-val">{{ selectedRecord.tarih_formatted }}</strong>
-              </div>
-              <div class="detail-cell">
-                <span class="detail-cell-label">Abone Adı</span>
-                <strong class="detail-cell-val">{{ selectedRecord.abone_adi || '-' }}</strong>
-              </div>
-              <div class="detail-cell">
-                <span class="detail-cell-label">İlçe</span>
-                <strong class="detail-cell-val">{{ selectedRecord.ilce || '-' }}</strong>
-              </div>
-              <div class="detail-cell">
-                <span class="detail-cell-label">Sayaç No</span>
-                <strong class="detail-cell-val">{{ selectedRecord.sayac_no || '-' }}</strong>
-              </div>
-              <div class="detail-cell">
-                <span class="detail-cell-label">Endeks</span>
-                <strong class="detail-cell-val">{{ selectedRecord.endeks || '-' }}</strong>
-              </div>
-              <div class="detail-cell col-span-2">
-                <span class="detail-cell-label">Ekip / Bildiren Personel</span>
-                <strong class="detail-cell-val">
-                  {{ selectedRecord.ekip_adi || selectedRecord.bildiren_adi || '-' }}
-                </strong>
-              </div>
-              <div v-if="selectedRecord.aciklama" class="detail-cell col-span-2">
-                <span class="detail-cell-label">Açıklama</span>
-                <p class="detail-cell-text">{{ selectedRecord.aciklama }}</p>
-              </div>
-            </div>
-
-            <!-- Varsa Red Nedeni -->
-            <div v-if="selectedRecord.red_nedeni" class="detail-warning-box">
-              <AlertCircle :size="18" class="text-rose-600 shrink-0" />
-              <div>
-                <strong>Red Nedeni</strong>
-                <p>{{ selectedRecord.red_nedeni }}</p>
-              </div>
-            </div>
-
-            <!-- Varsa İptal Bilgisi -->
-            <div v-if="selectedRecord.durum === 'iptal'" class="detail-warning-box detail-warning-box--slate">
-              <Ban :size="18" class="text-slate-600 shrink-0" />
-              <div>
-                <strong>İptal Açıklaması</strong>
-                <p>{{ selectedRecord.iptal_aciklama || 'Açıklama belirtilmemiş.' }}</p>
-                <span class="text-xs text-slate-500 mt-1 block">
-                  {{ selectedRecord.hakedisten_dus ? '⚠️ Hakediş hesabından düşüldü.' : 'ℹ️ Hakediş hesabından düşülmedi.' }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Fotoğraf Aksiyon Butonları -->
-            <div class="detail-photos-bar">
-              <button
-                type="button"
-                class="detail-gallery-btn"
-                :disabled="selectedRecord.foto_sayisi === 0"
-                @click="openGallery(selectedRecord.token)"
-              >
-                <Camera :size="18" />
-                <span>Fotoğrafları İncele ({{ selectedRecord.foto_sayisi }})</span>
-              </button>
-              <a
-                v-if="selectedRecord.foto_sayisi > 0"
-                :href="`/views/kacak/api.php?action=download-zip&token=${encodeURIComponent(selectedRecord.token)}`"
-                target="_blank"
-                class="detail-zip-btn"
-                title="ZIP İndir"
-              >
-                <Download :size="18" />
-              </a>
-            </div>
-
-            <!-- Yetki Bazlı Eylemler (Onayla / Reddet / İptal / Geri Al) -->
-            <div class="detail-actions">
-              <!-- Bekleyen Onayı -->
-              <template v-if="permissions.can_approve && selectedRecord.onay_durumu === 'beklemede' && selectedRecord.durum !== 'iptal'">
-                <button
-                  type="button"
-                  class="clay-btn-success"
-                  @click="promptAction('approve', selectedRecord)"
-                >
-                  <Check :size="18" />
-                  Bildirimi Onayla
-                </button>
-                <button
-                  type="button"
-                  class="clay-btn-warning"
-                  @click="promptAction('reject', selectedRecord)"
-                >
-                  <XCircle :size="18" />
-                  Bildirimi Reddet
-                </button>
-              </template>
-
-              <!-- İptali Geri Al -->
-              <button
-                v-if="permissions.can_revert_cancel && selectedRecord.durum === 'iptal'"
-                type="button"
-                class="clay-btn-info"
-                @click="promptAction('revert_cancel', selectedRecord)"
-              >
-                <RotateCcw :size="18" />
-                İptali Geri Al
-              </button>
-
-              <!-- İptal Et -->
-              <button
-                v-if="permissions.can_cancel && selectedRecord.durum !== 'iptal'"
-                type="button"
-                class="clay-btn-danger"
-                @click="promptAction('cancel', selectedRecord)"
-              >
-                <Ban :size="18" />
-                Tutanağı İptal Et
-              </button>
-            </div>
+        <!-- Varsa Red Nedeni -->
+        <div v-if="activeDetail.red_nedeni" class="detail-reason-box">
+          <div class="flex items-center gap-1.5 font-bold text-xs text-rose-700">
+            <AlertCircle :size="15" />
+            <span>Red Nedeni</span>
           </div>
+          <p class="text-xs text-rose-900 mt-1 m-0">{{ activeDetail.red_nedeni }}</p>
         </div>
-      </div>
-    </Transition>
 
-    <!-- Fotoğraf Galerisi Modalı -->
-    <Transition name="fade">
-      <div v-if="isGalleryOpen" class="kacak-gallery-modal">
-        <header class="gallery-header">
-          <div class="gallery-title-wrap">
-            <button type="button" class="gallery-back-btn" @click="closeGallery">
-              <ArrowLeft :size="20" />
-            </button>
-            <div>
-              <h2 class="gallery-title">Tutanak Fotoğrafları</h2>
-              <span class="gallery-count">{{ galleryPhotos.length }} Dosya Bulundu</span>
-            </div>
+        <!-- Varsa İptal Açıklaması -->
+        <div v-if="activeDetail.durum === 'iptal'" class="detail-reason-box detail-reason-box--slate">
+          <div class="flex items-center gap-1.5 font-bold text-xs text-slate-700">
+            <AlertCircle :size="15" />
+            <span>İptal Açıklaması</span>
           </div>
-          <button type="button" class="gallery-close-btn" @click="closeGallery">
-            <X :size="20" />
-          </button>
-        </header>
-
-        <div class="gallery-body">
-          <div v-if="galleryLoading" class="gallery-loading">
-            <RefreshCw :size="32" class="animate-spin text-white/70" />
-            <p>Fotoğraflar yükleniyor...</p>
-          </div>
-          <div v-else-if="galleryPhotos.length === 0" class="gallery-empty">
-            <Camera :size="48" class="text-white/40" />
-            <p>Görüntülenebilir fotoğraf bulunamadı.</p>
-          </div>
-          <div v-else class="gallery-grid">
-            <div
-              v-for="photo in galleryPhotos"
-              :key="photo.token"
-              class="gallery-item"
-            >
-              <!-- PDF Kartı -->
-              <a
-                v-if="photo.pdf"
-                :href="photo.full_url"
-                target="_blank"
-                class="gallery-pdf-card"
-              >
-                <FileText :size="40" class="text-rose-400" />
-                <span class="pdf-name truncate">{{ photo.ad }}</span>
-                <span class="pdf-tag">PDF Belgesi</span>
-              </a>
-
-              <!-- Resim Kartı -->
-              <button
-                v-else
-                type="button"
-                class="gallery-photo-btn"
-                @click="openLightbox(photo)"
-              >
-                <img
-                  :src="photo.thumbnail_url"
-                  :alt="photo.ad"
-                  loading="lazy"
-                  class="gallery-photo-img"
-                />
-                <span class="gallery-tag">
-                  {{ photo.tur === 'tutanak' ? 'Tutanak' : 'Saha' }}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Tam Ekran Lightbox -->
-    <Transition name="fade">
-      <div
-        v-if="isLightboxOpen && imageOnlyPhotos[lightboxIndex]"
-        class="kacak-lightbox-modal"
-        @click.self="closeLightbox"
-      >
-        <header class="lightbox-header">
-          <span class="lightbox-counter">
-            {{ lightboxIndex + 1 }} / {{ imageOnlyPhotos.length }}
+          <p class="text-xs text-slate-800 mt-1 m-0">
+            {{ activeDetail.iptal_aciklama || 'Açıklama belirtilmemiş.' }}
+          </p>
+          <span class="text-[11px] text-slate-500 mt-1 block">
+            {{ activeDetail.hakedisten_dus ? '⚠️ Hakediş hesabından düşüldü.' : 'ℹ️ Hakediş hesabından düşülmedi.' }}
           </span>
-          <div class="lightbox-actions">
-            <a
-              :href="imageOnlyPhotos[lightboxIndex].full_url"
-              download
-              class="lightbox-btn"
-              title="İndir"
-            >
-              <Download :size="20" />
-            </a>
-            <button type="button" class="lightbox-btn" @click="closeLightbox">
-              <X :size="20" />
-            </button>
-          </div>
-        </header>
+        </div>
 
-        <div class="lightbox-image-wrap">
-          <img
-            :src="imageOnlyPhotos[lightboxIndex].full_url"
-            :alt="imageOnlyPhotos[lightboxIndex].ad"
-            class="lightbox-img"
+        <!-- Fotoğraf İşlemleri -->
+        <div class="detail-actions-grid">
+          <button
+            type="button"
+            class="detail-action-btn detail-action-btn--primary flex-1"
+            :disabled="activeDetail.foto_sayisi === 0"
+            @click="openGallery(activeDetail.token)"
+          >
+            <Camera :size="16" />
+            <span>Fotoğrafları İncele ({{ activeDetail.foto_sayisi }})</span>
+          </button>
+          <a
+            v-if="activeDetail.foto_sayisi > 0"
+            :href="`/views/kacak/api.php?action=download-zip&token=${encodeURIComponent(activeDetail.token)}`"
+            target="_blank"
+            class="detail-action-btn detail-action-btn--secondary"
+            title="Tümünü ZIP İndir"
+          >
+            <Download :size="16" />
+          </a>
+        </div>
+
+        <!-- Yetkili Aksiyonlar (Onay / Red / İptal) -->
+        <div class="detail-actions-vertical space-y-2 pt-2 border-t border-slate-100">
+          <template v-if="permissions.can_approve && activeDetail.onay_durumu === 'beklemede' && activeDetail.durum !== 'iptal'">
+            <button
+              type="button"
+              class="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
+              @click="promptAction('approve', activeDetail)"
+            >
+              <Check :size="16" />
+              Bildirimi Onayla
+            </button>
+            <button
+              type="button"
+              class="w-full py-3 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
+              @click="promptAction('reject', activeDetail)"
+            >
+              <XCircle :size="16" />
+              Bildirimi Reddet
+            </button>
+          </template>
+
+          <button
+            v-if="permissions.can_revert_cancel && activeDetail.durum === 'iptal'"
+            type="button"
+            class="w-full py-3 rounded-xl bg-sky-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
+            @click="promptAction('revert_cancel', activeDetail)"
+          >
+            <RotateCcw :size="16" />
+            İptali Geri Al
+          </button>
+
+          <button
+            v-if="permissions.can_cancel && activeDetail.durum !== 'iptal'"
+            type="button"
+            class="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
+            @click="promptAction('cancel', activeDetail)"
+          >
+            <AlertCircle :size="16" />
+            Tutanağı İptal Et
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ekip Başarı Sıralaması (Stats Sheet) -->
+    <div v-if="statsSheetOpen" class="modal-backdrop" @click="closeStatsSheet"></div>
+    <div class="ihbar-stats-sheet" :class="{ 'is-open': statsSheetOpen }">
+      <div class="drawer-drag-handle"></div>
+      <header class="stats-header">
+        <div>
+          <span class="drawer-eyebrow">EKİP PERFORMANSI</span>
+          <h2 class="stats-title">Ekip Kaçak Kontrol Sıralaması</h2>
+          <p class="stats-subtitle">{{ baslangicTarihi.split('-').reverse().join('.') }} – {{ bitisTarihi.split('-').reverse().join('.') }}</p>
+        </div>
+        <button type="button" class="clay-circle-btn" @click="closeStatsSheet">
+          <X :size="18" />
+        </button>
+      </header>
+
+      <div class="stats-body">
+        <!-- Arama -->
+        <div class="search-input-wrap">
+          <Search :size="16" class="search-icon" />
+          <input
+            v-model="statsSearch"
+            type="search"
+            placeholder="Ekip adı ara…"
+            class="search-input text-xs"
           />
         </div>
 
-        <!-- Önceki / Sonraki Butonları -->
-        <button
-          v-if="imageOnlyPhotos.length > 1"
-          type="button"
-          class="lightbox-nav-btn lightbox-nav-btn--prev"
-          aria-label="Önceki Fotoğraf"
-          @click="stepLightbox(-1)"
-        >
-          <ChevronLeft :size="26" />
-        </button>
-        <button
-          v-if="imageOnlyPhotos.length > 1"
-          type="button"
-          class="lightbox-nav-btn lightbox-nav-btn--next"
-          aria-label="Sonraki Fotoğraf"
-          @click="stepLightbox(1)"
-        >
-          <ChevronRight :size="26" />
-        </button>
-      </div>
-    </Transition>
+        <div v-if="filteredLeaderboard.length === 0" class="text-center py-10 text-slate-400 text-xs">
+          Ekip kaydı bulunamadı.
+        </div>
 
-    <!-- Aksiyon Onay Modalı (Onayla / Reddet / İptal / Geri Al) -->
-    <Transition name="sheet">
-      <div v-if="actionModal.open" class="kacak-modal-backdrop" @click.self="closeActionModal">
-        <div class="kacak-bottom-sheet action-sheet">
-          <div class="sheet-handle-bar"></div>
-          <header class="sheet-header">
-            <div>
-              <h2 class="sheet-title">{{ actionModal.title }}</h2>
-              <p class="sheet-subtitle">{{ actionModal.text }}</p>
-            </div>
-            <button type="button" class="sheet-close-btn" @click="closeActionModal">
-              <X :size="20" />
-            </button>
-          </header>
-
-          <div class="sheet-content">
-            <!-- Neden / Açıklama Alanı -->
-            <div v-if="actionModal.type === 'reject' || actionModal.type === 'cancel'" class="action-input-wrap">
-              <label class="action-label">
-                {{ actionModal.type === 'reject' ? 'Red Nedeni *' : 'İptal Açıklaması *' }}
-              </label>
-              <textarea
-                v-model="actionModal.reason"
-                rows="3"
-                class="action-textarea"
-                :placeholder="actionModal.type === 'reject' ? 'Lütfen red nedenini yazın...' : 'İptal gerekçesini yazın...'"
-              ></textarea>
+        <div v-else class="space-y-3">
+          <article
+            v-for="team in filteredLeaderboard"
+            :key="team.name"
+            class="bento-card bento-card--white p-3 space-y-2 border border-slate-100"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <span
+                  class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                  :class="
+                    team.rank === 1
+                      ? 'bg-amber-100 text-amber-700'
+                      : team.rank === 2
+                      ? 'bg-slate-200 text-slate-700'
+                      : team.rank === 3
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-slate-100 text-slate-500'
+                  "
+                >
+                  <Trophy v-if="team.rank === 1" :size="13" />
+                  <span v-else>{{ team.rank }}</span>
+                </span>
+                <strong class="text-xs text-slate-800 truncate">{{ team.name }}</strong>
+              </div>
+              <span class="text-xs font-black text-primary shrink-0">{{ team.count }} Tutanak</span>
             </div>
 
-            <!-- Hakedişten Düş Onay Kutusu (İptal için) -->
-            <label v-if="actionModal.type === 'cancel'" class="action-checkbox-wrap">
-              <input v-model="actionModal.hakedistenDus" type="checkbox" class="action-checkbox" />
-              <span>Hakediş hesabından düşülsün</span>
-            </label>
-
-            <!-- Butonlar -->
-            <div class="action-buttons-grid">
-              <button
-                type="button"
-                class="clay-btn-secondary"
-                :disabled="actionModal.submitting"
-                @click="closeActionModal"
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                :class="{
-                  'clay-btn-success': actionModal.type === 'approve',
-                  'clay-btn-warning': actionModal.type === 'reject',
-                  'clay-btn-danger': actionModal.type === 'cancel',
-                  'clay-btn-info': actionModal.type === 'revert_cancel',
+            <!-- Progress Track -->
+            <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-300"
+                :style="{
+                  width: `${team.percentage}%`,
+                  backgroundColor:
+                    team.rank === 1
+                      ? '#ea580c'
+                      : team.rank === 2
+                      ? '#3b82f6'
+                      : team.rank === 3
+                      ? '#10b981'
+                      : '#64748b',
                 }"
-                :disabled="actionModal.submitting"
-                @click="submitAction"
-              >
-                <RefreshCw v-if="actionModal.submitting" :size="18" class="animate-spin" />
-                <span v-else>{{ actionModal.title }}</span>
-              </button>
+              ></div>
             </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fotoğraf Galerisi & Lightbox -->
+    <div v-if="galleryOpen" class="modal-backdrop" @click="closeGallery"></div>
+    <div class="modal-dialog-sheet" :class="{ 'is-open': galleryOpen }">
+      <div class="drawer-drag-handle"></div>
+      <header class="modal-head">
+        <div>
+          <h3 class="modal-title">Tutanak Fotoğrafları</h3>
+          <p class="modal-subtitle">{{ galleryPhotos.length }} dosya bulundu</p>
+        </div>
+        <button type="button" class="clay-circle-btn" @click="closeGallery">
+          <X :size="18" />
+        </button>
+      </header>
+
+      <div class="p-4 overflow-y-auto max-h-[70vh]">
+        <div v-if="galleryLoading" class="text-center py-10">
+          <RefreshCw :size="28" class="animate-spin text-slate-400 mx-auto" />
+          <p class="text-xs text-slate-400 mt-2">Fotoğraflar yükleniyor…</p>
+        </div>
+
+        <div v-else-if="galleryPhotos.length === 0" class="text-center py-10 text-slate-400 text-xs">
+          Fotoğraf bulunamadı.
+        </div>
+
+        <div v-else class="grid grid-cols-2 gap-3 pb-8">
+          <div
+            v-for="photo in galleryPhotos"
+            :key="photo.token"
+            class="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200"
+          >
+            <a
+              v-if="photo.pdf"
+              :href="photo.full_url"
+              target="_blank"
+              class="w-full h-full flex flex-col items-center justify-center p-3 text-center"
+            >
+              <FileText :size="36" class="text-rose-500" />
+              <span class="text-[11px] font-bold text-slate-700 mt-1 truncate max-w-full">{{ photo.ad }}</span>
+              <span class="text-[9px] text-slate-400 uppercase font-semibold">PDF Belgesi</span>
+            </a>
+
+            <button
+              v-else
+              type="button"
+              class="w-full h-full p-0 border-0 bg-transparent"
+              @click="openLightbox(photo)"
+            >
+              <img
+                :src="photo.thumbnail_url"
+                :alt="photo.ad"
+                loading="lazy"
+                class="w-full h-full object-cover"
+              />
+              <span class="absolute bottom-2 left-2 rounded-full bg-black/60 backdrop-blur px-2 py-0.5 text-[9px] font-bold text-white">
+                {{ photo.tur === 'tutanak' ? 'Tutanak' : 'Saha' }}
+              </span>
+            </button>
           </div>
         </div>
       </div>
-    </Transition>
+    </div>
 
-    <!-- Global Toast Bildirimi -->
+    <!-- Lightbox Tam Ekran Görünüm -->
+    <div
+      v-if="lightboxOpen && imageOnlyPhotos[lightboxIndex]"
+      class="fixed inset-0 z-[120] bg-black/95 flex flex-col justify-between p-4"
+      @click.self="closeLightbox"
+    >
+      <header class="flex items-center justify-between text-white pt-2">
+        <span class="text-xs font-bold">
+          {{ lightboxIndex + 1 }} / {{ imageOnlyPhotos.length }}
+        </span>
+        <div class="flex items-center gap-2">
+          <a
+            :href="imageOnlyPhotos[lightboxIndex].full_url"
+            download
+            class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white"
+          >
+            <Download :size="18" />
+          </a>
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white"
+            @click="closeLightbox"
+          >
+            <X :size="18" />
+          </button>
+        </div>
+      </header>
+
+      <div class="flex-1 flex items-center justify-center p-2 min-h-0">
+        <img
+          :src="imageOnlyPhotos[lightboxIndex].full_url"
+          :alt="imageOnlyPhotos[lightboxIndex].ad"
+          class="max-w-full max-h-full object-contain rounded-xl"
+        />
+      </div>
+
+      <footer class="flex items-center justify-between text-white pb-6">
+        <button
+          type="button"
+          class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white"
+          @click="prevPhoto"
+        >
+          <ChevronLeft :size="24" />
+        </button>
+        <button
+          type="button"
+          class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white"
+          @click="nextPhoto"
+        >
+          <ChevronRight :size="24" />
+        </button>
+      </footer>
+    </div>
+
+    <!-- Aksiyon Onay Modalı (Sheet) -->
+    <div v-if="actionModal.open" class="modal-backdrop" @click="closeActionModal"></div>
+    <div class="modal-dialog-sheet" :class="{ 'is-open': actionModal.open }">
+      <div class="drawer-drag-handle"></div>
+      <header class="modal-head">
+        <div>
+          <h3 class="modal-title">{{ actionModal.title }}</h3>
+          <p class="modal-subtitle">{{ actionModal.text }}</p>
+        </div>
+        <button type="button" class="clay-circle-btn" @click="closeActionModal">
+          <X :size="18" />
+        </button>
+      </header>
+
+      <div class="p-4 space-y-3">
+        <!-- Neden / Açıklama Alanı -->
+        <div v-if="actionModal.type === 'reject' || actionModal.type === 'cancel'">
+          <label class="form-label font-bold text-xs text-slate-700">
+            {{ actionModal.type === 'reject' ? 'Red Nedeni *' : 'İptal Açıklaması *' }}
+          </label>
+          <textarea
+            v-model="actionModal.reason"
+            rows="3"
+            class="form-textarea"
+            :placeholder="actionModal.type === 'reject' ? 'Lütfen red nedenini yazın…' : 'İptal gerekçesini yazın…'"
+          ></textarea>
+        </div>
+
+        <!-- Hakedişten Düş Onay Kutusu (İptal İçin) -->
+        <label
+          v-if="actionModal.type === 'cancel'"
+          class="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800"
+        >
+          <input v-model="actionModal.hakedistenDus" type="checkbox" class="rounded text-amber-600" />
+          <span>Hakediş hesabından düşülsün</span>
+        </label>
+
+        <!-- Butonlar -->
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button
+            type="button"
+            class="py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
+            :disabled="actionLoading"
+            @click="closeActionModal"
+          >
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            class="py-3 rounded-xl font-bold text-xs text-white"
+            :class="{
+              'bg-emerald-600': actionModal.type === 'approve',
+              'bg-amber-600': actionModal.type === 'reject',
+              'bg-rose-600': actionModal.type === 'cancel',
+              'bg-sky-600': actionModal.type === 'revert_cancel',
+            }"
+            :disabled="actionLoading"
+            @click="submitAction"
+          >
+            {{ actionLoading ? 'İşleniyor…' : actionModal.title }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Bildirimi -->
     <Transition name="fade">
-      <div
-        v-if="toastMessage"
-        class="kacak-toast"
-        :class="`kacak-toast--${toastType}`"
-      >
-        <CheckCircle2 v-if="toastType === 'success'" :size="18" />
-        <AlertCircle v-else :size="18" />
+      <div v-if="toastMessage" class="toast-message" :class="`toast--${toastType}`">
+        <CheckCircle2 v-if="toastType === 'success'" :size="16" />
+        <AlertCircle v-else :size="16" />
         <span>{{ toastMessage }}</span>
       </div>
     </Transition>
@@ -1144,266 +1207,379 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Ana Ekran Konteyneri */
-.kacak-page {
+.ihbar-view {
+  min-height: 100vh;
+  background: var(--ds-canvas, #e6eaef);
   padding-bottom: 96px;
 }
 
-/* Tarih Seçim Çubuğu */
-.kacak-date-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px 12px;
-  gap: 8px;
-}
-.kacak-date-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748b;
-}
-.kacak-quick-dates {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-}
-.kacak-date-chip {
-  padding: 4px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 700;
-  background: #ffffff;
-  color: #475569;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-.kacak-date-chip--icon {
-  padding: 5px 8px;
-}
-
-/* Açılır Özel Tarih Formu */
-.kacak-custom-date-card {
-  margin: 0 16px 12px;
-  padding: 14px;
-}
-.kacak-date-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.kacak-input-group {
+.ihbar-content {
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-.kacak-input-group span {
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-}
-.kacak-input {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid #cbd5e1;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
-  background: #f8fafc;
-}
-.kacak-date-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 12px;
 }
 
-/* 4 KPI Grid */
-.kacak-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 0 16px 14px;
+/* Obsidian Bento Hero Kartı */
+.ihbar-hero-card {
+  padding: 16px;
+  background: #191d24;
+  color: #fff;
+  border-radius: var(--ds-radius-card, 28px);
+  box-shadow: var(--ds-shadow-bento-dark, 0 10px 30px rgba(0, 0, 0, 0.25));
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.kpi-card {
+
+.ihbar-hero-head {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
-.kpi-card:active {
+
+.ihbar-hero-eyebrow {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 2px;
+}
+
+.ihbar-hero-total strong {
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ihbar-hero-total small {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: 6px;
+}
+
+.ihbar-hero-rate {
+  text-align: right;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rate-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 900;
+  color: #34d399;
+}
+
+.rate-label {
+  display: block;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.segmented-track {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  margin-bottom: 14px;
+  gap: 2px;
+}
+
+.seg-pill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.seg-pill--slate {
+  background: #94a3b8;
+}
+
+.seg-pill--amber {
+  background: #fbbf24;
+}
+
+.seg-pill--emerald {
+  background: #34d399;
+}
+
+.seg-pill--coral {
+  background: #f87171;
+}
+
+.ihbar-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.ihbar-hero-cell {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 8px 4px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.ihbar-hero-cell:active,
+.ihbar-hero-cell.is-active {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
   transform: scale(0.98);
 }
-.kpi-card--active {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.12);
-}
-.kpi-icon-wrap {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+
+.cell-label {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-.kpi-icon-wrap--primary {
-  background: #eff6ff;
-  color: #3b82f6;
-}
-.kpi-icon-wrap--warning {
-  background: #fffbeb;
-  color: #f59e0b;
-}
-.kpi-icon-wrap--success {
-  background: #ecfdf5;
-  color: #10b981;
-}
-.kpi-icon-wrap--danger {
-  background: #fef2f2;
-  color: #ef4444;
-}
-.kpi-body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.kpi-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  white-space: nowrap;
-}
-.kpi-val {
-  font-size: 19px;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1.15;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  margin-bottom: 2px;
 }
 
-/* Arama ve Sekmeler */
-.kacak-search-section {
-  padding: 0 16px 14px;
+.cell-num {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* Tarih Seçici Çubuğu */
+.ihbar-date-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.date-preset-group {
+  display: flex;
+  gap: 6px;
+}
+
+.date-range-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Arama ve Filtre Kartı */
+.ihbar-search-card {
+  padding: 12px;
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.kacak-search-wrap {
+
+.search-input-wrap {
   position: relative;
   display: flex;
   align-items: center;
 }
-.kacak-search-icon {
+
+.search-icon {
   position: absolute;
   left: 12px;
   color: #94a3b8;
   pointer-events: none;
 }
-.kacak-search-input {
+
+.search-input {
   width: 100%;
-  padding: 10px 36px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #ffffff;
+  height: 42px;
+  padding: 0 36px 0 38px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
   font-size: 13px;
-  font-weight: 600;
   color: #1e293b;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  outline: none;
+  transition: all 0.2s ease;
 }
-.kacak-search-clear {
+
+.search-input:focus {
+  border-color: #3b82f6;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-clear-btn {
   position: absolute;
-  right: 12px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  right: 10px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e2e8f0;
-  color: #475569;
-}
-.kacak-tabs {
-  overflow-x: auto;
-  white-space: nowrap;
-  scrollbar-width: none;
-}
-.kacak-tabs::-webkit-scrollbar {
-  display: none;
-}
-.kacak-tur-chips {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.kacak-tur-chips::-webkit-scrollbar {
-  display: none;
-}
-.tur-chip {
-  padding: 4px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 700;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid transparent;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-.tur-chip--active {
-  background: #0f172a;
-  color: #ffffff;
+  color: #94a3b8;
 }
 
-/* Kayıt Kartları */
-.kacak-list-section {
-  padding: 0 16px;
-}
-.kacak-cards-grid {
+.status-pills-scroll {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
 }
-.kacak-record-card {
-  padding: 14px;
-  border-radius: 22px;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+.status-pills-scroll::-webkit-scrollbar {
+  display: none;
 }
-.kacak-record-card:active {
-  transform: scale(0.985);
+
+.pill-badge {
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.08);
+  padding: 1px 5px;
+  border-radius: 999px;
+  margin-left: 2px;
 }
-.record-card-header {
+
+.clay-filter-pill.is-active .pill-badge {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.ilce-filter-row {
+  margin-top: 2px;
+}
+
+.ilce-select {
+  width: 100%;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  outline: none;
+}
+
+/* Liste Başlığı */
+.list-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.list-count-badge {
+  color: #64748b;
+}
+
+.clear-all-filter-btn {
+  color: #ea580c;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+/* Tutanak Kartı */
+.ihbar-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ihbar-card {
+  padding: 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.ihbar-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
 }
-.record-meta-left {
+
+.ihbar-location-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
-.record-date {
-  font-size: 11px;
+
+.location-icon-bubble {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.location-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location-sub {
+  color: #64748b;
   font-weight: 600;
-  color: #94a3b8;
+}
+
+.status-badge {
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge--slate {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.badge--amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge--emerald {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.badge--rose {
+  background: #ffe4e6;
+  color: #be123c;
 }
 
 /* Tür Rozetleri */
 .badge-tur {
-  display: inline-block;
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
   border-radius: 8px;
   font-size: 10px;
   font-weight: 800;
@@ -1431,711 +1607,331 @@ onMounted(() => {
   color: #475569;
 }
 
-/* Durum Rozetleri */
-.status-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 700;
-}
-.status-badge--pending {
-  background: #fef3c7;
-  color: #b45309;
-}
-.status-badge--approved {
-  background: #d1fae5;
-  color: #065f46;
-}
-.status-badge--rejected {
-  background: #ffe4e6;
-  color: #be123c;
-}
-.status-badge--cancelled {
-  background: #f1f5f9;
-  color: #64748b;
+.ihbar-card-desc {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.4;
+  margin: 0 0 10px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Tutanak İçerik */
-.record-card-main {
-  margin-bottom: 12px;
-}
-.record-tutanak-no {
-  font-size: 16px;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1.25;
-  margin: 0;
-}
-.record-abone {
-  font-size: 13px;
-  font-weight: 600;
-  color: #475569;
-  margin: 3px 0 0;
-}
-.record-location-team {
+.ihbar-card-tags {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  font-size: 12px;
-  color: #64748b;
-  margin-top: 6px;
+  margin-bottom: 10px;
 }
-.record-location,
-.record-team {
-  display: flex;
+
+.mini-tag {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-.record-dot {
-  color: #cbd5e1;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
 }
 
-/* Kart Alt Bilgi */
-.record-card-footer {
+.mini-tag--foto {
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.mini-tag--download {
+  background: #ecfdf5;
+  color: #047857;
+  text-decoration: none;
+}
+
+.ihbar-card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid #f1f5f9;
+  font-size: 11px;
+  color: #94a3b8;
 }
-.record-footer-meta {
+
+.footer-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
+  gap: 10px;
+  min-width: 0;
 }
-.record-footer-item {
+
+.footer-item {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-.record-footer-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.record-action-icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8fafc;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-  transition: all 0.15s ease;
-}
-.record-action-icon-btn--download {
-  background: #ecfdf5;
-  color: #059669;
-  border-color: #a7f3d0;
+  color: #64748b;
+  font-weight: 600;
+  max-width: 220px;
 }
 
-/* Boş ve Hata Durumları */
-.kacak-empty-card,
-.kacak-error-card {
-  padding: 36px 20px;
+.footer-date {
+  font-size: 10px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* Durum Kartı (Boş & Yükleme) */
+.ihbar-state-card {
+  padding: 40px 16px;
   text-align: center;
+  border-radius: 20px;
+  background: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-}
-.kacak-empty-card p,
-.kacak-error-card p {
-  font-size: 13px;
+  gap: 8px;
   color: #64748b;
-  max-width: 280px;
+}
+
+.ihbar-state-card strong {
+  color: #1e293b;
+  font-size: 15px;
+}
+
+.ihbar-state-card p {
+  font-size: 12px;
   margin: 0;
 }
 
-/* Bottom Sheet & Modallar */
-.kacak-modal-backdrop {
+.loading-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #ea580c;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Drawer & Modal Sheet */
+.ihbar-drawer-backdrop,
+.modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 60;
 }
-.kacak-bottom-sheet {
-  width: 100%;
-  max-height: 85vh;
-  background: #ffffff;
+
+.ihbar-drawer-sheet,
+.ihbar-stats-sheet,
+.modal-dialog-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
   border-radius: 28px 28px 0 0;
+  z-index: 61;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
   padding-bottom: env(safe-area-inset-bottom, 20px);
 }
-.sheet-handle-bar {
-  width: 44px;
-  height: 5px;
-  background: #cbd5e1;
-  border-radius: 9999px;
-  margin: 10px auto 4px;
+
+.ihbar-drawer-sheet.is-open,
+.ihbar-stats-sheet.is-open,
+.modal-dialog-sheet.is-open {
+  transform: translateY(0);
 }
-.sheet-header {
-  padding: 12px 20px 10px;
+
+.drawer-drag-handle {
+  width: 40px;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 999px;
+  margin: 8px auto 4px;
+}
+
+.drawer-header,
+.modal-head,
+.stats-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  padding: 12px 18px;
   border-bottom: 1px solid #f1f5f9;
 }
-.sheet-eyebrow {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #3b82f6;
-}
-.sheet-title {
-  font-size: 18px;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 2px 0 0;
-}
-.sheet-subtitle {
-  font-size: 12px;
-  color: #64748b;
-  margin: 2px 0 0;
-}
-.sheet-close-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f1f5f9;
-  color: #475569;
-}
-.sheet-content {
-  padding: 16px 20px;
-  overflow-y: auto;
-}
 
-/* Detay İçeriği */
-.detail-status-strip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.detail-cell {
-  background: #f8fafc;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
-}
-.detail-cell-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
+.drawer-eyebrow {
   display: block;
-}
-.detail-cell-val {
-  font-size: 13px;
-  font-weight: 700;
-  color: #0f172a;
-  margin-top: 2px;
-  display: block;
-  word-break: break-word;
-}
-.detail-cell-text {
-  font-size: 13px;
-  color: #334155;
-  margin-top: 3px;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.detail-warning-box {
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 14px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  font-size: 12px;
-  margin-top: 12px;
-}
-.detail-warning-box--slate {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #334155;
-}
-.detail-photos-bar {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-}
-.detail-gallery-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 14px;
-  background: #3b82f6;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-}
-.detail-gallery-btn:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
-}
-.detail-zip-btn {
-  width: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  background: #10b981;
-  color: #ffffff;
-}
-
-/* Detay Aksiyon Butonları */
-.detail-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid #f1f5f9;
-}
-
-/* Buton Stilleri */
-.clay-btn-primary,
-.clay-btn-secondary,
-.clay-btn-success,
-.clay-btn-warning,
-.clay-btn-danger,
-.clay-btn-info {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px;
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 700;
-  transition: all 0.15s ease;
-  width: 100%;
-}
-.clay-btn-primary {
-  background: #0f172a;
-  color: #ffffff;
-}
-.clay-btn-secondary {
-  background: #f1f5f9;
-  color: #475569;
-}
-.clay-btn-success {
-  background: #10b981;
-  color: #ffffff;
-}
-.clay-btn-warning {
-  background: #f59e0b;
-  color: #ffffff;
-}
-.clay-btn-danger {
-  background: #ef4444;
-  color: #ffffff;
-}
-.clay-btn-info {
-  background: #0284c7;
-  color: #ffffff;
-}
-
-/* Ekip Başarı Sıralaması (Leaderboard) */
-.leaderboard-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.leaderboard-item {
-  padding: 12px 14px;
-  border-radius: 16px;
-}
-.leaderboard-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.leaderboard-rank-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.leaderboard-rank {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
-  background: #e2e8f0;
-  color: #475569;
-}
-.leaderboard-rank--first {
-  background: #fef3c7;
-  color: #d97706;
-}
-.leaderboard-rank--second {
-  background: #f1f5f9;
-  color: #64748b;
-}
-.leaderboard-rank--third {
-  background: #fed7aa;
-  color: #c2410c;
-}
-.leaderboard-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: #0f172a;
-}
-.leaderboard-count {
-  font-size: 12px;
-  font-weight: 800;
-  color: #3b82f6;
-}
-.leaderboard-track {
-  width: 100%;
-  height: 8px;
-  background: #f1f5f9;
-  border-radius: 9999px;
-  overflow: hidden;
-}
-.leaderboard-fill {
-  height: 100%;
-  border-radius: 9999px;
-  transition: width 0.4s ease;
+  letter-spacing: 0.1em;
+  color: #ea580c;
 }
 
-/* Galeri Modalı */
-.kacak-gallery-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  background: #090d16;
-  color: #ffffff;
-  display: flex;
-  flex-direction: column;
-}
-.gallery-header {
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(9, 13, 22, 0.9);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.gallery-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.gallery-back-btn,
-.gallery-close-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-.gallery-title {
+.drawer-title,
+.modal-title,
+.stats-title {
   font-size: 16px;
   font-weight: 800;
+  color: #0f172a;
   margin: 0;
 }
-.gallery-count {
+
+.modal-subtitle,
+.stats-subtitle {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #94a3b8;
+  margin: 2px 0 0 0;
 }
-.gallery-body {
-  flex: 1;
+
+.drawer-body,
+.stats-body {
   padding: 16px;
   overflow-y: auto;
-}
-.gallery-loading,
-.gallery-empty {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
   gap: 12px;
-  color: rgba(255, 255, 255, 0.6);
-}
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding-bottom: 30px;
-}
-.gallery-photo-btn {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 18px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  width: 100%;
-  padding: 0;
-}
-.gallery-photo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.gallery-tag {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
-  font-size: 10px;
-  font-weight: 700;
-  color: #ffffff;
-}
-.gallery-pdf-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 1;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 12px;
-  text-align: center;
-  text-decoration: none;
-  gap: 6px;
-}
-.pdf-name {
-  font-size: 11px;
-  font-weight: 700;
-  color: #ffffff;
-  max-width: 100%;
-}
-.pdf-tag {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
 }
 
-/* Lightbox */
-.kacak-lightbox-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 150;
-  background: rgba(0, 0, 0, 0.95);
+/* Detay Satırları */
+.detail-info-bento {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid #f1f5f9;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
 }
-.lightbox-header {
-  position: absolute;
-  top: 0;
-  inset-x: 0;
-  padding: 16px 20px;
+
+.detail-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
-  z-index: 10;
-}
-.lightbox-counter {
+  align-items: center;
   font-size: 13px;
-  font-weight: 800;
-  color: #ffffff;
-}
-.lightbox-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.lightbox-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
-}
-.lightbox-image-wrap {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 16px;
-}
-.lightbox-img {
-  max-width: 100%;
-  max-height: 85vh;
-  object-fit: contain;
-  border-radius: 12px;
-}
-.lightbox-nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-.lightbox-nav-btn--prev {
-  left: 14px;
-}
-.lightbox-nav-btn--next {
-  right: 14px;
 }
 
-/* Aksiyon Sayfası */
-.action-input-wrap {
-  display: flex;
+.detail-row--col {
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  gap: 4px;
 }
-.action-label {
+
+.detail-label {
   font-size: 11px;
   font-weight: 700;
-  color: #475569;
+  color: #94a3b8;
   text-transform: uppercase;
 }
-.action-textarea {
-  width: 100%;
+
+.detail-val {
+  color: #1e293b;
+}
+
+.detail-reason-box {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
   padding: 10px 12px;
   border-radius: 14px;
-  border: 1px solid #cbd5e1;
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-}
-.action-checkbox-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-  padding: 10px 12px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 12px;
-  margin-bottom: 14px;
-}
-.action-checkbox {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-}
-.action-buttons-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
 }
 
-/* Global Toast */
-.kacak-toast {
+.detail-reason-box--slate {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.detail-actions-grid {
+  display: flex;
+  gap: 8px;
+}
+
+.detail-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.detail-action-btn--primary {
+  background: #ea580c;
+  color: #fff;
+}
+
+.detail-action-btn--secondary {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  width: 48px;
+}
+
+/* Toast Bildirimi */
+.toast-message {
   position: fixed;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 200;
+  background: #0f172a;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 18px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 150;
 }
-.kacak-toast--success {
-  background: #059669;
-}
-.kacak-toast--error {
+
+.toast--error {
   background: #dc2626;
 }
-.kacak-toast--warning {
+
+.toast--warning {
   background: #d97706;
 }
 
-/* İskelet Animasyonu */
-.kacak-skeletons {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.skeleton-card {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.skeleton-line {
-  height: 14px;
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 8px;
-}
-.skeleton-line--sm {
-  width: 35%;
-  height: 10px;
-}
-.skeleton-line--md {
-  width: 60%;
-}
-.skeleton-line--lg {
-  width: 85%;
-}
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+/* Form Elemanları */
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 4px;
 }
 
-/* Animasyon Geçişleri */
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  font-size: 12px;
+  color: #1e293b;
+  outline: none;
+}
+
+.form-textarea:focus {
+  border-color: #ea580c;
+}
+
+/* Animasyonlar */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
@@ -2143,15 +1939,5 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.sheet-enter-active,
-.sheet-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.sheet-enter-from,
-.sheet-leave-to {
-  opacity: 0;
-  transform: translateY(100%);
 }
 </style>

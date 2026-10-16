@@ -10,6 +10,7 @@ use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
 use App\Model\TalepModel;
 use App\Service\Gate;
+use App\Service\IzinFormuService;
 use App\Service\PushNotificationService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -75,6 +76,31 @@ function formatTaleplerDate(?string $dt, bool $onlyDate = false): string
 }
 
 if ($method === 'GET') {
+    if (($_GET['action'] ?? '') === 'izin-formu-docx-indir') {
+        if (!$canIzin && !Gate::allows('talepler')) {
+            taleplerResponse(['success' => false, 'message' => 'Yetkisiz erişim.'], 403);
+        }
+        $rawId = $_GET['id'] ?? '';
+        $id = (int) $rawId;
+        if ($id <= 0 && !empty($rawId)) {
+            $decrypted = Security::decrypt($rawId);
+            $id = (int) $decrypted;
+        }
+        if ($id <= 0) {
+            taleplerResponse(['success' => false, 'message' => 'Geçersiz izin ID.'], 422);
+        }
+        try {
+            $firmaId = (int) ($_SESSION['firma_id'] ?? 1);
+            $izinFormuService = new IzinFormuService();
+            $formData = $izinFormuService->getFormData($id, $firmaId, $currentUserId);
+            $izinFormuService->generateDocx($formData);
+            exit;
+        } catch (\Throwable $e) {
+            error_log('Mobile requests izin formu docx indirme hatası: ' . $e->getMessage());
+            taleplerResponse(['success' => false, 'message' => 'Dosya oluşturulamadı: ' . $e->getMessage()], 500);
+        }
+    }
+
     $tab = (string) ($_GET['tab'] ?? 'all'); // avans, izin, talep, all
     $filter = (string) ($_GET['filter'] ?? 'pending'); // pending, approved, deleted
 
@@ -130,8 +156,8 @@ if ($method === 'GET') {
             'timestamp' => strtotime($a->talep_tarihi ?? '') ?: 0,
             'description' => $a->aciklama ?? '',
             'status' => $a->durum ?? 'beklemede',
-            'approval_date' => formatTaleplerDate($a->onay_tarihi ?? null),
-            'approval_note' => $a->onay_aciklama ?? '',
+            'approval_date' => formatTaleplerDate($a->onay_tarihi ?? $a->silinme_tarihi ?? $a->islem_tarihi ?? null),
+            'approval_note' => $a->onay_aciklama ?? $a->silinme_aciklama ?? '',
             'solver_name' => $a->solver_name ?? '',
             'filter_mode' => $filter,
         ];
@@ -159,8 +185,8 @@ if ($method === 'GET') {
             'end_date_raw' => $i->bitis_tarihi ?? '',
             'description' => $i->aciklama ?? '',
             'status' => $i->onay_durumu ?? 'beklemede',
-            'approval_date' => formatTaleplerDate($i->islem_tarihi ?? null),
-            'approval_note' => $i->onay_aciklama ?? '',
+            'approval_date' => formatTaleplerDate($i->islem_tarihi ?? $i->silinme_tarihi ?? null),
+            'approval_note' => $i->onay_aciklama ?? $i->silinme_aciklama ?? '',
             'solver_name' => $i->solver_name ?? '',
             'filter_mode' => $filter,
         ];
@@ -180,8 +206,8 @@ if ($method === 'GET') {
             'timestamp' => strtotime($t->olusturma_tarihi ?? '') ?: 0,
             'description' => $t->aciklama ?? '',
             'status' => $t->durum ?? 'beklemede',
-            'solution' => $t->cozum_aciklama ?? '',
-            'solution_date' => formatTaleplerDate($t->cozum_tarihi ?? null),
+            'solution' => $t->cozum_aciklama ?? $t->silinme_aciklama ?? '',
+            'solution_date' => formatTaleplerDate($t->cozum_tarihi ?? $t->silinme_tarihi ?? null),
             'solver_name' => $t->solver_name ?? '',
             'photo' => !empty($t->foto) ? ('/' . ltrim($t->foto, '/.')) : '',
             'filter_mode' => $filter,
@@ -335,6 +361,14 @@ if ($method === 'POST') {
                         }
                     } catch (\Throwable $e) {}
                     taleplerResponse(['success' => true, 'message' => 'Talep işleme alındı.']);
+                }
+                taleplerResponse(['success' => false, 'message' => 'İşlem güncellenemedi.'], 500);
+
+            case 'talep-beklemeye-al':
+                if (!$canAriza) taleplerResponse(['success' => false, 'message' => 'Yetkisiz işlem.'], 403);
+                if ($talepModel->updateDurum($id, 'beklemede', null)) {
+                    $systemLogModel->logAction($currentUserId, 'Talep Beklemeye Alma', "Talep tekrar beklemeye alındı. ID: $id", SystemLogModel::LEVEL_IMPORTANT);
+                    taleplerResponse(['success' => true, 'message' => 'Talep tekrar beklemede durumuna alındı.']);
                 }
                 taleplerResponse(['success' => false, 'message' => 'İşlem güncellenemedi.'], 500);
 

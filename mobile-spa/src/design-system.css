@@ -1301,8 +1301,9 @@
   align-items: center;
 }
 
-/* Araç Takip Drawer inside BottomNav (Scrollable Sekmeler & Sabit Kapat Butonlu) */
-.arac-nav-tabs {
+/* Araç Takip & Raporlar Drawer inside BottomNav (Scrollable Sekmeler & Sabit Kapat Butonlu) */
+.arac-nav-tabs,
+.reports-nav-tabs {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1310,7 +1311,8 @@
   overflow: hidden;
 }
 
-.arac-nav-tabs__scroll {
+.arac-nav-tabs__scroll,
+.reports-nav-tabs__scroll {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
@@ -1325,11 +1327,13 @@
   scroll-behavior: smooth;
 }
 
-.arac-nav-tabs__scroll::-webkit-scrollbar {
+.arac-nav-tabs__scroll::-webkit-scrollbar,
+.reports-nav-tabs__scroll::-webkit-scrollbar {
   display: none;
 }
 
-.arac-nav-tabs__scroll .nav-link {
+.arac-nav-tabs__scroll .nav-link,
+.reports-nav-tabs__scroll .nav-link {
   flex: 0 0 68px;
   min-width: 68px;
   width: 68px;
@@ -1337,7 +1341,8 @@
   padding: 5px 2px;
 }
 
-.arac-nav-tabs__close {
+.arac-nav-tabs__close,
+.reports-nav-tabs__close {
   flex: 0 0 62px;
   min-width: 62px;
   width: 62px;
@@ -1350,10 +1355,11 @@
   margin-left: 2px;
 }
 
-/* Floating Dock Opener for Araç Takip, Fatura & KM Onayları */
+/* Floating Dock Opener for Araç Takip, Fatura, KM Onayları & Raporlar */
 .floating-arac-dock-btn,
 .floating-fatura-dock-btn,
-.floating-km-dock-btn {
+.floating-km-dock-btn,
+.floating-reports-dock-btn {
   position: fixed;
   right: 18px;
   bottom: calc(var(--ds-safe-bottom, 16px) + 96px);
@@ -1375,7 +1381,8 @@
 
 .floating-arac-dock-btn:active,
 .floating-fatura-dock-btn:active,
-.floating-km-dock-btn:active {
+.floating-km-dock-btn:active,
+.floating-reports-dock-btn:active {
   transform: scale(0.96);
 }
 

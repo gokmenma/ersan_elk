@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   AlertCircle,
   AlertTriangle,
+  Archive,
   ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
@@ -42,6 +43,7 @@ import {
   Wallet,
   X,
   XCircle,
+  Zap,
 } from '@lucide/vue'
 import {
   faturaApi,
@@ -397,16 +399,15 @@ async function loadInvoices(reset = true) {
       limit: listPagination.value.limit,
     }
 
-    if (searchQuery.value) params.search = searchQuery.value
-    if (productSearchQuery.value) params.urun_ara = productSearchQuery.value
+    if (searchQuery.value) {
+      params.search = searchQuery.value
+      params.urun_ara = searchQuery.value
+    }
     if (statusFilter.value) params.durum_filtre = statusFilter.value
     if (responseFilter.value) params.ticari_yanit = responseFilter.value
 
-    // Eğer ürün araması yapılıyorsa dönem filtresi opsiyoneldir (tüm dönemlerde aranır)
-    if (!productSearchQuery.value) {
-      if (startDate.value) params.baslangic_tarihi = startDate.value
-      if (endDate.value) params.bitis_tarihi = endDate.value
-    }
+    if (startDate.value) params.baslangic_tarihi = startDate.value
+    if (endDate.value) params.bitis_tarihi = endDate.value
 
     const res = await faturaApi.list(params)
     if (res.success) {
@@ -449,7 +450,6 @@ function switchTab(tab) {
   router.replace({ query: { ...route.query, tab } })
   // Arama ve filtreleri sıfırla
   searchQuery.value = ''
-  productSearchQuery.value = ''
   statusFilter.value = ''
   responseFilter.value = ''
   loadCurrentTab(true)
@@ -460,13 +460,13 @@ function refreshAll() {
   loadCurrentTab(true)
 }
 
-// Arama kutusu izleme
-watch([searchQuery, productSearchQuery, statusFilter, responseFilter], () => {
+// Arama kutusu ve filtreleri izleme
+watch([searchQuery, statusFilter, responseFilter], () => {
   if (activeTab.value === 'ozet') return
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     loadInvoices(true)
-  }, 350)
+  }, 300)
 })
 
 // ----------------------------------------------------
@@ -1519,36 +1519,25 @@ onBeforeUnmount(() => {
 
       <!-- Arama ve Filtre Grubu -->
       <div class="fatura-search-group">
-        <!-- Genel Arama -->
-        <div class="fatura-search-box">
-          <Search :size="16" class="fatura-search-box__icon" />
+        <!-- Tekil Akıllı Arama Çubuğu -->
+        <div class="fatura-search-box fatura-search-box--unified">
+          <Search :size="17" class="fatura-search-box__icon" />
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Fatura No, Cari Ünvanı veya VKN..."
+            placeholder="Fatura No, Cari, VKN veya Ürün/Kalem Ara..."
             autocomplete="off"
           />
-          <button v-if="searchQuery" type="button" @click="searchQuery = ''">
+          <button
+            v-if="searchQuery"
+            type="button"
+            class="fatura-search-clear-btn"
+            aria-label="Aramayı Temizle"
+            title="Aramayı Temizle"
+            @click="searchQuery = ''"
+          >
             <X :size="15" />
           </button>
-        </div>
-
-        <!-- Kalem / Ürün İçi Arama -->
-        <div class="fatura-search-box fatura-search-box--product">
-          <Package :size="16" class="fatura-search-box__icon text-purple" />
-          <input
-            v-model="productSearchQuery"
-            type="text"
-            placeholder="Ürün / Kalem / Açıklama Ara..."
-            autocomplete="off"
-          />
-          <button v-if="productSearchQuery" type="button" @click="productSearchQuery = ''">
-            <X :size="15" />
-          </button>
-        </div>
-        <div v-if="productSearchQuery" class="fatura-product-badge">
-          <Sparkles :size="12" />
-          <span>Fatura kalemlerinde ve tüm dönemlerde aranıyor</span>
         </div>
 
         <!-- Hızlı Durum Filtreleri (Giden) -->
@@ -1629,19 +1618,52 @@ onBeforeUnmount(() => {
         <span>Faturalar yükleniyor...</span>
       </div>
 
-      <div v-else-if="invoiceList.length === 0" class="fatura-empty-card">
-        <Receipt :size="36" />
-        <strong>Fatura Bulunamadı</strong>
-        <p>Seçilen dönem veya arama filtrelerine uygun fatura kaydı bulunmuyor.</p>
+      <!-- UI/UX Pro Max Bento Boş Durum Kartı -->
+      <div v-else-if="invoiceList.length === 0" class="fatura-empty-bento">
+        <div
+          class="fatura-empty-bento__icon-wrap"
+          :class="activeTab === 'taslak' ? 'fatura-empty-bento__icon-wrap--amber' : (activeTab === 'gelen' ? 'fatura-empty-bento__icon-wrap--sky' : '')"
+        >
+          <component :is="activeTab === 'taslak' ? Edit3 : (activeTab === 'gelen' ? Inbox : Receipt)" :size="30" />
+        </div>
+
+        <h3 class="fatura-empty-bento__title">
+          {{ activeTab === 'taslak' ? 'Henüz Taslak Fatura Yok' : (searchQuery ? 'Aramanıza Uygun Fatura Bulunamadı' : 'Fatura Bulunamadı') }}
+        </h3>
+
+        <p class="fatura-empty-bento__desc">
+          <template v-if="activeTab === 'taslak'">
+            Oluşturduğunuz faturaları GİB/EDM'e göndermeden önce burada taslak olarak kaydedebilir, dilediğiniz an düzenleyip tek dokunuşla gönderebilirsiniz.
+          </template>
+          <template v-else-if="searchQuery">
+            "<strong>{{ searchQuery }}</strong>" aramasına uyan kayıt bulunamadı. Fatura numarası, müşteri ünvanı veya ürün adını kontrol edebilirsiniz.
+          </template>
+          <template v-else>
+            Seçilen dönem ve filtreleme kriterlerine uygun herhangi bir fatura kaydı bulunmuyor.
+          </template>
+        </p>
+
+        <!-- Taslak / Fatura Oluşturma Aksiyonu -->
         <button
-          v-if="activeTab === 'taslak'"
           type="button"
-          class="fatura-primary-btn mt-3"
+          class="fatura-empty-bento__cta-btn"
           @click="openNewInvoiceWizard()"
         >
-          <Plus :size="16" />
-          <span>Yeni Taslak Oluştur</span>
+          <Plus :size="18" />
+          <span>{{ activeTab === 'taslak' ? 'Yeni Taslak Fatura Oluştur' : 'Yeni Fatura Kes' }}</span>
         </button>
+
+        <!-- Taslaklara Özel Güven & İpucu Rozetleri -->
+        <div v-if="activeTab === 'taslak'" class="fatura-empty-bento__badges">
+          <span class="fatura-tip-badge">
+            <CheckCircle2 :size="13" class="text-emerald" />
+            <span>Taslaklar resmiyet taşımaz</span>
+          </span>
+          <span class="fatura-tip-badge">
+            <Sparkles :size="13" class="text-amber" />
+            <span>İstediğiniz zaman düzenleyebilirsiniz</span>
+          </span>
+        </div>
       </div>
 
       <!-- Fatura Kartları Listesi -->
@@ -2007,80 +2029,81 @@ onBeforeUnmount(() => {
         <section class="fatura-wizard-sheet" role="dialog" aria-modal="true">
           <!-- Wizard Header -->
           <header class="fatura-wizard-header">
-            <div>
+            <div class="fatura-wizard-header__info">
               <span class="fatura-wizard-tag">E-FATURA OLUŞTURUCU</span>
               <h2>{{ wizardEditId ? 'Taslağı Düzenle' : 'Yeni Fatura Kes' }}</h2>
-              <small class="fatura-wizard-progress">{{ wizardStep }} / 4 adım · {{ ['Alıcı bilgileri', 'Fatura ayarları', 'Mal ve hizmetler', 'Kontrol ve gönderim'][wizardStep - 1] }}</small>
+              <p class="fatura-wizard-progress-text">
+                <strong>Adım {{ wizardStep }}/4:</strong>
+                <span>{{ ['Alıcı & Cari Seçimi', 'Fatura Türü & Tarih', 'Mal / Hizmet Kalemleri', 'Özet & Gönderim'][wizardStep - 1] }}</span>
+              </p>
             </div>
-            <button type="button" class="fatura-icon-btn" aria-label="Sihirbazı kapat" @click="isWizardOpen = false">
+            <button type="button" class="fatura-icon-btn fatura-wizard-close-btn" aria-label="Sihirbazı kapat" @click="isWizardOpen = false">
               <X :size="18" />
             </button>
           </header>
 
-          <!-- 4 Adımlı Navigasyon Çubuğu -->
-          <nav class="fatura-wizard-steps">
-            <button
-              type="button"
-              class="fatura-wizard-step-item"
-              :class="{ 'is-active': wizardStep === 1, 'is-done': wizardStep > 1 }"
-              :aria-current="wizardStep === 1 ? 'step' : undefined"
-              @click="wizardStep = 1"
-            >
-              <span class="step-num">1</span>
-              <span class="step-name">Cari</span>
-            </button>
-            <button
-              type="button"
-              class="fatura-wizard-step-item"
-              :class="{ 'is-active': wizardStep === 2, 'is-done': wizardStep > 2 }"
-              :aria-current="wizardStep === 2 ? 'step' : undefined"
-              @click="wizardStep = 2"
-            >
-              <span class="step-num">2</span>
-              <span class="step-name">Ayarlar</span>
-            </button>
-            <button
-              type="button"
-              class="fatura-wizard-step-item"
-              :class="{ 'is-active': wizardStep === 3, 'is-done': wizardStep > 3 }"
-              :aria-current="wizardStep === 3 ? 'step' : undefined"
-              @click="wizardStep = 3"
-            >
-              <span class="step-num">3</span>
-              <span class="step-name">Kalemler</span>
-            </button>
-            <button
-              type="button"
-              class="fatura-wizard-step-item"
-              :class="{ 'is-active': wizardStep === 4 }"
-              :aria-current="wizardStep === 4 ? 'step' : undefined"
-              @click="wizardStep = 4"
-            >
-              <span class="step-num">4</span>
-              <span class="step-name">Özet</span>
-            </button>
-          </nav>
+          <!-- İlerleme Çubuğu & Stepper -->
+          <div class="fatura-stepper-container">
+            <div class="fatura-stepper-progress-track">
+              <div class="fatura-stepper-progress-fill" :style="{ width: `${(wizardStep / 4) * 100}%` }"></div>
+            </div>
+            <nav class="fatura-wizard-steps" aria-label="Sihirbaz adımları">
+              <button
+                v-for="(st, sIdx) in [
+                  { num: 1, name: 'Cari' },
+                  { num: 2, name: 'Ayarlar' },
+                  { num: 3, name: 'Kalemler' },
+                  { num: 4, name: 'Özet' }
+                ]"
+                :key="st.num"
+                type="button"
+                class="fatura-wizard-step-item"
+                :class="{
+                  'is-active': wizardStep === st.num,
+                  'is-done': wizardStep > st.num,
+                  'is-pending': wizardStep < st.num
+                }"
+                :aria-current="wizardStep === st.num ? 'step' : undefined"
+                @click="wizardStep = st.num"
+              >
+                <span class="step-indicator">
+                  <Check v-if="wizardStep > st.num" :size="12" class="step-check" />
+                  <span v-else class="step-num">{{ st.num }}</span>
+                </span>
+                <span class="step-name">{{ st.name }}</span>
+              </button>
+            </nav>
+          </div>
 
           <!-- Wizard Body -->
           <div class="fatura-wizard-body">
             <!-- ADIM 1: CARİ / ALICI SEÇİMİ -->
             <div v-if="wizardStep === 1" class="wizard-step-panel">
               <div class="wizard-step-intro">
-                <span class="wizard-step-intro__icon"><UsersRound :size="17" /></span>
+                <span class="wizard-step-intro__icon"><Building2 :size="18" /></span>
                 <div>
-                  <h3>Alıcı bilgileri</h3>
-                  <p>Kayıtlı bir cari seçin veya yeni alıcı bilgilerini girin.</p>
+                  <h3>Alıcı & Cari Bilgileri</h3>
+                  <p>Kayıtlı carilerden hızlıca seçin veya yeni bir alıcı bilgisi girin.</p>
                 </div>
               </div>
+
               <!-- Müşteri Arama -->
-              <div class="fatura-search-box">
-                <Search :size="17" class="fatura-search-box__icon" />
+              <div class="fatura-wizard-search-box">
+                <Search :size="16" class="fatura-search-box__icon" />
                 <input
                   v-model="wizardCustomerSearch"
                   type="text"
                   placeholder="Kayıtlı carilerde ara (Ünvan, VKN)..."
                   @input="searchCustomers"
                 />
+                <button
+                  v-if="wizardCustomerSearch"
+                  type="button"
+                  class="fatura-search-clear"
+                  @click="wizardCustomerSearch = ''; customerSearchResults = []"
+                >
+                  <X :size="14" />
+                </button>
               </div>
 
               <!-- Arama Sonuçları Açılır Listesi -->
@@ -2092,52 +2115,60 @@ onBeforeUnmount(() => {
                   class="fatura-customer-item"
                   @click="selectCustomer(c)"
                 >
-                  <strong>{{ c.CariAdi || c.firma }}</strong>
-                  <small>VKN/TCKN: {{ c.vkn_tckn || '-' }} • {{ c.il || '' }}</small>
+                  <span class="fatura-customer-item__avatar">
+                    {{ (c.CariAdi || c.firma || 'C').charAt(0).toUpperCase() }}
+                  </span>
+                  <div class="fatura-customer-item__info">
+                    <strong>{{ c.CariAdi || c.firma }}</strong>
+                    <small>VKN/TCKN: {{ c.vkn_tckn || '-' }} • {{ c.il || 'Şehir Belirtilmemiş' }}</small>
+                  </div>
+                  <ChevronRight :size="14" class="fatura-customer-item__arrow" />
                 </button>
               </div>
 
               <!-- Alıcı Bilgileri Formu -->
               <div class="fatura-form-fields mt-3">
                 <div class="fatura-form-field">
-                  <label>Alıcı Ünvanı / Adı Soyadı *</label>
-                  <input v-model="invoiceHeader.alici_unvan" type="text" placeholder="Firma Ünvanı" />
+                  <label>Alıcı Ünvanı / Adı Soyadı <span class="text-rose">*</span></label>
+                  <input v-model="invoiceHeader.alici_unvan" type="text" placeholder="Firma veya şahıs ünvanı" />
                 </div>
 
                 <div class="fatura-form-field">
-                  <label>VKN / TCKN *</label>
-                  <div class="fatura-input-with-btn">
+                  <label>VKN / TCKN <span class="text-rose">*</span></label>
+                  <div class="fatura-input-inline-action">
                     <input
                       v-model="invoiceHeader.alici_vkn_tckn"
                       type="text"
                       maxlength="11"
-                      placeholder="10 veya 11 haneli kimlik"
+                      placeholder="10 veya 11 haneli vergi / kimlik no"
                       @blur="checkTaxpayerStatus(invoiceHeader.alici_vkn_tckn)"
                     />
                     <button
                       type="button"
-                      class="fatura-mini-btn"
-                      :disabled="checkingTaxpayer"
+                      class="fatura-inline-btn"
+                      :disabled="checkingTaxpayer || !invoiceHeader.alici_vkn_tckn"
                       @click="checkTaxpayerStatus(invoiceHeader.alici_vkn_tckn)"
                     >
-                      <span>{{ checkingTaxpayer ? '...' : 'Sorgula' }}</span>
+                      <Sparkles v-if="!checkingTaxpayer" :size="13" />
+                      <RefreshCw v-else :size="13" class="is-spinning" />
+                      <span>{{ checkingTaxpayer ? 'Sorgulanıyor' : 'Sorgula' }}</span>
                     </button>
                   </div>
                 </div>
 
                 <!-- Mükellef Bilgi Rozeti -->
-                <div v-if="taxpayerInfo" class="fatura-taxpayer-alert">
-                  <component :is="taxpayerInfo.is_taxpayer ? CheckCircle2 : Sparkles" :size="16" />
+                <div v-if="taxpayerInfo" class="fatura-taxpayer-alert" :class="taxpayerInfo.is_taxpayer ? 'fatura-taxpayer-alert--efatura' : 'fatura-taxpayer-alert--earsiv'">
+                  <component :is="taxpayerInfo.is_taxpayer ? CheckCircle2 : Sparkles" :size="18" />
                   <div>
-                    <strong>{{ taxpayerInfo.is_taxpayer ? 'E-Fatura Mükellefi' : 'E-Arşiv Fatura Kullanıcısı' }}</strong>
-                    <p>{{ taxpayerInfo.is_taxpayer ? 'Fatura E-Fatura senaryosu ile gönderilecek.' : 'Fatura E-Arşiv olarak düzenlenecek.' }}</p>
+                    <strong>{{ taxpayerInfo.is_taxpayer ? 'GİB E-Fatura Mükellefi' : 'E-Arşiv Fatura Kullanıcısı' }}</strong>
+                    <p>{{ taxpayerInfo.is_taxpayer ? 'Fatura doğrudan E-Fatura senaryosu ile gönderilecektir.' : 'Alıcı e-fatura kayıtlısı olmadığından E-Arşiv düzenlenecektir.' }}</p>
                   </div>
                 </div>
 
                 <div class="fatura-form-grid-2">
                   <div class="fatura-form-field">
                     <label>Vergi Dairesi</label>
-                    <input v-model="invoiceHeader.alici_vergi_dairesi" type="text" placeholder="Vergi Dairesi" />
+                    <input v-model="invoiceHeader.alici_vergi_dairesi" type="text" placeholder="Vergi Dairesi Adı" />
                   </div>
                   <div class="fatura-form-field">
                     <label>E-Posta</label>
@@ -2148,17 +2179,17 @@ onBeforeUnmount(() => {
                 <div class="fatura-form-grid-2">
                   <div class="fatura-form-field">
                     <label>İl</label>
-                    <input v-model="invoiceHeader.alici_il" type="text" placeholder="İl" />
+                    <input v-model="invoiceHeader.alici_il" type="text" placeholder="İl (Örn: Ankara)" />
                   </div>
                   <div class="fatura-form-field">
                     <label>İlçe</label>
-                    <input v-model="invoiceHeader.alici_ilce" type="text" placeholder="İlçe" />
+                    <input v-model="invoiceHeader.alici_ilce" type="text" placeholder="İlçe (Örn: Çankaya)" />
                   </div>
                 </div>
 
                 <div class="fatura-form-field">
-                  <label>Adres</label>
-                  <textarea v-model="invoiceHeader.alici_adres" rows="2" placeholder="Açık adres..."></textarea>
+                  <label>Açık Adres</label>
+                  <textarea v-model="invoiceHeader.alici_adres" rows="2" placeholder="Cadde, sokak, bina ve kapı no..."></textarea>
                 </div>
               </div>
             </div>
@@ -2166,16 +2197,16 @@ onBeforeUnmount(() => {
             <!-- ADIM 2: FATURA DETAY VE AYARLARI -->
             <div v-else-if="wizardStep === 2" class="wizard-step-panel">
               <div class="wizard-step-intro">
-                <span class="wizard-step-intro__icon wizard-step-intro__icon--purple"><FileText :size="17" /></span>
+                <span class="wizard-step-intro__icon wizard-step-intro__icon--purple"><FileText :size="18" /></span>
                 <div>
-                  <h3>Fatura ayarları</h3>
+                  <h3>Fatura Ayarları</h3>
                   <p>Tarih, belge türü ve gönderim senaryosunu belirleyin.</p>
                 </div>
               </div>
               <div class="fatura-form-fields">
                 <div class="fatura-form-grid-2">
                   <div class="fatura-form-field">
-                    <label>Fatura Tarihi *</label>
+                    <label>Fatura Tarihi <span class="text-rose">*</span></label>
                     <input v-model="invoiceHeader.fatura_tarihi" type="date" />
                   </div>
                   <div class="fatura-form-field">
@@ -2184,34 +2215,75 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <div class="fatura-form-grid-2">
-                  <div class="fatura-form-field">
-                    <label>Belge Türü</label>
-                    <select v-model="invoiceHeader.belge_turu">
-                      <option value="EFATURA">E-Fatura</option>
-                      <option value="EARSIV">E-Arşiv Fatura</option>
-                    </select>
+                <!-- Belge Türü Segmented Control -->
+                <div class="fatura-form-field">
+                  <label>Belge Türü</label>
+                  <div class="fatura-segmented-pill-wrap">
+                    <button
+                      type="button"
+                      class="fatura-seg-pill-btn"
+                      :class="{ 'is-active': invoiceHeader.belge_turu === 'EFATURA' }"
+                      @click="invoiceHeader.belge_turu = 'EFATURA'"
+                    >
+                      <Zap :size="14" />
+                      <span>E-Fatura</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="fatura-seg-pill-btn"
+                      :class="{ 'is-active': invoiceHeader.belge_turu === 'EARSIV' }"
+                      @click="invoiceHeader.belge_turu = 'EARSIV'"
+                    >
+                      <Archive :size="14" />
+                      <span>E-Arşiv Fatura</span>
+                    </button>
                   </div>
-                  <div class="fatura-form-field">
-                    <label>Fatura Tipi</label>
-                    <select v-model="invoiceHeader.fatura_tipi">
-                      <option value="SATIS">Satış</option>
-                      <option value="IADE">İade</option>
-                      <option value="TEVKIFAT">Tevkifat</option>
-                      <option value="ISTISNA">İstisna</option>
-                    </select>
+                </div>
+
+                <!-- Fatura Tipi Chips -->
+                <div class="fatura-form-field">
+                  <label>Fatura Tipi</label>
+                  <div class="fatura-pill-selector">
+                    <button
+                      v-for="tip in [
+                        { id: 'SATIS', label: 'Satış' },
+                        { id: 'IADE', label: 'İade' },
+                        { id: 'TEVKIFAT', label: 'Tevkifat' },
+                        { id: 'ISTISNA', label: 'İstisna' }
+                      ]"
+                      :key="tip.id"
+                      type="button"
+                      class="fatura-sel-pill"
+                      :class="{ 'is-active': invoiceHeader.fatura_tipi === tip.id }"
+                      @click="invoiceHeader.fatura_tipi = tip.id"
+                    >
+                      {{ tip.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Senaryo Chips -->
+                <div class="fatura-form-field">
+                  <label>Senaryo</label>
+                  <div class="fatura-pill-selector">
+                    <button
+                      v-for="sen in [
+                        { id: 'TICARIFATURA', label: 'Ticari Fatura' },
+                        { id: 'TEMELFATURA', label: 'Temel Fatura' },
+                        { id: 'EARSIVFATURA', label: 'E-Arşiv Fatura' }
+                      ]"
+                      :key="sen.id"
+                      type="button"
+                      class="fatura-sel-pill"
+                      :class="{ 'is-active': invoiceHeader.senaryo === sen.id }"
+                      @click="invoiceHeader.senaryo = sen.id"
+                    >
+                      {{ sen.label }}
+                    </button>
                   </div>
                 </div>
 
                 <div class="fatura-form-grid-2">
-                  <div class="fatura-form-field">
-                    <label>Senaryo</label>
-                    <select v-model="invoiceHeader.senaryo">
-                      <option value="TICARIFATURA">Ticari Fatura</option>
-                      <option value="TEMELFATURA">Temel Fatura</option>
-                      <option value="EARSIVFATURA">E-Arşiv Fatura</option>
-                    </select>
-                  </div>
                   <div class="fatura-form-field">
                     <label>Seri / Ön Ek</label>
                     <select v-model="invoiceHeader.seri">
@@ -2221,14 +2293,22 @@ onBeforeUnmount(() => {
                       <option v-if="availableSerials.length === 0" value="ERS">ERS (Varsayılan)</option>
                     </select>
                   </div>
+                  <div class="fatura-form-field">
+                    <label>Para Birimi</label>
+                    <select v-model="invoiceHeader.para_birimi">
+                      <option value="TRY">TRY (₺)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="fatura-form-field">
-                  <label>Fatura Notları</label>
+                  <label>Fatura Notları & Banka Bilgisi</label>
                   <textarea
                     v-model="invoiceHeader.notlar"
-                    rows="3"
-                    placeholder="Banka IBAN bilgisi, sipariş numarası veya açıklama ekleyin..."
+                    rows="2"
+                    placeholder="Banka IBAN, sipariş no veya ek açıklamalar..."
                   ></textarea>
                 </div>
               </div>
@@ -2237,10 +2317,10 @@ onBeforeUnmount(() => {
             <!-- ADIM 3: KALEMLER -->
             <div v-else-if="wizardStep === 3" class="wizard-step-panel">
               <div class="wizard-step-intro">
-                <span class="wizard-step-intro__icon wizard-step-intro__icon--amber"><Layers :size="17" /></span>
+                <span class="wizard-step-intro__icon wizard-step-intro__icon--amber"><Layers :size="18" /></span>
                 <div>
-                  <h3>Mal ve hizmetler</h3>
-                  <p>Faturaya eklenecek kalemleri ve KDV oranlarını girin.</p>
+                  <h3>Mal ve Hizmet Kalemleri</h3>
+                  <p>Faturaya eklenecek kalemleri, miktarları ve KDV oranlarını girin.</p>
                 </div>
               </div>
               <div class="fatura-lines-container">
@@ -2250,11 +2330,12 @@ onBeforeUnmount(() => {
                   class="fatura-line-card"
                 >
                   <header class="fatura-line-card__header">
-                    <span class="line-index">#{{ idx + 1 }}</span>
+                    <span class="line-index">#{{ idx + 1 }} Kalem</span>
                     <button
                       v-if="invoiceLines.length > 1"
                       type="button"
                       class="fatura-icon-action-btn fatura-icon-action-btn--danger"
+                      title="Kalemi Sil"
                       @click="removeLine(idx)"
                     >
                       <Trash2 :size="14" />
@@ -2262,7 +2343,7 @@ onBeforeUnmount(() => {
                   </header>
 
                   <div class="fatura-form-field">
-                    <label>Kalem Açıklaması / Mal-Hizmet *</label>
+                    <label>Kalem Açıklaması / Mal-Hizmet <span class="text-rose">*</span></label>
                     <input
                       v-model="line.aciklama"
                       type="text"
@@ -2308,12 +2389,13 @@ onBeforeUnmount(() => {
                       </select>
                     </div>
                     <div class="fatura-form-field">
-                      <label>Birim Fiyat *</label>
+                      <label>Birim Fiyat <span class="text-rose">*</span></label>
                       <input
                         v-model.number="line.birim_fiyat"
                         type="number"
                         min="0"
                         step="0.01"
+                        placeholder="0.00"
                         @input="recalcLines"
                       />
                     </div>
@@ -2321,7 +2403,7 @@ onBeforeUnmount(() => {
 
                   <div class="fatura-form-grid-2">
                     <div class="fatura-form-field">
-                      <label>KDV Oranı (%)</label>
+                      <label>KDV Oranı</label>
                       <select v-model.number="line.kdv_orani" @change="recalcLines">
                         <option :value="0">%0</option>
                         <option :value="1">%1</option>
@@ -2337,14 +2419,21 @@ onBeforeUnmount(() => {
                         min="0"
                         max="100"
                         step="1"
+                        placeholder="0"
                         @input="recalcLines"
                       />
                     </div>
                   </div>
 
                   <div class="fatura-line-total">
-                    <span>Satır Tutarı:</span>
-                    <strong>{{ formatMoney(line.mal_hizmet_tutari + line.kdv_tutari) }}</strong>
+                    <div class="fatura-line-total__matrah">
+                      <span>Matrah:</span>
+                      <strong>{{ formatMoney(line.mal_hizmet_tutari) }}</strong>
+                    </div>
+                    <div class="fatura-line-total__sum">
+                      <span>KDV Dahil:</span>
+                      <strong>{{ formatMoney(line.mal_hizmet_tutari + line.kdv_tutari) }}</strong>
+                    </div>
                   </div>
                 </article>
 
@@ -2358,52 +2447,81 @@ onBeforeUnmount(() => {
             <!-- ADIM 4: ÖZET VE GÖNDER / KAYDET -->
             <div v-else-if="wizardStep === 4" class="wizard-step-panel">
               <div class="wizard-step-intro">
-                <span class="wizard-step-intro__icon wizard-step-intro__icon--green"><CheckCircle2 :size="17" /></span>
+                <span class="wizard-step-intro__icon wizard-step-intro__icon--green"><CheckCircle2 :size="18" /></span>
                 <div>
-                  <h3>Kontrol ve gönderim</h3>
-                  <p>Bilgileri kontrol ettikten sonra taslağı kaydedebilir veya gönderebilirsiniz.</p>
+                  <h3>Kontrol ve Gönderim</h3>
+                  <p>Bilgileri son kez gözden geçirin, taslağı kaydedin veya GİB'e iletin.</p>
                 </div>
               </div>
+
+              <!-- Termal / Bento Makbuz Kartı -->
               <div class="fatura-wizard-summary-card">
-                <h3>Fatura Özeti</h3>
-
-                <div class="fatura-summary-row fatura-summary-row--recipient">
-                  <span>Alıcı:</span>
-                  <strong>{{ invoiceHeader.alici_unvan }}</strong>
-                </div>
-                <div class="fatura-summary-row">
-                  <span>VKN / TCKN:</span>
-                  <strong>{{ invoiceHeader.alici_vkn_tckn }}</strong>
-                </div>
-                <div class="fatura-summary-row">
-                  <span>Belge / Senaryo:</span>
-                  <strong>{{ invoiceHeader.belge_turu }} • {{ invoiceHeader.senaryo }}</strong>
-                </div>
-                <div class="fatura-summary-row">
-                  <span>Fatura Tarihi:</span>
-                  <strong>{{ formatDate(invoiceHeader.fatura_tarihi) }}</strong>
+                <div class="fatura-receipt-header">
+                  <div class="fatura-receipt-badge">
+                    <ReceiptText :size="15" />
+                    <span>FATURA ÖZETİ</span>
+                  </div>
+                  <span class="fatura-receipt-type-tag">{{ invoiceHeader.belge_turu }}</span>
                 </div>
 
-                <div class="fatura-summary-divider"></div>
-
-                <div class="fatura-summary-row">
-                  <span>Mal / Hizmet Toplamı:</span>
-                  <b>{{ formatMoney(wizardCalculation.mal_hizmet_toplam) }}</b>
-                </div>
-                <div v-if="wizardCalculation.iskonto_toplam > 0" class="fatura-summary-row text-rose">
-                  <span>İskonto:</span>
-                  <b>-{{ formatMoney(wizardCalculation.iskonto_toplam) }}</b>
-                </div>
-                <div class="fatura-summary-row">
-                  <span>KDV Toplamı:</span>
-                  <b class="text-emerald">{{ formatMoney(wizardCalculation.kdv_toplam) }}</b>
+                <div class="fatura-receipt-customer">
+                  <strong class="fatura-receipt-customer__name">{{ invoiceHeader.alici_unvan }}</strong>
+                  <span class="fatura-receipt-customer__vkn">VKN / TCKN: {{ invoiceHeader.alici_vkn_tckn }}</span>
                 </div>
 
-                <div class="fatura-summary-divider"></div>
+                <div class="fatura-receipt-meta-grid">
+                  <div class="fatura-receipt-meta-item">
+                    <span>Senaryo</span>
+                    <strong>{{ invoiceHeader.senaryo }}</strong>
+                  </div>
+                  <div class="fatura-receipt-meta-item">
+                    <span>Fatura Tarihi</span>
+                    <strong>{{ formatDate(invoiceHeader.fatura_tarihi) }}</strong>
+                  </div>
+                  <div class="fatura-receipt-meta-item">
+                    <span>Kalem Sayısı</span>
+                    <strong>{{ invoiceLines.length }} Adet Kalem</strong>
+                  </div>
+                  <div class="fatura-receipt-meta-item">
+                    <span>Para Birimi</span>
+                    <strong>{{ invoiceHeader.para_birimi || 'TRY' }}</strong>
+                  </div>
+                </div>
 
-                <div class="fatura-summary-row fatura-summary-row--total">
-                  <span>Genel Toplam:</span>
-                  <strong class="text-primary">{{ formatMoney(wizardCalculation.odenecek_tutar) }}</strong>
+                <div class="fatura-receipt-divider"></div>
+
+                <!-- Finansal Kırılımlar -->
+                <div class="fatura-receipt-rows">
+                  <div class="fatura-receipt-row">
+                    <span>Mal / Hizmet Toplamı:</span>
+                    <b>{{ formatInvoiceMoney(wizardCalculation.mal_hizmet_toplam, invoiceHeader.para_birimi) }}</b>
+                  </div>
+                  <div v-if="wizardCalculation.iskonto_toplam > 0" class="fatura-receipt-row text-rose">
+                    <span>İskonto Toplamı:</span>
+                    <b>-{{ formatInvoiceMoney(wizardCalculation.iskonto_toplam, invoiceHeader.para_birimi) }}</b>
+                  </div>
+                  <div class="fatura-receipt-row">
+                    <span>Hesaplanan KDV:</span>
+                    <b class="text-emerald">{{ formatInvoiceMoney(wizardCalculation.kdv_toplam, invoiceHeader.para_birimi) }}</b>
+                  </div>
+                </div>
+
+                <div class="fatura-receipt-divider fatura-receipt-divider--bold"></div>
+
+                <div class="fatura-receipt-total">
+                  <div>
+                    <span class="fatura-receipt-total__label">Ödenecek Tutar</span>
+                    <small>KDV ve tüm vergiler dahil</small>
+                  </div>
+                  <strong class="fatura-receipt-total__amount">
+                    {{ formatInvoiceMoney(wizardCalculation.odenecek_tutar, invoiceHeader.para_birimi) }}
+                  </strong>
+                </div>
+
+                <!-- Güvenlik & EDM Bilgilendirme Rozeti -->
+                <div class="fatura-receipt-trust-badge">
+                  <CheckCircle2 :size="14" class="text-emerald" />
+                  <span>Faturanız EDM Bilişim güvencesiyle doğrudan Gelir İdaresi Başkanlığı sistemine iletilir.</span>
                 </div>
               </div>
             </div>
@@ -2414,7 +2532,7 @@ onBeforeUnmount(() => {
             <button
               v-if="wizardStep > 1"
               type="button"
-              class="fatura-secondary-btn"
+              class="fatura-wizard-back-btn"
               :disabled="wizardSubmitting"
               @click="prevWizardStep"
             >
@@ -2425,7 +2543,7 @@ onBeforeUnmount(() => {
             <button
               v-if="wizardStep < 4"
               type="button"
-              class="fatura-primary-btn ml-auto"
+              class="fatura-wizard-next-btn ml-auto"
               @click="nextWizardStep"
             >
               <span>{{ wizardStep === 3 ? 'Özeti Gör' : 'Devam Et' }}</span>
@@ -2435,20 +2553,21 @@ onBeforeUnmount(() => {
             <template v-else>
               <button
                 type="button"
-                class="fatura-secondary-btn ml-auto"
+                class="fatura-wizard-draft-btn"
                 :disabled="wizardSubmitting"
                 @click="saveWizardInvoice(false)"
               >
-                {{ wizardSubmitting ? 'İşleniyor…' : 'Taslağı Kaydet' }}
+                <FileText :size="15" />
+                <span>{{ wizardSubmitting ? 'Kaydediliyor…' : 'Taslağı Kaydet' }}</span>
               </button>
               <button
                 type="button"
-                class="fatura-primary-btn"
+                class="fatura-wizard-send-btn"
                 :disabled="wizardSubmitting"
                 @click="saveWizardInvoice(true)"
               >
-                <Send :size="16" />
-                <span>EDM/GİB'e Gönder</span>
+                <Send :size="15" />
+                <span>{{ wizardSubmitting ? 'İletiliyor…' : 'GİB\'e Gönder' }}</span>
               </button>
             </template>
           </footer>
@@ -3446,6 +3565,19 @@ onBeforeUnmount(() => {
   box-shadow: var(--ds-shadow-bento, 0 6px 18px rgba(16, 24, 40, 0.05));
   padding: 0 14px;
 }
+.fatura-search-box--unified {
+  height: 46px;
+  border-radius: 16px;
+  background: var(--ds-surface);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.045);
+  padding: 0 12px 0 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fatura-search-box--unified:focus-within {
+  border-color: rgba(67, 56, 202, 0.35);
+  box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.08), 0 8px 24px rgba(15, 23, 42, 0.06);
+}
 .fatura-search-box__icon {
   flex-shrink: 0;
   color: var(--ds-muted);
@@ -3458,7 +3590,25 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--ds-ink);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+}
+.fatura-search-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ds-soft, #f1f5f9);
+  color: var(--ds-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 6px;
+}
+.fatura-search-clear-btn:active {
+  background: #e2e8f0;
+  transform: scale(0.92);
 }
 .fatura-search-box button {
   border: 0;
@@ -3526,6 +3676,104 @@ onBeforeUnmount(() => {
 .fatura-filter-pills button.is-active .fatura-pill-num {
   background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
+}
+
+/* UI/UX Pro Max Bento Boş Durum Kartı */
+.fatura-empty-bento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 36px 22px 32px;
+  border-radius: 26px;
+  background: var(--ds-surface);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  margin: 12px 0 24px;
+}
+.fatura-empty-bento__icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--ds-blue-soft, #e0f2fe);
+  color: var(--ds-blue-ink, #0284c7);
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.12);
+  position: relative;
+}
+.fatura-empty-bento__icon-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 24px;
+  border: 1.5px dashed rgba(2, 132, 199, 0.25);
+}
+.fatura-empty-bento__icon-wrap--amber {
+  background: var(--ds-amber-soft, #fef3c7);
+  color: var(--ds-amber-ink, #d97706);
+  box-shadow: 0 8px 20px rgba(217, 119, 6, 0.14);
+}
+.fatura-empty-bento__icon-wrap--amber::after {
+  border-color: rgba(217, 119, 6, 0.28);
+}
+.fatura-empty-bento__icon-wrap--sky {
+  background: var(--ds-blue-soft, #e0f2fe);
+  color: var(--ds-blue-ink, #0284c7);
+}
+.fatura-empty-bento__title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ds-ink, #0f172a);
+  letter-spacing: -0.02em;
+}
+.fatura-empty-bento__desc {
+  margin: 0 0 20px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ds-muted, #64748b);
+  max-width: 320px;
+}
+.fatura-empty-bento__cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--ds-primary, #4338ca), #6366f1);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(67, 56, 202, 0.28);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fatura-empty-bento__cta-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 4px 12px rgba(67, 56, 202, 0.22);
+}
+.fatura-empty-bento__badges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--ds-line, #e2e8f0);
+  width: 100%;
+}
+.fatura-tip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-slate, #475569);
 }
 
 /* Fatura Kartları */
@@ -4024,118 +4272,290 @@ onBeforeUnmount(() => {
   color: var(--ds-danger-ink);
 }
 
-/* Sihirbaz (Wizard) */
+/* ==========================================================================
+   SİHİRBAZ (WIZARD) & MODAL STİLLERİ (UI/UX PRO MAX)
+   ========================================================================== */
 .fatura-wizard-sheet {
-  height: min(92vh, 820px);
+  height: min(92vh, 840px);
   border-radius: 28px 28px 0 0;
+  display: flex;
+  flex-direction: column;
 }
 .fatura-wizard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--ds-line);
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--ds-line, #e2e8f0);
+  background: var(--ds-surface, #ffffff);
+}
+.fatura-wizard-header__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 .fatura-wizard-tag {
-  font: 700 9px 'Space Grotesk', sans-serif;
-  color: var(--ds-muted);
+  font: 800 9px 'Space Grotesk', sans-serif;
+  color: var(--ds-primary, #4338ca);
   letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .fatura-wizard-header h2 {
-  margin: 1px 0 0;
-  font-size: 18px;
-  font-weight: 700;
+  margin: 1px 0 2px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ds-ink, #0f172a);
+  letter-spacing: -0.02em;
 }
-.fatura-wizard-progress {
-  display: block;
-  margin-top: 4px;
-  color: var(--ds-muted);
-  font-size: 10px;
-  line-height: 1.3;
+.fatura-wizard-progress-text {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ds-muted, #64748b);
 }
-.wizard-step-intro {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 16px;
-  padding: 12px 13px;
-  border: 1px solid var(--ds-border-subtle);
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f8fbff, #fff);
+.fatura-wizard-progress-text strong {
+  color: var(--ds-primary, #4338ca);
+  margin-right: 4px;
 }
-.wizard-step-intro__icon {
+.fatura-wizard-close-btn {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
   place-items: center;
-  border-radius: 12px;
-  color: var(--ds-blue-ink);
-  background: var(--ds-blue-soft);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ds-soft, #f1f5f9);
+  color: var(--ds-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
-.wizard-step-intro__icon--purple { color: var(--ds-purple-ink); background: var(--ds-purple-soft); }
-.wizard-step-intro__icon--amber { color: var(--ds-amber-ink); background: var(--ds-amber-soft); }
-.wizard-step-intro__icon--green { color: var(--ds-emerald-ink); background: var(--ds-emerald-soft); }
-.wizard-step-intro h3 { margin: 0; font-size: 13px; font-weight: 800; color: var(--ds-ink); }
-.wizard-step-intro p { margin: 2px 0 0; font-size: 10px; line-height: 1.35; color: var(--ds-muted); }
+.fatura-wizard-close-btn:active {
+  background: #e2e8f0;
+}
+
+/* Stepper Progress Bar & Steps */
+.fatura-stepper-container {
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--ds-line, #e2e8f0);
+}
+.fatura-stepper-progress-track {
+  width: 100%;
+  height: 3px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+.fatura-stepper-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ds-primary, #4338ca), #6366f1);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
 .fatura-wizard-steps {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  position: relative;
-  padding: 10px 16px 9px;
-  background: #f3f7fb;
-  border-bottom: 1px solid var(--ds-line);
+  padding: 8px 12px 8px;
+  gap: 4px;
 }
 .fatura-wizard-step-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   border: 0;
   background: transparent;
   cursor: pointer;
-  min-height: 45px;
+  padding: 4px 0;
+  border-radius: 10px;
+  transition: background 0.15s ease;
 }
-.step-num {
+.step-indicator {
   display: grid;
   place-items: center;
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--ds-soft);
-  color: var(--ds-muted);
+  background: #e2e8f0;
+  color: var(--ds-muted, #64748b);
   font: 700 11px 'Space Grotesk', sans-serif;
+  transition: all 0.25s ease;
 }
-.fatura-wizard-step-item.is-active .step-num {
-  background: var(--ds-primary);
-  color: var(--ds-surface);
-}
-.fatura-wizard-step-item.is-done .step-num {
-  background: var(--ds-emerald-ink);
-  color: var(--ds-surface);
+.step-check {
+  color: #ffffff;
 }
 .step-name {
-  font: 600 9px 'Space Grotesk', sans-serif;
-  color: var(--ds-muted);
+  font: 600 10.5px var(--ds-font-main);
+  color: var(--ds-muted, #64748b);
+  transition: color 0.2s ease;
+}
+.fatura-wizard-step-item.is-active .step-indicator {
+  background: var(--ds-primary, #4338ca);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(67, 56, 202, 0.3);
 }
 .fatura-wizard-step-item.is-active .step-name {
-  color: var(--ds-primary);
+  color: var(--ds-primary, #4338ca);
   font-weight: 700;
 }
-.fatura-wizard-step-item.is-done .step-name { color: var(--ds-emerald-ink); }
+.fatura-wizard-step-item.is-done .step-indicator {
+  background: var(--ds-emerald, #10b981);
+  color: #ffffff;
+}
+.fatura-wizard-step-item.is-done .step-name {
+  color: var(--ds-emerald-ink, #059669);
+}
+
+/* Wizard Body (Scrollbar Hidden!) */
 .fatura-wizard-body {
   flex: 1;
   overflow-y: auto;
-  padding: 18px 20px 24px;
-  background: #fbfcfe;
+  padding: 16px 18px 24px;
+  background: var(--ds-canvas, #f8fafc);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.fatura-wizard-footer {
+.fatura-wizard-body::-webkit-scrollbar {
+  display: none;
+}
+
+/* Wizard Step Intro Banner */
+.wizard-step-panel {
+  display: flex;
+  flex-direction: column;
+}
+.wizard-step-intro {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px calc(12px + var(--ds-safe-bottom));
-  border-top: 1px solid var(--ds-line);
-  background: var(--ds-surface);
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.035);
+}
+.wizard-step-intro__icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--ds-blue-ink, #0284c7);
+  background: var(--ds-blue-soft, #e0f2fe);
+}
+.wizard-step-intro__icon--purple {
+  color: var(--ds-purple-ink, #7c3aed);
+  background: var(--ds-purple-soft, #ede9fe);
+}
+.wizard-step-intro__icon--amber {
+  color: var(--ds-amber-ink, #d97706);
+  background: var(--ds-amber-soft, #fef3c7);
+}
+.wizard-step-intro__icon--green {
+  color: var(--ds-emerald-ink, #059669);
+  background: var(--ds-emerald-soft, #d1fae5);
+}
+.wizard-step-intro h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ds-ink, #0f172a);
+}
+.wizard-step-intro p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ds-muted, #64748b);
+}
+
+/* Cari Arama & Dropdown */
+.fatura-wizard-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border: 1px solid var(--ds-line, #e2e8f0);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.fatura-wizard-search-box input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ds-ink);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.fatura-search-clear {
+  border: 0;
+  background: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+}
+.fatura-customer-dropdown {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--ds-line);
+  border-radius: 14px;
+  margin-top: 6px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+.fatura-customer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--ds-line);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.fatura-customer-item:active {
+  background: var(--ds-soft, #f1f5f9);
+}
+.fatura-customer-item:last-child {
+  border-bottom: 0;
+}
+.fatura-customer-item__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--ds-blue-soft, #e0f2fe);
+  color: var(--ds-blue-ink, #0284c7);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+.fatura-customer-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.fatura-customer-item__info strong {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fatura-customer-item__info small {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ds-muted);
+}
+.fatura-customer-item__arrow {
+  color: var(--ds-muted);
+  flex-shrink: 0;
 }
 
 /* Form Elemanları */
@@ -4146,7 +4566,7 @@ onBeforeUnmount(() => {
 .fatura-form-field label {
   display: block;
   font: 700 10px 'Space Grotesk', sans-serif;
-  color: var(--ds-slate);
+  color: var(--ds-slate, #475569);
   margin-bottom: 4px;
 }
 .fatura-form-field input,
@@ -4154,22 +4574,25 @@ onBeforeUnmount(() => {
 .fatura-form-field textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--ds-line);
+  border: 1px solid var(--ds-line, #e2e8f0);
   border-radius: 14px;
   min-height: 44px;
-  background: var(--ds-surface);
-  font: 500 12px var(--ds-font-main);
-  color: var(--ds-ink);
+  background: #ffffff;
+  font: 500 12.5px var(--ds-font-main);
+  color: var(--ds-ink, #0f172a);
   outline: 0;
+  box-sizing: border-box;
+  transition: border-color 0.18s ease;
 }
-.fatura-form-field textarea { min-height: 76px; resize: vertical; }
-.fatura-search-box { margin-bottom: 14px; box-shadow: var(--ds-shadow-tile); }
-.fatura-mini-btn { min-width: 64px; border-radius: 12px; font-weight: 700; }
+.fatura-form-field textarea {
+  min-height: 68px;
+  resize: vertical;
+}
 .fatura-form-field input:focus,
 .fatura-form-field select:focus,
 .fatura-form-field textarea:focus {
-  border-color: var(--ds-primary);
-  background: var(--ds-surface);
+  border-color: var(--ds-primary, #4338ca);
+  box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.08);
 }
 .fatura-form-grid-2 {
   display: grid;
@@ -4181,67 +4604,136 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
-.fatura-input-with-btn {
+
+/* Inline VKN / TCKN Aksiyon Butonu */
+.fatura-input-inline-action {
+  position: relative;
   display: flex;
-  gap: 6px;
+  align-items: center;
 }
-.fatura-customer-dropdown {
-  max-height: 160px;
-  overflow-y: auto;
-  border: 1px solid var(--ds-line);
-  border-radius: 14px;
-  margin-top: 6px;
-  background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-card);
+.fatura-input-inline-action input {
+  padding-right: 94px !important;
 }
-.fatura-customer-item {
-  width: 100%;
-  padding: 9px 12px;
+.fatura-inline-btn {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
   border: 0;
-  border-bottom: 1px solid var(--ds-line);
-  background: transparent;
-  text-align: left;
+  border-radius: 10px;
+  background: var(--ds-primary-soft, #eef2ff);
+  color: var(--ds-primary, #4338ca);
+  font: 700 11px var(--ds-font-main);
   cursor: pointer;
+  transition: all 0.2s ease;
 }
-.fatura-customer-item:last-child {
-  border-bottom: 0;
+.fatura-inline-btn:active {
+  background: #e0e7ff;
 }
-.fatura-customer-item strong {
-  display: block;
-  font-size: 12px;
+.fatura-inline-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
-.fatura-customer-item small {
-  display: block;
-  font-size: 10px;
-  color: var(--ds-muted);
-}
+
+/* Mükellef Bilgilendirme Rozeti */
 .fatura-taxpayer-alert {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 10px 14px;
   border-radius: 14px;
-  background: var(--ds-emerald-soft);
-  color: var(--ds-emerald-ink);
   font-size: 11px;
+  margin-top: 4px;
 }
 .fatura-taxpayer-alert strong {
   display: block;
   font-size: 12px;
+  margin-bottom: 2px;
+}
+.fatura-taxpayer-alert p {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+.fatura-taxpayer-alert--efatura {
+  background: var(--ds-emerald-soft, #d1fae5);
+  color: var(--ds-emerald-ink, #065f46);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.fatura-taxpayer-alert--earsiv {
+  background: var(--ds-amber-soft, #fef3c7);
+  color: var(--ds-amber-ink, #92400e);
+  border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
-/* Kalemler Listesi */
+/* Step 2: Segmented Pill & Pill Selector */
+.fatura-segmented-pill-wrap {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  border: 1px solid var(--ds-line, #e2e8f0);
+}
+.fatura-seg-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ds-slate, #475569);
+  font: 700 12px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fatura-seg-pill-btn.is-active {
+  background: #ffffff;
+  color: var(--ds-primary, #4338ca);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+}
+.fatura-pill-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fatura-sel-pill {
+  padding: 8px 14px;
+  border: 1px solid var(--ds-line, #e2e8f0);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--ds-slate, #475569);
+  font: 600 11.5px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.fatura-sel-pill.is-active {
+  border-color: var(--ds-primary, #4338ca);
+  background: var(--ds-primary-soft, #eef2ff);
+  color: var(--ds-primary, #4338ca);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(67, 56, 202, 0.12);
+}
+
+/* Step 3: Kalemler Listesi */
 .fatura-lines-container {
   display: grid;
   gap: 12px;
 }
 .fatura-line-card {
   padding: 14px;
-  border: 1px solid var(--ds-line);
+  border: 1px solid #e2e8f0;
   border-radius: 18px;
-  background: var(--ds-soft);
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 .fatura-line-card__header {
   display: flex;
@@ -4249,8 +4741,13 @@ onBeforeUnmount(() => {
   justify-content: space-between;
 }
 .line-index {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ds-blue-soft, #e0f2fe);
+  color: var(--ds-blue-ink, #0284c7);
   font: 700 11px 'Space Grotesk', sans-serif;
-  color: var(--ds-slate);
 }
 .fatura-quick-products-row {
   display: flex;
@@ -4259,122 +4756,311 @@ onBeforeUnmount(() => {
   overflow-x: auto;
   font-size: 10px;
   color: var(--ds-muted);
+  scrollbar-width: none;
+}
+.fatura-quick-products-row::-webkit-scrollbar {
+  display: none;
 }
 .fatura-quick-prod-pill {
   flex-shrink: 0;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 999px;
-  border: 1px solid var(--ds-line);
-  background: var(--ds-surface);
+  border: 1px solid var(--ds-line, #e2e8f0);
+  background: #f8fafc;
+  color: var(--ds-slate);
   font-size: 10px;
   cursor: pointer;
+  transition: background 0.15s ease;
+}
+.fatura-quick-prod-pill:active {
+  background: #e2e8f0;
 }
 .fatura-line-total {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 6px;
-  border-top: 1px dashed var(--ds-line);
-  font-size: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ds-line, #e2e8f0);
+  font-size: 11.5px;
+}
+.fatura-line-total__matrah span,
+.fatura-line-total__sum span {
+  color: var(--ds-muted);
+  margin-right: 4px;
+}
+.fatura-line-total__matrah strong {
+  color: var(--ds-slate);
+}
+.fatura-line-total__sum strong {
+  color: var(--ds-primary, #4338ca);
+  font-size: 13px;
+  font-weight: 700;
 }
 .fatura-add-line-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px;
-  border: 1.5px dashed var(--ds-slate);
-  border-radius: 16px;
-  background: transparent;
-  color: var(--ds-ink);
-  font: 700 12px 'Space Grotesk', sans-serif;
+  min-height: 44px;
+  border: 1.5px dashed rgba(67, 56, 202, 0.35);
+  border-radius: 14px;
+  background: rgba(67, 56, 202, 0.03);
+  color: var(--ds-primary, #4338ca);
+  font: 700 12.5px var(--ds-font-main);
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+.fatura-add-line-btn:active {
+  background: rgba(67, 56, 202, 0.08);
 }
 
-/* Kalem girişinde hızlı tarama ve dengeli gezinme */
-.wizard-step-panel:has(.fatura-lines-container) .wizard-step-intro { margin-bottom: 14px; }
-.fatura-line-card {
-  padding: 15px;
-  background: var(--ds-surface);
-  border-color: #e4eaf2;
-  box-shadow: 0 5px 16px rgba(15, 23, 42, .045);
+/* Step 4: Termal / Bento Makbuz Kartı */
+.fatura-wizard-summary-card {
+  padding: 18px 18px 20px;
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
-.fatura-line-card__header { padding-bottom: 2px; }
-.line-index {
+.fatura-receipt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.fatura-receipt-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
-  color: var(--ds-blue-ink);
-  background: var(--ds-blue-soft);
+  gap: 5px;
+  font: 800 10.5px 'Space Grotesk', sans-serif;
+  color: var(--ds-primary, #4338ca);
+  letter-spacing: 0.05em;
 }
-.fatura-line-card .fatura-form-field label { color: #475569; }
-.fatura-line-card .fatura-form-grid-3 { gap: 8px; }
-.fatura-line-total {
-  margin-top: 2px;
-  padding: 10px 0 0;
+.fatura-receipt-type-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: var(--ds-slate);
+  font: 700 10px 'Space Grotesk', sans-serif;
+}
+.fatura-receipt-customer {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ds-line);
+}
+.fatura-receipt-customer__name {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  line-height: 1.35;
+}
+.fatura-receipt-customer__vkn {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
   color: var(--ds-muted);
 }
-.fatura-line-total strong { color: var(--ds-ink); font-size: 13px; }
-.fatura-wizard-footer {
-  position: relative;
-  z-index: 2;
-  justify-content: flex-end;
-  box-shadow: 0 -6px 18px rgba(15, 23, 42, .05);
-}
-.fatura-wizard-footer .fatura-secondary-btn,
-.fatura-wizard-footer .fatura-primary-btn { min-height: 44px; margin-left: 0 !important; }
-.fatura-wizard-footer .fatura-secondary-btn { min-width: 76px; }
-.fatura-wizard-footer .fatura-primary-btn { min-width: 112px; justify-content: center; }
-
-@media (max-width: 360px) {
-  .fatura-wizard-body { padding-left: 14px; padding-right: 14px; }
-  .fatura-line-card { padding: 12px; }
-  .fatura-wizard-footer { padding-left: 14px; padding-right: 14px; }
-  .fatura-wizard-footer .fatura-primary-btn { min-width: 104px; }
-}
-
-/* Sihirbaz Özet Kartı */
-.fatura-wizard-summary-card {
-  padding: 18px 16px;
-  border: 1px solid #e1e8f0;
-  border-radius: 20px;
-  background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-tile);
-}
-.fatura-wizard-summary-card h3 {
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 700;
-}
-.fatura-summary-row {
+.fatura-receipt-meta-grid {
   display: grid;
-  grid-template-columns: minmax(88px, .8fr) minmax(0, 1.35fr);
-  align-items: start;
-  gap: 10px;
-  margin-bottom: 7px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.fatura-receipt-meta-item span {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+}
+.fatura-receipt-meta-item strong {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ds-ink);
+}
+.fatura-receipt-divider {
+  height: 1px;
+  background: var(--ds-line, #e2e8f0);
+  margin: 12px 0;
+}
+.fatura-receipt-divider--bold {
+  height: 1.5px;
+  background: #cbd5e1;
+}
+.fatura-receipt-rows {
+  display: grid;
+  gap: 7px;
+}
+.fatura-receipt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 12px;
   color: var(--ds-slate);
 }
-.fatura-summary-row strong,
-.fatura-summary-row b {
+.fatura-receipt-row b {
   color: var(--ds-ink);
-  text-align: right;
-  overflow-wrap: anywhere;
+  font-weight: 700;
 }
-.fatura-summary-row--recipient { margin-bottom: 10px; }
-.fatura-summary-row--recipient strong { line-height: 1.32; }
-.fatura-summary-row--total {
-  font-size: 15px;
-  grid-template-columns: 1fr auto;
+.fatura-receipt-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 8px;
-  margin-bottom: 0;
+  margin-bottom: 14px;
 }
-.fatura-summary-divider {
-  height: 1px;
-  background: var(--ds-line);
-  margin: 10px 0;
+.fatura-receipt-total__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+.fatura-receipt-total small {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+}
+.fatura-receipt-total__amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ds-primary, #4338ca);
+}
+.fatura-receipt-trust-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #166534;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+/* Wizard Footer Action Buttons */
+.fatura-wizard-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px calc(12px + var(--ds-safe-bottom, 16px));
+  border-top: 1px solid var(--ds-line, #e2e8f0);
+  background: var(--ds-surface, #ffffff);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+}
+.fatura-wizard-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--ds-line, #e2e8f0);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--ds-slate, #475569);
+  font: 700 12.5px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.fatura-wizard-back-btn:active {
+  background: #f1f5f9;
+}
+.fatura-wizard-next-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--ds-primary, #4338ca), #6366f1);
+  color: #ffffff;
+  font: 700 13px var(--ds-font-main);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(67, 56, 202, 0.24);
+  transition: all 0.2s ease;
+}
+.fatura-wizard-next-btn:active {
+  transform: scale(0.97);
+}
+.fatura-wizard-draft-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--ds-line, #e2e8f0);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--ds-ink, #0f172a);
+  font: 700 12px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+.fatura-wizard-draft-btn:active {
+  background: #f1f5f9;
+}
+.fatura-wizard-send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  font: 700 13px var(--ds-font-main);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.28);
+  transition: all 0.2s ease;
+}
+.fatura-wizard-send-btn:active {
+  transform: scale(0.97);
+}
+
+/* Genel Buton Yardımcıları (Modallarda kullanılmak üzere) */
+.fatura-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--ds-primary, #4338ca), #6366f1);
+  color: #ffffff;
+  font: 700 13px var(--ds-font-main);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(67, 56, 202, 0.24);
+  transition: all 0.2s ease;
+}
+.fatura-primary-btn:active {
+  transform: scale(0.97);
+}
+.fatura-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--ds-line, #e2e8f0);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--ds-slate, #475569);
+  font: 700 12.5px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.fatura-secondary-btn:active {
+  background: #f1f5f9;
 }
 
 /* Skeleton & Yükleme */

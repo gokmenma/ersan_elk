@@ -120,6 +120,17 @@ export const requestsApi = {
     })
   },
 
+  async talepBeklemeyeAl({ id }) {
+    return await request('post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'talep-beklemeye-al',
+        id,
+      }),
+    })
+  },
+
   async talepCozuldu({ id, aciklama }) {
     return await request('post', {
       method: 'POST',

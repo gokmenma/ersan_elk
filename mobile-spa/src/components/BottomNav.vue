@@ -29,6 +29,7 @@ import {
   ReceiptText,
   Send,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   UserCheck,
   UsersRound,
@@ -36,6 +37,7 @@ import {
   Wrench,
   X,
   XCircle,
+  ZapOff,
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 import {
@@ -61,6 +63,12 @@ import {
   toggleKmDrawer,
   setKmTab,
 } from '../services/km-onaylari.js'
+import {
+  reportsState,
+  closeReportsDrawer,
+  toggleReportsDrawer,
+  setReportsTab,
+} from '../services/reports.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,7 +111,11 @@ const showFaturaDrawer = computed(() => isFaturaPage.value && faturaState.drawer
 const isKmPage = computed(() => route.path === '/km-onaylari' || route.path === '/km-onay')
 const showKmDrawer = computed(() => isKmPage.value && kmState.drawerOpen)
 
+const isRaporlarPage = computed(() => route.path === '/raporlar')
+const showRaporlarDrawer = computed(() => isRaporlarPage.value && reportsState.drawerOpen)
+
 const aracScrollEl = ref(null)
+const reportsScrollEl = ref(null)
 
 function handleAracTabClick(tab) {
   setAracTab(tab)
@@ -125,6 +137,26 @@ watch(() => aracState.activeTab, () => {
   })
 } )
 
+function handleReportsTabClick(tab) {
+  setReportsTab(tab)
+  nextTick(() => {
+    scrollActiveReportsTab()
+  })
+}
+
+function scrollActiveReportsTab() {
+  const activeEl = reportsScrollEl.value?.querySelector('.nav-link.is-active')
+  if (activeEl) {
+    activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }
+}
+
+watch(() => reportsState.activeTab, () => {
+  nextTick(() => {
+    scrollActiveReportsTab()
+  })
+})
+
 watch(() => route.path, (newPath) => {
   if (newPath !== '/talepler') {
     requestsState.drawerOpen = false
@@ -138,6 +170,11 @@ watch(() => route.path, (newPath) => {
   if (newPath !== '/km-onaylari' && newPath !== '/km-onay') {
     kmState.drawerOpen = false
   }
+  if (newPath !== '/raporlar') {
+    reportsState.drawerOpen = false
+  } else {
+    reportsState.drawerOpen = true
+  }
 })
 
 function handleNavClick(item, event) {
@@ -148,6 +185,14 @@ function handleNavClick(item, event) {
       requestsState.drawerOpen = true
     } else {
       toggleRequestsDrawer()
+    }
+  } else if (item.to === '/raporlar') {
+    event?.preventDefault?.()
+    if (route.path !== '/raporlar') {
+      router.push('/raporlar')
+      reportsState.drawerOpen = true
+    } else {
+      toggleReportsDrawer()
     }
   }
 }
@@ -263,12 +308,12 @@ async function handleLogout() {
     </div>
   </Transition>
 
-  <nav class="bottom-nav" :class="{ 'has-drawer': showTaleplerDrawer || showAracDrawer || showFaturaDrawer || showKmDrawer }" aria-label="Ana gezinme">
+  <nav class="bottom-nav" :class="{ 'has-drawer': showTaleplerDrawer || showAracDrawer || showFaturaDrawer || showKmDrawer || showRaporlarDrawer }" aria-label="Ana gezinme">
     <div class="bottom-nav__inner">
       <!-- Normal Navigasyon Sekmeleri -->
       <Transition name="nav-slide-tabs">
         <div
-          v-if="!showTaleplerDrawer && !showAracDrawer && !showFaturaDrawer && !showKmDrawer"
+          v-if="!showTaleplerDrawer && !showAracDrawer && !showFaturaDrawer && !showKmDrawer && !showRaporlarDrawer"
           class="bottom-nav__tabs"
           :style="{ '--nav-count': visibleItems.length }"
         >
@@ -290,7 +335,7 @@ async function handleLogout() {
               <span class="nav-label">{{ item.label }}</span>
             </button>
             <button
-              v-else-if="item.to === '/talepler'"
+              v-else-if="item.to === '/talepler' || item.to === '/raporlar'"
               type="button"
               class="nav-link"
               :class="{ 'is-active': isItemActive(item) }"
@@ -663,6 +708,97 @@ async function handleLogout() {
             aria-label="KM Onayları menüsünü kapat"
             title="Kapat"
             @click="closeKmDrawer"
+          >
+            <span class="nav-icon">
+              <X :size="22" :stroke-width="2.3" />
+            </span>
+            <span class="nav-label">Kapat</span>
+          </button>
+        </div>
+      </Transition>
+
+      <!-- Raporlar / İş Türleri Çekmecesi (Talepler / KM Stili) -->
+      <Transition name="nav-slide-drawer">
+        <div v-if="showRaporlarDrawer" class="bottom-nav__tabs reports-nav-tabs">
+          <div ref="reportsScrollEl" class="reports-nav-tabs__scroll">
+            <!-- 1. Endeks Okuma -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': reportsState.activeTab === 'okuma' }"
+              aria-label="Endeks Okuma"
+              @click="handleReportsTabClick('okuma')"
+            >
+              <span class="nav-icon">
+                <Gauge :size="21" :stroke-width="reportsState.activeTab === 'okuma' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Okuma</span>
+            </button>
+
+            <!-- 2. Kesme / Açma -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': reportsState.activeTab === 'kesme' }"
+              aria-label="Kesme Açma"
+              @click="handleReportsTabClick('kesme')"
+            >
+              <span class="nav-icon">
+                <ZapOff :size="21" :stroke-width="reportsState.activeTab === 'kesme' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Kesme</span>
+            </button>
+
+            <!-- 3. Sayaç Sökme Takma -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': reportsState.activeTab === 'sokme_takma' }"
+              aria-label="Sayaç Sökme Takma"
+              @click="handleReportsTabClick('sokme_takma')"
+            >
+              <span class="nav-icon">
+                <Wrench :size="21" :stroke-width="reportsState.activeTab === 'sokme_takma' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Sayaç</span>
+            </button>
+
+            <!-- 4. Mühürleme -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': reportsState.activeTab === 'muhurleme' }"
+              aria-label="Mühürleme"
+              @click="handleReportsTabClick('muhurleme')"
+            >
+              <span class="nav-icon">
+                <ShieldCheck :size="21" :stroke-width="reportsState.activeTab === 'muhurleme' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Mühür</span>
+            </button>
+
+            <!-- 5. Kaçak Kontrol -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': reportsState.activeTab === 'kacakkontrol' }"
+              aria-label="Kaçak Kontrol"
+              @click="handleReportsTabClick('kacakkontrol')"
+            >
+              <span class="nav-icon">
+                <ShieldAlert :size="21" :stroke-width="reportsState.activeTab === 'kacakkontrol' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Kaçak</span>
+            </button>
+          </div>
+
+          <!-- Sabit Kapat Butonu -->
+          <button
+            type="button"
+            class="nav-link nav-link--close reports-nav-tabs__close"
+            aria-label="İş türleri menüsünü kapat"
+            title="Kapat"
+            @click="closeReportsDrawer"
           >
             <span class="nav-icon">
               <X :size="22" :stroke-width="2.3" />

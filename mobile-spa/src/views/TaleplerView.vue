@@ -5,25 +5,31 @@ import {
   Building2,
   Calendar,
   CalendarCheck,
+  CalendarClock,
   CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
   Clock3,
   FileCheck2,
+  FileDown,
   Filter,
   History,
   Info,
   Layers,
   MessageSquare,
+  Play,
   RefreshCw,
+  RotateCw,
   Search,
+  SlidersHorizontal,
   Trash2,
   User,
   Wallet,
   X,
   XCircle,
   Zap,
+  ZoomIn,
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
 import {
@@ -156,13 +162,72 @@ const currentList = computed(() => {
   })
 })
 
+// Yardımcı Hesaplayıcılar
+function calculateDays(startStr, endStr) {
+  if (!startStr || !endStr) return 0
+  const start = new Date(startStr)
+  const end = new Date(endStr)
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0
+  const diffTime = Math.abs(end - start)
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+}
+
+function formatDateDMY(dateStr) {
+  if (!dateStr) return ''
+  const parts = dateStr.split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}.${parts[1]}.${parts[0]}`
+  }
+  return dateStr
+}
+
+function updateIzinOtoMesaj() {
+  const start = formIzinOnay.value.farkli_baslangic
+  const end = formIzinOnay.value.farkli_bitis
+  const days = calculateDays(start, end)
+  formIzinOnay.value.calculated_days = days
+  if (days > 0) {
+    const startFmt = formatDateDMY(start)
+    const endFmt = formatDateDMY(end)
+    formIzinOnay.value.aciklama = `İzin talebiniz ${startFmt} - ${endFmt} tarihleri arasında ${days} gün olarak uygun görülmüştür.`
+  }
+}
+
+function updateAvansOtoMesaj() {
+  if (formAvansOnay.value.farkli_tutar) {
+    formAvansOnay.value.aciklama = `Avans talebiniz ${formAvansOnay.value.farkli_tutar} TL olarak uygun görülmüştür.`
+  }
+}
+
+function setAvansOnayTipi(tip) {
+  formAvansOnay.value.onay_tipi = tip
+  if (tip === 'farkli') {
+    if (!formAvansOnay.value.farkli_tutar && activeItem.value?.amount) {
+      formAvansOnay.value.farkli_tutar = String(activeItem.value.amount)
+    }
+    updateAvansOtoMesaj()
+  } else {
+    formAvansOnay.value.aciklama = ''
+  }
+}
+
+function setIzinOnayTipi(tip) {
+  formIzinOnay.value.onay_tipi = tip
+  if (tip === 'farkli') {
+    updateIzinOtoMesaj()
+  } else {
+    formIzinOnay.value.aciklama = ''
+  }
+}
+
 // Modal Açıcılar
-function openAvansOnayModal(item) {
+function openAvansOnayModal(item, mode = 'ayni') {
   activeItem.value = item
+  const initialTutar = item.amount ? String(item.amount) : ''
   formAvansOnay.value = {
-    onay_tipi: 'ayni',
-    farkli_tutar: '',
-    aciklama: '',
+    onay_tipi: mode,
+    farkli_tutar: initialTutar,
+    aciklama: mode === 'farkli' ? `Avans talebiniz ${initialTutar} TL olarak uygun görülmüştür.` : '',
     hesaba_isle: true,
   }
   modalType.value = 'avansOnay'
@@ -174,13 +239,17 @@ function openAvansRedModal(item) {
   modalType.value = 'avansRed'
 }
 
-function openIzinOnayModal(item) {
+function openIzinOnayModal(item, mode = 'ayni') {
   activeItem.value = item
   formIzinOnay.value = {
-    onay_tipi: 'ayni',
+    onay_tipi: mode,
     farkli_baslangic: item.start_date_raw || '',
     farkli_bitis: item.end_date_raw || '',
+    calculated_days: item.days || 0,
     aciklama: '',
+  }
+  if (mode === 'farkli') {
+    updateIzinOtoMesaj()
   }
   modalType.value = 'izinOnay'
 }
@@ -211,6 +280,10 @@ function openDetailModal(item) {
 function closeModal() {
   modalType.value = null
   activeItem.value = null
+}
+
+function openPhoto(url) {
+  if (url) window.open(url, '_blank')
 }
 
 // API Çağrıları
@@ -278,18 +351,41 @@ async function submitIzinRed() {
   }
 }
 
-async function submitTalepIslemeAl(item) {
-  actionBusy.value = true
-  try {
-    const res = await requestsApi.talepIslemeAl({ id: item.id })
-    showToast(res.message || 'Talep işleme alındı.')
-    await loadData()
-  } catch (err) {
-    alert(err.message || 'İşlem tamamlanamadı.')
-  } finally {
-    actionBusy.value = false
+async function toggleTalepIslemeAl(item) {
+  if (item.status === 'islemde') {
+    if (!confirm(`"${item.title || item.name}" talebi şu an işlemde. Tekrar beklemeye almak istiyor musunuz?`)) return
+    actionBusy.value = true
+    try {
+      const res = await requestsApi.talepBeklemeyeAl({ id: item.id })
+      showToast(res.message || 'Talep tekrar beklemede durumuna alındı.')
+      if (modalType.value === 'detail') {
+        closeModal()
+      }
+      await loadData()
+    } catch (err) {
+      alert(err.message || 'İşlem tamamlanamadı.')
+    } finally {
+      actionBusy.value = false
+    }
+  } else {
+    if (!confirm(`"${item.title || item.name}" talebini işleme almak istiyor musunuz?`)) return
+    actionBusy.value = true
+    try {
+      const res = await requestsApi.talepIslemeAl({ id: item.id })
+      showToast(res.message || 'Talep işleme alındı.')
+      if (modalType.value === 'detail') {
+        closeModal()
+      }
+      await loadData()
+    } catch (err) {
+      alert(err.message || 'İşlem tamamlanamadı.')
+    } finally {
+      actionBusy.value = false
+    }
   }
 }
+
+const submitTalepIslemeAl = toggleTalepIslemeAl
 
 async function submitTalepCoz() {
   actionBusy.value = true
@@ -458,22 +554,33 @@ async function submitSil() {
               {{ item.days }} Gün
             </span>
 
+            <!-- Avans / İzin Durum Rozeti -->
+            <template v-if="item.type !== 'talep'">
+              <span
+                v-if="item.status === 'islemde'"
+                class="status-chip status-chip--in-progress"
+              >
+                <RotateCw :size="10" class="spin-icon" />
+                <span>İşlemde</span>
+              </span>
+              <span
+                v-else-if="activeFilter === 'pending'"
+                class="status-chip status-chip--pending"
+              >
+                Beklemede
+              </span>
+            </template>
+
+            <!-- Çözülmüş veya Silinmiş Talepler İçin Rozet -->
             <span
-              v-if="activeFilter === 'pending'"
-              class="status-chip status-chip--pending"
-            >
-              Beklemede
-            </span>
-            <span
-              v-else
+              v-else-if="activeFilter !== 'pending'"
               class="status-chip"
               :class="{
-                'status-chip--approved': item.status?.toLowerCase().includes('onay') || item.status?.toLowerCase().includes('cozul'),
-                'status-chip--rejected': item.status?.toLowerCase().includes('red'),
+                'status-chip--approved': item.status?.toLowerCase().includes('cozul'),
                 'status-chip--deleted': activeFilter === 'deleted',
               }"
             >
-              {{ item.status }}
+              {{ item.status === 'cozuldu' ? 'Çözüldü' : item.status }}
             </span>
           </div>
         </div>
@@ -509,17 +616,28 @@ async function submitSil() {
             <button
               type="button"
               class="act-btn act-btn--reject"
+              title="Avansı Reddet"
               @click="openAvansRedModal(item)"
             >
-              <X :size="14" />
+              <X :size="13" />
               <span>Reddet</span>
             </button>
             <button
               type="button"
-              class="act-btn act-btn--approve"
-              @click="openAvansOnayModal(item)"
+              class="act-btn act-btn--partial-amber"
+              title="Kısmi Tutar Belirle"
+              @click="openAvansOnayModal(item, 'farkli')"
             >
-              <Check :size="14" />
+              <SlidersHorizontal :size="13" />
+              <span>Kısmi Onay</span>
+            </button>
+            <button
+              type="button"
+              class="act-btn act-btn--approve"
+              title="Aynı Tutarla Onayla"
+              @click="openAvansOnayModal(item, 'ayni')"
+            >
+              <Check :size="13" />
               <span>Onayla</span>
             </button>
           </template>
@@ -529,17 +647,28 @@ async function submitSil() {
             <button
               type="button"
               class="act-btn act-btn--reject"
+              title="İzni Reddet"
               @click="openIzinRedModal(item)"
             >
-              <X :size="14" />
+              <X :size="13" />
               <span>Reddet</span>
             </button>
             <button
               type="button"
-              class="act-btn act-btn--primary"
-              @click="openIzinOnayModal(item)"
+              class="act-btn act-btn--partial-blue"
+              title="Farklı Tarihlerle Kısmi Onayla"
+              @click="openIzinOnayModal(item, 'farkli')"
             >
-              <Check :size="14" />
+              <CalendarClock :size="13" />
+              <span>Kısmi Onay</span>
+            </button>
+            <button
+              type="button"
+              class="act-btn act-btn--primary"
+              title="Aynı Tarihlerle Onayla"
+              @click="openIzinOnayModal(item, 'ayni')"
+            >
+              <Check :size="13" />
               <span>Onayla</span>
             </button>
           </template>
@@ -547,21 +676,24 @@ async function submitSil() {
           <!-- Saha Talep Butonları -->
           <template v-else-if="item.type === 'talep'">
             <button
-              v-if="item.status !== 'islemde'"
               type="button"
-              class="act-btn act-btn--neutral"
+              class="act-btn act-btn--in-progress act-btn--compact"
+              :class="{ 'act-btn--in-progress-active': item.status === 'islemde' }"
               :disabled="actionBusy"
-              @click="submitTalepIslemeAl(item)"
+              :title="item.status === 'islemde' ? 'Talep işlemde (Tekrar tıklayarak beklemeye alabilirsiniz)' : 'Talebi İşleme Al'"
+              @click="toggleTalepIslemeAl(item)"
             >
-              <Clock3 :size="14" />
+              <RotateCw v-if="item.status === 'islemde'" :size="12" class="spin-icon" />
+              <Play v-else :size="12" />
               <span>İşleme Al</span>
             </button>
             <button
               type="button"
               class="act-btn act-btn--purple"
+              title="Talebi Çözüldü Olarak İşaretle"
               @click="openTalepCozModal(item)"
             >
-              <Check :size="14" />
+              <CheckCircle2 :size="13" />
               <span>Çözüldü</span>
             </button>
           </template>
@@ -597,14 +729,14 @@ async function submitSil() {
             <button
               type="button"
               :class="{ active: formAvansOnay.onay_tipi === 'ayni' }"
-              @click="formAvansOnay.onay_tipi = 'ayni'"
+              @click="setAvansOnayTipi('ayni')"
             >
               Aynı Tutar ({{ activeItem?.amount_formatted }})
             </button>
             <button
               type="button"
               :class="{ active: formAvansOnay.onay_tipi === 'farkli' }"
-              @click="formAvansOnay.onay_tipi = 'farkli'"
+              @click="setAvansOnayTipi('farkli')"
             >
               Farklı Tutar
             </button>
@@ -618,6 +750,7 @@ async function submitSil() {
               placeholder="0,00"
               required
               class="form-input"
+              @input="updateAvansOtoMesaj"
             />
           </div>
 
@@ -642,7 +775,7 @@ async function submitSil() {
           <div class="modal-buttons">
             <button type="button" class="btn-cancel" @click="closeModal">İptal</button>
             <button type="submit" class="btn-submit btn-submit--success" :disabled="actionBusy">
-              {{ actionBusy ? 'İşleniyor...' : 'Onayla' }}
+              {{ actionBusy ? 'İşleniyor...' : (formAvansOnay.onay_tipi === 'farkli' ? 'Kısmi Onayla' : 'Onayla') }}
             </button>
           </div>
         </form>
@@ -694,14 +827,14 @@ async function submitSil() {
             <button
               type="button"
               :class="{ active: formIzinOnay.onay_tipi === 'ayni' }"
-              @click="formIzinOnay.onay_tipi = 'ayni'"
+              @click="setIzinOnayTipi('ayni')"
             >
               Aynı Tarih ({{ activeItem?.start_date }} - {{ activeItem?.end_date }})
             </button>
             <button
               type="button"
               :class="{ active: formIzinOnay.onay_tipi === 'farkli' }"
-              @click="formIzinOnay.onay_tipi = 'farkli'"
+              @click="setIzinOnayTipi('farkli')"
             >
               Farklı Tarihler
             </button>
@@ -710,12 +843,17 @@ async function submitSil() {
           <div v-if="formIzinOnay.onay_tipi === 'farkli'" class="date-pickers-row">
             <div class="form-group-field">
               <label>BAŞLANGIÇ</label>
-              <input v-model="formIzinOnay.farkli_baslangic" type="date" required class="form-input" />
+              <input v-model="formIzinOnay.farkli_baslangic" type="date" required class="form-input" @change="updateIzinOtoMesaj" />
             </div>
             <div class="form-group-field">
               <label>BİTİŞ</label>
-              <input v-model="formIzinOnay.farkli_bitis" type="date" required class="form-input" />
+              <input v-model="formIzinOnay.farkli_bitis" type="date" required class="form-input" @change="updateIzinOtoMesaj" />
             </div>
+          </div>
+
+          <div v-if="formIzinOnay.onay_tipi === 'farkli' && formIzinOnay.calculated_days > 0" class="duration-live-badge">
+            <CalendarClock :size="14" />
+            <span>Yeni Onaylanan Süre: <strong>{{ formIzinOnay.calculated_days }} Gün</strong></span>
           </div>
 
           <div class="form-group-field">
@@ -731,7 +869,7 @@ async function submitSil() {
           <div class="modal-buttons">
             <button type="button" class="btn-cancel" @click="closeModal">İptal</button>
             <button type="submit" class="btn-submit btn-submit--primary" :disabled="actionBusy">
-              {{ actionBusy ? 'İşleniyor...' : 'Onayla' }}
+              {{ actionBusy ? 'İşleniyor...' : (formIzinOnay.onay_tipi === 'farkli' ? 'Kısmi Onayla' : 'Onayla') }}
             </button>
           </div>
         </form>
@@ -884,13 +1022,27 @@ async function submitSil() {
               <p>{{ activeItem.description }}</p>
             </div>
 
+            <!-- Resmî İzin Formu İndirme Butonu -->
+            <a
+              v-if="activeItem?.type === 'izin'"
+              :href="`/mobile-spa/public/api/requests.php?action=izin-formu-docx-indir&id=${activeItem.id}`"
+              target="_blank"
+              class="sheet-doc-btn"
+            >
+              <FileDown :size="16" />
+              <span>Resmî İzin Formunu İndir (Word DOCX)</span>
+            </a>
+
             <div v-if="activeItem?.approval_note || activeItem?.solution" class="sheet-box box-success">
-              <span class="sheet-box-label">Yönetici Çözüm Notu</span>
+              <span class="sheet-box-label">Yönetici Çözüm Notu / Açıklama</span>
               <p>{{ activeItem.approval_note || activeItem.solution }}</p>
             </div>
 
-            <div v-if="activeItem?.photo" class="sheet-photo">
-              <span class="sheet-box-label">Ekli Fotoğraf</span>
+            <div v-if="activeItem?.photo" class="sheet-photo" @click="openPhoto(activeItem.photo)">
+              <div class="sheet-photo-header">
+                <span class="sheet-box-label">Ekli Fotoğraf</span>
+                <span class="sheet-photo-hint"><ZoomIn :size="12" /> Büyütmek için dokunun</span>
+              </div>
               <img :src="activeItem.photo" alt="Fotoğraf" />
             </div>
 
@@ -898,6 +1050,100 @@ async function submitSil() {
               <User :size="14" />
               <span>İşlem Yapan: <strong>{{ activeItem.solver_name }}</strong></span>
               <span v-if="activeItem?.approval_date">({{ activeItem.approval_date }})</span>
+            </div>
+
+            <!-- Bekleyen Kayıtlar İçin Alt Hızlı Aksiyon Butonları -->
+            <div
+              v-if="activeFilter === 'pending' || activeItem?.filter_mode === 'pending' || activeItem?.status === 'beklemede' || activeItem?.status === 'islemde'"
+              class="sheet-actions-wrap"
+            >
+              <!-- Avans Butonları -->
+              <template v-if="activeItem?.type === 'avans'">
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--reject"
+                  @click="openAvansRedModal(activeItem)"
+                >
+                  <X :size="15" />
+                  <span>Reddet</span>
+                </button>
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--partial-amber"
+                  @click="openAvansOnayModal(activeItem, 'farkli')"
+                >
+                  <SlidersHorizontal :size="15" />
+                  <span>Kısmi Onay</span>
+                </button>
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--approve"
+                  @click="openAvansOnayModal(activeItem, 'ayni')"
+                >
+                  <Check :size="15" />
+                  <span>Onayla</span>
+                </button>
+              </template>
+
+              <!-- İzin Butonları -->
+              <template v-else-if="activeItem?.type === 'izin'">
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--reject"
+                  @click="openIzinRedModal(activeItem)"
+                >
+                  <X :size="15" />
+                  <span>Reddet</span>
+                </button>
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--partial-blue"
+                  @click="openIzinOnayModal(activeItem, 'farkli')"
+                >
+                  <CalendarClock :size="15" />
+                  <span>Kısmi Onay</span>
+                </button>
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--primary"
+                  @click="openIzinOnayModal(activeItem, 'ayni')"
+                >
+                  <Check :size="15" />
+                  <span>Onayla</span>
+                </button>
+              </template>
+
+              <!-- Saha Talep Butonları -->
+              <template v-else-if="activeItem?.type === 'talep'">
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--in-progress sheet-act-btn--compact"
+                  :class="{ 'sheet-act-btn--in-progress-active': activeItem?.status === 'islemde' }"
+                  :disabled="actionBusy"
+                  :title="activeItem?.status === 'islemde' ? 'Talep işlemde (Tekrar tıklayarak beklemeye alabilirsiniz)' : 'Talebi İşleme Al'"
+                  @click="toggleTalepIslemeAl(activeItem)"
+                >
+                  <RotateCw v-if="activeItem?.status === 'islemde'" :size="14" class="spin-icon" />
+                  <Play v-else :size="14" />
+                  <span>İşleme Al</span>
+                </button>
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--purple"
+                  @click="openTalepCozModal(activeItem)"
+                >
+                  <CheckCircle2 :size="15" />
+                  <span>Çözüldü</span>
+                </button>
+                <button
+                  type="button"
+                  class="sheet-act-btn sheet-act-btn--delete"
+                  @click="openSilModal(activeItem)"
+                >
+                  <Trash2 :size="15" />
+                  <span>Sil</span>
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -1287,9 +1533,19 @@ async function submitSil() {
 }
 
 .status-chip--pending { background: var(--ds-surface-subtle); color: var(--ds-muted); }
+.status-chip--in-progress { background: #fef3c7; color: #b45309; }
 .status-chip--approved { background: var(--ds-emerald-soft); color: var(--ds-emerald-ink); }
 .status-chip--rejected { background: var(--ds-danger-soft); color: var(--ds-danger-ink); }
 .status-chip--deleted { background: var(--ds-danger-soft); color: var(--ds-danger-ink); }
+
+.spin-icon {
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .t-card__body {
   padding: 0 16px 14px;
@@ -1373,6 +1629,49 @@ async function submitSil() {
 .act-btn--reject {
   color: var(--ds-danger);
   background: var(--ds-danger-soft);
+}
+
+.act-btn--partial-amber {
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.act-btn--partial-blue {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.act-btn--in-progress {
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.act-btn--in-progress:active {
+  background: #bbf7d0;
+  transform: scale(0.97);
+}
+
+.act-btn--in-progress-active {
+  color: #166534;
+  background: #bbf7d0;
+  border: 1.5px solid #22c55e;
+  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.2);
+}
+
+.act-btn--in-progress-active:active {
+  background: #86efac;
+}
+
+.act-btn--compact {
+  flex: 0 0 auto !important;
+  height: 34px !important;
+  padding: 0 14px !important;
+  font-size: 11px !important;
 }
 
 .act-btn--neutral {
@@ -1742,10 +2041,64 @@ async function submitSil() {
   color: var(--ds-emerald-ink);
 }
 
+.duration-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-blue-soft);
+  color: var(--ds-blue-ink);
+  font: 600 11px var(--ds-font-mono);
+}
+
+.sheet-doc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: #eff6ff;
+  border: 1px dashed #3b82f6;
+  color: #1d4ed8;
+  font: 700 12px var(--ds-font-main);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.sheet-doc-btn:active {
+  background: #dbeafe;
+  transform: scale(0.98);
+}
+
+.sheet-photo {
+  cursor: pointer;
+  padding: 12px 14px;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: 16px;
+  background: var(--ds-surface-subtle);
+}
+
+.sheet-photo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.sheet-photo-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-muted);
+  font: 600 10px var(--ds-font-mono);
+}
+
 .sheet-photo img {
   width: 100%;
-  border-radius: 14px;
-  margin-top: 6px;
+  border-radius: 12px;
+  display: block;
 }
 
 .sheet-solver-badge {
@@ -1757,5 +2110,95 @@ async function submitSil() {
   color: var(--ds-muted);
   background: var(--ds-surface-subtle);
   font-size: 11px;
+}
+
+/* Bottom Sheet Alt Hızlı Aksiyon Butonları */
+.sheet-actions-wrap {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ds-border-subtle);
+}
+
+.sheet-act-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  font: 700 12px var(--ds-font-main);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.sheet-act-btn:active {
+  transform: scale(0.97);
+}
+
+.sheet-act-btn--reject {
+  color: var(--ds-danger);
+  background: var(--ds-danger-soft);
+}
+
+.sheet-act-btn--partial-amber {
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.sheet-act-btn--partial-blue {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.sheet-act-btn--approve,
+.sheet-act-btn--primary,
+.sheet-act-btn--purple {
+  color: var(--ds-surface);
+  background: var(--ds-primary);
+  box-shadow: 0 2px 8px rgba(24, 28, 36, 0.2);
+}
+
+.sheet-act-btn--in-progress {
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sheet-act-btn--in-progress:active {
+  background: #bbf7d0;
+  transform: scale(0.97);
+}
+
+.sheet-act-btn--in-progress-active {
+  color: #166534;
+  background: #bbf7d0;
+  border: 1.5px solid #22c55e;
+  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.2);
+}
+
+.sheet-act-btn--in-progress-active:active {
+  background: #86efac;
+}
+
+.sheet-act-btn--compact {
+  flex: 0 0 auto !important;
+  height: 40px !important;
+  padding: 0 16px !important;
+  font-size: 12px !important;
+}
+
+.sheet-act-btn--delete {
+  width: 44px;
+  flex: 0 0 44px;
+  color: var(--ds-danger);
+  background: var(--ds-danger-soft);
 }
 </style>

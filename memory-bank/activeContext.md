@@ -1,6 +1,183 @@
 # Active Context
 
-## Mobil SPA Puantaj — Personel Kartı İçi Haftalık Kapsül Takvimi ve Ay Görünümü Entegrasyonu (2026-10-16)
+## Mobil SPA Saha Talepleri: Açık Yeşil Kompakt "İşleme Al" Butonu ve Üst Rozet Entegrasyonu (2026-10-16)
+- **Kullanıcı Talebi**: "işlemde işlemini yeşil butonda yapalım, yukarıdakinin işlevini yani, biraz daha küçük olsun ve işleme al yazsın" (gönderilen görselde üstteki rozet ile alttaki yeşil buton eşleştirilmiş).
+- **Yapılan İyileştirmeler**:
+  - `TaleplerView.vue`:
+    1. **Üst Rozet Temizliği**: Genel talepler (`item.type === 'talep'`) için kartın sağ üst köşesindeki turuncu `İşlemde` rozeti kaldırıldı; durumun yönetimi ve gösterimi doğrudan yeşil butona devredildi.
+    2. **Kompakt Boyut (`.act-btn--compact`)**: "İşleme Al" butonu Çözüldü butonundan daha küçük ve kibar olacak şekilde `flex: 0 0 auto`, `height: 34px`, `padding: 0 14px`, `font-size: 11px` ile boyutlandırıldı. "Çözüldü" butonu ise `flex: 1` ana aksiyon genişliğinde korundu.
+    3. **Metin ve Durum Gösterimi**: Buton metni her zaman **"İşleme Al"** olarak korundu. Talep `islemde` iken açık yeşil parlak zemin (`#bbf7d0`), yeşil kenarlık (`#22c55e`) ve döner ikon (`RotateCw`) ile aktif durumunu gösterir; tıklandığında talep tekrar beklemeye alınabilir veya işleme alınabilir (çift yönlü toggle).
+    4. **Detay Bottom Sheet**: Aynı kompakt yeşil buton ve toggle mekanizması detay çekmecesinde de uygulandı.
+    5. **Backend**: `mobile-spa/public/api/requests.php` içine `talep-beklemeye-al` uç noktası eklendi.
+  - `npm run build` ile 0 hata ile derlendi.
+
+## Mobil SPA Raporlar Modülü: Kullanıcı Geri Bildirimi Revizyonları (2026-10-16)
+- **Kullanıcı Talepleri**:
+  1. "üstteki hızlı aralık seçmeyi kaldır, zaten dönem seçimi var"
+  2. "2-talepler sayfasındaki gibi sayfaya özel navbar yapalım, iş türlerini (endeks okuma, kesme açma vs.)"
+  3. "personel kartı da bölgesel dağılım kartı gibi olsun"
+  4. "bölge seçimi acordion şeklinde olsun"
+- **Uygulanan Değişiklikler ve Mimari**:
+  1. **Hızlı Aralık Kaldırıldı**:
+     - Sayfanın üstündeki yatay `Bugün`, `Dün`, `Bu Hafta`, `Bu Ay`, `Geçen Ay`, `Ağustos` hap butonları kaldırıldı.
+     - Yerine doğrudan dönem seçimi (`01.08.2026 – 31.08.2026 [Değiştir v]`) kartı bırakıldı; tıklandığında ay ve tarih seçim sheet'i açılıyor.
+  2. **Sayfaya Özel Bottom Navbar (Talepler / KM Onayları Tarzı)**:
+     - Sayfa içi yatay kayan sekmeler (`report-tab-pill`) kaldırılarak `BottomNav.vue` içine entegre edildi.
+     - `BottomNav.vue`:
+       - `showRaporlarDrawer`: Kullanıcı `/raporlar` sayfasına geldiğinde alt dock bar otomatik olarak 5 iş türü çekmecesine dönüşüyor (`reports-nav-tabs`):
+         - 1. **Okuma** (`Gauge`), 2. **Kesme** (`ZapOff`), 3. **Sayaç** (`Wrench`), 4. **Mühür** (`ShieldCheck`), 5. **Kaçak** (`ShieldAlert`) ve 6. **Kapat** (`X`).
+       - Kapat butonuna basıldığında standart 5'li navigasyona dönülür; tekrar açmak için ya alt menüdeki `Raporlar` ikonuna dokunulur ya da sayfa üzerinde yüzen `.floating-reports-dock-btn` ("İş Türleri") butonuna basılır.
+       - `design-system.css` içerisine `.reports-nav-tabs`, `.reports-nav-tabs__scroll`, `.reports-nav-tabs__close` ve `.floating-reports-dock-btn` eklendi.
+  3. **Bölge Akordiyon Mimarisi (`region-accordion-card`)**:
+     - Bölgeler ayrı bir kart olmaktan çıkarılıp interaktif akordiyon yapısına geçirildi.
+     - **Akordiyon Başlığı**: Sol tarafta renkli `MapPin` ikonu, bölge adı, ekip kadro sayısı rozeti (`X / Y Ekip`), bölge genel payı (`%Pay`); sağ tarafta bölgenin toplam işlem sayısı ve dönen `ChevronDown` oku. Altında bölgenin genel operasyon payı ilerleme çubuğu.
+     - Tıklandığında pürüzsüz açılıp kapanır; tek tıkla "Tümünü Aç / Kapat" kontrolü ve canlı arama yapıldığında aramayla eşleşen bölgelerin otomatik açılması sağlandı.
+  4. **Bölgesel Dağılım Formatında Personel Kartları (`personnel-bar-card`)**:
+     - Her personelin kartı, kullanıcının beğendiği bölgesel dağılım çubuğu tasarımına dönüştürüldü:
+       - Üst Satır: Sıralama madalyası (#1 altın, #2 gümüş, #3 bronz kupa), 32px avatar/baş harfler, kalın personel adı, ekip hapı (`EKİP-136`), sağ tarafta kalın işlem sayısı (`1.050 Okuma`) ve detay oku.
+       - İlerleme Çubuğu: Personelin o bölge içindeki üretim hacmini temsil eden zarif renkli ilerleme çubuğu (`.pr-track` ve `.region-fill`).
+       - Alt Kırılımlar: Kesme/açma, sayaç sökme ve mühürleme için renkli mini iş türü etiketleri (`Ödeme: 291`, `Aparatla Kesim: 583`, `Açma: 411` vb.).
+       - Tıklandığında günlük icmal bottom sheet çekmecesi açılır.
+  5. **Derleme & Doğrulama**:
+     - `npm run build` ile 0 hata ile derlendi (`dist/assets/index-bIAJJn9S.js` ve `dist/assets/index-DEv26V2i.css`).
+
+## Mobil SPA E-Fatura & Finans Modülü: Akıllı Tekil Arama & UI/UX Pro Max Taslak / Fatura Kes Wizard Yenilemesi (2026-10-16)
+- **Kullanıcı Talebi**:
+  1. Taslak fatura sayfasında ve yeni fatura kes modalında kullanıcı dostu / UI/UX Pro Max düzenli bir tasarım yapılması.
+  2. E-fatura modülündeki sayfalarda hem fatura no hem de ürün/kalem için bulunan iki ayrı arama çubuğunun tek bir akıllı arama inputu haline getirilmesi.
+- **Yapılan İyileştirmeler & Çözümler**:
+  1. **Tekil Akıllı Arama Çubuğu (`.fatura-search-box--unified`)**:
+     - `searchQuery` ve `productSearchQuery` iki ayrı input iken tek bir birleşik akıllı arama çubuğuna dönüştürüldü.
+     - Tek input üzerinden Fatura No, Müşteri Ünvanı, VKN ve Ürün / Kalem satırları anında filtreleniyor.
+     - Arama metni girildiğinde sağ tarafta tek dokunuşla sıfırlayan temizleme butonu (`X`) eklendi.
+     - `loadInvoices` fonksiyonunda hem `params.search` hem de `params.urun_ara` tekil arama değerine bağlanarak backend sorgulaması eksiksiz hale getirildi.
+  2. **Modern Bento Boş Durum Tasarımı (`.fatura-empty-bento`)**:
+     - Eski düzensiz boş durum kaldırıldı. Çift halkalı claymorphic ikon kutusu (`.fatura-empty-bento__icon-wrap`), açıklayıcı başlık ve açıklama eklendi.
+     - Belirgin 46px primer CTA butonu (`+ Yeni Taslak Fatura Oluştur` / `Yeni Fatura Kes`) ve hover/active mikromimikleri uygulandı.
+     - Taslaklar sekmesine özel güven rozetleri ("Taslaklar resmiyet taşımaz", "İstediğiniz zaman düzenleyebilirsiniz") entegre edildi.
+  3. **Yeni Fatura Kesme Sihirbazı (4 Adımlı Wizard) UI/UX Pro Max Yenilemesi**:
+     - **Header & İlerleme Çubuğu**: Çift katmanlı gradient ilerleme çubuğu (`.fatura-stepper-progress-fill`) ve 4 adımlı interaktif stepper; tamamlanan adımlarda checkmark ikonu, aktif adımda primary ışıma efekti.
+     - **Adım 1 (Alıcı & Cari)**: Eksik ikon giderildi (`<Building2>` entegre edildi). Arama dropdown'unda baş harf avatarları ve yön okları eklendi. VKN/TCKN alanı içerisine entegre `[Sorgula]` mikro butonu (`.fatura-inline-btn`) ile anlık GİB mükellef sorgulama sağlandı. Mükellef rozeti soft alert olarak yeniden tasarlandı.
+     - **Adım 2 (Fatura Ayarları)**: Belge türü için açılır `<select>` yerine modern 2'li Segmented Pill (`E-Fatura` / `E-Arşiv`) getirildi. Fatura tipi için 4'lü chip butonlar (Satış, İade, Tevkifat, İstisna) ve Senaryo için chip butonlar (Ticari, Temel, E-Arşiv) entegre edildi. Seri ve Para Birimi 2 sütunlu grid formunda düzenlendi.
+     - **Adım 3 (Kalemler & KDV)**: `#1 Kalem` hap rozeti, çöp kutusu aksiyonu, hızlı ürün seçici hapları, 3 sütunlu miktar-birim-fiyat grid'i ve matrah ile KDV dahil tutarı gösteren satır toplamı kartı eklendi. Kesikli yeni kalem ekleme butonu yerleştirildi.
+     - **Adım 4 (Özet & Gönder)**: Termal/bento makbuz kartı (`.fatura-wizard-summary-card`) şeklinde alıcı, VKN, senaryo, tarih, kalem adedi dökümü; matrah, iskonto, KDV ve büyük vurgulu Genel Toplam alanı. Altında EDM Bilişim GİB güvenlik onay rozeti eklendi.
+     - **Kaydırma Çubuğu Temizliği**: Mobildeki dikey gri kaydırma çubuğu gizlendi (`scrollbar-width: none; ::-webkit-scrollbar: none;`), dokunmatik kaydırma akıcı hale getirildi.
+     - **Aksiyon Araç Çubuğu**: Geri, Taslağı Kaydet ve GİB'e Gönder butonları 44px+ dokunma hedefleri ve belirgin renk hiyerarşisiyle yeniden yapılandırıldı.
+  4. **Derleme & Doğrulama**:
+     - `mobile-spa` altında `npm run build` çalıştırıldı ve sıfır hata ile üretim paketi derlendi.
+
+- **Kullanıcı Talebi**:
+  1. Avans ve izin taleplerinde kısmi onay yapılabilmesi.
+  2. Genel talepler sekmesinde "İşleme Al" özelliğinin eklenmesi.
+  3. `@mobile` (`mobile/pages/talepler.php`) talepler sayfasındaki eksik özelliklerin `mobile-spa`'ya kazandırılması.
+- **İncelenen Referanslar**:
+  - `mobile/pages/talepler.php`: Klasik mobil Talepler sayfası (Avans: aynı tutar / farklı tutar, İzin: aynı tarih / farklı tarihler, Genel Talep: işleme al / çözüldü / sil, alt detay bottom sheet).
+  - `views/talepler/api.php`: Klasik masaüstü API ve `IzinFormuService` üzerinden Resmî Word DOCX izin formu üretimi.
+- **Uygulanan Mimari ve Özellikler**:
+  1. **Backend API (`mobile-spa/public/api/requests.php` & `dist/api/requests.php`)**:
+     - `use App\Service\IzinFormuService;` eklendi.
+     - `action=izin-formu-docx-indir` GET uç noktası eklendi; izin ID'si üzerinden doğrudan Word DOCX belgesi üretip indirme sağlandı.
+     - Silinen kayıtlarda (`filter=deleted`) `silinme_aciklama` ve `silinme_tarihi` alanları `approval_note` ve `approval_date` olarak standartlaştırıldı.
+  2. **Avans Kısmi Onay Sistemi (`TaleplerView.vue`)**:
+     - Kartlarda `[Kısmi Onay]` butonu (`SlidersHorizontal` ikonu, `.act-btn--partial-amber`).
+     - Avans Onay Modalı: "Aynı Tutar" ve "Farklı Tutar" segmentli geçişi (`setAvansOnayTipi`). Farklı tutar girildiğinde personele gönderilecek açıklama notunu otomatik oluşturma (`updateAvansOtoMesaj`: "Avans talebiniz X TL olarak uygun görülmüştür.").
+     - Buton metni dinamik olarak `Kısmi Onayla` veya `Onayla` olarak güncellendi.
+  3. **İzin Kısmi Onay Sistemi (`TaleplerView.vue`)**:
+     - Kartlarda `[Kısmi Onay]` butonu (`CalendarClock` ikonu, `.act-btn--partial-blue`).
+     - İzin Onay Modalı: "Aynı Tarih" ve "Farklı Tarihler" segmentli geçişi (`setIzinOnayTipi`). Başlangıç ve bitiş tarihi değiştirildiğinde otomatik anlık gün hesaplama (`calculateDays`), canlı süre rozeti (`.duration-live-badge`: "Yeni Onaylanan Süre: X Gün") ve otomatik personele iletilecek açıklama metni ("İzin talebiniz X - Y tarihleri arasında Z gün olarak uygun görülmüştür.").
+     - Buton metni dinamik olarak `Kısmi Onayla` veya `Onayla` olarak güncellendi.
+  4. **Genel Taleplerde "İşleme Al" ve Durum Yönetimi (`TaleplerView.vue`)**:
+     - Kartlarda talep henüz işlemde değilse `[İşleme Al]` butonu (`Play` ikonu, `.act-btn--in-progress`), onay modalı (`confirm`) ile `submitTalepIslemeAl`.
+     - İşlemdeki talepler için dönen ikona sahip canlı "İşlemde" rozeti (`RotateCw`, `.spin-icon`, `.status-chip--in-progress`).
+  5. **Detay Bottom Sheet Geliştirmeleri (`TaleplerView.vue`)**:
+     - **Resmî İzin Formu İndirme**: İzin detayında doğrudan Word DOCX belgesini indiren `[Resmî İzin Formunu İndir (Word DOCX)]` aksiyon butonu (`FileDown` ikonu, `.sheet-doc-btn`).
+     - **Fotoğraf Büyütme**: Ekli fotoğrafa dokunulduğunda tam boy yeni sekmede açma (`openPhoto`) ve "Büyütmek için dokunun" ipucu (`ZoomIn` ikonu).
+     - **Alt Hızlı Aksiyon Butonları (`.sheet-actions-wrap`)**: Detay sayfası incelenirken altta hızlı işlem butonları:
+       - Avans: Reddet, Kısmi Onay, Onayla
+       - İzin: Reddet, Kısmi Onay, Onayla
+       - Saha Talep: İşleme Al, Çözüldü, Sil
+  6. **Derleme & Doğrulama**:
+     - `npm run build` ile 0 hata ile derlendi.
+     - `/opt/lampp/bin/php -l` ile sözdizimi doğrulandı.
+
+## Mobil SPA Raporlar (İşlem Özetleri & Saha Performansı) Modülü Geliştirmesi (2026-10-16)
+- **Kullanıcı Talebi**: "@mobile-spa burada raporlar sayfasını yapalım, mobile buradan alacağız ancak aynısını yapmak zorunda değiliz daha iyisini daha kullanıcı dostu yap, ama bütün özelliklerini yapalım, mobile/index.php?p=raporlar bu sayfayı yapacağız"
+- **İncelenen Referanslar**:
+  - `mobile/pages/raporlar.php`: Klasik mobil Raporlar sayfası (bugün/ay date picker, 5 sekme: Endeks Okuma, Kesme/Açma, Sayaç Sökme/Takma, Mühürleme, Kaçak Kontrol, arama çubuğu, Chart.js bölge grafiği, personel detay bottom sheet'i).
+  - `views/puantaj/rapor-getir-mobil.php`: Kartları ve bölge toplamlarını hesaplayan backend mantığı.
+  - `views/puantaj/rapor-mobil-detay.php`: Seçilen personelin seçili tarih aralığındaki günlük işlem dökümünü hesaplayan backend mantığı.
+- **Uygulanan Mimari ve Özellikler**:
+  1. **Backend API (`mobile-spa/public/api/reports.php` & `dist/api/reports.php`)**:
+     - Strict types, session ve firma izolasyonu.
+     - Permission 61 (`puantaj/raporlar`), `puantaj_raporlama`, `puantaj_yonetim`, `puantaj/list` ve Superadmin yetki denetimi.
+     - `action=cards`: 5 sekmenin (Okuma, Kesme, Sayaç Sökme/Takma, Mühürleme, Kaçak) tüm veri modellerini (`EndeksOkumaModel`, `PuantajModel`, `SayacDegisimService`, `TanimlamalarModel`, `PersonelModel`, `EkipHelper`) sorgulayarak bölge performanslarını, genel toplamları, en başarılı personel ve lider bölge istatistiklerini hesaplar; optimize JSON olarak döner.
+     - `action=detail`: Seçilen personelin belirtilen tarih aralığında çalıştığı günleri, gün adlarını, o gün ürettiği tüm işlem türlerini ve dönem toplamını günlük icmal dökümü olarak döndürür.
+  2. **Frontend Servisi (`mobile-spa/src/services/reports.js`)**:
+     - Reaktif `reportsState` (aktif sekme, hazır tarih aralıkları, custom start/end date, arama sorgusu, seçili bölge filtresi, sıralama ölçütü, sayaçlar, kartlar, bölgeler, detay çekmecesi durumu).
+     - `reportsApi` (`getCards`, `getDetail`) metotları ve hazır tarih hesaplama yardımcıları.
+  3. **Mobil Görünüm Bileşeni (`mobile-spa/src/views/ReportsView.vue`)**:
+     - **Tasarım Standardı**: Rule 10 Soft Bento & Claymorphic UI standartlarına tam uyum, Roboto Condensed fontu, Obsidian ve beyaz bento kartları.
+     - **TopBar**: Geri butonu, `OPERASYONEL ANALİZ` eyebrow, `İşlem Özetleri` başlığı ve yenileme aksiyonu.
+     - **Dönem Gezinme & Hızlı Filtre Barı**: "Bugün", "Dün", "Bu Hafta", "Bu Ay", "Geçen Ay" ve "Tarih Seç" hap butonları (`.clay-filter-pill`), anlık tarih aralığı etiketi kartı.
+     - **5 Sekmeli Slider**: Endeks Okuma (`Gauge`), Kesme / Açma (`ZapOff`), Sayaç Sökme/Takma (`Wrench`), Mühürleme (`ShieldCheck`), Kaçak Kontrol (`ShieldAlert`).
+     - **4 Bento KPI Kartı (2x2 Grid)**: Toplam İşlem/Okuma, Aktif / Toplam Ekip Kadrosu, En Yüksek Bölge (yüzde ve adet), Kişi Başı Üretim Ortalaması.
+     - **İnteraktif Bölge Performans Dağılımı Kartı**: Bölgelerin toplam işlem sayıları, personel adetleri, yüzdelik renkli segment çubukları. Bölge satırına tıklandığında aşağıdaki listeyi anında sadece o bölgeye göre filtreleme desteği.
+     - **Canlı Arama & Çift Yönlü Sıralama Toolbar**: Personel, ekip veya bölge adı üzerinde anında arama, sıralama dropdown'u (En Çok İşlem, En Az İşlem, İsim A-Z, Ekip No).
+     - **Personel Performans Kartları**: 1., 2., 3. dereceler için özel Altın/Gümüş/Bronz madalya rozetleri (`Trophy`), avatar/baş harfler, isim, ekip rozeti (`EKİP-102`), bölge pini, büyük net işlem sayacı ve kesme/sökme iş türü kırılım etiketleri.
+     - **Personel Günlük İcmal Bottom Sheet Drawer**: Avatar, isim, ekip, bölge, dönem toplamı, çalışılan gün sayısı ve günlük ortalama KPI bandı, iş türü toplamları ve gün gün işlem kırılımı (tarih, gün adı, gün toplamı ve kalemler).
+     - **Gelişmiş Tarih Seçici Sheet**: 12 aylık buton matrisi ile tek dokunuşla geçmiş ayları seçebilme, yıl artır/azalt stepper'ı ve özel başlangıç-bitiş tarihi seçip uygulayabilme.
+  4. **Derleme & Doğrulama**:
+     - `npm run build` ile 0 hata ile derlendi.
+     - Apache vhost üzerinden `http://mobile.ersanelektrik.com/api/reports.php` gerçek oturum ile hem kartlar hem detay sorgularında uçtan uca test edildi ve doğrulandı.
+
+## Mobil SPA Bildirim Altyapısı ve Web Push Entegrasyonu (2026-10-16)
+- **Kullanıcı Geri Bildirimi**: "@mobile-spa'da neden bildirim gelmiyor"
+- **Tespit Edilen Eksiklikler**:
+  1. Service Worker'da (`sw.js`) push ve notificationclick dinleyicileri yoktu.
+  2. İstemci tarafında `Notification.requestPermission()` ve `pushManager.subscribe()` mekanizması bulunmuyordu.
+  3. Push aboneliklerini sunucuya (`push_subscriptions` tablosu) kaydeden bir API uç noktası yoktu.
+  4. TopBar'da bildirim zili (`Bell`) ikonu, okunmamış bildirim rozeti ve bildirim listesi/çekmecesi bulunmuyordu.
+  5. `ProfileView.vue` sayfasındaki "Bildirim tercihleri" satırı işlevsiz (mock) bir butondu.
+- **Uygulanan Çözüm ve Mimari**:
+  1. **Backend API (`mobile-spa/public/api/notifications.php` & `dist/api/notifications.php`)**:
+     - Strict types, session doğrulama, `BildirimModel`, `PushSubscriptionModel` ve `SystemLogModel` entegrasyonu.
+     - Aksiyonlar: `unread-count`, `list`, `vapid-key`, `push-status`, `subscribe`, `unsubscribe`, `mark-read`, `mark-all-read`.
+  2. **Service Worker Güncellemesi (`sw.js`)**:
+     - `self.addEventListener('push', ...)` ve `self.addEventListener('notificationclick', ...)` eklendi.
+     - Bildirime dokunulduğunda ilgili SPA rotasına (`/#/talepler`, `/#/km-onaylari`, `/#/bordro` vb.) akıllı yönlendirme sağlandı.
+     - Cache sürümü `ersan-mobile-shell-v19` olarak güncellendi.
+  3. **İstemci Servisi (`mobile-spa/src/services/notifications.js`)**:
+     - VAPID anahtarı yönetimi, `urlBase64ToUint8Array`, push aboneliği ve iptali (`subscribePush`, `unsubscribePush`).
+     - Okunmamış sayaç ve bildirim listesi yönetimi (`fetchUnreadCount`, `fetchNotifications`, `markAsRead`, `markAllAsRead`).
+     - 45 saniyelik hafif arka plan polling sayacı (`initNotificationsWatcher`).
+  4. **TopBar Zil İkonu (`TopBar.vue`)**:
+     - Sağ üst köşeye okunmamış bildirim rozetine (`topbar-bell-badge`) sahip `Bell` ikonu eklendi. Dokunulduğunda bildirim çekmecesini açar.
+  5. **Bento Bildirim Çekmecesi (`NotificationsDrawer.vue`)**:
+     - Soft Bento & Claymorphic tasarım diline uygun alttan açılan (slide-up sheet) bildirim merkezi.
+     - Okunmamış/okunmuş rozetleri, "Tümünü Okundu İşaretle" aksiyonu, tekil okundu işaretleme ve tıklandığında ilgili modüle yönlendirme.
+     - Push bildirimleri henüz kapalıysa tek tıkla açmayı sağlayan şık Bento öneri kutusu.
+  6. **Profil Ekranı Entegrasyonu (`ProfileView.vue`)**:
+     - "Bildirim tercihleri" satırına anlık durum rozeti (Açık, Kapalı, Engellendi, Desteklenmiyor) bağlandı.
+     - Tıklandığında açılan Bento ayar modalı üzerinden cihaz bildirimleri açma/kapama ve bildirim geçmişini açma işlevleri sunuldu.
+  7. **Derleme**: `npm run build` ile 0 hata ile derlendi ve `dist/` klasörüne aktarıldı.
+
+## Mobil SPA Kaçak Kontrol — İhbar Yönetimi Tasarım Diline Tam Uyumlaştırma (2026-10-16)
+- **Kullanıcı Geri Bildirimi**: "bu sayfa neden diğer sayfalardan farklı geldi, ihbar yönetimi sayfası gibi olsun" (Ekran görüntüsü paylaşıldı: Ayrı beyaz kutucuklar yerine İhbar sayfasındaki koyu Obsidian Bento Hero kartı, bento arama kartı ve kart yapısı talep edildi).
+- **Uygulanan Değişiklikler ve Mimari (`KacakView.vue`)**:
+  1. **Obsidian Bento Hero Kartı (`.ihbar-hero-card.bento-card--obsidian`)**:
+     - `ihbar-hero-head`: Sol tarafta `GENEL OPERASYON DURUMU`, büyük bold toplam tutanak sayısı (`counts.toplam`); sağ tarafta zümrüt yeşili `%Onay Oranı` rozeti.
+     - `segmented-track`: Segmentli renkli progress bar (`seg-pill--amber` Bekleyen, `seg-pill--emerald` Onaylı, `seg-pill--coral` Reddedilen, `seg-pill--slate` İptal).
+     - `ihbar-hero-grid`: 4'lü interaktif buton hücresi (`ds-dot--amber` Bekleyen, `ds-dot--emerald` Onaylı, `ds-dot--coral` Reddedilen, `ds-dot--slate` İptal). Dokunulduğunda listeyi doğrudan filtreler ve `is-active` efekti alır.
+  2. **Dönem Gezinme ve Filtre Barı (`.ihbar-date-bar`)**:
+     - `date-preset-group`: "Son 1 Ay", "30 Gün", "Bu Yıl", "Tümü" hap butonları (`.clay-filter-pill`).
+     - `date-range-text`: `Calendar` ikonu ile başlangıç-bitiş tarih metni.
+  3. **Arama ve Filtre Kartı (`.ihbar-search-card.bento-card--white`)**:
+     - İçeride tam genişlikte arama kutusu (`.search-input`), durum hapları (`.status-pills-scroll`), tür hapları (`Kaçak`, `Abonesiz`, `Usülsüz`, `Pasif Abone`) ve Kahramanmaraş ilçe dropdown'ı (`.ilce-select`).
+  4. **Tutanak Bento Kartları (`.ihbar-cards-stack`)**:
+     - `ihbar-card` şablonu: Sol üstte `ShieldAlert` ikonu ve ilçe başlığı, sağda durum rozeti (`badge--amber`, `badge--emerald`, `badge--rose`, `badge--slate`), altında abone ve açıklama özeti, etiketler (Tür, Sayaç No, Endeks, Fotoğraf, ZIP İndir bağlantısı) ve altta ekip + tarih bilgisi.
+  5. **Detay ve Liderlik Bottom Sheet'leri**:
+     - `IhbarView`'deki `.ihbar-drawer-sheet` ve `.ihbar-stats-sheet` CSS ve drag-handle yapısıyla tam uyumlu hale getirildi.
+  6. **Derleme**: `npm run build` ile 0 hata ile derlendi.
 - **Kullanıcı Talebi**: "personel adlarının altında bu şekilde içinde oldupumuz haftanın günleri gelsin, ay görünümü de ayrıca açılsın" (Yüklenen görsel: Weekly Schedule, Mon-Sun dikey hap kapsülleri, gün numarası ve yuvarlak rozet, sağ üstte ay çipi).
 - **Uygulanan Değişiklikler ve Mimari**:
   1. **Hafta Hesaplama Motoru (`PuantajView.vue`)**:

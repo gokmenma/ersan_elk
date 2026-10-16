@@ -1,8 +1,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, ChevronDown, ClipboardList, Search, Zap } from '@lucide/vue'
+import { ArrowLeft, Bell, ChevronDown, ClipboardList, Search, Zap } from '@lucide/vue'
 import { auth } from '../services/auth.js'
+import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
 
 const props = defineProps({
   eyebrow: { type: String, default: '' },
@@ -46,6 +47,21 @@ function goBack() {
 
       <div class="clay-actions-row">
         <slot name="actions">
+          <button
+            type="button"
+            class="clay-circle-btn topbar-bell-btn"
+            aria-label="Bildirimleri aç"
+            title="Bildirimler"
+            @click="toggleNotificationsDrawer"
+          >
+            <Bell :size="19" />
+            <span
+              v-if="notificationsState.unreadCount > 0"
+              class="topbar-bell-badge"
+            >
+              {{ notificationsState.unreadCount > 99 ? '99+' : notificationsState.unreadCount }}
+            </span>
+          </button>
           <button v-if="auth.state.permissions.requests" type="button" class="clay-circle-btn" aria-label="Talepleri aç" @click="router.push('/talepler')">
             <ClipboardList :size="19" />
           </button>
@@ -66,3 +82,27 @@ function goBack() {
     </label>
   </header>
 </template>
+
+<style scoped>
+.topbar-bell-btn {
+  position: relative;
+}
+
+.topbar-bell-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font: 800 10px/17px var(--ds-font-main, sans-serif);
+  text-align: center;
+  border: 2px solid var(--ds-surface, #ffffff);
+  box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+</style>
