@@ -17,6 +17,11 @@ import KasaView from './views/KasaView.vue'
 import PayrollView from './views/PayrollView.vue'
 import AracView from './views/AracView.vue'
 import EvrakView from './views/EvrakView.vue'
+import KmOnaylariView from './views/KmOnaylariView.vue'
+import PuantajView from './views/PuantajView.vue'
+import KacakView from './views/KacakView.vue'
+import NobetOnayView from './views/NobetOnayView.vue'
+import IhbarView from './views/IhbarView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -30,6 +35,8 @@ const router = createRouter({
     { path: '/evraklar', redirect: '/evrak-takip' },
     { path: '/arac-takip', name: 'arac-takip', component: AracView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
     { path: '/arac', redirect: '/arac-takip' },
+    { path: '/km-onaylari', name: 'km-onaylari', component: KmOnaylariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
+    { path: '/km-onay', redirect: '/km-onaylari' },
     { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true, permission: 'tasks' } },
     { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
     { path: '/talepler', name: 'requests', component: TaleplerView, meta: { requiresAuth: true, requiresCompany: true, permission: 'requests' } },
@@ -48,6 +55,16 @@ const router = createRouter({
     { path: '/kasa-yonetimi', redirect: '/kasa' },
     { path: '/bordro', name: 'payroll', component: PayrollView, meta: { requiresAuth: true, requiresCompany: true, permission: 'payroll' } },
     { path: '/maas', redirect: '/bordro' },
+    { path: '/puantaj', name: 'puantaj', component: PuantajView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
+    { path: '/puantaj-takip', redirect: '/puantaj' },
+    { path: '/kacak-kontrol', name: 'kacak-kontrol', component: KacakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'illegal' } },
+    { path: '/kacak', redirect: '/kacak-kontrol' },
+    { path: '/nobet-onay', name: 'nobet-onay', component: NobetOnayView, meta: { requiresAuth: true, requiresCompany: true, permission: 'shifts' } },
+    { path: '/nobet', redirect: '/nobet-onay' },
+    { path: '/nobetler', redirect: '/nobet-onay' },
+    { path: '/ihbar', name: 'ihbar', component: IhbarView, meta: { requiresAuth: true, requiresCompany: true, permission: 'notices' } },
+    { path: '/ihbar-yonetimi', redirect: '/ihbar' },
+    { path: '/ihbarlar', redirect: '/ihbar' },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),
@@ -62,7 +79,7 @@ router.beforeEach(async (to) => {
   if (to.meta.guest && auth.state.authenticated) return auth.state.company ? { name: 'home' } : { name: 'company-select' }
   if (to.meta.requiresAuth && !auth.state.authenticated) return { name: 'login' }
   if (to.meta.requiresCompany && !auth.state.company) return { name: 'company-select' }
-  if (to.meta.permission && !auth.state.permissions[to.meta.permission]) return { name: 'home' }
+  if (to.meta.permission && !auth.state.permissions[to.meta.permission] && !(to.name === 'km-onaylari' && auth.state.permissions.km_approvals)) return { name: 'home' }
 })
 
 export default router

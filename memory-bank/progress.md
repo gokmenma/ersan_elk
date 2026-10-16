@@ -1,5 +1,127 @@
 # Progress
 
+## 2026-10-16 — Mobil SPA Puantaj — Personel Kartı İçi Haftalık Kapsül Takvimi ve Ay Görünümü Entegrasyonu
+- [x] Kullanıcının yüklediği görseldeki "Weekly Schedule" haftalık kapsül takvimi her personel kartına entegre edildi:
+  - **Haftalık 7 Sütunlu Kapsüller (`.weekly-day-capsule`)**: Pazartesi'den Pazar'a haftanın günleri dikey hap formatında, gün numarası ve yuvarlak durum rozeti ile listelendi.
+  - **Bugün ve Pazar Vurgusu**: Bugün için 2px mavi border ve mavi metin; Pazar günü için turuncu/kırmızı tema.
+  - **Doğrudan Dokunarak Değiştirme**: Herhangi bir gün kapsülüne dokunulduğunda o personelin o günkü puantajı döngüsel olarak değişir ve yüzen kaydetme barı açılır.
+  - **Ayrı Ay Görünümü**: Haftalık kutunun sağ üstündeki `[Calendar] Ekim 2026` butonuna veya personel kartına tıklandığında tüm ayı içeren detay bottom sheet'i açılır.
+  - **Derleme**: Vite üretimi (`npm run build`) başarıyla tamamlandı.
+
+## 2026-10-16 — Mobil SPA Nöbet Onay & Planlama Modülü (Soft Bento & Claymorphic UI, Mini Takvim, Onay Listesi, Dağılım Havuzu & Planlama Sheet'i)
+- [x] Mobil SPA (`mobile-spa`) bünyesinde nöbet onay, planlama ve dağıtım yönetim sayfası sıfırdan geliştirildi:
+  - **Backend API (`public/api/nobet.php` & `dist/api/nobet.php`)**: Gate yetkilendirmesi (`nobet/onay-islemleri`, `yonetici_onayi`, `nobet/list`, `Gate::isSuperAdmin`), CSRF doğrulama (`verifyCsrfToken`), firma ID ve oturum güvenliği; `list`, `calendar`, `personnel_summary`, `personnel_list`, `approve`, `unapprove`, `delete`, `bulk_approve`, `bulk_unapprove`, `bulk_delete`, `add`, `send_reminder` uç noktaları eksiksiz yazıldı.
+  - **Frontend Servisi (`services/nobet.js`)**: Reaktif `nobetState` ve `nobetApi` metotları oluşturuldu.
+  - **Mobil Görünüm (`views/NobetOnayView.vue`)**:
+    - **TopBar**: Sayfa başlığı, seçili yıl bilgisi ve alt açıklama.
+    - **Ay ve Yıl Gezgini**: Önceki/Sonraki ay butonları, seçili cari dönem göstergesi ve "+ Nöbet Planla" aksiyon butonu.
+    - **4 Minimal Bento KPI Kartı**: Bekleyenler, Hafta Sonu, Resmi Tatil, Hafta İçi. Tıklandığında doğrudan liste filtrelenir.
+    - **3 Segmentli Tab Gezinmesi**:
+      1. *Onay Listesi*: Canlı arama kutusu, durum filtre hapları (Bekleyenler, Onaylananlar, Tümü), çoklu seçim modu (Tümünü Seç, Toplu Onayla, Toplu Sil), detaylı nöbet kartları (avatar, ad-soyad, departman, tarih, gün adı, saatler, tip rozeti, onay durumu rozeti, not kutusu, Onayla/Onayı Kaldır, Hatırlatma Gönder, Sil butonları).
+      2. *Takvim & Planlama*: Mobil 7 sütunlu aylık mini takvim, gün bazında nöbetçi noktaları, güne tıklandığında altta açılan o günün nöbetçi listesi ve "+ Bu Güne Nöbet Ekle" kısayolu.
+      3. *Havuz & Dağılım*: Personellerin o ayki nöbet dağılımı ve doluluk çubukları, arama filtresi, karta tıklandığında o personele doğrudan nöbet planlama modalı açılması.
+    - **Nöbet Planlama Bottom Sheet (Modal)**: Yukarı kayan mobil modal, arama özellikli personel listesi, tarih seçici, nöbet tipi butonları, hazır saat butonları (18:00 - 08:00, 08:00 - 18:00, 24 saat), açıklama alanı, doğrudan onaylı kaydetme toggle'ı.
+    - **Güvenli Eylem ve Onay Modalı**: Silme ve toplu işlemler için onay diyalogu.
+    - **Canlı Toast Bildirimleri**: Başarılı/hata durum geri bildirimleri.
+  - **SPA Rota ve Menü Entegrasyonu**:
+    - `router.js`: `/nobet-onay`, `/nobet`, `/nobetler` rotaları eklendi (`permission: 'shifts'`).
+    - `BottomNav.vue`: "Daha Fazla" menüsündeki Nöbet Onay bağlantısı doğrudan SPA rotasına bağlandı (`to: '/nobet-onay'`).
+    - `HomeView.vue`: Hızlı erişim butonlarına Nöbetler eklendi.
+    - `public/api/auth.php`: `shifts` izni `nobet/onay-islemleri`, `yonetici_onayi`, `nobet/list` anahtarlarıyla güçlendirildi.
+  - **Derleme**: Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+- [x] Mobil SPA (`mobile-spa`) bünyesinde modern, ergonomik ve zengin Kaçak Kontrol yönetim sayfası sıfırdan geliştirildi:
+  - **Backend API (`public/api/kacak.php` & `dist/api/kacak.php`)**: Gate yetkilendirmesi (`kacak_islemleri`, `kacak/list`, `kacak_onay`, `kacak_iptal_ekle`, `kacak_iptal`), CSRF doğrulaması (`verifyCsrfToken`), firma ID ve oturum güvenliği; `list`, `detail`, `photos`, `approve`, `reject`, `cancel`, `revert_cancel` aksiyonları yazıldı.
+  - **Frontend Servisi (`services/kacak.js`)**: Reaktif `kacakState` ve `kacakApi` metotları oluşturuldu.
+  - **Mobil Görünüm (`views/KacakView.vue`)**:
+    - **TopBar**: Sayfa başlığı, Kupa ikonu (`Trophy`) ile Ekip Başarı Sıralaması (Leaderboard) açılışı ve yenileme butonu.
+    - **Bento KPI Kartları**: 4 interaktif metrik kartı (Toplam, Bekleyen, Onaylanan, İptal). Dokunulduğunda ilgili durum filtresini doğrudan süzme özelliği.
+    - **Hızlı Tarih Barı**: "Son 30 Gün", "Bu Yıl", "Son 1 Yıl", "Tümü" ve açılır özel tarih seçici paneli.
+    - **Canlı Arama ve Çift Katmanlı Filtre**: Tutanak no, abone adı, sayaç no, ekip ve ilçe canlı araması; Clay sekmeleri (Tümü, Bekleyen, Onaylı, Reddedilen, İptal) ve Tür çipleri (Kaçak, Abonesiz, Usülsüz, Pasif Abone).
+    - **Tutanak Kartları**: Tür rozetleri, tarih, onay/işlem durumu, Tutanak No ve Abone adı, İlçe ve Ekip bilgileri, Sayaç No, Fotoğraf Sayısı ve kart üstünde doğrudan ZIP İndirme kısayolu.
+    - **Ekip Başarı Sıralaması (Leaderboard) Drawer**: 1., 2., 3. ekiplere özel madalya rozetleri, ekip isimleri, tutanak sayıları ve renkli ilerleme çubukları.
+    - **Detay Bottom Sheet**: 2 sütunlu Bento bilgi ızgarası, Varsa Red Nedeni / İptal Açıklaması kutuları, "Fotoğrafları İncele" ve "ZIP İndir" butonları, Yetki bazlı "Onayla", "Reddet", "İptal Et", "İptali Geri Al" aksiyonları.
+    - **Fotoğraf Galerisi & Lightbox**: Tutanak ve Saha fotoğrafları, PDF dokümanları desteği, Tam ekran dokunmatik / butonlu Lightbox ve fotoğraf indirme özelliği.
+    - **Aksiyon Onay Modalı**: Red gerekçesi ve İptal açıklaması + Hakedişten düş kutucuğu içeren güvenli eylem modalı.
+  - **SPA Rota ve Menü Entegrasyonu**:
+    - `router.js`: `/kacak-kontrol` ve `/kacak` rotaları eklendi (`permission: 'illegal'`).
+    - `BottomNav.vue`: "Daha Fazla" menüsündeki Kaçak Kontrol bağlantısı doğrudan SPA rotasına (`to: '/kacak-kontrol'`) bağlandı.
+    - `HomeView.vue`: Hızlı erişim butonlarına Kaçak Kontrol eklendi.
+    - `public/api/auth.php`: `illegal_approve`, `illegal_cancel`, `illegal_revert_cancel` izinleri oturum haritasına eklendi.
+  - **Derleme**: Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+
+## 2026-10-16 — Mobil SPA İhbar Yönetimi Modülü (Soft Bento & Claymorphic UI, Galeri & Lightbox, Ekip Atama, Performans Liderlik & Yeni İhbar)
+- [x] Mobil SPA (`mobile-spa`) bünyesinde modern, ergonomik ve zengin İhbar Yönetimi sayfası sıfırdan geliştirildi:
+  - **Backend API (`public/api/ihbar.php` & `dist/api/ihbar.php`)**: Gate yetkilendirmesi (`ihbar/list`, `ihbar_duzenle`), CSRF doğrulama, JSON/POST veri ayrıştırma, `list`, `detail`, `foto`, `stats`, `assign`, `addNote`, `close`, `cancelResult`, `create` uç noktaları eksiksiz yazıldı.
+  - **Frontend Servisi (`services/ihbar.js`)**: Reaktif `ihbarState` ve `ihbarApi` metotları oluşturuldu.
+  - **Mobil Görünüm (`views/IhbarView.vue`)**:
+    - **TopBar**: Dinamik başlık ve alt açıklama, Liderlik/Performans butonu (`Trophy`), Yeni İhbar butonu (`Plus`), anlık yenileme.
+    - **Obsidian Bento Hero Kartı**: Toplam ihbar sayısı, % olumlu başarı oranı, 4 renkli segmentli dağılım çubuğu, 4 adet interaktif durum hücresi (`Yeni`, `Devam`, `Olumlu`, `Olumsuz`) ile tek dokunuşla filtreleme.
+    - **Dönem Gezinme ve Filtreler**: "Son 1 Ay", "30 Gün", "Tümü" hızlı hapları, başlangıç/bitiş tarih aralığı, canlı arama çubuğu (ilçe, mahalle, açıklama, personel, tutanak), yatay kaydırılabilir durum hap filtreleri (`Yeni`, `Yönlendirildi`, `İşlemde`, `Olumlu`, `Olumsuz`) ve Kahramanmaraş ilçe seçici dropdown'u.
+    - **İhbar Bento Kartları**: Durum rozeti (renkli pill), İlçe ve Mahalle başlığı (lokasyon pin ikonu), 2 satırlık açıklama önizlemesi, Fotoğraf sayısı/GPS/Tutanak etiketleri, Bildiren personel, Atanan ekip rozeti ve oluşturulma tarihi.
+    - **İhbar Detay Bottom Sheet (Drawer)**: Durum rozeti, bildiren personel, telefon (tıkla-ara `tel:` bağlantısı), komşu abone no, atanan ekip üyeleri, açık adres ve Google Haritalar'da aç butonu, küçük resimli fotoğraf galerisi, tam ekran lightbox (önceki/sonraki kontrolleri), işlem adımları zaman çizelgesi (timeline).
+    - **Yetkili Aksiyonlar**: Kaçak Ekibine Yönlendir modalı (arama destekli personel seçimi, en fazla 2 kişi), İşlem Notu Ekle modalı, İhbarı Sonuçlandır modalı (Olumlu/Olumsuz toggle, tutanak no, gerekçe), Sonucu Geri Al / İptal Et butonu.
+    - **Personel Performansı (Liderlik) Sheet**: 4'lü üst KPI (Bildirim yapan personel sayısı, En çok gönderen personel, En yüksek olumlu oranı, Saha ihbar toplamı), personel bazlı başarı oranı çubukları, "İhbarları Gör" ile tek dokunuşla o personelin ihbarlarını süzme, Excel'e (XLS) indirme.
+    - **Yeni İhbar Ekleme Sheet**: Cihaz GPS konumunu tek tıkla alma (`navigator.geolocation`), fotoğraf çekme/galeriden çoklu ekleme (önizleme ve silme destekli), ilçe/mahalle/açıklama/telefon/abone alanları.
+  - **SPA Rota ve Menü Entegrasyonu**:
+    - `router.js`: `/ihbar`, `/ihbar-yonetimi`, `/ihbarlar` rotaları eklendi (`permission: 'notices'`).
+    - `BottomNav.vue`: "Daha Fazla" menüsündeki legacy PHP linki doğrudan Vue rotasına (`to: '/ihbar'`) bağlandı.
+    - `HomeView.vue`: Hızlı erişim aksiyonlarına `notices` yetkisi varsa İhbarlar butonu eklendi.
+  - **Derleme**: Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+
+## 2026-10-16 — Mobil SPA Puantaj — Arama/Filtre Hizalaması, Tab Sadeleştirmesi ve Takvim Bottom Sheet İyileştirmesi
+- [x] Kullanıcının talepleri doğrultusunda Puantaj sayfası sadeleştirildi ve takvim modalı iyileştirildi:
+  - **Sekmeler Kaldırıldı ve Bento KPI'lara Bağlandı**: "Tüm Personel", "İzinliler", "Raporlular" buton sırası kaldırılarak sayfa alanı ferahlatıldı. Üstteki 2x2 Bento KPI kartları üzerinden filtreleme aynen korunuyor.
+  - **Arama Kutusu ve Filtre Butonu Aynı Satıra Alındı**: Arama kutusu (`flex: 1`) ve sağında 44x44px yuvarlak clay filtre butonu (`.puantaj-filter-btn`) tek satırda (`.puantaj-search-filter-row`) yan yana getirildi. Aktif filtre olduğunda mavi rozet noktası gösterildi.
+  - **Hızlı Damga ve Modal Scrollbar'ı Gizlendi**: Yatay çirkin scrollbar `scrollbar-width: none` ve `::-webkit-scrollbar { display: none }` ile kaldırıldı.
+  - **Takvim Hücreleri Pastel Temaya Kavuşturuldu**: Eski gri kutular yerine Görsel 2 sağ ekrandaki gibi zarif pastel hücreler (`.calendar-tile`), gün numarası, durum rozeti ve kaydedilmemiş değişiklik glow noktası entegre edildi.
+  - **Derleme**: Vite üretimi (`npm run build`) başarıyla tamamlandı.
+
+## 2026-10-16 — Mobil SPA 'Daha Fazla' Menü Sadeleştirmesi ve Kart Gölge Dağılımı Optimizasyonu
+- [x] Diğer ("Daha Fazla") menüsünden gereksiz öğeler kaldırıldı ve kart gölgeleri optimize edildi:
+  - **Menü Öğeleri Kaldırıldı**: `operations` dizisindeki `Ana Sayfa` ve `Profil & Ayarlar` kartları ile üst kısımdaki `nav-sheet-profile` kartı tamamen kaldırıldı.
+  - **Masaüstü Modu Butonu Kaldırıldı**: Footer alanından `Masaüstü Modu` butonu kaldırıldı, footer tek sütun (`grid-template-columns: 1fr;`) olarak sadece tam genişlikte `Güvenli Çıkış` butonunu içerecek şekilde düzenlendi.
+  - **Kart Gölgeleri Dağılımı Azaltıldı**: `src/design-system.css` içindeki `--ds-shadow-tile` (`0 6px 16px ...` -> `0 2px 6px ...`), `--ds-shadow-bento` (`0 8px 24px ...` -> `0 4px 14px ...`) ve diğer yardımcı gölge tokenlarının yayılma ve blur değerleri derli toplu ve hafif hale getirildi.
+  - **Derleme**: Vite üretimi (`npm run build`) başarıyla tamamlandı.
+
+## 2026-10-16 — Mobil SPA Puantaj Modülü (Bento UI & Hızlı Damga & SGK Vizite Entegrasyonu)
+- [x] Mobil SPA (`mobile-spa`) bünyesinde modern, kullanıcı dostu ve zengin Puantaj sayfası sıfırdan geliştirildi:
+  - **Backend API (`public/api/puantaj.php` & `dist/api/puantaj.php`)**: Gate yetkilendirmesi (`puantaj_raporlama`, `puantaj_yonetim`, `puantaj/raporlar`, `puantaj/list`), CSRF doğrulama, JSON/POST veri ayrıştırma, `definitions`, `calendar-data`, `save-bulk`, `sgk-reports` uç noktaları eksiksiz yazıldı.
+  - **Frontend Servisi (`services/puantaj.js`)**: Reaktif `puantajApi` metotları oluşturuldu.
+  - **Mobil Görünüm (`views/PuantajView.vue`)**:
+    - **TopBar**: Dinamik başlık ve alt açıklama, SGK Vizite butonu ve anlık yenileme.
+    - **Dönem Gezinme Bento Kartı**: Önceki/Sonraki ay butonları, ortada tıklanabilir büyük ay/yıl başlığı (dokunulduğunda açılan modern yıl/ay seçici sheet) ve "BUGÜN" hızlı sıçrama butonu.
+    - **4'lü Bento KPI İstatistik Kartları**: Toplam Personel, İzinli (kişi & gün sayısı - dokunulduğunda listeyi filtreler), Raporlu (kişi & gün sayısı - dokunulduğunda listeyi filtreler), Toplam Çalışılan gün sayısı. Aktif filtrelere tıklanıp açma/kapama ve temizleme chip'i desteği.
+    - **Canlı Arama & Detaylı Filtre Çekmecesi**: İsim/TC/departman araması, açılır filtre sheet'inde Departman, Bölge ve İŞKUR Dahil toggle seçicisi.
+    - **Personel Bento Kartları**: Avatar (fotoğraf/baş harf), isim, dinamik renkli departman rozeti, TC kimlik no, çalışılan gün / ay gün oranı ve ilerleme çubuğu, varsa izin/rapor gün rozetleri. Dokunulduğunda Personel Ay Detayı Bottom Sheet'i açılır.
+    - **Personel Detay & 7 Sütunlu Takvim Bottom Sheet**:
+      - *Hızlı Damga Paleti (Stamp Mode)*: Ücretli/Ücretsiz sekmesi, renkli izin türleri chip'leri. Seçildiğinde "Damga Modu Aktif" banner'ı çıkar ve takvimde dokunulan her güne seçili statüyü damgalar.
+      - *7 Sütunlu Günlük Takvim Izgarası*: Pazartesi'den Pazar'a hizalı, Pazar günleri özel vurgulu, her günde gün numarası ve statü rozeti (X, HT, Yİ, SGK vb.), değiştirilen günlerde amber ring/parlama efekti. Dokunulduğunda hızlı döngüsel geçiş (X -> HT -> Yİ -> SGK).
+      - *Tarih Aralığı ile Statü Tanımla*: Katlanabilir akordeon kartı, başlangıç günü, bitiş günü ve statü seçimi ile toplu aralık uygulama.
+    - **Yüzen Kaydetme Çubuğu (Floating Clay Action Bar)**: Ekranın alt kısmında yüzen koyu obsidian çubuk, kaydedilmemiş değişiklik sayacı, "Vazgeç" ve "Kaydet" butonları.
+    - **SGK Vizite Raporları Bottom Sheet**: Seçili aya ait onaylı vizite raporları, personel eşleşmesi, tarih aralığı, vaka türü ve "Puantaja İşle (SGK)" butonu.
+    - **Kaydedilmemiş Değişiklik Güvenliği**: Sayfadan veya aydan ayrılmaya çalışıldığında kullanıcıyı uyaran ve onay isteyen dialog.
+  - **SPA Rota ve Menü Entegrasyonu**:
+    - `router.js`: `/puantaj` ve `/puantaj-takip` rotaları eklendi.
+    - `BottomNav.vue`: "Daha Fazla" menüsündeki legacy link Vue rotasına (`to: '/puantaj'`) bağlandı.
+    - `HomeView.vue`: Hızlı işlemler listesindeki Puantaj linki Vue rotasına (`to: '/puantaj'`) bağlandı.
+  - **Derleme**: `npm run build` ile 0 hata ile derlendi.
+
+## 2026-10-16 — Mobil SPA KM Onayları Modülü (Bento UI, AI Entegrasyonu & Day/Night Toggle)
+- [x] Mobil SPA (`mobile-spa`) bünyesinde modern, kullanıcı dostu KM Onayları sayfası sıfırdan geliştirildi:
+  - **Backend API (`public/api/km-onaylari.php` & `dist/api/km-onaylari.php`)**: Gate yetkilendirmesi (`arac_takip_yonetim`, `onaylikm_duzenle`), CSRF doğrulama, JSON/POST veri ayrıştırma, `list`, `approve`, `edit_approve`, `reject`, `bulk_approve`, `ai_check`, `send_reminder`, `bulk_reminder` uç noktaları eksiksiz yazıldı.
+  - **Frontend Servisi (`services/km-onaylari.js`)**: Reaktif `kmState` ve `kmApi` metotları oluşturuldu.
+  - **Mobil Görünüm (`views/KmOnaylariView.vue`)**:
+    - **TopBar**: Dinamik başlık ve sayaç, yenileme ve çoklu seçim modu açma/kapatma.
+    - **Minimal Bento Özet Strip**: Sayfa içi kaba sekme çubukları kaldırıldı; sol tarafta aktif sekme başlığı, kayıt sayacı ve 4 renkli mini segment oran çizgisi (`.km-mini-track`) yerleştirildi.
+    - **Day/Night Toggle Switch (Güneş & Ay/Yıldızlar)**: Arama kutusu altındaki chip'ler yerine özet kart içine entegre pürüzsüz animasyonlu Sabah (Güneş ☀️) / Akşam (Hilal & Yıldızlar 🌙) toggle switch'i ve "Tümü" seçeneği eklendi.
+    - **Alt Navigasyon Çekmecesi (BottomNav Drawer)**: Durum filtreleri (`Bekleyen`, `Yapmayanlar`, `Onaylanan`, `Reddedilen`) Talepler sayfasındaki gibi alt gezinme çubuğunda (`BottomNav.vue`) rozet sayaçlı çekmece ve `Kapat (X)` butonu ile entegre edildi. Çekmece kapalıyken açan `floating-km-dock-btn` sağlandı.
+    - **Çoklu Seçim Modu**: Seçilen adet rozeti, "Yapay Zeka ile Doğrula" ve "Toplu Onayla" eylem çubuğu.
+    - **Hero Bildirim Kartları**: TR plaka rozeti, araç marka/model, tür rozeti, yüksek kaliteli gösterge fotoğrafı (saat, tarih, net KM sayacı, sabah KM farkı), personel avatarı, açıklama notu, varsa AI analiz uyarısı, onaylayan/reddeden detayları.
+    - **Yapmayanlar Listesi**: Personel avatarı, plaka, telefon, son 30 gün akşam eksik sayısı ve tek tıkla personele Push/sistem bildirimi gönderme.
+    - **Modallar**: Tam ekran zoom destekli Görsel Lightbox, Düzelt ve Onayla Bottom Sheet (+10/+50/+100 hızlı butonlar), Hazır şablonlu Reddetme Modalı ve Yapay Zeka OCR Analiz Rapor Modalı.
+  - **SPA Entegrasyonu**: `router.js` (`/km-onaylari`), `BottomNav.vue` ("Daha Fazla" menüsü ve çekmece) ve `AracView.vue` (KM sekmesi yönlendirme banner'ı) tam entegre edildi.
+  - **Derleme**: `npm run build` ile 0 hata ile derlendi.
+
 ## 2026-10-16 — Mobil SPA Tipografi Standardizasyonu
 - [x] Mobil SPA (`mobile-spa`) genel yazı tipi, Personel PWA standardı olan **Roboto Condensed** ile eşitlendi:
   - `mobile-spa/index.html` ve `mobile-spa/dist/index.html` içine Google Fonts `Roboto Condensed` (`ital,wght@0,100..900;1,100..900`) preconnect ve link etiketleri eklendi.

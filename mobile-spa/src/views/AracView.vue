@@ -1617,6 +1617,21 @@ onBeforeUnmount(() => {
     <!-- SEKME 4: KM LİSTESİ (KULLANICI DOSTU YOLCULUK KARTI) -->
     <!-- ======================================================== -->
     <div v-else-if="activeTab === 'km'" class="space-y-3">
+      <!-- KM Onayları Hızlı Yönlendirme Kartı -->
+      <RouterLink
+        to="/km-onaylari"
+        class="bento-card bento-card--white km-approval-shortcut-banner"
+      >
+        <div class="shortcut-icon-circle">
+          <Gauge :size="20" class="text-blue" />
+        </div>
+        <div class="shortcut-text">
+          <strong>KM Bildirim Onayları</strong>
+          <span>Bekleyen ve onaylanan kilometre bildirimlerini yönetin</span>
+        </div>
+        <ChevronRight :size="18" class="text-muted" />
+      </RouterLink>
+
       <article
         v-for="item in items"
         :key="item.id"
@@ -4251,5 +4266,55 @@ onBeforeUnmount(() => {
   font: 700 10px var(--ds-font-mono);
   letter-spacing: 0.08em;
   color: var(--ds-muted);
+}
+
+.km-approval-shortcut-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-card);
+  text-decoration: none;
+  background: linear-gradient(135deg, #ffffff, #f0f9ff);
+  border: 1px solid rgba(2, 132, 199, 0.15);
+  margin-bottom: 12px;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.km-approval-shortcut-banner:active {
+  transform: scale(0.98);
+}
+
+.shortcut-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.shortcut-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.shortcut-text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0369a1;
+  margin-bottom: 2px;
+}
+
+.shortcut-text span {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.3;
 }
 </style>

@@ -81,7 +81,7 @@ const baseUrl=process.env.MOBILE_SPA_TEST_URL || 'http://localhost:5173';
  assert.equal(await page.locator('.bento-overview').count(),0);
  assert.equal(await page.locator('.quick-action-tile').count(),0);
  await more.click();assert.equal(await page.getByRole('button',{name:'Kasa Yönetimi',exact:true}).count(),0);
- assert.equal(await page.locator('.nav-sheet-item').count(),2);
+ assert.equal(await page.locator('.nav-sheet-item').count(),0);
  await page.keyboard.press('Escape');await page.goto(baseUrl + '/#/personel');await page.waitForTimeout(300);assert.equal(new URL(page.url()).hash,'#/');
  const guest = await browser.newContext({viewport:{width:320,height:740}});
  const loginPage = await guest.newPage();

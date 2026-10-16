@@ -2,15 +2,17 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  AlertCircle,
   Banknote,
   CalendarCheck,
   CalendarDays,
   CalendarRange,
   Car,
   ChartNoAxesCombined,
-  ChevronRight,
+  CheckCircle2,
   ClipboardCheck,
   ClipboardList,
+  Clock,
   CreditCard,
   Edit3,
   FileText,
@@ -24,17 +26,16 @@ import {
   LayoutGrid,
   LogOut,
   Megaphone,
-  Monitor,
   ReceiptText,
   Send,
   ShieldAlert,
   Sparkles,
   UserCheck,
-  UserRound,
   UsersRound,
   Wallet,
   Wrench,
   X,
+  XCircle,
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 import {
@@ -54,6 +55,12 @@ import {
   closeFaturaDrawer,
   setFaturaTab,
 } from '../services/fatura.js'
+import {
+  kmState,
+  closeKmDrawer,
+  toggleKmDrawer,
+  setKmTab,
+} from '../services/km-onaylari.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -93,6 +100,9 @@ const showAracDrawer = computed(() => isAracPage.value && aracState.drawerOpen)
 const isFaturaPage = computed(() => route.path === '/fatura' || route.path === '/efatura')
 const showFaturaDrawer = computed(() => isFaturaPage.value && faturaState.drawerOpen)
 
+const isKmPage = computed(() => route.path === '/km-onaylari' || route.path === '/km-onay')
+const showKmDrawer = computed(() => isKmPage.value && kmState.drawerOpen)
+
 const aracScrollEl = ref(null)
 
 function handleAracTabClick(tab) {
@@ -124,6 +134,9 @@ watch(() => route.path, (newPath) => {
   }
   if (newPath !== '/fatura' && newPath !== '/efatura') {
     faturaState.drawerOpen = false
+  }
+  if (newPath !== '/km-onaylari' && newPath !== '/km-onay') {
+    kmState.drawerOpen = false
   }
 })
 
@@ -165,16 +178,14 @@ const operations = [
   { permission: 'cash', label: 'Kasa Yönetimi', icon: Landmark, to: '/kasa' },
   { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, to: '/cari-takip' },
   { permission: 'vehicles', label: 'Araç Takip', icon: Car, to: '/arac-takip' },
-  { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, href: '/mobile/index.php?p=km-onaylari' },
+  { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, to: '/km-onaylari' },
   { permission: 'documents', label: 'Evrak Takip', icon: FileText, to: '/evrak-takip' },
-  { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, href: '/mobile/index.php?p=nobet' },
-  { permission: 'reports', label: 'Puantaj', icon: CalendarRange, href: '/mobile/index.php?p=puantaj' },
+  { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, to: '/nobet-onay' },
+  { permission: 'reports', label: 'Puantaj', icon: CalendarRange, to: '/puantaj' },
   { permission: 'payroll', label: 'Bordro', icon: Banknote, to: '/bordro' },
-  { permission: 'notices', label: 'İhbar Yönetimi', icon: Megaphone, href: '/mobile/index.php?p=ihbar' },
-  { permission: 'illegal', label: 'Kaçak Kontrol', icon: ShieldAlert, href: '/mobile/index.php?p=kacak' },
+  { permission: 'notices', label: 'İhbar Yönetimi', icon: Megaphone, to: '/ihbar' },
+  { permission: 'illegal', label: 'Kaçak Kontrol', icon: ShieldAlert, to: '/kacak-kontrol' },
   { permission: 'support', label: 'Destek & Yardım', icon: Headset, href: '/mobile/index.php?p=yardim' },
-  { label: 'Ana Sayfa', icon: Home, to: '/' },
-  { label: 'Profil & Ayarlar', icon: UserRound, to: '/profil' },
 ]
 const visibleOperations = computed(() => operations.filter(item => !item.permission || auth.state.permissions[item.permission]))
 
@@ -185,6 +196,8 @@ function selectOperation(op) {
       aracState.drawerOpen = true
     } else if (op.to === '/fatura') {
       faturaState.drawerOpen = true
+    } else if (op.to === '/km-onaylari') {
+      kmState.drawerOpen = true
     }
     router.push(op.to)
   } else if (op.href) {
@@ -218,19 +231,6 @@ async function handleLogout() {
         </header>
 
         <div class="nav-sheet__content">
-          <!-- Profil Özeti (Mobil görünüm gibi en üstte) -->
-          <button type="button" class="nav-sheet-profile" @click="selectOperation({ to: '/profil' })">
-            <div class="nav-sheet-profile__avatar">
-              {{ auth.state.user?.initials || 'EE' }}
-            </div>
-            <div class="nav-sheet-profile__info">
-              <span class="nav-sheet-profile__badge">KULLANICI PROFİLİ</span>
-              <strong>{{ auth.state.user?.name || 'Kullanıcı' }}</strong>
-              <small>{{ auth.state.company?.name || 'Ersan Elektrik' }}</small>
-            </div>
-            <ChevronRight :size="18" class="nav-sheet-profile__arrow" />
-          </button>
-
           <!-- Mobil Görünümdeki İşlemler Grid'i -->
           <div class="nav-sheet-grid">
             <button
@@ -251,14 +251,6 @@ async function handleLogout() {
           <div class="nav-sheet-footer">
             <button
               type="button"
-              class="nav-sheet-footer__btn"
-              @click="selectOperation({ href: '/index.php?force_desktop=1&p=home' })"
-            >
-              <Monitor :size="18" />
-              <span>Masaüstü Modu</span>
-            </button>
-            <button
-              type="button"
               class="nav-sheet-footer__btn nav-sheet-footer__btn--danger"
               @click="handleLogout"
             >
@@ -271,12 +263,12 @@ async function handleLogout() {
     </div>
   </Transition>
 
-  <nav class="bottom-nav" :class="{ 'has-drawer': showTaleplerDrawer || showAracDrawer || showFaturaDrawer }" aria-label="Ana gezinme">
+  <nav class="bottom-nav" :class="{ 'has-drawer': showTaleplerDrawer || showAracDrawer || showFaturaDrawer || showKmDrawer }" aria-label="Ana gezinme">
     <div class="bottom-nav__inner">
       <!-- Normal Navigasyon Sekmeleri -->
       <Transition name="nav-slide-tabs">
         <div
-          v-if="!showTaleplerDrawer && !showAracDrawer && !showFaturaDrawer"
+          v-if="!showTaleplerDrawer && !showAracDrawer && !showFaturaDrawer && !showKmDrawer"
           class="bottom-nav__tabs"
           :style="{ '--nav-count': visibleItems.length }"
         >
@@ -584,6 +576,93 @@ async function handleLogout() {
             aria-label="Araç menüsünü kapat"
             title="Kapat"
             @click="closeAracDrawer"
+          >
+            <span class="nav-icon">
+              <X :size="22" :stroke-width="2.3" />
+            </span>
+            <span class="nav-label">Kapat</span>
+          </button>
+        </div>
+      </Transition>
+
+      <!-- KM Onayları Sekmeleri Çekmecesi (Tam Nav Menü Formatında ve İkonlu) -->
+      <Transition name="nav-slide-drawer">
+        <div v-if="showKmDrawer" class="bottom-nav__tabs km-nav-tabs" style="--nav-count: 5;">
+          <!-- 1. Bekleyen -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': kmState.activeTab === 'pending' }"
+            aria-label="Bekleyen KM Bildirimleri"
+            @click="setKmTab('pending')"
+          >
+            <span class="nav-icon">
+              <Clock :size="20" :stroke-width="kmState.activeTab === 'pending' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge" :class="{ 'has-count': kmState.counts.pending > 0 }">
+                {{ kmState.counts.pending }}
+              </span>
+            </span>
+            <span class="nav-label">Bekleyen</span>
+          </button>
+
+          <!-- 2. Yapmayanlar -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': kmState.activeTab === 'unreported' }"
+            aria-label="Bildirim Yapmayanlar"
+            @click="setKmTab('unreported')"
+          >
+            <span class="nav-icon">
+              <AlertCircle :size="20" :stroke-width="kmState.activeTab === 'unreported' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge nav-bubble-badge--amber" :class="{ 'has-count': kmState.counts.unreported > 0 }">
+                {{ kmState.counts.unreported }}
+              </span>
+            </span>
+            <span class="nav-label">Yapmayan</span>
+          </button>
+
+          <!-- 3. Onaylanan -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': kmState.activeTab === 'approved' }"
+            aria-label="Onaylanan KM'ler"
+            @click="setKmTab('approved')"
+          >
+            <span class="nav-icon">
+              <CheckCircle2 :size="20" :stroke-width="kmState.activeTab === 'approved' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge nav-bubble-badge--emerald" :class="{ 'has-count': kmState.counts.approved > 0 }">
+                {{ kmState.counts.approved }}
+              </span>
+            </span>
+            <span class="nav-label">Onaylanan</span>
+          </button>
+
+          <!-- 4. Reddedilen -->
+          <button
+            type="button"
+            class="nav-link"
+            :class="{ 'is-active': kmState.activeTab === 'rejected' }"
+            aria-label="Reddedilen KM'ler"
+            @click="setKmTab('rejected')"
+          >
+            <span class="nav-icon">
+              <XCircle :size="20" :stroke-width="kmState.activeTab === 'rejected' ? 2.4 : 1.9" />
+              <span class="nav-bubble-badge nav-bubble-badge--coral" :class="{ 'has-count': kmState.counts.rejected > 0 }">
+                {{ kmState.counts.rejected }}
+              </span>
+            </span>
+            <span class="nav-label">Reddedilen</span>
+          </button>
+
+          <!-- 5. Kapat -->
+          <button
+            type="button"
+            class="nav-link nav-link--close"
+            aria-label="KM Onayları menüsünü kapat"
+            title="Kapat"
+            @click="closeKmDrawer"
           >
             <span class="nav-icon">
               <X :size="22" :stroke-width="2.3" />

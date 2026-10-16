@@ -230,7 +230,7 @@ button { border: 0; background: none; cursor: pointer; }
 .nav-sheet-item:active { transform: scale(0.97); background: rgba(240,243,248,.9); }
 .nav-sheet-item__icon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 12px; transition: transform .15s ease; }
 .nav-sheet-item__label { font-size: 9.5px; font-weight: 700; color: #2c3545; line-height: 1.15; max-width: 100%; word-break: break-word; }
-.nav-sheet-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; padding-top: 10px; border-top: 1px solid rgba(240,242,245,.8); flex-shrink: 0; }
+.nav-sheet-footer { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 2px; padding-top: 10px; border-top: 1px solid rgba(240,242,245,.8); flex-shrink: 0; }
 .nav-sheet-footer__btn { display: flex; align-items: center; justify-content: center; gap: 7px; height: 42px; border-radius: 13px; border: 1px solid rgba(255,255,255,.75); background: rgba(248,250,252,.75); color: var(--ds-muted); font-size: 12px; font-weight: 700; cursor: pointer; }
 .nav-sheet-footer__btn:active { background: rgba(237,240,246,.9); }
 .nav-sheet-footer__btn--danger { border-color: rgba(254,226,226,.8); background: rgba(255,245,245,.8); color: var(--ds-danger-ink); }
