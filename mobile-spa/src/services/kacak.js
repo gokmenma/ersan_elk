@@ -103,12 +103,4 @@ export const kacakApi = {
   revertCancel(token, csrfToken) {
     return request('revert_cancel', { method: 'POST', body: { token }, csrfToken })
   },
-  getPhotoUrl(token, boyut = '') {
-    let url = `/api/kacak.php?action=foto&token=${encodeURIComponent(token)}`
-    if (boyut) url += `&boyut=${encodeURIComponent(boyut)}`
-    return url
-  },
-  getZipUrl(token) {
-    return `/api/kacak.php?action=download_zip&token=${encodeURIComponent(token)}`
-  },
 }

@@ -1,39 +1,6 @@
 # Active Context
 
-## Mobil SPA: KM Onayları & Kaçak Kontrol Fotoğraf Görüntüleme Mimarisi ve SW v22 Güncellemesi (2026-10-17)
-- **Kullanıcı Talebi**: "km-onayları sayfasında ve kaçak sayfasında resimleri göstermiyor, ama ihbar sayfasında görünüyor", "km onay sayfasında yine resimler görünmüyor, acaba resim dosyalarının yolu mu yanlış geliyor".
-- **Kök Neden Analizi**:
-  1. **Dosya Yolu ve Bağımsız SPA Kökü Ayrımı**:
-     - Masaüstü monolitik PHP uygulamasında fotoğraflar doğrudan web kökündeki `/uploads/km_bildirim/...` yolundan okunuyordu. Ancak `mobile-spa` bağımsız DocumentRoot (`dist/`) altında çalıştığından ve `uploads/km_bildirim/.htaccess` içinde `Deny from all` kuralı bulunduğundan, istemcinin doğrudan fiziksel dosya yolunu talep etmesi 404 / 403 Forbidden ile sonuçlanıyordu.
-     - İhbar sayfasının sorunsuz çalışmasının sebebi ise doğrudan dosya yoluna gitmek yerine `/api/ihbar.php?action=foto&token=...` endpoint'i üzerinden yetki/firma kontrolü yapıp `MedyaServis::gonder` ile stream etmesiydi.
-  2. **Kaçak Modülü Uç Noktaları**:
-     - `mobile-spa` Kaçak API'si masaüstü monolitik projenin `/views/kacak/foto-goruntule.php` ve `/views/kacak/api.php?action=download-zip` yollarını döndürdüğü için mobil SPA ortamında 404 Not Found veriyordu.
-  3. **Yayınlama & PWA Önbelleği (Canlı Ortam Senkronizasyonu)**:
-     - İlk aşamada yapılan değişiklikler yerel çalışma dizininde derlenmiş ancak canlı sunucuya (CI/CD GitHub FTP Deploy) commit ve push edilmediği için canlı sunucu eski kodda kalmıştı.
-     - Kullanıcı cihazlarındaki PWA Service Worker önbelleği nedeniyle yeni varlıkların anında devreye girmesi için SW sürümünün güncellenmesi gerekiyordu.
-- **Uygulanan Mimari Çözümler**:
-  1. **KM Onayları API Fotoğraf Stream Uç Noktası (`mobile-spa/public/api/km-onaylari.php` & `dist/api/km-onaylari.php`)**:
-     - `resolveKmBildirimId()` yardımcısı eklenerek hem şifreli token (`Security::decrypt`) hem de ham integer ID desteği sağlandı.
-     - `action === 'foto'` aksiyonu eklendi:
-       - Oturum, Gate yetkisi (`arac_takip_yonetim`, `onaylikm_duzenle` veya SuperAdmin) ve firma kontrolü (`$isSuperAdmin` bypass desteği) sağlandı.
-       - Traversal koruması ile `$uploadDir` (`uploads/`) dışına çıkış engellendi.
-       - Dosya yolu doğrudan eşleşmezse `uploads/km_bildirim/` klasöründe dosya adıyla arama ve uzantı alternatifleri (`.webp`, `.jpg`, `.jpeg`, `.png`) fallback mekanizması kuruldu.
-       - ISO 27001 standardına uygun olarak dosya `MedyaServis::gonder($dosya, 86400)` ile güvenli ve performanslı biçimde stream edildi.
-     - `action === 'list'` çıktısındaki kayıtlara güvenli `token`, dinamik `resim_url` (`/api/km-onaylari.php?action=foto&token=...`) ve `personel_resim_url` (`/api/personnel-photo.php?id=...`) alanları eklendi.
-  2. **Personel Fotoğraf Servisi İyileştirmesi (`personnel-photo.php`)**:
-     - Yetki kontrolü araç takip yöneticilerini kapsayacak şekilde `Gate::allowsAny(['personel_listesi', 'arac_takip_yonetim', 'onaylikm_duzenle']) || Gate::isSuperAdmin()` olarak genişletildi.
-  3. **Kaçak Kontrol API & ZIP İyileştirmesi (`mobile-spa/public/api/kacak.php`)**:
-     - `action === 'foto'` (küçük thumbnail, orijinal görsel, PDF, MP4/video desteği) ve `action === 'download_zip'` (tutanak ve saha fotoğrafları ZIP arşivi) uç noktaları eklendi.
-     - Frontend detay ve liste servisleri `/api/kacak.php?action=foto` ve `/api/kacak.php?action=download_zip` adreslerine bağlandı.
-  4. **Vue Arayüzleri & Servisleri**:
-     - `mobile-spa/src/views/KmOnaylariView.vue`: `getKmPhotoUrl(report)` merkezi fonksiyonu yazıldı. Mini thumbnail, AI doğrulama ve Lightbox büyük resim görüntüleyici bu fonksiyona bağlandı.
-     - `mobile-spa/src/services/km-onaylari.js`: `kmApi.getPhotoUrl(idOrToken)` eklendi.
-     - `mobile-spa/src/services/kacak.js` & `KacakView.vue`: Fotoğraf ve ZIP indirme adresleri SPA API'sine yönlendirildi.
-  5. **PWA Service Worker & Derleme (`v22`)**:
-     - `CACHE_NAME = 'ersan-mobile-shell-v22'` olarak güncellendi.
-     - `npm run build` ile üretim paketi (`dist/assets/index-pj3RvPz-.js`, `dist/assets/index-BBY41j-W.css`) 0 hata ile derlendi.
-     - `dist/api/` ve `dist/sw.js` dosyaları tam eşitlendi.
-
+## Mobil SPA Puantaj — Aylık Takvim Taşma Önlemi ve Bütünleşik Sheet Başlığı (2026-10-17)
 - **Kullanıcı Talebi**:
   1. "aylık görünümde günler dışarı taşıyor": Aylık takvim ızgarasındaki Pazar sütununun karttan dışarı taşması sorununun giderilmesi.
   2. "bottom sheet başlığında personel adının ara planında kenarlr köşeli geliyor, sheet başlığında olsun ayrıca bir div olmasın": Sheet'in üst kısmındaki gri zemin üzerinde duran ayrı köşeli beyaz div'in kaldırılması; handle ve personel bilgilerinin doğrudan sheet'in 32px kavisli üst başlığıyla tek parça halinde bütünleştirilmesi.

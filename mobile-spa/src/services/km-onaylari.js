@@ -99,9 +99,4 @@ export const kmApi = {
   bulkReminder(tarih, tur = 'sabah', csrfToken) {
     return request('bulk_reminder', { method: 'POST', body: { tarih, tur }, csrfToken })
   },
-  getPhotoUrl(idOrToken) {
-    if (!idOrToken) return ''
-    const param = typeof idOrToken === 'number' || /^\d+$/.test(idOrToken) ? `id=${idOrToken}` : `token=${encodeURIComponent(idOrToken)}`
-    return `/api/km-onaylari.php?action=foto&${param}`
-  },
 }

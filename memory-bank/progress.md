@@ -1,21 +1,6 @@
 # Progress
 
-## 2026-10-17 — Mobil SPA: KM Onayları & Kaçak Kontrol Fotoğraf Görüntüleme ve SW v22 Güncellemesi
-- [x] **Kök Neden Tespiti**:
-  - Mobil SPA'nın bağımsız kök dizininde (`mobile-spa/dist`) `uploads` bulunmaması ve `uploads/km_bildirim/.htaccess` koruması nedeniyle ham dosya yollarının 404/403 vermesi tespit edildi.
-  - İhbar modülünün dinamik stream endpoint'i (`/api/ihbar.php?action=foto`) gibi KM Onayları ve Kaçak için de dinamik stream mimarisi kuruldu.
-- [x] **Backend API ve Servisler**:
-  - `mobile-spa/public/api/km-onaylari.php`: `resolveKmBildirimId()` eklendi; `action === 'foto'` uç noktası (oturum, yetki, firma, traversal koruması, `uploads/km_bildirim/` dosya adı ve uzantı fallback'i, `MedyaServis::gonder`) uygulandı; `action === 'list'` çıktısına `token`, `resim_url` ve `personel_resim_url` eklendi.
-  - `mobile-spa/public/api/kacak.php`: `action === 'foto'` ve `action === 'download_zip'` eklendi; `detail` ve `photos` çıktılarında fotoğraflar ve ZIP linkleri API endpoint'lerine bağlandı.
-  - `mobile-spa/public/api/personnel-photo.php`: `arac_takip_yonetim` ve `onaylikm_duzenle` yetkileri için erişim sağlandı; hem şifreli token hem de raw ID desteği eklendi.
-- [x] **Frontend Servisleri ve Arayüz**:
-  - `KmOnaylariView.vue`: `getKmPhotoUrl(report)` fonksiyonu tanımlandı; mini thumbnail, AI butonu ve Lightbox resim açıcı bu fonksiyona bağlandı.
-  - `km-onaylari.js` & `kacak.js`: `getPhotoUrl` ve `getZipUrl` metotları güncellendi.
-- [x] **Derleme & PWA Cache Busting**:
-  - `sw.js` versiyonu `ersan-mobile-shell-v22`'ye yükseltildi.
-  - `npm run build` ile üretim paketi (`dist/assets/index-pj3RvPz-.js`, `dist/assets/index-BBY41j-W.css`) 0 hata ile derlendi.
-  - `dist/api/` ve `dist/sw.js` dosyaları tam eşitlendi.
-
+## 2026-10-17 — Mobil SPA Puantaj — Aylık Takvim Taşma Önlemi ve Bütünleşik Sheet Başlığı
 - [x] Kullanıcının talepleri doğrultusunda takvim taşması ve sheet başlığı kusurları giderildi:
   - **Aylık Takvim Günlerinin Dışarı Taşması Engellendi**: Grid yapısı `repeat(7, minmax(0, 1fr))` mimarisine geçirildi, kart içi yatay padding optimize edildi ve hücrelere `min-width: 0; aspect-ratio: 1 / 1.15; overflow: hidden;` verilerek 7 sütunun en dar mobil ekranlarda dahi kutu sınırları içinde kalması sağlandı.
   - **Sheet Başlığı Bütünleştirildi (Köşeli Ayrı Div Kaldırıldı)**: Ayrı köşeli basamak oluşturan div yapısı kaldırılarak; handle, personel avatarı, adı ve kapat butonu doğrudan sheet'in 32px kavisli üst başlığıyla (`border-radius: 32px 32px 0 0`) tek parça olarak birleştirildi.
