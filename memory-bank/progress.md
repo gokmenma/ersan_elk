@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-10-17 — Mobil SPA: KM Onayları ve Kaçak Kontrol Fotoğraf Yolu 404 Hatası Çözümü (SW v23)
+- [x] Kök neden tespiti: Önceki commit'lerde kazara revert edilen fotoğraf stream API'si ve Vue servis bağlantıları yeniden tesis edildi.
+- [x] `mobile-spa/public/api/km-onaylari.php`: `action=foto` endpoint'i, `resolveKmBildirimId()`, traversal koruması, `uploads/km_bildirim/` dosya adı ve uzantı fallback'i (`.webp`, `.jpg`, `.jpeg`, `.png`) ve `MedyaServis::gonder` akışı sağlandı.
+- [x] `mobile-spa/src/views/KmOnaylariView.vue`: `getKmPhotoUrl(report)` ve `resolveImageUrl` fonksiyonları ham fiziksel yolları engelleyip doğrudan `/api/km-onaylari.php?action=foto` adresine yönlendirdi. Mini thumbnail, AI butonu ve Lightbox modalı bu fonksiyona bağlandı.
+- [x] `mobile-spa/public/sw.js`: PWA Service Worker versiyonu `ersan-mobile-shell-v23` yapılarak istemcilerdeki eski önbelleklerin geçersiz kılınması sağlandı.
+- [x] `mobile-spa/dist/`: `npm run build` ile üretim paketi derlendi, `dist/api/` ve `dist/sw.js` tam eşitlendi.
+- [x] Git & CI/CD: Değişiklikler commit edilerek `origin/main`'e pushlandı ve canlı sunucuya otomatik FTP yüklemesi yapıldı.
+
+## 2026-10-17 — Mobil SPA Puantaj: FM Akordeon Tasarımı ve Aylık Takvim Sığdırma İyileştirmesi
+- [x] Kullanıcının talepleri doğrultusunda mobil puantaj arayüzünde iki önemli UX iyileştirmesi tamamlandı:
+  - **Hızlı Gün Statüsü Bottom Sheet (`status-picker-sheet`) FM Akordeonu**:
+    - Fazla Mesai (FM) alanı akordeon bileşeni haline getirildi ve varsayılan olarak kapalı (`showPickerFmAccordion = false`) başlaması sağlandı.
+    - Akordeon kapalıyken tek satırda başlık, mor saat ikonu, mevcut mesai saatini gösteren rozet (`+Xs Mesai` / `(Mesai Yok)`) ve `ChevronDown` ikonu gösterilerek modal yüksekliği sadeleştirildi.
+    - Akordeon açıldığında yumuşak geçişle hızlı saat çipleri (1s, 1.5s, 2s, 3s, 4s, 5.5s, 7.5s, [Kaldır]) ve serbest saat giriş inputu erişilebilir hale geldi.
+  - **Personel Ay Detay Modalı ("Ay İçi Günlük Takvim") Dikey Taşma ve Kesilme Sorunu Çözümü**:
+    - Takvim kartının (`clean-calendar-box`) alt kenarından 26-31 satırının kesilmesi sorunu giderildi.
+    - `.clean-calendar-box` üzerindeki `overflow: hidden;` kaldırıldı, `overflow: visible;` ve `flex-shrink: 0;` verilerek kartın alt satırları içine alacak şekilde dikeyde ezilmeden esnemesi sağlandı.
+    - `.calendar-tile` için aşırı uzun dikey boy oluşturan `aspect-ratio: 1 / 1.15;` değeri `aspect-ratio: 1 / 0.95;` oranına çekildi.
+    - Grid boşlukları (`gap: 3px;`), gün başlıkları (`padding: 2px 0 4px;`) ve hücre iç boşlukları (`padding: 2.5px 1px 2px;`) dengelenerek tüm 31 gün ve 6 haftalık aylarda hiçbir gün kesilmeden tek bakışta sığması sağlandı.
+    - Hızlı Damga Modu kartı (`stamp-card-box`) da dikeyde kompaktlaştırılarak (`padding: 10px 12px; gap: 8px;`) takvime ferah görüntü alanı kazandırıldı.
+  - **Derleme & Doğrulama**: Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+
 ## 2026-10-17 — Masaüstü Puantaj: Değişken Saatli Fazla Mesai (FM) Çift Katmanlı (Overlay) Girişi ve Bordro Entegrasyonu
 - [x] Kullanıcının talebi ("puantaj kısmında HTÇ gibi değişken saatli fazla mesai girme ve mevcut puantaj türünü koruma") doğrultusunda çift katmanlı mimari eksiksiz geliştirildi:
   - **Veritabanı Şeması**: `sql/create_personel_fazla_mesaileri.sql` oluşturuldu ve `personel_fazla_mesaileri` tablosu çalıştırıldı.

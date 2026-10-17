@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Helper\Helper;
+use App\Helper\MedyaServis;
 use App\Helper\Security;
 use App\Model\AracKmBildirimModel;
 use App\Model\AracKmModel;
@@ -53,6 +54,19 @@ function verifyCsrfToken(): void
     }
 }
 
+function resolveKmBildirimId(string $tokenOrId): int
+{
+    $tokenOrId = trim($tokenOrId);
+    if ($tokenOrId === '') {
+        return 0;
+    }
+    if (ctype_digit($tokenOrId)) {
+        return (int) $tokenOrId;
+    }
+    $decrypted = Security::decrypt($tokenOrId);
+    return is_numeric($decrypted) ? (int) $decrypted : 0;
+}
+
 checkKmAuth();
 
 $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
@@ -95,6 +109,9 @@ try {
                 $pid = (int) $item->personel_id;
                 $item->son_30_gun_aksam_eksik = $aksamEksikSayilari[$pid] ?? 0;
                 $item->hedef_tur = 'sabah';
+                $item->personel_resim_url = $pid > 0
+                    ? '/api/personnel-photo.php?id=' . urlencode(Security::encrypt((string) $pid))
+                    : null;
             }
 
             if ($search !== '') {
@@ -214,6 +231,19 @@ try {
         $dataStmt->execute($params);
         $records = $dataStmt->fetchAll(PDO::FETCH_OBJ);
 
+        foreach ($records as $r) {
+            $rId = (int) $r->id;
+            $rToken = Security::encrypt((string) $rId);
+            $r->token = $rToken;
+            $r->resim_url = !empty($r->resim_yolu)
+                ? '/api/km-onaylari.php?action=foto&token=' . $rToken
+                : null;
+            $pid = (int) ($r->personel_id ?? 0);
+            $r->personel_resim_url = $pid > 0
+                ? '/api/personnel-photo.php?id=' . Security::encrypt((string) $pid)
+                : null;
+        }
+
         kmApiResponse([
             'success' => true,
             'counts' => $counts,
@@ -226,6 +256,82 @@ try {
             ],
             'reports' => $records,
         ]);
+    }
+
+    // -------------------------------------------------------------
+    // FOTOĞRAF GÖRÜNTÜLEME (STREAM)
+    // -------------------------------------------------------------
+    if ($method === 'GET' && $action === 'foto') {
+        $projectRoot = realpath(dirname(__DIR__, 3));
+
+        // 1. Doğrudan dosya yolu parametresi (fallback)
+        if (!empty($_GET['file']) && $projectRoot) {
+            $rawFile = trim((string) $_GET['file']);
+            $temizFile = ltrim(str_replace('\\', '/', $rawFile), '/');
+            $dosya = realpath($projectRoot . '/' . $temizFile);
+            $uploadDir = realpath($projectRoot . '/uploads/km_bildirim');
+            if (!$dosya || !is_file($dosya)) {
+                $dosya = realpath($projectRoot . '/uploads/km_bildirim/' . basename($temizFile));
+            }
+            if ($dosya && $uploadDir && str_starts_with($dosya, $uploadDir . DIRECTORY_SEPARATOR) && is_file($dosya)) {
+                header_remove('Content-Type');
+                MedyaServis::gonder($dosya, 86400);
+                exit;
+            }
+        }
+
+        // 2. Token veya ID ile bildirimden bulma
+        $tokenOrId = (string) ($_GET['token'] ?? $_GET['id'] ?? '');
+        $id = resolveKmBildirimId($tokenOrId);
+        if ($id <= 0) {
+            http_response_code(400);
+            exit('Geçersiz bildirim belirteci.');
+        }
+
+        $bildirim = $KmBildirim->find($id);
+        $isSuperAdmin = Gate::isSuperAdmin();
+        if (!$bildirim || (!$isSuperAdmin && (int) $bildirim->firma_id !== $firmaId)) {
+            http_response_code(404);
+            exit('Bildirim kaydı bulunamadı.');
+        }
+
+        $resimYolu = trim((string) ($bildirim->resim_yolu ?? ''));
+        if ($resimYolu === '') {
+            http_response_code(404);
+            exit('Bu bildirime ait fotoğraf bulunmuyor.');
+        }
+
+        $temizYol = ltrim(str_replace('\\', '/', $resimYolu), '/');
+        $dosya = $projectRoot ? realpath($projectRoot . '/' . $temizYol) : false;
+        $uploadDir = $projectRoot ? realpath($projectRoot . '/uploads') : false;
+
+        // Dosya yolu doğrudan eşleşmediyse dosya adıyla uploads/km_bildirim içinde ara
+        if (!$dosya || !is_file($dosya)) {
+            $sadeceDosyaAdi = basename($temizYol);
+            $alternatif = $projectRoot ? realpath($projectRoot . '/uploads/km_bildirim/' . $sadeceDosyaAdi) : false;
+            if ($alternatif && is_file($alternatif)) {
+                $dosya = $alternatif;
+            } else {
+                // Uzantı farklılığı kontrolü (webp, jpg, jpeg, png)
+                $baseWithoutExt = pathinfo($sadeceDosyaAdi, PATHINFO_FILENAME);
+                foreach (['.webp', '.jpg', '.jpeg', '.png'] as $ext) {
+                    $alternatifExt = $projectRoot ? realpath($projectRoot . '/uploads/km_bildirim/' . $baseWithoutExt . $ext) : false;
+                    if ($alternatifExt && is_file($alternatifExt)) {
+                        $dosya = $alternatifExt;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!$dosya || !$uploadDir || !str_starts_with($dosya, $uploadDir . DIRECTORY_SEPARATOR) || !is_file($dosya)) {
+            http_response_code(404);
+            exit('Fotoğraf dosyası bulunamadı.');
+        }
+
+        header_remove('Content-Type');
+        MedyaServis::gonder($dosya, 86400);
+        exit;
     }
 
     // POST İşlemleri

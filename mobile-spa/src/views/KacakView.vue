@@ -798,7 +798,7 @@ onMounted(() => {
               </span>
               <a
                 v-if="item.foto_sayisi > 0"
-                :href="`/views/kacak/api.php?action=download-zip&token=${encodeURIComponent(item.token)}`"
+                :href="kacakApi.getZipUrl(item.token)"
                 target="_blank"
                 class="mini-tag mini-tag--download"
                 title="ZIP İndir"
@@ -927,7 +927,7 @@ onMounted(() => {
           </button>
           <a
             v-if="activeDetail.foto_sayisi > 0"
-            :href="`/views/kacak/api.php?action=download-zip&token=${encodeURIComponent(activeDetail.token)}`"
+            :href="kacakApi.getZipUrl(activeDetail.token)"
             target="_blank"
             class="detail-action-btn detail-action-btn--secondary"
             title="Tümünü ZIP İndir"

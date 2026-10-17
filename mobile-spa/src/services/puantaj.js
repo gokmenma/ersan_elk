@@ -55,7 +55,7 @@ export const puantajApi = {
   getCalendarData(params = {}) {
     return request('calendar-data', { params })
   },
-  saveBulkEntries({ ay, yil, data }, csrfToken) {
+  saveBulkEntries({ ay, yil, data, overtimes }, csrfToken) {
     return request('save-bulk', {
       method: 'POST',
       body: {
@@ -63,6 +63,7 @@ export const puantajApi = {
         ay,
         yil,
         data,
+        overtimes: overtimes || [],
       },
       csrfToken,
     })

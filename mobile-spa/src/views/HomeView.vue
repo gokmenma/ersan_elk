@@ -27,12 +27,13 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   UsersRound,
+  Wrench,
   X,
   Zap,
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
-import { getDashboard, saveDashboardSettings } from '../services/dashboard.js'
+import { getDashboard, saveDashboardSettings, syncDailyOperations } from '../services/dashboard.js'
 
 const router = useRouter()
 const loading = ref(true)
@@ -42,6 +43,17 @@ const showCustomizeModal = ref(false)
 const selectedAnnouncement = ref(null)
 const operationsMode = ref('daily') // 'daily' | 'monthly'
 const isSavingSettings = ref(false)
+const isSyncingOperations = ref(false)
+const toastMessage = ref('')
+let toastTimer = null
+
+function showToast(msg) {
+  toastMessage.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toastMessage.value = ''
+  }, 3500)
+}
 
 const today = new Intl.DateTimeFormat('tr-TR', {
   day: 'numeric',
@@ -134,7 +146,50 @@ const vehicles = computed(() => (auth.state.permissions.vehicles ? dashboard.val
 const shifts = computed(() => (auth.state.permissions.shifts ? (dashboard.value.shifts || []) : []))
 const pendingApprovals = computed(() => (auth.state.permissions.requests ? (dashboard.value.pending_approvals || { requests: 0, advances: 0, leaves: 0, total: 0 }) : null))
 const announcements = computed(() => dashboard.value.announcements || [])
-const operations = computed(() => dashboard.value.operations || [])
+const opSortOrder = {
+  reading: 1,
+  cut_open: 2,
+  meter_change: 3,
+  sealing: 4,
+  illegal: 5,
+  notice: 6,
+}
+
+const operations = computed(() => {
+  const list = [...(dashboard.value.operations || [])]
+  return list.sort((a, b) => (opSortOrder[a.key] || 99) - (opSortOrder[b.key] || 99))
+})
+
+const operationLinks = {
+  reading: '/raporlar?tab=okuma',
+  cut_open: '/raporlar?tab=kesme',
+  meter_change: '/raporlar?tab=sokme_takma',
+  sealing: '/raporlar?tab=muhurleme',
+  illegal: '/raporlar?tab=kacakkontrol',
+  notice: '/ihbar',
+}
+
+function goToOperation(item) {
+  const target = operationLinks[item.key] || item.link || '/raporlar'
+  router.push(target)
+}
+
+async function handleSyncOperations() {
+  if (isSyncingOperations.value) return
+  isSyncingOperations.value = true
+  try {
+    const res = await syncDailyOperations()
+    if (res?.dashboard) {
+      dashboard.value = res.dashboard
+    }
+    showToast('Günlük operasyonlar KASKİ sisteminden sorgulandı ve güncellendi.')
+  } catch (err) {
+    console.error('Sorgulama hatası:', err)
+    showToast('Sorgulama sırasında bağlantı hatası oluştu.')
+  } finally {
+    isSyncingOperations.value = false
+  }
+}
 
 // Personel Metrikleri
 const personnelRate = computed(() => {
@@ -169,10 +224,10 @@ const vehicleSegments = computed(() => {
 })
 
 const operationIcons = {
-  sealing: ShieldAlert,
-  cut_open: Zap,
-  meter_change: Gauge,
   reading: Gauge,
+  cut_open: Zap,
+  meter_change: Wrench,
+  sealing: ShieldCheck,
   illegal: ShieldAlert,
   notice: Megaphone,
 }
@@ -674,7 +729,7 @@ onMounted(() => {
               v-else-if="cardId === 'operations' && operations.length"
               class="bento-card bento-card--white"
             >
-              <!-- Kart İçi En Üst Kontroller & Gün/Ay Toggle -->
+              <!-- Kart İçi En Üst Kontroller, Gün/Ay Toggle & Günlük Sorgula Butonu -->
               <div class="card-inner-head">
                 <div class="card-inner-title">
                   <Gauge :size="16" class="text-primary" />
@@ -697,6 +752,18 @@ onMounted(() => {
                       Ay
                     </button>
                   </div>
+                  <!-- Tek Dokunuşla Günlük Operasyonları Online Sorgula -->
+                  <button
+                    type="button"
+                    class="op-sync-all-btn ms-1"
+                    :class="{ 'is-syncing': isSyncingOperations }"
+                    :disabled="isSyncingOperations"
+                    title="Tüm günlük operasyonları KASKİ sisteminden online sorgula"
+                    @click="handleSyncOperations"
+                  >
+                    <RefreshCw :size="11" :class="{ 'clay-spin-icon': isSyncingOperations }" />
+                    <span>{{ isSyncingOperations ? 'Sorgulanıyor…' : 'Sorgula' }}</span>
+                  </button>
                 </div>
                 <div class="card-inner-controls">
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
@@ -711,26 +778,33 @@ onMounted(() => {
                   v-for="item in operations"
                   :key="item.key"
                   class="operation-tile cursor-pointer"
-                  @click="item.link && router.push(item.link)"
+                  :class="`op-tile--${item.key}`"
+                  @click="goToOperation(item)"
                 >
                   <header class="operation-tile-top">
-                    <span class="op-icon-bubble">
-                      <component :is="operationIcons[item.key] || Zap" :size="17" />
+                    <span class="op-icon-bubble" :class="`op-bubble--${item.key}`">
+                      <component :is="operationIcons[item.key] || Zap" :size="16" />
                     </span>
                     <span class="op-label">{{ item.label }}</span>
                   </header>
 
                   <div class="operation-tile-bottom">
-                    <strong>{{ operationsMode === 'daily' ? item.daily : item.monthly }}</strong>
-                    <span>{{ operationsMode === 'daily' ? 'Bugün' : 'Bu ay' }}</span>
+                    <strong class="op-stat-num">{{ operationsMode === 'daily' ? item.daily : item.monthly }}</strong>
+                    <span class="op-stat-badge">{{ operationsMode === 'daily' ? 'Bugün' : 'Bu ay' }}</span>
                   </div>
 
-                  <footer v-if="item.last_update" class="op-footer-row">
-                    <span class="op-last-update">
+                  <footer class="op-footer-row">
+                    <span v-if="item.last_update" class="op-last-update">
                       <Clock :size="10" />
                       {{ item.last_update }}
                     </span>
-                    <span class="text-[10px] text-primary font-bold">Git</span>
+                    <span v-else class="op-last-update text-muted">
+                      -
+                    </span>
+                    <span class="op-tile-git-btn" :class="`op-git--${item.key}`">
+                      Git
+                      <ArrowUpRight :size="11" />
+                    </span>
                   </footer>
                 </article>
               </div>
@@ -972,5 +1046,13 @@ onMounted(() => {
         </footer>
       </div>
     </div>
+
+    <!-- Yüzen Toast Bildirimi -->
+    <transition name="fade">
+      <div v-if="toastMessage" class="clay-floating-toast">
+        <Check :size="15" class="text-success" />
+        <span>{{ toastMessage }}</span>
+      </div>
+    </transition>
   </section>
 </template>

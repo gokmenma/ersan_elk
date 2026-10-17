@@ -1,5 +1,103 @@
 # Active Context
 
+## Mobil SPA Ana Sayfa: Operasyonlar Sıralaması, Renkli Çerçeveler, Rapor Sekme Linkleri ve Günlük Toplu Sorgulama (2026-10-17)
+- **Kullanıcı Talepleri**:
+  1. `muhurleme ile okumanin yerini degisebilirmisin?` (Görselde sol üstteki Mühürleme ile sağ ortadaki Endeks Okuma'nın çapraz yer değiştirmesi işaretlendi).
+  2. `Birde burda renklendirme ve cerceve yapabiliriz` (Operasyon kutularına renkli vurgu ve belirgin çerçeve istendi).
+  3. `islem sayılarının altindaki git butonu puantaja gidiyor raporlar sayfasına gitmesi gerekiyor, ilgili sekmeye` (Mühürleme, okuma, kesme ve sayaç butonlarının Raporlar sayfasında ilgili sekmeye gitmesi talep edildi).
+  4. `bir de bunlard günlük sorgulama butonu vardı, gün/ay yanına tek buton ekleyelim ve hepsini sorgulayalım` (Günün Operasyonları kart başlığına tek dokunuşla tüm günlük verileri online sorgulayan buton istendi).
+- **Uygulanan Geliştirmeler & Mimari**:
+  1. **Operasyonlar Sıralaması (Mühürleme <-> Endeks Okuma Yer Değişimi)**:
+     - `MobileDashboardModel.php`, `public/api/dashboard.php`, `dist/api/dashboard.php` ve `HomeView.vue`:
+       - 1. Sıra (Sol Üst): **Endeks Okuma (`reading`)**
+       - 2. Sıra (Sağ Üst): **Kesme / Açma (`cut_open`)**
+       - 3. Sıra (Sol Orta): **Sayaç Değişimi (`meter_change`)**
+       - 4. Sıra (Sağ Orta): **Mühürleme (`sealing`)**
+       - 5. Sıra (Sol Alt): **Kaçak (`illegal`)**
+       - 6. Sıra (Sağ Alt): **İhbar (`notice`)**
+       Frontend'de `opSortOrder` map'i ile sıralama her koşulda garanti altına alındı.
+  2. **Renkli & Çerçeveli Soft Bento UI Tasarımı (`design-system.css`)**:
+     - Her operasyon türü için kurumsal canlı renkler, 1.5px çerçeve ve 3.5px sol vurgu çizgisi tanımlandı:
+       - `reading`: Mavi/Sky degrade, `#0284c7` border ve ikon balonu.
+       - `cut_open`: Turuncu/Amber degrade, `#f97316` border ve ikon balonu.
+       - `meter_change`: Zümrüt Yeşili degrade, `#10b981` border ve `Wrench` ikonu.
+       - `sealing`: Mor/İndigo degrade, `#7c3aed` border ve `ShieldCheck` ikonu.
+       - `illegal`: Mercan/Kırmızı degrade, `#ef4444` border ve `ShieldAlert` ikonu.
+       - `notice`: Altın/Kehribar degrade, `#d97706` border ve `Megaphone` ikonu.
+     - "Git" butonu, ilgili operasyon renginde açık renkli hap rozeti ve `ArrowUpRight` ikonuyla yenilendi (`.op-tile-git-btn`).
+  3. **Raporlar Sekmelerine Doğrudan Yönlendirme**:
+     - `reading` -> `/raporlar?tab=okuma`
+     - `cut_open` -> `/raporlar?tab=kesme`
+     - `meter_change` -> `/raporlar?tab=sokme_takma`
+     - `sealing` -> `/raporlar?tab=muhurleme`
+     - `illegal` -> `/raporlar?tab=kacakkontrol`
+     - `notice` -> `/ihbar`
+     - `ReportsView.vue`: `useRoute()` entegrasyonu ile URL'den gelen `tab` query parametresini (`applyTabFromRoute` & `watch`) okuyup ilgili sekmeyi otomatik aktif hale getirecek ve raporları yükleyecek yapı kuruldu.
+  4. **Tek Butonla Günlük Toplu Online Sorgulama**:
+     - `HomeView.vue` kart başlığında `Gün` / `Ay` toggle'ının hemen yanına `.op-sync-all-btn` ("Sorgula") butonu eklendi.
+     - `services/dashboard.js` içine `syncDailyOperations()` fonksiyonu eklendi; KASKİ web servisine paralel olarak `online-puantaj-sorgula` (kesme & mühürleme), `online-icmal-sorgula` (endeks okuma) ve `online-sayac-degisim-sorgula` (sayaç değişimi) istekleri atılır.
+     - Sorgulama esnasında buton dönen animasyona geçer (`Sorgulanıyor…`), tamamlandığında `getDashboard()` tetiklenerek karttaki sayaçlar anında güncellenir ve kullanıcıya yüzen Toast bildirimi verilir.
+  5. **Derleme ve Doğrulama**: `npm run build` hatasız tamamlandı.
+
+## Mobil SPA: KM Onayları ve Kaçak Kontrol Fotoğraf Yolu 404 Hatası Çözümü (SW v23) (2026-10-17)
+- **Kullanıcı Hata Bildirimi**:
+  `km_283_cbbfc8c8e570ac23d230.webp:1 GET https://mobile.ersantr.com/uploads/km_bildirim/km_283_cbbfc8c8e570ac23d230.webp 404 (Not Found)`
+  `/#/km-onaylari:1 Banner not shown: beforeinstallpromptevent.preventDefault() called.`
+  `resimler yine gelmiyor, bu bir örnek hata`
+- **Tespit Edilen Kök Neden**:
+  - Önceki oturumda yazılan fotoğraf akışı (streaming) ve API yönlendirmesi kodları, aradaki `6bd645aaaebbe7f311c016f455157325ef48a656` ve `e68a9742a229c3eadf98a6a99009719623915c46` commit'lerinde kazara eski versiyonla ezilerek geri alınmıştı (revert).
+  - Sonuç olarak `https://mobile.ersantr.com/` üzerinde koşan derlenmiş bundle'da (`index-DyIRF99r.js`) görsel URL'leri tekrar ham `resolveImageUrl(r.resim_yolu)` haline dönmüş; istemci tarayıcıları doğrudan `https://mobile.ersantr.com/uploads/km_bildirim/...` yoluna istek atmış ve `mobile-spa/dist` kök dizininde `uploads/` klasörü bulunmadığı için 404 vermiştir.
+- **Uygulanan Çözüm**:
+  1. `km-onaylari.php`, `kacak.php`, `personnel-photo.php`, `KmOnaylariView.vue`, `KacakView.vue`, `km-onaylari.js`, `kacak.js` dosyaları `7ee6c6c4` sürümünden eksiksiz geri yüklendi.
+  2. `resolveImageUrl` fonksiyonu `path.startsWith('uploads/km_bildirim')` ve `path.includes('km_bildirim')` durumlarında doğrudan `/api/km-onaylari.php?action=foto&file=...` endpoint'ine yönlendirildi.
+  3. `getKmPhotoUrl(report)` fonksiyonu ile her görsel isteğinin kesinlikle `/api/km-onaylari.php?action=foto&token=...` veya `id=...` üzerinden yetkili ve güvenli `MedyaServis::gonder` akışıyla çekilmesi sağlandı.
+  4. Service Worker versiyonu `ersan-mobile-shell-v23` seviyesine yükseltildi.
+  5. `npm run build` ile yeni üretim paketi (`dist/assets/index-C-Nk5KPk.js`, `dist/assets/index-C_BN7_Ha.css`) 0 hata ile derlendi.
+  6. Tüm değişiklikler commit edilip `git push origin main` ile canlı sunucuya gönderildi.
+
+## Mobil SPA Puantaj: FM Akordeon Tasarımı ve Aylık Takvim Sığdırma İyileştirmesi (2026-10-17)
+- **Kullanıcı Talepleri**:
+  1. Hızlı gün statüsü seçici (`status-picker-sheet`) içindeki "Fazla Mesai (FM)" kutusunun akordeon (accordion) olarak açılıp kapanması ve varsayılan olarak kapalı gelmesi.
+  2. Personel ay detay modalındaki ("Ay İçi Günlük Takvim") takvimin alt satırının (26-31 günleri) kesilmesi/taşması sorununun giderilmesi, günlerin tam sığması.
+- **Uygulanan Çözümler**:
+  1. **FM Akordeon Yapısı (`mobile-spa/src/views/PuantajView.vue`)**:
+     - `showPickerFmAccordion = ref(false)` state'i entegre edildi; `openDayStatusPicker` ve `closeDayStatusPicker` tetiklendiğinde otomatik `false` sıfırlaması sağlandı.
+     - Template içinde `.picker-fm-box` bir akordeona dönüştürüldü: Tetikleyici buton (`.picker-fm-accordion-trigger`) içinde mor saat ikonu, "Fazla Mesai (FM)" başlığı, saat rozeti (`+Xs Mesai` / `(Mesai Yok)`) ve açılma/kapanma yönüne göre 180 derece dönen `ChevronDown` ikonu konumlandırıldı.
+     - Akordeon tıklandığında `v-if="showPickerFmAccordion"` ile hızlı saat çipleri (1s - 7.5s, [Kaldır]) ve serbest saat giriş kutusu yumuşak bir border/shadow geçişiyle gösterildi.
+  2. **Aylık Takvim Dikey Sığdırma (`clean-calendar-box` & `calendar-tile`)**:
+     - `.clean-calendar-box` üzerindeki `overflow: hidden;` kaldırılarak `overflow: visible;` ve `flex-shrink: 0;` uygulandı.
+     - `.calendar-tile` için aşırı dikey boy oluşturan `aspect-ratio: 1 / 1.15;` değeri kompakt kareye yakın `aspect-ratio: 1 / 0.95;` oranına çekildi.
+     - `.clean-days-header` ve `.calendar-tiles-grid` hücre aralıkları (`gap: 3px;`), gün başlıkları padding'i (`padding: 2px 0 4px;`) ve tile iç boşlukları (`padding: 2.5px 1px 2px;`) optimize edildi.
+     - Hızlı Damga Modu kartı (`stamp-card-box`) da dikeyde sıkılaştırılarak (`padding: 10px 12px; gap: 8px;`) takvime ferah alan kazandırıldı; 31 günlük ve 6 haftalık aylarda hiçbir gün kesilmeden tüm ay görünümü tek bakışta sığdırıldı.
+  3. **Derleme**:
+     - `npm run build` ile Vite v6.4.4 derlemesi 0 hata ile tamamlandı (`dist/assets/index-ATJNUcqG.js`, `dist/assets/index-DipANtRg.css`).
+
+## Mobil SPA Puantaj: Değişken Saatli Fazla Mesai (FM) ve Kesme Uyarısı Entegrasyonu (2026-10-17)
+- **Kullanıcı Talebi**:
+  - "buradaki yaptığımız ekleme yani fazla mesai işlemlerini @mobile-spa puantaj sayfasında da yapalım"
+- **Uygulanan Geliştirmeler ve Mimari**:
+  1. **Mobil Puantaj API Katmanı (`mobile-spa/public/api/puantaj.php` & `mobile-spa/dist/api/puantaj.php`)**:
+     - `use App\Model\PersonelFazlaMesaileriModel;` eklendi ve `$FazlaMesai` modeli örneklendi.
+     - `calendar-data` aksiyonunda `$allMesailer = $FazlaMesai->getPersonellerAyMesaileri($firmaId, (int) $yil, (int) $ay);` çekilerek her personele `'overtimes' => $allMesailer[(int) $p->id] ?? (object) []` olarak eklendi.
+     - `save-bulk-entries` / `save-bulk` aksiyonunda gelen `overtimes` dizisi işlenerek saat > 0 ise `saveMesai()`, 0 ise `deleteMesai()` çağrıldı; sadece fazla mesai değişikliği yapıldığında da (`empty($data)` kontrolü esnetilerek) kaydın başarıyla tamamlanması sağlandı.
+     - `/opt/lampp/bin/php -l` kontrolleriyle her iki dosya doğrulandı.
+  2. **Mobil Puantaj Frontend Servis Katmanı (`mobile-spa/src/services/puantaj.js`)**:
+     - `saveBulkEntries({ ay, yil, data, overtimes }, csrfToken)` metoduna `overtimes: overtimes || []` parametresi entegre edildi.
+  3. **Mobil Puantaj Arayüz ve State Yönetimi (`mobile-spa/src/views/PuantajView.vue`)**:
+     - **İkon ve State**: Lucide `Clock` ikonu import edildi. `unsavedOvertimes = ref({})`, `quickOvertimeOptions = [1, 1.5, 2, 3, 4, 5.5, 7.5]`, `customOvertimeInput = ref('')` tanımlandı.
+     - `unsavedCount` hem puantaj durumlarını hem de fazla mesai değişikliklerini kapsayacak şekilde güncellendi.
+     - `getEffectiveOvertime(personelId, dateStr, serverOvertimes)` ve `applyOvertimeToCell(personelId, dateStr, saat)` helper'ları yazıldı.
+     - `savePuantajChanges()` ve `discardUnsavedChanges()` metotlarına `unsavedOvertimes` bağlandı.
+     - **Haftalık Kapsüllerde Görünüm**: Kapsülün sağ üst köşesine `+2s`, `+4s` mor overlay rozeti (`.weekly-overtime-pill`) yerleştirildi.
+     - **Aylık Takvim Izgarasında Görünüm**: Gün kutucuklarının sağ üst köşesine `+Xs` mor rozeti (`.calendar-tile-overtime-pill`) yerleştirildi. Gün kutucuğuna tıklandığında hem durum hem FM seçilebilmesi için hızlı durum sheet'i (`openDayStatusPicker`) tetiklendi.
+     - **Personel Kartı Özeti**: Kartın altındaki metrik satırına ay içi toplam mesai saati (`Mesai: Xs`) eklendi.
+     - **Hızlı Gün Statüsü Bottom Sheet (`status-picker-sheet`) Entegrasyonu**:
+       - **Kesme Departmanı Uyarısı**: Personelin departmanında "kesme" geçtiğinde (`isKesmeDepartment`) sarı/amber clay uyarı kutusu (`.picker-kesme-alert`) gösterilerek nöbet modülü uyarısı sunuldu.
+       - **Fazla Mesai Kartı (`.picker-fm-box`)**: Mevcut mesai saati rozeti, 1s - 7.5s hızlı clay hap butonları, [Kaldır] butonu ve serbest saat giriş kutusu eklendi.
+  4. **Derleme ve Doğrulama**:
+     - `npm run build` ile Vite v6.4.4 derlemesi 0 hata ile tamamlandı.
+     - PHP CLI syntax kontrolleri hatasız.
+
 ## Masaüstü Puantaj: Değişken Saatli Fazla Mesai (FM) Çift Katmanlı (Overlay) Girişi ve Bordro Entegrasyonu (2026-10-17)
 - **Kullanıcı Talebi**:
   - "bizim puantaj kisminda htc giriyoruz ya, oraya fazla mesaide ekleyebilirmiyiz? Direk fazla mesai yapanlara puantajdan girsek. Ama soyle birsey var fazla mesaiyi suan nobetci olan kesmeciye veriyoruz, o da standart 4 saat yaziliyor. Burda standart degil degisken saat yapabilirmiyiz? Mevcut puantaj türü de korunacak mı mesela hem RTC hem de fazla mesai girebilecek miyiz?" -> "yapalım"

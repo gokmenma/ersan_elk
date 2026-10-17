@@ -1807,7 +1807,7 @@ use App\Service\Gate;
             </div>
         </div>
     </div>
-</div>
+</div> <!-- end container-fluid -->
 
 <!-- Tam ekranda üst araç çubuğu yerine sabit hızlı kaydetme eylemi -->
 <button type="button" class="puantaj-save-fab" id="btn-save-floating" aria-label="Puantaj değişikliklerini kaydet">
@@ -1979,3 +1979,4 @@ use App\Service\Gate;
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="views/personel/js/puantaj_izin.js?v=<?= filemtime(__DIR__ . '/js/puantaj_izin.js') ?>"></script>
+</div> <!-- container-fluid -->

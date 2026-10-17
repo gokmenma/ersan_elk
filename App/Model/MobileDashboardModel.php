@@ -197,16 +197,6 @@ class MobileDashboardModel
 
         return [
             [
-                'key' => 'sealing',
-                'label' => 'Mühürleme',
-                'daily' => (int) ($daily->muhurleme ?? 0),
-                'monthly' => (int) ($monthly->muhurleme ?? 0),
-                'last_update' => $times['works'] ?? null,
-                'api_action' => 'online-puantaj-sorgula',
-                'api_tab' => 'muhurleme',
-                'link' => '/puantaj',
-            ],
-            [
                 'key' => 'cut_open',
                 'label' => 'Kesme / Açma',
                 'daily' => (int) ($daily->kesme_acma ?? 0),
@@ -214,7 +204,7 @@ class MobileDashboardModel
                 'last_update' => $times['works'] ?? null,
                 'api_action' => 'online-puantaj-sorgula',
                 'api_tab' => 'kesme',
-                'link' => '/puantaj',
+                'link' => '/raporlar?tab=kesme',
             ],
             [
                 'key' => 'meter_change',
@@ -224,7 +214,17 @@ class MobileDashboardModel
                 'last_update' => $times['meter'] ?? null,
                 'api_action' => 'online-sayac-degisim-sorgula',
                 'api_tab' => 'sokme_takma',
-                'link' => '/puantaj',
+                'link' => '/raporlar?tab=sokme_takma',
+            ],
+            [
+                'key' => 'sealing',
+                'label' => 'Mühürleme',
+                'daily' => (int) ($daily->muhurleme ?? 0),
+                'monthly' => (int) ($monthly->muhurleme ?? 0),
+                'last_update' => $times['works'] ?? null,
+                'api_action' => 'online-puantaj-sorgula',
+                'api_tab' => 'muhurleme',
+                'link' => '/raporlar?tab=muhurleme',
             ],
         ];
     }
@@ -241,7 +241,7 @@ class MobileDashboardModel
             'last_update' => $times['reading'] ?? null,
             'api_action' => 'online-icmal-sorgula',
             'api_tab' => '',
-            'link' => '/puantaj',
+            'link' => '/raporlar?tab=okuma',
         ];
     }
 
@@ -258,7 +258,7 @@ class MobileDashboardModel
             'last_update' => null,
             'api_action' => null,
             'api_tab' => null,
-            'link' => '/kacak-kontrol',
+            'link' => '/raporlar?tab=kacakkontrol',
         ];
     }
 

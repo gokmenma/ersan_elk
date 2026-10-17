@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Filter,
   Layers,
   MoreVertical,
@@ -133,6 +134,45 @@ const pickerYear = ref(now.getFullYear())
 
 // Değişiklikler: { "personelId_dateStr": { personel_id, type_id, code, date } }
 const unsavedChanges = ref({})
+// Fazla Mesai Değişiklikleri: { "personelId_dateStr": { personel_id, tarih, saat } }
+const unsavedOvertimes = ref({})
+const quickOvertimeOptions = [1, 1.5, 2, 3, 4, 5.5, 7.5]
+const customOvertimeInput = ref('')
+const showPickerFmAccordion = ref(false)
+
+// Kesme Departmanı Kontrolü
+function isKesmeDepartment(dept) {
+  if (!dept) return false
+  const s = dept.toLocaleLowerCase('tr-TR')
+  return s.includes('kesme')
+}
+
+// Personel için geçerli fazla mesai saatini döndürür
+function getEffectiveOvertime(personelId, dateStr, serverOvertimes) {
+  const key = `${personelId}_${dateStr}`
+  if (unsavedOvertimes.value[key] !== undefined) {
+    return parseFloat(unsavedOvertimes.value[key].saat) || 0
+  }
+  if (serverOvertimes && serverOvertimes[dateStr] !== undefined) {
+    const val = serverOvertimes[dateStr]
+    if (typeof val === 'object' && val !== null) {
+      return parseFloat(val.saat) || 0
+    }
+    return parseFloat(val) || 0
+  }
+  return 0
+}
+
+// Fazla mesai saati uygula
+function applyOvertimeToCell(personelId, dateStr, saat) {
+  const key = `${personelId}_${dateStr}`
+  const numSaat = Math.max(0, parseFloat(saat) || 0)
+  unsavedOvertimes.value[key] = {
+    personel_id: personelId,
+    tarih: dateStr,
+    saat: numSaat,
+  }
+}
 
 // Personel Detay & Takvim Bottom Sheet
 const selectedPersonel = ref(null)
@@ -173,7 +213,7 @@ const daysInCurrentMonth = computed(() => {
 })
 
 const unsavedCount = computed(() => {
-  return Object.keys(unsavedChanges.value).length
+  return Object.keys(unsavedChanges.value).length + Object.keys(unsavedOvertimes.value).length
 })
 
 // Tip Haritasını Oluştur
@@ -360,6 +400,7 @@ function getPersonelMonthStats(p) {
   let worked = 0
   let leave = 0
   let sgk = 0
+  let overtimeHours = 0
 
   for (let d = 1; d <= days; d++) {
     const dateStr = `${currentYear.value}-${padZero(currentMonth.value)}-${padZero(d)}`
@@ -372,10 +413,12 @@ function getPersonelMonthStats(p) {
     } else if (code !== 'HT' && code !== '') {
       leave++
     }
+    const ot = getEffectiveOvertime(p.id, dateStr, p.overtimes)
+    overtimeHours += ot
   }
 
   const rate = Math.min(100, Math.round((worked / days) * 100))
-  return { worked, leave, sgk, rate, days }
+  return { worked, leave, sgk, rate, days, overtimeHours: Number(overtimeHours.toFixed(1)) }
 }
 
 // --- VERİ ÇEKME ---
@@ -522,12 +565,14 @@ function cycleCellStatus(personelId, dateStr, currentCode) {
 
 function discardUnsavedChanges() {
   unsavedChanges.value = {}
+  unsavedOvertimes.value = {}
   showToast('Değişiklikler sıfırlandı.', 'info')
 }
 
 async function savePuantajChanges() {
   const rows = Object.values(unsavedChanges.value)
-  if (rows.length === 0) return
+  const otRows = Object.values(unsavedOvertimes.value)
+  if (rows.length === 0 && otRows.length === 0) return
 
   saving.value = true
   try {
@@ -536,12 +581,14 @@ async function savePuantajChanges() {
         ay: padZero(currentMonth.value),
         yil: currentYear.value,
         data: rows,
+        overtimes: otRows,
       },
       auth.state.csrfToken,
     )
 
     if (res.success) {
       unsavedChanges.value = {}
+      unsavedOvertimes.value = {}
       showToast(res.message || 'Puantaj değişiklikleri başarıyla kaydedildi!', 'success')
       await loadCalendarData()
       if (selectedPersonel.value) {
@@ -730,13 +777,16 @@ function getPersonelWeekDayEntry(personel, dayObj) {
   const code = (entry.kisa_kod || (dayObj.isSunday ? 'HT' : 'X')).toUpperCase()
   const theme = getCellTheme(code)
   const unsavedKey = `${personel.id}_${dayObj.dateStr}`
-  const isUnsaved = Boolean(unsavedChanges.value[unsavedKey])
+  const isUnsaved = Boolean(unsavedChanges.value[unsavedKey]) || Boolean(unsavedOvertimes.value[unsavedKey])
+  const overtimeHours = getEffectiveOvertime(personel.id, dayObj.dateStr, personel.overtimes)
 
   return {
     ...entry,
     code,
     theme,
     isUnsaved,
+    overtimeHours,
+    hasOvertime: overtimeHours > 0,
   }
 }
 
@@ -744,6 +794,9 @@ function openDayStatusPicker(personel, dayObj) {
   pickerTargetPersonel.value = personel
   pickerTargetDay.value = dayObj
   pickerActiveTab.value = 'ucretli'
+  showPickerFmAccordion.value = false
+  const currentOt = getEffectiveOvertime(personel.id, dayObj.dateStr, personel.overtimes)
+  customOvertimeInput.value = currentOt > 0 ? String(currentOt) : ''
   showStatusPickerSheet.value = true
 }
 
@@ -751,6 +804,30 @@ function closeDayStatusPicker() {
   showStatusPickerSheet.value = false
   pickerTargetPersonel.value = null
   pickerTargetDay.value = null
+  customOvertimeInput.value = ''
+  showPickerFmAccordion.value = false
+}
+
+const pickerCurrentOvertime = computed(() => {
+  if (!pickerTargetPersonel.value || !pickerTargetDay.value) return 0
+  return getEffectiveOvertime(
+    pickerTargetPersonel.value.id,
+    pickerTargetDay.value.dateStr,
+    pickerTargetPersonel.value.overtimes,
+  )
+})
+
+function setPickerOvertime(saat) {
+  if (!pickerTargetPersonel.value || !pickerTargetDay.value) return
+  const num = Math.max(0, parseFloat(saat) || 0)
+  applyOvertimeToCell(pickerTargetPersonel.value.id, pickerTargetDay.value.dateStr, num)
+  customOvertimeInput.value = num > 0 ? String(num) : ''
+}
+
+function applyCustomOvertime() {
+  if (!pickerTargetPersonel.value || !pickerTargetDay.value) return
+  const num = Math.max(0, parseFloat(customOvertimeInput.value) || 0)
+  applyOvertimeToCell(pickerTargetPersonel.value.id, pickerTargetDay.value.dateStr, num)
 }
 
 function selectStatusForDay(typeObj) {
@@ -856,7 +933,8 @@ const modalCalendarGridCells = computed(() => {
     const dateObj = new Date(currentYear.value, currentMonth.value - 1, d)
     const isSunday = dateObj.getDay() === 0
     const unsavedKey = `${selectedPersonel.value.id}_${dateStr}`
-    const isUnsaved = Boolean(unsavedChanges.value[unsavedKey])
+    const isUnsaved = Boolean(unsavedChanges.value[unsavedKey]) || Boolean(unsavedOvertimes.value[unsavedKey])
+    const overtimeHours = getEffectiveOvertime(selectedPersonel.value.id, dateStr, selectedPersonel.value.overtimes)
 
     cells.push({
       empty: false,
@@ -868,6 +946,8 @@ const modalCalendarGridCells = computed(() => {
       theme,
       isSunday,
       isUnsaved,
+      overtimeHours,
+      hasOvertime: overtimeHours > 0,
       key: dateStr,
     })
   }
@@ -875,7 +955,7 @@ const modalCalendarGridCells = computed(() => {
   return cells
 })
 
-// Takvim Hücresine Dokunulduğunda Damgalama
+// Takvim Hücresine Dokunulduğunda Damgalama veya Hızlı Seçici
 function handleCellClick(cell) {
   if (cell.empty || !selectedPersonel.value) return
 
@@ -888,8 +968,17 @@ function handleCellClick(cell) {
       modalStampType.value.code,
     )
   } else {
-    // Damga modu kapalı: Döngüsel geçiş yap
-    cycleCellStatus(selectedPersonel.value.id, cell.dateStr, cell.code)
+    // Damga modu kapalı: Hızlı statü & fazla mesai seçici sheet'ini aç
+    const d = new Date(cell.dateStr)
+    const dayOfWeek = d.getDay()
+    const dayName = dayNamesTR[dayOfWeek === 0 ? 6 : dayOfWeek - 1]
+    openDayStatusPicker(selectedPersonel.value, {
+      dateStr: cell.dateStr,
+      dayNum: cell.day,
+      dayName,
+      monthName: monthNamesTR[currentMonth.value - 1],
+      isSunday: cell.isSunday,
+    })
   }
 }
 
@@ -1314,6 +1403,14 @@ onMounted(async () => {
                   {{ getPersonelWeekDayEntry(p, dayObj).code }}
                 </span>
 
+                <!-- Fazla Mesai Rozeti (Overlay) -->
+                <span
+                  v-if="getPersonelWeekDayEntry(p, dayObj).hasOvertime"
+                  class="weekly-overtime-pill"
+                >
+                  +{{ getPersonelWeekDayEntry(p, dayObj).overtimeHours }}s
+                </span>
+
                 <!-- Kaydedilmemiş Değişiklik Glow Noktası -->
                 <span
                   v-if="getPersonelWeekDayEntry(p, dayObj).isUnsaved"
@@ -1333,6 +1430,10 @@ onMounted(async () => {
           <div class="project-dot-item">
             <span class="dot-indicator dot-green"></span>
             <span>Devam: <strong>%{{ getPersonelMonthStats(p).rate }}</strong></span>
+          </div>
+          <div v-if="getPersonelMonthStats(p).overtimeHours > 0" class="project-dot-item">
+            <span class="dot-indicator dot-purple"></span>
+            <span>Mesai: <strong>{{ getPersonelMonthStats(p).overtimeHours }}s</strong></span>
           </div>
           <div v-if="getPersonelMonthStats(p).leave > 0" class="project-dot-item">
             <span class="dot-indicator dot-orange"></span>
@@ -1554,6 +1655,12 @@ onMounted(async () => {
                       }"
                     >
                       {{ cell.code }}
+                    </span>
+                    <span
+                      v-if="cell.hasOvertime"
+                      class="calendar-tile-overtime-pill"
+                    >
+                      +{{ cell.overtimeHours }}s
                     </span>
                     <span v-if="cell.isUnsaved" class="tile-unsaved-dot"></span>
                   </button>
@@ -1780,6 +1887,95 @@ onMounted(async () => {
               <div class="banner-status-badge" :style="{ backgroundColor: currentPickerDayEntry.theme.badgeBg }">
                 <strong>{{ currentPickerDayEntry.code }}</strong>
                 <span>{{ currentPickerDayEntry.name || currentPickerDayEntry.code }}</span>
+              </div>
+            </div>
+
+            <!-- Kesme Departmanı Fazla Mesai Uyarısı -->
+            <div
+              v-if="isKesmeDepartment(pickerTargetPersonel.departman)"
+              class="picker-kesme-alert"
+            >
+              <AlertCircle :size="18" class="kesme-alert-icon" />
+              <div class="kesme-alert-text">
+                <strong>Kesme Departmanı Uyarısı</strong>
+                <p>Kesme personellerinin fazla mesaileri normal şartlarda Nöbet modülü üzerinden otomatik gelmektedir.</p>
+              </div>
+            </div>
+
+            <!-- Fazla Mesai (FM) Akordeon Bölümü (Varsayılan Kapalı) -->
+            <div class="picker-fm-box" :class="{ 'is-expanded': showPickerFmAccordion }">
+              <button
+                type="button"
+                class="picker-fm-accordion-trigger"
+                :aria-expanded="showPickerFmAccordion"
+                @click="showPickerFmAccordion = !showPickerFmAccordion"
+              >
+                <div class="picker-fm-title">
+                  <Clock :size="16" class="text-purple" />
+                  <strong>Fazla Mesai (FM)</strong>
+                </div>
+                <div class="picker-fm-trigger-right">
+                  <span
+                    v-if="pickerCurrentOvertime > 0"
+                    class="picker-fm-badge"
+                  >
+                    +{{ pickerCurrentOvertime }} Saat Mesai
+                  </span>
+                  <span v-else class="picker-fm-empty">
+                    (Mesai Yok)
+                  </span>
+                  <ChevronDown
+                    :size="16"
+                    class="picker-fm-chevron"
+                    :class="{ 'rotate-180': showPickerFmAccordion }"
+                  />
+                </div>
+              </button>
+
+              <!-- Akordeon İçeriği (Yalnızca tıklandığında açılır) -->
+              <div v-if="showPickerFmAccordion" class="picker-fm-content">
+                <!-- Hızlı Saat Butonları (Clay Çipler) -->
+                <div class="picker-fm-chips hide-scrollbar">
+                  <button
+                    v-for="hrs in quickOvertimeOptions"
+                    :key="hrs"
+                    type="button"
+                    class="picker-fm-chip"
+                    :class="{ 'is-selected': pickerCurrentOvertime === hrs }"
+                    @click="setPickerOvertime(hrs)"
+                  >
+                    {{ hrs }}s
+                  </button>
+                  <button
+                    v-if="pickerCurrentOvertime > 0"
+                    type="button"
+                    class="picker-fm-chip picker-fm-chip--clear"
+                    @click="setPickerOvertime(0)"
+                  >
+                    <X :size="12" /> Kaldır
+                  </button>
+                </div>
+
+                <!-- Özel Saat Girişi -->
+                <div class="picker-fm-custom-row">
+                  <input
+                    v-model="customOvertimeInput"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="24"
+                    placeholder="Farklı saat (Örn: 2.5)"
+                    class="picker-fm-input"
+                    @keydown.enter.prevent="applyCustomOvertime"
+                  />
+                  <button
+                    type="button"
+                    class="picker-fm-apply-btn"
+                    @click="applyCustomOvertime"
+                  >
+                    Uygula
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2632,6 +2828,23 @@ onMounted(async () => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 
+.weekly-overtime-pill {
+  position: absolute;
+  top: -6px;
+  right: -5px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 2.5px 5px;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.45);
+  border: 1.5px solid #ffffff;
+  z-index: 2;
+  white-space: nowrap;
+}
+
 .weekly-unsaved-glow {
   position: absolute;
   top: 3px;
@@ -2896,12 +3109,12 @@ onMounted(async () => {
   height: 0 !important;
 }
 
-/* Hızlı Damga Kutusu */
+/* Hızlı Damga Kutusu (Daha Kompakt) */
 .stamp-card-box {
-  padding: 14px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stamp-box-top {
@@ -3053,19 +3266,20 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-/* Takvim Izgarası (Görsel 2 Sağ Ekrandaki Zarif Pastel Görünüm - Taşmasız Responsive) */
+/* Takvim Izgarası (Zarif Pastel Görünüm - Tam Sığan ve Taşmasız Responsive) */
 .clean-calendar-box {
-  padding: 12px 10px;
+  padding: 10px 8px 12px;
   width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
+  flex-shrink: 0;
 }
 
 .clean-calendar-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   gap: 8px;
 }
 
@@ -3101,27 +3315,27 @@ onMounted(async () => {
 .clean-days-header {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
   width: 100%;
   box-sizing: border-box;
   text-align: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   color: #94a3b8;
-  padding: 4px 0 6px;
+  padding: 2px 0 4px;
   border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .clean-days-header .is-sun {
   color: #ef4444;
 }
 
-/* Pastel Takvim Hücreleri - Taşma Korumalı */
+/* Pastel Takvim Hücreleri - Kompakt ve Tam Sığan */
 .calendar-tiles-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -3130,19 +3344,19 @@ onMounted(async () => {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  aspect-ratio: 1 / 1.15;
-  border-radius: 12px;
+  aspect-ratio: 1 / 0.95;
+  border-radius: 9px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 1px 3px;
+  padding: 2.5px 1px 2px;
   cursor: pointer;
   position: relative;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .calendar-tile:active {
@@ -3156,24 +3370,41 @@ onMounted(async () => {
 }
 
 .calendar-tile-day {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   line-height: 1;
 }
 
 .calendar-tile-badge {
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 900;
-  padding: 1px 3px;
-  border-radius: 5px;
+  padding: 1px 2.5px;
+  border-radius: 4px;
   letter-spacing: 0.1px;
   line-height: 1.1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  max-width: 90%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  max-width: 92%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
+}
+
+.calendar-tile-overtime-pill {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 7.5px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.35);
+  border: 1px solid #ffffff;
+  z-index: 2;
+  white-space: nowrap;
 }
 
 .calendar-tile.is-unsaved {
@@ -3350,6 +3581,216 @@ onMounted(async () => {
   font-size: 11px;
   font-weight: 800;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* Kesme Departmanı Uyarısı */
+.picker-kesme-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  color: #92400e;
+}
+
+.kesme-alert-icon {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.kesme-alert-text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #b45309;
+  margin-bottom: 2px;
+}
+
+.kesme-alert-text p {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: #92400e;
+  margin: 0;
+}
+
+/* Fazla Mesai (FM) Akordeon Kartı */
+.picker-fm-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  margin-top: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.picker-fm-box.is-expanded {
+  border-color: #d8b4fe;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.08);
+}
+
+.picker-fm-accordion-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.picker-fm-accordion-trigger:active {
+  background: #f8fafc;
+}
+
+.picker-fm-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.picker-fm-title .text-purple {
+  color: #7c3aed;
+}
+
+.picker-fm-trigger-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.picker-fm-chevron {
+  color: #64748b;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.picker-fm-chevron.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.picker-fm-badge {
+  background: #f3e8ff;
+  color: #7c3aed;
+  border: 1px solid #e9d5ff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.picker-fm-empty {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.picker-fm-content {
+  padding: 0 14px 14px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+}
+
+.picker-fm-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.picker-fm-chip {
+  flex: 0 0 auto;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.picker-fm-chip:active {
+  transform: scale(0.95);
+}
+
+.picker-fm-chip.is-selected {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  border-color: #6d28d9 !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+}
+
+.picker-fm-chip--clear {
+  background: #fef2f2;
+  border-color: #fecdd3;
+  color: #dc2626;
+}
+
+.picker-fm-chip--clear:hover {
+  background: #fee2e2;
+}
+
+.picker-fm-custom-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.picker-fm-input {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.picker-fm-input:focus {
+  border-color: #7c3aed;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.picker-fm-apply-btn {
+  background: #191d24;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.picker-fm-apply-btn:hover {
+  background: #0f172a;
+}
+
+.picker-fm-apply-btn:active {
+  transform: scale(0.95);
 }
 
 .quick-reset-work-btn {

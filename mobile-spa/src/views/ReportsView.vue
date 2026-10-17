@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -235,8 +236,27 @@ function handleDrawerKeydown(e) {
   }
 }
 
+const route = useRoute()
+
+function applyTabFromRoute() {
+  const queryTab = route.query.tab
+  if (queryTab && reportsState.tabs.some(t => t.id === queryTab)) {
+    reportsState.activeTab = queryTab
+  }
+}
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab && reportsState.tabs.some(t => t.id === newTab)) {
+      setReportsTab(newTab)
+    }
+  }
+)
+
 onMounted(() => {
   window.addEventListener('keydown', handleDrawerKeydown)
+  applyTabFromRoute()
   loadReports()
 })
 </script>

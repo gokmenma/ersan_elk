@@ -90,7 +90,7 @@ try {
 
     $operations = [];
     if ($permissions['reports']) {
-        $operations = [...$model->workOperations(), $model->readings()];
+        $operations = [$model->readings(), ...$model->workOperations()];
     }
     if ($permissions['illegal']) {
         $operations[] = $model->illegalUse();

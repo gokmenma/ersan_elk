@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Helper\Security;
 use App\Model\MenuModel;
+use App\Model\PersonelFazlaMesaileriModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
 use App\Model\PuantajModel;
@@ -107,6 +108,7 @@ $Tanimlar = new TanimlamalarModel();
 $Personel = new PersonelModel();
 $Puantaj = new PuantajModel();
 $PersonelIzinleri = new PersonelIzinleriModel();
+$FazlaMesai = new PersonelFazlaMesaileriModel();
 
 try {
     // 1. TANIMLAMALAR (Definitions)
@@ -116,7 +118,7 @@ try {
             "SELECT id, tur_adi, kisa_kod, ucretli_mi, renk, ikon, firma_id 
              FROM tanimlamalar 
              WHERE grup = 'izin_turu' AND silinme_tarihi IS NULL 
-             ORDER BY (CASE WHEN firma_id = ? THEN 0 WHEN firma_id = 0 THEN 1 ELSE 2 END), sira ASC, id ASC"
+             ORDER BY (CASE WHEN firma_id = ? THEN 0 WHEN firma_id = 0 THEN 1 ELSE 2 END), id ASC"
         );
         $allStmt->execute([$firmaId]);
         $rawList = $allStmt->fetchAll(PDO::FETCH_OBJ);
@@ -345,6 +347,10 @@ try {
         $calismaStmt->execute([$firmaId, $endDate, $startDate]);
         $calismaDonemleri = $calismaStmt->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
 
+        // Fazla mesailer
+        $personelIdsAll = array_map(static fn($p) => (int) $p->id, $personelList);
+        $allMesailer = $FazlaMesai->getPersonellerAyMesaileri($personelIdsAll, $startDate, $endDate, $firmaId);
+
         $data = [];
 
         foreach ($personelList as $p) {
@@ -373,6 +379,7 @@ try {
                 'gg_toplam_gun'      => (int) $p->gg_toplam_gun,
                 'calisma_donemleri'  => $pCalismaDonemleri,
                 'entries'            => [],
+                'overtimes'          => $allMesailer[(int) $p->id] ?? (object) [],
             ];
 
             $izinler = $allIzinler[$p->id] ?? [];
@@ -464,10 +471,14 @@ try {
         if (is_string($data)) {
             $data = json_decode($data, true) ?: [];
         }
+        $overtimes = $_POST['overtimes'] ?? [];
+        if (is_string($overtimes)) {
+            $overtimes = json_decode($overtimes, true) ?: [];
+        }
         $ay = str_pad((string) ($_POST['ay'] ?? date('m')), 2, '0', STR_PAD_LEFT);
         $yil = (string) ($_POST['yil'] ?? date('Y'));
 
-        if (empty($data) || !is_array($data)) {
+        if ((empty($data) || !is_array($data)) && (empty($overtimes) || !is_array($overtimes))) {
             puantajApiResponse(['success' => false, 'message' => 'Kaydedilecek değişiklik verisi bulunamadı.'], 400);
         }
 
@@ -508,41 +519,61 @@ try {
 
             $savedCount = 0;
 
-            foreach ($data as $row) {
-                $personelId = (int) ($row['personel_id'] ?? 0);
-                $typeId = isset($row['type_id']) ? (int) $row['type_id'] : null;
-                $code = mb_strtoupper(trim((string) ($row['code'] ?? $row['status_code'] ?? '')));
-                $date = trim((string) ($row['date'] ?? $row['baslangic_tarihi'] ?? ''));
+            if (!empty($data) && is_array($data)) {
+                foreach ($data as $row) {
+                    $personelId = (int) ($row['personel_id'] ?? 0);
+                    $typeId = isset($row['type_id']) ? (int) $row['type_id'] : null;
+                    $code = mb_strtoupper(trim((string) ($row['code'] ?? $row['status_code'] ?? '')));
+                    $date = trim((string) ($row['date'] ?? $row['baslangic_tarihi'] ?? ''));
 
-                if ($personelId <= 0 || empty($date)) {
-                    continue;
+                    if ($personelId <= 0 || empty($date)) {
+                        continue;
+                    }
+
+                    // O günkü çakışan izinleri temizle
+                    $deleteStmt->execute([$personelId, $date, $date, $date, $date, $date, $date]);
+
+                    // Eğer code === 'X' ise sadece çakışan izin silindi, normal çalışılan güne döndü
+                    if ($code === 'X') {
+                        $savedCount++;
+                        continue;
+                    }
+
+                    // typeId tanımsız veya 0 ise kod haritasından bul
+                    if (($typeId === null || $typeId === 0) && !empty($code) && isset($codeMap[$code])) {
+                        $typeId = $codeMap[$code];
+                    }
+
+                    // Eğer geçerli bir izin tipi ise kaydet
+                    if ($typeId !== null && $typeId > 0) {
+                        $insertStmt->execute([
+                            $personelId,
+                            $typeId,
+                            $date,
+                            $date,
+                            1,
+                            $userId,
+                        ]);
+                        $savedCount++;
+                    }
                 }
+            }
 
-                // O günkü çakışan izinleri temizle
-                $deleteStmt->execute([$personelId, $date, $date, $date, $date, $date, $date]);
+            // Fazla Mesai Değişikliklerini İşle
+            if (!empty($overtimes) && is_array($overtimes)) {
+                foreach ($overtimes as $ot) {
+                    $otPersonelId = (int) ($ot['personel_id'] ?? 0);
+                    $otTarih = trim((string) ($ot['tarih'] ?? $ot['date'] ?? ''));
+                    $otSaat = (float) ($ot['saat'] ?? 0);
 
-                // Eğer code === 'X' ise sadece çakışan izin silindi, normal çalışılan güne döndü
-                if ($code === 'X') {
-                    $savedCount++;
-                    continue;
-                }
-
-                // typeId tanımsız veya 0 ise kod haritasından bul
-                if (($typeId === null || $typeId === 0) && !empty($code) && isset($codeMap[$code])) {
-                    $typeId = $codeMap[$code];
-                }
-
-                // Eğer geçerli bir izin tipi ise kaydet
-                if ($typeId !== null && $typeId > 0) {
-                    $insertStmt->execute([
-                        $personelId,
-                        $typeId,
-                        $date,
-                        $date,
-                        1,
-                        $userId,
-                    ]);
-                    $savedCount++;
+                    if ($otPersonelId > 0 && !empty($otTarih)) {
+                        if ($otSaat > 0) {
+                            $FazlaMesai->saveMesai($firmaId, $otPersonelId, $otTarih, $otSaat, null, $userId);
+                        } else {
+                            $FazlaMesai->deleteMesai($firmaId, $otPersonelId, $otTarih);
+                        }
+                        $savedCount++;
+                    }
                 }
             }
 
