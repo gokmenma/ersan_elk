@@ -1,5 +1,96 @@
 # Progress
 
+## 2026-10-17 — Mobil SPA: Sistem Geneli ve Personel Detayı Kartlar Arası Boşluk Standardı (16px)
+- [x] **`PersonnelSectionView.vue` Kartlar Arası Boşluk Düzeltmesi**:
+  - Görüntüleme modundaki `.quick-contact-bar` ve `.info-group-card` kartlarının `14px` olan marjinleri `var(--ds-card-gap, 16px) !important;` olarak güncellendi.
+  - `.genel-view-stack` ve `.calisma-view-stack` flex container'ları `gap: var(--ds-card-gap, 16px)` ile yapılandırıldı; içindeki kartların `margin-bottom: 0 !important;` alması sağlanarak çift boşluk engellendi.
+  - Düzenleme modundaki `.genel-edit-form` ve `.calisma-edit-form` formlarında `gap: 16px` uygulandı; içindeki `.form-bento-section` ve `.edit-sticky-top-bar` elemanlarının `margin-bottom` değeri sıfırlanarak 30px'lik aşırı açılma kesin olarak giderildi.
+- [x] **`PersonnelDetailView.vue` Aralık Düzeltmesi**:
+  - `.detail-modules-section` üzerindeki `margin-top: 20px;` kaldırılarak hero bento kartı ile modül listesi arasındaki mesafe tam 16px standardına getirildi.
+- [x] **`design-system.css` Evrensel Kural**:
+  - `[class*="-edit-form"] > .bento-card, [class*="-view-stack"] > .bento-card, .home-sections-stack > .bento-card, .genel-edit-form > .bento-card, .calisma-edit-form > .bento-card { margin-bottom: 0 !important; }` kuralı eklenerek tüm sayfalarda flex gap ve bento margin çakışması önlendi.
+- [x] `npm run build` ile hatasız üretim derlemesi alındı.
+
+## 2026-10-17 — Mobil SPA Bordro: Raporlar Formatında Dönem Seçimi, Gömülü Kanal Hero Kartı ve Filtre Sekmelerinin Kaldırılması
+- [x] **Raporlar Standardında Dönem Seçim Kartı & Bottom Sheet (`PayrollView.vue`)**:
+  - Hantal HTML select kutusu kaldırıldı; Raporlar sayfası ile 1:1 uyumlu `.date-range-badge` bento kartı eklendi (takvim ikonu, dönem adı, tarih aralığı, kilit rozeti ve `Değiştir ⌵` butonu).
+  - Karta tıklandığında açılan dokunmatik ve modern **Dönem Seçici Bottom Sheet (`payroll-modal-sheet--period`)** geliştirildi; dönem listesi, tarih aralıkları ve aktif seçim doğrulaması sağlandı.
+- [x] **Hero Kartı İçi Kompakt Kanal Dağıtımı**:
+  - Alttaki 3 ayrı beyaz kart (`BANKA`, `ELDEN`, `SODEXO`) kaldırılarak doğrudan `.payroll-kpi-hero` siyah kartının içine 3'lü koyu cam mikro kartlar olarak yerleştirildi.
+  - Kart iç düzeni ve padding'leri sıkılaştırılarak kartın büyümesi engellendi; toplam kart yüksekliği **~132px** ile önceki tasarıma kıyasla dikeyde ~150px yer tasarrufu sağlandı.
+- [x] **Filtre Sekmelerinin Kaldırılması**:
+  - Kullanıcının talebi doğrultusunda `.clay-tabs-wrap.payroll-tabs` ('Tümü', 'Hesaplanan', 'Bekleyen'...) kaldırıldı; arama alanı tekil, sade ve ferah biçimde konumlandırıldı.
+- [x] `design-smoke.cjs` 27 viewport kontrolünden `PASS` aldı, `npm run build` ile hatasız üretim derlemesi alındı.
+
+## 2026-10-17 — Mobil SPA Personel Detayı: Sticky Barın Scroll Esnasında Sabit Kalması (Floating Sticky Düzeltmesi)
+- [x] **`.app-shell` Overflow Düzeltmesi**: `overflow: hidden` kaldırılarak `overflow-x: clip; overflow-y: visible;` uygulandı ve W3C standardında sticky elemanların window scroll ile kilitlenmesi sağlandı.
+- [x] **Garantili Floating Sentinel & Scroll Mekanizması (`PersonnelSectionView.vue`)**:
+  - `stickySentinel` ve `window` scroll dinleyicisi ile sayfa kaydırıldığı anda `.edit-sticky-top-bar` otomatik olarak `.is-floating` moduna geçerek ekranın üst kenarında (`position: fixed; top: 10px; width: calc(100% - 32px); max-width: 448px; left: 50%; transform: translateX(-50%); z-index: 100;`) sabitlenir.
+  - Form ne kadar aşağı kaydırılırsa kaydırılsın bar **kesinlikle yukarı kaçmaz**, ekranda sabit kalarak her an tek dokunuşla kaydetme/vazgeçme imkanı sunar.
+  - Floating moddayken form içeriğinin sıçramaması için `sticky-bar-placeholder` boşluk koruyucu eklendi.
+- [x] `npm run build` ile hatasız üretim derlemesi alındı.
+
+## 2026-10-17 — Mobil SPA Personel Detayı: Düzenleme Input Tasarımlarının Görüntüleme Kartı Standardına Uyarlanması
+- [x] **Hücre İçi Bento Kapsayıcı Tasarımı (`.form-field`)**:
+  - Gönderilen referans görsel doğrultusunda form alanları dışta etiketli klasik input formundan çıkarıldı; her alan tek parça açık gri (`#f1f4f9`), 14px kavisli ve iç boşluklu bir bento hücresi haline getirildi.
+  - Hücre içi üstte küçük, gri ve büyük harfli etiket; altta kalın, siyah ve kenarlıksız/şeffaf `input`, `select` ve `textarea` bileşenleri yerleştirildi.
+  - `:focus-within` ile hücreye tıklandığında yumuşak beyaz zemin ve macOS mavisi odak çizgisi/yayılması eklendi.
+- [x] **Başlıkların Eşitlenmesi**: Düzenleme formlarındaki küçük `01`, `02` rozetleri kaldırılarak görüntüleme modundaki gibi ikon kutulu, h3 başlıklı ve alt açıklamalı `.group-header` standartlaştırıldı.
+- [x] `npm run build` ile hatasız üretim derlemesi alındı.
+
+## 2026-10-17 — Mobil SPA Personel Detayı: Minimal Hero Kartı ve Çalışma Bilgileri Sekmesi
+- [x] **Hero Profil Kartının Minimalize Edilmesi (`PersonnelDetailView.vue`)**:
+  - Dikey yüksekliği fazla olan grid kutuları kaldırıldı; tek parça, dikeyde yalnızca ~30px alan kaplayan `.hero-mini-meta-card` ve `.meta-row` satır formatına geçildi.
+  - Avatar boyutu 60x60px'den 50x50px'e dengelendi; Departman, Ekip ve İşe Giriş Tarihi tek bir satırda ikonlu ve sıkılaştırılmış biçimde yerleştirilerek dikeyde ~120px net alan kazanıldı.
+- [x] **Çalışma Bilgileri Sekmesinin Masaüstü Standartlarında Yeniden İnşası (`PersonnelSectionView.vue`)**:
+  - **Çalışma Yaşam Döngüsü Kartı**: Aktif/Ayrılmış durum rozeti, dinamik kıdem hesaplama (`calculateTenure`), işe giriş-çıkış tarihleri, SGK firması, sınıfı, departman, görev, saha takibi ve araç kullanım rozetleri.
+  - **Çalışma Bilgilerini Düzenleme Formu**: Masaüstündeki tüm alanları içeren, `Gate::allows('personel_duzenle')` yetki kontrollü tam düzenleme yeteneği.
+  - **Ekip Atama Geçmişi**: Personelin görev aldığı ekipler, ekip şefliği rozeti, tarih aralıkları; "Yeni Ekibe Ata" modalı, düzenleme ve çakışma kontrollü silme desteği.
+  - **Çalışma Dönemleri Geçmişi**: Personelin geçmiş çalışma dönemleri; yeni dönem ekleme ve silme modalları.
+- [x] **Model & API Altyapısı (`MobilePersonelModel.php`, `personnel.php`, `personnel.js`)**:
+  - `getWorkDetails`, `getWorkOptions`, `saveWorkInfo`, `saveEkipGecmisi`, `deleteEkipGecmisi`, `saveCalismaGecmisi`, `deleteCalismaGecmisi` metotları, CSRF ve yetki korumalı POST uç noktalarıyla bağlandı.
+- [x] `npm run build` ile hatasız üretim derlemesi alındı.
+
+## 2026-10-17 — Mobil SPA Personel Detayı ve Genel Bilgiler Sekmesi
+- [x] **Hero Bento Kartı Entegrasyonu**:
+  - `PersonnelDetailView.vue`: Kullanıcının ilettiği görsel doğrultusunda, altta ayrı duran "Departman, Ekip/Bölge ve İşe Giriş Tarihi" kartı kaldırılarak doğrudan üstteki Hero Bento profil kartının içine (`.hero-facts-grid` & `.hero-facts-divider`) entegre edildi.
+- [x] **Genel Bilgiler Sekmesinin Masaüstü Standartlarında Yenilenmesi**:
+  - `PersonnelSectionView.vue`: Genel bilgiler sekmesi masaüstü modülündeki tüm kabiliyetlerle yerel SPA olarak baştan inşa edildi:
+    - *Görüntüleme Modu*: 5 ayrı Bento kartı (Kimlik Bilgileri, İletişim & Adres, Kişisel & Aile Detayları, Fiziksel & Acil Durum, Program & APK Giriş Bilgileri), tek tıkla TC ve telefon kopyalama, Google Haritalarda adresi açma, hızlı WhatsApp ve Arama kısayolları, KASKİ şifresi gizle/göster.
+    - *Düzenleme Modu*: Yetkili kullanıcılar için tam düzenleme formu, yerel OCR ile belge/fotoğraftan veri doldurma yeteneği, program şifresi güncelleme, KASKİ kullanıcı adı/şifresi güncelleme, sticky kaydet/iptal çubuğu, anında Toast bildirimi.
+- [x] **Backend Model ve API Altyapısı**:
+  - `MobilePersonelModel.php`: `mobileDirectoryDetail` ile tüm alanlar çekildi, şifreli alanlar `Security::decrypt()` ile çözümlendi; `saveMobileGeneralInfo` ile masaüstü parametrik binding, güvenlik doğrulamaları ve `SystemLogModel` loglama desteği sağlandı.
+  - `public/api/personnel.php` & `dist/api/personnel.php`: `personnelPublicRow` genel bilgiler nesnesiyle zenginleştirildi; `action === 'save_general'` POST uç noktası eklendi.
+  - `services/personnel.js`: `saveGeneral` metodu eklendi.
+- [x] `npm run build` ile hatasız üretim derlemesi alındı.
+
+## 2026-10-17 — Mobil SPA Profil Sayfası: Çıkış Butonunun Ayarlar Listesine Entegre Edilmesi
+- [x] Profil sayfasında ayrı bir alt buton olarak duran "Güvenli Çıkış Yap" butonu kaldırılarak doğrudan ayarlar bento kartının son liste elemanı haline getirildi:
+  - `ProfileView.vue`: Harici `.logout-btn` kaldırıldı; `settings-bento-card` içerisine son satır olarak `settings-row--danger` sınıfında ikonlu, kırmızı vurgulu ve sağ oklu "Güvenli Çıkış Yap" satırı eklendi.
+  - `npm run build` ile hatasız üretim derlemesi sağlandı.
+
+## 2026-10-17 — Mobil SPA Ana Sayfa: Masaüstü Standardında Özelleştirilebilir, Sürükle-Bırak Sıralanabilir ve Kapsamlı Bento Kartları
+- [x] Kullanıcının talepleri doğrultusunda klasik `mobile` (`mobile/pages/home.php`) ve masaüstü `views/home` standartları birleştirilerek Mobil SPA ana sayfası tamamen yenilendi:
+  - **Sürükle-Bırak Sıralama**: HTML5 Drag & Drop ve mobil dokunmatik tutamağı (`.home-drag-handle`, `GripVertical`) ile kartların sırası dinamik olarak değiştirilebilir hale getirildi.
+  - **Kalıcı Kullanıcı Ayarları**: Kart sırası ve görünürlük tercihleri (`order`, `settings`) `SettingsModel` (`mobile_dashboard_order`, `mobile_dashboard_settings`) ve yerel `localStorage` ile kullanıcı bazında kalıcı olarak saklandı. Sayfa yenilendiğinde kullanıcıya özel sıralama aynen korunur.
+  - **Kart Kapatıp/Açma (Görünürlük)**: Her kartta hızlı "Gizle" (`EyeOff`) butonu, altta "Gizlenen Kartlar" hızlı geri açma çubuğu ve kapsamlı "Ana Sayfayı Özelleştir" bottom sheet modalı eklendi. Modal içinde aç/kapa switch'leri, yukarı/aşağı butonları ve "Varsayılan Düzene Sıfırla" butonu sunuldu.
+  - **Klasik Mobil Verilerinin Tamamı & Bento Tasarımı**:
+    - *Kurumsal Duyurular*: Gradient bento kartı + tıklandığında açılan tam metin ve görsel bottom sheet modalı.
+    - *Bekleyen Onaylar*: Amber uyarı bento kartı (talep, avans ve izin kırılımı, `/talepler` bağlantısı).
+    - *Bugünün Nöbetçileri*: Avatar/resim, ad soyad, görev saatleri, tek dokunuşla arama butonu (`tel:`) ve `/nobet-onay` takvim bağlantısı.
+    - *Personel Durumu*: Koyu bento kartı + 3 segmentli renkli bar (Sahada, İzinli ve Geç Kalan personeller).
+    - *Araç & Filo*: Sahada, serviste, boşta dağılımı ve filo bağlantısı.
+    - *Günün Operasyonları*: Günlük / Aylık toggle geçişi, son güncelleme zamanı ve operasyon detayları.
+    - *Hızlı Erişim*: Yetkili modüllere doğrudan tile kısayolları.
+  - **Backend Model & API (`MobileDashboardModel.php`, `dashboard.php`, `dashboard.js`)**: `shifts()`, `pendingApprovals()`, `late` personeller, operasyonel son güncelleme saatleri ve `save_card_settings` POST aksiyonu eklendi.
+  - **Derleme**: `npm run build` ile 0 hata ile üretim derlemesi alındı.
+
+## 2026-10-17 — Mobil SPA 'Daha Fazla' Menü Footer: Profil Menü Butonu Entegrasyonu
+- [x] Diğer ("Daha Fazla") menüsünün alt aksiyon çubuğuna (Güvenli Çıkış butonunun solundaki alana) Profil butonu eklendi:
+  - `BottomNav.vue`: Sol tarafa `<UserRound :size="18" /> <span>Profil</span>` butonu eklendi, tıklandığında `/profil` rotasına yönlendirildi.
+  - `styles.css` & `design-system.css`: `.nav-sheet-footer` 2 sütunlu grid (`grid-template-columns: 1fr 1fr;`) yapılarak Profil ve Güvenli Çıkış butonları tam genişlikte ve simetrik olarak yerleştirildi.
+  - `npm run build` ile hatasız üretim derlemesi sağlandı.
+
 ## 2026-10-16 — Mobil SPA E-Fatura & Finans: Akıllı Tekil Arama & UI/UX Pro Max Taslak / Wizard Yenilemesi
 - [x] E-fatura modülü tekil akıllı arama ve modern UI/UX Pro Max tasarım diliyle yenilendi:
   - **Tekil Akıllı Arama Çubuğu**: Çift input (fatura no ve ürün arama) kaldırıldı; Fatura No, Müşteri Ünvanı, VKN ve Ürün/Kalem satırlarını tek çubukta tarayan `.fatura-search-box--unified` ve tek dokunuşla sıfırlama butonu (`X`) getirildi.

@@ -128,13 +128,20 @@ const rows = [
         </span>
         <ChevronRight :size="16" class="settings-arrow" />
       </button>
-    </div>
 
-    <!-- 4. Güvenli Çıkış Butonu -->
-    <button type="button" class="clay-btn clay-btn--danger w-100 logout-btn" @click="logout">
-      <LogOut :size="17" />
-      <span>Güvenli Çıkış Yap</span>
-    </button>
+      <!-- Çıkış Satırı (Listenin Elemanı Olarak) -->
+      <button
+        type="button"
+        class="settings-row settings-row--danger"
+        @click="logout"
+      >
+        <span class="settings-icon settings-icon--danger">
+          <LogOut :size="18" />
+        </span>
+        <strong class="text-danger">Güvenli Çıkış Yap</strong>
+        <ChevronRight :size="16" class="settings-arrow" />
+      </button>
+    </div>
 
     <!-- Bildirim Tercihleri Modalı (Sheet) -->
     <Transition name="nav-sheet">
@@ -331,10 +338,18 @@ const rows = [
   color: var(--ds-muted);
 }
 
-.logout-btn {
-  height: 48px;
-  border-radius: var(--ds-radius-tile);
-  margin-top: 14px;
+.settings-row--danger .settings-icon--danger {
+  background: var(--ds-danger-soft, #fef2f2);
+  color: var(--ds-danger-ink, #dc2626);
+}
+
+.settings-row--danger strong {
+  color: var(--ds-danger-ink, #dc2626);
+}
+
+.settings-row--danger .settings-arrow {
+  color: var(--ds-danger-ink, #dc2626);
+  opacity: 0.6;
 }
 
 /* Modal Stilleri */

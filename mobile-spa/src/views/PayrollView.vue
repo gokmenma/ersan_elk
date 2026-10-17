@@ -9,6 +9,7 @@ import {
   Banknote,
   Calendar,
   CalendarDays,
+  CalendarRange,
   Calculator,
   Check,
   CheckCircle2,
@@ -209,7 +210,21 @@ async function loadBordro(donemToken = null, showLoader = true) {
   }
 }
 
-// Dönem Değişimi
+// Dönem Değişimi & Sheet Seçimi
+const isPeriodSheetOpen = ref(false)
+
+function openPeriodSheet() {
+  isPeriodSheetOpen.value = true
+}
+
+function selectPeriodFromSheet(newDonemId) {
+  isPeriodSheetOpen.value = false
+  if (selectedDonemId.value !== newDonemId) {
+    selectedDonemId.value = newDonemId
+    loadBordro(newDonemId)
+  }
+}
+
 function handlePeriodChange(event) {
   const newDonemId = event.target.value
   selectedDonemId.value = newDonemId
@@ -555,104 +570,128 @@ onMounted(() => {
     </div>
 
     <template v-else>
-      <!-- 2. Dönem Seçimi Bento Kartı -->
-      <section class="bento-card bento-card--white payroll-period-card">
-        <div class="payroll-period-header">
-          <div class="payroll-period-label-wrap">
-            <span class="clay-page-eyebrow">BORDRO DÖNEMİ</span>
-            <span
-              class="clay-pill-tag"
-              :class="isClosed ? 'clay-pill-tag--coral' : 'clay-pill-tag--emerald'"
-            >
-              <component :is="isClosed ? Lock : LockOpen" :size="12" />
-              {{ isClosed ? 'KAPALI DÖNEM' : 'AÇIK DÖNEM' }}
+      <!-- 2. Dönem Seçimi Kartı (Raporlar sayfası standardı) -->
+      <section class="date-filter-section">
+        <!-- Gizli select (uyumluluk ve erişilebilirlik için) -->
+        <select
+          id="bordroPeriodSelect"
+          v-model="selectedDonemId"
+          class="sr-only"
+          aria-label="Bordro dönemi seçin"
+          tabindex="-1"
+          @change="handlePeriodChange"
+        >
+          <option v-if="!donemler.length" value="">Dönem bulunamadı</option>
+          <option
+            v-for="d in donemler"
+            :key="d.id"
+            :value="d.id"
+          >
+            {{ d.name }} {{ d.closed ? '(Kapalı)' : '' }}
+          </option>
+        </select>
+
+        <div
+          class="date-range-badge bento-card bento-card--white cursor-pointer"
+          role="button"
+          tabindex="0"
+          aria-label="Bordro dönemi değiştir"
+          @click="openPeriodSheet"
+        >
+          <div class="date-range-badge__left">
+            <span class="date-icon-box">
+              <CalendarRange :size="17" class="text-primary" />
             </span>
+            <div class="date-range-badge__meta">
+              <small class="date-label-sub">
+                Bordro Dönemi
+                <span v-if="selectedDonem?.start_date && selectedDonem?.end_date" class="date-range-sub-dates">
+                  ({{ selectedDonem.start_date }} — {{ selectedDonem.end_date }})
+                </span>
+              </small>
+              <div class="date-range-value-row">
+                <strong class="date-range-text">{{ selectedDonem?.name || 'Dönem seçin' }}</strong>
+                <span
+                  v-if="selectedDonem"
+                  class="period-mini-status"
+                  :class="isClosed ? 'period-mini-status--closed' : 'period-mini-status--open'"
+                >
+                  <component :is="isClosed ? Lock : LockOpen" :size="10" />
+                  {{ isClosed ? 'Kapalı' : 'Açık' }}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div class="payroll-select-wrapper">
-            <select
-              id="bordroPeriodSelect"
-              v-model="selectedDonemId"
-              aria-label="Bordro dönemi seçin"
-              class="payroll-select"
-              @change="handlePeriodChange"
-            >
-              <option v-if="!donemler.length" value="">Dönem bulunamadı</option>
-              <option
-                v-for="d in donemler"
-                :key="d.id"
-                :value="d.id"
-              >
-                {{ d.name }} {{ d.closed ? '(Kapalı)' : '' }}
-              </option>
-            </select>
-            <ChevronDown :size="16" class="payroll-select-chevron" />
-          </div>
-        </div>
-
-        <div v-if="selectedDonem" class="payroll-period-dates">
-          <span>
-            <Calendar :size="13" />
-            {{ selectedDonem.start_date || '-' }} — {{ selectedDonem.end_date || '-' }}
-          </span>
-          <span class="payroll-period-count">
-            {{ summary.personel }} personel kayıtlı
-          </span>
+          <button
+            type="button"
+            class="date-change-link"
+            tabindex="-1"
+          >
+            <span>Değiştir</span>
+            <ChevronDown :size="14" />
+          </button>
         </div>
       </section>
 
-      <!-- 3. Özet Metrikleri (Bento KPI Grid) -->
+      <!-- 3. Özet Metrikleri (Kompakt Bento Hero Kartı) -->
       <section class="bento-card bento-card--dark payroll-kpi-hero">
-        <div class="bento-overview-head">
+        <!-- Üst Satır: Başlık & Hakediş/Kesinti Özeti -->
+        <div class="payroll-hero-top">
           <span class="dark-pill-tag">
             <span class="bento-status-dot"></span> TOPLAM NET DAĞITIM
           </span>
-          <Banknote :size="20" aria-hidden="true" />
+          <div class="payroll-hero-stats">
+            <span class="hero-stat-item">
+              Hakediş: <strong>{{ formatMoney(summary.alacak) }}</strong>
+            </span>
+            <span class="hero-stat-item hero-stat-item--deduct">
+              Kesinti: <strong>-{{ formatMoney(summary.kesinti) }}</strong>
+            </span>
+          </div>
         </div>
-        <div class="payroll-hero-main">
-          <strong class="payroll-hero-amount">{{ formatMoney(summary.net) }}</strong>
-          <span class="payroll-hero-sublabel">ele geçen net toplam</span>
+
+        <!-- Orta Satır: Büyük Net Tutar -->
+        <div class="payroll-hero-mid">
+          <div class="payroll-hero-amount-wrap">
+            <strong class="payroll-hero-amount">{{ formatMoney(summary.net) }}</strong>
+            <span class="payroll-hero-sublabel">ele geçen net toplam</span>
+          </div>
+          <span class="payroll-personnel-badge">
+            <Users :size="12" />
+            {{ summary.personel }} Personel
+          </span>
         </div>
-        <div class="bento-overview-footer">
-          <span>Toplam Hakediş: <b>{{ formatMoney(summary.alacak) }}</b></span>
-          <span class="payroll-deduction-badge">Kesintiler: -{{ formatMoney(summary.kesinti) }}</span>
+
+        <!-- Alt Bölüm: 3'lü Ödeme Dağıtım Kanalları (Banka, Elden, Sodexo) -->
+        <div class="payroll-hero-channels">
+          <div class="hero-channel-card">
+            <div class="hero-channel-label">
+              <Landmark :size="12" class="text-blue-400" />
+              <span>BANKA</span>
+            </div>
+            <strong class="hero-channel-value text-blue-200">{{ formatMoney(summary.banka) }}</strong>
+          </div>
+
+          <div class="hero-channel-card">
+            <div class="hero-channel-label">
+              <Wallet :size="12" class="text-amber-400" />
+              <span>ELDEN</span>
+            </div>
+            <strong class="hero-channel-value text-amber-200">{{ formatMoney(summary.elden) }}</strong>
+          </div>
+
+          <div class="hero-channel-card">
+            <div class="hero-channel-label">
+              <UtensilsCrossed :size="12" class="text-cyan-400" />
+              <span>SODEXO</span>
+            </div>
+            <strong class="hero-channel-value text-cyan-200">{{ formatMoney(summary.sodexo) }}</strong>
+          </div>
         </div>
       </section>
 
-      <!-- 3'lü İkincil Bento KPI Izgarası -->
-      <section class="payroll-sub-kpi-grid">
-        <div class="bento-card bento-card--white kpi-mini-card">
-          <div class="kpi-mini-icon kpi-mini-icon--blue">
-            <Landmark :size="18" />
-          </div>
-          <div class="kpi-mini-body">
-            <span class="kpi-mini-label">BANKA</span>
-            <strong class="kpi-mini-value text-blue-600">{{ formatMoney(summary.banka) }}</strong>
-          </div>
-        </div>
-
-        <div class="bento-card bento-card--white kpi-mini-card">
-          <div class="kpi-mini-icon kpi-mini-icon--amber">
-            <Wallet :size="18" />
-          </div>
-          <div class="kpi-mini-body">
-            <span class="kpi-mini-label">ELDEN</span>
-            <strong class="kpi-mini-value text-amber-600">{{ formatMoney(summary.elden) }}</strong>
-          </div>
-        </div>
-
-        <div class="bento-card bento-card--white kpi-mini-card">
-          <div class="kpi-mini-icon kpi-mini-icon--cyan">
-            <UtensilsCrossed :size="18" />
-          </div>
-          <div class="kpi-mini-body">
-            <span class="kpi-mini-label">SODEXO</span>
-            <strong class="kpi-mini-value text-cyan-600">{{ formatMoney(summary.sodexo) }}</strong>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. Arama ve Filtreleme -->
+      <!-- 4. Arama -->
       <section class="payroll-filter-section">
         <div class="payroll-search-box">
           <Search :size="18" class="payroll-search-icon" />
@@ -671,55 +710,6 @@ onMounted(() => {
             @click="searchQuery = ''"
           >
             <X :size="16" />
-          </button>
-        </div>
-
-        <!-- Hızlı Filtre Sekmeleri -->
-        <div class="clay-tabs-wrap payroll-tabs" role="tablist">
-          <button
-            type="button"
-            class="clay-filter-pill"
-            :class="{ active: activeFilter === 'all' }"
-            role="tab"
-            @click="activeFilter = 'all'"
-          >
-            Tümü ({{ items.length }})
-          </button>
-          <button
-            type="button"
-            class="clay-filter-pill"
-            :class="{ active: activeFilter === 'calculated' }"
-            role="tab"
-            @click="activeFilter = 'calculated'"
-          >
-            Hesaplanan ({{ summary.hesaplanan }})
-          </button>
-          <button
-            type="button"
-            class="clay-filter-pill"
-            :class="{ active: activeFilter === 'pending' }"
-            role="tab"
-            @click="activeFilter = 'pending'"
-          >
-            Bekleyen ({{ summary.hesaplanmayan }})
-          </button>
-          <button
-            type="button"
-            class="clay-filter-pill"
-            :class="{ active: activeFilter === 'bank' }"
-            role="tab"
-            @click="activeFilter = 'bank'"
-          >
-            Banka
-          </button>
-          <button
-            type="button"
-            class="clay-filter-pill"
-            :class="{ active: activeFilter === 'cash' }"
-            role="tab"
-            @click="activeFilter = 'cash'"
-          >
-            Elden / Sodexo
           </button>
         </div>
       </section>
@@ -1345,6 +1335,81 @@ onMounted(() => {
         </div>
       </div>
     </Transition>
+
+    <!-- 6. DÖNEM SEÇİCİ BOTTOM SHEET -->
+    <Transition name="fade">
+      <div
+        v-if="isPeriodSheetOpen"
+        class="payroll-modal-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Bordro Dönemi Seçin"
+        @click.self="isPeriodSheetOpen = false"
+      >
+        <div class="payroll-modal-sheet payroll-modal-sheet--period">
+          <div class="sheet-drag-handle"></div>
+
+          <header class="payroll-sheet-header">
+            <div>
+              <span class="clay-page-eyebrow">BORDRO DÖNEMİ</span>
+              <h2 class="payroll-sheet-title">Dönem Seçin</h2>
+              <p class="payroll-sheet-subtitle">
+                Görüntülemek istediğiniz bordro dönemini seçin
+              </p>
+            </div>
+            <button
+              type="button"
+              class="clay-circle-btn"
+              aria-label="Kapat"
+              @click="isPeriodSheetOpen = false"
+            >
+              <X :size="18" />
+            </button>
+          </header>
+
+          <div class="period-sheet-body hide-scrollbar">
+            <div class="period-sheet-list">
+              <button
+                v-for="d in donemler"
+                :key="d.id"
+                type="button"
+                class="period-sheet-item"
+                :class="{ 'period-sheet-item--active': d.id === selectedDonemId }"
+                @click="selectPeriodFromSheet(d.id)"
+              >
+                <div class="period-sheet-item__left">
+                  <div
+                    class="period-sheet-icon"
+                    :class="{ 'period-sheet-icon--active': d.id === selectedDonemId }"
+                  >
+                    <CalendarDays :size="18" />
+                  </div>
+                  <div class="period-sheet-info">
+                    <strong class="period-sheet-name">{{ d.name }}</strong>
+                    <span v-if="d.start_date && d.end_date" class="period-sheet-dates">
+                      {{ d.start_date }} — {{ d.end_date }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="period-sheet-item__right">
+                  <span
+                    class="clay-pill-tag"
+                    :class="d.closed ? 'clay-pill-tag--coral' : 'clay-pill-tag--emerald'"
+                  >
+                    <component :is="d.closed ? Lock : LockOpen" :size="11" />
+                    {{ d.closed ? 'Kapalı' : 'Açık' }}
+                  </span>
+                  <span v-if="d.id === selectedDonemId" class="period-sheet-check">
+                    <Check :size="16" />
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </section>
 </template>
 
@@ -1357,179 +1422,359 @@ onMounted(() => {
   gap: var(--ds-space-3, 12px);
 }
 
-/* ==================== DÖNEM SEÇİM KARTI ==================== */
-.payroll-period-card {
-  padding: var(--ds-space-3, 12px) var(--ds-space-4, 16px);
+/* ==================== 2. DÖNEM SEÇİM BÖLÜMÜ (RAPORLAR STANDARDI) ==================== */
+.sr-only,
+#bordroPeriodSelect {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.payroll-period-header {
+.date-filter-section {
+  margin-bottom: 2px;
+}
+
+.date-range-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-card, 24px);
+  margin-bottom: 0;
+  transition: transform 0.12s ease;
+  user-select: none;
+}
+
+.date-range-badge:active {
+  transform: scale(0.985);
+}
+
+.date-range-badge__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.date-icon-box {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--ds-surface-subtle, #f1f5f9);
+  flex-shrink: 0;
+}
+
+.date-range-badge__meta {
   display: flex;
   flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.date-label-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ds-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.date-range-sub-dates {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.date-range-value-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.period-mini-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.period-mini-status--closed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.period-mini-status--open {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.date-range-text {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ds-ink, #0f172a);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.date-change-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ds-surface-subtle, #f1f5f9);
+  border: 1px solid var(--ds-border-subtle, #e2e8f0);
+  padding: 6px 12px;
+  border-radius: var(--ds-radius-pill, 9999px);
+  color: var(--ds-blue-ink, #2563eb);
+  font: 800 12px var(--ds-font-main, sans-serif);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* ==================== 3. KOMPAKT BENTO HERO KART ==================== */
+.payroll-kpi-hero {
+  padding: 14px 16px;
+  margin-bottom: 2px;
+}
+
+.payroll-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.payroll-period-label-wrap {
+.payroll-hero-stats {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.payroll-select-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.payroll-select {
-  width: 100%;
-  height: 44px;
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--ds-radius-pill, 9999px);
-  padding: 0 38px 0 16px;
-  font-size: 14px;
-  font-weight: 800;
-  color: #0f172a;
-  appearance: none;
-  -webkit-appearance: none;
-  outline: none;
-  transition: border-color var(--ds-transition-fast), background-color var(--ds-transition-fast);
-}
-
-.payroll-select option {
-  background-color: #ffffff;
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.payroll-select:focus {
-  border-color: #3b82f6;
-  background-color: #ffffff;
-}
-
-.payroll-select-chevron {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: #64748b;
-}
-
-.payroll-period-dates {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
-  border-top: 1px dashed #e2e8f0;
-  padding-top: 8px;
+  color: rgba(255, 255, 255, 0.65);
 }
 
-.payroll-period-dates > span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.payroll-period-count {
+.hero-stat-item strong {
+  color: #ffffff;
   font-weight: 700;
-  color: #3b82f6;
 }
 
-/* ==================== KPI KARTLARI ==================== */
-.payroll-kpi-hero {
-  padding: 18px 20px;
+.hero-stat-item--deduct {
+  color: #fca5a5;
 }
 
-.payroll-hero-main {
-  margin: 12px 0 16px;
+.hero-stat-item--deduct strong {
+  color: #fca5a5;
+}
+
+.payroll-hero-mid {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 6px 0 10px;
+  gap: 8px;
+}
+
+.payroll-hero-amount-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .payroll-hero-amount {
-  font-size: clamp(22px, 6.2vw, 28px);
-  line-height: 1.15;
+  font-size: clamp(20px, 5.8vw, 26px);
+  line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
 }
 
 .payroll-hero-sublabel {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.55);
 }
 
-.payroll-deduction-badge {
-  color: #fca5a5;
+.payroll-personnel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
   font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px 8px;
+  border-radius: 9999px;
+  flex-shrink: 0;
 }
 
-.payroll-sub-kpi-grid {
+/* 3'lü Ödeme Dağıtım Çiğleri (Hero Kartı İçi) */
+.payroll-hero-channels {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
-.kpi-mini-card {
-  padding: 12px;
+.hero-channel-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  transition: background-color 0.15s ease;
+}
+
+.hero-channel-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hero-channel-value {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==================== DÖNEM SEÇİCİ SHEET ==================== */
+.payroll-modal-sheet--period {
+  height: auto;
+  max-height: 80vh;
+}
+
+.period-sheet-body {
+  padding: 12px 16px 28px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.kpi-mini-icon {
-  width: 32px;
-  height: 32px;
+.period-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.period-sheet-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.period-sheet-item:active {
+  transform: scale(0.985);
+}
+
+.period-sheet-item--active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.period-sheet-item__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.period-sheet-icon {
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  flex-shrink: 0;
 }
 
-.kpi-mini-icon--blue {
-  background: #eff6ff;
-  color: #2563eb;
+.period-sheet-icon--active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
 }
 
-.kpi-mini-icon--amber {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.kpi-mini-icon--cyan {
-  background: #ecfeff;
-  color: #0891b2;
-}
-
-.kpi-mini-body {
+.period-sheet-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.kpi-mini-label {
-  font-size: 9px;
+.period-sheet-name {
+  font-size: 13.5px;
   font-weight: 800;
-  letter-spacing: 0.05em;
-  color: #94a3b8;
+  color: #0f172a;
 }
 
-.kpi-mini-value {
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.period-sheet-dates {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.period-sheet-item__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.period-sheet-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ==================== ARAMA VE FİLTRE ==================== */
@@ -2967,5 +3212,32 @@ onMounted(() => {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (max-width: 359px) {
+  .date-range-badge {
+    padding: 10px 12px;
+  }
+  .date-range-text {
+    font-size: 12px;
+  }
+  .date-range-dates {
+    display: none;
+  }
+  .payroll-kpi-hero {
+    padding: 12px;
+  }
+  .payroll-hero-amount {
+    font-size: 18px;
+  }
+  .hero-channel-value {
+    font-size: 10px;
+  }
+  .hero-channel-card {
+    padding: 4px 6px;
+  }
+  .hero-stat-item {
+    font-size: 10px;
+  }
 }
 </style>

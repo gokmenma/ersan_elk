@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   Sparkles,
   UserCheck,
+  UserRound,
   UsersRound,
   Wallet,
   Wrench,
@@ -294,6 +295,14 @@ async function handleLogout() {
 
           <!-- Alt Menü / Aksiyonlar -->
           <div class="nav-sheet-footer">
+            <button
+              type="button"
+              class="nav-sheet-footer__btn"
+              @click="selectOperation({ to: '/profil' })"
+            >
+              <UserRound :size="18" />
+              <span>Profil</span>
+            </button>
             <button
               type="button"
               class="nav-sheet-footer__btn nav-sheet-footer__btn--danger"

@@ -71,7 +71,7 @@ onMounted(load)
     </div>
 
     <template v-else-if="person">
-      <!-- 2. Hero Bento Kart (Kimlik ve İletişim) -->
+      <!-- 2. Hero Bento Kart (Kimlik, İletişim ve Entegre Özet Bilgiler) -->
       <section class="bento-card bento-card--white detail-hero-bento">
         <div class="detail-avatar-row">
           <div class="detail-avatar-box">
@@ -103,39 +103,28 @@ onMounted(load)
         <!-- İletişim Butonları -->
         <div class="detail-contact-row">
           <a v-if="person.phone" :href="phoneHref(person.phone)" class="clay-btn clay-btn--primary contact-link">
-            <Phone :size="16" />
+            <Phone :size="15" />
             <span>Ara</span>
           </a>
           <a v-if="person.email" :href="`mailto:${person.email}`" class="clay-btn clay-btn--secondary contact-link">
-            <Mail :size="16" />
+            <Mail :size="15" />
             <span>E-posta</span>
           </a>
         </div>
-      </section>
 
-      <!-- 3. Bilgi Özet Bento Kartı -->
-      <section class="bento-card bento-card--white detail-facts-bento">
-        <div class="fact-cell">
-          <span class="fact-icon"><BriefcaseBusiness :size="16" /></span>
-          <div class="fact-text">
-            <small>Departman</small>
-            <strong>{{ person.department || 'Belirtilmemiş' }}</strong>
+        <!-- Minimal Kompakt Bilgi Listesi -->
+        <div class="hero-mini-meta-card">
+          <div class="meta-row">
+            <span class="meta-lbl"><BriefcaseBusiness :size="13" /> Departman</span>
+            <strong class="meta-val">{{ person.department || 'Belirtilmemiş' }}</strong>
           </div>
-        </div>
-
-        <div class="fact-cell">
-          <span class="fact-icon"><MapPin :size="16" /></span>
-          <div class="fact-text">
-            <small>Ekip / Bölge</small>
-            <strong>{{ [person.team, person.region].filter(Boolean).join(' · ') || 'Atanmamış' }}</strong>
+          <div class="meta-row">
+            <span class="meta-lbl"><MapPin :size="13" /> Ekip / Bölge</span>
+            <strong class="meta-val">{{ [person.team, person.region].filter(Boolean).join(' · ') || 'Atanmamış' }}</strong>
           </div>
-        </div>
-
-        <div class="fact-cell fact-cell--full">
-          <span class="fact-icon"><History :size="16" /></span>
-          <div class="fact-text">
-            <small>İşe giriş tarihi</small>
-            <strong>{{ formatDate(person.start_date) }}</strong>
+          <div class="meta-row">
+            <span class="meta-lbl"><History :size="13" /> İşe Giriş</span>
+            <strong class="meta-val">{{ formatDate(person.start_date) }}</strong>
           </div>
         </div>
       </section>
@@ -175,26 +164,26 @@ onMounted(load)
 }
 
 .detail-hero-bento {
-  padding: 20px;
+  padding: 16px;
 }
 
 .detail-avatar-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .detail-avatar-box {
   position: relative;
   display: grid;
-  width: 64px;
-  height: 64px;
+  width: 50px;
+  height: 50px;
   place-items: center;
-  border-radius: 20px;
+  border-radius: 16px;
   background: var(--ds-primary);
   color: var(--ds-surface);
-  font: 800 20px var(--ds-font-mono);
+  font: 800 16px var(--ds-font-mono);
   overflow: hidden;
   box-shadow: var(--ds-shadow-pill);
 }
@@ -207,86 +196,89 @@ onMounted(load)
 
 .edit-btn {
   margin-left: auto;
+  width: 36px;
+  height: 36px;
 }
 
 .detail-identity {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .person-name {
-  margin: 4px 0 0;
-  font-size: 22px;
+  margin: 3px 0 0;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--ds-ink);
 }
 
 .person-role {
-  margin: 3px 0 0;
-  font-size: 12px;
+  margin: 2px 0 0;
+  font-size: 11.5px;
   color: var(--ds-muted);
 }
 
 .detail-contact-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .contact-link {
-  height: 44px;
+  height: 38px;
+  font-size: 12px;
   text-decoration: none;
+  gap: 6px;
 }
 
-/* Bilgi Özet Kartı */
-.detail-facts-bento {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 16px;
-}
-
-.fact-cell {
+/* Minimal Kompakt Bilgi Şeridi */
+.hero-mini-meta-card {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.05));
 }
 
-.fact-cell--full {
-  grid-column: 1 / -1;
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.035);
 }
 
-.fact-icon {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--ds-surface);
-  color: var(--ds-primary);
+.meta-row:last-child {
+  border-bottom: 0;
+}
+
+.meta-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ds-muted);
+  font-size: 11px;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
-.fact-text small {
-  display: block;
-  font-size: 10px;
-  color: var(--ds-muted);
-}
-
-.fact-text strong {
-  display: block;
+.meta-val {
+  color: var(--ds-ink);
   font-size: 12px;
   font-weight: 700;
-  color: var(--ds-ink);
-  margin-top: 1px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Modül Listesi */
 .detail-modules-section {
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 .detail-modules-stack {

@@ -53,6 +53,48 @@ function personnelPublicRow(array $row): array
         'start_date' => !empty($row['ise_giris_tarihi']) && $row['ise_giris_tarihi'] !== '0000-00-00' ? $row['ise_giris_tarihi'] : null,
         'end_date' => !$active ? $row['isten_cikis_tarihi'] : null,
         'active' => $active,
+        'general' => [
+            'tc_kimlik_no' => trim((string) ($row['tc_kimlik_no'] ?? '')),
+            'dogum_tarihi' => !empty($row['dogum_tarihi']) && $row['dogum_tarihi'] !== '0000-00-00' ? $row['dogum_tarihi'] : '',
+            'cinsiyet' => (string) ($row['cinsiyet'] ?? ''),
+            'medeni_durum' => (string) ($row['medeni_durum'] ?? ''),
+            'kan_grubu' => (string) ($row['kan_grubu'] ?? ''),
+            'anne_adi' => (string) ($row['anne_adi'] ?? ''),
+            'baba_adi' => (string) ($row['baba_adi'] ?? ''),
+            'dogum_yeri_il' => (string) ($row['dogum_yeri_il'] ?? ''),
+            'dogum_yeri_ilce' => (string) ($row['dogum_yeri_ilce'] ?? ''),
+            'ehliyet_sinifi' => (string) ($row['ehliyet_sinifi'] ?? ''),
+            'seyahat_engeli' => (string) ($row['seyahat_engeli'] ?? 'Yok'),
+            'cep_telefonu' => trim((string) ($row['cep_telefonu'] ?? '')),
+            'cep_telefonu_2' => trim((string) ($row['cep_telefonu_2'] ?? '')),
+            'email_adresi' => trim((string) ($row['email_adresi'] ?? '')),
+            'adres' => (string) ($row['adres'] ?? ''),
+            'ayakkabi_numarasi' => (string) ($row['ayakkabi_numarasi'] ?? ''),
+            'ust_beden_no' => (string) ($row['ust_beden_no'] ?? ''),
+            'alt_beden_no' => (string) ($row['alt_beden_no'] ?? ''),
+            'esi_calisiyor_mu' => (string) ($row['esi_calisiyor_mu'] ?? 'Hayır'),
+            'kaski_kullanici_adi' => (string) ($row['kaski_kullanici_adi'] ?? ''),
+            'kaski_sifre' => (string) ($row['kaski_sifre'] ?? ''),
+            'has_login_password' => !empty($row['sifre']),
+            'acil_kisi_adi_soyadi' => (string) ($row['acil_kisi_adi_soyadi'] ?? ''),
+            'acil_kisi_yakinlik' => (string) ($row['acil_kisi_yakinlik'] ?? ''),
+            'acil_kisi_telefonu' => (string) ($row['acil_kisi_telefonu'] ?? ''),
+        ],
+        'work' => $workDetails ?: [
+            'ise_giris_tarihi' => !empty($row['ise_giris_tarihi']) && $row['ise_giris_tarihi'] !== '0000-00-00' ? $row['ise_giris_tarihi'] : null,
+            'isten_cikis_tarihi' => !$active ? $row['isten_cikis_tarihi'] : null,
+            'personel_sinifi' => $row['personel_sinifi'] ?? 'Beyaz Yaka',
+            'saha_takibi' => (int) ($row['saha_takibi'] ?? 0),
+            'arac_kullanim' => $row['arac_kullanim'] ?? 'Yok',
+            'sgk_yapilan_firma' => $row['sgk_yapilan_firma'] ?? 'Yok',
+            'isten_ayrilis_nedeni' => $row['isten_ayrilis_nedeni'] ?? null,
+            'isten_ayrilis_belge_yolu' => !empty($row['isten_ayrilis_belge_yolu']) ? '/' . ltrim($row['isten_ayrilis_belge_yolu'], '/') : null,
+            'departman' => $row['departman'] ?? '',
+            'gorev' => $row['gorev'] ?? '',
+            'aktif_calisma_var' => $active,
+            'ekip_gecmisi' => [],
+            'calisma_gecmisi' => [],
+        ],
     ];
 }
 
@@ -76,7 +118,7 @@ try {
             'page' => $_GET['page'] ?? 1,
             'limit' => $_GET['limit'] ?? 24,
         ], $firmaId);
-        $result['items'] = array_map('personnelPublicRow', $result['items']);
+        $result['items'] = array_map(static fn($r) => personnelPublicRow($r), $result['items']);
         personnelResponse(['success' => true, 'can_edit' => Gate::allows('personel_duzenle'), ...$result]);
     }
 
@@ -89,7 +131,156 @@ try {
         if (!$row) {
             personnelResponse(['success' => false, 'message' => 'Personel bulunamadı veya erişim yetkiniz yok.'], 404);
         }
-        personnelResponse(['success' => true, 'can_edit' => Gate::allows('personel_duzenle'), 'personnel' => personnelPublicRow($row)]);
+        $work = $model->getWorkDetails($personelId, $firmaId);
+        $options = $model->getWorkOptions($firmaId);
+        personnelResponse([
+            'success' => true,
+            'can_edit' => Gate::allows('personel_duzenle'),
+            'personnel' => personnelPublicRow($row, $work),
+            'work_options' => $options,
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_general') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $personelId = empty($data['id']) ? 0 : (int) Security::decrypt((string) $data['id']);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $model->saveMobileGeneralInfo($personelId, $data, $firmaId);
+        try {
+            (new \App\Model\SystemLogModel())->logAction(
+                (int) $_SESSION['user_id'],
+                'Personel Genel Bilgiler Güncelleme (Mobil)',
+                sprintf('%d ID\'li personelin genel bilgileri mobil uygulamadan güncellendi.', $personelId),
+                \App\Model\SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (Throwable $ignored) {
+        }
+        $row = $model->mobileDirectoryDetail($personelId, $firmaId);
+        $work = $model->getWorkDetails($personelId, $firmaId);
+        personnelResponse(['success' => true, 'message' => 'Genel bilgiler başarıyla güncellendi.', 'personnel' => personnelPublicRow($row ?: [], $work)]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_work_info') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $personelId = empty($data['id']) ? 0 : (int) Security::decrypt((string) $data['id']);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $model->saveWorkInfo($personelId, $data, $firmaId);
+        try {
+            (new \App\Model\SystemLogModel())->logAction(
+                (int) $_SESSION['user_id'],
+                'Personel Çalışma Bilgileri Güncelleme (Mobil)',
+                sprintf('%d ID\'li personelin çalışma bilgileri mobil uygulamadan güncellendi.', $personelId),
+                \App\Model\SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (Throwable $ignored) {
+        }
+        $row = $model->mobileDirectoryDetail($personelId, $firmaId);
+        $work = $model->getWorkDetails($personelId, $firmaId);
+        personnelResponse(['success' => true, 'message' => 'Çalışma bilgileri başarıyla güncellendi.', 'personnel' => personnelPublicRow($row ?: [], $work)]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_team_history') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $res = $model->saveEkipGecmisi($data, $firmaId);
+        $work = $model->getWorkDetails($personelId, $firmaId);
+        personnelResponse(['success' => true, 'message' => $res['message'], 'work' => $work]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_team_history') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        $force = !empty($data['force']);
+        $res = $model->deleteEkipGecmisi($id, $firmaId, $force);
+        if (($res['status'] ?? '') === 'confirm') {
+            personnelResponse(['success' => false, 'status' => 'confirm', 'message' => $res['message']]);
+        }
+        $work = $personelId > 0 ? $model->getWorkDetails($personelId, $firmaId) : null;
+        personnelResponse(['success' => true, 'message' => $res['message'], 'work' => $work]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_work_history') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $res = $model->saveCalismaGecmisi($data, $firmaId);
+        $work = $model->getWorkDetails($personelId, $firmaId);
+        personnelResponse(['success' => true, 'message' => $res['message'], 'work' => $work]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_work_history') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        $res = $model->deleteCalismaGecmisi($id, $firmaId);
+        $work = $personelId > 0 ? $model->getWorkDetails($personelId, $firmaId) : null;
+        personnelResponse(['success' => true, 'message' => $res['message'], 'work' => $work]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save') {
