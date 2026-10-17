@@ -6,6 +6,7 @@ use App\Model\TanimlamalarModel;
 use App\Model\PersonelModel;
 use App\Model\PuantajModel;
 use App\Model\PersonelIzinleriModel;
+use App\Model\PersonelFazlaMesaileriModel;
 use App\Helper\Security;
 use App\Helper\Date;
 use App\Helper\Helper;
@@ -24,6 +25,7 @@ $Tanimlamalar = new TanimlamalarModel();
 $Personel = new PersonelModel();
 $Puantaj = new PuantajModel();
 $PersonelIzinleri = new PersonelIzinleriModel();
+$FazlaMesai = new PersonelFazlaMesaileriModel();
 
 /**
  * SGK rapor tarihlerini puantaj için normalize eder.
@@ -279,7 +281,9 @@ try {
               AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi = '0000-00-00' OR pcg.isten_cikis_tarihi >= ?)
             ORDER BY pcg.personel_id, pcg.ise_giris_tarihi");
         $calisma_stmt->execute([$firma_id, $endDate, $startDate]);
-        $calisma_donemleri = $calisma_stmt->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
+        // Personellerin ay içindeki fazla mesailerini tek seferde çek
+        $personelIdsAll = array_map(static fn($p) => (int) $p->id, $personel_list);
+        $all_mesailer = $FazlaMesai->getPersonellerAyMesaileri($personelIdsAll, $startDate, $endDate, $firma_id);
 
         $data = [];
 
@@ -303,7 +307,8 @@ try {
                 'gorev_gecmisi_var' => $p->gorev_gecmisi_var,
                 'gg_toplam_gun' => $p->gg_toplam_gun,
                 'calisma_donemleri' => $personelCalismaDonemleri,
-                'entries' => []
+                'entries' => [],
+                'overtimes' => $all_mesailer[$p->id] ?? (object) []
             ];
 
             $izinler = $all_izinler[$p->id] ?? [];
@@ -494,9 +499,12 @@ try {
             $cur = strtotime("+1 day", $cur);
         }
 
+        $personelOvertimes = $FazlaMesai->getPersonelAyMesaileri((int) $personel_id, $startDate, $endDate);
+
         echo json_encode([
             'status' => 'success',
             'data' => $entries,
+            'overtimes' => $personelOvertimes,
             'calisma_donemleri' => $calismaDonemleri
         ]);
     } elseif ($action === 'get-personel-yearly-data') {
@@ -552,11 +560,12 @@ try {
         ]);
     } elseif ($action === 'save-bulk-entries') {
         $data = json_decode($_POST['data'] ?? '[]', true);
+        $overtimes = json_decode($_POST['overtimes'] ?? '[]', true);
         $excelPersonnelIds = json_decode($_POST['excelPersonnelIds'] ?? '[]', true);
         $ay = $_POST['ay'] ?? date('m');
         $yil = $_POST['yil'] ?? date('Y');
 
-        if (empty($data)) {
+        if (empty($data) && empty($overtimes)) {
             throw new Exception("Kaydedilecek veri bulunamadı.");
         }
 
@@ -647,6 +656,19 @@ try {
                         $onayStmt->execute([$izin_id, $user_id]);
                     }
                     $kayit_sayisi++;
+                }
+            }
+
+            // Fazla mesai kayıtlarını kaydet / güncelle / sil
+            if (!empty($overtimes)) {
+                foreach ($overtimes as $ot) {
+                    $otPid = (int) ($ot['personel_id'] ?? 0);
+                    $otTarih = (string) ($ot['date'] ?? '');
+                    $otSaat = (float) ($ot['saat'] ?? 0);
+                    if ($otPid > 0 && !empty($otTarih)) {
+                        $FazlaMesai->saveMesai($otPid, $otTarih, $otSaat, $firma_id, $user_id);
+                        $kayit_sayisi++;
+                    }
                 }
             }
 

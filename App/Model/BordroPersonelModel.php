@@ -4479,6 +4479,77 @@ class BordroPersonelModel extends Model
         }
     }
 
+    /**
+     * Puantajdan girilen değişken saatli fazla mesaileri dönem için ek ödeme olarak oluşturur.
+     */
+    public function olusturFazlaMesaiOdemeleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // 1. Önceki puantaj fazla mesai kaynaklı ek ödemeleri temizle (duplicate önlemek için)
+        $this->db->prepare("
+            DELETE FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Puantaj Fazla Mesai]%'
+        ")->execute([$personel_id, $donem_id]);
+
+        // 2. Dönem içindeki onaylı fazla mesai saatlerini çek
+        $sql = $this->db->prepare("
+            SELECT COALESCE(SUM(saat), 0) as toplam_saat
+            FROM personel_fazla_mesaileri
+            WHERE personel_id = ?
+              AND tarih BETWEEN ? AND ?
+              AND silinme_tarihi IS NULL
+              AND onay_durumu = 'Onaylandı'
+        ");
+        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $toplamSaat = (float) $sql->fetchColumn();
+
+        if ($toplamSaat <= 0) {
+            return;
+        }
+
+        // 3. Kanuni asgari ücret neti üzerinden saatlik net hedef hesapla: (asgari_net / 225) * 1.5
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new BordroParametreModel();
+        }
+        $asgariUcretNet = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net', $baslangic_tarihi) ?? 28075.50);
+        $sgkOrani = floatval($this->cachedParametreModel->getGenelAyar('sgk_isci_orani', $baslangic_tarihi) ?? 14) / 100;
+        $issizlikOrani = floatval($this->cachedParametreModel->getGenelAyar('issizlik_isci_orani', $baslangic_tarihi) ?? 1) / 100;
+        $damgaOrani = floatval($this->cachedParametreModel->getGenelAyar('damga_vergisi_orani', $baslangic_tarihi) ?? 0.759) / 100;
+        $donemYil = (int) date('Y', strtotime($baslangic_tarihi));
+        $donemAy = (int) date('n', strtotime($baslangic_tarihi));
+
+        $saatlikNetHedef = ($asgariUcretNet / 225) * 1.5;
+        $toplamNetHedef = round($saatlikNetHedef * $toplamSaat, 2);
+
+        // Kümülatif matrah tabanını tahmin et
+        $kumulatifMatrah = $this->getKumulatifMatrah($personel_id, $donemYil, $donemAy)
+            + $this->estimateAnaMaasMatrahi($personel_id, $baslangic_tarihi, $bitis_tarihi);
+
+        // Brütleştirme (Gross-up)
+        $grossUp = $this->cachedParametreModel->bruteUpForNetTarget(
+            $toplamNetHedef,
+            $kumulatifMatrah,
+            $sgkOrani,
+            $issizlikOrani,
+            $damgaOrani,
+            $donemYil,
+            true
+        );
+        $resmiTutar = $grossUp['brut'];
+
+        $mesaiParam = $this->getParametreCached('mesai', $baslangic_tarihi);
+        $paramId = $mesaiParam->id ?? null;
+
+        $formattedSaat = (fmod($toplamSaat, 1.0) == 0.0) ? number_format($toplamSaat, 0) : number_format($toplamSaat, 1, ',', '.');
+        $aciklama = "[Puantaj Fazla Mesai] ({$formattedSaat} Saat x " . number_format($saatlikNetHedef, 2, ',', '.') . " ₺)";
+
+        $insertSql = $this->db->prepare("
+            INSERT INTO personel_ek_odemeler 
+            (personel_id, donem_id, tur, parametre_id, aciklama, tutar, resmi_tutar, tekrar_tipi, durum, aktif, created_at)
+            VALUES (?, ?, 'fazla_mesai', ?, ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+        ");
+        $insertSql->execute([$personel_id, $donem_id, $paramId, $aciklama, $toplamNetHedef, $resmiTutar]);
+    }
+
     /** Hafta içi nöbetin resmi net hedefi: asgari net / 225 × 1,5 × toplam saat. */
     public function hesaplaHaftaIciNobetNetHedef(string $aciklama, string $donemTarihi, ?float $asgariNetOverride = null): float
     {
@@ -4540,6 +4611,9 @@ class BordroPersonelModel extends Model
             }
 
             if ($tur === 'mesai' || $tur === 'fazla_mesai') {
+                if (preg_match('/([\d\.,]+)\s*Saat/iu', $aciklama, $eslesme)) {
+                    $toplamSaat += floatval(str_replace(',', '.', $eslesme[1]));
+                }
                 $toplamNet += max(0.0, (float) ($veri['net_etki'] ?? $veri['tutar'] ?? 0));
             }
         }
@@ -6205,6 +6279,10 @@ class BordroPersonelModel extends Model
         // ========== NÖBET ÖDEMELERİ ==========
         // Dönem içindeki onaylanmış nöbetleri bulup ek ödeme olarak ekle
         $this->olusturNobetOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // ========== PUANTAJ FAZLA MESAİ ÖDEMELERİ ==========
+        // Puantajdan girilen değişken saatli fazla mesaileri ek ödeme olarak ekle
+        $this->olusturFazlaMesaiOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // ========== KAÇAK KONTROL PRİMLERİ ==========
         // Personelin dönem içinde 260'ı aşan kaçak kontrol işlemleri için prim hesapla

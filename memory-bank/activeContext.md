@@ -1,6 +1,46 @@
 # Active Context
 
-## Mobil SPA: Puantaj Modal Başlıkları ve Handle Hizalama İyileştirmesi (2026-10-17)
+## Masaüstü Puantaj: Değişken Saatli Fazla Mesai (FM) Çift Katmanlı (Overlay) Girişi ve Bordro Entegrasyonu (2026-10-17)
+- **Kullanıcı Talebi**:
+  - "bizim puantaj kisminda htc giriyoruz ya, oraya fazla mesaide ekleyebilirmiyiz? Direk fazla mesai yapanlara puantajdan girsek. Ama soyle birsey var fazla mesaiyi suan nobetci olan kesmeciye veriyoruz, o da standart 4 saat yaziliyor. Burda standart degil degisken saat yapabilirmiyiz? Mevcut puantaj türü de korunacak mı mesela hem RTC hem de fazla mesai girebilecek miyiz?" -> "yapalım"
+- **Mimari Karar (Çift Katmanlı / Overlay Model)**:
+  - Hücredeki ana puantaj türü (X, RTÇ, HTÇ, Yİ vb.) korunur.
+  - Değişken saatli Fazla Mesai (FM) değeri, o günün hücresinin üzerine bağımsız bir rozet (`+3s`, `+4.5s` vb.) olarak biner.
+  - Böylece bir personel aynı gün hem Resmî Tatil Çalışması (RTÇ) yapabilir hem de akşamına 3.5 saat ek fazla mesai yapabilir; bordroya her iki hakediş de eksiksiz ve ayrı kalemler olarak yansır.
+- **Uygulanan Geliştirmeler ve Mimari**:
+  1. **Veritabanı Şeması (`sql/create_personel_fazla_mesaileri.sql`)**:
+     - `personel_fazla_mesaileri` tablosu oluşturuldu.
+     - Kolonlar: `id`, `firma_id`, `personel_id`, `tarih`, `saat` (DECIMAL(5,2)), `aciklama`, `onay_durumu`, `kayit_yapan`, `created_at`, `updated_at`, `silinme_tarihi`.
+     - Firma ve tarih indeksleri tanımlandı.
+  2. **Model Katmanı (`App/Model/PersonelFazlaMesaileriModel.php`)**:
+     - `getPersonellerAyMesaileri()`: Toplu puantaj görünümü için tüm personellerin aydaki mesailerini tek sorguda çeker.
+     - `getPersonelAyMesaileri()`: Tek personelin ay mesailerini döner.
+     - `saveMesai()`: Saat > 0 ise `INSERT ... ON DUPLICATE KEY UPDATE`; saat == 0 ise soft delete (`silinme_tarihi = NOW()`).
+     - `deleteMesai()`: Soft delete işlemi.
+     - `getDonemToplamMesaiSaati()`: Bordro dönemi için onaylı net toplam saati döner.
+  3. **Puantaj API Katmanı (`views/personel/api/puantaj_izin.php`)**:
+     - `PersonelFazlaMesaileriModel` entegrasyonu sağlandı.
+     - `get-calendar-data` ve `get-personel-month-data` aksiyonlarında `overtimes` verisi döndürülmeye başlandı.
+     - `save-bulk-entries` aksiyonu hem izin/çalışma array'ini (`data`) hem de fazla mesai array'ini (`overtimes`) alıp transaction içinde atomik kaydeder.
+  4. **Puantaj UI ve JavaScript Katmanı (`views/personel/puantaj.php` & `views/personel/js/puantaj_izin.js`)**:
+     - **İzin Paletine Fazla Mesai Butonu & Toggle Saat Kutusu**: `#btn-toggle-fm-mode` (mor buton) eklendi. Saat kutusu (`#fm-hours-input-wrapper`) varsayılan olarak gizlendi ve yalnızca kullanıcı butona tıklayıp modu aktif ettiğinde akıcı biçimde görünür hale getirildi (kapatıldığında veya başka izin seçildiğinde otomatik gizlenir).
+     - **Fazla Mesai Standart Bootstrap Modalı (`#fazlaMesaiModal`)**: SweetAlert prompt yerine kullanıcı dostu standart modal geliştirildi; personel adı ve tarihi, Kesme departmanı uyarısı, saat kutusu, hızlı saat butonları (1s, 1.5s, 2s, 3s, 4s, 5.5s, 7.5s), [Mesaiyi Kaldır], [Vazgeç] ve [Kaydet] butonları entegre edildi.
+     - **Kesme Departmanı Fazla Mesai Uyarısı**: Kesme departmanındaki personellerin mesaileri normalde Nöbet modülü üzerinden geldiği için; bu personellere puantajdan fazla mesai girilmek istendiğinde modal içinde sarı uyarı kutusu ile bilinçli onay alınması sağlandı.
+     - **Puantaj Sürükleme ve Palet Düzeltmesi**: Paletin yüzen bir pencereye dönüşüp tüm div'in tablonun üstüne kayması (`initIzinPalette`) tamamen kaldırıldı, palet yerine sabitlendi; tür sürüklenirken `setDragImage` ile fare ucunda yalnızca küçük tür kutusu (`.izin-box`) görünecek şekilde optimize edildi.
+     - **Performans İçin Hover Tooltip İptali**: Binlerce hücrede fare gezinirken performansı düşüren Bootstrap Tooltip dinleyicisi iptal edildi, native title desteğine geçilerek sayfa akıcılığı maksimize edildi.
+     - **Hücre İçi Mor Rozet (`.overtime-badge`)**: Hücrenin sağ üst köşesinde zarif mor kapsül rozet (`+2s`, `+3.5s`).
+     - **Toplam FM Sütunu**: Puantaj tablosunun sağ tarafına "Toplam FM" sütunu (`sticky-col-right-2`) eklendi; personelin ay içindeki toplam mesai saatini anlık reaktif hesaplar.
+     - **State ve Kayıt**: `unsavedOvertimes` haritası ile değişiklikler takip edilir, üstteki "Değişiklikleri Kaydet" butonuna basıldığında sunucuya gönderilir.
+  5. **Bordro Hesaplama Motoru Entegrasyonu (`App/Model/BordroPersonelModel.php` & `views/bordro/api.php`)**:
+     - `olusturFazlaMesaiOdemeleri()` metodu yazıldı ve `hesaplaMaas()` hattına bağlandı.
+     - Kanuni formül: `(Asgari Net / 225) * 1.5 * Toplam Saat` ile personelin net fazla mesai hakedişi hesaplanır. Örneğin asgari ücret neti 28.075,50 ₺ için normal saat ücreti 124,78 ₺ olup, %50 artırımlı net saat ücreti tam olarak **187,17 ₺ / saat**tir.
+     - Bordro detay modalında kullanıcı ve yöneticilerin artırımı açıkça görmesi için `187,17 ₺ × X saat (124,78 ₺ × 1,5)` formülü detay satırına işlendi.
+     - Resmi brüt tutar gross-up yöntemiyle `(Net Tutar / (1 - SGK - İşsizlik - Damga))` olarak bulunup `personel_ek_odemeler` tablosuna `[Puantaj Fazla Mesai] (X Saat x ... ₺)` formatında resmi ek ödeme olarak işlenir.
+     - `getMuhasebeFazlaMesaiNetOzeti()` ve `views/bordro/api.php` içine regex eklenerek nöbet mesaisi ile puantaj mesaisi toplam saat ve tutar olarak birleştirildi, muhasebe Excel'ine ve bordro detay modalına tam entegre edildi.
+  6. **Doğrulama**:
+     - PHP CLI (`/opt/lampp/bin/php -l`) kontrolleri hatasız.
+     - Gross-up ve net hakediş kuruşu kuruşuna CLI'da simüle edilerek doğrulandı.
+
 - **Kullanıcı Talebi**:
   - "kart başlığı düzensiz geldi şimdi" (`media_1792236447288_97036ca8.png` ekran görüntüsü): Hızlı gün statüsü seçici (`status-picker-sheet`) ve personel ay detay modalında (`puantaj-detail-sheet`) handle çizgisinin sola kayması, kapat butonunun aşağı düşmesi ve başlığın çarpık görünmesi sorunu.
 - **Kök Neden**:

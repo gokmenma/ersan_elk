@@ -1495,6 +1495,100 @@ use App\Service\Gate;
             font-weight: 650 !important;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, .055), 0 1px 3px rgba(0, 0, 0, .2) !important;
         }
+
+        /* -------------------------------------------------------------
+         * Fazla Mesai (FM) Rozet ve Araç Çubuğu Stilleri
+         * ----------------------------------------------------------- */
+        .overtime-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 9.5px;
+            font-weight: 750;
+            line-height: 1.1;
+            padding: 1px 4px;
+            border-radius: 4px;
+            background: #7c3aed;
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(124, 58, 237, 0.4);
+            pointer-events: none;
+            z-index: 6;
+            letter-spacing: -0.02em;
+            display: inline-flex;
+            align-items: center;
+            gap: 1px;
+        }
+        .overtime-badge.unsaved-ot {
+            background: #ea580c !important;
+            box-shadow: 0 1px 4px rgba(234, 88, 12, 0.5) !important;
+            animation: pulse-unsaved-ot 1.5s infinite;
+        }
+        @keyframes pulse-unsaved-ot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
+        }
+        [data-bs-theme="dark"] .overtime-badge,
+        [data-layout-mode="dark"] .overtime-badge,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .overtime-badge {
+            background: rgba(168, 85, 247, 0.9) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(192, 132, 252, 0.4);
+        }
+        .btn-outline-purple {
+            color: #7c3aed;
+            border-color: #c4b5fd;
+            background-color: transparent;
+        }
+        .btn-outline-purple:hover,
+        .btn-outline-purple.active {
+            color: #ffffff !important;
+            background-color: #7c3aed !important;
+            border-color: #7c3aed !important;
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+        }
+        .table-puantaj .sticky-col-right-2 {
+            position: sticky;
+            right: 0;
+            z-index: 25;
+            background-color: #faf5ff !important;
+            border-left: 1px solid #e9d5ff !important;
+            border-bottom: 1px solid #edf2f7 !important;
+            width: 75px !important;
+            min-width: 75px !important;
+            max-width: 75px !important;
+            text-align: center;
+            font-weight: 700;
+            color: #6b21a8;
+        }
+        .table-puantaj thead th.sticky-col-right-2 {
+            z-index: 35;
+            background-color: #f3e8ff !important;
+            border-bottom: 1px solid #d8b4fe !important;
+            border-left: 1px solid #d8b4fe !important;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6b21a8;
+        }
+        [data-bs-theme="dark"] .table-puantaj .sticky-col-right-2,
+        [data-layout-mode="dark"] .table-puantaj .sticky-col-right-2,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .sticky-col-right-2 {
+            background: #231d32 !important;
+            border-color: #4c1d95 !important;
+            color: #d8b4fe !important;
+        }
+        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-2,
+        [data-layout-mode="dark"] .table-puantaj thead th.sticky-col-right-2,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.sticky-col-right-2 {
+            background: #2e1065 !important;
+            border-color: #6b21a8 !important;
+            color: #e9d5ff !important;
+        }
+        body.fm-mode-active .table-puantaj .day-cell:not(.disabled) {
+            cursor: pointer !important;
+        }
+        body.fm-mode-active .table-puantaj .day-cell:not(.disabled):hover {
+            box-shadow: inset 0 0 0 2px #7c3aed !important;
+        }
     </style>
 
     <div id="puantaj-full-container">
@@ -1637,13 +1731,14 @@ use App\Service\Gate;
                                     Ücretsiz
                                 </a>
                             </div>
-                            <div class="d-flex align-items-center gap-1">
-                                <button type="button" class="btn btn-sm btn-light izin-palette-restore" id="izin-palette-restore" title="Paleti tabloya sabitle" aria-label="Paleti tabloya sabitle">
-                                    <i class="mdi mdi-pin-outline"></i>
+                            <div class="fm-toolbar-cluster d-flex align-items-center ms-2 ps-2 border-start">
+                                <button type="button" class="btn btn-sm btn-outline-purple d-flex align-items-center gap-1 fw-bold px-2 py-1" id="btn-toggle-fm-mode" title="Fazla Mesai modunu aç/kapa">
+                                    <i class="mdi mdi-clock-plus-outline"></i>
+                                    <span>Fazla Mesai (+FM)</span>
                                 </button>
-                                <button type="button" class="izin-palette-handle" id="izin-palette-handle" title="Puantaj türlerini sürükleyerek yüzen palete dönüştür" aria-label="Puantaj türlerini sürükle">
-                                    <i class="bx bx-grid-vertical fs-5"></i>
-                                </button>
+                                <div class="input-group input-group-sm ms-1" style="width: 105px; display: none;" id="fm-hours-input-wrapper">
+                                    <input type="number" step="0.5" min="0.5" max="24" value="4.0" class="form-control text-center fw-bold px-1" id="fm-default-hours" title="Hücreye eklenecek mesai saati">
+                                    <span class="input-group-text px-1 text-muted font-size-11">saat</span>
                             </div>
                         </div>
 
@@ -1795,12 +1890,83 @@ use App\Service\Gate;
     </div>
 </div>
 
+<!-- Fazla Mesai Saati Giriş Modalı -->
+<div class="modal fade" id="fazlaMesaiModal" tabindex="-1" aria-labelledby="fazlaMesaiModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header bg-soft-purple border-bottom-0 py-3 px-4">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-xs me-2 d-flex align-items-center justify-content-center rounded-circle bg-purple text-white font-size-14" style="background-color: #7c3aed !important; width: 32px; height: 32px;">
+                        <i class="mdi mdi-clock-time-four-outline"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title font-size-15 fw-bold text-dark mb-0" id="fazlaMesaiModalLabel">Fazla Mesai Saati</h5>
+                        <p class="text-muted font-size-11 mb-0" id="modal-fm-personel-tarih">Personel - Tarih</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <!-- Kesme Departmanı Uyarı Kutusu -->
+                <div id="modal-fm-kesme-alert" class="alert alert-warning py-2 px-3 font-size-12 mb-3 align-items-center" style="display: none; border-radius: 8px;">
+                    <i class="mdi mdi-alert-circle-outline font-size-16 me-2 text-warning"></i>
+                    <div>
+                        <strong>Kesme Departmanı:</strong> Kesme personellerinin fazla mesaileri normal şartlarda Nöbet modülü üzerinden otomatik gelmektedir.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="modal-fm-hours-input" class="form-label font-size-13 fw-semibold text-dark mb-1">Fazla Mesai Süresi (Saat)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control form-control-lg text-center fw-bold font-size-18" id="modal-fm-hours-input" step="0.5" min="0.5" max="24" placeholder="Örn: 4.0">
+                        <span class="input-group-text font-size-14 fw-semibold bg-light text-muted">Saat</span>
+                    </div>
+                </div>
+
+                <!-- Hızlı Seçim Butonları -->
+                <div class="mb-2">
+                    <label class="form-label font-size-11 text-muted text-uppercase fw-bold mb-2">Hızlı Saat Seçimi</label>
+                    <div class="d-flex flex-wrap gap-1" id="modal-fm-quick-hours">
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-fm-quick" data-hours="1">1s</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-fm-quick" data-hours="1.5">1.5s</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-fm-quick" data-hours="2">2s</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-fm-quick" data-hours="3">3s</button>
+                        <button type="button" class="btn btn-sm btn-outline-purple btn-fm-quick active" data-hours="4">4s (Standart)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-fm-quick" data-hours="5.5">5.5s</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-fm-quick" data-hours="7.5">7.5s</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-soft-danger btn-sm px-3" id="btn-modal-fm-remove" style="display: none;">
+                    <i class="mdi mdi-delete-outline me-1"></i> Mesaiyi Kaldır
+                </button>
+                <div class="ms-auto d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" id="btn-modal-fm-save" style="background-color: #7c3aed; border-color: #7c3aed;">
+                        <i class="mdi mdi-check me-1"></i> Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Custom Context Menu -->
 <div id="custom-context-menu" class="custom-context-menu shadow-lg">
     <div class="menu-header" id="menu-header-text">İŞLEMLER</div>
     <div class="menu-divider"></div>
     <div id="context-menu-items">
         <!-- Dinamik olarak dolacak -->
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-item text-purple" id="menu-item-set-overtime">
+        <i class="mdi mdi-clock-edit-outline"></i>
+        <span>Fazla Mesai Saati Gir / Değiştir</span>
+    </div>
+    <div class="menu-item text-warning" id="menu-item-remove-overtime">
+        <i class="mdi mdi-clock-remove-outline"></i>
+        <span>Fazla Mesaiyi Kaldır</span>
     </div>
     <div class="menu-divider"></div>
     <div class="menu-item text-danger" id="menu-item-delete">

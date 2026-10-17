@@ -1661,7 +1661,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if ($isFazlaMesai) {
                                 $mesaiSaat = floatval($muhasebeFazlaMesaiOzeti['saat'] ?? 0);
                                 $saatlikNet = $mesaiSaat > 0 ? round(floatval($bed['tutar']) / $mesaiSaat, 2) : 0.0;
-                                $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-time-five me-1 opacity-50"></i>Toplam Fazla Mesai<span class="calculation-note">' . number_format($saatlikNet, 2, ',', '.') . ' ₺ × ' . number_format($mesaiSaat, 2, ',', '.') . ' saat</span></td><td class="text-end pe-4 fw-semibold">' . number_format($mesaiSaat, 2, ',', '.') . ' Saat</td></tr>';
+                                $normalSaatlik = round(floatval($asgariUcretNet) / 225, 2);
+                                $artirimliNotu = ($normalSaatlik > 0 && abs($saatlikNet - round($normalSaatlik * 1.5, 2)) < 0.05)
+                                    ? ' (' . number_format($normalSaatlik, 2, ',', '.') . ' ₺ × 1,5)'
+                                    : '';
+                                $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-time-five me-1 opacity-50"></i>Toplam Fazla Mesai<span class="calculation-note">' . number_format($saatlikNet, 2, ',', '.') . ' ₺ × ' . number_format($mesaiSaat, 2, ',', '.') . ' saat' . $artirimliNotu . '</span></td><td class="text-end pe-4 fw-semibold">' . number_format($mesaiSaat, 2, ',', '.') . ' Saat</td></tr>';
                             } else {
                                 $htcGunlukNet = $htcGunModal > 0 ? round(floatval($bed['tutar']) / $htcGunModal, 2) : 0.0;
                                 $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-calendar-check me-1 opacity-50"></i>Hafta Tatili Çalışması<span class="calculation-note">' . number_format($htcGunlukNet, 2, ',', '.') . ' ₺ × ' . $htcGunModal . ' gün</span></td><td class="text-end pe-4 fw-semibold">' . $htcGunModal . ' Gün</td></tr>';
@@ -2410,6 +2414,11 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         if ($eo->tur === 'hafta_ici_nobet') {
                             if (preg_match('/(\d+)\s*Gün\s*x\s*(\d+)\s*Saat/i', $eo->aciklama, $m)) {
                                 $nobetResmiSaatToplam += intval($m[1]) * intval($m[2]);
+                            }
+                        }
+                        if ($eo->tur === 'fazla_mesai' || $eo->tur === 'mesai') {
+                            if (preg_match('/([\d\.,]+)\s*Saat/i', $eo->aciklama, $m)) {
+                                $nobetResmiSaatToplam += floatval(str_replace(',', '.', $m[1]));
                             }
                         }
                     }

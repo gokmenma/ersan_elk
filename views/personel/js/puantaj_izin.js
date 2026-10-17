@@ -3,6 +3,8 @@ $(document).ready(function () {
   let tableRows = []; // Row cache for performance
   let selectedType = null;
   let unsavedChanges = {}; // { 'personelId-date': { typeId, name, color, shortCode } }
+  let unsavedOvertimes = {}; // { 'personelId-date': { personel_id, date, saat } }
+  let isFmModeActive = false;
   let definitionsMap = {}; // { shortCode: { id, name, color, shortCode } }
   let personnelMap = {}; // { nameOrTc: personObj }
   let ucretsizIzinIds = new Set();
@@ -26,12 +28,8 @@ $(document).ready(function () {
   const savedIskurDahil = localStorage.getItem("puantaj_iskur_dahil") !== "0";
   $("#check-iskur-dahil").prop("checked", savedIskurDahil);
 
-  // On-demand Tooltip ve Popover desteği (Çift instance çakışmasını %100 engeller)
-  $(document).on("mouseenter", '[data-bs-toggle="tooltip"]', function () {
-    if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
-      bootstrap.Tooltip.getOrCreateInstance(this, { container: "body" });
-    }
-  });
+  // Tooltip desteği performans için iptal edildi (Binlerce hücrede hover gecikmesini önler)
+  $(".tooltip").remove();
 
   $(document).on("mouseenter focus", '[data-bs-toggle="popover"]', function () {
     if (typeof bootstrap !== "undefined" && bootstrap.Popover) {
@@ -101,7 +99,7 @@ $(document).ready(function () {
 
   function updateWorkspaceMeta() {
     const visibleCount = Array.from(tableRows).filter((row) => row.style.display !== "none").length;
-    const changeCount = Object.keys(unsavedChanges).length;
+    const changeCount = Object.keys(unsavedChanges).length + Object.keys(unsavedOvertimes).length;
     const ayLabel = $("#select-ay option:selected").text() || "";
     const yilLabel = $("#select-yil").val() || "";
 
@@ -214,130 +212,10 @@ $(document).ready(function () {
     }
   });
 
-  // Puantaj türleri paleti: sürükleme tutamacı kartı yüzen bir araç paletine çevirir.
-  // Kart normal akıştan çıktığı için tablo, kaybolan alanı anında kullanır.
-  (function initIzinPalette() {
-    const $palette = $("#izin-turleri-palette");
-    const $handle = $("#izin-palette-handle");
-    const $body = $("body");
-    const storageKey = "puantaj_izin_paleti_konum";
-    if (!$palette.length || !$handle.length) return;
-
-    let pointerStart = null;
-    let paletteStart = null;
-    let isDragging = false;
-    let $palettePlaceholder = null;
-
-    function clampPosition(left, top) {
-      const width = $palette.outerWidth();
-      const height = $palette.outerHeight();
-      return {
-        left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
-        top: Math.max(8, Math.min(top, window.innerHeight - height - 8)),
-      };
-    }
-
-    function applyPalettePosition(position, width) {
-      const palette = $palette[0];
-      if (width) palette.style.setProperty("width", `${width}px`, "important");
-      palette.style.setProperty("left", `${position.left}px`, "important");
-      palette.style.setProperty("top", `${position.top}px`, "important");
-      // Tam ekranın merkezleme transformunu sürükleme koordinatına karıştırma.
-      palette.style.setProperty("transform", "none", "important");
-    }
-
-    function setFloating(left, top) {
-      const rect = $palette[0].getBoundingClientRect();
-      // Bazı sayfa kapsayıcıları yeni bir stacking context oluşturur. Kartı body'ye
-      // taşıyarak sidebar'ın katmanından tamamen çıkarıyoruz.
-      if ($palette.parent()[0] !== document.body) {
-        $palettePlaceholder = $("<div class=\"izin-palette-placeholder\" aria-hidden=\"true\"></div>");
-        $palette.before($palettePlaceholder);
-        $("body").append($palette);
-      }
-      $body.addClass("puantaj-palette-floating");
-      // Sabit konuma geçerken kartın ekrandaki yeri korunur; zıplama hissi olmaz.
-      const width = Math.min(rect.width, window.innerWidth - 32, 360);
-      $palette.css({ left: left ?? rect.left, top: top ?? rect.top, width });
-      const position = clampPosition(left ?? rect.left, top ?? rect.top);
-      applyPalettePosition(position, width);
-      $(window).trigger("resize");
-    }
-
-    function restorePalette() {
-      $body.removeClass("puantaj-palette-floating puantaj-palette-dragging");
-      const palette = $palette[0];
-      ["left", "top", "width", "transform"].forEach((property) => palette.style.removeProperty(property));
-      if ($palettePlaceholder && $palettePlaceholder.length) {
-        $palette.insertBefore($palettePlaceholder);
-        $palettePlaceholder.remove();
-        $palettePlaceholder = null;
-      }
-      localStorage.removeItem(storageKey);
-      $(window).trigger("resize");
-    }
-
-    // Önceki oturumda palet yüzdürülmüşse aynı tercihi koru.
-    try {
-      const savedPosition = JSON.parse(localStorage.getItem(storageKey));
-      if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
-        setFloating(savedPosition.left, savedPosition.top);
-      }
-    } catch (_) {
-      localStorage.removeItem(storageKey);
-    }
-
-    $handle.on("pointerdown", function (event) {
-      if (event.button !== undefined && event.button !== 0) return;
-      pointerStart = { x: event.clientX, y: event.clientY };
-      const rect = $palette[0].getBoundingClientRect();
-      paletteStart = { left: rect.left, top: rect.top };
-      isDragging = false;
-      this.setPointerCapture?.(event.pointerId);
-      event.preventDefault();
-    });
-
-    $handle.on("pointermove", function (event) {
-      if (!pointerStart) return;
-      const deltaX = event.clientX - pointerStart.x;
-      const deltaY = event.clientY - pointerStart.y;
-      if (!isDragging && Math.hypot(deltaX, deltaY) < 5) return;
-
-      if (!isDragging) {
-        setFloating(paletteStart.left, paletteStart.top);
-        isDragging = true;
-        $body.addClass("puantaj-palette-dragging");
-      }
-
-      const position = clampPosition(paletteStart.left + deltaX, paletteStart.top + deltaY);
-      applyPalettePosition(position);
-    });
-
-    $handle.on("pointerup pointercancel", function () {
-      if (isDragging) {
-        const position = { left: parseFloat($palette.css("left")), top: parseFloat($palette.css("top")) };
-        localStorage.setItem(storageKey, JSON.stringify(position));
-      }
-      $body.removeClass("puantaj-palette-dragging");
-      pointerStart = null;
-      paletteStart = null;
-      isDragging = false;
-    });
-
-    $("#izin-palette-restore").on("click", restorePalette);
-    $(document).on("puantaj:fullscreen", function (_event, isFullscreen) {
-      if (!isFullscreen) return;
-
-      // Tam ekran kapsayıcısının stacking context'inden çıkar: palet daima tablonun üstündedir.
-      const paletteWidth = Math.min(360, window.innerWidth - 32);
-      setFloating(Math.max(16, (window.innerWidth - paletteWidth) / 2), 16);
-    });
-    $(window).on("resize.puantajPalette", function () {
-      if (!$body.hasClass("puantaj-palette-floating")) return;
-      const position = clampPosition(parseFloat($palette.css("left")), parseFloat($palette.css("top")));
-      applyPalettePosition(position);
-    });
-  })();
+  // Palet her zaman tablonun üstünde sabit kalır (Tüm div'in sürüklenmesi engellendi)
+  localStorage.removeItem("puantaj_izin_paleti_konum");
+  $("body").removeClass("puantaj-palette-floating puantaj-palette-dragging");
+  $("#izin-turleri-palette").css({ left: "", top: "", width: "", transform: "" });
 
   $(document).on("click", ".draggable-izin", function () {
     if ($(this).closest("#izin-turleri-palette").length) {
@@ -471,7 +349,6 @@ $(document).ready(function () {
                                  data-name="${item.tur_adi}"
                                  data-color="${item.renk}"
                                  data-shortcode="${shortCode}"
-                                 data-bs-toggle="tooltip" 
                                  title="${item.tur_adi}">
                                 <div class="izin-box" style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.border};">
                                     ${shortCode}
@@ -583,6 +460,7 @@ $(document).ready(function () {
       </th>`;
     }
     headerHtml += '<th class="sticky-col-right-1">Toplam Gün</th>';
+    headerHtml += '<th class="sticky-col-right-2" title="Aylık Toplam Fazla Mesai Saati">Toplam FM</th>';
     $("#table-header").html(headerHtml);
 
     // Body with data
@@ -604,8 +482,9 @@ $(document).ready(function () {
                   // Map personnel for Excel import
                   if (p.adi_soyadi)
                     personnelMap[turkceKucukHarf(p.adi_soyadi)] = p;
-                  if (p.tc_kimlik_no) personnelMap[p.tc_kimlik_no] = p;
-                  bodyHtml += `<tr data-personel-adi="${turkceKucukHarf(p.adi_soyadi)}">
+                  const safeDepartman = (p.departman || "").replace(/"/g, "&quot;");
+                  const safeAdi = (p.adi_soyadi || "").replace(/"/g, "&quot;");
+                  bodyHtml += `<tr data-personel-adi="${turkceKucukHarf(p.adi_soyadi)}" data-personel-adi-raw="${safeAdi}" data-departman="${safeDepartman}">
                         <td class="personel-info sticky-col" title="${p.adi_soyadi}" data-personel-id="${p.id}" data-gg-toplam-gun="${p.gg_toplam_gun || 0}" data-gorev-gecmisi="${p.gorev_gecmisi_var || 0}">
                             <div class="d-flex align-items-center">
                                 <span class="personel-avatar-mini ${getPersonAvatarTone(p.adi_soyadi)}">${getPersonInitials(p.adi_soyadi)}</span>
@@ -615,6 +494,7 @@ $(document).ready(function () {
 
                   let disabledDaysCount = 0;
                   let paidCount = 0;
+                  let totalFmHours = 0;
 
                   for (let d = 1; d <= daysCount; d++) {
                     const dateStr = `${yil}-${ay.toString().padStart(2, "0")}-${d.toString().padStart(2, "0")}`;
@@ -641,6 +521,24 @@ $(document).ready(function () {
                     const key = `${p.id}-${dateStr}`;
                     const unsaved = unsavedChanges[key];
 
+                    // Fazla Mesai (Overtime) kontrolü
+                    let otSaat = 0;
+                    let isUnsavedOt = false;
+                    if (unsavedOvertimes[key] !== undefined) {
+                      otSaat = parseFloat(unsavedOvertimes[key].saat) || 0;
+                      isUnsavedOt = true;
+                    } else if (p.overtimes && p.overtimes[dateStr]) {
+                      otSaat = parseFloat(p.overtimes[dateStr].saat || p.overtimes[dateStr]) || 0;
+                    }
+                    if (!isDisabled && otSaat > 0) {
+                      totalFmHours += otSaat;
+                    }
+                    let overtimeBadgeHtml = "";
+                    if (otSaat > 0) {
+                      const unsavedOtClass = isUnsavedOt ? "unsaved-ot" : "";
+                      overtimeBadgeHtml = `<span class="overtime-badge ${unsavedOtClass}" data-key="${key}" data-hours="${otSaat}" title="Fazla Mesai: ${otSaat} Saat">+${otSaat % 1 === 0 ? otSaat.toFixed(0) : otSaat.toFixed(1)}s</span>`;
+                    }
+
                     // Excel'den yüklenen personel için mevcut kayıtları gizle, sadece unsaved göster
                     const isExcelReplaced = excelReplacedPersonnel.has(
                       p.id.toString(),
@@ -661,7 +559,6 @@ $(document).ready(function () {
                       hasEntryClass = "has-entry unsaved";
                       cellContent = `
                                 <div class="cell-content draggable-izin" draggable="true"
-                                     data-bs-toggle="tooltip" 
                                      title="${unsaved.name}" 
                                      data-id="${unsaved.type_id || unsaved.typeId}" 
                                      data-shortcode="${unsaved.shortCode}"
@@ -689,7 +586,6 @@ $(document).ready(function () {
 
                       cellContent = `
                                 <div class="cell-content draggable-izin" draggable="true"
-                                     data-bs-toggle="tooltip" 
                                      title="${entry.name}" 
                                      data-id="${entry.tip_id}" 
                                      data-shortcode="${shortCode}"
@@ -706,9 +602,11 @@ $(document).ready(function () {
                                          data-personel-id="${p.id}" 
                                          data-date="${dateStr}">
                                         ${cellContent}
+                                        ${overtimeBadgeHtml}
                                     </td>`;
                   }
                   bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${Math.max(0, paidCount)}</td>`;
+                  bodyHtml += `<td class="sticky-col-right-2 toplam-fm-saati" data-personel-id="${p.id}">${totalFmHours > 0 ? (totalFmHours % 1 === 0 ? totalFmHours.toFixed(0) : totalFmHours.toFixed(1)) + "s" : "-"}</td>`;
                   bodyHtml += "</tr>";
                 });
                 $("#table-body").html(bodyHtml);
@@ -744,6 +642,7 @@ $(document).ready(function () {
 
     let secilenPersonelSayisi = 0;
     let totalGenelCalisma = 0;
+    let totalGenelFm = 0;
     
     // Day-based data storage for footer
     let dayStats = Array.from({ length: daysCount + 1 }, () => ({
@@ -763,6 +662,12 @@ $(document).ready(function () {
       const totalCell = row.querySelector(".toplam-calisma-gunu");
       if (totalCell) {
         totalGenelCalisma += parseInt(totalCell.textContent) || 0;
+      }
+
+      // Toplam fazla mesai saatini al
+      const fmCell = row.querySelector(".toplam-fm-saati");
+      if (fmCell && fmCell.textContent !== "-") {
+        totalGenelFm += parseFloat(fmCell.textContent) || 0;
       }
 
       // Sadece has-entry olan hücreleri tara
@@ -823,6 +728,7 @@ $(document).ready(function () {
     }
 
     footerHtml += `<td class="sticky-col-right-1 text-center">${totalGenelCalisma}</td>`;
+    footerHtml += `<td class="sticky-col-right-2 text-center text-purple fw-bold">${totalGenelFm > 0 ? (totalGenelFm % 1 === 0 ? totalGenelFm.toFixed(0) : totalGenelFm.toFixed(1)) + 's' : '-'}</td>`;
     footerHtml += `</tr>`;
 
     $("#table-footer").html(footerHtml);
@@ -841,8 +747,35 @@ $(document).ready(function () {
     $(".day-cell")
       .off("click")
       .on("click", function (e) {
-        if (!selectedType || $(this).hasClass("disabled")) return;
+        if ($(this).hasClass("disabled")) return;
 
+        // Fazla Mesai Modu Aktifse:
+        if (isFmModeActive) {
+          const currentBadge = this.querySelector(".overtime-badge");
+          const defaultHours = parseFloat($("#fm-default-hours").val()) || 4.0;
+
+          if (currentBadge) {
+            const existingHours = parseFloat(currentBadge.getAttribute("data-hours")) || 0;
+            if (existingHours === defaultHours) {
+              // Aynı saat zaten varsa tıklandığında kaldır
+              applyOvertimeToCell(this, 0);
+              return;
+            }
+          }
+          // Eğer personel Kesme departmanında ise modal açarak bilinçli saat girmesini sağla
+          const row = this.closest("tr");
+          const departman = (row ? (row.getAttribute("data-departman") || "") : "").trim();
+          const isKesme = turkceKucukHarf(departman).indexOf("kesme") > -1;
+          if (isKesme) {
+            openOvertimeModal(this);
+            return;
+          }
+
+          applyOvertimeToCell(this, defaultHours);
+          return;
+        }
+
+        if (!selectedType) return;
         applyLeaveToCell(this, selectedType);
       });
 
@@ -869,6 +802,15 @@ $(document).ready(function () {
         }
 
         e.originalEvent.dataTransfer.effectAllowed = "copyMove";
+        
+        // Sadece küçük tür kutucuğunu sürükle (Geniş div sürüklenmesini engeller)
+        const dragVisual = $el.find(".izin-box")[0] || $el.find(".cell-content")[0] || this;
+        if (e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.setDragImage) {
+          const offsetX = dragVisual.offsetWidth ? Math.floor(dragVisual.offsetWidth / 2) : 14;
+          const offsetY = dragVisual.offsetHeight ? Math.floor(dragVisual.offsetHeight / 2) : 14;
+          e.originalEvent.dataTransfer.setDragImage(dragVisual, offsetX, offsetY);
+        }
+
         // Hide tooltip
         $(".tooltip").remove();
 
@@ -1012,7 +954,39 @@ $(document).ready(function () {
       } else {
         $("#menu-item-delete").removeClass("d-none");
       }
+
+      // Check overtime state for context menu
+      const hasOvertime = cell.find(".overtime-badge").length > 0;
+      if (hasOvertime) {
+        $("#menu-item-remove-overtime").removeClass("d-none");
+      } else {
+        $("#menu-item-remove-overtime").addClass("d-none");
+      }
     });
+
+    // Context Menu: Fazla Mesai Saati Gir / Değiştir
+    $("#menu-item-set-overtime")
+      .off("click")
+      .on("click", function () {
+        const contextMenu = $("#custom-context-menu");
+        const cell = contextMenu.data("target-cell");
+        if (!cell || !cell.length) return;
+        contextMenu.hide();
+        openOvertimeModal(cell[0]);
+      });
+
+    // Context Menu: Fazla Mesaiyi Kaldır
+    $("#menu-item-remove-overtime")
+      .off("click")
+      .on("click", function () {
+        const contextMenu = $("#custom-context-menu");
+        const cell = contextMenu.data("target-cell");
+        if (!cell || !cell.length) return;
+
+        applyOvertimeToCell(cell[0], 0);
+        showToast("Fazla mesai kaldırıldı.", "info");
+        contextMenu.hide();
+      });
 
     // Menu Item Clicks
     $(document)
@@ -1088,13 +1062,17 @@ $(document).ready(function () {
       color: type.color,
       shortCode: type.shortCode,
     };
+
+    // Eğer hücrede önceden fazla mesai rozeti varsa koru
+    const existingOtBadge = cell.querySelector(".overtime-badge");
+    const otBadgeOuterHtml = existingOtBadge ? existingOtBadge.outerHTML : "";
+
     // Update UI instantly using Vanilla JS (Much faster than jQuery)
     const styleObj = getStyleFromTailwind(type.color, type.shortCode);
     cell.style.cssText = "";
     cell.className = `day-cell has-entry unsaved ${cell.classList.contains("is-sunday") ? "is-sunday" : ""} ${cell.classList.contains("is-today") ? "is-today" : ""}`;
     cell.innerHTML = `
       <div class="cell-content draggable-izin" draggable="true"
-           data-bs-toggle="tooltip" 
            title="${type.name}" 
            data-id="${type.id}" 
            data-name="${type.name}" 
@@ -1103,9 +1081,153 @@ $(document).ready(function () {
            style="background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.border};">
           ${type.shortCode}
           <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
-      </div>`;
+      </div>${otBadgeOuterHtml}`;
 
     updateRowTotals(row);
+  }
+
+  function setOvertimeBadgeAndState(cell, saat) {
+    const row = cell.closest("tr");
+    const pId = cell.dataset.personelId;
+    const date = cell.dataset.date;
+    const key = `${pId}-${date}`;
+
+    // Varsa eski rozeti kaldır
+    const oldBadge = cell.querySelector(".overtime-badge");
+    if (oldBadge) oldBadge.remove();
+
+    if (saat > 0) {
+      unsavedOvertimes[key] = {
+        personel_id: pId,
+        date: date,
+        saat: saat
+      };
+      const badge = document.createElement("span");
+      badge.className = "overtime-badge unsaved-ot";
+      badge.setAttribute("data-key", key);
+      badge.setAttribute("data-hours", saat);
+      badge.setAttribute("title", `Fazla Mesai: ${saat} Saat`);
+      badge.textContent = `+${saat % 1 === 0 ? saat.toFixed(0) : saat.toFixed(1)}s`;
+      cell.appendChild(badge);
+    } else {
+      unsavedOvertimes[key] = {
+        personel_id: pId,
+        date: date,
+        saat: 0
+      };
+    }
+
+    updateRowTotals(row);
+    updateWorkspaceMeta();
+  }
+
+  let activeOvertimeCell = null;
+
+  function openOvertimeModal(cell) {
+    if (!cell) return;
+    activeOvertimeCell = cell;
+
+    const row = cell.closest("tr");
+    const dateStr = cell.dataset.date || "";
+    const personelAdi = row ? (row.getAttribute("data-personel-adi-raw") || row.querySelector(".text-truncate-name")?.textContent?.trim() || "Personel") : "Personel";
+    const departman = (row ? (row.getAttribute("data-departman") || "") : "").trim();
+    const isKesme = turkceKucukHarf(departman).indexOf("kesme") > -1;
+
+    let formattedDate = dateStr;
+    try {
+      const parts = dateStr.split("-");
+      if (parts.length === 3) {
+        const dObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        formattedDate = dObj.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+      }
+    } catch(e) {}
+
+    $("#modal-fm-personel-tarih").text(`${personelAdi} · ${formattedDate}`);
+
+    if (isKesme) {
+      $("#modal-fm-kesme-alert").show();
+    } else {
+      $("#modal-fm-kesme-alert").hide();
+    }
+
+    const currentBadge = cell.querySelector(".overtime-badge");
+    const existingHours = currentBadge ? parseFloat(currentBadge.getAttribute("data-hours")) || 0 : 0;
+    const initialHours = existingHours > 0 ? existingHours : (parseFloat($("#fm-default-hours").val()) || 4.0);
+
+    $("#modal-fm-hours-input").val(initialHours);
+
+    $(".btn-fm-quick").removeClass("btn-outline-purple active").addClass("btn-outline-secondary");
+    $(`.btn-fm-quick[data-hours="${initialHours}"]`).removeClass("btn-outline-secondary").addClass("btn-outline-purple active");
+
+    if (existingHours > 0) {
+      $("#btn-modal-fm-remove").show();
+    } else {
+      $("#btn-modal-fm-remove").hide();
+    }
+
+    const modalEl = document.getElementById("fazlaMesaiModal");
+    if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      setTimeout(() => {
+        $("#modal-fm-hours-input").focus().select();
+      }, 350);
+    }
+  }
+
+  // Fazla Mesai Modalı Buton Olayları
+  $(document).on("click", ".btn-fm-quick", function () {
+    const hrs = $(this).data("hours");
+    $("#modal-fm-hours-input").val(hrs);
+    $(".btn-fm-quick").removeClass("btn-outline-purple active").addClass("btn-outline-secondary");
+    $(this).removeClass("btn-outline-secondary").addClass("btn-outline-purple active");
+    $("#modal-fm-hours-input").focus();
+  });
+
+  $("#btn-modal-fm-save").off("click").on("click", function () {
+    if (!activeOvertimeCell) return;
+    const val = parseFloat($("#modal-fm-hours-input").val()) || 0;
+    if (val <= 0) {
+      showToast("Lütfen 0'dan büyük geçerli bir saat giriniz.", "warning");
+      return;
+    }
+    const modalEl = document.getElementById("fazlaMesaiModal");
+    if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
+    setOvertimeBadgeAndState(activeOvertimeCell, val);
+    showToast(`${val} saat fazla mesai eklendi.`, "success");
+  });
+
+  $("#modal-fm-hours-input").off("keydown").on("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      $("#btn-modal-fm-save").click();
+    }
+  });
+
+  $("#btn-modal-fm-remove").off("click").on("click", function () {
+    if (!activeOvertimeCell) return;
+    const modalEl = document.getElementById("fazlaMesaiModal");
+    if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
+    setOvertimeBadgeAndState(activeOvertimeCell, 0);
+    showToast("Fazla mesai kaldırıldı.", "info");
+  });
+
+  function applyOvertimeToCell(cell, saat, onComplete) {
+    saat = parseFloat(saat) || 0;
+
+    // Mesai kaldırılıyorsa doğrudan kaldır
+    if (saat <= 0) {
+      setOvertimeBadgeAndState(cell, 0);
+      if (typeof onComplete === "function") onComplete(0);
+      return;
+    }
+
+    setOvertimeBadgeAndState(cell, saat);
+    showToast(`${saat} saat fazla mesai eklendi.`, "success");
+    if (typeof onComplete === "function") onComplete(saat);
   }
 
   let calculateTotalsTimer = null;
@@ -1137,6 +1259,17 @@ $(document).ready(function () {
     const totalDisplayCell = row.querySelector(".toplam-calisma-gunu");
     if (totalDisplayCell) {
         totalDisplayCell.textContent = toplamCalisma;
+    }
+
+    // Toplam FM saatini güncelle
+    const otBadges = row.querySelectorAll(".overtime-badge");
+    let rowFmTotal = 0;
+    for (let b = 0; b < otBadges.length; b++) {
+      rowFmTotal += parseFloat(otBadges[b].getAttribute("data-hours")) || 0;
+    }
+    const fmDisplayCell = row.querySelector(".toplam-fm-saati");
+    if (fmDisplayCell) {
+      fmDisplayCell.textContent = rowFmTotal > 0 ? (rowFmTotal % 1 === 0 ? rowFmTotal.toFixed(0) : rowFmTotal.toFixed(1)) + "s" : "-";
     }
 
     // Satır toplamı değiştiyse genel toplamı da güncelle
@@ -1177,45 +1310,72 @@ $(document).ready(function () {
     return `${year}-${month}-${day}`;
   }
 
+  // Fazla Mesai Modu Buton Olayı
+  $("#btn-toggle-fm-mode")
+    .off("click")
+    .on("click", function () {
+      isFmModeActive = !isFmModeActive;
+      $(this).toggleClass("active", isFmModeActive);
+      $("body").toggleClass("fm-mode-active", isFmModeActive);
+
+      if (isFmModeActive) {
+        selectedType = null;
+        $(".izin-box.active").removeClass("active");
+        $("#fm-hours-input-wrapper").css("display", "inline-flex").hide().fadeIn(150);
+        showToast("Fazla Mesai Modu Aktif. Günlere tıklayarak saat bazlı mesai ekleyebilirsiniz.", "info");
+      } else {
+        $("#fm-hours-input-wrapper").fadeOut(150);
+        showToast("Fazla Mesai Modu Kapatıldı.", "info");
+      }
+    });
+
+  // Paletteki herhangi bir izin türü seçilirse FM modunu kapat
+  $(document).on("click", ".izin-box", function () {
+    if (isFmModeActive) {
+      isFmModeActive = false;
+      $("#btn-toggle-fm-mode").removeClass("active");
+      $("body").removeClass("fm-mode-active");
+      $("#fm-hours-input-wrapper").fadeOut(150);
+    }
+  });
+
   $("#btn-save-selected")
     .off("click")
     .on("click", function () {
       const changesCount = Object.keys(unsavedChanges).length;
-      if (changesCount === 0) {
+      const overtimesCount = Object.keys(unsavedOvertimes).length;
+      if (changesCount === 0 && overtimesCount === 0) {
         showToast("Kaydedilecek yeni bir değişiklik yok.", "info");
         return;
       }
 
       // Değişiklikleri kaydet (Grup yapmadan, tekil gün olarak gönderiyoruz)
       const rawData = Object.values(unsavedChanges);
-      const groupedData = rawData;
-
-      // Excel'den yüklenen personel ID'lerini de gönder (mevcut kayıtları silmek için)
+      const rawOvertimes = Object.values(unsavedOvertimes);
       const excelPersonnelIds = Array.from(excelReplacedPersonnel);
 
-      console.log("Kaydedilecek veriler:", groupedData);
-      console.log("Excel personelleri:", excelPersonnelIds);
-      saveBulkEntries(groupedData, excelPersonnelIds);
+      saveBulkEntries(rawData, excelPersonnelIds, rawOvertimes);
     });
 
   // API Calls
-  function saveBulkEntries(data, excelPersonnelIds = []) {
+  function saveBulkEntries(data, excelPersonnelIds = [], overtimes = []) {
     // Optimistic Update: Önce UI'ı güncelle
     $(".day-cell.unsaved").each(function () {
       $(this).removeClass("unsaved");
       // Silme butonunu güncelle (artık veritabanından silecek)
       const $deleteBtn = $(this).find(".btn-delete-cell");
       if ($deleteBtn.length) {
-        // Entry id henüz yok, ama kayıt olduktan sonra olacak
-        // Şimdilik butonu kaldır, tam yenilemede gelecek
         $deleteBtn.remove();
       }
     });
+    $(".overtime-badge.unsaved-ot").removeClass("unsaved-ot");
 
     // Kayıtları hemen temizle
     const savedChanges = { ...unsavedChanges };
+    const savedOvertimes = { ...unsavedOvertimes };
     const savedExcelPersonnel = new Set(excelReplacedPersonnel);
     unsavedChanges = {};
+    unsavedOvertimes = {};
     excelReplacedPersonnel.clear();
     updateWorkspaceMeta();
 
@@ -1231,6 +1391,7 @@ $(document).ready(function () {
       {
         action: "save-bulk-entries",
         data: JSON.stringify(data),
+        overtimes: JSON.stringify(overtimes),
         excelPersonnelIds: JSON.stringify(excelPersonnelIds),
         ay: ay,
         yil: yil,
@@ -1249,6 +1410,7 @@ $(document).ready(function () {
           }
           // Hata olursa kayıtları geri getir
           unsavedChanges = savedChanges;
+          unsavedOvertimes = savedOvertimes;
           excelReplacedPersonnel = savedExcelPersonnel;
           showToast(res.message, "error");
           renderTable();
@@ -1260,6 +1422,7 @@ $(document).ready(function () {
       }
       // Bağlantı hatası durumunda kayıtları geri getir
       unsavedChanges = savedChanges;
+      unsavedOvertimes = savedOvertimes;
       excelReplacedPersonnel = savedExcelPersonnel;
       showToast("Bağlantı hatası oluştu.", "error");
       renderTable();
