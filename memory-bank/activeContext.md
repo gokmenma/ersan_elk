@@ -1,6 +1,17 @@
 # Active Context
 
-## Mobil SPA Puantaj — Hızlı Gün Statüsü Seçici Modalı ve SGK Vizite Servisi Çözümü (2026-10-17)
+## Mobil SPA Kasa Takibi — Cari Takip Obsidian Bento Tasarımı & Önbellek/Build Güncellemesi (2026-10-17)
+- **Kullanıcı Geri Bildirimi**: "değişmedi hala aynı" (Ekran görüntüsünde tarayıcının hala eski beyaz zeminli, çift kutulu Kasa Takibi arayüzünü gösterdiği görüldü).
+- **Tespit Edilen Kök Nedenler**:
+  1. **Eksik/Önceki Derleme Paketi**: Önceki `dist` dizinindeki JS paketinde (`index-C_gAstS6.js`) yeni `kasa-hero-volume-card` bileşeni yer almıyordu ve eski `GÜNCEL NET BAKİYE` şablonu kalmıştı.
+  2. **PWA Service Worker Önbelleği (`ersan-mobile-shell-v19`)**: `sw.js` dosyası `v19` olarak kaldığından, istemci tarayıcıları eski shell ve varlık önbelleğini tutmaya devam ediyordu.
+  3. **Service Worker Otomatik Güncelleme Eksikliği**: `main.js` içinde `reg.update()` çağrısı bulunmadığından tarayıcı yeni worker'ı hemen algılamıyordu.
+- **Uygulanan Çözümler**:
+  1. **Temiz Derleme (`vite build`)**: `npm run build` çalıştırılarak yeni üretim paketi (`index-DMCy-om9.js` ve `index-BTm_GUkl.css`) sıfırdan üretildi. Bundle içinde `kasa-hero-volume-card`, `KASA İŞLEM HACMİ`, `Pozitif Denge`, `kasa-segmented-track` bileşenlerinin yer aldığı, eski `GÜNCEL NET BAKİYE` metninin bulunmadığı komut satırından doğrulandı.
+  2. **Service Worker Sürüm Yükseltme (`v20`)**: `public/sw.js` ve `dist/sw.js` içinde `CACHE_NAME = 'ersan-mobile-shell-v20'` yapıldı. Bu sayede tarayıcı eski `v19` önbelleğini silip yeni sürümü hemen aktif hale getirecek.
+  3. **Anında SW Kontrolü (`main.js`)**: `navigator.serviceWorker.register('/sw.js').then((reg) => { reg.update() })` eklenerek her sayfa açılışında anında güncelleme kontrolü sağlandı.
+  4. **Doğrulama ve Git**: Apache üzerinden `curl -I` ile 200 OK yanıtları alındı, değişiklikler `git commit` ve SSH Port 443 üzerinden `git push` ile ana dala gönderildi.
+
 - **Kullanıcı Talebi**:
   1. "burada basınca puantaj türleri açılsın ve oradan seçim yapalım": Haftalık gün kapsüllerine dokunulduğunda döngü yerine tüm izin/çalışma statülerinin listelendiği şık bir seçim modalının açılması ve oradan tek dokunuşla seçim yapılabilmesi.
   2. "ayrıca vizite raporları çekme çalışmıyor": Ekran görüntüsündeki `Class "App\Service\SgkViziteService" not found` hatasının giderilmesi.

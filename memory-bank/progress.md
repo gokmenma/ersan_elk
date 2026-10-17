@@ -19,7 +19,11 @@
   - Cari Takipteki gibi üst üste `History` geçmiş butonu ve `+` Yeni işlem FAB butonu.
 - [x] **Cari Takip Bottom Sheet Form ve Detay Modalları**:
   - Segmented Gelir/Gider seçici, ₺ para kutusu, hızlı tutar çipleri (`+250 ₺`, `+500 ₺`, `+1.000 ₺`, `+5.000 ₺`), parametreli detay fişi.
-- [x] **Vite Üretim Derlemesi**: `npm run build` ile 0 hatayla derlendi (`dist` güncellendi).
+- [x] **Vite Üretim Derlemesi & Önbellek İptali**: 
+  - `npm run build` ile üretim paketi temizlendi ve yeniden derlendi (`dist/assets/index-DMCy-om9.js` ve `index-BTm_GUkl.css`).
+  - Paket içinde `kasa-hero-volume-card` ve Cari Takip bileşenlerinin bulunduğu, eski `GÜNCEL NET BAKİYE` metninin bulunmadığı doğrulandı.
+  - Service Worker sürümü `ersan-mobile-shell-v20` seviyesine yükseltildi (`skipWaiting` ve `clients.claim` ile eski önbellek silinmesi tetiklendi).
+  - `main.js` içine `reg.update()` eklenerek tarayıcının her ziyarette yeni paketi doğrudan çekmesi sağlandı.
 
 ## 2026-10-17 — Mobil SPA Puantaj — Hızlı Gün Statüsü Seçici Modalı ve SGK Vizite Servisi Çözümü
 - [x] Kullanıcının talepleri doğrultusunda gün seçici ve SGK servisi tamamlandı:
