@@ -23,6 +23,7 @@ import PuantajView from './views/PuantajView.vue'
 import KacakView from './views/KacakView.vue'
 import NobetOnayView from './views/NobetOnayView.vue'
 import IhbarView from './views/IhbarView.vue'
+import LogView from './views/LogView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -68,6 +69,9 @@ const router = createRouter({
     { path: '/ihbar', name: 'ihbar', component: IhbarView, meta: { requiresAuth: true, requiresCompany: true, permission: 'notices' } },
     { path: '/ihbar-yonetimi', redirect: '/ihbar' },
     { path: '/ihbarlar', redirect: '/ihbar' },
+    { path: '/loglar', name: 'logs', component: LogView, meta: { requiresAuth: true, requiresCompany: true, permission: 'logs' } },
+    { path: '/log-kayitlari', redirect: '/loglar' },
+    { path: '/sistem-loglari', redirect: '/loglar' },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

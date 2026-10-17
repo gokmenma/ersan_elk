@@ -1,6 +1,23 @@
 # Progress
 
-## 2026-10-17 — Mobil SPA Puantaj — Aylık Takvim Taşma Önlemi ve Bütünleşik Sheet Başlığı
+## 2026-10-17 — Mobil SPA: Puantaj Modal Başlıkları ve Handle Hizalama İyileştirmesi
+- [x] Kullanıcının talebi ve paylaştığı ekran görüntüsü (`media_1792236447288_97036ca8.png`) doğrultusunda modal başlıkları düzeltildi:
+  - **Handle Sola Kayma Sorunu Giderildi**: `status-picker-header` bir yatay flex container iken içine konulan handle (`.ds-sheet-handle`) dışarı çıkarılarak doğrudan `.ds-sheet`'in ilk elemanı yapıldı ve `margin: 10px auto 4px;` ile tam ortalandı.
+  - **Başlık ve Kapat Butonu Simetrisi**: `status-picker-header` ve `detail-sheet-header` tek bir satırda sol tarafta avatar + kullanıcı adı + meta bilgi (tarih / departman) ve sağ tarafta 34x34px dairesel kapatma butonu (`clay-circle-btn`) olacak şekilde tek bir flex row olarak hizalandı.
+  - **Bütünleşik Beyaz Başlık (Ayrı Köşeli Div Yok)**: `.ds-sheet` tepeden itibaren bembeyaz (`#ffffff`) ve 28px kavisle başlayacak şekilde ayarlandı; arkadaki köşeli basamak hissi tamamen ortadan kaldırıldı.
+  - **Derleme & Doğrulama**: `npm run build` ile 0 hata ile derlendi (Vite v6.4.4) ve `dist/api/puantaj.php` senkronize edildi.
+
+## 2026-10-17 — Mobil SPA Sistem Logları Modülü (Son 2 Günlük Varsayılan Filtre, Arama & Detay)
+- [x] Kullanıcının talebi doğrultusunda mobil SPA için Sistem Logları sayfası ve altyapısı eksiksiz geliştirildi:
+  - **Varsayılan Son 2 Günlük Filtreleme**: Kullanıcı talebi gereği sayfa ilk açıldığında doğrudan son iki günün (dün ve bugün) logları listelenir.
+  - **Soft Bento & Claymorphic UI Tasarımı**: `design-system.css` tokenları, `--ds-canvas: #e6eaef`, 4 Bento KPI kartı (Toplam, Kritik, Önemli, Girişler) ve claymorphic liste kartları.
+  - **Filtreleme & Arama İşlemleri**: Anlık metin araması (açıklama, işlem tipi, kullanıcı ve IP), hızlı zaman hapları (Son 2 Gün, Bugün, Son 7 Gün, Son 30 Gün, Tümü), hızlı seviye hapları (Kritik, Önemli, Bilgi, Sayfa Ziyareti) ve detaylı filtre çekmecesi.
+  - **Log Detay Çekmecesi (Sheet)**: Tıklanan log kaydının tüm detaylarını (ID, seviye rozeti, formatlı tarih, göreceli zaman, kullanıcı, IP ve açıklama) gösteren modal.
+  - **Model & API Katmanı**: `SystemLogModel` içinde PDO parametrik binding ile `getMobileLogs`, `getMobileLogsCount`, `getMobileLogStats` ve `getMobileFilterOptions` metotları oluşturuldu. `public/api/logs.php` API uç noktası hazırlandı ve `dist/api/logs.php` ile senkronize edildi.
+  - **Yetkilendirme**: `Gate::allows('log_kayitlari') || Gate::isSuperAdmin()` ile korundu, `auth.php` permissions haritasına eklendi.
+  - **Navigasyon & Menü**: `router.js` (`/loglar`, `/log-kayitlari`), `BottomNav.vue` (SİSTEM & DESTEK altında "Sistem Logları") ve `HomeView.vue` hızlı erişim butonlarına eklendi.
+  - **Derleme**: `npm run build` ile başarıyla derlendi.
+
 - [x] Kullanıcının talepleri doğrultusunda takvim taşması ve sheet başlığı kusurları giderildi:
   - **Aylık Takvim Günlerinin Dışarı Taşması Engellendi**: Grid yapısı `repeat(7, minmax(0, 1fr))` mimarisine geçirildi, kart içi yatay padding optimize edildi ve hücrelere `min-width: 0; aspect-ratio: 1 / 1.15; overflow: hidden;` verilerek 7 sütunun en dar mobil ekranlarda dahi kutu sınırları içinde kalması sağlandı.
   - **Sheet Başlığı Bütünleştirildi (Köşeli Ayrı Div Kaldırıldı)**: Ayrı köşeli basamak oluşturan div yapısı kaldırılarak; handle, personel avatarı, adı ve kapat butonu doğrudan sheet'in 32px kavisli üst başlığıyla (`border-radius: 32px 32px 0 0`) tek parça olarak birleştirildi.

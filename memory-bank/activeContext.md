@@ -1,6 +1,20 @@
 # Active Context
 
-## Mobil SPA Puantaj — Aylık Takvim Taşma Önlemi ve Bütünleşik Sheet Başlığı (2026-10-17)
+## Mobil SPA: Puantaj Modal Başlıkları ve Handle Hizalama İyileştirmesi (2026-10-17)
+- **Kullanıcı Talebi**:
+  - "kart başlığı düzensiz geldi şimdi" (`media_1792236447288_97036ca8.png` ekran görüntüsü): Hızlı gün statüsü seçici (`status-picker-sheet`) ve personel ay detay modalında (`puantaj-detail-sheet`) handle çizgisinin sola kayması, kapat butonunun aşağı düşmesi ve başlığın çarpık görünmesi sorunu.
+- **Kök Neden**:
+  - `status-picker-header` bir yatay flex container (`display: flex; justify-content: space-between;`) iken içine `<div class="ds-sheet-handle">` yerleştirilmişti. Bu durum handle'ın sola yaslanmasına, sağdaki kullanıcı bilgileri ve kapat butonunun ise dar alana sıkışıp taşmasına yol açıyordu.
+- **Uygulanan Çözümler**:
+  1. **Template Hiyerarşisi**:
+     - `.ds-sheet-handle` doğrudan `.ds-sheet`'in ilk çocuğu olarak header'ın dışına çıkarıldı ve `margin: 10px auto 4px;` ile tam ortalandı.
+     - `status-picker-header` ve `detail-sheet-header` gereksiz iç sarmalayıcılardan arındırılarak doğrudan sol tarafta avatar + kullanıcı adı + tarih/departman meta bilgileri, sağ tarafta ise dairesel kapat butonu (`clay-circle-btn`) olacak şekilde sadeleştirildi.
+  2. **CSS Standartları**:
+     - `.ds-sheet`: `background: #ffffff; border-radius: 28px 28px 0 0; overflow: hidden;` ile modalın tepeden itibaren tek parça beyaz kavisle açılması sağlandı; arkadaki köşeli basamak hissi tamamen yok edildi.
+     - `.status-picker-header`, `.detail-sheet-header`: `display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #ffffff; border-bottom: 1px solid #f1f5f9; padding: 8px 18px 12px;` ile kusursuz tek satır simetriye kavuşturuldu.
+     - `.ds-sheet-body`: Soft `#f8fafc` zemin rengiyle header'dan ayrılarak içeriklerin pürüzsüz kayması sağlandı.
+  3. **Derleme**: `npm run build` ile 0 hata ile derlendi (Vite v6.4.4). `dist/api/puantaj.php` ile `public/api/puantaj.php` senkronize edildi.
+
 - **Kullanıcı Talebi**:
   1. "aylık görünümde günler dışarı taşıyor": Aylık takvim ızgarasındaki Pazar sütununun karttan dışarı taşması sorununun giderilmesi.
   2. "bottom sheet başlığında personel adının ara planında kenarlr köşeli geliyor, sheet başlığında olsun ayrıca bir div olmasın": Sheet'in üst kısmındaki gri zemin üzerinde duran ayrı köşeli beyaz div'in kaldırılması; handle ve personel bilgilerinin doğrudan sheet'in 32px kavisli üst başlığıyla tek parça halinde bütünleştirilmesi.

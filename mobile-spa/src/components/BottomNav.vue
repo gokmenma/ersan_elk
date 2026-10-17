@@ -347,6 +347,15 @@ const operationGroups = [
     category: 'SİSTEM & DESTEK',
     items: [
       {
+        permission: 'logs',
+        label: 'Sistem Logları',
+        eyebrow: 'GÜVENLİK & DENETİM',
+        subtitle: 'Kullanıcı hareketleri ve sistem logları',
+        icon: ShieldCheck,
+        theme: 'blue',
+        to: '/loglar',
+      },
+      {
         permission: 'support',
         label: 'Destek & Yardım',
         eyebrow: 'YARDIM MERKEZİ',

@@ -236,6 +236,7 @@ function sessionPayload(): array
         'illegal_cancel' => Gate::allows('kacak_iptal_ekle') || Gate::isSuperAdmin(),
         'illegal_revert_cancel' => Gate::allows('kacak_iptal') || Gate::isSuperAdmin(),
         'support' => mobileCan(['yardim/list', 'yardim/user-list'], ['yardim/list', 'yardim/user-list']),
+        'logs' => mobileCan(['log_kayitlari'], ['views/logs/list.php', 'log_kayitlari']) || Gate::isSuperAdmin(),
     ];
     return [
         'authenticated' => true,

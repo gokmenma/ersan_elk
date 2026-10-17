@@ -800,4 +800,234 @@ class SystemLogModel extends Model
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_OBJ)->total;
     }
+
+    /**
+     * Mobil SPA için logları filtreleme, arama ve sayfalama ile getirir
+     */
+    public function getMobileLogs(array $filters = [], int $firmaId = 0, bool $isSuperAdmin = false): array
+    {
+        $conditions = [];
+        $params = [];
+
+        if (!$isSuperAdmin && $firmaId > 0) {
+            $conditions[] = '(l.firma_id = :firma_id OR l.firma_id = 0)';
+            $params[':firma_id'] = $firmaId;
+        } elseif ($firmaId > 0) {
+            $conditions[] = '(l.firma_id = :firma_id OR l.firma_id = 0)';
+            $params[':firma_id'] = $firmaId;
+        }
+
+        if (!empty($filters['date_start'])) {
+            $conditions[] = 'DATE(l.created_at) >= :date_start';
+            $params[':date_start'] = $filters['date_start'];
+        }
+        if (!empty($filters['date_end'])) {
+            $conditions[] = 'DATE(l.created_at) <= :date_end';
+            $params[':date_end'] = $filters['date_end'];
+        }
+
+        if (isset($filters['level']) && $filters['level'] !== '' && $filters['level'] !== null && $filters['level'] !== 'all') {
+            $conditions[] = 'l.level = :level';
+            $params[':level'] = (int) $filters['level'];
+        }
+
+        if (!empty($filters['action_type'])) {
+            $conditions[] = 'l.action_type = :action_type';
+            $params[':action_type'] = $filters['action_type'];
+        }
+
+        if (!empty($filters['user_id'])) {
+            $conditions[] = 'l.user_id = :user_id';
+            $params[':user_id'] = (int) $filters['user_id'];
+        }
+
+        if (!empty($filters['search'])) {
+            $conditions[] = '(l.description LIKE :search OR l.action_type LIKE :search OR u.adi_soyadi LIKE :search)';
+            $params[':search'] = '%' . trim($filters['search']) . '%';
+        }
+
+        $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+
+        $limit = max(1, min(100, (int) ($filters['limit'] ?? 30)));
+        $offset = max(0, (int) ($filters['offset'] ?? 0));
+
+        $sql = "SELECT l.id, l.firma_id, l.user_id, l.action_type, l.description, l.level, l.created_at,
+                       COALESCE(NULLIF(u.adi_soyadi, ''), 'Sistem') AS user_name,
+                       u.user_name AS username
+                FROM {$this->table} l
+                LEFT JOIN users u ON l.user_id = u.id
+                {$where}
+                ORDER BY l.created_at DESC, l.id DESC
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Mobil SPA için filtrelenen logların toplam sayısı
+     */
+    public function getMobileLogsCount(array $filters = [], int $firmaId = 0, bool $isSuperAdmin = false): int
+    {
+        $conditions = [];
+        $params = [];
+
+        if (!$isSuperAdmin && $firmaId > 0) {
+            $conditions[] = '(l.firma_id = :firma_id OR l.firma_id = 0)';
+            $params[':firma_id'] = $firmaId;
+        } elseif ($firmaId > 0) {
+            $conditions[] = '(l.firma_id = :firma_id OR l.firma_id = 0)';
+            $params[':firma_id'] = $firmaId;
+        }
+
+        if (!empty($filters['date_start'])) {
+            $conditions[] = 'DATE(l.created_at) >= :date_start';
+            $params[':date_start'] = $filters['date_start'];
+        }
+        if (!empty($filters['date_end'])) {
+            $conditions[] = 'DATE(l.created_at) <= :date_end';
+            $params[':date_end'] = $filters['date_end'];
+        }
+
+        if (isset($filters['level']) && $filters['level'] !== '' && $filters['level'] !== null && $filters['level'] !== 'all') {
+            $conditions[] = 'l.level = :level';
+            $params[':level'] = (int) $filters['level'];
+        }
+
+        if (!empty($filters['action_type'])) {
+            $conditions[] = 'l.action_type = :action_type';
+            $params[':action_type'] = $filters['action_type'];
+        }
+
+        if (!empty($filters['user_id'])) {
+            $conditions[] = 'l.user_id = :user_id';
+            $params[':user_id'] = (int) $filters['user_id'];
+        }
+
+        if (!empty($filters['search'])) {
+            $conditions[] = '(l.description LIKE :search OR l.action_type LIKE :search OR u.adi_soyadi LIKE :search)';
+            $params[':search'] = '%' . trim($filters['search']) . '%';
+        }
+
+        $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+
+        $sql = "SELECT COUNT(*) as total
+                FROM {$this->table} l
+                LEFT JOIN users u ON l.user_id = u.id
+                {$where}";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->execute();
+        return (int) ($stmt->fetch(PDO::FETCH_OBJ)->total ?? 0);
+    }
+
+    /**
+     * Mobil SPA için özet KPI istatistikleri
+     */
+    public function getMobileLogStats(array $filters = [], int $firmaId = 0, bool $isSuperAdmin = false): array
+    {
+        $conditions = [];
+        $params = [];
+
+        if (!$isSuperAdmin && $firmaId > 0) {
+            $conditions[] = '(l.firma_id = :firma_id OR l.firma_id = 0)';
+            $params[':firma_id'] = $firmaId;
+        } elseif ($firmaId > 0) {
+            $conditions[] = '(l.firma_id = :firma_id OR l.firma_id = 0)';
+            $params[':firma_id'] = $firmaId;
+        }
+
+        if (!empty($filters['date_start'])) {
+            $conditions[] = 'DATE(l.created_at) >= :date_start';
+            $params[':date_start'] = $filters['date_start'];
+        }
+        if (!empty($filters['date_end'])) {
+            $conditions[] = 'DATE(l.created_at) <= :date_end';
+            $params[':date_end'] = $filters['date_end'];
+        }
+
+        if (!empty($filters['action_type'])) {
+            $conditions[] = 'l.action_type = :action_type';
+            $params[':action_type'] = $filters['action_type'];
+        }
+
+        if (!empty($filters['user_id'])) {
+            $conditions[] = 'l.user_id = :user_id';
+            $params[':user_id'] = (int) $filters['user_id'];
+        }
+
+        if (!empty($filters['search'])) {
+            $conditions[] = '(l.description LIKE :search OR l.action_type LIKE :search OR u.adi_soyadi LIKE :search)';
+            $params[':search'] = '%' . trim($filters['search']) . '%';
+        }
+
+        $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+
+        $sql = "SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN l.level = 2 THEN 1 ELSE 0 END) as critical_count,
+                    SUM(CASE WHEN l.level = 1 THEN 1 ELSE 0 END) as warning_count,
+                    SUM(CASE WHEN l.level = 0 THEN 1 ELSE 0 END) as info_count,
+                    SUM(CASE WHEN l.level = 3 THEN 1 ELSE 0 END) as view_count,
+                    SUM(CASE WHEN l.action_type LIKE '%Giriş%' THEN 1 ELSE 0 END) as login_count
+                FROM {$this->table} l
+                LEFT JOIN users u ON l.user_id = u.id
+                {$where}";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->execute();
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'total' => (int) ($res['total'] ?? 0),
+            'critical' => (int) ($res['critical_count'] ?? 0),
+            'warning' => (int) ($res['warning_count'] ?? 0),
+            'info' => (int) ($res['info_count'] ?? 0),
+            'views' => (int) ($res['view_count'] ?? 0),
+            'logins' => (int) ($res['login_count'] ?? 0),
+        ];
+    }
+
+    /**
+     * Mobil filtreleme için işlem tipleri ve log üreten kullanıcılar
+     */
+    public function getMobileFilterOptions(int $firmaId = 0, bool $isSuperAdmin = false): array
+    {
+        $firmaWhere = (!$isSuperAdmin && $firmaId > 0) ? "WHERE (firma_id = :firma_id OR firma_id = 0)" : "";
+        $firmaWhereL = (!$isSuperAdmin && $firmaId > 0) ? "WHERE (l.firma_id = :firma_id OR l.firma_id = 0)" : "";
+        $params = (!$isSuperAdmin && $firmaId > 0) ? [':firma_id' => $firmaId] : [];
+
+        // İşlem tipleri
+        $sqlTypes = "SELECT DISTINCT action_type FROM {$this->table} {$firmaWhere} ORDER BY action_type ASC";
+        $stmtTypes = $this->db->prepare($sqlTypes);
+        $stmtTypes->execute($params);
+        $types = $stmtTypes->fetchAll(PDO::FETCH_COLUMN);
+
+        // Kullanıcılar
+        $sqlUsers = "SELECT DISTINCT l.user_id, u.adi_soyadi
+                     FROM {$this->table} l
+                     INNER JOIN users u ON l.user_id = u.id
+                     {$firmaWhereL}
+                     ORDER BY u.adi_soyadi ASC";
+        $stmtUsers = $this->db->prepare($sqlUsers);
+        $stmtUsers->execute($params);
+        $users = $stmtUsers->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            'action_types' => $types,
+            'users' => $users,
+        ];
+    }
 }

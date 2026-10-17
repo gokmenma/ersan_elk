@@ -1388,51 +1388,49 @@ onMounted(async () => {
         @click.self="closePersonelDetail"
       >
         <div class="ds-sheet puantaj-detail-sheet" role="dialog" aria-modal="true">
+          <div class="ds-sheet-handle"></div>
+
           <!-- Sheet Header (Sheet Başlığı ile Bütünleşik, Ayrı Köşeli Div Olmadan) -->
           <header class="detail-sheet-header">
-            <div class="ds-sheet-handle"></div>
-
-            <div class="detail-sheet-topbar">
-              <div class="detail-sheet-user">
-                <div class="project-avatar project-avatar--sm">
-                  <img
-                    v-if="selectedPersonel.resim"
-                    :src="selectedPersonel.resim"
-                    :alt="selectedPersonel.adi_soyadi"
-                    class="project-avatar-img"
-                    @error="$event.target.style.display = 'none'"
-                  />
-                  <div class="project-avatar-txt">
-                    {{ getInitials(selectedPersonel.adi_soyadi) }}
-                  </div>
-                </div>
-                <div class="detail-user-text">
-                  <h3 class="detail-user-name">{{ selectedPersonel.adi_soyadi }}</h3>
-                  <div class="detail-user-meta">
-                    <span
-                      v-if="selectedPersonel.departman"
-                      class="project-dept-tag"
-                      :style="getDeptStyle(selectedPersonel.departman)"
-                    >
-                      {{ selectedPersonel.departman }}
-                    </span>
-                    <span class="detail-user-tc">TC: {{ selectedPersonel.tc_kimlik_no || '—' }}</span>
-                    <span class="detail-stat-pill">
-                      {{ getPersonelMonthStats(selectedPersonel).worked }} Ç • {{ getPersonelMonthStats(selectedPersonel).leave }} İ • {{ getPersonelMonthStats(selectedPersonel).sgk }} R
-                    </span>
-                  </div>
+            <div class="detail-sheet-user">
+              <div class="project-avatar project-avatar--sm">
+                <img
+                  v-if="selectedPersonel.resim"
+                  :src="selectedPersonel.resim"
+                  :alt="selectedPersonel.adi_soyadi"
+                  class="project-avatar-img"
+                  @error="$event.target.style.display = 'none'"
+                />
+                <div class="project-avatar-txt">
+                  {{ getInitials(selectedPersonel.adi_soyadi) }}
                 </div>
               </div>
-
-              <button
-                type="button"
-                class="clay-circle-btn"
-                aria-label="Kapat"
-                @click="closePersonelDetail"
-              >
-                <X :size="18" />
-              </button>
+              <div class="detail-user-text">
+                <h3 class="detail-user-name">{{ selectedPersonel.adi_soyadi }}</h3>
+                <div class="detail-user-meta">
+                  <span
+                    v-if="selectedPersonel.departman"
+                    class="project-dept-tag"
+                    :style="getDeptStyle(selectedPersonel.departman)"
+                  >
+                    {{ selectedPersonel.departman }}
+                  </span>
+                  <span class="detail-user-tc">TC: {{ selectedPersonel.tc_kimlik_no || '—' }}</span>
+                  <span class="detail-stat-pill">
+                    {{ getPersonelMonthStats(selectedPersonel).worked }} Ç • {{ getPersonelMonthStats(selectedPersonel).leave }} İ • {{ getPersonelMonthStats(selectedPersonel).sgk }} R
+                  </span>
+                </div>
+              </div>
             </div>
+
+            <button
+              type="button"
+              class="clay-circle-btn"
+              aria-label="Kapat"
+              @click="closePersonelDetail"
+            >
+              <X :size="18" />
+            </button>
           </header>
 
           <div class="ds-sheet-body hide-scrollbar">
@@ -1739,42 +1737,40 @@ onMounted(async () => {
         @click.self="closeDayStatusPicker"
       >
         <div class="ds-sheet status-picker-sheet" role="dialog" aria-modal="true">
+          <div class="ds-sheet-handle"></div>
+
           <!-- Sheet Header -->
           <header class="status-picker-header">
-            <div class="ds-sheet-handle"></div>
-
-            <div class="picker-header-topbar">
-              <div class="picker-header-user">
-                <div class="project-avatar project-avatar--sm">
-                  <img
-                    v-if="pickerTargetPersonel.resim"
-                    :src="pickerTargetPersonel.resim"
-                    :alt="pickerTargetPersonel.adi_soyadi"
-                    class="project-avatar-img"
-                    @error="$event.target.style.display = 'none'"
-                  />
-                  <div class="project-avatar-txt">
-                    {{ getInitials(pickerTargetPersonel.adi_soyadi) }}
-                  </div>
-                </div>
-                <div class="picker-user-info">
-                  <h3 class="picker-user-name">{{ pickerTargetPersonel.adi_soyadi }}</h3>
-                  <div class="picker-target-date">
-                    <Calendar :size="12" class="text-blue" />
-                    <span>{{ pickerTargetDay.dayNum }} {{ pickerTargetDay.monthName }} {{ currentYear }} ({{ pickerTargetDay.dayName }})</span>
-                  </div>
+            <div class="picker-header-user">
+              <div class="project-avatar project-avatar--sm">
+                <img
+                  v-if="pickerTargetPersonel.resim"
+                  :src="pickerTargetPersonel.resim"
+                  :alt="pickerTargetPersonel.adi_soyadi"
+                  class="project-avatar-img"
+                  @error="$event.target.style.display = 'none'"
+                />
+                <div class="project-avatar-txt">
+                  {{ getInitials(pickerTargetPersonel.adi_soyadi) }}
                 </div>
               </div>
-
-              <button
-                type="button"
-                class="clay-circle-btn"
-                aria-label="Kapat"
-                @click="closeDayStatusPicker"
-              >
-                <X :size="18" />
-              </button>
+              <div class="picker-user-info">
+                <h3 class="picker-user-name">{{ pickerTargetPersonel.adi_soyadi }}</h3>
+                <div class="picker-target-date">
+                  <Calendar :size="12" class="text-blue" />
+                  <span>{{ pickerTargetDay.dayNum }} {{ pickerTargetDay.monthName }} {{ currentYear }} ({{ pickerTargetDay.dayName }})</span>
+                </div>
+              </div>
             </div>
+
+            <button
+              type="button"
+              class="clay-circle-btn"
+              aria-label="Kapat"
+              @click="closeDayStatusPicker"
+            >
+              <X :size="18" />
+            </button>
           </header>
 
           <div class="ds-sheet-body hide-scrollbar">
@@ -2781,12 +2777,12 @@ onMounted(async () => {
 .ds-sheet {
   width: 100%;
   max-width: 520px;
-  background: #f4f6fa;
-  border-radius: 32px 32px 0 0;
+  background: #ffffff;
+  border-radius: 28px 28px 0 0;
   display: flex;
   flex-direction: column;
-  max-height: 94vh;
-  box-shadow: 0 -12px 36px rgba(15, 23, 42, 0.15);
+  max-height: 92vh;
+  box-shadow: 0 -12px 36px rgba(15, 23, 42, 0.18);
   border-top: 1px solid rgba(255, 255, 255, 0.9);
   overflow: hidden;
 }
@@ -2796,32 +2792,48 @@ onMounted(async () => {
   height: 5px;
   border-radius: var(--ds-radius-pill);
   background: #cbd5e1;
-  margin: 0 auto 10px;
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+
+.ds-sheet-header {
+  padding: 8px 18px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
   flex-shrink: 0;
 }
 
 /* Sheet Başlığı: Doğrudan Sheet'in Başlığı Olarak Bütünleşik, Ayrı Köşeli Kutu Olmadan */
 .detail-sheet-header {
-  padding: 10px 18px 14px;
-  display: flex;
-  flex-direction: column;
-  background: #ffffff;
-  border-radius: 32px 32px 0 0;
-  border-bottom: 1px solid #eef2f6;
-  flex-shrink: 0;
-}
-
-.detail-sheet-topbar {
+  padding: 8px 18px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .detail-sheet-user {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-user-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .detail-user-name {
@@ -2829,6 +2841,10 @@ onMounted(async () => {
   font-weight: 800;
   color: #1e293b;
   margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detail-user-meta {
@@ -2838,12 +2854,13 @@ onMounted(async () => {
   gap: 6px;
   font-size: 11px;
   color: #64748b;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .detail-user-tc {
   color: #94a3b8;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .detail-stat-pill {
@@ -2854,6 +2871,7 @@ onMounted(async () => {
   background: #f1f5f9;
   color: #475569;
   border: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 .ds-sheet-body {
@@ -2864,6 +2882,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  background: #f8fafc;
 }
 
 .hide-scrollbar {
@@ -3253,25 +3272,32 @@ onMounted(async () => {
 }
 
 .status-picker-header {
-  padding: 14px 18px;
+  padding: 8px 18px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e2e8f0;
+  gap: 12px;
+  border-bottom: 1px solid #f1f5f9;
   background: #ffffff;
   flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .picker-header-user {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .picker-user-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .picker-user-name {
@@ -3280,6 +3306,9 @@ onMounted(async () => {
   color: #1e293b;
   margin: 0;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .picker-target-date {
@@ -3289,6 +3318,9 @@ onMounted(async () => {
   font-size: 12px;
   font-weight: 700;
   color: #0284c7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .current-status-banner {

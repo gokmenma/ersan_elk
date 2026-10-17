@@ -24,6 +24,7 @@ import {
   RefreshCw,
   RotateCcw,
   ShieldAlert,
+  ShieldCheck,
   SlidersHorizontal,
   UsersRound,
   X,
@@ -120,6 +121,7 @@ const actionDefinitions = [
   { permission: 'documents', label: 'Evraklar', icon: FileText, to: '/evrak-takip' },
   { permission: 'tasks', label: 'Görevler', icon: ClipboardCheck, to: '/gorevler' },
   { permission: 'reports', label: 'Raporlar', icon: ChartNoAxesCombined, to: '/raporlar' },
+  { permission: 'logs', label: 'Loglar', icon: ShieldCheck, to: '/loglar' },
 ]
 
 const actions = computed(() =>
