@@ -133,11 +133,26 @@ try {
         }
         $work = $model->getWorkDetails($personelId, $firmaId);
         $options = $model->getWorkOptions($firmaId);
+        $leaveData = $model->getLeaveDetails($personelId, $firmaId);
+        $ekOdemelerData = $model->getEkOdemelerDetails($personelId, $firmaId);
+        $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
         personnelResponse([
             'success' => true,
             'can_edit' => Gate::allows('personel_duzenle'),
+            'personel_id_raw' => $personelId,
             'personnel' => personnelPublicRow($row, $work),
             'work_options' => $options,
+            'leaves' => $leaveData['leaves'],
+            'entitlement' => $leaveData['entitlement'],
+            'leave_types' => $leaveData['leave_types'],
+            'ek_odemeler' => $ekOdemelerData['items'],
+            'ek_odeme_ozet' => $ekOdemelerData['summary'],
+            'gelir_parametreleri' => $ekOdemelerData['gelir_parametreleri'],
+            'bordro_donemleri' => $ekOdemelerData['donemler'],
+            'kesintiler' => $kesintilerData['items'],
+            'kesinti_ozet' => $kesintilerData['summary'],
+            'kesinti_parametreleri' => $kesintilerData['kesinti_parametreleri'],
+            'icra_dosyalari' => $kesintilerData['icralar'],
         ]);
     }
 
@@ -281,6 +296,247 @@ try {
         $res = $model->deleteCalismaGecmisi($id, $firmaId);
         $work = $personelId > 0 ? $model->getWorkDetails($personelId, $firmaId) : null;
         personnelResponse(['success' => true, 'message' => $res['message'], 'work' => $work]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_leave') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->saveLeave($data, $firmaId, $userId);
+        $leaveData = $model->getLeaveDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'leaves' => $leaveData['leaves'],
+            'entitlement' => $leaveData['entitlement'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_leave') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Personel düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->deleteLeave($id, $personelId, $firmaId, $userId);
+        $leaveData = $model->getLeaveDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'leaves' => $leaveData['leaves'],
+            'entitlement' => $leaveData['entitlement'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'approve_or_reject_leave') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        $status = (string) ($data['status'] ?? 'Onaylandı');
+        $note = !empty($data['note']) ? (string) $data['note'] : null;
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->approveOrRejectLeave($id, $personelId, $status, $note, $firmaId, $userId);
+        $leaveData = $model->getLeaveDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'leaves' => $leaveData['leaves'],
+            'entitlement' => $leaveData['entitlement'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_ek_odeme') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->saveEkOdeme($data, $firmaId, $userId);
+        $ekOdemelerData = $model->getEkOdemelerDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'ek_odemeler' => $ekOdemelerData['items'],
+            'ek_odeme_ozet' => $ekOdemelerData['summary'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_ek_odeme') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        if ($id <= 0 || $personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz işlem parametreleri.'], 422);
+        }
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->deleteEkOdeme($id, $personelId, $firmaId, $userId);
+        $ekOdemelerData = $model->getEkOdemelerDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'ek_odemeler' => $ekOdemelerData['items'],
+            'ek_odeme_ozet' => $ekOdemelerData['summary'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'sonlandir_ek_odeme') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        $bitisDonemi = !empty($data['bitis_donemi']) ? (string) $data['bitis_donemi'] : null;
+        if ($id <= 0 || $personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz işlem parametreleri.'], 422);
+        }
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->sonlandirEkOdeme($id, $personelId, $bitisDonemi, $firmaId, $userId);
+        $ekOdemelerData = $model->getEkOdemelerDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'ek_odemeler' => $ekOdemelerData['items'],
+            'ek_odeme_ozet' => $ekOdemelerData['summary'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_kesinti') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->saveKesinti($data, $firmaId, $userId);
+        $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'kesintiler' => $kesintilerData['items'],
+            'kesinti_ozet' => $kesintilerData['summary'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_kesinti') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        if ($id <= 0 || $personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz işlem parametreleri.'], 422);
+        }
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->deleteKesinti($id, $personelId, $firmaId, $userId);
+        $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'kesintiler' => $kesintilerData['items'],
+            'kesinti_ozet' => $kesintilerData['summary'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'sonlandir_kesinti') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $id = (int) ($data['id'] ?? 0);
+        $personelId = empty($data['personel_id']) ? 0 : (int) Security::decrypt((string) $data['personel_id']);
+        $bitisDonemi = !empty($data['bitis_donemi']) ? (string) $data['bitis_donemi'] : null;
+        if ($id <= 0 || $personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz işlem parametreleri.'], 422);
+        }
+        $userId = (int) $_SESSION['user_id'];
+        $res = $model->sonlandirKesinti($id, $personelId, $bitisDonemi, $firmaId, $userId);
+        $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'],
+            'kesintiler' => $kesintilerData['items'],
+            'kesinti_ozet' => $kesintilerData['summary'],
+        ]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save') {

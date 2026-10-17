@@ -17,6 +17,7 @@ import KasaView from './views/KasaView.vue'
 import PayrollView from './views/PayrollView.vue'
 import AracView from './views/AracView.vue'
 import EvrakView from './views/EvrakView.vue'
+import GidenEvrakView from './views/GidenEvrakView.vue'
 import KmOnaylariView from './views/KmOnaylariView.vue'
 import PuantajView from './views/PuantajView.vue'
 import KacakView from './views/KacakView.vue'
@@ -31,6 +32,8 @@ const router = createRouter({
     { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/evrak-takip', name: 'evrak-takip', component: EvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'documents' } },
+    { path: '/giden-evrak', name: 'giden-evrak', component: GidenEvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'documents' } },
+    { path: '/giden-evraklar', redirect: '/giden-evrak' },
     { path: '/evrak', redirect: '/evrak-takip' },
     { path: '/evraklar', redirect: '/evrak-takip' },
     { path: '/arac-takip', name: 'arac-takip', component: AracView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },

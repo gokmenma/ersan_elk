@@ -588,4 +588,764 @@ class MobilePersonelModel extends Model
         $personelModel->deleteCalismaGecmisi($id);
         return ['success' => true, 'message' => 'Çalışma geçmişi kaydı başarıyla silindi.'];
     }
+
+    // ================= İZİN VE RAPOR METOTLARI =================
+
+    public function getLeaveDetails(int $id, int $firmaId): array
+    {
+        $personelIzinModel = new PersonelIzinleriModel();
+        
+        // 1. Hakediş hesapla
+        $entitlement = $personelIzinModel->calculateLeaveEntitlement($id);
+
+        // 2. İzin listesi
+        $rawLeaves = $personelIzinModel->getPersonelIzinleri($id);
+        $leaves = [];
+        foreach ($rawLeaves as $l) {
+            $leaves[] = [
+                'id' => (int) $l->id,
+                'personel_id' => (int) $l->personel_id,
+                'izin_tipi_id' => (int) $l->izin_tipi_id,
+                'izin_tipi_adi' => (string) ($l->izin_tipi_adi ?: 'Belirtilmemiş'),
+                'baslangic_tarihi' => (string) ($l->baslangic_tarihi ?: ''),
+                'bitis_tarihi' => (string) ($l->bitis_tarihi ?: ''),
+                'toplam_gun' => (float) ($l->toplam_gun ?? 0),
+                'yillik_izne_etki' => (string) ($l->yillik_izne_etki ?? 'IslemYapma'),
+                'ucretli_mi' => (int) ($l->ucretli_mi ?? 0),
+                'yetkili_onayina_tabi' => (int) ($l->yetkili_onayina_tabi ?? 0),
+                'onay_durumu' => (string) ($l->son_durum ?: ($l->onay_durumu ?: 'Beklemede')),
+                'aciklama' => (string) ($l->aciklama ?: ''),
+                'onaylar' => array_map(function ($o) {
+                    return [
+                        'adi' => (string) ($o->adi ?? ''),
+                        'tarih' => (string) ($o->tarih ?? ''),
+                        'durum' => (string) ($o->durum ?? ''),
+                        'aciklama' => (string) ($o->aciklama ?? ''),
+                    ];
+                }, $l->onaylar ?? []),
+            ];
+        }
+
+        // 3. İzin türleri tanımları
+        $leaveTypes = $this->getLeaveTypes($firmaId);
+
+        return [
+            'entitlement' => [
+                'toplam_hakedis' => (float) ($entitlement['toplam_hakedis'] ?? 0),
+                'kullanilan_izin' => (float) ($entitlement['kullanilan_izin'] ?? 0),
+                'kalan_izin' => (float) ($entitlement['kalan_izin'] ?? 0),
+                'detay' => $entitlement['detay'] ?? [],
+            ],
+            'leaves' => $leaves,
+            'leave_types' => $leaveTypes,
+        ];
+    }
+
+    public function getLeaveTypes(int $firmaId): array
+    {
+        $stmt = $this->db->prepare("SELECT id, tur_adi, ucretli_mi, kisa_kod
+            FROM tanimlamalar
+            WHERE grup = 'izin_turu'
+              AND silinme_tarihi IS NULL
+              AND kisa_kod NOT IN ('X', 'x', 'HT', 'HTÇ', 'RTÇ')
+              AND (normal_mesai_sayilir IS NULL OR normal_mesai_sayilir = 0)
+            ORDER BY tur_adi ASC");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function saveLeave(array $data, int $firmaId, int $userId): array
+    {
+        $personelId = (int) ($data['personel_id'] ?? 0);
+        $izinTipiId = (int) ($data['izin_tipi_id'] ?? 0);
+        $baslangic = trim((string) ($data['baslangic_tarihi'] ?? ''));
+        $bitis = trim((string) ($data['bitis_tarihi'] ?? ''));
+        $toplamGun = (float) ($data['toplam_gun'] ?? 0);
+        $aciklama = trim((string) ($data['aciklama'] ?? ''));
+        $onayDurumu = in_array(($data['onay_durumu'] ?? ''), ['Onaylandı', 'Reddedildi', 'Beklemede'], true) ? $data['onay_durumu'] : 'Onaylandı';
+        $yillikIzneEtki = !empty($data['yillik_izne_etki']) ? 'Dus' : 'IslemYapma';
+        $id = (int) ($data['id'] ?? 0);
+
+        if ($personelId <= 0 || $izinTipiId <= 0) {
+            throw new \InvalidArgumentException('Personel ve izin türü seçimi zorunludur.');
+        }
+        if (!$baslangic || !$bitis) {
+            throw new \InvalidArgumentException('Başlangıç ve bitiş tarihleri zorunludur.');
+        }
+        if ($toplamGun <= 0) {
+            throw new \InvalidArgumentException('Geçerli bir izin süresi (gün) girilmelidir.');
+        }
+
+        // Personel firmaya ait mi kontrol et
+        $stmtP = $this->db->prepare("SELECT id, adi_soyadi FROM personel WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+        $stmtP->execute([$personelId, $firmaId]);
+        $personel = $stmtP->fetch(PDO::FETCH_OBJ);
+        if (!$personel) {
+            throw new \RuntimeException('Personel kaydı bulunamadı.');
+        }
+
+        $logModel = new SystemLogModel();
+
+        if ($id > 0) {
+            // Güncelleme
+            $stmt = $this->db->prepare("UPDATE personel_izinleri SET
+                izin_tipi_id = :izin_tipi_id,
+                baslangic_tarihi = :baslangic,
+                bitis_tarihi = :bitis,
+                toplam_gun = :toplam_gun,
+                yillik_izne_etki = :yillik_izne_etki,
+                aciklama = :aciklama,
+                onay_durumu = :onay_durumu
+                WHERE id = :id AND personel_id = :personel_id AND silinme_tarihi IS NULL");
+            $stmt->execute([
+                ':izin_tipi_id' => $izinTipiId,
+                ':baslangic' => $baslangic,
+                ':bitis' => $bitis,
+                ':toplam_gun' => $toplamGun,
+                ':yillik_izne_etki' => $yillikIzneEtki,
+                ':aciklama' => $aciklama,
+                ':onay_durumu' => $onayDurumu,
+                ':id' => $id,
+                ':personel_id' => $personelId,
+            ]);
+
+            $logModel->logAction($userId, 'İzin Güncelleme', "{$personel->adi_soyadi} isimli personelin izin kaydı güncellendi (ID: {$id}).", SystemLogModel::LEVEL_INFO);
+            return ['success' => true, 'message' => 'İzin kaydı başarıyla güncellendi.', 'id' => $id];
+        }
+
+        // Yeni Ekleme
+        $stmt = $this->db->prepare("INSERT INTO personel_izinleri (
+            personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun,
+            yillik_izne_etki, aciklama, onay_durumu, talep_tarihi, olusturma_tarihi
+        ) VALUES (
+            :personel_id, :izin_tipi_id, :baslangic, :bitis, :toplam_gun,
+            :yillik_izne_etki, :aciklama, :onay_durumu, NOW(), CURDATE()
+        )");
+        $stmt->execute([
+            ':personel_id' => $personelId,
+            ':izin_tipi_id' => $izinTipiId,
+            ':baslangic' => $baslangic,
+            ':bitis' => $bitis,
+            ':toplam_gun' => $toplamGun,
+            ':yillik_izne_etki' => $yillikIzneEtki,
+            ':aciklama' => $aciklama,
+            ':onay_durumu' => $onayDurumu,
+        ]);
+        $newId = (int) $this->db->lastInsertId();
+
+        // Eğer onaylandı olarak kaydedildiyse onay kaydını da oluştur
+        if ($onayDurumu === 'Onaylandı') {
+            $stmtOnay = $this->db->prepare("INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, seviye_no, aciklama)
+                VALUES (?, ?, 'Onaylandı', NOW(), 1, 'Mobil SPA üzerinden onaylı oluşturuldu')");
+            $stmtOnay->execute([$newId, $userId]);
+        }
+
+        $logModel->logAction($userId, 'İzin Ekleme', "{$personel->adi_soyadi} isimli personele {$toplamGun} günlük izin kaydı eklendi (ID: {$newId}).", SystemLogModel::LEVEL_INFO);
+        return ['success' => true, 'message' => 'İzin kaydı başarıyla oluşturuldu.', 'id' => $newId];
+    }
+
+    public function deleteLeave(int $id, int $personelId, int $firmaId, int $userId): array
+    {
+        // Kaydı kontrol et
+        $stmt = $this->db->prepare("SELECT pi.id, pi.onay_durumu, t.yetkili_onayina_tabi, p.adi_soyadi
+            FROM personel_izinleri pi
+            JOIN personel p ON p.id = pi.personel_id
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.id = ? AND pi.personel_id = ? AND p.firma_id = ? AND pi.silinme_tarihi IS NULL");
+        $stmt->execute([$id, $personelId, $firmaId]);
+        $row = $stmt->fetch(PDO::FETCH_OBJ);
+        if (!$row) {
+            throw new \RuntimeException('İzin kaydı bulunamadı.');
+        }
+
+        // Soft delete
+        $stmtDel = $this->db->prepare("UPDATE personel_izinleri SET
+            silinme_tarihi = NOW(),
+            silen_kullanici = ?,
+            silinme_aciklama = 'Mobil SPA üzerinden silindi'
+            WHERE id = ? AND personel_id = ?");
+        $stmtDel->execute([$userId, $id, $personelId]);
+
+        $logModel = new SystemLogModel();
+        $logModel->logAction($userId, 'İzin Silme', "{$row->adi_soyadi} isimli personelin izin kaydı silindi (ID: {$id}).", SystemLogModel::LEVEL_IMPORTANT);
+
+        return ['success' => true, 'message' => 'İzin kaydı başarıyla silindi.'];
+    }
+
+    public function approveOrRejectLeave(int $id, int $personelId, string $status, ?string $note, int $firmaId, int $userId): array
+    {
+        if (!in_array($status, ['Onaylandı', 'Reddedildi'], true)) {
+            throw new \InvalidArgumentException('Geçersiz onay durumu.');
+        }
+
+        $stmt = $this->db->prepare("SELECT pi.id, p.adi_soyadi
+            FROM personel_izinleri pi
+            JOIN personel p ON p.id = pi.personel_id
+            WHERE pi.id = ? AND pi.personel_id = ? AND p.firma_id = ? AND pi.silinme_tarihi IS NULL");
+        $stmt->execute([$id, $personelId, $firmaId]);
+        $row = $stmt->fetch(PDO::FETCH_OBJ);
+        if (!$row) {
+            throw new \RuntimeException('İzin kaydı bulunamadı.');
+        }
+
+        // Durumu güncelle
+        $stmtUp = $this->db->prepare("UPDATE personel_izinleri SET onay_durumu = ? WHERE id = ?");
+        $stmtUp->execute([$status, $id]);
+
+        // Onay geçmişine ekle/güncelle
+        $stmtCheck = $this->db->prepare("SELECT id FROM izin_onaylari WHERE izin_id = ? ORDER BY seviye_no ASC LIMIT 1");
+        $stmtCheck->execute([$id]);
+        $existing = $stmtCheck->fetch(PDO::FETCH_OBJ);
+
+        if ($existing) {
+            $stmtOnay = $this->db->prepare("UPDATE izin_onaylari SET onaylayan_id = ?, onay_durumu = ?, onay_tarihi = NOW(), aciklama = ? WHERE id = ?");
+            $stmtOnay->execute([$userId, $status, $note ?: "Mobil SPA üzerinden {$status}", $existing->id]);
+        } else {
+            $stmtOnay = $this->db->prepare("INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, seviye_no, aciklama)
+                VALUES (?, ?, ?, NOW(), 1, ?)");
+            $stmtOnay->execute([$id, $userId, $status, $note ?: "Mobil SPA üzerinden {$status}"]);
+        }
+
+        $logModel = new SystemLogModel();
+        $logModel->logAction($userId, "İzin {$status}", "{$row->adi_soyadi} personeline ait izin talebi {$status} (ID: {$id}).", SystemLogModel::LEVEL_INFO);
+
+        return ['success' => true, 'message' => "İzin talebi {$status}."];
+    }
+
+    // ================= EK ÖDEME METOTLARI =================
+
+    public function getEkOdemelerDetails(int $personelId, int $firmaId): array
+    {
+        $ekOdemeModel = new PersonelEkOdemelerModel();
+        $rawEkOdemeler = $ekOdemeModel->getPersonelEkOdemeler($personelId);
+
+        $toplamEkOdeme = 0.0;
+        $tekSeferAdet = 0;
+        $tekSeferTutar = 0.0;
+        $surekliAdet = 0;
+        $surekliTutar = 0.0;
+        $bankaTutar = 0.0;
+        $eldenTutar = 0.0;
+
+        $items = [];
+        foreach ($rawEkOdemeler as $k) {
+            $tutar = (float) ($k->tutar ?? 0);
+            $resmiTutar = (float) ($k->resmi_tutar ?? 0);
+            $tekrarTipi = (string) ($k->tekrar_tipi ?? 'tek_sefer');
+            $hesaplamaTipi = (string) ($k->hesaplama_tipi ?? 'sabit');
+            $aktif = (int) ($k->aktif ?? 1);
+            $bankaMatrah = (int) ($k->banka_matrahina_ekle ?? 1);
+
+            if ($tekrarTipi === 'surekli') {
+                if ($aktif === 1) {
+                    $surekliAdet++;
+                    if ($hesaplamaTipi === 'sabit') {
+                        $surekliTutar += $tutar;
+                        $toplamEkOdeme += $tutar;
+                    }
+                }
+            } else {
+                $tekSeferAdet++;
+                $tekSeferTutar += $tutar;
+                $toplamEkOdeme += $tutar;
+            }
+
+            if ($bankaMatrah === 1) {
+                $bankaTutar += $tutar;
+            } else {
+                $eldenTutar += $tutar;
+            }
+
+            $items[] = [
+                'id' => (int) $k->id,
+                'personel_id' => (int) $k->personel_id,
+                'parametre_id' => !empty($k->parametre_id) ? (int) $k->parametre_id : null,
+                'parametre_adi' => (string) ($k->parametre_adi ?: ($k->tur ? ucfirst($k->tur) : 'Ek Ödeme')),
+                'parametre_kodu' => (string) ($k->parametre_kodu ?? ''),
+                'tur' => (string) ($k->tur ?? 'diger'),
+                'tekrar_tipi' => $tekrarTipi,
+                'hesaplama_tipi' => $hesaplamaTipi,
+                'tutar' => $tutar,
+                'resmi_tutar' => $resmiTutar,
+                'oran' => (float) ($k->oran ?? 0),
+                'tarih' => (string) ($k->tarih ?? ''),
+                'donem_id' => !empty($k->donem_id) ? (int) $k->donem_id : null,
+                'donem_adi' => (string) ($k->donem_adi ?? ''),
+                'kapali_mi' => (int) ($k->kapali_mi ?? 0),
+                'baslangic_donemi' => (string) ($k->baslangic_donemi ?? ''),
+                'bitis_donemi' => (string) ($k->bitis_donemi ?? ''),
+                'banka_matrahina_ekle' => $bankaMatrah,
+                'aciklama' => (string) ($k->aciklama ?? ''),
+                'aktif' => $aktif,
+                'kayit_yapan_ad_soyad' => (string) ($k->kayit_yapan_ad_soyad ?? ''),
+            ];
+        }
+
+        $parametreModel = new BordroParametreModel();
+        $gelirParametreleri = [];
+        foreach ($parametreModel->getGelirTurleri() as $gp) {
+            $gelirParametreleri[] = [
+                'id' => (int) $gp->id,
+                'kod' => (string) $gp->kod,
+                'etiket' => (string) $gp->etiket,
+                'hesaplama_tipi' => (string) ($gp->hesaplama_tipi ?? 'sabit'),
+                'oran' => (float) ($gp->oran ?? 0),
+                'varsayilan_tutar' => (float) ($gp->varsayilan_tutar ?? 0),
+                'sgk_matrahi_dahil' => (int) ($gp->sgk_matrahi_dahil ?? 0),
+                'gelir_vergisi_dahil' => (int) ($gp->gelir_vergisi_dahil ?? 1),
+                'damga_vergisi_dahil' => (int) ($gp->damga_vergisi_dahil ?? 0),
+            ];
+        }
+
+        $donemModel = new BordroDonemModel();
+        $rawDonemler = $donemModel->getAllDonemsForFilter();
+        $donemler = [];
+        foreach ($rawDonemler as $d) {
+            $donemler[] = [
+                'id' => (int) $d->id,
+                'donem_adi' => (string) $d->donem_adi,
+                'baslangic_tarihi' => (string) $d->baslangic_tarihi,
+                'bitis_tarihi' => (string) $d->bitis_tarihi,
+                'kapali_mi' => (int) ($d->kapali_mi ?? 0),
+            ];
+        }
+
+        return [
+            'items' => $items,
+            'summary' => [
+                'toplam_tutar' => $toplamEkOdeme,
+                'tek_sefer_adet' => $tekSeferAdet,
+                'tek_sefer_tutar' => $tekSeferTutar,
+                'surekli_adet' => $surekliAdet,
+                'surekli_tutar' => $surekliTutar,
+                'banka_tutar' => $bankaTutar,
+                'elden_tutar' => $eldenTutar,
+            ],
+            'gelir_parametreleri' => $gelirParametreleri,
+            'donemler' => $donemler,
+        ];
+    }
+
+    public function saveEkOdeme(array $data, int $firmaId, int $userId): array
+    {
+        $personelId = (int) ($data['personel_id'] ?? 0);
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $id = (int) ($data['id'] ?? 0);
+        $tekrarTipi = in_array(($data['tekrar_tipi'] ?? 'tek_sefer'), ['tek_sefer', 'surekli'], true) ? $data['tekrar_tipi'] : 'tek_sefer';
+        $hesaplamaTipi = in_array(($data['hesaplama_tipi'] ?? 'sabit'), ['sabit', 'oran', 'oran_net', 'oran_brut', 'aylik_fiili_gun_net', 'aylik_gun_net'], true) ? $data['hesaplama_tipi'] : 'sabit';
+
+        if ($tekrarTipi === 'tek_sefer' && !empty($data['donem_id'])) {
+            $donemModel = new BordroDonemModel();
+            $donem = $donemModel->getDonemById((int) $data['donem_id']);
+            if ($donem && (int) ($donem->kapali_mi ?? 0) === 1) {
+                throw new \InvalidArgumentException('Seçilen dönem kapatılmış. Kapalı dönemlere ek ödeme eklenemez/düzenlenemez.');
+            }
+        }
+
+        $ekOdemeModel = new PersonelEkOdemelerModel();
+        $tarih = !empty($data['tarih']) ? \App\Helper\Date::dttoeng($data['tarih']) : date('Y-m-d');
+        if (!$tarih || $tarih === '1970-01-01') {
+            $tarih = date('Y-m-d');
+        }
+
+        $saveData = [
+            'personel_id' => $personelId,
+            'tur' => mb_substr(trim((string) ($data['tur'] ?? 'diger')), 0, 50),
+            'tekrar_tipi' => $tekrarTipi,
+            'hesaplama_tipi' => $hesaplamaTipi,
+            'tutar' => max(0, (float) ($data['tutar'] ?? 0)),
+            'resmi_tutar' => max(0, (float) ($data['resmi_tutar'] ?? 0)),
+            'oran' => max(0, (float) ($data['oran'] ?? 0)),
+            'tarih' => $tarih,
+            'aciklama' => mb_substr(trim((string) ($data['aciklama'] ?? '')), 0, 500),
+            'parametre_id' => !empty($data['parametre_id']) ? (int) $data['parametre_id'] : null,
+            'banka_matrahina_ekle' => isset($data['banka_matrahina_ekle']) ? (int) $data['banka_matrahina_ekle'] : 1,
+            'aktif' => 1,
+        ];
+
+        if ($tekrarTipi === 'tek_sefer') {
+            $saveData['donem_id'] = !empty($data['donem_id']) ? (int) $data['donem_id'] : null;
+            $saveData['baslangic_donemi'] = null;
+            $saveData['bitis_donemi'] = null;
+        } else {
+            $saveData['donem_id'] = null;
+            $baslangic = !empty($data['baslangic_donemi']) ? \App\Helper\Date::dttoeng($data['baslangic_donemi']) : date('Y-m-01');
+            $bitis = !empty($data['bitis_donemi']) ? \App\Helper\Date::dttoeng($data['bitis_donemi']) : null;
+            $saveData['baslangic_donemi'] = $baslangic ?: date('Y-m-01');
+            $saveData['bitis_donemi'] = $bitis;
+        }
+
+        $logModel = new SystemLogModel();
+
+        if ($id > 0) {
+            $mevcut = $ekOdemeModel->getEkOdeme($id);
+            if (!$mevcut || (int) $mevcut->personel_id !== $personelId) {
+                throw new \RuntimeException('Ek ödeme kaydı bulunamadı.');
+            }
+            if (!empty($mevcut->donem_id)) {
+                $donemModel = new BordroDonemModel();
+                $donem = $donemModel->getDonemById((int) $mevcut->donem_id);
+                if ($donem && (int) ($donem->kapali_mi ?? 0) === 1) {
+                    throw new \InvalidArgumentException('Kapalı döneme ait ek ödeme düzenlenemez.');
+                }
+            }
+
+            $ekOdemeModel->updateEkOdeme($id, $saveData);
+            if ($tekrarTipi === 'tek_sefer') {
+                $ekOdemeModel->temizleKapsamDisiDonemKayitlari($id);
+            } else {
+                $ekOdemeModel->temizleKapsamDisiDonemKayitlari($id, $saveData['baslangic_donemi'], $saveData['bitis_donemi']);
+            }
+
+            $logModel->logAction($userId, 'Ek Ödeme Güncelleme', "{$personel['adi_soyadi']} personeline ait ek ödeme güncellendi (ID: {$id}).", SystemLogModel::LEVEL_INFO);
+            return ['success' => true, 'message' => 'Ek ödeme başarıyla güncellendi.', 'id' => $id];
+        }
+
+        $saveData['kayit_yapan'] = $userId;
+        $newId = $ekOdemeModel->saveWithAttr($saveData);
+        if (!$newId) {
+            throw new \RuntimeException('Ek ödeme kaydedilemedi.');
+        }
+
+        $logModel->logAction($userId, 'Ek Ödeme Ekleme', "{$personel['adi_soyadi']} personeline yeni ek ödeme eklendi (ID: {$newId}).", SystemLogModel::LEVEL_INFO);
+        return ['success' => true, 'message' => 'Ek ödeme başarıyla oluşturuldu.', 'id' => (int) $newId];
+    }
+
+    public function deleteEkOdeme(int $id, int $personelId, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $ekOdemeModel = new PersonelEkOdemelerModel();
+        $ekOdeme = $ekOdemeModel->getEkOdeme($id);
+        if (!$ekOdeme || (int) $ekOdeme->personel_id !== $personelId) {
+            throw new \RuntimeException('Ek ödeme kaydı bulunamadı.');
+        }
+
+        if (!empty($ekOdeme->donem_id)) {
+            $donemModel = new BordroDonemModel();
+            $donem = $donemModel->getDonemById((int) $ekOdeme->donem_id);
+            if ($donem && (int) ($donem->kapali_mi ?? 0) === 1) {
+                throw new \InvalidArgumentException('Kapalı dönemlerdeki ek ödemeler silinemez.');
+            }
+        }
+
+        $res = $ekOdemeModel->softDelete($id);
+        if (!$res) {
+            throw new \RuntimeException('Silme işlemi başarısız.');
+        }
+
+        $logModel = new SystemLogModel();
+        $logModel->logAction($userId, 'Ek Ödeme Silme', "{$personel['adi_soyadi']} personeline ait ek ödeme silindi (ID: {$id}).", SystemLogModel::LEVEL_IMPORTANT);
+
+        return ['success' => true, 'message' => 'Ek ödeme başarıyla silindi.'];
+    }
+
+    public function sonlandirEkOdeme(int $id, int $personelId, ?string $bitisDonemi, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $ekOdemeModel = new PersonelEkOdemelerModel();
+        $bitis = !empty($bitisDonemi) ? \App\Helper\Date::dttoeng($bitisDonemi) : date('Y-m-d');
+        $res = $ekOdemeModel->sonlandirSurekliOdeme($id, $bitis);
+        if (!$res) {
+            throw new \RuntimeException('Sonlandırma işlemi başarısız.');
+        }
+
+        $logModel = new SystemLogModel();
+        $logModel->logAction($userId, 'Ek Ödeme Sonlandırma', "{$personel['adi_soyadi']} personeline ait sürekli ek ödeme sonlandırıldı (ID: {$id}).", SystemLogModel::LEVEL_INFO);
+
+        return ['success' => true, 'message' => 'Sürekli ek ödeme başarıyla sonlandırıldı.'];
+    }
+
+    // ================= KESİNTİ METOTLARI =================
+
+    public function getKesintilerDetails(int $personelId, int $firmaId): array
+    {
+        $kesintiModel = new PersonelKesintileriModel();
+        $rawKesintiler = $kesintiModel->getPersonelKesintileri($personelId);
+
+        $toplamKesinti = 0.0;
+        $tekSeferAdet = 0;
+        $tekSeferTutar = 0.0;
+        $taksitliAdet = 0;
+        $taksitliTutar = 0.0;
+        $surekliAdet = 0;
+        $surekliTutar = 0.0;
+        $bankaTutar = 0.0;
+        $eldenTutar = 0.0;
+
+        $items = [];
+        foreach ($rawKesintiler as $k) {
+            $tutar = (float) ($k->tutar ?? 0);
+            $tekrarTipi = (string) ($k->tekrar_tipi ?? 'tek_sefer');
+            $hesaplamaTipi = (string) ($k->hesaplama_tipi ?? 'sabit');
+            $aktif = (int) ($k->aktif ?? 1);
+            $bankaMatrah = (int) ($k->banka_matrahina_ekle ?? 1);
+
+            if ($tekrarTipi === 'taksitli') {
+                $taksitliAdet++;
+                $taksitliTutar += $tutar;
+                $toplamKesinti += $tutar;
+            } elseif ($tekrarTipi === 'surekli') {
+                if ($aktif === 1) {
+                    $surekliAdet++;
+                    if ($hesaplamaTipi === 'sabit') {
+                        $surekliTutar += $tutar;
+                        $toplamKesinti += $tutar;
+                    }
+                }
+            } else {
+                $tekSeferAdet++;
+                $tekSeferTutar += $tutar;
+                $toplamKesinti += $tutar;
+            }
+
+            if ($bankaMatrah === 1) {
+                $bankaTutar += $tutar;
+            } else {
+                $eldenTutar += $tutar;
+            }
+
+            $items[] = [
+                'id' => (int) $k->id,
+                'personel_id' => (int) $k->personel_id,
+                'parametre_id' => !empty($k->parametre_id) ? (int) $k->parametre_id : null,
+                'parametre_adi' => (string) ($k->parametre_adi ?: ($k->tur ? ucfirst($k->tur) : 'Kesinti')),
+                'parametre_kodu' => (string) ($k->parametre_kodu ?? ''),
+                'tur' => (string) ($k->tur ?? 'diger'),
+                'tekrar_tipi' => $tekrarTipi,
+                'hesaplama_tipi' => $hesaplamaTipi,
+                'tutar' => $tutar,
+                'oran' => (float) ($k->oran ?? 0),
+                'taksit_sayisi' => !empty($k->taksit_sayisi) ? (int) $k->taksit_sayisi : 1,
+                'tarih' => (string) ($k->tarih ?? ''),
+                'donem_id' => !empty($k->donem_id) ? (int) $k->donem_id : null,
+                'donem_adi' => (string) ($k->donem_adi ?? ''),
+                'kapali_mi' => (int) ($k->kapali_mi ?? 0),
+                'baslangic_donemi' => (string) ($k->baslangic_donemi ?? ''),
+                'bitis_donemi' => (string) ($k->bitis_donemi ?? ''),
+                'banka_matrahina_ekle' => $bankaMatrah,
+                'icra_id' => !empty($k->icra_id) ? (int) $k->icra_id : null,
+                'dosya_no' => (string) ($k->dosya_no ?? ''),
+                'icra_dairesi' => (string) ($k->icra_dairesi ?? ''),
+                'durum' => (string) ($k->durum ?? 'beklemede'),
+                'aciklama' => (string) ($k->aciklama ?? ''),
+                'aktif' => $aktif,
+                'kayit_yapan_ad_soyad' => (string) ($k->kayit_yapan_ad_soyad ?? ''),
+            ];
+        }
+
+        $parametreModel = new BordroParametreModel();
+        $kesintiParametreleri = [];
+        foreach ($parametreModel->getKesintiTurleri() as $kp) {
+            $kesintiParametreleri[] = [
+                'id' => (int) $kp->id,
+                'kod' => (string) $kp->kod,
+                'etiket' => (string) $kp->etiket,
+                'hesaplama_tipi' => (string) ($kp->hesaplama_tipi ?? 'sabit'),
+                'oran' => (float) ($kp->oran ?? 0),
+                'varsayilan_tutar' => (float) ($kp->varsayilan_tutar ?? 0),
+            ];
+        }
+
+        $donemModel = new BordroDonemModel();
+        $rawDonemler = $donemModel->getAllDonemsForFilter();
+        $donemler = [];
+        foreach ($rawDonemler as $d) {
+            $donemler[] = [
+                'id' => (int) $d->id,
+                'donem_adi' => (string) $d->donem_adi,
+                'baslangic_tarihi' => (string) $d->baslangic_tarihi,
+                'bitis_tarihi' => (string) $d->bitis_tarihi,
+                'kapali_mi' => (int) ($d->kapali_mi ?? 0),
+            ];
+        }
+
+        $icraModel = new PersonelIcralariModel();
+        $rawIcralar = $icraModel->getDevamEdenIcralar($personelId);
+        $icralar = [];
+        foreach ($rawIcralar as $ic) {
+            $icralar[] = [
+                'id' => (int) $ic->id,
+                'dosya_no' => (string) $ic->dosya_no,
+                'icra_dairesi' => (string) $ic->icra_dairesi,
+                'alacakli' => (string) ($ic->alacakli ?? ''),
+                'toplam_borc' => (float) ($ic->toplam_borc ?? 0),
+                'aylik_kesinti_tutari' => (float) ($ic->aylik_kesinti_tutari ?? 0),
+            ];
+        }
+
+        return [
+            'items' => $items,
+            'summary' => [
+                'toplam_tutar' => $toplamKesinti,
+                'tek_sefer_adet' => $tekSeferAdet,
+                'tek_sefer_tutar' => $tekSeferTutar,
+                'taksitli_adet' => $taksitliAdet,
+                'taksitli_tutar' => $taksitliTutar,
+                'surekli_adet' => $surekliAdet,
+                'surekli_tutar' => $surekliTutar,
+                'banka_tutar' => $bankaTutar,
+                'elden_tutar' => $eldenTutar,
+            ],
+            'kesinti_parametreleri' => $kesintiParametreleri,
+            'donemler' => $donemler,
+            'icralar' => $icralar,
+        ];
+    }
+
+    public function saveKesinti(array $data, int $firmaId, int $userId): array
+    {
+        $personelId = (int) ($data['personel_id'] ?? 0);
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $id = (int) ($data['id'] ?? 0);
+        $tekrarTipi = in_array(($data['tekrar_tipi'] ?? 'tek_sefer'), ['tek_sefer', 'surekli', 'taksitli'], true) ? $data['tekrar_tipi'] : 'tek_sefer';
+        $hesaplamaTipi = in_array(($data['hesaplama_tipi'] ?? 'sabit'), ['sabit', 'oran', 'oran_net', 'oran_brut'], true) ? $data['hesaplama_tipi'] : 'sabit';
+
+        if (($tekrarTipi === 'tek_sefer' || $tekrarTipi === 'taksitli') && !empty($data['donem_id'])) {
+            $donemModel = new BordroDonemModel();
+            $donem = $donemModel->getDonemById((int) $data['donem_id']);
+            if ($donem && (int) ($donem->kapali_mi ?? 0) === 1) {
+                throw new \InvalidArgumentException('Seçilen dönem kapatılmış. Kapalı dönemlere kesinti eklenemez/düzenlenemez.');
+            }
+        }
+
+        $kesintiModel = new PersonelKesintileriModel();
+        $tarih = !empty($data['tarih']) ? \App\Helper\Date::dttoeng($data['tarih']) : date('Y-m-d');
+        if (!$tarih || $tarih === '1970-01-01') {
+            $tarih = date('Y-m-d');
+        }
+
+        $saveData = [
+            'personel_id' => $personelId,
+            'tur' => mb_substr(trim((string) ($data['tur'] ?? 'diger')), 0, 50),
+            'tekrar_tipi' => $tekrarTipi,
+            'hesaplama_tipi' => $hesaplamaTipi,
+            'tutar' => max(0, (float) ($data['tutar'] ?? 0)),
+            'oran' => max(0, (float) ($data['oran'] ?? 0)),
+            'tarih' => $tarih,
+            'banka_matrahina_ekle' => isset($data['banka_matrahina_ekle']) ? (int) $data['banka_matrahina_ekle'] : 1,
+            'aciklama' => mb_substr(trim((string) ($data['aciklama'] ?? '')), 0, 500),
+            'parametre_id' => !empty($data['parametre_id']) ? (int) $data['parametre_id'] : null,
+            'icra_id' => !empty($data['icra_id']) ? (int) $data['icra_id'] : null,
+            'aktif' => 1,
+        ];
+
+        if ($tekrarTipi === 'taksitli') {
+            $taksitSayisi = max(1, min(60, (int) ($data['taksit_sayisi'] ?? 1)));
+            $saveData['taksit_sayisi'] = $taksitSayisi;
+            $saveData['donem_id'] = !empty($data['donem_id']) ? (int) $data['donem_id'] : null;
+            $saveData['baslangic_donemi'] = null;
+            $saveData['bitis_donemi'] = null;
+        } elseif ($tekrarTipi === 'tek_sefer') {
+            $saveData['donem_id'] = !empty($data['donem_id']) ? (int) $data['donem_id'] : null;
+            $saveData['baslangic_donemi'] = null;
+            $saveData['bitis_donemi'] = null;
+            $saveData['taksit_sayisi'] = null;
+        } else {
+            $saveData['donem_id'] = null;
+            $saveData['taksit_sayisi'] = null;
+            $baslangic = !empty($data['baslangic_donemi']) ? \App\Helper\Date::dttoeng($data['baslangic_donemi']) : date('Y-m-01');
+            $bitis = !empty($data['bitis_donemi']) ? \App\Helper\Date::dttoeng($data['bitis_donemi']) : null;
+            $saveData['baslangic_donemi'] = $baslangic ?: date('Y-m-01');
+            $saveData['bitis_donemi'] = $bitis;
+        }
+
+        $logModel = new SystemLogModel();
+
+        if ($id > 0) {
+            $mevcut = $kesintiModel->getKesinti($id);
+            if (!$mevcut || (int) $mevcut->personel_id !== $personelId) {
+                throw new \RuntimeException('Kesinti kaydı bulunamadı.');
+            }
+            if (!empty($mevcut->donem_id)) {
+                $donemModel = new BordroDonemModel();
+                $donem = $donemModel->getDonemById((int) $mevcut->donem_id);
+                if ($donem && (int) ($donem->kapali_mi ?? 0) === 1) {
+                    throw new \InvalidArgumentException('Kapalı döneme ait kesinti düzenlenemez.');
+                }
+            }
+
+            $kesintiModel->updateKesinti($id, $saveData);
+            $logModel->logAction($userId, 'Kesinti Güncelleme', "{$personel['adi_soyadi']} personeline ait kesinti güncellendi (ID: {$id}).", SystemLogModel::LEVEL_INFO);
+            return ['success' => true, 'message' => 'Kesinti başarıyla güncellendi.', 'id' => $id];
+        }
+
+        $saveData['kayit_yapan'] = $userId;
+        $newId = $kesintiModel->saveWithAttr($saveData);
+        if (!$newId) {
+            throw new \RuntimeException('Kesinti kaydedilemedi.');
+        }
+
+        $logModel->logAction($userId, 'Kesinti Ekleme', "{$personel['adi_soyadi']} personeline yeni kesinti eklendi (ID: {$newId}).", SystemLogModel::LEVEL_INFO);
+        return ['success' => true, 'message' => 'Kesinti başarıyla oluşturuldu.', 'id' => (int) $newId];
+    }
+
+    public function deleteKesinti(int $id, int $personelId, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $kesintiModel = new PersonelKesintileriModel();
+        $kesinti = $kesintiModel->getKesinti($id);
+        if (!$kesinti || (int) $kesinti->personel_id !== $personelId) {
+            throw new \RuntimeException('Kesinti kaydı bulunamadı.');
+        }
+
+        if (!empty($kesinti->donem_id)) {
+            $donemModel = new BordroDonemModel();
+            $donem = $donemModel->getDonemById((int) $kesinti->donem_id);
+            if ($donem && (int) ($donem->kapali_mi ?? 0) === 1) {
+                throw new \InvalidArgumentException('Kapalı dönemlerdeki kesintiler silinemez.');
+            }
+        }
+
+        $res = $kesintiModel->softDelete($id);
+        if (!$res) {
+            throw new \RuntimeException('Silme işlemi başarısız.');
+        }
+
+        $logModel = new SystemLogModel();
+        $logModel->logAction($userId, 'Kesinti Silme', "{$personel['adi_soyadi']} personeline ait kesinti silindi (ID: {$id}).", SystemLogModel::LEVEL_IMPORTANT);
+
+        return ['success' => true, 'message' => 'Kesinti başarıyla silindi.'];
+    }
+
+    public function sonlandirKesinti(int $id, int $personelId, ?string $bitisDonemi, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $kesintiModel = new PersonelKesintileriModel();
+        $bitis = !empty($bitisDonemi) ? \App\Helper\Date::dttoeng($bitisDonemi) : date('Y-m-d');
+        $res = $kesintiModel->sonlandirSurekliKesinti($id, $bitis);
+        if (!$res) {
+            throw new \RuntimeException('Sonlandırma işlemi başarısız.');
+        }
+
+        $logModel = new SystemLogModel();
+        $logModel->logAction($userId, 'Kesinti Sonlandırma', "{$personel['adi_soyadi']} personeline ait sürekli kesinti sonlandırıldı (ID: {$id}).", SystemLogModel::LEVEL_INFO);
+
+        return ['success' => true, 'message' => 'Sürekli kesinti başarıyla sonlandırıldı.'];
+    }
 }
+
+

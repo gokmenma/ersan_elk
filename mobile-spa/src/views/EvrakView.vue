@@ -259,18 +259,23 @@ async function openDetail(doc) {
   }
 }
 
-// Yeni Evrak Formunu Aç
+// Yeni Evrak Formunu Aç (Gelen Evrak için Modal, Giden Evrak için /giden-evrak rotası)
 async function openCreateForm(type = 'gelen') {
+  if (type === 'giden') {
+    router.push('/giden-evrak')
+    return
+  }
+
   await loadMeta()
   isEditing.value = false
   formError.value = ''
   selectedFiles.value = []
 
-  const nextNo = type === 'gelen' ? meta.value.next_evrak_no.gelen : meta.value.next_evrak_no.giden
+  const nextNo = meta.value.next_evrak_no.gelen
 
   formData.value = {
     id: '',
-    evrak_tipi: type,
+    evrak_tipi: 'gelen',
     tarih: new Date().toISOString().slice(0, 10),
     evrak_no: String(nextNo || ''),
     konu: '',
@@ -299,6 +304,12 @@ async function openCreateForm(type = 'gelen') {
 
 // Evrak Düzenle Formunu Aç
 async function openEditForm(doc) {
+  if (doc.evrak_tipi === 'giden') {
+    isDetailOpen.value = false
+    router.push({ path: '/giden-evrak', query: { id: doc.id } })
+    return
+  }
+
   await loadMeta()
   isEditing.value = true
   formError.value = ''
@@ -309,17 +320,9 @@ async function openEditForm(doc) {
     const res = await evrakApi.detail(doc.id)
     const d = res.data || doc
 
-    // İmzacılar
-    const signerIds = []
-    if (d.approval_steps && Array.isArray(d.approval_steps)) {
-      d.approval_steps.forEach(s => {
-        if (s.user_id) signerIds.push(s.user_id)
-      })
-    }
-
     formData.value = {
       id: d.id,
-      evrak_tipi: d.evrak_tipi || 'gelen',
+      evrak_tipi: 'gelen',
       tarih: d.tarih || new Date().toISOString().slice(0, 10),
       evrak_no: d.evrak_no || '',
       konu: d.konu || '',
@@ -332,14 +335,14 @@ async function openEditForm(doc) {
       cevap_tarihi: d.cevap_tarihi || '',
       personel_bildirim_durumu: false,
       aciklama: d.aciklama || '',
-      ust_yazi_gerekli_degil: Boolean(d.ust_yazi_gerekli_degil),
+      ust_yazi_gerekli_degil: false,
       ilgiler: d.ilgiler || '',
       ekler: d.ekler_metin || '',
       ilgili_evrak_id: d.ilgili_evrak_id || '',
       plaka: d.plaka || '',
       ceza_tutari: d.ceza_tutari ? String(d.ceza_tutari) : '',
       tutar: d.tutar ? String(d.tutar) : '',
-      imza_kullanici_ids: signerIds,
+      imza_kullanici_ids: [],
       silinen_ek_ids: [],
       existing_attachments: d.attachments || [],
     }
@@ -1307,8 +1310,21 @@ onMounted(() => {
               </button>
             </template>
 
+            <!-- Giden Evrak İse Özel Sayfasına Yönlendir -->
             <button
-              v-if="!selectedDetail.kilitli"
+              v-if="selectedDetail.evrak_tipi === 'giden'"
+              type="button"
+              class="evrak-btn evrak-btn--primary"
+              @click="isDetailOpen = false; router.push({ path: '/giden-evrak', query: { id: selectedDetail.id } })"
+            >
+              <Pencil v-if="!selectedDetail.kilitli" :size="16" />
+              <Eye v-else :size="16" />
+              <span>{{ selectedDetail.kilitli ? 'Evrakı İncele' : 'Giden Evrakı Düzenle' }}</span>
+            </button>
+
+            <!-- Gelen Evrak İse Modalda Düzenle -->
+            <button
+              v-else-if="!selectedDetail.kilitli"
               type="button"
               class="evrak-btn evrak-btn--subtle"
               @click="openEditForm(selectedDetail); isDetailOpen = false"
@@ -1330,7 +1346,7 @@ onMounted(() => {
     </Transition>
 
     <!-- ======================================================== -->
-    <!-- YENİ / DÜZENLEME FORMU ÇEKMECESİ                         -->
+    <!-- YENİ / DÜZENLEME FORMU ÇEKMECESİ (GELEN EVRAK)           -->
     <!-- ======================================================== -->
     <Transition name="drawer">
       <div v-if="isFormOpen" class="evrak-drawer-layer" @click.self="isFormOpen = false">
@@ -1339,9 +1355,9 @@ onMounted(() => {
           <header class="evrak-drawer-header">
             <div>
               <span class="clay-topbar-eyebrow">
-                {{ isEditing ? 'KAYDI GÜNCELLE' : 'YENİ BELGE TANIMLA' }}
+                {{ isEditing ? 'GELEN EVRAKI GÜNCELLE' : 'YENİ GELEN BELGE' }}
               </span>
-              <h2>{{ isEditing ? 'Evrak Düzenle' : 'Yeni Evrak Kaydı' }}</h2>
+              <h2>{{ isEditing ? 'Gelen Evrak Düzenle' : 'Yeni Gelen Evrak Kaydı' }}</h2>
             </div>
             <button
               type="button"
@@ -1358,31 +1374,6 @@ onMounted(() => {
             <div v-if="formError" class="evrak-returned-notice">
               <AlertCircle :size="18" />
               <span>{{ formError }}</span>
-            </div>
-
-            <!-- Evrak Tipi Segmenti -->
-            <div class="evrak-form-group">
-              <label class="evrak-form-label">EVRAK TİPİ</label>
-              <div class="evrak-type-switch">
-                <button
-                  type="button"
-                  class="evrak-switch-opt"
-                  :class="{ 'is-active': formData.evrak_tipi === 'gelen' }"
-                  @click="formData.evrak_tipi = 'gelen'"
-                >
-                  <ArrowDownLeft :size="16" />
-                  <span>GELEN EVRAK</span>
-                </button>
-                <button
-                  type="button"
-                  class="evrak-switch-opt"
-                  :class="{ 'is-active': formData.evrak_tipi === 'giden' }"
-                  @click="formData.evrak_tipi = 'giden'"
-                >
-                  <ArrowUpRight :size="16" />
-                  <span>GİDEN EVRAK</span>
-                </button>
-              </div>
             </div>
 
             <!-- Tarih & Evrak No -->
@@ -1432,9 +1423,9 @@ onMounted(() => {
               />
             </div>
 
-            <!-- Kurum / Muhatap Adı -->
+            <!-- Kurum / Gönderen Adı -->
             <div class="evrak-form-group">
-              <label class="evrak-form-label">MUHATAP KURUM / FİRMA ADI *</label>
+              <label class="evrak-form-label">GÖNDEREN KURUM / FİRMA ADI *</label>
               <input
                 type="text"
                 v-model="formData.kurum_adi"
@@ -1443,30 +1434,6 @@ onMounted(() => {
                 required
               />
             </div>
-
-            <!-- Giden Evrak ise Muhatap Alt Birim ve Adres -->
-            <template v-if="formData.evrak_tipi === 'giden'">
-              <div class="evrak-form-grid-2">
-                <div class="evrak-form-group">
-                  <label class="evrak-form-label">MUHATAP ALT BİRİM</label>
-                  <input
-                    type="text"
-                    v-model="formData.muhatap_alt_birim"
-                    class="evrak-input"
-                    placeholder="Maaş Haczi Servisi vb."
-                  />
-                </div>
-                <div class="evrak-form-group">
-                  <label class="evrak-form-label">MUHATAP ADRESİ / İL-İLÇE</label>
-                  <input
-                    type="text"
-                    v-model="formData.muhatap_adres"
-                    class="evrak-input"
-                    placeholder="Kadıköy / İSTANBUL"
-                  />
-                </div>
-              </div>
-            </template>
 
             <!-- Atanan Personeller -->
             <div class="evrak-form-grid-2">
@@ -1572,51 +1539,14 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Giden Evrak: İmza Atacak Yetkililer (1-3 Kişi) -->
-            <div v-if="formData.evrak_tipi === 'giden'" class="evrak-form-group">
-              <label class="evrak-form-label">
-                İMZA ATACAK YETKİLİLER (En Fazla 3 Kişi)
-              </label>
-              <div class="evrak-signers-selector">
-                <button
-                  v-for="u in meta.signing_users"
-                  :key="u.id"
-                  type="button"
-                  class="evrak-signer-pill"
-                  :class="{ 'is-selected': formData.imza_kullanici_ids.includes(u.id) }"
-                  @click="toggleSigner(u.id)"
-                >
-                  <span class="evrak-signer-order">
-                    {{ formData.imza_kullanici_ids.indexOf(u.id) + 1 || '+' }}
-                  </span>
-                  <span>{{ u.name }} ({{ u.title }})</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Giden Evrak: İlişkili Gelen Evrak -->
-            <div v-if="formData.evrak_tipi === 'giden'" class="evrak-form-group">
-              <label class="evrak-form-label">İLİŞKİLİ GELEN EVRAK (Varsa)</label>
-              <select v-model="formData.ilgili_evrak_id" class="evrak-select">
-                <option value="">Seçiniz...</option>
-                <option
-                  v-for="ge in meta.gelen_evraklar"
-                  :key="ge.id"
-                  :value="ge.id"
-                >
-                  No: {{ ge.evrak_no }} - {{ ge.konu }} ({{ ge.tarih }})
-                </option>
-              </select>
-            </div>
-
-            <!-- Açıklama / İçerik Metni -->
+            <!-- Açıklama / Notlar -->
             <div class="evrak-form-group">
-              <label class="evrak-form-label">AÇIKLAMA / RESMÎ YAZI METNİ</label>
+              <label class="evrak-form-label">AÇIKLAMA / NOTLAR</label>
               <textarea
                 v-model="formData.aciklama"
                 rows="4"
                 class="evrak-textarea"
-                placeholder="Evrak ile ilgili notlar veya giden resmî yazının gövde metni..."
+                placeholder="Evrak ile ilgili açıklama veya notlar..."
               ></textarea>
             </div>
 

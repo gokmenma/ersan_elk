@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck, CalendarDays,
   ChevronRight, FileText, Gavel, History, Mail, MapPin, PackageCheck, Pencil,
-  Phone, RefreshCw, UserRoundCheck,
+  Phone, Receipt, RefreshCw, UserRoundCheck,
 } from '@lucide/vue'
 import { personnelApi } from '../services/personnel.js'
 import TopBar from '../components/TopBar.vue'
@@ -21,7 +21,8 @@ const modules = [
   { tab: 'calisma', label: 'Çalışma bilgileri', meta: 'Görev, ekip ve çalışma geçmişi', icon: BriefcaseBusiness, color: '#0284c7' },
   { tab: 'izinler', label: 'İzin ve raporlar', meta: 'Hak ediş ve izin geçmişi', icon: CalendarDays, color: '#059669' },
   { tab: 'zimmetler', label: 'Zimmetler', meta: 'Araç, cihaz ve demirbaşlar', icon: PackageCheck, color: '#d97706' },
-  { tab: 'finansal', label: 'Maaş ve finans', meta: 'Ücret, ek ödeme ve kesintiler', icon: BadgeDollarSign, color: '#7c3aed' },
+  { tab: 'ek_odemeler', label: 'Ek ödemeler', meta: 'Prim, ikramiye, kira ve yardımlar', icon: BadgeDollarSign, color: '#059669' },
+  { tab: 'kesintiler', label: 'Kesintiler', meta: 'Dönemsel, sürekli ve diğer kesintiler', icon: Receipt, color: '#dc2626' },
   { tab: 'evraklar', label: 'Personel evrakları', meta: 'Belgeler ve dijital arşiv', icon: FileText, color: '#e11d48' },
   { tab: 'icralar', label: 'İcra dosyaları', meta: 'Borç ve kesinti takibi', icon: Gavel, color: '#f97316' },
   { tab: 'puantaj', label: 'İş ve puantaj', meta: 'Çalışma ve görev kayıtları', icon: CalendarCheck, color: '#0891b2' },
@@ -133,7 +134,7 @@ onMounted(load)
       <section class="detail-modules-section">
         <div class="clay-section-head">
           <h2>Tüm Bilgiler ve İşlemler</h2>
-          <span class="clay-pill-tag">8 Bölüm</span>
+          <span class="clay-pill-tag">9 Bölüm</span>
         </div>
 
         <div class="detail-modules-stack">

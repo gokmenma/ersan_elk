@@ -1,5 +1,105 @@
 # Progress
 
+## 2026-10-17 — Mobil SPA Cari Detay & İşlem Ekle Tasarım Standartlaştırması
+- [x] **Alttaki Yüzen Butonun Kaldırılması (`CariDetailView.vue`)**:
+  - Alt dock menüyü örten ve ekranı daraltan yüzen `<aside class="detail-floating-fab">` kaldırıldı.
+  - Sayfa alt boşluğu sistem standardı `--ds-nav-clearance` seviyesine çekildi.
+- [x] **Üst Çubuk & Kolay Erişim**:
+  - Uzun cari unvanlarında butonların taşmasını önlemek için başlığa `min-width: 0` ve `text-overflow: ellipsis` uygulandı.
+  - Üst başlık çubuğuna (Topbar) `+` (Yeni İşlem Ekle) butonu entegre edildi.
+  - Hareketler başlığı yanındaki `+ İşlem Ekle` butonu korundu.
+- [x] **Hero Kartı & Bento Özet**:
+  - Telefon numarası `formatPhone` ile `0536 997 83 81` formatına kavuşturuldu.
+  - 3'lü Soft Bento rozetleri (Top. Aldım, Top. Verdim, Net Bakiye) renkli durum noktalarıyla dengelendi.
+  - Hızlı aksiyon butonları (Cari Notu, Ara, Paylaş, Ekstre PDF) pastel kil ikonlarıyla zenginleştirildi.
+- [x] **"Yeni İşlem Ekle" Modalı (Bottom Sheet)**:
+  - Belirgin geri bildirimli 2'li Segmented Toggle: Aldım (Kırmızı) ve Verdim (Yeşil).
+  - Tutar alanı: Belirgin ₺ rozeti, `inputmode="decimal"`, hızlı tutar çipleri (`+500 ₺`, `+1.000 ₺`, `+5.000 ₺`, `Tam Bakiye`).
+  - Açıklama alanı: Hızlı şablon çipleri (`Nakit`, `Havale/EFT`, `Fatura Ödemesi`, `Mal/Hizmet`).
+  - Belge yükleme: Ham tarayıcı inputu yerine özel Soft Bento Dropzone ve seçilen dosya kartı (`Kaldır` butonlu).
+- [x] **`CariView.vue` Eşitlemesi**:
+  - Ana cari listesindeki işlem ekleme modalı da aynı modern bileşen ve dropzone ile güncellendi.
+- [x] `npm run build` ile 0 hata derlendi.
+
+## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Tasarım Standartlaştırması
+- [x] **Tasarım Bütünlüğü ve Hiyerarşi Standardizasyonu (`PersonnelSectionView.vue`)**:
+  - Özet metrik kartlarında eksik olan `.metric-box--amber` stili tanımlandı, 3. kutu kehribar rengiyle eşleştirildi.
+  - Para değerlerinin (`₺` sembolü dahil) 3 kolonlu dar alanda satır kırılması önlendi (`white-space: nowrap`, `14px` / `12.5px`).
+  - Yabancı koyu arkaplanlı filtre butonları yerine sistem genelinde kullanılan `.clay-tabs-wrap`, `.clay-tab-btn` ve `.clay-tab-badge` bileşenlerine geçildi.
+  - Hareket kartları (`financial-item-card`) saf beyaz yerine `var(--ds-surface-subtle)` yumuşak zemin, 14px kavis, 1px zarif çerçeve ve sol ince durum çizgisi (Sürekli: Kehribar, Tek Sefer: Mavi, Taksitli: Mor) ile `calisma` ve `izinler` kartlarının standardına getirildi.
+  - Aksiyon butonları standart 26x26px `.copy-btn`, `.copy-btn--amber` ve `.copy-btn--danger` yapısına bağlandı.
+- [x] `npm run build` ile 0 hata derlendi.
+
+## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Olarak Ayrılması & Tam Yönetimi
+- [x] **Menü ve Modül Ayrımı (`PersonnelDetailView.vue`)**:
+  - `finansal` modülü kaldırılarak yerine **Ek ödemeler** (`ek_odemeler` - Zümrüt Yeşili) ve **Kesintiler** (`kesintiler` - Mercan Kırmızısı) modülleri oluşturuldu.
+  - Modül sayısı rozeti `9 Bölüm` olarak güncellendi.
+- [x] **Model & API Katmanı (`MobilePersonelModel.php`, `personnel.php`, `personnel.js`)**:
+  - `MobilePersonelModel`: `getEkOdemelerDetails`, `saveEkOdeme`, `deleteEkOdeme`, `sonlandirEkOdeme`, `getKesintilerDetails`, `saveKesinti`, `deleteKesinti`, `sonlandirKesinti` metotları uygulandı.
+  - `public/api/personnel.php` & `dist/api/personnel.php`: `detail` verisine ek ödeme ve kesinti listeleri/özetleri/parametreleri eklendi; 6 adet korumalı POST aksiyonu tanımlandı.
+  - `personnel.js`: İlgili tüm API fonksiyonları eklendi.
+- [x] **Ek Ödemeler Arayüzü (`PersonnelSectionView.vue`)**:
+  - 3'lü Soft Bento Özet Kartı: Toplam Ek Kazanç, Tek Seferlik, Düzenli (Aylık).
+  - Sağa tam yaslı `+ Yeni Ek Ödeme` butonu, filtre hapları (Tümü, Tek Seferlik, Sürekli).
+  - Claymorphic hareket kartları: Tutar, resmi tutar, hesaplama tipi, dönem/tarih, banka/elden rozetleri, açıklama.
+  - Aksiyonlar: Düzenleme, Sürekli ödemeyi sonlandırma, Silme.
+  - Yeni Ek Ödeme Ekle / Düzenle modal sheet'i ve Sonlandırma modal sheet'i.
+- [x] **Kesintiler Arayüzü (`PersonnelSectionView.vue`)**:
+  - 3'lü Soft Bento Özet Kartı: Toplam Kesinti, Tek Seferlik, Taksitli & Sürekli.
+  - Sağa tam yaslı `+ Yeni Kesinti Ekle` butonu, filtre hapları (Tümü, Tek Seferlik, Taksitli, Sürekli).
+  - Claymorphic hareket kartları: Tutar, taksit tutarı, icra bağlantısı, dönem/tarih, banka/elden rozetleri, açıklama.
+  - Aksiyonlar: Düzenleme, Sürekli kesintiyi sonlandırma, Silme.
+  - Yeni Kesinti Ekle / Düzenle modal sheet'i (İcra ve taksit entegrasyonlu) ve Sonlandırma modal sheet'i.
+- [x] `npm run build` ile 0 hata ile derlendi.
+
+## 2026-10-17 — Mobil SPA Personel Detayı: İzin ve Raporlar Sekmesi (`/personel/:id/izinler`)
+- [x] **Yıllık İzin Bakiyesi Bento Kartı**:
+  - `entitlement` entegrasyonu ile Toplam Hakediş, Kullanılan İzin ve Kalan İzin günleri 3'lü Bento kutu ızgarasında sunuldu.
+  - Sağa yaslı `Hakediş Detayı` butonu ile hizmet yıllarına göre hakediş günleri ve tarihlerini listeleyen modal eklendi.
+- [x] **İzin ve Rapor Hareketleri Listesi**:
+  - Başlıkta sağa tam yaslı `+ Yeni İzin Ekle` butonu.
+  - İzin kartları: İzin türü, Ücretli/Ücretsiz etiketi, Onay durumu rozeti (`Onaylandı`, `Beklemede`, `Reddedildi`), tarih aralığı, gün sayısı, yıllık izne etki rozeti, açıklama ve onaylayan yetkili bilgisi.
+  - Hızlı Aksiyonlar: Bekleyen izinler için tek tıkla Onaylama ve Ret gerekçesi girme; Düzenleme ve Silme butonları.
+- [x] **Yeni İzin Ekle & Düzenle Modalı (`clay-modal-sheet`)**:
+  - İzin türü seçimi, başlangıç/bitiş tarihleri (değiştikçe gün sayısı otomatik hesaplanır), süre, yıllık izne etki, onay durumu ve açıklama alanları.
+- [x] **Model & API Katmanı**:
+  - `MobilePersonelModel`: `getLeaveDetails`, `getLeaveTypes`, `saveLeave`, `deleteLeave`, `approveOrRejectLeave` metotları; `PersonelIzinleriModel` ve `SystemLogModel` entegrasyonu.
+  - `public/api/personnel.php` & `dist/api/personnel.php`: `detail` (leaves verisiyle), `save_leave`, `delete_leave`, `approve_or_reject_leave` uç noktaları.
+  - `personnel.js`: API çağrıları eklendi.
+- [x] `npm run build` ile hatasız üretim derlemesi alındı, PHP CLI testleri başarıyla geçti.
+
+
+## 2026-10-17 — Mobil SPA Evrak Takip & Ayrı Sekmeli Giden Evrak Sayfası (`/giden-evrak`)
+- [x] **Ayrı Giden Evrak Sayfası Tasarım Bütünlüğü (`/giden-evrak` & `GidenEvrakView.vue`)**:
+  - `EvrakView.vue` liste sayfası ile görsel kopukluk oluşturan izole kutulu yapı ve eksik alt gezinme (`chrome: false`) giderildi.
+  - Sayfa, uygulamanın ana kabuğuna (`app-stage`, `app-shell`) ve standart alt navigasyon çubuğuna (`BottomNav`) bağlandı.
+  - Standart `<TopBar>` bileşeni (`eyebrow="RESMÎ YAZIŞMA & E-İMZA"`, dairesel geri butonu, başlık, alt başlık ve sağ üst köşede PDF Önizleme + Hızlı Kaydet) uygulandı.
+  - Üst kısma `EvrakView` üzerindeki 4'lü Bento KPI kartlarıyla aynı estetiğe (28px kavis, pastel renkli ikon kareleri) sahip 2'li Sihirbaz Kartı (İcra Sihirbazı & AI Asistanı) yerleştirildi.
+  - Sekmeler doğrudan slate canvas üzerinde yüzen `.clay-tabs-wrap` ve `.clay-filter-pill` yapısına (`Evrak Bilgileri`, `Resmî İçerik`, `Ekler & E-İmza`) geçirildi.
+  - Form kutuları saf beyaz zeminli, ince çerçeveli (`.evrak-input`, `.evrak-select`, `.evrak-textarea`) standart form elemanlarına dönüştürüldü; Hızlı Konu Çipleri (`.evrak-preset-chips`) eklendi.
+  - Kart içlerine akıcı adım ilerleme butonları eklendi.
+  - `npm run build` ile üretim paketi 0 hata ile derlendi.
+
+## 2026-10-17 — Mobil SPA Kaçak Kontrol: Varsayılan 30 Gün Tarih Aralığı & Yatay Sekme Kaydırma (Wheel + Drag)
+- [x] **Varsayılan Tarih Aralığı (Son 30 Gün)**:
+  - `KacakView.vue` ve `services/kacak.js` içinde varsayılan tarih aralığı `today - 30 days` olarak ayarlandı (`datePreset = '30days'`).
+  - Sayfa ilk açılışta gereksiz tüm geçmişi yüklemek yerine doğrudan son 30 günün kayıtlarını getirerek anında hızlı açılacak şekilde optimize edildi.
+- [x] **Yatay Sekme Kaydırma (Mouse Wheel & Drag-to-Scroll)**:
+  - `.status-pills-scroll` ve `.date-preset-group` konteynerlerine mouse tekerleğiyle yatay kaydırma (`@wheel.passive="handleWheelScroll"`) ve masaüstünde fareyle tutup çekerek kaydırma (`@mousedown="startDragScroll"`) yetenekleri eklendi.
+  - `flex-shrink: 0 !important; white-space: nowrap !important;` ve `touch-action: pan-x; cursor: grab;` kurallarıyla sekmelerin mobilde parmakla, masaüstünde fareyle takılmadan kayması sağlandı.
+- [x] `npm run build` ile 0 hata ile derlendi.
+
+## 2026-10-17 — Mobil SPA Personel Detayı: Doğrudan Düzenleme Modu, Üst Kartta Tek Kaydet Butonu ve Sağa Yaslı Aksiyon Butonları
+- [x] **Doğrudan Düzenleme Modu (Düzenle/Vazgeç Butonlarının Kaldırılması)**:
+  - `PersonnelSectionView.vue`: "Genel Bilgiler" ve "Çalışma Bilgileri" sekmelerinde ayrı görüntüleme modu ve `[ ✎ Düzenle ]` / `[ ✕ Vazgeç ]` butonları tamamen kaldırıldı. Sayfaya girildiğinde formlar doğrudan düzenlenebilir olarak açık gelir.
+  - Çalışma Yaşam Döngüsü kartı üstte durum rozetleri (Aktif Çalışan, Kıdem, SGK) ile birlikte doğrudan düzenlenebilir `.form-grid` / `.form-field` bento kartı olarak yapılandırıldı.
+- [x] **Üst Profil Kartında Tekil Sağ `[ 💾 Kaydet ]` Butonu**:
+  - Profil kartının (`.personnel-profile-head`) sağ tarafına `.profile-save-btn` yerleştirildi.
+  - Aktif sekmenin durumuna göre (`genel` veya `calisma`) tek tıkla kaydeder; sayfa içi gereksiz barlar kaldırıldı.
+- [x] **Sağa Yaslı Başlık Butonları**:
+  - `.group-header` flex yapısı `justify-content: space-between; width: 100%;` ve `.header-action-btn { margin-left: auto !important; }` yapılarak "Ekip Atama Geçmişi" (`+ Yeni Ekip`) ve "Çalışma Dönemleri Geçmişi" (`+ Dönem Ekle`) butonları kart başlığının en sağına tam yaslandı.
+- [x] `npm run build` ile hatasız üretim derlemesi alındı.
+
 ## 2026-10-17 — Mobil SPA: Sistem Geneli ve Personel Detayı Kartlar Arası Boşluk Standardı (16px)
 - [x] **`PersonnelSectionView.vue` Kartlar Arası Boşluk Düzeltmesi**:
   - Görüntüleme modundaki `.quick-contact-bar` ve `.info-group-card` kartlarının `14px` olan marjinleri `var(--ds-card-gap, 16px) !important;` olarak güncellendi.

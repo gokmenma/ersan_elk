@@ -99,6 +99,18 @@ export const evrakApi = {
     fd.append('id', id)
     return request('e-imza-geri-al', { method: 'POST', body: fd, csrfToken })
   },
+  getIcraDosyalari(personelId) {
+    return request('icra-dosyalari', { params: { personel_id: personelId } })
+  },
+  getIcraTaslak(icraId) {
+    return request('icra-taslak', { params: { icra_id: icraId } })
+  },
+  generateAiTaslak(formData, csrfToken) {
+    return request('ai-taslak', { method: 'POST', body: formData, csrfToken })
+  },
+  reviseAiText(payload, csrfToken) {
+    return request('ai-duzenle', { method: 'POST', body: payload, csrfToken })
+  },
   getFileStreamUrl(idOrPath, isPath = false, download = false) {
     const param = isPath ? `path=${encodeURIComponent(idOrPath)}` : `id=${encodeURIComponent(idOrPath)}`
     return `/api/evrak.php?action=stream-file&${param}${download ? '&download=1' : ''}`

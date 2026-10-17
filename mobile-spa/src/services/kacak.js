@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 
 const defaultEndDate = new Date().toISOString().slice(0, 10)
-const defaultStartDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+const defaultStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
 export const kacakState = reactive({
   activeTab: 'all', // 'all' | 'beklemede' | 'onaylandi' | 'reddedildi' | 'iptal'

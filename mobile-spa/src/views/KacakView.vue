@@ -84,9 +84,41 @@ const searchInput = ref('')
 const selectedIlce = ref('')
 const selectedTur = ref('') // '' | 'Kaçak' | 'Abonesiz' | 'Usülsüz' | 'Pasif Abone'
 const activeStatus = ref('') // '' (tümü) | 'beklemede' | 'onaylandi' | 'reddedildi' | 'iptal'
-const datePreset = ref('year') // 'month' | '30days' | 'year' | 'all'
+const datePreset = ref('30days') // 'month' | '30days' | 'year' | 'all'
 const baslangicTarihi = ref('')
 const bitisTarihi = ref('')
+
+// Yatay Kaydırma Yardımcıları (Mouse Wheel & Drag-to-Scroll)
+function handleWheelScroll(e) {
+  if (e.deltaY !== 0) {
+    e.currentTarget.scrollLeft += e.deltaY
+  }
+}
+
+function startDragScroll(e) {
+  if (e.button !== 0) return
+  const slider = e.currentTarget
+  let isDown = true
+  const startX = e.pageX - slider.offsetLeft
+  const scrollLeft = slider.scrollLeft
+
+  function onMouseMove(moveEvent) {
+    if (!isDown) return
+    moveEvent.preventDefault()
+    const x = moveEvent.pageX - slider.offsetLeft
+    const walk = (x - startX) * 1.5
+    slider.scrollLeft = scrollLeft - walk
+  }
+
+  function onMouseUp() {
+    isDown = false
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
 
 // Tutanak Detayı & Drawer
 const activeDetail = ref(null)
@@ -118,8 +150,11 @@ const actionModal = ref({
 function initDates() {
   const now = new Date()
   bitisTarihi.value = now.toISOString().slice(0, 10)
-  // Varsayılan bu yıl başı (2026-01-01) veya 1 yıl öncesi
-  baslangicTarihi.value = `${now.getFullYear()}-01-01`
+  // Varsayılan son 30 gün
+  const d30 = new Date(now)
+  d30.setDate(d30.getDate() - 30)
+  baslangicTarihi.value = d30.toISOString().slice(0, 10)
+  datePreset.value = '30days'
 }
 
 function applyDatePreset(preset) {
@@ -514,7 +549,11 @@ onMounted(() => {
 
       <!-- Dönem Seçici & Tarih Hapları -->
       <div class="ihbar-date-bar">
-        <div class="date-preset-group">
+        <div
+          class="date-preset-group"
+          @wheel.passive="handleWheelScroll"
+          @mousedown="startDragScroll"
+        >
           <button
             type="button"
             class="clay-filter-pill"
@@ -576,7 +615,11 @@ onMounted(() => {
         </div>
 
         <!-- Durum Hap Filtreleri (Scrollable) -->
-        <div class="status-pills-scroll">
+        <div
+          class="status-pills-scroll"
+          @wheel.passive="handleWheelScroll"
+          @mousedown="startDragScroll"
+        >
           <button
             type="button"
             class="clay-filter-pill"
@@ -620,7 +663,11 @@ onMounted(() => {
         </div>
 
         <!-- Tür Çipleri (Scrollable) -->
-        <div class="status-pills-scroll">
+        <div
+          class="status-pills-scroll"
+          @wheel.passive="handleWheelScroll"
+          @mousedown="startDragScroll"
+        >
           <button
             type="button"
             class="clay-filter-pill"
@@ -1364,6 +1411,27 @@ onMounted(() => {
 .date-preset-group {
   display: flex;
   gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  cursor: grab;
+  user-select: none;
+}
+
+.date-preset-group:active {
+  cursor: grabbing;
+}
+
+.date-preset-group::-webkit-scrollbar {
+  display: none;
+}
+
+.date-preset-group > button,
+.date-preset-group .clay-filter-pill {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
 }
 
 .date-range-text {
@@ -1373,6 +1441,7 @@ onMounted(() => {
   font-size: 11px;
   color: #64748b;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 /* Arama ve Filtre Kartı */
@@ -1431,12 +1500,27 @@ onMounted(() => {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  overflow-y: hidden;
+  padding: 2px 0 4px;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  cursor: grab;
+  user-select: none;
+}
+
+.status-pills-scroll:active {
+  cursor: grabbing;
 }
 
 .status-pills-scroll::-webkit-scrollbar {
   display: none;
+}
+
+.status-pills-scroll > button,
+.status-pills-scroll .clay-filter-pill {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
 }
 
 .pill-badge {

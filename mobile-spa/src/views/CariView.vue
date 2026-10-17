@@ -5,6 +5,7 @@ import {
   ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
+  BarChart3,
   Building2,
   Calendar,
   Check,
@@ -46,6 +47,24 @@ const summary = ref({
   borclu_sayisi: 0,
   alacakli_sayisi: 0,
 })
+
+const totalVolume = computed(() => {
+  const alacak = Number(summary.value.toplam_alacak) || 0
+  const borc = Number(summary.value.toplam_borc) || 0
+  return alacak + borc
+})
+
+const alacakRatio = computed(() => {
+  if (totalVolume.value <= 0) return 0
+  const alacak = Number(summary.value.toplam_alacak) || 0
+  return Math.round((alacak / totalVolume.value) * 100)
+})
+
+const borcRatio = computed(() => {
+  if (totalVolume.value <= 0) return 0
+  return 100 - alacakRatio.value
+})
+
 const pagination = ref({ page: 1, limit: 25, total: 0, has_more: false })
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -57,6 +76,7 @@ let searchTimer = null
 // Hızlı İşlem Modal Durumu
 const isQuickActionOpen = ref(false)
 const quickActionCari = ref(null)
+const quickFileInput = ref(null)
 const quickActionForm = ref({
   type: 'aldim',
   tutar: '',
@@ -67,6 +87,30 @@ const quickActionForm = ref({
 })
 const quickActionLoading = ref(false)
 const quickActionError = ref('')
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes <= 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
+function removeQuickActionFile() {
+  quickActionForm.value.file = null
+  if (quickFileInput.value) {
+    quickFileInput.value.value = ''
+  }
+}
+
+function setQuickDescription(text) {
+  quickActionForm.value.aciklama = text
+}
+
+function addQuickAmount(delta) {
+  const current = Number(quickActionForm.value.tutar) || 0
+  quickActionForm.value.tutar = String(current + delta)
+}
 
 // Cari Ekleme / Düzenleme Modal Durumu
 const isCariModalOpen = ref(false)
@@ -178,6 +222,9 @@ function openQuickAction(cari, e) {
     belge_no: '',
     aciklama: '',
     file: null,
+  }
+  if (quickFileInput.value) {
+    quickFileInput.value.value = ''
   }
   quickActionError.value = ''
   isQuickActionOpen.value = true
@@ -351,52 +398,112 @@ async function deleteSelectedMovement() {
         >
           <RefreshCw :size="19" />
         </button>
+        <button
+          type="button"
+          class="topbar-btn topbar-btn--primary"
+          aria-label="Yeni Cari Ekle"
+          @click="openNewCariModal"
+        >
+          <Plus :size="21" />
+        </button>
       </div>
     </header>
 
-    <!-- Özet KPI Kartları (3 Kart) -->
-    <section class="cari-summary-section">
-      <div class="summary-cards-grid">
-        <!-- Toplam Aldım (Borç) -->
-        <article class="summary-kpi-card summary-kpi-card--debt">
-          <div class="kpi-header">
-            <span class="kpi-badge">TOP. ALDIM</span>
-            <div class="kpi-icon"><TrendingDown :size="16" /></div>
+    <!-- Hero Obsidian Bento Kartı: Cari İşlem Hacmi & Çift Yönlü Dağılım Grafiği -->
+    <article class="cari-hero-volume-card">
+      <header class="cari-hero-volume-card__header">
+        <div class="cari-hero-volume-card__title">
+          <span class="cari-hero-icon-box">
+            <BarChart3 :size="16" />
+          </span>
+          <div>
+            <span class="cari-hero-tag">CARİ İŞLEM HACMİ</span>
+            <span class="cari-hero-subtitle">Tahsilat & Ödeme Dağılım Analizi</span>
           </div>
-          <strong class="kpi-value text-debt">{{ formatMoney(summary.toplam_borc) }}</strong>
-          <small class="kpi-sub">Tahsilat / Alınan</small>
-        </article>
+        </div>
+        <span
+          class="cari-balance-pill"
+          :class="summary.genel_bakiye > 0 ? 'cari-balance-pill--positive' : summary.genel_bakiye < 0 ? 'cari-balance-pill--warning' : 'cari-balance-pill--neutral'"
+        >
+          <component :is="summary.genel_bakiye >= 0 ? TrendingUp : TrendingDown" :size="13" />
+          <span>{{ summary.genel_bakiye > 0 ? 'Pozitif Denge' : summary.genel_bakiye < 0 ? 'Borçlu Denge' : 'Dengede' }}</span>
+        </span>
+      </header>
 
-        <!-- Toplam Verdim (Alacak) -->
-        <article class="summary-kpi-card summary-kpi-card--credit">
-          <div class="kpi-header">
-            <span class="kpi-badge">TOP. VERDİM</span>
-            <div class="kpi-icon"><TrendingUp :size="16" /></div>
-          </div>
-          <strong class="kpi-value text-credit">{{ formatMoney(summary.toplam_alacak) }}</strong>
-          <small class="kpi-sub">Ödeme / Verilen</small>
-        </article>
-
-        <!-- Genel Net Bakiye -->
-        <article class="summary-kpi-card summary-kpi-card--net">
-          <div class="kpi-header">
-            <span class="kpi-badge">
-              {{ summary.genel_bakiye < 0 ? 'BORCUM' : summary.genel_bakiye > 0 ? 'ALACAĞIM' : 'BAKİYE' }}
-            </span>
-            <div class="kpi-icon"><Wallet :size="16" /></div>
-          </div>
+      <div class="cari-hero-volume-main">
+        <strong class="cari-hero-volume-amount">{{ formatMoney(totalVolume) }}</strong>
+        <div class="cari-hero-balance-row">
+          <span class="cari-hero-balance-label">Net Cari Bakiye:</span>
           <strong
-            class="kpi-value"
-            :class="summary.genel_bakiye < 0 ? 'text-debt' : summary.genel_bakiye > 0 ? 'text-credit' : 'text-neutral'"
+            class="cari-hero-balance-val"
+            :class="summary.genel_bakiye > 0 ? 'text-emerald' : summary.genel_bakiye < 0 ? 'text-amber' : 'text-neutral'"
           >
-            {{ summary.genel_bakiye < 0 ? '-' : summary.genel_bakiye > 0 ? '+' : '' }}{{ formatMoney(summary.genel_bakiye) }}
+            {{ (summary.genel_bakiye > 0 ? '+' : summary.genel_bakiye < 0 ? '-' : '') + formatMoney(summary.genel_bakiye) }}
           </strong>
-          <small class="kpi-sub">
-            {{ summary.genel_bakiye < 0 ? 'Ödenmesi gereken' : summary.genel_bakiye > 0 ? 'Bekleyen alacak' : 'Dengede' }}
-          </small>
-        </article>
+        </div>
       </div>
-    </section>
+
+      <!-- Çift Yönlü Segmentli Dağılım Grafiği (Segmented Volume Bar) -->
+      <div class="cari-chart-container">
+        <div
+          class="cari-segmented-track"
+          role="progressbar"
+          :aria-valuenow="alacakRatio"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div
+            class="cari-seg-fill cari-seg-fill--alacak"
+            :style="{ width: `${alacakRatio}%` }"
+            :title="`Top. Verdim (Alacak): %${alacakRatio}`"
+          >
+            <span v-if="alacakRatio >= 18" class="cari-seg-label">%{{ alacakRatio }}</span>
+          </div>
+          <div
+            class="cari-seg-fill cari-seg-fill--borc"
+            :style="{ width: `${borcRatio}%` }"
+            :title="`Top. Aldım (Borç): %${borcRatio}`"
+          >
+            <span v-if="borcRatio >= 18" class="cari-seg-label">%{{ borcRatio }}</span>
+          </div>
+        </div>
+
+        <!-- Grafik Lejantı (Legend Grid) -->
+        <div class="cari-chart-legend">
+          <div
+            class="cari-legend-item"
+            :class="{ 'cari-legend-item--active': activeFilter === 'alacakli' }"
+            @click="activeFilter = activeFilter === 'alacakli' ? 'all' : 'alacakli'"
+          >
+            <span class="cari-legend-dot cari-legend-dot--alacak"></span>
+            <div class="cari-legend-info">
+              <div class="cari-legend-header">
+                <span class="cari-legend-title">Top. Verdim (Alacak)</span>
+                <b class="cari-legend-pct text-emerald">%{{ alacakRatio }}</b>
+              </div>
+              <strong class="cari-legend-val">{{ formatMoney(summary.toplam_alacak) }}</strong>
+              <small class="cari-legend-count">{{ summary.alacakli_sayisi || 0 }} alacaklı cari</small>
+            </div>
+          </div>
+
+          <div
+            class="cari-legend-item"
+            :class="{ 'cari-legend-item--active': activeFilter === 'borclu' }"
+            @click="activeFilter = activeFilter === 'borclu' ? 'all' : 'borclu'"
+          >
+            <span class="cari-legend-dot cari-legend-dot--borc"></span>
+            <div class="cari-legend-info">
+              <div class="cari-legend-header">
+                <span class="cari-legend-title">Top. Aldım (Borç)</span>
+                <b class="cari-legend-pct text-sky">%{{ borcRatio }}</b>
+              </div>
+              <strong class="cari-legend-val">{{ formatMoney(summary.toplam_borc) }}</strong>
+              <small class="cari-legend-count">{{ summary.borclu_sayisi || 0 }} borçlu cari</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
 
     <!-- Arama & Filtre Sekmeleri -->
     <section class="cari-filter-section">
@@ -588,22 +695,58 @@ async function deleteSelectedMovement() {
           </div>
 
           <form class="sheet-form" @submit.prevent="submitQuickAction">
-            <!-- Tip Seçimi Toggle (Aldım / Verdim) -->
-            <div class="type-toggle-group">
-              <label class="toggle-option toggle-option--debt" :class="{ selected: quickActionForm.type === 'aldim' }">
-                <input v-model="quickActionForm.type" type="radio" value="aldim" />
-                <ArrowDownLeft :size="17" />
-                <span>Aldım (Borç)</span>
-              </label>
-              <label class="toggle-option toggle-option--credit" :class="{ selected: quickActionForm.type === 'verdim' }">
-                <input v-model="quickActionForm.type" type="radio" value="verdim" />
-                <ArrowUpRight :size="17" />
-                <span>Verdim (Alacak)</span>
-              </label>
+            <!-- 1. İşlem Yönü (Segmented Toggle) -->
+            <div class="type-segmented-control">
+              <button
+                type="button"
+                class="seg-btn seg-btn--debt"
+                :class="{ 'is-active': quickActionForm.type === 'aldim' }"
+                @click="quickActionForm.type = 'aldim'"
+              >
+                <div class="seg-icon-box">
+                  <ArrowDownLeft :size="18" />
+                </div>
+                <div class="seg-text">
+                  <strong>Aldım (Borç)</strong>
+                  <small>Tahsilat / Para Girişi</small>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                class="seg-btn seg-btn--credit"
+                :class="{ 'is-active': quickActionForm.type === 'verdim' }"
+                @click="quickActionForm.type = 'verdim'"
+              >
+                <div class="seg-icon-box">
+                  <ArrowUpRight :size="18" />
+                </div>
+                <div class="seg-text">
+                  <strong>Verdim (Alacak)</strong>
+                  <small>Ödeme / Para Çıkışı</small>
+                </div>
+              </button>
             </div>
 
-            <!-- Tutar & Tarih -->
+            <!-- 2. Tutar & Tarih -->
             <div class="form-grid-two">
+              <div class="form-group">
+                <label>Tutar (₺)*</label>
+                <div class="input-wrap amount-wrap">
+                  <span class="currency-badge">₺</span>
+                  <input
+                    v-model="quickActionForm.tutar"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0,00"
+                    required
+                    class="input-amount"
+                    inputmode="decimal"
+                  />
+                </div>
+              </div>
+
               <div class="form-group">
                 <label>İşlem Tarihi*</label>
                 <div class="input-wrap">
@@ -611,53 +754,107 @@ async function deleteSelectedMovement() {
                   <input v-model="quickActionForm.islem_tarihi" type="datetime-local" required />
                 </div>
               </div>
-
-              <div class="form-group">
-                <label>Tutar (₺)*</label>
-                <div class="input-wrap">
-                  <span class="input-prefix">₺</span>
-                  <input
-                    v-model="quickActionForm.tutar"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    placeholder="0.00"
-                    required
-                    class="input-amount"
-                  />
-                </div>
-              </div>
             </div>
 
-            <!-- Belge No -->
+            <!-- Hızlı Tutar Çipleri -->
+            <div class="quick-chips-row">
+              <button type="button" class="quick-chip" @click="addQuickAmount(500)">+500 ₺</button>
+              <button type="button" class="quick-chip" @click="addQuickAmount(1000)">+1.000 ₺</button>
+              <button type="button" class="quick-chip" @click="addQuickAmount(5000)">+5.000 ₺</button>
+              <button
+                v-if="quickActionCari?.bakiye && Math.abs(quickActionCari.bakiye) > 0"
+                type="button"
+                class="quick-chip quick-chip--bakiye"
+                @click="quickActionForm.tutar = String(Math.abs(quickActionCari.bakiye))"
+              >
+                Tam Bakiye ({{ formatMoney(quickActionCari.bakiye) }})
+              </button>
+            </div>
+
+            <!-- 3. Belge No -->
             <div class="form-group">
-              <label>Belge No</label>
+              <label>Belge / Dekont No</label>
               <div class="input-wrap">
                 <Receipt :size="16" class="input-icon" />
-                <input v-model="quickActionForm.belge_no" type="text" placeholder="Fatura / Makbuz No" />
+                <input v-model="quickActionForm.belge_no" type="text" placeholder="Fatura / Makbuz / Havale No" />
               </div>
             </div>
 
-            <!-- Açıklama -->
+            <!-- 4. Açıklama & Hızlı Şablonlar -->
             <div class="form-group">
-              <label>Açıklama</label>
-              <div class="input-wrap">
-                <FileText :size="16" class="input-icon" />
-                <textarea v-model="quickActionForm.aciklama" rows="2" placeholder="İşlem açıklaması…"></textarea>
+              <div class="label-with-presets">
+                <label>Açıklama</label>
+                <div class="quick-presets">
+                  <button
+                    v-for="preset in ['Nakit', 'Havale/EFT', 'Fatura Ödemesi', 'Mal/Hizmet']"
+                    :key="preset"
+                    type="button"
+                    class="preset-pill"
+                    @click="setQuickDescription(preset)"
+                  >
+                    {{ preset }}
+                  </button>
+                </div>
+              </div>
+              <div class="input-wrap textarea-wrap">
+                <FileText :size="16" class="input-icon textarea-icon" />
+                <textarea v-model="quickActionForm.aciklama" rows="2" placeholder="Örn: 2. taksit havalesi, nakit tahsilat…"></textarea>
               </div>
             </div>
 
-            <!-- Belge Yükleme -->
+            <!-- 5. Belge / Dekont Dosya Yükleme (Custom Bento Dropzone) -->
             <div class="form-group">
-              <label>Belge / Dekont Yükle</label>
-              <div class="input-wrap file-wrap">
-                <Paperclip :size="16" class="input-icon" />
-                <input type="file" accept="image/*,application/pdf" @change="handleQuickActionFileChange" />
+              <label>Belge / Dekont (Opsiyonel)</label>
+
+              <!-- Henüz Dosya Seçilmediğinde -->
+              <div
+                v-if="!quickActionForm.file"
+                class="upload-dropzone"
+                @click="$refs.quickFileInput.click()"
+              >
+                <input
+                  ref="quickFileInput"
+                  type="file"
+                  accept="image/*,application/pdf"
+                  class="hidden-file-input"
+                  @change="handleQuickActionFileChange"
+                />
+                <div class="dropzone-icon">
+                  <Paperclip :size="18" />
+                </div>
+                <div class="dropzone-text">
+                  <strong>Dekont veya Belge Fotoğrafı Ekle</strong>
+                  <small>Görsel veya PDF seçmek için dokunun (ISO 27001 şifreli)</small>
+                </div>
+              </div>
+
+              <!-- Dosya Seçildiğinde Gösterilen Kart -->
+              <div v-else class="selected-file-tile">
+                <div class="selected-file-info">
+                  <div class="selected-file-icon">
+                    <Paperclip :size="16" />
+                  </div>
+                  <div class="selected-file-meta">
+                    <strong class="selected-file-name">{{ quickActionForm.file.name }}</strong>
+                    <small class="selected-file-size">{{ formatFileSize(quickActionForm.file.size) }}</small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="selected-file-del-btn"
+                  title="Belgeyi Kaldır"
+                  @click.stop="removeQuickActionFile"
+                >
+                  <X :size="16" />
+                  <span>Kaldır</span>
+                </button>
               </div>
             </div>
 
+            <!-- Hata Mesajı -->
             <p v-if="quickActionError" class="form-error">{{ quickActionError }}</p>
 
+            <!-- Gönder Butonu -->
             <button type="submit" class="submit-action-btn" :disabled="quickActionLoading">
               <Check v-if="!quickActionLoading" :size="18" />
               <span>{{ quickActionLoading ? 'Kaydediliyor…' : 'İşlemi Kaydet' }}</span>
@@ -1033,79 +1230,257 @@ async function deleteSelectedMovement() {
   to { transform: rotate(360deg); }
 }
 
-/* ÖZET KPI KARTLARI */
-.cari-summary-section {
-  margin-bottom: 18px;
+/* HERO OBSIDIAN BENTO KARTI: CARİ İŞLEM HACMİ */
+.cari-hero-volume-card {
+  background: var(--ds-surface-dark, #191d24);
+  border-radius: var(--ds-radius-card, 28px);
+  color: #ffffff;
+  padding: 20px 18px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--ds-shadow-bento-dark, 0 16px 36px rgba(0, 0, 0, 0.28));
 }
-.summary-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.summary-kpi-card {
-  padding: 12px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 88px;
-}
-.kpi-header {
+
+.cari-hero-volume-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
 }
-.kpi-badge {
-  font: 700 8px 'Space Grotesk', sans-serif;
-  color: var(--ds-muted);
-  letter-spacing: 0.06em;
+
+.cari-hero-volume-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-.kpi-icon {
+
+.cari-hero-icon-box {
   display: grid;
-  width: 22px;
-  height: 22px;
   place-items: center;
-  border-radius: 7px;
-  background: var(--ds-soft);
-  color: var(--ds-slate);
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
-.summary-kpi-card--debt .kpi-icon {
-  background: var(--ds-danger-soft);
-  color: var(--ds-danger-ink);
-}
-.summary-kpi-card--credit .kpi-icon {
-  background: var(--ds-emerald-soft);
-  color: var(--ds-emerald-ink);
-}
-.summary-kpi-card--net .kpi-icon {
-  background: var(--ds-indigo-soft);
-  color: var(--ds-indigo-ink);
-}
-.kpi-value {
-  font-size: 14px;
+
+.cari-hero-tag {
+  display: block;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.2;
-  margin: 6px 0 2px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+
+.cari-hero-subtitle {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cari-balance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cari-balance-pill--positive {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.cari-balance-pill--warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.cari-balance-pill--neutral {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.cari-hero-volume-main {
+  margin-bottom: 14px;
+}
+
+.cari-hero-volume-amount {
+  display: block;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.cari-hero-balance-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+
+.cari-hero-balance-label {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.cari-hero-balance-val {
+  font-weight: 700;
+}
+
+/* Çift Yönlü Segmentli Dağılım Grafiği (Segmented Track) */
+.cari-chart-container {
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cari-segmented-track {
+  position: relative;
+  display: flex;
+  height: 16px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.cari-seg-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.4s ease;
+  position: relative;
+}
+
+.cari-seg-fill--alacak {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.cari-seg-fill--borc {
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.cari-seg-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.01em;
+}
+
+/* Lejant (Legend Grid) */
+.cari-chart-legend {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.cari-legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.cari-legend-item:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cari-legend-item--active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.cari-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.cari-legend-dot--alacak {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.cari-legend-dot--borc {
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.cari-legend-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.cari-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cari-legend-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.kpi-sub {
-  font-size: 9px;
-  color: var(--ds-muted);
+
+.cari-legend-pct {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cari-legend-val {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 2px;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.cari-legend-count {
+  display: block;
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 1px;
 }
 
 /* RENKLER */
 .text-debt { color: var(--ds-danger-ink) !important; }
 .text-credit { color: var(--ds-emerald-ink) !important; }
 .text-neutral { color: var(--ds-slate) !important; }
+.text-emerald { color: #34d399 !important; }
+.text-sky { color: #38bdf8 !important; }
+.text-amber { color: #fbbf24 !important; }
 
 /* FİLTRE VE ARAMA */
 .cari-filter-section {
@@ -1463,6 +1838,76 @@ async function deleteSelectedMovement() {
   display: grid;
   gap: 14px;
 }
+/* SEGMENTED CONTROL TOGGLE */
+.type-segmented-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.seg-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--ds-line);
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+.seg-btn:active {
+  transform: scale(0.98);
+}
+.seg-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: var(--ds-muted);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.seg-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  line-height: 1.2;
+}
+.seg-text small {
+  display: block;
+  font-size: 9.5px;
+  color: var(--ds-muted);
+  margin-top: 2px;
+}
+.seg-btn--debt.is-active {
+  background: var(--ds-danger-soft);
+  border-color: var(--ds-danger);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+.seg-btn--debt.is-active .seg-icon-box {
+  background: #ffffff;
+  color: var(--ds-danger-ink);
+}
+.seg-btn--debt.is-active .seg-text strong {
+  color: var(--ds-danger-ink);
+}
+.seg-btn--credit.is-active {
+  background: var(--ds-emerald-soft);
+  border-color: var(--ds-emerald);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+.seg-btn--credit.is-active .seg-icon-box {
+  background: #ffffff;
+  color: var(--ds-emerald-ink);
+}
+.seg-btn--credit.is-active .seg-text strong {
+  color: var(--ds-emerald-ink);
+}
+
 .type-toggle-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1548,9 +1993,178 @@ async function deleteSelectedMovement() {
   height: auto;
   resize: vertical;
 }
-.file-wrap input {
-  font-size: 11px;
+.amount-wrap {
+  border-color: #cbd5e1;
 }
+.currency-badge {
+  font: 800 16px var(--ds-font-main);
+  color: var(--ds-ink);
+  margin-right: 6px;
+}
+.input-wrap .input-amount {
+  font-weight: 800 !important;
+  font-size: 16px !important;
+  font-family: var(--ds-font-main) !important;
+}
+.textarea-wrap {
+  height: auto;
+  align-items: flex-start;
+  padding: 10px 12px;
+}
+.textarea-icon {
+  margin-top: 2px;
+}
+.quick-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -6px;
+  margin-bottom: 2px;
+}
+.quick-chip {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-line);
+  background: #ffffff;
+  color: var(--ds-muted);
+  font: 700 11px 'Space Grotesk', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.quick-chip:active {
+  transform: scale(0.95);
+  background: var(--ds-surface-subtle);
+}
+.quick-chip--bakiye {
+  background: var(--ds-indigo-soft);
+  color: var(--ds-indigo-ink);
+  border-color: transparent;
+}
+.label-with-presets {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.label-with-presets label {
+  margin-bottom: 0;
+}
+.quick-presets {
+  display: flex;
+  gap: 5px;
+}
+.preset-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-line);
+  background: #ffffff;
+  color: var(--ds-muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.preset-pill:active {
+  background: var(--ds-surface-subtle);
+}
+.upload-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.upload-dropzone:active {
+  transform: scale(0.985);
+  background: #f1f5f9;
+}
+.dropzone-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.dropzone-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0284c7;
+}
+.dropzone-text small {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+  margin-top: 1px;
+}
+.hidden-file-input {
+  display: none;
+}
+.selected-file-tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 16px;
+  background: #f0fdf4;
+}
+.selected-file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.selected-file-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #16a34a;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.selected-file-meta {
+  min-width: 0;
+}
+.selected-file-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.selected-file-size {
+  display: block;
+  font-size: 10px;
+  color: #15803d;
+}
+.selected-file-del-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 0;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .contact-picker-row {
   margin-bottom: 4px;
 }

@@ -16,6 +16,7 @@ class SystemLogModel extends Model
     // Log Seviyeleri
     const LEVEL_INFO = 0; // Rutin bilgilendirici (nöbet tipi değişimi, vb.)
     const LEVEL_IMPORTANT = 1; // Önemli (giriş/çıkış, silme, excel yükleme, personel ekleme)
+    const LEVEL_WARNING = 1; // Uyarı / önemli işlem aliası
     const LEVEL_CRITICAL = 2; // Kritik (toplu silme, güvenlik olayları)
     const LEVEL_PAGE_VIEW = 3; // Sayfa görüntüleme logları
 

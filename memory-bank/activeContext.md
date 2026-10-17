@@ -1,6 +1,176 @@
 # Active Context
 
-## Mobil SPA Personel Detayı: Doğrudan Düzenleme Modu, Üst Kartta Tek Kaydet Butonu ve Sağa Yaslı Aksiyon Butonları (2026-10-17)
+## Mobil SPA Cari Detay & İşlem Ekle Tasarım İyileştirmeleri (2026-10-17)
+- **Kullanıcı Talebi**: "alttaki işlem ekle butonun kaldır, buradaki tasarımı da sistem geneline uygun ama daha kullanıc dostu yap"
+- **Yapılan İyileştirmeler**:
+  1. **Alttaki Yüzen Butonun Kaldırılması**:
+     - `CariDetailView.vue` sayfasındaki alt navigasyon doku üzerinde çakışan ve içeriği kapatan `<aside class="detail-floating-fab">` (ve CSS kuralları) tamamen kaldırıldı. Sayfanın alt boşluğu sistem standardı olan `--ds-nav-clearance` seviyesine çekildi.
+  2. **Üst Çubuk (Topbar) & Hızlı Erişim**:
+     - `detail-topbar` yapısında uzun cari isimlerinin başlığı taşırıp aksiyon butonlarını ekrandan itmesi `min-width: 0` ve `text-overflow: ellipsis` ile engellendi.
+     - Topbar içerisine `+` (Yeni İşlem Ekle) butonu eklendi. Böylece kullanıcı ekranın herhangi bir yerindeyken tek dokunuşla işlem başlatabilir.
+     - Liste başlığı yanında yer alan hap formundaki `+ İşlem Ekle` butonu da korundu.
+  3. **Hero Profil Kartı & Bento Özet Rozetleri**:
+     - Telefon numarası raw rakamlar yerine `formatPhone` ile okunaklı formatlandı (`0536 997 83 81`).
+     - Mini özet alanı 3 adet modern Soft Bento metriğine dönüştürüldü (Top. Aldım - Kırmızı nokta/tutar, Top. Verdim - Yeşil nokta/tutar, Net Bakiye / Durum - Dinamik rozet ve tutar).
+     - Hızlı aksiyon butonları (Cari Notu, Ara, Paylaş, Ekstre PDF) pastel renkli dairesel kil ikonlarla ve dengeli tipografiyle premium claymorphic görünüme kavuşturuldu.
+  4. **"Yeni İşlem Ekle" Modalı (Bottom Sheet)**:
+     - Ham radyo butonları yerine belirgin görsel geri bildirim sunan 2'li Segmented Toggle kontrolü getirildi: `Aldım (Borç / Tahsilat)` (Kırmızı vurgulu) ve `Verdim (Alacak / Ödeme)` (Yeşil vurgulu).
+     - Tutar girişi belirgin `₺` rozeti, büyük punto (`16px`) ve sayısal klavye moduyla (`inputmode="decimal"`) güçlendirildi; tek dokunuşla eklenebilen hızlı tutar çipleri (`+500 ₺`, `+1.000 ₺`, `+5.000 ₺`, `Tam Bakiye`) eklendi.
+     - Açıklama alanına hızlı şablon çipleri eklendi (`Nakit`, `Havale/EFT`, `Fatura Ödemesi`, `Mal/Hizmet`).
+     - Tarayıcının varsayılan ham dosya seçicisi (`[ Dosya Seç ] Dosya seçilmedi`) yerine modern kesikli hatlı Bento Dropzone bileşeni getirildi. Dosya seçildiğinde dosya adı, boyutu ve tek tıkla kaldırma butonu (`Kaldır`) sunuldu.
+  5. **CariView.vue Uyumlaştırması**:
+     - Ana cari listesindeki satırlardan açılan "Yeni İşlem Ekle" modalı da birebir aynı modern yapı ve dropzone ile güncellenerek sistem genelinde tam tutarlılık sağlandı.
+  6. **Derleme & Doğrulama**:
+     - `npm run build` başarıyla çalıştırıldı (0 hata, 19.36s).
+
+- **Kullanıcı Talebi**: "tasarım diğer sayfalardan kopuk olmuş , sistem genelinde kararlı bir tasarım yapısını devam ettirelim"
+- **Yapılan İyileştirmeler ve Tasarım Standardizasyonu**:
+  1. **Özet Metrik Kartları (`financial-metrics-grid` & `metric-box`)**:
+     - `.metric-box--amber` stili tanımlanarak 3. kutunun (Düzenli/Aylık & Taksitli/Sürekli) zemin ve kenarlık rengi sistemin kehribar paletine bağlandı.
+     - Para tutarlarının (`13.347,00 ₺` vb.) dar 3'lü kolonlarda satır kırılarak `₺` simgesinin tek başına alt satıra düşmesi engellendi; `white-space: nowrap`, dengeli tipografi (`14px` / küçük ekranlarda `12.5px`), tek satırda taşmayan alt metinler (`text-overflow: ellipsis`) uygulandı.
+     - Kesintiler başlık ikonu için `.group-icon--coral` (`#e11d48`) eklendi.
+  2. **Filtre Sekmeleri (`.clay-tabs-wrap` Standardı)**:
+     - Sayfayla uyumsuz koyu siyah arkaplanlı ham `.filter-pill` yapısı kaldırıldı.
+     - Sistemin merkezi `.clay-tabs-wrap`, `.clay-tab-btn` ve `.clay-tab-badge` bileşenlerine geçildi (Tümü, Tek Seferlik, Sürekli / Taksitli).
+  3. **Hareket Listesi Kartları (`.financial-item-card`)**:
+     - Beyaz kart üstüne beyaz kart ve kalın 4px turuncu/kırmızı kenarlıklar kaldırıldı.
+     - Diğer sekmelerle (`izinler`, `calisma`) birebir uyumlu olacak şekilde:
+       - Zemin: `var(--ds-surface-subtle)` (soft slate/gri zemin)
+       - Kenarlık: `1px solid var(--ds-border, rgba(0, 0, 0, 0.05))`
+       - Kavis: `var(--ds-radius-sm, 14px)`
+       - İnce sol durum çizgisi: `3.5px solid` (Sürekli: Kehribar, Tek Sefer: Mavi, Taksitli: Mor)
+       - Kart Başlığı: Kalın başlık + `clay-badge` rozetleri (Sürekli/Tek Sefer/Taksitli, Banka/Elden, Kapalı Dönem).
+       - Tutar Satırı: Açık yeşil/kırmızı font, resmi tutar / aylık taksit dökümü ve sağda hesaplama tipi etiketi (`.financial-calc-chip`).
+       - Meta Satırı: Dönem, tarih ve icra dosya numarası bilgileri.
+       - Açıklama: `.financial-desc-text` ile hafif kesikli kutuda sunum.
+  4. **Aksiyon Butonları**:
+     - Yabancı renkli büyük butonlar yerine sistem standardı olan 26x26px `.copy-btn` (Düzenle), `.copy-btn.copy-btn--amber` (Sonlandır) ve `.copy-btn.copy-btn--danger` (Sil) butonlarına dönüştürüldü.
+  5. **Derleme & Doğrulama**:
+     - `npm run build` ile 0 hata derleme alındı (`dist` güncellendi).
+
+## Mobil SPA Personel Detayı: Maaş ve Finans Menüsünün "Ek Ödemeler" ve "Kesintiler" Olarak Ayrılması & Tam Yönetimi (2026-10-17)
+- **Kullanıcı Talebi**: "maaş ve finans menüsünü ek ödemeler ve kesintiler olarak ayıralım, ve bunların işlemlerini tamamlayalım"
+- **Uygulanan Geliştirmeler ve Mimari**:
+  1. **Menü & Modül Ayrımı (`PersonnelDetailView.vue` & `PersonnelSectionView.vue`)**:
+     - `PersonnelDetailView.vue` içerisindeki tekil "Maaş ve finans" (`finansal`) modülü kaldırılarak yerine iki bağımsız modül eklendi:
+       - **Ek ödemeler** (`ek_odemeler`): Prim, ikramiye, kira ve yardımlar (`icon: BadgeDollarSign`, zümrüt yeşili `#059669`).
+       - **Kesintiler** (`kesintiler`): Dönemsel, sürekli ve diğer kesintiler (`icon: Receipt`, mercan kırmızısı `#dc2626`).
+     - Modül sayısı rozeti `9 Bölüm` olarak güncellendi.
+     - `definitions` objesine `ek_odemeler` ve `kesintiler` tanımları eklendi; eski rota uyumluluğu için `finansal` köprüsü korundu.
+  2. **Model Katmanı (`App/Model/MobilePersonelModel.php`)**:
+     - **Ek Ödemeler Metotları**:
+       - `getEkOdemelerDetails(int $personelId, int $firmaId)`: Personelin ek ödemelerini (`PersonelEkOdemelerModel`), özet istatistiklerini (toplam ek kazanç, tek seferlik adet/tutar, sürekli adet/tutar, banka/elden tutar), gelir bordro parametrelerini (`BordroParametreModel`) ve açık bordro dönemlerini (`BordroDonemModel`) döner.
+       - `saveEkOdeme(array $data, int $firmaId, int $userId)`: Tek seferlik veya sürekli ek ödeme ekleme/güncelleme; kapalı dönem kontrolü; `SystemLogModel::logAction` ile denetim loglaması.
+       - `deleteEkOdeme(int $id, int $personelId, int $firmaId, int $userId)`: Kapalı dönem koruması ile soft delete (`silinme_tarihi = NOW()`) ve loglama.
+       - `sonlandirEkOdeme(int $id, int $personelId, ?string $bitisDonemi, int $firmaId, int $userId)`: Sürekli ödemeyi belirli bir tarihten itibaren sonlandırma ve loglama.
+     - **Kesintiler Metotları**:
+       - `getKesintilerDetails(int $personelId, int $firmaId)`: Personelin kesintilerini (`PersonelKesintileriModel`), özet istatistiklerini (toplam kesinti, tek seferlik adet/tutar, taksitli adet/tutar, sürekli adet/tutar, banka/elden tutar), kesinti bordro parametrelerini (`BordroParametreModel`), açık bordro dönemlerini ve personelin devam eden icra dosyalarını (`PersonelIcralariModel`) döner.
+       - `saveKesinti(array $data, int $firmaId, int $userId)`: Tek seferlik, taksitli (1-60 taksit) veya sürekli kesinti ekleme/güncelleme; icra dosyası ilişkilendirmesi; kapalı dönem kontrolü ve loglama.
+       - `deleteKesinti(int $id, int $personelId, int $firmaId, int $userId)`: Kapalı dönem korumalı soft delete ve loglama.
+       - `sonlandirKesinti(int $id, int $personelId, ?string $bitisDonemi, int $firmaId, int $userId)`: Sürekli kesintiyi sonlandırma ve loglama.
+  3. **API Katmanı (`mobile-spa/public/api/personnel.php` & `dist/api/personnel.php`)**:
+     - `action === 'detail'` içerisine `ek_odemeler`, `ek_odeme_ozet`, `gelir_parametreleri`, `bordro_donemleri`, `kesintiler`, `kesinti_ozet`, `kesinti_parametreleri`, `icra_dosyalari` verileri dahil edildi.
+     - POST uç noktaları eklendi: `save_ek_odeme`, `delete_ek_odeme`, `sonlandir_ek_odeme`, `save_kesinti`, `delete_kesinti`, `sonlandir_kesinti`. Tümü CSRF token ve `Gate::allows('personel_duzenle')` yetki doğrulamasıyla korundu.
+  4. **Frontend Servisi (`mobile-spa/src/services/personnel.js`)**:
+     - `saveEkOdeme`, `deleteEkOdeme`, `sonlandirEkOdeme`, `saveKesinti`, `deleteKesinti`, `sonlandirKesinti` servis fonksiyonları eklendi.
+  5. **SPA Arayüzü (`mobile-spa/src/views/PersonnelSectionView.vue`)**:
+     - **Ek Ödemeler Ekranı**:
+       - **Özet Bento Kartı**: 3'lü Soft Bento Izgarası (Toplam Ek Kazanç - Zümrüt Yeşili, Tek Seferlik - Mavi, Düzenli/Aylık - Kehribar).
+       - **Hareketler Kartı**: Sağa tam yaslı `+ Yeni Ek Ödeme` butonu, filtre hapları (Tümü, Tek Seferlik, Sürekli), detaylı Claymorphic hareket kartları (tutar, resmi tutar, hesaplama tipi, dönem/tarih aralığı, banka/elden rozeti, açıklama).
+       - **İşlem Aksiyonları**: Düzenle, Sonlandır (sürekli ödemelerde), Sil.
+       - **Modallar**: Yeni Ek Ödeme Ekle / Düzenle modal sheet'i (Segmented tür/tip seçiciler, dönem/tarih aralığı, tutarlar, banka/elden kanalı) ve Sürekli Ödeme Sonlandırma modal sheet'i.
+     - **Kesintiler Ekranı**:
+       - **Özet Bento Kartı**: 3'lü Soft Bento Izgarası (Toplam Kesinti - Mercan Kırmızısı, Tek Seferlik - Mavi, Taksitli & Sürekli - Kehribar).
+       - **Hareketler Kartı**: Sağa tam yaslı `+ Yeni Kesinti Ekle` butonu, filtre hapları (Tümü, Tek Seferlik, Taksitli, Sürekli), Claymorphic hareket kartları (tutar, aylık taksit tutarı, icra dosya numarası ve dairesi, dönem/tarih, banka/elden rozeti, açıklama).
+       - **İşlem Aksiyonları**: Düzenle, Sonlandır (sürekli kesintilerde), Sil.
+       - **Modallar**: Yeni Kesinti Ekle / Düzenle modal sheet'i (Taksit sayısı seçimi, icra dosyası seçimi, dönem, tutar, kesinti kanalı) ve Sürekli Kesinti Sonlandırma modal sheet'i.
+  6. **Derleme & Doğrulama**:
+     - PHP CLI (`/opt/lampp/bin/php -l`) ile syntax kontrolü yapıldı, 0 hata.
+     - Vite derlemesi (`npm run build`) 0 hata ile tamamlandı (`dist` dosyaları güncellendi).
+
+## Mobil SPA Personel Detayı: İzin ve Raporlar Sekmesi (`/personel/:id/izinler`) (2026-10-17)
+- **Kullanıcı Talebi**: "izin ve raporlar sayfası ile devam edelim"
+- **Uygulanan Geliştirmeler ve Mimari**:
+  1. **Model Katmanı (`App/Model/MobilePersonelModel.php`)**:
+     - `getLeaveDetails(int $id, int $firmaId)`: `PersonelIzinleriModel` entegrasyonu ile personelin kanuni yıllık izin hakedişini (`calculateLeaveEntitlement`), kullanılan ve kalan gün bakiyesini, hizmet yıllarına göre hakediş dökümünü (`detay`) ve aktif izin/rapor kayıtlarını (`getPersonelIzinleri`) döner.
+     - `getLeaveTypes(int $firmaId)`: `tanimlamalar` tablosundan aktif ve puantaj dışı izin türlerini (Yıllık İzin, Ücretsiz İzin, Rapor, Babalık İzni, Evlilik İzni vb.) ücretli/ücretsiz bilgisiyle çeker.
+     - `saveLeave(array $data, int $firmaId, int $userId)`: İzin ekleme ve güncelleme; onay durumu 'Onaylandı' seçildiğinde otomatik seviye 1 onay kaydını `izin_onaylari` tablosuna işler ve `SystemLogModel::logAction` ile loglar.
+     - `deleteLeave(int $id, int $personelId, int $firmaId, int $userId)`: Soft delete (`silinme_tarihi = NOW()`, `silen_kullanici = $userId`) uygular ve loglar.
+     - `approveOrRejectLeave(int $id, int $personelId, string $status, ?string $note, int $firmaId, int $userId)`: İzin onay veya ret işlemi, `izin_onaylari` seviye 1 onay kaydı oluşturma/güncelleme ve loglama.
+  2. **API Katmanı (`mobile-spa/public/api/personnel.php` & `dist/api/personnel.php`)**:
+     - `detail` aksiyonuna `leaves`, `entitlement` ve `leave_types` veri alanları dahil edildi.
+     - POST aksiyonları eklendi: `save_leave`, `delete_leave`, `approve_or_reject_leave`. Tüm aksiyonlar CSRF token ve `Gate::allows('personel_duzenle')` ile korundu.
+  3. **Frontend Servisi (`mobile-spa/src/services/personnel.js`)**:
+     - `saveLeave(data, csrfToken)`, `deleteLeave(id, personelId, csrfToken)`, `approveOrRejectLeave(id, personelId, status, note, csrfToken)` metotları tanımlandı.
+  4. **SPA Arayüzü (`mobile-spa/src/views/PersonnelSectionView.vue`)**:
+     - **Yıllık İzin Bakiyesi Bento Kartı**:
+       - 3'lü Soft Bento Metrik Izgarası: Toplam Hakediş (Mavi), Kullanılan İzin (Mercan/Kırmızı), Kalan İzin (Zümrüt/Yeşil - Vurgulu).
+       - Başlıkta sağa yaslı **Hakediş Detayı** butonu; tıklandığında açılan alt sayfada (bottom sheet) hizmet yıllarına göre hakediş tarihleri ve gün dökümü.
+     - **İzin ve Rapor Hareketleri Kartı**:
+       - Başlıkta sağa tam yaslı **`+ Yeni İzin Ekle`** butonu (`.header-action-btn`).
+       - Her bir izin/rapor hareketi için Bento kartı: İzin türü adı, Ücretli/Ücretsiz rozeti, Onay Durumu rozeti (`Onaylandı`, `Beklemede`, `Reddedildi`), Tarih aralığı, Gün sayısı rozeti, Yıllık İzne Etki rozeti, açıklama metni ve onaylayan yetkili bilgisi.
+       - Hızlı Aksiyonlar: Beklemede olan izinler için tek dokunuşla yeşil Onayla veya kırmızı Ret gerekçesi girme butonları; ayrıca Düzenle ve Silme butonları.
+     - **Yeni İzin Ekle / Düzenle Modalı (`clay-modal-sheet`)**:
+       - İzin Türü seçimi (tür seçildiğinde ücretli/ücretsiz ve yıllık izne etki durumu otomatik güncellenir).
+       - Başlangıç ve bitiş tarih seçicileri (tarihler değiştikçe gün sayısı aralığı otomatik hesaplanır).
+       - Süre (gün), onay durumu, yıllık izne etki onay kutusu ve açıklama alanları.
+  5. **Derleme & Doğrulama**:
+     - `npm run build` ile hatasız üretim derlemesi alındı.
+     - CLI üzerinden hem yeni personel hem de çok sayıda izin kaydı bulunan personeller ile hakediş ve liste doğrulaması yapıldı.
+
+
+## Mobil SPA: Evrak Takip & Ayrı Sekmeli Giden Evrak Sayfası (`/giden-evrak`) (2026-10-17)
+- **Kullanıcı Talepleri & Geri Bildirimleri**:
+  1. `mobile-spa` burada evrak takip sayfasını yapalım, `mobile` buradan alacağız ancak aynısını yapmak zorunda değiliz daha iyisini daha kullanıcı dostu yap.
+  2. `giden evrak sayfası burada olmayacak , @mobile buradaki gibi ayrı bir sayfa ve sekmeli yapı olacak evrak bilgileri, içerik, ekler şeklindeydi`.
+  3. `sayfa bozuk geldi` (Tailwind ve material symbols yerine Mobile SPA standart scoped CSS ve Lucide ikonlarına geçiş talebi).
+  4. `evrak silerken ayrıca hata verdi` (`Undefined constant App\Model\SystemLogModel::LEVEL_WARNING`).
+  5. `sayfa tasarımı evrak sayfasının devamı gibi olmamış` (Evrak Takip listesi ile Giden Evrak düzenleyicisinin tasarım tutarsızlığı: izole beyaz başlık, kutulu sekmeler, gri zeminli inputlar ve alt gezinme çubuğunun [BottomNav] kaybolması).
+  6. `sayfa yine bozuk geldi` (Vue scoped CSS yapısı nedeniyle `EvrakView.vue` içindeki form kontrolleri [`.evrak-input`, `.evrak-select`, `.evrak-preset-chips`, `.evrak-form-grid-2`, `.evrak-btn` vb.] stillerinin `GidenEvrakView.vue`'ya geçmemesi ve tarayıcının varsayılan ham siyah çerçeveli inputlarını çizmesi).
+- **Uygulanan Tasarım Bütünlüğü & Standartlaştırma (Design Continuity)**:
+  1. **TopBar & Kabuk Entegrasyonu**:
+     - `router.js` içindeki `chrome: false` parametresi kaldırılarak sayfanın uygulamanın ana kabuğuna (`app-stage`, `app-shell`) ve standart alt gezinme dock'una (`BottomNav`) bağlanması sağlandı.
+     - Özel/yabancı header yerine sistemin standart `<TopBar>` bileşeni (`eyebrow="RESMÎ YAZIŞMA & E-İMZA"`, dairesel geri butonu, başlık, alt başlık ve sağ üst köşede PDF Önizleme + Hızlı Kaydet eylem butonları) uygulandı.
+  2. **Bento Sihirbaz Kartları (KPI Formatı)**:
+     - Üst çubuk altında, `EvrakView` üzerindeki 4'lü Bento KPI kartlarıyla aynı yükseklik, 28px kavis (`--ds-radius-card`), yumuşak gölge ve pastel ikon kutularına sahip 2'li sihirbaz kartı (İcra Sihirbazı - Zümrüt Yeşili ve AI Asistanı - Kehribar Sarısı) yerleştirildi.
+  3. **Sekmeler (Clay Filter Pills)**:
+     - Kutu içine hapsedilmiş iOS tarzı segmented kontrol yerine, doğrudan slate canvas üzerinde yüzen `.clay-tabs-wrap` ve `.clay-filter-pill` yapısına (`Evrak Bilgileri`, `Resmî İçerik`, `Ekler & E-İmza`) geçildi.
+  4. **Form Elemanları ve Bento Kartlar (Scoped CSS İyileştirmesi)**:
+     - `EvrakView`'den miras kalmayan tüm form sınıfları (`.evrak-form-group`, `.evrak-form-grid-2`, `.evrak-form-label`, `.evrak-input`, `.evrak-select`, `.evrak-textarea`, `.evrak-preset-chips`, `.evrak-preset-chip`, `.evrak-btn` ailesi, `.evrak-toggle-card`, `.evrak-upload-dropzone`, `.evrak-stepper`) hem `GidenEvrakView.vue` scoped stiline hem de projenin merkezi `design-system.css` dosyasına işlendi.
+     - Form kutuları saf beyaz zeminli, 14px kavisli, ince çerçeveli (`#cbd5e1`) ve odaklandığında mavi parlamalı (`#0284c7`) modern form alanlarına dönüştü.
+  5. **Modallar ve Adım Geçişleri**:
+     - Her sekme kartının altına akıcı ileri/geri adım butonları eklendi.
+     - İcra, AI, PDF önizleme ve İmza yetkilisi pencereleri `EvrakView`'in `.evrak-modal-sheet` standardına kavuşturuldu.
+  6. **Derleme & Doğrulama**:
+     - `npm run build` ile üretim paketi 0 hata ile derlendi (`dist/assets/index-Cx0Go7Qw.css`).
+       - ✨ **AI Taslak Sihirbazı**: Gelen evrak görseli/PDF ve talimat vererek otomatik konu, muhatap, ilgi ve içerik metni üreten modal.
+       - 📄 **PDF Önizleme Modalı**: Resmî yazının PDF çıktısını mobil ekranda gösteren ve yeni sekmede açan modal.
+       - 🛡️ **E-İmza İşlemler Modalı**: İmza sırası takibi, elektronik onay, iade gerekçesi yazma ve geri alma aksiyonları.
+     - **Sticky Bottom Action Bar**: "Vazgeç", "Önizle", "Onaya Sun", "İşlemler" ve "Kaydet" butonları.
+  3. **Evrak Takip Liste Ekranı (`mobile-spa/src/views/EvrakView.vue`)**:
+     - Form modalı yalnızca "Gelen Evrak" için sadeleştirildi, giden evrak geçişleri temizlendi.
+     - Hızlı aksiyon butonları (`+ Giden`) ve liste kartlarındaki "Düzenle" / "İncele" butonları doğrudan `/giden-evrak` sayfasına yönlendirildi.
+  4. **Yönlendirme (`mobile-spa/src/router.js`)**:
+     - `/giden-evrak` ve `/giden-evraklar` rotaları kaydedildi.
+  5. **Doğrulama**:
+     - PHP sözdizimi `/opt/lampp/bin/php -l` ile hatasız doğrulandı.
+     - Vite derlemesi `npm run build` ile 0 hata ile tamamlandı.
+
+## Mobil SPA Kaçak Kontrol: Varsayılan 30 Gün Tarih Aralığı & Yatay Sekme Kaydırma (Wheel + Drag) (2026-10-17)
+- **Kullanıcı Talepleri**:
+  1. `burada varsayılan olarak son 30 gün gelisin, tümü gelince sayfa yavaş açılıyor` (Sayfa açılışında tüm kayıtlar yerine varsayılan olarak son 30 günün getirilmesi ve sayfanın anında hızlı açılması).
+  2. `buradaki sekmeler kaymıyor` (Görselde kırmızı kutuyla işaretlenen durum ve tür sekmelerinin masaüstü/mobilde sağa sola kaydırılamaması sorununun giderilmesi).
+- **Uygulanan Düzeltmeler ve Mimari (`KacakView.vue` & `kacak.js`)**:
+  1. **Varsayılan Tarih Aralığı (Son 30 Gün)**:
+     - `kacakState.startDate` ve `defaultStartDate`: Doğrudan `today - 30 days` (`new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)`) olarak ayarlandı.
+     - `KacakView.vue`: `datePreset = ref('30days')` ve `initDates()` içinde `bitis = today`, `baslangic = today - 30 days` tanımlandı.
+     - Böylece sayfa ilk açılışta 1000+ kayıt yerine anında son 30 günlük güncel veriyi çekerek son derece hızlı yüklenir.
+  2. **Yatay Sekme Kaydırma Çözümü (`.status-pills-scroll` & `.date-preset-group`)**:
+     - **Mouse Wheel ile Yatay Kaydırma**: Dikey mouse tekerleği çevrildiğinde bunu yatay `scrollLeft` hareketine dönüştüren `@wheel.passive="handleWheelScroll"` dinleyicisi eklendi.
+     - **Mouse ile Tutup Sürükleme (Drag-to-Scroll)**: Masaüstünde fareyle tıklayıp basılı tutarak sağa/sola çekildiğinde doğal bir touch/kaydırma sağlayan `@mousedown="startDragScroll"` fonksiyonu entegre edildi.
+     - **CSS Düzeltmeleri**: `flex-shrink: 0 !important; white-space: nowrap !important;` ile butonların sıkışması veya wrap yapması engellendi; `-webkit-overflow-scrolling: touch; touch-action: pan-x; cursor: grab;` özellikleri ile mobilde parmakla, masaüstünde fareyle kusursuz kaydırma sağlandı.
+  3. **Derleme**:
+     - `npm run build` ile 0 hata ile derlendi.
 - **Kullanıcı Talepleri**:
   1. `düzenleme için ayrıca bir butona basmayalım ,düzenleme butonu olmasın yani` (Sayfa açıldığında formlar doğrudan düzenleme modunda açık gelsin; `[ ✎ Düzenle ]` veya `[ ✕ Vazgeç ]` butonları olmasın).
   2. `sadece üstteki personel kartında kaydet olsun` (Üstteki profil kartının sağ tarafına yerleşik tek bir `[ 💾 Kaydet ]` butonu yerleştirilsin; sayfa içi gereksiz barlar veya alt kaydet butonları olmasın).

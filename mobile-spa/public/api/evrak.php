@@ -451,6 +451,22 @@ try {
             ];
         }
 
+        $icraPersoneller = [];
+        try {
+            $icraUstYazi = new \App\Service\IcraUstYaziService();
+            $icraMap = $icraUstYazi->icrasiOlanPersoneller();
+            foreach ($icraMap as $pId => $label) {
+                if (empty($pId)) continue;
+                $icraPersoneller[] = [
+                    'id' => Security::encrypt((int) $pId),
+                    'raw_id' => (int) $pId,
+                    'label' => (string) $label,
+                ];
+            }
+        } catch (\Throwable $e) {
+            error_log('Icra personel listesi alınamadı: ' . $e->getMessage());
+        }
+
         evrakApiResponse([
             'success' => true,
             'meta' => [
@@ -459,6 +475,7 @@ try {
                 'araclar' => $aracOptions,
                 'signing_users' => $signersList,
                 'gelen_evraklar' => $gelenList,
+                'icra_personeller' => $icraPersoneller,
                 'next_evrak_no' => [
                     'gelen' => $EvrakModel->getMaxEvrakNo('gelen'),
                     'giden' => $EvrakModel->getMaxEvrakNo('giden'),
@@ -568,6 +585,9 @@ try {
             'iade_gerekcesi' => (string) ($evrak->e_imza_iade_gerekcesi ?: ''),
             'iade_eden' => $returnedBy,
             'iade_tarihi' => !empty($evrak->e_imza_iade_tarihi) ? date('d.m.Y H:i', strtotime((string) $evrak->e_imza_iade_tarihi)) : '',
+            'yazi_tipi' => (string) ($evrak->yazi_tipi ?: 'times_new_roman'),
+            'imza_kimin_adina' => json_decode((string) ($evrak->imza_kimin_adina_json ?? '[]'), true) ?: [],
+            'imza_kullanici_ids' => array_map(fn($uid) => Security::encrypt((int) $uid), json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: []),
             'attachments' => $attachmentList,
             'pdf_url' => ($evrak->evrak_tipi === 'giden') ? '/api/evrak.php?action=pdf&id=' . urlencode($encId) : null,
         ];
@@ -650,6 +670,7 @@ try {
         $plaka = trim((string) ($_POST['plaka'] ?? '')) ?: null;
         $cezaTutari = !empty($_POST['ceza_tutari']) ? (float) str_replace(['.', ','], ['', '.'], (string) $_POST['ceza_tutari']) : null;
         $tutar = !empty($_POST['tutar']) ? (float) str_replace(['.', ','], ['', '.'], (string) $_POST['tutar']) : ($cezaTutari ?: null);
+        $yaziTipi = (($_POST['yazi_tipi'] ?? 'times_new_roman') === 'arial') ? 'arial' : 'times_new_roman';
 
         // Giden evrak için imzacılar
         $signerIds = [];
@@ -668,6 +689,19 @@ try {
         $validSigners = $EvrakModel->getSigningUsersByIds($signerIds);
         $imzaKullaniciIdsJson = json_encode(array_map(fn($u) => (int) $u->id, $validSigners), JSON_UNESCAPED_UNICODE);
 
+        // Kimin adına imzalanacağı bilgisi
+        $rawKiminAdina = $_POST['imza_kimin_adina'] ?? [];
+        if (is_string($rawKiminAdina)) {
+            $rawKiminAdina = json_decode($rawKiminAdina, true) ?: [];
+        }
+        $kiminAdinaList = [];
+        if (is_array($rawKiminAdina)) {
+            foreach ($rawKiminAdina as $ka) {
+                $kiminAdinaList[] = mb_substr(trim((string) $ka), 0, 150, 'UTF-8');
+            }
+        }
+        $imzaKiminAdinaJson = json_encode($kiminAdinaList, JSON_UNESCAPED_UNICODE);
+
         $payload = [
             'id' => $rawId > 0 ? $rawId : null,
             'firma_id' => $firmaId,
@@ -685,6 +719,7 @@ try {
             'personel_bildirim_durumu' => $personelBildirimDurumu,
             'aciklama' => $aciklama,
             'ust_yazi_gerekli_degil' => $ustYaziGerekliDegil,
+            'yazi_tipi' => $yaziTipi,
             'ilgili_evrak_id' => $ilgiliEvrakId > 0 ? $ilgiliEvrakId : null,
             'ilgiler' => trim((string) ($_POST['ilgiler'] ?? '')) ?: null,
             'ekler' => trim((string) ($_POST['ekler'] ?? '')) ?: null,
@@ -692,6 +727,7 @@ try {
             'ceza_tutari' => $cezaTutari,
             'tutar' => $tutar,
             'imza_kullanici_ids' => $imzaKullaniciIdsJson,
+            'imza_kimin_adina_json' => $imzaKiminAdinaJson,
         ];
 
         if (!$isEdit) {
@@ -726,7 +762,7 @@ try {
         }
 
         $uploadedFilesList = [];
-        $filesObj = $_FILES['dosyalar'] ?? ($_FILES['dosya'] ?? null);
+        $filesObj = $_FILES['dosyalar'] ?? ($_FILES['dosya'] ?? ($_FILES['ek_dosyalari'] ?? null));
 
         if ($filesObj && !empty($filesObj['name'])) {
             $names = is_array($filesObj['name']) ? $filesObj['name'] : [$filesObj['name']];
@@ -827,7 +863,7 @@ try {
             $currentUserId,
             'Evrak Silindi',
             "Evrak ID: {$id}, Konu: " . ($document->konu ?? '-'),
-            SystemLogModel::LEVEL_WARNING
+            SystemLogModel::LEVEL_IMPORTANT
         );
 
         evrakApiResponse(['success' => true, 'message' => 'Evrak kaydı başarıyla silindi.']);
@@ -982,6 +1018,90 @@ try {
         evrakApiResponse([
             'success' => true,
             'message' => 'Evrak üzerinize geri alındı ve taslak durumuna döndürüldü.',
+        ]);
+    }
+
+    // -------------------------------------------------------------
+    // 13. İCRA DOSYALARI SORGULA (GET/POST icra-dosyalari)
+    // -------------------------------------------------------------
+    if ($action === 'icra-dosyalari') {
+        $personelId = $decryptId($_GET['personel_id'] ?? $_POST['personel_id'] ?? '');
+        if ($personelId <= 0) {
+            evrakApiResponse(['success' => false, 'message' => 'Lütfen personel seçiniz.'], 400);
+        }
+
+        $icraService = new \App\Service\IcraUstYaziService();
+        $dosyalar = $icraService->personelIcralari($personelId);
+
+        evrakApiResponse([
+            'success' => true,
+            'dosyalar' => $dosyalar,
+        ]);
+    }
+
+    // -------------------------------------------------------------
+    // 14. İCRA ÜST YAZI TASLAĞI OLUŞTUR (GET/POST icra-taslak)
+    // -------------------------------------------------------------
+    if ($action === 'icra-taslak') {
+        $icraId = $decryptId($_GET['icra_id'] ?? $_POST['icra_id'] ?? '');
+        if ($icraId <= 0) {
+            evrakApiResponse(['success' => false, 'message' => 'Lütfen icra dosyası seçiniz.'], 400);
+        }
+
+        $icraService = new \App\Service\IcraUstYaziService();
+        $taslak = $icraService->build($icraId);
+        $taslak['personel_id'] = !empty($taslak['personel_id']) ? Security::encrypt((int) $taslak['personel_id']) : '';
+
+        evrakApiResponse([
+            'success' => true,
+            'taslak' => $taslak,
+        ]);
+    }
+
+    // -------------------------------------------------------------
+    // 15. YAPAY ZEKÂ İLE TASLAK OLUŞTUR (POST ai-taslak)
+    // -------------------------------------------------------------
+    if ($method === 'POST' && $action === 'ai-taslak') {
+        verifyCsrfToken();
+
+        $instruction = trim((string) ($_POST['talimat'] ?? ''));
+        if ($instruction === '') {
+            evrakApiResponse(['success' => false, 'message' => 'Lütfen AI için bir talimat veya istek yazınız.'], 422);
+        }
+
+        $file = $_FILES['dosya'] ?? [];
+        $aiService = new \App\Service\EvrakAiTaslakService();
+        $taslak = $aiService->create($file, $instruction);
+
+        evrakApiResponse([
+            'success' => true,
+            'taslak' => $taslak,
+        ]);
+    }
+
+    // -------------------------------------------------------------
+    // 16. YAPAY ZEKÂ İLE METİN DÜZENLE (POST ai-duzenle)
+    // -------------------------------------------------------------
+    if ($method === 'POST' && $action === 'ai-duzenle') {
+        verifyCsrfToken();
+
+        $selectedText = trim((string) ($_POST['secili_metin'] ?? ''));
+        $instruction = trim((string) ($_POST['talimat'] ?? ''));
+        $context = (string) ($_POST['icerik'] ?? $_POST['baglam'] ?? '');
+
+        if ($selectedText === '') {
+            evrakApiResponse(['success' => false, 'message' => 'Lütfen düzenlenecek metni belirtiniz.'], 422);
+        }
+        if ($instruction === '') {
+            evrakApiResponse(['success' => false, 'message' => 'Lütfen düzenleme talimatını belirtiniz.'], 422);
+        }
+
+        $aiService = new \App\Service\EvrakAiTaslakService();
+        $editedHtml = $aiService->reviseSelection($selectedText, $instruction, $context);
+
+        evrakApiResponse([
+            'success' => true,
+            'html' => $editedHtml,
         ]);
     }
 

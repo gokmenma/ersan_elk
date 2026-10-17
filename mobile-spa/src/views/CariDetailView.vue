@@ -60,6 +60,7 @@ const cariEditError = ref('')
 
 // Hızlı İşlem Ekle Modalı
 const isQuickActionOpen = ref(false)
+const quickFileInput = ref(null)
 const quickActionForm = ref({
   type: 'aldim',
   tutar: '',
@@ -83,6 +84,41 @@ function formatMoney(amount) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Math.abs(val)) + ' ₺'
+}
+
+function formatPhone(phone) {
+  if (!phone) return ''
+  const cleaned = String(phone).replace(/\D/g, '')
+  if (cleaned.length === 10) {
+    return `0${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 8)} ${cleaned.slice(8, 10)}`
+  } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+    return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 9)} ${cleaned.slice(9, 11)}`
+  }
+  return phone
+}
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes <= 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
+function removeQuickActionFile() {
+  quickActionForm.value.file = null
+  if (quickFileInput.value) {
+    quickFileInput.value.value = ''
+  }
+}
+
+function setQuickDescription(text) {
+  quickActionForm.value.aciklama = text
+}
+
+function addQuickAmount(delta) {
+  const current = Number(quickActionForm.value.tutar) || 0
+  quickActionForm.value.tutar = String(current + delta)
 }
 
 function getTodayDateTimeInput() {
@@ -211,6 +247,9 @@ function openQuickAction() {
     aciklama: '',
     file: null,
   }
+  if (quickFileInput.value) {
+    quickFileInput.value.value = ''
+  }
   quickActionError.value = ''
   isQuickActionOpen.value = true
 }
@@ -281,18 +320,28 @@ async function deleteSelectedMovement() {
     <!-- Topbar -->
     <header class="detail-topbar">
       <button type="button" class="topbar-btn" aria-label="Geri dön" @click="router.push('/cari-takip')">
-        <ArrowLeft :size="22" />
+        <ArrowLeft :size="20" />
       </button>
       <div class="topbar-title">
         <span>HESAP HAREKETLERİ</span>
         <h1>{{ cari?.name || 'Cari Detayı' }}</h1>
       </div>
       <div class="topbar-actions">
-        <button v-if="cari" type="button" class="topbar-btn" aria-label="Düzenle" @click="openEditCari">
-          <Pencil :size="18" />
+        <button
+          v-if="cari"
+          type="button"
+          class="topbar-btn topbar-btn--primary"
+          aria-label="Yeni İşlem Ekle"
+          title="Yeni İşlem Ekle"
+          @click="openQuickAction"
+        >
+          <Plus :size="20" />
         </button>
-        <button v-if="cari" type="button" class="topbar-btn topbar-btn--danger" aria-label="Sil" @click="deleteCari">
-          <Trash2 :size="18" />
+        <button v-if="cari" type="button" class="topbar-btn" aria-label="Düzenle" title="Cariyi Düzenle" @click="openEditCari">
+          <Pencil :size="17" />
+        </button>
+        <button v-if="cari" type="button" class="topbar-btn topbar-btn--danger" aria-label="Sil" title="Cariyi Sil" @click="deleteCari">
+          <Trash2 :size="17" />
         </button>
       </div>
     </header>
@@ -319,26 +368,50 @@ async function deleteSelectedMovement() {
           </div>
           <div class="hero-info">
             <h2>{{ cari.name }}</h2>
-            <p v-if="cari.company" class="hero-company">{{ cari.company }}</p>
+            <p v-if="cari.company" class="hero-company">
+              <Building2 :size="12" /> {{ cari.company }}
+            </p>
             <div class="hero-meta">
-              <span v-if="cari.phone"><Phone :size="12" /> {{ cari.phone }}</span>
-              <span v-if="cari.city || cari.district"><MapPin :size="12" /> {{ [cari.city, cari.district].filter(Boolean).join(' / ') }}</span>
+              <span v-if="cari.phone">
+                <Phone :size="12" /> {{ formatPhone(cari.phone) }}
+              </span>
+              <span v-if="cari.district || cari.city">
+                <MapPin :size="12" /> {{ [cari.district, cari.city].filter(Boolean).join(', ') }}
+              </span>
+              <span v-if="cari.email">
+                <Mail :size="12" /> {{ cari.email }}
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- Mini Özet Kartları -->
+        <!-- Mini Özet Kartları (Soft Bento Pills) -->
         <div class="hero-summary-grid">
-          <div class="mini-summary-item">
-            <small>TOP. ALDIM</small>
+          <div class="mini-summary-item summary-item--debt">
+            <div class="summary-label">
+              <span class="summary-dot summary-dot--debt"></span>
+              <small>TOP. ALDIM</small>
+            </div>
             <strong class="text-debt">{{ formatMoney(cari.toplam_borc) }}</strong>
           </div>
-          <div class="mini-summary-item">
-            <small>TOP. VERDİM</small>
+          <div class="mini-summary-item summary-item--credit">
+            <div class="summary-label">
+              <span class="summary-dot summary-dot--credit"></span>
+              <small>TOP. VERDİM</small>
+            </div>
             <strong class="text-credit">{{ formatMoney(cari.toplam_alacak) }}</strong>
           </div>
-          <div class="mini-summary-item">
-            <small>{{ cari.bakiye < 0 ? 'BORCUM' : cari.bakiye > 0 ? 'ALACAĞIM' : 'BAKİYE' }}</small>
+          <div
+            class="mini-summary-item"
+            :class="cari.bakiye < 0 ? 'summary-item--debt' : cari.bakiye > 0 ? 'summary-item--credit' : 'summary-item--neutral'"
+          >
+            <div class="summary-label">
+              <span
+                class="summary-dot"
+                :class="cari.bakiye < 0 ? 'summary-dot--debt' : cari.bakiye > 0 ? 'summary-dot--credit' : 'summary-dot--neutral'"
+              ></span>
+              <small>{{ cari.bakiye < 0 ? 'BORCUM' : cari.bakiye > 0 ? 'ALACAĞIM' : 'NET BAKİYE' }}</small>
+            </div>
             <strong :class="cari.bakiye < 0 ? 'text-debt' : cari.bakiye > 0 ? 'text-credit' : 'text-neutral'">
               {{ cari.bakiye < 0 ? '-' : cari.bakiye > 0 ? '+' : '' }}{{ formatMoney(cari.bakiye) }}
             </strong>
@@ -347,19 +420,23 @@ async function deleteSelectedMovement() {
 
         <!-- Hızlı Aksiyon Butonları (Not, Ara, Paylaş, Ekstre) -->
         <div class="hero-actions-row">
-          <button type="button" class="hero-action-btn" @click="openNoteModal">
+          <button type="button" class="hero-action-btn action-btn--note" @click="openNoteModal">
             <div class="action-icon-circle"><StickyNote :size="18" /></div>
             <span>Cari Notu</span>
           </button>
-          <a v-if="cari.phone" :href="phoneHref(cari.phone)" class="hero-action-btn">
+          <a v-if="cari.phone" :href="phoneHref(cari.phone)" class="hero-action-btn action-btn--phone">
             <div class="action-icon-circle"><Phone :size="18" /></div>
             <span>Ara</span>
           </a>
-          <button type="button" class="hero-action-btn" @click="shareCari">
+          <div v-else class="hero-action-btn action-btn--disabled">
+            <div class="action-icon-circle"><Phone :size="18" /></div>
+            <span>Ara</span>
+          </div>
+          <button type="button" class="hero-action-btn action-btn--share" @click="shareCari">
             <div class="action-icon-circle"><Share2 :size="18" /></div>
             <span>Paylaş</span>
           </button>
-          <a :href="cari.ekstre_pdf_url" target="_blank" class="hero-action-btn">
+          <a :href="cari.ekstre_pdf_url" target="_blank" class="hero-action-btn action-btn--pdf">
             <div class="action-icon-circle"><FileDown :size="18" /></div>
             <span>Ekstre PDF</span>
           </a>
@@ -367,7 +444,7 @@ async function deleteSelectedMovement() {
 
         <!-- Cari Notu Vurgusu (varsa) -->
         <div v-if="cari.notes" class="hero-note-banner" @click="openNoteModal">
-          <StickyNote :size="15" />
+          <StickyNote :size="16" />
           <p>{{ cari.notes }}</p>
           <Pencil :size="13" class="note-edit-icon" />
         </div>
@@ -375,12 +452,12 @@ async function deleteSelectedMovement() {
 
       <!-- Hareketler Başlığı & Sayacı -->
       <section class="movements-header-row">
-        <div>
+        <div class="movements-header-title">
           <h3>Hesap Hareketleri</h3>
-          <small>{{ hareketler.length }} işlem kayıtlı</small>
+          <span class="movements-badge">{{ hareketler.length }} işlem</span>
         </div>
         <button type="button" class="add-movement-trigger-btn" @click="openQuickAction">
-          <Plus :size="16" />
+          <Plus :size="15" />
           <span>İşlem Ekle</span>
         </button>
       </section>
@@ -388,10 +465,15 @@ async function deleteSelectedMovement() {
       <!-- Hareket Listesi -->
       <section class="movements-list-section">
         <div v-if="!hareketler.length" class="movements-empty">
-          <Receipt :size="32" />
+          <div class="empty-icon-wrap">
+            <Receipt :size="30" />
+          </div>
           <strong>Henüz Hareket Kaydı Yok</strong>
-          <p>Bu cariye ait ilk tahsilat veya ödeme işlemini ekleyin.</p>
-          <button type="button" @click="openQuickAction">+ İşlem Ekle</button>
+          <p>Bu cariye ait ilk tahsilat veya ödeme işlemini hemen ekleyebilirsiniz.</p>
+          <button type="button" class="empty-add-btn" @click="openQuickAction">
+            <Plus :size="15" />
+            <span>İlk İşlemi Ekle</span>
+          </button>
         </div>
 
         <div v-else class="movements-container">
@@ -417,7 +499,9 @@ async function deleteSelectedMovement() {
                 <span v-if="h.belge_no" class="m-doc-badge">
                   <Receipt :size="10" /> {{ h.belge_no }}
                 </span>
-                <Paperclip v-if="h.has_file" :size="12" class="m-clip" />
+                <span v-if="h.has_file" class="m-file-badge" title="Ekli Belge Var">
+                  <Paperclip :size="10" /> Ek
+                </span>
               </div>
               <p class="movement-desc">{{ h.aciklama || (h.type === 'aldim' ? 'Tahsilat' : 'Ödeme') }}</p>
               <small v-if="h.ekleyen_adi" class="movement-author">Ekleyen: {{ h.ekleyen_adi }}</small>
@@ -435,31 +519,21 @@ async function deleteSelectedMovement() {
                 Bakiye: {{ h.yuruyen_bakiye < 0 ? '-' : h.yuruyen_bakiye > 0 ? '+' : '' }}{{ formatMoney(h.yuruyen_bakiye) }}
               </span>
             </div>
+
+            <!-- Sağ Ok -->
+            <ChevronRight :size="15" class="movement-chevron" />
           </article>
         </div>
       </section>
     </template>
 
-    <!-- FAB: İŞLEM EKLE -->
-    <aside class="detail-floating-fab">
-      <button
-        type="button"
-        class="fab-btn"
-        aria-label="Yeni İşlem Ekle"
-        title="Yeni İşlem Ekle"
-        @click="openQuickAction"
-      >
-        <Plus :size="24" />
-        <span>İşlem Ekle</span>
-      </button>
-    </aside>
-
     <!-- ---------------------------------------------------------------- -->
-    <!-- MODAL 1: HIZLI İŞLEM EKLE -->
+    <!-- MODAL 1: HIZLI İŞLEM EKLE (KULLANICI DOSTU BOTTOM SHEET) -->
     <!-- ---------------------------------------------------------------- -->
     <Transition name="ds-modal">
       <div v-if="isQuickActionOpen" class="ds-modal-layer" @click.self="isQuickActionOpen = false">
         <div class="ds-bottom-sheet" role="dialog" aria-modal="true" aria-label="İşlem Ekle">
+          <!-- Sheet Header -->
           <div class="sheet-header">
             <div class="sheet-title">
               <div class="sheet-icon-box"><CreditCard :size="18" /></div>
@@ -468,28 +542,64 @@ async function deleteSelectedMovement() {
                 <small>{{ cari?.name }}</small>
               </div>
             </div>
-            <button type="button" class="sheet-close-btn" @click="isQuickActionOpen = false">
+            <button type="button" class="sheet-close-btn" aria-label="Kapat" @click="isQuickActionOpen = false">
               <X :size="18" />
             </button>
           </div>
 
           <form class="sheet-form" @submit.prevent="submitQuickAction">
-            <!-- Tip Toggle -->
-            <div class="type-toggle-group">
-              <label class="toggle-option toggle-option--debt" :class="{ selected: quickActionForm.type === 'aldim' }">
-                <input v-model="quickActionForm.type" type="radio" value="aldim" />
-                <ArrowDownLeft :size="17" />
-                <span>Aldım (Borç)</span>
-              </label>
-              <label class="toggle-option toggle-option--credit" :class="{ selected: quickActionForm.type === 'verdim' }">
-                <input v-model="quickActionForm.type" type="radio" value="verdim" />
-                <ArrowUpRight :size="17" />
-                <span>Verdim (Alacak)</span>
-              </label>
+            <!-- 1. İşlem Yönü (Segmented Toggle) -->
+            <div class="type-segmented-control">
+              <button
+                type="button"
+                class="seg-btn seg-btn--debt"
+                :class="{ 'is-active': quickActionForm.type === 'aldim' }"
+                @click="quickActionForm.type = 'aldim'"
+              >
+                <div class="seg-icon-box">
+                  <ArrowDownLeft :size="18" />
+                </div>
+                <div class="seg-text">
+                  <strong>Aldım (Borç)</strong>
+                  <small>Tahsilat / Para Girişi</small>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                class="seg-btn seg-btn--credit"
+                :class="{ 'is-active': quickActionForm.type === 'verdim' }"
+                @click="quickActionForm.type = 'verdim'"
+              >
+                <div class="seg-icon-box">
+                  <ArrowUpRight :size="18" />
+                </div>
+                <div class="seg-text">
+                  <strong>Verdim (Alacak)</strong>
+                  <small>Ödeme / Para Çıkışı</small>
+                </div>
+              </button>
             </div>
 
-            <!-- Tutar & Tarih -->
+            <!-- 2. Tutar ve Tarih Alanları -->
             <div class="form-grid-two">
+              <div class="form-group">
+                <label>Tutar (₺)*</label>
+                <div class="input-wrap amount-wrap">
+                  <span class="currency-badge">₺</span>
+                  <input
+                    v-model="quickActionForm.tutar"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0,00"
+                    required
+                    class="input-amount"
+                    inputmode="decimal"
+                  />
+                </div>
+              </div>
+
               <div class="form-group">
                 <label>İşlem Tarihi*</label>
                 <div class="input-wrap">
@@ -497,53 +607,107 @@ async function deleteSelectedMovement() {
                   <input v-model="quickActionForm.islem_tarihi" type="datetime-local" required />
                 </div>
               </div>
-
-              <div class="form-group">
-                <label>Tutar (₺)*</label>
-                <div class="input-wrap">
-                  <span class="input-prefix">₺</span>
-                  <input
-                    v-model="quickActionForm.tutar"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    placeholder="0.00"
-                    required
-                    class="input-amount"
-                  />
-                </div>
-              </div>
             </div>
 
-            <!-- Belge No -->
+            <!-- Hızlı Tutar Çipleri -->
+            <div class="quick-chips-row">
+              <button type="button" class="quick-chip" @click="addQuickAmount(500)">+500 ₺</button>
+              <button type="button" class="quick-chip" @click="addQuickAmount(1000)">+1.000 ₺</button>
+              <button type="button" class="quick-chip" @click="addQuickAmount(5000)">+5.000 ₺</button>
+              <button
+                v-if="cari?.bakiye && Math.abs(cari.bakiye) > 0"
+                type="button"
+                class="quick-chip quick-chip--bakiye"
+                @click="quickActionForm.tutar = String(Math.abs(cari.bakiye))"
+              >
+                Tam Bakiye ({{ formatMoney(cari.bakiye) }})
+              </button>
+            </div>
+
+            <!-- 3. Belge No -->
             <div class="form-group">
-              <label>Belge No</label>
+              <label>Belge / Dekont No</label>
               <div class="input-wrap">
                 <Receipt :size="16" class="input-icon" />
-                <input v-model="quickActionForm.belge_no" type="text" placeholder="Fatura / Makbuz No" />
+                <input v-model="quickActionForm.belge_no" type="text" placeholder="Fatura / Makbuz / Havale No" />
               </div>
             </div>
 
-            <!-- Açıklama -->
+            <!-- 4. Açıklama & Hızlı Şablonlar -->
             <div class="form-group">
-              <label>Açıklama</label>
-              <div class="input-wrap">
-                <FileText :size="16" class="input-icon" />
-                <textarea v-model="quickActionForm.aciklama" rows="2" placeholder="İşlem detayı…"></textarea>
+              <div class="label-with-presets">
+                <label>Açıklama</label>
+                <div class="quick-presets">
+                  <button
+                    v-for="preset in ['Nakit', 'Havale/EFT', 'Fatura Ödemesi', 'Mal/Hizmet']"
+                    :key="preset"
+                    type="button"
+                    class="preset-pill"
+                    @click="setQuickDescription(preset)"
+                  >
+                    {{ preset }}
+                  </button>
+                </div>
+              </div>
+              <div class="input-wrap textarea-wrap">
+                <FileText :size="16" class="input-icon textarea-icon" />
+                <textarea v-model="quickActionForm.aciklama" rows="2" placeholder="Örn: 2. taksit havalesi, nakit tahsilat…"></textarea>
               </div>
             </div>
 
-            <!-- Belge Yükle -->
+            <!-- 5. Belge / Dekont Dosya Yükleme (Custom Bento Dropzone) -->
             <div class="form-group">
-              <label>Belge / Dekont Yükle</label>
-              <div class="input-wrap file-wrap">
-                <Paperclip :size="16" class="input-icon" />
-                <input type="file" accept="image/*,application/pdf" @change="handleQuickActionFileChange" />
+              <label>Belge / Dekont (Opsiyonel)</label>
+
+              <!-- Henüz Dosya Seçilmediğinde -->
+              <div
+                v-if="!quickActionForm.file"
+                class="upload-dropzone"
+                @click="$refs.quickFileInput.click()"
+              >
+                <input
+                  ref="quickFileInput"
+                  type="file"
+                  accept="image/*,application/pdf"
+                  class="hidden-file-input"
+                  @change="handleQuickActionFileChange"
+                />
+                <div class="dropzone-icon">
+                  <Paperclip :size="18" />
+                </div>
+                <div class="dropzone-text">
+                  <strong>Dekont veya Belge Fotoğrafı Ekle</strong>
+                  <small>Görsel veya PDF seçmek için dokunun (ISO 27001 şifreli)</small>
+                </div>
+              </div>
+
+              <!-- Dosya Seçildiğinde Gösterilen Kart -->
+              <div v-else class="selected-file-tile">
+                <div class="selected-file-info">
+                  <div class="selected-file-icon">
+                    <Paperclip :size="16" />
+                  </div>
+                  <div class="selected-file-meta">
+                    <strong class="selected-file-name">{{ quickActionForm.file.name }}</strong>
+                    <small class="selected-file-size">{{ formatFileSize(quickActionForm.file.size) }}</small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="selected-file-del-btn"
+                  title="Belgeyi Kaldır"
+                  @click.stop="removeQuickActionFile"
+                >
+                  <X :size="16" />
+                  <span>Kaldır</span>
+                </button>
               </div>
             </div>
 
+            <!-- Hata Mesajı -->
             <p v-if="quickActionError" class="form-error">{{ quickActionError }}</p>
 
+            <!-- Gönder Butonu -->
             <button type="submit" class="submit-action-btn" :disabled="quickActionLoading">
               <Check v-if="!quickActionLoading" :size="18" />
               <span>{{ quickActionLoading ? 'Kaydediliyor…' : 'İşlemi Kaydet' }}</span>
@@ -764,50 +928,62 @@ async function deleteSelectedMovement() {
 <style scoped>
 .ds-cari-detail-screen {
   font-family: var(--ds-font-main);
-  padding-bottom: calc(140px + var(--ds-safe-bottom));
+  padding-bottom: calc(var(--ds-nav-clearance) + var(--ds-safe-bottom));
 }
 
 /* TOPBAR */
 .detail-topbar {
-  display: grid;
-  grid-template-columns: 42px 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 .topbar-btn {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   color: var(--ds-ink);
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: var(--ds-shadow-card);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--ds-shadow-pill);
   backdrop-filter: blur(16px);
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
 }
 .topbar-btn:active {
   transform: scale(0.93);
 }
+.topbar-btn--primary {
+  background: var(--ds-primary);
+  color: #ffffff;
+  border-color: var(--ds-primary);
+  box-shadow: 0 4px 14px rgba(24, 28, 36, 0.25);
+}
 .topbar-btn--danger {
   color: var(--ds-danger-ink);
   background: var(--ds-danger-soft);
-  border-color: var(--ds-danger-soft);
+  border-color: transparent;
+}
+.topbar-title {
+  min-width: 0;
+  flex: 1;
 }
 .topbar-title span {
   display: block;
   color: var(--ds-muted);
   font: 700 9px 'Space Grotesk', sans-serif;
   letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .topbar-title h1 {
   margin: 1px 0 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--ds-ink);
   white-space: nowrap;
   overflow: hidden;
@@ -817,16 +993,16 @@ async function deleteSelectedMovement() {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 /* HERO PROFİL KARTI */
 .detail-hero-card {
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-bento);
   margin-bottom: 20px;
 }
 .hero-profile-row {
@@ -836,18 +1012,19 @@ async function deleteSelectedMovement() {
 }
 .hero-avatar {
   display: grid;
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   place-items: center;
-  border-radius: 18px;
-  color: var(--ds-surface);
+  border-radius: 16px;
+  color: #ffffff;
   background: var(--ds-primary);
   font: 700 18px 'Space Grotesk', sans-serif;
-  box-shadow: 0 8px 20px rgba(17, 22, 27, 0.18);
+  box-shadow: 0 6px 16px -4px rgba(17, 22, 27, 0.3);
   flex-shrink: 0;
 }
 .hero-info {
   min-width: 0;
+  flex: 1;
 }
 .hero-info h2 {
   margin: 0;
@@ -860,9 +1037,13 @@ async function deleteSelectedMovement() {
   letter-spacing: -0.02em;
 }
 .hero-company {
-  margin: 2px 0 0;
-  font-size: 11px;
+  margin: 3px 0 0;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--ds-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -871,17 +1052,18 @@ async function deleteSelectedMovement() {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 5px;
+  margin-top: 6px;
 }
 .hero-meta span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
-  color: var(--ds-slate);
+  font-size: 11px;
+  color: var(--ds-muted);
+  font-weight: 500;
 }
 
-/* MINI ÖZET */
+/* MINI ÖZET (SOFT BENTO PILLS) */
 .hero-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -891,25 +1073,48 @@ async function deleteSelectedMovement() {
   border-top: 1px solid var(--ds-line);
 }
 .mini-summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 8px 4px;
-  border-radius: 14px;
-  background: var(--ds-soft);
+  padding: 10px 6px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--ds-line);
+  transition: transform 0.15s ease;
 }
+.summary-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+.summary-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.summary-dot--debt { background: var(--ds-danger); }
+.summary-dot--credit { background: var(--ds-emerald); }
+.summary-dot--neutral { background: var(--ds-muted); }
+
 .mini-summary-item small {
   display: block;
-  font: 700 8px 'Space Grotesk', sans-serif;
+  font: 700 8.5px 'Space Grotesk', sans-serif;
   color: var(--ds-muted);
   letter-spacing: 0.05em;
-  margin-bottom: 2px;
 }
 .mini-summary-item strong {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--ds-font-main);
+  letter-spacing: -0.02em;
   white-space: nowrap;
 }
 
-/* AKSİYON BUTONLARI (NOT, ARA, PAYLAŞ, EKSTRE) */
+/* AKSİYON BUTONLARI */
 .hero-actions-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -923,13 +1128,13 @@ async function deleteSelectedMovement() {
   gap: 6px;
   padding: 10px 4px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 12px rgba(17, 22, 27, 0.04);
+  border: 1px solid var(--ds-line);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-tile);
   color: var(--ds-ink);
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 .hero-action-btn:active {
   transform: scale(0.94);
@@ -940,12 +1145,35 @@ async function deleteSelectedMovement() {
   height: 36px;
   place-items: center;
   border-radius: 50%;
-  background: var(--ds-soft);
-  color: var(--ds-primary);
+  transition: transform 0.15s ease;
+}
+.action-btn--note .action-icon-circle {
+  background: var(--ds-amber-soft);
+  color: var(--ds-amber-ink);
+}
+.action-btn--phone .action-icon-circle {
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
+}
+.action-btn--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.action-btn--disabled .action-icon-circle {
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
+}
+.action-btn--share .action-icon-circle {
+  background: var(--ds-blue-soft);
+  color: var(--ds-blue-ink);
+}
+.action-btn--pdf .action-icon-circle {
+  background: var(--ds-indigo-soft);
+  color: var(--ds-indigo-ink);
 }
 .hero-action-btn span {
-  font: 600 9px 'Space Grotesk', sans-serif;
-  color: var(--ds-slate);
+  font: 700 10px var(--ds-font-main);
+  color: var(--ds-ink);
 }
 
 /* CARİ NOTU BANNER */
@@ -957,7 +1185,7 @@ async function deleteSelectedMovement() {
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--ds-amber-soft);
-  border: 1px solid var(--ds-yellow);
+  border: 1px solid rgba(245, 158, 11, 0.25);
   color: var(--ds-amber-ink);
   cursor: pointer;
 }
@@ -980,27 +1208,43 @@ async function deleteSelectedMovement() {
   justify-content: space-between;
   margin: 0 4px 12px;
 }
-.movements-header-row h3 {
+.movements-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.movements-header-title h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
   color: var(--ds-ink);
 }
-.movements-header-row small {
+.movements-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid var(--ds-line);
   color: var(--ds-muted);
-  font-size: 10px;
+  font: 600 10px 'Space Grotesk', sans-serif;
 }
 .add-movement-trigger-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 14px;
-  border: 1px solid var(--ds-primary);
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
   border-radius: 999px;
   background: var(--ds-primary);
-  color: var(--ds-surface);
-  font: 700 10px 'Space Grotesk', sans-serif;
+  color: #ffffff;
+  font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(24, 28, 36, 0.16);
+  transition: transform 0.15s ease;
+}
+.add-movement-trigger-btn:active {
+  transform: scale(0.95);
 }
 
 /* HAREKET KARTLARI */
@@ -1010,27 +1254,27 @@ async function deleteSelectedMovement() {
 }
 .movement-row-card {
   display: grid;
-  grid-template-columns: 38px 1fr auto;
+  grid-template-columns: 40px 1fr auto auto;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--ds-shadow-card);
-  backdrop-filter: blur(16px);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-tile);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-tile);
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .movement-row-card:active {
   transform: scale(0.985);
 }
 .movement-type-box {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 14px;
+  flex-shrink: 0;
 }
 .type-debt {
   background: var(--ds-danger-soft);
@@ -1049,7 +1293,7 @@ async function deleteSelectedMovement() {
   gap: 6px;
 }
 .m-date {
-  font: 700 9px 'Space Grotesk', sans-serif;
+  font: 700 9.5px 'Space Grotesk', sans-serif;
   color: var(--ds-muted);
 }
 .m-doc-badge {
@@ -1058,16 +1302,25 @@ async function deleteSelectedMovement() {
   gap: 3px;
   padding: 1px 6px;
   border-radius: 6px;
-  background: var(--ds-soft);
-  font-size: 8px;
+  background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-line);
+  font-size: 8.5px;
   color: var(--ds-slate);
 }
-.m-clip {
-  color: var(--ds-muted);
+.m-file-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--ds-blue-soft);
+  font-size: 8.5px;
+  color: var(--ds-blue-ink);
+  font-weight: 700;
 }
 .movement-desc {
   margin: 3px 0 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ds-ink);
   white-space: nowrap;
@@ -1076,7 +1329,7 @@ async function deleteSelectedMovement() {
 }
 .movement-author {
   display: block;
-  font-size: 9px;
+  font-size: 9.5px;
   color: var(--ds-muted);
   margin-top: 1px;
 }
@@ -1087,14 +1340,20 @@ async function deleteSelectedMovement() {
   gap: 2px;
 }
 .m-amount {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 800;
+  font-family: var(--ds-font-main);
   letter-spacing: -0.02em;
 }
 .m-yuruyen {
-  font-size: 9px;
+  font-size: 9.5px;
   color: var(--ds-muted);
 }
+.movement-chevron {
+  color: #cbd5e1;
+  flex-shrink: 0;
+}
+
 .movements-empty {
   display: flex;
   flex-direction: column;
@@ -1102,9 +1361,19 @@ async function deleteSelectedMovement() {
   justify-content: center;
   gap: 8px;
   padding: 40px 20px;
-  border: 1px dashed var(--ds-line);
+  border: 2px dashed #cbd5e1;
   border-radius: 20px;
+  background: #ffffff;
   text-align: center;
+  color: var(--ds-muted);
+}
+.empty-icon-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--ds-surface-subtle);
+  display: grid;
+  place-items: center;
   color: var(--ds-muted);
 }
 .movements-empty strong {
@@ -1114,44 +1383,26 @@ async function deleteSelectedMovement() {
 .movements-empty p {
   margin: 0;
   font-size: 11px;
+  max-width: 260px;
 }
-.movements-empty button {
-  margin-top: 6px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: var(--ds-primary);
-  color: var(--ds-surface);
-  border: 0;
-  font: 700 11px 'Space Grotesk', sans-serif;
-  cursor: pointer;
-}
-
-/* FLOATING FAB */
-.detail-floating-fab {
-  position: fixed;
-  right: 18px;
-  bottom: calc(82px + var(--ds-safe-bottom));
-  z-index: 40;
-}
-.fab-btn {
+.empty-add-btn {
+  margin-top: 8px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 48px;
-  padding: 0 18px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 6px;
+  padding: 8px 18px;
   border-radius: 999px;
   background: var(--ds-primary);
-  color: var(--ds-surface);
-  box-shadow: var(--ds-shadow-float);
-  font: 700 12px 'Space Grotesk', sans-serif;
+  color: #ffffff;
+  border: 0;
+  font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
 
 /* RENKLER */
 .text-debt { color: var(--ds-danger-ink) !important; }
 .text-credit { color: var(--ds-emerald-ink) !important; }
-.text-neutral { color: var(--ds-slate) !important; }
+.text-neutral { color: var(--ds-muted) !important; }
 
 /* MODAL ORTAK */
 .ds-modal-layer {
@@ -1168,7 +1419,7 @@ async function deleteSelectedMovement() {
   width: 100%;
   max-width: 540px;
   max-height: 88vh;
-  background: var(--ds-surface);
+  background: #ffffff;
   border-radius: 28px 28px 0 0;
   box-shadow: var(--ds-shadow-float);
   overflow-y: auto;
@@ -1198,7 +1449,7 @@ async function deleteSelectedMovement() {
   height: 38px;
   place-items: center;
   border-radius: 12px;
-  background: var(--ds-soft);
+  background: var(--ds-surface-subtle);
   color: var(--ds-primary);
 }
 .sheet-title h3 {
@@ -1209,7 +1460,7 @@ async function deleteSelectedMovement() {
 }
 .sheet-title small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ds-muted);
 }
 .sheet-close-btn {
@@ -1219,49 +1470,94 @@ async function deleteSelectedMovement() {
   height: 34px;
   border-radius: 50%;
   border: 0;
-  background: var(--ds-soft);
-  color: var(--ds-slate);
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
   cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.sheet-close-btn:active {
+  transform: scale(0.9);
 }
 
-/* FORM FORM ELEMANLARI */
+/* FORM ELEMANLARI */
 .sheet-form {
   display: grid;
   gap: 14px;
 }
-.type-toggle-group {
+
+/* 1. SEGMENTED CONTROL TOGGLE */
+.type-segmented-control {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding: 4px;
-  border-radius: 16px;
-  background: var(--ds-soft);
 }
-.toggle-option {
+.seg-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 42px;
-  border-radius: 12px;
-  font: 700 11px 'Space Grotesk', sans-serif;
-  color: var(--ds-slate);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--ds-line);
+  background: #f8fafc;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  text-align: left;
 }
-.toggle-option input {
-  display: none;
+.seg-btn:active {
+  transform: scale(0.98);
 }
-.toggle-option--debt.selected {
-  background: var(--ds-surface);
+.seg-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: var(--ds-muted);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.seg-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  line-height: 1.2;
+}
+.seg-text small {
+  display: block;
+  font-size: 9.5px;
+  color: var(--ds-muted);
+  margin-top: 2px;
+}
+
+/* Aktif Durumlar */
+.seg-btn--debt.is-active {
+  background: var(--ds-danger-soft);
+  border-color: var(--ds-danger);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+.seg-btn--debt.is-active .seg-icon-box {
+  background: #ffffff;
   color: var(--ds-danger-ink);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);
 }
-.toggle-option--credit.selected {
-  background: var(--ds-surface);
+.seg-btn--debt.is-active .seg-text strong {
+  color: var(--ds-danger-ink);
+}
+
+.seg-btn--credit.is-active {
+  background: var(--ds-emerald-soft);
+  border-color: var(--ds-emerald);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+.seg-btn--credit.is-active .seg-icon-box {
+  background: #ffffff;
   color: var(--ds-emerald-ink);
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.12);
 }
+.seg-btn--credit.is-active .seg-text strong {
+  color: var(--ds-emerald-ink);
+}
+
 .form-grid-two {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1271,7 +1567,7 @@ async function deleteSelectedMovement() {
   display: block;
   margin-bottom: 5px;
   font: 700 10px 'Space Grotesk', sans-serif;
-  color: var(--ds-slate);
+  color: var(--ds-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1279,11 +1575,16 @@ async function deleteSelectedMovement() {
   position: relative;
   display: flex;
   align-items: center;
-  border: 1px solid rgba(140, 155, 174, 0.25);
+  border: 1.5px solid var(--ds-line);
   border-radius: 14px;
-  background: var(--ds-surface);
+  background: #ffffff;
   padding: 0 12px;
   height: 46px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-wrap:focus-within {
+  border-color: var(--ds-primary);
+  box-shadow: 0 0 0 3px rgba(24, 28, 36, 0.08);
 }
 .input-icon {
   color: var(--ds-muted);
@@ -1295,28 +1596,194 @@ async function deleteSelectedMovement() {
   width: 100%;
   border: 0;
   outline: none;
-  font: 500 12px var(--ds-font-main);
+  font: 500 13px var(--ds-font-main);
   color: var(--ds-ink);
   background: transparent;
 }
-.input-amount {
-  font-weight: 700 !important;
-  text-align: right;
-  font-size: 14px !important;
+.amount-wrap {
+  border-color: #cbd5e1;
 }
-.input-prefix {
-  font-weight: 700;
-  color: var(--ds-muted);
+.currency-badge {
+  font: 800 16px var(--ds-font-main);
+  color: var(--ds-ink);
   margin-right: 6px;
 }
-.input-wrap textarea {
-  padding: 10px 0;
+.input-amount {
+  font-weight: 800 !important;
+  font-size: 16px !important;
+  font-family: var(--ds-font-main) !important;
+}
+.textarea-wrap {
   height: auto;
+  align-items: flex-start;
+  padding: 10px 12px;
+}
+.textarea-icon {
+  margin-top: 2px;
+}
+.input-wrap textarea {
   resize: vertical;
+  line-height: 1.4;
 }
-.file-wrap input {
+
+/* Hızlı Tutar Çipleri */
+.quick-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -6px;
+  margin-bottom: 2px;
+}
+.quick-chip {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-line);
+  background: #ffffff;
+  color: var(--ds-muted);
+  font: 700 11px 'Space Grotesk', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.quick-chip:active {
+  transform: scale(0.95);
+  background: var(--ds-surface-subtle);
+}
+.quick-chip--bakiye {
+  background: var(--ds-indigo-soft);
+  color: var(--ds-indigo-ink);
+  border-color: transparent;
+}
+
+/* Açıklama & Hızlı Şablonlar */
+.label-with-presets {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.label-with-presets label {
+  margin-bottom: 0;
+}
+.quick-presets {
+  display: flex;
+  gap: 5px;
+}
+.preset-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-line);
+  background: #ffffff;
+  color: var(--ds-muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.preset-pill:active {
+  background: var(--ds-surface-subtle);
+}
+
+/* 5. DOSYA YÜKLEME (CUSTOM DROPZONE) */
+.upload-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.upload-dropzone:active {
+  transform: scale(0.985);
+  background: #f1f5f9;
+}
+.dropzone-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.dropzone-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0284c7;
+}
+.dropzone-text small {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+  margin-top: 1px;
+}
+.hidden-file-input {
+  display: none;
+}
+
+/* Seçilen Dosya Kartı */
+.selected-file-tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 16px;
+  background: #f0fdf4;
+}
+.selected-file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.selected-file-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #16a34a;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.selected-file-meta {
+  min-width: 0;
+}
+.selected-file-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.selected-file-size {
+  display: block;
+  font-size: 10px;
+  color: #15803d;
+}
+.selected-file-del-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 0;
   font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
 }
+
 .form-error {
   margin: 0;
   color: var(--ds-danger-ink);
@@ -1332,11 +1799,15 @@ async function deleteSelectedMovement() {
   border: 0;
   border-radius: 999px;
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: #ffffff;
   font: 700 12px 'Space Grotesk', sans-serif;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(17, 22, 27, 0.18);
   margin-top: 6px;
+  transition: transform 0.15s ease;
+}
+.submit-action-btn:active {
+  transform: scale(0.98);
 }
 .submit-action-btn:disabled {
   opacity: 0.6;
@@ -1351,7 +1822,8 @@ async function deleteSelectedMovement() {
   text-align: center;
   padding: 18px;
   border-radius: 20px;
-  background: var(--ds-soft);
+  background: #f8fafc;
+  border: 1px solid var(--ds-line);
 }
 .hero-type-label {
   display: block;
@@ -1372,12 +1844,13 @@ async function deleteSelectedMovement() {
   padding: 14px;
   border: 1px solid var(--ds-line);
   border-radius: 18px;
+  background: #ffffff;
 }
 .detail-data-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 .detail-data-row span {
   color: var(--ds-muted);
@@ -1420,8 +1893,8 @@ async function deleteSelectedMovement() {
   height: 44px;
   border: 1px solid var(--ds-line);
   border-radius: 999px;
-  background: var(--ds-surface);
-  color: var(--ds-slate);
+  background: #ffffff;
+  color: var(--ds-muted);
   font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }

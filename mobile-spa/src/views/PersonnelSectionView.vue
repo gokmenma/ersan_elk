@@ -2,12 +2,13 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  Activity, AlertCircle, ArrowLeft, BadgeDollarSign, BriefcaseBusiness,
-  Building2, CalendarCheck, CalendarDays, Car, Check, ChevronRight, Copy,
-  Crown, ExternalLink, Eye, EyeOff, FileText, Gavel, Heart, History,
-  IdCard, KeyRound, Mail, MapPin, PackageCheck, Pencil, Phone, Plus,
+  Activity, AlertCircle, ArrowLeft, BadgeDollarSign, Ban, Banknote,
+  BriefcaseBusiness, Building2, CalendarCheck, CalendarDays, Car, Check,
+  ChevronRight, Clock, Coins, Copy, CreditCard, Crown, ExternalLink, Eye,
+  EyeOff, FileText, Gavel, Heart, History, IdCard, KeyRound, Mail, MapPin,
+  MinusCircle, PackageCheck, Pencil, Percent, Phone, Plus, Receipt,
   RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Smartphone,
-  Trash2, UserRound, UserRoundCheck, X
+  Trash2, UserRound, UserRoundCheck, Wallet, X
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 import { personnelApi } from '../services/personnel.js'
@@ -108,13 +109,34 @@ const definitions = {
       ['Yeni zimmet', 'Demirbaş teslim işlemi'],
     ],
   },
+  ek_odemeler: {
+    label: 'Ek ödemeler',
+    eyebrow: 'EK KAZANÇ & YARDIMLAR',
+    description: 'Prim, ikramiye, kira ve düzenli yardımlar',
+    icon: BadgeDollarSign,
+    features: [
+      ['Tek Seferlik Ödemeler', 'Dönemsel prim ve ikramiyeler'],
+      ['Sürekli Ek Ödemeler', 'Kira, yol ve düzenli yardımlar'],
+      ['Bordro Entegrasyonu', 'Banka matrahı ve resmi tutar takibi'],
+    ],
+  },
+  kesintiler: {
+    label: 'Kesintiler',
+    eyebrow: 'KESİNTİ & MAHSUP',
+    description: 'Dönemsel, sürekli ve taksitli kesintiler',
+    icon: Receipt,
+    features: [
+      ['Tek Seferlik Kesintiler', 'Avans, ceza ve dönemsel kesintiler'],
+      ['Taksitli Kesintiler', 'Borç ve taksitli mahsup işlemleri'],
+      ['Sürekli Kesintiler', 'BES, nafaka ve düzenli kesintiler'],
+    ],
+  },
   finansal: {
-    label: 'Maaş ve finans',
+    label: 'Ek ödemeler ve kesintiler',
     eyebrow: 'FİNANS & HAKLAR',
     description: 'Ücret, ek ödeme ve kesinti bilgileri',
     icon: BadgeDollarSign,
     features: [
-      ['Maaş bilgileri', 'Ücret ve ödeme ayarları'],
       ['Ek ödemeler', 'Prim, kira ve yardımlar'],
       ['Kesintiler', 'Dönemsel ve sürekli kesintiler'],
     ],
@@ -205,6 +227,148 @@ const workHistoryForm = reactive({
   arac_kullanim: 'Yok',
   isten_ayrilis_nedeni: '',
 })
+
+// ================= İZİN VE RAPOR DURUMLARI =================
+const leaves = ref([])
+const entitlement = ref({ toplam_hakedis: 0, kullanilan_izin: 0, kalan_izin: 0, detay: [] })
+const leaveTypes = ref([])
+
+const showLeaveModal = ref(false)
+const leaveSaving = ref(false)
+const leaveForm = reactive({
+  id: 0,
+  izin_tipi_id: '',
+  baslangic_tarihi: '',
+  bitis_tarihi: '',
+  toplam_gun: 1,
+  ucretli_mi: 1,
+  yillik_izne_etki: false,
+  aciklama: '',
+  onay_durumu: 'Onaylandı',
+})
+
+const showEntitlementModal = ref(false)
+
+const showApprovalModal = ref(false)
+const approvalSaving = ref(false)
+const approvalForm = reactive({
+  id: 0,
+  status: 'Onaylandı',
+  note: '',
+})
+
+// ================= EK ÖDEMELER DURUMLARI =================
+const ekOdemeler = ref([])
+const ekOdemeOzet = ref({
+  toplam_tutar: 0,
+  tek_sefer_adet: 0,
+  tek_sefer_tutar: 0,
+  surekli_adet: 0,
+  surekli_tutar: 0,
+  banka_tutar: 0,
+  elden_tutar: 0,
+})
+const gelirParametreleri = ref([])
+const bordroDonemleri = ref([])
+const ekOdemeTab = ref('all')
+const showEkOdemeModal = ref(false)
+const showEkOdemeSonlandirModal = ref(false)
+const ekOdemeSaving = ref(false)
+
+const ekOdemeForm = reactive({
+  id: 0,
+  parametre_id: '',
+  tur: 'diger',
+  tekrar_tipi: 'tek_sefer',
+  hesaplama_tipi: 'sabit',
+  tutar: '',
+  resmi_tutar: '',
+  oran: '',
+  tarih: new Date().toISOString().slice(0, 10),
+  donem_id: '',
+  baslangic_donemi: new Date().toISOString().slice(0, 7) + '-01',
+  bitis_donemi: '',
+  banka_matrahina_ekle: 1,
+  aciklama: '',
+})
+
+const ekOdemeSonlandirForm = reactive({
+  id: 0,
+  parametre_adi: '',
+  bitis_donemi: new Date().toISOString().slice(0, 7) + '-01',
+})
+
+const filteredEkOdemeler = computed(() => {
+  if (ekOdemeTab.value === 'tek_sefer') {
+    return ekOdemeler.value.filter(k => k.tekrar_tipi === 'tek_sefer')
+  }
+  if (ekOdemeTab.value === 'surekli') {
+    return ekOdemeler.value.filter(k => k.tekrar_tipi === 'surekli')
+  }
+  return ekOdemeler.value
+})
+
+// ================= KESİNTİLER DURUMLARI =================
+const kesintiler = ref([])
+const kesintiOzet = ref({
+  toplam_tutar: 0,
+  tek_sefer_adet: 0,
+  tek_sefer_tutar: 0,
+  taksitli_adet: 0,
+  taksitli_tutar: 0,
+  surekli_adet: 0,
+  surekli_tutar: 0,
+  banka_tutar: 0,
+  elden_tutar: 0,
+})
+const kesintiParametreleri = ref([])
+const icraDosyalari = ref([])
+const kesintiTab = ref('all')
+const showKesintiModal = ref(false)
+const showKesintiSonlandirModal = ref(false)
+const kesintiSaving = ref(false)
+
+const kesintiForm = reactive({
+  id: 0,
+  parametre_id: '',
+  tur: 'diger',
+  tekrar_tipi: 'tek_sefer',
+  hesaplama_tipi: 'sabit',
+  tutar: '',
+  oran: '',
+  taksit_sayisi: 1,
+  tarih: new Date().toISOString().slice(0, 10),
+  donem_id: '',
+  baslangic_donemi: new Date().toISOString().slice(0, 7) + '-01',
+  bitis_donemi: '',
+  banka_matrahina_ekle: 1,
+  icra_id: '',
+  aciklama: '',
+})
+
+const kesintiSonlandirForm = reactive({
+  id: 0,
+  parametre_adi: '',
+  bitis_donemi: new Date().toISOString().slice(0, 7) + '-01',
+})
+
+const filteredKesintiler = computed(() => {
+  if (kesintiTab.value === 'tek_sefer') {
+    return kesintiler.value.filter(k => k.tekrar_tipi === 'tek_sefer')
+  }
+  if (kesintiTab.value === 'taksitli') {
+    return kesintiler.value.filter(k => k.tekrar_tipi === 'taksitli')
+  }
+  if (kesintiTab.value === 'surekli') {
+    return kesintiler.value.filter(k => k.tekrar_tipi === 'surekli')
+  }
+  return kesintiler.value
+})
+
+function formatMoney(amount) {
+  const val = Number(amount) || 0
+  return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val) + ' ₺'
+}
 
 function formatDate(value) {
   if (!value || value === '0000-00-00') return 'Belirtilmemiş'
@@ -506,6 +670,429 @@ async function deleteWorkHistory(item) {
   }
 }
 
+// ================= İZİN VE RAPOR METOTLARI =================
+function onLeaveDatesChange() {
+  if (leaveForm.baslangic_tarihi && leaveForm.bitis_tarihi) {
+    const start = new Date(`${leaveForm.baslangic_tarihi}T00:00:00`)
+    const end = new Date(`${leaveForm.bitis_tarihi}T00:00:00`)
+    if (end >= start) {
+      const diffTime = Math.abs(end - start)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+      leaveForm.toplam_gun = diffDays
+    }
+  }
+}
+
+function onLeaveTypeChange() {
+  const selected = leaveTypes.value.find(t => Number(t.id) === Number(leaveForm.izin_tipi_id))
+  if (selected) {
+    leaveForm.ucretli_mi = Number(selected.ucretli_mi ?? 1)
+    if (selected.tur_adi?.includes('Yıllık') || selected.tur_adi?.includes('Yillik')) {
+      leaveForm.yillik_izne_etki = true
+    } else {
+      leaveForm.yillik_izne_etki = false
+    }
+  }
+}
+
+function openNewLeaveModal() {
+  leaveForm.id = 0
+  const yillik = leaveTypes.value.find(t => t.tur_adi?.includes('Yıllık') || t.tur_adi?.includes('Yillik'))
+  leaveForm.izin_tipi_id = yillik ? yillik.id : (leaveTypes.value[0]?.id || '')
+  const today = new Date().toISOString().slice(0, 10)
+  leaveForm.baslangic_tarihi = today
+  leaveForm.bitis_tarihi = today
+  leaveForm.toplam_gun = 1
+  leaveForm.ucretli_mi = yillik ? Number(yillik.ucretli_mi ?? 1) : 1
+  leaveForm.yillik_izne_etki = Boolean(yillik)
+  leaveForm.aciklama = ''
+  leaveForm.onay_durumu = 'Onaylandı'
+  showLeaveModal.value = true
+}
+
+function openEditLeaveModal(item) {
+  leaveForm.id = item.id
+  leaveForm.izin_tipi_id = item.izin_tipi_id
+  leaveForm.baslangic_tarihi = item.baslangic_tarihi
+  leaveForm.bitis_tarihi = item.bitis_tarihi
+  leaveForm.toplam_gun = item.toplam_gun
+  leaveForm.ucretli_mi = item.ucretli_mi
+  leaveForm.yillik_izne_etki = item.yillik_izne_etki === 'Dus' || item.yillik_izne_etki === '1' || item.yillik_izne_etki === 1
+  leaveForm.aciklama = item.aciklama || ''
+  leaveForm.onay_durumu = item.onay_durumu || 'Onaylandı'
+  showLeaveModal.value = true
+}
+
+async function saveLeave() {
+  if (!leaveForm.izin_tipi_id) {
+    showToast('Lütfen izin türü seçiniz.')
+    return
+  }
+  if (!leaveForm.baslangic_tarihi || !leaveForm.bitis_tarihi) {
+    showToast('Başlangıç ve bitiş tarihleri zorunludur.')
+    return
+  }
+  if (leaveForm.toplam_gun <= 0) {
+    showToast('İzin süresi sıfırdan büyük olmalıdır.')
+    return
+  }
+
+  leaveSaving.value = true
+  try {
+    const payload = {
+      ...leaveForm,
+      personel_id: route.params.id,
+      yillik_izne_etki: leaveForm.yillik_izne_etki ? 1 : 0,
+    }
+    const result = await personnelApi.saveLeave(payload, auth.state.csrfToken)
+    if (result.leaves) {
+      leaves.value = result.leaves
+    }
+    if (result.entitlement) {
+      entitlement.value = result.entitlement
+    }
+    showLeaveModal.value = false
+    showToast(result.message || 'İzin kaydı kaydedildi.')
+  } catch (err) {
+    showToast(err.message || 'İzin kaydı kaydedilemedi.')
+  } finally {
+    leaveSaving.value = false
+  }
+}
+
+async function deleteLeave(item) {
+  if (!confirm(`'${item.izin_tipi_adi}' kaydını silmek istediğinize emin misiniz?`)) return
+  try {
+    const result = await personnelApi.deleteLeave(item.id, route.params.id, auth.state.csrfToken)
+    if (result.leaves) {
+      leaves.value = result.leaves
+    }
+    if (result.entitlement) {
+      entitlement.value = result.entitlement
+    }
+    showToast(result.message || 'İzin kaydı silindi.')
+  } catch (err) {
+    showToast(err.message || 'İzin kaydı silinemedi.')
+  }
+}
+
+async function quickApproveLeave(item) {
+  try {
+    const result = await personnelApi.approveOrRejectLeave(item.id, route.params.id, 'Onaylandı', null, auth.state.csrfToken)
+    if (result.leaves) {
+      leaves.value = result.leaves
+    }
+    if (result.entitlement) {
+      entitlement.value = result.entitlement
+    }
+    showToast(result.message || 'İzin talebi onaylandı.')
+  } catch (err) {
+    showToast(err.message || 'İşlem gerçekleştirilemedi.')
+  }
+}
+
+function openRejectLeaveModal(item) {
+  approvalForm.id = item.id
+  approvalForm.status = 'Reddedildi'
+  approvalForm.note = ''
+  showApprovalModal.value = true
+}
+
+async function submitApproval() {
+  approvalSaving.value = true
+  try {
+    const result = await personnelApi.approveOrRejectLeave(
+      approvalForm.id,
+      route.params.id,
+      approvalForm.status,
+      approvalForm.note,
+      auth.state.csrfToken
+    )
+    if (result.leaves) {
+      leaves.value = result.leaves
+    }
+    if (result.entitlement) {
+      entitlement.value = result.entitlement
+    }
+    showApprovalModal.value = false
+    showToast(result.message || 'Durum güncellendi.')
+  } catch (err) {
+    showToast(err.message || 'İşlem gerçekleştirilemedi.')
+  } finally {
+    approvalSaving.value = false
+  }
+}
+
+// ================= EK ÖDEME İŞLEMLERİ =================
+
+function onEkOdemeParametreChange() {
+  const param = gelirParametreleri.value.find(p => p.id === Number(ekOdemeForm.parametre_id))
+  if (param) {
+    ekOdemeForm.tur = param.kod || 'diger'
+    if (param.hesaplama_tipi) {
+      if (param.hesaplama_tipi.includes('oran')) {
+        ekOdemeForm.hesaplama_tipi = 'oran_net'
+        ekOdemeForm.oran = param.oran || ''
+      } else {
+        ekOdemeForm.hesaplama_tipi = 'sabit'
+      }
+    }
+    if (param.varsayilan_tutar && !ekOdemeForm.tutar) {
+      ekOdemeForm.tutar = param.varsayilan_tutar
+    }
+  }
+}
+
+function openNewEkOdemeModal() {
+  const defaultDonem = bordroDonemleri.value.find(d => !d.kapali_mi)
+  ekOdemeForm.id = 0
+  ekOdemeForm.parametre_id = gelirParametreleri.value[0]?.id || ''
+  ekOdemeForm.tur = gelirParametreleri.value[0]?.kod || 'diger'
+  ekOdemeForm.tekrar_tipi = 'tek_sefer'
+  ekOdemeForm.hesaplama_tipi = 'sabit'
+  ekOdemeForm.tutar = ''
+  ekOdemeForm.resmi_tutar = ''
+  ekOdemeForm.oran = ''
+  ekOdemeForm.tarih = new Date().toISOString().slice(0, 10)
+  ekOdemeForm.donem_id = defaultDonem ? defaultDonem.id : ''
+  ekOdemeForm.baslangic_donemi = new Date().toISOString().slice(0, 7) + '-01'
+  ekOdemeForm.bitis_donemi = ''
+  ekOdemeForm.banka_matrahina_ekle = 1
+  ekOdemeForm.aciklama = ''
+  onEkOdemeParametreChange()
+  showEkOdemeModal.value = true
+}
+
+function openEditEkOdemeModal(item) {
+  ekOdemeForm.id = item.id
+  ekOdemeForm.parametre_id = item.parametre_id || ''
+  ekOdemeForm.tur = item.tur || 'diger'
+  ekOdemeForm.tekrar_tipi = item.tekrar_tipi || 'tek_sefer'
+  ekOdemeForm.hesaplama_tipi = item.hesaplama_tipi || 'sabit'
+  ekOdemeForm.tutar = item.tutar || ''
+  ekOdemeForm.resmi_tutar = item.resmi_tutar || ''
+  ekOdemeForm.oran = item.oran || ''
+  ekOdemeForm.tarih = item.tarih || new Date().toISOString().slice(0, 10)
+  ekOdemeForm.donem_id = item.donem_id || ''
+  ekOdemeForm.baslangic_donemi = item.baslangic_donemi || (new Date().toISOString().slice(0, 7) + '-01')
+  ekOdemeForm.bitis_donemi = item.bitis_donemi || ''
+  ekOdemeForm.banka_matrahina_ekle = item.banka_matrahina_ekle !== undefined ? item.banka_matrahina_ekle : 1
+  ekOdemeForm.aciklama = item.aciklama || ''
+  showEkOdemeModal.value = true
+}
+
+async function submitEkOdeme() {
+  if (ekOdemeForm.hesaplama_tipi === 'sabit' && (!ekOdemeForm.tutar || Number(ekOdemeForm.tutar) <= 0)) {
+    showToast('Lütfen geçerli bir tutar giriniz.')
+    return
+  }
+  if (ekOdemeForm.hesaplama_tipi !== 'sabit' && (!ekOdemeForm.oran || Number(ekOdemeForm.oran) <= 0)) {
+    showToast('Lütfen geçerli bir oran giriniz.')
+    return
+  }
+  if (ekOdemeForm.tekrar_tipi === 'tek_sefer' && !ekOdemeForm.donem_id) {
+    showToast('Lütfen uygulanacak dönemi seçiniz.')
+    return
+  }
+
+  ekOdemeSaving.value = true
+  try {
+    const payload = {
+      ...ekOdemeForm,
+      personel_id: route.params.id,
+      tutar: Number(ekOdemeForm.tutar) || 0,
+      resmi_tutar: Number(ekOdemeForm.resmi_tutar) || 0,
+      oran: Number(ekOdemeForm.oran) || 0,
+      banka_matrahina_ekle: Number(ekOdemeForm.banka_matrahina_ekle),
+    }
+    const result = await personnelApi.saveEkOdeme(payload, auth.state.csrfToken)
+    if (result.ek_odemeler) ekOdemeler.value = result.ek_odemeler
+    if (result.ek_odeme_ozet) ekOdemeOzet.value = result.ek_odeme_ozet
+    showEkOdemeModal.value = false
+    showToast(result.message || 'Ek ödeme kaydedildi.')
+  } catch (err) {
+    showToast(err.message || 'Ek ödeme kaydedilemedi.')
+  } finally {
+    ekOdemeSaving.value = false
+  }
+}
+
+async function deleteEkOdeme(item) {
+  if (!confirm(`'${item.parametre_adi}' kaydını silmek istediğinize emin misiniz?`)) return
+  try {
+    const result = await personnelApi.deleteEkOdeme(item.id, route.params.id, auth.state.csrfToken)
+    if (result.ek_odemeler) ekOdemeler.value = result.ek_odemeler
+    if (result.ek_odeme_ozet) ekOdemeOzet.value = result.ek_odeme_ozet
+    showToast(result.message || 'Ek ödeme silindi.')
+  } catch (err) {
+    showToast(err.message || 'Ek ödeme silinemedi.')
+  }
+}
+
+function openSonlandirEkOdemeModal(item) {
+  ekOdemeSonlandirForm.id = item.id
+  ekOdemeSonlandirForm.parametre_adi = item.parametre_adi
+  ekOdemeSonlandirForm.bitis_donemi = new Date().toISOString().slice(0, 7) + '-01'
+  showEkOdemeSonlandirModal.value = true
+}
+
+async function submitSonlandirEkOdeme() {
+  if (!ekOdemeSonlandirForm.bitis_donemi) {
+    showToast('Lütfen bitiş tarihi seçiniz.')
+    return
+  }
+  try {
+    const result = await personnelApi.sonlandirEkOdeme(
+      ekOdemeSonlandirForm.id,
+      route.params.id,
+      ekOdemeSonlandirForm.bitis_donemi,
+      auth.state.csrfToken
+    )
+    if (result.ek_odemeler) ekOdemeler.value = result.ek_odemeler
+    if (result.ek_odeme_ozet) ekOdemeOzet.value = result.ek_odeme_ozet
+    showEkOdemeSonlandirModal.value = false
+    showToast(result.message || 'Sürekli ek ödeme sonlandırıldı.')
+  } catch (err) {
+    showToast(err.message || 'İşlem gerçekleştirilemedi.')
+  }
+}
+
+// ================= KESİNTİ İŞLEMLERİ =================
+
+function onKesintiParametreChange() {
+  const param = kesintiParametreleri.value.find(p => p.id === Number(kesintiForm.parametre_id))
+  if (param) {
+    kesintiForm.tur = param.kod || 'diger'
+    if (param.hesaplama_tipi) {
+      if (param.hesaplama_tipi.includes('oran')) {
+        kesintiForm.hesaplama_tipi = 'oran_net'
+        kesintiForm.oran = param.oran || ''
+      } else {
+        kesintiForm.hesaplama_tipi = 'sabit'
+      }
+    }
+    if (param.varsayilan_tutar && !kesintiForm.tutar) {
+      kesintiForm.tutar = param.varsayilan_tutar
+    }
+  }
+}
+
+function openNewKesintiModal() {
+  const defaultDonem = bordroDonemleri.value.find(d => !d.kapali_mi)
+  kesintiForm.id = 0
+  kesintiForm.parametre_id = kesintiParametreleri.value[0]?.id || ''
+  kesintiForm.tur = kesintiParametreleri.value[0]?.kod || 'diger'
+  kesintiForm.tekrar_tipi = 'tek_sefer'
+  kesintiForm.hesaplama_tipi = 'sabit'
+  kesintiForm.tutar = ''
+  kesintiForm.oran = ''
+  kesintiForm.taksit_sayisi = 1
+  kesintiForm.tarih = new Date().toISOString().slice(0, 10)
+  kesintiForm.donem_id = defaultDonem ? defaultDonem.id : ''
+  kesintiForm.baslangic_donemi = new Date().toISOString().slice(0, 7) + '-01'
+  kesintiForm.bitis_donemi = ''
+  kesintiForm.banka_matrahina_ekle = 1
+  kesintiForm.icra_id = ''
+  kesintiForm.aciklama = ''
+  onKesintiParametreChange()
+  showKesintiModal.value = true
+}
+
+function openEditKesintiModal(item) {
+  kesintiForm.id = item.id
+  kesintiForm.parametre_id = item.parametre_id || ''
+  kesintiForm.tur = item.tur || 'diger'
+  kesintiForm.tekrar_tipi = item.tekrar_tipi || 'tek_sefer'
+  kesintiForm.hesaplama_tipi = item.hesaplama_tipi || 'sabit'
+  kesintiForm.tutar = item.tutar || ''
+  kesintiForm.oran = item.oran || ''
+  kesintiForm.taksit_sayisi = item.taksit_sayisi || 1
+  kesintiForm.tarih = item.tarih || new Date().toISOString().slice(0, 10)
+  kesintiForm.donem_id = item.donem_id || ''
+  kesintiForm.baslangic_donemi = item.baslangic_donemi || (new Date().toISOString().slice(0, 7) + '-01')
+  kesintiForm.bitis_donemi = item.bitis_donemi || ''
+  kesintiForm.banka_matrahina_ekle = item.banka_matrahina_ekle !== undefined ? item.banka_matrahina_ekle : 1
+  kesintiForm.icra_id = item.icra_id || ''
+  kesintiForm.aciklama = item.aciklama || ''
+  showKesintiModal.value = true
+}
+
+async function submitKesinti() {
+  if (kesintiForm.hesaplama_tipi === 'sabit' && (!kesintiForm.tutar || Number(kesintiForm.tutar) <= 0)) {
+    showToast('Lütfen geçerli bir tutar giriniz.')
+    return
+  }
+  if (kesintiForm.hesaplama_tipi !== 'sabit' && (!kesintiForm.oran || Number(kesintiForm.oran) <= 0)) {
+    showToast('Lütfen geçerli bir oran giriniz.')
+    return
+  }
+  if ((kesintiForm.tekrar_tipi === 'tek_sefer' || kesintiForm.tekrar_tipi === 'taksitli') && !kesintiForm.donem_id) {
+    showToast('Lütfen uygulanacak dönemi seçiniz.')
+    return
+  }
+
+  kesintiSaving.value = true
+  try {
+    const payload = {
+      ...kesintiForm,
+      personel_id: route.params.id,
+      tutar: Number(kesintiForm.tutar) || 0,
+      oran: Number(kesintiForm.oran) || 0,
+      taksit_sayisi: Number(kesintiForm.taksit_sayisi) || 1,
+      banka_matrahina_ekle: Number(kesintiForm.banka_matrahina_ekle),
+    }
+    const result = await personnelApi.saveKesinti(payload, auth.state.csrfToken)
+    if (result.kesintiler) kesintiler.value = result.kesintiler
+    if (result.kesinti_ozet) kesintiOzet.value = result.kesinti_ozet
+    showKesintiModal.value = false
+    showToast(result.message || 'Kesinti kaydedildi.')
+  } catch (err) {
+    showToast(err.message || 'Kesinti kaydedilemedi.')
+  } finally {
+    kesintiSaving.value = false
+  }
+}
+
+async function deleteKesinti(item) {
+  if (!confirm(`'${item.parametre_adi}' kaydını silmek istediğinize emin misiniz?`)) return
+  try {
+    const result = await personnelApi.deleteKesinti(item.id, route.params.id, auth.state.csrfToken)
+    if (result.kesintiler) kesintiler.value = result.kesintiler
+    if (result.kesinti_ozet) kesintiOzet.value = result.kesinti_ozet
+    showToast(result.message || 'Kesinti silindi.')
+  } catch (err) {
+    showToast(err.message || 'Kesinti silinemedi.')
+  }
+}
+
+function openSonlandirKesintiModal(item) {
+  kesintiSonlandirForm.id = item.id
+  kesintiSonlandirForm.parametre_adi = item.parametre_adi
+  kesintiSonlandirForm.bitis_donemi = new Date().toISOString().slice(0, 7) + '-01'
+  showKesintiSonlandirModal.value = true
+}
+
+async function submitSonlandirKesinti() {
+  if (!kesintiSonlandirForm.bitis_donemi) {
+    showToast('Lütfen bitiş tarihi seçiniz.')
+    return
+  }
+  try {
+    const result = await personnelApi.sonlandirKesinti(
+      kesintiSonlandirForm.id,
+      route.params.id,
+      kesintiSonlandirForm.bitis_donemi,
+      auth.state.csrfToken
+    )
+    if (result.kesintiler) kesintiler.value = result.kesintiler
+    if (result.kesinti_ozet) kesintiOzet.value = result.kesinti_ozet
+    showKesintiSonlandirModal.value = false
+    showToast(result.message || 'Sürekli kesinti sonlandırıldı.')
+  } catch (err) {
+    showToast(err.message || 'İşlem gerçekleştirilemedi.')
+  }
+}
+
 async function load() {
   if (!section.value) {
     router.replace(`/personel/${route.params.id}`)
@@ -519,6 +1106,39 @@ async function load() {
     canEdit.value = Boolean(result.can_edit)
     if (result.work_options) {
       workOptions.value = result.work_options
+    }
+    if (result.leaves) {
+      leaves.value = result.leaves
+    }
+    if (result.entitlement) {
+      entitlement.value = result.entitlement
+    }
+    if (result.leave_types) {
+      leaveTypes.value = result.leave_types
+    }
+    if (result.ek_odemeler) {
+      ekOdemeler.value = result.ek_odemeler
+    }
+    if (result.ek_odeme_ozet) {
+      ekOdemeOzet.value = result.ek_odeme_ozet
+    }
+    if (result.gelir_parametreleri) {
+      gelirParametreleri.value = result.gelir_parametreleri
+    }
+    if (result.bordro_donemleri) {
+      bordroDonemleri.value = result.bordro_donemleri
+    }
+    if (result.kesintiler) {
+      kesintiler.value = result.kesintiler
+    }
+    if (result.kesinti_ozet) {
+      kesintiOzet.value = result.kesinti_ozet
+    }
+    if (result.kesinti_parametreleri) {
+      kesintiParametreleri.value = result.kesinti_parametreleri
+    }
+    if (result.icra_dosyalari) {
+      icraDosyalari.value = result.icra_dosyalari
     }
     // Düzenleme yetkisi varsa doğrudan düzenleme açık gelsin
     if (canEdit.value) {
@@ -1283,6 +1903,1189 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- ========================================================================= -->
+      <!-- 5. İZİN VE RAPORLAR SEKME İÇERİĞİ (Masaüstü Standartlarında Tam Yönetim)   -->
+      <!-- ========================================================================= -->
+      <div v-else-if="route.params.section === 'izinler'" class="izinler-section-container">
+        <!-- Hata Mesajı -->
+        <div v-if="saveError" class="clay-alert-banner clay-alert-banner--danger">
+          <AlertCircle :size="18" />
+          <span>{{ saveError }}</span>
+        </div>
+
+        <!-- 1. YILLIK İZİN HAKEDİŞ VE BAKİYE BENTO KARTI -->
+        <section class="bento-card bento-card--white leave-entitlement-card">
+          <header class="group-header">
+            <div class="group-header-left">
+              <span class="group-icon group-icon--blue"><CalendarCheck :size="17" /></span>
+              <div class="group-titles">
+                <h3>Yıllık İzin Bakiyesi</h3>
+                <small>Hakediş, kullanılan ve kalan izin günleri</small>
+              </div>
+            </div>
+            <button
+              v-if="entitlement.detay && entitlement.detay.length > 0"
+              type="button"
+              class="clay-btn clay-btn--sm clay-btn--secondary header-action-btn"
+              @click="showEntitlementModal = true"
+            >
+              <History :size="13" />
+              <span>Hakediş Detayı</span>
+            </button>
+          </header>
+
+          <div class="entitlement-metrics-grid">
+            <div class="metric-box metric-box--primary">
+              <small>TOPLAM HAKEDİŞ</small>
+              <strong>{{ entitlement.toplam_hakedis }} <span class="unit">Gün</span></strong>
+              <div class="metric-subtext">Kanuni hakediş</div>
+            </div>
+
+            <div class="metric-box metric-box--coral">
+              <small>KULLANILAN</small>
+              <strong>{{ entitlement.kullanilan_izin }} <span class="unit">Gün</span></strong>
+              <div class="metric-subtext">Düşülen izinler</div>
+            </div>
+
+            <div class="metric-box metric-box--emerald">
+              <small>KALAN İZİN</small>
+              <strong>{{ entitlement.kalan_izin }} <span class="unit">Gün</span></strong>
+              <div class="metric-subtext">Mevcut bakiye</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. İZİN VE RAPOR HAREKETLERİ KARTI -->
+        <section class="bento-card bento-card--white info-group-card">
+          <header class="group-header">
+            <div class="group-header-left">
+              <span class="group-icon group-icon--amber"><CalendarDays :size="17" /></span>
+              <div class="group-titles">
+                <h3>İzin & Rapor Hareketleri</h3>
+                <small>Kayıtlı izin, rapor ve mazeret geçmişi</small>
+              </div>
+            </div>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="clay-btn clay-btn--sm clay-btn--primary header-action-btn"
+              @click="openNewLeaveModal"
+            >
+              <Plus :size="14" />
+              <span>Yeni İzin Ekle</span>
+            </button>
+          </header>
+
+          <div v-if="!leaves || leaves.length === 0" class="empty-list-box">
+            <p>Henüz kayıtlı bir izin veya rapor hareketi bulunmuyor.</p>
+          </div>
+
+          <div v-else class="leave-list-stack">
+            <div
+              v-for="l in leaves"
+              :key="l.id"
+              class="leave-item-card"
+              :class="{
+                'leave-item-card--approved': l.onay_durumu === 'Onaylandı',
+                'leave-item-card--pending': l.onay_durumu === 'Beklemede',
+                'leave-item-card--rejected': l.onay_durumu === 'Reddedildi'
+              }"
+            >
+              <div class="leave-item-left">
+                <div class="leave-title-row">
+                  <strong>{{ l.izin_tipi_adi }}</strong>
+                  <span
+                    class="clay-badge"
+                    :class="l.ucretli_mi ? 'clay-badge--cyan' : 'clay-badge--secondary'"
+                  >
+                    {{ l.ucretli_mi ? 'Ücretli' : 'Ücretsiz' }}
+                  </span>
+                  <span
+                    class="clay-badge"
+                    :class="{
+                      'clay-badge--emerald': l.onay_durumu === 'Onaylandı',
+                      'clay-badge--amber': l.onay_durumu === 'Beklemede',
+                      'clay-badge--coral': l.onay_durumu === 'Reddedildi'
+                    }"
+                  >
+                    {{ l.onay_durumu }}
+                  </span>
+                </div>
+
+                <div class="leave-date-row">
+                  <small>
+                    <History :size="12" />
+                    {{ formatDate(l.baslangic_tarihi) }} — {{ formatDate(l.bitis_tarihi) }}
+                  </small>
+                  <span class="leave-days-chip">{{ l.toplam_gun }} Gün</span>
+                  <span v-if="l.yillik_izne_etki === 'Dus' || l.yillik_izne_etki === '1'" class="leave-chip leave-chip--dus">
+                    Yıllık İzne Etki: Düşüldü
+                  </span>
+                </div>
+
+                <p v-if="l.aciklama" class="leave-desc-text">{{ l.aciklama }}</p>
+
+                <div v-if="l.onaylar && l.onaylar.length > 0" class="leave-approvers-box">
+                  <small v-for="(o, idx) in l.onaylar" :key="idx" class="approver-info">
+                    <UserRoundCheck :size="12" />
+                    <span>{{ o.adi || 'Yetkili' }} ({{ formatDate(o.tarih.slice(0, 10)) }}) — {{ o.durum }}</span>
+                  </small>
+                </div>
+              </div>
+
+              <div v-if="canEdit" class="leave-item-actions">
+                <!-- Beklemede ise hızlı onayla / reddet -->
+                <button
+                  v-if="l.onay_durumu === 'Beklemede'"
+                  type="button"
+                  class="action-icon-btn action-icon-btn--approve"
+                  title="Onayla"
+                  @click="quickApproveLeave(l)"
+                >
+                  <Check :size="14" />
+                </button>
+                <button
+                  v-if="l.onay_durumu === 'Beklemede'"
+                  type="button"
+                  class="action-icon-btn action-icon-btn--reject"
+                  title="Reddet"
+                  @click="openRejectLeaveModal(l)"
+                >
+                  <X :size="14" />
+                </button>
+
+                <button
+                  type="button"
+                  class="copy-btn"
+                  title="Düzenle"
+                  @click="openEditLeaveModal(l)"
+                >
+                  <Pencil :size="13" />
+                </button>
+                <button
+                  type="button"
+                  class="copy-btn copy-btn--danger"
+                  title="Sil"
+                  @click="deleteLeave(l)"
+                >
+                  <Trash2 :size="13" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== MODAL: İZİN EKLE / DÜZENLE =================== -->
+        <div v-if="showLeaveModal" class="clay-modal-backdrop" @click.self="showLeaveModal = false">
+          <div class="clay-modal-sheet">
+            <header class="modal-sheet-header">
+              <h4>{{ leaveForm.id ? 'İzin Kaydını Düzenle' : 'Yeni İzin & Rapor Ekle' }}</h4>
+              <button type="button" class="close-btn" @click="showLeaveModal = false"><X :size="18" /></button>
+            </header>
+
+            <form class="modal-sheet-body" @submit.prevent="saveLeave">
+              <label class="form-field">
+                <span>İzin Türü *</span>
+                <select v-model="leaveForm.izin_tipi_id" required @change="onLeaveTypeChange">
+                  <option value="" disabled>İzin türü seçiniz</option>
+                  <option
+                    v-for="t in leaveTypes"
+                    :key="t.id"
+                    :value="t.id"
+                  >
+                    {{ t.tur_adi }} {{ t.ucretli_mi ? '(Ücretli)' : '(Ücretsiz)' }}
+                  </option>
+                </select>
+              </label>
+
+              <div class="form-grid">
+                <label class="form-field">
+                  <span>Başlangıç Tarihi *</span>
+                  <input v-model="leaveForm.baslangic_tarihi" type="date" required @change="onLeaveDatesChange" />
+                </label>
+
+                <label class="form-field">
+                  <span>Bitiş Tarihi *</span>
+                  <input v-model="leaveForm.bitis_tarihi" type="date" required @change="onLeaveDatesChange" />
+                </label>
+              </div>
+
+              <div class="form-grid">
+                <label class="form-field">
+                  <span>Süre (Gün) *</span>
+                  <input v-model.number="leaveForm.toplam_gun" type="number" step="0.5" min="0.5" required />
+                </label>
+
+                <label class="form-field">
+                  <span>Onay Durumu</span>
+                  <select v-model="leaveForm.onay_durumu">
+                    <option value="Onaylandı">Onaylandı</option>
+                    <option value="Beklemede">Beklemede</option>
+                    <option value="Reddedildi">Reddedildi</option>
+                  </select>
+                </label>
+              </div>
+
+              <label class="checkbox-field">
+                <input v-model="leaveForm.yillik_izne_etki" type="checkbox" />
+                <span>Yıllık izin bakiyesinden düşülsün</span>
+              </label>
+
+              <label class="form-field">
+                <span>Açıklama (Opsiyonel)</span>
+                <textarea v-model.trim="leaveForm.aciklama" rows="2" placeholder="İzin gerekçesi veya açıklaması"></textarea>
+              </label>
+
+              <div class="modal-actions mt-3">
+                <button type="button" class="clay-btn clay-btn--secondary" @click="showLeaveModal = false">Vazgeç</button>
+                <button type="submit" class="clay-btn clay-btn--primary" :disabled="leaveSaving">
+                  {{ leaveSaving ? 'Kaydediliyor…' : (leaveForm.id ? 'Güncelle' : 'Kaydet') }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- =================== MODAL: HAKEDİŞ DETAYLARI =================== -->
+        <div v-if="showEntitlementModal" class="clay-modal-backdrop" @click.self="showEntitlementModal = false">
+          <div class="clay-modal-sheet">
+            <header class="modal-sheet-header">
+              <h4>Yıllık İzin Hakediş Detayları</h4>
+              <button type="button" class="close-btn" @click="showEntitlementModal = false"><X :size="18" /></button>
+            </header>
+
+            <div class="modal-sheet-body">
+              <div class="entitlement-table-wrap">
+                <table class="entitlement-table">
+                  <thead>
+                    <tr>
+                      <th>Hizmet Yılı</th>
+                      <th>Hakediş Tarihi</th>
+                      <th class="text-end">Gün</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="d in entitlement.detay" :key="d.yil">
+                      <td><strong>{{ d.yil }}. Yıl</strong></td>
+                      <td>{{ formatDate(d.hakedis_tarihi) }}</td>
+                      <td class="text-end font-bold">{{ d.hakedis_gun }} Gün</td>
+                    </tr>
+                    <tr class="total-row">
+                      <td colspan="2"><strong>Toplam Hakediş</strong></td>
+                      <td class="text-end font-bold text-primary">{{ entitlement.toplam_hakedis }} Gün</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="modal-actions mt-3">
+                <button type="button" class="clay-btn clay-btn--secondary w-100" @click="showEntitlementModal = false">Kapat</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================== MODAL: İZİN RET GEREKÇESİ =================== -->
+        <div v-if="showApprovalModal" class="clay-modal-backdrop" @click.self="showApprovalModal = false">
+          <div class="clay-modal-sheet">
+            <header class="modal-sheet-header">
+              <h4>İzin Talebini Reddet</h4>
+              <button type="button" class="close-btn" @click="showApprovalModal = false"><X :size="18" /></button>
+            </header>
+
+            <form class="modal-sheet-body" @submit.prevent="submitApproval">
+              <p class="text-muted font-size-13 mb-2">
+                Bu izin talebini reddetmek istediğinize emin misiniz?
+              </p>
+
+              <label class="form-field">
+                <span>Ret Nedeni (Opsiyonel)</span>
+                <textarea v-model.trim="approvalForm.note" rows="2" placeholder="Gerekçe giriniz"></textarea>
+              </label>
+
+              <div class="modal-actions mt-3">
+                <button type="button" class="clay-btn clay-btn--secondary" @click="showApprovalModal = false">İptal</button>
+                <button type="submit" class="clay-btn clay-btn--danger" :disabled="approvalSaving">
+                  {{ approvalSaving ? 'İşleniyor…' : 'Reddet' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- 6. EK ÖDEMELER SEKME İÇERİĞİ (Masaüstü Standartlarında Tam Yönetim)     -->
+      <!-- ========================================================================= -->
+      <div v-else-if="route.params.section === 'ek_odemeler'" class="ek-odemeler-section-container">
+        <!-- 1. EK ÖDEME ÖZET BENTO KARTI -->
+        <section class="bento-card bento-card--white summary-bento-card">
+          <header class="group-header">
+            <div class="group-header-left">
+              <span class="group-icon group-icon--emerald"><BadgeDollarSign :size="17" /></span>
+              <div class="group-titles">
+                <h3>Ek Ödeme Özeti</h3>
+                <small>Prim, ikramiye, kira ve düzenli yardımlar</small>
+              </div>
+            </div>
+          </header>
+
+          <div class="financial-metrics-grid">
+            <div class="metric-box metric-box--emerald">
+              <small>TOPLAM EK KAZANÇ</small>
+              <strong class="money-val">{{ formatMoney(ekOdemeOzet.toplam_tutar) }}</strong>
+              <div class="metric-subtext">Banka: {{ formatMoney(ekOdemeOzet.banka_tutar) }}</div>
+            </div>
+
+            <div class="metric-box metric-box--primary">
+              <small>TEK SEFERLİK</small>
+              <strong class="money-val">{{ formatMoney(ekOdemeOzet.tek_sefer_tutar) }}</strong>
+              <div class="metric-subtext">{{ ekOdemeOzet.tek_sefer_adet }} Kayıt</div>
+            </div>
+
+            <div class="metric-box metric-box--amber">
+              <small>DÜZENLİ (AYLIK)</small>
+              <strong class="money-val">{{ formatMoney(ekOdemeOzet.surekli_tutar) }}</strong>
+              <div class="metric-subtext">{{ ekOdemeOzet.surekli_adet }} Aktif Tanım</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. EK ÖDEME HAREKETLERİ KARTI -->
+        <section class="bento-card bento-card--white info-group-card">
+          <header class="group-header">
+            <div class="group-header-left">
+              <span class="group-icon group-icon--blue"><Coins :size="17" /></span>
+              <div class="group-titles">
+                <h3>Ek Ödeme Hareketleri</h3>
+                <small>Kayıtlı tüm tek seferlik ve sürekli ek ödemeler</small>
+              </div>
+            </div>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="clay-btn clay-btn--sm clay-btn--primary header-action-btn"
+              @click="openNewEkOdemeModal"
+            >
+              <Plus :size="14" />
+              <span>Yeni Ek Ödeme</span>
+            </button>
+          </header>
+
+          <!-- Filtre Segment Hapları (.clay-tabs-wrap Standardı) -->
+          <div class="clay-tabs-wrap financial-tabs-wrap">
+            <button
+              type="button"
+              class="clay-tab-btn"
+              :class="{ 'is-active': ekOdemeTab === 'all' }"
+              @click="ekOdemeTab = 'all'"
+            >
+              <span>Tümü</span>
+              <span class="clay-tab-badge">{{ ekOdemeler.length }}</span>
+            </button>
+            <button
+              type="button"
+              class="clay-tab-btn"
+              :class="{ 'is-active': ekOdemeTab === 'tek_sefer' }"
+              @click="ekOdemeTab = 'tek_sefer'"
+            >
+              <span>Tek Sefer</span>
+              <span class="clay-tab-badge">{{ ekOdemeOzet.tek_sefer_adet }}</span>
+            </button>
+            <button
+              type="button"
+              class="clay-tab-btn"
+              :class="{ 'is-active': ekOdemeTab === 'surekli' }"
+              @click="ekOdemeTab = 'surekli'"
+            >
+              <span>Sürekli</span>
+              <span class="clay-tab-badge">{{ ekOdemeOzet.surekli_adet }}</span>
+            </button>
+          </div>
+
+          <!-- Boş Durum -->
+          <div v-if="!filteredEkOdemeler || filteredEkOdemeler.length === 0" class="empty-list-box">
+            <Coins :size="32" class="empty-icon text-muted mb-2" />
+            <p>Bu filtrede kayıtlı bir ek ödeme hareketi bulunmuyor.</p>
+          </div>
+
+          <!-- Liste -->
+          <div v-else class="financial-list-stack">
+            <div
+              v-for="item in filteredEkOdemeler"
+              :key="item.id"
+              class="financial-item-card"
+              :class="{
+                'financial-item-card--surekli': item.tekrar_tipi === 'surekli',
+                'financial-item-card--tek-sefer': item.tekrar_tipi !== 'surekli'
+              }"
+            >
+              <div class="financial-item-left">
+                <!-- Başlık ve Rozetler -->
+                <div class="financial-title-row">
+                  <strong>{{ item.parametre_adi }}</strong>
+                  <span
+                    class="clay-badge"
+                    :class="item.tekrar_tipi === 'surekli' ? 'clay-badge--amber' : 'clay-badge--blue'"
+                  >
+                    {{ item.tekrar_tipi === 'surekli' ? 'Sürekli' : 'Tek Sefer' }}
+                  </span>
+                  <span
+                    class="clay-badge"
+                    :class="item.banka_matrahina_ekle ? 'clay-badge--emerald' : 'clay-badge--warning'"
+                  >
+                    {{ item.banka_matrahina_ekle ? 'Banka' : 'Elden' }}
+                  </span>
+                  <span v-if="item.kapali_mi" class="clay-badge clay-badge--secondary">
+                    Kapalı Dönem
+                  </span>
+                </div>
+
+                <!-- Tutar Satırı -->
+                <div class="financial-amount-row">
+                  <div class="financial-amount-wrap">
+                    <span class="financial-amount-val text-emerald">{{ formatMoney(item.tutar) }}</span>
+                    <span v-if="item.resmi_tutar && item.resmi_tutar > 0" class="financial-sub-amount">
+                      (Resmi: {{ formatMoney(item.resmi_tutar) }})
+                    </span>
+                  </div>
+                  <span class="financial-calc-chip">
+                    {{ item.hesaplama_tipi === 'sabit' ? 'Sabit Tutar' : (item.oran ? `%${item.oran}` : 'Oran') }}
+                  </span>
+                </div>
+
+                <!-- Tarih ve Kayıt Bilgisi -->
+                <div class="financial-meta-row">
+                  <small v-if="item.tekrar_tipi === 'tek_sefer'" class="meta-item">
+                    <CalendarDays :size="12" />
+                    Dönem: {{ item.donem_adi || 'Belirtilmemiş' }}
+                  </small>
+                  <small v-else class="meta-item">
+                    <CalendarDays :size="12" />
+                    {{ formatDate(item.baslangic_donemi) }} — {{ item.bitis_donemi ? formatDate(item.bitis_donemi) : 'Süresiz' }}
+                  </small>
+                  <small class="meta-item meta-item--muted">
+                    <History :size="12" />
+                    Kayıt: {{ formatDate(item.tarih) }}
+                  </small>
+                </div>
+
+                <!-- Açıklama -->
+                <p v-if="item.aciklama" class="financial-desc-text">
+                  {{ item.aciklama }}
+                </p>
+              </div>
+
+              <!-- Standart Sistem Aksiyon Butonları -->
+              <div v-if="canEdit" class="financial-item-actions">
+                <button
+                  v-if="!item.kapali_mi"
+                  type="button"
+                  class="copy-btn"
+                  title="Düzenle"
+                  @click="openEditEkOdemeModal(item)"
+                >
+                  <Pencil :size="13" />
+                </button>
+                <button
+                  v-if="item.tekrar_tipi === 'surekli' && item.aktif"
+                  type="button"
+                  class="copy-btn copy-btn--amber"
+                  title="Sonlandır"
+                  @click="openSonlandirEkOdemeModal(item)"
+                >
+                  <Clock :size="13" />
+                </button>
+                <button
+                  v-if="!item.kapali_mi"
+                  type="button"
+                  class="copy-btn copy-btn--danger"
+                  title="Sil"
+                  @click="deleteEkOdeme(item)"
+                >
+                  <Trash2 :size="13" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== MODAL: EK ÖDEME EKLE / DÜZENLE =================== -->
+        <div v-if="showEkOdemeModal" class="clay-modal-backdrop" @click.self="showEkOdemeModal = false">
+          <div class="clay-modal-sheet">
+            <header class="modal-sheet-header">
+              <h4>{{ ekOdemeForm.id ? 'Ek Ödeme Düzenle' : 'Yeni Ek Ödeme Ekle' }}</h4>
+              <button type="button" class="close-btn" @click="showEkOdemeModal = false"><X :size="18" /></button>
+            </header>
+
+            <form class="modal-sheet-body" @submit.prevent="submitEkOdeme">
+              <!-- Ek Ödeme Türü -->
+              <label class="form-field">
+                <span>Ek Ödeme Türü *</span>
+                <select v-model="ekOdemeForm.parametre_id" required @change="onEkOdemeParametreChange">
+                  <option value="" disabled>Ek ödeme türü seçiniz</option>
+                  <option
+                    v-for="p in gelirParametreleri"
+                    :key="p.id"
+                    :value="p.id"
+                  >
+                    {{ p.etiket }}
+                  </option>
+                </select>
+              </label>
+
+              <!-- Ödeme Tipi & Hesaplama Tipi (Segmented Switch) -->
+              <div class="form-grid">
+                <div class="form-field">
+                  <span>Ödeme Tipi</span>
+                  <div class="segmented-pills">
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': ekOdemeForm.tekrar_tipi === 'tek_sefer' }"
+                      @click="ekOdemeForm.tekrar_tipi = 'tek_sefer'"
+                    >
+                      Tek Sefer
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': ekOdemeForm.tekrar_tipi === 'surekli' }"
+                      @click="ekOdemeForm.tekrar_tipi = 'surekli'"
+                    >
+                      Sürekli
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-field">
+                  <span>Hesaplama Tipi</span>
+                  <div class="segmented-pills">
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': ekOdemeForm.hesaplama_tipi === 'sabit' }"
+                      @click="ekOdemeForm.hesaplama_tipi = 'sabit'"
+                    >
+                      Sabit
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': ekOdemeForm.hesaplama_tipi === 'oran_net' }"
+                      @click="ekOdemeForm.hesaplama_tipi = 'oran_net'"
+                    >
+                      Net %
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': ekOdemeForm.hesaplama_tipi === 'oran_brut' }"
+                      @click="ekOdemeForm.hesaplama_tipi = 'oran_brut'"
+                    >
+                      Brüt %
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dönem / Tarih Alanları -->
+              <div v-if="ekOdemeForm.tekrar_tipi === 'tek_sefer'" class="form-field">
+                <span>Uygulanacak Bordro Dönemi *</span>
+                <select v-model="ekOdemeForm.donem_id" required>
+                  <option value="" disabled>Dönem seçiniz</option>
+                  <option
+                    v-for="d in bordroDonemleri"
+                    :key="d.id"
+                    :value="d.id"
+                    :disabled="Boolean(d.kapali_mi)"
+                  >
+                    {{ d.donem_adi }} {{ d.kapali_mi ? '(Kapalı)' : '' }}
+                  </option>
+                </select>
+              </div>
+
+              <div v-else class="form-grid">
+                <label class="form-field">
+                  <span>Başlangıç Tarihi *</span>
+                  <input v-model="ekOdemeForm.baslangic_donemi" type="date" required />
+                </label>
+                <label class="form-field">
+                  <span>Bitiş Tarihi (Opsiyonel)</span>
+                  <input v-model="ekOdemeForm.bitis_donemi" type="date" />
+                </label>
+              </div>
+
+              <!-- Tutar ve Resmi Tutar -->
+              <div class="form-grid">
+                <label class="form-field">
+                  <span>Maaşa Ek Tutar (TL) *</span>
+                  <input
+                    v-model.number="ekOdemeForm.tutar"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    required
+                  />
+                </label>
+                <label class="form-field">
+                  <span>Resmi Alacağa Dahil Tutar (TL)</span>
+                  <input
+                    v-model.number="ekOdemeForm.resmi_tutar"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                  />
+                </label>
+              </div>
+
+              <div v-if="ekOdemeForm.hesaplama_tipi !== 'sabit'" class="form-field">
+                <span>Hesaplama Oranı (%) *</span>
+                <input
+                  v-model.number="ekOdemeForm.oran"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="Örn: 10"
+                  required
+                />
+              </div>
+
+              <!-- Kayıt Tarihi & Ödeme Kanalı -->
+              <div class="form-grid">
+                <label class="form-field">
+                  <span>İşlem Tarihi</span>
+                  <input v-model="ekOdemeForm.tarih" type="date" required />
+                </label>
+
+                <div class="form-field">
+                  <span>Ödeme Kanalı</span>
+                  <div class="segmented-pills">
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': ekOdemeForm.banka_matrahina_ekle == 1 }"
+                      @click="ekOdemeForm.banka_matrahina_ekle = 1"
+                    >
+                      Banka
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': ekOdemeForm.banka_matrahina_ekle == 0 }"
+                      @click="ekOdemeForm.banka_matrahina_ekle = 0"
+                    >
+                      Elden
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Açıklama -->
+              <label class="form-field">
+                <span>Açıklama / Not</span>
+                <textarea v-model.trim="ekOdemeForm.aciklama" rows="2" placeholder="Örn: Saha başarı primi, araç bakım desteği"></textarea>
+              </label>
+
+              <!-- Butonlar -->
+              <div class="modal-actions mt-3">
+                <button type="button" class="clay-btn clay-btn--secondary" @click="showEkOdemeModal = false">Vazgeç</button>
+                <button type="submit" class="clay-btn clay-btn--primary" :disabled="ekOdemeSaving">
+                  {{ ekOdemeSaving ? 'Kaydediliyor…' : (ekOdemeForm.id ? 'Güncelle' : 'Kaydet') }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- =================== MODAL: EK ÖDEME SONLANDIR =================== -->
+        <div v-if="showEkOdemeSonlandirModal" class="clay-modal-backdrop" @click.self="showEkOdemeSonlandirModal = false">
+          <div class="clay-modal-sheet">
+            <header class="modal-sheet-header">
+              <h4>Sürekli Ek Ödemeyi Sonlandır</h4>
+              <button type="button" class="close-btn" @click="showEkOdemeSonlandirModal = false"><X :size="18" /></button>
+            </header>
+
+            <form class="modal-sheet-body" @submit.prevent="submitSonlandirEkOdeme">
+              <p class="text-muted font-size-13 mb-3">
+                <strong>{{ ekOdemeSonlandirForm.parametre_adi }}</strong> için sürekli ödemeyi hangi tarihten itibaren sonlandırmak istiyorsunuz?
+              </p>
+
+              <label class="form-field">
+                <span>Bitiş Tarihi *</span>
+                <input v-model="ekOdemeSonlandirForm.bitis_donemi" type="date" required />
+              </label>
+
+              <div class="modal-actions mt-3">
+                <button type="button" class="clay-btn clay-btn--secondary" @click="showEkOdemeSonlandirModal = false">Vazgeç</button>
+                <button type="submit" class="clay-btn clay-btn--warning">Sonlandır</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- 7. KESİNTİLER SEKME İÇERİĞİ (Masaüstü Standartlarında Tam Yönetim)       -->
+      <!-- ========================================================================= -->
+      <div v-else-if="route.params.section === 'kesintiler'" class="kesintiler-section-container">
+        <!-- 1. KESİNTİ ÖZET BENTO KARTI -->
+        <section class="bento-card bento-card--white summary-bento-card">
+          <header class="group-header">
+            <div class="group-header-left">
+              <span class="group-icon group-icon--coral"><Receipt :size="17" /></span>
+              <div class="group-titles">
+                <h3>Kesinti Özeti</h3>
+                <small>Dönemsel, taksitli ve yasal kesintiler</small>
+              </div>
+            </div>
+          </header>
+
+          <div class="financial-metrics-grid">
+            <div class="metric-box metric-box--coral">
+              <small>TOPLAM KESİNTİ</small>
+              <strong class="money-val">{{ formatMoney(kesintiOzet.toplam_tutar) }}</strong>
+              <div class="metric-subtext">Banka: {{ formatMoney(kesintiOzet.banka_tutar) }}</div>
+            </div>
+
+            <div class="metric-box metric-box--primary">
+              <small>TEK SEFERLİK</small>
+              <strong class="money-val">{{ formatMoney(kesintiOzet.tek_sefer_tutar) }}</strong>
+              <div class="metric-subtext">{{ kesintiOzet.tek_sefer_adet }} Kayıt</div>
+            </div>
+
+            <div class="metric-box metric-box--amber">
+              <small>TAKSİTLİ & SÜREKLİ</small>
+              <strong class="money-val">{{ formatMoney(kesintiOzet.taksitli_tutar + kesintiOzet.surekli_tutar) }}</strong>
+              <div class="metric-subtext">{{ kesintiOzet.taksitli_adet + kesintiOzet.surekli_adet }} Kayıt</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. KESİNTİ HAREKETLERİ KARTI -->
+        <section class="bento-card bento-card--white info-group-card">
+          <header class="group-header">
+            <div class="group-header-left">
+              <span class="group-icon group-icon--amber"><Wallet :size="17" /></span>
+              <div class="group-titles">
+                <h3>Kesinti Hareketleri</h3>
+                <small>Maaş mahsupları, avanslar ve borç takibi</small>
+              </div>
+            </div>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="clay-btn clay-btn--sm clay-btn--primary header-action-btn"
+              @click="openNewKesintiModal"
+            >
+              <Plus :size="14" />
+              <span>Yeni Kesinti Ekle</span>
+            </button>
+          </header>
+
+          <!-- Filtre Segment Hapları (.clay-tabs-wrap Standardı) -->
+          <div class="clay-tabs-wrap financial-tabs-wrap">
+            <button
+              type="button"
+              class="clay-tab-btn"
+              :class="{ 'is-active': kesintiTab === 'all' }"
+              @click="kesintiTab = 'all'"
+            >
+              <span>Tümü</span>
+              <span class="clay-tab-badge">{{ kesintiler.length }}</span>
+            </button>
+            <button
+              type="button"
+              class="clay-tab-btn"
+              :class="{ 'is-active': kesintiTab === 'tek_sefer' }"
+              @click="kesintiTab = 'tek_sefer'"
+            >
+              <span>Tek Sefer</span>
+              <span class="clay-tab-badge">{{ kesintiOzet.tek_sefer_adet }}</span>
+            </button>
+            <button
+              type="button"
+              class="clay-tab-btn"
+              :class="{ 'is-active': kesintiTab === 'taksitli' }"
+              @click="kesintiTab = 'taksitli'"
+            >
+              <span>Taksitli</span>
+              <span class="clay-tab-badge">{{ kesintiOzet.taksitli_adet }}</span>
+            </button>
+            <button
+              type="button"
+              class="clay-tab-btn"
+              :class="{ 'is-active': kesintiTab === 'surekli' }"
+              @click="kesintiTab = 'surekli'"
+            >
+              <span>Sürekli</span>
+              <span class="clay-tab-badge">{{ kesintiOzet.surekli_adet }}</span>
+            </button>
+          </div>
+
+          <!-- Boş Durum -->
+          <div v-if="!filteredKesintiler || filteredKesintiler.length === 0" class="empty-list-box">
+            <Receipt :size="32" class="empty-icon text-muted mb-2" />
+            <p>Bu filtrede kayıtlı bir kesinti hareketi bulunmuyor.</p>
+          </div>
+
+          <!-- Liste -->
+          <div v-else class="financial-list-stack">
+            <div
+              v-for="item in filteredKesintiler"
+              :key="item.id"
+              class="financial-item-card"
+              :class="{
+                'financial-item-card--taksitli': item.tekrar_tipi === 'taksitli',
+                'financial-item-card--surekli': item.tekrar_tipi === 'surekli',
+                'financial-item-card--tek-sefer': item.tekrar_tipi === 'tek_sefer'
+              }"
+            >
+              <div class="financial-item-left">
+                <!-- Başlık ve Rozetler -->
+                <div class="financial-title-row">
+                  <strong>{{ item.parametre_adi }}</strong>
+                  <span
+                    class="clay-badge"
+                    :class="{
+                      'clay-badge--blue': item.tekrar_tipi === 'tek_sefer',
+                      'clay-badge--amber': item.tekrar_tipi === 'taksitli',
+                      'clay-badge--coral': item.tekrar_tipi === 'surekli'
+                    }"
+                  >
+                    {{ item.tekrar_tipi === 'taksitli' ? `${item.taksit_sayisi || 1} Taksit` : (item.tekrar_tipi === 'surekli' ? 'Sürekli' : 'Tek Sefer') }}
+                  </span>
+                  <span
+                    class="clay-badge"
+                    :class="item.banka_matrahina_ekle ? 'clay-badge--emerald' : 'clay-badge--warning'"
+                  >
+                    {{ item.banka_matrahina_ekle ? 'Banka' : 'Elden' }}
+                  </span>
+                  <span v-if="item.kapali_mi" class="clay-badge clay-badge--secondary">
+                    Kapalı Dönem
+                  </span>
+                </div>
+
+                <!-- Tutar Satırı -->
+                <div class="financial-amount-row">
+                  <div class="financial-amount-wrap">
+                    <span class="financial-amount-val text-coral">{{ formatMoney(item.tutar) }}</span>
+                    <span v-if="item.tekrar_tipi === 'taksitli' && item.taksit_sayisi > 1" class="financial-sub-amount">
+                      (Aylık: ~{{ formatMoney(item.tutar / item.taksit_sayisi) }})
+                    </span>
+                  </div>
+                  <span class="financial-calc-chip">
+                    {{ item.hesaplama_tipi === 'sabit' ? 'Sabit' : (item.oran ? `%${item.oran}` : 'Oran') }}
+                  </span>
+                </div>
+
+                <!-- Tarih, İcra ve Kayıt Bilgisi -->
+                <div class="financial-meta-row">
+                  <small v-if="item.tekrar_tipi === 'tek_sefer' || item.tekrar_tipi === 'taksitli'" class="meta-item">
+                    <CalendarDays :size="12" />
+                    Dönem: {{ item.donem_adi || 'Belirtilmemiş' }}
+                  </small>
+                  <small v-else class="meta-item">
+                    <CalendarDays :size="12" />
+                    {{ formatDate(item.baslangic_donemi) }} — {{ item.bitis_donemi ? formatDate(item.bitis_donemi) : 'Süresiz' }}
+                  </small>
+                  <small v-if="item.dosya_no" class="meta-item meta-item--icra">
+                    <Gavel :size="12" />
+                    İcra: {{ item.dosya_no }}
+                  </small>
+                  <small class="meta-item meta-item--muted">
+                    <History :size="12" />
+                    Kayıt: {{ formatDate(item.tarih) }}
+                  </small>
+                </div>
+
+                <!-- Açıklama -->
+                <p v-if="item.aciklama" class="financial-desc-text">
+                  {{ item.aciklama }}
+                </p>
+              </div>
+
+              <!-- Standart Sistem Aksiyon Butonları -->
+              <div v-if="canEdit" class="financial-item-actions">
+                <button
+                  v-if="!item.kapali_mi"
+                  type="button"
+                  class="copy-btn"
+                  title="Düzenle"
+                  @click="openEditKesintiModal(item)"
+                >
+                  <Pencil :size="13" />
+                </button>
+                <button
+                  v-if="item.tekrar_tipi === 'surekli' && item.aktif"
+                  type="button"
+                  class="copy-btn copy-btn--amber"
+                  title="Sonlandır"
+                  @click="openSonlandirKesintiModal(item)"
+                >
+                  <Clock :size="13" />
+                </button>
+                <button
+                  v-if="!item.kapali_mi"
+                  type="button"
+                  class="copy-btn copy-btn--danger"
+                  title="Sil"
+                  @click="deleteKesinti(item)"
+                >
+                  <Trash2 :size="13" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== MODAL: KESİNTİ EKLE / DÜZENLE =================== -->
+        <div v-if="showKesintiModal" class="clay-modal-backdrop" @click.self="showKesintiModal = false">
+          <div class="clay-modal-sheet">
+            <header class="modal-sheet-header">
+              <h4>{{ kesintiForm.id ? 'Kesintiyi Düzenle' : 'Yeni Kesinti Ekle' }}</h4>
+              <button type="button" class="close-btn" @click="showKesintiModal = false"><X :size="18" /></button>
+            </header>
+
+            <form class="modal-sheet-body" @submit.prevent="submitKesinti">
+              <!-- Kesinti Türü -->
+              <label class="form-field">
+                <span>Kesinti Türü *</span>
+                <select v-model="kesintiForm.parametre_id" required @change="onKesintiParametreChange">
+                  <option value="" disabled>Kesinti türü seçiniz</option>
+                  <option
+                    v-for="p in kesintiParametreleri"
+                    :key="p.id"
+                    :value="p.id"
+                  >
+                    {{ p.etiket }}
+                  </option>
+                </select>
+              </label>
+
+              <!-- İcra Dosyası Seçimi (Opsiyonel / İcra dosyası varsa) -->
+              <div v-if="icraDosyalari && icraDosyalari.length > 0" class="form-field">
+                <span>İcra Dosyası Bağlantısı (Opsiyonel)</span>
+                <select v-model="kesintiForm.icra_id">
+                  <option value="">Dosya seçilmedi</option>
+                  <option
+                    v-for="ic in icraDosyalari"
+                    :key="ic.id"
+                    :value="ic.id"
+                  >
+                    {{ ic.dosya_no }} - {{ ic.icra_dairesi }} (Toplam: {{ formatMoney(ic.toplam_borc) }})
+                  </option>
+                </select>
+              </div>
+
+              <!-- Kesinti Tipi & Hesaplama Tipi -->
+              <div class="form-grid">
+                <div class="form-field">
+                  <span>Kesinti Tipi</span>
+                  <div class="segmented-pills">
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.tekrar_tipi === 'tek_sefer' }"
+                      @click="kesintiForm.tekrar_tipi = 'tek_sefer'"
+                    >
+                      Tek Sefer
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.tekrar_tipi === 'taksitli' }"
+                      @click="kesintiForm.tekrar_tipi = 'taksitli'"
+                    >
+                      Taksitli
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.tekrar_tipi === 'surekli' }"
+                      @click="kesintiForm.tekrar_tipi = 'surekli'"
+                    >
+                      Sürekli
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-field">
+                  <span>Hesaplama Tipi</span>
+                  <div class="segmented-pills">
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.hesaplama_tipi === 'sabit' }"
+                      @click="kesintiForm.hesaplama_tipi = 'sabit'"
+                    >
+                      Sabit
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.hesaplama_tipi === 'oran_net' }"
+                      @click="kesintiForm.hesaplama_tipi = 'oran_net'"
+                    >
+                      Net %
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.hesaplama_tipi === 'oran_brut' }"
+                      @click="kesintiForm.hesaplama_tipi = 'oran_brut'"
+                    >
+                      Brüt %
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Taksit Sayısı (Taksitli ise) -->
+              <div v-if="kesintiForm.tekrar_tipi === 'taksitli'" class="form-field">
+                <span>Taksit Sayısı *</span>
+                <input
+                  v-model.number="kesintiForm.taksit_sayisi"
+                  type="number"
+                  min="1"
+                  max="60"
+                  placeholder="Örn: 6"
+                  required
+                />
+              </div>
+
+              <!-- Dönem / Tarih Alanları -->
+              <div v-if="kesintiForm.tekrar_tipi === 'tek_sefer' || kesintiForm.tekrar_tipi === 'taksitli'" class="form-field">
+                <span>Uygulanacak Bordro Dönemi *</span>
+                <select v-model="kesintiForm.donem_id" required>
+                  <option value="" disabled>Dönem seçiniz</option>
+                  <option
+                    v-for="d in bordroDonemleri"
+                    :key="d.id"
+                    :value="d.id"
+                    :disabled="Boolean(d.kapali_mi)"
+                  >
+                    {{ d.donem_adi }} {{ d.kapali_mi ? '(Kapalı)' : '' }}
+                  </option>
+                </select>
+              </div>
+
+              <div v-else class="form-grid">
+                <label class="form-field">
+                  <span>Başlangıç Tarihi *</span>
+                  <input v-model="kesintiForm.baslangic_donemi" type="date" required />
+                </label>
+                <label class="form-field">
+                  <span>Bitiş Tarihi (Opsiyonel)</span>
+                  <input v-model="kesintiForm.bitis_donemi" type="date" />
+                </label>
+              </div>
+
+              <!-- Tutar veya Oran -->
+              <div class="form-grid">
+                <label class="form-field">
+                  <span>Kesinti Tutarı (TL) *</span>
+                  <input
+                    v-model.number="kesintiForm.tutar"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    required
+                  />
+                </label>
+
+                <label v-if="kesintiForm.hesaplama_tipi !== 'sabit'" class="form-field">
+                  <span>Hesaplama Oranı (%) *</span>
+                  <input
+                    v-model.number="kesintiForm.oran"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="Örn: 5"
+                    required
+                  />
+                </label>
+              </div>
+
+              <!-- İşlem Tarihi & Kesinti Kanalı -->
+              <div class="form-grid">
+                <label class="form-field">
+                  <span>İşlem Tarihi</span>
+                  <input v-model="kesintiForm.tarih" type="date" required />
+                </label>
+
+                <div class="form-field">
+                  <span>Kesinti Kanalı</span>
+                  <div class="segmented-pills">
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.banka_matrahina_ekle == 1 }"
+                      @click="kesintiForm.banka_matrahina_ekle = 1"
+                    >
+                      Banka
+                    </button>
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      :class="{ 'seg-btn--active': kesintiForm.banka_matrahina_ekle == 0 }"
+                      @click="kesintiForm.banka_matrahina_ekle = 0"
+                    >
+                      Elden
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Açıklama -->
+              <label class="form-field">
+                <span>Açıklama / Not</span>
+                <textarea v-model.trim="kesintiForm.aciklama" rows="2" placeholder="Örn: Avans kesintisi, telefon borcu"></textarea>
+              </label>
+
+              <!-- Butonlar -->
+              <div class="modal-actions mt-3">
+                <button type="button" class="clay-btn clay-btn--secondary" @click="showKesintiModal = false">Vazgeç</button>
+                <button type="submit" class="clay-btn clay-btn--danger" :disabled="kesintiSaving">
+                  {{ kesintiSaving ? 'Kaydediliyor…' : (kesintiForm.id ? 'Güncelle' : 'Kaydet') }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- =================== MODAL: KESİNTİ SONLANDIR =================== -->
+        <div v-if="showKesintiSonlandirModal" class="clay-modal-backdrop" @click.self="showKesintiSonlandirModal = false">
+          <div class="clay-modal-sheet">
+            <header class="modal-sheet-header">
+              <h4>Sürekli Kesintiyi Sonlandır</h4>
+              <button type="button" class="close-btn" @click="showKesintiSonlandirModal = false"><X :size="18" /></button>
+            </header>
+
+            <form class="modal-sheet-body" @submit.prevent="submitSonlandirKesinti">
+              <p class="text-muted font-size-13 mb-3">
+                <strong>{{ kesintiSonlandirForm.parametre_adi }}</strong> için sürekli kesintiyi hangi tarihten itibaren sonlandırmak istiyorsunuz?
+              </p>
+
+              <label class="form-field">
+                <span>Bitiş Tarihi *</span>
+                <input v-model="kesintiSonlandirForm.bitis_donemi" type="date" required />
+              </label>
+
+              <div class="modal-actions mt-3">
+                <button type="button" class="clay-btn clay-btn--secondary" @click="showKesintiSonlandirModal = false">Vazgeç</button>
+                <button type="submit" class="clay-btn clay-btn--warning">Sonlandır</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
       <!-- DİĞER SEKMELER (Geliştirilecek diğer sekmeler için geçiş görünümü) -->
       <template v-else>
         <section class="section-capabilities">
@@ -1559,6 +3362,7 @@ onUnmounted(() => {
 .group-icon--amber { background: #d97706; }
 .group-icon--cyan { background: #0891b2; }
 .group-icon--purple { background: #7c3aed; }
+.group-icon--coral { background: #e11d48; }
 
 .group-titles h3 {
   margin: 0;
@@ -2298,6 +4102,14 @@ onUnmounted(() => {
   background: rgba(239, 68, 68, 0.1);
 }
 
+.copy-btn--amber {
+  color: #d97706;
+}
+
+.copy-btn--amber:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
 /* Modallar */
 .clay-modal-backdrop {
   position: fixed;
@@ -2376,5 +4188,501 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 10px;
+}
+
+/* ================= İzin ve Raporlar Bölüm Stilleri ================= */
+.izinler-section-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-card-gap, 16px);
+}
+
+.leave-entitlement-card {
+  padding: 18px;
+}
+
+.entitlement-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.metric-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 10px;
+  border-radius: var(--ds-radius-sm, 14px);
+  text-align: center;
+}
+
+.metric-box small {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.metric-box strong {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ds-ink);
+  line-height: 1.2;
+}
+
+.metric-box strong .unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ds-muted);
+}
+
+.metric-box .metric-subtext {
+  font-size: 10px;
+  color: var(--ds-muted);
+  font-weight: 600;
+}
+
+.metric-box--primary {
+  background: rgba(10, 132, 255, 0.08);
+  border: 1px solid rgba(10, 132, 255, 0.15);
+}
+.metric-box--primary small { color: #0a84ff; }
+
+.metric-box--coral {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+.metric-box--coral small { color: #ef4444; }
+
+.metric-box--emerald {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+.metric-box--emerald small { color: #10b981; }
+
+.metric-box--amber {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+}
+.metric-box--amber small { color: #d97706; }
+
+.leave-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leave-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-sm, 14px);
+  background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.05));
+  transition: transform 0.15s ease;
+}
+
+.leave-item-card--approved {
+  border-left: 3.5px solid #10b981;
+}
+
+.leave-item-card--pending {
+  border-left: 3.5px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.03);
+}
+
+.leave-item-card--rejected {
+  border-left: 3.5px solid #ef4444;
+  opacity: 0.85;
+}
+
+.leave-item-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.leave-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.leave-title-row strong {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ds-ink);
+}
+
+.leave-date-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.leave-date-row small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ds-muted);
+}
+
+.leave-days-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: var(--ds-primary, #0a84ff);
+  color: #fff;
+}
+
+.leave-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.leave-chip--dus {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.leave-desc-text {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ds-ink);
+  line-height: 1.4;
+}
+
+.leave-approvers-box {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--ds-border, rgba(0, 0, 0, 0.07));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.approver-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--ds-muted);
+}
+
+.leave-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-icon-btn {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.action-icon-btn:active {
+  transform: scale(0.92);
+}
+
+.action-icon-btn--approve {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+}
+
+.action-icon-btn--reject {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+}
+
+.entitlement-table-wrap {
+  border-radius: var(--ds-radius-sm, 14px);
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.08));
+  overflow: hidden;
+  background: var(--ds-surface);
+}
+
+.entitlement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.entitlement-table th,
+.entitlement-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ds-border, rgba(0, 0, 0, 0.05));
+  color: var(--ds-ink);
+}
+
+.entitlement-table th {
+  background: var(--ds-surface-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ds-muted);
+  text-transform: uppercase;
+}
+
+.entitlement-table .total-row td {
+  background: var(--ds-surface-subtle);
+  border-bottom: none;
+}
+
+/* ================= Ek Ödemeler ve Kesintiler Bölüm Stilleri ================= */
+.ek-odemeler-section-container,
+.kesintiler-section-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-card-gap, 16px);
+}
+
+.summary-bento-card {
+  padding: 18px;
+}
+
+.financial-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.financial-metrics-grid .metric-box {
+  padding: 10px 6px;
+  min-width: 0;
+}
+
+.financial-metrics-grid .metric-box strong.money-val,
+.financial-metrics-grid .metric-box strong {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
+.financial-metrics-grid .metric-box .metric-subtext {
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 360px) {
+  .financial-metrics-grid .metric-box strong.money-val,
+  .financial-metrics-grid .metric-box strong {
+    font-size: 12.5px;
+  }
+}
+
+.financial-tabs-wrap {
+  margin-bottom: 14px;
+}
+
+.financial-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.financial-item-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-sm, 14px);
+  background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.05));
+  transition: transform 0.15s ease;
+}
+
+.financial-item-card--surekli {
+  border-left: 3.5px solid #f59e0b;
+}
+
+.financial-item-card--tek-sefer {
+  border-left: 3.5px solid #0284c7;
+}
+
+.financial-item-card--taksitli {
+  border-left: 3.5px solid #a855f7;
+}
+
+.financial-item-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.financial-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.financial-title-row strong {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ds-ink);
+}
+
+.financial-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 3px 0;
+}
+
+.financial-amount-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.financial-amount-val {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.financial-sub-amount {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-muted);
+}
+
+.financial-calc-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.08));
+  color: var(--ds-muted);
+  white-space: nowrap;
+}
+
+.financial-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.financial-meta-row .meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ds-muted);
+  font-weight: 600;
+}
+
+.financial-meta-row .meta-item--icra {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.financial-meta-row .meta-item--muted {
+  color: var(--ds-muted);
+}
+
+.financial-desc-text {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--ds-muted);
+  line-height: 1.35;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.financial-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* Clay Badge Ek Renkleri */
+.clay-badge--secondary {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+}
+
+.clay-badge--warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.clay-badge--cyan,
+.clay-badge--blue {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0284c7;
+}
+
+/* Modallardaki Segmentli Seçimler */
+.segmented-pills {
+  display: flex;
+  background: var(--ds-surface-subtle, #f1f5f9);
+  padding: 3px;
+  border-radius: var(--ds-radius-pill, 999px);
+  gap: 3px;
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.06));
+}
+
+.seg-btn {
+  flex: 1;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: var(--ds-radius-pill, 999px);
+  border: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.seg-btn--active {
+  background: #ffffff;
+  color: var(--ds-ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.text-emerald {
+  color: #059669 !important;
+}
+
+.text-coral {
+  color: #dc2626 !important;
 }
 </style>

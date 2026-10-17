@@ -2720,6 +2720,156 @@
   margin-top: 8px;
 }
 
+/* ==========================================================================
+   MERKEZİ EVRAK VE FORM BİLEŞENLERİ (EVRAK DESIGN SYSTEM)
+   ========================================================================== */
+
+.evrak-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evrak-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .evrak-form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.evrak-form-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.4px;
+}
+
+.evrak-input,
+.evrak-select,
+.evrak-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--ds-radius-sm, 14px);
+  font: 500 14px var(--ds-font-main);
+  color: var(--ds-ink);
+  outline: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.evrak-input:focus,
+.evrak-select:focus,
+.evrak-textarea:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.evrak-input:disabled,
+.evrak-select:disabled,
+.evrak-textarea:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.evrak-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.evrak-preset-chip {
+  padding: 6px 12px;
+  border-radius: var(--ds-radius-pill, 9999px);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.evrak-preset-chip:active {
+  transform: scale(0.96);
+}
+
+.evrak-preset-chip.is-selected {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+}
+
+.evrak-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--ds-radius-sm, 14px);
+  font: 700 13px var(--ds-font-main);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.evrak-btn:active {
+  transform: scale(0.97);
+}
+
+.evrak-btn:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.evrak-btn--lg {
+  height: 48px;
+  font-size: 14px;
+}
+
+.evrak-btn--primary {
+  background: var(--ds-primary, #181c24);
+  color: #ffffff;
+}
+
+.evrak-btn--secondary {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.evrak-btn--outline {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.evrak-btn--emerald {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.evrak-btn--amber {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.evrak-btn--danger {
+  background: #ef4444;
+  color: #ffffff;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
