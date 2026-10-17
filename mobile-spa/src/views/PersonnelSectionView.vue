@@ -4,11 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   Activity, AlertCircle, ArrowLeft, BadgeDollarSign, Ban, Banknote,
   BriefcaseBusiness, Building2, CalendarCheck, CalendarDays, Car, Check,
-  ChevronRight, Clock, Coins, Copy, CreditCard, Crown, ExternalLink, Eye,
-  EyeOff, FileText, Gavel, Heart, History, IdCard, KeyRound, Mail, MapPin,
-  MinusCircle, PackageCheck, Pencil, Percent, Phone, Plus, Receipt,
-  RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Smartphone,
-  Trash2, UserRound, UserRoundCheck, Wallet, X
+  ChevronDown, ChevronRight, ChevronUp, Clock, Coins, Copy, CreditCard, Crown,
+  ExternalLink, Eye, EyeOff, FileText, Gavel, Heart, History, IdCard, KeyRound,
+  Mail, MapPin, MinusCircle, PackageCheck, Pencil, Percent, Phone, Plus,
+  Receipt, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Smartphone,
+  Trash2, TrendingDown, TrendingUp, UserRound, UserRoundCheck, Wallet, X
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 import { personnelApi } from '../services/personnel.js'
@@ -271,9 +271,35 @@ const ekOdemeOzet = ref({
 const gelirParametreleri = ref([])
 const bordroDonemleri = ref([])
 const ekOdemeTab = ref('all')
+const ekOdemeDonemFilter = ref('all')
 const showEkOdemeModal = ref(false)
 const showEkOdemeSonlandirModal = ref(false)
 const ekOdemeSaving = ref(false)
+
+// Puantaj Grubu Açılır Detay Durumu
+const expandedPuantajGroups = ref({})
+
+function togglePuantajDetails(groupId) {
+  expandedPuantajGroups.value[groupId] = !expandedPuantajGroups.value[groupId]
+}
+
+function cleanPuantajDescription(desc) {
+  if (!desc) return ''
+  return desc.replace(/^\[Puantaj\]\s*/i, '').trim()
+}
+
+// Oranlar (Obsidian Dağılım Kartı)
+const ekOdemeTekSeferRatio = computed(() => {
+  const total = Number(ekOdemeOzet.value.toplam_tutar) || 0
+  if (total <= 0) return 50
+  return Math.round((Number(ekOdemeOzet.value.tek_sefer_tutar) / total) * 100)
+})
+
+const ekOdemeSurekliRatio = computed(() => {
+  const total = Number(ekOdemeOzet.value.toplam_tutar) || 0
+  if (total <= 0) return 50
+  return Math.max(0, 100 - ekOdemeTekSeferRatio.value)
+})
 
 const ekOdemeForm = reactive({
   id: 0,
@@ -299,13 +325,73 @@ const ekOdemeSonlandirForm = reactive({
 })
 
 const filteredEkOdemeler = computed(() => {
+  let list = ekOdemeler.value
   if (ekOdemeTab.value === 'tek_sefer') {
-    return ekOdemeler.value.filter(k => k.tekrar_tipi === 'tek_sefer')
+    list = list.filter(k => k.tekrar_tipi === 'tek_sefer')
+  } else if (ekOdemeTab.value === 'surekli') {
+    list = list.filter(k => k.tekrar_tipi === 'surekli')
   }
-  if (ekOdemeTab.value === 'surekli') {
-    return ekOdemeler.value.filter(k => k.tekrar_tipi === 'surekli')
+
+  if (ekOdemeDonemFilter.value !== 'all') {
+    const selDonem = bordroDonemleri.value.find(d => String(d.id) === String(ekOdemeDonemFilter.value))
+    if (selDonem) {
+      list = list.filter(k => {
+        if (k.tekrar_tipi === 'tek_sefer') {
+          return Number(k.donem_id) === Number(selDonem.id) || (k.donem_adi && k.donem_adi.toUpperCase() === selDonem.donem_adi.toUpperCase())
+        }
+        if (k.tekrar_tipi === 'surekli') {
+          const dBas = selDonem.baslangic_tarihi || '2000-01-01'
+          const dBit = selDonem.bitis_tarihi || '2099-12-31'
+          const kBas = k.baslangic_donemi || '2000-01-01'
+          const kBit = k.bitis_donemi || '2099-12-31'
+          return kBas <= dBit && kBit >= dBas
+        }
+        return true
+      })
+    }
   }
-  return ekOdemeler.value
+
+  return list
+})
+
+// Puantaj primlerini dönem bazlı tek kart haline getiren liste
+const displayEkOdemeler = computed(() => {
+  const regularItems = []
+  const puantajGroups = {}
+
+  for (const item of filteredEkOdemeler.value) {
+    const isPuantaj = item.is_puantaj || (item.aciklama && item.aciklama.includes('[Puantaj]'))
+    if (isPuantaj) {
+      const key = item.donem_id ? `donem_${item.donem_id}` : (item.donem_adi || 'belirtilmemis')
+      if (!puantajGroups[key]) {
+        puantajGroups[key] = {
+          id: `puantaj_${key}`,
+          is_puantaj_group: true,
+          parametre_adi: 'Puantaj Primleri',
+          tur: 'prim',
+          tekrar_tipi: 'tek_sefer',
+          hesaplama_tipi: 'sabit',
+          tutar: 0,
+          resmi_tutar: 0,
+          donem_id: item.donem_id,
+          donem_adi: item.donem_adi || 'Dönem Belirtilmemiş',
+          kapali_mi: item.kapali_mi,
+          banka_matrahina_ekle: item.banka_matrahina_ekle,
+          tarih: item.tarih,
+          aktif: 1,
+          sub_items: [],
+        }
+      }
+      puantajGroups[key].tutar += Number(item.tutar) || 0
+      puantajGroups[key].resmi_tutar += Number(item.resmi_tutar) || 0
+      if (item.kapali_mi) puantajGroups[key].kapali_mi = 1
+      puantajGroups[key].sub_items.push(item)
+    } else {
+      regularItems.push(item)
+    }
+  }
+
+  return [...regularItems, ...Object.values(puantajGroups)]
 })
 
 // ================= KESİNTİLER DURUMLARI =================
@@ -324,9 +410,29 @@ const kesintiOzet = ref({
 const kesintiParametreleri = ref([])
 const icraDosyalari = ref([])
 const kesintiTab = ref('all')
+const kesintiDonemFilter = ref('all')
 const showKesintiModal = ref(false)
 const showKesintiSonlandirModal = ref(false)
 const kesintiSaving = ref(false)
+
+// Kesinti Oranları (Obsidian Dağılım Kartı)
+const kesintiTekSeferRatio = computed(() => {
+  const total = Number(kesintiOzet.value.toplam_tutar) || 0
+  if (total <= 0) return 33
+  return Math.round((Number(kesintiOzet.value.tek_sefer_tutar) / total) * 100)
+})
+
+const kesintiTaksitliRatio = computed(() => {
+  const total = Number(kesintiOzet.value.toplam_tutar) || 0
+  if (total <= 0) return 33
+  return Math.round((Number(kesintiOzet.value.taksitli_tutar) / total) * 100)
+})
+
+const kesintiSurekliRatio = computed(() => {
+  const total = Number(kesintiOzet.value.toplam_tutar) || 0
+  if (total <= 0) return 34
+  return Math.max(0, 100 - (kesintiTekSeferRatio.value + kesintiTaksitliRatio.value))
+})
 
 const kesintiForm = reactive({
   id: 0,
@@ -353,16 +459,35 @@ const kesintiSonlandirForm = reactive({
 })
 
 const filteredKesintiler = computed(() => {
+  let list = kesintiler.value
   if (kesintiTab.value === 'tek_sefer') {
-    return kesintiler.value.filter(k => k.tekrar_tipi === 'tek_sefer')
+    list = list.filter(k => k.tekrar_tipi === 'tek_sefer')
+  } else if (kesintiTab.value === 'taksitli') {
+    list = list.filter(k => k.tekrar_tipi === 'taksitli')
+  } else if (kesintiTab.value === 'surekli') {
+    list = list.filter(k => k.tekrar_tipi === 'surekli')
   }
-  if (kesintiTab.value === 'taksitli') {
-    return kesintiler.value.filter(k => k.tekrar_tipi === 'taksitli')
+
+  if (kesintiDonemFilter.value !== 'all') {
+    const selDonem = bordroDonemleri.value.find(d => String(d.id) === String(kesintiDonemFilter.value))
+    if (selDonem) {
+      list = list.filter(k => {
+        if (k.tekrar_tipi === 'tek_sefer' || k.tekrar_tipi === 'taksitli') {
+          return Number(k.donem_id) === Number(selDonem.id) || (k.donem_adi && k.donem_adi.toUpperCase() === selDonem.donem_adi.toUpperCase())
+        }
+        if (k.tekrar_tipi === 'surekli') {
+          const dBas = selDonem.baslangic_tarihi || '2000-01-01'
+          const dBit = selDonem.bitis_tarihi || '2099-12-31'
+          const kBas = k.baslangic_donemi || '2000-01-01'
+          const kBit = k.bitis_donemi || '2099-12-31'
+          return kBas <= dBit && kBit >= dBas
+        }
+        return true
+      })
+    }
   }
-  if (kesintiTab.value === 'surekli') {
-    return kesintiler.value.filter(k => k.tekrar_tipi === 'surekli')
-  }
-  return kesintiler.value
+
+  return list
 })
 
 function formatMoney(amount) {

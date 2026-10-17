@@ -17,7 +17,8 @@ createApp(App).use(router).mount('#app')
 // Service Worker Kaydı (Push bildirimleri ve çevrimdışı kabuk desteği)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(() => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      reg.update()
       if (auth.state.authenticated) {
         initNotificationsWatcher()
       }
