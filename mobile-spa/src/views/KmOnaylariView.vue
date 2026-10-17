@@ -139,8 +139,21 @@ function formatTime(dateTimeStr) {
 
 function resolveImageUrl(path) {
   if (!path) return ''
-  if (path.startsWith('http') || path.startsWith('/')) return path
+  if (path.startsWith('http')) return path
+  if (path.startsWith('/api/')) return path
+  if (path.startsWith('uploads/km_bildirim') || path.includes('km_bildirim')) {
+    return `/api/km-onaylari.php?action=foto&file=${encodeURIComponent(path)}`
+  }
+  if (path.startsWith('/')) return path
   return `/${path}`
+}
+
+function getKmPhotoUrl(report) {
+  if (!report) return ''
+  if (report.resim_url) return report.resim_url
+  if (report.id) return kmApi.getPhotoUrl(report.id)
+  if (report.resim_yolu) return resolveImageUrl(report.resim_yolu)
+  return ''
 }
 
 function getInitials(name) {
@@ -534,9 +547,10 @@ async function handleBulkReminder() {
 
 // 8. Resim Lightbox Aç
 function openLightbox(report) {
-  if (!report.resim_yolu) return
+  const imgUrl = getKmPhotoUrl(report)
+  if (!imgUrl) return
   lightboxData.value = {
-    imageUrl: resolveImageUrl(report.resim_yolu),
+    imageUrl: imgUrl,
     plaka: report.plaka,
     km: formatNumber(report.bitis_km),
     personel: report.personel_adi,
@@ -842,8 +856,8 @@ onBeforeUnmount(() => {
           <div class="project-card-body">
             <div class="project-avatar project-avatar--sm">
               <img
-                v-if="item.personel_resim"
-                :src="resolveImageUrl(item.personel_resim)"
+                v-if="item.personel_resim_url || item.personel_resim"
+                :src="item.personel_resim_url || resolveImageUrl(item.personel_resim)"
                 :alt="item.personel_adi"
                 class="project-avatar-img"
                 @error="$event.target.style.display = 'none'"
@@ -931,8 +945,8 @@ onBeforeUnmount(() => {
             <div class="km-personel-info">
               <div class="project-avatar project-avatar--sm">
                 <img
-                  v-if="r.personel_resim"
-                  :src="resolveImageUrl(r.personel_resim)"
+                  v-if="r.personel_resim_url || r.personel_resim"
+                  :src="r.personel_resim_url || resolveImageUrl(r.personel_resim)"
                   :alt="r.personel_adi"
                   class="avatar-img"
                   @error="$event.target.style.display = 'none'"
@@ -962,7 +976,7 @@ onBeforeUnmount(() => {
 
               <!-- Mini Fotoğraf Thumbnail (Lightbox Açıcı) -->
               <div
-                v-if="r.resim_yolu"
+                v-if="r.resim_url || r.resim_yolu"
                 class="km-thumb-preview"
                 role="button"
                 tabindex="0"
@@ -970,7 +984,7 @@ onBeforeUnmount(() => {
                 @click.stop="openLightbox(r)"
               >
                 <img
-                  :src="resolveImageUrl(r.resim_yolu)"
+                  :src="getKmPhotoUrl(r)"
                   alt="KM Göstergesi"
                   loading="lazy"
                   class="km-thumb-img"
@@ -1032,7 +1046,7 @@ onBeforeUnmount(() => {
 
                 <!-- Mini AI Doğrulama Butonu -->
                 <button
-                  v-if="r.resim_yolu"
+                  v-if="r.resim_url || r.resim_yolu"
                   type="button"
                   class="btn-km-subtle btn-km-subtle--ai"
                   :disabled="actionLoading"

@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-10-17 — Mobil SPA: KM Onayları & Kaçak Kontrol Fotoğraf Görüntüleme ve SW v22 Güncellemesi
+- [x] **Kök Neden Tespiti**:
+  - Mobil SPA'nın bağımsız kök dizininde (`mobile-spa/dist`) `uploads` bulunmaması ve `uploads/km_bildirim/.htaccess` koruması nedeniyle ham dosya yollarının 404/403 vermesi tespit edildi.
+  - İhbar modülünün dinamik stream endpoint'i (`/api/ihbar.php?action=foto`) gibi KM Onayları ve Kaçak için de dinamik stream mimarisi kuruldu.
+- [x] **Backend API ve Servisler**:
+  - `mobile-spa/public/api/km-onaylari.php`: `resolveKmBildirimId()` eklendi; `action === 'foto'` uç noktası (oturum, yetki, firma, traversal koruması, `uploads/km_bildirim/` dosya adı ve uzantı fallback'i, `MedyaServis::gonder`) uygulandı; `action === 'list'` çıktısına `token`, `resim_url` ve `personel_resim_url` eklendi.
+  - `mobile-spa/public/api/kacak.php`: `action === 'foto'` ve `action === 'download_zip'` eklendi; `detail` ve `photos` çıktılarında fotoğraflar ve ZIP linkleri API endpoint'lerine bağlandı.
+  - `mobile-spa/public/api/personnel-photo.php`: `arac_takip_yonetim` ve `onaylikm_duzenle` yetkileri için erişim sağlandı; hem şifreli token hem de raw ID desteği eklendi.
+- [x] **Frontend Servisleri ve Arayüz**:
+  - `KmOnaylariView.vue`: `getKmPhotoUrl(report)` fonksiyonu tanımlandı; mini thumbnail, AI butonu ve Lightbox resim açıcı bu fonksiyona bağlandı.
+  - `km-onaylari.js` & `kacak.js`: `getPhotoUrl` ve `getZipUrl` metotları güncellendi.
+- [x] **Derleme & PWA Cache Busting**:
+  - `sw.js` versiyonu `ersan-mobile-shell-v22`'ye yükseltildi.
+  - `npm run build` ile üretim paketi (`dist/assets/index-pj3RvPz-.js`, `dist/assets/index-BBY41j-W.css`) 0 hata ile derlendi.
+  - `dist/api/` ve `dist/sw.js` dosyaları tam eşitlendi.
+
+- [x] Kullanıcının talepleri doğrultusunda takvim taşması ve sheet başlığı kusurları giderildi:
+  - **Aylık Takvim Günlerinin Dışarı Taşması Engellendi**: Grid yapısı `repeat(7, minmax(0, 1fr))` mimarisine geçirildi, kart içi yatay padding optimize edildi ve hücrelere `min-width: 0; aspect-ratio: 1 / 1.15; overflow: hidden;` verilerek 7 sütunun en dar mobil ekranlarda dahi kutu sınırları içinde kalması sağlandı.
+  - **Sheet Başlığı Bütünleştirildi (Köşeli Ayrı Div Kaldırıldı)**: Ayrı köşeli basamak oluşturan div yapısı kaldırılarak; handle, personel avatarı, adı ve kapat butonu doğrudan sheet'in 32px kavisli üst başlığıyla (`border-radius: 32px 32px 0 0`) tek parça olarak birleştirildi.
+  - **Derleme**: Vite üretimi (`npm run build`) başarıyla tamamlandı.
+
 ## 2026-10-17 — Mobil SPA Kasa Takibi: Cari Takip Tasarım Standardı & Obsidian Bento Dönüşümü
 - [x] **Hero Obsidian Bento Kartı & Çift Yönlü Segmentli Bar (`KasaView.vue`)**:
   - Cari Takip (`CariView.vue`) ile birebir uyumlu koyu zeminli (`#191d24`, 28px kavisli köşe, `var(--ds-shadow-bento-dark)`) Kasa İşlem Hacmi kartı geliştirildi.
@@ -90,20 +111,19 @@
   - Ana cari listesindeki işlem ekleme modalı da aynı modern bileşen ve dropzone ile güncellendi.
 - [x] `npm run build` ile 0 hata derlendi.
 
-## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Bento UI / Personel Standardı Dönüşümü
-- [x] **Kart İçi Kart Karmaşasının Kaldırılması**:
-  - Dış beyaz kart (`info-group-card`) ve gereksiz ikinci filtre çubukları kaldırıldı; liste canvas üzerinde bağımsız bento kartlarına dönüştürüldü.
-- [x] **Hero Bento Dağılım Kartı (`PersonnelView.vue` Standardı)**:
-  - "Personel Dağılımı" hero kartındaki mimariye birebir sadık kalınarak: `bento-head` (başlık + mini butonlar), `.segmented-track` oransal dağılım çubuğu ve interaktif `.personnel-stat-pills` (tıklandığında `#191d24` aktif koyu zemin alan filtre hapları).
-- [x] **Canvas Üzerinde Yüzen Bölüm Başlığı (`PersonnelDetailView.vue` Standardı)**:
-  - `.clay-section-head` (sol tarafta `h2` başlık ve `.clay-pill-tag` kayıt adedi, sağ tarafta `.clay-btn.clay-btn--sm.clay-btn--primary` ekleme butonu).
-- [x] **Bağımsız Beyaz Bento Liste Kartları (`.financial-card`)**:
-  - Tıpkı `personnel-card` gibi bağımsız 20px kavisli, saf beyaz zeminli ve yumuşak gölgeli bento kartları:
-    - Sol: 44x44px 14px kavisli renkli ikon rozeti ve aktif/pasif durum noktası (`.dot-online` / `.dot-offline`).
-    - Orta: Kalın başlık, `clay-badge` rozetleri, büyük ve okunaklı para tutarı (`.financial-money-amount`), hesaplama tipi çipi, dönem ve tarih hapları (`.financial-date-pill`) ve açıklama.
-    - Sağ: Dikey aksiyon butonları (`.action-pill-btn`).
+## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Dağılım Kartı (Obsidian Minimal), Dönem Filtresi & Puantaj Kart Gruplaması
+- [x] **Cari Takip Tarzı Minimal Obsidian Dağılım Kartı**:
+  - `ek_odemeler` ve `kesintiler` sayfalarındaki özet kartları `CariView.vue` tarzı şık ve koyu obsidian (`#191d24`) bento kartı yapısına kavuşturuldu.
+  - Kompakt dolgular (16px), 24px kalın toplam tutar, banka/elden döküm satırı, yüzdeli segmentli ilerleme çubuğu ve tıklanabilir filtre kutuları (Ek Ödemeler için 3'lü grid, Kesintiler için 2x2 grid) uygulandı.
+- [x] **Dönem Bazlı Filtre Çubuğu (`.period-filter-strip`)**:
+  - Hem Ek Ödemeler hem de Kesintiler sayfalarına açık/kapalı tüm bordro dönemlerini içeren native açılır liste ve tek tıkla temizleme butonu eklendi.
+  - Tek seferlik ve taksitli hareketler döneme göre, sürekli hareketler ise dönem geçerlilik aralığı kesişimine göre dinamik olarak filtrelenir.
+- [x] **Puantaj Primlerinin Dönem Bazlı Tek Kart Halinde Gruplanması**:
+  - Aynı bordro dönemine ait olan ve `[Puantaj]` kaynaklı üretilen tüm prim hareketleri, alt alta ayrı kartlar yerine **o döneme ait tek bir "Puantaj Primleri" kartı** (`.financial-card--puantaj`) altında toplandı.
+  - Kart üzerinde toplam tutar, kalem sayısı rozeti (`X Kalem`) ve dönem bilgisi sunuldu; "Kalem Dökümünü İncele" butonuyla açılan akordiyon çekmecesi ile alt kalemlerin detaylı dökümü listelendi.
+  - `App/Model/MobilePersonelModel.php` içinde `is_puantaj` bayrağı eklendi.
 - [x] **Vite Derleme & Doğrulama**:
-  - `npm run build` ile 0 hata derlendi (`dist` güncellendi).
+  - `npm run build` ile 0 hata derlendi (`dist` başarıyla güncellendi).
 
 ## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Olarak Ayrılması & Tam Yönetimi
 - [x] **Menü ve Modül Ayrımı (`PersonnelDetailView.vue`)**:

@@ -2343,88 +2343,115 @@ onUnmounted(() => {
       <!-- 6. EK ÖDEMELER SEKME İÇERİĞİ (Masaüstü Standartlarında Tam Yönetim)     -->
       <!-- ========================================================================= -->
       <div v-else-if="route.params.section === 'ek_odemeler'" class="ek-odemeler-section-container">
-        <!-- 1. HERO BENTO KART: EK ÖDEME DAĞILIMI (PersonnelView Standartlarında) -->
-        <section class="bento-card bento-card--white">
-          <header class="bento-head">
-            <div class="bento-head-title">
-              <h3>Ek Ödeme Dağılımı</h3>
+        <!-- 1. HERO OBSIDIAN BENTO KART: EK ÖDEME DAĞILIMI (Cari Takip Tarzı Minimal) -->
+        <article class="cari-hero-volume-card">
+          <header class="cari-hero-volume-card__header">
+            <div class="cari-hero-volume-card__title">
+              <span class="cari-hero-icon-box" style="color: #10b981;">
+                <Coins :size="16" />
+              </span>
+              <div>
+                <span class="cari-hero-tag">EK ÖDEME DAĞILIMI</span>
+                <span class="cari-hero-subtitle">Ek Kazanç, Prim & Yardım Analizi</span>
+              </div>
             </div>
-            <div class="bento-head-icons">
-              <span class="bento-mini-btn" title="Ek Ödemeler"><Coins :size="14" /></span>
-              <button
-                type="button"
-                class="bento-mini-btn"
-                title="Yenile"
-                :class="{ 'is-spinning': loading }"
-                @click="load"
-              >
-                <RefreshCw :size="13" />
-              </button>
-            </div>
+            <button
+              type="button"
+              class="cari-hero-refresh-btn"
+              title="Yenile"
+              :class="{ 'is-spinning': loading }"
+              @click="load"
+            >
+              <RefreshCw :size="13" />
+            </button>
           </header>
 
+          <div class="cari-hero-volume-main">
+            <strong class="cari-hero-volume-amount">{{ formatMoney(ekOdemeOzet.toplam_tutar) }}</strong>
+            <div class="cari-hero-balance-row">
+              <span class="cari-hero-balance-label">Ödeme Kanalı:</span>
+              <span class="text-emerald fw-bold">Banka: {{ formatMoney(ekOdemeOzet.banka_tutar) }}</span>
+              <span class="text-white-50">·</span>
+              <span class="text-sky fw-bold">Elden: {{ formatMoney(ekOdemeOzet.elden_tutar) }}</span>
+            </div>
+          </div>
+
           <!-- Segmentli İlerleme Çubuğu -->
-          <div class="segmented-track">
-            <span
-              class="seg-pill seg-pill--emerald"
-              :style="{ width: `${ekOdemeOzet.toplam_tutar ? Math.max(6, Math.round((ekOdemeOzet.surekli_tutar / ekOdemeOzet.toplam_tutar) * 100)) : 50}%` }"
-              title="Sürekli"
-            ></span>
-            <span
-              class="seg-pill seg-pill--blue"
-              :style="{ width: `${ekOdemeOzet.toplam_tutar ? Math.max(6, Math.round((ekOdemeOzet.tek_sefer_tutar / ekOdemeOzet.toplam_tutar) * 100)) : 50}%` }"
-              title="Tek Seferlik"
-            ></span>
+          <div class="cari-chart-container">
+            <div class="cari-segmented-track">
+              <div
+                class="cari-seg-fill cari-seg-fill--borc"
+                :style="{ width: `${ekOdemeTekSeferRatio}%` }"
+                :title="`Tek Sefer: %${ekOdemeTekSeferRatio}`"
+              >
+                <span v-if="ekOdemeTekSeferRatio >= 15" class="cari-seg-label">%{{ ekOdemeTekSeferRatio }}</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--alacak"
+                :style="{ width: `${ekOdemeSurekliRatio}%` }"
+                :title="`Sürekli: %${ekOdemeSurekliRatio}`"
+              >
+                <span v-if="ekOdemeSurekliRatio >= 15" class="cari-seg-label">%{{ ekOdemeSurekliRatio }}</span>
+              </div>
+            </div>
+
+            <!-- Tıklanabilir Filtre / Lejant Kutuları (3'lü Grid) -->
+            <div class="cari-chart-legend cari-chart-legend--3col">
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': ekOdemeTab === 'all' }"
+                @click="ekOdemeTab = 'all'"
+              >
+                <span class="cari-legend-dot" style="background: #ffffff; box-shadow: 0 0 8px rgba(255,255,255,0.6);"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Tümü</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(ekOdemeOzet.toplam_tutar) }}</strong>
+                  <small class="cari-legend-count">{{ displayEkOdemeler.length }} kayıt</small>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': ekOdemeTab === 'tek_sefer' }"
+                @click="ekOdemeTab = 'tek_sefer'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--borc"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Tek Sefer</span>
+                    <b class="cari-legend-pct text-sky">%{{ ekOdemeTekSeferRatio }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(ekOdemeOzet.tek_sefer_tutar) }}</strong>
+                  <small class="cari-legend-count">{{ ekOdemeOzet.tek_sefer_adet }} adet</small>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': ekOdemeTab === 'surekli' }"
+                @click="ekOdemeTab = 'surekli'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--alacak"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Sürekli</span>
+                    <b class="cari-legend-pct text-emerald">%{{ ekOdemeSurekliRatio }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(ekOdemeOzet.surekli_tutar) }}</strong>
+                  <small class="cari-legend-count">{{ ekOdemeOzet.surekli_adet }} adet</small>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <!-- 3'lü Durum / Filtre Seçici Hapları (Personel Dağılımı ile Birebir Aynı) -->
-          <div class="personnel-stat-pills">
-            <button
-              type="button"
-              class="stat-pill-btn"
-              :class="{ 'is-active': ekOdemeTab === 'all' }"
-              @click="ekOdemeTab = 'all'"
-            >
-              <span class="pill-dot dot-active"></span>
-              <div class="stat-pill-copy">
-                <strong>{{ formatMoney(ekOdemeOzet.toplam_tutar) }}</strong>
-                <small>Tümü ({{ ekOdemeler.length }})</small>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              class="stat-pill-btn"
-              :class="{ 'is-active': ekOdemeTab === 'tek_sefer' }"
-              @click="ekOdemeTab = 'tek_sefer'"
-            >
-              <span class="pill-dot dot-all"></span>
-              <div class="stat-pill-copy">
-                <strong>{{ formatMoney(ekOdemeOzet.tek_sefer_tutar) }}</strong>
-                <small>Tek Sefer ({{ ekOdemeOzet.tek_sefer_adet }})</small>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              class="stat-pill-btn"
-              :class="{ 'is-active': ekOdemeTab === 'surekli' }"
-              @click="ekOdemeTab = 'surekli'"
-            >
-              <span class="pill-dot dot-amber"></span>
-              <div class="stat-pill-copy">
-                <strong>{{ formatMoney(ekOdemeOzet.surekli_tutar) }}</strong>
-                <small>Sürekli ({{ ekOdemeOzet.surekli_adet }})</small>
-              </div>
-            </button>
-          </div>
-        </section>
+        </article>
 
         <!-- 2. BÖLÜM BAŞLIĞI (Canvas Üzerinde Yüzen - PersonnelDetailView Standardı) -->
         <div class="clay-section-head">
           <div class="clay-section-head-left">
             <h2>Ek Ödeme Hareketleri</h2>
-            <span class="clay-pill-tag">{{ filteredEkOdemeler.length }} Kayıt</span>
+            <span class="clay-pill-tag">{{ displayEkOdemeler.length }} Kayıt</span>
           </div>
           <button
             v-if="canEdit"
@@ -2437,112 +2464,206 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <!-- Boş Durum (PersonnelView clay-state-card Standardı) -->
-        <div v-if="!filteredEkOdemeler.length" class="clay-state-card">
-          <Coins :size="28" />
-          <strong>Kayıtlı Ek Ödeme Bulunamadı</strong>
-          <p>Bu filtrede veya personele ait kayıtlı bir ek ödeme hareketi bulunmuyor.</p>
+        <!-- 3. DÖNEM BAZLI FİLTRE ÇUBUĞU -->
+        <div class="period-filter-strip">
+          <div class="period-select-wrap">
+            <CalendarDays :size="14" class="period-select-icon" />
+            <select v-model="ekOdemeDonemFilter" class="period-select-input">
+              <option value="all">Tüm Dönemler</option>
+              <option
+                v-for="d in bordroDonemleri"
+                :key="d.id"
+                :value="d.id"
+              >
+                {{ d.donem_adi }} {{ d.kapali_mi ? '(Kapalı)' : '(Açık)' }}
+              </option>
+            </select>
+            <ChevronDown :size="14" class="period-select-arrow" />
+          </div>
+          <button
+            v-if="ekOdemeDonemFilter !== 'all'"
+            type="button"
+            class="period-clear-btn"
+            title="Dönem Filtresini Temizle"
+            @click="ekOdemeDonemFilter = 'all'"
+          >
+            <X :size="13" />
+            <span>Temizle</span>
+          </button>
         </div>
 
-        <!-- 3. EK ÖDEME LİSTE KARTLARI (Canvas Üzerinde Bağımsız Beyaz Bento Kartları - PersonnelView Standardı) -->
-        <div v-else class="financial-cards-list">
-          <article
-            v-for="item in filteredEkOdemeler"
-            :key="item.id"
-            class="financial-card"
-          >
-            <div
-              class="financial-avatar-wrap"
-              :class="item.tekrar_tipi === 'surekli' ? 'avatar-amber' : 'avatar-blue'"
-            >
-              <BadgeDollarSign v-if="item.tekrar_tipi === 'surekli'" :size="20" />
-              <Coins v-else :size="20" />
-              <i :class="item.aktif ? 'dot-online' : 'dot-offline'"></i>
-            </div>
+        <!-- Boş Durum (PersonnelView clay-state-card Standardı) -->
+        <div v-if="!displayEkOdemeler.length" class="clay-state-card">
+          <Coins :size="28" />
+          <strong>Kayıtlı Ek Ödeme Bulunamadı</strong>
+          <p>Bu filtre veya dönemde personele ait kayıtlı bir ek ödeme hareketi bulunmuyor.</p>
+        </div>
 
-            <div class="financial-info">
-              <div class="financial-head-row">
-                <strong class="financial-name">{{ item.parametre_adi }}</strong>
-                <div class="financial-badge-group">
-                  <span
-                    class="clay-badge"
-                    :class="item.tekrar_tipi === 'surekli' ? 'clay-badge--amber' : 'clay-badge--blue'"
-                  >
-                    {{ item.tekrar_tipi === 'surekli' ? 'Sürekli' : 'Tek Sefer' }}
+        <!-- 4. EK ÖDEME LİSTE KARTLARI -->
+        <div v-else class="financial-cards-list">
+          <template v-for="item in displayEkOdemeler" :key="item.id">
+            <!-- 4.1. PUANTAJ PRİMLERİ GRUP KARTI (Dönem Bazlı Tek Kart) -->
+            <article
+              v-if="item.is_puantaj_group"
+              class="financial-card financial-card--puantaj"
+            >
+              <div class="financial-avatar-wrap avatar-blue">
+                <Coins :size="20" />
+                <i class="dot-online"></i>
+              </div>
+
+              <div class="financial-info">
+                <div class="financial-head-row">
+                  <strong class="financial-name">Puantaj Primleri</strong>
+                  <div class="financial-badge-group">
+                    <span class="clay-badge clay-badge--blue">Tek Sefer</span>
+                    <span class="clay-badge clay-badge--emerald">Banka</span>
+                    <span class="clay-badge clay-badge--primary">{{ item.sub_items.length }} Kalem</span>
+                    <span v-if="item.kapali_mi" class="clay-badge clay-badge--secondary">Kapalı</span>
+                  </div>
+                </div>
+
+                <div class="financial-money-row">
+                  <span class="financial-money-amount text-emerald">{{ formatMoney(item.tutar) }}</span>
+                  <span class="financial-chip-badge">Puantaj Hakedişi</span>
+                </div>
+
+                <div class="financial-date-row">
+                  <span class="financial-date-pill">
+                    <CalendarDays :size="12" />
+                    {{ item.donem_adi }}
                   </span>
-                  <span
-                    class="clay-badge"
-                    :class="item.banka_matrahina_ekle ? 'clay-badge--emerald' : 'clay-badge--warning'"
-                  >
-                    {{ item.banka_matrahina_ekle ? 'Banka' : 'Elden' }}
-                  </span>
-                  <span v-if="item.kapali_mi" class="clay-badge clay-badge--secondary">
-                    Kapalı
+                  <span class="financial-date-pill text-muted">
+                    <History :size="12" />
+                    {{ item.sub_items.length }} Kalem Puantaj
                   </span>
                 </div>
+
+                <!-- Açılır Puantaj Döküm Butonu -->
+                <button
+                  type="button"
+                  class="puantaj-drawer-toggle"
+                  @click="togglePuantajDetails(item.id)"
+                >
+                  <component :is="expandedPuantajGroups[item.id] ? ChevronUp : ChevronDown" :size="13" />
+                  <span>{{ expandedPuantajGroups[item.id] ? 'Kalemleri Gizle' : 'Kalem Dökümünü İncele' }} ({{ item.sub_items.length }})</span>
+                </button>
+
+                <!-- Açılır Liste Dökümü -->
+                <div v-if="expandedPuantajGroups[item.id]" class="puantaj-sub-drawer">
+                  <div
+                    v-for="sub in item.sub_items"
+                    :key="sub.id"
+                    class="puantaj-sub-row"
+                  >
+                    <div class="puantaj-sub-left">
+                      <span class="puantaj-sub-bullet"></span>
+                      <span class="puantaj-sub-title">{{ cleanPuantajDescription(sub.aciklama) }}</span>
+                    </div>
+                    <strong class="puantaj-sub-amount text-emerald">{{ formatMoney(sub.tutar) }}</strong>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 4.2. STANDART EK ÖDEME KARTI -->
+            <article
+              v-else
+              class="financial-card"
+            >
+              <div
+                class="financial-avatar-wrap"
+                :class="item.tekrar_tipi === 'surekli' ? 'avatar-amber' : 'avatar-blue'"
+              >
+                <BadgeDollarSign v-if="item.tekrar_tipi === 'surekli'" :size="20" />
+                <Coins v-else :size="20" />
+                <i :class="item.aktif ? 'dot-online' : 'dot-offline'"></i>
               </div>
 
-              <div class="financial-money-row">
-                <span class="financial-money-amount text-emerald">{{ formatMoney(item.tutar) }}</span>
-                <span v-if="item.resmi_tutar && item.resmi_tutar > 0" class="financial-resmi-text">
-                  Resmi: {{ formatMoney(item.resmi_tutar) }}
-                </span>
-                <span class="financial-chip-badge">
-                  {{ item.hesaplama_tipi === 'sabit' ? 'Sabit' : (item.oran ? `%${item.oran}` : 'Oran') }}
-                </span>
+              <div class="financial-info">
+                <div class="financial-head-row">
+                  <strong class="financial-name">{{ item.parametre_adi }}</strong>
+                  <div class="financial-badge-group">
+                    <span
+                      class="clay-badge"
+                      :class="item.tekrar_tipi === 'surekli' ? 'clay-badge--amber' : 'clay-badge--blue'"
+                    >
+                      {{ item.tekrar_tipi === 'surekli' ? 'Sürekli' : 'Tek Sefer' }}
+                    </span>
+                    <span
+                      class="clay-badge"
+                      :class="item.banka_matrahina_ekle ? 'clay-badge--emerald' : 'clay-badge--warning'"
+                    >
+                      {{ item.banka_matrahina_ekle ? 'Banka' : 'Elden' }}
+                    </span>
+                    <span v-if="item.kapali_mi" class="clay-badge clay-badge--secondary">
+                      Kapalı
+                    </span>
+                  </div>
+                </div>
+
+                <div class="financial-money-row">
+                  <span class="financial-money-amount text-emerald">{{ formatMoney(item.tutar) }}</span>
+                  <span v-if="item.resmi_tutar && item.resmi_tutar > 0" class="financial-resmi-text">
+                    Resmi: {{ formatMoney(item.resmi_tutar) }}
+                  </span>
+                  <span class="financial-chip-badge">
+                    {{ item.hesaplama_tipi === 'sabit' ? 'Sabit' : (item.oran ? `%${item.oran}` : 'Oran') }}
+                  </span>
+                </div>
+
+                <div class="financial-date-row">
+                  <span v-if="item.tekrar_tipi === 'tek_sefer'" class="financial-date-pill">
+                    <CalendarDays :size="12" />
+                    {{ item.donem_adi || 'Dönem belirtilmemiş' }}
+                  </span>
+                  <span v-else class="financial-date-pill">
+                    <CalendarDays :size="12" />
+                    {{ formatDate(item.baslangic_donemi) }} — {{ item.bitis_donemi ? formatDate(item.bitis_donemi) : 'Süresiz' }}
+                  </span>
+                  <span class="financial-date-pill text-muted">
+                    <History :size="12" />
+                    {{ formatDate(item.tarih) }}
+                  </span>
+                </div>
+
+                <p v-if="item.aciklama" class="financial-note">
+                  {{ item.aciklama }}
+                </p>
               </div>
 
-              <div class="financial-date-row">
-                <span v-if="item.tekrar_tipi === 'tek_sefer'" class="financial-date-pill">
-                  <CalendarDays :size="12" />
-                  {{ item.donem_adi || 'Dönem belirtilmemiş' }}
-                </span>
-                <span v-else class="financial-date-pill">
-                  <CalendarDays :size="12" />
-                  {{ formatDate(item.baslangic_donemi) }} — {{ item.bitis_donemi ? formatDate(item.bitis_donemi) : 'Süresiz' }}
-                </span>
-                <span class="financial-date-pill text-muted">
-                  <History :size="12" />
-                  {{ formatDate(item.tarih) }}
-                </span>
+              <!-- Aksiyonlar (Sağ Taraf) -->
+              <div v-if="canEdit" class="financial-actions">
+                <button
+                  v-if="!item.kapali_mi"
+                  type="button"
+                  class="action-pill-btn"
+                  title="Düzenle"
+                  @click.stop="openEditEkOdemeModal(item)"
+                >
+                  <Pencil :size="13" />
+                </button>
+                <button
+                  v-if="item.tekrar_tipi === 'surekli' && item.aktif"
+                  type="button"
+                  class="action-pill-btn action-pill-btn--amber"
+                  title="Sonlandır"
+                  @click.stop="openSonlandirEkOdemeModal(item)"
+                >
+                  <Clock :size="13" />
+                </button>
+                <button
+                  v-if="!item.kapali_mi"
+                  type="button"
+                  class="action-pill-btn action-pill-btn--danger"
+                  title="Sil"
+                  @click.stop="deleteEkOdeme(item)"
+                >
+                  <Trash2 :size="13" />
+                </button>
               </div>
-
-              <p v-if="item.aciklama" class="financial-note">
-                {{ item.aciklama }}
-              </p>
-            </div>
-
-            <!-- Aksiyonlar (Sağ Taraf) -->
-            <div v-if="canEdit" class="financial-actions">
-              <button
-                v-if="!item.kapali_mi"
-                type="button"
-                class="action-pill-btn"
-                title="Düzenle"
-                @click.stop="openEditEkOdemeModal(item)"
-              >
-                <Pencil :size="13" />
-              </button>
-              <button
-                v-if="item.tekrar_tipi === 'surekli' && item.aktif"
-                type="button"
-                class="action-pill-btn action-pill-btn--amber"
-                title="Sonlandır"
-                @click.stop="openSonlandirEkOdemeModal(item)"
-              >
-                <Clock :size="13" />
-              </button>
-              <button
-                v-if="!item.kapali_mi"
-                type="button"
-                class="action-pill-btn action-pill-btn--danger"
-                title="Sil"
-                @click.stop="deleteEkOdeme(item)"
-              >
-                <Trash2 :size="13" />
-              </button>
-            </div>
-          </article>
+            </article>
+          </template>
         </div>
 
         <!-- =================== MODAL: EK ÖDEME EKLE / DÜZENLE =================== -->
@@ -2767,100 +2888,132 @@ onUnmounted(() => {
       <!-- 7. KESİNTİLER SEKME İÇERİĞİ (Masaüstü Standartlarında Tam Yönetim)       -->
       <!-- ========================================================================= -->
       <div v-else-if="route.params.section === 'kesintiler'" class="kesintiler-section-container">
-        <!-- 1. HERO BENTO KART: KESİNTİ DAĞILIMI (PersonnelView Standartlarında) -->
-        <section class="bento-card bento-card--white">
-          <header class="bento-head">
-            <div class="bento-head-title">
-              <h3>Kesinti Dağılımı</h3>
+        <!-- 1. HERO OBSIDIAN BENTO KART: KESİNTİ DAĞILIMI (Cari Takip Tarzı Minimal) -->
+        <article class="cari-hero-volume-card">
+          <header class="cari-hero-volume-card__header">
+            <div class="cari-hero-volume-card__title">
+              <span class="cari-hero-icon-box" style="color: #fb7185;">
+                <Receipt :size="16" />
+              </span>
+              <div>
+                <span class="cari-hero-tag">KESİNTİ DAĞILIMI</span>
+                <span class="cari-hero-subtitle">Dönemsel, Taksitli & Yasal Mahsuplar</span>
+              </div>
             </div>
-            <div class="bento-head-icons">
-              <span class="bento-mini-btn" title="Kesintiler"><Receipt :size="14" /></span>
-              <button
-                type="button"
-                class="bento-mini-btn"
-                title="Yenile"
-                :class="{ 'is-spinning': loading }"
-                @click="load"
-              >
-                <RefreshCw :size="13" />
-              </button>
-            </div>
+            <button
+              type="button"
+              class="cari-hero-refresh-btn"
+              title="Yenile"
+              :class="{ 'is-spinning': loading }"
+              @click="load"
+            >
+              <RefreshCw :size="13" />
+            </button>
           </header>
 
+          <div class="cari-hero-volume-main">
+            <strong class="cari-hero-volume-amount">{{ formatMoney(kesintiOzet.toplam_tutar) }}</strong>
+            <div class="cari-hero-balance-row">
+              <span class="cari-hero-balance-label">Ödeme Kanalı:</span>
+              <span class="text-emerald fw-bold">Banka: {{ formatMoney(kesintiOzet.banka_tutar) }}</span>
+              <span class="text-white-50">·</span>
+              <span class="text-coral fw-bold">Elden: {{ formatMoney(kesintiOzet.elden_tutar) }}</span>
+            </div>
+          </div>
+
           <!-- Segmentli İlerleme Çubuğu -->
-          <div class="segmented-track">
-            <span
-              class="seg-pill seg-pill--blue"
-              :style="{ width: `${kesintiOzet.toplam_tutar ? Math.max(6, Math.round((kesintiOzet.tek_sefer_tutar / kesintiOzet.toplam_tutar) * 100)) : 33}%` }"
-              title="Tek Seferlik"
-            ></span>
-            <span
-              class="seg-pill seg-pill--purple"
-              :style="{ width: `${kesintiOzet.toplam_tutar ? Math.max(6, Math.round((kesintiOzet.taksitli_tutar / kesintiOzet.toplam_tutar) * 100)) : 33}%` }"
-              title="Taksitli"
-            ></span>
-            <span
-              class="seg-pill seg-pill--coral"
-              :style="{ width: `${kesintiOzet.toplam_tutar ? Math.max(6, Math.round((kesintiOzet.surekli_tutar / kesintiOzet.toplam_tutar) * 100)) : 34}%` }"
-              title="Sürekli"
-            ></span>
+          <div class="cari-chart-container">
+            <div class="cari-segmented-track">
+              <div
+                class="cari-seg-fill cari-seg-fill--borc"
+                :style="{ width: `${kesintiTekSeferRatio}%` }"
+                :title="`Tek Sefer: %${kesintiTekSeferRatio}`"
+              >
+                <span v-if="kesintiTekSeferRatio >= 15" class="cari-seg-label">%{{ kesintiTekSeferRatio }}</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--purple"
+                :style="{ width: `${kesintiTaksitliRatio}%` }"
+                :title="`Taksitli: %${kesintiTaksitliRatio}`"
+              >
+                <span v-if="kesintiTaksitliRatio >= 15" class="cari-seg-label">%{{ kesintiTaksitliRatio }}</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--coral"
+                :style="{ width: `${kesintiSurekliRatio}%` }"
+                :title="`Sürekli: %${kesintiSurekliRatio}`"
+              >
+                <span v-if="kesintiSurekliRatio >= 15" class="cari-seg-label">%{{ kesintiSurekliRatio }}</span>
+              </div>
+            </div>
+
+            <!-- Tıklanabilir Filtre / Lejant Kutuları (2x2 Grid) -->
+            <div class="cari-chart-legend cari-chart-legend--2x2">
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': kesintiTab === 'all' }"
+                @click="kesintiTab = 'all'"
+              >
+                <span class="cari-legend-dot" style="background: #ffffff; box-shadow: 0 0 8px rgba(255,255,255,0.6);"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Tümü</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(kesintiOzet.toplam_tutar) }}</strong>
+                  <small class="cari-legend-count">{{ filteredKesintiler.length }} kayıt</small>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': kesintiTab === 'tek_sefer' }"
+                @click="kesintiTab = 'tek_sefer'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--borc"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Tek Sefer</span>
+                    <b class="cari-legend-pct text-sky">%{{ kesintiTekSeferRatio }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(kesintiOzet.tek_sefer_tutar) }}</strong>
+                  <small class="cari-legend-count">{{ kesintiOzet.tek_sefer_adet }} adet</small>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': kesintiTab === 'taksitli' }"
+                @click="kesintiTab = 'taksitli'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--purple"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Taksitli</span>
+                    <b class="cari-legend-pct text-purple">%{{ kesintiTaksitliRatio }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(kesintiOzet.taksitli_tutar) }}</strong>
+                  <small class="cari-legend-count">{{ kesintiOzet.taksitli_adet }} adet</small>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': kesintiTab === 'surekli' }"
+                @click="kesintiTab = 'surekli'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--coral"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Sürekli</span>
+                    <b class="cari-legend-pct text-coral">%{{ kesintiSurekliRatio }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(kesintiOzet.surekli_tutar) }}</strong>
+                  <small class="cari-legend-count">{{ kesintiOzet.surekli_adet }} adet</small>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <!-- 4'lü Durum / Filtre Seçici Hapları (2x2 Grid) -->
-          <div class="kesinti-stat-pills">
-            <button
-              type="button"
-              class="stat-pill-btn"
-              :class="{ 'is-active': kesintiTab === 'all' }"
-              @click="kesintiTab = 'all'"
-            >
-              <span class="pill-dot dot-active"></span>
-              <div class="stat-pill-copy">
-                <strong>{{ formatMoney(kesintiOzet.toplam_tutar) }}</strong>
-                <small>Tümü ({{ kesintiler.length }})</small>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              class="stat-pill-btn"
-              :class="{ 'is-active': kesintiTab === 'tek_sefer' }"
-              @click="kesintiTab = 'tek_sefer'"
-            >
-              <span class="pill-dot dot-all"></span>
-              <div class="stat-pill-copy">
-                <strong>{{ formatMoney(kesintiOzet.tek_sefer_tutar) }}</strong>
-                <small>Tek Sefer ({{ kesintiOzet.tek_sefer_adet }})</small>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              class="stat-pill-btn"
-              :class="{ 'is-active': kesintiTab === 'taksitli' }"
-              @click="kesintiTab = 'taksitli'"
-            >
-              <span class="pill-dot dot-purple"></span>
-              <div class="stat-pill-copy">
-                <strong>{{ formatMoney(kesintiOzet.taksitli_tutar) }}</strong>
-                <small>Taksitli ({{ kesintiOzet.taksitli_adet }})</small>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              class="stat-pill-btn"
-              :class="{ 'is-active': kesintiTab === 'surekli' }"
-              @click="kesintiTab = 'surekli'"
-            >
-              <span class="pill-dot dot-passive"></span>
-              <div class="stat-pill-copy">
-                <strong>{{ formatMoney(kesintiOzet.surekli_tutar) }}</strong>
-                <small>Sürekli ({{ kesintiOzet.surekli_adet }})</small>
-              </div>
-            </button>
-          </div>
-        </section>
+        </article>
 
         <!-- 2. BÖLÜM BAŞLIĞI (Canvas Üzerinde Yüzen - PersonnelDetailView Standardı) -->
         <div class="clay-section-head">
@@ -2876,6 +3029,34 @@ onUnmounted(() => {
           >
             <Plus :size="14" />
             <span>Yeni Kesinti Ekle</span>
+          </button>
+        </div>
+
+        <!-- 3. DÖNEM BAZLI FİLTRE ÇUBUĞU -->
+        <div class="period-filter-strip">
+          <div class="period-select-wrap">
+            <CalendarDays :size="14" class="period-select-icon" />
+            <select v-model="kesintiDonemFilter" class="period-select-input">
+              <option value="all">Tüm Dönemler</option>
+              <option
+                v-for="d in bordroDonemleri"
+                :key="d.id"
+                :value="d.id"
+              >
+                {{ d.donem_adi }} {{ d.kapali_mi ? '(Kapalı)' : '(Açık)' }}
+              </option>
+            </select>
+            <ChevronDown :size="14" class="period-select-arrow" />
+          </div>
+          <button
+            v-if="kesintiDonemFilter !== 'all'"
+            type="button"
+            class="period-clear-btn"
+            title="Dönem Filtresini Temizle"
+            @click="kesintiDonemFilter = 'all'"
+          >
+            <X :size="13" />
+            <span>Temizle</span>
           </button>
         </div>
 
@@ -4880,5 +5061,434 @@ onUnmounted(() => {
 
 .text-coral {
   color: #dc2626 !important;
+}
+
+.text-sky {
+  color: #38bdf8 !important;
+}
+
+.text-purple {
+  color: #c084fc !important;
+}
+
+.text-white-50 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ========================================================================== */
+/* HERO OBSIDIAN BENTO KART (Cari Takip Tarzı Minimal Dağılım Kartı)          */
+/* ========================================================================== */
+.cari-hero-volume-card {
+  background: var(--ds-surface-dark, #191d24);
+  border-radius: 24px;
+  color: #ffffff;
+  padding: 16px 15px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--ds-shadow-bento-dark, 0 16px 36px rgba(0, 0, 0, 0.28));
+}
+
+.cari-hero-volume-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cari-hero-volume-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cari-hero-icon-box {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cari-hero-tag {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+
+.cari-hero-subtitle {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cari-hero-refresh-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cari-hero-refresh-btn:active {
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(0.96);
+}
+
+.cari-hero-volume-main {
+  margin-bottom: 12px;
+}
+
+.cari-hero-volume-amount {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.cari-hero-balance-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+
+.cari-hero-balance-label {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Çift Yönlü Segmentli Dağılım Grafiği (Minimal) */
+.cari-chart-container {
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cari-segmented-track {
+  position: relative;
+  display: flex;
+  height: 12px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.cari-seg-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.4s ease;
+  position: relative;
+}
+
+.cari-seg-fill--alacak {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.cari-seg-fill--borc {
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.cari-seg-fill--purple {
+  background: linear-gradient(90deg, #a855f7, #7c3aed);
+}
+
+.cari-seg-fill--coral {
+  background: linear-gradient(90deg, #fb7185, #e11d48);
+}
+
+.cari-seg-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.01em;
+}
+
+/* Lejant (Tıklanabilir Filtre Kutuları) */
+.cari-chart-legend {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cari-chart-legend--3col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.cari-chart-legend--2x2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.cari-legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.cari-legend-item:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cari-legend-item--active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+}
+
+.cari-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.cari-legend-dot--alacak {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.cari-legend-dot--borc {
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.cari-legend-dot--purple {
+  background: #a855f7;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+
+.cari-legend-dot--coral {
+  background: #fb7185;
+  box-shadow: 0 0 8px rgba(251, 113, 133, 0.6);
+}
+
+.cari-legend-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.cari-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cari-legend-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cari-legend-pct {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.cari-legend-val {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cari-legend-count {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+/* ========================================================================== */
+/* DÖNEM BAZLI FİLTRE ÇUBUĞU                                                 */
+/* ========================================================================== */
+.period-filter-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.period-select-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.06));
+  border-radius: var(--ds-radius-sm, 14px);
+  padding: 0 12px;
+  height: 38px;
+  box-shadow: var(--ds-shadow-tile);
+}
+
+.period-select-icon {
+  color: var(--ds-muted, #64748b);
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.period-select-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ds-text, #1e293b);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 18px;
+}
+
+.period-select-arrow {
+  position: absolute;
+  right: 10px;
+  color: var(--ds-muted, #64748b);
+  pointer-events: none;
+}
+
+.period-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--ds-radius-sm, 14px);
+  background: #ffffff;
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.06));
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #e11d48;
+  box-shadow: var(--ds-shadow-tile);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.period-clear-btn:active {
+  background: rgba(225, 29, 72, 0.08);
+}
+
+/* ========================================================================== */
+/* PUANTAJ PRİMLERİ GRUP KARTI & AÇILIR LİSTE (Accordion)                    */
+/* ========================================================================== */
+.financial-card--puantaj {
+  border-left: 3.5px solid #0284c7;
+}
+
+.puantaj-drawer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.18);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0284c7;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+
+.puantaj-drawer-toggle:active {
+  background: rgba(2, 132, 199, 0.16);
+}
+
+.puantaj-sub-drawer {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--ds-surface-subtle, #f8fafc);
+  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.05));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.puantaj-sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+}
+
+.puantaj-sub-row:last-child {
+  border-bottom: none;
+}
+
+.puantaj-sub-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.puantaj-sub-bullet {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #0284c7;
+  flex-shrink: 0;
+}
+
+.puantaj-sub-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ds-text, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.puantaj-sub-amount {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.text-white-50 {
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 </style>

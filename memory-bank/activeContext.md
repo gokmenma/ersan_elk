@@ -1,5 +1,54 @@
 # Active Context
 
+## Mobil SPA: KM Onayları & Kaçak Kontrol Fotoğraf Görüntüleme Mimarisi ve SW v22 Güncellemesi (2026-10-17)
+- **Kullanıcı Talebi**: "km-onayları sayfasında ve kaçak sayfasında resimleri göstermiyor, ama ihbar sayfasında görünüyor", "km onay sayfasında yine resimler görünmüyor, acaba resim dosyalarının yolu mu yanlış geliyor".
+- **Kök Neden Analizi**:
+  1. **Dosya Yolu ve Bağımsız SPA Kökü Ayrımı**:
+     - Masaüstü monolitik PHP uygulamasında fotoğraflar doğrudan web kökündeki `/uploads/km_bildirim/...` yolundan okunuyordu. Ancak `mobile-spa` bağımsız DocumentRoot (`dist/`) altında çalıştığından ve `uploads/km_bildirim/.htaccess` içinde `Deny from all` kuralı bulunduğundan, istemcinin doğrudan fiziksel dosya yolunu talep etmesi 404 / 403 Forbidden ile sonuçlanıyordu.
+     - İhbar sayfasının sorunsuz çalışmasının sebebi ise doğrudan dosya yoluna gitmek yerine `/api/ihbar.php?action=foto&token=...` endpoint'i üzerinden yetki/firma kontrolü yapıp `MedyaServis::gonder` ile stream etmesiydi.
+  2. **Kaçak Modülü Uç Noktaları**:
+     - `mobile-spa` Kaçak API'si masaüstü monolitik projenin `/views/kacak/foto-goruntule.php` ve `/views/kacak/api.php?action=download-zip` yollarını döndürdüğü için mobil SPA ortamında 404 Not Found veriyordu.
+  3. **Yayınlama & PWA Önbelleği (Canlı Ortam Senkronizasyonu)**:
+     - İlk aşamada yapılan değişiklikler yerel çalışma dizininde derlenmiş ancak canlı sunucuya (CI/CD GitHub FTP Deploy) commit ve push edilmediği için canlı sunucu eski kodda kalmıştı.
+     - Kullanıcı cihazlarındaki PWA Service Worker önbelleği nedeniyle yeni varlıkların anında devreye girmesi için SW sürümünün güncellenmesi gerekiyordu.
+- **Uygulanan Mimari Çözümler**:
+  1. **KM Onayları API Fotoğraf Stream Uç Noktası (`mobile-spa/public/api/km-onaylari.php` & `dist/api/km-onaylari.php`)**:
+     - `resolveKmBildirimId()` yardımcısı eklenerek hem şifreli token (`Security::decrypt`) hem de ham integer ID desteği sağlandı.
+     - `action === 'foto'` aksiyonu eklendi:
+       - Oturum, Gate yetkisi (`arac_takip_yonetim`, `onaylikm_duzenle` veya SuperAdmin) ve firma kontrolü (`$isSuperAdmin` bypass desteği) sağlandı.
+       - Traversal koruması ile `$uploadDir` (`uploads/`) dışına çıkış engellendi.
+       - Dosya yolu doğrudan eşleşmezse `uploads/km_bildirim/` klasöründe dosya adıyla arama ve uzantı alternatifleri (`.webp`, `.jpg`, `.jpeg`, `.png`) fallback mekanizması kuruldu.
+       - ISO 27001 standardına uygun olarak dosya `MedyaServis::gonder($dosya, 86400)` ile güvenli ve performanslı biçimde stream edildi.
+     - `action === 'list'` çıktısındaki kayıtlara güvenli `token`, dinamik `resim_url` (`/api/km-onaylari.php?action=foto&token=...`) ve `personel_resim_url` (`/api/personnel-photo.php?id=...`) alanları eklendi.
+  2. **Personel Fotoğraf Servisi İyileştirmesi (`personnel-photo.php`)**:
+     - Yetki kontrolü araç takip yöneticilerini kapsayacak şekilde `Gate::allowsAny(['personel_listesi', 'arac_takip_yonetim', 'onaylikm_duzenle']) || Gate::isSuperAdmin()` olarak genişletildi.
+  3. **Kaçak Kontrol API & ZIP İyileştirmesi (`mobile-spa/public/api/kacak.php`)**:
+     - `action === 'foto'` (küçük thumbnail, orijinal görsel, PDF, MP4/video desteği) ve `action === 'download_zip'` (tutanak ve saha fotoğrafları ZIP arşivi) uç noktaları eklendi.
+     - Frontend detay ve liste servisleri `/api/kacak.php?action=foto` ve `/api/kacak.php?action=download_zip` adreslerine bağlandı.
+  4. **Vue Arayüzleri & Servisleri**:
+     - `mobile-spa/src/views/KmOnaylariView.vue`: `getKmPhotoUrl(report)` merkezi fonksiyonu yazıldı. Mini thumbnail, AI doğrulama ve Lightbox büyük resim görüntüleyici bu fonksiyona bağlandı.
+     - `mobile-spa/src/services/km-onaylari.js`: `kmApi.getPhotoUrl(idOrToken)` eklendi.
+     - `mobile-spa/src/services/kacak.js` & `KacakView.vue`: Fotoğraf ve ZIP indirme adresleri SPA API'sine yönlendirildi.
+  5. **PWA Service Worker & Derleme (`v22`)**:
+     - `CACHE_NAME = 'ersan-mobile-shell-v22'` olarak güncellendi.
+     - `npm run build` ile üretim paketi (`dist/assets/index-pj3RvPz-.js`, `dist/assets/index-BBY41j-W.css`) 0 hata ile derlendi.
+     - `dist/api/` ve `dist/sw.js` dosyaları tam eşitlendi.
+
+- **Kullanıcı Talebi**:
+  1. "aylık görünümde günler dışarı taşıyor": Aylık takvim ızgarasındaki Pazar sütununun karttan dışarı taşması sorununun giderilmesi.
+  2. "bottom sheet başlığında personel adının ara planında kenarlr köşeli geliyor, sheet başlığında olsun ayrıca bir div olmasın": Sheet'in üst kısmındaki gri zemin üzerinde duran ayrı köşeli beyaz div'in kaldırılması; handle ve personel bilgilerinin doğrudan sheet'in 32px kavisli üst başlığıyla tek parça halinde bütünleştirilmesi.
+- **Uygulanan Değişiklikler ve Mimari**:
+  1. **Sheet Başlığının Bütünleştirilmesi (`.puantaj-detail-sheet` & `.detail-sheet-header`)**:
+     - Handle (`.ds-sheet-handle`), personel bilgileri ve kapatma butonu doğrudan `<header class="detail-sheet-header">` içinde toplandı.
+     - Ayrı basamaklı köşeli div kaldırıldı; header'a `border-radius: 32px 32px 0 0; background: #ffffff; padding: 10px 18px 14px;` verildi ve `.ds-sheet`'e `overflow: hidden` eklenerek sheet ile %100 kusursuz bir bütünlük sağlandı.
+     - Aynı modern bütünleşik yapı `status-picker-sheet`'e de uygulandı.
+  2. **Aylık Takvim Hücrelerinin Taşmasının Giderilmesi (`.clean-calendar-box`, `.calendar-tiles-grid`, `.calendar-tile`)**:
+     - Grid sütunları `repeat(7, minmax(0, 1fr))` mimarisine geçirilerek çocuk elemanların içeriğe göre sağa taşması (min-width dayatması) engellendi.
+     - `.clean-calendar-box` yatay padding'i 10px'e çekilerek 7 sütuna ferah alan açıldı.
+     - `.calendar-tile` hücreleri `min-width: 0; box-sizing: border-box; aspect-ratio: 1 / 1.15; overflow: hidden;` ile kompakt, taşmasız ve dengeli hale getirildi.
+     - `.calendar-tile-badge` metinleri `8.5px`, `max-width: 90%` ve `text-overflow: ellipsis` ile hücre içine tam sabitlendi.
+  3. **Derleme**: `npm run build` ile 0 hata ile derlendi.
+
 ## Mobil SPA Kasa Takibi — Cari Takip Obsidian Bento Tasarımı & Önbellek/Build Güncellemesi (2026-10-17)
 - **Kullanıcı Geri Bildirimi**: "değişmedi hala aynı" (Ekran görüntüsünde tarayıcının hala eski beyaz zeminli, çift kutulu Kasa Takibi arayüzünü gösterdiği görüldü).
 - **Tespit Edilen Kök Nedenler**:
@@ -138,24 +187,28 @@
   6. **Derleme & Doğrulama**:
      - `npm run build` başarıyla çalıştırıldı (0 hata, 19.36s).
 
-- **Kullanıcı Talebi**: "burada hala sistem geneline uymayan tasarım var, personel listesinin ve detay sayfasının devamı gibi olsun"
-- **Yapılan İyileştirmeler ve Bento / Claymorphic UI Standardizasyonu**:
-  1. **Kart İçi Kart (Card-in-Card) Karmaşasının Kaldırılması**:
-     - `PersonnelSectionView.vue` içerisindeki `ek_odemeler` ve `kesintiler` bölümlerini saran beyaz dış kart (`info-group-card`) ve mükerrer filtre çubukları kaldırıldı.
-  2. **Hero Bento Dağılım Kartı (`PersonnelView.vue` Standardı)**:
-     - Personel Listesi'ndeki "Personel Dağılımı" bento kartı referans alınarak:
-       - Üst çubuk: `bento-head` (başlık + mini butonlar ve yenileme ikonu).
-       - Oransal segmentli ilerleme çubuğu: `.segmented-track` ve renkli kapsüller (`.seg-pill--emerald`, `.seg-pill--blue`, `.seg-pill--coral`, `.seg-pill--purple`).
-       - Durum & Filtre Seçici Hapları: `.personnel-stat-pills` (Ek Ödemeler için 3'lü yatay hap, Kesintiler için 2x2 grid). Tıklandığında aktif olan hap koyu obsidian (`#191d24`) arka plana geçerek anlık filtreleme yapar; böylece ek filtre çubuğuna ihtiyaç kalmaz.
-  3. **Canvas Üzerinde Yüzen Bölüm Başlığı (`PersonnelDetailView.vue` Standardı)**:
-     - Arduvaz zemin üzerinde doğrudan konumlanan `.clay-section-head` (sol tarafta `h2` başlık ve `.clay-pill-tag` kayıt sayısı, sağ tarafta `.clay-btn.clay-btn--sm.clay-btn--primary` ile "+ Yeni Ek Ödeme" / "+ Yeni Kesinti Ekle" butonu).
-  4. **Bağımsız Beyaz Bento Liste Kartları (`.financial-card`)**:
-     - Her ödeme ve kesinti hareketi, tıpkı `personnel-card` ve `module-tile` gibi bağımsız 20px kavisli, saf beyaz zeminli ve yumuşak gölgeli birer bento kartı olarak tasarlandı.
-     - Sol alan: 44x44px 14px kavisli renkli ikon rozeti (`.financial-avatar-wrap`) ve alt köşesinde aktif/pasif durum noktası (`.dot-online` / `.dot-offline`).
-     - Orta alan: Kalın başlık (`.financial-name`), `clay-badge` rozetleri (Sürekli/Tek Sefer/Taksit, Banka/Elden, Kapalı Dönem), büyük okunaklı tutar (`.financial-money-amount`), hesaplama tipi çipi, dönem ve tarih hapları (`.financial-date-pill`) ile not satırı.
-     - Sağ alan: Dikey aksiyon butonları (`.action-pill-btn` düzenleme, sonlandırma ve silme).
-     - Boş durum: Sistemin standart `.clay-state-card` bileşeni.
-  5. **Derleme & Doğrulama**:
+- **Kullanıcı Talebi**: "1-ek ödemelerdeki puantaj primleri dönem bazlı tek kart olarak gelsin, 2- her iki sayfada da dönem bazlı filtre de ekleyelim, ek ödeme ve kesinti dağılım kartları cari takip sayfasındaki gibi olsun ama biraz daha minimal olsun"
+- **Yapılan İyileştirmeler ve Geliştirmeler**:
+  1. **Cari Takip Tarzı Minimal Obsidian Dağılım Kartı (`.cari-hero-volume-card`)**:
+     - `ek_odemeler` ve `kesintiler` sayfalarındaki dağılım kartları, `CariView.vue` sayfasındaki koyu obsidian (`#191d24`) bento kartı mimarisine geçirildi.
+     - Aşırı büyük alan kaplamaması için dolgular 16px'e sıkılaştırıldı ve tipografi kompaktlaştırıldı.
+     - Kart Başlığı: Sol tarafta 32px pastel ikon kutusu (`Coins` / `Receipt`), 9.5px uppercase kategori etiketi ve 11px alt açıklama; sağ tarafta kompakt yenileme butonu (`RefreshCw`).
+     - Tutar Satırı: 24px kalın toplam tutar, altında resmi banka ve elden tutar dağılımı (`Banka: X ₺ · Elden: Y ₺`).
+     - Segmentli İlerleme Çubuğu: 12px yüksekliğinde, oransal yüzdeleri (`%X`) gösteren zarif track (`.cari-segmented-track`).
+     - Tıklanabilir Filtre/Lejant Kutuları:
+       - Ek Ödemeler: 3'lü grid (`Tümü`, `Tek Sefer`, `Sürekli`).
+       - Kesintiler: 2x2 grid (`Tümü`, `Tek Sefer`, `Taksitli`, `Sürekli`).
+       - Tıklanan filtre kutusu parlayarak aşağıdaki listeyi anında filtreler.
+  2. **Dönem Bazlı Filtre Çubuğu (`.period-filter-strip`)**:
+     - Hem Ek Ödemeler hem de Kesintiler sayfalarında liste başlığının altına dönem filtresi eklendi.
+     - Tüm aktif/kapalı bordro dönemlerini listeleyen native `<select>` ve aktif filtreyi tek dokunuşla sıfırlayan `Temizle` butonu (`X`).
+     - Tek seferlik ve taksitli hareketler ilgili döneme göre; sürekli hareketler ise dönemin tarih aralığı (`baslangic_donemi <= dBit && bitis_donemi >= dBas`) esas alınarak filtrelenir.
+  3. **Puantaj Primlerinin Dönem Bazlı Tek Kart Olarak Gruplanması**:
+     - Aynı döneme ait tüm puantaj kaynaklı primler (`aciklama LIKE '[Puantaj]%'` / `is_puantaj`), ayrı ayrı kartlar yerine **o döneme ait tek bir "Puantaj Primleri" kartı** (`.financial-card--puantaj`) altında toplandı.
+     - Kart üzerinde toplam puantaj tutarı, kalem adedi (`X Kalem`) ve dönem bilgisi yer alır.
+     - Kart içine entegre edilen "Kalem Dökümünü İncele" akordiyon butonu ile kullanıcı tek dokunuşla puantaj kalemlerini (iş emri sonucu, adet, birim fiyat ve tutar) açıp inceleyebilir.
+     - Backend tarafında `MobilePersonelModel::getEkOdemelerDetails` metoduna `is_puantaj` bayrağı eklendi.
+  4. **Derleme & Doğrulama**:
      - `mobile-spa` Vite derlemesi çalıştırılarak sıfır hata ile tamamlandı (`dist` güncellendi).
 
 ## Mobil SPA Personel Detayı: Maaş ve Finans Menüsünün "Ek Ödemeler" ve "Kesintiler" Olarak Ayrılması & Tam Yönetimi (2026-10-17)

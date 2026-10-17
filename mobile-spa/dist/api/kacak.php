@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Helper\Helper;
+use App\Helper\MedyaServis;
 use App\Helper\Security;
 use App\Model\KacakKontrolModel;
 use App\Model\SystemLogModel;
@@ -222,8 +223,8 @@ try {
                 'ad' => (string) ($f['orijinal_ad'] ?? 'Fotoğraf'),
                 'pdf' => $ext === 'pdf',
                 'video' => in_array($ext, ['mp4', 'mov', 'webm', '3gp'], true),
-                'thumbnail_url' => '/views/kacak/foto-goruntule.php?token=' . urlencode($encToken) . '&boyut=kucuk',
-                'full_url' => '/views/kacak/foto-goruntule.php?token=' . urlencode($encToken),
+                'thumbnail_url' => '/api/kacak.php?action=foto&token=' . urlencode($encToken) . '&boyut=kucuk',
+                'full_url' => '/api/kacak.php?action=foto&token=' . urlencode($encToken),
             ];
         }, $Kacak->getPhotos($id));
 
@@ -256,7 +257,7 @@ try {
                     'hakedisten_dus' => (int) ($kayit['hakedisten_dus'] ?? 0),
                 ],
                 'photos' => $fotolar,
-                'zip_url' => '/views/kacak/api.php?action=download-zip&token=' . urlencode($token),
+                'zip_url' => '/api/kacak.php?action=download_zip&token=' . urlencode($token),
                 'permissions' => [
                     'can_approve' => $canApprove,
                     'can_cancel' => $canCancel,
@@ -285,12 +286,214 @@ try {
                 'ad' => (string) ($f['orijinal_ad'] ?? 'Fotoğraf'),
                 'pdf' => $ext === 'pdf',
                 'video' => in_array($ext, ['mp4', 'mov', 'webm', '3gp'], true),
-                'thumbnail_url' => '/views/kacak/foto-goruntule.php?token=' . urlencode($encToken) . '&boyut=kucuk',
-                'full_url' => '/views/kacak/foto-goruntule.php?token=' . urlencode($encToken),
+                'thumbnail_url' => '/api/kacak.php?action=foto&token=' . urlencode($encToken) . '&boyut=kucuk',
+                'full_url' => '/api/kacak.php?action=foto&token=' . urlencode($encToken),
             ];
         }, $Kacak->getPhotos($id));
 
         kacakApiResponse(['success' => true, 'data' => $fotolar]);
+    }
+
+    // -------------------------------------------------------------
+    // FOTOĞRAF GÖRÜNTÜLE / İNDİR (STREAM)
+    // -------------------------------------------------------------
+    if ($method === 'GET' && $action === 'foto') {
+        $fotoToken = (string) ($_GET['token'] ?? '');
+        $fotoId = !empty($fotoToken) ? (int) Security::decrypt($fotoToken) : (int) ($_GET['id'] ?? 0);
+        if ($fotoId <= 0) {
+            http_response_code(400);
+            exit('Geçersiz istek.');
+        }
+
+        $foto = $Kacak->getPhoto($fotoId);
+        if (!$foto) {
+            http_response_code(404);
+            exit('Dosya bulunamadı.');
+        }
+
+        $kucukIstendi = ($_GET['boyut'] ?? '') === 'kucuk';
+        $indirIstendi = isset($_GET['indir']) || isset($_GET['download']);
+        $secilenYol = ($kucukIstendi && !empty($foto['kucuk_yol'])) ? $foto['kucuk_yol'] : $foto['dosya_yolu'];
+
+        $dosya = KacakKontrolModel::rootPath() . '/' . ltrim((string) $secilenYol, '/');
+        if (!is_file($dosya) && $secilenYol !== $foto['dosya_yolu']) {
+            $dosya = KacakKontrolModel::rootPath() . '/' . ltrim((string) $foto['dosya_yolu'], '/');
+        }
+
+        if (!is_file($dosya)) {
+            http_response_code(404);
+            exit(!empty($foto['arsivlendi']) ? 'Bu dosya arşivlenmiş ve sunucudan silinmiştir.' : 'Dosya bulunamadı.');
+        }
+
+        $ext = strtolower(pathinfo($dosya, PATHINFO_EXTENSION));
+        $isPdf = ($ext === 'pdf');
+        $isVideo = (($foto['medya_tipi'] ?? '') === 'video' || in_array($ext, ['mp4', 'mov', 'webm', '3gp'], true));
+
+        header_remove('Content-Type');
+
+        if ($isPdf || $isVideo) {
+            MedyaServis::gonder($dosya, 86400);
+            exit;
+        }
+
+        $orijinalAd = $foto['orijinal_ad'] ?? basename($dosya);
+        $orijinalBase = pathinfo((string) $orijinalAd, PATHINFO_FILENAME);
+        $indirilecekAd = preg_replace('/[^\p{L}\p{N}_.-]+/u', '_', $orijinalBase) . '.jpeg';
+        $dispositionType = $indirIstendi ? 'attachment' : 'inline';
+
+        $jpegBinary = KacakKontrolModel::getAsJpegBinary($dosya);
+        if ($jpegBinary !== null) {
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            header('Content-Type: image/jpeg');
+            header('Content-Disposition: ' . $dispositionType . '; filename="' . $indirilecekAd . '"; filename*=UTF-8\'\'' . rawurlencode($indirilecekAd));
+            header('Content-Length: ' . strlen($jpegBinary));
+            header('X-Content-Type-Options: nosniff');
+            header('Cache-Control: private, max-age=86400');
+            header('Accept-Ranges: bytes');
+            echo $jpegBinary;
+            exit;
+        }
+
+        MedyaServis::gonder($dosya, 86400);
+        exit;
+    }
+
+    // -------------------------------------------------------------
+    // ZIP İNDİR (DOWNLOAD ZIP)
+    // -------------------------------------------------------------
+    if ($method === 'GET' && ($action === 'download_zip' || $action === 'download-zip')) {
+        $token = (string) ($_GET['token'] ?? '');
+        $kacakId = !empty($token) ? (int) Security::decrypt($token) : (int) ($_GET['id'] ?? 0);
+        if ($kacakId <= 0) {
+            http_response_code(400);
+            exit('Geçersiz kayıt belirteci.');
+        }
+
+        $kayit = $Kacak->getRecord($kacakId);
+        if (!$kayit) {
+            http_response_code(404);
+            exit('Kayıt bulunamadı.');
+        }
+
+        $fotolar = $Kacak->getPhotos($kacakId);
+        if (empty($fotolar)) {
+            http_response_code(404);
+            exit('Bu kayda ait fotoğraf bulunamadı.');
+        }
+
+        $root = KacakKontrolModel::rootPath();
+        $tutanakNoClean = !empty($kayit['tutanak_no']) ? trim((string) $kayit['tutanak_no']) : '';
+        $aboneAdiClean = !empty($kayit['abone_adi']) ? Helper::trUpper(trim((string) $kayit['abone_adi'])) : '';
+        $turClean = !empty($kayit['tur']) ? Helper::trUpper(trim((string) $kayit['tur'])) : 'KACAK';
+
+        $folderParts = [];
+        if ($tutanakNoClean !== '') {
+            $folderParts[] = $tutanakNoClean;
+        }
+        if ($aboneAdiClean !== '') {
+            $folderParts[] = $aboneAdiClean;
+        }
+
+        $folderBase = !empty($folderParts) ? implode(' - ', $folderParts) : ('kayit_' . $kacakId);
+        $rawFolderName = sprintf('%s (%s)', $folderBase, $turClean);
+        $folderName = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawFolderName));
+        $zipAdi = $folderName . '.zip';
+        $zipYolu = sys_get_temp_dir() . '/' . uniqid('kacak_rec_zip_', true) . '.zip';
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipYolu, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            http_response_code(500);
+            exit('Arşiv dosyası oluşturulamadı.');
+        }
+
+        $eklenenSayisi = 0;
+        $tutanakSeq = 1;
+        $sahaSeq = 1;
+        $iptalSeq = 1;
+        $videoSeq = 1;
+
+        foreach ($fotolar as $foto) {
+            $kaynak = $root . '/' . ltrim((string) $foto['dosya_yolu'], '/');
+            if (!is_file($kaynak)) {
+                continue;
+            }
+
+            $origExt = strtolower(pathinfo((string) $foto['dosya_yolu'], PATHINFO_EXTENSION));
+            $fotoTur = strtolower((string) ($foto['tur'] ?? 'saha'));
+            $medyaTipi = strtolower((string) ($foto['medya_tipi'] ?? 'foto'));
+
+            if ($fotoTur === 'tutanak') {
+                $prefix = 'tutanak';
+                $seq = $tutanakSeq++;
+            } elseif ($fotoTur === 'iptal') {
+                $prefix = 'iptal';
+                $seq = $iptalSeq++;
+            } else {
+                if ($medyaTipi === 'video') {
+                    $prefix = 'video';
+                    $seq = $videoSeq++;
+                } else {
+                    $prefix = 'saha';
+                    $seq = $sahaSeq++;
+                }
+            }
+
+            $isPdf = ($origExt === 'pdf');
+            $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
+
+            if ($isPdf) {
+                $ext = 'pdf';
+                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+                $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+            } elseif ($isVideo) {
+                $ext = $origExt ?: 'mp4';
+                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+                $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+            } else {
+                $ext = 'jpeg';
+                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+                $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
+                if ($jpegData !== null) {
+                    $zip->addFromString($folderName . '/' . $dosyaAdi, $jpegData, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+                } else {
+                    $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi, 0, 0, \ZipArchive::FL_OVERWRITE | \ZipArchive::FL_ENC_UTF_8);
+                }
+            }
+            $eklenenSayisi++;
+        }
+
+        $zip->close();
+
+        if ($eklenenSayisi === 0 || !is_file($zipYolu)) {
+            @unlink($zipYolu);
+            http_response_code(404);
+            exit('İndirilebilir dosya bulunamadı.');
+        }
+
+        $SystemLog->logAction(
+            $currentUserId,
+            'Kaçak Kaydı Fotoğrafları İndirildi (ZIP - Mobile SPA)',
+            "Kayıt ID: $kacakId, Tutanak No: " . ($kayit['tutanak_no'] ?? '-') . ", Eklenen Dosya: $eklenenSayisi",
+            SystemLogModel::LEVEL_INFO
+        );
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        header_remove('Content-Type');
+        $asciiZipAdi = Helper::toAscii($zipAdi);
+        $encodedZipAdi = rawurlencode($zipAdi);
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $asciiZipAdi . '"; filename*=UTF-8\'\'' . $encodedZipAdi);
+        header('Content-Length: ' . (string) filesize($zipYolu));
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        readfile($zipYolu);
+        @unlink($zipYolu);
+        exit;
     }
 
     // -------------------------------------------------------------

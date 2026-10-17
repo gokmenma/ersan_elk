@@ -877,6 +877,7 @@ class MobilePersonelModel extends Model
                 'banka_matrahina_ekle' => $bankaMatrah,
                 'aciklama' => (string) ($k->aciklama ?? ''),
                 'aktif' => $aktif,
+                'is_puantaj' => (strpos((string) ($k->aciklama ?? ''), '[Puantaj]') !== false),
                 'kayit_yapan_ad_soyad' => (string) ($k->kayit_yapan_ad_soyad ?? ''),
             ];
         }

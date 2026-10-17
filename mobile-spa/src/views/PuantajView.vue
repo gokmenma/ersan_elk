@@ -1388,48 +1388,51 @@ onMounted(async () => {
         @click.self="closePersonelDetail"
       >
         <div class="ds-sheet puantaj-detail-sheet" role="dialog" aria-modal="true">
-          <div class="ds-sheet-handle"></div>
-
-          <!-- Sheet Header -->
+          <!-- Sheet Header (Sheet Başlığı ile Bütünleşik, Ayrı Köşeli Div Olmadan) -->
           <header class="detail-sheet-header">
-            <div class="detail-sheet-user">
-              <div class="project-avatar project-avatar--sm">
-                <img
-                  v-if="selectedPersonel.resim"
-                  :src="selectedPersonel.resim"
-                  :alt="selectedPersonel.adi_soyadi"
-                  class="project-avatar-img"
-                  @error="$event.target.style.display = 'none'"
-                />
-                <div class="project-avatar-txt">
-                  {{ getInitials(selectedPersonel.adi_soyadi) }}
+            <div class="ds-sheet-handle"></div>
+
+            <div class="detail-sheet-topbar">
+              <div class="detail-sheet-user">
+                <div class="project-avatar project-avatar--sm">
+                  <img
+                    v-if="selectedPersonel.resim"
+                    :src="selectedPersonel.resim"
+                    :alt="selectedPersonel.adi_soyadi"
+                    class="project-avatar-img"
+                    @error="$event.target.style.display = 'none'"
+                  />
+                  <div class="project-avatar-txt">
+                    {{ getInitials(selectedPersonel.adi_soyadi) }}
+                  </div>
+                </div>
+                <div class="detail-user-text">
+                  <h3 class="detail-user-name">{{ selectedPersonel.adi_soyadi }}</h3>
+                  <div class="detail-user-meta">
+                    <span
+                      v-if="selectedPersonel.departman"
+                      class="project-dept-tag"
+                      :style="getDeptStyle(selectedPersonel.departman)"
+                    >
+                      {{ selectedPersonel.departman }}
+                    </span>
+                    <span class="detail-user-tc">TC: {{ selectedPersonel.tc_kimlik_no || '—' }}</span>
+                    <span class="detail-stat-pill">
+                      {{ getPersonelMonthStats(selectedPersonel).worked }} Ç • {{ getPersonelMonthStats(selectedPersonel).leave }} İ • {{ getPersonelMonthStats(selectedPersonel).sgk }} R
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div class="detail-user-text">
-                <h3 class="detail-user-name">{{ selectedPersonel.adi_soyadi }}</h3>
-                <div class="detail-user-meta">
-                  <span
-                    v-if="selectedPersonel.departman"
-                    class="project-dept-tag"
-                    :style="getDeptStyle(selectedPersonel.departman)"
-                  >
-                    {{ selectedPersonel.departman }}
-                  </span>
-                  <span class="detail-user-tc">TC: {{ selectedPersonel.tc_kimlik_no || '—' }}</span>
-                  <span class="detail-stat-pill">
-                    {{ getPersonelMonthStats(selectedPersonel).worked }} Ç • {{ getPersonelMonthStats(selectedPersonel).leave }} İ • {{ getPersonelMonthStats(selectedPersonel).sgk }} R
-                  </span>
-                </div>
-              </div>
+
+              <button
+                type="button"
+                class="clay-circle-btn"
+                aria-label="Kapat"
+                @click="closePersonelDetail"
+              >
+                <X :size="18" />
+              </button>
             </div>
-            <button
-              type="button"
-              class="clay-circle-btn"
-              aria-label="Kapat"
-              @click="closePersonelDetail"
-            >
-              <X :size="18" />
-            </button>
           </header>
 
           <div class="ds-sheet-body hide-scrollbar">
@@ -1736,40 +1739,42 @@ onMounted(async () => {
         @click.self="closeDayStatusPicker"
       >
         <div class="ds-sheet status-picker-sheet" role="dialog" aria-modal="true">
-          <div class="ds-sheet-handle"></div>
-
           <!-- Sheet Header -->
           <header class="status-picker-header">
-            <div class="picker-header-user">
-              <div class="project-avatar project-avatar--sm">
-                <img
-                  v-if="pickerTargetPersonel.resim"
-                  :src="pickerTargetPersonel.resim"
-                  :alt="pickerTargetPersonel.adi_soyadi"
-                  class="project-avatar-img"
-                  @error="$event.target.style.display = 'none'"
-                />
-                <div class="project-avatar-txt">
-                  {{ getInitials(pickerTargetPersonel.adi_soyadi) }}
-                </div>
-              </div>
-              <div class="picker-user-info">
-                <h3 class="picker-user-name">{{ pickerTargetPersonel.adi_soyadi }}</h3>
-                <div class="picker-target-date">
-                  <Calendar :size="12" class="text-blue" />
-                  <span>{{ pickerTargetDay.dayNum }} {{ pickerTargetDay.monthName }} {{ currentYear }} ({{ pickerTargetDay.dayName }})</span>
-                </div>
-              </div>
-            </div>
+            <div class="ds-sheet-handle"></div>
 
-            <button
-              type="button"
-              class="clay-circle-btn"
-              aria-label="Kapat"
-              @click="closeDayStatusPicker"
-            >
-              <X :size="18" />
-            </button>
+            <div class="picker-header-topbar">
+              <div class="picker-header-user">
+                <div class="project-avatar project-avatar--sm">
+                  <img
+                    v-if="pickerTargetPersonel.resim"
+                    :src="pickerTargetPersonel.resim"
+                    :alt="pickerTargetPersonel.adi_soyadi"
+                    class="project-avatar-img"
+                    @error="$event.target.style.display = 'none'"
+                  />
+                  <div class="project-avatar-txt">
+                    {{ getInitials(pickerTargetPersonel.adi_soyadi) }}
+                  </div>
+                </div>
+                <div class="picker-user-info">
+                  <h3 class="picker-user-name">{{ pickerTargetPersonel.adi_soyadi }}</h3>
+                  <div class="picker-target-date">
+                    <Calendar :size="12" class="text-blue" />
+                    <span>{{ pickerTargetDay.dayNum }} {{ pickerTargetDay.monthName }} {{ currentYear }} ({{ pickerTargetDay.dayName }})</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="clay-circle-btn"
+                aria-label="Kapat"
+                @click="closeDayStatusPicker"
+              >
+                <X :size="18" />
+              </button>
+            </div>
           </header>
 
           <div class="ds-sheet-body hide-scrollbar">
@@ -2783,6 +2788,7 @@ onMounted(async () => {
   max-height: 94vh;
   box-shadow: 0 -12px 36px rgba(15, 23, 42, 0.15);
   border-top: 1px solid rgba(255, 255, 255, 0.9);
+  overflow: hidden;
 }
 
 .ds-sheet-handle {
@@ -2790,18 +2796,26 @@ onMounted(async () => {
   height: 5px;
   border-radius: var(--ds-radius-pill);
   background: #cbd5e1;
-  margin: 10px auto 4px;
+  margin: 0 auto 10px;
   flex-shrink: 0;
 }
 
+/* Sheet Başlığı: Doğrudan Sheet'in Başlığı Olarak Bütünleşik, Ayrı Köşeli Kutu Olmadan */
 .detail-sheet-header {
-  padding: 12px 18px;
+  padding: 10px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 32px 32px 0 0;
+  border-bottom: 1px solid #eef2f6;
+  flex-shrink: 0;
+}
+
+.detail-sheet-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e2e8f0;
-  background: #ffffff;
-  flex-shrink: 0;
+  gap: 12px;
 }
 
 .detail-sheet-user {
@@ -3020,9 +3034,12 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-/* Takvim Izgarası (Görsel 2 Sağ Ekrandaki Zarif Pastel Görünüm) */
+/* Takvim Izgarası (Görsel 2 Sağ Ekrandaki Zarif Pastel Görünüm - Taşmasız Responsive) */
 .clean-calendar-box {
-  padding: 14px;
+  padding: 12px 10px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .clean-calendar-head {
@@ -3064,8 +3081,10 @@ onMounted(async () => {
 
 .clean-days-header {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
   text-align: center;
   font-size: 11px;
   font-weight: 800;
@@ -3079,15 +3098,20 @@ onMounted(async () => {
   color: #ef4444;
 }
 
-/* Pastel Takvim Hücreleri */
+/* Pastel Takvim Hücreleri - Taşma Korumalı */
 .calendar-tiles-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-tile {
-  aspect-ratio: 1;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1.15;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
@@ -3095,11 +3119,11 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 2px 3px;
+  padding: 3px 1px 3px;
   cursor: pointer;
   position: relative;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
-  min-height: 44px;
+  overflow: hidden;
 }
 
 .calendar-tile:active {
@@ -3108,7 +3132,7 @@ onMounted(async () => {
 
 .calendar-tile--empty {
   background: transparent !important;
-  border: 1px dashed rgba(203, 213, 225, 0.4) !important;
+  border: 1px dashed rgba(203, 213, 225, 0.35) !important;
   pointer-events: none;
 }
 
@@ -3119,17 +3143,18 @@ onMounted(async () => {
 }
 
 .calendar-tile-badge {
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 900;
-  padding: 1.5px 5px;
-  border-radius: 6px;
-  letter-spacing: 0.2px;
+  padding: 1px 3px;
+  border-radius: 5px;
+  letter-spacing: 0.1px;
   line-height: 1.1;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  max-width: 95%;
+  max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
 }
 
 .calendar-tile.is-unsaved {
@@ -3139,10 +3164,10 @@ onMounted(async () => {
 
 .tile-unsaved-dot {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 6px;
-  height: 6px;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: #f59e0b;
 }
