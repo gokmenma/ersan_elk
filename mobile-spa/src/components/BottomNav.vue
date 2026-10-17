@@ -10,6 +10,7 @@ import {
   Car,
   ChartNoAxesCombined,
   CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   ClipboardList,
   Clock,
@@ -218,22 +219,156 @@ function isItemActive(item) {
   return route.path.startsWith(item.to)
 }
 
-const operations = [
-  { permission: 'tasks', label: 'Görev Takibi', icon: ClipboardCheck, to: '/gorevler' },
-  { permission: 'invoices', label: 'E-Fatura & Finans', icon: ReceiptText, to: '/fatura' },
-  { permission: 'cash', label: 'Kasa Yönetimi', icon: Landmark, to: '/kasa' },
-  { permission: 'current_accounts', label: 'Cari Takip', icon: CreditCard, to: '/cari-takip' },
-  { permission: 'vehicles', label: 'Araç Takip', icon: Car, to: '/arac-takip' },
-  { permission: 'vehicles', label: 'KM Onayları', icon: Gauge, to: '/km-onaylari' },
-  { permission: 'documents', label: 'Evrak Takip', icon: FileText, to: '/evrak-takip' },
-  { permission: 'shifts', label: 'Nöbet Onay', icon: CalendarCheck, to: '/nobet-onay' },
-  { permission: 'reports', label: 'Puantaj', icon: CalendarRange, to: '/puantaj' },
-  { permission: 'payroll', label: 'Bordro', icon: Banknote, to: '/bordro' },
-  { permission: 'notices', label: 'İhbar Yönetimi', icon: Megaphone, to: '/ihbar' },
-  { permission: 'illegal', label: 'Kaçak Kontrol', icon: ShieldAlert, to: '/kacak-kontrol' },
-  { permission: 'support', label: 'Destek & Yardım', icon: Headset, href: '/mobile/index.php?p=yardim' },
+const operationGroups = [
+  {
+    category: 'FİNANS & MUHASEBE',
+    items: [
+      {
+        permission: 'invoices',
+        label: 'E-Fatura & Finans',
+        eyebrow: 'FATURA & KDV',
+        subtitle: 'Gelen/giden faturalar ve finansal özet',
+        icon: ReceiptText,
+        theme: 'emerald',
+        to: '/fatura',
+      },
+      {
+        permission: 'cash',
+        label: 'Kasa Yönetimi',
+        eyebrow: 'NAKİT AKIŞI',
+        subtitle: 'Kasa ve banka hesap hareketleri',
+        icon: Landmark,
+        theme: 'purple',
+        to: '/kasa',
+      },
+      {
+        permission: 'current_accounts',
+        label: 'Cari Takip',
+        eyebrow: 'HESAP TAKİBİ',
+        subtitle: 'Müşteri ve tedarikçi bakiye dökümleri',
+        icon: CreditCard,
+        theme: 'amber',
+        to: '/cari-takip',
+      },
+      {
+        permission: 'payroll',
+        label: 'Bordro',
+        eyebrow: 'HAKEDİŞ & MAAŞ',
+        subtitle: 'Aylık maaş, hakediş ve ödeme dökümü',
+        icon: Banknote,
+        theme: 'emerald',
+        to: '/bordro',
+      },
+    ],
+  },
+  {
+    category: 'OPERASYON & SAHA',
+    items: [
+      {
+        permission: 'vehicles',
+        label: 'Araç Takip',
+        eyebrow: 'FİLO YÖNETİMİ',
+        subtitle: 'Şirket araçları, zimmet ve yakıt takibi',
+        icon: Car,
+        theme: 'blue',
+        to: '/arac-takip',
+      },
+      {
+        permission: 'vehicles',
+        label: 'KM Onayları',
+        eyebrow: 'SAHA DENETİMİ',
+        subtitle: 'Personel sayaç bildirimleri ve onay kuyruğu',
+        icon: Gauge,
+        theme: 'emerald',
+        to: '/km-onaylari',
+      },
+      {
+        permission: 'documents',
+        label: 'Evrak Takip',
+        eyebrow: 'RESMÎ YAZIŞMALAR',
+        subtitle: 'Gelen/giden evrak ve arşiv kaydı',
+        icon: FileText,
+        theme: 'purple',
+        to: '/evrak-takip',
+      },
+      {
+        permission: 'notices',
+        label: 'İhbar Yönetimi',
+        eyebrow: 'MÜŞTERİ BİLDİRİMİ',
+        subtitle: 'Saha ihbarları ve acil müdahaleler',
+        icon: Megaphone,
+        theme: 'amber',
+        to: '/ihbar',
+      },
+      {
+        permission: 'illegal',
+        label: 'Kaçak Kontrol',
+        eyebrow: 'DENETİM & TUTANAK',
+        subtitle: 'Kaçak elektrik tespit ve tutanakları',
+        icon: ShieldAlert,
+        theme: 'coral',
+        to: '/kacak-kontrol',
+      },
+    ],
+  },
+  {
+    category: 'PLANLAMA & İK',
+    items: [
+      {
+        permission: 'tasks',
+        label: 'Görev Takibi',
+        eyebrow: 'İŞ & GÖREV',
+        subtitle: 'Şirket içi görevler ve iş akışı',
+        icon: ClipboardCheck,
+        theme: 'blue',
+        to: '/gorevler',
+      },
+      {
+        permission: 'shifts',
+        label: 'Nöbet Onay',
+        eyebrow: 'VARDİYA & NÖBET',
+        subtitle: 'Haftalık nöbet çizelgeleri ve onaylar',
+        icon: CalendarCheck,
+        theme: 'amber',
+        to: '/nobet-onay',
+      },
+      {
+        permission: 'reports',
+        label: 'Puantaj',
+        eyebrow: 'MESAİ & ÇALIŞMA',
+        subtitle: 'Personel devam ve fiili çalışma saatleri',
+        icon: CalendarRange,
+        theme: 'blue',
+        to: '/puantaj',
+      },
+    ],
+  },
+  {
+    category: 'SİSTEM & DESTEK',
+    items: [
+      {
+        permission: 'support',
+        label: 'Destek & Yardım',
+        eyebrow: 'YARDIM MERKEZİ',
+        subtitle: 'Kullanım kılavuzu ve teknik destek',
+        icon: Headset,
+        theme: 'slate',
+        href: '/mobile/index.php?p=yardim',
+      },
+    ],
+  },
 ]
-const visibleOperations = computed(() => operations.filter(item => !item.permission || auth.state.permissions[item.permission]))
+
+const visibleOperationGroups = computed(() => {
+  return operationGroups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.permission || auth.state.permissions[item.permission]),
+    }))
+    .filter(group => group.items.length > 0)
+})
+
+const visibleOperations = computed(() => visibleOperationGroups.value.flatMap(group => group.items))
 
 function selectOperation(op) {
   menuOpen.value = false
@@ -266,31 +401,45 @@ async function handleLogout() {
   <Transition name="nav-sheet">
     <div v-if="menuOpen" class="nav-sheet-layer" @keydown="handleSheetKeydown" @click.self="menuOpen = false">
       <section id="more-menu" ref="sheet" class="nav-sheet" role="dialog" aria-modal="true" aria-label="Daha Fazla">
-        <header>
-          <div>
-            <span>HIZLI ERİŞİM & MENÜ</span>
-            <h2>Daha Fazla</h2>
+        <header class="nav-sheet__header">
+          <div class="nav-sheet__title-block">
+            <span class="nav-sheet__eyebrow">HIZLI ERİŞİM & MENÜ</span>
+            <h2 class="nav-sheet__title">Daha Fazla</h2>
+            <p class="nav-sheet__subtitle">Operasyonel modüller ve araçlar</p>
           </div>
-          <button type="button" aria-label="Kapat" @click="menuOpen = false">
+          <button type="button" class="clay-circle-btn nav-sheet__close-btn" aria-label="Kapat" @click="menuOpen = false">
             <X :size="19" />
           </button>
         </header>
 
         <div class="nav-sheet__content">
-          <!-- Mobil Görünümdeki İşlemler Grid'i -->
-          <div class="nav-sheet-grid">
-            <button
-              v-for="op in visibleOperations"
-              :key="op.label"
-              type="button"
-              class="nav-sheet-item"
-              @click="selectOperation(op)"
+          <!-- Yatay Sayfa Başlığı Standartında Modül Listesi -->
+          <div class="nav-sheet-list">
+            <section
+              v-for="group in visibleOperationGroups"
+              :key="group.category"
+              class="nav-sheet-group"
             >
-              <span class="nav-sheet-item__icon">
-                <component :is="op.icon" :size="20" />
-              </span>
-              <strong class="nav-sheet-item__label">{{ op.label }}</strong>
-            </button>
+              <span class="nav-sheet-group__title">{{ group.category }}</span>
+              <button
+                v-for="op in group.items"
+                :key="op.label"
+                type="button"
+                class="nav-sheet-item"
+                :class="`nav-sheet-item--${op.theme || 'blue'}`"
+                @click="selectOperation(op)"
+              >
+                <span class="nav-sheet-item__icon">
+                  <component :is="op.icon" :size="20" />
+                </span>
+                <div class="nav-sheet-item__body">
+                  <span v-if="op.eyebrow" class="nav-sheet-item__eyebrow">{{ op.eyebrow }}</span>
+                  <strong class="nav-sheet-item__label">{{ op.label }}</strong>
+                  <span v-if="op.subtitle" class="nav-sheet-item__subtitle">{{ op.subtitle }}</span>
+                </div>
+                <ChevronRight :size="16" class="nav-sheet-item__arrow" />
+              </button>
+            </section>
           </div>
 
           <!-- Alt Menü / Aksiyonlar -->

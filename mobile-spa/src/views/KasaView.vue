@@ -2,12 +2,16 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
+  BarChart3,
   Calendar,
   Check,
   ChevronRight,
   Clock,
+  Eye,
+  FileText,
   History,
   Landmark,
   Pencil,
@@ -15,18 +19,15 @@ import {
   Receipt,
   RefreshCw,
   Search,
-  Sparkles,
   Tag,
   Trash2,
   TrendingDown,
   TrendingUp,
   User,
-  Wallet,
   X,
 } from '@lucide/vue'
 import { kasaApi } from '../services/kasa.js'
 import { auth } from '../services/auth.js'
-import TopBar from '../components/TopBar.vue'
 
 const router = useRouter()
 
@@ -49,9 +50,9 @@ const error = ref('')
 const currentYear = new Date().getFullYear()
 const selectedYear = ref(String(currentYear))
 const selectedMonth = ref('')
-const selectedType = ref('') // '' (Tümü), '1' (Gelir), '2' (Gider)
-const searchQuery = ref('')
-let searchDebounce = null
+const activeFilter = ref('all') // 'all', 'gelir' (1), 'gider' (2)
+const search = ref('')
+let searchTimer = null
 
 // Meta veriler (Kategoriler, Hesap adları)
 const categories = ref([])
@@ -74,7 +75,7 @@ const formData = ref({
   plaka: '',
 })
 
-// Makbuz / Detay Modalı Durumu
+// Detay / Makbuz Modalı Durumu
 const isDetailModalOpen = ref(false)
 const selectedDetail = ref(null)
 
@@ -132,19 +133,45 @@ function formatMoney(amount) {
   )
 }
 
-// Gelir/Gider Oran Çubuğu Hesaplama
-const incomeRatio = computed(() => {
-  const income = Math.max(0, Number(summary.value.toplam_gelir) || 0)
-  const expense = Math.max(0, Number(summary.value.toplam_gider) || 0)
-  const total = income + expense
-  if (!total) return 50
-  return Math.min(100, Math.max(0, Math.round((income / total) * 100)))
+// 2 Harfli Avatar Üretici
+function getCategoryInitials(name) {
+  if (!name) return 'KS'
+  const clean = name.trim().replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, '')
+  const parts = clean.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toLocaleUpperCase('tr-TR')
+  }
+  return clean.slice(0, 2).toLocaleUpperCase('tr-TR') || 'KS'
+}
+
+// Toplam Kasa Hacmi ve Oranlar (Cari Takip Mantığı)
+const totalVolume = computed(() => {
+  const inc = Math.max(0, Number(summary.value.toplam_gelir) || 0)
+  const exp = Math.max(0, Number(summary.value.toplam_gider) || 0)
+  return inc + exp
 })
 
-function getNowIsoString() {
+const gelirRatio = computed(() => {
+  if (!totalVolume.value) return 50
+  const inc = Math.max(0, Number(summary.value.toplam_gelir) || 0)
+  return Math.min(100, Math.max(0, Math.round((inc / totalVolume.value) * 100)))
+})
+
+const giderRatio = computed(() => {
+  if (!totalVolume.value) return 50
+  return Math.max(0, 100 - gelirRatio.value)
+})
+
+function getTodayDateTimeInput() {
   const now = new Date()
   const offset = now.getTimezoneOffset() * 60000
   return new Date(now.getTime() - offset).toISOString().slice(0, 16)
+}
+
+// Hızlı Tutar Ekleme
+function addQuickAmount(delta) {
+  const cur = Number(formData.value.tutar) || 0
+  formData.value.tutar = String(cur + delta)
 }
 
 // Kasa Listesini Yükle
@@ -158,11 +185,12 @@ async function loadKasa(reset = true) {
   error.value = ''
 
   try {
+    const tipParam = activeFilter.value === 'gelir' ? '1' : activeFilter.value === 'gider' ? '2' : ''
     const res = await kasaApi.list({
       yil: selectedYear.value,
       ay: selectedMonth.value,
-      tip: selectedType.value,
-      search: searchQuery.value,
+      tip: tipParam,
+      search: search.value,
       page: reset ? 1 : pagination.value.page + 1,
       limit: 30,
     })
@@ -196,26 +224,26 @@ async function loadMeta() {
   }
 }
 
-watch([selectedYear, selectedMonth, selectedType], () => {
+watch([selectedYear, selectedMonth, activeFilter], () => {
   loadKasa(true)
 })
 
-watch(searchQuery, () => {
-  clearTimeout(searchDebounce)
-  searchDebounce = setTimeout(() => {
+watch(search, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
     loadKasa(true)
-  }, 350)
+  }, 300)
 })
 
-// Form Modal Aç/Kapat
+// Modal Aç/Kapat
 function openCreateModal() {
   isEditing.value = false
   formError.value = ''
   formData.value = {
     id: '',
-    type: 2,
+    type: 2, // varsayılan gider
     tutar: '',
-    islem_tarihi: getNowIsoString(),
+    islem_tarihi: getTodayDateTimeInput(),
     kategori: '',
     hesap_adi: '',
     aciklama: '',
@@ -225,7 +253,8 @@ function openCreateModal() {
   isFormModalOpen.value = true
 }
 
-async function openEditModal(item) {
+async function openEditModal(item, e) {
+  if (e) e.stopPropagation()
   isEditing.value = true
   formError.value = ''
   try {
@@ -236,7 +265,7 @@ async function openEditModal(item) {
         id: d.id,
         type: Number(d.type) || 2,
         tutar: String(d.tutar || ''),
-        islem_tarihi: d.tarih_input || getNowIsoString(),
+        islem_tarihi: d.tarih_input || getTodayDateTimeInput(),
         kategori: d.kategori || '',
         hesap_adi: d.hesap_adi || '',
         aciklama: d.aciklama || '',
@@ -256,7 +285,8 @@ function openDetailModal(item) {
   isDetailModalOpen.value = true
 }
 
-function confirmDelete(item) {
+function confirmDelete(item, e) {
+  if (e) e.stopPropagation()
   itemToDelete.value = item
   isDeleteConfirmOpen.value = true
 }
@@ -347,709 +377,714 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="ds-screen ds-kasa">
-    <!-- 1. Üst Navigasyon & Aksiyonlar (TopBar) -->
-    <TopBar
-      title="Kasa Takibi"
-      eyebrow="FİNANS & KASA YÖNETİMİ"
-      :subtitle="auth.state.company?.name || 'Ersan Elektrik'"
-    >
-      <template #actions>
+  <section class="ds-screen ds-kasa-screen">
+    <!-- 1. Üst Başlık & Aksiyon Çubuğu (Cari Takip Tasarımı) -->
+    <header class="kasa-topbar">
+      <button type="button" class="topbar-btn" aria-label="Geri dön" @click="router.back()">
+        <ArrowLeft :size="22" />
+      </button>
+
+      <div class="topbar-title">
+        <span>FİNANS & HESAPLAR</span>
+        <h1>Kasa Takibi</h1>
+      </div>
+
+      <div class="topbar-actions">
         <button
           type="button"
-          class="clay-circle-btn"
-          title="İşlem Geçmişi"
-          aria-label="İşlem Geçmişi"
-          @click="openHistoryModal"
-        >
-          <History :size="17" />
-        </button>
-        <button
-          type="button"
-          class="clay-circle-btn"
-          title="Yenile"
+          class="topbar-btn"
           aria-label="Yenile"
-          :class="{ 'is-spinning': loading }"
+          :class="{ spinning: loading }"
           @click="loadKasa(true)"
         >
-          <RefreshCw :size="17" />
+          <RefreshCw :size="19" />
         </button>
-      </template>
-    </TopBar>
-
-    <!-- 2. Hero Bento Kasa Özeti (Soft Bento Cards) -->
-    <section class="kasa-bento-hero" aria-label="Kasa Finans Özeti">
-      <!-- Ana Hero Kart: Güncel Net Bakiye -->
-      <article class="bento-main-card" @click="selectedType = ''">
-        <header class="bento-main-card__head">
-          <div class="bento-tag-wrap">
-            <span class="bento-kicker">GÜNCEL NET BAKİYE</span>
-            <span
-              class="bento-pill-status"
-              :class="summary.bakiye >= 0 ? 'is-positive' : 'is-negative'"
-            >
-              <span class="pill-dot"></span>
-              <span>{{ summary.bakiye >= 0 ? 'Kasa Artıda' : 'Kasa Ekside' }}</span>
-            </span>
-          </div>
-          <span class="bento-icon-badge bento-icon-badge--blue">
-            <Wallet :size="20" />
-          </span>
-        </header>
-
-        <div class="bento-main-card__amount">
-          <strong :class="summary.bakiye >= 0 ? 'text-emerald' : 'text-rose'">
-            {{ summary.bakiye < 0 ? '-' : '' }}{{ formatMoney(summary.bakiye) }}
-          </strong>
-        </div>
-
-        <!-- İnce Nakit Oran Çubuğu -->
-        <div class="segmented-track bento-flow-bar" title="Gelir vs Gider Dağılımı">
-          <div class="seg-pill bento-flow-bar__fill" :style="{ width: `${incomeRatio}%` }"></div>
-        </div>
-
-        <footer class="bento-main-card__footer">
-          <span>Toplam <b>{{ summary.toplam_islem }}</b> hareket kaydı</span>
-          <span class="bento-link">Tümünü gör <ChevronRight :size="14" /></span>
-        </footer>
-      </article>
-
-      <!-- İkili Alt Bento Kartları: Gelirler & Giderler -->
-      <div class="bento-split-grid">
-        <!-- Toplam Gelir Kartı -->
-        <article
-          class="bento-sub-card bento-sub-card--income"
-          :class="{ 'is-active-tab': selectedType === '1' }"
-          @click="selectedType = selectedType === '1' ? '' : '1'"
+        <button
+          type="button"
+          class="topbar-btn topbar-btn--primary"
+          aria-label="Yeni Kasa İşlemi Ekle"
+          @click="openCreateModal"
         >
-          <div class="bento-sub-card__top">
-            <span class="bento-kicker text-emerald">GELİRLER</span>
-            <span class="bento-icon-badge bento-icon-badge--emerald">
-              <TrendingUp :size="16" />
-            </span>
-          </div>
-          <strong class="bento-sub-card__amount text-emerald">
-            +{{ formatMoney(summary.toplam_gelir) }}
-          </strong>
-          <small class="bento-sub-card__meta">
-            {{ summary.gelir_adet }} Tahsilat / Giriş
-          </small>
-        </article>
-
-        <!-- Toplam Gider Kartı -->
-        <article
-          class="bento-sub-card bento-sub-card--expense"
-          :class="{ 'is-active-tab': selectedType === '2' }"
-          @click="selectedType = selectedType === '2' ? '' : '2'"
-        >
-          <div class="bento-sub-card__top">
-            <span class="bento-kicker text-rose">GİDERLER</span>
-            <span class="bento-icon-badge bento-icon-badge--rose">
-              <TrendingDown :size="16" />
-            </span>
-          </div>
-          <strong class="bento-sub-card__amount text-rose">
-            -{{ formatMoney(summary.toplam_gider) }}
-          </strong>
-          <small class="bento-sub-card__meta">
-            {{ summary.gider_adet }} Ödeme / Çıkış
-          </small>
-        </article>
+          <Plus :size="21" />
+        </button>
       </div>
-    </section>
+    </header>
 
-    <!-- 3. Kontrol & Filtre Paneli (Clay Controls) -->
-    <section class="kasa-controls-panel">
-      <!-- Üst Satır: Yıl ve Ay Seçicileri -->
-      <div class="kasa-date-pills">
-        <div class="clay-select-pill">
-          <Calendar :size="15" class="select-pill-icon" />
-          <select v-model="selectedYear" class="clay-select" aria-label="Yıl Seçin">
+    <!-- 2. Hero Obsidian Bento Kartı: Kasa İşlem Hacmi & Çift Yönlü Dağılım Analizi -->
+    <article class="kasa-hero-volume-card">
+      <header class="kasa-hero-volume-card__header">
+        <div class="kasa-hero-volume-card__title">
+          <span class="kasa-hero-icon-box">
+            <BarChart3 :size="16" />
+          </span>
+          <div>
+            <span class="kasa-hero-tag">KASA İŞLEM HACMİ</span>
+            <span class="kasa-hero-subtitle">Tahsilat & Ödeme Dağılım Analizi</span>
+          </div>
+        </div>
+
+        <span
+          class="kasa-balance-pill"
+          :class="summary.bakiye > 0 ? 'kasa-balance-pill--positive' : summary.bakiye < 0 ? 'kasa-balance-pill--warning' : 'kasa-balance-pill--neutral'"
+        >
+          <component :is="summary.bakiye >= 0 ? TrendingUp : TrendingDown" :size="13" />
+          <span>{{ summary.bakiye > 0 ? 'Pozitif Denge' : summary.bakiye < 0 ? 'Negatif Denge' : 'Dengede' }}</span>
+        </span>
+      </header>
+
+      <div class="kasa-hero-volume-main">
+        <strong class="kasa-hero-volume-amount">{{ formatMoney(totalVolume) }}</strong>
+        <div class="kasa-hero-balance-row">
+          <span class="kasa-hero-balance-label">Net Kasa Bakiye:</span>
+          <strong
+            class="kasa-hero-balance-val"
+            :class="summary.bakiye > 0 ? 'text-emerald' : summary.bakiye < 0 ? 'text-debt' : 'text-neutral'"
+          >
+            {{ (summary.bakiye > 0 ? '+' : summary.bakiye < 0 ? '-' : '') + formatMoney(summary.bakiye) }}
+          </strong>
+        </div>
+      </div>
+
+      <!-- Çift Yönlü Segmentli Dağılım Grafiği (Segmented Volume Bar) -->
+      <div class="kasa-chart-container">
+        <div
+          class="kasa-segmented-track"
+          role="progressbar"
+          :aria-valuenow="gelirRatio"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div
+            class="kasa-seg-fill kasa-seg-fill--gelir"
+            :style="{ width: `${gelirRatio}%` }"
+            :title="`Top. Gelir: %${gelirRatio}`"
+          >
+            <span v-if="gelirRatio >= 16" class="kasa-seg-label">%{{ gelirRatio }}</span>
+          </div>
+          <div
+            class="kasa-seg-fill kasa-seg-fill--gider"
+            :style="{ width: `${giderRatio}%` }"
+            :title="`Top. Gider: %${giderRatio}`"
+          >
+            <span v-if="giderRatio >= 16" class="kasa-seg-label">%{{ giderRatio }}</span>
+          </div>
+        </div>
+
+        <!-- Grafik Lejantı (Legend Grid) -->
+        <div class="kasa-chart-legend">
+          <!-- Sol Kutu: Top. Gelir (Tahsilat) -->
+          <div
+            class="kasa-legend-item"
+            :class="{ 'kasa-legend-item--active': activeFilter === 'gelir' }"
+            @click="activeFilter = activeFilter === 'gelir' ? 'all' : 'gelir'"
+          >
+            <span class="kasa-legend-dot kasa-legend-dot--gelir"></span>
+            <div class="kasa-legend-info">
+              <div class="kasa-legend-header">
+                <span class="kasa-legend-title">Top. Gelir (Tahsilat)</span>
+                <b class="kasa-legend-pct text-emerald">%{{ gelirRatio }}</b>
+              </div>
+              <strong class="kasa-legend-val">{{ formatMoney(summary.toplam_gelir) }}</strong>
+              <small class="kasa-legend-count">{{ summary.gelir_adet || 0 }} tahsilat / giriş</small>
+            </div>
+          </div>
+
+          <!-- Sağ Kutu: Top. Gider (Ödeme) -->
+          <div
+            class="kasa-legend-item"
+            :class="{ 'kasa-legend-item--active': activeFilter === 'gider' }"
+            @click="activeFilter = activeFilter === 'gider' ? 'all' : 'gider'"
+          >
+            <span class="kasa-legend-dot kasa-legend-dot--gider"></span>
+            <div class="kasa-legend-info">
+              <div class="kasa-legend-header">
+                <span class="kasa-legend-title">Top. Gider (Ödeme)</span>
+                <b class="kasa-legend-pct text-sky">%{{ giderRatio }}</b>
+              </div>
+              <strong class="kasa-legend-val">{{ formatMoney(summary.toplam_gider) }}</strong>
+              <small class="kasa-legend-count">{{ summary.gider_adet || 0 }} ödeme / çıkış</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 3. Dönem Seçicileri & Arama & Filtre Sekmeleri (Cari Takip Standartları) -->
+    <section class="kasa-filter-section">
+      <!-- Dönem Seçici Hapları (Yıl & Ay) -->
+      <div class="kasa-period-pills-row">
+        <div class="kasa-period-pill">
+          <Calendar :size="14" class="period-icon" />
+          <select v-model="selectedYear" class="period-select" aria-label="Yıl Seçin">
             <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} Yılı</option>
           </select>
         </div>
 
-        <div class="clay-select-pill">
-          <Clock :size="15" class="select-pill-icon" />
-          <select v-model="selectedMonth" class="clay-select" aria-label="Ay Seçin">
+        <div class="kasa-period-pill">
+          <Clock :size="14" class="period-icon" />
+          <select v-model="selectedMonth" class="period-select" aria-label="Ay Seçin">
             <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
           </select>
         </div>
       </div>
 
-      <!-- Orta Satır: Akıcı Segmented Tür Kontrolü -->
-      <div class="clay-tabs-wrap" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          class="clay-tab-pill"
-          :class="{ active: selectedType === '' }"
-          @click="selectedType = ''"
-        >
-          Tümü ({{ summary.toplam_islem }})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="clay-tab-pill clay-tab-pill--income"
-          :class="{ active: selectedType === '1' }"
-          @click="selectedType = '1'"
-        >
-          Gelir ({{ summary.gelir_adet }})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="clay-tab-pill clay-tab-pill--expense"
-          :class="{ active: selectedType === '2' }"
-          @click="selectedType = '2'"
-        >
-          Gider ({{ summary.gider_adet }})
-        </button>
-      </div>
-
-      <!-- Alt Satır: Arama Girişi -->
-      <div class="clay-search-bar kasa-search-bar">
-        <Search :size="17" />
+      <!-- Oval Arama Kutusu -->
+      <div class="kasa-search-box">
+        <Search :size="18" class="search-icon" />
         <input
-          v-model="searchQuery"
+          v-model="search"
           type="search"
-          class="clay-search-input"
-          placeholder="Kategori, hesap veya açıklamada ara..."
-          autocomplete="off"
+          inputmode="search"
+          placeholder="Kategori, hesap, açıklama veya plaka ara…"
+          aria-label="Kasa hareketi ara"
         />
-        <button
-          v-if="searchQuery"
-          type="button"
-          class="search-box-clear"
-          aria-label="Aramayı temizle"
-          @click="searchQuery = ''"
-        >
+        <button v-if="search" type="button" class="search-clear-btn" aria-label="Temizle" @click="search = ''">
           <X :size="16" />
         </button>
       </div>
-    </section>
 
-    <!-- Hata Bildirimi -->
-    <div v-if="error" class="ds-error-state">
-      <RefreshCw :size="24" />
-      <strong>Veriler Alınamadı</strong>
-      <p>{{ error }}</p>
-      <button type="button" @click="loadKasa(true)">Tekrar Dene</button>
-    </div>
-
-    <!-- Yükleniyor Durumu (Cam Skeleton / Spinner) -->
-    <div v-if="loading" class="ds-loading-wrap">
-      <div class="ds-pulse-spinner"></div>
-      <span>Kasa hareketleri yükleniyor...</span>
-    </div>
-
-    <!-- Boş Durum -->
-    <div v-else-if="items.length === 0" class="ds-empty-card">
-      <div class="empty-icon-wrap">
-        <Landmark :size="36" />
-      </div>
-      <h3>İşlem Kaydı Bulunmuyor</h3>
-      <p>Seçilen dönem veya filtre kriterine uygun kasa hareketi bulunamadı.</p>
-      <button type="button" class="btn-glass-primary" @click="openCreateModal">
-        <Plus :size="18" />
-        <span>Yeni İşlem Kaydet</span>
-      </button>
-    </div>
-
-    <!-- 4. Kasa Hareketleri Stream Listesi (3 Katmanlı Glacier Row Cards) -->
-    <section v-else class="kasa-stream-list" aria-label="Kasa Hareketleri">
-      <article
-        v-for="item in items"
-        :key="item.id"
-        class="kasa-row-card"
-        @click="openDetailModal(item)"
-      >
-        <!-- Katman 1: Meta Bar (Rozet, Tarih, Tutar) -->
-        <div class="kasa-row-card__header">
-          <div class="kasa-row-card__meta">
-            <!-- İşlem Tipi Rozeti -->
-            <span
-              class="kasa-status-pill"
-              :class="item.type === 1 ? 'is-income' : 'is-expense'"
-            >
-              <span class="status-dot"></span>
-              <component :is="item.type === 1 ? TrendingUp : TrendingDown" :size="12" />
-              <span>{{ item.type === 1 ? 'GELİR' : 'GİDER' }}</span>
-            </span>
-
-            <!-- Tarih & Saat Hapı -->
-            <span class="kasa-date-tag">
-              <Calendar :size="12" />
-              <span>{{ item.tarih_short }}</span>
-              <small v-if="item.saat_short && item.saat_short !== '00:00'">{{ item.saat_short }}</small>
-            </span>
-          </div>
-
-          <!-- Tutar -->
-          <strong
-            class="kasa-row-card__amount"
-            :class="item.type === 1 ? 'text-emerald' : 'text-rose'"
-          >
-            {{ item.type === 1 ? '+' : '-' }}{{ item.tutar_formatted }}
-          </strong>
-        </div>
-
-        <!-- Katman 2: Gövde (Kategori, Hesap, Açıklama) -->
-        <div class="kasa-row-card__body">
-          <h2 class="kasa-row-card__title">{{ item.kategori }}</h2>
-          <div class="kasa-row-card__account">
-            <User :size="13" class="account-icon" />
-            <span>{{ item.hesap_adi }}</span>
-          </div>
-          <p v-if="item.aciklama" class="kasa-row-card__desc">
-            {{ item.aciklama }}
-          </p>
-        </div>
-
-        <!-- Katman 3: Footer (Yürüyen Bakiye & Aksiyon Hapı) -->
-        <div class="kasa-row-card__footer">
-          <span
-            class="kasa-balance-chip"
-            :class="item.bakiye < 0 ? 'is-borc' : 'is-alacak'"
-          >
-            <span>Bakiye:</span>
-            <b>{{ item.bakiye_formatted }}</b>
-            <small v-if="item.bakiye_yon">({{ item.bakiye_yon }})</small>
-          </span>
-
-          <span class="kasa-action-pill">
-            <Receipt :size="13" />
-            <span>Detay</span>
-            <ChevronRight :size="13" />
-          </span>
-        </div>
-      </article>
-
-      <!-- Daha Fazla Yükle -->
-      <div v-if="pagination.has_more" class="kasa-load-wrap">
+      <!-- Filtre Tabları (Hap Butonlar) -->
+      <div class="kasa-filter-tabs">
         <button
           type="button"
-          class="btn-glass-load"
-          :disabled="loadingMore"
-          @click="loadKasa(false)"
+          class="tab-btn"
+          :class="{ active: activeFilter === 'all' }"
+          @click="activeFilter = 'all'"
         >
-          <span v-if="loadingMore" class="loading-mini-spin"></span>
-          <span>{{ loadingMore ? 'Yükleniyor...' : 'Daha Fazla Kayıt Yükle' }}</span>
+          <span>Tümü</span>
+          <b class="tab-badge">{{ summary.toplam_islem }}</b>
+        </button>
+
+        <button
+          type="button"
+          class="tab-btn"
+          :class="{ active: activeFilter === 'gelir' }"
+          @click="activeFilter = 'gelir'"
+        >
+          <span class="dot-indicator dot-credit"></span>
+          <span>Gelirler</span>
+          <b class="tab-badge">{{ summary.gelir_adet }}</b>
+        </button>
+
+        <button
+          type="button"
+          class="tab-btn"
+          :class="{ active: activeFilter === 'gider' }"
+          @click="activeFilter = 'gider'"
+        >
+          <span class="dot-indicator dot-debt"></span>
+          <span>Giderler</span>
+          <b class="tab-badge">{{ summary.gider_adet }}</b>
         </button>
       </div>
     </section>
 
-    <!-- FAB: Modern Glacier Cam Buton -->
-    <button
-      type="button"
-      class="kasa-fab-btn"
-      aria-label="Yeni Kasa İşlemi Ekle"
-      @click="openCreateModal"
-    >
-      <Plus :size="26" />
-    </button>
+    <!-- 4. Kasa Kartları Listesi (Cari Takip Kart Tasarımı) -->
+    <main class="kasa-list-main">
+      <!-- Yükleniyor Durumu -->
+      <div v-if="loading" class="ds-loading">
+        <i v-for="n in 4" :key="n" style="height: 82px;"></i>
+      </div>
 
-    <!-- 5. Yeni / Düzenle İşlem Modalı (Fintech Bottom Sheet) -->
-    <Transition name="sheet-anim">
-      <div v-if="isFormModalOpen" class="sheet-overlay" @click.self="isFormModalOpen = false">
-        <section class="sheet-container" role="dialog" aria-modal="true">
-          <div class="sheet-handle" aria-hidden="true"></div>
+      <!-- Hata Durumu -->
+      <div v-else-if="error" class="ds-state error-state">
+        <RefreshCw :size="24" />
+        <strong>Kayıtlar Yüklenemedi</strong>
+        <p>{{ error }}</p>
+        <button type="button" @click="loadKasa(true)">Tekrar Dene</button>
+      </div>
 
-          <header class="sheet-head">
-            <div class="sheet-head__left">
-              <span class="sheet-badge-icon" :class="formData.type === 1 ? 'is-income' : 'is-expense'">
-                <Landmark :size="20" />
+      <!-- Boş Durum -->
+      <div v-else-if="!items.length" class="ds-state">
+        <Landmark :size="32" />
+        <strong>İşlem Kaydı Bulunamadı</strong>
+        <p v-if="search || activeFilter !== 'all'">Arama veya filtre kriterlerinizi değiştirin.</p>
+        <p v-else>Henüz kayıtlı bir işlem bulunmuyor. Yeni bir kasa işlemi ekleyerek başlayın.</p>
+        <button type="button" @click="openCreateModal">+ İşlem Ekle</button>
+      </div>
+
+      <!-- Kasa Kartları Listesi -->
+      <div v-else class="kasa-cards-container">
+        <article
+          v-for="item in items"
+          :key="item.id"
+          class="kasa-card"
+          role="button"
+          tabindex="0"
+          @click="openDetailModal(item)"
+          @keydown.enter="openDetailModal(item)"
+        >
+          <!-- 46x46px Avatar (Cari Takip Stili) -->
+          <div
+            class="kasa-card__avatar"
+            :class="item.type === 1 ? 'avatar--gelir' : 'avatar--gider'"
+          >
+            {{ getCategoryInitials(item.kategori) }}
+          </div>
+
+          <!-- Bilgi Bloğu -->
+          <div class="kasa-card__info">
+            <h3 class="kasa-card__name">{{ item.kategori }}</h3>
+            <p v-if="item.hesap_adi" class="kasa-card__company">{{ item.hesap_adi }}</p>
+            <div class="kasa-card__meta">
+              <span class="kasa-meta-item">
+                <Clock :size="12" />
+                <span>{{ item.tarih_short }} {{ item.saat_short && item.saat_short !== '00:00' ? item.saat_short : '' }}</span>
               </span>
-              <div>
-                <h2>{{ isEditing ? 'İşlemi Düzenle' : 'Yeni Kasa İşlemi' }}</h2>
-                <small>{{ isEditing ? 'Kayıt bilgilerini güncelleyin' : 'Nakit veya banka hareketini girin' }}</small>
-              </div>
+              <span v-if="item.aciklama" class="kasa-meta-item kasa-meta-item--desc">
+                <FileText :size="12" />
+                <span>{{ item.aciklama }}</span>
+              </span>
+              <span v-else-if="item.plaka" class="kasa-meta-item">
+                <Tag :size="12" />
+                <span>{{ item.plaka }}</span>
+              </span>
             </div>
-            <button type="button" class="sheet-close" aria-label="Kapat" @click="isFormModalOpen = false">
-              <X :size="19" />
-            </button>
-          </header>
+          </div>
 
-          <form class="sheet-scroll-body" @submit.prevent="handleSave">
-            <div v-if="formError" class="sheet-error-tag">
-              {{ formError }}
-            </div>
+          <!-- Bakiye ve Aksiyon Bloğu -->
+          <div class="kasa-card__balance-block">
+            <span
+              class="balance-amount"
+              :class="item.type === 1 ? 'text-credit' : 'text-debt'"
+            >
+              {{ item.type === 1 ? '+' : '-' }}{{ item.tutar_formatted }}
+            </span>
 
-            <!-- Gelir / Gider Büyük Dokunmatik Seçici -->
-            <div class="fintech-type-selector">
+            <span
+              class="balance-badge"
+              :class="item.type === 1 ? 'badge-credit' : 'badge-debt'"
+            >
+              {{ item.type === 1 ? 'GELİR' : 'GİDER' }}
+            </span>
+
+            <div class="kasa-card__actions">
               <button
                 type="button"
-                class="fintech-type-pill fintech-type-pill--income"
-                :class="{ 'is-selected': formData.type === 1 }"
+                class="quick-action-btn"
+                title="Detay / Makbuz"
+                aria-label="Detay"
+                @click.stop="openDetailModal(item)"
+              >
+                <Eye :size="14" />
+              </button>
+              <span class="chevron-icon">
+                <ChevronRight :size="18" />
+              </span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Daha Fazla Yükle -->
+        <div v-if="pagination.has_more" class="kasa-load-more">
+          <button
+            type="button"
+            class="load-more-btn"
+            :disabled="loadingMore"
+            @click="loadKasa(false)"
+          >
+            <span v-if="loadingMore" class="loading-mini-spin"></span>
+            <span>{{ loadingMore ? 'Yükleniyor…' : 'Daha Fazla Göster' }}</span>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 5. Sağ Altta Kayan Çift Dairesel Butonlar (Cari Takipteki Gibi) -->
+    <div class="kasa-floating-actions">
+      <button
+        type="button"
+        class="floating-circle-btn floating-circle-btn--history"
+        title="İşlem Geçmişi"
+        aria-label="İşlem Geçmişi"
+        @click="openHistoryModal"
+      >
+        <History :size="22" />
+      </button>
+
+      <button
+        type="button"
+        class="floating-circle-btn floating-circle-btn--add"
+        title="Yeni İşlem Ekle"
+        aria-label="Yeni İşlem Ekle"
+        @click="openCreateModal"
+      >
+        <Plus :size="24" />
+      </button>
+    </div>
+
+    <!-- 6. MODAL 1: HIZLI İŞLEM EKLEME / DÜZENLEME (Cari Takip Bottom Sheet) -->
+    <Transition name="ds-modal">
+      <div v-if="isFormModalOpen" class="ds-modal-layer" @click.self="isFormModalOpen = false">
+        <div class="ds-bottom-sheet" role="dialog" aria-modal="true" :aria-label="isEditing ? 'İşlemi Düzenle' : 'Yeni Kasa İşlemi'">
+          <div class="sheet-header">
+            <div class="sheet-title">
+              <div class="sheet-icon-box">
+                <Landmark :size="18" />
+              </div>
+              <div>
+                <h3>{{ isEditing ? 'İşlemi Düzenle' : 'Yeni Kasa İşlemi' }}</h3>
+                <small>{{ isEditing ? 'Kayıt bilgilerini güncelleyin' : 'Gelir veya gider hareketi kaydedin' }}</small>
+              </div>
+            </div>
+            <button type="button" class="sheet-close-btn" @click="isFormModalOpen = false">
+              <X :size="18" />
+            </button>
+          </div>
+
+          <form class="sheet-form" @submit.prevent="handleSave">
+            <!-- 1. İşlem Yönü (Segmented Toggle) -->
+            <div class="type-segmented-control">
+              <button
+                type="button"
+                class="seg-btn seg-btn--credit"
+                :class="{ 'is-active': formData.type === 1 }"
                 @click="formData.type = 1"
               >
-                <TrendingUp :size="18" />
-                <span>GELİR (Giriş)</span>
+                <div class="seg-icon-box">
+                  <ArrowDownLeft :size="18" />
+                </div>
+                <div class="seg-text">
+                  <strong>Gelir (Giriş)</strong>
+                  <small>Kasa / Banka Tahsilatı</small>
+                </div>
               </button>
 
               <button
                 type="button"
-                class="fintech-type-pill fintech-type-pill--expense"
-                :class="{ 'is-selected': formData.type === 2 }"
+                class="seg-btn seg-btn--debt"
+                :class="{ 'is-active': formData.type === 2 }"
                 @click="formData.type = 2"
               >
-                <TrendingDown :size="18" />
-                <span>GİDER (Çıkış)</span>
+                <div class="seg-icon-box">
+                  <ArrowUpRight :size="18" />
+                </div>
+                <div class="seg-text">
+                  <strong>Gider (Çıkış)</strong>
+                  <small>Ödeme / Masraf / Çıkış</small>
+                </div>
               </button>
             </div>
 
-            <!-- Tutar Girişi (Fintech Hero Input) -->
-            <div class="fintech-hero-input-wrap">
-              <label for="f_tutar">İŞLEM TUTARI</label>
-              <div class="hero-amount-box">
-                <span class="currency-symbol">₺</span>
-                <input
-                  id="f_tutar"
-                  v-model="formData.tutar"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  placeholder="0,00"
-                  required
-                  class="hero-amount-input"
-                />
+            <!-- 2. Tutar & Tarih -->
+            <div class="form-grid-two">
+              <div class="form-group">
+                <label>Tutar (₺)*</label>
+                <div class="input-wrap amount-wrap">
+                  <span class="currency-badge">₺</span>
+                  <input
+                    v-model="formData.tutar"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0,00"
+                    required
+                    class="input-amount"
+                    inputmode="decimal"
+                  />
+                </div>
               </div>
+
+              <div class="form-group">
+                <label>İşlem Tarihi*</label>
+                <div class="input-wrap">
+                  <Calendar :size="16" class="input-icon" />
+                  <input v-model="formData.islem_tarihi" type="datetime-local" required />
+                </div>
+              </div>
+            </div>
+
+            <!-- Hızlı Tutar Çipleri -->
+            <div class="quick-chips-row">
+              <button type="button" class="quick-chip" @click="addQuickAmount(250)">+250 ₺</button>
+              <button type="button" class="quick-chip" @click="addQuickAmount(500)">+500 ₺</button>
+              <button type="button" class="quick-chip" @click="addQuickAmount(1000)">+1.000 ₺</button>
+              <button type="button" class="quick-chip" @click="addQuickAmount(5000)">+5.000 ₺</button>
             </div>
 
             <!-- Kategori -->
-            <div class="glass-form-group">
-              <label for="f_kategori">
-                <Tag :size="14" />
-                <span>KATEGORİ *</span>
-              </label>
-              <input
-                id="f_kategori"
-                v-model="formData.kategori"
-                list="kategori-datalist"
-                type="text"
-                class="glass-form-input"
-                placeholder="Örn: Akaryakıt, Maaş, Malzeme Satışı..."
-                required
-              />
-              <datalist id="kategori-datalist">
-                <option v-for="kat in categories" :key="kat" :value="kat" />
-              </datalist>
+            <div class="form-group">
+              <label>Kategori / İşlem Türü*</label>
+              <div class="input-wrap">
+                <Tag :size="16" class="input-icon" />
+                <input
+                  v-model="formData.kategori"
+                  list="kategori-datalist"
+                  type="text"
+                  placeholder="Örn: Akaryakıt, Maaş, Malzeme Satışı…"
+                  required
+                />
+                <datalist id="kategori-datalist">
+                  <option v-for="kat in categories" :key="kat" :value="kat" />
+                </datalist>
+              </div>
             </div>
 
-            <!-- Hesap / Kişi -->
-            <div class="glass-form-group">
-              <label for="f_hesap">
-                <User :size="14" />
-                <span>HESAP / MUHATAP KİŞİ *</span>
-              </label>
-              <input
-                id="f_hesap"
-                v-model="formData.hesap_adi"
-                list="hesap-datalist"
-                type="text"
-                class="glass-form-input"
-                placeholder="Örn: Kasa, Banka, İsim Soyisim..."
-                required
-              />
-              <datalist id="hesap-datalist">
-                <option v-for="acc in accounts" :key="acc" :value="acc" />
-              </datalist>
+            <!-- Hesap / Muhatap Kişi -->
+            <div class="form-group">
+              <label>Hesap / Muhatap Kişi*</label>
+              <div class="input-wrap">
+                <User :size="16" class="input-icon" />
+                <input
+                  v-model="formData.hesap_adi"
+                  list="hesap-datalist"
+                  type="text"
+                  placeholder="Örn: Kasa, İsim Soyisim, Tedarikçi…"
+                  required
+                />
+                <datalist id="hesap-datalist">
+                  <option v-for="acc in accounts" :key="acc" :value="acc" />
+                </datalist>
+              </div>
             </div>
 
-            <!-- Tarih & Saat -->
-            <div class="glass-form-group">
-              <label for="f_tarih">
-                <Calendar :size="14" />
-                <span>İŞLEM TARİHİ VE SAATİ *</span>
-              </label>
-              <input
-                id="f_tarih"
-                v-model="formData.islem_tarihi"
-                type="datetime-local"
-                class="glass-form-input"
-                required
-              />
+            <!-- Ödeme Şekli & Plaka -->
+            <div class="form-grid-two">
+              <div class="form-group">
+                <label>Ödeme Şekli</label>
+                <div class="input-wrap">
+                  <select v-model="formData.odeme_sekli" class="select-plain">
+                    <option value="Nakit">Nakit</option>
+                    <option value="Banka / Havale">Banka / Havale</option>
+                    <option value="Kredi Kartı">Kredi Kartı</option>
+                    <option value="Çek / Senet">Çek / Senet</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>İlgili Plaka (Opsiyonel)</label>
+                <div class="input-wrap">
+                  <input v-model="formData.plaka" type="text" placeholder="34 ABC 123" />
+                </div>
+              </div>
             </div>
 
             <!-- Açıklama -->
-            <div class="glass-form-group">
-              <label for="f_aciklama">AÇIKLAMA</label>
-              <textarea
-                id="f_aciklama"
-                v-model="formData.aciklama"
-                rows="3"
-                class="glass-form-textarea"
-                placeholder="İşlem detaylarını veya fiş/fatura numarasını buraya not edebilirsiniz..."
-              ></textarea>
-            </div>
-
-            <!-- İkili Ekstra Bilgiler -->
-            <div class="glass-form-row">
-              <div class="glass-form-group">
-                <label for="f_odeme">ÖDEME KANALI</label>
-                <select id="f_odeme" v-model="formData.odeme_sekli" class="glass-form-select">
-                  <option value="Nakit">Nakit</option>
-                  <option value="Banka / Havale">Banka / Havale</option>
-                  <option value="Kredi Kartı">Kredi Kartı</option>
-                  <option value="Çek / Senet">Çek / Senet</option>
-                </select>
-              </div>
-
-              <div class="glass-form-group">
-                <label for="f_plaka">İLGİLİ PLAKA</label>
-                <input
-                  id="f_plaka"
-                  v-model="formData.plaka"
-                  type="text"
-                  class="glass-form-input"
-                  placeholder="34 ABC 123"
-                />
+            <div class="form-group">
+              <label>Açıklama</label>
+              <div class="input-wrap textarea-wrap">
+                <FileText :size="16" class="input-icon textarea-icon" />
+                <textarea
+                  v-model="formData.aciklama"
+                  rows="2"
+                  placeholder="İşlem detaylarını veya fiş/fatura numarasını buraya yazabilirsiniz…"
+                ></textarea>
               </div>
             </div>
 
-            <!-- Butonlar -->
-            <div class="sheet-foot-buttons">
-              <button
-                type="button"
-                class="btn-sheet-cancel"
-                :disabled="formLoading"
-                @click="isFormModalOpen = false"
-              >
-                Vazgeç
-              </button>
+            <!-- Hata Mesajı -->
+            <p v-if="formError" class="form-error">{{ formError }}</p>
 
-              <button
-                type="submit"
-                class="btn-sheet-submit"
-                :disabled="formLoading"
-              >
-                <Check v-if="!formLoading" :size="18" />
-                <span v-else class="loading-mini-spin"></span>
-                <span>{{ isEditing ? 'Değişiklikleri Kaydet' : 'İşlemi Kaydet' }}</span>
-              </button>
-            </div>
+            <!-- Gönder Butonu -->
+            <button type="submit" class="submit-action-btn" :disabled="formLoading">
+              <Check v-if="!formLoading" :size="18" />
+              <span>{{ formLoading ? 'Kaydediliyor…' : (isEditing ? 'Güncellemeyi Kaydet' : 'İşlemi Kaydet') }}</span>
+            </button>
           </form>
-        </section>
+        </div>
       </div>
     </Transition>
 
-    <!-- 6. Lüks Fintech Makbuz / Detay Modalı -->
-    <Transition name="sheet-anim">
-      <div v-if="isDetailModalOpen && selectedDetail" class="sheet-overlay" @click.self="isDetailModalOpen = false">
-        <section class="sheet-container sheet-container--receipt" role="dialog" aria-modal="true">
-          <div class="sheet-handle" aria-hidden="true"></div>
-
-          <header class="sheet-head">
-            <div class="sheet-head__left">
-              <span class="sheet-badge-icon" :class="selectedDetail.type === 1 ? 'is-income' : 'is-expense'">
-                <Receipt :size="20" />
-              </span>
+    <!-- 7. MODAL 2: HAREKET DETAYI / MAKBUZ (Cari Takip Tarzı) -->
+    <Transition name="ds-modal">
+      <div v-if="isDetailModalOpen && selectedDetail" class="ds-modal-layer" @click.self="isDetailModalOpen = false">
+        <div class="ds-bottom-sheet" role="dialog" aria-modal="true" aria-label="İşlem Detayı">
+          <div class="sheet-header">
+            <div class="sheet-title">
+              <div class="sheet-icon-box">
+                <Receipt :size="18" />
+              </div>
               <div>
-                <h2>İşlem Detay Fişi</h2>
+                <h3>İşlem Detay Fişi</h3>
                 <small>{{ selectedDetail.tarih_formatted }}</small>
               </div>
             </div>
-            <button type="button" class="sheet-close" aria-label="Kapat" @click="isDetailModalOpen = false">
-              <X :size="19" />
+            <button type="button" class="sheet-close-btn" @click="isDetailModalOpen = false">
+              <X :size="18" />
             </button>
-          </header>
+          </div>
 
-          <div class="sheet-scroll-body">
-            <!-- Fintech Kartı -->
-            <div class="fintech-receipt-card">
-              <div class="receipt-header-hero">
-                <span
-                  class="receipt-status-pill"
-                  :class="selectedDetail.type === 1 ? 'is-income' : 'is-expense'"
-                >
-                  <component :is="selectedDetail.type === 1 ? TrendingUp : TrendingDown" :size="14" />
-                  <span>{{ selectedDetail.type === 1 ? 'GELİR HAREKETİ' : 'GİDER HAREKETİ' }}</span>
-                </span>
+          <div class="movement-detail-body">
+            <!-- Tutar Hero -->
+            <div class="movement-amount-hero">
+              <span class="hero-type-label">
+                {{ selectedDetail.type === 1 ? 'GELİR HAREKETİ' : 'GİDER HAREKETİ' }}
+              </span>
+              <strong
+                class="hero-amount-text"
+                :class="selectedDetail.type === 1 ? 'text-credit' : 'text-debt'"
+              >
+                {{ selectedDetail.type === 1 ? '+' : '-' }}{{ selectedDetail.tutar_formatted }}
+              </strong>
+            </div>
 
-                <h3
-                  class="receipt-hero-amount"
-                  :class="selectedDetail.type === 1 ? 'text-emerald' : 'text-rose'"
-                >
-                  {{ selectedDetail.type === 1 ? '+' : '-' }}{{ selectedDetail.tutar_formatted }}
-                </h3>
-
-                <span class="receipt-hero-category">{{ selectedDetail.kategori }}</span>
+            <!-- Parametre Listesi -->
+            <div class="detail-data-list">
+              <div class="detail-data-row">
+                <span>Kategori:</span>
+                <strong>{{ selectedDetail.kategori }}</strong>
               </div>
-
-              <!-- Parametre Izgarası -->
-              <div class="receipt-meta-grid">
-                <div class="receipt-cell">
-                  <span class="receipt-cell__lbl">Hesap / Muhatap</span>
-                  <strong class="receipt-cell__val">{{ selectedDetail.hesap_adi }}</strong>
-                </div>
-
-                <div class="receipt-cell">
-                  <span class="receipt-cell__lbl">Tarih & Saat</span>
-                  <strong class="receipt-cell__val">{{ selectedDetail.tarih_formatted }}</strong>
-                </div>
-
-                <div class="receipt-cell">
-                  <span class="receipt-cell__lbl">Yürüyen Bakiye</span>
-                  <strong
-                    class="receipt-cell__val"
-                    :class="selectedDetail.bakiye < 0 ? 'text-rose' : 'text-emerald'"
-                  >
-                    {{ selectedDetail.bakiye_formatted }} {{ selectedDetail.bakiye_yon ? `(${selectedDetail.bakiye_yon})` : '' }}
-                  </strong>
-                </div>
-
-                <div v-if="selectedDetail.odeme_sekli" class="receipt-cell">
-                  <span class="receipt-cell__lbl">Ödeme Şekli</span>
-                  <strong class="receipt-cell__val">{{ selectedDetail.odeme_sekli }}</strong>
-                </div>
-
-                <div v-if="selectedDetail.plaka" class="receipt-cell">
-                  <span class="receipt-cell__lbl">İlgili Plaka</span>
-                  <strong class="receipt-cell__val">{{ selectedDetail.plaka }}</strong>
-                </div>
+              <div class="detail-data-row">
+                <span>Hesap / Muhatap:</span>
+                <strong>{{ selectedDetail.hesap_adi }}</strong>
               </div>
-
-              <div v-if="selectedDetail.aciklama" class="receipt-note-box">
-                <span class="receipt-cell__lbl">Açıklama</span>
-                <p>{{ selectedDetail.aciklama }}</p>
+              <div class="detail-data-row">
+                <span>İşlem Tarihi:</span>
+                <strong>{{ selectedDetail.tarih_formatted }}</strong>
+              </div>
+              <div class="detail-data-row">
+                <span>Yürüyen Bakiye:</span>
+                <strong :class="selectedDetail.bakiye < 0 ? 'text-debt' : 'text-credit'">
+                  {{ selectedDetail.bakiye_formatted }} {{ selectedDetail.bakiye_yon ? `(${selectedDetail.bakiye_yon})` : '' }}
+                </strong>
+              </div>
+              <div v-if="selectedDetail.odeme_sekli" class="detail-data-row">
+                <span>Ödeme Şekli:</span>
+                <strong>{{ selectedDetail.odeme_sekli }}</strong>
+              </div>
+              <div v-if="selectedDetail.plaka" class="detail-data-row">
+                <span>İlgili Plaka:</span>
+                <strong>{{ selectedDetail.plaka }}</strong>
+              </div>
+              <div class="detail-data-row">
+                <span>Açıklama:</span>
+                <p>{{ selectedDetail.aciklama || '—' }}</p>
               </div>
             </div>
 
-            <!-- Aksiyonlar -->
-            <div class="receipt-action-buttons">
+            <!-- Aksiyon Butonları -->
+            <div class="detail-action-buttons">
               <button
                 type="button"
-                class="btn-action-pill btn-action-pill--edit"
-                @click="openEditModal(selectedDetail)"
+                class="detail-edit-btn"
+                @click="openEditModal(selectedDetail, $event)"
               >
-                <Pencil :size="17" />
+                <Pencil :size="16" />
                 <span>Düzenle</span>
               </button>
 
               <button
                 type="button"
-                class="btn-action-pill btn-action-pill--delete"
-                @click="confirmDelete(selectedDetail)"
+                class="danger-delete-btn"
+                @click="confirmDelete(selectedDetail, $event)"
               >
-                <Trash2 :size="17" />
-                <span>Kaydı Sil</span>
+                <Trash2 :size="16" />
+                <span>Bu Kaydı Sil</span>
               </button>
             </div>
           </div>
-        </section>
+        </div>
       </div>
     </Transition>
 
-    <!-- 7. Tüm Hareketler (İşlem Geçmişi) Modalı -->
-    <Transition name="sheet-anim">
-      <div v-if="isHistoryModalOpen" class="sheet-overlay" @click.self="isHistoryModalOpen = false">
-        <section class="sheet-container sheet-container--history" role="dialog" aria-modal="true">
-          <div class="sheet-handle" aria-hidden="true"></div>
-
-          <header class="sheet-head">
-            <div class="sheet-head__left">
-              <span class="sheet-badge-icon">
-                <History :size="20" />
-              </span>
+    <!-- 8. MODAL 3: TÜM HAREKETLER (GEÇMİŞ) -->
+    <Transition name="ds-modal">
+      <div v-if="isHistoryModalOpen" class="ds-modal-layer" @click.self="isHistoryModalOpen = false">
+        <div class="ds-bottom-sheet" role="dialog" aria-modal="true" aria-label="İşlem Geçmişi">
+          <div class="sheet-header">
+            <div class="sheet-title">
+              <div class="sheet-icon-box">
+                <History :size="18" />
+              </div>
               <div>
-                <h2>İşlem Geçmişi</h2>
-                <small>Kasa hareketleri genel dökümü</small>
+                <h3>İşlem Geçmişi</h3>
+                <small>Tüm kasa hareketleri dökümü</small>
               </div>
             </div>
-            <button type="button" class="sheet-close" aria-label="Kapat" @click="isHistoryModalOpen = false">
-              <X :size="19" />
+            <button type="button" class="sheet-close-btn" @click="isHistoryModalOpen = false">
+              <X :size="18" />
             </button>
-          </header>
+          </div>
 
-          <div class="sheet-scroll-body">
-            <!-- Geçmiş Filtreleri -->
-            <div class="history-controls-box">
-              <div class="glass-search-box">
-                <Search :size="16" class="search-box-icon" />
+          <div class="sheet-form">
+            <!-- Arama & Filtre -->
+            <div class="history-controls-card">
+              <div class="kasa-search-box" style="margin-bottom: 8px;">
+                <Search :size="16" class="search-icon" />
                 <input
                   v-model="historyFilter.search"
                   type="search"
-                  class="search-box-input"
-                  placeholder="Geçmişte ara..."
+                  placeholder="Geçmişte ara…"
                   @input="loadHistory"
                 />
               </div>
 
-              <div class="history-date-row">
+              <div class="form-grid-two" style="margin-bottom: 8px;">
                 <input
                   v-model="historyFilter.baslangic"
                   type="date"
-                  class="glass-form-input text-xs"
+                  class="date-input-plain"
                   aria-label="Başlangıç Tarihi"
                   @change="loadHistory"
                 />
                 <input
                   v-model="historyFilter.bitis"
                   type="date"
-                  class="glass-form-input text-xs"
+                  class="date-input-plain"
                   aria-label="Bitiş Tarihi"
                   @change="loadHistory"
                 />
               </div>
 
-              <div class="glass-segmented-control">
+              <div class="kasa-filter-tabs">
                 <button
                   type="button"
-                  class="segment-item"
-                  :class="{ 'is-selected': historyFilter.type === 'all' }"
+                  class="tab-btn"
+                  :class="{ active: historyFilter.type === 'all' }"
                   @click="setHistoryType('all')"
                 >
                   Tümü
                 </button>
                 <button
                   type="button"
-                  class="segment-item segment-item--income"
-                  :class="{ 'is-selected': historyFilter.type === '1' }"
+                  class="tab-btn"
+                  :class="{ active: historyFilter.type === '1' }"
                   @click="setHistoryType('1')"
                 >
+                  <span class="dot-indicator dot-credit"></span>
                   Gelir
                 </button>
                 <button
                   type="button"
-                  class="segment-item segment-item--expense"
-                  :class="{ 'is-selected': historyFilter.type === '2' }"
+                  class="tab-btn"
+                  :class="{ active: historyFilter.type === '2' }"
                   @click="setHistoryType('2')"
                 >
+                  <span class="dot-indicator dot-debt"></span>
                   Gider
                 </button>
               </div>
             </div>
 
             <!-- Geçmiş Listesi -->
-            <div v-if="historyLoading" class="ds-loading-wrap py-6">
-              <div class="ds-pulse-spinner"></div>
-              <span>Kayıtlar listeleniyor...</span>
+            <div v-if="historyLoading" class="ds-loading py-6">
+              <i v-for="n in 3" :key="n" style="height: 60px;"></i>
             </div>
 
-            <div v-else-if="historyItems.length === 0" class="ds-empty-card py-6">
-              <p>Kriterlere uygun kayıt bulunamadı.</p>
+            <div v-else-if="!historyItems.length" class="ds-state py-6">
+              <p>Kriterlere uygun geçmiş kaydı bulunamadı.</p>
             </div>
 
-            <div v-else class="history-stream">
+            <div v-else class="history-list-wrap">
               <article
                 v-for="h in historyItems"
                 :key="h.id"
-                class="history-card"
+                class="history-row-card"
                 @click="openDetailModal(h)"
               >
-                <div class="history-card__date">
-                  <span class="day-str">{{ h.date_short }}</span>
+                <div class="history-row-date">
+                  <span class="day-num">{{ h.date_short }}</span>
                   <span class="time-str">{{ h.time_short }}</span>
                 </div>
 
-                <div class="history-card__body">
+                <div class="history-row-content">
                   <h4>{{ h.kategori_adi }}</h4>
                   <small>{{ h.hesap_adi }}</small>
                 </div>
 
-                <div class="history-card__right">
-                  <strong :class="h.type === 1 ? 'text-emerald' : 'text-rose'">
+                <div class="history-row-amount">
+                  <strong :class="h.type === 1 ? 'text-credit' : 'text-debt'">
                     {{ h.type === 1 ? '+' : '-' }}{{ h.tutar_formatted }}
                   </strong>
                   <small>Bakiye: {{ h.yuruyen_formatted }} {{ h.yuruyen_yon ? `(${h.yuruyen_yon})` : '' }}</small>
@@ -1057,23 +1092,23 @@ onMounted(() => {
               </article>
             </div>
           </div>
-        </section>
+        </div>
       </div>
     </Transition>
 
-    <!-- 8. Silme Onay Modalı -->
-    <Transition name="fade-anim">
-      <div v-if="isDeleteConfirmOpen" class="dialog-backdrop">
-        <div class="glass-dialog">
-          <div class="dialog-warning-icon">
-            <Trash2 :size="26" />
+    <!-- 9. SİLME ONAY MODALI -->
+    <Transition name="ds-modal">
+      <div v-if="isDeleteConfirmOpen" class="ds-modal-layer" @click.self="isDeleteConfirmOpen = false">
+        <div class="delete-dialog-box">
+          <div class="delete-dialog-icon">
+            <Trash2 :size="24" />
           </div>
           <h3>İşlem Kaydı Silinecek</h3>
           <p>
             "<strong>{{ itemToDelete?.kategori }}</strong>" kalemine ait
             {{ itemToDelete?.tutar_formatted }} tutarındaki işlem silinecek. Onaylıyor musunuz?
           </p>
-          <div class="dialog-buttons">
+          <div class="dialog-actions">
             <button
               type="button"
               class="btn-dialog-cancel"
@@ -1084,7 +1119,7 @@ onMounted(() => {
             </button>
             <button
               type="button"
-              class="btn-dialog-danger"
+              class="btn-dialog-confirm"
               :disabled="deleteLoading"
               @click="executeDelete"
             >
@@ -1099,581 +1134,71 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ==========================================================================
-   SOFT BENTO & CLAYMORPHIC UI — KASA MODÜLÜ
-   ========================================================================== */
-
-.ds-kasa {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 680px;
-  margin: 0 auto;
-  padding-bottom: calc(var(--nav-height, 68px) + 36px + env(safe-area-inset-bottom)) !important;
+/* -------------------------------------------------------------------------
+   CARI TAKİP TASARIM STANDARTLARI (GLACIER ALPINE OPTICS: KASA)
+   ------------------------------------------------------------------------- */
+.ds-kasa-screen {
   font-family: var(--ds-font-main);
+  padding-bottom: calc(140px + var(--ds-safe-bottom));
 }
 
-/* 2. Hero Bento Kasa Özeti */
-.kasa-bento-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.bento-main-card {
-  padding: 22px 20px 18px;
-  border-radius: var(--ds-radius-card, 28px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
-  cursor: pointer;
-  transition: transform 0.18s ease;
-}
-
-.bento-main-card:active {
-  transform: scale(0.99);
-}
-
-.bento-main-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.bento-tag-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.bento-kicker {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--ds-muted);
-  text-transform: uppercase;
-}
-
-.bento-pill-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.bento-pill-status.is-positive {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--ds-emerald-ink);
-}
-
-.bento-pill-status.is-negative {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--ds-danger-ink);
-}
-
-.pill-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.bento-icon-badge {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+/* TOPBAR */
+.kasa-topbar {
   display: grid;
-  place-items: center;
-}
-
-.bento-icon-badge--blue {
-  background: var(--ds-surface-subtle);
-  color: var(--ds-ink);
-}
-
-.bento-icon-badge--emerald {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--ds-emerald-ink);
-}
-
-.bento-icon-badge--rose {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--ds-danger-ink);
-}
-
-.bento-main-card__amount {
-  margin: 12px 0 12px;
-}
-
-.bento-main-card__amount strong {
-  font-size: 32px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.04em;
-}
-
-.bento-flow-bar {
-  margin-bottom: 14px;
-}
-
-.bento-flow-bar__fill {
-  transition: width 0.4s ease;
-}
-
-.bento-main-card__footer {
-  display: flex;
+  grid-template-columns: 42px 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--ds-muted);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  padding-top: 12px;
-}
-
-.bento-main-card__footer b {
-  color: var(--ds-ink);
-}
-
-.bento-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--ds-ink);
-  font-weight: 700;
-}
-
-/* İkili Alt Bento Izgarası */
-.bento-split-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 12px;
+  margin-bottom: 20px;
 }
 
-.bento-sub-card {
-  padding: 16px 18px;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
-  cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.bento-sub-card:active {
-  transform: scale(0.98);
-}
-
-.bento-sub-card.is-active-tab {
-  border-color: var(--ds-surface-dark, var(--ds-surface-dark));
-  box-shadow: 0 10px 26px rgba(25, 29, 36, 0.16);
-}
-
-.bento-sub-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.bento-sub-card__amount {
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bento-sub-card__meta {
-  font-size: 11px;
-  color: var(--ds-muted);
-  margin-top: 4px;
-}
-
-/* 3. Kontroller Paneli */
-.kasa-controls-panel {
-  padding: 16px;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.kasa-date-pills {
+.topbar-btn {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.clay-select-pill {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: var(--ds-surface-subtle);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
-  padding: 0 12px;
+  width: 42px;
   height: 42px;
-}
-
-.select-pill-icon {
-  color: var(--ds-muted);
-  margin-right: 8px;
-  flex-shrink: 0;
-}
-
-.clay-select {
-  width: 100%;
-  border: none;
-  background: transparent;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ds-ink);
-  outline: none;
-  cursor: pointer;
-}
-
-.clay-tabs-wrap {
-  display: flex;
-  gap: 6px;
-  background: var(--ds-surface-subtle);
-  padding: 4px;
-  border-radius: 16px;
-}
-
-.clay-tab-pill {
-  flex: 1;
-  height: 36px;
-  border: none;
-  background: transparent;
-  color: var(--ds-muted);
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.clay-tab-pill.active {
-  background: var(--ds-surface-dark, var(--ds-surface-dark));
-  color: var(--ds-surface);
-  box-shadow: 0 4px 12px rgba(25, 29, 36, 0.22);
-}
-
-.clay-tab-pill--income.active {
-  background: var(--ds-emerald-ink);
-  color: var(--ds-surface);
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
-}
-
-.clay-tab-pill--expense.active {
-  background: var(--ds-danger-ink);
-  color: var(--ds-surface);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
-}
-
-.kasa-search-bar {
-  position: relative;
-}
-
-.search-box-clear {
-  position: absolute;
-  right: 12px;
-  background: none;
-  border: none;
-  color: var(--ds-muted-light);
-  padding: 4px;
-  cursor: pointer;
-}
-
-/* 4. Kasa Hareketleri Stream Listesi */
-.kasa-stream-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.kasa-row-card {
-  padding: 16px 18px;
-  border-radius: 22px;
+  place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
+  border-radius: 50%;
+  color: var(--ds-ink);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: var(--ds-shadow-card);
+  backdrop-filter: blur(16px);
   cursor: pointer;
   transition: transform 0.15s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
-.kasa-row-card:active {
-  transform: scale(0.98);
+.topbar-btn:active {
+  transform: scale(0.93);
 }
 
-/* Katman 1: Meta */
-.kasa-row-card__header {
+.topbar-btn--primary {
+  background: var(--ds-primary, #11161b);
+  color: var(--ds-surface, #ffffff);
+  border-color: var(--ds-primary, #11161b);
+}
+
+.topbar-title span {
+  display: block;
+  color: var(--ds-muted);
+  font: 700 9px 'Space Grotesk', sans-serif;
+  letter-spacing: 0.1em;
+}
+
+.topbar-title h1 {
+  margin: 1px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ds-ink);
+}
+
+.topbar-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
 }
 
-.kasa-row-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.kasa-status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-}
-
-.kasa-status-pill.is-income {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--ds-emerald-ink);
-}
-
-.kasa-status-pill.is-expense {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--ds-danger-ink);
-}
-
-.status-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.kasa-date-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--ds-muted);
-}
-
-.kasa-date-tag small {
-  color: var(--ds-ink);
-  font-weight: 700;
-}
-
-.kasa-row-card__amount {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  flex-shrink: 0;
-}
-
-/* Katman 2: Body */
-.kasa-row-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.kasa-row-card__title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ds-ink);
-  line-height: 1.3;
-}
-
-.kasa-row-card__account {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--ds-muted);
-}
-
-.account-icon {
-  color: var(--ds-muted-light);
-  flex-shrink: 0;
-}
-
-.kasa-row-card__desc {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--ds-muted);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Katman 3: Footer */
-.kasa-row-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.kasa-balance-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--ds-muted);
-}
-
-.kasa-balance-chip b {
-  font-weight: 700;
-}
-
-.kasa-balance-chip.is-borc b {
-  color: var(--ds-danger-ink);
-}
-
-.kasa-balance-chip.is-alacak b {
-  color: var(--ds-emerald-ink);
-}
-
-.kasa-action-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ds-ink);
-}
-
-/* Load More */
-.kasa-load-wrap {
-  text-align: center;
-  padding: 6px 0 16px;
-}
-
-.btn-glass-load {
-  width: 100%;
-  height: 46px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: var(--ds-surface);
-  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
-  color: var(--ds-ink);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-/* FAB */
-.kasa-fab-btn {
-  position: fixed;
-  right: 20px;
-  bottom: calc(var(--nav-height, 68px) + 24px + env(safe-area-inset-bottom));
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--ds-surface-dark, var(--ds-surface-dark));
-  color: var(--ds-surface);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 12px 28px rgba(25, 29, 36, 0.35);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  z-index: 90;
-  transition: transform 0.18s ease;
-}
-
-.kasa-fab-btn:active {
-  transform: scale(0.92);
-}
-
-/* Durum Bildirimleri */
-.ds-error-state,
-.ds-empty-card,
-.ds-loading-wrap {
-  text-align: center;
-  padding: 40px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--ds-muted);
-}
-
-.empty-icon-wrap {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  background: var(--ds-surface-subtle);
-  display: grid;
-  place-items: center;
-  color: var(--ds-muted);
-  margin-bottom: 4px;
-}
-
-.ds-empty-card h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ds-ink);
-}
-
-.ds-empty-card p {
-  margin: 0;
-  font-size: 12px;
-  max-width: 260px;
-}
-
-.btn-glass-primary {
-  margin-top: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 20px;
-  border-radius: 16px;
-  border: none;
-  background: var(--ds-surface-dark, var(--ds-surface-dark));
-  color: var(--ds-surface);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(25, 29, 36, 0.25);
-}
-
-.ds-pulse-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid rgba(0, 0, 0, 0.08);
-  border-top-color: var(--ds-ink);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.loading-mini-spin {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: var(--ds-surface);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.spinning {
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
@@ -1681,552 +1206,1122 @@ onMounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* Modallar */
-.sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 22, 27, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
+/* 2. HERO OBSIDIAN BENTO KARTI: KASA İŞLEM HACMİ */
+.kasa-hero-volume-card {
+  background: var(--ds-surface-dark, #191d24);
+  border-radius: var(--ds-radius-card, 28px);
+  color: #ffffff;
+  padding: 20px 18px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--ds-shadow-bento-dark, 0 16px 36px rgba(0, 0, 0, 0.28));
 }
 
-.sheet-container {
+.kasa-hero-volume-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.kasa-hero-volume-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kasa-hero-icon-box {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.kasa-hero-tag {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+
+.kasa-hero-subtitle {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.kasa-balance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kasa-balance-pill--positive {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.kasa-balance-pill--warning {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.kasa-balance-pill--neutral {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.kasa-hero-volume-main {
+  margin-bottom: 14px;
+}
+
+.kasa-hero-volume-amount {
+  display: block;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.kasa-hero-balance-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+
+.kasa-hero-balance-label {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.kasa-hero-balance-val {
+  font-weight: 700;
+}
+
+/* Çift Yönlü Segmentli Dağılım Grafiği (Segmented Track) */
+.kasa-chart-container {
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kasa-segmented-track {
+  position: relative;
+  display: flex;
+  height: 16px;
   width: 100%;
-  max-width: 600px;
-  max-height: 92vh;
-  background: var(--ds-surface);
-  border-radius: 32px 32px 0 0;
-  box-shadow: 0 -12px 36px rgba(16, 24, 40, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.kasa-seg-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.4s ease;
+  position: relative;
+}
+
+.kasa-seg-fill--gelir {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.kasa-seg-fill--gider {
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.kasa-seg-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.01em;
+}
+
+/* Lejant (Legend Grid) */
+.kasa-chart-legend {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.kasa-legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.kasa-legend-item:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.kasa-legend-item--active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.kasa-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.kasa-legend-dot--gelir {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.kasa-legend-dot--gider {
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.kasa-legend-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.kasa-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.kasa-legend-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kasa-legend-pct {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.kasa-legend-val {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 2px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kasa-legend-count {
+  display: block;
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 1px;
+}
+
+/* RENKLER */
+.text-debt { color: var(--ds-danger-ink, #dc2626) !important; }
+.text-credit { color: var(--ds-emerald-ink, #059669) !important; }
+.text-neutral { color: var(--ds-slate, #516071) !important; }
+.text-emerald { color: #34d399 !important; }
+.text-sky { color: #38bdf8 !important; }
+
+/* 3. DÖNEM & ARAMA & FİLTRE */
+.kasa-filter-section {
+  margin-bottom: 16px;
+}
+
+.kasa-period-pills-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.kasa-period-pill {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--ds-shadow-card);
+  backdrop-filter: blur(16px);
+}
+
+.period-icon {
+  color: var(--ds-muted);
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.period-select {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  outline: none;
+  cursor: pointer;
+}
+
+.kasa-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--ds-shadow-card);
+  backdrop-filter: blur(16px);
+  margin-bottom: 12px;
+}
+
+.kasa-search-box .search-icon {
+  color: var(--ds-muted);
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.kasa-search-box input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: var(--ds-ink);
+}
+
+.kasa-search-box input::placeholder {
+  color: var(--ds-muted);
+}
+
+.search-clear-btn {
+  background: none;
+  border: none;
+  color: var(--ds-muted);
+  padding: 4px;
+  cursor: pointer;
+}
+
+/* FİLTRE HAPLARI */
+.kasa-filter-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: var(--ds-shadow-card);
+  color: var(--ds-slate);
+  font: 600 10.5px 'Space Grotesk', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn.active {
+  background: var(--ds-primary, #11161b);
+  color: var(--ds-surface, #ffffff);
+  border-color: var(--ds-primary, #11161b);
+}
+
+.tab-badge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  background: rgba(140, 155, 174, 0.18);
+}
+
+.tab-btn.active .tab-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--ds-surface, #ffffff);
+}
+
+.dot-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dot-credit { background: #10b981; }
+.dot-debt { background: #ef4444; }
+
+/* 4. KASA KARTLARI LİSTESİ (Cari Takip Kart Yapısı) */
+.kasa-cards-container {
+  display: grid;
+  gap: 10px;
+}
+
+.kasa-card {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--ds-shadow-card);
+  backdrop-filter: blur(16px);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.kasa-card:active {
+  transform: scale(0.985);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.kasa-card__avatar {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 15px;
+  color: #ffffff;
+  background: var(--ds-primary, #11161b);
+  font: 700 15px 'Space Grotesk', sans-serif;
+  box-shadow: 0 6px 16px rgba(17, 22, 27, 0.15);
+}
+
+.avatar--gelir {
+  background: #11161b;
+  border-left: 3px solid #10b981;
+}
+
+.avatar--gider {
+  background: #11161b;
+  border-left: 3px solid #ef4444;
+}
+
+.kasa-card__info {
+  min-width: 0;
+}
+
+.kasa-card__name {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.02em;
+}
+
+.kasa-card__company {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--ds-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kasa-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.kasa-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--ds-slate);
+}
+
+.kasa-meta-item--desc {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kasa-card__balance-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.balance-amount {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.balance-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font: 700 8.5px 'Space Grotesk', sans-serif;
+  text-transform: uppercase;
+}
+
+.badge-debt {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.badge-credit {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.kasa-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.quick-action-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.quick-action-btn:active {
+  transform: scale(0.9);
+}
+
+.chevron-icon {
+  color: var(--ds-muted);
+}
+
+/* Load More */
+.kasa-load-more {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.load-more-btn {
+  width: 100%;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: var(--ds-shadow-card);
+  color: var(--ds-ink);
+  font: 700 12px 'Space Grotesk', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* 5. FLOATING ACTIONS (Cari Takipteki Sağ Alt Butonlar) */
+.kasa-floating-actions {
+  position: fixed;
+  right: 18px;
+  bottom: calc(82px + var(--ds-safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 45;
+}
+
+.floating-circle-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: var(--ds-primary, #11161b);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(17, 22, 27, 0.38);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.floating-circle-btn:active {
+  transform: scale(0.92);
+}
+
+.floating-circle-btn--history {
+  width: 46px;
+  height: 46px;
+  background: #1e293b;
+}
+
+/* 6 & 7 & 8. BOTTOM SHEETS & MODALS (Cari Takip Standartları) */
+.ds-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(17, 22, 27, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ds-bottom-sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding-bottom: var(--ds-safe-bottom, 16px);
 }
 
-.sheet-handle {
-  width: 44px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--ds-muted-light);
-  margin: 10px auto 0;
-}
-
-.sheet-head {
+.sheet-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid rgba(140, 155, 174, 0.15);
 }
 
-.sheet-head__left {
+.sheet-title {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.sheet-badge-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+.sheet-icon-box {
   display: grid;
   place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(17, 22, 27, 0.08);
+  color: var(--ds-primary, #11161b);
 }
 
-.sheet-badge-icon.is-income {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--ds-emerald-ink);
-}
-
-.sheet-badge-icon.is-expense {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--ds-danger-ink);
-}
-
-.sheet-head h2 {
+.sheet-title h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ds-ink);
-  letter-spacing: -0.02em;
 }
 
-.sheet-head small {
-  font-size: 12px;
+.sheet-title small {
+  display: block;
+  font-size: 11px;
   color: var(--ds-muted);
 }
 
-.sheet-close {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: var(--ds-surface-subtle);
-  color: var(--ds-ink);
+.sheet-close-btn {
   display: grid;
   place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(140, 155, 174, 0.14);
+  color: var(--ds-slate);
   cursor: pointer;
 }
 
-.sheet-scroll-body {
-  padding: 18px 20px 24px;
+.sheet-form {
+  padding: 16px 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* TYPE SEGMENTED CONTROL */
+.type-segmented-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.seg-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(140, 155, 174, 0.2);
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.seg-icon-box {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(140, 155, 174, 0.15);
+  color: var(--ds-slate);
+}
+
+.seg-text strong {
+  display: block;
+  font-size: 12px;
+  color: var(--ds-ink);
+}
+
+.seg-text small {
+  display: block;
+  font-size: 10px;
+  color: var(--ds-muted);
+}
+
+.seg-btn--credit.is-active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+.seg-btn--credit.is-active .seg-icon-box {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.seg-btn--debt.is-active {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.seg-btn--debt.is-active .seg-icon-box {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* FORM ALANLARI */
+.form-grid-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font: 700 10px 'Space Grotesk', sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--ds-muted);
+  text-transform: uppercase;
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid rgba(140, 155, 174, 0.24);
+  border-radius: 14px;
+  background: #f8fafc;
+  transition: border-color 0.15s ease;
+}
+
+.input-wrap:focus-within {
+  border-color: var(--ds-primary, #11161b);
+  background: #ffffff;
+}
+
+.input-icon {
+  color: var(--ds-muted);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.input-wrap input,
+.select-plain {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: var(--ds-ink);
+}
+
+.amount-wrap {
+  background: #ffffff;
+  border-color: rgba(17, 22, 27, 0.3);
+}
+
+.currency-badge {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ds-muted);
+  margin-right: 6px;
+}
+
+.input-amount {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: var(--ds-ink) !important;
+}
+
+.textarea-wrap {
+  height: auto;
+  padding: 8px 12px;
+  align-items: flex-start;
+}
+
+.textarea-icon {
+  margin-top: 2px;
+}
+
+.textarea-wrap textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: var(--ds-ink);
+  resize: none;
+}
+
+/* Hızlı Tutar Çipleri */
+.quick-chips-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quick-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 155, 174, 0.25);
+  background: #f1f5f9;
+  font: 700 10.5px 'Space Grotesk', sans-serif;
+  color: var(--ds-slate);
+  cursor: pointer;
+}
+
+.quick-chip:active {
+  background: #e2e8f0;
+}
+
+.submit-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  border-radius: 16px;
+  border: none;
+  background: var(--ds-primary, #11161b);
+  color: #ffffff;
+  font: 700 14px 'Space Grotesk', sans-serif;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.submit-action-btn:active {
+  transform: scale(0.98);
+}
+
+.form-error {
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* HAREKET DETAYI / MAKBUZ */
+.movement-detail-body {
+  padding: 16px 20px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.fintech-type-selector {
-  display: flex;
-  gap: 10px;
-}
-
-.fintech-type-pill {
-  flex: 1;
-  height: 48px;
-  border-radius: 16px;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
-  background: var(--ds-surface-subtle);
-  color: var(--ds-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.fintech-type-pill--income.is-selected {
-  border-color: var(--ds-emerald);
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--ds-emerald-ink);
-}
-
-.fintech-type-pill--expense.is-selected {
-  border-color: var(--ds-danger);
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--ds-danger-ink);
-}
-
-.fintech-hero-input-wrap {
-  background: var(--ds-surface-subtle);
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
+.movement-amount-hero {
+  text-align: center;
+  padding: 18px 14px;
+  background: #f8fafc;
   border-radius: 20px;
-  padding: 12px 18px;
-  transition: border-color 0.18s ease;
+  border: 1px solid rgba(140, 155, 174, 0.16);
 }
 
-.fintech-hero-input-wrap:focus-within {
-  border-color: var(--ds-blue-ink);
-  background: var(--ds-surface);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-}
-
-.fintech-hero-input-wrap label {
+.hero-type-label {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
+  font: 700 10px 'Space Grotesk', sans-serif;
   letter-spacing: 0.1em;
   color: var(--ds-muted);
-  text-transform: uppercase;
-  margin-bottom: 4px;
 }
 
-.hero-amount-box {
-  display: flex;
-  align-items: center;
-}
-
-.currency-symbol {
-  font-size: 28px;
+.hero-amount-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 30px;
   font-weight: 800;
-  color: var(--ds-muted);
-  margin-right: 6px;
-}
-
-.hero-amount-input {
-  width: 100%;
-  border: none;
-  background: transparent;
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--ds-ink);
-  outline: none;
-}
-
-.glass-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.glass-form-group label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--ds-muted);
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.glass-form-input,
-.glass-form-select,
-.glass-form-textarea {
-  width: 100%;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
-  background: var(--ds-surface-subtle);
-  color: var(--ds-ink);
-  font-size: 13px;
-  outline: none;
-  padding: 12px 16px;
-  transition: border-color 0.18s ease;
-  font-family: inherit;
-}
-
-.glass-form-input:focus,
-.glass-form-select:focus,
-.glass-form-textarea:focus {
-  border-color: var(--ds-blue-ink);
-  background: var(--ds-surface);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-}
-
-.glass-form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.sheet-foot-buttons {
-  display: flex;
-  gap: 12px;
-  margin-top: 10px;
-}
-
-.btn-sheet-submit {
-  flex: 2;
-  height: 50px;
-  border-radius: 18px;
-  border: none;
-  background: var(--ds-surface-dark, var(--ds-surface-dark));
-  color: var(--ds-surface);
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0 10px 22px rgba(25, 29, 36, 0.25);
-  cursor: pointer;
-}
-
-.btn-sheet-submit:active {
-  transform: scale(0.98);
-}
-
-.btn-sheet-cancel {
-  flex: 1;
-  height: 50px;
-  border-radius: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: var(--ds-surface-subtle);
-  color: var(--ds-muted);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.sheet-error-tag {
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--ds-danger-ink);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* Fiş Detay Kartı */
-.fintech-receipt-card {
-  background: var(--ds-surface-subtle);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 24px;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.receipt-header-hero {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.receipt-status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.receipt-status-pill.is-income {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--ds-emerald-ink);
-}
-
-.receipt-status-pill.is-expense {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--ds-danger-ink);
-}
-
-.receipt-hero-amount {
-  margin: 0;
-  font-size: 34px;
-  font-weight: 900;
   letter-spacing: -0.04em;
 }
 
-.receipt-hero-category {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ds-ink);
-}
-
-.receipt-meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  padding-top: 16px;
-}
-
-.receipt-cell {
+.detail-data-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
 }
 
-.receipt-cell__lbl {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--ds-muted);
-  text-transform: uppercase;
-}
-
-.receipt-cell__val {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ds-ink);
-}
-
-.receipt-note-box {
-  background: var(--ds-surface);
-  padding: 12px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.receipt-note-box p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--ds-ink);
-}
-
-.receipt-action-buttons {
+.detail-data-row {
   display: flex;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(140, 155, 174, 0.12);
+  font-size: 13px;
 }
 
-.btn-action-pill {
-  flex: 1;
-  height: 48px;
-  border-radius: 16px;
-  border: none;
-  font-size: 13px;
+.detail-data-row span {
+  color: var(--ds-muted);
+  font-size: 12px;
+}
+
+.detail-data-row strong,
+.detail-data-row p {
+  color: var(--ds-ink);
+  text-align: right;
+  margin: 0;
   font-weight: 700;
+}
+
+.detail-action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.detail-edit-btn {
+  flex: 1;
+  height: 46px;
+  border-radius: 14px;
+  border: none;
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+  font: 700 13px 'Space Grotesk', sans-serif;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  cursor: pointer;
 }
 
-.btn-action-pill--edit {
-  background: rgba(245, 158, 11, 0.12);
-  color: var(--ds-amber-ink);
-}
-
-.btn-action-pill--delete {
+.danger-delete-btn {
+  flex: 1;
+  height: 46px;
+  border-radius: 14px;
+  border: none;
   background: rgba(239, 68, 68, 0.12);
-  color: var(--ds-danger-ink);
+  color: #dc2626;
+  font: 700 13px 'Space Grotesk', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-/* İşlem Geçmişi */
-.history-controls-box {
+/* GEÇMİŞ LİSTESİ */
+.history-controls-card {
+  padding: 12px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid rgba(140, 155, 174, 0.16);
+}
+
+.date-input-plain {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1.5px solid rgba(140, 155, 174, 0.2);
+  border-radius: 12px;
+  background: #ffffff;
+  font-size: 12px;
+  color: var(--ds-ink);
+  outline: none;
+}
+
+.history-list-wrap {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.history-date-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.history-stream {
+.history-row-card {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
-}
-
-.history-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 18px;
-  background: var(--ds-surface);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid rgba(140, 155, 174, 0.14);
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
-.history-card:active {
-  background: var(--ds-surface-subtle);
+.history-row-card:active {
+  background: #f1f5f9;
 }
 
-.history-card__date {
+.history-row-date {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 8px;
-  background: var(--ds-surface-subtle);
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
+  padding: 5px 8px;
+  background: rgba(140, 155, 174, 0.12);
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 800;
   line-height: 1.1;
   flex-shrink: 0;
 }
 
-.day-str { color: var(--ds-ink); }
+.day-num { color: var(--ds-primary, #11161b); }
 .time-str { color: var(--ds-muted); }
 
-.history-card__body {
+.history-row-content {
   flex: 1;
   min-width: 0;
 }
 
-.history-card__body h4 {
+.history-row-content h4 {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--ds-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.history-card__body small {
-  font-size: 11px;
-  color: var(--ds-muted);
-}
-
-.history-card__right {
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.history-card__right strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.history-card__right small {
+.history-row-content small {
   font-size: 10px;
   color: var(--ds-muted);
 }
 
-/* Silme Onay Dialog */
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 22, 27, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 1100;
-  display: grid;
-  place-items: center;
-  padding: 20px;
+.history-row-amount {
+  text-align: right;
+  flex-shrink: 0;
 }
 
-.glass-dialog {
-  background: var(--ds-surface);
-  border-radius: 28px;
-  padding: 24px;
-  max-width: 360px;
-  width: 100%;
+.history-row-amount strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.history-row-amount small {
+  font-size: 9px;
+  color: var(--ds-muted);
+}
+
+/* SİLME DİYALOGU */
+.delete-dialog-box {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 24px 20px;
+  max-width: 340px;
+  width: 90%;
   text-align: center;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  margin-bottom: 40px;
 }
 
-.dialog-warning-icon {
-  width: 54px;
-  height: 54px;
+.delete-dialog-icon {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: rgba(239, 68, 68, 0.12);
-  color: var(--ds-danger-ink);
+  color: #dc2626;
   display: grid;
   place-items: center;
   margin: 0 auto 12px;
 }
 
-.glass-dialog h3 {
+.delete-dialog-box h3 {
   margin: 0 0 6px;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--ds-ink);
 }
 
-.glass-dialog p {
+.delete-dialog-box p {
   margin: 0 0 18px;
   font-size: 13px;
   color: var(--ds-muted);
   line-height: 1.4;
 }
 
-.dialog-buttons {
+.dialog-actions {
   display: flex;
   gap: 10px;
 }
 
-.btn-dialog-danger {
+.btn-dialog-confirm {
   flex: 1;
-  height: 46px;
-  border-radius: 16px;
+  height: 44px;
+  border-radius: 14px;
   border: none;
-  background: var(--ds-danger-ink);
-  color: var(--ds-surface);
-  font-size: 13px;
-  font-weight: 700;
+  background: #dc2626;
+  color: #ffffff;
+  font: 700 13px 'Space Grotesk', sans-serif;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2235,50 +2330,87 @@ onMounted(() => {
 
 .btn-dialog-cancel {
   flex: 1;
-  height: 46px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: var(--ds-surface-subtle);
-  color: var(--ds-muted);
-  font-size: 13px;
-  font-weight: 700;
+  height: 44px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(140, 155, 174, 0.2);
+  background: #f8fafc;
+  color: var(--ds-ink);
+  font: 700 13px 'Space Grotesk', sans-serif;
   cursor: pointer;
 }
 
-/* Animasyonlar */
-.sheet-anim-enter-active,
-.sheet-anim-leave-active {
+/* DİĞER DURUMLAR */
+.ds-loading {
+  display: grid;
+  gap: 10px;
+}
+
+.ds-loading i {
+  display: block;
+  border-radius: 20px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.ds-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ds-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ds-state button {
+  margin-top: 10px;
+  padding: 9px 16px;
+  border-radius: 14px;
+  border: none;
+  background: var(--ds-primary, #11161b);
+  color: #ffffff;
+  font: 700 12px 'Space Grotesk', sans-serif;
+  cursor: pointer;
+}
+
+.loading-mini-spin {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* MODAL ANIMATION */
+.ds-modal-enter-active,
+.ds-modal-leave-active {
   transition: opacity 0.25s ease;
 }
 
-.sheet-anim-enter-active .sheet-container,
-.sheet-anim-leave-active .sheet-container {
+.ds-modal-enter-active .ds-bottom-sheet,
+.ds-modal-leave-active .ds-bottom-sheet {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sheet-anim-enter-from,
-.sheet-anim-leave-to {
+.ds-modal-enter-from,
+.ds-modal-leave-to {
   opacity: 0;
 }
 
-.sheet-anim-enter-from .sheet-container,
-.sheet-anim-leave-to .sheet-container {
+.ds-modal-enter-from .ds-bottom-sheet,
+.ds-modal-leave-to .ds-bottom-sheet {
   transform: translateY(100%);
 }
 
-.fade-anim-enter-active,
-.fade-anim-leave-active {
-  transition: opacity 0.2s ease;
+.py-6 {
+  padding-top: 24px;
+  padding-bottom: 24px;
 }
-
-.fade-anim-enter-from,
-.fade-anim-leave-to {
-  opacity: 0;
-}
-
-/* Yardımcı Renkler */
-.text-emerald { color: var(--ds-emerald-ink) !important; }
-.text-rose { color: var(--ds-danger-ink) !important; }
-.text-xs { font-size: 11px !important; }
-.py-6 { padding-top: 24px; padding-bottom: 24px; }
 </style>

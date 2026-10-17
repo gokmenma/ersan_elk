@@ -10,7 +10,6 @@ use App\Model\PuantajModel;
 use App\Model\SettingsModel;
 use App\Model\TanimlamalarModel;
 use App\Service\Gate;
-use App\Service\SgkViziteService;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -587,7 +586,12 @@ try {
         }
 
         try {
-            $sgkService = new SgkViziteService($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
+            $servicePath = dirname(__DIR__, 3) . '/App/Service/SgkViziteService.php';
+            if (!file_exists($servicePath)) {
+                throw new \Exception('SgkViziteService dosyası sunucuda bulunamadı.');
+            }
+            require_once $servicePath;
+            $sgkService = new \SgkViziteService($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
             $raporlar = $sgkService->onayliRaporlariGetir($tarih1, $tarih2);
         } catch (\Throwable $e) {
             error_log('SGK Service error: ' . $e->getMessage());

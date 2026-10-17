@@ -1,5 +1,70 @@
 # Progress
 
+## 2026-10-17 — Mobil SPA Kasa Takibi: Cari Takip Tasarım Standardı & Obsidian Bento Dönüşümü
+- [x] **Hero Obsidian Bento Kartı & Çift Yönlü Segmentli Bar (`KasaView.vue`)**:
+  - Cari Takip (`CariView.vue`) ile birebir uyumlu koyu zeminli (`#191d24`, 28px kavisli köşe, `var(--ds-shadow-bento-dark)`) Kasa İşlem Hacmi kartı geliştirildi.
+  - Kart başlığında `BarChart3` ikon kutusu, `KASA İŞLEM HACMİ`, `Tahsilat & Ödeme Dağılım Analizi` ve sağda `Pozitif Denge / Negatif Denge` hap rozeti.
+  - Ortada büyük 26px beyaz Kasa İşlem Hacmi tutarı ve altında renkli Net Kasa Bakiye satırı.
+  - İki renkli segmentli doluluk çubuğu: Zümrüt yeşili Gelir (Tahsilat) ve Gökyüzü mavisi Gider (Ödeme) yüzdeleri.
+  - Alt Lejant Izgarası: Toplam Gelir ve Toplam Gider için ayrı interaktif kutucuklar, tutarlar ve adetler.
+- [x] **Cari Takip Standartlarında Arama ve Filtre Hapları**:
+  - Yıl ve Ay seçicileri kompakt dönem hapları olarak üst satıra alındı.
+  - 999px oval beyaz arama çubuğu (`Search` ikonu, temizleme butonu).
+  - Siyah aktif haplı ve renkli noktalı filtre tabları: `Tümü (Toplam)`, `• Gelirler`, `• Giderler`.
+- [x] **3 Kolonlu Kart Listesi (`.kasa-card` / `.cari-card`)**:
+  - 46x46px koyu zeminli avatar kutusu içinde kategorinin 2 harfli baş harfleri (`AK`, `EF`, `MA`, vb.).
+  - Başlıkta 13.5px bold kategori adı, alt satırda hesap/muhatap, en altta saat ve açıklama/plaka meta satırı.
+  - Sağ tarafta büyük renkli tutar (`+` / `-`), `GELİR` / `GİDER` rozeti, hızlı detay butonu (`Eye`) ve `ChevronRight`.
+- [x] **Sağ Altta Çift Kayan Dairesel Butonlar (Floating Buttons)**:
+  - Cari Takipteki gibi üst üste `History` geçmiş butonu ve `+` Yeni işlem FAB butonu.
+- [x] **Cari Takip Bottom Sheet Form ve Detay Modalları**:
+  - Segmented Gelir/Gider seçici, ₺ para kutusu, hızlı tutar çipleri (`+250 ₺`, `+500 ₺`, `+1.000 ₺`, `+5.000 ₺`), parametreli detay fişi.
+- [x] **Vite Üretim Derlemesi**: `npm run build` ile 0 hatayla derlendi (`dist` güncellendi).
+
+## 2026-10-17 — Mobil SPA Puantaj — Hızlı Gün Statüsü Seçici Modalı ve SGK Vizite Servisi Çözümü
+- [x] Kullanıcının talepleri doğrultusunda gün seçici ve SGK servisi tamamlandı:
+  - **Hızlı Gün Statüsü Seçici Bottom Sheet (`status-picker-sheet`)**: Haftalık gün kapsülüne basıldığında tüm puantaj türlerini (Ücretli & Ücretsiz sekmeleriyle X, HT, Yİ, SGK, Bİ, Eİ vb.) içeren şık bir seçim menüsü açıldı. Kullanıcı istediği türe bastığı anda doğrudan gün hücresine atanır ve sheet kapanır.
+  - **SGK Vizite Servisi Çözüldü**: `App/Service/SgkViziteService.php` dosyasının global namespace yapısı nedeniyle oluşan `Class "App\Service\SgkViziteService" not found` hatası, dosyanın doğrudan require edilip `\SgkViziteService` olarak çağrılmasıyla giderildi.
+  - **Derleme**: Vite üretimi (`npm run build`) başarıyla tamamlandı.
+
+## 2026-10-17 — Mobil SPA "Daha Fazla" (Diğer) Menüsü: Yatay Kart & Sayfa Başlığı Standardı Dönüşümü
+- [x] **Yatay Liste & Sayfa Başlığı Hiyerarşisi (`BottomNav.vue`)**:
+  - Eski 3 sütunlu mikro ızgara yapısı kaldırılarak; sayfa başlıklarındaki (`TopBar.vue`) görsel diliyle %100 uyumlu yatay kart listesi mimarisine geçildi.
+  - Her kart için: Sol rozet (42px dairesel beyaz `clay-circle-btn` formunda pastel renkli modül ikonu), sağ blok (üstte 9px uppercase kategori/eyebrow etiketi, ortada 14px kalın başlık, altta 11px açıklayıcı alt metin) ve sağ uçta minimal `ChevronRight` oku eklendi.
+- [x] **Mantıksal Kategorik Gruplandırma**:
+  - 13 modül 4 ana operasyonel gruba ayrıldı:
+    1. *FİNANS & MUHASEBE*: E-Fatura & Finans, Kasa Yönetimi, Cari Takip, Bordro.
+    2. *OPERASYON & SAHA*: Araç Takip, KM Onayları, Evrak Takip, İhbar Yönetimi, Kaçak Kontrol.
+    3. *PLANLAMA & İK*: Görev Takibi, Nöbet Onay, Puantaj.
+    4. *SİSTEM & DESTEK*: Destek & Yardım.
+  - `visibleOperationGroups` computed özelliği ile kullanıcının yetkisi olmayan hiçbir modül veya grup ekrana basılmaz (Kural 2).
+- [x] **Kapat Butonu Standardizasyonu (`design-system.css`)**:
+  - `nav-sheet` kapat butonu kalın mavi daire yerine sistemin nötr dairesel `clay-circle-btn` stiline kavuşturuldu.
+- [x] **Doğrulama ve Derleme**:
+  - Otomatik Playwright testi ile hiyerarşi, öğe sayısı, kategori başlıkları, kapat butonu ve odak döngüsü doğrulandı.
+  - `npm run build` ile 0 hata derleme alındı (`dist` güncellendi).
+
+## 2026-10-17 — Mobil SPA Giden Evrak: Zengin Resmî Editör (WYSIWYG), Tipografi, Punto, Araç Çubuğu & Şablon Kütüphanesi
+- [x] **Tipografi ve Punto Seçimleri (`GidenEvrakView.vue`)**:
+  - Resmî Yazışma Yönetmeliğine tam uyumlu *Times New Roman* ve *Arial* font anahtarı.
+  - Punto seçimi için hap buton grubu: `10pt`, `11pt`, `12pt (Standart)`, `14pt (Başlık)`.
+- [x] **Zengin Metin Biçimlendirme Araç Çubuğu (Formatting Toolbar)**:
+  - Kalın (`B`), İtalik (`I`), Altı Çizili (`U`), Üstü Çizili (`S`).
+  - Sola Yasla, Ortala, Sağa Yasla ve resmî yazılarda zorunlu olan **İki Yana Yasla (Justify)** hizalama butonları.
+  - Madde işaretli ve numaralı listeler, girinti artırma/azaltma (`Indent` / `Outdent`).
+  - Biçimlendirmeyi temizleme (`Eraser`), Geri Al / İleri Al (`Undo` / `Redo`).
+  - Görsel editör ile HTML kaynak kodu arasında geçiş butonu (`Code`).
+  - Dokunmatik ekranlarda imleç/seçim kaybını önlemek amacıyla tüm araçlarda `@mousedown.prevent` koruması.
+- [x] **Hazır Resmî İfadeler (Hızlı Ekleme Çipleri)**:
+  - İmleç konumuna tek dokunuşla eklenen standart nezaket ve bildirim kalıpları ("Bilgilerinize arz ederim.", "Gereğini rica ederim.", "İlgide kayıtlı müzekkerenize istinaden;", vb.).
+- [x] **Hazır Resmî Şablonlar Kütüphanesi (`showTemplateModal`)**:
+  - Sekme başlığında `[ BookOpen ] Şablonlar` butonu.
+  - 5 standart resmî şablon: Maaş Haczi Kesintisi Başlatma, Borçlu İşten Ayrıldı Bildirimi, Öncelikli Haciz Var, Haciz Kaldırma Teyidi, Genel Bilgilendirme.
+- [x] **WYSIWYG Editör & Reaktif Senkronizasyon**:
+  - `contenteditable` container ile `form.aciklama` arasında çift yönlü senkronizasyon (`syncEditor()`).
+  - İcra sihirbazı, AI taslakları ve şablon yüklemelerinde anında editör güncellemesi.
+- [x] `npm run build` ile 0 hata derlendi (`dist` güncellendi).
+
 ## 2026-10-17 — Mobil SPA Cari Detay & İşlem Ekle Tasarım Standartlaştırması
 - [x] **Alttaki Yüzen Butonun Kaldırılması (`CariDetailView.vue`)**:
   - Alt dock menüyü örten ve ekranı daraltan yüzen `<aside class="detail-floating-fab">` kaldırıldı.
@@ -21,14 +86,20 @@
   - Ana cari listesindeki işlem ekleme modalı da aynı modern bileşen ve dropzone ile güncellendi.
 - [x] `npm run build` ile 0 hata derlendi.
 
-## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Tasarım Standartlaştırması
-- [x] **Tasarım Bütünlüğü ve Hiyerarşi Standardizasyonu (`PersonnelSectionView.vue`)**:
-  - Özet metrik kartlarında eksik olan `.metric-box--amber` stili tanımlandı, 3. kutu kehribar rengiyle eşleştirildi.
-  - Para değerlerinin (`₺` sembolü dahil) 3 kolonlu dar alanda satır kırılması önlendi (`white-space: nowrap`, `14px` / `12.5px`).
-  - Yabancı koyu arkaplanlı filtre butonları yerine sistem genelinde kullanılan `.clay-tabs-wrap`, `.clay-tab-btn` ve `.clay-tab-badge` bileşenlerine geçildi.
-  - Hareket kartları (`financial-item-card`) saf beyaz yerine `var(--ds-surface-subtle)` yumuşak zemin, 14px kavis, 1px zarif çerçeve ve sol ince durum çizgisi (Sürekli: Kehribar, Tek Sefer: Mavi, Taksitli: Mor) ile `calisma` ve `izinler` kartlarının standardına getirildi.
-  - Aksiyon butonları standart 26x26px `.copy-btn`, `.copy-btn--amber` ve `.copy-btn--danger` yapısına bağlandı.
-- [x] `npm run build` ile 0 hata derlendi.
+## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Bento UI / Personel Standardı Dönüşümü
+- [x] **Kart İçi Kart Karmaşasının Kaldırılması**:
+  - Dış beyaz kart (`info-group-card`) ve gereksiz ikinci filtre çubukları kaldırıldı; liste canvas üzerinde bağımsız bento kartlarına dönüştürüldü.
+- [x] **Hero Bento Dağılım Kartı (`PersonnelView.vue` Standardı)**:
+  - "Personel Dağılımı" hero kartındaki mimariye birebir sadık kalınarak: `bento-head` (başlık + mini butonlar), `.segmented-track` oransal dağılım çubuğu ve interaktif `.personnel-stat-pills` (tıklandığında `#191d24` aktif koyu zemin alan filtre hapları).
+- [x] **Canvas Üzerinde Yüzen Bölüm Başlığı (`PersonnelDetailView.vue` Standardı)**:
+  - `.clay-section-head` (sol tarafta `h2` başlık ve `.clay-pill-tag` kayıt adedi, sağ tarafta `.clay-btn.clay-btn--sm.clay-btn--primary` ekleme butonu).
+- [x] **Bağımsız Beyaz Bento Liste Kartları (`.financial-card`)**:
+  - Tıpkı `personnel-card` gibi bağımsız 20px kavisli, saf beyaz zeminli ve yumuşak gölgeli bento kartları:
+    - Sol: 44x44px 14px kavisli renkli ikon rozeti ve aktif/pasif durum noktası (`.dot-online` / `.dot-offline`).
+    - Orta: Kalın başlık, `clay-badge` rozetleri, büyük ve okunaklı para tutarı (`.financial-money-amount`), hesaplama tipi çipi, dönem ve tarih hapları (`.financial-date-pill`) ve açıklama.
+    - Sağ: Dikey aksiyon butonları (`.action-pill-btn`).
+- [x] **Vite Derleme & Doğrulama**:
+  - `npm run build` ile 0 hata derlendi (`dist` güncellendi).
 
 ## 2026-10-17 — Mobil SPA Personel Detayı: "Ek Ödemeler" ve "Kesintiler" Olarak Ayrılması & Tam Yönetimi
 - [x] **Menü ve Modül Ayrımı (`PersonnelDetailView.vue`)**:

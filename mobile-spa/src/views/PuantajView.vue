@@ -140,6 +140,12 @@ const showDetailSheet = ref(false)
 const modalPaletteTab = ref('ucretli') // 'ucretli' | 'ucretsiz'
 const modalStampType = ref(null)
 
+// Hızlı Gün Statüsü Seçici Bottom Sheet
+const showStatusPickerSheet = ref(false)
+const pickerTargetPersonel = ref(null)
+const pickerTargetDay = ref(null)
+const pickerActiveTab = ref('ucretli') // 'ucretli' | 'ucretsiz'
+
 // Tarih Aralığı Tanımlama
 const showRangeCard = ref(false)
 const rangeStartDay = ref(1)
@@ -734,9 +740,96 @@ function getPersonelWeekDayEntry(personel, dayObj) {
   }
 }
 
+function openDayStatusPicker(personel, dayObj) {
+  pickerTargetPersonel.value = personel
+  pickerTargetDay.value = dayObj
+  pickerActiveTab.value = 'ucretli'
+  showStatusPickerSheet.value = true
+}
+
+function closeDayStatusPicker() {
+  showStatusPickerSheet.value = false
+  pickerTargetPersonel.value = null
+  pickerTargetDay.value = null
+}
+
+function selectStatusForDay(typeObj) {
+  if (!pickerTargetPersonel.value || !pickerTargetDay.value) return
+
+  applyStatusToCell(
+    pickerTargetPersonel.value.id,
+    pickerTargetDay.value.dateStr,
+    typeObj.id,
+    typeObj.code,
+  )
+
+  closeDayStatusPicker()
+}
+
+const currentPickerDayEntry = computed(() => {
+  if (!pickerTargetPersonel.value || !pickerTargetDay.value) return null
+  return getPersonelWeekDayEntry(pickerTargetPersonel.value, pickerTargetDay.value)
+})
+
+const pickerPaletteList = computed(() => {
+  const isUcretliTab = pickerActiveTab.value === 'ucretli'
+  let list = []
+
+  if (isUcretliTab) {
+    const defaultUcretli = [
+      { id: 649, name: 'Çalışılan Gün', code: 'X', color: '#2563eb' },
+      { id: 650, name: 'Hafta Tatili', code: 'HT', color: '#d97706' },
+      { id: 47, name: 'Yıllık İzin', code: 'Yİ', color: '#059669' },
+      { id: 48, name: 'Babalık İzni', code: 'Bİ', color: '#db2777' },
+      { id: 51, name: 'Evlilik İzni', code: 'Eİ', color: '#6366f1' },
+      { id: 1649, name: 'Ücretli İzin', code: 'Üİ', color: '#10b981' },
+      { id: 2861, name: 'Resmi Tatil Çalışması', code: 'RTÇ', color: '#0d9488' },
+      { id: 2862, name: 'Hafta Tatili Çalışması', code: 'HTÇ', color: '#9333ea' },
+    ]
+    list = [...defaultUcretli]
+    if (definitions.value.ucretli && definitions.value.ucretli.length > 0) {
+      definitions.value.ucretli.forEach((t) => {
+        const code = (t.kisa_kod || t.tur_adi.slice(0, 2)).toUpperCase()
+        if (!list.some((x) => x.code === code)) {
+          list.push({
+            id: Number(t.id),
+            name: t.tur_adi,
+            code,
+            color: resolveColor(code, t.renk),
+          })
+        }
+      })
+    }
+  } else {
+    const defaultUcretsiz = [
+      { id: 50, name: 'SGK Raporu', code: 'SGK', color: '#dc2626' },
+      { id: 50, name: 'Hastalık İzni (Rapor)', code: 'RP', color: '#dc2626' },
+      { id: 49, name: 'Mazeret İzni', code: 'Mİ', color: '#0284c7' },
+      { id: 523, name: 'Devamsız', code: 'D', color: '#b91c1c' },
+      { id: 2225, name: 'Çalışılmayan Gün', code: 'UZ', color: '#64748b' },
+      { id: 2900, name: 'Ücretsiz İzin', code: 'ÜZ', color: '#e11d48' },
+    ]
+    list = [...defaultUcretsiz]
+    if (definitions.value.ucretsiz && definitions.value.ucretsiz.length > 0) {
+      definitions.value.ucretsiz.forEach((t) => {
+        const code = (t.kisa_kod || t.tur_adi.slice(0, 2)).toUpperCase()
+        if (!list.some((x) => x.code === code)) {
+          list.push({
+            id: Number(t.id),
+            name: t.tur_adi,
+            code,
+            color: resolveColor(code, t.renk),
+          })
+        }
+      })
+    }
+  }
+
+  return list
+})
+
 function handleWeekCellClick(personel, dayObj) {
-  const current = getPersonelWeekDayEntry(personel, dayObj)
-  cycleCellStatus(personel.id, dayObj.dateStr, current.code)
+  openDayStatusPicker(personel, dayObj)
 }
 
 // 7 Sütunlu Aylık Takvim Izgarası
@@ -1635,7 +1728,117 @@ onMounted(async () => {
       </div>
     </Transition>
 
-    <!-- 9. FİLTRE ÇEKMECESİ -->
+    <!-- 9. HIZLI GÜN STATÜSÜ SEÇİCİ BOTTOM SHEET (Görsel 1 İsteği) -->
+    <Transition name="sheet-slide">
+      <div
+        v-if="showStatusPickerSheet && pickerTargetPersonel && pickerTargetDay"
+        class="ds-sheet-overlay"
+        @click.self="closeDayStatusPicker"
+      >
+        <div class="ds-sheet status-picker-sheet" role="dialog" aria-modal="true">
+          <div class="ds-sheet-handle"></div>
+
+          <!-- Sheet Header -->
+          <header class="status-picker-header">
+            <div class="picker-header-user">
+              <div class="project-avatar project-avatar--sm">
+                <img
+                  v-if="pickerTargetPersonel.resim"
+                  :src="pickerTargetPersonel.resim"
+                  :alt="pickerTargetPersonel.adi_soyadi"
+                  class="project-avatar-img"
+                  @error="$event.target.style.display = 'none'"
+                />
+                <div class="project-avatar-txt">
+                  {{ getInitials(pickerTargetPersonel.adi_soyadi) }}
+                </div>
+              </div>
+              <div class="picker-user-info">
+                <h3 class="picker-user-name">{{ pickerTargetPersonel.adi_soyadi }}</h3>
+                <div class="picker-target-date">
+                  <Calendar :size="12" class="text-blue" />
+                  <span>{{ pickerTargetDay.dayNum }} {{ pickerTargetDay.monthName }} {{ currentYear }} ({{ pickerTargetDay.dayName }})</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="clay-circle-btn"
+              aria-label="Kapat"
+              @click="closeDayStatusPicker"
+            >
+              <X :size="18" />
+            </button>
+          </header>
+
+          <div class="ds-sheet-body hide-scrollbar">
+            <!-- Mevcut Durum Kartı -->
+            <div v-if="currentPickerDayEntry" class="current-status-banner">
+              <span class="banner-title">Mevcut Durum:</span>
+              <div class="banner-status-badge" :style="{ backgroundColor: currentPickerDayEntry.theme.badgeBg }">
+                <strong>{{ currentPickerDayEntry.code }}</strong>
+                <span>{{ currentPickerDayEntry.name || currentPickerDayEntry.code }}</span>
+              </div>
+            </div>
+
+            <!-- Hızlı Seçenek: Normal Çalışılan Güne Döndür (X) -->
+            <button
+              type="button"
+              class="quick-reset-work-btn"
+              @click="selectStatusForDay({ id: 0, code: 'X', name: 'Çalışılan Gün' })"
+            >
+              <span class="reset-badge">X</span>
+              <div class="reset-text">
+                <strong>Normal Çalışılan Gün Olarak Ayarla</strong>
+                <small>Bu güne ait izin veya tatil kaydını sıfırlar</small>
+              </div>
+              <Check v-if="currentPickerDayEntry?.code === 'X'" :size="16" class="text-blue" />
+            </button>
+
+            <!-- Ücretli / Ücretsiz Sekmeleri -->
+            <div class="stamp-tabs mt-2">
+              <button
+                type="button"
+                class="stamp-tab-btn"
+                :class="{ 'is-active': pickerActiveTab === 'ucretli' }"
+                @click="pickerActiveTab = 'ucretli'"
+              >
+                Ücretli İzin & Çalışma
+              </button>
+              <button
+                type="button"
+                class="stamp-tab-btn"
+                :class="{ 'is-active': pickerActiveTab === 'ucretsiz' }"
+                @click="pickerActiveTab = 'ucretsiz'"
+              >
+                Ücretsiz İzin & Rapor
+              </button>
+            </div>
+
+            <!-- Statü Seçim Listesi (Kartlar) -->
+            <div class="status-options-grid">
+              <button
+                v-for="t in pickerPaletteList"
+                :key="t.code"
+                type="button"
+                class="status-option-tile"
+                :class="{ 'is-selected': currentPickerDayEntry?.code === t.code }"
+                @click="selectStatusForDay(t)"
+              >
+                <div class="option-tile-badge" :style="{ backgroundColor: t.color }">
+                  {{ t.code }}
+                </div>
+                <span class="option-tile-name">{{ t.name }}</span>
+                <Check v-if="currentPickerDayEntry?.code === t.code" :size="16" class="option-check-icon text-emerald" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 10. FİLTRE ÇEKMECESİ -->
     <Transition name="sheet-slide">
       <div
         v-if="showFilterSheet"
@@ -3017,6 +3220,192 @@ onMounted(async () => {
   margin-top: 12px;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+/* 9. HIZLI GÜN STATÜSÜ SEÇİCİ BOTTOM SHEET */
+.status-picker-sheet {
+  max-height: 82vh;
+}
+
+.status-picker-header {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.picker-header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.picker-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.picker-user-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.picker-target-date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.current-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 10px 14px;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+.banner-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.banner-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.quick-reset-work-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  padding: 10px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.quick-reset-work-btn:active {
+  transform: scale(0.98);
+  background: #dbeafe;
+}
+
+.reset-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.reset-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.reset-text strong {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.reset-text small {
+  font-size: 10.5px;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.status-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.status-option-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+.status-option-tile:active {
+  transform: scale(0.95);
+}
+
+.status-option-tile.is-selected {
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+.option-tile-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+}
+
+.option-tile-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1e293b;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option-check-icon {
+  flex-shrink: 0;
 }
 
 /* Onay Diyaloğu & Toast */

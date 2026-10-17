@@ -1029,16 +1029,29 @@ async function imzaGeriAl() {
             </div>
           </div>
 
-          <button
-            type="button"
-            class="giden-ai-action-btn"
-            :disabled="isLocked || !form.aciklama.trim()"
-            title="Seçili metni yapay zekâ ile resmi dile uyarla"
-            @click="showAiSecimModal = true"
-          >
-            <Sparkles :size="15" />
-            <span>AI ile Düzenle</span>
-          </button>
+          <div class="giden-head-actions">
+            <button
+              type="button"
+              class="giden-template-action-btn"
+              :disabled="isLocked"
+              title="Resmî hazır şablon seç"
+              @click="showTemplateModal = true"
+            >
+              <BookOpen :size="15" />
+              <span>Şablonlar</span>
+            </button>
+
+            <button
+              type="button"
+              class="giden-ai-action-btn"
+              :disabled="isLocked || !form.aciklama.trim()"
+              title="Seçili metni yapay zekâ ile resmi dile uyarla"
+              @click="showAiSecimModal = true"
+            >
+              <Sparkles :size="15" />
+              <span>AI ile Düzenle</span>
+            </button>
+          </div>
         </div>
 
         <div class="giden-fields-stack">
@@ -1059,47 +1072,294 @@ async function imzaGeriAl() {
             />
           </div>
 
-          <!-- Yazı Tipi Seçimi -->
-          <div class="evrak-form-group">
-            <label class="evrak-form-label">YAZI TİPİ (FONT SEÇİMİ)</label>
-            <div class="evrak-type-switch">
+          <!-- YAZI TİPİ VE PUNTO SEÇİMİ (Resmî Yazışma Standardı) -->
+          <div class="giden-typography-grid">
+            <!-- Yazı Tipi -->
+            <div class="evrak-form-group mb-0">
+              <label class="evrak-form-label">YAZI TİPİ (FONT SEÇİMİ)</label>
+              <div class="evrak-type-switch">
+                <button
+                  type="button"
+                  class="evrak-switch-opt"
+                  :class="{ 'is-active': form.yazi_tipi === 'times_new_roman' }"
+                  :disabled="isLocked"
+                  @click="setFontFamily('times_new_roman')"
+                >
+                  Times New Roman
+                </button>
+                <button
+                  type="button"
+                  class="evrak-switch-opt"
+                  :class="{ 'is-active': form.yazi_tipi === 'arial' }"
+                  :disabled="isLocked"
+                  @click="setFontFamily('arial')"
+                >
+                  Arial
+                </button>
+              </div>
+            </div>
+
+            <!-- Punto Seçimi -->
+            <div class="evrak-form-group mb-0">
+              <label class="evrak-form-label">PUNTO BOYUTU</label>
+              <div class="giden-punto-pills">
+                <button
+                  v-for="p in ['10', '11', '12', '14']"
+                  :key="p"
+                  type="button"
+                  class="giden-punto-btn"
+                  :class="{ 'is-active': selectedPunto === p }"
+                  :disabled="isLocked"
+                  @mousedown.prevent
+                  @click="setPunto(p)"
+                >
+                  {{ p }}pt
+                  <span v-if="p === '12'" class="giden-punto-tag">Standart</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ZENGİN METİN BİÇİMLENDİRME ARAÇ ÇUBUĞU (TOOLBAR) -->
+          <div class="evrak-form-group mb-0">
+            <div class="giden-label-between">
+              <label class="evrak-form-label">METİN BİÇİMLENDİRME ARAÇLARI</label>
               <button
                 type="button"
-                class="evrak-switch-opt"
-                :class="{ 'is-active': form.yazi_tipi === 'times_new_roman' }"
-                :disabled="isLocked"
-                @click="form.yazi_tipi = 'times_new_roman'"
+                class="giden-source-toggle-btn"
+                :class="{ 'is-active': showHtmlSource }"
+                :title="showHtmlSource ? 'Görsel Editöre Dön' : 'HTML Kaynak Kodunu Düzenle'"
+                @click="toggleSourceView"
               >
-                Times New Roman (12pt)
+                <Code :size="14" />
+                <span>{{ showHtmlSource ? 'Görsel Editör' : 'HTML' }}</span>
               </button>
+            </div>
+
+            <div class="giden-formatting-bar">
+              <!-- Font Stilleri -->
+              <div class="giden-tool-group">
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Kalın (Ctrl+B)"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('bold')"
+                >
+                  <Bold :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="İtalik (Ctrl+I)"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('italic')"
+                >
+                  <Italic :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Altı Çizili (Ctrl+U)"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('underline')"
+                >
+                  <Underline :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Üstü Çizili"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('strikeThrough')"
+                >
+                  <Strikethrough :size="15" />
+                </button>
+              </div>
+
+              <!-- Hizalama (Resmî Yazışma için İki Yana Yasla Zorunludur) -->
+              <div class="giden-tool-group">
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Sola Yasla"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('justifyLeft')"
+                >
+                  <AlignLeft :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Ortala"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('justifyCenter')"
+                >
+                  <AlignCenter :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Sağa Yasla"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('justifyRight')"
+                >
+                  <AlignRight :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn is-highlight"
+                  title="İki Yana Yasla (Resmî Yazışma Standardı)"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('justifyFull')"
+                >
+                  <AlignJustify :size="15" />
+                </button>
+              </div>
+
+              <!-- Listeler & Girinti -->
+              <div class="giden-tool-group">
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Madde İşaretli Liste"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('insertUnorderedList')"
+                >
+                  <List :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Numaralı Liste"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('insertOrderedList')"
+                >
+                  <ListOrdered :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Girintiyi Azalt"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('outdent')"
+                >
+                  <Outdent :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Girintiyi Artır"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('indent')"
+                >
+                  <Indent :size="15" />
+                </button>
+              </div>
+
+              <!-- Geri / İleri & Temizle -->
+              <div class="giden-tool-group">
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Biçimlendirmeyi Temizle"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('removeFormat')"
+                >
+                  <Eraser :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="Geri Al (Ctrl+Z)"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('undo')"
+                >
+                  <Undo2 :size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="giden-tool-btn"
+                  title="İleri Al (Ctrl+Y)"
+                  :disabled="isLocked || showHtmlSource"
+                  @mousedown.prevent
+                  @click="formatText('redo')"
+                >
+                  <Redo2 :size="15" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- HAZIR RESMÎ İFADELER / HIZLI ÇİPLER -->
+          <div class="evrak-form-group mb-0">
+            <div class="giden-label-between">
+              <label class="evrak-form-label">HAZIR RESMÎ İFADELER (HIZLI EKLE)</label>
+              <small class="text-muted">İmleç konumuna ekler</small>
+            </div>
+            <div class="giden-quick-phrases">
               <button
+                v-for="qp in quickPhrases"
+                :key="qp.label"
                 type="button"
-                class="evrak-switch-opt"
-                :class="{ 'is-active': form.yazi_tipi === 'arial' }"
+                class="giden-phrase-chip"
                 :disabled="isLocked"
-                @click="form.yazi_tipi = 'arial'"
+                @mousedown.prevent
+                @click="insertPhrase(qp.text)"
               >
-                Arial (12pt)
+                <span>+</span>
+                <span>{{ qp.label }}</span>
               </button>
             </div>
           </div>
 
-          <!-- Resmî Yazı Metni -->
+          <!-- RESMÎ YAZI GÖVDE METNİ (WYSIWYG & HTML SOURCE) -->
           <div class="evrak-form-group">
             <div class="giden-label-between">
-              <label class="evrak-form-label">RESMÎ YAZI GÖVDE METNİ</label>
-              <small class="text-muted">{{ form.aciklama.length }} karakter</small>
+              <label class="evrak-form-label">RESMÎ YAZI GÖVDE METNİ *</label>
+              <small class="text-muted">{{ form.aciklama ? form.aciklama.replace(/<[^>]+>/g, '').length : 0 }} karakter</small>
             </div>
+
+            <!-- HTML Kaynak Modu -->
             <textarea
+              v-if="showHtmlSource"
               v-model="form.aciklama"
-              rows="12"
-              placeholder="Resmî yazı metnini buraya yazınız veya üst kısımdaki İcra/AI araçlarıyla taslak oluşturunuz..."
+              rows="14"
+              class="evrak-textarea giden-source-textarea"
+              placeholder="HTML kodunu buraya giriniz..."
               :disabled="isLocked"
-              class="evrak-textarea giden-editor-textarea"
-              :class="{ 'font-serif': form.yazi_tipi === 'times_new_roman' }"
             ></textarea>
+
+            <!-- WYSIWYG Canlı Editör Modu -->
+            <div
+              v-else
+              ref="editorRef"
+              class="giden-rich-editor"
+              :class="[
+                form.yazi_tipi === 'times_new_roman' ? 'font-serif' : 'font-sans',
+                `punto-${selectedPunto}`
+              ]"
+              :contenteditable="!isLocked"
+              @input="onEditorInput"
+              data-placeholder="Resmî yazı metnini buraya yazınız veya üstteki araçlar ve şablonlarla oluşturunuz..."
+            ></div>
+
             <small class="giden-field-note">
-              Resmî yazışma yönetmeliğine uygun olarak 12 punto ve iki yana yaslı biçimde PDF'e aktarılır.
+              Resmî Yazışma Yönetmeliği: Yazı alanı Times New Roman (12 punto) veya Arial (11 punto) ile iki yana yaslı biçimde PDF çıktısına aktarılır.
             </small>
           </div>
         </div>
@@ -1722,6 +1982,60 @@ async function imzaGeriAl() {
             @click="confirmIade"
           >
             İadeyi Onayla
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- MODAL 7: STANDART RESMÎ ŞABLONLAR MODALI -->
+    <!-- ==================================================== -->
+    <div v-if="showTemplateModal" class="evrak-modal-overlay" @click.self="showTemplateModal = false">
+      <div class="evrak-modal-sheet giden-template-sheet">
+        <div class="evrak-modal-header">
+          <div>
+            <span class="evrak-modal-eyebrow">RESMÎ YAZIŞMA KÜTÜPHANESİ</span>
+            <h2>Hazır Resmî Şablonlar</h2>
+          </div>
+          <button type="button" class="clay-circle-btn" @click="showTemplateModal = false">
+            <X :size="18" />
+          </button>
+        </div>
+
+        <div class="evrak-modal-body">
+          <p class="giden-modal-hint">
+            Aşağıdaki standart şablonlardan birini seçerek resmî yazı gövdesini ve konusunu saniyeler içinde doldurabilirsiniz.
+          </p>
+
+          <div class="giden-template-list">
+            <button
+              v-for="tpl in builtinTemplates"
+              :key="tpl.id"
+              type="button"
+              class="giden-template-card"
+              @click="applyTemplate(tpl)"
+            >
+              <div class="giden-template-head">
+                <div class="giden-template-icon bg-primary-soft text-primary">
+                  <FileText :size="18" />
+                </div>
+                <div class="giden-template-title-wrap">
+                  <strong class="giden-template-title">{{ tpl.title }}</strong>
+                  <span class="giden-template-subject">{{ tpl.subject }}</span>
+                </div>
+              </div>
+              <p class="giden-template-desc">{{ tpl.desc }}</p>
+              <div class="giden-template-preview" v-html="tpl.content"></div>
+              <div class="giden-template-footer">
+                <span class="giden-template-apply-label">Bu Şablonu Kullan →</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div class="evrak-modal-footer">
+          <button type="button" class="evrak-btn evrak-btn--outline w-100" @click="showTemplateModal = false">
+            Vazgeç
           </button>
         </div>
       </div>
@@ -2402,6 +2716,36 @@ async function imzaGeriAl() {
   min-width: 120px;
 }
 
+/* Başlık Aksiyonları & Butonlar */
+.giden-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.giden-template-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--ds-radius-pill);
+  background: #eff6ff;
+  color: #1d4ed8;
+  font: 700 12px var(--ds-font-main);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.giden-template-action-btn:active {
+  transform: scale(0.96);
+}
+
+.giden-template-action-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* AI Aksiyon Butonu */
 .giden-ai-action-btn {
   display: inline-flex;
@@ -2436,16 +2780,264 @@ async function imzaGeriAl() {
   opacity: 0.6;
 }
 
-/* Resmî Yazı Editör Textarea */
-.giden-editor-textarea {
+/* Tipografi & Punto Seçimi */
+.giden-typography-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .giden-typography-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.giden-punto-pills {
+  display: flex;
+  background: #e2e8f0;
+  padding: 4px;
+  border-radius: var(--ds-radius-tile, 20px);
+  gap: 3px;
+}
+
+.giden-punto-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 9px 4px;
+  border-radius: var(--ds-radius-sm, 14px);
+  font-size: 11px;
+  font-weight: 800;
+  border: none;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.giden-punto-btn.is-active {
+  background: #ffffff;
+  color: var(--ds-ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.giden-punto-tag {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+/* Zengin Metin Biçimlendirme Araç Çubuğu */
+.giden-formatting-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid var(--ds-border-subtle, #e2e8f0);
+  border-radius: var(--ds-radius-tile, 16px);
+}
+
+.giden-tool-group {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--ds-border-subtle, #e2e8f0);
+  border-radius: 10px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.giden-tool-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.giden-tool-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: var(--ds-ink);
+}
+
+.giden-tool-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.giden-tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.giden-tool-btn.is-highlight {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.giden-source-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--ds-radius-pill, 9999px);
+  border: 1px solid var(--ds-border-subtle, #e2e8f0);
+  background: #ffffff;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.giden-source-toggle-btn.is-active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+/* Hazır Resmî İfadeler (Hızlı Çipler) */
+.giden-quick-phrases {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 6px;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.giden-quick-phrases::-webkit-scrollbar {
+  display: none;
+}
+
+.giden-phrase-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: var(--ds-radius-pill, 9999px);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.giden-phrase-chip:hover:not(:disabled) {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.giden-phrase-chip:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.giden-phrase-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* WYSIWYG Canlı Editör & HTML Kaynak */
+.giden-rich-editor {
   min-height: 280px;
+  max-height: 520px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1.5px solid var(--ds-border-subtle, #cbd5e1);
+  border-radius: var(--ds-radius-tile, 16px);
+  padding: 16px;
   font-size: 15px;
-  line-height: 1.6;
-  padding: 14px 16px;
+  line-height: 1.65;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+.giden-rich-editor:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.giden-rich-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.giden-rich-editor p {
+  margin: 0 0 10px 0;
+}
+
+.giden-rich-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.giden-rich-editor ul,
+.giden-rich-editor ol {
+  margin: 0 0 10px 0;
+  padding-left: 24px;
+}
+
+.giden-rich-editor.font-serif {
+  font-family: 'Times New Roman', Times, serif !important;
+}
+
+.giden-rich-editor.font-sans {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+.giden-rich-editor.punto-10 {
+  font-size: 13px !important;
+}
+
+.giden-rich-editor.punto-11 {
+  font-size: 14px !important;
+}
+
+.giden-rich-editor.punto-12 {
+  font-size: 15px !important;
+}
+
+.giden-rich-editor.punto-14 {
+  font-size: 17px !important;
+}
+
+.giden-source-textarea {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  min-height: 280px;
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
 }
 
 .font-serif {
   font-family: 'Times New Roman', Times, serif !important;
+}
+
+.font-sans {
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 .giden-label-between {
@@ -2459,6 +3051,112 @@ async function imzaGeriAl() {
   font-size: 11px;
   color: var(--ds-muted);
   margin-top: 4px;
+}
+
+/* Şablon Modalı Kartları */
+.giden-template-sheet {
+  max-height: 85vh;
+}
+
+.giden-template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.giden-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-tile, 18px);
+  background: #ffffff;
+  border: 1.5px solid var(--ds-border-subtle, #e2e8f0);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.giden-template-card:hover {
+  border-color: #0284c7;
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
+}
+
+.giden-template-card:active {
+  transform: scale(0.99);
+}
+
+.giden-template-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.giden-template-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.giden-template-title-wrap {
+  min-width: 0;
+}
+
+.giden-template-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ds-ink);
+}
+
+.giden-template-subject {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-muted);
+}
+
+.giden-template-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.giden-template-preview {
+  padding: 10px 12px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.45;
+  max-height: 60px;
+  overflow: hidden;
+  position: relative;
+}
+
+.giden-template-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 30%, #f1f5f9 100%);
+}
+
+.giden-template-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.giden-template-apply-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0284c7;
 }
 
 /* İmza Yetkilileri Listesi */
