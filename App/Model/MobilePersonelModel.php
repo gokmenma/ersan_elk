@@ -1347,6 +1347,238 @@ class MobilePersonelModel extends Model
 
         return ['success' => true, 'message' => 'Sürekli kesinti başarıyla sonlandırıldı.'];
     }
+
+    public function mobileDirectoryQuickList(int $firmaId): array
+    {
+        $params = ['firma_id' => $firmaId, 'modul' => 'personel'];
+        $where = $this->baseWhere($params);
+        $sql = "SELECT p.id, p.adi_soyadi, p.gorev, p.departman, p.resim_yolu, p.personel_resim_yolu,
+                       (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00') AS active
+                FROM personel p
+                WHERE {$where}
+                ORDER BY active DESC, p.adi_soyadi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $result = [];
+        foreach ($rows as $r) {
+            $encId = \App\Helper\Security::encrypt((string) $r['id']);
+            $hasPhoto = trim((string) ($r['personel_resim_yolu'] ?? $r['resim_yolu'] ?? '')) !== '';
+            $result[] = [
+                'id' => $encId,
+                'name' => trim((string) $r['adi_soyadi']),
+                'job' => trim((string) ($r['gorev'] ?? '')),
+                'department' => trim((string) ($r['departman'] ?? '')),
+                'active' => (bool) $r['active'],
+                'avatar' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode($encId) : null,
+            ];
+        }
+        return $result;
+    }
+
+    public function getEvrakDetails(int $personelId, int $firmaId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $sql = "SELECT pe.*, u.adi_soyadi as yukleyen_adi
+                FROM personel_evraklar pe
+                LEFT JOIN users u ON pe.yukleyen_id = u.id
+                WHERE pe.personel_id = :personel_id AND pe.aktif = 1
+                ORDER BY pe.yukleme_tarihi DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':personel_id' => $personelId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $items = [];
+        $turSayilari = [];
+        $evrakTurleri = \App\Helper\Helper::EVRAK_TURLERI;
+
+        foreach ($rows as $row) {
+            $encId = \App\Helper\Security::encrypt((string) $row['id']);
+            $tur = (string) ($row['evrak_turu'] ?? 'diger');
+            $turLabel = $evrakTurleri[$tur] ?? 'Diğer';
+            $turSayilari[$tur] = ($turSayilari[$tur] ?? 0) + 1;
+
+            $items[] = [
+                'id' => $encId,
+                'raw_id' => (int) $row['id'],
+                'evrak_adi' => (string) ($row['evrak_adi'] ?? ''),
+                'evrak_turu' => $tur,
+                'evrak_turu_label' => $turLabel,
+                'dosya_adi' => (string) ($row['dosya_adi'] ?? ''),
+                'orijinal_dosya_adi' => (string) ($row['orijinal_dosya_adi'] ?? ''),
+                'dosya_boyutu' => (int) ($row['dosya_boyutu'] ?? 0),
+                'dosya_boyutu_formatted' => $this->formatBytes((int) ($row['dosya_boyutu'] ?? 0)),
+                'dosya_tipi' => (string) ($row['dosya_tipi'] ?? ''),
+                'aciklama' => (string) ($row['aciklama'] ?? ''),
+                'yukleme_tarihi' => !empty($row['yukleme_tarihi']) ? date('d.m.Y H:i', strtotime((string) $row['yukleme_tarihi'])) : '',
+                'yukleyen_adi' => (string) ($row['yukleyen_adi'] ?? 'Sistem'),
+                'view_url' => '/views/personel/evrak-indir.php?id=' . rawurlencode($encId) . '&inline=1',
+                'download_url' => '/views/personel/evrak-indir.php?id=' . rawurlencode($encId),
+            ];
+        }
+
+        return [
+            'items' => $items,
+            'summary' => [
+                'toplam_evrak' => count($items),
+                'tur_sayilari' => $turSayilari,
+            ],
+        ];
+    }
+
+    public function uploadEvrak(int $personelId, array $file, array $data, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
+            $uploadErrors = [
+                UPLOAD_ERR_INI_SIZE => 'Dosya boyutu sunucu limitini aşıyor.',
+                UPLOAD_ERR_FORM_SIZE => 'Dosya boyutu form limitini aşıyor.',
+                UPLOAD_ERR_PARTIAL => 'Dosya kısmen yüklendi.',
+                UPLOAD_ERR_NO_FILE => 'Dosya seçilmedi.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Geçici klasör bulunamadı.',
+                UPLOAD_ERR_CANT_WRITE => 'Dosya yazılamadı.',
+                UPLOAD_ERR_EXTENSION => 'Dosya uzantısı engellendi.'
+            ];
+            $errCode = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+            throw new \RuntimeException($uploadErrors[$errCode] ?? 'Dosya yükleme hatası oluştu.');
+        }
+
+        $maxSize = 10 * 1024 * 1024;
+        if (($file['size'] ?? 0) > $maxSize) {
+            throw new \RuntimeException('Dosya boyutu 10MB sınırını aşamaz.');
+        }
+
+        $allowedTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+            'image/gif',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ];
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mimeType, $allowedTypes, true)) {
+            throw new \RuntimeException('Desteklenmeyen dosya formatı. Desteklenen: PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX.');
+        }
+
+        $uploadDir = dirname(__DIR__, 2) . '/uploads/personel_evraklar/' . $personelId . '/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0733, true);
+        }
+
+        $newFileName = bin2hex(random_bytes(16)) . '.enc';
+        $targetPath = $uploadDir . $newFileName;
+
+        $binaryData = file_get_contents($file['tmp_name']);
+        @unlink($file['tmp_name']);
+
+        if ($binaryData === false || file_put_contents($targetPath, \App\Helper\Security::encryptFile($binaryData), LOCK_EX) === false) {
+            throw new \RuntimeException('Dosya güvenli biçimde şifrelenemedi veya kaydedilemedi.');
+        }
+
+        $evrakAdi = trim((string) ($data['evrak_adi'] ?? ''));
+        if ($evrakAdi === '') {
+            $evrakAdi = pathinfo((string) ($file['name'] ?? 'Evrak'), PATHINFO_FILENAME);
+        }
+
+        $evrakTuru = trim((string) ($data['evrak_turu'] ?? 'diger'));
+        if (!array_key_exists($evrakTuru, \App\Helper\Helper::EVRAK_TURLERI)) {
+            $evrakTuru = 'diger';
+        }
+
+        $aciklama = trim((string) ($data['aciklama'] ?? ''));
+
+        $sql = "INSERT INTO personel_evraklar 
+                (personel_id, evrak_adi, evrak_turu, dosya_adi, orijinal_dosya_adi, dosya_boyutu, dosya_tipi, aciklama, yukleyen_id, yukleme_tarihi, aktif)
+                VALUES (:personel_id, :evrak_adi, :evrak_turu, :dosya_adi, :orijinal_dosya_adi, :dosya_boyutu, :dosya_tipi, :aciklama, :yukleyen_id, NOW(), 1)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':personel_id' => $personelId,
+            ':evrak_adi' => $evrakAdi,
+            ':evrak_turu' => $evrakTuru,
+            ':dosya_adi' => $newFileName,
+            ':orijinal_dosya_adi' => (string) ($file['name'] ?? $newFileName),
+            ':dosya_boyutu' => (int) ($file['size'] ?? 0),
+            ':dosya_tipi' => $mimeType,
+            ':aciklama' => $aciklama,
+            ':yukleyen_id' => $userId,
+        ]);
+
+        try {
+            $logModel = new SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'Personel Evrak Yükleme (Mobil)',
+                sprintf("%s personeline '%s' (%s) adlı evrak yüklendi.", $personel['adi_soyadi'], $evrakAdi, $evrakTuru),
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (\Throwable $ignored) {
+        }
+
+        return ['success' => true, 'message' => 'Evrak başarıyla yüklendi ve şifrelendi.'];
+    }
+
+    public function deleteEvrak(int $id, int $personelId, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $stmt = $this->db->prepare("SELECT id, evrak_adi FROM personel_evraklar WHERE id = :id AND personel_id = :personel_id AND aktif = 1");
+        $stmt->execute([':id' => $id, ':personel_id' => $personelId]);
+        $evrak = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$evrak) {
+            throw new \RuntimeException('Evrak kaydı bulunamadı veya zaten silinmiş.');
+        }
+
+        $updateStmt = $this->db->prepare("UPDATE personel_evraklar SET aktif = 0, guncelleme_tarihi = NOW() WHERE id = :id");
+        $res = $updateStmt->execute([':id' => $id]);
+        if (!$res) {
+            throw new \RuntimeException('Evrak silme işlemi başarısız oldu.');
+        }
+
+        try {
+            $logModel = new SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'Personel Evrak Silme (Mobil)',
+                sprintf("%s personeline ait '%s' (ID: %d) evrak silindi.", $personel['adi_soyadi'], $evrak['evrak_adi'], $id),
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (\Throwable $ignored) {
+        }
+
+        return ['success' => true, 'message' => 'Evrak başarıyla silindi.'];
+    }
+
+    private function formatBytes(int $bytes, int $precision = 1): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min((int) $pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, $precision) . ' ' . $units[$pow];
+    }
 }
 
 

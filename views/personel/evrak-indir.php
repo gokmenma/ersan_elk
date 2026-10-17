@@ -6,7 +6,7 @@ use App\Model\PersonelEvrakModel;
 use App\Helper\Security;
 use App\Service\Gate;
 
-if (!Gate::allows('personel_duzenle')) {
+if (!Gate::allows('personel_duzenle') && !Gate::allows('personel_listesi') && !Gate::allows('personel_goruntule') && !Gate::isSuperAdmin()) {
     http_response_code(403);
     exit('Bu evrakı görüntüleme yetkiniz yok.');
 }

@@ -136,11 +136,14 @@ try {
         $leaveData = $model->getLeaveDetails($personelId, $firmaId);
         $ekOdemelerData = $model->getEkOdemelerDetails($personelId, $firmaId);
         $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
+        $evrakData = $model->getEvrakDetails($personelId, $firmaId);
+        $quickList = $model->mobileDirectoryQuickList($firmaId);
         personnelResponse([
             'success' => true,
             'can_edit' => Gate::allows('personel_duzenle'),
             'personel_id_raw' => $personelId,
             'personnel' => personnelPublicRow($row, $work),
+            'personnel_quick_list' => $quickList,
             'work_options' => $options,
             'leaves' => $leaveData['leaves'],
             'entitlement' => $leaveData['entitlement'],
@@ -153,6 +156,9 @@ try {
             'kesinti_ozet' => $kesintilerData['summary'],
             'kesinti_parametreleri' => $kesintilerData['kesinti_parametreleri'],
             'icra_dosyalari' => $kesintilerData['icralar'],
+            'evraklar' => $evrakData['items'],
+            'evrak_ozet' => $evrakData['summary'],
+            'evrak_turleri' => \App\Helper\Helper::EVRAK_TURLERI,
         ]);
     }
 
@@ -563,6 +569,61 @@ try {
         }
         $row = $model->mobileDirectoryDetail($savedId, $firmaId);
         personnelResponse(['success' => true, 'message' => 'Personel bilgileri kaydedildi.', 'personnel' => personnelPublicRow($row ?: [])]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'upload_evrak') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Evrak yükleme yetkiniz bulunmuyor.'], 403);
+        }
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($_POST['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        if (!isset($_FILES['dosya'])) {
+            personnelResponse(['success' => false, 'message' => 'Yüklenecek dosya seçilmedi.'], 422);
+        }
+        $res = $model->uploadEvrak($personelId, $_FILES['dosya'], $_POST, $firmaId, (int) $_SESSION['user_id']);
+        $evrakData = $model->getEvrakDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'] ?? 'Evrak başarıyla yüklendi.',
+            'evraklar' => $evrakData['items'],
+            'evrak_ozet' => $evrakData['summary'],
+        ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_evrak') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'Evrak silme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawId = (string) ($data['id'] ?? '');
+        $id = ctype_digit($rawId) ? (int) $rawId : (int) Security::decrypt($rawId);
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        if ($id <= 0 || $personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz kayıt bilgisi.'], 422);
+        }
+        $res = $model->deleteEvrak($id, $personelId, $firmaId, (int) $_SESSION['user_id']);
+        $evrakData = $model->getEvrakDetails($personelId, $firmaId);
+        personnelResponse([
+            'success' => true,
+            'message' => $res['message'] ?? 'Evrak silindi.',
+            'evraklar' => $evrakData['items'],
+            'evrak_ozet' => $evrakData['summary'],
+        ]);
     }
 
     personnelResponse(['success' => false, 'message' => 'Geçersiz işlem.'], $_SERVER['REQUEST_METHOD'] === 'GET' ? 404 : 405);

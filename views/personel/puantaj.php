@@ -1739,8 +1739,9 @@ use App\Service\Gate;
                                 <div class="input-group input-group-sm ms-1" style="width: 105px; display: none;" id="fm-hours-input-wrapper">
                                     <input type="number" step="0.5" min="0.5" max="24" value="4.0" class="form-control text-center fw-bold px-1" id="fm-default-hours" title="Hücreye eklenecek mesai saati">
                                     <span class="input-group-text px-1 text-muted font-size-11">saat</span>
+                                </div>
                             </div>
-                        </div>
+                        </div> <!-- end .izin-palette-header -->
 
                         <div class="tab-content">
                             <div class="tab-pane fade show active" id="ucretli-izinler" role="tabpanel">
@@ -1979,4 +1980,3 @@ use App\Service\Gate;
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="views/personel/js/puantaj_izin.js?v=<?= filemtime(__DIR__ . '/js/puantaj_izin.js') ?>"></script>
-</div> <!-- container-fluid -->

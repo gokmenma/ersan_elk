@@ -104,7 +104,7 @@ if ($action === 'cards' || $action === 'summary') {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDateStr) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDateStr)) {
             if ($filterType === 'buay') {
                 $startDateStr = date('Y-m-01');
-                $endDateStr = $todayStr;
+                $endDateStr = date('Y-m-t');
             } elseif ($filterType === 'dun') {
                 $yesterday = date('Y-m-d', strtotime('-1 day'));
                 $startDateStr = $yesterday;

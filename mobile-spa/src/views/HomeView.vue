@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
+  Bell,
   CalendarCheck,
   CalendarDays,
   CarFront,
@@ -34,6 +35,7 @@ import {
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
 import { getDashboard, saveDashboardSettings, syncDailyOperations } from '../services/dashboard.js'
+import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
 
 const router = useRouter()
 const loading = ref(true)
@@ -61,6 +63,9 @@ const today = new Intl.DateTimeFormat('tr-TR', {
   weekday: 'long',
   timeZone: 'Europe/Istanbul',
 }).format(new Date())
+
+const username = computed(() => auth.state.user?.name || auth.state.user?.username || 'Kullanıcı')
+const initials = computed(() => auth.state.user?.initials || username.value.slice(0, 2).toLocaleUpperCase('tr-TR'))
 
 // Kart Tanımları ve Varsayılan Sıralama
 const DEFAULT_CARD_ORDER = [
@@ -461,6 +466,30 @@ onMounted(() => {
           <span class="edit-icon-wrap"><SlidersHorizontal :size="13" /></span>
           <span>Kartları Düzenle</span>
         </button>
+        <button
+          type="button"
+          class="clay-circle-btn topbar-bell-btn"
+          aria-label="Bildirimleri aç"
+          title="Bildirimler"
+          @click="toggleNotificationsDrawer"
+        >
+          <Bell :size="19" />
+          <span
+            v-if="notificationsState.unreadCount > 0"
+            class="topbar-bell-badge"
+          >
+            {{ notificationsState.unreadCount > 99 ? '99+' : notificationsState.unreadCount }}
+          </span>
+        </button>
+        <button
+          type="button"
+          class="clay-avatar-circle"
+          aria-label="Profil ve ayarları aç"
+          title="Profil"
+          @click="router.push('/profil')"
+        >
+          {{ initials }}
+        </button>
       </template>
     </TopBar>
 
@@ -534,15 +563,6 @@ onMounted(() => {
                   >
                     <ChevronDown :size="14" />
                   </button>
-                  <button
-                    type="button"
-                    class="card-inner-btn card-inner-btn--danger"
-                    title="Kartı gizle"
-                    aria-label="Kartı gizle"
-                    @click.stop="toggleCardVisibility(cardId)"
-                  >
-                    <EyeOff :size="14" />
-                  </button>
                 </div>
               </div>
 
@@ -602,7 +622,6 @@ onMounted(() => {
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
-                  <button type="button" class="card-inner-btn card-inner-btn--danger" title="Kartı gizle" @click.stop="toggleCardVisibility(cardId)"><EyeOff :size="14" /></button>
                 </div>
               </div>
 
@@ -649,7 +668,6 @@ onMounted(() => {
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
-                  <button type="button" class="card-inner-btn card-inner-btn--danger" title="Kartı gizle" @click.stop="toggleCardVisibility(cardId)"><EyeOff :size="14" /></button>
                 </div>
               </div>
 
@@ -704,7 +722,6 @@ onMounted(() => {
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
-                  <button type="button" class="card-inner-btn card-inner-btn--danger" title="Kartı gizle" @click.stop="toggleCardVisibility(cardId)"><EyeOff :size="14" /></button>
                 </div>
               </div>
 
@@ -759,17 +776,16 @@ onMounted(() => {
                     :class="{ 'is-syncing': isSyncingOperations }"
                     :disabled="isSyncingOperations"
                     title="Tüm günlük operasyonları KASKİ sisteminden online sorgula"
+                    aria-label="Tüm günlük operasyonları online sorgula"
                     @click="handleSyncOperations"
                   >
-                    <RefreshCw :size="11" :class="{ 'clay-spin-icon': isSyncingOperations }" />
-                    <span>{{ isSyncingOperations ? 'Sorgulanıyor…' : 'Sorgula' }}</span>
+                    <RefreshCw :size="12" :class="{ 'clay-spin-icon': isSyncingOperations }" />
                   </button>
                 </div>
                 <div class="card-inner-controls">
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
-                  <button type="button" class="card-inner-btn card-inner-btn--danger" title="Kartı gizle" @click.stop="toggleCardVisibility(cardId)"><EyeOff :size="14" /></button>
                 </div>
               </div>
 
@@ -825,7 +841,6 @@ onMounted(() => {
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
-                  <button type="button" class="card-inner-btn card-inner-btn--danger" title="Kartı gizle" @click.stop="toggleCardVisibility(cardId)"><EyeOff :size="14" /></button>
                 </div>
               </div>
 
@@ -862,7 +877,6 @@ onMounted(() => {
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
-                  <button type="button" class="card-inner-btn card-inner-btn--danger" title="Kartı gizle" @click.stop="toggleCardVisibility(cardId)"><EyeOff :size="14" /></button>
                 </div>
               </div>
 

@@ -187,7 +187,7 @@ $(document).ready(function () {
       .attr("aria-expanded", isActive ? "false" : "true")
       .find("i")
       .attr("class", isActive ? "mdi mdi-chevron-down" : "mdi mdi-chevron-up");
-    localStorage.setItem("puantaj_focus_mode", isActive ? "1" : "0");
+    localStorage.setItem("puantaj_focus_mode_v2", isActive ? "1" : "0");
     updateStickyHeights();
     if (animate) {
       focusTransitionTimer = setTimeout(() => {
@@ -201,8 +201,12 @@ $(document).ready(function () {
     setPuantajFocusMode(!$("body").hasClass("puantaj-focus-mode"));
   });
 
-  if (localStorage.getItem("puantaj_focus_mode") === "1") {
+  // Eski hatalı odak modu kaydını temizle ve varsayılan olarak açık başlat
+  localStorage.removeItem("puantaj_focus_mode");
+  if (localStorage.getItem("puantaj_focus_mode_v2") === "1") {
     setPuantajFocusMode(true, false);
+  } else {
+    setPuantajFocusMode(false, false);
   }
 
   // ESC ile Tam Ekrandan Çık

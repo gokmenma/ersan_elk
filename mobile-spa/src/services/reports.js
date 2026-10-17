@@ -1,12 +1,30 @@
 import { reactive } from 'vue'
 
-const today = new Date().toISOString().slice(0, 10)
+export function formatLocalYmd(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+export function getCurrentMonthRange() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate()
+  return {
+    start: `${y}-${m}-01`,
+    end: `${y}-${m}-${String(lastDay).padStart(2, '0')}`,
+  }
+}
+
+const initialMonthRange = getCurrentMonthRange()
 
 export const reportsState = reactive({
   activeTab: 'okuma', // 'okuma' | 'kesme' | 'sokme_takma' | 'muhurleme' | 'kacakkontrol'
   datePreset: 'buay', // 'bugun' | 'dun' | 'hafta' | 'buay' | 'gecenay' | 'custom'
-  startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
-  endDate: today,
+  startDate: initialMonthRange.start,
+  endDate: initialMonthRange.end,
   dateRangeLabel: '',
   searchQuery: '',
   selectedRegion: '', // '' (tümü) | 'Onikişubat' | vb.
@@ -104,38 +122,41 @@ export const reportsApi = {
 
 export function computePresetDates(preset) {
   const now = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
+  const todayStr = formatLocalYmd(now)
 
   if (preset === 'bugun') {
     return { start: todayStr, end: todayStr }
   }
 
   if (preset === 'dun') {
-    const yest = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    const yestStr = yest.toISOString().slice(0, 10)
-    return { start: yestStr, end: yestStr }
+    const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    return { start: formatLocalYmd(yest), end: formatLocalYmd(yest) }
   }
 
   if (preset === 'hafta') {
     // Pazartesi
     const day = now.getDay()
     const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-    const monday = new Date(now.setDate(diff))
+    const monday = new Date(now.getFullYear(), now.getMonth(), diff)
     return {
-      start: monday.toISOString().slice(0, 10),
+      start: formatLocalYmd(monday),
       end: todayStr,
     }
   }
 
   if (preset === 'buay') {
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-    return { start: firstDay, end: todayStr }
+    return getCurrentMonthRange()
   }
 
   if (preset === 'gecenay') {
-    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10)
-    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10)
-    return { start: firstDayLastMonth, end: lastDayLastMonth }
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const py = prevMonthDate.getFullYear()
+    const pm = String(prevMonthDate.getMonth() + 1).padStart(2, '0')
+    const lastDayPrev = new Date(py, prevMonthDate.getMonth() + 1, 0).getDate()
+    return {
+      start: `${py}-${pm}-01`,
+      end: `${py}-${pm}-${String(lastDayPrev).padStart(2, '0')}`,
+    }
   }
 
   return { start: reportsState.startDate, end: reportsState.endDate }

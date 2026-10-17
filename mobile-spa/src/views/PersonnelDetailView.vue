@@ -1,10 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck, CalendarDays,
-  ChevronRight, FileText, Gavel, History, Mail, MapPin, PackageCheck, Pencil,
-  Phone, Receipt, RefreshCw, UserRoundCheck,
+  ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck, CalendarDays, Check,
+  ChevronDown, ChevronRight, FileText, Gavel, History, Mail, MapPin, PackageCheck, Pencil,
+  Phone, Receipt, RefreshCw, Search, UserRound, UserRoundCheck, X,
 } from '@lucide/vue'
 import { personnelApi } from '../services/personnel.js'
 import TopBar from '../components/TopBar.vue'
@@ -15,6 +15,53 @@ const loading = ref(true)
 const error = ref('')
 const person = ref(null)
 const canEdit = ref(false)
+const quickPersonnelList = ref([])
+const showPhotoModal = ref(false)
+
+const isPersonSheetOpen = ref(false)
+const personSheetSearch = ref('')
+
+function openPhotoModal() {
+  showPhotoModal.value = true
+}
+
+function closePhotoModal() {
+  showPhotoModal.value = false
+}
+
+function openPersonSheet() {
+  personSheetSearch.value = ''
+  isPersonSheetOpen.value = true
+}
+
+function closePersonSheet() {
+  isPersonSheetOpen.value = false
+}
+
+function selectPersonFromSheet(newId) {
+  isPersonSheetOpen.value = false
+  if (newId && newId !== person.value?.id) {
+    router.push({ name: 'personnel-detail', params: { id: newId } })
+  }
+}
+
+function getPersonInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+const filteredQuickPersonnelList = computed(() => {
+  const list = quickPersonnelList.value || []
+  const q = personSheetSearch.value.trim().toLowerCase()
+  if (!q) return list
+  return list.filter(p =>
+    (p.name && p.name.toLowerCase().includes(q)) ||
+    (p.department && p.department.toLowerCase().includes(q)) ||
+    (p.job && p.job.toLowerCase().includes(q))
+  )
+})
 
 const modules = [
   { tab: 'genel', label: 'Genel bilgiler', meta: 'İletişim, kimlik ve giriş bilgileri', icon: UserRoundCheck, color: '#181c24' },
@@ -44,12 +91,17 @@ async function load() {
     const result = await personnelApi.detail(route.params.id)
     person.value = result.personnel
     canEdit.value = Boolean(result.can_edit)
+    quickPersonnelList.value = result.personnel_quick_list || []
   } catch (reason) {
     error.value = reason.message
   } finally {
     loading.value = false
   }
 }
+
+watch(() => route.params.id, (newId) => {
+  if (newId) load()
+})
 
 onMounted(load)
 </script>
@@ -75,7 +127,7 @@ onMounted(load)
       <!-- 2. Hero Bento Kart (Kimlik, İletişim ve Entegre Özet Bilgiler) -->
       <section class="bento-card bento-card--white detail-hero-bento">
         <div class="detail-avatar-row">
-          <div class="detail-avatar-box">
+          <div class="detail-avatar-box" @click="openPhotoModal" style="cursor: pointer;" title="Fotoğrafı büyüt">
             <img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" />
             <span v-else class="initials">{{ person.initials }}</span>
           </div>
@@ -97,7 +149,14 @@ onMounted(load)
           >
             {{ person.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}
           </span>
-          <h2 class="person-name">{{ person.name }}</h2>
+          <div class="person-switcher-wrap" @click="openPersonSheet" role="button" tabindex="0" title="Personel Değiştir">
+            <div class="person-switcher-display">
+              <h2 class="person-switcher-name">{{ person.name }}</h2>
+              <span class="person-switcher-pill">
+                <ChevronDown :size="14" />
+              </span>
+            </div>
+          </div>
           <p class="person-role">{{ [person.job, person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}</p>
         </div>
 
@@ -155,6 +214,152 @@ onMounted(load)
           </RouterLink>
         </div>
       </section>
+
+      <!-- Bottom-Sheet Modal: Personel Seçimi (Bordro Standardı & Arama) -->
+      <Teleport to="body">
+        <div
+          v-if="isPersonSheetOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closePersonSheet"
+        >
+          <div class="payroll-modal-sheet payroll-modal-sheet--period">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">PERSONEL SEÇİMİ</span>
+                <h3 class="payroll-sheet-title">Personel Seçin</h3>
+                <p class="payroll-sheet-subtitle">Görüntülemek istediğiniz personeli seçin</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closePersonSheet"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <!-- Arama Kutusu -->
+            <div class="person-sheet-search-wrap">
+              <Search :size="16" class="person-sheet-search-icon" />
+              <input
+                v-model="personSheetSearch"
+                type="text"
+                placeholder="Personel ara (ad, görev, departman)…"
+                class="person-sheet-search-input"
+              />
+              <button
+                v-if="personSheetSearch"
+                type="button"
+                class="person-sheet-search-clear"
+                @click="personSheetSearch = ''"
+                aria-label="Temizle"
+              >
+                <X :size="12" />
+              </button>
+            </div>
+
+            <div class="period-sheet-body hide-scrollbar" style="max-height: 55vh; overflow-y: auto;">
+              <div v-if="filteredQuickPersonnelList.length === 0" class="clay-state-card py-4" style="margin: 8px 0;">
+                <UserRound :size="24" class="text-muted mb-1" />
+                <strong style="font-size: 13px;">Eşleşen personel bulunamadı</strong>
+                <p style="font-size: 11.5px; margin: 0;">Farklı bir arama terimi deneyebilirsiniz.</p>
+              </div>
+
+              <div v-else class="period-sheet-list">
+                <button
+                  v-for="p in filteredQuickPersonnelList"
+                  :key="p.id"
+                  type="button"
+                  class="period-sheet-item"
+                  :class="{ 'period-sheet-item--active': p.id === person.id }"
+                  @click="selectPersonFromSheet(p.id)"
+                >
+                  <div class="period-sheet-item__left">
+                    <div
+                      class="period-sheet-icon"
+                      :class="{ 'period-sheet-icon--active': p.id === person.id }"
+                      style="overflow: hidden; padding: 0;"
+                    >
+                      <img
+                        v-if="p.avatar"
+                        :src="p.avatar"
+                        :alt="p.name"
+                        style="width: 100%; height: 100%; object-fit: cover;"
+                        @error="p.avatar = null"
+                      />
+                      <span v-else style="font-weight: 800; font-size: 12px;">{{ getPersonInitials(p.name) }}</span>
+                    </div>
+                    <div class="period-sheet-info">
+                      <strong class="period-sheet-name">{{ p.name }}</strong>
+                      <span class="period-sheet-dates">
+                        {{ [p.job, p.department].filter(Boolean).join(' · ') || 'Personel' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="period-sheet-item__right">
+                    <span
+                      class="clay-pill-tag"
+                      :class="p.active ? 'clay-pill-tag--emerald' : 'clay-pill-tag--coral'"
+                    >
+                      ● {{ p.active ? 'Aktif' : 'Ayrıldı' }}
+                    </span>
+                    <span v-if="p.id === person.id" class="period-sheet-check">
+                      <Check :size="16" />
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Büyük Fotoğraf Görüntüleme Modalı (Lightbox) -->
+      <Teleport to="body">
+        <div v-if="showPhotoModal" class="clay-lightbox-overlay" @click.self="closePhotoModal">
+          <div class="clay-lightbox-card">
+            <button type="button" class="clay-lightbox-close" @click="closePhotoModal" aria-label="Kapat">
+              <X :size="20" />
+            </button>
+            
+            <div class="clay-lightbox-image-box">
+              <img 
+                v-if="person.avatar" 
+                :src="person.avatar" 
+                :alt="person.name" 
+                class="clay-lightbox-img"
+                @error="person.avatar = null"
+              />
+              <div v-else class="clay-lightbox-avatar-fallback">
+                <span>{{ person.initials }}</span>
+              </div>
+            </div>
+
+            <div class="clay-lightbox-info">
+              <span class="clay-badge" :class="person.active ? 'clay-badge--emerald' : 'clay-badge--coral'">
+                {{ person.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}
+              </span>
+              <h3 class="clay-lightbox-name">{{ person.name }}</h3>
+              <p class="clay-lightbox-role">
+                {{ [person.job, person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}
+              </p>
+            </div>
+
+            <div class="clay-lightbox-actions">
+              <button 
+                type="button" 
+                class="clay-btn clay-btn--secondary w-100" 
+                @click="closePhotoModal"
+              >
+                <span>Kapat</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
     </template>
   </section>
 </template>

@@ -22,6 +22,15 @@ const error = ref('')
 const selected = ref(null)
 const detailLoading = ref(false)
 const canEdit = ref(false)
+const photoModalPerson = ref(null)
+
+function openPhotoModal(person) {
+  photoModalPerson.value = person
+}
+
+function closePhotoModal() {
+  photoModalPerson.value = null
+}
 let searchTimer
 let requestNumber = 0
 
@@ -217,7 +226,7 @@ onMounted(() => load(true))
         tabindex="0"
         @click="openDetail(person)"
       >
-        <div class="personnel-avatar-wrap">
+        <div class="personnel-avatar-wrap" @click.stop="openPhotoModal(person)">
           <img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" />
           <span v-else class="personnel-initials">{{ person.initials }}</span>
           <i :class="person.active ? 'dot-online' : 'dot-offline'"></i>
@@ -257,6 +266,51 @@ onMounted(() => load(true))
     >
       <Plus :size="22" />
     </button>
+
+    <!-- Büyük Fotoğraf Görüntüleme Modalı (Lightbox) -->
+    <Teleport to="body">
+      <div v-if="photoModalPerson" class="clay-lightbox-overlay" @click.self="closePhotoModal">
+        <div class="clay-lightbox-card">
+          <button type="button" class="clay-lightbox-close" @click="closePhotoModal" aria-label="Kapat">
+            <X :size="20" />
+          </button>
+          
+          <div class="clay-lightbox-image-box">
+            <img 
+              v-if="photoModalPerson.avatar" 
+              :src="photoModalPerson.avatar" 
+              :alt="photoModalPerson.name" 
+              class="clay-lightbox-img"
+              @error="photoModalPerson.avatar = null"
+            />
+            <div v-else class="clay-lightbox-avatar-fallback">
+              <span>{{ photoModalPerson.initials }}</span>
+            </div>
+          </div>
+
+          <div class="clay-lightbox-info">
+            <span class="clay-badge" :class="photoModalPerson.active ? 'clay-badge--emerald' : 'clay-badge--coral'">
+              {{ photoModalPerson.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}
+            </span>
+            <h3 class="clay-lightbox-name">{{ photoModalPerson.name }}</h3>
+            <p class="clay-lightbox-role">
+              {{ [photoModalPerson.job, photoModalPerson.department].filter(Boolean).join(' · ') || 'Görev bilgisi bulunmuyor' }}
+            </p>
+          </div>
+
+          <div class="clay-lightbox-actions">
+            <button 
+              type="button" 
+              class="clay-btn clay-btn--primary w-100" 
+              @click="openDetail(photoModalPerson); closePhotoModal()"
+            >
+              <UserRoundCheck :size="16" />
+              <span>Profiline Git</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 

@@ -199,5 +199,28 @@ export const personnelApi = {
     if (!response.ok || !payload.success) throw new Error(payload.message || 'Kesinti sonlandırılamadı.')
     return payload
   },
+  async uploadEvrak(formData, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=upload_evrak', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'X-CSRF-Token': csrfToken },
+      body: formData,
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Evrak yüklenemedi.')
+    return payload
+  },
+  async deleteEvrak(id, personelId, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=delete_evrak', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ id, personel_id: personelId }),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Evrak silinemedi.')
+    return payload
+  },
 }
+
 

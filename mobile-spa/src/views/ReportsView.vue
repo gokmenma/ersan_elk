@@ -81,13 +81,9 @@ function selectMonth(mVal) {
   const lastDay = new Date(y, parseInt(mVal, 10), 0).getDate()
   const endDate = `${y}-${mVal}-${String(lastDay).padStart(2, '0')}`
 
-  // Eğer bugünden ileri bir tarihse bugüne sınırla
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const realEnd = endDate > todayStr ? todayStr : endDate
-
   const monthObj = monthsList.find((m) => m.val === mVal)
   const label = `${monthObj?.label || mVal} ${y}`
-  applyCustomDateRange(startDate, realEnd, label)
+  applyCustomDateRange(startDate, endDate, label)
 }
 
 // Özel Tarih Aralığını Uygula
@@ -187,7 +183,7 @@ const groupedRegions = computed(() => {
   return Object.values(map).filter((r) => r.cards.length > 0)
 })
 
-// Arama yapıldığında eşleşen bölgeleri otomatik aç
+// Arama yapıldığında eşleşen bölgeleri otomatik aç; arama temizlendiğinde tekrar kapat
 watch(
   () => reportsState.searchQuery,
   (q) => {
@@ -195,22 +191,43 @@ watch(
       for (const r of groupedRegions.value) {
         expandedRegions.value[r.name] = true
       }
+    } else {
+      for (const r of groupedRegions.value) {
+        expandedRegions.value[r.name] = false
+      }
     }
   }
 )
 
-// İlk veri yüklendiğinde bölgeleri varsayılan olarak açık ayarla
+// İlk veri yüklendiğinde ve bölgeler güncellendiğinde tüm bölgeleri varsayılan olarak KAPALI ayarla
 watch(
   () => reportsState.regions,
   (regs) => {
     if (regs && regs.length > 0) {
-      regs.forEach((r, idx) => {
-        // İlk 2 bölge açık, diğerleri kapalı veya tümü açık
+      regs.forEach((r) => {
         if (expandedRegions.value[r.name] === undefined) {
-          expandedRegions.value[r.name] = idx < 3
+          expandedRegions.value[r.name] = false
         }
       })
     }
+  },
+  { immediate: true }
+)
+
+// Sekme değiştiğinde bölgelerin açık/kapalı durumu sıfırlanıp kapalı başlasın
+watch(
+  () => reportsState.activeTab,
+  () => {
+    expandedRegions.value = {}
+  }
+)
+
+// Tarih aralığı değiştiğinde modal içi özel tarih inputlarını senkronize et
+watch(
+  () => [reportsState.startDate, reportsState.endDate],
+  ([s, e]) => {
+    customStartInput.value = s
+    customEndInput.value = e
   },
   { immediate: true }
 )

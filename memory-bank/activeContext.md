@@ -1,59 +1,135 @@
 # Active Context
 
-## Mobil SPA Ana Sayfa: Operasyonlar Sıralaması, Renkli Çerçeveler, Rapor Sekme Linkleri ve Günlük Toplu Sorgulama (2026-10-17)
+## Mobil SPA: Bordro Standardında Personel Seçici Modalı ve Evraklar Bento Hacim Kartı (2026-10-17)
 - **Kullanıcı Talepleri**:
-  1. `muhurleme ile okumanin yerini degisebilirmisin?` (Görselde sol üstteki Mühürleme ile sağ ortadaki Endeks Okuma'nın çapraz yer değiştirmesi işaretlendi).
-  2. `Birde burda renklendirme ve cerceve yapabiliriz` (Operasyon kutularına renkli vurgu ve belirgin çerçeve istendi).
-  3. `islem sayılarının altindaki git butonu puantaja gidiyor raporlar sayfasına gitmesi gerekiyor, ilgili sekmeye` (Mühürleme, okuma, kesme ve sayaç butonlarının Raporlar sayfasında ilgili sekmeye gitmesi talep edildi).
-  4. `bir de bunlard günlük sorgulama butonu vardı, gün/ay yanına tek buton ekleyelim ve hepsini sorgulayalım` (Günün Operasyonları kart başlığına tek dokunuşla tüm günlük verileri online sorgulayan buton istendi).
-- **Uygulanan Geliştirmeler & Mimari**:
-  1. **Operasyonlar Sıralaması (Mühürleme <-> Endeks Okuma Yer Değişimi)**:
-     - `MobileDashboardModel.php`, `public/api/dashboard.php`, `dist/api/dashboard.php` ve `HomeView.vue`:
-       - 1. Sıra (Sol Üst): **Endeks Okuma (`reading`)**
-       - 2. Sıra (Sağ Üst): **Kesme / Açma (`cut_open`)**
-       - 3. Sıra (Sol Orta): **Sayaç Değişimi (`meter_change`)**
-       - 4. Sıra (Sağ Orta): **Mühürleme (`sealing`)**
-       - 5. Sıra (Sol Alt): **Kaçak (`illegal`)**
-       - 6. Sıra (Sağ Alt): **İhbar (`notice`)**
-       Frontend'de `opSortOrder` map'i ile sıralama her koşulda garanti altına alındı.
-  2. **Renkli & Çerçeveli Soft Bento UI Tasarımı (`design-system.css`)**:
-     - Her operasyon türü için kurumsal canlı renkler, 1.5px çerçeve ve 3.5px sol vurgu çizgisi tanımlandı:
-       - `reading`: Mavi/Sky degrade, `#0284c7` border ve ikon balonu.
-       - `cut_open`: Turuncu/Amber degrade, `#f97316` border ve ikon balonu.
-       - `meter_change`: Zümrüt Yeşili degrade, `#10b981` border ve `Wrench` ikonu.
-       - `sealing`: Mor/İndigo degrade, `#7c3aed` border ve `ShieldCheck` ikonu.
-       - `illegal`: Mercan/Kırmızı degrade, `#ef4444` border ve `ShieldAlert` ikonu.
-       - `notice`: Altın/Kehribar degrade, `#d97706` border ve `Megaphone` ikonu.
-     - "Git" butonu, ilgili operasyon renginde açık renkli hap rozeti ve `ArrowUpRight` ikonuyla yenilendi (`.op-tile-git-btn`).
-  3. **Raporlar Sekmelerine Doğrudan Yönlendirme**:
-     - `reading` -> `/raporlar?tab=okuma`
-     - `cut_open` -> `/raporlar?tab=kesme`
-     - `meter_change` -> `/raporlar?tab=sokme_takma`
-     - `sealing` -> `/raporlar?tab=muhurleme`
-     - `illegal` -> `/raporlar?tab=kacakkontrol`
-     - `notice` -> `/ihbar`
-     - `ReportsView.vue`: `useRoute()` entegrasyonu ile URL'den gelen `tab` query parametresini (`applyTabFromRoute` & `watch`) okuyup ilgili sekmeyi otomatik aktif hale getirecek ve raporları yükleyecek yapı kuruldu.
-  4. **Tek Butonla Günlük Toplu Online Sorgulama**:
-     - `HomeView.vue` kart başlığında `Gün` / `Ay` toggle'ının hemen yanına `.op-sync-all-btn` ("Sorgula") butonu eklendi.
-     - `services/dashboard.js` içine `syncDailyOperations()` fonksiyonu eklendi; KASKİ web servisine paralel olarak `online-puantaj-sorgula` (kesme & mühürleme), `online-icmal-sorgula` (endeks okuma) ve `online-sayac-degisim-sorgula` (sayaç değişimi) istekleri atılır.
-     - Sorgulama esnasında buton dönen animasyona geçer (`Sorgulanıyor…`), tamamlandığında `getDashboard()` tetiklenerek karttaki sayaçlar anında güncellenir ve kullanıcıya yüzen Toast bildirimi verilir.
-  5. **Derleme ve Doğrulama**: `npm run build` hatasız tamamlandı.
+  1. "burası daha düzenli gelsin" (Evraklar sayfasındaki unstyled metin yığını yerine düzenli ve ferah görünüm).
+  2. "ayrıca personel seçimi bordro sayfaındaki gibi gelsin, değiştir'e basınca 2.resimdeki gibi listes açılsın ve arama kutusu da olsun" (Bordro modülündeki `SEÇİLİ PERSONEL` kartı, `Değiştir ⌵` butonu ve arama kutulu `.period-sheet-list` modal standardı).
+- **Uygulanan Çözümler**:
+  1. **Bordro Standardında Personel Seçici Kartı (`.person-selector-card`)**:
+     - `design-system.css` içine `.person-selector-card`, `.person-selector-card__left`, `.person-selector-avatar-box`, `.person-selector-card__meta`, `.person-selector-sub`, `.person-selector-name`, `.person-mini-status`, `.person-selector-card__right` ve `.person-change-btn` sınıfları entegre edildi.
+     - `PersonnelSectionView.vue`: Üstteki eski profil başlığı yerine sol tarafta avatar (tıklanıp büyütülebilen), `SEÇİLİ PERSONEL` etiketi, personel adı, aktiflik rozeti (`● Aktif` / `● Ayrıldı`); sağ tarafta varsa sekme `Kaydet` butonu ve `Değiştir ⌵` butonu yerleştirildi.
+     - Kartın sol kısmına veya `Değiştir ⌵` butonuna tıklandığında alttan açılan bottom sheet modalı (`isPersonSheetOpen`) tetikleniyor.
+  2. **Arama Kutulu Personel Seçim Modalı (`.payroll-modal-sheet--period`)**:
+     - Başlık: `PERSONEL SEÇİMİ`, `Personel Seçin`, `Görüntülemek istediğiniz personeli seçin` ve kapatma butonu (`clay-circle-btn`).
+     - Arama Kutusu: `.person-sheet-search-wrap` içinde arama ikonu, `Personel ara (ad, görev, departman)…` inputu ve anlık temizleme (`X`) butonu.
+     - Liste: `.period-sheet-list` içinde her bir personel için sol tarafta avatar/baş harf kutusu (`.period-sheet-icon`), isim ve departman/görev bilgisi; sağ tarafta ise `Aktif` / `Ayrıldı` hap etiketi ve seçili personel için mavi dairesel onay imi (`.period-sheet-check`).
+     - Personel tıklandığında modal kapanıp ilgili personelin aynı sekmesine anında yönlendiriliyor.
+     - `PersonnelDetailView.vue` da aynı bottom sheet modal standardına kavuşturularak SPA genelinde tam tutarlılık sağlandı.
+  3. **Evraklar Bölümü Bento Obsidian Hacim Kartı (`PersonnelSectionView.vue` - `/personel/:id/evraklar`)**:
+     - Önceden unstyled dikey metin dökülen alan tamamen kaldırılarak Cari Takip / Bento Obsidian standartlarında 4 renkli segmentli dağılım grafiği ve 2x2 interaktif lejant ızgarası (`cari-chart-legend--2x2`) uygulandı:
+       - **Özlük & Kimlik** (Açık Mavi - Sky)
+       - **Sözleşme & Yasal** (Zümrüt Yeşili - Emerald)
+       - **Sağlık & Eğitim** (Mor - Purple)
+       - **Diğer Belgeler** (Mercan - Coral)
+     - Her lejant kutusu tıklanabilir hale getirilerek ilgili belge grubunun anında filtrelenmesi sağlandı.
+     - Altında canlı arama kutusu ve kategori hapları (`clay-filter-pill`) ile kusursuz bir dijital arşiv deneyimi sunuldu.
+  4. **Backend Desteği (`MobilePersonelModel.php`)**:
+     - `mobileDirectoryQuickList()` metodu içine `avatar` URL alanı eklenerek modal listesindeki personellerin avatarları zenginleştirildi.
+  5. **Derleme & Doğrulama**:
+     - `npm run build` ile Vite derlemesi 0 hata ile tamamlandı.
+     - `/opt/lampp/bin/php -l` ile PHP sözdizimleri doğrulandı.
 
-## Mobil SPA: KM Onayları ve Kaçak Kontrol Fotoğraf Yolu 404 Hatası Çözümü (SW v23) (2026-10-17)
-- **Kullanıcı Hata Bildirimi**:
-  `km_283_cbbfc8c8e570ac23d230.webp:1 GET https://mobile.ersantr.com/uploads/km_bildirim/km_283_cbbfc8c8e570ac23d230.webp 404 (Not Found)`
-  `/#/km-onaylari:1 Banner not shown: beforeinstallpromptevent.preventDefault() called.`
-  `resimler yine gelmiyor, bu bir örnek hata`
-- **Tespit Edilen Kök Neden**:
-  - Önceki oturumda yazılan fotoğraf akışı (streaming) ve API yönlendirmesi kodları, aradaki `6bd645aaaebbe7f311c016f455157325ef48a656` ve `e68a9742a229c3eadf98a6a99009719623915c46` commit'lerinde kazara eski versiyonla ezilerek geri alınmıştı (revert).
-  - Sonuç olarak `https://mobile.ersantr.com/` üzerinde koşan derlenmiş bundle'da (`index-DyIRF99r.js`) görsel URL'leri tekrar ham `resolveImageUrl(r.resim_yolu)` haline dönmüş; istemci tarayıcıları doğrudan `https://mobile.ersantr.com/uploads/km_bildirim/...` yoluna istek atmış ve `mobile-spa/dist` kök dizininde `uploads/` klasörü bulunmadığı için 404 vermiştir.
-- **Uygulanan Çözüm**:
-  1. `km-onaylari.php`, `kacak.php`, `personnel-photo.php`, `KmOnaylariView.vue`, `KacakView.vue`, `km-onaylari.js`, `kacak.js` dosyaları `7ee6c6c4` sürümünden eksiksiz geri yüklendi.
-  2. `resolveImageUrl` fonksiyonu `path.startsWith('uploads/km_bildirim')` ve `path.includes('km_bildirim')` durumlarında doğrudan `/api/km-onaylari.php?action=foto&file=...` endpoint'ine yönlendirildi.
-  3. `getKmPhotoUrl(report)` fonksiyonu ile her görsel isteğinin kesinlikle `/api/km-onaylari.php?action=foto&token=...` veya `id=...` üzerinden yetkili ve güvenli `MedyaServis::gonder` akışıyla çekilmesi sağlandı.
-  4. Service Worker versiyonu `ersan-mobile-shell-v23` seviyesine yükseltildi.
-  5. `npm run build` ile yeni üretim paketi (`dist/assets/index-C-Nk5KPk.js`, `dist/assets/index-C_BN7_Ha.css`) 0 hata ile derlendi.
-  6. Tüm değişiklikler commit edilip `git push origin main` ile canlı sunucuya gönderildi.
+## Mobil SPA: Personel Fotoğrafı Lightbox, Hızlı Personel Değiştirme ve Evrak Yönetimi (2026-10-17)
+- **Kullanıcı Talepleri**:
+  1. "1-personel fotografına basınca büyük olarak görmek istiyorum"
+  2. "2-personel detay sayfalarında personel adının olduğu yerde personel değiştirme selecti olsun , şık bir tasarım ile"
+  3. "3-personel evrakları sayfasını yapalım"
+- **Uygulanan Çözümler**:
+  1. **Büyük Fotoğraf Görüntüleme (Lightbox Modalı)**:
+     - `design-system.css` içine `.clay-lightbox-overlay`, `.clay-lightbox-card`, `.clay-lightbox-image-box`, `.clay-lightbox-avatar-fallback` ve `@keyframes scaleIn` merkezi stilleri eklendi.
+     - `PersonnelView.vue` (personel liste görünümü): Avatar kutusuna `@click.stop="openPhotoModal(person)"` eklendi; kart tıklamasından bağımsız olarak avatar tıklandığında büyük fotoğraf modalı açılıyor.
+     - `PersonnelDetailView.vue` (detay sayfası): Profil hero avatarına tıklama ile lightbox açılması sağlandı.
+     - `PersonnelSectionView.vue` (alt sekmeler): Üst profil avatarına tıklama ile lightbox açılması sağlandı.
+     - Fotoğraf bulunmayan personellerde yüksek çözünürlüklü iki harfli degrade avatar fallback'i sağlandı.
+  2. **Şık Personel Değiştirme Seçicisi (Personnel Switcher)**:
+     - `MobilePersonelModel.php` içine `mobileDirectoryQuickList(int $firmaId): array` metodu eklendi.
+     - `personnel.php` API detay yanıtına `personnel_quick_list` eklendi.
+     - `design-system.css` içine `.person-switcher-wrap`, `.person-switcher-display`, `.person-switcher-name`, `.person-switcher-pill` ve `.person-switcher-native-select` eklendi.
+     - `PersonnelDetailView.vue` ve `PersonnelSectionView.vue`: Personel isminin yerine şık mavi hap (`pill`) içinde isim ve `ChevronDown` ikonu yerleştirildi; tıklandığında yerel mobil sistem seçicisi (native picker) açılarak klavye/dokunmatik gecikmesi olmaksızın firma personelleri listeleniyor.
+     - Seçim değiştiğinde `router.push` ile ilgili personelin profiline ve `PersonnelSectionView.vue`'da bulunulan mevcut sekmeye (`calisma`, `izinler`, `evraklar` vb.) anında yönlendirme yapılıyor.
+  3. **Personel Evrakları Yönetim Sayfası (`PersonnelSectionView.vue` - `/personel/:id/evraklar`)**:
+     - `App/Model/MobilePersonelModel.php`:
+       - `getEvrakDetails(int $personelId, int $firmaId): array`: Personelin aktif evraklarını ve kategori dağılımını getirir.
+       - `uploadEvrak(int $personelId, array $file, array $data, int $firmaId, int $userId): array`: ISO 27001 standardına uygun olarak dosyayı **AES-256-GCM** (`Security::encryptFile`) ile şifreleyip `uploads/personel_evraklar/{id}/{hash}.enc` yoluna kaydeder, veritabanına ve sistem loguna işler.
+       - `deleteEvrak(int $id, int $personelId, int $firmaId, int $userId): array`: Soft delete (`aktif = 0`) uygular ve loglar.
+     - `views/personel/evrak-indir.php`: Yetki kontrolü `personel_listesi` ve `personel_goruntule` izinlerine sahip kullanıcıları da kapsayacak şekilde esnetildi; şifreli dosyaları hafızada anlık çözerek (`Security::decryptFile`) tarayıcıda önizleme ve indirme imkanı sağlandı.
+     - `mobile-spa/public/api/personnel.php` & `dist/api/personnel.php`: `upload_evrak` ve `delete_evrak` endpoint'leri eklendi.
+     - `mobile-spa/src/services/personnel.js`: `uploadEvrak` ve `deleteEvrak` API metodları tanımlandı.
+     - `PersonnelSectionView.vue`:
+       - Obsidian Bento Hacim Kartı (Toplam evrak adedi ve kategori dağılım hapları).
+       - Canlı Arama ve Kategori Filtreleme hapları (`clay-filter-pill`).
+       - Evrak kartları: Dosya türü rozeti (PDF, IMG, DOC, XLS), evrak adı, kategori hapı, orijinal dosya adı, yüklenme tarihi, yükleyen kişi, boyut.
+       - Güvenli görüntüleme (yeni sekmede / inline deşifre), indirme ve silme butonları.
+       - Yeni Evrak Yükleme Bottom-Sheet Modalı: Evrak türü seçimi, başlık, açıklama, Dropzone dosya yükleyici ve ISO 27001 güvenlik rozeti.
+  4. **Derleme & Doğrulama**:
+     - `npm run build` ile Vite derlemesi 0 hata ile tamamlandı.
+     - `/opt/lampp/bin/php -l` ile tüm PHP dosyalarının sözdizimi doğrulandı.
+
+## Mobil SPA Raporlar: Varsayılan Dönem Olarak İçinde Bulunulan Ay ve Akordiyon Detaylarının Kapalı Başlaması (2026-10-17)
+- **Kullanıcı Talebi**: "Burda varsayilan donem, icinde bulundugumuz ay olarak, bolgelerde detay kisimlari kapali olarak gelse daha iyi olur" (Ekran görüntüsünde `30.09.2026 - 17.10.2026` tarih alanı ve `Afşin` altındaki açık personel kartları işaretlendi).
+- **Kök Nedenler**:
+  1. `reports.js` içinde `new Date(year, month, 1).toISOString().slice(0, 10)` çağrısı, yerel saat dilimindeki (UTC+3) gece yarısını UTC'ye çevirirken önceki günün akşamı olan `2026-09-30` tarihini üretiyordu.
+  2. Bitiş tarihi ise `today` (`17.10.2026`) olarak sınırlandırıldığından dönem 30.09.2026 - 17.10.2026 olarak görünüyordu; oysa kullanıcı rapor döneminin içinde bulunulan tam ay (`01.10.2026 - 31.10.2026`) olmasını istedi.
+  3. `ReportsView.vue` içindeki bölge gözlemcisi (`watch(regions)`) ilk 3 bölgeyi (`idx < 3`) varsayılan olarak açık getiriyordu (`expandedRegions[r.name] = true`).
+- **Uygulanan Çözümler**:
+  1. **Saat Dilimi Kaymasız Yerel Ay Aralığı (`mobile-spa/src/services/reports.js`)**:
+     - `formatLocalYmd()` ve `getCurrentMonthRange()` fonksiyonları tanımlandı.
+     - Varsayılan başlangıç tarihi ayın ilk günü (`01.10.2026`), bitiş tarihi ise ayın son takvim günü (`31.10.2026`) olarak ayarlandı. UTC kaymaları tamamen engellendi.
+     - `computePresetDates('buay')` doğrudan içinde bulunulan ayın tam takvim aralığını dönecek şekilde güncellendi.
+  2. **API Varsayılan Bitiş Tarihi (`mobile-spa/public/api/reports.php` & `dist/api/reports.php`)**:
+     - `buay` filtresinde `$endDateStr = date('Y-m-t');` atanarak ayın son gününe kadar olan verileri kapsaması sağlandı.
+     - `date_range_label` çıktısı `01.10.2026 – 31.10.2026` olarak doğrulandı.
+  3. **Akordiyon Detaylarının Varsayılan Olarak Kapalı Başlaması (`mobile-spa/src/views/ReportsView.vue`)**:
+     - Bölgeler yüklendiğinde tüm bölgelerin detay kısımları kapalı (`expandedRegions[r.name] = false`) olarak başlatıldı.
+     - Sekme değiştiğinde (`activeTab`) durum haritası sıfırlanarak yeni sekmede de bölgelerin kapalı başlaması sağlandı.
+     - Arama yapıldığında eşleşen bölgeler otomatik genişletilip arama temizlendiğinde tekrar kapalı duruma getirilmesi korundu.
+     - `selectMonth` fonksiyonunda bugüne kısıtlama kaldırıldı; seçilen ay tam takvim ayı olarak uygulanıyor.
+  4. **Derleme & Doğrulama**:
+     - `npm run build` ile Vite derlemesi başarıyla tamamlandı.
+     - PHP CLI ve cURL ile `01.10.2026 – 31.10.2026` çıktısı ve JSON yapısı doğrulandı.
+
+
+## Mobil SPA Ana Sayfa: Kart Gizleme Temizliği, Kompakt Sorgula İkonu ve Bildirim Butonu İyileştirmesi (2026-10-17)
+- **Kullanıcı Talepleri**:
+  1. "kartlardaki gizleme butonlarıı kaldıralım, kartları düzenle modalindan gizlesinler": Kart başlıklarındaki kırmızı `EyeOff` / gizleme butonlarının kaldırılması; gizleme/gösterme işlemlerinin yalnızca "Kartları Düzenle" modalindeki switch kontrolleri üzerinden yapılması.
+  2. "sorgula bıtonu yalnızca ikon olsun": Operasyonlar kartındaki `Sorgula` butonundaki metnin kaldırılarak dairesel, kompakt bir `RefreshCw` ikon butonuna dönüştürülmesi.
+  3. "bildirim ikou ana sayfada gelmiyor": Ana sayfadaki TopBar'da bildirim çanının (`Bell`) ve kırmızı sayaç rozetinin eksiksiz görünmesi.
+- **Uygulanan Çözümler**:
+  1. **Gizleme Butonlarının Temizlenmesi (`HomeView.vue`)**:
+     - `shifts` (Nöbetçiler), `vehicles` (Araç & Filo), `operations` (Operasyonlar), `quick_actions` (Hızlı Erişim) ve `announcements` (Kurumsal Duyurular) kart başlıklarındaki `card-inner-btn--danger` (`EyeOff`) butonları tamamen kaldırıldı.
+     - Gizleme/açma kontrolleri "Kartları Düzenle" modalinde ve alttaki "Gizlenen Kartlar Çubuğu"nda eksiksiz çalışır durumda bırakıldı.
+  2. **Yalnızca İkon Olan Sorgula Butonu (`HomeView.vue` & `design-system.css`)**:
+     - `HomeView.vue` içindeki `.op-sync-all-btn` butonundan metin (`Sorgula` / `Sorgulanıyor…`) kaldırıldı; sadece dönen/statik `<RefreshCw :size="12" />` ikonu bırakıldı.
+     - `design-system.css` içinde `.op-sync-all-btn` 26x26px tam dairesel (`border-radius: 50%; padding: 0; display: inline-flex; justify-content: center;`) kompakt bir ikon butonuna dönüştürüldü.
+  3. **Bildirim Çanı ve Profil Avatarı Entegrasyonu (`HomeView.vue` & `design-system.css`)**:
+     - `design-system.css` içine `.topbar-bell-btn` ve `.topbar-bell-badge` (kırmızı hap sayaç rozeti) global stilleri eklendi.
+     - `HomeView.vue` TopBar slotunda sağ üst kısma `clay-topbar-edit-btn` ("Kartları Düzenle"), `topbar-bell-btn` (bildirim çanı ve sayaç rozeti) ve `clay-avatar-circle` (profil avatar butonu) sırasıyla yerleştirildi.
+  4. **Derleme**:
+     - `mobile-spa` dizininde `npm run build` çalıştırılarak Vite derlemesi başarıyla tamamlandı (`dist/assets/index-CtSemIDk.js`, `dist/assets/index-ClkJ1_rj.css`).
+
+- **Kullanıcı Bildirimi**: "sayfadaki tablo hala gelmiyor" (Ekran görüntüsünde `index.php?p=personel/puantaj` sayfasının içerik alanı tamamen beyaz/boş).
+- **Kök Neden Tespiti**:
+  1. `views/personel/puantaj.php` satır 1721'deki `<div class="izin-palette-header">` etiketinin kapanış div'i eksikti. Bu nedenle `puantaj-focus-panel` kapanışı ertelendi ve tablonun kendisi (`.puantaj-grid-card`) yanlışlıkla `.puantaj-focus-panel` içine dahil oldu.
+  2. Kullanıcı tablonun sağındaki "üst alanları gizle/genişlet" yukarı okuna (`#btn-puantaj-focus`) bastığında `body.puantaj-focus-mode` sınıfı eklendi ve `localStorage`'a kaydedildi. CSS'teki `body.puantaj-focus-mode .puantaj-focus-panel { max-height: 0; opacity: 0; visibility: hidden; }` kuralı, tablo da bu panelin içinde kaldığı için tablo dahil tüm sayfayı görünmez kıldı.
+  3. Dosya sonunda (satır 1983) fazladan bir `</div>` etiketi layout bütünlüğünü bozuyordu.
+- **Uygulanan Düzeltmeler**:
+  1. `views/personel/puantaj.php`:
+     - Satır 1744'e eksik `</div> <!-- end .izin-palette-header -->` eklendi; izin paleti ve filtre panelleri düzgün şekilde kapatıldı.
+     - Tablo kartı (`puantaj-grid-card`) focus panelin dışına çıkarıldı; div stack analizi ile tüm açılan 92 div etiketi sıfır hata ile dengelendi (`Remaining open: 0, Extra close: 0`).
+     - Dosya sonundaki fazlalık `</div>` etiketi kaldırıldı.
+  2. `views/personel/js/puantaj_izin.js`:
+     - Eski hatalı `puantaj_focus_mode` `localStorage` kaydı temizlendi (`localStorage.removeItem("puantaj_focus_mode")`), yeni anahtar `puantaj_focus_mode_v2`ye geçirildi ve varsayılan olarak açık (`false`) başlatıldı.
+     - Artık kullanıcı yukarı oka bastığında sadece üst filtreler katlanıp tablo boydan boya genişler; tablo asla gizlenmez.
+- **Doğrulama**: PHP CLI syntax kontrolü ve cURL ile render testi başarıyla doğrulandı.
+
+## Mobil SPA Ana Sayfa: Operasyon Kutularında Eşit Renkli Kenarlık ve Saf Beyaz Zemin (2026-10-17)
+- **Kullanıcı Talebi**: "sol kenar border olmasın yani diğer kenalarlar gibi , ayrıca gradient renk de olmasın, ikonlar ve kenarlar renkli olsun yeter" (Ekran görüntüsünde sol kenardaki kalın şerit işaretlendi).
+- **Uygulanan Tasarım Düzeltmesi (`design-system.css`)**:
+  - Sol kenardaki `border-left: 3.5px solid ...` kalın vurgusu kaldırıldı.
+  - Zeminlerdeki `linear-gradient` kaldırıldı; tüm kutular saf beyaz (`background: var(--ds-surface, #ffffff);`) zemin ile temizlendi.
+  - Tüm 4 kenar eşit olacak şekilde zarif renkli çerçeve (`border: 1.5px solid rgba(..., 0.42);`) uygulandı.
+  - İkon balonları (`.op-bubble--*`) ve Git butonları (`.op-git--*`) renkli kurumsal kimliğini korudu.
+- **Derleme**: `npm run build` ile hatasız derlendi.
 
 ## Mobil SPA Puantaj: FM Akordeon Tasarımı ve Aylık Takvim Sığdırma İyileştirmesi (2026-10-17)
 - **Kullanıcı Talepleri**:

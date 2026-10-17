@@ -5,10 +5,10 @@ import {
   Activity, AlertCircle, ArrowLeft, BadgeDollarSign, Ban, Banknote,
   BriefcaseBusiness, Building2, CalendarCheck, CalendarDays, Car, Check,
   ChevronDown, ChevronRight, ChevronUp, Clock, Coins, Copy, CreditCard, Crown,
-  ExternalLink, Eye, EyeOff, FileText, Gavel, Heart, History, IdCard, KeyRound,
+  Download, ExternalLink, Eye, EyeOff, FileText, FileUp, Gavel, Heart, History, IdCard, KeyRound,
   Mail, MapPin, MinusCircle, PackageCheck, Pencil, Percent, Phone, Plus,
-  Receipt, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Smartphone,
-  Trash2, TrendingDown, TrendingUp, UserRound, UserRoundCheck, Wallet, X
+  Receipt, RefreshCw, Save, Search, Send, ShieldAlert, ShieldCheck, Smartphone,
+  Trash2, TrendingDown, TrendingUp, Upload, UserRound, UserRoundCheck, Wallet, X
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 import { personnelApi } from '../services/personnel.js'
@@ -1218,6 +1218,240 @@ async function submitSonlandirKesinti() {
   }
 }
 
+// Quick Personnel List & Switcher (Bordro Standardı Modal)
+const quickPersonnelList = ref([])
+const isPersonSheetOpen = ref(false)
+const personSheetSearch = ref('')
+
+function openPersonSheet() {
+  personSheetSearch.value = ''
+  isPersonSheetOpen.value = true
+}
+
+function closePersonSheet() {
+  isPersonSheetOpen.value = false
+}
+
+function selectPersonFromSheet(newId) {
+  isPersonSheetOpen.value = false
+  if (newId && newId !== person.value?.id) {
+    router.push({
+      name: 'personnel-section',
+      params: { id: newId, section: route.params.section },
+    })
+  }
+}
+
+function getPersonInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+const filteredQuickPersonnelList = computed(() => {
+  const list = quickPersonnelList.value || []
+  const q = personSheetSearch.value.trim().toLowerCase()
+  if (!q) return list
+  return list.filter(p =>
+    (p.name && p.name.toLowerCase().includes(q)) ||
+    (p.department && p.department.toLowerCase().includes(q)) ||
+    (p.job && p.job.toLowerCase().includes(q))
+  )
+})
+
+// Photo Modal (Lightbox)
+const showPhotoModal = ref(false)
+function openPhotoModal() {
+  showPhotoModal.value = true
+}
+function closePhotoModal() {
+  showPhotoModal.value = false
+}
+
+// Evraklar State
+const evraklar = ref([])
+const evrakOzet = ref({ toplam_evrak: 0, tur_sayilari: {} })
+const evrakTurleri = ref({})
+const activeEvrakCategory = ref('all')
+const activeEvrakCluster = ref('all')
+const evrakSearch = ref('')
+const showEvrakUploadModal = ref(false)
+const uploadingEvrak = ref(false)
+const uploadEvrakFile = ref(null)
+const uploadEvrakForm = reactive({
+  evrak_adi: '',
+  evrak_turu: 'diger',
+  aciklama: '',
+})
+
+const evrakClusterMap = {
+  ozluk: ['kimlik', 'ehliyet', 'ikametgah', 'nufus_kayit_ornegi'],
+  sozlesme: ['sozlesme', 'gizlilik_taahhutnamesi', 'adli_sicil_kaydi'],
+  egitim: ['saglik_raporu', 'diploma', 'cv', 'sertifika'],
+  diger: ['diger'],
+}
+
+const evrakGroupCounts = computed(() => {
+  const counts = { ozluk: 0, sozlesme: 0, egitim: 0, diger: 0 }
+  const list = evraklar.value || []
+  for (const item of list) {
+    const tur = item.evrak_turu || 'diger'
+    if (evrakClusterMap.ozluk.includes(tur)) counts.ozluk++
+    else if (evrakClusterMap.sozlesme.includes(tur)) counts.sozlesme++
+    else if (evrakClusterMap.egitim.includes(tur)) counts.egitim++
+    else counts.diger++
+  }
+  return counts
+})
+
+const evrakGroupRatios = computed(() => {
+  const total = evraklar.value?.length || 0
+  if (total === 0) return { ozluk: 0, sozlesme: 0, egitim: 0, diger: 0 }
+  const counts = evrakGroupCounts.value
+  return {
+    ozluk: Math.round((counts.ozluk / total) * 100),
+    sozlesme: Math.round((counts.sozlesme / total) * 100),
+    egitim: Math.round((counts.egitim / total) * 100),
+    diger: Math.round((counts.diger / total) * 100),
+  }
+})
+
+function toggleEvrakCluster(clusterKey) {
+  if (activeEvrakCluster.value === clusterKey) {
+    activeEvrakCluster.value = 'all'
+  } else {
+    activeEvrakCluster.value = clusterKey
+    activeEvrakCategory.value = 'all'
+  }
+}
+
+function selectEvrakCategory(catKey) {
+  activeEvrakCategory.value = catKey
+  activeEvrakCluster.value = 'all'
+}
+
+const filteredEvraklar = computed(() => {
+  let list = evraklar.value || []
+  if (activeEvrakCluster.value !== 'all') {
+    const allowedTurlar = evrakClusterMap[activeEvrakCluster.value] || []
+    list = list.filter(item => allowedTurlar.includes(item.evrak_turu))
+  }
+  if (activeEvrakCategory.value !== 'all') {
+    list = list.filter(item => item.evrak_turu === activeEvrakCategory.value)
+  }
+  if (evrakSearch.value.trim() !== '') {
+    const q = evrakSearch.value.trim().toLowerCase()
+    list = list.filter(item =>
+      (item.evrak_adi && item.evrak_adi.toLowerCase().includes(q)) ||
+      (item.orijinal_dosya_adi && item.orijinal_dosya_adi.toLowerCase().includes(q)) ||
+      (item.aciklama && item.aciklama.toLowerCase().includes(q)) ||
+      (item.evrak_turu_label && item.evrak_turu_label.toLowerCase().includes(q))
+    )
+  }
+  return list
+})
+
+const existingEvrakCategories = computed(() => {
+  const turSayilari = evrakOzet.value?.tur_sayilari || {}
+  const result = []
+  for (const [key, count] of Object.entries(turSayilari)) {
+    if (count > 0) {
+      result.push({
+        key,
+        label: evrakTurleri.value[key] || key,
+        count,
+      })
+    }
+  }
+  return result
+})
+
+function getEvrakMimeBadgeClass(mime) {
+  if (!mime) return 'badge-default'
+  if (mime.includes('pdf')) return 'badge-pdf'
+  if (mime.startsWith('image/')) return 'badge-img'
+  if (mime.includes('word') || mime.includes('officedocument.word')) return 'badge-doc'
+  if (mime.includes('excel') || mime.includes('spreadsheet')) return 'badge-xls'
+  return 'badge-default'
+}
+
+function getEvrakMimeBadgeText(mime) {
+  if (!mime) return 'DOSYA'
+  if (mime.includes('pdf')) return 'PDF'
+  if (mime.startsWith('image/')) return 'IMG'
+  if (mime.includes('word') || mime.includes('officedocument.word')) return 'DOC'
+  if (mime.includes('excel') || mime.includes('spreadsheet')) return 'XLS'
+  return 'FILE'
+}
+
+function onEvrakFileChange(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  uploadEvrakFile.value = file
+  if (!uploadEvrakForm.evrak_adi) {
+    const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name
+    uploadEvrakForm.evrak_adi = baseName
+  }
+}
+
+function openEvrakUpload() {
+  uploadEvrakFile.value = null
+  uploadEvrakForm.evrak_adi = ''
+  uploadEvrakForm.evrak_turu = 'diger'
+  uploadEvrakForm.aciklama = ''
+  showEvrakUploadModal.value = true
+}
+
+async function submitEvrakUpload() {
+  if (!uploadEvrakFile.value) {
+    showToast('Lütfen yüklenecek bir dosya seçin.')
+    return
+  }
+  uploadingEvrak.value = true
+  try {
+    const formData = new FormData()
+    formData.append('personel_id', route.params.id)
+    formData.append('evrak_adi', uploadEvrakForm.evrak_adi)
+    formData.append('evrak_turu', uploadEvrakForm.evrak_turu)
+    formData.append('aciklama', uploadEvrakForm.aciklama)
+    formData.append('dosya', uploadEvrakFile.value)
+
+    const res = await personnelApi.uploadEvrak(formData, auth.state.csrfToken)
+    if (res.evraklar) {
+      evraklar.value = res.evraklar
+    }
+    if (res.evrak_ozet) {
+      evrakOzet.value = res.evrak_ozet
+    }
+    showEvrakUploadModal.value = false
+    uploadEvrakFile.value = null
+    showToast(res.message || 'Evrak başarıyla yüklendi.')
+  } catch (err) {
+    showToast(err.message || 'Evrak yüklenirken bir hata oluştu.')
+  } finally {
+    uploadingEvrak.value = false
+  }
+}
+
+async function confirmDeleteEvrak(item) {
+  if (!confirm(`"${item.evrak_adi}" adlı evrakı silmek istediğinize emin misiniz?`)) {
+    return
+  }
+  try {
+    const res = await personnelApi.deleteEvrak(item.id, route.params.id, auth.state.csrfToken)
+    if (res.evraklar) {
+      evraklar.value = res.evraklar
+    }
+    if (res.evrak_ozet) {
+      evrakOzet.value = res.evrak_ozet
+    }
+    showToast(res.message || 'Evrak silindi.')
+  } catch (err) {
+    showToast(err.message || 'Evrak silinirken bir hata oluştu.')
+  }
+}
+
 async function load() {
   if (!section.value) {
     router.replace(`/personel/${route.params.id}`)
@@ -1229,6 +1463,9 @@ async function load() {
     const result = await personnelApi.detail(route.params.id)
     person.value = result.personnel
     canEdit.value = Boolean(result.can_edit)
+    if (result.personnel_quick_list) {
+      quickPersonnelList.value = result.personnel_quick_list
+    }
     if (result.work_options) {
       workOptions.value = result.work_options
     }
@@ -1265,6 +1502,15 @@ async function load() {
     if (result.icra_dosyalari) {
       icraDosyalari.value = result.icra_dosyalari
     }
+    if (result.evraklar) {
+      evraklar.value = result.evraklar
+    }
+    if (result.evrak_ozet) {
+      evrakOzet.value = result.evrak_ozet
+    }
+    if (result.evrak_turleri) {
+      evrakTurleri.value = result.evrak_turleri
+    }
     // Düzenleme yetkisi varsa doğrudan düzenleme açık gelsin
     if (canEdit.value) {
       if (route.params.section === 'genel') {
@@ -1289,7 +1535,7 @@ function onWindowScroll() {
   isFloatingSticky.value = rect.top <= 10
 }
 
-watch(() => route.params.section, load)
+watch([() => route.params.id, () => route.params.section], load)
 onMounted(() => {
   load()
   window.addEventListener('scroll', onWindowScroll, { passive: true })
@@ -1336,32 +1582,52 @@ onUnmounted(() => {
     </div>
 
     <template v-else-if="person && section">
-      <!-- 2. Profil Özet Başlık Kartı -->
-      <section class="bento-card bento-card--white personnel-profile-head">
-        <div class="head-left">
-          <div class="profile-avatar">
+      <!-- 2. Profil Özet Başlık Kartı (Bordro Standartlarında Personel Seçim Kartı) -->
+      <section class="bento-card bento-card--white person-selector-card">
+        <div class="person-selector-card__left" @click="openPersonSheet" role="button" tabindex="0">
+          <div class="person-selector-avatar-box" @click.stop="openPhotoModal" style="cursor: pointer;" title="Fotoğrafı büyüt">
             <img v-if="person.avatar" :src="person.avatar" :alt="person.name" @error="person.avatar = null" />
             <span v-else>{{ person.initials }}</span>
           </div>
-          <div class="profile-meta">
-            <span class="clay-badge" :class="person.active ? 'clay-badge--emerald' : 'clay-badge--coral'">
-              {{ person.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}
-            </span>
-            <h2>{{ person.name }}</h2>
-            <p>{{ [person.job, person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}</p>
+          <div class="person-selector-card__meta">
+            <div class="person-selector-sub">
+              <span>SEÇİLİ PERSONEL</span>
+              <span v-if="person.job || person.department" class="person-selector-sub-role">
+                · {{ person.job || person.department }}
+              </span>
+            </div>
+            <div class="person-selector-value-row">
+              <strong class="person-selector-name">{{ person.name }}</strong>
+              <span
+                class="person-mini-status"
+                :class="person.active ? 'person-mini-status--active' : 'person-mini-status--passive'"
+              >
+                ● {{ person.active ? 'Aktif' : 'Ayrıldı' }}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div v-if="canEdit && (route.params.section === 'genel' || route.params.section === 'calisma')" class="head-actions">
+        <div class="person-selector-card__right">
           <button
+            v-if="canEdit && (route.params.section === 'genel' || route.params.section === 'calisma')"
             type="button"
             class="clay-btn clay-btn--primary profile-save-btn"
             :disabled="saving"
-            @click="route.params.section === 'calisma' ? saveWorkInfo() : saveGeneral()"
+            @click.stop="route.params.section === 'calisma' ? saveWorkInfo() : saveGeneral()"
           >
-            <RefreshCw v-if="saving" :size="15" class="clay-spin-icon" />
-            <Save v-else :size="15" />
+            <RefreshCw v-if="saving" :size="14" class="clay-spin-icon" />
+            <Save v-else :size="14" />
             <span>{{ saving ? 'Kaydediliyor…' : 'Kaydet' }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="person-change-btn"
+            @click="openPersonSheet"
+          >
+            <span>Değiştir</span>
+            <ChevronDown :size="14" />
           </button>
         </div>
       </section>
@@ -3425,6 +3691,276 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- ========================================================================= -->
+      <!-- 8. PERSONEL EVRAKLARI SEKME İÇERİĞİ (DİJİTAL ARŞİV)                       -->
+      <!-- ========================================================================= -->
+      <div v-else-if="route.params.section === 'evraklar'" class="evraklar-section-container">
+        <!-- 1. HERO OBSIDIAN BENTO KART: EVRAK DAĞILIMI (Cari Takip / Bento Standardı) -->
+        <article class="cari-hero-volume-card">
+          <header class="cari-hero-volume-card__header">
+            <div class="cari-hero-volume-card__title">
+              <span class="cari-hero-icon-box" style="color: #f43f5e;">
+                <FileText :size="16" />
+              </span>
+              <div>
+                <span class="cari-hero-tag">DİJİTAL ARŞİV</span>
+                <span class="cari-hero-subtitle">Belge & Evrak Dağılımı</span>
+              </div>
+            </div>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="clay-btn clay-btn--primary"
+              style="padding: 6px 12px; font-size: 12px; border-radius: 999px;"
+              @click="openEvrakUpload"
+            >
+              <Plus :size="14" />
+              <span>Yeni Evrak</span>
+            </button>
+          </header>
+
+          <div class="cari-hero-volume-main">
+            <strong class="cari-hero-volume-amount">
+              {{ evraklar.length }} <span style="font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.65);">Adet Belge</span>
+            </strong>
+            <div class="cari-hero-balance-row">
+              <span class="cari-hero-balance-label">Aktif Dağılım:</span>
+              <span class="text-sky fw-bold">Özlük: {{ evrakGroupCounts.ozluk }}</span>
+              <span class="text-white-50">·</span>
+              <span class="text-emerald fw-bold">Sözleşme: {{ evrakGroupCounts.sozlesme }}</span>
+              <span class="text-white-50">·</span>
+              <span class="text-purple fw-bold">Eğitim: {{ evrakGroupCounts.egitim }}</span>
+            </div>
+          </div>
+
+          <!-- 4 Renkli Segmentli İlerleme Çubuğu -->
+          <div class="cari-chart-container">
+            <div class="cari-segmented-track">
+              <div
+                class="cari-seg-fill cari-seg-fill--borc"
+                :style="{ width: `${evrakGroupRatios.ozluk}%` }"
+                :title="`Özlük: %${evrakGroupRatios.ozluk}`"
+              >
+                <span v-if="evrakGroupRatios.ozluk >= 15" class="cari-seg-label">%{{ evrakGroupRatios.ozluk }}</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--alacak"
+                :style="{ width: `${evrakGroupRatios.sozlesme}%` }"
+                :title="`Sözleşme: %${evrakGroupRatios.sozlesme}`"
+              >
+                <span v-if="evrakGroupRatios.sozlesme >= 15" class="cari-seg-label">%{{ evrakGroupRatios.sozlesme }}</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--purple"
+                :style="{ width: `${evrakGroupRatios.egitim}%` }"
+                :title="`Sağlık/Eğitim: %${evrakGroupRatios.egitim}`"
+              >
+                <span v-if="evrakGroupRatios.egitim >= 15" class="cari-seg-label">%{{ evrakGroupRatios.egitim }}</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--coral"
+                :style="{ width: `${evrakGroupRatios.diger}%` }"
+                :title="`Diğer: %${evrakGroupRatios.diger}`"
+              >
+                <span v-if="evrakGroupRatios.diger >= 15" class="cari-seg-label">%{{ evrakGroupRatios.diger }}</span>
+              </div>
+            </div>
+
+            <!-- Tıklanabilir 2x2 Lejant Kutuları (Kümeleri Filtreler) -->
+            <div class="cari-chart-legend cari-chart-legend--2x2">
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': activeEvrakCluster === 'ozluk' }"
+                @click="toggleEvrakCluster('ozluk')"
+              >
+                <span class="cari-legend-dot cari-legend-dot--borc"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Özlük & Kimlik</span>
+                    <span class="cari-legend-pct text-sky">%{{ evrakGroupRatios.ozluk }}</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ evrakGroupCounts.ozluk }} Belge</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': activeEvrakCluster === 'sozlesme' }"
+                @click="toggleEvrakCluster('sozlesme')"
+              >
+                <span class="cari-legend-dot cari-legend-dot--alacak"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Sözleşme & Yasal</span>
+                    <span class="cari-legend-pct text-emerald">%{{ evrakGroupRatios.sozlesme }}</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ evrakGroupCounts.sozlesme }} Belge</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': activeEvrakCluster === 'egitim' }"
+                @click="toggleEvrakCluster('egitim')"
+              >
+                <span class="cari-legend-dot cari-legend-dot--purple"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Sağlık & Eğitim</span>
+                    <span class="cari-legend-pct text-purple">%{{ evrakGroupRatios.egitim }}</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ evrakGroupCounts.egitim }} Belge</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': activeEvrakCluster === 'diger' }"
+                @click="toggleEvrakCluster('diger')"
+              >
+                <span class="cari-legend-dot cari-legend-dot--coral"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Diğer Belgeler</span>
+                    <span class="cari-legend-pct text-coral">%{{ evrakGroupRatios.diger }}</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ evrakGroupCounts.diger }} Belge</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. ARAMA VE KATEGORİ FİLTRELERİ -->
+        <div class="evrak-filter-section mb-2">
+          <!-- Arama Girişi -->
+          <div class="evrak-search-box mb-2">
+            <Search :size="16" class="search-icon" />
+            <input
+              v-model="evrakSearch"
+              type="text"
+              placeholder="Evrak adı veya açıklamada ara…"
+              class="evrak-search-input"
+            />
+            <button
+              v-if="evrakSearch"
+              type="button"
+              class="search-clear-btn"
+              @click="evrakSearch = ''"
+            >
+              <X :size="14" />
+            </button>
+          </div>
+
+          <!-- Kategori Hapları (Yatay Kaydırılabilir) -->
+          <div class="clay-tabs-wrap">
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: activeEvrakCategory === 'all' }"
+              @click="activeEvrakCategory = 'all'"
+            >
+              Tümü ({{ evraklar.length }})
+            </button>
+            <button
+              v-for="cat in existingEvrakCategories"
+              :key="cat.key"
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: activeEvrakCategory === cat.key }"
+              @click="activeEvrakCategory = cat.key"
+            >
+              {{ cat.label }} ({{ cat.count }})
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. EVRAK LİSTESİ -->
+        <div v-if="filteredEvraklar.length === 0" class="clay-state-card py-5">
+          <FileText :size="32" class="text-muted mb-2" />
+          <strong>Kayıtlı evrak bulunamadı</strong>
+          <p v-if="evrakSearch">Arama kriterlerinize uygun belge bulunamadı.</p>
+          <p v-else-if="activeEvrakCategory !== 'all'">Bu kategoriye ait henüz bir evrak yüklenmemiş.</p>
+          <p v-else>Bu personele henüz hiç dijital evrak yüklenmemiş.</p>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="clay-btn clay-btn--primary mt-2"
+            @click="openEvrakUpload"
+          >
+            <Plus :size="15" />
+            <span>İlk Evrakı Yükle</span>
+          </button>
+        </div>
+
+        <div v-else class="evrak-list-grid">
+          <article
+            v-for="item in filteredEvraklar"
+            :key="item.id"
+            class="bento-card bento-card--white evrak-item-card"
+          >
+            <div class="evrak-card-header">
+              <div class="evrak-icon-badge" :class="getEvrakMimeBadgeClass(item.dosya_tipi)">
+                <span>{{ getEvrakMimeBadgeText(item.dosya_tipi) }}</span>
+              </div>
+              <div class="evrak-title-wrap">
+                <h4 class="evrak-title">{{ item.evrak_adi }}</h4>
+                <span class="evrak-category-pill">{{ item.evrak_turu_label }}</span>
+              </div>
+            </div>
+
+            <div class="evrak-meta-details">
+              <div class="evrak-meta-row">
+                <span class="meta-label">Dosya:</span>
+                <span class="meta-value filename-text">{{ item.orijinal_dosya_adi }}</span>
+              </div>
+              <div class="evrak-meta-row">
+                <span class="meta-label">Yüklenme:</span>
+                <span class="meta-value">{{ item.yukleme_tarihi }} <small v-if="item.yukleyen_adi">({{ item.yukleyen_adi }})</small></span>
+              </div>
+              <div class="evrak-meta-row">
+                <span class="meta-label">Boyut:</span>
+                <span class="meta-value">{{ item.dosya_boyutu_formatted }}</span>
+              </div>
+              <div v-if="item.aciklama" class="evrak-desc-box">
+                <p>{{ item.aciklama }}</p>
+              </div>
+            </div>
+
+            <div class="evrak-actions-row">
+              <a
+                :href="item.view_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="clay-btn clay-btn--primary flex-1"
+                style="padding: 7px 12px; font-size: 13px;"
+              >
+                <Eye :size="14" />
+                <span>Görüntüle</span>
+              </a>
+              <a
+                :href="item.download_url"
+                class="clay-btn clay-btn--secondary"
+                style="padding: 7px 12px; font-size: 13px;"
+                title="İndir"
+              >
+                <Download :size="14" />
+              </a>
+              <button
+                v-if="canEdit"
+                type="button"
+                class="clay-btn clay-btn--danger-subtle"
+                style="padding: 7px 12px; font-size: 13px;"
+                title="Evrakı Sil"
+                @click="confirmDeleteEvrak(item)"
+              >
+                <Trash2 :size="14" />
+              </button>
+            </div>
+          </article>
+        </div>
+      </div>
+
       <!-- DİĞER SEKMELER (Geliştirilecek diğer sekmeler için geçiş görünümü) -->
       <template v-else>
         <section class="section-capabilities">
@@ -3450,6 +3986,249 @@ onUnmounted(() => {
           <small>Mevcut mobil modülde kayıpsız devam et</small>
         </a>
       </template>
+
+      <!-- Bottom-Sheet Modal: Personel Seçimi (Bordro Standardı & Arama) -->
+      <Teleport to="body">
+        <div
+          v-if="isPersonSheetOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closePersonSheet"
+        >
+          <div class="payroll-modal-sheet payroll-modal-sheet--period">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">PERSONEL SEÇİMİ</span>
+                <h3 class="payroll-sheet-title">Personel Seçin</h3>
+                <p class="payroll-sheet-subtitle">Görüntülemek istediğiniz personeli seçin</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closePersonSheet"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <!-- Arama Kutusu -->
+            <div class="person-sheet-search-wrap">
+              <Search :size="16" class="person-sheet-search-icon" />
+              <input
+                v-model="personSheetSearch"
+                type="text"
+                placeholder="Personel ara (ad, görev, departman)…"
+                class="person-sheet-search-input"
+              />
+              <button
+                v-if="personSheetSearch"
+                type="button"
+                class="person-sheet-search-clear"
+                @click="personSheetSearch = ''"
+                aria-label="Temizle"
+              >
+                <X :size="12" />
+              </button>
+            </div>
+
+            <div class="period-sheet-body hide-scrollbar" style="max-height: 55vh; overflow-y: auto;">
+              <div v-if="filteredQuickPersonnelList.length === 0" class="clay-state-card py-4" style="margin: 8px 0;">
+                <UserRound :size="24" class="text-muted mb-1" />
+                <strong style="font-size: 13px;">Eşleşen personel bulunamadı</strong>
+                <p style="font-size: 11.5px; margin: 0;">Farklı bir arama terimi deneyebilirsiniz.</p>
+              </div>
+
+              <div v-else class="period-sheet-list">
+                <button
+                  v-for="p in filteredQuickPersonnelList"
+                  :key="p.id"
+                  type="button"
+                  class="period-sheet-item"
+                  :class="{ 'period-sheet-item--active': p.id === person.id }"
+                  @click="selectPersonFromSheet(p.id)"
+                >
+                  <div class="period-sheet-item__left">
+                    <div
+                      class="period-sheet-icon"
+                      :class="{ 'period-sheet-icon--active': p.id === person.id }"
+                      style="overflow: hidden; padding: 0;"
+                    >
+                      <img
+                        v-if="p.avatar"
+                        :src="p.avatar"
+                        :alt="p.name"
+                        style="width: 100%; height: 100%; object-fit: cover;"
+                        @error="p.avatar = null"
+                      />
+                      <span v-else style="font-weight: 800; font-size: 12px;">{{ getPersonInitials(p.name) }}</span>
+                    </div>
+                    <div class="period-sheet-info">
+                      <strong class="period-sheet-name">{{ p.name }}</strong>
+                      <span class="period-sheet-dates">
+                        {{ [p.job, p.department].filter(Boolean).join(' · ') || 'Personel' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="period-sheet-item__right">
+                    <span
+                      class="clay-pill-tag"
+                      :class="p.active ? 'clay-pill-tag--emerald' : 'clay-pill-tag--coral'"
+                    >
+                      ● {{ p.active ? 'Aktif' : 'Ayrıldı' }}
+                    </span>
+                    <span v-if="p.id === person.id" class="period-sheet-check">
+                      <Check :size="16" />
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Büyük Fotoğraf Görüntüleme Modalı (Lightbox) -->
+      <Teleport to="body">
+        <div v-if="showPhotoModal" class="clay-lightbox-overlay" @click.self="closePhotoModal">
+          <div class="clay-lightbox-card">
+            <button type="button" class="clay-lightbox-close" @click="closePhotoModal" aria-label="Kapat">
+              <X :size="20" />
+            </button>
+            
+            <div class="clay-lightbox-image-box">
+              <img 
+                v-if="person.avatar" 
+                :src="person.avatar" 
+                :alt="person.name" 
+                class="clay-lightbox-img"
+                @error="person.avatar = null"
+              />
+              <div v-else class="clay-lightbox-avatar-fallback">
+                <span>{{ person.initials }}</span>
+              </div>
+            </div>
+
+            <div class="clay-lightbox-info">
+              <span class="clay-badge" :class="person.active ? 'clay-badge--emerald' : 'clay-badge--coral'">
+                {{ person.active ? 'AKTİF PERSONEL' : 'AYRILMIŞ PERSONEL' }}
+              </span>
+              <h3 class="clay-lightbox-name">{{ person.name }}</h3>
+              <p class="clay-lightbox-role">
+                {{ [person.job, person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}
+              </p>
+            </div>
+
+            <div class="clay-lightbox-actions">
+              <button 
+                type="button" 
+                class="clay-btn clay-btn--secondary w-100" 
+                @click="closePhotoModal"
+              >
+                <span>Kapat</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Evrak Yükleme Modalı (Bottom Sheet) -->
+      <Teleport to="body">
+        <div v-if="showEvrakUploadModal" class="clay-modal-overlay" @click.self="showEvrakUploadModal = false">
+          <div class="clay-modal-sheet">
+            <div class="clay-sheet-handle"></div>
+            <div class="clay-sheet-header">
+              <h3 class="clay-sheet-title">Yeni Evrak Yükle</h3>
+              <button type="button" class="clay-circle-btn" @click="showEvrakUploadModal = false">
+                <X :size="16" />
+              </button>
+            </div>
+
+            <form @submit.prevent="submitEvrakUpload" class="evrak-upload-form">
+              <label class="form-field mb-3">
+                <span>Evrak Türü *</span>
+                <select v-model="uploadEvrakForm.evrak_turu" required>
+                  <option v-for="(label, key) in evrakTurleri" :key="key" :value="key">
+                    {{ label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="form-field mb-3">
+                <span>Evrak Adı / Başlığı *</span>
+                <input
+                  v-model="uploadEvrakForm.evrak_adi"
+                  type="text"
+                  placeholder="örn: Nüfus Cüzdanı Fotokopisi"
+                  required
+                />
+              </label>
+
+              <label class="form-field mb-3">
+                <span>Açıklama / Not (Opsiyonel)</span>
+                <textarea
+                  v-model="uploadEvrakForm.aciklama"
+                  rows="2"
+                  placeholder="Evrak hakkında ek açıklama girebilirsiniz…"
+                ></textarea>
+              </label>
+
+              <!-- Dosya Seçme / Yükleme Alanı -->
+              <div class="evrak-dropzone-box mb-3">
+                <input
+                  type="file"
+                  id="evrakFileInput"
+                  class="sr-only"
+                  accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
+                  @change="onEvrakFileChange"
+                />
+                <label for="evrakFileInput" class="dropzone-label">
+                  <div v-if="!uploadEvrakFile" class="dropzone-empty">
+                    <FileUp :size="28" class="dropzone-icon" />
+                    <strong>Dosya Seçin veya Sürükleyin</strong>
+                    <small>PDF, Görsel (JPG, PNG), Word, Excel (Max 10MB)</small>
+                  </div>
+                  <div v-else class="dropzone-selected">
+                    <Check :size="20" class="text-success" />
+                    <div class="file-info">
+                      <strong class="file-name">{{ uploadEvrakFile.name }}</strong>
+                      <small class="file-size">{{ (uploadEvrakFile.size / 1024 / 1024).toFixed(2) }} MB</small>
+                    </div>
+                    <span class="change-file-btn">Değiştir</span>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Güvenlik Bilgi Rozeti -->
+              <div class="evrak-security-badge mb-4">
+                <ShieldCheck :size="16" class="text-emerald" />
+                <span>ISO 27001 standardı gereği dosya sunucuda <strong>AES-256-GCM</strong> ile şifreli arşivlenir.</span>
+              </div>
+
+              <div class="modal-actions">
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--secondary flex-1"
+                  :disabled="uploadingEvrak"
+                  @click="showEvrakUploadModal = false"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  class="clay-btn clay-btn--primary flex-1"
+                  :disabled="uploadingEvrak || !uploadEvrakFile"
+                >
+                  <RefreshCw v-if="uploadingEvrak" :size="15" class="clay-spin-icon" />
+                  <Upload v-else :size="15" />
+                  <span>{{ uploadingEvrak ? 'Şifreleniyor…' : 'Yükle ve Kaydet' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Teleport>
     </template>
   </section>
 </template>
@@ -5490,5 +6269,309 @@ onUnmounted(() => {
 
 .text-white-50 {
   color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ==========================================================================
+   EVRAKLAR (DİJİTAL ARŞİV)
+   ========================================================================== */
+.evraklar-section-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.evrak-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.evrak-search-box .search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--ds-muted, #64748b);
+  pointer-events: none;
+}
+
+.evrak-search-input {
+  width: 100%;
+  padding: 10px 36px 10px 38px;
+  border-radius: var(--ds-radius-pill, 9999px);
+  border: 1px solid var(--ds-border, #e2e8f0);
+  background: var(--ds-surface, #ffffff);
+  font-size: 14px;
+  color: var(--ds-ink, #0f172a);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.evrak-search-input:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.evrak-list-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evrak-item-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evrak-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.evrak-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.evrak-icon-badge.badge-pdf {
+  background: #fee2e2;
+  color: #ef4444;
+  border: 1px solid #fecaca;
+}
+
+.evrak-icon-badge.badge-img {
+  background: #e0f2fe;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+
+.evrak-icon-badge.badge-doc {
+  background: #e0e7ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+}
+
+.evrak-icon-badge.badge-xls {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.evrak-icon-badge.badge-default {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.evrak-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.evrak-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ds-ink, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.evrak-category-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-muted, #64748b);
+}
+
+.evrak-meta-details {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.evrak-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.evrak-meta-row .meta-label {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.evrak-meta-row .meta-value {
+  color: #334155;
+  font-weight: 600;
+}
+
+.evrak-meta-row .filename-text {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evrak-desc-box {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed #e2e8f0;
+  color: #475569;
+  font-size: 12px;
+}
+
+.evrak-desc-box p {
+  margin: 0;
+  font-style: italic;
+}
+
+.evrak-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.clay-btn--danger-subtle {
+  background: #fee2e2;
+  color: #ef4444;
+  border: 1px solid #fecaca;
+}
+
+.clay-btn--danger-subtle:active {
+  background: #fca5a5;
+}
+
+.evrak-dropzone-box {
+  border: 2px dashed #cbd5e1;
+  border-radius: 18px;
+  padding: 16px;
+  text-align: center;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.evrak-dropzone-box:hover {
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.04);
+}
+
+.dropzone-label {
+  display: block;
+  cursor: pointer;
+}
+
+.dropzone-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.dropzone-icon {
+  color: #0ea5e9;
+  margin-bottom: 2px;
+}
+
+.dropzone-empty strong {
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.dropzone-empty small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.dropzone-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.dropzone-selected .file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dropzone-selected .file-name {
+  display: block;
+  font-size: 13px;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropzone-selected .file-size {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.change-file-btn {
+  font-size: 12px;
+  color: #0ea5e9;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.evrak-security-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  font-size: 11px;
+  color: #166534;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 </style>
