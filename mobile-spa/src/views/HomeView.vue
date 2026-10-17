@@ -675,7 +675,12 @@ onMounted(() => {
                 <div v-for="shift in shifts" :key="shift.id" class="shift-card-row">
                   <div class="shift-person-info">
                     <div class="shift-avatar">
-                      <img v-if="shift.photo" :src="shift.photo" :alt="shift.name" />
+                      <img
+                        v-if="shift.photo"
+                        :src="shift.photo"
+                        :alt="shift.name"
+                        @error="shift.photo = null"
+                      />
                       <span v-else>{{ shift.initials }}</span>
                     </div>
                     <div class="shift-meta">

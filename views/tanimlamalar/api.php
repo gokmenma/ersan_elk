@@ -409,6 +409,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "is_emri_sonucu" => $_POST["is_emri_sonucu"] ?? "",
             "tur_adi" => $_POST["is_turu"] ?? "",
             "rapor_sekmesi" => $_POST["rapor_sekmesi"] ?? "",
+            "sonuc_tipi" => in_array($_POST["sonuc_tipi"] ?? '', ['olumlu', 'olumsuz']) ? $_POST["sonuc_tipi"] : 'olumlu',
             "aciklama" => $_POST["aciklama"] ?? "",
         ];
 
@@ -475,6 +476,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-getir") {
         $data = $Tanimlamalar->find($id);
         // Map tur_adi to is_turu for frontend compatibility
         $data->is_turu = $data->tur_adi;
+        $data->sonuc_tipi = $data->sonuc_tipi ?? 'olumlu';
         $data->encrypted_id = $_POST["id"];
         $status = "success";
     } catch (PDOException $ex) {
@@ -693,6 +695,8 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
             $aracliUcret = floatval(Helper::formattedMoneyToNumber($getCellValue('Araçlı Personel İş Türü Ücreti', 0)));
             $okumaUcret = floatval(Helper::formattedMoneyToNumber($getCellValue('Okuma Personeli İş Türü Ücreti', 0)));
             $raporSekmesi = trim((string) $getCellValue('Rapor Sekmesi'));
+            $sonucTipiVal = mb_strtolower(trim((string) $getCellValue('Sonuç Tipi', '')));
+            $sonucTipi = in_array($sonucTipiVal, ['olumsuz', 'olumsuzluk', 'negative']) ? 'olumsuz' : ($sonucTipiVal === 'olumlu' ? 'olumlu' : '');
             $aciklama = trim((string) $getCellValue('Açıklama'));
 
             // Boş satırları atla
@@ -733,6 +737,10 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
                         $raporSekmesi = (string) ($existingRecord->rapor_sekmesi ?? '');
                     }
 
+                    if (!array_key_exists('Sonuç Tipi', $headerMap) || empty($sonucTipi)) {
+                        $sonucTipi = (string) ($existingRecord->sonuc_tipi ?? 'olumlu');
+                    }
+
                     $data = [
                         "id" => $existingRecord->id,
                         "firma_id" => $firma_id,
@@ -744,6 +752,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
                         "aracli_personel_is_turu_ucret" => $aracliUcret,
                         "okuma_is_turu_ucret" => $okumaUcret,
                         "rapor_sekmesi" => $raporSekmesi,
+                        "sonuc_tipi" => $sonucTipi ?: 'olumlu',
                         "aciklama" => $aciklama,
                     ];
                     $Tanimlamalar->saveWithAttr($data);
@@ -775,6 +784,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
                         "aracli_personel_is_turu_ucret" => $aracliUcret,
                         "okuma_is_turu_ucret" => $okumaUcret,
                         "rapor_sekmesi" => $raporSekmesi,
+                        "sonuc_tipi" => $sonucTipi ?: 'olumlu',
                         "aciklama" => $aciklama,
                         "kayit_yapan" => $_SESSION["id"] ?? 0,
                     ];

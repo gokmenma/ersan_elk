@@ -1,6 +1,150 @@
 # Active Context
 
-## Mobil SPA: Bordro Standardında Personel Seçici Modalı ve Evraklar Bento Hacim Kartı (2026-10-17)
+## Mobil SPA: Personel Detay Sayfası 500 Hatası Giderildi (2026-10-17)
+- **Kullanıcı Bildirimi**:
+  - `GET http://mobile.ersanelektrik.com/api/personnel.php?action=detail&id=... 500 (Internal Server Error)`
+  - "personel detayı sayfasında hata oldu" (Personel alınamadı ekran görüntüsü).
+- **Tespit Edilen Kök Nedenler**:
+  1. `App/Model/MobilePersonelModel.php` içindeki `getEvrakDetails()` metodunda personelin evrak boyutu formatlanırken `$this->formatBytes()` çağrılıyordu. Ancak model sınıfı içinde `formatBytes()` fonksiyonu tanımlı olmadığı için `Fatal error: Call to undefined method App\Model\MobilePersonelModel::formatBytes()` hatası oluşup 500 Internal Server Error üretiyordu.
+  2. `mobile-spa/public/api/personnel.php` içinde `personnelPublicRow(array $row)` fonksiyonu ikinci bir `$workDetails` parametresi almadığı halde fonksiyon gövdesinde `$workDetails` değişkeni okunmaya çalışılıyordu (`PHP Warning: Undefined variable $workDetails`).
+- **Uygulanan Çözümler**:
+  1. `MobilePersonelModel.php` içine bayt değerlerini insan tarafından okunabilir KB, MB, GB birimlerine dönüştüren `formatBytes(int $bytes, int $precision = 2): string` metodu eklendi.
+  2. `personnel.php` dosyasındaki `personnelPublicRow` fonksiyonunun imzası `personnelPublicRow(array $row, ?array $workDetails = null): array` olarak güncellendi.
+  3. Güncellenen backend API dosyası `dist/api/` ile eşitlendi.
+  4. PHP CLI üzerinden `detail` aksiyonu personelin 15 evrak kaydıyla birlikte test edildi ve 200 OK ile sorunsuz çalıştığı doğrulandı.
+  5. `npm run build` ile üretim paketi 0 hata ile yeniden derlendi.
+
+## Mobil SPA Talepler Modülü: Avatar 404 Çözümü, İşleme Al Butonu ve Onay Entegrasyonları (2026-10-17)
+- **Kullanıcı Talepleri**:
+  1. Talepler sayfasında personellerin profil resimlerinin 404 vermesi (`personel_69e48d3ba427b.jpg:1 GET https://mobile.ersantr.com/assets/images/users/... 404 (Not Found)`).
+  2. "İşleme al butonu burada olsun, açık yeşil olarak, biraz daha küçük olsun ve işleme al yazsın".
+  3. Süreç yönetimi yazısının kaldırılması, talep türleri menüsünün navbar içinde yana doğru transition ile açılması ve X ile kapanması, Bekleyenler/İşlem Görenler/Silinenler filtrelerinin en üstte yer alması, arama ve sıralamanın yan yana olması.
+- **Yapılan İyileştirmeler ve Çözümler**:
+  - **Avatar 404 Çözümü**:
+    - `mobile-spa/public/api/requests.php` ve `dist/api/requests.php` içindeki avatar oluşturma mantığı `resolvePersonelAvatar()` fonksiyonuyla yeniden yazıldı.
+    - Ham dosya yolu yerine merkezi güvenli endpoint `/api/personnel-photo.php?id={encrypted_id}` kullanımına geçildi.
+    - Veritabanındaki `personel_resim_yolu` ve `resim_yolu` adayları diskte fiziksel varlık (`file_exists()`) kontrolünden geçirildi. Dosya yoksa kırık URL dönülmesi engellendi.
+    - `mobile-spa/public/api/personnel-photo.php` ve `dist/api/personnel-photo.php` Gate yetki kontrollerine `talepler`, `avans_talepleri`, `izin_talepleri`, `ariza_talepleri` eklendi.
+    - `mobile-spa/src/views/TaleplerView.vue` şablonunda `<img>` etiketine `@error="item.avatar = null"` ve `loading="lazy"` eklendi; resim bulunamayan personeller için `getInitials(name)` baş harf avatarı otomatik devreye alındı.
+    - `mobile-spa/package.json`'a `postbuild` hook'u eklenerek `npm run build` sonrasında `dist/uploads` ve `dist/assets/images` symlink'lerinin otomatik oluşturulması sağlandı.
+  - **İşleme Al Butonu**:
+    - Genel arıza/talepler sekmesinde "İşleme Al" butonu açık yeşil renkli, kompakt boyutta (`clay-btn--subtle-success`), Çözüldü butonunun hemen solunda konumlandırıldı ve tıklandığında durumu "İşlemde"ye alıp ilgili onay/işlem akışını tetikleyecek şekilde entegre edildi.
+  - **Build**: Vite derlemesi (`npm run build`) 0 hata ile tamamlandı ve canlı `dist/` dizinine aktarıldı.
+
+## Kesme/Açma Karşılaştırma Kartı & Dağılım Modalı: Dinamik Olumlu/Olumsuz Filtreleme ve İş Türü Tanımlama Entegrasyonu (2026-10-17)
+- **Kullanıcı Talepleri**:
+  1. "burdaki sayılardan olumsuzları çıkaracağız ancak hangi işlerin olumlu/olumsuz olduğunu hardcode yapıoyoruz , bu çok kullanışlı olmuyor. tanımlamalar altında iş türü tanımlama sayfasında bir alan eklesek, olumlu/olumsuz tipini belirtsek, ana sayfadaki kesme açma kartında Tümü, olumlu, olumsuz toogle butonu ile olumsuz hariç sayıları ayrı görsek"
+  2. "bunu buraya ekleyelim, tüm karttaki işlemleri filtre yapsın" (modalın sağ üst başlık alanına filtre haplarının taşınması ve tüm modal bileşenlerinin filtrelenmesi).
+  3. "varsayılan olarak olumu seçili gelsin" (hem ana kartta hem modalda ilk açılışta Olumlu seçeneğinin aktif gelmesi).
+- **Veritabanı Değişiklikleri (`sql/add_sonuc_tipi_to_tanimlamalar.sql`)**:
+  - `tanimlamalar` tablosuna `sonuc_tipi VARCHAR(20) NOT NULL DEFAULT 'olumlu'` kolonu eklendi.
+  - Kullanıcının belirttiği olumsuz iş türleri ('Kapalı', 'ADREŞ YANLIŞ ABONE BULUNAMADI', 'SAYAÇ KASKİYE ALINDI', 'ABONE MÜSADE ETMEDİ.', 'TAPA SAĞLAM', 'MÜHÜR VE CONTA' vb.) `'olumsuz'` olarak güncellendi.
+- **İş Türü Tanımlama Modülü (`views/tanimlamalar/`)**:
+  - `views/tanimlamalar/is-turu.php`: `#actionTable` tablosuna `SONUÇ TİPİ` (`data-filter="select"`) kolonu eklendi; yeşil `Olumlu` ve kırmızı `Olumsuz` rozetleri eklendi. Özet KPI kartına Olumlu ve Olumsuz toplam sayıları eklendi. Ekleme/düzenleme modalına `sonuc_tipi` Select2 alanı eklendi.
+  - `views/tanimlamalar/js/is-turu.js`: Modal form sıfırlama ve satır düzenleme olaylarına `sonuc_tipi` entegrasyonu sağlandı.
+  - `views/tanimlamalar/api.php`: `is-turu-kaydet`, `is-turu-getir` ve `is-turu-excel-yukle` aksiyonlarına `sonuc_tipi` eklendi.
+  - `views/tanimlamalar/is-turu-excel-sablon.php`: Excel dışa aktarım şablonuna `Sonuç Tipi` kolonu eklendi.
+- **Model Katmanı (`App/Model/PuantajModel.php`)**:
+  - `getComparisonByPeriods()` metoduna `$sonucTipi = 'all'` ('all', 'olumlu', 'olumsuz') parametresi eklendi ve `tn.sonuc_tipi` ile dinamik PDO parametrik filtreleme uygulandı.
+  - `getKesmeMonthlyComparisonByDay()` metodu tek seferde `all`, `olumlu` ve `olumsuz` dataset'lerini üretecek şekilde güncellendi.
+- **Ana Sayfa ve Modal Entegrasyonu (`views/home.php`, `views/home/api.php`)**:
+  - `views/home/api.php`: `get-kesme-comparison` aksiyonu `type`/`sonuc_tipi` parametresi alacak şekilde uyarlandı.
+  - `views/home.php`:
+    - Kart başlığına `#kesmeCompTypeToggle` (Tümü / Olumlu / Olumsuz) eklendi.
+    - `#kesmeDistributionModal` üst pembe gradient başlığına kapat butonu soluna modern cam tasarımlı `.kesme-modal-filter-pills` (Tümü / Olumlu / Olumsuz) yerleştirildi.
+    - JS kodunda `switchType()` ile hem modalın üst 4 KPI kartı (`Toplam iş`, `İşlem türü`, `Toplam kayıt`, `Aktif bölge`), hem `İş Sonucu Dağılımı` (yeşil/kırmızı badge), hem `Bölge Katkısı`, hem de ana karttaki tüm metrikler ve tablolar anında senkronize filtrelenecek şekilde kodlandı.
+
+## Mobil SPA: Personel İcra Dosyaları ve Yasal Kesintiler Modülü Tamamlandı (2026-10-17)
+- **Kullanıcı Talebi**: "şimdi de icralar sayfasını yapalım" (`/personel/:id/icralar`).
+- **Uygulanan Mimari ve Özellikler**:
+  1. **Tasarım Standartları (Bento & Claymorphic UI)**:
+     - Cari Takip, Ek Ödemeler, Kesintiler ve Evraklar modülleriyle %100 uyumlu Soft Bento & Claymorphic tasarım sistemi uygulandı.
+     - **Hero Obsidian Bento Kartı**: Toplam kalan borç, toplam borç tutarı, toplam kesilen bakiye, çift segmentli ilerleme çubuğu (% kesilen / % kalan) ve 4'lü interaktif filtre lejantı (`Tüm Dosyalar`, `Devam Eden`, `Sırada / Bekleyen`, `Tamamlanan`).
+     - **Canlı Arama ve Sekme Filtreleri**: Dosya numarası, icra dairesi veya alacaklı adı ile anında arama, filtre hapları (`Tümü`, `Devam Edenler`, `Sıradakiler`, `Tamamlananlar`).
+     - **İcra Bento Kartları**: Sıra numarası (#1. Sıra), dosya no, icra dairesi adı, durum rozeti (`clay-badge`), alacaklı kutusu, 3'lü bakiye analizi (`Toplam Borç`, `Kesilen %`, `Kalan Borç`), ilerleme çubuğu, kesinti planı bilgisi (`Sabit Tutar ₺` veya `Maaş Net %`), IBAN kopyalama çipi, not alanı ve işlem butonları.
+  2. **İşlevler ve Modallar**:
+     - **Yeni Dosya Ekleme & Düzenleme Modalı (`showIcraModal`)**: Aktif icra daireleri listesinden (`icra_daireleri`) otomatik tamamlama, dosya no, sıra, alacaklı, toplam borç, kesinti türü (sabit tutar / net yüzde / asgari yüzde), durum, IBAN, banka bilgisi, tarihler ve açıklama alanları.
+     - **Kesinti Geçmişi Modalı (`showIcraKesintiGecmisiModal`)**: İlgili dosyaya ait bordrodan onaylanmış tüm kesintilerin dönem bazında zaman çizelgesi (`personel_kesintileri`), dönem adı, tutar, tarih ve onay rozeti.
+     - **Silme İşlemi**: Yumuşak silme (`silinme_tarihi = NOW()`) ve teyit modalı.
+  3. **Backend ve Model Mimarisi**:
+     - `App/Model/MobilePersonelModel.php`: `getIcraDetails()`, `saveIcra()`, `deleteIcra()`, `getIcraKesintileri()` metotları PDO parametrik binding ile eklendi.
+     - `mobile-spa/public/api/personnel.php`: `detail`, `icra_kesintileri`, `save_icra`, `delete_icra` aksiyonları eklendi. Gate yetkilendirmesi (`Gate::allows('personel_duzenle')`), CSRF token ve `SystemLogModel` loglama uygulandı.
+     - `mobile-spa/src/services/personnel.js`: API servis fonksiyonları tanımlandı.
+     - `mobile-spa/src/views/PersonnelSectionView.vue`: Vue reaktif durumu, şablonu ve özel scoped CSS stilleri eklendi.
+  4. **Derleme ve Doğrulama**:
+     - `npm run build` ile Vite v6.4.4 üretimi 0 hata ile tamamlandı.
+     - PHP dosyalarının sözdizimi `/opt/lampp/bin/php -l` ile doğrulandı.
+
+## Mobil SPA Ana Sayfa: Bugünün Nöbetçileri Personel Fotoğrafı ve Fallback İyileştirmesi (2026-10-17)
+- **Kullanıcı Bildirimi**:
+  - "bugünkü nöbetçiler kartındaki personel resmi de görünmüoyr" (Yasin İnce'nin avatar kutusunda kırık görsel ve ad-soyad metninin üst üste bindiği ekran görüntüsü).
+- **Tespit Edilen Kök Nedenler**:
+  1. `App/Model/MobileDashboardModel.php` içindeki `shifts()` metodunda personelin fotoğrafı ham yol (`/assets/images/users/...`) olarak döndürülüyordu. `mobile.ersantr.com` document root'u `mobile-spa/dist` olduğundan bu yol 404 dönüyordu.
+  2. Yasin İnce'nin `personel_resim_yolu` alanı boştu; geçerli resmi `resim_yolu` (`assets/images/users/personel_69b2a8e676461.png`) alanında bulunuyordu.
+  3. `personnel-photo.php` Gate kontrolünde `nobet_goruntuleme`, `nobet_onaylama`, `nobet_yonetim`, `nobetler` yetkileri eksikti.
+  4. `HomeView.vue` nöbetçi kartındaki `<img>` etiketinde `@error="shift.photo = null"` hata yakalayıcısı bulunmadığından kırık görsel ve metin çakışması yaşanıyordu.
+- **Uygulanan Çözümler**:
+  1. **`MobileDashboardModel.php`**: `shifts()` metodu Kural 12 standardına uygun hale getirildi; ham dosya yolu yerine merkezi `/api/personnel-photo.php?id=` . Security::encrypt() uç noktası bağlandı.
+  2. **`personnel-photo.php`**: Gate yetkilerine nöbet görüntüleme ve yönetim yetkileri eklendi.
+  3. **`HomeView.vue`**: Nöbetçi avatarındaki `<img>` etiketine `@error="shift.photo = null"` eklendi; yüklenememe veya eksik dosya durumunda kırık görsel yerine temiz gradyanlı baş harf avatarı gösterildi.
+  4. **Derleme**: `npm run build` ile Vite v6.4.4 üretimi 0 hata ile tamamlandı.
+
+- **Kullanıcı Bildirimi**:
+  - "bu sayfada personellerin resimleri gelmiyor"
+  - Konsol hatası: `GET https://mobile.ersantr.com/assets/images/users/personel_69e48d3ba427b.jpg 404 (Not Found)`
+- **Tespit Edilen Kök Nedenler**:
+  1. `requests.php` API'sinde ham sunucu dosya yolu (`/assets/images/users/...`) dönülüyordu. `mobile.ersantr.com` virtual hostunun kök dizini `mobile-spa/dist` olduğundan, doğrudan yapılan statik resim istekleri 404 Not Found alıyordu.
+  2. Veritabanındaki `personel_resim_yolu` alanı (`personel_69e48d3ba427b.jpg`) diskte mevcut değildi; ancak personelin `resim_yolu` alanında geçerli profil fotoğrafı (`personel_69b2a96c4469b.png`) bulunuyordu. Eski kod çoklu aday kontrolü yapmadan diskte olmayan ilk dosyayı döndürüyordu.
+  3. Güvenli resim endpoint'i olan `personnel-photo.php` Gate kontrollerinde `talepler`, `avans_talepleri`, `izin_talepleri`, `ariza_talepleri` izinleri yer almıyordu.
+  4. Vue kart şablonunda resim yüklenemediğinde `@error` fallback mekanizması olmadığı için kırık resim simgesi görünüyordu.
+- **Uygulanan Çözümler**:
+  1. **`requests.php` (Avatar Çözümleme)**:
+     - `resolvePersonelAvatar()` fonksiyonu yazıldı. Hem `personel_resim_yolu` hem de `resim_yolu` adaylarını diskte varlık kontrolünden geçirerek geçerli dosyayı tespit eder.
+     - Geçerli resim bulunduğunda ISO 27001 standardına uygun şifreli `/api/personnel-photo.php?id=` URL'i üretir. Diskte dosya yoksa temiz boş değer döner.
+  2. **`personnel-photo.php` (Yetki Genişletme)**:
+     - Gate yetkilerine `talepler`, `avans_talepleri`, `izin_talepleri`, `ariza_talepleri` eklendi.
+  3. **Symlink Desteği**:
+     - `mobile-spa/dist/assets/images` ve `mobile-spa/dist/uploads` sembolik bağları oluşturuldu.
+  4. **Vue Arayüz İyileştirmesi (`TaleplerView.vue`)**:
+     - `getInitials(name)` fonksiyonu eklendi.
+     - `<img>` etiketine `@error="item.avatar = null"` ve `loading="lazy"` eklendi; resmi olmayan veya yüklenemeyen personeller için baş harfler şık biçimde gösterilir.
+  5. **Derleme**:
+     - `PersonnelSectionView.vue` dosyasındaki eksik `</Teleport>` kapatma hatası giderildi ve `npm run build` 0 hata ile tamamlandı.
+
+## Mobil SPA: Operasyonlar Kartı Online Sorgulama 404 Hatası Giderildi (2026-10-17)
+- **Kullanıcı Bildirimi**:
+  - "operasyonlar kartındaki sorgula butonu işlem yapmıyor"
+  - Konsol çıktısı: `POST https://mobile.ersantr.com/views/puantaj/api.php 404 (Not Found)`
+- **Kök Neden**:
+  - `mobile.ersantr.com` VirtualHost'unun DocumentRoot'u `/opt/lampp/htdocs/ersan_elk/mobile-spa/dist` olduğundan, masaüstü kök dizinindeki `/views/puantaj/api.php` yolu mobil SPA altında fiziksel olarak mevcut değildi ve 404 Not Found dönüyordu.
+  - Ayrıca Kesme/Açma ve Mühürleme sorguları `views/puantaj/api.php` içinde aynı `lock_online_puantaj_sorgula_` kilit anahtarını paylaştığı için paralel isteklerde kilit çakışması riski bulunuyordu.
+- **Uygulanan Çözümler**:
+  1. **Mobil API Köprüsü (`mobile-spa/public/api/puantaj-sync.php` & `dist/api/puantaj-sync.php`)**:
+     - Mobil SPA mimarisine uygun `/api/puantaj-sync.php` köprü dosyası oluşturuldu. Bu dosya masaüstünün `views/puantaj/api.php` mantığını session ve yetki kontrollerini koruyarak doğrudan çalıştırır.
+  2. **Servis Katmanı İyileştirmesi (`mobile-spa/src/services/dashboard.js`)**:
+     - `syncDailyOperations()` fonksiyonu `/api/puantaj-sync.php` endpoint'ine yönlendirildi.
+     - Türkiye saat dilimi (`Europe/Istanbul`) formatı güvenceye alındı.
+     - Tüm 4 operasyon türü (Endeks Okuma, Kesme/Açma, Mühürleme, Sayaç Değişimi) lock kilit çakışmalarını önlemek amacıyla ardışık (`for ... of`) sıralamayla çalıştırıldı.
+     - Sorgulama bittiğinde taze `getDashboard()` verisi çekilerek arayüzün anında güncellenmesi sağlandı.
+  3. **Derleme**:
+     - `npm run build` ile Vite üretimi 0 hata ile tamamlandı.
+
+- **Kullanıcı Talebi**: "havuz sekmesinde personellerin resimleri görünmüyor" (ekran görüntüsü ile: avatar kutusunda kırık resim ikonu ve arkasında ad-soyad metni çıkıyordu).
+- **Kök Neden Tespiti**:
+  1. `mobile-spa/public/api/nobet.php` içinde avatar URL'si ham sunucu yolu (`/assets/images/users/...`) olarak dönülüyordu. SPA alt dizinde (`ersan_elk`) çalıştığından tarayıcı kök dizinde arayıp 404 Not Found alıyordu.
+  2. SPA'nın merkezi resim endpoint'i olan `personnel-photo.php` içinde Gate yetki kontrolünde nöbet yetkileri (`nobet/onay-islemleri`, `yonetici_onayi`, `nobet/list`, `shifts`) bulunmadığı için nöbet yöneticisi 403 alıyordu.
+  3. `personnel-photo.php` dosyasında `personel_resim_yolu` veritabanında dolu olup diskte bulunmadığında, `resim_yolu` sütunundaki geçerli dosyaya fallback yapılmıyordu (örneğin Serkan Taş'ın resmi bu yüzden açılamıyordu).
+  4. Vue tarafında `<img>` etiketinde `@error` handler'ı olmadığı için yüklenemeyen görsellerde tarayıcının kırık görsel ikonu ve alt metni üst üste biniyordu.
+- **Uygulanan Çözümler**:
+  1. **`personnel-photo.php` Güncellemesi**:
+     - Gate yetkilerine `nobet/onay-islemleri`, `yonetici_onayi`, `nobet/list`, `shifts` eklendi.
+     - `candidates` dizisiyle hem `personel_resim_yolu` hem de `resim_yolu` diskte kontrol edilerek ilk bulunan geçerli fiziksel görsel sunuldu.
+  2. **`nobet.php` API Güncellemesi**:
+     - `getAvatarUrl()` fonksiyonu SPA standardı olan `/api/personnel-photo.php?id=` formatına dönüştürüldü; `list`, `calendar`, `personnel_summary` ve `personnel_list` uç noktalarına entegre edildi.
+  3. **`NobetOnayView.vue` Güncellemesi**:
+     - Havuz, Onay Listesi, Takvim ve Nöbet Planlama modalındaki tüm `<img>` etiketlerine `@error` eklenerek yüklenemeyen görsel durumunda anında şık gradyanlı baş harf avatarına (`initials`) güvenli fallback sağlandı.
+  4. **Derleme**:
+     - `npm run build` ile Vite bundle'ı 0 hata ile güncellendi ve `dist/api/` dosyaları eşitlendi.
 - **Kullanıcı Talepleri**:
   1. "burası daha düzenli gelsin" (Evraklar sayfasındaki unstyled metin yığını yerine düzenli ve ferah görünüm).
   2. "ayrıca personel seçimi bordro sayfaındaki gibi gelsin, değiştir'e basınca 2.resimdeki gibi listes açılsın ve arama kutusu da olsun" (Bordro modülündeki `SEÇİLİ PERSONEL` kartı, `Değiştir ⌵` butonu ve arama kutulu `.period-sheet-list` modal standardı).

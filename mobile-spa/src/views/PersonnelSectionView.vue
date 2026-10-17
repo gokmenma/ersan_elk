@@ -1452,6 +1452,215 @@ async function confirmDeleteEvrak(item) {
   }
 }
 
+// =========================================================================
+// İCRA DOSYALARI STATE & METOTLARI
+// =========================================================================
+const icralar = ref([])
+const icraOzet = ref({
+  toplam_dosya: 0,
+  aktif_dosya: 0,
+  bekleyen_dosya: 0,
+  tamamlanan_dosya: 0,
+  toplam_borc: 0,
+  toplam_kesilen: 0,
+  toplam_kalan: 0,
+  genel_odenen_yuzde: 0,
+  next_sira: 1,
+})
+const icraDaireleri = ref([])
+const icraTab = ref('all') // 'all', 'devam_ediyor', 'bekliyor', 'tamamlanan'
+const icraSearch = ref('')
+
+const showIcraModal = ref(false)
+const savingIcra = ref(false)
+const editingIcraId = ref(null)
+
+const icraForm = reactive({
+  sira: 1,
+  icra_dairesi: '',
+  dosya_no: '',
+  alacakli: '',
+  toplam_borc: '',
+  kesinti_tipi: 'tutar',
+  kesinti_orani: '25',
+  aylik_kesinti_tutari: '',
+  durum: 'devam_ediyor',
+  baslangic_tarihi: '',
+  bitis_tarihi: '',
+  iban: '',
+  hesap_bilgileri: '',
+  aciklama: '',
+})
+
+// Kesinti Geçmişi Modalı
+const showIcraKesintiGecmisiModal = ref(false)
+const loadingIcraKesintiGecmisi = ref(false)
+const selectedIcraForGecmis = ref(null)
+const icraKesintiGecmisi = ref([])
+const icraKesintiGecmisiToplam = ref(0)
+
+const icraKesilenRatio = computed(() => {
+  const borc = icraOzet.value?.toplam_borc || 0
+  const kesilen = icraOzet.value?.toplam_kesilen || 0
+  if (borc <= 0) return 0
+  return Math.min(100, Math.round((kesilen / borc) * 100))
+})
+
+const icraKalanRatio = computed(() => {
+  if (icraKesilenRatio.value >= 100) return 0
+  return 100 - icraKesilenRatio.value
+})
+
+const filteredIcralar = computed(() => {
+  let list = icralar.value || []
+  if (icraTab.value === 'devam_ediyor') {
+    list = list.filter(i => i.durum === 'devam_ediyor')
+  } else if (icraTab.value === 'bekliyor') {
+    list = list.filter(i => i.durum === 'bekliyor')
+  } else if (icraTab.value === 'tamamlanan') {
+    list = list.filter(i => ['bitti', 'fekki_geldi', 'kesinti_bitti'].includes(i.durum))
+  }
+
+  if (icraSearch.value.trim() !== '') {
+    const q = icraSearch.value.trim().toLowerCase()
+    list = list.filter(i =>
+      (i.dosya_no && i.dosya_no.toLowerCase().includes(q)) ||
+      (i.icra_dairesi && i.icra_dairesi.toLowerCase().includes(q)) ||
+      (i.alacakli && i.alacakli.toLowerCase().includes(q)) ||
+      (i.aciklama && i.aciklama.toLowerCase().includes(q))
+    )
+  }
+  return list
+})
+
+function openNewIcraModal() {
+  editingIcraId.value = null
+  icraForm.sira = icraOzet.value?.next_sira || (icralar.value?.length ? icralar.value.length + 1 : 1)
+  icraForm.icra_dairesi = ''
+  icraForm.dosya_no = ''
+  icraForm.alacakli = ''
+  icraForm.toplam_borc = ''
+  icraForm.kesinti_tipi = 'tutar'
+  icraForm.kesinti_orani = '25'
+  icraForm.aylik_kesinti_tutari = ''
+  icraForm.durum = 'devam_ediyor'
+  icraForm.baslangic_tarihi = ''
+  icraForm.bitis_tarihi = ''
+  icraForm.iban = ''
+  icraForm.hesap_bilgileri = ''
+  icraForm.aciklama = ''
+  showIcraModal.value = true
+}
+
+function openEditIcraModal(item) {
+  editingIcraId.value = item.id
+  icraForm.sira = item.sira || 1
+  icraForm.icra_dairesi = item.icra_dairesi || ''
+  icraForm.dosya_no = item.dosya_no || ''
+  icraForm.alacakli = item.alacakli || ''
+  icraForm.toplam_borc = item.toplam_borc ? String(item.toplam_borc) : ''
+  icraForm.kesinti_tipi = item.kesinti_tipi || 'tutar'
+  icraForm.kesinti_orani = item.kesinti_orani ? String(item.kesinti_orani) : '25'
+  icraForm.aylik_kesinti_tutari = item.aylik_kesinti_tutari ? String(item.aylik_kesinti_tutari) : ''
+  icraForm.durum = item.durum || 'devam_ediyor'
+  icraForm.baslangic_tarihi = item.baslangic_tarihi || ''
+  icraForm.bitis_tarihi = item.bitis_tarihi || ''
+  icraForm.iban = item.iban || ''
+  icraForm.hesap_bilgileri = item.hesap_bilgileri || ''
+  icraForm.aciklama = item.aciklama || ''
+  showIcraModal.value = true
+}
+
+function onIcraDairesiSelect(e) {
+  const selectedName = e.target.value
+  icraForm.icra_dairesi = selectedName
+  const match = icraDaireleri.value.find(d => d.daire_adi === selectedName)
+  if (match && match.iban) {
+    icraForm.iban = match.iban
+  }
+}
+
+async function submitIcraForm() {
+  if (!icraForm.icra_dairesi || !icraForm.dosya_no) {
+    showToast('İcra dairesi ve dosya numarası zorunludur.')
+    return
+  }
+
+  savingIcra.value = true
+  try {
+    const payload = {
+      id: editingIcraId.value,
+      personel_id: route.params.id,
+      sira: Number(icraForm.sira) || 1,
+      icra_dairesi: icraForm.icra_dairesi,
+      dosya_no: icraForm.dosya_no,
+      alacakli: icraForm.alacakli,
+      toplam_borc: Number(String(icraForm.toplam_borc).replace(',', '.')) || 0,
+      kesinti_tipi: icraForm.kesinti_tipi,
+      kesinti_orani: Number(String(icraForm.kesinti_orani).replace(',', '.')) || 0,
+      aylik_kesinti_tutari: Number(String(icraForm.aylik_kesinti_tutari).replace(',', '.')) || 0,
+      durum: icraForm.durum,
+      baslangic_tarihi: icraForm.baslangic_tarihi,
+      bitis_tarihi: icraForm.bitis_tarihi,
+      iban: icraForm.iban,
+      hesap_bilgileri: icraForm.hesap_bilgileri,
+      aciklama: icraForm.aciklama,
+    }
+
+    const res = await personnelApi.saveIcra(payload, auth.state.csrfToken)
+    if (res.icralar) {
+      icralar.value = res.icralar
+    }
+    if (res.icra_ozet) {
+      icraOzet.value = res.icra_ozet
+    }
+    showIcraModal.value = false
+    showToast(res.message || 'İcra dosyası kaydedildi.')
+  } catch (err) {
+    showToast(err.message || 'İşlem gerçekleştirilemedi.')
+  } finally {
+    savingIcra.value = false
+  }
+}
+
+async function confirmDeleteIcra(item) {
+  if (!confirm(`"${item.dosya_no}" numaralı icra dosyasını silmek istediğinize emin misiniz?`)) {
+    return
+  }
+  try {
+    const res = await personnelApi.deleteIcra(item.id, route.params.id, auth.state.csrfToken)
+    if (res.icralar) {
+      icralar.value = res.icralar
+    }
+    if (res.icra_ozet) {
+      icraOzet.value = res.icra_ozet
+    }
+    showToast(res.message || 'İcra dosyası silindi.')
+  } catch (err) {
+    showToast(err.message || 'Silme işlemi gerçekleştirilemedi.')
+  }
+}
+
+async function openIcraKesintiGecmisi(item) {
+  selectedIcraForGecmis.value = item
+  showIcraKesintiGecmisiModal.value = true
+  loadingIcraKesintiGecmisi.value = true
+  icraKesintiGecmisi.value = []
+  icraKesintiGecmisiToplam.value = 0
+
+  try {
+    const res = await personnelApi.getIcraKesintileri(item.id, route.params.id)
+    if (res.kesintiler) {
+      icraKesintiGecmisi.value = res.kesintiler
+      icraKesintiGecmisiToplam.value = res.toplam_kesinti || 0
+    }
+  } catch (err) {
+    showToast(err.message || 'Kesinti geçmişi yüklenemedi.')
+  } finally {
+    loadingIcraKesintiGecmisi.value = false
+  }
+}
+
 async function load() {
   if (!section.value) {
     router.replace(`/personel/${route.params.id}`)
@@ -1510,6 +1719,15 @@ async function load() {
     }
     if (result.evrak_turleri) {
       evrakTurleri.value = result.evrak_turleri
+    }
+    if (result.icralar) {
+      icralar.value = result.icralar
+    }
+    if (result.icra_ozet) {
+      icraOzet.value = result.icra_ozet
+    }
+    if (result.icra_daireleri) {
+      icraDaireleri.value = result.icra_daireleri
     }
     // Düzenleme yetkisi varsa doğrudan düzenleme açık gelsin
     if (canEdit.value) {
@@ -3961,6 +4179,330 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- ========================================================================= -->
+      <!-- 9. İCRA DOSYALARI SEKME İÇERİĞİ (YASAL KESİNTİLER & TAKİP)                 -->
+      <!-- ========================================================================= -->
+      <div v-else-if="route.params.section === 'icralar'" class="icralar-section-container">
+        <!-- 1. HERO OBSIDIAN BENTO KART: İCRA DAĞILIMI (Cari Takip / Bento Standardı) -->
+        <article class="cari-hero-volume-card">
+          <header class="cari-hero-volume-card__header">
+            <div class="cari-hero-volume-card__title">
+              <span class="cari-hero-icon-box" style="color: #f59e0b;">
+                <Gavel :size="16" />
+              </span>
+              <div>
+                <span class="cari-hero-tag">YASAL KESİNTİLER</span>
+                <span class="cari-hero-subtitle">İcra Dosyaları & Borç Analizi</span>
+              </div>
+            </div>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="clay-btn clay-btn--primary"
+              style="padding: 6px 12px; font-size: 12px; border-radius: 999px;"
+              @click="openNewIcraModal"
+            >
+              <Plus :size="14" />
+              <span>Yeni Dosya</span>
+            </button>
+          </header>
+
+          <div class="cari-hero-volume-main">
+            <strong class="cari-hero-volume-amount">{{ formatMoney(icraOzet.toplam_kalan) }}</strong>
+            <div class="cari-hero-balance-row">
+              <span class="cari-hero-balance-label">Kalan Borç</span>
+              <span class="text-white-50">·</span>
+              <span class="text-white fw-bold">Toplam: {{ formatMoney(icraOzet.toplam_borc) }}</span>
+              <span class="text-white-50">·</span>
+              <span class="text-emerald fw-bold">Kesilen: {{ formatMoney(icraOzet.toplam_kesilen) }}</span>
+            </div>
+          </div>
+
+          <!-- Segmentli İlerleme Çubuğu -->
+          <div class="cari-chart-container">
+            <div class="cari-segmented-track">
+              <div
+                class="cari-seg-fill cari-seg-fill--alacak"
+                :style="{ width: `${icraKesilenRatio}%` }"
+                :title="`Kesilen: %${icraKesilenRatio}`"
+              >
+                <span v-if="icraKesilenRatio >= 15" class="cari-seg-label">%{{ icraKesilenRatio }}</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--borc"
+                :style="{ width: `${icraKalanRatio}%` }"
+                :title="`Kalan: %${icraKalanRatio}`"
+              >
+                <span v-if="icraKalanRatio >= 15" class="cari-seg-label">%{{ icraKalanRatio }}</span>
+              </div>
+            </div>
+
+            <!-- Tıklanabilir Filtre / Lejant Kutuları (4'lü Grid) -->
+            <div class="cari-chart-legend cari-chart-legend--2x2">
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': icraTab === 'all' }"
+                @click="icraTab = 'all'"
+              >
+                <span class="cari-legend-dot" style="background: #ffffff; box-shadow: 0 0 8px rgba(255,255,255,0.6);"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Tüm Dosyalar</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ icralar.length }} Dosya</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': icraTab === 'devam_ediyor' }"
+                @click="icraTab = 'devam_ediyor'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--alacak"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Devam Eden</span>
+                    <b class="cari-legend-pct text-emerald">{{ icraOzet.aktif_dosya }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(icraOzet.toplam_kalan) }}</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': icraTab === 'bekliyor' }"
+                @click="icraTab = 'bekliyor'"
+              >
+                <span class="cari-legend-dot" style="background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Sırada / Bekleyen</span>
+                    <b class="cari-legend-pct" style="color: #f59e0b;">{{ icraOzet.bekleyen_dosya }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ icraOzet.bekleyen_dosya }} Dosya</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': icraTab === 'tamamlanan' }"
+                @click="icraTab = 'tamamlanan'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--borc"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Tamamlanan</span>
+                    <b class="cari-legend-pct text-sky">{{ icraOzet.tamamlanan_dosya }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ formatMoney(icraOzet.toplam_kesilen) }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. ARAMA VE FİLTRELEME ÇUBUĞU -->
+        <div class="evrak-filter-section mb-3">
+          <div class="evrak-search-box mb-2">
+            <Search :size="16" class="search-icon" />
+            <input
+              v-model="icraSearch"
+              type="text"
+              placeholder="Dosya no, daire veya alacaklı ara…"
+              class="evrak-search-input"
+            />
+            <button
+              v-if="icraSearch"
+              type="button"
+              class="search-clear-btn"
+              @click="icraSearch = ''"
+            >
+              <X :size="14" />
+            </button>
+          </div>
+
+          <!-- Filtre Hapları -->
+          <div class="clay-tabs-wrap">
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: icraTab === 'all' }"
+              @click="icraTab = 'all'"
+            >
+              Tümü ({{ icralar.length }})
+            </button>
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: icraTab === 'devam_ediyor' }"
+              @click="icraTab = 'devam_ediyor'"
+            >
+              Devam Edenler ({{ icraOzet.aktif_dosya }})
+            </button>
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: icraTab === 'bekliyor' }"
+              @click="icraTab = 'bekliyor'"
+            >
+              Sıradakiler ({{ icraOzet.bekleyen_dosya }})
+            </button>
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: icraTab === 'tamamlanan' }"
+              @click="icraTab = 'tamamlanan'"
+            >
+              Tamamlananlar ({{ icraOzet.tamamlanan_dosya }})
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. İCRA DOSYALARI LİSTESİ -->
+        <div v-if="filteredIcralar.length === 0" class="clay-state-card py-5">
+          <Gavel :size="32" class="text-muted mb-2" />
+          <strong>Kayıtlı icra dosyası bulunamadı</strong>
+          <p v-if="icraSearch">Arama kriterlerinize uygun dosya bulunamadı.</p>
+          <p v-else-if="icraTab !== 'all'">Bu filtreye uygun icra dosyası bulunmuyor.</p>
+          <p v-else>Bu personele ait henüz bir icra kaydı oluşturulmamış.</p>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="clay-btn clay-btn--primary mt-2"
+            @click="openNewIcraModal"
+          >
+            <Plus :size="15" />
+            <span>İlk Dosyayı Ekle</span>
+          </button>
+        </div>
+
+        <div v-else class="icra-cards-list">
+          <article
+            v-for="item in filteredIcralar"
+            :key="item.id"
+            class="bento-card bento-card--white icra-item-card"
+          >
+            <!-- Kart Başlık Satırı -->
+            <div class="icra-card-top">
+              <div class="icra-card-title-group">
+                <span class="icra-sira-pill">#{{ item.sira }}. Sıra</span>
+                <div>
+                  <h4 class="icra-dosya-no">{{ item.dosya_no }}</h4>
+                  <span class="icra-daire-name">{{ item.icra_dairesi }}</span>
+                </div>
+              </div>
+
+              <span
+                class="clay-badge"
+                :class="{
+                  'clay-badge--emerald': item.durum === 'devam_ediyor',
+                  'clay-badge--amber': item.durum === 'bekliyor',
+                  'clay-badge--sky': ['bitti', 'fekki_geldi', 'kesinti_bitti'].includes(item.durum),
+                  'clay-badge--coral': item.durum === 'durduruldu',
+                }"
+              >
+                {{ item.durum_label }}
+              </span>
+            </div>
+
+            <!-- Alacaklı Bilgisi -->
+            <div v-if="item.alacakli" class="icra-alacakli-box">
+              <Building2 :size="13" class="text-muted" />
+              <span>Alacaklı: <strong>{{ item.alacakli }}</strong></span>
+            </div>
+
+            <!-- Finansal İlerleme & Bakiye Çubuğu -->
+            <div class="icra-progress-section">
+              <div class="icra-balance-grid">
+                <div class="icra-balance-col">
+                  <small>Toplam Borç</small>
+                  <strong>{{ formatMoney(item.toplam_borc) }}</strong>
+                </div>
+                <div class="icra-balance-col text-center">
+                  <small>Kesilen (%{{ item.kesilen_yuzde }})</small>
+                  <strong class="text-emerald">{{ formatMoney(item.toplam_kesilen) }}</strong>
+                </div>
+                <div class="icra-balance-col text-end">
+                  <small>Kalan Borç</small>
+                  <strong class="text-danger">{{ formatMoney(item.kalan_tutar) }}</strong>
+                </div>
+              </div>
+
+              <div class="icra-progress-track">
+                <div
+                  class="icra-progress-fill"
+                  :style="{ width: `${item.kesilen_yuzde}%` }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Kesinti Planı & Detay Rozetleri -->
+            <div class="icra-meta-grid">
+              <div class="icra-meta-item">
+                <span class="meta-label">Kesinti Planı:</span>
+                <span class="meta-value fw-bold">
+                  {{ item.kesinti_tipi === 'tutar' ? formatMoney(item.aylik_kesinti_tutari) + ' / Ay' : `Maaşın %${item.kesinti_orani}'i` }}
+                </span>
+              </div>
+              <div v-if="item.baslangic_tarihi" class="icra-meta-item">
+                <span class="meta-label">Tarih Aralığı:</span>
+                <span class="meta-value">{{ item.baslangic_tarihi }} {{ item.bitis_tarihi ? '— ' + item.bitis_tarihi : '' }}</span>
+              </div>
+            </div>
+
+            <!-- IBAN Çipi -->
+            <div v-if="item.iban" class="icra-iban-chip">
+              <CreditCard :size="13" class="text-muted" />
+              <span class="iban-text">{{ item.iban }}</span>
+              <button
+                type="button"
+                class="clay-copy-btn"
+                title="IBAN Kopyala"
+                @click="copyText(item.iban, `icra_iban_${item.id}`)"
+              >
+                <Check v-if="copiedField === `icra_iban_${item.id}`" :size="12" class="text-emerald" />
+                <Copy v-else :size="12" />
+              </button>
+            </div>
+
+            <p v-if="item.aciklama" class="icra-desc-note">{{ item.aciklama }}</p>
+
+            <!-- Alt Aksiyon Çubuğu -->
+            <div class="icra-card-actions">
+              <button
+                type="button"
+                class="clay-btn clay-btn--secondary icra-history-action-btn"
+                @click="openIcraKesintiGecmisi(item)"
+              >
+                <Receipt :size="13" />
+                <span>Kesinti Geçmişi ({{ item.kesinti_sayisi }})</span>
+              </button>
+
+              <div v-if="canEdit" class="icra-card-btn-group">
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--secondary-subtle"
+                  style="padding: 6px 10px;"
+                  title="Düzenle"
+                  @click="openEditIcraModal(item)"
+                >
+                  <Pencil :size="13" />
+                </button>
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--danger-subtle"
+                  style="padding: 6px 10px;"
+                  title="Sil"
+                  @click="confirmDeleteIcra(item)"
+                >
+                  <Trash2 :size="13" />
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
       <!-- DİĞER SEKMELER (Geliştirilecek diğer sekmeler için geçiş görünümü) -->
       <template v-else>
         <section class="section-capabilities">
@@ -4226,6 +4768,258 @@ onUnmounted(() => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- =================== MODAL: İCRA DOSYASI EKLE / DÜZENLE =================== -->
+      <Teleport to="body">
+        <div v-if="showIcraModal" class="clay-modal-overlay" @click.self="showIcraModal = false">
+          <div class="clay-modal-sheet" style="max-height: 90svh; overflow-y: auto;">
+            <div class="clay-sheet-handle"></div>
+            <div class="clay-sheet-header">
+              <h3 class="clay-sheet-title">{{ editingIcraId ? 'İcra Dosyasını Düzenle' : 'Yeni İcra Dosyası Ekle' }}</h3>
+              <button type="button" class="clay-circle-btn" @click="showIcraModal = false">
+                <X :size="16" />
+              </button>
+            </div>
+
+            <form @submit.prevent="submitIcraForm" class="icra-modal-form">
+              <!-- İcra Dairesi -->
+              <label class="form-field mb-3">
+                <span>İcra Dairesi *</span>
+                <input
+                  v-model="icraForm.icra_dairesi"
+                  list="icraDaireleriList"
+                  type="text"
+                  placeholder="örn: Kayseri Genel İcra Dairesi"
+                  required
+                  @change="onIcraDairesiSelect"
+                />
+                <datalist id="icraDaireleriList">
+                  <option v-for="d in icraDaireleri" :key="d.id" :value="d.daire_adi">
+                    {{ d.daire_adi }}
+                  </option>
+                </datalist>
+              </label>
+
+              <!-- Dosya No & Sıra -->
+              <div class="form-row-2 mb-3">
+                <label class="form-field flex-2">
+                  <span>Dosya No (Esas No) *</span>
+                  <input
+                    v-model="icraForm.dosya_no"
+                    type="text"
+                    placeholder="örn: 2024/12345 Esas"
+                    required
+                  />
+                </label>
+                <label class="form-field flex-1">
+                  <span>İcra Sırası *</span>
+                  <input
+                    v-model="icraForm.sira"
+                    type="number"
+                    min="1"
+                    required
+                  />
+                </label>
+              </div>
+
+              <!-- Alacaklı -->
+              <label class="form-field mb-3">
+                <span>Alacaklı (Kişi / Kurum / Banka)</span>
+                <input
+                  v-model="icraForm.alacakli"
+                  type="text"
+                  placeholder="örn: Akbank T.A.Ş. veya Ahmet Yılmaz"
+                />
+              </label>
+
+              <!-- Toplam Borç Tutarı -->
+              <label class="form-field mb-3">
+                <span>Toplam Borç Tutarı (₺) *</span>
+                <input
+                  v-model="icraForm.toplam_borc"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="0,00"
+                  required
+                />
+              </label>
+
+              <!-- Kesinti Tipi & Değeri -->
+              <div class="form-row-2 mb-3">
+                <label class="form-field flex-1">
+                  <span>Kesinti Türü *</span>
+                  <select v-model="icraForm.kesinti_tipi" required>
+                    <option value="tutar">Sabit Tutar (₺)</option>
+                    <option value="net_yuzde">Maaş Net % (örn: %25 - 1/4)</option>
+                    <option value="asgari_yuzde">Asgari Ücret %</option>
+                  </select>
+                </label>
+                <label v-if="icraForm.kesinti_tipi === 'tutar'" class="form-field flex-1">
+                  <span>Aylık Kesinti Tutarı (₺)</span>
+                  <input
+                    v-model="icraForm.aylik_kesinti_tutari"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="0,00"
+                  />
+                </label>
+                <label v-else class="form-field flex-1">
+                  <span>Kesinti Oranı (%)</span>
+                  <input
+                    v-model="icraForm.kesinti_orani"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="25"
+                  />
+                </label>
+              </div>
+
+              <!-- Durum -->
+              <label class="form-field mb-3">
+                <span>Dosya Durumu *</span>
+                <select v-model="icraForm.durum" required>
+                  <option value="devam_ediyor">Devam Ediyor (Aktif)</option>
+                  <option value="bekliyor">Bekliyor / Sırada</option>
+                  <option value="bitti">Tamamlandı / Bitti</option>
+                  <option value="fekki_geldi">Fekki Geldi</option>
+                  <option value="kesinti_bitti">Kesinti Bitti</option>
+                  <option value="durduruldu">Durduruldu</option>
+                </select>
+              </label>
+
+              <!-- IBAN -->
+              <label class="form-field mb-3">
+                <span>İcra Dairesi / Alacaklı IBAN</span>
+                <input
+                  v-model="icraForm.iban"
+                  type="text"
+                  placeholder="TR..."
+                  maxlength="34"
+                />
+              </label>
+
+              <!-- Hesap Bilgileri -->
+              <label class="form-field mb-3">
+                <span>Hesap / Banka Bilgileri</span>
+                <input
+                  v-model="icraForm.hesap_bilgileri"
+                  type="text"
+                  placeholder="örn: Vakıfbank Kayseri Adliye Şubesi"
+                />
+              </label>
+
+              <!-- Tarihler -->
+              <div class="form-row-2 mb-3">
+                <label class="form-field flex-1">
+                  <span>Başlangıç Tarihi</span>
+                  <input v-model="icraForm.baslangic_tarihi" type="date" />
+                </label>
+                <label class="form-field flex-1">
+                  <span>Bitiş Tarihi</span>
+                  <input v-model="icraForm.bitis_tarihi" type="date" />
+                </label>
+              </div>
+
+              <!-- Açıklama -->
+              <label class="form-field mb-4">
+                <span>Not / Açıklama</span>
+                <textarea
+                  v-model="icraForm.aciklama"
+                  rows="2"
+                  placeholder="Dosya ile ilgili özel notlar…"
+                ></textarea>
+              </label>
+
+              <div class="modal-actions">
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--secondary flex-1"
+                  :disabled="savingIcra"
+                  @click="showIcraModal = false"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  class="clay-btn clay-btn--primary flex-1"
+                  :disabled="savingIcra"
+                >
+                  <RefreshCw v-if="savingIcra" :size="15" class="clay-spin-icon" />
+                  <Save v-else :size="15" />
+                  <span>{{ savingIcra ? 'Kaydediliyor…' : 'Kaydet' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- =================== MODAL: İCRA KESİNTİ GEÇMİŞİ =================== -->
+      <Teleport to="body">
+        <div v-if="showIcraKesintiGecmisiModal" class="clay-modal-overlay" @click.self="showIcraKesintiGecmisiModal = false">
+          <div class="clay-modal-sheet" style="max-height: 85svh; overflow-y: auto;">
+            <div class="clay-sheet-handle"></div>
+            <div class="clay-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">KESİNTİ GEÇMİŞİ</span>
+                <h3 class="clay-sheet-title">{{ selectedIcraForGecmis?.dosya_no }}</h3>
+                <p class="clay-sheet-subtitle">{{ selectedIcraForGecmis?.icra_dairesi }}</p>
+              </div>
+              <button type="button" class="clay-circle-btn" @click="showIcraKesintiGecmisiModal = false">
+                <X :size="16" />
+              </button>
+            </div>
+
+            <!-- Modal Üst Özet Kartı -->
+            <div class="icra-gecmis-top-card">
+              <div class="gecmis-stat-box">
+                <small>Toplam Borç</small>
+                <strong>{{ formatMoney(selectedIcraForGecmis?.toplam_borc) }}</strong>
+              </div>
+              <div class="gecmis-stat-box">
+                <small>Toplam Kesilen</small>
+                <strong class="text-emerald">{{ formatMoney(icraKesintiGecmisiToplam) }}</strong>
+              </div>
+              <div class="gecmis-stat-box">
+                <small>Kalan Tutar</small>
+                <strong class="text-danger">{{ formatMoney(Math.max(0, (selectedIcraForGecmis?.toplam_borc || 0) - icraKesintiGecmisiToplam)) }}</strong>
+              </div>
+            </div>
+
+            <!-- Yükleniyor / Kesinti Listesi -->
+            <div v-if="loadingIcraKesintiGecmisi" class="ds-loading py-5">
+              <i></i><i></i><i></i>
+            </div>
+
+            <div v-else-if="icraKesintiGecmisi.length === 0" class="clay-state-card py-5">
+              <Receipt :size="28" class="text-muted mb-2" />
+              <strong>Henüz kesinti kaydı yok</strong>
+              <p>Bu icra dosyasına ait bordrodan onaylanmış bir kesinti bulunmuyor.</p>
+            </div>
+
+            <div v-else class="icra-kesinti-timeline">
+              <div
+                v-for="k in icraKesintiGecmisi"
+                :key="k.id"
+                class="icra-timeline-item"
+              >
+                <div class="timeline-dot"></div>
+                <div class="timeline-card">
+                  <div class="timeline-header">
+                    <strong class="timeline-donem">{{ k.donem_adi }}</strong>
+                    <span class="timeline-tutar text-emerald">{{ formatMoney(k.tutar) }}</span>
+                  </div>
+                  <div class="timeline-meta">
+                    <span>{{ k.olusturma_tarihi }}</span>
+                    <span class="clay-badge clay-badge--emerald">Onaylandı</span>
+                  </div>
+                  <p v-if="k.aciklama" class="timeline-desc">{{ k.aciklama }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Teleport>
@@ -6573,5 +7367,354 @@ onUnmounted(() => {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* ========================================================================== */
+/* İCRA DOSYALARI SEKME STİLLERİ (Yasal Kesintiler & Takip)                   */
+/* ========================================================================== */
+.icralar-section-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.icra-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.icra-item-card {
+  padding: 16px;
+  border-radius: var(--ds-radius-card, 24px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.icra-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(16, 24, 40, 0.12);
+}
+
+.icra-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.icra-card-title-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.icra-sira-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #b45309;
+  font-weight: 800;
+  font-size: 11px;
+  border: 1px solid #fde68a;
+  flex-shrink: 0;
+}
+
+.icra-dosya-no {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.icra-daire-name {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+.icra-alacakli-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #334155;
+  line-height: 1.3;
+}
+
+.icra-alacakli-box strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.icra-progress-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.icra-balance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.icra-balance-col small {
+  display: block;
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.icra-balance-col strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.icra-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.icra-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.icra-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+}
+
+.icra-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icra-meta-item .meta-label {
+  color: #64748b;
+}
+
+.icra-meta-item .meta-value {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.icra-iban-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-family: monospace;
+  font-size: 12px;
+  color: #334155;
+}
+
+.icra-iban-chip .iban-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.icra-desc-note {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  background: #fdf2f8;
+  border-left: 3px solid #ec4899;
+  padding: 6px 10px;
+  border-radius: 4px 8px 8px 4px;
+  line-height: 1.4;
+}
+
+.icra-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.icra-history-action-btn {
+  font-size: 11px;
+  padding: 6px 10px;
+  gap: 6px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.icra-card-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clay-btn--secondary-subtle {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.clay-btn--secondary-subtle:active {
+  background: #e2e8f0;
+}
+
+.clay-badge--sky {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+}
+
+.icra-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 16px;
+}
+
+.icra-gecmis-top-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.gecmis-stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+.gecmis-stat-box small {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.gecmis-stat-box strong {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.icra-kesinti-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  padding-left: 16px;
+  border-left: 2px solid #e2e8f0;
+  margin-left: 8px;
+}
+
+.icra-timeline-item {
+  position: relative;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -21px;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #10b981;
+}
+
+.timeline-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.timeline-donem {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.timeline-tutar {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.timeline-desc {
+  font-size: 11px;
+  color: #64748b;
+  margin: 4px 0 0;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1.3;
 }
 </style>

@@ -80,15 +80,25 @@ function getGunAdi(string $date): string
     return $gunler[$n] ?? '';
 }
 
-function getAvatarUrl(?string $path): string
+function getAvatarUrl(int $personelId, ?string $resimYolu = null, ?string $personelResimYolu = null): ?string
 {
-    if (empty($path)) return '';
-    $clean = ltrim($path, '/.');
-    $fullPath = dirname(__DIR__, 3) . '/' . $clean;
-    if (file_exists($fullPath)) {
-        return '/' . $clean;
+    if ($personelId <= 0) return null;
+    $hasPhoto = false;
+    $candidates = [trim((string) $personelResimYolu), trim((string) $resimYolu)];
+    $projectRoot = realpath(dirname(__DIR__, 3));
+    if ($projectRoot) {
+        foreach ($candidates as $cand) {
+            if ($cand === '') continue;
+            $tryFile = realpath($projectRoot . '/' . ltrim(str_replace('\\', '/', $cand), '/'));
+            if ($tryFile && str_starts_with($tryFile, $projectRoot . DIRECTORY_SEPARATOR) && is_file($tryFile)) {
+                $hasPhoto = true;
+                break;
+            }
+        }
     }
-    return '';
+    if (!$hasPhoto) return null;
+    $encId = Security::encrypt((string) $personelId);
+    return '/api/personnel-photo.php?id=' . rawurlencode($encId);
 }
 
 $nobetModel = new NobetModel();
@@ -417,7 +427,7 @@ try {
             }
 
             $whereSql = implode(' AND ', $whereParts);
-            $query = "SELECT n.*, p.adi_soyadi as personel_adi, p.departman, p.resim_yolu as personel_resim
+            $query = "SELECT n.*, p.adi_soyadi as personel_adi, p.departman, p.resim_yolu as personel_resim, p.personel_resim_yolu
                       FROM nobetler n
                       LEFT JOIN personel p ON n.personel_id = p.id
                       WHERE {$whereSql}
@@ -436,7 +446,7 @@ try {
                     'personel_id' => Security::encrypt((string) $r->personel_id),
                     'personel_name' => $pName,
                     'personel_initials' => getInitials($pName),
-                    'personel_avatar' => getAvatarUrl($r->personel_resim),
+                    'personel_avatar' => getAvatarUrl((int) $r->personel_id, $r->personel_resim, $r->personel_resim_yolu),
                     'departman' => (string) ($r->departman ?: 'Genel'),
                     'tarih' => (string) $r->nobet_tarihi,
                     'tarih_formatli' => date('d.m.Y', strtotime((string) $r->nobet_tarihi)),
@@ -464,7 +474,7 @@ try {
 
         case 'calendar': {
             $db = $nobetModel->getDb();
-            $sql = "SELECT n.*, p.adi_soyadi as personel_adi, p.departman, p.resim_yolu as personel_resim
+            $sql = "SELECT n.*, p.adi_soyadi as personel_adi, p.departman, p.resim_yolu as personel_resim, p.personel_resim_yolu
                     FROM nobetler n
                     LEFT JOIN personel p ON n.personel_id = p.id
                     WHERE n.firma_id = ?
@@ -503,7 +513,7 @@ try {
                     'id' => Security::encrypt((string) $r->id),
                     'personel_name' => $pName,
                     'personel_initials' => getInitials($pName),
-                    'personel_avatar' => getAvatarUrl($r->personel_resim),
+                    'personel_avatar' => getAvatarUrl((int) $r->personel_id, $r->personel_resim, $r->personel_resim_yolu),
                     'departman' => (string) ($r->departman ?: 'Genel'),
                     'baslangic_saati' => substr((string) $r->baslangic_saati, 0, 5),
                     'bitis_saati' => substr((string) $r->bitis_saati, 0, 5),
@@ -524,7 +534,7 @@ try {
             $search = trim((string) ($_GET['search'] ?? ''));
             $db = $nobetModel->getDb();
 
-            $sql = "SELECT p.id, p.adi_soyadi, p.departman, p.resim_yolu,
+            $sql = "SELECT p.id, p.adi_soyadi, p.departman, p.resim_yolu, p.personel_resim_yolu,
                         COUNT(n.id) as nobet_sayisi,
                         SUM(CASE WHEN (n.yonetici_onayi = 0 OR n.yonetici_onayi IS NULL) AND n.id IS NOT NULL THEN 1 ELSE 0 END) as bekleyen_sayisi,
                         SUM(CASE WHEN n.yonetici_onayi = 1 THEN 1 ELSE 0 END) as onaylanan_sayisi
@@ -565,7 +575,7 @@ try {
                     'raw_id' => (int) $r->id,
                     'name' => $pName,
                     'initials' => getInitials($pName),
-                    'avatar' => getAvatarUrl($r->resim_yolu),
+                    'avatar' => getAvatarUrl((int) $r->id, $r->resim_yolu, $r->personel_resim_yolu),
                     'department' => (string) ($r->departman ?: 'Genel'),
                     'nobet_sayisi' => $cnt,
                     'bekleyen_sayisi' => (int) $r->bekleyen_sayisi,
@@ -592,7 +602,7 @@ try {
                     'raw_id' => (int) $p->id,
                     'name' => $pName,
                     'initials' => getInitials($pName),
-                    'avatar' => getAvatarUrl($p->resim_yolu ?? null),
+                    'avatar' => getAvatarUrl((int) $p->id, $p->resim_yolu ?? null, $p->personel_resim_yolu ?? null),
                     'department' => (string) ($p->departman ?: 'Genel'),
                 ];
             }

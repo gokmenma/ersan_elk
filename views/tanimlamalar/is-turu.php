@@ -20,8 +20,16 @@ $ucretsizSayisi = 0;
 $okumaSayisi = 0;
 $kesmeSayisi = 0;
 $sokmeDigerSayisi = 0;
+$olumluSayisi = 0;
+$olumsuzSayisi = 0;
 
 foreach ($isTurleri as $item) {
+    if (($item->sonuc_tipi ?? 'olumlu') === 'olumsuz') {
+        $olumsuzSayisi++;
+    } else {
+        $olumluSayisi++;
+    }
+
     if (floatval($item->is_turu_ucret ?? 0) > 0 || floatval($item->aracli_personel_is_turu_ucret ?? 0) > 0 || floatval($item->okuma_is_turu_ucret ?? 0) > 0) {
         $ucretliSayisi++;
     } else {
@@ -112,7 +120,7 @@ $title = "İş Türü Tanımlamaları";
                     </div>
                     <h3 class="summary-kpi-value my-1" id="stat_toplam_isturu"><?php echo $totalIsTurleri; ?></h3>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext" id="stat_sub_ucret">Ücretli: <?php echo $ucretliSayisi; ?> | Ücretsiz: <?php echo $ucretsizSayisi; ?></span>
+                        <span class="summary-kpi-subtext" id="stat_sub_ucret" title="Ücretli: <?php echo $ucretliSayisi; ?> | Ücretsiz: <?php echo $ucretsizSayisi; ?>">Olumlu: <strong class="text-success"><?php echo $olumluSayisi; ?></strong> | Olumsuz: <strong class="text-danger"><?php echo $olumsuzSayisi; ?></strong></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-rapor="all">
                             <i class="bx bx-layer"></i> Tümü
                         </button>
@@ -224,6 +232,7 @@ $title = "İş Türü Tanımlamaları";
                             <th data-filter="number" class="text-end">ARAÇLI PERS. ÜCRETİ</th>
                             <th data-filter="number" class="text-end">OKUMA PERS. ÜCRETİ</th>
                             <th data-filter="select" class="text-center">RAPOR SEKMESİ</th>
+                            <th data-filter="select" class="text-center" style="width: 100px;">SONUÇ TİPİ</th>
                             <th data-filter="string">AÇIKLAMA</th>
                             <th data-filter="none" class="text-center" style="width: 120px;" data-orderable="false">İŞLEMLER</th>
                         </tr>
@@ -272,6 +281,13 @@ $title = "İş Türü Tanımlamaları";
                                         <span class="badge bg-light text-dark border rounded-pill px-2 py-1 font-size-11 fw-semibold text-capitalize"><?php echo htmlspecialchars($isTuru->rapor_sekmesi, ENT_QUOTES, 'UTF-8'); ?></span>
                                     <?php else: ?>
                                         <span class="text-muted font-size-12 fst-italic">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center text-nowrap">
+                                    <?php if (($isTuru->sonuc_tipi ?? 'olumlu') === 'olumsuz'): ?>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-x-circle me-1"></i>Olumsuz</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-check-circle me-1"></i>Olumlu</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-muted font-size-12">
@@ -614,7 +630,7 @@ $title = "İş Türü Tanımlamaları";
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <?php
                             $raporSekmeleri = [
                                 '' => 'Seçiniz',
@@ -633,6 +649,27 @@ $title = "İş Türü Tanımlamaları";
                                 "key",
                                 "",
                                 "form-control select2"
+                            );
+                            ?>
+                        </div>
+                        <div class="col-md-6">
+                            <?php
+                            $sonucTipleri = [
+                                'olumlu' => 'Olumlu',
+                                'olumsuz' => 'Olumsuz'
+                            ];
+                            echo Form::FormSelect2(
+                                "sonuc_tipi",
+                                $sonucTipleri,
+                                "olumlu",
+                                "Sonuç Tipi",
+                                "check-shield",
+                                "key",
+                                "",
+                                "form-control select2",
+                                false,
+                                'width:100%',
+                                'data-placeholder="Sonuç Tipi Seçiniz"'
                             );
                             ?>
                         </div>

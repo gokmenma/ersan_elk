@@ -57,14 +57,34 @@ $systemLogModel = new SystemLogModel();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-function normalizeAvatar(?string $resim): string
+function resolvePersonelAvatar(int $personelId, ?string $personelResimYolu = null, ?string $resimYolu = null): string
 {
-    if (empty($resim)) return '';
-    $clean = ltrim($resim, '/.');
-    if (file_exists(dirname(__DIR__, 3) . '/' . $clean)) {
-        return '/' . $clean;
+    if ($personelId <= 0) return '';
+    $candidates = [
+        trim((string) $personelResimYolu),
+        trim((string) $resimYolu)
+    ];
+
+    $projectRoot = realpath(dirname(__DIR__, 3));
+    $hasPhoto = false;
+    if ($projectRoot) {
+        foreach ($candidates as $cand) {
+            if ($cand === '') continue;
+            $clean = ltrim(str_replace('\\', '/', $cand), '/');
+            $tryFile = realpath($projectRoot . '/' . $clean);
+            if ($tryFile && str_starts_with($tryFile, $projectRoot . DIRECTORY_SEPARATOR) && is_file($tryFile)) {
+                $hasPhoto = true;
+                break;
+            }
+        }
     }
-    return '';
+
+    if (!$hasPhoto) {
+        return '';
+    }
+
+    $encId = Security::encrypt((string) $personelId);
+    return '/api/personnel-photo.php?id=' . rawurlencode($encId);
 }
 
 function formatTaleplerDate(?string $dt, bool $onlyDate = false): string
@@ -143,13 +163,13 @@ if ($method === 'GET') {
     }
 
     $formattedAvans = array_map(static function ($a) use ($filter) {
-        $resim = !empty($a->personel_resim_yolu) ? $a->personel_resim_yolu : ($a->resim_yolu ?? '');
+        $pId = (int) ($a->personel_id ?? 0);
         return [
             'id' => (int) $a->id,
             'type' => 'avans',
             'name' => $a->requester_name ?? 'Bilinmeyen',
             'department' => $a->departman ?? 'Departman Yok',
-            'avatar' => normalizeAvatar($resim),
+            'avatar' => resolvePersonelAvatar($pId, $a->personel_resim_yolu ?? null, $a->resim_yolu ?? null),
             'amount' => (float) ($a->tutar ?? 0),
             'amount_formatted' => number_format((float) ($a->tutar ?? 0), 2, ',', '.') . ' ₺',
             'date' => formatTaleplerDate($a->talep_tarihi),
@@ -164,7 +184,7 @@ if ($method === 'GET') {
     }, $rawAvans);
 
     $formattedIzin = array_map(static function ($i) use ($izinModel, $filter) {
-        $resim = !empty($i->personel_resim_yolu) ? $i->personel_resim_yolu : ($i->resim_yolu ?? '');
+        $pId = (int) ($i->personel_id ?? 0);
         $days = (int) ($i->toplam_gun ?? 0);
         if ($days <= 0 && !empty($i->baslangic_tarihi) && !empty($i->bitis_tarihi)) {
             $days = (int) $izinModel->hesaplaIzinGunu($i->baslangic_tarihi, $i->bitis_tarihi);
@@ -174,7 +194,7 @@ if ($method === 'GET') {
             'type' => 'izin',
             'name' => $i->requester_name ?? 'Bilinmeyen',
             'department' => $i->departman ?? 'Departman Yok',
-            'avatar' => normalizeAvatar($resim),
+            'avatar' => resolvePersonelAvatar($pId, $i->personel_resim_yolu ?? null, $i->resim_yolu ?? null),
             'leave_type' => $i->izin_tipi_adi ?? $i->izin_tipi ?? 'İzin',
             'days' => $days,
             'date' => formatTaleplerDate($i->talep_tarihi),
@@ -193,13 +213,13 @@ if ($method === 'GET') {
     }, $rawIzin);
 
     $formattedTalep = array_map(static function ($t) use ($filter) {
-        $resim = !empty($t->personel_resim_yolu) ? $t->personel_resim_yolu : ($t->resim_yolu ?? '');
+        $pId = (int) ($t->personel_id ?? 0);
         return [
             'id' => (int) $t->id,
             'type' => 'talep',
             'name' => $t->requester_name ?? 'Bilinmeyen',
             'department' => $t->departman ?? 'Departman Yok',
-            'avatar' => normalizeAvatar($resim),
+            'avatar' => resolvePersonelAvatar($pId, $t->personel_resim_yolu ?? null, $t->resim_yolu ?? null),
             'title' => $t->baslik ?? 'Genel Talep',
             'priority' => $t->oncelik ?? 'normal',
             'date' => formatTaleplerDate($t->olusturma_tarihi),

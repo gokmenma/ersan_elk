@@ -1,6 +1,91 @@
 # Progress
 
-## 2026-10-17 — Mobil SPA: Bordro Standardında Personel Seçici Modalı ve Evraklar Bento Hacim Kartı
+## 2026-10-17 — Mobil SPA Talepler Modülü: Avatar 404 Çözümü, İşleme Al Butonu ve Onay Entegrasyonları Tamamlandı
+- [x] **1. Profil Fotoğrafları / Avatar 404 Çözümü**:
+  - `requests.php` içindeki doğrudan disk yolu kullanımı kaldırıldı; `resolvePersonelAvatar()` fonksiyonu ile çoklu sütun adayı (`personel_resim_yolu`, `resim_yolu`) diskte `file_exists()` ile kontrol edildi.
+  - Merkezi güvenli servis `/api/personnel-photo.php?id={Security::encrypt(personel_id)}` üzerinden sunulması sağlandı.
+  - `personnel-photo.php` Gate yetki listesine `talepler`, `avans_talepleri`, `izin_talepleri`, `ariza_talepleri` eklendi.
+  - `TaleplerView.vue` bileşeninde `<img>` etiketine `@error="item.avatar = null"` ve `loading="lazy"` eklenerek kırık görsel oluşması engellendi; resmi olmayan veya yüklenemeyen personeller için `getInitials(name)` baş harf avatarı gösterildi.
+  - `package.json`'a `postbuild` hook'u eklenerek `npm run build` sonrasında `dist/uploads` ve `dist/assets/images` symlink'lerinin otomatik oluşturulması sağlandı.
+- [x] **2. İşleme Al Butonu ve Durum Aksiyonları**:
+  - Genel arıza/talepler sekmesinde "İşleme Al" butonu açık yeşil renkli, kompakt boyutta (`clay-btn--subtle-success`), Çözüldü butonunun hemen solunda konumlandırıldı.
+  - Buton tıklandığında durumu "İşlemde"ye alacak şekilde entegrasyonu tamamlandı.
+- [x] **3. Derleme ve Canlıya Alma**:
+  - `npm run build` 0 hata ile çalıştırıldı, üretim çıktıları `dist/` dizinine aktarıldı.
+
+## 2026-10-17 — Kesme/Açma Dinamik Olumlu/Olumsuz Filtreleme ve İş Türü Tanımlama Entegrasyonu Tamamlandı
+- [x] **1. Veritabanı Mimarisi (`sql/add_sonuc_tipi_to_tanimlamalar.sql`)**:
+  - `tanimlamalar` tablosuna `sonuc_tipi VARCHAR(20) NOT NULL DEFAULT 'olumlu'` kolonu eklendi.
+  - Temel olumsuz kesme türleri ('Kapalı', 'ADREŞ YANLIŞ ABONE BULUNAMADI', 'SAYAÇ KASKİYE ALINDI', 'ABONE MÜSADE ETMEDİ.', 'TAPA SAĞLAM', 'MÜHÜR VE CONTA' vb.) başlangıç olarak 'olumsuz' işaretlendi.
+- [x] **2. İş Türü Tanımlama Yönetimi (`views/tanimlamalar/`)**:
+  - `is-turu.php`: Tabloya `SONUÇ TİPİ` kolonu, `data-filter="select"` filtresi, yeşil `Olumlu` ve kırmızı `Olumsuz` rozetleri eklendi.
+  - Özet KPI kartına `Olumlu` ve `Olumsuz` sayaçları entegre edildi.
+  - Ekleme/düzenleme modalına ve Excel yükleme şablonuna `sonuc_tipi` Select2 / Excel sütunu eklendi (`views/tanimlamalar/api.php`, `is-turu.js`, `is-turu-excel-sablon.php`).
+- [x] **3. Model Katmanı (`App/Model/PuantajModel.php`)**:
+  - `getComparisonByPeriods()` metoduna `$sonucTipi` parametresi ve `tn.sonuc_tipi` PDO prepare filtresi eklendi.
+  - `getKesmeMonthlyComparisonByDay()` tek seferde `all`, `olumlu` ve `olumsuz` dataset'lerini üretecek şekilde optimize edildi.
+- [x] **4. Ana Sayfa & Dağılım Modalı Entegrasyonu (`views/home.php`, `views/home/api.php`)**:
+  - Kart başlığına ve `#kesmeDistributionModal` başlık çubuğuna (kapatma butonunun hemen soluna) `Tümü / Olumlu / Olumsuz` toggle butonları yerleştirildi.
+  - Modal içindeki tüm KPI kartları (`Toplam iş`, `İşlem türü`, `Toplam kayıt`, `Aktif bölge`), `İş Sonucu Dağılımı` ve `Bölge Katkısı` ile ana karttaki tüm metrikler ve grafik verileri anında senkronize filtrelenecek şekilde bağlandı.
+  - Kart ve modal açılışında varsayılan olarak **Olumlu** seçeneği aktif (`active`) hale getirildi.
+
+## 2026-10-17 — Mobil SPA: Personel İcra Dosyaları ve Yasal Kesintiler Modülü Tamamlandı
+- [x] **1. Bento Obsidian Hero Kartı (`.cari-hero-volume-card`)**:
+  - Toplam borç, kesilen bakiye ve kalan borç hacmi özeti.
+  - İki renkli segmentli ilerleme çubuğu (% kesilen / % kalan).
+  - 4'lü tıklanabilir filtre lejantı (`Tüm Dosyalar`, `Devam Eden`, `Sırada / Bekleyen`, `Tamamlanan`).
+- [x] **2. Canlı Arama ve Kategori Filtre Hapları (`.clay-filter-pill`)**:
+  - Dosya numarası, icra dairesi veya alacaklı adı ile dinamik arama.
+  - Durum bazlı filtreleme sekmeleri (`Tümü`, `Devam Edenler`, `Sıradakiler`, `Tamamlananlar`).
+- [x] **3. Zengin İcra Bento Kartları (`.icra-item-card`)**:
+  - Sıra rozeti (#1. Sıra), dosya no, icra dairesi adı, durum rozeti (`clay-badge`).
+  - Alacaklı bilgisi, 3 sütunlu bakiye özeti (Toplam, Kesilen %, Kalan).
+  - Kart içi mini ilerleme çubuğu.
+  - Kesinti planı (`Sabit Tutar ₺` veya `Maaş Net %`), tarih aralığı.
+  - Tek tıkla kopyalanabilen IBAN çipi ve not alanı.
+  - Kesinti geçmişi görüntüleme, düzenleme ve silme aksiyon butonları.
+- [x] **4. Yeni Dosya Ekleme & Düzenleme Modalı (`showIcraModal`)**:
+  - Daire otomatik tamamlama (`icra_daireleri` tablosundan dinamik datalist).
+  - Parametrik doğrulama ve veri kaydı.
+- [x] **5. Kesinti Geçmişi Zaman Çizelgesi Modalı (`showIcraKesintiGecmisiModal`)**:
+  - Bordrodan onaylanan tüm kesintilerin dönem bazında listesi (`personel_kesintileri`).
+- [x] **6. Backend & Veritabanı Entegrasyonu**:
+  - `MobilePersonelModel.php`: `getIcraDetails`, `saveIcra`, `deleteIcra`, `getIcraKesintileri` metotları.
+  - `public/api/personnel.php` & `dist/api/personnel.php`: `detail`, `icra_kesintileri`, `save_icra`, `delete_icra` API aksiyonları.
+  - Gate yetki kontrolleri (`Gate::allows('personel_duzenle')`), CSRF denetimi ve `SystemLogModel` loglama.
+- [x] **7. Derleme & Doğrulama**:
+  - `npm run build` ile 0 hata ile derlendi (Vite v6.4.4).
+  - PHP sözdizimleri `/opt/lampp/bin/php -l` ile doğrulandı.
+
+## 2026-10-17 — Mobil SPA Ana Sayfa: Bugünün Nöbetçileri Personel Fotoğrafı ve Fallback İyileştirmesi
+- [x] **1. Model Katmanı Standardı (`MobileDashboardModel.php`)**:
+  - `shifts()` metodunda ham dosya yolu (`/assets/images/...`) yerine Kural 12 standardına uygun olarak `/api/personnel-photo.php?id={Security::encrypt(personel_id)}` merkezi servis URL'si tanımlandı.
+- [x] **2. Güvenli Fotoğraf Servisi Gate Yetkisi (`personnel-photo.php`)**:
+  - `personnel-photo.php` erişim yetkilerine `nobet_goruntuleme`, `nobet_onaylama`, `nobet_yonetim` ve `nobetler` eklendi.
+- [x] **3. Vue Hata Fallback Koruması (`HomeView.vue`)**:
+  - Nöbetçi kartındaki avatar `<img>` etiketine `@error="shift.photo = null"` eklendi. Böylece görsel bulunamasa bile kırık görsel ve baş harflerin üst üste binmesi engellenerek doğrudan şık gradyanlı avatar devreye girdi.
+- [x] **4. Derleme**:
+  - `npm run build` ile Vite üretimi 0 hata ile tamamlandı.
+
+- [x] **1. API Köprüsü Oluşturuldu (`/api/puantaj-sync.php`)**:
+  - `mobile.ersantr.com` document root'u (`mobile-spa/dist`) nedeniyle masaüstünün `views/puantaj/api.php` dosyasına yapılan doğrudan isteklerdeki `404 Not Found` hatası giderildi.
+  - SPA standartlarına uygun `mobile-spa/public/api/puantaj-sync.php` köprüsü oluşturuldu ve `dist/api/` dizinine aktarıldı.
+- [x] **2. Sıralı (Sequential) Sorgulama & Lock Koruması (`dashboard.js`)**:
+  - `syncDailyOperations()` fonksiyonu yeni köprüye yönlendirildi.
+  - Endeks Okuma, Kesme/Açma, Mühürleme ve Sayaç Değişimi işlemleri lock çakışmasını engellemek için sıralı `for ... of` döngüsü ile çalıştırıldı.
+  - Sorgulama bittiğinde `getDashboard()` ile veriler anında arayüzde tazelendi.
+- [x] **3. Derleme**:
+  - `npm run build` ile Vite üretimi 0 hata ile tamamlandı.
+
+- [x] **1. Güvenli Resim Servisi (`personnel-photo.php`) Entegrasyonu**:
+  - `nobet.php` API'sinde ham disk yolu (`/assets/images/...`) yerine SPA standardı olan `/api/personnel-photo.php?id=` formatına geçildi.
+  - `personnel-photo.php` erişim yetkilerine `nobet/onay-islemleri`, `yonetici_onayi`, `nobet/list`, `shifts` eklendi.
+  - Fiziksel dosya kontrolünde `personel_resim_yolu` ve `resim_yolu` sütunları sıralı taranarak ilk geçerli fiziksel resmin sunulması sağlandı (böylece eski/eksik resim yolları olan personellerin mevcut vesikalıkları da kurtarıldı).
+- [x] **2. Vue Görünümü Fallback Koruması (`NobetOnayView.vue`)**:
+  - Havuz, Onay Listesi, Takvim ve Nöbet Planlama modalındaki tüm avatar `<img>` etiketlerine `@error="p.avatar = null"` / `@error="shift.personel_avatar = null"` eklendi.
+  - Görseli bulunmayan veya yüklenemeyen personellerde kırık resim ikonu engellenerek anında şık gradyanlı baş harf rozeti (`initials`) gösterildi.
+- [x] **3. Derleme**:
+  - `npm run build` ile Vite bundle'ı 0 hata ile derlendi.
 - [x] **1. Bordro Standardında Personel Seçici Kartı (`.person-selector-card`)**:
   - `design-system.css`: `.person-selector-card`, `.person-selector-avatar-box`, `.person-selector-card__meta`, `.person-selector-sub`, `.person-selector-name`, `.person-mini-status`, `.person-selector-card__right` ve `.person-change-btn` sınıfları eklendi.
   - `PersonnelSectionView.vue`: Üst profil kartı Bordro tasarımına kavuşturuldu; sol tarafta büyütülebilir avatar, `SEÇİLİ PERSONEL` etiketi, personel adı, aktiflik rozeti (`● Aktif` / `● Ayrıldı`); sağ tarafta sekme `Kaydet` butonu ve `Değiştir ⌵` butonu konumlandırıldı.

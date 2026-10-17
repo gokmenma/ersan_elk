@@ -221,6 +221,38 @@ export const personnelApi = {
     if (!response.ok || !payload.success) throw new Error(payload.message || 'Evrak silinemedi.')
     return payload
   },
+  async saveIcra(data, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=save_icra', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(data),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'İcra dosyası kaydedilemedi.')
+    return payload
+  },
+  async deleteIcra(id, personelId, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=delete_icra', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ id, personel_id: personelId }),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'İcra dosyası silinemedi.')
+    return payload
+  },
+  async getIcraKesintileri(icraId, personelId) {
+    const response = await fetch(`/api/personnel.php?action=icra_kesintileri&icra_id=${encodeURIComponent(icraId)}&personel_id=${encodeURIComponent(personelId)}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'İcra kesintileri alınamadı.')
+    return payload
+  },
 }
 
 

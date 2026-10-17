@@ -88,24 +88,27 @@ class MobileDashboardModel
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             return array_map(static function (array $row): array {
-                $photo = !empty($row['personel_resim_yolu']) ? $row['personel_resim_yolu'] : ($row['resim_yolu'] ?? '');
+                $hasPhoto = !empty($row['personel_resim_yolu']) || !empty($row['resim_yolu']);
                 $name = trim((string) ($row['adi_soyadi'] ?? ''));
                 $words = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
                 $initials = count($words) >= 2
                     ? mb_strtoupper(mb_substr($words[0], 0, 1, 'UTF-8') . mb_substr(end($words), 0, 1, 'UTF-8'), 'UTF-8')
                     : mb_strtoupper(mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
 
+                $personelId = (int) $row['personel_id'];
+                $encryptedId = Security::encrypt((string) $personelId);
+
                 return [
                     'id' => (int) $row['id'],
-                    'personel_id' => (int) $row['personel_id'],
-                    'encrypted_id' => Security::encrypt((string) $row['personel_id']),
+                    'personel_id' => $personelId,
+                    'encrypted_id' => $encryptedId,
                     'name' => $name,
                     'initials' => $initials ?: 'NB',
                     'phone' => trim((string) ($row['cep_telefonu'] ?? '')),
                     'start_time' => !empty($row['baslangic_saati']) ? date('H:i', strtotime($row['baslangic_saati'])) : '',
                     'end_time' => !empty($row['bitis_saati']) ? date('H:i', strtotime($row['bitis_saati'])) : '',
                     'shift_type' => (string) ($row['nobet_tipi'] ?? ''),
-                    'photo' => (!empty($photo) && file_exists(dirname(__DIR__, 2) . '/' . ltrim($photo, '/'))) ? '/' . ltrim($photo, '/') : null,
+                    'photo' => $hasPhoto ? '/api/personnel-photo.php?id=' . $encryptedId : null,
                 ];
             }, $rows);
         }, []);

@@ -1024,7 +1024,7 @@ class PuantajModel extends Model
      * @param string $raporTuru 'kesme', 'sokme_takma', 'muhurleme'
      * @return array ['personel' => [...], 'bolge' => [...], 'firma' => [...]]
      */
-    public function getComparisonByPeriods(array $periods, string $raporTuru = '', string $region = ''): array
+    public function getComparisonByPeriods(array $periods, string $raporTuru = '', string $region = '', string $sonucTipi = 'all'): array
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $result = ['personel' => [], 'bolge' => [], 'firma' => []];
@@ -1033,15 +1033,27 @@ class PuantajModel extends Model
         $workTypeFilter = [];
         if (!empty($raporTuru)) {
             $sqlWT = "SELECT TRIM(is_emri_sonucu) as is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL";
+            if ($sonucTipi === 'olumlu') {
+                $sqlWT .= " AND COALESCE(sonuc_tipi, 'olumlu') = 'olumlu'";
+            } elseif ($sonucTipi === 'olumsuz') {
+                $sqlWT .= " AND COALESCE(sonuc_tipi, 'olumlu') = 'olumsuz'";
+            }
             $stmtWT = $this->db->prepare($sqlWT);
             $stmtWT->execute([$raporTuru]);
             $workTypeFilter = $stmtWT->fetchAll(PDO::FETCH_COLUMN);
 
             if (empty($workTypeFilter) && $raporTuru === 'sokme_takma') {
-                $stmtWT->execute(['sokme']);
-                $workTypeFilter = $stmtWT->fetchAll(PDO::FETCH_COLUMN);
+                $sqlWT_sokme = "SELECT TRIM(is_emri_sonucu) as is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND rapor_sekmesi = 'sokme' AND silinme_tarihi IS NULL";
+                if ($sonucTipi === 'olumlu') {
+                    $sqlWT_sokme .= " AND COALESCE(sonuc_tipi, 'olumlu') = 'olumlu'";
+                } elseif ($sonucTipi === 'olumsuz') {
+                    $sqlWT_sokme .= " AND COALESCE(sonuc_tipi, 'olumlu') = 'olumsuz'";
+                }
+                $stmtWT_sokme = $this->db->prepare($sqlWT_sokme);
+                $stmtWT_sokme->execute();
+                $workTypeFilter = $stmtWT_sokme->fetchAll(PDO::FETCH_COLUMN);
             }
-            if (empty($workTypeFilter) && $raporTuru === 'kesme') {
+            if (empty($workTypeFilter) && $raporTuru === 'kesme' && $sonucTipi === 'all') {
                 $sqlWT2 = "SELECT TRIM(is_emri_sonucu) as is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND silinme_tarihi IS NULL";
                 $stmtWT2 = $this->db->prepare($sqlWT2);
                 $stmtWT2->execute();
@@ -1056,6 +1068,14 @@ class PuantajModel extends Model
                 $placeholders = implode(',', array_fill(0, count($workTypeFilter), '?'));
                 $wtClause = " AND TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) IN ($placeholders)";
                 $params = array_merge($params, $workTypeFilter);
+            } elseif (!empty($raporTuru) && $sonucTipi !== 'all') {
+                $wtClause = " AND 1 = 0";
+            }
+
+            if ($sonucTipi === 'olumlu') {
+                $wtClause .= " AND COALESCE(NULLIF(TRIM(tn.sonuc_tipi), ''), 'olumlu') = 'olumlu'";
+            } elseif ($sonucTipi === 'olumsuz') {
+                $wtClause .= " AND COALESCE(NULLIF(TRIM(tn.sonuc_tipi), ''), 'olumlu') = 'olumsuz'";
             }
 
             $sql = "SELECT t.personel_id, t.ekip_kodu_id,
@@ -1132,7 +1152,7 @@ class PuantajModel extends Model
     /**
      * Ana sayfa Kesme/Açma karşılaştırma kartı için ayın aynı gün aralığındaki veriler.
      */
-    public function getKesmeMonthlyComparisonByDay(): array
+    public function getKesmeMonthlyComparisonByDay(string $selectedType = 'olumlu'): array
     {
         $dayOfMonth = (int) date('j');
         $monthNames = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
@@ -1152,47 +1172,81 @@ class PuantajModel extends Model
             ];
         }
 
-        $result = $this->getComparisonByPeriods($periods, 'kesme');
-        $result['periods'] = $periods;
-        $result['gun'] = $dayOfMonth;
-
         $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
         $current = $periods[count($periods) - 1];
-        $workTypeSql = "SELECT TRIM(is_emri_sonucu) FROM tanimlamalar
-                        WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL";
-        $workTypeStmt = $this->db->prepare($workTypeSql);
-        $workTypeStmt->execute(['kesme']);
-        $workTypes = $workTypeStmt->fetchAll(PDO::FETCH_COLUMN);
-        if ($workTypes === []) {
-            $fallbackStmt = $this->db->prepare("SELECT TRIM(is_emri_sonucu) FROM tanimlamalar WHERE grup = ? AND is_turu_ucret > ? AND silinme_tarihi IS NULL");
-            $fallbackStmt->execute(['is_turu', 0]);
-            $workTypes = $fallbackStmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // 3 tipi ('all', 'olumlu', 'olumsuz') hesaplayalım
+        $typesData = [];
+        $typeList = ['all', 'olumlu', 'olumsuz'];
+
+        foreach ($typeList as $typeKey) {
+            $comp = $this->getComparisonByPeriods($periods, 'kesme', '', $typeKey);
+
+            $workTypeSql = "SELECT TRIM(is_emri_sonucu) FROM tanimlamalar
+                            WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL";
+            if ($typeKey === 'olumlu') {
+                $workTypeSql .= " AND COALESCE(sonuc_tipi, 'olumlu') = 'olumlu'";
+            } elseif ($typeKey === 'olumsuz') {
+                $workTypeSql .= " AND COALESCE(sonuc_tipi, 'olumlu') = 'olumsuz'";
+            }
+            $workTypeStmt = $this->db->prepare($workTypeSql);
+            $workTypeStmt->execute(['kesme']);
+            $workTypes = $workTypeStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if ($workTypes === [] && $typeKey === 'all') {
+                $fallbackStmt = $this->db->prepare("SELECT TRIM(is_emri_sonucu) FROM tanimlamalar WHERE grup = ? AND is_turu_ucret > ? AND silinme_tarihi IS NULL");
+                $fallbackStmt->execute(['is_turu', 0]);
+                $workTypes = $fallbackStmt->fetchAll(PDO::FETCH_COLUMN);
+            }
+
+            $params = [$firmaId, $current['start'], $current['end']];
+            $workTypeClause = '';
+            if ($workTypes !== []) {
+                $placeholders = implode(',', array_fill(0, count($workTypes), '?'));
+                $workTypeClause = " AND TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) IN ($placeholders)";
+                $params = array_merge($params, $workTypes);
+            } elseif ($typeKey !== 'all') {
+                $workTypeClause = " AND 1 = 0";
+            }
+
+            $distributionSql = "SELECT COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ') AS sonuc,
+                                       COALESCE(NULLIF(TRIM(tn.sonuc_tipi), ''), 'olumlu') AS sonuc_tipi,
+                                       COUNT(*) AS kayit_sayisi, COALESCE(SUM(t.sonuclanmis), 0) AS toplam
+                                FROM {$this->table} t
+                                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL {$workTypeClause}
+                                GROUP BY COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ'), COALESCE(NULLIF(TRIM(tn.sonuc_tipi), ''), 'olumlu')
+                                ORDER BY toplam DESC";
+            $distributionStmt = $this->db->prepare($distributionSql);
+            $distributionStmt->execute($params);
+            $distribution = array_map(static fn($row) => [
+                'sonuc' => (string) $row->sonuc,
+                'sonuc_tipi' => (string) $row->sonuc_tipi,
+                'kayit_sayisi' => (int) $row->kayit_sayisi,
+                'toplam' => (int) $row->toplam
+            ], $distributionStmt->fetchAll(PDO::FETCH_OBJ));
+
+            $typesData[$typeKey] = [
+                'bolge' => $comp['bolge'] ?? [],
+                'personel' => $comp['personel'] ?? [],
+                'firma' => $comp['firma'] ?? [],
+                'result_distribution' => $distribution
+            ];
         }
 
-        $params = [$firmaId, $current['start'], $current['end']];
-        $workTypeClause = '';
-        if ($workTypes !== []) {
-            $placeholders = implode(',', array_fill(0, count($workTypes), '?'));
-            $workTypeClause = " AND TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) IN ($placeholders)";
-            $params = array_merge($params, $workTypes);
-        }
+        $activeKey = in_array($selectedType, ['all', 'olumsuz'], true) ? $selectedType : 'olumlu';
 
-        $distributionSql = "SELECT COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ') AS sonuc,
-                                   COUNT(*) AS kayit_sayisi, COALESCE(SUM(t.sonuclanmis), 0) AS toplam
-                            FROM {$this->table} t
-                            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                            WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL {$workTypeClause}
-                            GROUP BY COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ')
-                            ORDER BY toplam DESC";
-        $distributionStmt = $this->db->prepare($distributionSql);
-        $distributionStmt->execute($params);
-        $result['result_distribution'] = array_map(static fn($row) => [
-            'sonuc' => (string) $row->sonuc,
-            'kayit_sayisi' => (int) $row->kayit_sayisi,
-            'toplam' => (int) $row->toplam
-        ], $distributionStmt->fetchAll(PDO::FETCH_OBJ));
-
-        return $result;
+        return [
+            'periods' => $periods,
+            'gun' => $dayOfMonth,
+            'active_type' => $activeKey,
+            'types' => $typesData,
+            // Geriye dönük %100 tam uyumluluk:
+            'bolge' => $typesData[$activeKey]['bolge'],
+            'personel' => $typesData[$activeKey]['personel'],
+            'firma' => $typesData[$activeKey]['firma'],
+            'result_distribution' => $typesData[$activeKey]['result_distribution']
+        ];
     }
 
     /**

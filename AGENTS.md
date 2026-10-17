@@ -162,3 +162,16 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
   - `progress.md`: Neler tamamlandı, neler kaldı.
 - Her işlem ve geliştirme tamamlandığında `memory-bank/activeContext.md` ve `memory-bank/progress.md` dosyaları güncellenerek seans hafızaya alınır.
 
+## 12. Mobil SPA Personel Fotoğrafı ve Medya Sunum Standardı
+- **Merkezi Fotoğraf Endpoint'i**:
+  - Mobil SPA API yanıtlarında personellerin vesikalık/profil fotoğrafları asla ham dosya yolu (`/assets/images/...`) olarak döndürülmeyecektir. Proje sunucu kökünde değil bir alt dizinde (örn: `/ersan_elk`) çalışabildiğinden bu tür yollar 404 Not Found üretir.
+  - Tüm personel fotoğrafları `/api/personnel-photo.php?id={Security::encrypt(personel_id)}` merkezi servis URL'si üzerinden sunulacaktır.
+- **Çoklu Sütun Fallback Mekanizması (`personnel-photo.php`)**:
+  - Veritabanındaki `personel_resim_yolu` ve `resim_yolu` sütunları sıralı bir aday (`candidates`) listesinde toplanmalı ve diskte fiziksel varlığı `realpath()` ve `is_file()` ile doğrulanmalıdır.
+  - İlk sütunda kayıtlı dosya diskte bulunamıyorsa doğrudan 404 dönülmemeli; alternatif sütundaki mevcut fiziksel dosya taranıp bulunarak kullanıcıya sunulmalıdır.
+- **Yetkilendirme (Gate) Kapsamı**:
+  - `personnel-photo.php` erişim denetimi yalnızca `personel_listesi` ile sınırlı tutulamaz; personel avatarı gösteren tüm modüllerin izinleri (`nobet/onay-islemleri`, `yonetici_onayi`, `nobet/list`, `shifts`, `arac_takip_yonetim`, `onaylikm_duzenle`, vb.) veya SuperAdmin kontrolü servise dahil edilmelidir.
+- **Vue Şablonlarında Hata Koruması (`@error`)**:
+  - Vue bileşenlerindeki tüm avatar/fotoğraf `<img>` etiketlerine `@error="obj.avatar = null"` (veya ilgili reaktif değişkeni null yapan) hata yakalayıcı eklenmelidir.
+  - Görsel bulunamadığında veya bağlantı koptuğunda tarayıcının kırık görsel simgesi ve `alt` metni görünmemeli; `v-else` bloğundaki gradyanlı baş harf avatarı (`initials`) otomatik ve temiz bir şekilde devreye girmelidir.
+

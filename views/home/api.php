@@ -342,7 +342,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'get-kesme-comparison':
-                echo safeJsonEncode(['status' => 'success', 'data' => $puantajModel->getKesmeMonthlyComparisonByDay()]);
+                $type = (string) ($_POST['type'] ?? $_POST['sonuc_tipi'] ?? 'olumlu');
+                echo safeJsonEncode(['status' => 'success', 'data' => $puantajModel->getKesmeMonthlyComparisonByDay($type)]);
                 break;
 
             case 'get-dashboard-operational-stats':

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "postbuild": "ln -sfn ../../uploads dist/uploads && ln -sfn ../../../assets/images dist/assets/images",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {

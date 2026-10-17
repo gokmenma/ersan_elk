@@ -1570,13 +1570,336 @@ class MobilePersonelModel extends Model
         return ['success' => true, 'message' => 'Evrak başarıyla silindi.'];
     }
 
-    private function formatBytes(int $bytes, int $precision = 1): string
+    public function getIcraDetails(int $personelId, int $firmaId): array
     {
-        $units = ['B', 'KB', 'MB', 'GB'];
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $icraModel = new PersonelIcralariModel();
+        $rawIcralar = $icraModel->getPersonelIcralariWithKesintiler($personelId);
+
+        $durumLabels = [
+            'devam_ediyor' => 'Devam Ediyor',
+            'bekliyor' => 'Bekliyor / Sırada',
+            'bitti' => 'Bitti / Kapandı',
+            'fekki_geldi' => 'Fekki Geldi',
+            'kesinti_bitti' => 'Kesinti Bitti',
+            'durduruldu' => 'Durduruldu',
+        ];
+
+        $kesintiTipiLabels = [
+            'tutar' => 'Sabit Tutar',
+            'net_yuzde' => 'Maaş Net %',
+            'asgari_yuzde' => 'Asgari Ücret %',
+        ];
+
+        $items = [];
+        $toplamBorc = 0.0;
+        $toplamKesilen = 0.0;
+        $toplamKalan = 0.0;
+        $aktifDosya = 0;
+        $bekleyenDosya = 0;
+        $tamamlananDosya = 0;
+        $maxSira = 0;
+
+        foreach ($rawIcralar as $ic) {
+            $id = (int) $ic->id;
+            $sira = (int) ($ic->sira ?? 1);
+            if ($sira > $maxSira) {
+                $maxSira = $sira;
+            }
+
+            $borc = (float) ($ic->toplam_borc ?? 0);
+            $kesilen = (float) ($ic->toplam_kesilen ?? 0);
+            $kalan = max(0.0, (float) ($ic->kalan_tutar ?? ($borc - $kesilen)));
+            $durum = (string) ($ic->durum ?? 'devam_ediyor');
+
+            $toplamBorc += $borc;
+            $toplamKesilen += $kesilen;
+            $toplamKalan += $kalan;
+
+            if ($durum === 'devam_ediyor') {
+                $aktifDosya++;
+            } elseif ($durum === 'bekliyor') {
+                $bekleyenDosya++;
+            } elseif (in_array($durum, ['bitti', 'fekki_geldi', 'kesinti_bitti'], true)) {
+                $tamamlananDosya++;
+            }
+
+            $kesintiSayisiStmt = $this->db->prepare("SELECT COUNT(*) FROM personel_kesintileri WHERE icra_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+            $kesintiSayisiStmt->execute([$id]);
+            $kesintiSayisi = (int) $kesintiSayisiStmt->fetchColumn();
+
+            $items[] = [
+                'id' => $id,
+                'sira' => $sira,
+                'dosya_no' => (string) ($ic->dosya_no ?? ''),
+                'icra_dairesi' => (string) ($ic->icra_dairesi ?? ''),
+                'alacakli' => (string) ($ic->alacakli ?? ''),
+                'toplam_borc' => $borc,
+                'toplam_kesilen' => $kesilen,
+                'kalan_tutar' => $kalan,
+                'kesilen_yuzde' => $borc > 0 ? (int) round(($kesilen / $borc) * 100) : 0,
+                'aylik_kesinti_tutari' => (float) ($ic->aylik_kesinti_tutari ?? 0),
+                'kesinti_tipi' => (string) ($ic->kesinti_tipi ?? 'tutar'),
+                'kesinti_tipi_label' => $kesintiTipiLabels[$ic->kesinti_tipi ?? 'tutar'] ?? 'Sabit Tutar',
+                'kesinti_orani' => (float) ($ic->kesinti_orani ?? 0),
+                'durum' => $durum,
+                'durum_label' => $durumLabels[$durum] ?? 'Bilinmiyor',
+                'baslangic_tarihi' => !empty($ic->baslangic_tarihi) && $ic->baslangic_tarihi !== '0000-00-00' ? (string) $ic->baslangic_tarihi : '',
+                'bitis_tarihi' => !empty($ic->bitis_tarihi) && $ic->bitis_tarihi !== '0000-00-00' ? (string) $ic->bitis_tarihi : '',
+                'iban' => (string) ($ic->iban ?? ''),
+                'hesap_bilgileri' => (string) ($ic->hesap_bilgileri ?? ''),
+                'aciklama' => (string) ($ic->aciklama ?? ''),
+                'kesinti_sayisi' => $kesintiSayisi,
+            ];
+        }
+
+        // Aktif İcra Daireleri
+        $stmtDaire = $this->db->query("SELECT id, daire_adi, iban, il, ilce FROM icra_daireleri WHERE aktif = 1 AND TRIM(daire_adi) <> '' ORDER BY daire_adi ASC");
+        $icraDaireleri = $stmtDaire->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $genelYuzde = $toplamBorc > 0 ? (int) round(($toplamKesilen / $toplamBorc) * 100) : 0;
+
+        return [
+            'items' => $items,
+            'summary' => [
+                'toplam_dosya' => count($items),
+                'aktif_dosya' => $aktifDosya,
+                'bekleyen_dosya' => $bekleyenDosya,
+                'tamamlanan_dosya' => $tamamlananDosya,
+                'toplam_borc' => $toplamBorc,
+                'toplam_kesilen' => $toplamKesilen,
+                'toplam_kalan' => $toplamKalan,
+                'genel_odenen_yuzde' => $genelYuzde,
+                'next_sira' => $maxSira + 1,
+            ],
+            'icra_daireleri' => $icraDaireleri,
+        ];
+    }
+
+    public function saveIcra(array $data, int $firmaId, int $userId): array
+    {
+        $personelId = (int) ($data['personel_id'] ?? 0);
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $id = !empty($data['id']) ? (int) $data['id'] : null;
+        $dosyaNo = mb_substr(trim((string) ($data['dosya_no'] ?? '')), 0, 100);
+        $icraDairesi = mb_substr(trim((string) ($data['icra_dairesi'] ?? '')), 0, 255);
+
+        if ($dosyaNo === '' || $icraDairesi === '') {
+            throw new \RuntimeException('İcra dairesi ve dosya numarası zorunludur.');
+        }
+
+        $sira = max(1, (int) ($data['sira'] ?? 1));
+        $alacakli = mb_substr(trim((string) ($data['alacakli'] ?? '')), 0, 255) ?: null;
+        $toplamBorc = max(0.0, (float) ($data['toplam_borc'] ?? 0));
+        $aylikKesintiTutari = max(0.0, (float) ($data['aylik_kesinti_tutari'] ?? 0));
+        $kesintiTipi = in_array(($data['kesinti_tipi'] ?? 'tutar'), ['tutar', 'net_yuzde', 'asgari_yuzde'], true)
+            ? $data['kesinti_tipi']
+            : 'tutar';
+        $kesintiOrani = max(0.0, (float) ($data['kesinti_orani'] ?? 0));
+        $durum = in_array(($data['durum'] ?? 'devam_ediyor'), ['bekliyor', 'devam_ediyor', 'fekki_geldi', 'kesinti_bitti', 'bitti', 'durduruldu'], true)
+            ? $data['durum']
+            : 'devam_ediyor';
+        $baslangicTarihi = !empty($data['baslangic_tarihi']) ? (string) $data['baslangic_tarihi'] : null;
+        $bitisTarihi = !empty($data['bitis_tarihi']) ? (string) $data['bitis_tarihi'] : null;
+        $iban = mb_substr(trim((string) ($data['iban'] ?? '')), 0, 50) ?: null;
+        $hesapBilgileri = mb_substr(trim((string) ($data['hesap_bilgileri'] ?? '')), 0, 500) ?: null;
+        $aciklama = mb_substr(trim((string) ($data['aciklama'] ?? '')), 0, 1000);
+
+        if ($id) {
+            $checkStmt = $this->db->prepare("SELECT id FROM personel_icralari WHERE id = :id AND personel_id = :personel_id AND silinme_tarihi IS NULL");
+            $checkStmt->execute([':id' => $id, ':personel_id' => $personelId]);
+            if (!$checkStmt->fetch()) {
+                throw new \RuntimeException('Güncellenecek icra dosyası bulunamadı.');
+            }
+
+            $sql = "UPDATE personel_icralari SET
+                        sira = :sira,
+                        dosya_no = :dosya_no,
+                        icra_dairesi = :icra_dairesi,
+                        alacakli = :alacakli,
+                        toplam_borc = :toplam_borc,
+                        aylik_kesinti_tutari = :aylik_kesinti_tutari,
+                        kesinti_tipi = :kesinti_tipi,
+                        kesinti_orani = :kesinti_orani,
+                        durum = :durum,
+                        baslangic_tarihi = :baslangic_tarihi,
+                        bitis_tarihi = :bitis_tarihi,
+                        iban = :iban,
+                        hesap_bilgileri = :hesap_bilgileri,
+                        aciklama = :aciklama,
+                        updated_at = NOW()
+                    WHERE id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':sira' => $sira,
+                ':dosya_no' => $dosyaNo,
+                ':icra_dairesi' => $icraDairesi,
+                ':alacakli' => $alacakli,
+                ':toplam_borc' => $toplamBorc,
+                ':aylik_kesinti_tutari' => $aylikKesintiTutari,
+                ':kesinti_tipi' => $kesintiTipi,
+                ':kesinti_orani' => $kesintiOrani,
+                ':durum' => $durum,
+                ':baslangic_tarihi' => $baslangicTarihi,
+                ':bitis_tarihi' => $bitisTarihi,
+                ':iban' => $iban,
+                ':hesap_bilgileri' => $hesapBilgileri,
+                ':aciklama' => $aciklama,
+                ':id' => $id,
+            ]);
+
+            $logAction = 'İcra Dosyası Güncelleme (Mobil)';
+            $logMsg = sprintf("%s personeline ait icra dosyası güncellendi (%s - %s).", $personel['adi_soyadi'], $icraDairesi, $dosyaNo);
+        } else {
+            $sql = "INSERT INTO personel_icralari
+                    (personel_id, sira, dosya_no, icra_dairesi, alacakli, toplam_borc, aylik_kesinti_tutari, kesinti_tipi, kesinti_orani, durum, baslangic_tarihi, bitis_tarihi, iban, hesap_bilgileri, aciklama, created_at)
+                    VALUES
+                    (:personel_id, :sira, :dosya_no, :icra_dairesi, :alacakli, :toplam_borc, :aylik_kesinti_tutari, :kesinti_tipi, :kesinti_orani, :durum, :baslangic_tarihi, :bitis_tarihi, :iban, :hesap_bilgileri, :aciklama, NOW())";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':personel_id' => $personelId,
+                ':sira' => $sira,
+                ':dosya_no' => $dosyaNo,
+                ':icra_dairesi' => $icraDairesi,
+                ':alacakli' => $alacakli,
+                ':toplam_borc' => $toplamBorc,
+                ':aylik_kesinti_tutari' => $aylikKesintiTutari,
+                ':kesinti_tipi' => $kesintiTipi,
+                ':kesinti_orani' => $kesintiOrani,
+                ':durum' => $durum,
+                ':baslangic_tarihi' => $baslangicTarihi,
+                ':bitis_tarihi' => $bitisTarihi,
+                ':iban' => $iban,
+                ':hesap_bilgileri' => $hesapBilgileri,
+                ':aciklama' => $aciklama,
+            ]);
+            $id = (int) $this->db->lastInsertId();
+
+            $logAction = 'İcra Dosyası Ekleme (Mobil)';
+            $logMsg = sprintf("%s personeline yeni icra dosyası eklendi (%s - %s, Borç: %s ₺).", $personel['adi_soyadi'], $icraDairesi, $dosyaNo, number_format($toplamBorc, 2, ',', '.'));
+        }
+
+        try {
+            $logModel = new SystemLogModel();
+            $logModel->logAction($userId, $logAction, $logMsg, SystemLogModel::LEVEL_IMPORTANT);
+        } catch (\Throwable $ignored) {
+        }
+
+        $details = $this->getIcraDetails($personelId, $firmaId);
+
+        return [
+            'success' => true,
+            'message' => $id ? 'İcra dosyası başarıyla kaydedildi.' : 'İcra dosyası eklendi.',
+            'icra_id' => $id,
+            'icralar' => $details['items'],
+            'icra_ozet' => $details['summary'],
+        ];
+    }
+
+    public function deleteIcra(int $id, int $personelId, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $checkStmt = $this->db->prepare("SELECT id, icra_dairesi, dosya_no FROM personel_icralari WHERE id = :id AND personel_id = :personel_id AND silinme_tarihi IS NULL");
+        $checkStmt->execute([':id' => $id, ':personel_id' => $personelId]);
+        $icra = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$icra) {
+            throw new \RuntimeException('İcra dosyası bulunamadı veya zaten silinmiş.');
+        }
+
+        $delStmt = $this->db->prepare("UPDATE personel_icralari SET silinme_tarihi = NOW() WHERE id = :id");
+        $delStmt->execute([':id' => $id]);
+
+        try {
+            $logModel = new SystemLogModel();
+            $logModel->logAction(
+                $userId,
+                'İcra Dosyası Silme (Mobil)',
+                sprintf("%s personeline ait '%s - %s' (ID: %d) icra dosyası silindi.", $personel['adi_soyadi'], $icra['icra_dairesi'], $icra['dosya_no'], $id),
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (\Throwable $ignored) {
+        }
+
+        $details = $this->getIcraDetails($personelId, $firmaId);
+
+        return [
+            'success' => true,
+            'message' => 'İcra dosyası silindi.',
+            'icralar' => $details['items'],
+            'icra_ozet' => $details['summary'],
+        ];
+    }
+
+    public function getIcraKesintileri(int $icraId, int $personelId, int $firmaId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $checkStmt = $this->db->prepare("SELECT id, icra_dairesi, dosya_no, toplam_borc FROM personel_icralari WHERE id = :id AND personel_id = :personel_id AND silinme_tarihi IS NULL");
+        $checkStmt->execute([':id' => $icraId, ':personel_id' => $personelId]);
+        $icra = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$icra) {
+            throw new \RuntimeException('İcra dosyası bulunamadı.');
+        }
+
+        $icraModel = new PersonelIcralariModel();
+        $rawKesintiler = $icraModel->getIcraKesintileri($icraId);
+
+        $kesintiler = [];
+        $toplamKesinti = 0.0;
+        foreach ($rawKesintiler as $k) {
+            $tutar = (float) ($k->tutar ?? 0);
+            $toplamKesinti += $tutar;
+            $kesintiler[] = [
+                'id' => (int) $k->id,
+                'tutar' => $tutar,
+                'aciklama' => (string) ($k->aciklama ?? ''),
+                'durum' => (string) ($k->durum ?? 'onaylandi'),
+                'donem_adi' => (string) ($k->donem_adi ?? 'Dönem Belirtilmemiş'),
+                'olusturma_tarihi' => !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime((string) $k->olusturma_tarihi)) : '',
+                'dekont_dosyasi' => (string) ($k->dekont_dosyasi ?? ''),
+            ];
+        }
+
+        $borc = (float) ($icra['toplam_borc'] ?? 0);
+        $kalan = max(0.0, $borc - $toplamKesinti);
+
+        return [
+            'success' => true,
+            'icra_info' => [
+                'id' => $icraId,
+                'dosya_no' => (string) $icra['dosya_no'],
+                'icra_dairesi' => (string) $icra['icra_dairesi'],
+                'toplam_borc' => $borc,
+                'toplam_kesilen' => $toplamKesinti,
+                'kalan_tutar' => $kalan,
+            ],
+            'kesintiler' => $kesintiler,
+            'toplam_kesinti' => $toplamKesinti,
+        ];
+    }
+
+    public function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $bytes = max($bytes, 0);
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min((int) $pow, count($units) - 1);
-        $bytes /= pow(1024, $pow);
+        $bytes /= (1 << (10 * $pow));
         return round($bytes, $precision) . ' ' . $units[$pow];
     }
 }

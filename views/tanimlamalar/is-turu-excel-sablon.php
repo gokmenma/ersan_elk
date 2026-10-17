@@ -71,6 +71,7 @@ $headers = [
     'Araçlı Personel İş Türü Ücreti',
     'Okuma Personeli İş Türü Ücreti',
     'Rapor Sekmesi',
+    'Sonuç Tipi',
     'Açıklama'
 ];
 foreach ($headers as $columnIndex => $header) {
@@ -79,7 +80,7 @@ foreach ($headers as $columnIndex => $header) {
 }
 
 // Başlık stili uygula
-$sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+$sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
 $sheet->getRowDimension(1)->setRowHeight(25);
 
 // Sütun genişlikleri
@@ -90,7 +91,8 @@ $sheet->getColumnDimension('D')->setWidth(20);
 $sheet->getColumnDimension('E')->setWidth(28);
 $sheet->getColumnDimension('F')->setWidth(28);
 $sheet->getColumnDimension('G')->setWidth(20);
-$sheet->getColumnDimension('H')->setWidth(40);
+$sheet->getColumnDimension('H')->setWidth(18);
+$sheet->getColumnDimension('I')->setWidth(40);
 
 // Verileri ekle
 $row = 2;
@@ -102,9 +104,10 @@ foreach ($isTurleri as $isTuru) {
     $sheet->setCellValue('E' . $row, (float) ($isTuru->aracli_personel_is_turu_ucret ?? 0));
     $sheet->setCellValue('F' . $row, (float) ($isTuru->okuma_is_turu_ucret ?? 0));
     $sheet->setCellValue('G' . $row, $isTuru->rapor_sekmesi ?? '');
-    $sheet->setCellValue('H' . $row, $isTuru->aciklama ?? '');
+    $sheet->setCellValue('H' . $row, $isTuru->sonuc_tipi ?? 'olumlu');
+    $sheet->setCellValue('I' . $row, $isTuru->aciklama ?? '');
 
-    $sheet->getStyle('A' . $row . ':H' . $row)->applyFromArray($dataStyle);
+    $sheet->getStyle('A' . $row . ':I' . $row)->applyFromArray($dataStyle);
     $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
     $row++;
 }

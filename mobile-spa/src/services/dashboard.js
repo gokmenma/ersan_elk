@@ -25,29 +25,40 @@ export async function saveDashboardSettings(order, settings = {}) {
 }
 
 export async function syncDailyOperations() {
-  const today = new Date().toISOString().slice(0, 10)
+  // Türkiye saat dilimine göre bugün (YYYY-MM-DD)
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date())
+
+  // Tüm günlük operasyonlar: Endeks Okuma, Kesme/Açma, Mühürleme, Sayaç Değişim
+  // Lock çakışmasını önlemek için ardışık (sequential) çalıştırılır
   const syncActions = [
-    { action: 'online-puantaj-sorgula', active_tab: 'kesme' },
     { action: 'online-icmal-sorgula', active_tab: '' },
+    { action: 'online-puantaj-sorgula', active_tab: 'kesme' },
+    { action: 'online-puantaj-sorgula', active_tab: 'muhurleme' },
     { action: 'online-sayac-degisim-sorgula', active_tab: 'sokme_takma' },
   ]
 
-  const results = await Promise.allSettled(
-    syncActions.map(async (item) => {
+  const results = []
+  for (const item of syncActions) {
+    try {
       const formData = new FormData()
       formData.append('action', item.action)
-      formData.append('active_tab', item.active_tab)
+      if (item.active_tab) {
+        formData.append('active_tab', item.active_tab)
+      }
       formData.append('baslangic_tarihi', today)
       formData.append('bitis_tarihi', today)
 
-      const res = await fetch('/views/puantaj/api.php', {
+      const res = await fetch('/api/puantaj-sync.php', {
         method: 'POST',
         credentials: 'same-origin',
         body: formData,
       })
-      return res.json().catch(() => ({ status: 'error' }))
-    })
-  )
+      const data = await res.json().catch(() => ({ status: 'error' }))
+      results.push({ item, res: data })
+    } catch (e) {
+      results.push({ item, error: e })
+    }
+  }
 
   const freshDashboard = await getDashboard()
   return { results, dashboard: freshDashboard }

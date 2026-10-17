@@ -33,7 +33,7 @@ function personnelInitials(string $name): string
     return implode('', array_map(static fn(string $part): string => mb_strtoupper(mb_substr($part, 0, 1)), $selected));
 }
 
-function personnelPublicRow(array $row): array
+function personnelPublicRow(array $row, ?array $workDetails = null): array
 {
     $active = empty($row['isten_cikis_tarihi']) || $row['isten_cikis_tarihi'] === '0000-00-00';
     $name = trim((string) ($row['adi_soyadi'] ?? '')) ?: 'İsimsiz Personel';
@@ -137,6 +137,7 @@ try {
         $ekOdemelerData = $model->getEkOdemelerDetails($personelId, $firmaId);
         $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
         $evrakData = $model->getEvrakDetails($personelId, $firmaId);
+        $icraData = $model->getIcraDetails($personelId, $firmaId);
         $quickList = $model->mobileDirectoryQuickList($firmaId);
         personnelResponse([
             'success' => true,
@@ -159,6 +160,9 @@ try {
             'evraklar' => $evrakData['items'],
             'evrak_ozet' => $evrakData['summary'],
             'evrak_turleri' => \App\Helper\Helper::EVRAK_TURLERI,
+            'icralar' => $icraData['items'],
+            'icra_ozet' => $icraData['summary'],
+            'icra_daireleri' => $icraData['icra_daireleri'],
         ]);
     }
 
@@ -624,6 +628,59 @@ try {
             'evraklar' => $evrakData['items'],
             'evrak_ozet' => $evrakData['summary'],
         ]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'icra_kesintileri') {
+        $rawPersonelId = (string) ($_GET['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        $icraId = (int) ($_GET['icra_id'] ?? 0);
+        if ($personelId <= 0 || $icraId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz kayıt bilgisi.'], 422);
+        }
+        $result = $model->getIcraKesintileri($icraId, $personelId, $firmaId);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_icra') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'İcra dosyası düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $result = $model->saveIcra($data, $firmaId, (int) $_SESSION['user_id']);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_icra') {
+        if (!Gate::allows('personel_duzenle')) {
+            personnelResponse(['success' => false, 'message' => 'İcra dosyası silme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        $icraId = (int) ($data['id'] ?? 0);
+        if ($personelId <= 0 || $icraId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz kayıt bilgisi.'], 422);
+        }
+        $result = $model->deleteIcra($icraId, $personelId, $firmaId, (int) $_SESSION['user_id']);
+        personnelResponse($result);
     }
 
     personnelResponse(['success' => false, 'message' => 'Geçersiz işlem.'], $_SERVER['REQUEST_METHOD'] === 'GET' ? 404 : 405);

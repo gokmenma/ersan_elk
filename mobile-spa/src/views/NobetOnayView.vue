@@ -748,7 +748,7 @@ onMounted(() => {
                 <component :is="selectedIds.has(shift.id) ? CheckSquare : Square" :size="20" class="text-rose-500" />
               </button>
               <div v-if="shift.personel_avatar" class="nobet-avatar nobet-avatar--img">
-                <img :src="shift.personel_avatar" :alt="shift.personel_name" />
+                <img :src="shift.personel_avatar" :alt="shift.personel_name" @error="shift.personel_avatar = null" />
               </div>
               <div v-else class="nobet-avatar nobet-avatar--initials">
                 {{ shift.personel_initials }}
@@ -920,7 +920,7 @@ onMounted(() => {
             class="nobet-cal-shift-row bento-card bento-card--white"
           >
             <div class="nobet-avatar nobet-avatar--sm">
-              <img v-if="shift.personel_avatar" :src="shift.personel_avatar" :alt="shift.personel_name" />
+              <img v-if="shift.personel_avatar" :src="shift.personel_avatar" :alt="shift.personel_name" @error="shift.personel_avatar = null" />
               <span v-else>{{ shift.personel_initials }}</span>
             </div>
 
@@ -992,7 +992,7 @@ onMounted(() => {
         >
           <div class="nobet-pool-left">
             <div class="nobet-avatar">
-              <img v-if="p.avatar" :src="p.avatar" :alt="p.name" />
+              <img v-if="p.avatar" :src="p.avatar" :alt="p.name" @error="p.avatar = null" />
               <span v-else>{{ p.initials }}</span>
             </div>
             <div class="nobet-pool-meta">
@@ -1071,7 +1071,7 @@ onMounted(() => {
                   @click="selectPersonelForPlan(p)"
                 >
                   <div class="nobet-avatar nobet-avatar--sm">
-                    <img v-if="p.avatar" :src="p.avatar" :alt="p.name" />
+                    <img v-if="p.avatar" :src="p.avatar" :alt="p.name" @error="p.avatar = null" />
                     <span v-else>{{ p.initials }}</span>
                   </div>
                   <div class="nobet-plan-p-info">

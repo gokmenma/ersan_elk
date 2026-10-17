@@ -181,6 +181,15 @@ function formatDateDMY(dateStr) {
   return dateStr
 }
 
+function getInitials(name) {
+  if (!name) return 'P'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
 function updateIzinOtoMesaj() {
   const start = formIzinOnay.value.farkli_baslangic
   const end = formIzinOnay.value.farkli_bitis
@@ -532,8 +541,14 @@ async function submitSil() {
         <div class="t-card__top">
           <div class="t-card__profile">
             <div class="t-card__avatar">
-              <img v-if="item.avatar" :src="item.avatar" :alt="item.name" />
-              <span v-else>{{ item.name?.charAt(0) || 'P' }}</span>
+              <img
+                v-if="item.avatar"
+                :src="item.avatar"
+                :alt="item.name"
+                loading="lazy"
+                @error="item.avatar = null"
+              />
+              <span v-else>{{ getInitials(item.name) }}</span>
             </div>
             <div class="t-card__meta">
               <h4>{{ item.name }}</h4>
