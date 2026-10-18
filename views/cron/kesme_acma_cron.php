@@ -24,6 +24,7 @@ use App\Helper\Security;
 use App\Helper\Helper;
 use App\Service\KesmeAcmaService;
 use App\Service\MailGonderService;
+use App\Service\OkumaHtcAutomationService;
 
 // CLI modunda mı çalışıyor?
 if (php_sapi_name() !== 'cli') {
@@ -153,6 +154,9 @@ try {
             cronLog("Kesme/Açma sorgulama başlatılıyor...");
 
             $sonuc = sorgulamaPuantaj($firmaBaslangic, $firmaBitis, $bugun, $firmaId, $Settings);
+            if (($sonuc['success'] ?? false) && $simdikiSaat === '23:45' && (int) date('w') === 0) {
+                runPuantajHtcAutomation($Settings, $firmaId, $bugun);
+            }
 
             // Son çalıştırma zamanını güncelle
             $Settings->upsertSetting('online_sorgulama_puantaj_son_calistirma', date('d.m.Y H:i:s'));
@@ -234,6 +238,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     $atlanAnListesi = [];
     $eksikZimmetListesi = [];
 
+    $basarili = false;
     try {
         $KesmeAcmaSvc = new KesmeAcmaService();
         $tarihAPI = date('d/m/Y', strtotime($tarih));
@@ -445,6 +450,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             }
         }
         $Puantaj->db->commit();
+        $basarili = true;
 
         cronLog("$yeniKayit yeni kayıt eklendi, $silinenKayit eski silindi.");
         unset($apiData);
@@ -464,6 +470,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     }
     $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', $logMsg, SystemLogModel::LEVEL_IMPORTANT);
     return [
+        'success' => $basarili,
         'yeni_kayit' => $yeniKayit,
         'silinen_kayit' => $silinenKayit,
         'guncellenen_kayit' => 0,
@@ -473,4 +480,21 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         'toplam_api' => $toplamApiKayit ?? 0,
         'eksikZimmetListesi' => array_unique($eksikZimmetListesi)
     ];
+}
+
+function runPuantajHtcAutomation(SettingsModel $settings, int $firmaId, string $date): void
+{
+    $s = $settings->getAllSettingsAsKeyValue($firmaId);
+    if (!in_array((string) ($s['okuma_htc_otomatik_aktif'] ?? '1'), ['1', 'on', 'true'], true)) return;
+    try {
+        $result = (new OkumaHtcAutomationService())->reconcile($firmaId, $date,
+            max(1, (int) ($s['okuma_htc_minimum_okuma'] ?? 10)), [
+                'kacak' => max(1, (int) ($s['kacak_htc_minimum_is'] ?? 2)),
+                'sokme_takma' => max(1, (int) ($s['sokme_takma_htc_minimum_is'] ?? 10)),
+                'muhurleme' => max(1, (int) ($s['muhurleme_htc_minimum_is'] ?? 10)),
+            ]);
+        cronLog('Ortak pazar HTÇ uzlaştırması: ' . json_encode($result, JSON_UNESCAPED_UNICODE));
+    } catch (Throwable $e) {
+        cronLog('Ortak pazar HTÇ hatası: ' . $e->getMessage());
+    }
 }

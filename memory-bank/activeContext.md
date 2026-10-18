@@ -1,25 +1,39 @@
 # Active Context
 
-## Mobil SPA: Puantaj Fazla Mesai (FM) Girişi ve Manuel Saat Desteği (2026-10-18)
+## Puantaj Ay Sonu Snapshot ve Ayın 1–3'ü Mutabakatı (2026-10-18)
+- Okuma ve kesme/açma verileri için SHA-256 mühürlü, değişmez ay sonu snapshot altyapısı eklendi.
+- Kapanan ayı ayın 1, 2 ve 3'ünde saat 03:00'te gün gün/sayfalı sorgulayan idempotent CLI worker geliştirildi; ayın 3'ü final kontroldür.
+- Silinen, eklenen, miktarı artan/azalan ve alanı değişen işlemler ayrı fark kayıtları olarak tutulur; hata/eksik sayfa gerçek fark sayılmaz.
+- Yetkili yönetim ekranı, Gate politikaları, şifreli fark ID'leri, CSRF korumalı güncel veriyi uygulama akışı ve firma bazlı e-posta/CSV raporu eklendi.
+- Açık/eksik mutabakat bordro hesaplamasını ve dönem kapanışını bloklar; `force_close` aşamaz. Uygulanan fark mevcut bordro snapshot'ını değiştirmez ve yeniden hesaplama zorunluluğu doğurur.
+- Kapsam `Endeks Okuma`, `Kesme/Açma İşlemleri`, `Sayaç Sökme-Takma` ve `Mühürleme` sekmeleridir. Başlangıç dönemi Ekim 2026'dır; daha eski dönemler taranmaz ve bordro blokajına girmez.
+- Yönetici erişimi hem `Puantaj Yönetimi > Puantaj Mutabakatı` menüsünden hem rapor ekranındaki `İşlemler > Puantaj Mutabakatı` kısayolundan sağlanır.
+- Kurulum SQL'i: `sql/2026_10_18_puantaj_mutabakat.sql`; cron: `views/cron/puantaj_mutabakat_cron.php`.
+
+## Mobil SPA: Puantaj Fazla Mesai (FM) Girişi ve 3'lü Sekme Mimarisi (2026-10-18)
 - **Kullanıcı Talebi**:
   - "masaüstü modülde fazla mesai giriş yaptık onu buraya da ekleyelim"
   - "fazla mesai saatleri tam görünmüyor, ayrıca manuel saat de girebilmeliyiz" (`media_1792351050525_204a3b9c.png`)
+  - "bu çok geniş geliyor, bir önceki iyiydi, ayrıca acordion olarak kapalı gelsin"
+  - "hatta ücretli/ücretsiz/Fazla mesai seklinde sekme olarak da yapabiliriz"
 - **Kök Neden & İyileştirmeler**:
-  1. **Saat Kesilme Sorunu Giderildi**:
-     - Eski akordeon yapısı dar yükseklik ve taşma kısıtlaması nedeniyle saat butonlarının altını kesiyordu.
-     - Akordeon kaldırılarak yerine doğrudan açık, ferah 4 sütunlu ızgara (`.picker-fm-grid`) yerleştirildi (`1s`, `1.5s`, `2s`, `3s`, `4s (Standart)`, `5.5s`, `7.5s`). Mobilde kaydırmaya gerek kalmadan tüm butonlar tek bakışta tam olarak görünür.
-  2. **Manuel Saat Girişi (Stepper + Direct Input)**:
-     - Kart içinde büyük sayı kutusu (`picker-fm-stepper-input`), solunda `[-]` (0.5 saat azalt), sağında `[+]` (0.5 saat artır) butonları ve yanında mor renkli `[ Kaydet / Güncelle ]` butonu eklendi.
-     - Kullanıcı doğrudan sayı kutusuna dokunup klavyeden istediği herhangi bir saati (örn: 2.5, 6, 8) yazabilir veya step butonlarıyla değiştirebilir.
-  3. **Mevcut Mesai Rozeti ve Kaldır Butonu**:
-     - Seçili günde mesai varsa kart başlığında `+4s Mesai` mor canlı hapı ve kırmızı `[ Kaldır ]` butonu (çöp kutusu ikonu) görüntülenir.
-     - Kesme personelleri için masaüstündeki sarı uyarı kutusu kart içinde gösterilir.
+  1. **3'lü Kompakt Sekme Yapısı (`Ücretli İzin` | `Ücretsiz İzin` | `⚡ Fazla Mesai`)**:
+     - Gün seçim bottom sheet'i (`status-picker-sheet`) dikeyde gereksiz alan kaplamaması ve akordeon karmaşası yaratmaması için 3'lü temiz sekme yapısına dönüştürüldü: `pickerActiveTab = 'ucretli' | 'ucretsiz' | 'fm'`.
+     - Modal varsayılan olarak `pickerActiveTab = 'ucretli'` ile son derece derli toplu ve kompakt bir şekilde açılır; "Normal Çalışılan Gün Olarak Ayarla (X)" ve sık kullanılan ücretli izinler hemen ekrana gelir.
+  2. **`⚡ Fazla Mesai` Sekmesi İçi (Kesilmesiz & Ergonomik)**:
+     - Kesme Departmanı Uyarısı (ilgili personel kesme departmanındaysa masaüstü standardında sarı uyarı).
+     - 4 Sütunlu Hızlı Saat Izgarası: `1s`, `1.5s`, `2s`, `3s`, `4s (Standart)`, `5.5s`, `7.5s` taşma veya kesilme olmadan tam okunabilir hap butonlar halinde sunulur.
+     - Manuel Saat Girişi: Büyük sayı kutusu (`picker-fm-stepper-input`), `[-]` (0.5s azalt), `[+]` (0.5s artır) butonları, mor `[ Kaydet / Güncelle ]` butonu ve varsa kırmızı `[ Mesaiyi Kaldır ]` butonu.
+     - Doğrudan klavyeden de herhangi bir serbest saat (örn: 2.5, 6, 8) yazılabilir.
+  3. **Mevcut Durum Banner'ı & Çift Rozet**:
+     - Üstteki mevcut durum kartında hem günün statüsü (`X Çalışılan Gün`, `Yİ Yıllık İzin` vb.) hem de varsa `+4s Mesai` mor hapı yan yana kompakt rozet grubu (`.banner-badges-group`) olarak gösterilir.
+     - Sekme butonunun başlığında da mesai varsa dinamik olarak `⚡ Fazla Mesai (+4s)` rozeti yer alır.
   4. **Ay Detay Takviminde "+FM (Fazla Mesai)" Damgalama Desteği**:
      - Ay detay takviminde `Ücretli`, `Ücretsiz` sekmelerinin yanına `⚡ Fazla Mesai (+FM)` sekmesi eklendi. Kullanıcı saat seçip takvimdeki günlere dokunarak ardışık günlere tık tık mesai damgalayabilir.
   5. **API Backend Parametre Sırası Düzeltmesi**:
      - `mobile-spa/public/api/puantaj.php` & `dist/api/puantaj.php` içinde `PersonelFazlaMesaileriModel::saveMesai` ve `deleteMesai` çağrılarındaki parametre sırası (`$personelId`, `$tarih`, `$saat`, `$firmaId`, `$userId`) düzeltildi.
   6. **Derleme & PWA Cache**:
-     - `npm run build` ile 0 hata ile derlendi (`index-NBipscto.js`, `index-D-TmB0pa.css`). Service worker cache adı `ersan-mobile-shell-v23` seviyesine yükseltildi.
+     - `npm run build` ile 0 hata ile derlendi (`index-BScQ_uQp.js`, `index-r5mRu-Vl.css`). Service worker cache adı `ersan-mobile-shell-v24` seviyesine yükseltildi.
 
 ## Mobil SPA: Cari Hareketlerini Düzenleme Desteği (Hareketi Düzenle Butonu ve Güncelleme Akışı) (2026-10-18)
 - **Kullanıcı Talebi**: "mobil-spa'da cari hareketine basınca düzenleyebilmek istiyorum, basınca sadece sil var şu anda"
@@ -2362,3 +2376,4 @@
 - Firma ayarlarına otomasyonu açma/kapama ve minimum okuma alanları eklendi. Bordro HTÇ tutar hesabı değiştirilmedi; üretim kuralı bordro dokümanına işlendi.
 - Migration uygulanmadan özellik çalıştırılmamalıdır: `database/migrations/2026_10_18_add_okuma_htc_automation.sql`.
 - Yeni otomasyon karar testleri 4 test / 9 doğrulama geçti. İlgili bordro regresyonlarında 57 test / 601 doğrulama geçti; daha önce mevcut 7 uyarı sürüyor.
+- Kapsam kaçak (varsayılan kişi başı 2), sökme-takma (10) ve mühürleme (10) pazar işlemlerine genişletildi. Kişinin dört operasyon türünden en az birinin limitini sağlaması HTÇ için yeterli; her limit firma ayarından değiştirilebilir.

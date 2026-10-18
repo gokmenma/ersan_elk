@@ -5,6 +5,7 @@ use App\Model\TanimlamalarModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
+use App\Service\Gate;
 
 $Tanimlamalar = new TanimlamalarModel();
 $EndeksOkuma = new EndeksOkumaModel();
@@ -23,6 +24,7 @@ $startDate = $_GET['start_date'] ?? '';
 $endDate = $_GET['end_date'] ?? '';
 $filterType = $_GET['filter_type'] ?? 'period';
 $activeTab = $_GET['tab'] ?? 'okuma';
+$canManageReconciliation = Gate::allows('puantaj/mutabakat');
 
 $yearOptions = [];
 for ($y = date('Y'); $y >= 2020; $y--) {
@@ -232,7 +234,8 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
     <?php include 'layouts/breadcrumb.php'; ?>
 
     <!-- ========== ANA MOD SEKMELERİ ========== -->
-    <div class="d-flex align-items-center gap-2 mb-3" id="mainModeTabs">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3" id="mainModeTabs">
+        <div class="d-flex align-items-center gap-2">
         <button
             class="btn btn-sm fw-bold d-flex align-items-center gap-1 main-mode-btn <?= $activeTab !== 'karsilastirma' ? 'active' : '' ?>"
             data-mode="rapor" id="btnModeRapor">
@@ -243,6 +246,12 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             data-mode="karsilastirma" id="btnModeKarsilastirma">
             <i class="bx bx-git-compare"></i> Karşılaştırma
         </button>
+        </div>
+        <?php if ($canManageReconciliation): ?>
+        <a href="index.php?p=puantaj/mutabakat" class="btn btn-outline-primary btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm">
+            <i class="bx bx-git-compare"></i> Puantaj Mutabakatı
+        </a>
+        <?php endif; ?>
     </div>
 
     <!-- =================== ÖZET RAPORLAR İÇERİĞİ =================== -->
@@ -421,6 +430,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                 <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
                             </button>
                         </li>
+                        <?php if ($canManageReconciliation): ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item d-flex align-items-center fw-medium" href="index.php?p=puantaj/mutabakat"><i class="bx bx-git-compare fs-5 me-2"></i> Puantaj Mutabakatı</a></li>
+                        <?php endif; ?>
                     </ul>
                 </div>
             </div>
@@ -534,6 +547,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                 <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
                             </button>
                         </li>
+                        <?php if ($canManageReconciliation): ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item d-flex align-items-center fw-medium" href="index.php?p=puantaj/mutabakat"><i class="bx bx-git-compare fs-5 me-2"></i> Puantaj Mutabakatı</a></li>
+                        <?php endif; ?>
                     </ul>
                 </div>
             </div>

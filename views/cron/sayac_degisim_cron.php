@@ -21,6 +21,7 @@ use App\Model\SayacDegisimModel;
 use App\Service\SayacDegisimService;
 use App\Service\MailGonderService;
 use App\Helper\Security;
+use App\Service\OkumaHtcAutomationService;
 
 // CLI modunda mı çalışıyor?
 if (php_sapi_name() !== 'cli') {
@@ -123,6 +124,9 @@ try {
             cronLog("Sorgulama başlatılıyor...");
 
             $sonuc = sorgulamaSayacDegisim($bugun, $firmaId, $db);
+            if (empty($sonuc['error']) && $simdikiSaat === '23:45' && (int) date('w') === 0) {
+                runSayacHtcAutomation($Settings, $firmaId, $bugun);
+            }
 
             $Settings->upsertSetting('online_sorgulama_sayac_degisim_son_calistirma', date('d.m.Y H:i:s'));
 
@@ -171,6 +175,23 @@ try {
 } catch (Exception $e) {
     cronLog("HATA: " . $e->getMessage());
     cronLog("Stack trace: " . $e->getTraceAsString());
+}
+
+function runSayacHtcAutomation(SettingsModel $settings, int $firmaId, string $date): void
+{
+    $s = $settings->getAllSettingsAsKeyValue($firmaId);
+    if (!in_array((string) ($s['okuma_htc_otomatik_aktif'] ?? '1'), ['1', 'on', 'true'], true)) return;
+    try {
+        $result = (new OkumaHtcAutomationService())->reconcile($firmaId, $date,
+            max(1, (int) ($s['okuma_htc_minimum_okuma'] ?? 10)), [
+                'kacak' => max(1, (int) ($s['kacak_htc_minimum_is'] ?? 2)),
+                'sokme_takma' => max(1, (int) ($s['sokme_takma_htc_minimum_is'] ?? 10)),
+                'muhurleme' => max(1, (int) ($s['muhurleme_htc_minimum_is'] ?? 10)),
+            ]);
+        cronLog('Ortak pazar HTÇ uzlaştırması: ' . json_encode($result, JSON_UNESCAPED_UNICODE));
+    } catch (Throwable $e) {
+        cronLog('Ortak pazar HTÇ hatası: ' . $e->getMessage());
+    }
 }
 
 $endTime = microtime(true);

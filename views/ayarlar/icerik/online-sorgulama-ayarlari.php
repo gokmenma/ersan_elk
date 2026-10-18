@@ -16,6 +16,11 @@ $online_sorgulama_puantaj_saat = $allSettings['online_sorgulama_puantaj_saat'] ?
 $online_sorgulama_sayac_degisim_saat = $allSettings['online_sorgulama_sayac_degisim_saat'] ?? '08:45';
 $okuma_htc_otomatik_aktif = ($allSettings['okuma_htc_otomatik_aktif'] ?? '1') === '1';
 $okuma_htc_minimum_okuma = max(1, (int) ($allSettings['okuma_htc_minimum_okuma'] ?? 10));
+$kacak_htc_minimum_is = max(1, (int) ($allSettings['kacak_htc_minimum_is'] ?? 2));
+$sokme_takma_htc_minimum_is = max(1, (int) ($allSettings['sokme_takma_htc_minimum_is'] ?? 10));
+$muhurleme_htc_minimum_is = max(1, (int) ($allSettings['muhurleme_htc_minimum_is'] ?? 10));
+$puantaj_mutabakat_aktif = ($allSettings['puantaj_mutabakat_aktif'] ?? '1') === '1';
+$puantaj_mutabakat_eposta = $allSettings['puantaj_mutabakat_eposta'] ?? '';
 
 // Çoklu saat değerlerini diziye çevir
 $endeks_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_endeks_saat)));
@@ -91,6 +96,21 @@ for ($saat = 0; $saat < 24; $saat++) {
 
             <div class="row">
                 <div class="col-md-6 mb-3">
+                    <div class="form-check form-switch form-switch-lg pt-2">
+                        <input class="form-check-input" type="checkbox" id="puantaj_mutabakat_aktif"
+                            name="puantaj_mutabakat_aktif" value="1" <?= $puantaj_mutabakat_aktif ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="puantaj_mutabakat_aktif">Ay Sonu Puantaj Mutabakatı Aktif</label>
+                    </div>
+                    <div class="form-text">Kapanan ayı ayın 1, 2 ve 3'ünde saat 03:00'te yeniden karşılaştırır.</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <?= Form::FormFloatInput('text','puantaj_mutabakat_eposta',$puantaj_mutabakat_eposta,'','Mutabakat E-posta Adresleri','envelope','form-control') ?>
+                    <div class="form-text">Birden çok adresi virgül veya noktalı virgülle ayırabilirsiniz.</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
                     <?php echo Form::FormFloatInput(
                         "number",
                         "online_sorgulama_firma_baslangic",
@@ -113,6 +133,17 @@ for ($saat = 0; $saat < 24; $saat++) {
                         "form-control"
                     ); ?>
                     <div class="form-text">Sorgulamanın biteceği son firma kodu</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <?php echo Form::FormFloatInput("number", "kacak_htc_minimum_is", $kacak_htc_minimum_is, "", "Kaçak Minimum İş", "shield", "form-control"); ?>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <?php echo Form::FormFloatInput("number", "sokme_takma_htc_minimum_is", $sokme_takma_htc_minimum_is, "", "Sökme-Takma Minimum İş", "tool", "form-control"); ?>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <?php echo Form::FormFloatInput("number", "muhurleme_htc_minimum_is", $muhurleme_htc_minimum_is, "", "Mühürleme Minimum İş", "check-square", "form-control"); ?>
                 </div>
             </div>
         </div>
@@ -162,10 +193,10 @@ for ($saat = 0; $saat < 24; $saat++) {
                         <input class="form-check-input" type="checkbox" id="okuma_htc_otomatik_aktif"
                             name="okuma_htc_otomatik_aktif" value="1" <?php echo $okuma_htc_otomatik_aktif ? 'checked' : ''; ?>>
                         <label class="form-check-label" for="okuma_htc_otomatik_aktif">
-                            Pazar Okumalarından Otomatik HTÇ
+                            Pazar Operasyonlarından Otomatik HTÇ
                         </label>
                     </div>
-                    <div class="form-text">23:45 sorgusundan sonra uygun okuma personelinin HT kaydını HTÇ'ye dönüştürür.</div>
+                    <div class="form-text">Okuma, kaçak, sökme-takma veya mühürleme alt limitini sağlayan personelin HT kaydını HTÇ'ye dönüştürür.</div>
                 </div>
                 <div class="col-md-6 mb-3">
                     <?php echo Form::FormFloatInput(
@@ -512,7 +543,7 @@ for ($saat = 0; $saat < 24; $saat++) {
             <h5 class="mb-0 text-primary"><i data-feather="terminal" class="me-2"></i>Cron Job Kurulumu</h5>
         </div>
         <div class="card-body p-4">
-            <p>Otomatik sorgulama için sunucunuzda aşağıdaki <strong>2 ayrı</strong> cron job'u eklemeniz gerekmektedir:
+            <p>Otomatik sorgulama için sunucunuzda aşağıdaki <strong>4 ayrı</strong> cron job'u eklemeniz gerekmektedir:
             </p>
 
             <?php
@@ -521,6 +552,7 @@ for ($saat = 0; $saat < 24; $saat++) {
             $endeksPath = str_replace('\\', '/', $basePath . '/cron/endeks_okuma_cron.php');
             $kesmePath = str_replace('\\', '/', $basePath . '/cron/kesme_acma_cron.php');
             $sayacDegisimPath = str_replace('\\', '/', $basePath . '/cron/sayac_degisim_cron.php');
+            $mutabakatPath = str_replace('\\', '/', $basePath . '/cron/puantaj_mutabakat_cron.php');
             $logPath = str_replace('\\', '/', $basePath . '/cron/logs/cron.log');
             ?>
             <h6 class="text-primary mt-3 mb-2"><i data-feather="activity" class="me-1"
@@ -547,9 +579,14 @@ for ($saat = 0; $saat < 24; $saat++) {
                 </code>
             </div>
 
+            <h6 class="text-warning mt-3 mb-2"><i data-feather="git-compare" class="me-1" style="width:16px;height:16px"></i> 4. Puantaj Mutabakat Cron</h6>
+            <div class="bg-dark text-light p-3 rounded mb-3">
+                <code class="text-warning" style="word-break:break-all;">*/5 * * * * /usr/local/bin/php -q <?= $mutabakatPath ?> &gt;&gt; <?= $logPath ?> 2&gt;&amp;1</code>
+            </div>
+
             <p class="mb-0 text-muted">
                 <i data-feather="info" class="me-1"></i>
-                Her iki cron da 15 dakikada bir çalışır ve yukarıda ayarlanan saatlere denk geldiğinde sorgulama yapar.
+                Operasyon cronları 15 dakikada, mutabakat cron'u 5 dakikada bir kontrol edilir ve yalnız planlanan zamanda işlem yapar.
                 Her sorgulama türü için günde en fazla <strong>6 farklı saat</strong> belirlenebilir.
             </p>
         </div>

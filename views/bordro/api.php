@@ -18,6 +18,7 @@ use App\Helper\Date;
 use App\Helper\Security;
 use App\Service\Gate;
 use App\Model\PermissionPolicyModel;
+use App\Model\PuantajMutabakatModel;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -564,6 +565,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $donem = $BordroDonem->getDonemById($donem_id);
+                if (!$donem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+                $mutabakatBlok = (new PuantajMutabakatModel())->closureBlockReason(
+                    (int) ($_SESSION['firma_id'] ?? 0),
+                    (string) $donem->baslangic_tarihi,
+                    (string) $donem->bitis_tarihi
+                );
+                if ($mutabakatBlok !== null && !str_contains($mutabakatBlok, 'yeniden hesaplanmalıdır')) {
+                    throw new Exception($mutabakatBlok);
+                }
                 if ($donem) {
                     $stmt = $BordroPersonel->getDb()->prepare("SELECT id FROM bordro_personel WHERE donem_id = ? AND silinme_tarihi IS NULL");
                     $stmt->execute([$donem_id]);
@@ -612,6 +624,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
                     $db->commit();
+                    (new PuantajMutabakatModel())->refreshRecalculationState(
+                        (int) ($_SESSION['firma_id'] ?? 0),
+                        $donem_id,
+                        substr((string) $donem->baslangic_tarihi, 0, 7)
+                    );
                 } catch (\Exception $e) {
                     if ($db->inTransaction()) {
                         $db->rollBack();
@@ -3409,6 +3426,22 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 $donem = $BordroDonem->getDonemById($donem_id);
                 if (!$donem) {
                     throw new Exception('Dönem bulunamadı.');
+                }
+
+                $mutabakatBlok = (new PuantajMutabakatModel())->closureBlockReason(
+                    (int) ($_SESSION['firma_id'] ?? 0),
+                    (string) $donem->baslangic_tarihi,
+                    (string) $donem->bitis_tarihi
+                );
+                if ($mutabakatBlok !== null) {
+                    echo json_encode([
+                        'status' => 'validation_error',
+                        'title' => 'Puantaj Mutabakatı Tamamlanmadı',
+                        'message' => $mutabakatBlok,
+                        'error_count' => 1,
+                        'errors' => [['personel' => 'Dönem mutabakatı', 'detay' => $mutabakatBlok]],
+                    ], JSON_UNESCAPED_UNICODE);
+                    break;
                 }
 
                 // Mali/snapshot tutarsızlıkları hukuki kayıt bütünlüğü nedeniyle

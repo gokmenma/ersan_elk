@@ -75,6 +75,14 @@ switch ($action) {
                 $settingsToUpdate['okuma_htc_otomatik_aktif'] = '0';
             }
         }
+        foreach (['kacak_htc_minimum_is', 'sokme_takma_htc_minimum_is', 'muhurleme_htc_minimum_is'] as $minimumKey) {
+            if (isset($settingsToUpdate[$minimumKey])) {
+                $settingsToUpdate[$minimumKey] = (string) max(1, (int) $settingsToUpdate[$minimumKey]);
+            }
+        }
+        if (array_key_exists('puantaj_mutabakat_eposta', $settingsToUpdate) && !isset($settingsToUpdate['puantaj_mutabakat_aktif'])) {
+            $settingsToUpdate['puantaj_mutabakat_aktif'] = '0';
+        }
 
         if (isset($settingsToUpdate['canli_destek_baslama_saati']) || isset($settingsToUpdate['canli_destek_bitis_saati']) || isset($settingsToUpdate['canli_destek_yetkili_kullanicilar'])) {
             if (!isset($settingsToUpdate['canli_destek_aktif'])) {

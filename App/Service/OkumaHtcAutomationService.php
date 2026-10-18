@@ -21,7 +21,7 @@ class OkumaHtcAutomationService
         $this->model ??= new OkumaHtcAutomationModel();
     }
 
-    public function reconcile(int $firmaId, string $date, int $minimumOkuma = 10): array
+    public function reconcile(int $firmaId, string $date, int $minimumOkuma = 10, array $operationMinimums = []): array
     {
         $day = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
         $errors = DateTimeImmutable::getLastErrors();
@@ -33,15 +33,19 @@ class OkumaHtcAutomationService
         }
 
         $minimumOkuma = max(1, $minimumOkuma);
+        $minimums = array_merge(['okuma' => $minimumOkuma, 'kacak' => 2, 'sokme_takma' => 10, 'muhurleme' => 10], $operationMinimums);
         $ids = $this->model->definitionIds($firmaId);
         $htcId = (int) ($ids['HTÇ'] ?? 0);
         if (empty($ids['HT']) || $htcId <= 0) {
             throw new RuntimeException('Aktif HT ve HTÇ puantaj tanımları bulunmalıdır.');
         }
-        $readings = $this->model->eligibleReadingTotals($firmaId, $date);
+        $workTotals = $this->model->operationTotals($firmaId, $date);
+        foreach ($this->model->eligibleReadingTotals($firmaId, $date) as $personelId => $total) {
+            $workTotals[$personelId]['okuma'] = $total;
+        }
 
         $result = $this->emptyResult($date, $minimumOkuma);
-        $result['eligible_personnel'] = count($readings);
+        $result['eligible_personnel'] = count($workTotals);
 
         $ownTransaction = !$this->model->inTransaction();
         if ($ownTransaction) {
@@ -50,12 +54,14 @@ class OkumaHtcAutomationService
 
         try {
             $personelIds = array_values(array_unique(array_merge(
-                array_keys($readings),
+                array_keys($workTotals),
                 $this->model->automaticPersonnelIds($firmaId, $date, self::RULE)
             )));
 
             foreach ($personelIds as $personelId) {
-                $readingCount = (float) ($readings[$personelId] ?? 0);
+                $personTotals = $workTotals[$personelId] ?? [];
+                $qualified = self::qualifyingTotals($personTotals, $minimums);
+                $readingCount = empty($qualified) ? 0.0 : max($qualified);
                 if ($this->model->hasManualLock($firmaId, (int) $personelId, $date, self::RULE)) {
                     $result['skipped_manual']++;
                     $result['skipped'][] = [
@@ -72,7 +78,7 @@ class OkumaHtcAutomationService
                 $convertibleHt = $classification['convertible_ht'];
                 $blocking = $classification['blocking'];
 
-                if ($readingCount < $minimumOkuma) {
+                if (empty($qualified)) {
                     if ($autoHtc !== null) {
                         $this->model->softDelete((int) $autoHtc['id'], 'Okuma sayısı firma HTÇ alt limitinin altına düştü.');
                         $result['removed']++;
@@ -90,7 +96,12 @@ class OkumaHtcAutomationService
                     continue;
                 }
 
-                $description = sprintf('Pazar günü %.2f okuma ile otomatik HTÇ oluşturuldu (alt limit: %d).', $readingCount, $minimumOkuma);
+                $labels = ['okuma' => 'okuma', 'kacak' => 'kaçak işlemi', 'sokme_takma' => 'sökme-takma işlemi', 'muhurleme' => 'mühürleme işlemi'];
+                $parts = [];
+                foreach ($qualified as $category => $total) {
+                    $parts[] = sprintf('%g %s', $total, $labels[$category] ?? $category);
+                }
+                $description = 'Pazar günü ' . implode(', ', $parts) . ' ile otomatik HTÇ oluşturuldu.';
                 if ($autoHtc !== null) {
                     $this->model->updateAutomatic((int) $autoHtc['id'], self::RULE, $readingCount, $description);
                     $result['unchanged']++;
@@ -158,6 +169,17 @@ class OkumaHtcAutomationService
             break;
         }
         return $result;
+    }
+
+    public static function qualifyingTotals(array $totals, array $minimums): array
+    {
+        $qualified = [];
+        foreach ($minimums as $category => $limit) {
+            if ((float) ($totals[$category] ?? 0) >= max(1, (int) $limit)) {
+                $qualified[$category] = (float) $totals[$category];
+            }
+        }
+        return $qualified;
     }
 
     private function emptyResult(string $date, int $minimum, string $message = ''): array

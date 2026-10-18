@@ -572,8 +572,13 @@ function runOkumaHtcAutomation(SettingsModel $settings, int $firmaId, string $da
     }
 
     $minimum = max(1, (int) ($allSettings['okuma_htc_minimum_okuma'] ?? 10));
+    $operationMinimums = [
+        'kacak' => max(1, (int) ($allSettings['kacak_htc_minimum_is'] ?? 2)),
+        'sokme_takma' => max(1, (int) ($allSettings['sokme_takma_htc_minimum_is'] ?? 10)),
+        'muhurleme' => max(1, (int) ($allSettings['muhurleme_htc_minimum_is'] ?? 10)),
+    ];
     try {
-        $result = (new OkumaHtcAutomationService())->reconcile($firmaId, $date, $minimum);
+        $result = (new OkumaHtcAutomationService())->reconcile($firmaId, $date, $minimum, $operationMinimums);
         cronLog(sprintf(
             'HTÇ %s sonucu (%s, limit %d): %d oluşturuldu, %d HT dönüştürüldü, %d kaldırıldı, %d manuel kayıt nedeniyle atlandı, %d değişmedi.',
             $reason,

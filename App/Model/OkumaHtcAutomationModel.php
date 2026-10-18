@@ -49,6 +49,53 @@ class OkumaHtcAutomationModel extends Model
         return $totals;
     }
 
+    public function operationTotals(int $firmaId, string $date): array
+    {
+        $totals = [];
+
+        $kacak = $this->db->prepare("SELECT p.id AS personel_id, SUM(k.sayi) AS toplam
+            FROM kacak_kontrol k INNER JOIN personel p ON p.firma_id = k.firma_id
+              AND (p.id = k.bildiren_personel_id OR FIND_IN_SET(p.id, k.personel_ids))
+            WHERE k.firma_id = ? AND k.tarih = ? AND k.silinme_tarihi IS NULL
+              AND k.onay_durumu IN ('onaylandi', 'beklemede')
+              AND NOT (k.durum = 'iptal' AND k.hakedisten_dus = 1)
+              AND p.silinme_tarihi IS NULL
+            GROUP BY p.id");
+        $kacak->execute([$firmaId, $date]);
+        foreach ($kacak->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $totals[(int) $row['personel_id']]['kacak'] = (float) $row['toplam'];
+        }
+
+        $sokme = $this->db->prepare("SELECT t.personel_id,
+              ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) AS toplam
+            FROM sayac_degisim t
+            JOIN (SELECT tarih, SUBSTRING_INDEX(islem_id, '_', 1) ortak_islem_id, COUNT(*) personel_sayisi
+                  FROM sayac_degisim WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL
+                  GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)) pay
+              ON pay.tarih = t.tarih AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
+            WHERE t.firma_id = ? AND t.tarih = ? AND t.silinme_tarihi IS NULL AND t.personel_id > 0
+              AND EXISTS (SELECT 1 FROM tanimlamalar d WHERE d.firma_id = t.firma_id
+                  AND d.grup = 'is_turu' AND d.rapor_sekmesi = 'sokme_takma'
+                  AND TRIM(d.is_emri_sonucu) = TRIM(t.isemri_sonucu) AND d.silinme_tarihi IS NULL)
+            GROUP BY t.personel_id");
+        $sokme->execute([$firmaId, $date, $firmaId, $date]);
+        foreach ($sokme->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $totals[(int) $row['personel_id']]['sokme_takma'] = (float) $row['toplam'];
+        }
+
+        $muhur = $this->db->prepare("SELECT y.personel_id, SUM(y.sonuclanmis) AS toplam
+            FROM yapilan_isler y INNER JOIN tanimlamalar d ON d.id = y.is_emri_sonucu_id
+            WHERE y.firma_id = ? AND y.tarih = ? AND y.silinme_tarihi IS NULL AND y.personel_id > 0
+              AND d.rapor_sekmesi = 'muhurleme' AND d.silinme_tarihi IS NULL
+            GROUP BY y.personel_id");
+        $muhur->execute([$firmaId, $date]);
+        foreach ($muhur->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $totals[(int) $row['personel_id']]['muhurleme'] = (float) $row['toplam'];
+        }
+
+        return $totals;
+    }
+
     public function automaticPersonnelIds(int $firmaId, string $date, string $rule): array
     {
         $stmt = $this->db->prepare("SELECT DISTINCT pi.personel_id FROM personel_izinleri pi

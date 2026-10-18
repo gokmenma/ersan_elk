@@ -1,13 +1,23 @@
 # Progress
 
-## 2026-10-18 — Mobil SPA: Puantaj Fazla Mesai (FM) Girişi ve Manuel Saat Desteği
+## 2026-10-18 — Puantaj Snapshot ve Ayın 3'üne Kadar Mutabakat
+- [x] Okuma/kesme ay sonu snapshot, manifest hash, çalışma checkpoint, staging ve fark tabloları için tekrarlanabilir SQL hazırlandı.
+- [x] Ayın 1–3'ü 03:00 worker'ı, günlük sayfalama, DB kilidi ve hata izolasyonu eklendi; kapsam Ekim 2026 ve sonrasıyla sınırlandı, geçmiş backfill kaldırıldı.
+- [x] Fark sınıflandırma, yetkili güncel veriyi uygulama, audit bilgileri ve bordro yeniden hesaplama işareti tamamlandı.
+- [x] Yeni yetki/menü/API politikaları ve Superadmin/Firma Sahibi rol atamaları SQL'e bağlandı.
+- [x] Yönetim DataTable sayfası, özet kartları, e-posta ayarı, CSV bildirim eki ve bordro hesaplama/kapanış blokajı eklendi.
+- [x] Mutabakat ve bordro kapanış doğrulamaları 10 test / 55 assertion ile geçti; ilgili PHP dosyalarının syntax kontrolleri başarılı.
+- [x] Sayaç Sökme-Takma ve Mühürleme ayrı mutabakat kaynakları olarak eklendi; rapor sayfasının üstüne sürekli görünür mutabakat kısayolu yerleştirildi.
+
+## 2026-10-18 — Mobil SPA: Puantaj Fazla Mesai (FM) Girişi ve 3'lü Sekme Mimarisi
+- [x] **3'lü Kompakt Sekme Yapısı**: Gün seçim modalı dikeyde gereksiz alan işgal etmemesi için `[ Ücretli İzin ]`, `[ Ücretsiz İzin ]`, `[ ⚡ Fazla Mesai ]` 3'lü sekmesine dönüştürüldü. Varsayılan olarak Ücretli İzin sekmesinde kompakt açılır.
 - [x] **Saat Kesilme Sorunu Giderildi**: Eski akordeon yapısı kaldırıldı; yerine 4 sütunlu esnek ve tam görünür `.picker-fm-grid` ızgarası yerleştirildi (`1s`, `1.5s`, `2s`, `3s`, `4s (Standart)`, `5.5s`, `7.5s`).
 - [x] **Manuel Saat Girişi & Stepper Eklendi**: `[-]` (0.5s azalt), `[+]` (0.5s artır) step butonları ve doğrudan klavyeden sayı yazılabilen büyük numara kutusu ile mor `[ Kaydet / Güncelle ]` butonu eklendi.
 - [x] **Mevcut Mesai Rozeti ve Kaldır Butonu**: Seçili günde mesai varsa `+4s Mesai` mor hapı ve kırmızı `[ Kaldır ]` butonu ile anında silme desteği sağlandı.
 - [x] **Kesme Departmanı Uyarısı**: Kesme personelleri için kart içinde sarı uyarı kutusu gösterildi.
 - [x] **Ay Detay Takviminde "+FM" Damgalama**: `⚡ Fazla Mesai (+FM)` sekmesiyle saat seçip takvimdeki günlere dokunarak ardışık günlere tık tık mesai damgalama özelliği eklendi.
 - [x] **API Parametre Sırası Düzeltildi**: `PersonelFazlaMesaileriModel::saveMesai` ve `deleteMesai` çağrılarındaki parametre sırası düzeltildi.
-- [x] **Derleme & PWA Cache**: `npm run build` ile 0 hatayla derlendi, PWA service worker cache `v23`'e yükseltildi.
+- [x] **Derleme & PWA Cache**: `npm run build` ile 0 hatayla derlendi, PWA service worker cache `ersan-mobile-shell-v24` seviyesine yükseltildi.
 
 ## 2026-10-18 — Mobil SPA: Cari Hareketlerini Düzenleme Desteği (Hareketi Düzenle Butonu ve Güncelleme Akışı)
 - [x] **1. Cari Detay Ekranı ([`CariDetailView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariDetailView.vue))**:
@@ -1262,3 +1272,4 @@
 - [x] Pazar günü kişi bazında varsayılan 10 okumayı geçen Okuma/Endeks Okuma personeline 23:45 endeks cron'u sonrasında otomatik HTÇ üretimi eklendi; pazartesi sabah telafisi, firma ayarları, legacy HT dönüşümü, soft delete ve manuel kod koruması uygulandı. (2026-10-18)
 - [x] Otomatik HTÇ'nin mobil/masaüstü puantajda başka koda veya kayıtsız `X` gününe çevrilmesinin sonraki cron tarafından ezilmesini önleyen kaynak ve otomasyon kilidi takibi eklendi. (2026-10-18)
 - [x] Otomatik HTÇ karar testleri ile ilgili bordro regresyonları geçti: 57 test / 601 doğrulama; önceden mevcut 7 uyarı devam ediyor. (2026-10-18)
+- [x] Otomatik pazar HTÇ kapsamı kaçak personeli için 2, sökme-takma ve mühürleme personeli için 10 işlem eşiğiyle genişletildi; eşikler firma ayarına ve ilgili operasyon cronlarına bağlandı. (2026-10-18)

@@ -62,3 +62,11 @@ test('mevcut otomatik HTÇ mükerrer kayıt yerine güncellenir', function () {
     expect($result['automatic_htc']['id'])->toBe(4)
         ->and($result['blocking'])->toBeNull();
 });
+
+test('operasyon türleri kendi alt limitleriyle bağımsız değerlendirilir', function () {
+    $minimums = ['okuma' => 10, 'kacak' => 2, 'sokme_takma' => 10, 'muhurleme' => 10];
+    expect(OkumaHtcAutomationService::qualifyingTotals(['kacak' => 2], $minimums))->toBe(['kacak' => 2.0])
+        ->and(OkumaHtcAutomationService::qualifyingTotals(['kacak' => 1], $minimums))->toBe([])
+        ->and(OkumaHtcAutomationService::qualifyingTotals(['sokme_takma' => 10], $minimums))->toBe(['sokme_takma' => 10.0])
+        ->and(OkumaHtcAutomationService::qualifyingTotals(['muhurleme' => 9], $minimums))->toBe([]);
+});

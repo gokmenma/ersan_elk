@@ -41,6 +41,17 @@ WHERE f.silinme_tarihi IS NULL
   );
 
 INSERT INTO settings (set_name, set_value, firma_id, user_id)
+SELECT defaults.set_name, defaults.set_value, f.id, NULL
+FROM firmalar f
+CROSS JOIN (
+    SELECT 'kacak_htc_minimum_is' set_name, '2' set_value
+    UNION ALL SELECT 'sokme_takma_htc_minimum_is', '10'
+    UNION ALL SELECT 'muhurleme_htc_minimum_is', '10'
+) defaults
+WHERE f.silinme_tarihi IS NULL
+  AND NOT EXISTS (SELECT 1 FROM settings s WHERE s.set_name = defaults.set_name AND s.firma_id = f.id AND s.user_id IS NULL);
+
+INSERT INTO settings (set_name, set_value, firma_id, user_id)
 SELECT 'okuma_htc_minimum_okuma', '10', f.id, NULL
 FROM firmalar f
 WHERE f.silinme_tarihi IS NULL

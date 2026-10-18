@@ -220,6 +220,9 @@ okuma sayisi (varsayilan 10) saglandiginda endeks cron'u tarafindan otomatik
 uretilebilir. Varsayilan veya eski `HT` kaydi `HTÇ` olarak donusturulur; HT disinda
 manuel kod bulunan gun degistirilmez. Otomatik HTÇ kullanici tarafindan baska bir
 koda cevrildiginde manuel tercih kilitlenir ve sonraki cron tarafindan ezilmez.
+Kacak personelinde kisi basi 2, sokme-takma ve muhurleme personelinde kisi basi
+10 pazar islemi ayni HTÇ kuralini tetikler. Bu limitler firma ayarlarindan
+degistirilebilir; personelin operasyonlardan en az birinin limitini saglamasi yeterlidir.
 Bu uretim kurali yalniz puantaj gununu belirler; asagidaki HTÇ tutar ve odeme
 dagilimi formullerini degistirmez.
 
@@ -629,3 +632,11 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 - Örnek: Gerçek puantaj kaydı yok, nöbet 7 × 500 = 3.500,00 TL ve 29 günlük resmî taban 27.139,65 TL ise sözleşme kartında `0,00 TL Puantaj Hakedişi + 3.500,00 TL Nöbet = 3.500,00 TL` gösterilir. Resmî nöbet 28 saat için 5.240,76 TL, resmî banka ve kesintisiz ödeme 32.380,41 TL olarak korunur.
 - Kayıtlı snapshot gösterimde değiştirilmez; düzeltme yetkili yeniden hesaplamayla uygulanır.
 - Bordro Kontrol Excel'indeki sözleşme alacağı kırılımı canlı ek ödeme tablolarından kurulmaz. Kayıtlı snapshot ek ödeme kalemleri gruplanır. Prim usulünde gerçek puantaj kaynakları **Puantaj Hakedişi**, kanuni taban ise yalnız Resmî Alacak bölümünde **Asgari Ücret (Net)** etiketiyle gösterilir. Sözleşme bölümü satırları kendi gerçek kaynak toplamıyla kuruş bazında eşitlenir. Kesinti kırılımı da aynı snapshot'tan okunur. Böylece detay ve Excel aynı hesaplama anını ve aynı kaynak ayrımını gösterir.
+# Puantaj Mutabakatı Ön Koşulu (2026-10-18)
+
+- Mutabakat kapsamı `Endeks Okuma`, `Kesme/Açma İşlemleri`, `Sayaç Sökme-Takma` ve `Mühürleme` kaynaklarıdır ve Ekim 2026 dönemiyle başlar. Daha eski bordro dönemleri bu kontrol nedeniyle bloklanmaz.
+- Okuma ve kesme/açma hakediş kaynakları, ay sonu snapshot'ı ile takip eden ayın 1, 2 ve 3'ündeki dış servis sonuçları arasında mutabık olmalıdır.
+- Ayın 3'ündeki final tarama tamamlanmamışsa, eksik gün/API sayfası varsa veya açık fark bulunuyorsa bordro hesaplanamaz ve dönem kapatılamaz; bu blokaj `force_close` ile aşılamaz.
+- Yetkili tarafından güncel dış sistem verisi uygulandığında önceden hesaplanmış bordro snapshot'ı otomatik değiştirilmez. İlgili dönemdeki tüm personel bordroları yeniden hesaplanmadan dönem kapatılamaz.
+- Mutabakat snapshot'ı ve geçmiş fark/çözüm kayıtları geriye dönük değiştirilmez veya silinmez.
+

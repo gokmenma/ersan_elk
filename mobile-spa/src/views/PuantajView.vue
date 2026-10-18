@@ -1947,65 +1947,65 @@ onMounted(async () => {
           </header>
 
           <div class="ds-sheet-body hide-scrollbar">
-            <!-- Mevcut Durum Kartı -->
+            <!-- Mevcut Durum Kartı (Statü + Varsa Fazla Mesai Rozeti) -->
             <div v-if="currentPickerDayEntry" class="current-status-banner">
               <span class="banner-title">Mevcut Durum:</span>
-              <div class="banner-status-badge" :style="{ backgroundColor: currentPickerDayEntry.theme.badgeBg }">
-                <strong>{{ currentPickerDayEntry.code }}</strong>
-                <span>{{ currentPickerDayEntry.name || currentPickerDayEntry.code }}</span>
+              <div class="banner-badges-group">
+                <div class="banner-status-badge" :style="{ backgroundColor: currentPickerDayEntry.theme.badgeBg }">
+                  <strong>{{ currentPickerDayEntry.code }}</strong>
+                  <span>{{ currentPickerDayEntry.name || currentPickerDayEntry.code }}</span>
+                </div>
+                <div v-if="pickerCurrentOvertime > 0" class="banner-overtime-badge">
+                  <Clock :size="12" />
+                  <span>+{{ pickerCurrentOvertime }}s Mesai</span>
+                </div>
               </div>
             </div>
 
-            <!-- FAZLA MESAİ (FM) GİRİŞ KARTI (Masaüstü Standartlarında Doğrudan Açık & Net) -->
-            <section class="picker-fm-card">
-              <div class="picker-fm-card-head">
-                <div class="picker-fm-head-left">
-                  <div class="picker-fm-icon-badge">
-                    <Clock :size="18" />
-                  </div>
-                  <div>
-                    <h4 class="picker-fm-card-title">Fazla Mesai Saati</h4>
-                    <p class="picker-fm-card-sub">Bu gün için fazla mesai süresini belirleyin</p>
-                  </div>
-                </div>
+            <!-- Ücretli / Ücretsiz / Fazla Mesai Sekmeleri -->
+            <div class="stamp-tabs">
+              <button
+                type="button"
+                class="stamp-tab-btn"
+                :class="{ 'is-active': pickerActiveTab === 'ucretli' }"
+                @click="pickerActiveTab = 'ucretli'"
+              >
+                Ücretli İzin
+              </button>
+              <button
+                type="button"
+                class="stamp-tab-btn"
+                :class="{ 'is-active': pickerActiveTab === 'ucretsiz' }"
+                @click="pickerActiveTab = 'ucretsiz'"
+              >
+                Ücretsiz İzin
+              </button>
+              <button
+                type="button"
+                class="stamp-tab-btn"
+                :class="{ 'is-active': pickerActiveTab === 'fm' }"
+                @click="pickerActiveTab = 'fm'"
+              >
+                ⚡ Fazla Mesai{{ pickerCurrentOvertime > 0 ? ` (+${pickerCurrentOvertime}s)` : '' }}
+              </button>
+            </div>
 
-                <div class="picker-fm-head-right">
-                  <span
-                    v-if="pickerCurrentOvertime > 0"
-                    class="picker-fm-active-badge"
-                  >
-                    +{{ pickerCurrentOvertime }}s Mesai
-                  </span>
-                  <span v-else class="picker-fm-none-badge">
-                    Mesai Yok
-                  </span>
-                  <button
-                    v-if="pickerCurrentOvertime > 0"
-                    type="button"
-                    class="picker-fm-remove-btn"
-                    title="Mesaiyi Kaldır"
-                    @click="setPickerOvertime(0)"
-                  >
-                    <Trash2 :size="13" />
-                    <span>Kaldır</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Kesme Departmanı Fazla Mesai Uyarısı (Masaüstü Standartlarında Kart İçi) -->
+            <!-- 1. FAZLA MESAİ SEKME İÇERİĞİ -->
+            <div v-if="pickerActiveTab === 'fm'" class="picker-fm-tab-pane">
+              <!-- Kesme Departmanı Uyarısı (Masaüstü Standartlarında Kart İçi) -->
               <div
                 v-if="isKesmeDepartment(pickerTargetPersonel.departman)"
-                class="picker-kesme-alert"
+                class="picker-kesme-alert mb-2"
               >
-                <AlertCircle :size="18" class="kesme-alert-icon" />
+                <AlertCircle :size="16" class="kesme-alert-icon" />
                 <div class="kesme-alert-text">
                   <strong>Kesme Departmanı Uyarısı</strong>
                   <p>Kesme personellerinin fazla mesaileri normal şartlarda Nöbet modülü üzerinden otomatik gelmektedir.</p>
                 </div>
               </div>
 
-              <!-- Hızlı Saat Seçimi (Tam Görünür 4 Sütunlu Grid - Kesilme Yok) -->
-              <div class="picker-fm-section">
+              <!-- Hızlı Saat Seçimi (4 Sütunlu Kompakt Izgara - Kesilme Yok) -->
+              <div class="picker-fm-section mb-2">
                 <div class="picker-fm-section-title">HIZLI SAAT SEÇİMİ</div>
                 <div class="picker-fm-grid">
                   <button
@@ -2022,7 +2022,7 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <!-- Manuel Saat Girişi (Büyük Sayı + Step Butonları + Kaydet) -->
+              <!-- Manuel Saat Girişi (Büyük Sayı + Step Butonları + Kaydet / Kaldır) -->
               <div class="picker-fm-section">
                 <div class="picker-fm-section-title">MANUEL SAAT GİRİŞİ</div>
                 <div class="picker-fm-manual-row">
@@ -2033,7 +2033,7 @@ onMounted(async () => {
                       aria-label="0.5 saat azalt"
                       @click="stepOvertime(-0.5)"
                     >
-                      <Minus :size="15" />
+                      <Minus :size="14" />
                     </button>
                     <div class="picker-fm-input-wrap">
                       <input
@@ -2054,7 +2054,7 @@ onMounted(async () => {
                       aria-label="0.5 saat arttır"
                       @click="stepOvertime(0.5)"
                     >
-                      <Plus :size="15" />
+                      <Plus :size="14" />
                     </button>
                   </div>
 
@@ -2064,63 +2064,58 @@ onMounted(async () => {
                     :disabled="!customOvertimeInput || parseFloat(customOvertimeInput) < 0"
                     @click="applyCustomOvertime"
                   >
-                    <Check :size="16" />
+                    <Check :size="15" />
                     <span>{{ pickerCurrentOvertime > 0 ? 'Güncelle' : 'Kaydet' }}</span>
+                  </button>
+
+                  <button
+                    v-if="pickerCurrentOvertime > 0"
+                    type="button"
+                    class="picker-fm-remove-btn"
+                    title="Mesaiyi Kaldır"
+                    @click="setPickerOvertime(0)"
+                  >
+                    <Trash2 :size="14" />
+                    <span>Kaldır</span>
                   </button>
                 </div>
               </div>
-            </section>
-
-            <!-- Hızlı Seçenek: Normal Çalışılan Güne Döndür (X) -->
-            <button
-              type="button"
-              class="quick-reset-work-btn"
-              @click="selectStatusForDay({ id: 0, code: 'X', name: 'Çalışılan Gün' })"
-            >
-              <span class="reset-badge">X</span>
-              <div class="reset-text">
-                <strong>Normal Çalışılan Gün Olarak Ayarla</strong>
-                <small>Bu güne ait izin veya tatil kaydını sıfırlar</small>
-              </div>
-              <Check v-if="currentPickerDayEntry?.code === 'X'" :size="16" class="text-blue" />
-            </button>
-
-            <!-- Ücretli / Ücretsiz Sekmeleri -->
-            <div class="stamp-tabs mt-2">
-              <button
-                type="button"
-                class="stamp-tab-btn"
-                :class="{ 'is-active': pickerActiveTab === 'ucretli' }"
-                @click="pickerActiveTab = 'ucretli'"
-              >
-                Ücretli İzin & Çalışma
-              </button>
-              <button
-                type="button"
-                class="stamp-tab-btn"
-                :class="{ 'is-active': pickerActiveTab === 'ucretsiz' }"
-                @click="pickerActiveTab = 'ucretsiz'"
-              >
-                Ücretsiz İzin & Rapor
-              </button>
             </div>
 
-            <!-- Statü Seçim Listesi (Kartlar) -->
-            <div class="status-options-grid">
+            <!-- 2. ÜCRETLİ / ÜCRETSİZ İZİN SEKME İÇERİĞİ -->
+            <div v-else class="picker-status-tab-pane">
+              <!-- Hızlı Seçenek: Normal Çalışılan Güne Döndür (X) (Ücretli sekmesinde) -->
               <button
-                v-for="t in pickerPaletteList"
-                :key="t.code"
+                v-if="pickerActiveTab === 'ucretli'"
                 type="button"
-                class="status-option-tile"
-                :class="{ 'is-selected': currentPickerDayEntry?.code === t.code }"
-                @click="selectStatusForDay(t)"
+                class="quick-reset-work-btn mb-2"
+                @click="selectStatusForDay({ id: 0, code: 'X', name: 'Çalışılan Gün' })"
               >
-                <div class="option-tile-badge" :style="{ backgroundColor: t.color }">
-                  {{ t.code }}
+                <span class="reset-badge">X</span>
+                <div class="reset-text">
+                  <strong>Normal Çalışılan Gün Olarak Ayarla</strong>
+                  <small>Bu güne ait izin veya tatil kaydını sıfırlar</small>
                 </div>
-                <span class="option-tile-name">{{ t.name }}</span>
-                <Check v-if="currentPickerDayEntry?.code === t.code" :size="16" class="option-check-icon text-emerald" />
+                <Check v-if="currentPickerDayEntry?.code === 'X'" :size="16" class="text-blue" />
               </button>
+
+              <!-- Statü Seçim Listesi (Kartlar) -->
+              <div class="status-options-grid">
+                <button
+                  v-for="t in pickerPaletteList"
+                  :key="t.code"
+                  type="button"
+                  class="status-option-tile"
+                  :class="{ 'is-selected': currentPickerDayEntry?.code === t.code }"
+                  @click="selectStatusForDay(t)"
+                >
+                  <div class="option-tile-badge" :style="{ backgroundColor: t.color }">
+                    {{ t.code }}
+                  </div>
+                  <span class="option-tile-name">{{ t.name }}</span>
+                  <Check v-if="currentPickerDayEntry?.code === t.code" :size="16" class="option-check-icon text-emerald" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3709,16 +3704,32 @@ onMounted(async () => {
   margin: 0;
 }
 
-/* Fazla Mesai (FM) Kartı (Masaüstü Standartlarında Açık & Net) */
-.picker-fm-card {
+.banner-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.banner-overtime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+}
+
+.picker-fm-tab-pane {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 20px;
   padding: 14px 16px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .picker-fm-card-head {
