@@ -132,9 +132,13 @@ class EvrakTakipModel extends Model
             INNER JOIN personel p ON az.personel_id = p.id
             WHERE REPLACE(a.plaka, ' ', '') = REPLACE(:plaka, ' ', '')
               AND az.firma_id = :firma_id
+              AND a.firma_id = :firma_id
+              AND p.firma_id = :firma_id
               AND az.silinme_tarihi IS NULL
+              AND a.silinme_tarihi IS NULL
+              AND p.silinme_tarihi IS NULL
               AND az.zimmet_tarihi <= :tarih
-              AND (az.iade_tarihi IS NULL OR az.iade_tarihi >= :tarih)
+              AND (az.iade_tarihi IS NULL OR az.iade_tarihi = '0000-00-00' OR az.iade_tarihi >= :tarih)
               AND az.durum != 'iptal'
             ORDER BY az.id DESC
             LIMIT 1

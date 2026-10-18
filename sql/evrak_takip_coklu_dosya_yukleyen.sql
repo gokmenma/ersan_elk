@@ -1,6 +1,34 @@
-ALTER TABLE `evrak_takip_ekleri`
-    ADD COLUMN `yukleyen_kullanici_id` INT NULL AFTER `sira`,
-    ADD KEY `idx_evrak_ekleri_yukleyen` (`yukleyen_kullanici_id`);
+SET @column_exists := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'evrak_takip_ekleri'
+      AND COLUMN_NAME = 'yukleyen_kullanici_id'
+);
+SET @column_sql := IF(
+    @column_exists = 0,
+    'ALTER TABLE `evrak_takip_ekleri` ADD COLUMN `yukleyen_kullanici_id` INT NULL AFTER `sira`',
+    'SELECT 1'
+);
+PREPARE column_statement FROM @column_sql;
+EXECUTE column_statement;
+DEALLOCATE PREPARE column_statement;
+
+SET @index_exists := (
+    SELECT COUNT(*)
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'evrak_takip_ekleri'
+      AND INDEX_NAME = 'idx_evrak_ekleri_yukleyen'
+);
+SET @index_sql := IF(
+    @index_exists = 0,
+    'ALTER TABLE `evrak_takip_ekleri` ADD KEY `idx_evrak_ekleri_yukleyen` (`yukleyen_kullanici_id`)',
+    'SELECT 1'
+);
+PREPARE index_statement FROM @index_sql;
+EXECUTE index_statement;
+DEALLOCATE PREPARE index_statement;
 
 UPDATE `evrak_takip_ekleri` ee
 INNER JOIN `evrak_takip` et ON et.id = ee.evrak_id AND et.firma_id = ee.firma_id

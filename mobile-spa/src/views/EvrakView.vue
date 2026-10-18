@@ -382,13 +382,19 @@ function removeExistingAttachment(attId) {
 async function onPlakaChange() {
   const plaka = formData.value.plaka
   const tarih = formData.value.tarih
+  formData.value.ilgili_personel_id = ''
   if (!plaka) return
 
   try {
     const res = await evrakApi.aracZimmet(plaka, tarih)
+    // Kullanıcı sorgu sürerken başka bir plaka seçtiyse eski yanıtı uygulama.
+    if (formData.value.plaka !== plaka) return
+
     if (res.assignment) {
       formData.value.ilgili_personel_id = res.assignment.personel_id
       showToast(`Zimmetli sürücü bulundu: ${res.assignment.adi_soyadi}`, 'info')
+    } else {
+      showToast('Seçilen tarihte araca zimmetli personel bulunamadı.', 'info')
     }
   } catch (e) {
     console.error('Zimmet sorgu hatası:', e)

@@ -1,5 +1,29 @@
 # Active Context
 
+## Mobil SPA: Cari Hareketlerini Düzenleme Desteği (Hareketi Düzenle Butonu ve Güncelleme Akışı) (2026-10-18)
+- **Kullanıcı Talebi**: "mobil-spa'da cari hareketine basınca düzenleyebilmek istiyorum, basınca sadece sil var şu anda"
+- **Uygulanan Mimari & Tasarım**:
+  1. **`CariDetailView.vue`**:
+     - Hareket detay popup'ında (`isMovementDetailOpen`) tekli silme aksiyonu yerine birincil "Hareketi Düzenle" (`.primary-edit-btn`) butonu eklendi.
+     - Butona basıldığında `openEditMovement(h)` metodu çalışır; hareketin ID'si, yönü (`aldim` / `verdim`), tutarı, yerel saat dilimine dönüştürülmüş tarihi (`YYYY-MM-DDTHH:mm`), belge numarası, açıklaması ve varsa mevcut dosya URL'si (`existing_file`) form durumuna yüklenir.
+     - Hareket detay modalı kapanarak hızlı işlem bottom sheet'i açılır.
+     - Form başlığı dinamik olarak `İşlemi Düzenle` ve ikonu `Pencil`, kaydet butonu `Değişiklikleri Güncelle` olarak güncellenir.
+     - Mevcut kayıtlı dosya varsa kullanıcıya bilgi veren `existing-doc-banner` kartı gösterilir; yeni dosya seçilmezse mevcut dosya korunur, yeni dosya seçilirse şifrelenerek güncellenir.
+     - Form gönderildiğinde `formData.append('hareket_id', ...)` eklenerek mevcut backend'deki `save_hareket` aksiyonunun `CariHareketleriModel->saveWithAttr()` UPDATE rotasını çalıştırması sağlanır.
+     - Güncelleme sonrası hem hareket listesi hem de cari bakiye özetleri anlık olarak yenilenir.
+  2. **`CariView.vue`**:
+     - Tüm Hareketler (İşlem Geçmişi) modalındaki hareket satırına basıldığında açılan hareket detay modalına da aynı şekilde `Hareketi Düzenle` (`.primary-edit-btn`) butonu eklendi.
+     - `openEditMovement(selectedMovement)` ile işlem düzenleme bottom sheet'i açılır; form başlığı `İşlemi Düzenle`, butonu `Değişiklikleri Güncelle` olur.
+     - Düzenleme modalı `z-index: 120` (`.ds-modal-layer--quick`) ile geçmiş modalının üzerinde temiz bir katman olarak çalışır; güncelleme tamamlandığında hem cari listesi hem de geçmiş listesi anında taranıp yenilenir.
+  3. **Derleme**:
+     - `npm run build` ile Vite paketi 0 hata ile başarıyla derlendi.
+
+
+## Fatura Cari Hareket Yönleri SQL — Sunucu 1064 Hatası (2026-10-18)
+- `sql/2026_10_18_fix_fatura_cari_hareket_yonleri.sql` dosyasının içeriği ve sorgu sonları doğrulandı; dosyada sözdizimi hatasına yol açan ek bir ifade bulunmuyor.
+- Sunucu SQL editöründeki çalıştırılan metnin sonunda `AND ch.silinme_tarihi IS NULL;ersantrc_personel` bulunduğu görüldü. Noktalı virgülden sonraki `ersantrc_personel` bağımsız/geçersiz SQL olarak yorumlandığı için MariaDB 1064 hatası oluşuyor.
+- Çözüm: Editördeki fazladan `ersantrc_personel` metni silinmeli ve sorgu `AND ch.silinme_tarihi IS NULL;` ile bitirilmelidir; repodaki SQL dosyasında değişiklik gerekmemiştir.
+
 ## Masaüstü ve Mobil: Cari Hareketleri Renk Standardı (Aldıklarım Kırmızı, Verdiklerim Yeşil) (2026-10-18)
 - **Kullanıcı Talebi**: "aldıklarım kırmızı , verdiklerim yeşil olacak özet kartlarda da hem masaüstünde hem mobilde"
 - **Temel Mantık**:
@@ -2278,3 +2302,22 @@
 - Kişi detayında gün alanlarının tamamı ayrı bir Bootstrap accordion tablosunda Muhasebe / Gönderilen / Fark olarak sunuluyor. Toplam gün eşit olsa bile normal, hafta tatili veya ücretli izin farkı kişi durumuna ve fark sayısına yansıyor; diğer parasal farklar ayrı tabloda kalıyor.
 - Yeni bordro snapshot'ları hafta tatili ve genel tatil günlerini açıklayıcı matrah alanlarında saklıyor. Eski snapshot'larda hafta tatili, kayıtlı toplam günün normal + ücretli izin + genel tatil dışındaki bakiyesiyle tamamlanıyor; parasal sonuç ve ödeme kanalları değiştirilmiyor.
 - Gerçek `files/bordro_ersan_elkt İHALE 3.xlsx` dosyasında 103 satır doğru okundu. Örnek ilk satır 30 toplam / 26 normal / 4 hafta tatili / 0 ücretli izin / 0 rapor olarak ayrıştırıldı. 103 eşleşmede toplam gün aynı olduğu halde alt gün kırılımı farklı 55 satır bulundu.
+## 2026-10-18 — Mobil SPA Evrak Takip ek sorgusu şema uyumu
+
+- Evrak detayında `Unknown column 'ee.yukleyen_kullanici_id'` hatasının, çalışan veritabanında `evrak_takip_ekleri.yukleyen_kullanici_id` kolonunun bulunmamasından kaynaklandığı doğrulandı.
+- `sql/evrak_takip_coklu_dosya_yukleyen.sql` kolon ve indeks kontrolleri `information_schema` üzerinden tekrarlanabilir hâle getirildi ve çalışan şemaya uygulandı.
+- Mevcut eklerin yükleyen kullanıcısı evrak oluşturucusundan tamamlandı; legacy `evrak_takip.dosya_yolu` kayıtlarının ek tablosuna aktarımı korundu.
+- Migration iki kez başarıyla çalıştırıldı; kolon/indeks varlığı ve `EvrakTakipModel::getAttachments()` sorgusunun hatasız çalışması doğrulandı.
+
+## 2026-10-18 — Mobil SPA Evrak personel seçenekleri ve araç zimmeti
+
+- Evrak formunun meta API'sindeki personel seçenekleri `PersonelModel::all(true, 'evrak')` ile yalnız aktif personellerle sınırlandı; ofis personeli alt listesi de bu aktif havuzdan üretiliyor.
+- Araç plakası değiştiğinde önce eski ilgili personel seçimi temizleniyor, evrak tarihindeki araç zimmeti API'den bulunup `İlgili Personel` alanına otomatik atanıyor.
+- Hızlı plaka değişimlerinde eski isteğin yeni seçimi ezmemesi için yanıt-plaka kontrolü eklendi; zimmet bulunamadığında kullanıcı bilgilendiriliyor.
+- Araç zimmeti sorgusuna araç/personel firma ve soft-delete izolasyonu ile `0000-00-00` iade tarihi uyumu eklendi.
+- Gerçek veride evrak personel havuzu 168 kayıttan 78 aktif kayda düştü ve örnek aktif araç zimmeti doğru personelle çözüldü. PHP sözdizimi, Vite üretim derlemesi ve diff kontrolü geçti.
+
+## 2026-10-18 — Mobil SPA cari hareket tutarları
+
+- Cari detayındaki Hesap Hareketleri listesinde ve hareket detay penceresinde tutarların önündeki `+` / `-` işaretleri kaldırıldı.
+- İşlem yönünü anlatan renkler, ok ikonları ve Aldım/Verdim metinleri korunarak tutar sunumu sadeleştirildi.

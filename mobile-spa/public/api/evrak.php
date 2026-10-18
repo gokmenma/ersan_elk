@@ -400,7 +400,8 @@ try {
     // -------------------------------------------------------------
     if ($method === 'GET' && $action === 'meta') {
         $PersonelModel = new PersonelModel();
-        $personeller = $PersonelModel->all(false, 'evrak');
+        // Evrak atamalarında işten ayrılmış personel seçenek olarak sunulmaz.
+        $personeller = $PersonelModel->all(true, 'evrak');
         $activeVehicles = $EvrakModel->getActiveVehicles();
         $signingUsers = $EvrakModel->getSigningUsers();
         $gelenEvraklar = $EvrakModel->getGelenEvraklar();

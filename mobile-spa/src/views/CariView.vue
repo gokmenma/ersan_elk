@@ -19,6 +19,7 @@ import {
   History,
   MapPin,
   Paperclip,
+  Pencil,
   Phone,
   Plus,
   Receipt,
@@ -78,12 +79,14 @@ const isQuickActionOpen = ref(false)
 const quickActionCari = ref(null)
 const quickFileInput = ref(null)
 const quickActionForm = ref({
+  id: null,
   type: 'aldim',
   tutar: '',
   islem_tarihi: '',
   belge_no: '',
   aciklama: '',
   file: null,
+  existing_file: null,
 })
 const quickActionLoading = ref(false)
 const quickActionError = ref('')
@@ -216,17 +219,57 @@ function openQuickAction(cari, e) {
   if (e) e.stopPropagation()
   quickActionCari.value = cari
   quickActionForm.value = {
+    id: null,
     type: 'aldim',
     tutar: '',
     islem_tarihi: getTodayDateTimeInput(),
     belge_no: '',
     aciklama: '',
     file: null,
+    existing_file: null,
   }
   if (quickFileInput.value) {
     quickFileInput.value.value = ''
   }
   quickActionError.value = ''
+  isQuickActionOpen.value = true
+}
+
+function openEditMovement(m) {
+  const mov = m || selectedMovement.value
+  if (!mov) return
+
+  let dateVal = getTodayDateTimeInput()
+  if (mov.date) {
+    const d = new Date(mov.date)
+    if (!isNaN(d.getTime())) {
+      const offset = d.getTimezoneOffset() * 60000
+      dateVal = new Date(d.getTime() - offset).toISOString().slice(0, 16)
+    }
+  }
+
+  quickActionCari.value = {
+    id: mov.cari_id,
+    name: mov.cari_name,
+    CariAdi: mov.cari_name,
+  }
+
+  quickActionForm.value = {
+    id: mov.id,
+    type: mov.type || (mov.borc > 0 ? 'aldim' : 'verdim'),
+    tutar: String(mov.amount ?? (mov.borc > 0 ? mov.borc : mov.alacak)),
+    islem_tarihi: dateVal,
+    belge_no: mov.belge_no || '',
+    aciklama: mov.aciklama || '',
+    file: null,
+    existing_file: mov.file_url || null,
+  }
+
+  if (quickFileInput.value) {
+    quickFileInput.value.value = ''
+  }
+  quickActionError.value = ''
+  isMovementDetailOpen.value = false
   isQuickActionOpen.value = true
 }
 
@@ -248,6 +291,9 @@ async function submitQuickAction() {
   try {
     const formData = new FormData()
     formData.append('cari_id', quickActionCari.value.id)
+    if (quickActionForm.value.id) {
+      formData.append('hareket_id', quickActionForm.value.id)
+    }
     formData.append('type', quickActionForm.value.type)
     formData.append('tutar', quickActionForm.value.tutar)
     formData.append('islem_tarihi', quickActionForm.value.islem_tarihi)
@@ -260,6 +306,9 @@ async function submitQuickAction() {
     await cariApi.saveHareket(formData, auth.state.csrfToken)
     isQuickActionOpen.value = false
     await loadCariler(true)
+    if (isHistoryModalOpen.value) {
+      await loadHistory()
+    }
   } catch (err) {
     quickActionError.value = err.message || 'İşlem kaydedilemedi.'
   } finally {
@@ -679,14 +728,17 @@ async function deleteSelectedMovement() {
     <!-- MODAL 1: HIZLI İŞLEM EKLE (TAHSİLAT / ÖDEME) -->
     <!-- ---------------------------------------------------------------- -->
     <Transition name="ds-modal">
-      <div v-if="isQuickActionOpen" class="ds-modal-layer" @click.self="isQuickActionOpen = false">
-        <div class="ds-bottom-sheet" role="dialog" aria-modal="true" aria-label="Hızlı İşlem Ekle">
+      <div v-if="isQuickActionOpen" class="ds-modal-layer ds-modal-layer--quick" @click.self="isQuickActionOpen = false">
+        <div class="ds-bottom-sheet" role="dialog" aria-modal="true" :aria-label="quickActionForm.id ? 'İşlemi Düzenle' : 'Hızlı İşlem Ekle'">
           <div class="sheet-header">
             <div class="sheet-title">
-              <div class="sheet-icon-box"><CreditCard :size="18" /></div>
+              <div class="sheet-icon-box">
+                <Pencil v-if="quickActionForm.id" :size="18" />
+                <CreditCard v-else :size="18" />
+              </div>
               <div>
-                <h3>Hızlı İşlem Ekle</h3>
-                <small v-if="quickActionCari">{{ quickActionCari.name }}</small>
+                <h3>{{ quickActionForm.id ? 'İşlemi Düzenle' : 'Hızlı İşlem Ekle' }}</h3>
+                <small v-if="quickActionCari">{{ quickActionCari.name || quickActionCari.CariAdi }}</small>
               </div>
             </div>
             <button type="button" class="sheet-close-btn" @click="isQuickActionOpen = false">
@@ -851,13 +903,24 @@ async function deleteSelectedMovement() {
               </div>
             </div>
 
+            <!-- Mevcut Dosya Bilgisi (Düzenlemede) -->
+            <div v-if="quickActionForm.existing_file && !quickActionForm.file" class="existing-doc-banner">
+              <div class="existing-doc-meta">
+                <Paperclip :size="14" />
+                <span>Mevcut ekli belge kayıtlı</span>
+              </div>
+              <a :href="quickActionForm.existing_file" target="_blank" class="existing-doc-link">
+                Görüntüle
+              </a>
+            </div>
+
             <!-- Hata Mesajı -->
             <p v-if="quickActionError" class="form-error">{{ quickActionError }}</p>
 
             <!-- Gönder Butonu -->
             <button type="submit" class="submit-action-btn" :disabled="quickActionLoading">
               <Check v-if="!quickActionLoading" :size="18" />
-              <span>{{ quickActionLoading ? 'Kaydediliyor…' : 'İşlemi Kaydet' }}</span>
+              <span>{{ quickActionLoading ? 'Kaydediliyor…' : (quickActionForm.id ? 'Değişiklikleri Güncelle' : 'İşlemi Kaydet') }}</span>
             </button>
           </form>
         </div>
@@ -1143,20 +1206,30 @@ async function deleteSelectedMovement() {
             <div class="detail-action-buttons">
               <button
                 type="button"
-                class="danger-delete-btn"
-                :disabled="movementDeleteLoading"
-                @click="deleteSelectedMovement"
+                class="primary-edit-btn"
+                @click="openEditMovement(selectedMovement)"
               >
-                <Trash2 :size="16" />
-                <span>{{ movementDeleteLoading ? 'Siliniyor…' : 'Bu Hareketi Sil' }}</span>
+                <Pencil :size="16" />
+                <span>Hareketi Düzenle</span>
               </button>
-              <button
-                type="button"
-                class="neutral-close-btn"
-                @click="isMovementDetailOpen = false"
-              >
-                Kapat
-              </button>
+              <div class="detail-sub-actions">
+                <button
+                  type="button"
+                  class="danger-delete-btn"
+                  :disabled="movementDeleteLoading"
+                  @click="deleteSelectedMovement"
+                >
+                  <Trash2 :size="16" />
+                  <span>{{ movementDeleteLoading ? 'Siliniyor…' : 'Bu Hareketi Sil' }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="neutral-close-btn"
+                  @click="isMovementDetailOpen = false"
+                >
+                  Kapat
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2430,7 +2503,34 @@ async function deleteSelectedMovement() {
   font-weight: 700;
   text-decoration: none;
 }
+.ds-modal-layer--quick {
+  z-index: 120;
+}
 .detail-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.primary-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-primary);
+  background: var(--ds-primary);
+  color: #ffffff;
+  font: 700 13px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(19, 91, 236, 0.2);
+}
+.primary-edit-btn:active {
+  transform: scale(0.98);
+}
+.detail-sub-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
@@ -2445,7 +2545,7 @@ async function deleteSelectedMovement() {
   border-radius: 999px;
   background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);
-  font: 700 11px 'Space Grotesk', sans-serif;
+  font: 700 12px var(--ds-font-main);
   cursor: pointer;
 }
 .neutral-close-btn {
@@ -2454,8 +2554,33 @@ async function deleteSelectedMovement() {
   border-radius: 999px;
   background: var(--ds-surface);
   color: var(--ds-slate);
-  font: 700 11px 'Space Grotesk', sans-serif;
+  font: 700 12px var(--ds-font-main);
   cursor: pointer;
+}
+
+/* Mevcut Dosya Bilgisi */
+.existing-doc-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1;
+}
+.existing-doc-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+.existing-doc-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ds-primary);
+  text-decoration: underline;
 }
 
 /* GEÇİŞ ANİMASYONLARI */

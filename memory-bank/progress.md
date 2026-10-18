@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-10-18 — Mobil SPA: Cari Hareketlerini Düzenleme Desteği (Hareketi Düzenle Butonu ve Güncelleme Akışı)
+- [x] **1. Cari Detay Ekranı ([`CariDetailView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariDetailView.vue))**:
+  - Hareket satırına basıldığında açılan detay penceresine birincil eylem butonu olarak **"Hareketi Düzenle"** (`.primary-edit-btn`) eklendi.
+  - Tıklandığında mevcut hareket verileri (yön, tutar, yerel tarih, belge no, açıklama, ekli dosya) okunarak düzenleme formuna yüklendi.
+  - Hızlı işlem modalı `İşlemi Düzenle` başlığı ve `Değişiklikleri Güncelle` kaydet butonuyla edit moduna geçirildi.
+  - Mevcut ekli belgeyi gösteren `existing-doc-banner` kartı eklendi.
+  - Kayıt esnasında `hareket_id` gönderilerek `CariHareketleriModel->saveWithAttr()` üzerinden UPDATE sağlandı ve bakiye özetleri yenilendi.
+- [x] **2. Cari Genel Listesi & İşlem Geçmişi ([`CariView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariView.vue))**:
+  - Tüm Hareketler (İşlem Geçmişi) modalındaki detay popup'ına da **"Hareketi Düzenle"** butonu entegre edildi.
+  - Düzenleme modalı `z-index: 120` ile geçmiş modalının üstünde açılıp kaydedildiğinde hem ana liste hem de geçmiş anlık yenilenecek şekilde bağlandı.
+- [x] **3. Derleme & Doğrulama**:
+  - `npm run build` ile 0 hata ile derlendi; dist dizini oluşturuldu.
+
+
+## 2026-10-18 — Fatura Cari Hareket Yönleri SQL Sunucu Hatası Teşhis Edildi
+- [x] `sql/2026_10_18_fix_fatura_cari_hareket_yonleri.sql` içeriği ve sorgu sonları kontrol edildi.
+- [x] MariaDB 1064 hatasının dosyadan değil, sunucu editöründe sorgu sonuna eklenen `;ersantrc_personel` metninden kaynaklandığı belirlendi.
+- [x] Çalıştırılacak doğru son satırın `AND ch.silinme_tarihi IS NULL;` olduğu doğrulandı.
+
 ## 2026-10-18 — Masaüstü ve Mobil: Cari Hareketleri Renk Standardı (Aldıklarım Kırmızı, Verdiklerim Yeşil)
 - [x] **1. Masaüstü Renk Eşitlemesi ([`hesap-hareketleri.php`](file:///opt/lampp/htdocs/ersan_elk/views/cari/hesap-hareketleri.php) & [`api.php`](file:///opt/lampp/htdocs/ersan_elk/views/cari/api.php))**:
   - `TOPLAM GİRİŞ (ALD.")` özet kartı kırmızı (`bg-danger-subtle text-danger`, `Girişler (-)`) yapıldı.
@@ -1225,3 +1244,6 @@
 - [x] Modal kişi detayına açılır Gün Karşılaştırması tablosu eklendi; parasal farklar ayrı bölümde korundu.
 - [x] Gerçek 103 satırlık muhasebe dosyasında gün kolonları ve 55 adet “toplam eşit / alt kırılım farklı” sonucu doğrulandı.
 - [x] Bordro regresyon paketi: 113 test, 867 doğrulama geçti; önceden mevcut 7 uyarı sürüyor.
+- [x] Mobil SPA Evrak Takip detayındaki `ee.yukleyen_kullanici_id` bilinmeyen kolon hatası giderildi; çoklu dosya/yükleyen migration'ı idempotent yapılıp aktif veritabanına uygulandı ve Model ek sorgusu doğrulandı. (2026-10-18)
+- [x] Mobil SPA Evrak formunda ofis/ilgili personel seçenekleri yalnız aktif kayıtlarla sınırlandı; plaka seçiminde tarih bazlı araç zimmetlisi otomatik olarak İlgili Personel alanına getirildi ve üretim SPA paketi yeniden oluşturuldu. (2026-10-18)
+- [x] Mobil SPA cari detayında hesap hareketi tutarlarının önündeki kafa karıştıran `+` / `-` işaretleri liste ve detay görünümünden kaldırıldı; yön renk ve ikonlarla gösterilmeye devam ediyor. (2026-10-18)

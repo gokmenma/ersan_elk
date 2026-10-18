@@ -62,12 +62,14 @@ const cariEditError = ref('')
 const isQuickActionOpen = ref(false)
 const quickFileInput = ref(null)
 const quickActionForm = ref({
+  id: null,
   type: 'aldim',
   tutar: '',
   islem_tarihi: '',
   belge_no: '',
   aciklama: '',
   file: null,
+  existing_file: null,
 })
 const quickActionLoading = ref(false)
 const quickActionError = ref('')
@@ -240,17 +242,52 @@ async function saveNote() {
 // Hızlı İşlem Ekle
 function openQuickAction() {
   quickActionForm.value = {
+    id: null,
     type: 'aldim',
     tutar: '',
     islem_tarihi: getTodayDateTimeInput(),
     belge_no: '',
     aciklama: '',
     file: null,
+    existing_file: null,
   }
   if (quickFileInput.value) {
     quickFileInput.value.value = ''
   }
   quickActionError.value = ''
+  isQuickActionOpen.value = true
+}
+
+// Hareket Düzenle Modalı Aç
+function openEditMovement(m) {
+  const mov = m || selectedMovement.value
+  if (!mov) return
+
+  let dateVal = getTodayDateTimeInput()
+  if (mov.date) {
+    const d = new Date(mov.date)
+    if (!isNaN(d.getTime())) {
+      const offset = d.getTimezoneOffset() * 60000
+      dateVal = new Date(d.getTime() - offset).toISOString().slice(0, 16)
+    }
+  }
+
+  quickActionForm.value = {
+    id: mov.id,
+    type: mov.type || (mov.borc > 0 ? 'aldim' : 'verdim'),
+    tutar: String(mov.amount ?? (mov.borc > 0 ? mov.borc : mov.alacak)),
+    islem_tarihi: dateVal,
+    belge_no: mov.belge_no || '',
+    aciklama: mov.aciklama || '',
+    file: null,
+    existing_file: mov.file_url || null,
+  }
+
+  if (quickFileInput.value) {
+    quickFileInput.value.value = ''
+  }
+  quickActionError.value = ''
+  isMovementDetailOpen.value = false
   isQuickActionOpen.value = true
 }
 
@@ -272,6 +309,9 @@ async function submitQuickAction() {
   try {
     const formData = new FormData()
     formData.append('cari_id', route.params.id)
+    if (quickActionForm.value.id) {
+      formData.append('hareket_id', quickActionForm.value.id)
+    }
     formData.append('type', quickActionForm.value.type)
     formData.append('tutar', quickActionForm.value.tutar)
     formData.append('islem_tarihi', quickActionForm.value.islem_tarihi)
@@ -513,7 +553,7 @@ async function deleteSelectedMovement() {
                 class="m-amount"
                 :class="h.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ h.type === 'aldim' ? '-' : '+' }}{{ formatMoney(h.amount) }}
+                {{ formatMoney(h.amount) }}
               </span>
               <span
                 class="m-yuruyen"
@@ -539,9 +579,12 @@ async function deleteSelectedMovement() {
           <!-- Sheet Header -->
           <div class="sheet-header">
             <div class="sheet-title">
-              <div class="sheet-icon-box"><CreditCard :size="18" /></div>
+              <div class="sheet-icon-box">
+                <Pencil v-if="quickActionForm.id" :size="18" />
+                <CreditCard v-else :size="18" />
+              </div>
               <div>
-                <h3>Yeni İşlem Ekle</h3>
+                <h3>{{ quickActionForm.id ? 'İşlemi Düzenle' : 'Yeni İşlem Ekle' }}</h3>
                 <small>{{ cari?.name }}</small>
               </div>
             </div>
@@ -707,13 +750,24 @@ async function deleteSelectedMovement() {
               </div>
             </div>
 
+            <!-- Mevcut Dosya Bilgisi (Düzenlemede) -->
+            <div v-if="quickActionForm.existing_file && !quickActionForm.file" class="existing-doc-banner">
+              <div class="existing-doc-meta">
+                <Paperclip :size="14" />
+                <span>Mevcut ekli belge kayıtlı</span>
+              </div>
+              <a :href="quickActionForm.existing_file" target="_blank" class="existing-doc-link">
+                Görüntüle
+              </a>
+            </div>
+
             <!-- Hata Mesajı -->
             <p v-if="quickActionError" class="form-error">{{ quickActionError }}</p>
 
             <!-- Gönder Butonu -->
             <button type="submit" class="submit-action-btn" :disabled="quickActionLoading">
               <Check v-if="!quickActionLoading" :size="18" />
-              <span>{{ quickActionLoading ? 'Kaydediliyor…' : 'İşlemi Kaydet' }}</span>
+              <span>{{ quickActionLoading ? 'Kaydediliyor…' : (quickActionForm.id ? 'Değişiklikleri Güncelle' : 'İşlemi Kaydet') }}</span>
             </button>
           </form>
         </div>
@@ -873,7 +927,7 @@ async function deleteSelectedMovement() {
                 class="hero-amount-text"
                 :class="selectedMovement.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ selectedMovement.type === 'aldim' ? '-' : '+' }}{{ formatMoney(selectedMovement.amount) }}
+                {{ formatMoney(selectedMovement.amount) }}
               </strong>
             </div>
 
@@ -906,20 +960,30 @@ async function deleteSelectedMovement() {
             <div class="detail-action-buttons">
               <button
                 type="button"
-                class="danger-delete-btn"
-                :disabled="movementDeleteLoading"
-                @click="deleteSelectedMovement"
+                class="primary-edit-btn"
+                @click="openEditMovement(selectedMovement)"
               >
-                <Trash2 :size="16" />
-                <span>{{ movementDeleteLoading ? 'Siliniyor…' : 'Bu Hareketi Sil' }}</span>
+                <Pencil :size="16" />
+                <span>Hareketi Düzenle</span>
               </button>
-              <button
-                type="button"
-                class="neutral-close-btn"
-                @click="isMovementDetailOpen = false"
-              >
-                Kapat
-              </button>
+              <div class="detail-sub-actions">
+                <button
+                  type="button"
+                  class="danger-delete-btn"
+                  :disabled="movementDeleteLoading"
+                  @click="deleteSelectedMovement"
+                >
+                  <Trash2 :size="16" />
+                  <span>{{ movementDeleteLoading ? 'Siliniyor…' : 'Bu Hareketi Sil' }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="neutral-close-btn"
+                  @click="isMovementDetailOpen = false"
+                >
+                  Kapat
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1892,6 +1956,30 @@ async function deleteSelectedMovement() {
   text-decoration: none;
 }
 .detail-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.primary-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-primary);
+  background: var(--ds-primary);
+  color: #ffffff;
+  font: 700 13px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(19, 91, 236, 0.2);
+}
+.primary-edit-btn:active {
+  transform: scale(0.98);
+}
+.detail-sub-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
@@ -1906,7 +1994,7 @@ async function deleteSelectedMovement() {
   border-radius: 999px;
   background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);
-  font: 700 11px 'Space Grotesk', sans-serif;
+  font: 700 12px var(--ds-font-main);
   cursor: pointer;
 }
 .neutral-close-btn {
@@ -1915,8 +2003,33 @@ async function deleteSelectedMovement() {
   border-radius: 999px;
   background: #ffffff;
   color: var(--ds-muted);
-  font: 700 11px 'Space Grotesk', sans-serif;
+  font: 700 12px var(--ds-font-main);
   cursor: pointer;
+}
+
+/* Mevcut Dosya Bilgisi */
+.existing-doc-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1;
+}
+.existing-doc-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+.existing-doc-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ds-primary);
+  text-decoration: underline;
 }
 
 /* ANİMASYON */
