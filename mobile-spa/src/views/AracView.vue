@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import {
   AlertTriangle,
   ArrowLeft,
+  Award,
+  Building2,
   Calendar,
   Car,
   Check,
@@ -13,11 +15,14 @@ import {
   ChevronRight,
   Clock,
   Download,
+  Droplets,
   Eye,
   FileText,
+  Flame,
   Fuel,
   Gauge,
   Info,
+  LayoutDashboard,
   MapPin,
   Pencil,
   Plus,
@@ -28,6 +33,8 @@ import {
   ShieldCheck,
   Tag,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   Upload,
   User,
   UserCheck,
@@ -49,8 +56,8 @@ import TopBar from '../components/TopBar.vue'
 
 const router = useRouter()
 
-// Aktif Sekme: 'araclar' | 'zimmet' | 'yakit' | 'km' | 'servis'
-const activeTab = ref(aracState.activeTab || 'araclar')
+// Aktif Sekme: 'dashboard' | 'araclar' | 'zimmet' | 'yakit' | 'km' | 'servis'
+const activeTab = ref(aracState.activeTab || 'dashboard')
 
 watch(() => aracState.activeTab, (newTab) => {
   if (activeTab.value !== newTab) {
@@ -63,6 +70,32 @@ watch(activeTab, (newTab) => {
     aracState.activeTab = newTab
   }
 })
+
+// Dashboard Veri Durumları
+const dashboardLoading = ref(false)
+const dashboardData = ref({
+  period: 'this_month',
+  departman: '',
+  kpi: {
+    filo: { toplam_arac: 0, aktif_arac: 0, pasif_arac: 0, zimmetli_arac: 0, bosta_arac: 0, servisteki_arac: 0, ikame_arac: 0 },
+    km: { toplam_km: 0, aktif_kullanilan_arac: 0, gunluk_ortalama_km: 0, arac_basi_ortalama_km: 0, en_cok_km_yapan: null },
+    yakit: { toplam_tutar: 0, toplam_litre: 0, ortalama_litre_fiyat: 0, ortalama_tuketim_100km: 0, km_basi_maliyet: 0, en_cok_yakit_alan: null },
+    servis: { toplam_maliyet: 0, islem_adedi: 0, servisteki_arac: 0 },
+    evrak: { muayene_gecen: 0, muayene_yaklasan: 0, sigorta_gecen: 0, sigorta_yaklasan: 0, kasko_gecen: 0, kasko_yaklasan: 0, toplam_gecen: 0, toplam_yaklasan: 0, toplam_uyari: 0 }
+  },
+  trends: { categories: [], km: [], yakit_tutar: [], yakit_litre: [], servis_tutar: [] },
+  dept_distribution: [],
+  vehicle_types: { mulkiyet: [], yakit_tipi: [] },
+  top_km: [],
+  top_fuel: [],
+  expiring_docs: [],
+  recent_services: [],
+  recent_fuel: [],
+  departmanlar: []
+})
+const selectedDepartman = ref('')
+const deptMetric = ref('km') // 'km' | 'fuel' | 'vehicles'
+const isDepartmanModalOpen = ref(false)
 
 // Veri Durumları
 const loading = ref(true)
@@ -318,6 +351,12 @@ const heroCardMeta = computed(() => {
         title: 'Servis Operasyon Özeti',
         icon: Wrench,
       }
+    case 'dashboard':
+      return {
+        tag: 'FİLO OPERASYON & DASHBOARD',
+        title: 'Filo Genel Gösterge Paneli',
+        icon: LayoutDashboard,
+      }
     case 'araclar':
     default:
       return {
@@ -353,7 +392,43 @@ const servisRatio = computed(() => {
 // -------------------------------------------------------------
 // VERİ YÜKLEME
 // -------------------------------------------------------------
+async function loadDashboardData() {
+  dashboardLoading.value = true
+  error.value = ''
+  try {
+    const params = {
+      period: periodFilter.value,
+      departman: selectedDepartman.value,
+      ay: customMonth.value,
+      yil: customYear.value,
+    }
+    const res = await aracApi.dashboard(params)
+    if (res.success && res.data) {
+      dashboardData.value = res.data
+      if (res.data.kpi?.filo) {
+        summary.value.toplam_arac = res.data.kpi.filo.toplam_arac
+        summary.value.aktif_arac = res.data.kpi.filo.aktif_arac
+        summary.value.pasif_arac = res.data.kpi.filo.pasif_arac
+        summary.value.zimmetli_sayisi = res.data.kpi.filo.zimmetli_arac
+        summary.value.bosta_arac = res.data.kpi.filo.bosta_arac
+        summary.value.servisteki_sayisi = res.data.kpi.filo.servisteki_arac
+        summary.value.ikame_arac_sayisi = res.data.kpi.filo.ikame_arac
+        summary.value.evrak_uyari_sayisi = res.data.kpi.evrak?.toplam_uyari || 0
+      }
+    }
+  } catch (err) {
+    error.value = err.message || 'Dashboard verileri yüklenirken bir hata oluştu.'
+  } finally {
+    dashboardLoading.value = false
+    loading.value = false
+  }
+}
+
 async function loadData() {
+  if (activeTab.value === 'dashboard') {
+    await loadDashboardData()
+    return
+  }
   loading.value = true
   error.value = ''
   try {
@@ -389,6 +464,12 @@ async function loadPersoneller() {
   }
 }
 
+function selectDepartman(dep) {
+  selectedDepartman.value = dep
+  isDepartmanModalOpen.value = false
+  loadDashboardData()
+}
+
 function switchTab(tab) {
   if (activeTab.value === tab) return
   activeTab.value = tab
@@ -399,7 +480,48 @@ function switchTab(tab) {
 
 function setPeriod(p) {
   periodFilter.value = p
-  loadData()
+  if (activeTab.value === 'dashboard') {
+    loadDashboardData()
+  } else {
+    loadData()
+  }
+}
+
+// -------------------------------------------------------------
+// DASHBOARD HESAPLAMALARI & YARDIMCILARI
+// -------------------------------------------------------------
+const activeLeaderTab = ref('km') // 'km' | 'fuel'
+
+const maxTrendKm = computed(() => {
+  const arr = dashboardData.value.trends?.km || []
+  const max = Math.max(...arr.map(Number), 0)
+  return max > 0 ? max : 1
+})
+
+const maxTrendFuel = computed(() => {
+  const arr = dashboardData.value.trends?.yakit_tutar || []
+  const max = Math.max(...arr.map(Number), 0)
+  return max > 0 ? max : 1
+})
+
+const maxDeptVal = computed(() => {
+  const list = dashboardData.value.dept_distribution || []
+  if (list.length === 0) return 1
+  if (deptMetric.value === 'km') {
+    return Math.max(...list.map((d) => Number(d.toplam_km) || 0), 1)
+  }
+  if (deptMetric.value === 'fuel') {
+    return Math.max(...list.map((d) => Number(d.yakit_tutar) || 0), 1)
+  }
+  return Math.max(...list.map((d) => Number(d.arac_sayisi) || 0), 1)
+})
+
+function getDeptPercent(item) {
+  let val = 0
+  if (deptMetric.value === 'km') val = Number(item.toplam_km) || 0
+  else if (deptMetric.value === 'fuel') val = Number(item.yakit_tutar) || 0
+  else val = Number(item.arac_sayisi) || 0
+  return Math.min(100, Math.round((val / maxDeptVal.value) * 100)) || 0
 }
 
 // Ay & Dönem Seçici Modalı
@@ -462,11 +584,13 @@ watch(searchQuery, () => {
 // ARAÇ İŞLEMLERİ
 // -------------------------------------------------------------
 async function openAracDetail(item) {
+  const targetId = item?.id || item?.arac_id
+  if (!targetId) return
   isDetailModalOpen.value = true
   detailLoading.value = true
   selectedAracDetail.value = null
   try {
-    const res = await aracApi.detail(item.id)
+    const res = await aracApi.detail(targetId)
     if (res.success) {
       selectedAracDetail.value = res.data
     }
@@ -962,8 +1086,8 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Segmentli Dağılım İlerleme Çubuğu -->
-      <!-- A) Araçlar Sekmesi Dağılımı -->
-      <div v-if="activeTab === 'araclar'" class="segmented-track segmented-track--dark" title="Filo Durum Dağılımı">
+      <!-- A) Araçlar & Dashboard Sekmesi Dağılımı -->
+      <div v-if="activeTab === 'araclar' || activeTab === 'dashboard'" class="segmented-track segmented-track--dark" title="Filo Durum Dağılımı">
         <div
           class="seg-pill seg-pill--blue"
           :style="{ width: `${fleetRatio.zimmetli}%` }"
@@ -1034,8 +1158,28 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 4'lü Metrik Izgarası (Sekmeye Özel) -->
+      <!-- 0. Dashboard Metrikleri -->
+      <div v-if="activeTab === 'dashboard'" class="bento-metrics-grid bento-metrics-grid--dark">
+        <div class="metric-cell" @click="switchTab('araclar')">
+          <strong>{{ dashboardData.kpi.filo.toplam_arac }} <small>Araç</small></strong>
+          <span>Toplam Filo ({{ dashboardData.kpi.filo.aktif_arac }} Aktif)</span>
+        </div>
+        <div class="metric-cell" @click="switchTab('zimmet')">
+          <strong class="text-blue">{{ dashboardData.kpi.filo.zimmetli_arac }} <small>Zimmetli</small></strong>
+          <span>Personelde Görevde</span>
+        </div>
+        <div class="metric-cell" @click="switchTab('km')">
+          <strong class="text-indigo">{{ formatKm(dashboardData.kpi.km.toplam_km) }}</strong>
+          <span>Dönem Net Yol</span>
+        </div>
+        <div class="metric-cell" @click="switchTab('yakit')">
+          <strong class="text-emerald">{{ formatMoney(dashboardData.kpi.yakit.toplam_tutar) }}</strong>
+          <span>Akaryakıt Gideri</span>
+        </div>
+      </div>
+
       <!-- 1. Araçlar Metrikleri -->
-      <div v-if="activeTab === 'araclar'" class="bento-metrics-grid bento-metrics-grid--dark">
+      <div v-else-if="activeTab === 'araclar'" class="bento-metrics-grid bento-metrics-grid--dark">
         <div class="metric-cell" @click="statusFilter = 'all'">
           <strong>{{ summary.toplam_arac }} <small>Araç</small></strong>
           <span>Toplam Filo ({{ summary.aktif_arac }} Aktif)</span>
@@ -1168,8 +1312,74 @@ onBeforeUnmount(() => {
       </button>
     </Transition>
 
+    <!-- 4. Dashboard Dönem & Departman Filtre Barı -->
+    <div v-if="activeTab === 'dashboard'" class="clay-pills-scroll mb-3">
+      <button
+        type="button"
+        class="clay-filter-pill"
+        :class="{ 'is-active': periodFilter === 'this_month' }"
+        @click="setPeriod('this_month')"
+      >
+        Bu Ay
+      </button>
+      <button
+        type="button"
+        class="clay-filter-pill"
+        :class="{ 'is-active': periodFilter === 'last_month' }"
+        @click="setPeriod('last_month')"
+      >
+        Geçen Ay
+      </button>
+      <button
+        type="button"
+        class="clay-filter-pill"
+        :class="{ 'is-active': periodFilter === 'last_3_months' }"
+        @click="setPeriod('last_3_months')"
+      >
+        Son 3 Ay
+      </button>
+      <button
+        type="button"
+        class="clay-filter-pill"
+        :class="{ 'is-active': periodFilter === 'this_year' }"
+        @click="setPeriod('this_year')"
+      >
+        Bu Yıl
+      </button>
+      <button
+        type="button"
+        class="clay-filter-pill"
+        :class="{ 'is-active': periodFilter === 'all' }"
+        @click="setPeriod('all')"
+      >
+        Tümü
+      </button>
+      <button
+        type="button"
+        class="clay-filter-pill flex items-center gap-1.5"
+        :class="{ 'is-active': periodFilter === 'custom' }"
+        @click="openMonthModal"
+      >
+        <Calendar :size="13" />
+        <span>{{ periodFilter === 'custom' ? customPeriodDisplay : 'Ay Seç' }}</span>
+        <ChevronDown :size="12" class="opacity-70" />
+      </button>
+
+      <!-- Departman Filtresi Butonu -->
+      <button
+        type="button"
+        class="clay-filter-pill clay-filter-pill--dept flex items-center gap-1.5"
+        :class="{ 'is-active': !!selectedDepartman }"
+        @click="isDepartmanModalOpen = true"
+      >
+        <Building2 :size="13" />
+        <span>{{ selectedDepartman || 'Tüm Departmanlar' }}</span>
+        <ChevronDown :size="12" class="opacity-70" />
+      </button>
+    </div>
+
     <!-- 5. Dönem Seçici (Zimmet, Yakıt, KM, Servis Sekmelerinde) -->
-    <div v-if="activeTab !== 'araclar'" class="clay-pills-scroll mb-3">
+    <div v-if="activeTab !== 'araclar' && activeTab !== 'dashboard'" class="clay-pills-scroll mb-3">
       <button
         type="button"
         class="clay-filter-pill"
@@ -1206,10 +1416,8 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-
-
     <!-- 7. Arama & Durum Filtre Hapları -->
-    <div class="search-filter-section mb-3">
+    <div v-if="activeTab !== 'dashboard'" class="search-filter-section mb-3">
       <div class="clay-search-bar mb-2">
         <Search :size="17" />
         <input
@@ -1286,9 +1494,512 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 8. LİSTE ALANI -->
+    <!-- ======================================================== -->
+    <!-- SEKME 0: DASHBOARD (ÖZET & ANALİTİK GÖSTERGE PANELİ) -->
+    <!-- ======================================================== -->
+    <div v-if="activeTab === 'dashboard'" class="arac-dashboard-wrap space-y-3.5">
+      <!-- Dashboard Yükleniyor Durumu -->
+      <div v-if="dashboardLoading" class="empty-state-wrap">
+        <RefreshCw :size="32" class="is-spinning text-primary mb-2" />
+        <p class="text-sm font-semibold text-muted">Dashboard analitiği yükleniyor…</p>
+      </div>
+
+      <!-- Dashboard Hata Durumu -->
+      <div v-else-if="error" class="bento-card bento-card--white text-center py-6">
+        <AlertTriangle :size="32" class="text-coral mx-auto mb-2" />
+        <h4 class="font-bold text-ink">Bir Hata Oluştu</h4>
+        <p class="text-xs text-muted mt-1">{{ error }}</p>
+        <button type="button" class="clay-pill-btn mt-3" @click="loadDashboardData">Yeniden Dene</button>
+      </div>
+
+      <template v-else>
+        <!-- 1. 4 DETAYLI BENTO KPI KARTI (GRID) -->
+        <div class="dash-kpi-grid">
+          <!-- KPI 1: FİLO DURUMU -->
+          <article class="bento-card bento-card--white dash-kpi-card" @click="switchTab('araclar')">
+            <div class="dash-kpi-card__head">
+              <span class="dash-kpi-icon bg-blue-subtle text-blue"><Car :size="18" /></span>
+              <span class="status-pill status-pill--blue">Filo</span>
+            </div>
+            <div class="dash-kpi-card__body">
+              <span class="dash-kpi-label">Toplam Araç</span>
+              <h3 class="dash-kpi-val">{{ dashboardData.kpi.filo.toplam_arac }} <small>Araç</small></h3>
+            </div>
+            <!-- Alt Mini İstatistikler -->
+            <div class="dash-kpi-sub-stats">
+              <div class="sub-stat-item">
+                <span class="sub-stat-dot bg-emerald"></span>
+                <span class="sub-stat-lbl">Zimmet:</span>
+                <strong class="text-ink">{{ dashboardData.kpi.filo.zimmetli_arac }}</strong>
+              </div>
+              <div class="sub-stat-item">
+                <span class="sub-stat-dot bg-blue"></span>
+                <span class="sub-stat-lbl">Boşta:</span>
+                <strong class="text-ink">{{ dashboardData.kpi.filo.bosta_arac }}</strong>
+              </div>
+              <div class="sub-stat-item">
+                <span class="sub-stat-dot bg-coral"></span>
+                <span class="sub-stat-lbl">Servis:</span>
+                <strong class="text-coral">{{ dashboardData.kpi.filo.servisteki_arac }}</strong>
+              </div>
+            </div>
+            <div class="dash-kpi-footer">
+              <span>Araçları Görüntüle</span>
+              <ChevronRight :size="14" />
+            </div>
+          </article>
+
+          <!-- KPI 2: KİLOMETRE & YOL -->
+          <article class="bento-card bento-card--white dash-kpi-card" @click="switchTab('km')">
+            <div class="dash-kpi-card__head">
+              <span class="dash-kpi-icon bg-indigo-subtle text-indigo"><Gauge :size="18" /></span>
+              <span class="status-pill status-pill--indigo">Mesafe</span>
+            </div>
+            <div class="dash-kpi-card__body">
+              <span class="dash-kpi-label">Toplam Net KM</span>
+              <h3 class="dash-kpi-val text-indigo">{{ formatKm(dashboardData.kpi.km.toplam_km) }}</h3>
+            </div>
+            <div class="dash-kpi-sub-stats">
+              <div class="sub-stat-item">
+                <span class="sub-stat-lbl">Günlük Ort:</span>
+                <strong class="text-ink">{{ formatKm(dashboardData.kpi.km.gunluk_ortalama_km) }}</strong>
+              </div>
+              <div class="sub-stat-item">
+                <span class="sub-stat-lbl">Araç Başı:</span>
+                <strong class="text-ink">{{ formatKm(dashboardData.kpi.km.arac_basi_ortalama_km) }}</strong>
+              </div>
+            </div>
+            <div class="dash-kpi-footer">
+              <span>KM Kayıtları</span>
+              <ChevronRight :size="14" />
+            </div>
+          </article>
+
+          <!-- KPI 3: AKARYAKIT & TÜKETİM -->
+          <article class="bento-card bento-card--white dash-kpi-card" @click="switchTab('yakit')">
+            <div class="dash-kpi-card__head">
+              <span class="dash-kpi-icon bg-emerald-subtle text-emerald"><Fuel :size="18" /></span>
+              <span class="status-pill status-pill--emerald">Akaryakıt</span>
+            </div>
+            <div class="dash-kpi-card__body">
+              <span class="dash-kpi-label">Dönem Harcaması</span>
+              <h3 class="dash-kpi-val text-emerald">{{ formatMoney(dashboardData.kpi.yakit.toplam_tutar) }}</h3>
+            </div>
+            <div class="dash-kpi-sub-stats">
+              <div class="sub-stat-item">
+                <span class="sub-stat-lbl">Litre:</span>
+                <strong class="text-ink">{{ Number(dashboardData.kpi.yakit.toplam_litre || 0).toFixed(0) }} Lt</strong>
+              </div>
+              <div class="sub-stat-item">
+                <span class="sub-stat-lbl">100km Ort:</span>
+                <strong class="text-ink">{{ Number(dashboardData.kpi.yakit.ortalama_tuketim_100km || 0).toFixed(1) }} Lt</strong>
+              </div>
+              <div class="sub-stat-item">
+                <span class="sub-stat-lbl">KM Başı:</span>
+                <strong class="text-ink">{{ formatMoney(dashboardData.kpi.yakit.km_basi_maliyet) }}</strong>
+              </div>
+            </div>
+            <div class="dash-kpi-footer">
+              <span>Yakıt Kayıtları</span>
+              <ChevronRight :size="14" />
+            </div>
+          </article>
+
+          <!-- KPI 4: SERVİS & BAKIM -->
+          <article class="bento-card bento-card--white dash-kpi-card" @click="switchTab('servis')">
+            <div class="dash-kpi-card__head">
+              <span class="dash-kpi-icon bg-coral-subtle text-coral"><Wrench :size="18" /></span>
+              <span class="status-pill status-pill--coral">Bakım</span>
+            </div>
+            <div class="dash-kpi-card__body">
+              <span class="dash-kpi-label">Servis Maliyeti</span>
+              <h3 class="dash-kpi-val text-coral">{{ formatMoney(dashboardData.kpi.servis.toplam_maliyet) }}</h3>
+            </div>
+            <div class="dash-kpi-sub-stats">
+              <div class="sub-stat-item">
+                <span class="sub-stat-lbl">İşlem:</span>
+                <strong class="text-ink">{{ dashboardData.kpi.servis.islem_adedi }} Adet</strong>
+              </div>
+              <div class="sub-stat-item">
+                <span class="sub-stat-lbl">Serviste:</span>
+                <strong class="text-coral">{{ dashboardData.kpi.servis.servisteki_arac }} Araç</strong>
+              </div>
+              <div class="sub-stat-item" v-if="dashboardData.kpi.evrak.toplam_uyari > 0">
+                <span class="sub-stat-dot bg-amber"></span>
+                <span class="sub-stat-lbl">Uyarı:</span>
+                <strong class="text-amber">{{ dashboardData.kpi.evrak.toplam_uyari }} Evrak</strong>
+              </div>
+            </div>
+            <div class="dash-kpi-footer">
+              <span>Servis & Bakım</span>
+              <ChevronRight :size="14" />
+            </div>
+          </article>
+        </div>
+
+        <!-- 2. AYLIK TÜKETİM & HARCAMA TRENDİ (CSS BAR CHART) -->
+        <article class="bento-card bento-card--white dash-trend-card">
+          <div class="bento-head mb-2">
+            <div class="bento-head-title">
+              <span class="text-[11px] font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+                <TrendingUp :size="13" class="text-indigo" /> YILLIK DAĞILIM
+              </span>
+              <h3 class="text-base font-bold text-ink">{{ customYear }} Aylık Trend Grafiği</h3>
+            </div>
+            <div class="dash-chart-legend">
+              <span class="legend-item"><span class="legend-dot bg-indigo"></span> KM</span>
+              <span class="legend-item"><span class="legend-dot bg-emerald"></span> Yakıt</span>
+            </div>
+          </div>
+
+          <div class="dash-chart-scroll-wrap">
+            <div class="dash-chart-bars">
+              <div
+                v-for="(cat, idx) in dashboardData.trends.categories"
+                :key="cat"
+                class="dash-chart-col"
+              >
+                <!-- Sütun Değer Çubukları -->
+                <div class="dash-bar-pair">
+                  <!-- KM Barı -->
+                  <div
+                    class="dash-bar dash-bar--km"
+                    :style="{ height: `${Math.max(6, Math.round(((Number(dashboardData.trends.km[idx]) || 0) / maxTrendKm) * 100))}%` }"
+                    :title="`${cat}: ${formatKm(dashboardData.trends.km[idx])}`"
+                  ></div>
+                  <!-- Yakıt Barı -->
+                  <div
+                    class="dash-bar dash-bar--fuel"
+                    :style="{ height: `${Math.max(6, Math.round(((Number(dashboardData.trends.yakit_tutar[idx]) || 0) / maxTrendFuel) * 100))}%` }"
+                    :title="`${cat}: ${formatMoney(dashboardData.trends.yakit_tutar[idx])}`"
+                  ></div>
+                </div>
+                <!-- Ay Başlığı -->
+                <span class="dash-bar-label">{{ cat }}</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 3. DEPARTMAN DAĞILIMI -->
+        <article class="bento-card bento-card--white dash-dept-card">
+          <div class="bento-head mb-3">
+            <div class="bento-head-title">
+              <span class="text-[11px] font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+                <Building2 :size="13" class="text-blue" /> OPERASYONEL DAĞILIM
+              </span>
+              <h3 class="text-base font-bold text-ink">Departman Bazlı Analiz</h3>
+            </div>
+            <!-- Metrik Seçim Hapları -->
+            <div class="clay-tabs-wrap dash-sub-tabs">
+              <button
+                type="button"
+                class="clay-tab"
+                :class="{ 'is-active': deptMetric === 'km' }"
+                @click="deptMetric = 'km'"
+              >
+                KM
+              </button>
+              <button
+                type="button"
+                class="clay-tab"
+                :class="{ 'is-active': deptMetric === 'fuel' }"
+                @click="deptMetric = 'fuel'"
+              >
+                Yakıt
+              </button>
+              <button
+                type="button"
+                class="clay-tab"
+                :class="{ 'is-active': deptMetric === 'vehicles' }"
+                @click="deptMetric = 'vehicles'"
+              >
+                Araç
+              </button>
+            </div>
+          </div>
+
+          <div v-if="dashboardData.dept_distribution.length === 0" class="text-center py-4 text-xs text-muted">
+            Bu dönem için departman verisi bulunamadı.
+          </div>
+          <div v-else class="space-y-2.5">
+            <div
+              v-for="dept in dashboardData.dept_distribution"
+              :key="dept.departman"
+              class="dash-dept-row"
+            >
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="font-bold text-ink">{{ dept.departman || 'Belirtilmemiş' }}</span>
+                <span class="font-bold text-muted">
+                  <template v-if="deptMetric === 'km'">{{ formatKm(dept.toplam_km) }}</template>
+                  <template v-else-if="deptMetric === 'fuel'">{{ formatMoney(dept.yakit_tutar) }}</template>
+                  <template v-else>{{ dept.arac_sayisi }} Araç</template>
+                </span>
+              </div>
+              <div class="dash-progress-track">
+                <div
+                  class="dash-progress-fill"
+                  :class="deptMetric === 'km' ? 'bg-indigo' : deptMetric === 'fuel' ? 'bg-emerald' : 'bg-blue'"
+                  :style="{ width: `${getDeptPercent(dept)}%` }"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 4. MÜLKİYET & YAKIT TİPİ DAĞILIMI -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Mülkiyet Durumu -->
+          <article class="bento-card bento-card--white dash-dist-card">
+            <div class="flex items-center justify-between mb-2.5">
+              <div class="flex items-center gap-1.5">
+                <span class="dash-mini-icon bg-blue-subtle text-blue"><Tag :size="14" /></span>
+                <h4 class="font-bold text-xs text-ink uppercase tracking-wider">Mülkiyet Dağılımı</h4>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="m in dashboardData.vehicle_types.mulkiyet"
+                :key="m.mulkiyet"
+                class="dist-item-row"
+              >
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-ink capitalize">{{ m.mulkiyet }}</span>
+                  <span class="text-muted font-bold">{{ m.sayi }} Araç (%{{ m.yuzde }})</span>
+                </div>
+                <div class="dash-progress-track">
+                  <div class="dash-progress-fill bg-blue" :style="{ width: `${m.yuzde}%` }"></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Yakıt Türü -->
+          <article class="bento-card bento-card--white dash-dist-card">
+            <div class="flex items-center justify-between mb-2.5">
+              <div class="flex items-center gap-1.5">
+                <span class="dash-mini-icon bg-emerald-subtle text-emerald"><Droplets :size="14" /></span>
+                <h4 class="font-bold text-xs text-ink uppercase tracking-wider">Yakıt Türleri</h4>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="y in dashboardData.vehicle_types.yakit_tipi"
+                :key="y.yakit_tipi"
+                class="dist-item-row"
+              >
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-ink capitalize">{{ y.yakit_tipi }}</span>
+                  <span class="text-muted font-bold">{{ y.sayi }} Araç (%{{ y.yuzde }})</span>
+                </div>
+                <div class="dash-progress-track">
+                  <div class="dash-progress-fill bg-emerald" :style="{ width: `${y.yuzde}%` }"></div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- 5. ÖNE ÇIKAN ARAÇLAR (TOP 5 LEADERBOARD) -->
+        <article class="bento-card bento-card--white dash-leaderboard-card">
+          <div class="bento-head mb-3">
+            <div class="bento-head-title">
+              <span class="text-[11px] font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+                <Award :size="13" class="text-amber" /> LİDERLER TABLOSU
+              </span>
+              <h3 class="text-base font-bold text-ink">En Çok Kateden / Harcayan</h3>
+            </div>
+            <div class="clay-tabs-wrap dash-sub-tabs">
+              <button
+                type="button"
+                class="clay-tab"
+                :class="{ 'is-active': activeLeaderTab === 'km' }"
+                @click="activeLeaderTab = 'km'"
+              >
+                Mesafe (KM)
+              </button>
+              <button
+                type="button"
+                class="clay-tab"
+                :class="{ 'is-active': activeLeaderTab === 'fuel' }"
+                @click="activeLeaderTab = 'fuel'"
+              >
+                Akaryakıt (₺)
+              </button>
+            </div>
+          </div>
+
+          <!-- TOP KM LİSTESİ -->
+          <div v-if="activeLeaderTab === 'km'" class="space-y-2">
+            <div v-if="dashboardData.top_km.length === 0" class="text-center py-4 text-xs text-muted">
+              Seçili dönemde KM kaydı bulunamadı.
+            </div>
+            <div
+              v-for="(car, idx) in dashboardData.top_km"
+              :key="car.arac_id"
+              class="leader-row"
+              @click="openAracDetail({ id: car.arac_id })"
+            >
+              <span class="leader-rank" :class="idx === 0 ? 'rank--gold' : idx === 1 ? 'rank--silver' : idx === 2 ? 'rank--bronze' : 'rank--default'">
+                {{ idx + 1 }}
+              </span>
+              <div class="leader-info">
+                <div class="flex items-center gap-1.5">
+                  <strong class="leader-plate">{{ car.plaka }}</strong>
+                  <span class="text-muted text-[11px]">{{ car.marka }} {{ car.model }}</span>
+                </div>
+                <span class="text-muted text-[11px] truncate block">{{ car.zimmetli_personel || car.departmani || 'Boşta' }}</span>
+              </div>
+              <div class="leader-val text-right">
+                <strong class="text-indigo text-xs block">{{ formatKm(car.toplam_km) }}</strong>
+                <span class="text-muted text-[10px]">{{ car.kayit_sayisi }} Kayıt</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TOP YAKIT LİSTESİ -->
+          <div v-else class="space-y-2">
+            <div v-if="dashboardData.top_fuel.length === 0" class="text-center py-4 text-xs text-muted">
+              Seçili dönemde yakıt kaydı bulunamadı.
+            </div>
+            <div
+              v-for="(car, idx) in dashboardData.top_fuel"
+              :key="car.arac_id"
+              class="leader-row"
+              @click="openAracDetail({ id: car.arac_id })"
+            >
+              <span class="leader-rank" :class="idx === 0 ? 'rank--gold' : idx === 1 ? 'rank--silver' : idx === 2 ? 'rank--bronze' : 'rank--default'">
+                {{ idx + 1 }}
+              </span>
+              <div class="leader-info">
+                <div class="flex items-center gap-1.5">
+                  <strong class="leader-plate">{{ car.plaka }}</strong>
+                  <span class="text-muted text-[11px]">{{ car.marka }} {{ car.model }}</span>
+                </div>
+                <span class="text-muted text-[11px] truncate block">{{ car.zimmetli_personel || car.departmani || 'Boşta' }}</span>
+              </div>
+              <div class="leader-val text-right">
+                <strong class="text-emerald text-xs block">{{ formatMoney(car.toplam_tutar) }}</strong>
+                <span class="text-muted text-[10px]">{{ Number(car.toplam_litre || 0).toFixed(0) }} Lt</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 6. KRİTİK & YAKLAŞAN EVRAKLAR -->
+        <article class="bento-card bento-card--white dash-docs-card">
+          <div class="bento-head mb-3">
+            <div class="bento-head-title">
+              <span class="text-[11px] font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+                <ShieldAlert :size="13" class="text-coral" /> RESMİ EVRAK KONTROLÜ
+              </span>
+              <h3 class="text-base font-bold text-ink">Muayene, Sigorta & Kasko</h3>
+            </div>
+            <span
+              v-if="dashboardData.expiring_docs.length > 0"
+              class="status-pill status-pill--coral"
+            >
+              {{ dashboardData.expiring_docs.length }} Araç
+            </span>
+            <span v-else class="status-pill status-pill--emerald">Güncel</span>
+          </div>
+
+          <div v-if="dashboardData.expiring_docs.length === 0" class="empty-docs-state">
+            <CheckCircle2 :size="28" class="text-emerald mx-auto mb-1.5" />
+            <p class="font-bold text-xs text-ink">Tüm Evraklar Geçerli</p>
+            <p class="text-[11px] text-muted">Süresi dolan veya 30 gün içinde bitecek evrak bulunmuyor.</p>
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="doc in dashboardData.expiring_docs"
+              :key="doc.id"
+              class="expiring-doc-card"
+              @click="openAracDetail(doc)"
+            >
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-1.5">
+                  <div class="tr-plate-badge-xs">
+                    <span class="tr-band">TR</span>
+                    <span class="plate-text">{{ doc.plaka }}</span>
+                  </div>
+                  <span class="text-[11px] font-bold text-ink truncate">{{ doc.marka }} {{ doc.model }}</span>
+                </div>
+                <span class="text-[10px] text-muted">{{ doc.zimmetli_personel || doc.departmani || 'Zimmetsiz' }}</span>
+              </div>
+
+              <!-- Uyarılı Evrak Rozetleri -->
+              <div class="flex flex-wrap gap-1">
+                <span
+                  v-for="(u, uIdx) in doc.uyarilar"
+                  :key="uIdx"
+                  class="doc-alert-chip"
+                  :class="u.durum === 'gecmis' ? 'chip--danger' : 'chip--warning'"
+                >
+                  <ShieldAlert :size="11" />
+                  <strong>{{ u.tip }}:</strong>
+                  <span>{{ u.durum === 'gecmis' ? `${Math.abs(u.gun)} gün gecikti` : `${u.gun} gün kaldı` }}</span>
+                  <small>({{ formatDate(u.tarih) }})</small>
+                </span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 7. SON BAKIM & SERVİS KAYITLARI -->
+        <article class="bento-card bento-card--white dash-services-card">
+          <div class="bento-head mb-3">
+            <div class="bento-head-title">
+              <span class="text-[11px] font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+                <Wrench :size="13" class="text-blue" /> SERVİS HAREKETLERİ
+              </span>
+              <h3 class="text-base font-bold text-ink">Son Bakım & Onarımlar</h3>
+            </div>
+            <button
+              type="button"
+              class="clay-pill-btn text-xs py-1 px-2.5"
+              @click="switchTab('servis')"
+            >
+              Tümü
+            </button>
+          </div>
+
+          <div v-if="dashboardData.recent_services.length === 0" class="text-center py-4 text-xs text-muted">
+            Kayıtlı servis hareketi bulunamadı.
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="s in dashboardData.recent_services"
+              :key="s.id"
+              class="recent-service-row"
+              @click="switchTab('servis')"
+            >
+              <div class="flex items-center gap-2">
+                <span class="service-row-icon" :class="s.durum === 'Serviste' ? 'text-coral bg-coral-subtle' : 'text-emerald bg-emerald-subtle'">
+                  <Wrench :size="14" />
+                </span>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <strong class="text-xs text-ink">{{ s.plaka }}</strong>
+                    <span class="status-pill text-[10px]" :class="s.durum === 'Serviste' ? 'status-pill--coral' : 'status-pill--emerald'">
+                      {{ s.durum }}
+                    </span>
+                  </div>
+                  <span class="text-[11px] text-muted block">{{ s.servis_adi || 'Servis' }} • {{ s.servis_nedeni || 'Bakım' }}</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <strong class="text-xs text-ink block">{{ s.tutar > 0 ? formatMoney(s.tutar) : '-' }}</strong>
+                <span class="text-[10px] text-muted">{{ formatDate(s.servis_tarihi) }}</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </template>
+    </div>
+
+    <!-- 8. LİSTE ALANI (DİĞER SEKMELER) -->
     <!-- Yükleniyor Durumu -->
-    <div v-if="loading" class="empty-state-wrap">
+    <div v-else-if="loading" class="empty-state-wrap">
       <RefreshCw :size="32" class="is-spinning text-primary mb-2" />
       <p class="text-sm font-semibold text-muted">Veriler güncelleniyor…</p>
     </div>
@@ -2837,6 +3548,60 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 11: DEPARTMAN SEÇİCİ BOTTOM SHEET -->
+    <!-- ======================================================== -->
+    <div
+      v-if="isDepartmanModalOpen"
+      class="clay-modal-overlay"
+      @click.self="isDepartmanModalOpen = false"
+    >
+      <div class="clay-bottom-sheet dept-picker-sheet">
+        <div class="sheet-drag-handle"></div>
+
+        <header class="sheet-header">
+          <div class="flex items-center gap-2">
+            <span class="detail-header-icon bg-blue-subtle text-blue">
+              <Building2 :size="18" />
+            </span>
+            <div>
+              <h3 class="font-bold text-base text-ink">Departman Filtrele</h3>
+              <p class="text-[11px] text-muted">Analitiği filtrelemek istediğiniz departmanı seçin</p>
+            </div>
+          </div>
+          <button type="button" class="sheet-close-btn" title="Kapat" @click="isDepartmanModalOpen = false">
+            <X :size="18" />
+          </button>
+        </header>
+
+        <div class="dept-picker-body p-4 space-y-2">
+          <!-- Tüm Departmanlar (Temizle) -->
+          <button
+            type="button"
+            class="dept-item-btn"
+            :class="{ 'is-active': selectedDepartman === '' }"
+            @click="selectDepartman('')"
+          >
+            <span class="font-bold text-xs text-ink">Tüm Departmanlar (Tümü)</span>
+            <Check v-if="selectedDepartman === ''" :size="16" class="text-primary" />
+          </button>
+
+          <!-- Kayıtlı Departmanlar -->
+          <button
+            v-for="dept in dashboardData.departmanlar"
+            :key="dept"
+            type="button"
+            class="dept-item-btn"
+            :class="{ 'is-active': selectedDepartman === dept }"
+            @click="selectDepartman(dept)"
+          >
+            <span class="font-semibold text-xs text-ink">{{ dept }}</span>
+            <Check v-if="selectedDepartman === dept" :size="16" class="text-primary" />
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -4316,5 +5081,418 @@ onBeforeUnmount(() => {
   font-weight: 500;
   color: #64748b;
   line-height: 1.3;
+}
+
+/* -------------------------------------------------------------
+   ARAÇ DASHBOARD ÖZEL STİLLERİ (SOFT BENTO & CLAYMORPHIC)
+------------------------------------------------------------- */
+.arac-dashboard-wrap {
+  margin-bottom: 24px;
+}
+
+.clay-filter-pill--dept {
+  background: #f1f5f9;
+  color: var(--ds-ink);
+  font-weight: 700;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.clay-filter-pill--dept.is-active {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+/* 4 Bento KPI Kart Izgarası */
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .dash-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+.dash-kpi-card {
+  padding: 13px !important;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: var(--ds-radius-card);
+}
+
+.dash-kpi-card:active {
+  transform: scale(0.98);
+}
+
+.dash-kpi-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.dash-kpi-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-kpi-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ds-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dash-kpi-val {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-top: 2px;
+  color: var(--ds-ink);
+}
+
+.dash-kpi-val small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-muted);
+}
+
+.dash-kpi-sub-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 9px;
+  background: var(--ds-canvas);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.sub-stat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+}
+
+.sub-stat-lbl {
+  color: var(--ds-muted);
+  font-weight: 500;
+}
+
+.sub-stat-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.dash-kpi-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ds-primary);
+  margin-top: 10px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--ds-border);
+}
+
+/* Trend Bar Grafiği */
+.dash-trend-card {
+  padding: 16px !important;
+}
+
+.dash-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ds-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dash-chart-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+.dash-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  height: 130px;
+  min-width: 460px;
+  gap: 10px;
+  padding: 10px 4px 0;
+}
+
+.dash-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.dash-bar-pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 100px;
+  width: 100%;
+}
+
+.dash-bar {
+  width: 9px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+  min-height: 4px;
+}
+
+.dash-bar--km {
+  background: #6366f1;
+}
+
+.dash-bar--fuel {
+  background: #10b981;
+}
+
+.dash-bar-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ds-muted);
+  margin-top: 8px;
+}
+
+/* Departman & İlerleme Çubukları */
+.dash-sub-tabs {
+  background: var(--ds-canvas);
+  border-radius: 8px;
+  padding: 2px;
+  display: inline-flex;
+}
+
+.dash-progress-track {
+  height: 6px;
+  background: var(--ds-canvas);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.dash-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.dash-mini-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Liderler Tablosu */
+.leader-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  background: var(--ds-canvas);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.leader-row:active {
+  background: #e2e8f0;
+}
+
+.leader-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.rank--gold {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.rank--silver {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.rank--bronze {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.rank--default {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.leader-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.leader-plate {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ds-ink);
+}
+
+/* Evrak Uyarısı Çipleri */
+.expiring-doc-card {
+  padding: 10px 12px;
+  background: var(--ds-canvas);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.expiring-doc-card:active {
+  background: #e2e8f0;
+}
+
+.tr-plate-badge-xs {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #1e293b;
+  border-radius: 3px;
+  overflow: hidden;
+  font-family: var(--ds-font-mono);
+  line-height: 1;
+}
+
+.tr-plate-badge-xs .tr-band {
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  padding: 2px 2px;
+}
+
+.tr-plate-badge-xs .plate-text {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+  padding: 2px 5px;
+  letter-spacing: 0.04em;
+}
+
+.doc-alert-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.chip--danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.chip--warning {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.empty-docs-state {
+  text-align: center;
+  padding: 18px 10px;
+}
+
+/* Son Servis Satırı */
+.recent-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 11px;
+  background: var(--ds-canvas);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.recent-service-row:active {
+  background: #e2e8f0;
+}
+
+.service-row-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Departman Seçim Modalı */
+.dept-item-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--ds-canvas);
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dept-item-btn:active {
+  transform: scale(0.99);
+}
+
+.dept-item-btn.is-active {
+  background: #eff6ff;
+  border-color: #3b82f6;
 }
 </style>

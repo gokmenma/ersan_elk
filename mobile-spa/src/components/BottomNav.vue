@@ -24,6 +24,7 @@ import {
   Inbox,
   Landmark,
   Layers,
+  LayoutDashboard,
   LayoutGrid,
   LogOut,
   Megaphone,
@@ -710,6 +711,20 @@ async function handleLogout() {
         <div v-if="showAracDrawer" class="bottom-nav__tabs arac-nav-tabs">
           <!-- Scrollable Sekmeler -->
           <div ref="aracScrollEl" class="arac-nav-tabs__scroll">
+            <!-- 0. Dashboard -->
+            <button
+              type="button"
+              class="nav-link"
+              :class="{ 'is-active': aracState.activeTab === 'dashboard' }"
+              aria-label="Dashboard"
+              @click="handleAracTabClick('dashboard')"
+            >
+              <span class="nav-icon">
+                <LayoutDashboard :size="20" :stroke-width="aracState.activeTab === 'dashboard' ? 2.4 : 1.9" />
+              </span>
+              <span class="nav-label">Dashboard</span>
+            </button>
+
             <!-- 1. Araçlar -->
             <button
               type="button"

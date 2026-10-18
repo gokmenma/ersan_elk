@@ -1,5 +1,45 @@
 # Progress
 
+## 2026-10-18 — Araç Takip Yönetimi: Filo Operasyon ve Analitik Dashboard (Masaüstü & Mobil SPA) Tamamlandı
+- [x] **1. SQL & Yetkilendirme**:
+  - `sql/2026_10_18_add_arac_dashboard_menu_and_permissions.sql` çalıştırıldı. `arac-takip/dashboard` yetkisi, menü bağlantısı (ID: 986) ve superadmin/firma sahibi rolleri oluşturuldu.
+- [x] **2. Model Katmanı (`AracDashboardModel.php`)**:
+  - PDO ve parametrik binding ile MariaDB uyumlu KPI, 12 aylık trendler, departman/mülkiyet/yakıt tipi dağılımı, lider araçlar ve kritik evrak fonksiyonları yazıldı.
+- [x] **3. Masaüstü Sayfa & API**:
+  - `views/arac-takip/dashboard.php`, `views/arac-takip/js/dashboard.js`, `views/arac-takip/api.php` ve `index.php` rotaları tamamlandı.
+- [x] **4. Mobil Backend API**:
+  - `mobile-spa/public/api/arac.php` ve `mobile-spa/dist/api/arac.php` içine `action === 'dashboard'` endpoint'i ve dinamik dönem filtreleri eklendi.
+- [x] **5. Mobil Gezinme & Router**:
+  - `BottomNav.vue` içine Araç sekmelerinin ilk elemanı olarak `Dashboard` sekmesi eklendi; `arac.js` ve `router.js` rotaları tanımlandı.
+- [x] **6. Mobil SPA Tasarım & Arayüz (`AracView.vue`)**:
+  - Soft Bento & Claymorphic UI standartlarına tam uyumlu:
+    - Koyu Hero Bento Kartı (Segmentli filo doluluk ve 4 metrik hücresi)
+    - Dönem & Departman filtre barı (Bu Ay, Geçen Ay, Son 3 Ay, Bu Yıl, Tümü, Ay Seç ve Departman Seçici Modal)
+    - 4 Detaylı Bento KPI Kartı (Filo, KM, Yakıt, Bakım/Evrak) ve ilgili sekmelere yönlendirme
+    - 12 Aylık Trend CSS Bar Grafiği (KM vs Yakıt)
+    - Departman Dağılım Kartı (KM / Yakıt / Araç geçişli dinamik doluluk barları)
+    - Mülkiyet ve Yakıt Türü Dağılım Kartları
+    - Liderler Tablosu (Top 5 KM ve Top 5 Yakıt)
+    - Kritik & Yaklaşan Evraklar (Muayene, Sigorta, Kasko gecikme ve kalan gün rozetleri)
+    - Son Bakım & Servis Kayıtları
+    - Departman Seçim Bottom Sheet Modalı
+- [x] **7. Üretim Derlemesi & Test**:
+  - `npm run build` ile Vite üretim paketi 0 hata ile derlendi; PHP CLI üzerinden JSON çıktısı doğrulandı.
+
+## 2026-10-18 — Mobil SPA Talepler Kartı: Talep Durumu ve Talep Türü Gösterimi Tamamlandı
+- [x] **1. Talep Durum Rozeti Entegrasyonu (`getStatusMeta`)**:
+  - `status-chip` rozeti her talep kartına entegre edildi.
+  - Avans ve izinlerde tutar/gün kutusunun altına yerleştirilerek ekran görüntüsünde işaretlenen ilk kırmızı alanda `Onaylandı` (yeşil), `Reddedildi` (kırmızı), `Kısmi Onay` (açık mavi), `İşlemde` (kehribar/dönen ikon), `Beklemede` (gri) ve `Silindi` durumlarının görünür olması sağlandı.
+  - Detay modalındaki `DURUM` alanına da aynı `status-chip` bileşeni eklendi.
+- [x] **2. Talep Türü Ayrımı (`getTypeMeta` & `type-pill`)**:
+  - Ekran görüntüsünde işaretlenen ikinci kırmızı alana (tarih satırının sağı) `type-pill` yerleştirildi:
+    - **Avans Talebi**: Zümrüt yeşili zemin + `Wallet` ikonu
+    - **İzin Talebi**: Açık mavi zemin + `CalendarDays` ikonu
+    - **Genel Talep**: Mor zemin + `Layers` ikonu
+  - Personel adı altındaki departman bilgisi yanına da talep türü eklendi (örn: `Kesme Açma · Avans`).
+- [x] **3. Derleme & Doğrulama**:
+  - `npm run build` ile Vite derlemesi başarıyla tamamlandı, `postbuild` symlink'leri korundu.
+
 ## 2026-10-18 — Mobil SPA: Hızlı Erişim (Quick Actions) Operasyon Tarzı Renklendirme ve Tam Özelleştirme
 - [x] **1. Operasyonlar Tarzı Renk & Çerçeve Standartları (`design-system.css`)**:
   - Hızlı erişim kutuları (`.quick-action-tile`) 1.5px renkli kenarlık, hafif gölge ve operasyonlar kutusundaki gibi renkli zeminli ikon balonu (`.quick-action-icon`) ile tasarlandı.

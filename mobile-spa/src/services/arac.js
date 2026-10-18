@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 
 export const aracState = reactive({
-  activeTab: 'araclar', // 'araclar' | 'zimmet' | 'yakit' | 'km' | 'servis'
+  activeTab: 'dashboard', // 'dashboard' | 'araclar' | 'zimmet' | 'yakit' | 'km' | 'servis'
   drawerOpen: true,
 })
 
@@ -77,6 +77,9 @@ async function request(action, options = {}) {
 }
 
 export const aracApi = {
+  dashboard(params = {}) {
+    return request('dashboard', { params })
+  },
   list(params = {}) {
     return request('list', { params })
   },

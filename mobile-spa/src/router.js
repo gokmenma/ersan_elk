@@ -38,6 +38,7 @@ const router = createRouter({
     { path: '/evrak', redirect: '/evrak-takip' },
     { path: '/evraklar', redirect: '/evrak-takip' },
     { path: '/arac-takip', name: 'arac-takip', component: AracView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
+    { path: '/arac-dashboard', redirect: '/arac-takip' },
     { path: '/arac', redirect: '/arac-takip' },
     { path: '/km-onaylari', name: 'km-onaylari', component: KmOnaylariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
     { path: '/km-onay', redirect: '/km-onaylari' },

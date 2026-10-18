@@ -190,6 +190,62 @@ function getInitials(name) {
   return name.slice(0, 2).toUpperCase()
 }
 
+function getStatusMeta(item) {
+  if (!item) return { label: 'Beklemede', class: 'status-chip--pending', icon: null }
+  if (activeFilter.value === 'deleted' || item.filter_mode === 'deleted') {
+    return { label: 'Silindi', class: 'status-chip--deleted', icon: null }
+  }
+
+  const s = String(item.status || '').toLowerCase().trim()
+
+  if (s === 'islemde') {
+    return { label: 'İşlemde', class: 'status-chip--in-progress', icon: 'RotateCw' }
+  }
+  if (s === 'onaylandi' || s === 'onaylandı' || s === 'kabuledildi' || s === 'kabul_edildi') {
+    return { label: 'Onaylandı', class: 'status-chip--approved', icon: null }
+  }
+  if (s.includes('kismi') || s.includes('kısmi')) {
+    return { label: 'Kısmi Onay', class: 'status-chip--partial', icon: null }
+  }
+  if (s === 'cozuldu' || s === 'çözüldü' || s.includes('cozul') || s.includes('çözül')) {
+    return { label: 'Çözüldü', class: 'status-chip--approved', icon: null }
+  }
+  if (s === 'reddedildi' || s.includes('red')) {
+    return { label: 'Reddedildi', class: 'status-chip--rejected', icon: null }
+  }
+  if (s.includes('iptal')) {
+    return { label: 'İptal Edildi', class: 'status-chip--deleted', icon: null }
+  }
+  if (s === 'beklemede' || !s || activeFilter.value === 'pending') {
+    return { label: 'Beklemede', class: 'status-chip--pending', icon: null }
+  }
+
+  return {
+    label: s.charAt(0).toUpperCase() + s.slice(1),
+    class: 'status-chip--pending',
+    icon: null,
+  }
+}
+
+function getTypeMeta(item) {
+  if (item?.type === 'avans') {
+    return {
+      label: 'Avans Talebi',
+      class: 'type-pill--avans',
+    }
+  }
+  if (item?.type === 'izin') {
+    return {
+      label: 'İzin Talebi',
+      class: 'type-pill--izin',
+    }
+  }
+  return {
+    label: 'Genel Talep',
+    class: 'type-pill--talep',
+  }
+}
+
 function updateIzinOtoMesaj() {
   const start = formIzinOnay.value.farkli_baslangic
   const end = formIzinOnay.value.farkli_bitis
@@ -554,13 +610,14 @@ async function submitSil() {
               <h4>{{ item.name }}</h4>
               <p>
                 <span>{{ item.department }}</span>
-                <em v-if="item.type === 'izin'">· {{ item.leave_type }}</em>
-                <em v-if="item.type === 'talep'">· {{ item.priority }}</em>
+                <em v-if="item.type === 'avans'">· Avans</em>
+                <em v-else-if="item.type === 'izin'">· {{ item.leave_type || 'İzin' }}</em>
+                <em v-else-if="item.type === 'talep'">· {{ item.priority || 'Talep' }}</em>
               </p>
             </div>
           </div>
 
-          <!-- Sağ Vurgu (Tutar veya Gün) -->
+          <!-- Sağ Vurgu (Tutar veya Gün) & Durum Rozeti -->
           <div class="t-card__badge-wrap">
             <span v-if="item.type === 'avans'" class="badge-amount">
               {{ item.amount_formatted }}
@@ -569,33 +626,10 @@ async function submitSil() {
               {{ item.days }} Gün
             </span>
 
-            <!-- Avans / İzin Durum Rozeti -->
-            <template v-if="item.type !== 'talep'">
-              <span
-                v-if="item.status === 'islemde'"
-                class="status-chip status-chip--in-progress"
-              >
-                <RotateCw :size="10" class="spin-icon" />
-                <span>İşlemde</span>
-              </span>
-              <span
-                v-else-if="activeFilter === 'pending'"
-                class="status-chip status-chip--pending"
-              >
-                Beklemede
-              </span>
-            </template>
-
-            <!-- Çözülmüş veya Silinmiş Talepler İçin Rozet -->
-            <span
-              v-else-if="activeFilter !== 'pending'"
-              class="status-chip"
-              :class="{
-                'status-chip--approved': item.status?.toLowerCase().includes('cozul'),
-                'status-chip--deleted': activeFilter === 'deleted',
-              }"
-            >
-              {{ item.status === 'cozuldu' ? 'Çözüldü' : item.status }}
+            <!-- Durum Rozeti (Her zaman görünür) -->
+            <span class="status-chip" :class="getStatusMeta(item).class">
+              <RotateCw v-if="getStatusMeta(item).icon === 'RotateCw'" :size="10" class="spin-icon" />
+              <span>{{ getStatusMeta(item).label }}</span>
             </span>
           </div>
         </div>
@@ -609,11 +643,21 @@ async function submitSil() {
           </p>
 
           <div class="t-card__details-row">
-            <span class="detail-tag">
-              <Clock3 :size="12" /> {{ item.date }}
-            </span>
-            <span v-if="item.type === 'izin' && item.start_date" class="detail-tag">
-              <Calendar :size="12" /> {{ item.start_date }} - {{ item.end_date }}
+            <div class="t-card__date-tags">
+              <span class="detail-tag">
+                <Clock3 :size="12" /> {{ item.date }}
+              </span>
+              <span v-if="item.type === 'izin' && item.start_date" class="detail-tag">
+                <Calendar :size="12" /> {{ item.start_date }} - {{ item.end_date }}
+              </span>
+            </div>
+
+            <!-- Talep Türü Rozeti (Tüm sekmelerde belirgin ayrım) -->
+            <span class="type-pill" :class="getTypeMeta(item).class">
+              <Wallet v-if="item.type === 'avans'" :size="11" />
+              <CalendarDays v-else-if="item.type === 'izin'" :size="11" />
+              <Layers v-else :size="11" />
+              <span>{{ getTypeMeta(item).label }}</span>
             </span>
           </div>
 
@@ -1018,7 +1062,12 @@ async function submitSil() {
 
               <div class="info-tile">
                 <span>DURUM</span>
-                <strong>{{ activeItem?.status }}</strong>
+                <div class="info-tile-status">
+                  <span class="status-chip" :class="getStatusMeta(activeItem).class">
+                    <RotateCw v-if="getStatusMeta(activeItem).icon === 'RotateCw'" :size="10" class="spin-icon" />
+                    <span>{{ getStatusMeta(activeItem).label }}</span>
+                  </span>
+                </div>
               </div>
 
               <div class="info-tile col-span-2">
@@ -1542,16 +1591,22 @@ async function submitSil() {
 }
 
 .status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
   border-radius: var(--ds-radius-pill);
-  padding: 2px 7px;
-  font: 700 9px var(--ds-font-mono);
+  padding: 2.5px 8px;
+  font: 700 9.5px var(--ds-font-mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-.status-chip--pending { background: var(--ds-surface-subtle); color: var(--ds-muted); }
-.status-chip--in-progress { background: #fef3c7; color: #b45309; }
-.status-chip--approved { background: var(--ds-emerald-soft); color: var(--ds-emerald-ink); }
-.status-chip--rejected { background: var(--ds-danger-soft); color: var(--ds-danger-ink); }
-.status-chip--deleted { background: var(--ds-danger-soft); color: var(--ds-danger-ink); }
+.status-chip--pending { background: var(--ds-surface-subtle); color: var(--ds-muted); border: 1px solid var(--ds-border-subtle); }
+.status-chip--in-progress { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.status-chip--approved { background: var(--ds-emerald-soft); color: var(--ds-emerald-ink); border: 1px solid rgba(16, 185, 129, 0.2); }
+.status-chip--partial { background: var(--ds-blue-soft); color: var(--ds-blue-ink); border: 1px solid rgba(59, 130, 246, 0.2); }
+.status-chip--rejected { background: var(--ds-danger-soft); color: var(--ds-danger-ink); border: 1px solid rgba(239, 68, 68, 0.2); }
+.status-chip--deleted { background: var(--ds-danger-soft); color: var(--ds-danger-ink); border: 1px solid rgba(239, 68, 68, 0.2); }
 
 .spin-icon {
   animation: spin 3s linear infinite;
@@ -1586,8 +1641,50 @@ async function submitSil() {
 
 .t-card__details-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.t-card__date-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4.5px;
+  border-radius: var(--ds-radius-pill);
+  padding: 2.5px 8.5px;
+  font: 700 10.5px var(--ds-font-main);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.type-pill--avans {
+  background: var(--ds-emerald-soft);
+  color: var(--ds-emerald-ink);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.type-pill--izin {
+  background: var(--ds-blue-soft);
+  color: var(--ds-blue-ink);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.type-pill--talep {
+  background: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid rgba(147, 51, 234, 0.2);
+}
+
+.info-tile-status {
+  margin-top: 4px;
 }
 
 .detail-tag {

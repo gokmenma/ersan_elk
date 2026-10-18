@@ -6,6 +6,7 @@ use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\AracKmModel;
 use App\Model\AracModel;
+use App\Model\AracDashboardModel;
 use App\Model\AracServisModel;
 use App\Model\AracYakitModel;
 use App\Model\AracZimmetFotoModel;
@@ -92,14 +93,70 @@ function parseDateRange(string $period, string $ay = '', string $yil = ''): arra
     if ($period === 'this_month') {
         return [date('Y-m-01'), date('Y-m-t')];
     }
+    if ($period === 'last_month') {
+        return [date('Y-m-01', strtotime('first day of last month')), date('Y-m-t', strtotime('last day of last month'))];
+    }
+    if ($period === 'last_3_months') {
+        return [date('Y-m-01', strtotime('-2 months')), date('Y-m-t')];
+    }
+    if ($period === 'this_year') {
+        return [date('Y-01-01'), date('Y-12-31')];
+    }
+    if ($period === 'all') {
+        return [null, null];
+    }
     if ($period === 'custom' && !empty($yil) && !empty($ay)) {
         $first = sprintf('%04d-%02d-01', (int) $yil, (int) $ay);
         return [$first, date('Y-m-t', strtotime($first))];
     }
-    return [null, null];
+    return [date('Y-m-01'), date('Y-m-t')];
 }
 
 try {
+    // -------------------------------------------------------------
+    // 0. ARAÇ DASHBOARD & ANALİTİK (GET)
+    // -------------------------------------------------------------
+    if ($method === 'GET' && ($action === 'dashboard' || $action === 'dashboard_stats')) {
+        $period = trim((string) ($_GET['period'] ?? 'this_month'));
+        $departman = trim((string) ($_GET['departman'] ?? ''));
+        $ay = trim((string) ($_GET['ay'] ?? date('m')));
+        $yil = trim((string) ($_GET['yil'] ?? date('Y')));
+
+        list($d1, $d2) = parseDateRange($period, $ay, $yil);
+
+        $dashModel = new AracDashboardModel();
+        $kpi = $dashModel->getKpiStats($d1, $d2, $departman ?: null, $firmaId);
+        $trends = $dashModel->getMonthlyTrends((int) $yil, $departman ?: null, $firmaId);
+        $deptDist = $dashModel->getDepartmentDistribution($d1, $d2, $firmaId);
+        $vTypes = $dashModel->getVehicleTypesDistribution($firmaId);
+        $topKm = $dashModel->getTopVehiclesByKm($d1, $d2, 5, $departman ?: null, $firmaId);
+        $topFuel = $dashModel->getTopVehiclesByFuel($d1, $d2, 5, $departman ?: null, $firmaId);
+        $expiringDocs = $dashModel->getExpiringDocuments($departman ?: null, $firmaId);
+        $recentServices = $dashModel->getRecentServices(5, $departman ?: null, $firmaId);
+        $recentFuel = $dashModel->getRecentFuelLogs(5, $departman ?: null, $firmaId);
+        $departmanlar = $dashModel->getDepartmanlar($firmaId);
+
+        aracApiResponse([
+            'success' => true,
+            'data' => [
+                'period' => $period,
+                'start_date' => $d1,
+                'end_date' => $d2,
+                'departman' => $departman,
+                'kpi' => $kpi,
+                'trends' => $trends,
+                'dept_distribution' => $deptDist,
+                'vehicle_types' => $vTypes,
+                'top_km' => $topKm,
+                'top_fuel' => $topFuel,
+                'expiring_docs' => $expiringDocs,
+                'recent_services' => $recentServices,
+                'recent_fuel' => $recentFuel,
+                'departmanlar' => $departmanlar,
+            ]
+        ]);
+    }
+
     // -------------------------------------------------------------
     // 1. LİSTE & ÖZET METRİKLER (GET)
     // -------------------------------------------------------------

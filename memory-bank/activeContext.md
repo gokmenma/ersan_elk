@@ -1,5 +1,57 @@
 # Active Context
 
+## Araç Takip Yönetimi: Filo Operasyon ve Analitik Dashboard (Masaüstü & Mobil SPA) (2026-10-18)
+- **Kullanıcı Talepleri**:
+  1. "araç takip yönetim altında bir araç dashboard yapmak istiyorum, views/efatura/dashboard.php sayfasındaki gibi"
+  2. "bunu mobile-spa tarafına da yapalım"
+- **Yapılan Geliştirmeler**:
+  - **1. Veritabanı & Yetkilendirme**:
+    - `sql/2026_10_18_add_arac_dashboard_menu_and_permissions.sql` oluşturuldu ve DB'ye uygulandı (`permissions.permission_key = 'arac-takip/dashboard'`, `permission_policies`, `menus` id: 986 "Dashboard", `user_role_permissions` superadmin & firma sahibi rolleri).
+  - **2. Model Katmanı (`App/Model/AracDashboardModel.php`)**:
+    - PDO ve parametrik binding kullanılarak MariaDB uyumlu KPI istatistikleri (`getKpiStats`), 12 aylık KM/Yakıt/Servis trendleri (`getMonthlyTrends`), Departman dağılımı (`getDepartmentDistribution`), Mülkiyet ve yakıt türü (`getVehicleTypesDistribution`), Lider araçlar (`getTopVehiclesByKm`, `getTopVehiclesByFuel`), Kritik ve yaklaşan evraklar (`getExpiringDocuments`) ve Son servis/yakıt hareketleri (`getRecentServices`, `getRecentFuelLogs`) metotları yazıldı.
+  - **3. Masaüstü Sayfa & Arayüz**:
+    - `views/arac-takip/dashboard.php` ve `views/arac-takip/js/dashboard.js` oluşturuldu; `views/arac-takip/api.php` içine `get-dashboard-stats` eklendi; `index.php` rotalarına `'arac-dashboard' => 'arac-takip/dashboard'` tanımlandı.
+    - ApexCharts interaktif trend ve dağılım grafikleri, 4'lü KPI kartı, canlı departman ve dönem filtreleri ile masaüstü tam faaliyete geçirildi.
+  - **4. Mobil SPA Backend API**:
+    - `mobile-spa/public/api/arac.php` ve `mobile-spa/dist/api/arac.php` içine `action === 'dashboard'` endpoint'i eklendi; `parseDateRange` fonksiyonu `this_month`, `last_month`, `last_3_months`, `this_year`, `all`, `custom` dönemleriyle zenginleştirildi; Gate yetki denetimi uygulandı.
+  - **5. Mobil SPA Servis & Gezinme**:
+    - `mobile-spa/src/services/arac.js`: Varsayılan sekme `dashboard` olarak ayarlandı, `aracApi.dashboard(params)` servisi eklendi.
+    - `mobile-spa/src/router.js`: `/arac-dashboard` rotası eklendi.
+    - `mobile-spa/src/components/BottomNav.vue`: Çekmecenin ilk elemanı olarak `LayoutDashboard` ikonlu "Dashboard" sekmesi yerleştirildi.
+  - **6. Mobil SPA Tasarım & Bileşenler (`AracView.vue`)**:
+    - Soft Bento & Claymorphic UI standartlarına (`design-system.css`) tam uyumlu gösterge paneli geliştirildi:
+      - **Hero Koyu Bento Kartı**: Dinamik filo doluluk segment çubuğu (`.segmented-track--dark`) ve 4'lü filo, zimmet, net yol ve yakıt gideri metrik hücreleri.
+      - **Dönem & Departman Filtre Barı**: Bu Ay, Geçen Ay, Son 3 Ay, Bu Yıl, Tümü, Ay Seç ve Modal destekli Departman filtresi.
+      - **4 Detaylı Bento KPI Kartı**: Filo Durumu, KM & Yol, Akaryakıt & Tüketim, Servis & Bakım; alt mini istatistikler ve ilgili sekmeye tek dokunuşla yönlendirme.
+      - **Aylık Trend Bar Grafiği**: 12 aylık mobil yatay kaydırılabilir KM ve Yakıt karşılaştırma çubukları.
+      - **Departman Bazlı Analiz**: KM, Yakıt ve Araç metrik sekmeleriyle dinamik doluluk çubukları.
+      - **Mülkiyet & Yakıt Türü Dağılımı**: Özmal/Kiralık ve Dizel/Benzin/Hibrit/Elektrik yüzdeleri.
+      - **Liderler Tablosu (Top 5)**: En çok KM yapanlar ve en çok yakıt harcayanlar listesi (derece rozetleri ve araç detayına gitme desteği).
+      - **Kritik & Yaklaşan Evraklar**: Muayene, Trafik Sigortası ve Kasko için kalan gün rozetleri (`-109 gün gecikti`, `10 gün kaldı`); araca tıklandığında detay açılışı.
+      - **Son Bakım & Servis Kayıtları**: Son işlemler, servis adı, tutar ve durum rozetleri.
+      - **Departman Seçici Bottom Sheet Modalı (`isDepartmanModalOpen`)**: Tek dokunuşla filtreleme.
+  - **7. Üretim Derlemesi & Doğrulama**:
+    - `npm run build` ile Vite üretim paketi 0 hata ile derlendi (`postbuild` symlink'leri oluşturuldu).
+    - PHP CLI (`/opt/lampp/bin/php`) ile API JSON çıktısı başarıyla doğrulandı.
+
+## Mobil SPA Talepler Kartı: Talep Durumu ve Talep Türü Gösterimi (2026-10-18)
+- **Kullanıcı Talepleri**:
+  1. "talepler kartında durumunu da gösterelim" (İşlem Görenler ve Silinenler sekmelerinde avans/izin kartlarında durumun görünmemesi sorununun çözülmesi; Onaylandı, Reddedildi, Kısmi Onay, Beklemede, İşlemde, Çözüldü, Silindi rozetlerinin tüm sekmelerde eksiksiz gösterilmesi).
+  2. "ayrıca tümü seçili iken hangisi izin hangisi avans belli olmuoyr, onu da gösterelim" (Özellikle "Tümü" sekmesinde ve tüm kartlarda talebin Avans mı, İzin mi yoksa Genel Talep mi olduğunun net biçimde rozetle belirtilmesi).
+- **Yapılan İyileştirmeler**:
+  - **Durum Rozeti (`status-chip`)**:
+    - `getStatusMeta(item)` fonksiyonu yazıldı: `onaylandi`, `reddedildi`, `kismi_onaylandi`, `islemde`, `beklemede`, `cozuldu`, `silindi` / `iptal` durumları için renkli rozet sınıfları (`status-chip--approved`, `status-chip--rejected`, `status-chip--partial`, `status-chip--in-progress`, `status-chip--pending`, `status-chip--deleted`) bağlandı.
+    - Avans ve izinlerdeki sağ üst tutar/gün alanının hemen altına durum rozeti yerleştirildi. Böylece ekran görüntüsünde kullanıcının işaretlediği kırmızı kutuya uygun olarak ret ve onay durumları anında görünür hale getirildi.
+    - Detay modalındaki "DURUM" alanına da aynı durum rozeti entegre edildi.
+  - **Talep Türü Rozeti (`type-pill`)**:
+    - `getTypeMeta(item)` fonksiyonu eklendi:
+      - Avans: `Wallet` ikonu ile zümrüt yeşili `.type-pill--avans` ("Avans Talebi")
+      - İzin: `CalendarDays` ikonu ile mavi `.type-pill--izin` ("İzin Talebi")
+      - Genel Talep: `Layers` ikonu ile mor `.type-pill--talep` ("Genel Talep")
+    - Kartın tarih satırında (`.t-card__details-row`), kullanıcının ekran görüntüsünde işaretlediği sağ boşluk alanına `.type-pill` rozeti yerleştirildi.
+    - Personel ismi altındaki alt başlıkta (`.t-card__meta`) departman yanına `· Avans`, `· İzin` veya `· Talep` bilgisi eklendi (`Kesme Açma · Avans`).
+  - **Derleme**: Vite ile `npm run build` 0 hata ile çalıştırıldı, `postbuild` symlink'leri doğrulandı.
+
 ## Mobil SPA: Hızlı Erişim (Quick Actions) Operasyon Tarzı Renklendirme ve Tam Özelleştirme (2026-10-18)
 - **Kullanıcı Talepleri**:
   1. "bunları hafif renkli yapalım, operasyonlar karıt gibi olsun" (Hızlı erişim kutularının operasyonlar kartındaki gibi hafif renkli, çerçeveli ve canlı yapılması).
