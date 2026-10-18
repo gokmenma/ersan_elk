@@ -1247,3 +1247,4 @@
 - [x] Mobil SPA Evrak Takip detayındaki `ee.yukleyen_kullanici_id` bilinmeyen kolon hatası giderildi; çoklu dosya/yükleyen migration'ı idempotent yapılıp aktif veritabanına uygulandı ve Model ek sorgusu doğrulandı. (2026-10-18)
 - [x] Mobil SPA Evrak formunda ofis/ilgili personel seçenekleri yalnız aktif kayıtlarla sınırlandı; plaka seçiminde tarih bazlı araç zimmetlisi otomatik olarak İlgili Personel alanına getirildi ve üretim SPA paketi yeniden oluşturuldu. (2026-10-18)
 - [x] Mobil SPA cari detayında hesap hareketi tutarlarının önündeki kafa karıştıran `+` / `-` işaretleri liste ve detay görünümünden kaldırıldı; yön renk ve ikonlarla gösterilmeye devam ediyor. (2026-10-18)
+- [x] Cari hareket özetlerindeki Aldım/Verdim kartları mobil SPA ve masaüstü hesap hareketleri sayfasında ilgili hareketleri filtreleyecek şekilde etkinleştirildi; tekrar seçimle filtre temizleniyor. (2026-10-18)

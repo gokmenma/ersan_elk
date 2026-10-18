@@ -2321,3 +2321,5 @@
 
 - Cari detayındaki Hesap Hareketleri listesinde ve hareket detay penceresinde tutarların önündeki `+` / `-` işaretleri kaldırıldı.
 - İşlem yönünü anlatan renkler, ok ikonları ve Aldım/Verdim metinleri korunarak tutar sunumu sadeleştirildi.
+- Mobil cari detayındaki `Top. Aldım` ve `Top. Verdim` özetleri dokunulabilir filtrelere dönüştürüldü; seçili özete yeniden dokunmak tüm hareketleri geri getiriyor.
+- Masaüstü cari hesap hareketlerinde de giriş/çıkış özet kartlarının tamamı DataTables sunucu filtresini çalıştırıyor; fare ve klavye etkileşimi ile aktif durum göstergesi eklendi.

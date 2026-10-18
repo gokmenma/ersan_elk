@@ -38,6 +38,16 @@ const loading = ref(true)
 const error = ref('')
 const cari = ref(null)
 const hareketler = ref([])
+const movementFilter = ref('all')
+
+const filteredHareketler = computed(() => {
+  if (movementFilter.value === 'all') return hareketler.value
+  return hareketler.value.filter((hareket) => hareket.type === movementFilter.value)
+})
+
+function setMovementFilter(filter) {
+  movementFilter.value = movementFilter.value === filter ? 'all' : filter
+}
 
 // Not Modalı Durumu
 const isNoteModalOpen = ref(false)
@@ -427,20 +437,32 @@ async function deleteSelectedMovement() {
 
         <!-- Mini Özet Kartları (Soft Bento Pills) -->
         <div class="hero-summary-grid">
-          <div class="mini-summary-item summary-item--aldim">
+          <button
+            type="button"
+            class="mini-summary-item summary-item--aldim mini-summary-filter"
+            :class="{ 'is-active': movementFilter === 'aldim' }"
+            :aria-pressed="movementFilter === 'aldim'"
+            @click="setMovementFilter('aldim')"
+          >
             <div class="summary-label">
               <span class="summary-dot summary-dot--aldim"></span>
               <small>TOP. ALDIM</small>
             </div>
             <strong class="text-aldim">{{ formatMoney(cari.toplam_borc) }}</strong>
-          </div>
-          <div class="mini-summary-item summary-item--verdim">
+          </button>
+          <button
+            type="button"
+            class="mini-summary-item summary-item--verdim mini-summary-filter"
+            :class="{ 'is-active': movementFilter === 'verdim' }"
+            :aria-pressed="movementFilter === 'verdim'"
+            @click="setMovementFilter('verdim')"
+          >
             <div class="summary-label">
               <span class="summary-dot summary-dot--verdim"></span>
               <small>TOP. VERDİM</small>
             </div>
             <strong class="text-verdim">{{ formatMoney(cari.toplam_alacak) }}</strong>
-          </div>
+          </button>
           <div
             class="mini-summary-item"
             :class="cari.bakiye < 0 ? 'summary-item--borclu' : cari.bakiye > 0 ? 'summary-item--alacakli' : 'summary-item--neutral'"
@@ -494,7 +516,7 @@ async function deleteSelectedMovement() {
       <section class="movements-header-row">
         <div class="movements-header-title">
           <h3>Hesap Hareketleri</h3>
-          <span class="movements-badge">{{ hareketler.length }} işlem</span>
+          <span class="movements-badge">{{ filteredHareketler.length }} işlem</span>
         </div>
         <button type="button" class="add-movement-trigger-btn" @click="openQuickAction">
           <Plus :size="15" />
@@ -504,13 +526,13 @@ async function deleteSelectedMovement() {
 
       <!-- Hareket Listesi -->
       <section class="movements-list-section">
-        <div v-if="!hareketler.length" class="movements-empty">
+        <div v-if="!filteredHareketler.length" class="movements-empty">
           <div class="empty-icon-wrap">
             <Receipt :size="30" />
           </div>
-          <strong>Henüz Hareket Kaydı Yok</strong>
-          <p>Bu cariye ait ilk tahsilat veya ödeme işlemini hemen ekleyebilirsiniz.</p>
-          <button type="button" class="empty-add-btn" @click="openQuickAction">
+          <strong>{{ hareketler.length ? 'Bu Türde Hareket Yok' : 'Henüz Hareket Kaydı Yok' }}</strong>
+          <p>{{ hareketler.length ? 'Diğer hareketleri görmek için seçili özete yeniden dokunun.' : 'Bu cariye ait ilk tahsilat veya ödeme işlemini hemen ekleyebilirsiniz.' }}</p>
+          <button v-if="!hareketler.length" type="button" class="empty-add-btn" @click="openQuickAction">
             <Plus :size="15" />
             <span>İlk İşlemi Ekle</span>
           </button>
@@ -518,7 +540,7 @@ async function deleteSelectedMovement() {
 
         <div v-else class="movements-container">
           <article
-            v-for="h in hareketler"
+            v-for="h in filteredHareketler"
             :key="h.id"
             class="movement-row-card"
             @click="openMovementDetail(h)"
@@ -1150,6 +1172,26 @@ async function deleteSelectedMovement() {
   background: #f8fafc;
   border: 1px solid var(--ds-line);
   transition: transform 0.15s ease;
+}
+.mini-summary-filter {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+.mini-summary-filter:active {
+  transform: scale(0.97);
+}
+.mini-summary-filter.is-active {
+  border-color: currentColor;
+  box-shadow: 0 0 0 2px currentColor, var(--ds-shadow-pill);
+}
+.summary-item--aldim.mini-summary-filter { color: var(--ds-danger); }
+.summary-item--verdim.mini-summary-filter { color: var(--ds-emerald); }
+.mini-summary-filter:focus-visible {
+  outline: 3px solid rgba(10, 132, 255, 0.28);
+  outline-offset: 2px;
 }
 .summary-label {
   display: inline-flex;

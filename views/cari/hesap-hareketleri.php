@@ -112,7 +112,7 @@ $bakiye = (float)($ozet->bakiye ?? 0);
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <!-- Kart 1: TOPLAM GİRİŞ (ALD.') - KIRMIZI -->
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card summary-kpi-card h-100 mb-0">
+            <div class="card summary-kpi-card summary-filter-card h-100 mb-0" data-filter="aldim" role="button" tabindex="0" aria-pressed="false" aria-label="Giriş hareketlerini filtrele">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">TOPLAM GİRİŞ (ALD.")</span>
@@ -133,7 +133,7 @@ $bakiye = (float)($ozet->bakiye ?? 0);
 
         <!-- Kart 2: TOPLAM ÇIKIŞ (VERD.') - YEŞİL -->
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card summary-kpi-card h-100 mb-0">
+            <div class="card summary-kpi-card summary-filter-card h-100 mb-0" data-filter="verdim" role="button" tabindex="0" aria-pressed="false" aria-label="Çıkış hareketlerini filtrele">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">TOPLAM ÇIKIŞ (VERD.")</span>
@@ -327,6 +327,17 @@ $bakiye = (float)($ozet->bakiye ?? 0);
 .summary-kpi-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05) !important;
+}
+.summary-filter-card {
+    cursor: pointer;
+}
+.summary-filter-card.active {
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), .18), 0 8px 22px rgba(15, 23, 42, .08) !important;
+}
+.summary-filter-card:focus-visible {
+    outline: 3px solid rgba(var(--bs-primary-rgb), .22);
+    outline-offset: 2px;
 }
 .summary-kpi-label {
     font-size: 11px;

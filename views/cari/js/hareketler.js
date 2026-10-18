@@ -103,13 +103,35 @@ $(document).ready(function () {
         table.ajax.reload(null, false);
     });
 
-    // Hızlı Filtre Butonları (Özet Kartlar İçi Butonlar)
-    $('.status-quick-filter').on('click', function () {
-        const filter = $(this).data('filter') || 'all';
-        currentFilterType = filter;
+    function applyMovementFilter(filter) {
+        const requestedFilter = filter || 'all';
+        currentFilterType = currentFilterType === requestedFilter && requestedFilter !== 'all'
+            ? 'all'
+            : requestedFilter;
         $('.status-quick-filter').removeClass('active');
-        $(this).addClass('active');
+        $(`.status-quick-filter[data-filter="${currentFilterType}"]`).addClass('active');
+        $('.summary-filter-card')
+            .removeClass('active')
+            .attr('aria-pressed', 'false');
+        $(`.summary-filter-card[data-filter="${currentFilterType}"]`)
+            .addClass('active')
+            .attr('aria-pressed', 'true');
         table.ajax.reload();
+    }
+
+    // Özet kartları ve kart içindeki hızlı filtre butonları
+    $('.status-quick-filter').on('click', function (event) {
+        event.stopPropagation();
+        applyMovementFilter($(this).data('filter'));
+    });
+
+    $('.summary-filter-card').on('click', function (event) {
+        if ($(event.target).closest('.status-quick-filter').length) return;
+        applyMovementFilter($(this).data('filter'));
+    }).on('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        applyMovementFilter($(this).data('filter'));
     });
 
     function safeFeatherReplace() {
