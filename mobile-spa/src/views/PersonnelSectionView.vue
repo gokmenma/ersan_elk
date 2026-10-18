@@ -1671,6 +1671,9 @@ async function load() {
   try {
     const result = await personnelApi.detail(route.params.id)
     person.value = result.personnel
+    if (result.personnel?.id) {
+      localStorage.setItem('ersan_last_personnel_id', String(result.personnel.id))
+    }
     canEdit.value = Boolean(result.can_edit)
     if (result.personnel_quick_list) {
       quickPersonnelList.value = result.personnel_quick_list

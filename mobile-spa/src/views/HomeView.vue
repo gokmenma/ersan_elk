@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
+  BadgeDollarSign,
   Bell,
   CalendarCheck,
   CalendarDays,
@@ -12,21 +13,33 @@ import {
   ChartNoAxesCombined,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   ClipboardCheck,
   Clock,
+  CreditCard,
+  ExternalLink,
   EyeOff,
   FileText,
+  FolderOpen,
   Gauge,
   GripVertical,
+  Info,
+  Layers,
+  Link2,
   Megaphone,
+  Pencil,
   Phone,
+  Plus,
   RefreshCw,
   RotateCcw,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
+  Star,
+  Trash2,
   UsersRound,
   Wrench,
   X,
@@ -42,6 +55,14 @@ const loading = ref(true)
 const error = ref('')
 const dashboard = ref({})
 const showCustomizeModal = ref(false)
+const showQuickActionsModal = ref(false)
+const quickActionsModalTab = ref('active') // 'active' | 'system' | 'custom'
+
+watch(quickActionsModalTab, async () => {
+  await nextTick()
+  const el = document.querySelector('.qa-sheet-body')
+  if (el) el.scrollTop = 0
+})
 const selectedAnnouncement = ref(null)
 const operationsMode = ref('daily') // 'daily' | 'monthly'
 const isSavingSettings = ref(false)
@@ -125,25 +146,252 @@ const CARD_DEFINITIONS = {
 
 // Kart sıralaması ve görünürlük state'i
 const cardOrder = ref([...DEFAULT_CARD_ORDER])
-const cardSettings = ref({}) // { [cardId]: { hidden: boolean } }
+const cardSettings = ref({}) // { [cardId]: { hidden: boolean, quick_actions?: array } }
 
-// Hızlı İşlem Tanımları
-const actionDefinitions = [
-  { permission: 'personnel', label: 'Personel', icon: UsersRound, to: '/personel' },
-  { permission: 'vehicles', label: 'Araçlar', icon: CarFront, to: '/arac-takip' },
-  { permission: 'shifts', label: 'Nöbetler', icon: CalendarCheck, to: '/nobet-onay' },
-  { permission: 'notices', label: 'İhbarlar', icon: Megaphone, to: '/ihbar' },
-  { permission: 'reports', label: 'Puantaj', icon: CalendarDays, to: '/puantaj' },
-  { permission: 'illegal', label: 'Kaçak Kontrol', icon: ShieldAlert, to: '/kacak-kontrol' },
-  { permission: 'documents', label: 'Evraklar', icon: FileText, to: '/evrak-takip' },
-  { permission: 'tasks', label: 'Görevler', icon: ClipboardCheck, to: '/gorevler' },
-  { permission: 'reports', label: 'Raporlar', icon: ChartNoAxesCombined, to: '/raporlar' },
-  { permission: 'logs', label: 'Loglar', icon: ShieldCheck, to: '/loglar' },
+// Dinamik İkon Haritası
+const iconComponentsMap = {
+  UsersRound,
+  CarFront,
+  CalendarCheck,
+  CalendarDays,
+  Megaphone,
+  FileText,
+  ClipboardCheck,
+  ChartNoAxesCombined,
+  ShieldAlert,
+  ShieldCheck,
+  Gauge,
+  Zap,
+  BadgeDollarSign,
+  CreditCard,
+  AlertTriangle,
+  FolderOpen,
+  Wrench,
+  Clock,
+  Sparkles,
+  Star,
+  Link2,
+  ExternalLink,
+  Layers,
+}
+
+// Tüm Sistem Sayfaları ve Popüler Derin Sekmeler Kataloğu
+const ALL_SYSTEM_ACTIONS = [
+  // Standart Ana Modüller
+  { id: 'act_personnel', permission: 'personnel', label: 'Personel', iconName: 'UsersRound', to: '/personel', theme: 'blue' },
+  { id: 'act_vehicles', permission: 'vehicles', label: 'Araçlar', iconName: 'CarFront', to: '/arac-takip', theme: 'emerald' },
+  { id: 'act_shifts', permission: 'shifts', label: 'Nöbetler', iconName: 'CalendarCheck', to: '/nobet-onay', theme: 'indigo' },
+  { id: 'act_notices', permission: 'notices', label: 'İhbarlar', iconName: 'Megaphone', to: '/ihbar', theme: 'amber' },
+  { id: 'act_puantaj', permission: 'reports', label: 'Puantaj', iconName: 'CalendarDays', to: '/puantaj', theme: 'teal' },
+  { id: 'act_illegal', permission: 'illegal', label: 'Kaçak Kontrol', iconName: 'ShieldAlert', to: '/kacak-kontrol', theme: 'red' },
+  { id: 'act_documents', permission: 'documents', label: 'Evraklar', iconName: 'FileText', to: '/evrak-takip', theme: 'yellow' },
+  { id: 'act_tasks', permission: 'tasks', label: 'Görevler', iconName: 'ClipboardCheck', to: '/gorevler', theme: 'emerald' },
+  { id: 'act_reports', permission: 'reports', label: 'Raporlar', iconName: 'ChartNoAxesCombined', to: '/raporlar', theme: 'teal' },
+  { id: 'act_requests', permission: 'requests', label: 'Talepler', iconName: 'AlertTriangle', to: '/talepler', theme: 'amber' },
+  { id: 'act_payroll', permission: 'payroll', label: 'Bordro & Maaş', iconName: 'BadgeDollarSign', to: '/bordro', theme: 'purple' },
+  { id: 'act_accounts', permission: 'current_accounts', label: 'Cari Takip', iconName: 'UsersRound', to: '/cari-takip', theme: 'blue' },
+  { id: 'act_invoices', permission: 'invoices', label: 'Faturalar', iconName: 'FileText', to: '/fatura', theme: 'purple' },
+  { id: 'act_cash', permission: 'cash', label: 'Kasa', iconName: 'CreditCard', to: '/kasa', theme: 'teal' },
+  { id: 'act_km', permission: 'vehicles', label: 'KM Onayları', iconName: 'Gauge', to: '/km-onaylari', theme: 'emerald' },
+  { id: 'act_logs', permission: 'logs', label: 'Loglar', iconName: 'ShieldCheck', to: '/loglar', theme: 'slate' },
+
+  // Popüler Alt Sekmeler ve Derin Bağlantılar
+  { id: 'act_deep_ek_odeme', permission: 'personnel', label: 'Ek Ödemeler', iconName: 'BadgeDollarSign', to: 'personnel_section:ek_odemeler', theme: 'emerald', isDeep: true, subtitle: 'Personel > Ek Ödeme' },
+  { id: 'act_deep_kesinti', permission: 'personnel', label: 'Maaş Kesintisi', iconName: 'CreditCard', to: 'personnel_section:kesintiler', theme: 'red', isDeep: true, subtitle: 'Personel > Kesinti' },
+  { id: 'act_deep_pers_izin', permission: 'personnel', label: 'Personel İzinleri', iconName: 'CalendarDays', to: 'personnel_section:izinler', theme: 'blue', isDeep: true, subtitle: 'Personel > İzinler' },
+  { id: 'act_deep_pers_evrak', permission: 'personnel', label: 'Personel Evrakları', iconName: 'FileText', to: 'personnel_section:evraklar', theme: 'yellow', isDeep: true, subtitle: 'Personel > Evraklar' },
+  { id: 'act_deep_pers_zimmet', permission: 'personnel', label: 'Zimmetler', iconName: 'Layers', to: 'personnel_section:zimmetler', theme: 'indigo', isDeep: true, subtitle: 'Personel > Zimmetler' },
+  { id: 'act_deep_pers_icra', permission: 'personnel', label: 'İcra Dosyaları', iconName: 'ShieldAlert', to: 'personnel_section:icralar', theme: 'red', isDeep: true, subtitle: 'Personel > İcra' },
+  { id: 'act_deep_avans', permission: 'requests', label: 'Avans Talebi', iconName: 'BadgeDollarSign', to: '/talepler?tab=avans', theme: 'blue', isDeep: true, subtitle: 'Talepler > Avans' },
+  { id: 'act_deep_izin', permission: 'requests', label: 'İzin Talebi', iconName: 'CalendarDays', to: '/talepler?tab=izin', theme: 'amber', isDeep: true, subtitle: 'Talepler > İzin' },
+  { id: 'act_deep_giden_evrak', permission: 'documents', label: 'Giden Evrak', iconName: 'FolderOpen', to: '/giden-evrak', theme: 'yellow', isDeep: true, subtitle: 'Evraklar > Giden' },
+  { id: 'act_deep_okuma_rep', permission: 'reports', label: 'Endeks Raporu', iconName: 'Gauge', to: '/raporlar?tab=okuma', theme: 'blue', isDeep: true, subtitle: 'Raporlar > Endeks' },
+  { id: 'act_deep_kesme_rep', permission: 'reports', label: 'Kesme Raporu', iconName: 'Zap', to: '/raporlar?tab=kesme', theme: 'amber', isDeep: true, subtitle: 'Raporlar > Kesme' },
+  { id: 'act_deep_muhur_rep', permission: 'reports', label: 'Mühürleme', iconName: 'ShieldCheck', to: '/raporlar?tab=muhurleme', theme: 'indigo', isDeep: true, subtitle: 'Raporlar > Mühür' },
+  { id: 'act_deep_sayac_rep', permission: 'reports', label: 'Sayaç Değişim', iconName: 'Wrench', to: '/raporlar?tab=sokme_takma', theme: 'emerald', isDeep: true, subtitle: 'Raporlar > Sayaç' },
 ]
 
-const actions = computed(() =>
-  actionDefinitions.filter(item => auth.state.permissions[item.permission]).slice(0, 8),
-)
+// Varsayılan Hızlı Erişim Listesi (Operasyonlar Standart Renk Temalarıyla)
+const DEFAULT_QUICK_ACTIONS = [
+  { id: 'act_personnel', label: 'Personel', iconName: 'UsersRound', to: '/personel', theme: 'blue' },
+  { id: 'act_vehicles', label: 'Araçlar', iconName: 'CarFront', to: '/arac-takip', theme: 'emerald' },
+  { id: 'act_shifts', label: 'Nöbetler', iconName: 'CalendarCheck', to: '/nobet-onay', theme: 'indigo' },
+  { id: 'act_notices', label: 'İhbarlar', iconName: 'Megaphone', to: '/ihbar', theme: 'amber' },
+  { id: 'act_puantaj', label: 'Puantaj', iconName: 'CalendarDays', to: '/puantaj', theme: 'teal' },
+  { id: 'act_illegal', label: 'Kaçak Kontrol', iconName: 'ShieldAlert', to: '/kacak-kontrol', theme: 'red' },
+  { id: 'act_documents', label: 'Evraklar', iconName: 'FileText', to: '/evrak-takip', theme: 'yellow' },
+  { id: 'act_tasks', label: 'Görevler', iconName: 'ClipboardCheck', to: '/gorevler', theme: 'emerald' },
+]
+
+// Kullanıcı Kısayolları State'i
+const userQuickActions = ref([])
+
+// Ana Ekranda Görünecek Hızlı Erişim Öğeleri
+const actions = computed(() => {
+  if (userQuickActions.value.length > 0) {
+    return userQuickActions.value.filter(item => {
+      if (item.isCustom) return true
+      const sys = ALL_SYSTEM_ACTIONS.find(a => a.id === item.id)
+      return !sys || !sys.permission || auth.state.permissions[sys.permission]
+    })
+  }
+  return DEFAULT_QUICK_ACTIONS.filter(item => {
+    const sys = ALL_SYSTEM_ACTIONS.find(a => a.id === item.id)
+    return !sys || !sys.permission || auth.state.permissions[sys.permission]
+  })
+})
+
+// Kullanıcının Yetkili Olduğu Sistem Önerileri
+const availableSystemActions = computed(() => {
+  return ALL_SYSTEM_ACTIONS.filter(item => {
+    if (item.permission && !auth.state.permissions[item.permission]) {
+      return false
+    }
+    return true
+  })
+})
+
+const systemMainModules = computed(() => availableSystemActions.value.filter(a => !a.isDeep))
+const systemDeepSections = computed(() => availableSystemActions.value.filter(a => a.isDeep))
+
+// Özel Bağlantı Ekleme Form State'i
+const customNewAction = ref({
+  label: '',
+  to: '',
+  iconName: 'Zap',
+  theme: 'blue',
+})
+
+const availableIconNames = [
+  'Zap',
+  'BadgeDollarSign',
+  'CreditCard',
+  'UsersRound',
+  'FileText',
+  'CalendarCheck',
+  'CalendarDays',
+  'CarFront',
+  'FolderOpen',
+  'Gauge',
+  'ShieldCheck',
+  'Sparkles',
+  'Star',
+  'Wrench',
+  'Clock',
+  'Link2',
+]
+
+const availableThemes = [
+  { key: 'blue', label: 'Mavi', hex: '#0284c7' },
+  { key: 'emerald', label: 'Zümrüt', hex: '#10b981' },
+  { key: 'amber', label: 'Turuncu', hex: '#f59e0b' },
+  { key: 'indigo', label: 'İndigo', hex: '#6366f1' },
+  { key: 'teal', label: 'Teal', hex: '#0d9488' },
+  { key: 'red', label: 'Kırmızı', hex: '#ef4444' },
+  { key: 'purple', label: 'Mor', hex: '#8b5cf6' },
+  { key: 'yellow', label: 'Kehribar', hex: '#eab308' },
+]
+
+const quickPresets = [
+  { label: 'Ek Ödemeler', to: 'personnel_section:ek_odemeler', iconName: 'BadgeDollarSign', theme: 'emerald' },
+  { label: 'Maaş Kesintisi', to: 'personnel_section:kesintiler', iconName: 'CreditCard', theme: 'red' },
+  { label: 'İzin Talebi', to: '/talepler?tab=izin', iconName: 'CalendarDays', theme: 'amber' },
+  { label: 'Avans Talebi', to: '/talepler?tab=avans', iconName: 'BadgeDollarSign', theme: 'blue' },
+  { label: 'KM Onayları', to: '/km-onaylari', iconName: 'Gauge', theme: 'emerald' },
+  { label: 'Kaçak Kontrol', to: '/kacak-kontrol', iconName: 'ShieldAlert', theme: 'red' },
+]
+
+function applyPreset(preset) {
+  customNewAction.value.label = preset.label
+  customNewAction.value.to = preset.to
+  customNewAction.value.iconName = preset.iconName
+  customNewAction.value.theme = preset.theme
+}
+
+function saveQuickActions(newList) {
+  userQuickActions.value = [...newList]
+  try {
+    localStorage.setItem('ersan_mobile_quick_actions', JSON.stringify(newList))
+  } catch (e) {}
+  cardSettings.value = {
+    ...cardSettings.value,
+    quick_actions: newList,
+  }
+  persistSettings()
+}
+
+function addActionToUser(action) {
+  if (userQuickActions.value.some(a => a.id === action.id)) {
+    showToast('Bu kısayol zaten ekli.')
+    return
+  }
+  const updated = [
+    ...userQuickActions.value,
+    {
+      id: action.id,
+      label: action.label,
+      iconName: action.iconName || 'Zap',
+      to: action.to || '',
+      href: action.href || '',
+      theme: action.theme || 'blue',
+      isCustom: Boolean(action.isCustom),
+    },
+  ]
+  saveQuickActions(updated)
+  showToast(`"${action.label}" hızlı işlemlere eklendi.`)
+}
+
+function removeActionFromUser(actionId) {
+  const updated = userQuickActions.value.filter(a => a.id !== actionId)
+  saveQuickActions(updated)
+  showToast('Kısayol kaldırıldı.')
+}
+
+function moveAction(index, direction) {
+  const targetIndex = direction === 'up' ? index - 1 : index + 1
+  if (targetIndex < 0 || targetIndex >= userQuickActions.value.length) return
+  const list = [...userQuickActions.value]
+  const [moved] = list.splice(index, 1)
+  list.splice(targetIndex, 0, moved)
+  saveQuickActions(list)
+}
+
+function resetQuickActionsToDefault() {
+  saveQuickActions([...DEFAULT_QUICK_ACTIONS])
+  showToast('Hızlı işlemler varsayılana sıfırlandı.')
+}
+
+function submitCustomAction() {
+  const lbl = customNewAction.value.label.trim()
+  const link = customNewAction.value.to.trim()
+  if (!lbl) {
+    showToast('Lütfen bir kısayol başlığı girin.')
+    return
+  }
+  if (!link) {
+    showToast('Lütfen hedef sayfa / link adresini girin.')
+    return
+  }
+
+  const newId = 'custom_' + Date.now()
+  const isExternal = link.startsWith('http://') || link.startsWith('https://')
+  const newAction = {
+    id: newId,
+    label: lbl,
+    iconName: customNewAction.value.iconName || 'Zap',
+    to: isExternal ? '' : link,
+    href: isExternal ? link : '',
+    theme: customNewAction.value.theme || 'blue',
+    isCustom: true,
+  }
+
+  addActionToUser(newAction)
+  customNewAction.value.label = ''
+  customNewAction.value.to = ''
+  customNewAction.value.iconName = 'Zap'
+  customNewAction.value.theme = 'blue'
+  quickActionsModalTab.value = 'active'
+}
 
 // Reaktif Veri Modelleri
 const personnel = computed(() => (auth.state.permissions.personnel ? dashboard.value.personnel : null))
@@ -395,12 +643,36 @@ function loadCachedPreferences() {
         cardSettings.value = parsedSettings
       }
     }
+    const cachedQuickActions = localStorage.getItem('ersan_mobile_quick_actions')
+    if (cachedQuickActions) {
+      const parsedQA = JSON.parse(cachedQuickActions)
+      if (Array.isArray(parsedQA) && parsedQA.length) {
+        userQuickActions.value = parsedQA
+      }
+    }
   } catch (e) {}
 }
 
 function openAction(action) {
-  if (action.to) router.push(action.to)
-  else if (action.href) window.location.href = action.href
+  if (action.to) {
+    if (action.to.startsWith('personnel_section:')) {
+      const sectionName = action.to.split(':')[1]
+      const lastId = localStorage.getItem('ersan_last_personnel_id')
+      if (lastId) {
+        router.push(`/personel/${encodeURIComponent(lastId)}/bolum/${sectionName}`)
+      } else {
+        router.push(`/personel?section=${sectionName}`)
+      }
+    } else {
+      router.push(action.to)
+    }
+  } else if (action.href) {
+    if (action.href.startsWith('http://') || action.href.startsWith('https://')) {
+      window.open(action.href, '_blank')
+    } else {
+      window.location.href = action.href
+    }
+  }
 }
 
 function formatDate(value) {
@@ -433,7 +705,14 @@ async function load() {
       }
       if (data.card_preferences.settings && typeof data.card_preferences.settings === 'object') {
         cardSettings.value = data.card_preferences.settings
+        if (Array.isArray(data.card_preferences.settings.quick_actions) && data.card_preferences.settings.quick_actions.length) {
+          userQuickActions.value = data.card_preferences.settings.quick_actions
+        }
       }
+    }
+    // Eğer yerel veya sunucuda henüz kayıt yoksa varsayılan listeyi yükle
+    if (!userQuickActions.value || userQuickActions.value.length === 0) {
+      userQuickActions.value = [...DEFAULT_QUICK_ACTIONS]
     }
   } catch (reason) {
     error.value = reason.message
@@ -841,24 +1120,40 @@ onMounted(() => {
                 <div class="card-inner-title">
                   <Zap :size="16" class="text-amber" />
                   <span>Hızlı Erişim</span>
+                  <span class="clay-pill-tag ms-1">{{ actions.length }} Kısayol</span>
                 </div>
                 <div class="card-inner-controls">
+                  <button
+                    type="button"
+                    class="qa-customize-trigger-btn me-1"
+                    title="Kısayolları düzenle ve yeni bağlantı ekle"
+                    aria-label="Kısayolları düzenle"
+                    @click.stop="showQuickActionsModal = true"
+                  >
+                    <SlidersHorizontal :size="11" />
+                    <span>Özelleştir</span>
+                  </button>
                   <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
-              <div class="quick-action-grid" :style="{ '--action-count': Math.min(actions.length, 4) }">
+              <div class="quick-action-grid">
                 <button
                   v-for="action in actions"
-                  :key="action.label"
+                  :key="action.id || action.label"
                   type="button"
                   class="quick-action-tile"
+                  :class="`qa-theme--${action.theme || 'blue'}`"
                   @click="openAction(action)"
                 >
                   <span class="quick-action-icon">
-                    <component :is="action.icon" :size="20" :stroke-width="1.7" />
+                    <component
+                      :is="iconComponentsMap[action.iconName] || action.icon || Zap"
+                      :size="18"
+                      :stroke-width="1.8"
+                    />
                   </span>
                   <span class="quick-action-text"><strong>{{ action.label }}</strong></span>
                 </button>
@@ -1061,6 +1356,398 @@ onMounted(() => {
             @click="closeAnnouncementDetail"
           >
             Kapat
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- HIZLI İŞLEMLERİ ÖZELLEŞTİRME BOTTOM SHEET MODALI -->
+    <div
+      v-if="showQuickActionsModal"
+      class="home-sheet-backdrop"
+      @click.self="showQuickActionsModal = false"
+    >
+      <div class="home-sheet-modal qa-custom-sheet">
+        <div class="home-sheet-handle"></div>
+        
+        <header class="home-sheet-head">
+          <div>
+            <h3>Hızlı Erişim Kısayolları</h3>
+            <p>Ana ekrandaki hızlı işlem butonlarını düzenleyin.</p>
+          </div>
+          <button
+            type="button"
+            class="clay-circle-btn"
+            aria-label="Kapat"
+            @click="showQuickActionsModal = false"
+          >
+            <X :size="18" />
+          </button>
+        </header>
+
+        <!-- Segmented Tab Seçici -->
+        <div class="qa-sticky-tabs-wrap">
+          <div class="qa-capsule-tabs">
+            <button
+              type="button"
+              class="qa-capsule-tab"
+              :class="{ active: quickActionsModalTab === 'active' }"
+              @click="quickActionsModalTab = 'active'"
+            >
+              <Layers :size="13" />
+              <span>Kısayollarım</span>
+              <span class="qa-tab-count">{{ userQuickActions.length }}</span>
+            </button>
+            <button
+              type="button"
+              class="qa-capsule-tab"
+              :class="{ active: quickActionsModalTab === 'system' }"
+              @click="quickActionsModalTab = 'system'"
+            >
+              <FolderOpen :size="13" />
+              <span>Sistem Kataloğu</span>
+            </button>
+            <button
+              type="button"
+              class="qa-capsule-tab"
+              :class="{ active: quickActionsModalTab === 'custom' }"
+              @click="quickActionsModalTab = 'custom'"
+            >
+              <Plus :size="13" />
+              <span>Özel Bağlantı</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="home-sheet-body qa-sheet-body">
+          <!-- 1. SEKME: AKTİF KISAYOLLAR -->
+          <div v-if="quickActionsModalTab === 'active'" class="qa-active-list">
+            <div class="qa-tab-lead">
+              <span class="qa-lead-text">Ana sayfada 4'lü ızgara halinde gösterilir. Sıralamayı değiştirebilir veya silebilirsiniz.</span>
+            </div>
+
+            <div v-if="!userQuickActions.length" class="qa-empty-state">
+              <Zap :size="32" class="text-muted" />
+              <p>Henüz kısayol eklenmemiş. Aşağıdan varsayılan listeye dönebilir veya yukarıdaki sekmelerden yeni ekleyebilirsiniz.</p>
+              <button
+                type="button"
+                class="clay-pill-btn clay-pill-btn--primary mt-2"
+                @click="resetQuickActionsToDefault"
+              >
+                <RotateCcw :size="13" />
+                <span>Varsayılanları Yükle</span>
+              </button>
+            </div>
+
+            <div
+              v-for="(action, index) in userQuickActions"
+              :key="action.id"
+              class="qa-active-item"
+            >
+              <div class="qa-item-reorder">
+                <button
+                  type="button"
+                  class="qa-mini-btn"
+                  :disabled="index === 0"
+                  title="Yukarı Taşı"
+                  aria-label="Yukarı Taşı"
+                  @click="moveAction(index, 'up')"
+                >
+                  <ChevronUp :size="14" />
+                </button>
+                <button
+                  type="button"
+                  class="qa-mini-btn"
+                  :disabled="index === userQuickActions.length - 1"
+                  title="Aşağı Taşı"
+                  aria-label="Aşağı Taşı"
+                  @click="moveAction(index, 'down')"
+                >
+                  <ChevronDown :size="14" />
+                </button>
+              </div>
+
+              <div class="qa-item-main">
+                <span class="qa-item-bubble" :class="`qa-bubble--${action.theme || 'blue'}`">
+                  <component
+                    :is="iconComponentsMap[action.iconName] || Zap"
+                    :size="16"
+                  />
+                </span>
+                <div class="qa-item-text">
+                  <div class="flex items-center gap-1.5">
+                    <strong>{{ action.label }}</strong>
+                    <span v-if="action.isCustom" class="qa-badge-custom">Özel</span>
+                  </div>
+                  <span class="qa-item-target">
+                    {{ action.subtitle || action.to || action.href }}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="qa-delete-btn"
+                title="Kısayolu Kaldır"
+                aria-label="Kısayolu Kaldır"
+                @click="removeActionFromUser(action.id)"
+              >
+                <Trash2 :size="15" />
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. SEKME: SİSTEM SAYFALARI & DERİN BÖLÜMLER -->
+          <div v-else-if="quickActionsModalTab === 'system'" class="qa-system-catalog">
+            <!-- Popüler Derin Sekmeler Grubu -->
+            <div class="qa-group-block">
+              <div class="qa-group-title">
+                <Sparkles :size="13" class="text-amber" />
+                <span>Hızlı Bölümler & Derin Sekmeler</span>
+              </div>
+              <div class="qa-system-grid">
+                <div
+                  v-for="sysAction in systemDeepSections"
+                  :key="sysAction.id"
+                  class="qa-system-card"
+                  :class="{ 'is-added': userQuickActions.some(a => a.id === sysAction.id) }"
+                >
+                  <span class="qa-item-bubble" :class="`qa-bubble--${sysAction.theme || 'blue'}`">
+                    <component
+                      :is="iconComponentsMap[sysAction.iconName] || Zap"
+                      :size="16"
+                    />
+                  </span>
+                  <div class="qa-system-info">
+                    <strong>{{ sysAction.label }}</strong>
+                    <small>{{ sysAction.subtitle }}</small>
+                  </div>
+                  <button
+                    v-if="userQuickActions.some(a => a.id === sysAction.id)"
+                    type="button"
+                    class="qa-added-pill"
+                    disabled
+                  >
+                    <Check :size="12" />
+                    <span>Ekli</span>
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="qa-add-btn"
+                    @click="addActionToUser(sysAction)"
+                  >
+                    <Plus :size="13" />
+                    <span>Ekle</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ana Sistem Modülleri Grubu -->
+            <div class="qa-group-block mt-3">
+              <div class="qa-group-title">
+                <FolderOpen :size="13" class="text-primary" />
+                <span>Ana Sistem Modülleri</span>
+              </div>
+              <div class="qa-system-grid">
+                <div
+                  v-for="sysAction in systemMainModules"
+                  :key="sysAction.id"
+                  class="qa-system-card"
+                  :class="{ 'is-added': userQuickActions.some(a => a.id === sysAction.id) }"
+                >
+                  <span class="qa-item-bubble" :class="`qa-bubble--${sysAction.theme || 'blue'}`">
+                    <component
+                      :is="iconComponentsMap[sysAction.iconName] || Zap"
+                      :size="16"
+                    />
+                  </span>
+                  <div class="qa-system-info">
+                    <strong>{{ sysAction.label }}</strong>
+                    <small>{{ sysAction.to }}</small>
+                  </div>
+                  <button
+                    v-if="userQuickActions.some(a => a.id === sysAction.id)"
+                    type="button"
+                    class="qa-added-pill"
+                    disabled
+                  >
+                    <Check :size="12" />
+                    <span>Ekli</span>
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="qa-add-btn"
+                    @click="addActionToUser(sysAction)"
+                  >
+                    <Plus :size="13" />
+                    <span>Ekle</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. SEKME: ÖZEL BAĞLANTI FORMU -->
+          <div v-else-if="quickActionsModalTab === 'custom'" class="qa-custom-wrap">
+            <!-- 1. Canlı Önizleme Bento Kartı -->
+            <div class="qa-preview-bento">
+              <span class="qa-preview-badge">Canlı Görünüm Önizlemesi</span>
+              <div class="qa-preview-tile-wrap">
+                <div class="quick-action-tile qa-preview-tile" :class="`qa-theme--${customNewAction.theme || 'blue'}`">
+                  <span class="quick-action-icon">
+                    <component :is="iconComponentsMap[customNewAction.iconName] || Zap" :size="18" />
+                  </span>
+                  <span class="quick-action-text">
+                    <strong>{{ customNewAction.label || 'Kısayol Başlığı' }}</strong>
+                  </span>
+                </div>
+              </div>
+              <div class="qa-preview-meta">
+                <span class="qa-preview-meta-label">Hedef:</span>
+                <span class="qa-preview-meta-val truncate">{{ customNewAction.to || 'Belirtilmedi' }}</span>
+              </div>
+            </div>
+
+            <!-- 2. Hızlı Şablonlar / Hazır Butonlar -->
+            <div class="qa-bento-block">
+              <div class="qa-block-head">
+                <Sparkles :size="13" class="text-amber" />
+                <strong>Hızlı Şablonlar</strong>
+                <small class="ms-auto text-muted">Tek dokunuşla doldurur</small>
+              </div>
+              <div class="qa-presets-wrap">
+                <button
+                  v-for="p in quickPresets"
+                  :key="p.label"
+                  type="button"
+                  class="qa-preset-pill"
+                  :class="`qa-chip--${p.theme}`"
+                  @click="applyPreset(p)"
+                >
+                  <component :is="iconComponentsMap[p.iconName] || Zap" :size="13" />
+                  <span>{{ p.label }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. Bağlantı Detayları Giriş Alanları -->
+            <div class="qa-bento-block">
+              <div class="qa-block-head">
+                <Link2 :size="13" class="text-primary" />
+                <strong>Bağlantı Bilgileri</strong>
+              </div>
+
+              <div class="qa-form-field">
+                <label class="qa-field-label">Kısayol Adı</label>
+                <div class="qa-input-box">
+                  <Pencil :size="15" class="qa-input-icon text-muted" />
+                  <input
+                    v-model="customNewAction.label"
+                    type="text"
+                    placeholder="Örn: Ek Ödemeler, Maaş Kesintisi..."
+                    class="qa-field-input"
+                  />
+                </div>
+              </div>
+
+              <div class="qa-form-field mt-2">
+                <label class="qa-field-label">Hedef URL / Sekme Adresi</label>
+                <div class="qa-input-box">
+                  <Link2 :size="15" class="qa-input-icon text-muted" />
+                  <input
+                    v-model="customNewAction.to"
+                    type="text"
+                    placeholder="Örn: /personel veya personnel_section:ek_odemeler"
+                    class="qa-field-input font-mono text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. İkon ve Renk Seçimi -->
+            <div class="qa-bento-block">
+              <div class="qa-block-head">
+                <Star :size="13" class="text-warning" />
+                <strong>İkon ve Renk Teması</strong>
+              </div>
+
+              <div class="qa-form-field">
+                <label class="qa-field-label">İkon Seçin</label>
+                <div class="qa-icon-palette">
+                  <button
+                    v-for="iconName in availableIconNames"
+                    :key="iconName"
+                    type="button"
+                    class="qa-palette-icon-btn"
+                    :class="{ active: customNewAction.iconName === iconName }"
+                    @click="customNewAction.iconName = iconName"
+                  >
+                    <component :is="iconComponentsMap[iconName] || Zap" :size="18" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="qa-form-field mt-3">
+                <label class="qa-field-label">Renk Teması</label>
+                <div class="qa-color-tokens">
+                  <button
+                    v-for="th in availableThemes"
+                    :key="th.key"
+                    type="button"
+                    class="qa-color-circle-btn"
+                    :style="{ backgroundColor: th.hex }"
+                    :class="{ active: customNewAction.theme === th.key }"
+                    :title="th.label"
+                    @click="customNewAction.theme = th.key"
+                  >
+                    <Check v-if="customNewAction.theme === th.key" :size="14" class="text-white" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kaydet Butonu -->
+            <button
+              type="button"
+              class="qa-save-action-btn"
+              @click="submitCustomAction"
+            >
+              <Plus :size="16" />
+              <span>Bu Kısayolu Ekle</span>
+            </button>
+          </div>
+        </div>
+
+        <footer class="home-sheet-foot">
+          <button
+            v-if="quickActionsModalTab === 'active'"
+            type="button"
+            class="clay-pill-btn clay-pill-btn--secondary"
+            @click="resetQuickActionsToDefault"
+          >
+            <RotateCcw :size="13" />
+            <span>Varsayılana Sıfırla</span>
+          </button>
+          <button
+            v-else
+            type="button"
+            class="clay-pill-btn clay-pill-btn--secondary"
+            @click="quickActionsModalTab = 'active'"
+          >
+            <ChevronLeft :size="13" />
+            <span>Kısayollara Dön</span>
+          </button>
+
+          <button
+            type="button"
+            class="clay-pill-btn ms-auto"
+            @click="showQuickActionsModal = false"
+          >
+            <Check :size="14" />
+            <span>Tamamla</span>
           </button>
         </footer>
       </div>

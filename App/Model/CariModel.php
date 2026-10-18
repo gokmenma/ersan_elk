@@ -29,9 +29,9 @@ class CariModel extends Model
 
         $balance_filter = $params['balance_filter'] ?? 'all';
         if ($balance_filter === 'borclu') {
-            $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) < 0";
-        } elseif ($balance_filter === 'alacakli') {
             $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) > 0";
+        } elseif ($balance_filter === 'alacakli') {
+            $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) < 0";
         }
 
         if (!empty($search)) {
@@ -211,8 +211,8 @@ class CariModel extends Model
         $summary = $this->db->query($sql)->fetch(PDO::FETCH_OBJ);
 
         $countsSql = "SELECT 
-            SUM(CASE WHEN bakiye < 0 THEN 1 ELSE 0 END) as borclu_cari_sayisi,
-            SUM(CASE WHEN bakiye > 0 THEN 1 ELSE 0 END) as alacakli_cari_sayisi
+            SUM(CASE WHEN bakiye > 0 THEN 1 ELSE 0 END) as borclu_cari_sayisi,
+            SUM(CASE WHEN bakiye < 0 THEN 1 ELSE 0 END) as alacakli_cari_sayisi
             FROM (
                 SELECT c.id, (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) as bakiye
                 FROM cari c WHERE c.silinme_tarihi IS NULL

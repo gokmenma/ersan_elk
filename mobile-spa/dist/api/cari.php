@@ -77,9 +77,9 @@ try {
         $bind = [];
 
         if ($balanceFilter === 'borclu') {
-            $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) < 0";
-        } elseif ($balanceFilter === 'alacakli') {
             $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) > 0";
+        } elseif ($balanceFilter === 'alacakli') {
+            $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) < 0";
         }
 
         if ($search !== '') {
@@ -127,8 +127,8 @@ try {
                 'city' => (string) ($row->il ?? ''),
                 'district' => (string) ($row->ilce ?? ''),
                 'bakiye' => $bakiye,
-                'bakiye_status' => $bakiye < 0 ? 'borclu' : ($bakiye > 0 ? 'alacakli' : 'sifir'),
-                'bakiye_label' => $bakiye < 0 ? 'Borçlu' : ($bakiye > 0 ? 'Alacaklı' : 'Bakiye Yok'),
+                'bakiye_status' => $bakiye > 0 ? 'borclu' : ($bakiye < 0 ? 'alacakli' : 'sifir'),
+                'bakiye_label' => $bakiye > 0 ? 'Borçlu' : ($bakiye < 0 ? 'Alacaklı' : 'Bakiye Yok'),
             ];
         }
 

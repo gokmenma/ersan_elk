@@ -12,6 +12,7 @@ use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\AracServisModel;
 use App\Model\AracKmBildirimModel;
+use App\Model\AracDashboardModel;
 use App\Model\SystemLogModel;
 use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
@@ -21,7 +22,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari', 'get-dashboard-stats']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     if (!is_string($action) || trim($action) === '') {
@@ -105,6 +106,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
     try {
         switch ($action) {
+            // =============================================
+            // ARAÇ DASHBOARD İSTATİSTİKLERİ
+            // =============================================
+            case 'get-dashboard-stats':
+                $baslangic = $_POST['baslangic_tarihi'] ?? $_GET['baslangic_tarihi'] ?? null;
+                $bitis = $_POST['bitis_tarihi'] ?? $_GET['bitis_tarihi'] ?? null;
+                $departman = $_POST['departman'] ?? $_GET['departman'] ?? null;
+                $yil = (int)($_POST['yil'] ?? $_GET['yil'] ?? date('Y'));
+
+                $dashModel = new AracDashboardModel();
+                $kpi = $dashModel->getKpiStats($baslangic, $bitis, $departman);
+                $trends = $dashModel->getMonthlyTrends($yil, $departman);
+                $deptDist = $dashModel->getDepartmentDistribution($baslangic, $bitis);
+                $vTypes = $dashModel->getVehicleTypesDistribution();
+                $topKm = $dashModel->getTopVehiclesByKm($baslangic, $bitis, 5, $departman);
+                $topFuel = $dashModel->getTopVehiclesByFuel($baslangic, $bitis, 5, $departman);
+                $expiringDocs = $dashModel->getExpiringDocuments($departman);
+                $recentServices = $dashModel->getRecentServices(5, $departman);
+                $recentFuel = $dashModel->getRecentFuelLogs(5, $departman);
+                $departmanlar = $dashModel->getDepartmanlar();
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'kpi' => $kpi,
+                        'trends' => $trends,
+                        'dept_distribution' => $deptDist,
+                        'vehicle_types' => $vTypes,
+                        'top_km' => $topKm,
+                        'top_fuel' => $topFuel,
+                        'expiring_docs' => $expiringDocs,
+                        'recent_services' => $recentServices,
+                        'recent_fuel' => $recentFuel,
+                        'departmanlar' => $departmanlar
+                    ]
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+
             // =============================================
             // YAPAY ZEKA İŞ AJANI
             // =============================================

@@ -330,7 +330,7 @@ function handleResetAllPayments() {
   })
 }
 
-// Detay HTML Temizleyici (Masaüstü gereksiz başlık ve alt banner'ları temizler)
+// Detay HTML Temizleyici (Masaüstü gereksiz başlık ve alt banner'ları temizler, akordiyon başlangıç durumunu ayarlar)
 function sanitizeDetailHtml(html, tabType) {
   if (!html) return ''
   const host = document.createElement('div')
@@ -342,6 +342,22 @@ function sanitizeDetailHtml(html, tabType) {
     host.querySelector('.net-bottom-banner')?.remove()
     host.querySelector('.btn-toggle-net-expand')?.remove()
     host.querySelector('.layout-switch')?.remove()
+
+    // 1. Ana hesap panellerini mobilde varsayılan olarak açık (show) tut ve aria-expanded="true" yap
+    host.querySelectorAll('.bordro-main-calculation-collapse').forEach(panel => {
+      panel.classList.add('show')
+    })
+    host.querySelectorAll('.calculation-toggle').forEach(btn => {
+      btn.setAttribute('aria-expanded', 'true')
+    })
+
+    // 2. Ödeme türleri alt kırılım (child-row) akordiyon satırlarını varsayılan olarak KAPALI yap
+    host.querySelectorAll('.child-row.collapse').forEach(row => {
+      row.classList.remove('show')
+    })
+    host.querySelectorAll('.parent-row[data-bs-target], .parent-row[data-target]').forEach(pRow => {
+      pRow.setAttribute('aria-expanded', 'false')
+    })
   } else {
     // get-detail (resmî döküm) temizliği
     host.querySelector('.person-header-card')?.remove()
@@ -349,6 +365,76 @@ function sanitizeDetailHtml(html, tabType) {
   }
 
   return host.innerHTML
+}
+
+// Bordro Detay Tablosunda Akordiyon ve Panel Aç/Kapa Tıklama Yöneticisi
+function handleDetailTableClick(event) {
+  const container = event.currentTarget
+  if (!container) return
+
+  // 1. Ödeme Türleri / Alt Kırılım Akordiyon Satırı (.parent-row)
+  const parentRow = event.target.closest('.parent-row')
+  if (parentRow && container.contains(parentRow)) {
+    const targetSelector = (parentRow.getAttribute('data-bs-target') || parentRow.getAttribute('data-target') || '').trim()
+    if (targetSelector) {
+      event.preventDefault()
+      event.stopPropagation()
+
+      // Hedef alt satırları bul (.colPuantaj_xxx, .cBaseHakedis_xxx vb.)
+      try {
+        const targets = container.querySelectorAll(targetSelector)
+        if (targets.length > 0) {
+          const isExpanded = parentRow.getAttribute('aria-expanded') === 'true'
+          const nextState = !isExpanded
+
+          parentRow.setAttribute('aria-expanded', String(nextState))
+          targets.forEach(el => {
+            if (nextState) {
+              el.classList.add('show')
+            } else {
+              el.classList.remove('show')
+            }
+          })
+        }
+      } catch (e) {
+        console.warn('Accordion querySelector error:', e)
+      }
+      return
+    }
+  }
+
+  // 2. Ana Hesap Kart Başlığı (.calculation-toggle)
+  const calcToggle = event.target.closest('.calculation-toggle')
+  if (calcToggle && container.contains(calcToggle)) {
+    const targetSelector = (
+      calcToggle.getAttribute('data-collapse-target') ||
+      calcToggle.getAttribute('data-bs-target') ||
+      calcToggle.getAttribute('data-target') ||
+      ''
+    ).trim()
+
+    if (targetSelector) {
+      event.preventDefault()
+      event.stopPropagation()
+
+      try {
+        const target = container.querySelector(targetSelector)
+        if (target) {
+          const isExpanded = calcToggle.getAttribute('aria-expanded') === 'true'
+          const nextState = !isExpanded
+
+          calcToggle.setAttribute('aria-expanded', String(nextState))
+          if (nextState) {
+            target.classList.add('show')
+          } else {
+            target.classList.remove('show')
+          }
+        }
+      } catch (e) {
+        console.warn('Panel toggle querySelector error:', e)
+      }
+    }
+  }
 }
 
 // Belirli bir detay sekmesini yükle (cache destekli)
@@ -985,6 +1071,7 @@ onMounted(() => {
               <div
                 v-else-if="activeDetailTab === 'comparison'"
                 class="payroll-legacy-container payroll-comparison-container"
+                @click="handleDetailTableClick"
                 v-html="detailData.html || '<p class=\'p-3 text-slate-400\'>Hesap dökümü bulunamadı.</p>'"
               ></div>
 
@@ -992,6 +1079,7 @@ onMounted(() => {
               <div
                 v-else-if="activeDetailTab === 'official'"
                 class="payroll-legacy-container payroll-official-container"
+                @click="handleDetailTableClick"
                 v-html="detailData.html || '<p class=\'p-3 text-slate-400\'>Resmî bordro dökümü bulunamadı.</p>'"
               ></div>
             </template>
@@ -2429,9 +2517,67 @@ onMounted(() => {
 .payroll-comparison-container :deep(.header-glass),
 .payroll-comparison-container :deep(.net-bottom-banner),
 .payroll-comparison-container :deep(.layout-switch),
-.payroll-comparison-container :deep(.btn-toggle-net-expand),
-.payroll-comparison-container :deep(.panel-chevron) {
+.payroll-comparison-container :deep(.btn-toggle-net-expand) {
   display: none !important;
+}
+
+/* Panel ve Akordiyon İkon Dönüşleri (Saf CSS Vektörel Chevron) */
+.payroll-comparison-container :deep(.panel-chevron) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  color: inherit !important;
+  opacity: 0.8 !important;
+  flex-shrink: 0 !important;
+}
+
+.payroll-comparison-container :deep(.panel-chevron)::after {
+  content: "" !important;
+  display: inline-block !important;
+  width: 7px !important;
+  height: 7px !important;
+  border-right: 2px solid currentColor !important;
+  border-bottom: 2px solid currentColor !important;
+  transform: rotate(45deg) translateY(-2px) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.payroll-comparison-container :deep(.calculation-toggle[aria-expanded="true"] .panel-chevron)::after {
+  transform: rotate(-135deg) translateY(-2px) !important;
+}
+
+.payroll-comparison-container :deep(.rotate-icon) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin-left: 6px !important;
+  color: #64748b !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+  transition: color 0.2s ease !important;
+}
+
+.payroll-comparison-container :deep(.rotate-icon)::after {
+  content: "" !important;
+  display: inline-block !important;
+  width: 6.5px !important;
+  height: 6.5px !important;
+  border-right: 2px solid currentColor !important;
+  border-bottom: 2px solid currentColor !important;
+  transform: rotate(45deg) translateY(-2px) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.payroll-comparison-container :deep(.parent-row[aria-expanded="true"] .rotate-icon) {
+  color: #2563eb !important;
+}
+
+.payroll-comparison-container :deep(.parent-row[aria-expanded="true"] .rotate-icon)::after {
+  transform: rotate(-135deg) translateY(-2px) !important;
 }
 
 /* Grid kolonlarını mobilde tam genişlikte dikey yığına çevir */
@@ -2535,13 +2681,46 @@ onMounted(() => {
   border-left: 4px solid #f43f5e !important;
 }
 
-/* Collapse panelleri mobilde daima açık tut */
-.payroll-comparison-container :deep(.collapse),
-.payroll-comparison-container :deep(.bordro-main-calculation-collapse) {
+/* Ana Hesap Panelleri Collapse Yönetimi */
+.payroll-comparison-container :deep(.bordro-main-calculation-collapse.collapse:not(.show)) {
+  display: none !important;
+}
+
+.payroll-comparison-container :deep(.bordro-main-calculation-collapse.collapse.show) {
   display: block !important;
-  visibility: visible !important;
-  height: auto !important;
-  overflow: visible !important;
+  animation: panelSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Ödeme Türleri Alt Kırılım (Child Rows) Akordiyon Yönetimi */
+.payroll-comparison-container :deep(.child-row.collapse:not(.show)) {
+  display: none !important;
+}
+
+.payroll-comparison-container :deep(.child-row.collapse.show) {
+  display: flex !important;
+  animation: childRowExpand 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes childRowExpand {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panelSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Unified Tablo Tasarımı -> Mobil Kart Listesi Dönüşümü */
@@ -2597,10 +2776,32 @@ onMounted(() => {
   color: #0f172a !important;
 }
 
-/* Parent Row (Ana Başlık Satırı) */
+/* Parent Row (Ana Başlık / Akordiyon Satırı) */
 .payroll-comparison-container :deep(.unified-table .parent-row) {
   background: #ffffff !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .parent-row[data-bs-target]),
+.payroll-comparison-container :deep(.unified-table .parent-row[data-target]) {
   cursor: pointer !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .parent-row[data-bs-target]:active),
+.payroll-comparison-container :deep(.unified-table .parent-row[data-target]:active) {
+  background: #f1f5f9 !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .parent-row[data-bs-target][aria-expanded="true"]),
+.payroll-comparison-container :deep(.unified-table .parent-row[data-target][aria-expanded="true"]) {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.payroll-comparison-container :deep(.unified-table .parent-row[data-bs-target][aria-expanded="true"] > td:first-child) {
+  color: #1e3a8a !important;
 }
 
 .payroll-comparison-container :deep(.unified-table .parent-row > td:first-child) {

@@ -246,15 +246,22 @@ try {
         }
 
         if ($action === 'download_pdf') {
-            $pdf = $invoiceService->downloadPdf($invoiceId, $firmId);
-            $invoice = $invoiceModel->getInvoiceById($invoiceId, $firmId);
-            $filename = preg_replace('/[^A-Za-z0-9_-]/', '', ($invoice['fatura_no'] ?? '') ?: ($invoice['ettn'] ?? 'fatura')) . '.pdf';
-            header('Content-Type: application/pdf');
-            header('X-Content-Type-Options: nosniff');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Content-Length: ' . strlen($pdf));
-            echo $pdf;
-            exit;
+            try {
+                $pdf = $invoiceService->downloadPdf($invoiceId, $firmId);
+                $invoice = $invoiceModel->getInvoiceById($invoiceId, $firmId);
+                $filename = preg_replace('/[^A-Za-z0-9_-]/', '', ($invoice['fatura_no'] ?? '') ?: ($invoice['ettn'] ?? 'fatura')) . '.pdf';
+                header('Content-Type: application/pdf');
+                header('X-Content-Type-Options: nosniff');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Content-Length: ' . strlen($pdf));
+                echo $pdf;
+                exit;
+            } catch (\Throwable $e) {
+                http_response_code(500);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
         }
     }
 

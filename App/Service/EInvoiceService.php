@@ -1094,8 +1094,41 @@ class EInvoiceService
     {
         $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
         if (!$invoice) throw new \InvalidArgumentException('Fatura bulunamadı.');
-        if ($invoice['entegrator_durum_kodu'] === 'TASLAK' && empty($invoice['ubl_xml_path']) && empty($invoice['kaynak_xml']) && empty($invoice['edm_referans_no'])) throw new \InvalidArgumentException('Yerel taslak için PDF bulunmuyor. Yazdırılabilir önizlemeyi kullanın.');
-        return $this->client($firmId)->getInvoicePdf($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
+
+        // 1. Entegratörde (EDM) kayıtlı faturalar için resmi imzalı PDF'i çek
+        if (!empty($invoice['ettn']) && $invoice['entegrator_durum_kodu'] !== 'TASLAK') {
+            try {
+                $pdf = $this->client($firmId)->getInvoicePdf($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
+                if (!empty($pdf) && str_starts_with($pdf, '%PDF-')) {
+                    return $pdf;
+                }
+            } catch (\Throwable $e) {
+                error_log('EDM getInvoicePdf error for invoice ' . $invoiceId . ': ' . $e->getMessage());
+            }
+        }
+
+        // 2. EDM'de PDF yoksa veya taslak ise HTML önizleme üzerinden Dompdf ile PDF üret
+        try {
+            $html = $this->renderHtmlPreview($invoiceId, $firmId);
+            if (class_exists(\Dompdf\Dompdf::class)) {
+                $options = new \Dompdf\Options();
+                $options->set('isRemoteEnabled', true);
+                $options->set('isHtml5ParserEnabled', true);
+                $options->set('defaultFont', 'DejaVu Sans');
+                $dompdf = new \Dompdf\Dompdf($options);
+                $dompdf->loadHtml($html, 'UTF-8');
+                $dompdf->setPaper('A4', 'portrait');
+                $dompdf->render();
+                $output = $dompdf->output();
+                if (!empty($output) && str_starts_with($output, '%PDF-')) {
+                    return $output;
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('Dompdf render error for invoice ' . $invoiceId . ': ' . $e->getMessage());
+        }
+
+        throw new \InvalidArgumentException('Fatura PDF belgesi oluşturulamadı.');
     }
 
     public function connectionInfo(int $firmId, ?array $overrideSettings = null): array

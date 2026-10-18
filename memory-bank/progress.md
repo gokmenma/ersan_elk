@@ -1,6 +1,96 @@
 # Progress
 
-## 2026-10-17 — Mobil SPA Talepler Modülü: Avatar 404 Çözümü, İşleme Al Butonu ve Onay Entegrasyonları Tamamlandı
+## 2026-10-18 — Mobil SPA: Hızlı Erişim (Quick Actions) Operasyon Tarzı Renklendirme ve Tam Özelleştirme
+- [x] **1. Operasyonlar Tarzı Renk & Çerçeve Standartları (`design-system.css`)**:
+  - Hızlı erişim kutuları (`.quick-action-tile`) 1.5px renkli kenarlık, hafif gölge ve operasyonlar kutusundaki gibi renkli zeminli ikon balonu (`.quick-action-icon`) ile tasarlandı.
+  - 10 farklı renk teması tanımlandı (`blue`, `emerald`, `amber`, `indigo`, `teal`, `red`, `purple`, `yellow`, `slate`, `pink`).
+  - Hızlı Erişim kartı başlığına "Özelleştir" (`.qa-customize-trigger-btn`) butonu eklendi.
+- [x] **2. Derin Bağlantı (Deep Linking) Desteği**:
+  - Son incelenen personel ID'si yerel depolamada saklanarak `personnel_section:ek_odemeler` gibi kısayollardan doğrudan personelin ilgili alt sekmesine (Ek Ödemeler, Kesintiler, İzinler, Evraklar, Zimmetler vb.) geçiş sağlandı.
+- [x] **3. 3 Sekmeli Kısayol Düzenleme Modalı (`HomeView.vue`) & Bento UI İyileştirmeleri**:
+  - **Çift Scrollbar Giderildi**: Nested scroll çakışması kaldırıldı, kaydırma tek ve akıcı hale getirildi.
+  - **Kapsül Segmented Bar**: Sekmeler pürüzsüz yuvarlak hap formuna kavuşturuldu, tarayıcı odak çerçeveleri temizlendi ve sekmeler arası geçişte en üste kaydırma (`scrollTop = 0`) sağlandı.
+  - **Canlı Önizleme Bento Kartı**: Özel bağlantı oluşturulurken kısayolun ana sayfadaki gerçek görünümü dinamik olarak canlı yansıtıldı.
+  - **Hızlı Şablon Chipleri (Presets)**: Ek Ödemeler, Maaş Kesintisi, İzinler, Avans vb. için tek dokunuşla tüm formu ve renk/ikonları dolduran hazır şablonlar eklendi.
+  - **İkon ve Renk Seçimi**: 16 kavisli buton ve çift halkalı dairesel renk seçiciler tasarlandı, form alanlarına sol ikonlar eklendi.
+  - **Sistem Kataloğu Gruplandı**: "Hızlı Bölümler & Derin Sekmeler" ile "Ana Sistem Modülleri" ayrıştırıldı.
+- [x] **4. Kalıcılık & Sunucu Senkronizasyonu**:
+  - Ayarlar hem tarayıcıda (`localStorage`), hem de veritabanında (`mobile_dashboard_settings`) kaydedildi.
+- [x] **5. Derleme & Doğrulama**:
+  - `npm run build` ile üretim paketi 0 hata ile derlendi.
+
+## 2026-10-18 — Mobil SPA: Bordro Detayında Ödeme Türleri Akordiyon Yapısı
+- [x] **1. HTML Başlangıç Durumu & Sanitize Mantığı (`sanitizeDetailHtml`)**:
+  - Ana hesap kartları (`.bordro-main-calculation-collapse`) mobilde varsayılan olarak açık (`show`) ve `aria-expanded="true"` tutuldu.
+  - Ödeme türleri alt kırılımları (`.child-row.collapse`) varsayılan olarak kapalı hale getirildi, `aria-expanded="false"` atandı.
+- [x] **2. Vue Olay Yöneticisi (`handleDetailTableClick`)**:
+  - Konteynera `@click="handleDetailTableClick"` bağlandı; `.parent-row[data-bs-target]` tıklamalarında ilgili `.child-row` elemanlarının `.show` sınıfı animasyonlu olarak açılıp kapanması sağlandı.
+  - Ana hesap kartı başlıkları (`.calculation-toggle`) için de panel katlama desteği eklendi.
+- [x] **3. CSS Vektörel Chevron & Akordiyon Animasyonları (`PayrollView.vue`)**:
+  - Saf CSS vektörel oklar (`.rotate-icon::after`, `.panel-chevron::after`) eklendi.
+  - `.child-row.collapse:not(.show)` için `display: none !important`, `.show` için flex ve `childRowExpand` animasyonu uygulandı.
+  - Açık satırlarda chevron 180° dönerek elektrik mavisi renge büründü, dokunmatik aktif durumlar (`:active`) tasarlandı.
+- [x] **4. Derleme & Doğrulama**:
+  - `npm run build` ile üretim paketi 0 hata ile derlendi.
+  - Playwright otomatik testi ile kapalı ve açık durumlar doğrulandı, ekran görüntüleri kaydedildi (`bordro-detail-accordion-collapsed.png`, `bordro-detail-accordion-expanded.png`).
+
+## 2026-10-18 — Masaüstü: Araç Takip & Filo Yönetimi Altında Araç Dashboard Modülü
+- [x] **1. SQL Scripti & Yetkilendirme (`sql/2026_10_18_add_arac_dashboard_menu_and_permissions.sql`)**:
+  - `permissions` tablosuna `arac-takip/dashboard` yetkisi tanımlandı.
+  - `user_role_permissions` üzerinden Süper Admin ve Firma Sahibi rollerine otomatik yetki verildi.
+  - `menus` tablosunda Parent ID 56 ('Araç Takip/Yönetim') altına `menu_order = 49` ile ilk sıraya "Araç Dashboard" eklendi.
+  - `user_menu_orders` tablosundaki özel kullanıcı menü sıralamasında `56` numaralı ana menü altına ilk sıraya yerleştirildi.
+  - `permission_policies` tablosuna `arac-takip/dashboard` sayfa ve `arac-takip/api` `get-dashboard-stats` API politikaları bağlandı.
+- [x] **2. Model Katmanı (`App/Model/AracDashboardModel.php`)**:
+  - PDO parametrik sorgularla Filo durumu (toplam, aktif, zimmetli, boşta, servisteki, ikame), KM kullanımı (toplam km, günlük ortalama, araç başı ortalama, lider araç), Yakıt sarfiyatı (toplam tutar, toplam litre, 100km tüketim, km başı maliyet) ve Servis & Evrak göstergeleri oluşturuldu.
+  - Yıllık 12 ay Yakıt & KM trendleri, Departman bazlı dağılım, Mülkiyet ve yakıt türü dağılımları yazıldı.
+  - Top 5 KM, Top 5 Yakıt, Yaklaşan ve geciken kritik evraklar (Muayene, Sigorta, Kasko) ve son servis hareketleri metodları eklendi.
+- [x] **3. Backend API Entegrasyonu (`views/arac-takip/api.php`)**:
+  - `get-dashboard-stats` eylemi eklendi; Gate politikası ve dinamik JSON yanıt formatı sağlandı.
+- [x] **4. Görünüm & Dinamik JavaScript (`views/arac-takip/dashboard.php` & `js/dashboard.js`)**:
+  - `views/efatura/dashboard.php` tasarım standardına birebir uyumlu sayfa şablonu oluşturuldu.
+  - Segmented dönem butonları (`Bu Ay`, `Geçen Ay`, `Son 3 Ay`, `Bu Yıl`, `Tümü`), Flatpickr tarih seçici, departman filtresi ve preloader animasyonu.
+  - 4 Adet degrade kenarlıklı `.dashboard-stat-card`.
+  - ApexCharts Combo Bar+Line (Yakıt & KM), Donut (Departman), Pie (Mülkiyet) ve Donut (Yakıt Tipi) grafikleri.
+  - Top 5 KM, Top 5 Yakıt, Evrak Uyarıları ve Son Servisler tabloları.
+  - macOS Dark tema tam uyumluluğu.
+- [x] **5. Rota & Testler**:
+  - `index.php` routeAliases dizisine `arac-dashboard` eklendi.
+  - Model, API ve sayfa render testleri hatasız tamamlandı.
+
+## 2026-10-18 — Mobil SPA: Cari Takip Modülü Bakiye ve Borçlu/Alacaklı Mantığı Düzeltmesi
+- [x] **1. Model Katmanı (`App/Model/CariModel.php`)**:
+  - `summary()` metodunda `bakiye > 0` şartı `borclu_cari_sayisi`na, `bakiye < 0` şartı `alacakli_cari_sayisi`na bağlandı.
+  - `ajaxList()` metodunda `$balance_filter === 'borclu'` için `> 0`, `$balance_filter === 'alacakli'` için `< 0` yapılarak veritabanı filtreleri ters durumdan kurtarıldı.
+- [x] **2. API Katmanı (`mobile-spa/public/api/cari.php` & `dist/api/cari.php`)**:
+  - `balanceFilter` filtresinde `borclu` için `> 0`, `alacakli` için `< 0` uygulandı.
+  - Liste kayıtlarında `bakiye_status` ve `bakiye_label`: `bakiye > 0 ? 'Borçlu' : ($bakiye < 0 ? 'Alacaklı' : 'Bakiye Yok')` olarak düzeltildi.
+- [x] **3. Vue Arayüzü (`mobile-spa/src/views/CariView.vue`)**:
+  - Obsidian Hero kartı lejantında:
+    - "Top. Verdim (Alacak)" altında borçlu cari sayısı (`{{ summary.borclu_sayisi || 0 }} borçlu cari`) gösterildi ve tıklama `activeFilter === 'borclu'`ya bağlandı.
+    - "Top. Aldım (Borç)" altında alacaklı cari sayısı (`{{ summary.alacakli_sayisi || 0 }} alacaklı cari`) gösterildi ve tıklama `activeFilter === 'alacakli'`ya bağlandı.
+  - Filtre sekmelerinde `Borçlular` (7) ve `Alacaklılar` (5) sayaçları ve butonları doğru filtreye bağlandı.
+  - Cari kartlarında pozitif bakiye (`+`) olan cariler için `Borçlu` rozeti (`badge-borclu`), negatif bakiye (`-`) olan cariler için `Alacaklı` rozeti (`badge-alacakli`) gösterildi.
+- [x] **4. Derleme ve Doğrulama**:
+  - `npm run build` ile 0 hata ile derlendi; test scripti ile veritabanı hesapları ve API çıktıları doğrulandı.
+
+## 2026-10-18 — Mobil SPA: E-Fatura Görüntüleme Ekrana Sığdırma (Fit-to-Screen), Zoom/Pinch ve PDF Dosya Paylaşımı
+- [x] **1. Fatura Önizleme Modalı Ekrana Sığdırma (Fit-to-Screen)**:
+  - Mobil ekranlarda masaüstü/A4 genişliğindeki (~820px) faturaların sağ yarısının kesilmesi sorunu çözüldü.
+  - `onIframeLoaded` ile faturanın doğal boyutları dinamik okunup `fitScale` hesaplanarak fatura açılır açılmaz tam ekran genişliğine sığdırıldı.
+- [x] **2. Etkileşimli Zoom ve İki Parmakla Kıstırma (Pinch-to-Zoom)**:
+  - İki parmakla kıstırma (pinch-to-zoom) dokunmatik hareketleri (`onTouchStart`, `onTouchMove`, `onTouchEnd`) entegre edildi.
+  - Altta yüzen modern frosted-glass kontrol çubuğu (`.fatura-zoom-dock`) ile `[-]`, `[+%.. / Sığdırıldı]`, `[+]` ve `[Sığdır]` butonları sunuldu.
+  - Yakınlaştırıldığında dikey ve yatay kaydırma/panning akıcı hale getirildi.
+- [x] **3. PDF Belgesi Olarak Paylaşma (Web Share API Files)**:
+  - URL linki paylaşımı kaldırıldı; `/api/fatura.php?action=download_pdf&id=...` üzerinden PDF ikili dosyası indirilip `new File([blob], ...)` ile doğrudan PDF dosyası olarak paylaşıldı.
+  - Hem liste kartlarındaki paylaş butonu hem de önizleme modalı başlığındaki yeni Paylaş butonu (`Share2`) bu mantığa bağlandı.
+  - Dosya paylaşımını desteklemeyen tarayıcılar için otomatik PDF indirme fallback'i sağlandı.
+- [x] **4. Backend PDF Dayanıklılığı (`EInvoiceService::downloadPdf`)**:
+  - EDM'den PDF çekilemeyen durumlarda ve yerel taslaklarda `Dompdf` ile HTML önizlemeden anlık PDF üretip döndüren çift katmanlı fallback eklendi.
+- [x] **5. Derleme & Doğrulama**:
+  - `npm run build` ile 0 hata ile derlendi; `php -l` ile PHP sözdizimleri doğrulandı.
+
 - [x] **1. Profil Fotoğrafları / Avatar 404 Çözümü**:
   - `requests.php` içindeki doğrudan disk yolu kullanımı kaldırıldı; `resolvePersonelAvatar()` fonksiyonu ile çoklu sütun adayı (`personel_resim_yolu`, `resim_yolu`) diskte `file_exists()` ile kontrol edildi.
   - Merkezi güvenli servis `/api/personnel-photo.php?id={Security::encrypt(personel_id)}` üzerinden sunulması sağlandı.

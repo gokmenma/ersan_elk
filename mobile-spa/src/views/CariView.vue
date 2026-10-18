@@ -472,8 +472,8 @@ async function deleteSelectedMovement() {
         <div class="cari-chart-legend">
           <div
             class="cari-legend-item"
-            :class="{ 'cari-legend-item--active': activeFilter === 'alacakli' }"
-            @click="activeFilter = activeFilter === 'alacakli' ? 'all' : 'alacakli'"
+            :class="{ 'cari-legend-item--active': activeFilter === 'borclu' }"
+            @click="activeFilter = activeFilter === 'borclu' ? 'all' : 'borclu'"
           >
             <span class="cari-legend-dot cari-legend-dot--alacak"></span>
             <div class="cari-legend-info">
@@ -482,14 +482,14 @@ async function deleteSelectedMovement() {
                 <b class="cari-legend-pct text-emerald">%{{ alacakRatio }}</b>
               </div>
               <strong class="cari-legend-val">{{ formatMoney(summary.toplam_alacak) }}</strong>
-              <small class="cari-legend-count">{{ summary.alacakli_sayisi || 0 }} alacaklı cari</small>
+              <small class="cari-legend-count">{{ summary.borclu_sayisi || 0 }} borçlu cari</small>
             </div>
           </div>
 
           <div
             class="cari-legend-item"
-            :class="{ 'cari-legend-item--active': activeFilter === 'borclu' }"
-            @click="activeFilter = activeFilter === 'borclu' ? 'all' : 'borclu'"
+            :class="{ 'cari-legend-item--active': activeFilter === 'alacakli' }"
+            @click="activeFilter = activeFilter === 'alacakli' ? 'all' : 'alacakli'"
           >
             <span class="cari-legend-dot cari-legend-dot--borc"></span>
             <div class="cari-legend-info">
@@ -498,7 +498,7 @@ async function deleteSelectedMovement() {
                 <b class="cari-legend-pct text-sky">%{{ borcRatio }}</b>
               </div>
               <strong class="cari-legend-val">{{ formatMoney(summary.toplam_borc) }}</strong>
-              <small class="cari-legend-count">{{ summary.borclu_sayisi || 0 }} borçlu cari</small>
+              <small class="cari-legend-count">{{ summary.alacakli_sayisi || 0 }} alacaklı cari</small>
             </div>
           </div>
         </div>
@@ -534,22 +534,22 @@ async function deleteSelectedMovement() {
         <button
           type="button"
           class="tab-btn"
-          :class="{ active: activeFilter === 'alacakli' }"
-          @click="activeFilter = 'alacakli'"
+          :class="{ active: activeFilter === 'borclu' }"
+          @click="activeFilter = 'borclu'"
         >
           <span class="dot-indicator dot-credit"></span>
-          <span>Alacaklılar</span>
-          <b class="tab-badge">{{ summary.alacakli_sayisi }}</b>
+          <span>Borçlular</span>
+          <b class="tab-badge">{{ summary.borclu_sayisi }}</b>
         </button>
         <button
           type="button"
           class="tab-btn"
-          :class="{ active: activeFilter === 'borclu' }"
-          @click="activeFilter = 'borclu'"
+          :class="{ active: activeFilter === 'alacakli' }"
+          @click="activeFilter = 'alacakli'"
         >
           <span class="dot-indicator dot-debt"></span>
-          <span>Borçlular</span>
-          <b class="tab-badge">{{ summary.borclu_sayisi }}</b>
+          <span>Alacaklılar</span>
+          <b class="tab-badge">{{ summary.alacakli_sayisi }}</b>
         </button>
       </div>
     </section>
@@ -611,13 +611,13 @@ async function deleteSelectedMovement() {
           <div class="cari-card__balance-block">
             <span
               class="balance-amount"
-              :class="cari.bakiye < 0 ? 'text-debt' : cari.bakiye > 0 ? 'text-credit' : 'text-neutral'"
+              :class="cari.bakiye > 0 ? 'text-credit' : cari.bakiye < 0 ? 'text-debt' : 'text-neutral'"
             >
-              {{ cari.bakiye < 0 ? '-' : cari.bakiye > 0 ? '+' : '' }}{{ formatMoney(cari.bakiye) }}
+              {{ cari.bakiye > 0 ? '+' : cari.bakiye < 0 ? '-' : '' }}{{ formatMoney(cari.bakiye) }}
             </span>
             <span
               class="balance-badge"
-              :class="cari.bakiye < 0 ? 'badge-debt' : cari.bakiye > 0 ? 'badge-credit' : 'badge-neutral'"
+              :class="cari.bakiye > 0 ? 'badge-borclu' : cari.bakiye < 0 ? 'badge-alacakli' : 'badge-neutral'"
             >
               {{ cari.bakiye_label }}
             </span>
@@ -1657,13 +1657,15 @@ async function deleteSelectedMovement() {
   font: 700 8px 'Space Grotesk', sans-serif;
   text-transform: uppercase;
 }
-.badge-debt {
-  background: var(--ds-danger-soft);
-  color: var(--ds-danger-ink);
-}
+.badge-borclu,
 .badge-credit {
   background: var(--ds-emerald-soft);
   color: var(--ds-emerald-ink);
+}
+.badge-alacakli,
+.badge-debt {
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-ink);
 }
 .badge-neutral {
   background: var(--ds-soft);

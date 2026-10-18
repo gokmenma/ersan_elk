@@ -23,6 +23,7 @@ import {
   Filter,
   Inbox,
   Layers,
+  Maximize2,
   Package,
   Percent,
   PieChart,
@@ -44,6 +45,8 @@ import {
   X,
   XCircle,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from '@lucide/vue'
 import {
   faturaApi,
@@ -116,6 +119,25 @@ const previewTitle = ref('Fatura Önizleme')
 const previewEncId = ref('')
 const previewHtmlContent = ref('')
 const previewIframeRef = ref(null)
+const viewerViewportRef = ref(null)
+const baseWidth = ref(820)
+const baseHeight = ref(1160)
+const zoomScale = ref(1)
+const fitScale = ref(1)
+const minScale = ref(0.2)
+const maxScale = ref(2.5)
+
+const isFitted = computed(() => {
+  return Math.abs(zoomScale.value - fitScale.value) < 0.03
+})
+
+const scaledDimensions = computed(() => ({
+  width: Math.round(baseWidth.value * zoomScale.value),
+  height: Math.round(baseHeight.value * zoomScale.value),
+}))
+
+const sharingPdf = ref(false)
+const sharingInvoiceId = ref(null)
 
 // 6. Ticari Yanıt Verme Modalı
 const isResponseModalOpen = ref(false)
@@ -470,24 +492,129 @@ watch([searchQuery, statusFilter, responseFilter], () => {
 })
 
 // ----------------------------------------------------
-// ÖNİZLEME MODALI
+// ÖNİZLEME MODALI & ZOOM / FIT YÖNETİMİ
 // ----------------------------------------------------
+function fitToScreen() {
+  const viewport = viewerViewportRef.value
+  if (!viewport) return
+  const availWidth = Math.max(viewport.clientWidth - 16, 260)
+  const scale = Number((availWidth / baseWidth.value).toFixed(3))
+  fitScale.value = scale
+  zoomScale.value = scale
+  minScale.value = Math.max(Number((scale * 0.7).toFixed(3)), 0.15)
+}
+
+function zoomIn() {
+  const next = Math.min(zoomScale.value + 0.15, maxScale.value)
+  zoomScale.value = Number(next.toFixed(3))
+}
+
+function zoomOut() {
+  const prev = Math.max(zoomScale.value - 0.15, minScale.value)
+  zoomScale.value = Number(prev.toFixed(3))
+}
+
+function toggleFitOr100() {
+  if (isFitted.value) {
+    zoomScale.value = 1.0
+  } else {
+    fitToScreen()
+  }
+}
+
+function onIframeLoaded() {
+  try {
+    const iframe = previewIframeRef.value
+    if (iframe && iframe.contentDocument) {
+      const doc = iframe.contentDocument
+      const style = doc.createElement('style')
+      style.textContent = `
+        html, body {
+          background-color: #ffffff !important;
+          margin: 0 !important;
+          padding: 8px !important;
+          box-sizing: border-box !important;
+        }
+      `
+      doc.head?.appendChild(style)
+
+      const bodyWidth = Math.max(
+        doc.body?.scrollWidth || 0,
+        doc.documentElement?.scrollWidth || 0,
+        doc.body?.offsetWidth || 0
+      )
+      const bodyHeight = Math.max(
+        doc.body?.scrollHeight || 0,
+        doc.documentElement?.scrollHeight || 0,
+        doc.body?.offsetHeight || 0
+      )
+      if (bodyWidth > 400) {
+        baseWidth.value = bodyWidth
+      }
+      if (bodyHeight > 400) {
+        baseHeight.value = bodyHeight
+      }
+    }
+  } catch (e) {}
+
+  setTimeout(() => {
+    fitToScreen()
+  }, 50)
+}
+
+// İki parmakla kıstırma (Pinch to Zoom) dokunmatik hareketleri
+let touchInitialDist = 0
+let touchStartScale = 1
+
+function getTouchesDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX
+  const dy = touches[0].clientY - touches[1].clientY
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+function onTouchStart(e) {
+  if (e.touches.length === 2) {
+    touchInitialDist = getTouchesDistance(e.touches)
+    touchStartScale = zoomScale.value
+  }
+}
+
+function onTouchMove(e) {
+  if (e.touches.length === 2 && touchInitialDist > 0) {
+    const currentDist = getTouchesDistance(e.touches)
+    const factor = currentDist / touchInitialDist
+    const newScale = Math.min(Math.max(touchStartScale * factor, minScale.value), maxScale.value)
+    zoomScale.value = Number(newScale.toFixed(3))
+    if (e.cancelable) e.preventDefault()
+  }
+}
+
+function onTouchEnd(e) {
+  if (e.touches.length < 2) {
+    touchInitialDist = 0
+  }
+}
+
+function onWindowResize() {
+  if (isPreviewOpen.value && isFitted.value) {
+    fitToScreen()
+  }
+}
+
 async function openPreview(encId, title = 'Fatura Önizleme') {
   previewEncId.value = encId
   previewTitle.value = title
   previewHtmlContent.value = ''
   isPreviewOpen.value = true
   previewLoading.value = true
+  baseWidth.value = 820
+  baseHeight.value = 1160
+  zoomScale.value = 1
 
   try {
     const res = await faturaApi.previewHtml(encId)
     if (res.success && res.html) {
-      let html = res.html
-      // Mobil viewport ve padding ayarla
-      if (!html.includes('name="viewport"')) {
-        html = html.replace(/<head>/i, '<head><meta name="viewport" content="width=850, initial-scale=0.45, minimum-scale=0.25, maximum-scale=3.0, user-scalable=yes">')
-      }
-      previewHtmlContent.value = html
+      previewHtmlContent.value = res.html
     } else {
       previewHtmlContent.value = '<div style="padding:24px;text-align:center;color:#ba1a1a;font-family:sans-serif;font-weight:bold;">Önizleme oluşturulamadı.</div>'
     }
@@ -501,6 +628,7 @@ async function openPreview(encId, title = 'Fatura Önizleme') {
 function closePreview() {
   isPreviewOpen.value = false
   previewHtmlContent.value = ''
+  zoomScale.value = 1
 }
 
 function printInvoice() {
@@ -510,26 +638,73 @@ function printInvoice() {
   }
 }
 
-async function shareInvoice(inv) {
-  const encId = inv.encrypted_id
-  const title = `Fatura: ${inv.fatura_no || 'Belge'}`
-  const url = `${window.location.origin}/api/fatura.php?action=show_html&id=${encodeURIComponent(encId)}`
+// ----------------------------------------------------
+// PDF PAYLAŞIMI (WEB SHARE API - DOSYA BAZLI)
+// ----------------------------------------------------
+async function shareInvoicePdf(encId, invoiceNo, recipient = '') {
+  const cleanNo = String(invoiceNo || 'Fatura').replace(/[^a-zA-Z0-9_-]/g, '_')
+  const fileName = `${cleanNo}.pdf`
 
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title,
-        text: `${inv.alici_unvan || 'Cari'} adına kesilen ${formatMoney(inv.odenecek_tutar)} tutarındaki fatura.`,
-        url,
-      })
-    } catch (e) {}
-  } else {
-    try {
-      await navigator.clipboard.writeText(url)
-      showToast('Fatura bağlantısı panoya kopyalandı.')
-    } catch (e) {
-      showToast('Bağlantı kopyalanamadı.', 'error')
+  try {
+    const res = await fetch(`/api/fatura.php?action=download_pdf&id=${encodeURIComponent(encId)}`)
+    if (!res.ok) {
+      let errMsg = 'PDF belgesi sunucudan alınamadı.'
+      try {
+        const json = await res.json()
+        if (json.message) errMsg = json.message
+      } catch (e) {}
+      throw new Error(errMsg)
     }
+
+    const blob = await res.blob()
+    const file = new File([blob], fileName, { type: 'application/pdf' })
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: `Fatura: ${cleanNo}`,
+        text: recipient ? `${recipient} adına fatura.` : `Fatura No: ${cleanNo}`,
+      })
+      showToast('Fatura PDF dosyası paylaşıldı.')
+    } else {
+      // Tarayıcı doğrudan dosya paylaşımını desteklemiyorsa otomatik PDF indir ve bildir
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 3000)
+      showToast('Tarayıcınız dosya paylaşımını desteklemediğinden PDF cihazınıza indirildi.')
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      return
+    }
+    showToast(err.message || 'PDF paylaşılırken hata oluştu.', 'error')
+  }
+}
+
+async function shareInvoice(inv) {
+  if (sharingInvoiceId.value) return
+  sharingInvoiceId.value = inv.encrypted_id
+  showToast('Fatura PDF belgesi hazırlanıyor...')
+  try {
+    await shareInvoicePdf(inv.encrypted_id, inv.fatura_no, inv.alici_unvan)
+  } finally {
+    sharingInvoiceId.value = null
+  }
+}
+
+async function shareCurrentPreviewPdf() {
+  if (sharingPdf.value || !previewEncId.value) return
+  sharingPdf.value = true
+  showToast('Fatura PDF belgesi hazırlanıyor...')
+  try {
+    await shareInvoicePdf(previewEncId.value, previewTitle.value)
+  } finally {
+    sharingPdf.value = false
   }
 }
 
@@ -873,6 +1048,7 @@ async function saveWizardInvoice(sendDirect = false) {
 // ----------------------------------------------------
 onMounted(() => {
   openFaturaDrawer()
+  window.addEventListener('resize', onWindowResize)
   if (route.query.tab && ['ozet', 'giden', 'gelen', 'taslak'].includes(route.query.tab)) {
     faturaState.activeTab = route.query.tab
     activeTab.value = route.query.tab
@@ -885,6 +1061,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   closeFaturaDrawer()
+  window.removeEventListener('resize', onWindowResize)
 })
 </script>
 
@@ -1801,10 +1978,14 @@ onBeforeUnmount(() => {
                 <button
                   type="button"
                   class="fatura-icon-action-btn"
-                  title="Paylaş"
+                  :class="{ 'is-loading': sharingInvoiceId === inv.encrypted_id }"
+                  title="PDF Olarak Paylaş"
+                  aria-label="PDF Olarak Paylaş"
+                  :disabled="sharingInvoiceId === inv.encrypted_id"
                   @click="shareInvoice(inv)"
                 >
-                  <Share2 :size="15" />
+                  <Share2 v-if="sharingInvoiceId !== inv.encrypted_id" :size="15" />
+                  <RefreshCw v-else :size="14" class="is-spinning" />
                 </button>
                 <button
                   type="button"
@@ -1834,6 +2015,18 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="fatura-preview-header__actions">
+              <button
+                type="button"
+                class="fatura-icon-btn"
+                :class="{ 'is-loading': sharingPdf }"
+                title="PDF Olarak Paylaş"
+                aria-label="PDF Olarak Paylaş"
+                :disabled="sharingPdf"
+                @click="shareCurrentPreviewPdf"
+              >
+                <Share2 v-if="!sharingPdf" :size="17" />
+                <RefreshCw v-else :size="15" class="is-spinning" />
+              </button>
               <button
                 type="button"
                 class="fatura-icon-btn"
@@ -1868,18 +2061,91 @@ onBeforeUnmount(() => {
             </div>
           </header>
 
-          <div class="fatura-preview-body">
+          <div class="fatura-preview-body" ref="previewBodyRef">
             <div v-if="previewLoading" class="fatura-preview-loading">
-              <RefreshCw :size="28" class="is-spinning text-primary" />
+              <RefreshCw :size="30" class="is-spinning text-primary" />
               <p>Fatura yükleniyor...</p>
             </div>
-            <iframe
-              v-else
-              ref="previewIframeRef"
-              class="fatura-preview-iframe"
-              :srcdoc="previewHtmlContent"
-              sandbox="allow-same-origin allow-scripts allow-modals allow-popups"
-            ></iframe>
+
+            <template v-else>
+              <!-- Zoomable & Panning Viewport -->
+              <div
+                class="fatura-viewer-viewport"
+                ref="viewerViewportRef"
+                @touchstart="onTouchStart"
+                @touchmove="onTouchMove"
+                @touchend="onTouchEnd"
+              >
+                <div
+                  class="fatura-viewer-scaler"
+                  :style="{
+                    width: `${scaledDimensions.width}px`,
+                    height: `${scaledDimensions.height}px`,
+                  }"
+                >
+                  <iframe
+                    ref="previewIframeRef"
+                    class="fatura-preview-iframe"
+                    :srcdoc="previewHtmlContent"
+                    sandbox="allow-same-origin allow-scripts allow-modals allow-popups"
+                    :style="{
+                      width: `${baseWidth}px`,
+                      height: `${baseHeight}px`,
+                      transform: `scale(${zoomScale})`,
+                      transformOrigin: 'top left',
+                    }"
+                    @load="onIframeLoaded"
+                  ></iframe>
+                </div>
+              </div>
+
+              <!-- Floating Modern Zoom Toolbar -->
+              <div class="fatura-zoom-dock">
+                <button
+                  type="button"
+                  class="fatura-zoom-dock-btn"
+                  title="Uzaklaştır"
+                  aria-label="Uzaklaştır"
+                  :disabled="zoomScale <= minScale"
+                  @click="zoomOut"
+                >
+                  <ZoomOut :size="16" />
+                </button>
+
+                <button
+                  type="button"
+                  class="fatura-zoom-dock-pill"
+                  :class="{ 'is-active': isFitted }"
+                  title="Sığdır / %100"
+                  @click="toggleFitOr100"
+                >
+                  <span>{{ isFitted ? 'Sığdırıldı' : `%${Math.round(zoomScale * 100)}` }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="fatura-zoom-dock-btn"
+                  title="Yakınlaştır"
+                  aria-label="Yakınlaştır"
+                  :disabled="zoomScale >= maxScale"
+                  @click="zoomIn"
+                >
+                  <ZoomIn :size="16" />
+                </button>
+
+                <button
+                  type="button"
+                  class="fatura-zoom-dock-fit"
+                  :class="{ 'is-active': isFitted }"
+                  title="Ekrana Tam Sığdır"
+                  aria-label="Ekrana Tam Sığdır"
+                  @click="fitToScreen"
+                >
+                  <Maximize2 :size="14" />
+                  <span>Sığdır</span>
+                </button>
+              </div>
+            </template>
           </div>
         </section>
       </div>
@@ -4117,17 +4383,63 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
 }
+.fatura-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--ds-line, #e2e8f0);
+  background: var(--ds-surface, #ffffff);
+  color: var(--ds-slate, #475569);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.fatura-icon-btn:active {
+  background: var(--ds-soft, #f1f5f9);
+  transform: scale(0.94);
+}
+.fatura-icon-btn.is-loading,
+.fatura-icon-action-btn.is-loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
 .fatura-preview-body {
   flex: 1;
-  background: var(--ds-surface-subtle);
+  background: #334155; /* Belge zeminini belirginleştiren nötr koyu arduvaz tuval */
   overflow: hidden;
   position: relative;
 }
-.fatura-preview-iframe {
+.fatura-viewer-viewport {
   width: 100%;
   height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px 8px 84px; /* Alttaki yüzen yakınlaştırma çubuğu için boşluk */
+  box-sizing: border-box;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+.fatura-viewer-scaler {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  background: #ffffff;
+  flex-shrink: 0;
+  transition: width 0.12s ease-out, height 0.12s ease-out;
+}
+.fatura-preview-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
   border: 0;
-  background: var(--ds-surface);
+  background: #ffffff;
 }
 .fatura-preview-loading {
   position: absolute;
@@ -4137,8 +4449,94 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--ds-slate);
+  color: #94a3b8;
   font-weight: 600;
+  background: rgba(15, 23, 42, 0.7);
+  z-index: 5;
+}
+
+/* Floating Modern Zoom Toolbar Dock */
+.fatura-zoom-dock {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  z-index: 10;
+}
+.fatura-zoom-dock-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: #f1f5f9;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.fatura-zoom-dock-btn:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(0.92);
+}
+.fatura-zoom-dock-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.fatura-zoom-dock-pill {
+  min-width: 62px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  font: 700 11px var(--ds-font-main);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.fatura-zoom-dock-pill:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+.fatura-zoom-dock-pill.is-active {
+  background: rgba(99, 102, 241, 0.35);
+  border-color: rgba(129, 140, 248, 0.5);
+  color: #c7d2fe;
+}
+.fatura-zoom-dock-fit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--ds-primary, #4338ca);
+  color: #ffffff;
+  font: 700 11px var(--ds-font-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 2px;
+}
+.fatura-zoom-dock-fit:active {
+  transform: scale(0.94);
+}
+.fatura-zoom-dock-fit.is-active {
+  background: #312e81;
+  color: #e0e7ff;
 }
 
 /* Ortak Sheet Başlığı */
