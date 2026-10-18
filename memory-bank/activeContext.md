@@ -2323,3 +2323,12 @@
 - İşlem yönünü anlatan renkler, ok ikonları ve Aldım/Verdim metinleri korunarak tutar sunumu sadeleştirildi.
 - Mobil cari detayındaki `Top. Aldım` ve `Top. Verdim` özetleri dokunulabilir filtrelere dönüştürüldü; seçili özete yeniden dokunmak tüm hareketleri geri getiriyor.
 - Masaüstü cari hesap hareketlerinde de giriş/çıkış özet kartlarının tamamı DataTables sunucu filtresini çalıştırıyor; fare ve klavye etkileşimi ile aktif durum göstergesi eklendi.
+
+## 2026-10-18 — Cari ekstre PDF ve toplu yedek
+
+- Mobil cari detayındaki çalışmayan kök `/views/...` ekstre bağlantısı, alt dizin kurulumundan bağımsız `/api/cari-ekstre.php` indirme endpoint'ine taşındı.
+- Tekil PDF üretimi ortak `CariEkstreExportService` üzerinden Model kaynaklı özet ve hareket verisiyle çalışıyor.
+- Masaüstü Cari Listesi İşlemler menüsüne ve mobil Cari Takip üst araç çubuğuna `Tüm Ekstreleri Yedekle` eylemi eklendi.
+- Toplu çıktı tek ZIP içinde her aktif cari için ayrı PDF, `cari-ozet.csv` ve `BILGI.txt` üretir; mevcut `cari_hesap_hareketleri` yetkisi hem sunucu endpoint'inde hem buton görünürlüğünde uygulanır.
+- Gerçek 13 aktif cariyle 13 PDF ve yetkili ZIP endpoint çıktısı doğrulandı.
+- Web isteğinde toplu çıktının başarısız olmasının mPDF varsayılan `vendor/.../tmp/mpdf` dizini yazma yetkisi olduğu logdan doğrulandı. PDF servisi, işletim sistemi kullanıcısına özel `0700` sistem geçici dizini kullanacak şekilde düzeltildi.

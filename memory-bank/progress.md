@@ -1248,3 +1248,5 @@
 - [x] Mobil SPA Evrak formunda ofis/ilgili personel seçenekleri yalnız aktif kayıtlarla sınırlandı; plaka seçiminde tarih bazlı araç zimmetlisi otomatik olarak İlgili Personel alanına getirildi ve üretim SPA paketi yeniden oluşturuldu. (2026-10-18)
 - [x] Mobil SPA cari detayında hesap hareketi tutarlarının önündeki kafa karıştıran `+` / `-` işaretleri liste ve detay görünümünden kaldırıldı; yön renk ve ikonlarla gösterilmeye devam ediyor. (2026-10-18)
 - [x] Cari hareket özetlerindeki Aldım/Verdim kartları mobil SPA ve masaüstü hesap hareketleri sayfasında ilgili hareketleri filtreleyecek şekilde etkinleştirildi; tekrar seçimle filtre temizleniyor. (2026-10-18)
+- [x] Mobil tekil cari Ekstre PDF bağlantısı alt dizin uyumlu API endpoint'iyle onarıldı; masaüstü ve mobil cari listelerine tüm aktif carilerin ayrı PDF'lerini ve CSV özetini tek ZIP içinde indiren yetki kontrollü toplu yedek eylemi eklendi. Gerçek 13 cariyle çıktı doğrulandı. (2026-10-18)
+- [x] Toplu cari ZIP çıktısının web sunucusunda mPDF geçici dizin yetkisi nedeniyle başarısız olması giderildi; web/CLI kullanıcılarına ayrılmış yazılabilir sistem geçici dizini uygulandı. (2026-10-18)

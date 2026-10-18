@@ -498,7 +498,7 @@ async function deleteSelectedMovement() {
             <div class="action-icon-circle"><Share2 :size="18" /></div>
             <span>Paylaş</span>
           </button>
-          <a :href="cari.ekstre_pdf_url" target="_blank" class="hero-action-btn action-btn--pdf">
+          <a v-if="cari.ekstre_pdf_url" :href="cari.ekstre_pdf_url" target="_blank" class="hero-action-btn action-btn--pdf">
             <div class="action-icon-circle"><FileDown :size="18" /></div>
             <span>Ekstre PDF</span>
           </a>

@@ -227,6 +227,23 @@ class CariModel extends Model
         return $summary;
     }
 
+    /** Toplu ekstre yedeğine dahil edilecek aktif carileri ve kayıtlı özetlerini getirir. */
+    public function getEkstreExportList(): array
+    {
+        $sql = "SELECT c.*, COUNT(h.id) AS hareket_sayisi,
+                       COALESCE(SUM(h.borc), 0) AS toplam_borc,
+                       COALESCE(SUM(h.alacak), 0) AS toplam_alacak,
+                       COALESCE(SUM(h.alacak - h.borc), 0) AS bakiye
+                FROM {$this->table} c
+                LEFT JOIN cari_hareketleri h ON h.cari_id = c.id AND h.silinme_tarihi IS NULL
+                WHERE c.silinme_tarihi IS NULL
+                GROUP BY c.id
+                ORDER BY c.CariAdi ASC, c.id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /**
      * Sütun için benzersiz değerleri getirir (Filtreleme için)
      */

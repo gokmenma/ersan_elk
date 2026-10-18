@@ -26,6 +26,24 @@ class CariHareketleriModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    /** Hesap ekstresi için hareketleri, ekleyen kullanıcı ve yürüyen bakiye ile getirir. */
+    public function getEkstreHareketleri(int $cariId): array
+    {
+        $sql = "SELECT h.*, u.adi_soyadi AS ekleyen_adi,
+                       (SELECT ROUND(SUM(ch.alacak - ch.borc), 2)
+                          FROM {$this->table} ch
+                         WHERE ch.cari_id = h.cari_id AND ch.silinme_tarihi IS NULL
+                           AND (ch.islem_tarihi < h.islem_tarihi
+                                OR (ch.islem_tarihi = h.islem_tarihi AND ch.id <= h.id))) AS yuruyen_bakiye
+                  FROM {$this->table} h
+             LEFT JOIN users u ON u.id = h.ekleyen_kullanici
+                 WHERE h.cari_id = :cari_id AND h.silinme_tarihi IS NULL
+              ORDER BY h.islem_tarihi DESC, h.id DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['cari_id' => $cariId]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /**
      * Cariye ait mevcut hareketlerin imzalarını (tarih|borc|alacak|açıklama) adetleriyle döndürür.
      * PDF içe aktarımında mükerrer kayıt tespiti için kullanılır. Aynı imzadan birden fazla

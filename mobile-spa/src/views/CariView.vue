@@ -72,6 +72,7 @@ const loadingMore = ref(false)
 const error = ref('')
 const search = ref('')
 const activeFilter = ref('all') // all, alacakli, borclu
+const canExportStatements = ref(false)
 let searchTimer = null
 
 // Hızlı İşlem Modal Durumu
@@ -189,6 +190,7 @@ async function loadCariler(reset = true) {
 
     summary.value = res.summary || summary.value
     pagination.value = res.pagination || pagination.value
+    canExportStatements.value = Boolean(res.can_export_statements)
   } catch (err) {
     error.value = err.message || 'Cari listesi yüklenemedi.'
   } finally {
@@ -438,6 +440,9 @@ async function deleteSelectedMovement() {
         <h1>Cari Takip</h1>
       </div>
       <div class="topbar-actions">
+        <a v-if="canExportStatements" href="/api/cari-ekstreler-yedek.php" class="topbar-btn" aria-label="Tüm cari ekstrelerini yedekle" title="Tüm Ekstreleri Yedekle">
+          <FileDown :size="19" />
+        </a>
         <button
           type="button"
           class="topbar-btn"

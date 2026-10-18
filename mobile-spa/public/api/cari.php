@@ -154,6 +154,7 @@ try {
                 'has_more' => ($offset + count($items)) < $totalItems,
             ],
             'can_edit' => Gate::allows('cari_takibi') || Gate::allows('cari/duzenle'),
+            'can_export_statements' => Gate::allows('cari_hesap_hareketleri'),
         ]);
     }
 
@@ -231,7 +232,9 @@ try {
                 'bakiye' => $bakiye,
                 'toplam_borc' => $toplamBorc,
                 'toplam_alacak' => $toplamAlacak,
-                'ekstre_pdf_url' => '/views/cari/export-ekstre-pdf.php?id=' . rawurlencode($encId),
+                'ekstre_pdf_url' => Gate::allows('cari_hesap_hareketleri')
+                    ? '/api/cari-ekstre.php?id=' . rawurlencode($encId)
+                    : null,
             ],
             'hareketler' => $hareketler,
             'can_edit' => Gate::allows('cari_takibi') || Gate::allows('cari/duzenle'),
@@ -313,7 +316,7 @@ try {
             'success' => true,
             'items' => $results,
             'export_pdf_url' => $cariId > 0
-                ? '/views/cari/export-ekstre-pdf.php?id=' . rawurlencode($encCariId)
+                ? '/api/cari-ekstre.php?id=' . rawurlencode($encCariId)
                 : '/views/cari/export-tum-hareketler-pdf.php',
         ]);
     }

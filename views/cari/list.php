@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 1) . '/../Autoloader.php';
 use App\Helper\Form;
+use App\Service\Gate;
 $maintitle = 'Ana Sayfa';
 $title = 'Cari Yönetimi';
 
@@ -90,6 +91,11 @@ $belgeTuruOptions = [
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnDropdownExportExcel">
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
+                    <?php if (Gate::allows('cari_hesap_hareketleri')): ?>
+                    <a class="dropdown-item d-flex align-items-center" href="views/cari/export-ekstreler-zip.php">
+                        <i class="bx bx-archive-out me-2 font-size-16 text-primary"></i> Tüm Ekstreleri Yedekle (ZIP)
+                    </a>
+                    <?php endif; ?>
                     <div class="dropdown-divider"></div>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnEkstreYukleModal">
                         <i class="bx bx-cloud-upload me-2 font-size-16 text-warning"></i> PDF / Excel'den Yükle
