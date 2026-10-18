@@ -387,32 +387,32 @@ async function deleteSelectedMovement() {
 
         <!-- Mini Özet Kartları (Soft Bento Pills) -->
         <div class="hero-summary-grid">
-          <div class="mini-summary-item summary-item--debt">
+          <div class="mini-summary-item summary-item--aldim">
             <div class="summary-label">
-              <span class="summary-dot summary-dot--debt"></span>
+              <span class="summary-dot summary-dot--aldim"></span>
               <small>TOP. ALDIM</small>
             </div>
-            <strong class="text-debt">{{ formatMoney(cari.toplam_borc) }}</strong>
+            <strong class="text-aldim">{{ formatMoney(cari.toplam_borc) }}</strong>
           </div>
-          <div class="mini-summary-item summary-item--credit">
+          <div class="mini-summary-item summary-item--verdim">
             <div class="summary-label">
-              <span class="summary-dot summary-dot--credit"></span>
+              <span class="summary-dot summary-dot--verdim"></span>
               <small>TOP. VERDİM</small>
             </div>
-            <strong class="text-credit">{{ formatMoney(cari.toplam_alacak) }}</strong>
+            <strong class="text-verdim">{{ formatMoney(cari.toplam_alacak) }}</strong>
           </div>
           <div
             class="mini-summary-item"
-            :class="cari.bakiye < 0 ? 'summary-item--debt' : cari.bakiye > 0 ? 'summary-item--credit' : 'summary-item--neutral'"
+            :class="cari.bakiye < 0 ? 'summary-item--borclu' : cari.bakiye > 0 ? 'summary-item--alacakli' : 'summary-item--neutral'"
           >
             <div class="summary-label">
               <span
                 class="summary-dot"
-                :class="cari.bakiye < 0 ? 'summary-dot--debt' : cari.bakiye > 0 ? 'summary-dot--credit' : 'summary-dot--neutral'"
+                :class="cari.bakiye < 0 ? 'summary-dot--borclu' : cari.bakiye > 0 ? 'summary-dot--alacakli' : 'summary-dot--neutral'"
               ></span>
-              <small>{{ cari.bakiye < 0 ? 'BORCUM' : cari.bakiye > 0 ? 'ALACAĞIM' : 'NET BAKİYE' }}</small>
+              <small>{{ cari.bakiye < 0 ? 'BORÇLUYUM' : cari.bakiye > 0 ? 'ALACAKLIYIM' : 'NET BAKİYE' }}</small>
             </div>
-            <strong :class="cari.bakiye < 0 ? 'text-debt' : cari.bakiye > 0 ? 'text-credit' : 'text-neutral'">
+            <strong :class="cari.bakiye < 0 ? 'text-borclu' : cari.bakiye > 0 ? 'text-alacakli' : 'text-neutral'">
               {{ cari.bakiye < 0 ? '-' : cari.bakiye > 0 ? '+' : '' }}{{ formatMoney(cari.bakiye) }}
             </strong>
           </div>
@@ -486,7 +486,7 @@ async function deleteSelectedMovement() {
             <!-- Tip İkonu -->
             <div
               class="movement-type-box"
-              :class="h.type === 'aldim' ? 'type-debt' : 'type-credit'"
+              :class="h.type === 'aldim' ? 'type-aldim' : 'type-verdim'"
             >
               <ArrowDownLeft v-if="h.type === 'aldim'" :size="18" />
               <ArrowUpRight v-else :size="18" />
@@ -503,7 +503,7 @@ async function deleteSelectedMovement() {
                   <Paperclip :size="10" /> Ek
                 </span>
               </div>
-              <p class="movement-desc">{{ h.aciklama || (h.type === 'aldim' ? 'Tahsilat' : 'Ödeme') }}</p>
+              <p class="movement-desc">{{ h.aciklama || (h.type === 'aldim' ? 'Tahsilat (Aldım)' : 'Ödeme (Verdim)') }}</p>
               <small v-if="h.ekleyen_adi" class="movement-author">Ekleyen: {{ h.ekleyen_adi }}</small>
             </div>
 
@@ -511,12 +511,15 @@ async function deleteSelectedMovement() {
             <div class="movement-amounts">
               <span
                 class="m-amount"
-                :class="h.type === 'aldim' ? 'text-debt' : 'text-credit'"
+                :class="h.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ h.type === 'aldim' ? '-' : '+' }}{{ formatMoney(h.amount) }}
+                {{ h.type === 'aldim' ? '+' : '-' }}{{ formatMoney(h.amount) }}
               </span>
-              <span class="m-yuruyen">
-                Bakiye: {{ h.yuruyen_bakiye < 0 ? '-' : h.yuruyen_bakiye > 0 ? '+' : '' }}{{ formatMoney(h.yuruyen_bakiye) }}
+              <span
+                class="m-yuruyen"
+                :class="h.yuruyen_bakiye < 0 ? 'text-borclu' : h.yuruyen_bakiye > 0 ? 'text-alacakli' : ''"
+              >
+                Bakiye: {{ formatMoney(Math.abs(h.yuruyen_bakiye)) }} {{ h.yuruyen_bakiye < 0 ? '(B)' : h.yuruyen_bakiye > 0 ? '(A)' : '' }}
               </span>
             </div>
 
@@ -552,7 +555,7 @@ async function deleteSelectedMovement() {
             <div class="type-segmented-control">
               <button
                 type="button"
-                class="seg-btn seg-btn--debt"
+                class="seg-btn seg-btn--aldim"
                 :class="{ 'is-active': quickActionForm.type === 'aldim' }"
                 @click="quickActionForm.type = 'aldim'"
               >
@@ -560,14 +563,14 @@ async function deleteSelectedMovement() {
                   <ArrowDownLeft :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Aldım (Borç)</strong>
-                  <small>Tahsilat / Para Girişi</small>
+                  <strong>Aldım (+)</strong>
+                  <small>Giriş / Tahsilat</small>
                 </div>
               </button>
 
               <button
                 type="button"
-                class="seg-btn seg-btn--credit"
+                class="seg-btn seg-btn--verdim"
                 :class="{ 'is-active': quickActionForm.type === 'verdim' }"
                 @click="quickActionForm.type = 'verdim'"
               >
@@ -575,8 +578,8 @@ async function deleteSelectedMovement() {
                   <ArrowUpRight :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Verdim (Alacak)</strong>
-                  <small>Ödeme / Para Çıkışı</small>
+                  <strong>Verdim (-)</strong>
+                  <small>Çıkış / Ödeme</small>
                 </div>
               </button>
             </div>
@@ -865,12 +868,12 @@ async function deleteSelectedMovement() {
 
           <div v-if="selectedMovement" class="movement-detail-body">
             <div class="movement-amount-hero">
-              <span class="hero-type-label">{{ selectedMovement.type === 'aldim' ? 'Borç (Aldım)' : 'Alacak (Verdim)' }}</span>
+              <span class="hero-type-label">{{ selectedMovement.type === 'aldim' ? 'Giriş (Aldım)' : 'Çıkış (Verdim)' }}</span>
               <strong
                 class="hero-amount-text"
-                :class="selectedMovement.type === 'aldim' ? 'text-debt' : 'text-credit'"
+                :class="selectedMovement.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ selectedMovement.type === 'aldim' ? '-' : '+' }}{{ formatMoney(selectedMovement.amount) }}
+                {{ selectedMovement.type === 'aldim' ? '+' : '-' }}{{ formatMoney(selectedMovement.amount) }}
               </strong>
             </div>
 
@@ -1096,9 +1099,18 @@ async function deleteSelectedMovement() {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.summary-dot--debt { background: var(--ds-danger); }
-.summary-dot--credit { background: var(--ds-emerald); }
+.summary-dot--debt,
+.summary-dot--borclu,
+.summary-dot--verdim { background: var(--ds-danger); }
+.summary-dot--credit,
+.summary-dot--alacakli,
+.summary-dot--aldim { background: var(--ds-emerald); }
 .summary-dot--neutral { background: var(--ds-muted); }
+
+.text-aldim,
+.text-alacakli { color: var(--ds-emerald-ink) !important; }
+.text-verdim,
+.text-borclu { color: var(--ds-danger-ink) !important; }
 
 .mini-summary-item small {
   display: block;
@@ -1276,11 +1288,13 @@ async function deleteSelectedMovement() {
   border-radius: 14px;
   flex-shrink: 0;
 }
-.type-debt {
+.type-debt,
+.type-verdim {
   background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);
 }
-.type-credit {
+.type-credit,
+.type-aldim {
   background: var(--ds-emerald-soft);
   color: var(--ds-emerald-ink);
 }
@@ -1532,29 +1546,35 @@ async function deleteSelectedMovement() {
 }
 
 /* Aktif Durumlar */
-.seg-btn--debt.is-active {
+.seg-btn--debt.is-active,
+.seg-btn--verdim.is-active {
   background: var(--ds-danger-soft);
   border-color: var(--ds-danger);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
 }
-.seg-btn--debt.is-active .seg-icon-box {
+.seg-btn--debt.is-active .seg-icon-box,
+.seg-btn--verdim.is-active .seg-icon-box {
   background: #ffffff;
   color: var(--ds-danger-ink);
 }
-.seg-btn--debt.is-active .seg-text strong {
+.seg-btn--debt.is-active .seg-text strong,
+.seg-btn--verdim.is-active .seg-text strong {
   color: var(--ds-danger-ink);
 }
 
-.seg-btn--credit.is-active {
+.seg-btn--credit.is-active,
+.seg-btn--aldim.is-active {
   background: var(--ds-emerald-soft);
   border-color: var(--ds-emerald);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
 }
-.seg-btn--credit.is-active .seg-icon-box {
+.seg-btn--credit.is-active .seg-icon-box,
+.seg-btn--aldim.is-active .seg-icon-box {
   background: #ffffff;
   color: var(--ds-emerald-ink);
 }
-.seg-btn--credit.is-active .seg-text strong {
+.seg-btn--credit.is-active .seg-text strong,
+.seg-btn--aldim.is-active .seg-text strong {
   color: var(--ds-emerald-ink);
 }
 

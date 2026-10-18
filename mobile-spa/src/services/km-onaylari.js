@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { auth } from './auth.js'
 
 export const kmState = reactive({
   activeTab: 'pending', // 'pending' | 'unreported' | 'approved' | 'rejected'
@@ -47,17 +48,26 @@ async function request(action, options = {}) {
   }
 
   if (method === 'POST') {
+    const csrf = options.csrfToken || auth?.state?.csrfToken || auth?.state?.csrf_token || ''
+
     if (options.body instanceof FormData) {
       fetchOptions.body = options.body
-      if (options.csrfToken) {
-        fetchOptions.headers['X-CSRF-Token'] = options.csrfToken
+      if (csrf) {
+        fetchOptions.headers['X-CSRF-Token'] = csrf
+        if (!options.body.has('csrf_token')) {
+          options.body.append('csrf_token', csrf)
+        }
       }
     } else if (options.body) {
       fetchOptions.headers['Content-Type'] = 'application/json'
-      if (options.csrfToken) {
-        fetchOptions.headers['X-CSRF-Token'] = options.csrfToken
+      let payloadBody = options.body
+      if (csrf) {
+        fetchOptions.headers['X-CSRF-Token'] = csrf
+        if (typeof payloadBody === 'object' && !Array.isArray(payloadBody)) {
+          payloadBody = { ...payloadBody, csrf_token: csrf }
+        }
       }
-      fetchOptions.body = JSON.stringify(options.body)
+      fetchOptions.body = JSON.stringify(payloadBody)
     }
   }
 

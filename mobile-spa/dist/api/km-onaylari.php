@@ -47,7 +47,7 @@ function checkKmAuth(): void
 
 function verifyCsrfToken(): void
 {
-    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? $_SERVER['HTTP_CSRF_TOKEN'] ?? '';
     $sessionToken = $_SESSION['csrf_token'] ?? '';
     if (empty($token) || empty($sessionToken) || !hash_equals((string) $sessionToken, (string) $token)) {
         kmApiResponse(['success' => false, 'message' => 'Güvenlik doğrulaması (CSRF) geçersiz. Lütfen sayfayı yenileyin.'], 419);

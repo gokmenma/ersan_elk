@@ -1,6 +1,50 @@
 # Active Context
 
-## Araç Takip Yönetimi: Filo Operasyon ve Analitik Dashboard (Masaüstü & Mobil SPA) (2026-10-18)
+## Mobil SPA: Cari Hesap Hareketleri Masaüstü Uyumluluğu (Giriş/Aldım Yeşil, Çıkış/Verdim Kırmızı) (2026-10-18)
+- **Kullanıcı Talebi**: "hesap hareketlerinde galiba yine biri terslik var, masaüstü views/cari/hesap-hareketleri.php buradaki gibi olmalı" (Mobil ekran görüntüsünde Aldım'ın kırmızı `-`, Verdim'in yeşil `+` olarak ters görünmesi ve masaüstünde ise Giriş/Aldım'ın yeşil `+`, Çıkış/Verdim'in kırmızı `-` olması).
+- **Tespit Edilen Çelişki**:
+  - Masaüstünde (`views/cari/hesap-hareketleri.php` & `views/cari/api.php`):
+    - `GİRİŞ (ALD.)` = **YEŞİL (+)** (Kasaya/stoka para/mal girişi, tahsilat). Kart: `TOPLAM GİRİŞ (ALD.")` yeşil, Buton: `Aldım (+)` yeşil (`btn-success`).
+    - `ÇIKIŞ (VERD.)` = **KIRMIZI (-)** (Kasadan/stoktan para/mal çıkışı, ödeme). Kart: `TOPLAM ÇIKIŞ (VERD.")` kırmızı, Buton: `Verdim (-)` kırmızı (`btn-danger`).
+    - `BENİM DURUMUM (NET)` = Bakiye < 0 ise `Borçluyum (Net)` (Kırmızı), Bakiye > 0 ise `Alacaklıyım (Net)` (Yeşil).
+    - Yürüyen Bakiye = Bakiye < 0 ise kırmızı `₺... (B)`, Bakiye > 0 ise yeşil `₺... (A)`.
+  - Mobilde ise (`CariDetailView.vue` & `CariView.vue`):
+    - `aldim` işlemi yanlışlıkla kırmızı (`text-debt`, `-12.000 ₺`) yapılmıştı.
+    - `verdim` işlemi yanlışlıkla yeşil (`text-credit`, `+10.500 ₺`) yapılmıştı.
+    - Kartlarda `TOP. ALDIM` kırmızı, `TOP. VERDİM` yeşil olarak ters boyanmıştı.
+- **Uygulanan Düzeltmeler**:
+  1. **`CariDetailView.vue`**:
+     - Mini özet kartlarında `TOP. ALDIM` masaüstündeki gibi **YEŞİL** (`text-aldim`, `summary-dot--aldim`), `TOP. VERDİM` **KIRMIZI** (`text-verdim`, `summary-dot--verdim`) yapıldı.
+     - 3. Net Bakiye kartında `cari.bakiye < 0` için `BORÇLUYUM` ve kırmızı, `> 0` için `ALACAKLIYIM` ve yeşil olarak ayarlandı.
+     - Hareket listesinde:
+       - `aldim` (Giriş) hareketleri: **YEŞİL (+)** (`text-aldim`, `type-aldim`, `+12.000,00 ₺`, giriş oku).
+       - `verdim` (Çıkış) hareketleri: **KIRMIZI (-)** (`text-verdim`, `type-verdim`, `-10.500,00 ₺`, çıkış oku).
+       - Yürüyen bakiye: Masaüstü standardı olan `Bakiye: 81.400,00 ₺ (B)` formatına ve renklerine bağlandı.
+     - Hızlı İşlem Ekle modalı butonları masaüstüyle birebir eşleştirildi: `Aldım (+)` yeşil, `Verdim (-)` kırmızı.
+     - Hareket detay modalında başlıklar ve tutarlar `Giriş (Aldım)` (+) yeşil ve `Çıkış (Verdim)` (-) kırmızı olarak güncellendi.
+  2. **`CariView.vue`**:
+     - Hızlı işlem ekleme modalı toggle butonları `Aldım (+)` yeşil, `Verdim (-)` kırmızı yapıldı.
+     - Tüm Hareketler (İşlem Geçmişi) listesinde ve hareket detay modalında tutarlar `aldim` için `+` yeşil, `verdim` için `-` kırmızı olarak eşitlendi.
+  3. **Derleme**:
+     - `npm run build` ile üretim paketi 0 hata ile derlendi.
+
+## Mobil SPA KM Onayları: Yapay Zeka (AI) ve Eylemlerde CSRF Hatası Düzeltmesi (2026-10-18)
+- **Kullanıcı Talebi**: "ai ile onay yapmak istediğmde bu hatayı veriyor" (`Güvenlik doğrulaması (CSRF) geçersiz. Lütfen sayfayı yenileyin.` popup hatası).
+- **Kök Neden Tespiti**:
+  1. `mobile-spa/src/services/auth.js` oturum durumu `state.csrfToken` (camelCase) alanında tutuluyordu.
+  2. Ancak `KmOnaylariView.vue` bileşeni içindeki tüm eylemlerde (`handleApprove`, `submitEditApprove`, `submitReject`, `handleBulkApprove`, `handleAiCheck`, `handleSendReminder`, `handleBulkReminder`) `auth.state.csrf_token` (snake_case) kullanılmıştı.
+  3. `auth.state.csrf_token` tanımsız (`undefined`) olduğu için API isteklerinde `X-CSRF-Token` header'ı hiç eklenmiyor ve sunucu 419 ("Güvenlik doğrulaması CSRF geçersiz") yanıtı dönüyordu.
+- **Uygulanan Çözümler**:
+  1. **Evrensel CSRF Desteği (`mobile-spa/src/services/auth.js`)**:
+     - `state` reaktif objesine ve `applySession` metoduna hem `csrfToken` hem de `csrf_token` eklendi; böylece her iki yazım stili de geçerli token'ı taşır hale getirildi.
+  2. **Otomatik CSRF Enjeksiyonu (`mobile-spa/src/services/km-onaylari.js`)**:
+     - `auth` servisi import edildi; `request` metodunda `csrfToken` parametresi verilmemiş olsa bile otomatik olarak `auth?.state?.csrfToken || auth?.state?.csrf_token` header'a (`X-CSRF-Token`) ve POST JSON body'ye (`csrf_token`) eklendi.
+  3. **Görünüm Düzeltmesi (`mobile-spa/src/views/KmOnaylariView.vue`)**:
+     - Tüm `kmApi` çağrılarında `auth.state.csrfToken || auth.state.csrf_token` güvencesi uygulandı.
+  4. **Backend API Çift Yönlü Token Kontrolü (`public/api/km-onaylari.php` & `dist/api/km-onaylari.php`)**:
+     - `verifyCsrfToken` fonksiyonu `HTTP_X_CSRF_TOKEN`, `$_POST['csrf_token']` ve `HTTP_CSRF_TOKEN` kaynaklarını kontrol edecek şekilde sağlamlaştırıldı.
+  5. **Üretim Paketi**:
+     - `npm run build` ile Vite paketi 0 hata ile derlendi.
 - **Kullanıcı Talepleri**:
   1. "araç takip yönetim altında bir araç dashboard yapmak istiyorum, views/efatura/dashboard.php sayfasındaki gibi"
   2. "bunu mobile-spa tarafına da yapalım"

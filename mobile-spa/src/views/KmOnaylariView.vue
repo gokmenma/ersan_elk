@@ -355,7 +355,7 @@ async function handleApprove(report) {
 
   actionLoading.value = true
   try {
-    const res = await kmApi.approve(report.id, auth.state.csrf_token)
+    const res = await kmApi.approve(report.id, auth.state.csrfToken || auth.state.csrf_token)
     showToast(res.message || 'KM bildirimi başarıyla onaylandı.')
     await loadReports(pagination.value.page)
   } catch (err) {
@@ -401,7 +401,7 @@ async function submitEditApprove() {
       editData.value.id,
       editData.value.newKm,
       editData.value.aciklama,
-      auth.state.csrf_token
+      auth.state.csrfToken || auth.state.csrf_token
     )
     editModalOpen.value = false
     showToast(res.message || 'KM düzeltilerek onaylandı.')
@@ -435,7 +435,7 @@ async function submitReject() {
     const res = await kmApi.reject(
       rejectData.value.id,
       rejectData.value.redNedeni,
-      auth.state.csrf_token
+      auth.state.csrfToken || auth.state.csrf_token
     )
     rejectModalOpen.value = false
     showToast(res.message || 'KM bildirimi reddedildi.')
@@ -458,7 +458,7 @@ async function handleBulkApprove() {
 
   actionLoading.value = true
   try {
-    const res = await kmApi.bulkApprove(ids, auth.state.csrf_token)
+    const res = await kmApi.bulkApprove(ids, auth.state.csrfToken || auth.state.csrf_token)
     showToast(res.message || 'Seçilen bildirimler onaylandı.')
     selectionMode.value = false
     selectedIds.value.clear()
@@ -492,7 +492,7 @@ async function handleAiCheck(targetIds = null) {
 
   actionLoading.value = true
   try {
-    const res = await kmApi.aiCheck(ids, auth.state.csrf_token)
+    const res = await kmApi.aiCheck(ids, auth.state.csrfToken || auth.state.csrf_token)
     aiResultData.value = res.data || null
     aiResultModalOpen.value = true
     showToast(res.message || 'Yapay zeka analizi tamamlandı.')
@@ -514,7 +514,7 @@ async function handleSendReminder(item) {
       item.personel_id,
       item.tarih || new Date().toISOString().slice(0, 10),
       item.hedef_tur || 'sabah',
-      auth.state.csrf_token
+      auth.state.csrfToken || auth.state.csrf_token
     )
     showToast(`${item.personel_adi} personeline hatırlatma iletildi.`)
   } catch (err) {
@@ -535,7 +535,7 @@ async function handleBulkReminder() {
     const res = await kmApi.bulkReminder(
       new Date().toISOString().slice(0, 10),
       'sabah',
-      auth.state.csrf_token
+      auth.state.csrfToken || auth.state.csrf_token
     )
     showToast(res.message || 'Hatırlatmalar gönderildi.')
   } catch (err) {

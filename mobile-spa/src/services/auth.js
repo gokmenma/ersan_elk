@@ -4,6 +4,7 @@ const state = reactive({
   ready: false,
   authenticated: false,
   csrfToken: '',
+  csrf_token: '',
   user: null,
   company: null,
   companies: [],
@@ -13,6 +14,7 @@ const state = reactive({
 function applySession(payload) {
   state.authenticated = Boolean(payload.authenticated)
   state.csrfToken = payload.csrf_token || ''
+  state.csrf_token = payload.csrf_token || ''
   state.user = payload.user || null
   state.company = payload.company || null
   state.companies = payload.companies || []

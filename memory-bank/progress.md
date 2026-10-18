@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-10-18 — Mobil SPA: Cari Hesap Hareketleri Masaüstü Uyumluluğu (Giriş/Aldım Yeşil, Çıkış/Verdim Kırmızı)
+- [x] **1. Özet Kartları Renkleri ve Etiketleri**:
+  - `TOP. ALDIM` (GİRİŞ) kartı masaüstü standardına getirilerek **YEŞİL** yapıldı.
+  - `TOP. VERDİM` (ÇIKIŞ) kartı masaüstü standardına getirilerek **KIRMIZI** yapıldı.
+  - 3. Net Bakiye kartında `cari.bakiye < 0` için `BORÇLUYUM (NET)` (Kırmızı), `> 0` için `ALACAKLIYIM (NET)` (Yeşil) gösterildi.
+- [x] **2. Hareket Listesi Satırları ve Yürüyen Bakiye**:
+  - `aldim` (Giriş) hareketleri: Masaüstündeki gibi **YEŞİL (+)** tutar, yeşil giriş ikonu kutusu (`type-aldim`).
+  - `verdim` (Çıkış) hareketleri: Masaüstündeki gibi **KIRMIZI (-)** tutar, kırmızı çıkış ikonu kutusu (`type-verdim`).
+  - Yürüyen bakiye: Masaüstü standardı `Bakiye: 81.400,00 ₺ (B)` formatında gösterildi.
+- [x] **3. Hızlı İşlem Ekle ve Hareket Detay Modalları**:
+  - `Aldım (+)` seçeneği yeşil ve `Verdim (-)` seçeneği kırmızı buton stilleriyle masaüstündeki "Aldım (+)" ve "Verdim (-)" butonlarıyla birebir eşitlendi.
+- [x] **4. Derleme & Doğrulama**:
+  - `npm run build` ile 0 hata ile derlendi.
+
+## 2026-10-18 — Mobil SPA KM Onayları: Yapay Zeka (AI) ve Eylemlerde CSRF Hatası Düzeltildi
+- [x] **CSRF Hatası Giderildi (`Güvenlik doğrulaması CSRF geçersiz`)**:
+  - `auth.js` reaktif durumuna `csrfToken` yanında `csrf_token` uyumluluğu eklendi.
+  - `km-onaylari.js` API istemcisine `auth` entegre edilerek tüm POST isteklerinde (`aiCheck`, `approve`, `reject`, vb.) CSRF token'ın header (`X-CSRF-Token`) ve body'ye otomatik eklenmesi sağlandı.
+  - `KmOnaylariView.vue` içindeki tüm aksiyon çağrıları `auth.state.csrfToken || auth.state.csrf_token` güvencesine alındı.
+  - Backend API (`public/api/km-onaylari.php` & `dist/api/km-onaylari.php`) `verifyCsrfToken` fonksiyonu güçlendirildi.
+  - Vite üretimi (`npm run build`) 0 hata ile tamamlandı.
+
 ## 2026-10-18 — Araç Takip Yönetimi: Filo Operasyon ve Analitik Dashboard (Masaüstü & Mobil SPA) Tamamlandı
 - [x] **1. SQL & Yetkilendirme**:
   - `sql/2026_10_18_add_arac_dashboard_menu_and_permissions.sql` çalıştırıldı. `arac-takip/dashboard` yetkisi, menü bağlantısı (ID: 986) ve superadmin/firma sahibi rolleri oluşturuldu.

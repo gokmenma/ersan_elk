@@ -699,7 +699,7 @@ async function deleteSelectedMovement() {
             <div class="type-segmented-control">
               <button
                 type="button"
-                class="seg-btn seg-btn--debt"
+                class="seg-btn seg-btn--aldim"
                 :class="{ 'is-active': quickActionForm.type === 'aldim' }"
                 @click="quickActionForm.type = 'aldim'"
               >
@@ -707,14 +707,14 @@ async function deleteSelectedMovement() {
                   <ArrowDownLeft :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Aldım (Borç)</strong>
-                  <small>Tahsilat / Para Girişi</small>
+                  <strong>Aldım (+)</strong>
+                  <small>Giriş / Tahsilat</small>
                 </div>
               </button>
 
               <button
                 type="button"
-                class="seg-btn seg-btn--credit"
+                class="seg-btn seg-btn--verdim"
                 :class="{ 'is-active': quickActionForm.type === 'verdim' }"
                 @click="quickActionForm.type = 'verdim'"
               >
@@ -722,8 +722,8 @@ async function deleteSelectedMovement() {
                   <ArrowUpRight :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Verdim (Alacak)</strong>
-                  <small>Ödeme / Para Çıkışı</small>
+                  <strong>Verdim (-)</strong>
+                  <small>Çıkış / Ödeme</small>
                 </div>
               </button>
             </div>
@@ -1066,9 +1066,9 @@ async function deleteSelectedMovement() {
                 <div class="history-amount-block">
                   <span
                     class="history-amount"
-                    :class="item.type === 'aldim' ? 'text-debt' : 'text-credit'"
+                    :class="item.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
                   >
-                    {{ item.type === 'aldim' ? '-' : '+' }}{{ formatMoney(item.amount) }}
+                    {{ item.type === 'aldim' ? '+' : '-' }}{{ formatMoney(item.amount) }}
                   </span>
                   <small class="history-type-label">{{ item.type_label }}</small>
                   <Paperclip v-if="item.has_file" :size="13" class="history-clip-icon" />
@@ -1104,9 +1104,9 @@ async function deleteSelectedMovement() {
               <span class="hero-type-label">{{ selectedMovement.type_label }}</span>
               <strong
                 class="hero-amount-text"
-                :class="selectedMovement.type === 'aldim' ? 'text-debt' : 'text-credit'"
+                :class="selectedMovement.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ selectedMovement.type === 'aldim' ? '-' : '+' }}{{ formatMoney(selectedMovement.amount) }}
+                {{ selectedMovement.type === 'aldim' ? '+' : '-' }}{{ formatMoney(selectedMovement.amount) }}
               </strong>
             </div>
 
@@ -1475,8 +1475,10 @@ async function deleteSelectedMovement() {
 }
 
 /* RENKLER */
-.text-debt { color: var(--ds-danger-ink) !important; }
-.text-credit { color: var(--ds-emerald-ink) !important; }
+.text-debt,
+.text-verdim { color: var(--ds-danger-ink) !important; }
+.text-credit,
+.text-aldim { color: var(--ds-emerald-ink) !important; }
 .text-neutral { color: var(--ds-slate) !important; }
 .text-emerald { color: #34d399 !important; }
 .text-sky { color: #38bdf8 !important; }
@@ -1885,28 +1887,34 @@ async function deleteSelectedMovement() {
   color: var(--ds-muted);
   margin-top: 2px;
 }
-.seg-btn--debt.is-active {
+.seg-btn--debt.is-active,
+.seg-btn--verdim.is-active {
   background: var(--ds-danger-soft);
   border-color: var(--ds-danger);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
 }
-.seg-btn--debt.is-active .seg-icon-box {
+.seg-btn--debt.is-active .seg-icon-box,
+.seg-btn--verdim.is-active .seg-icon-box {
   background: #ffffff;
   color: var(--ds-danger-ink);
 }
-.seg-btn--debt.is-active .seg-text strong {
+.seg-btn--debt.is-active .seg-text strong,
+.seg-btn--verdim.is-active .seg-text strong {
   color: var(--ds-danger-ink);
 }
-.seg-btn--credit.is-active {
+.seg-btn--credit.is-active,
+.seg-btn--aldim.is-active {
   background: var(--ds-emerald-soft);
   border-color: var(--ds-emerald);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
 }
-.seg-btn--credit.is-active .seg-icon-box {
+.seg-btn--credit.is-active .seg-icon-box,
+.seg-btn--aldim.is-active .seg-icon-box {
   background: #ffffff;
   color: var(--ds-emerald-ink);
 }
-.seg-btn--credit.is-active .seg-text strong {
+.seg-btn--credit.is-active .seg-text strong,
+.seg-btn--aldim.is-active .seg-text strong {
   color: var(--ds-emerald-ink);
 }
 
