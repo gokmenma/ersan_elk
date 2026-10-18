@@ -133,7 +133,7 @@ $(document).ready(function () {
 
         data.forEach(item => {
             const isAldim = item.borc !== '<span class="text-muted">-</span>' && item.borc !== '-'; 
-            const icon = isAldim ? 'bx bx-plus-circle text-success' : 'bx bx-minus-circle text-danger';
+            const icon = isAldim ? 'bx bx-minus-circle text-danger' : 'bx bx-plus-circle text-success';
             const amt = isAldim ? item.borc : item.alacak;
             const typeLabel = isAldim ? 'Aldım' : 'Verdim';
 
@@ -199,16 +199,16 @@ $(document).ready(function () {
         }
         
         if (type === 'aldim') {
-            $('#hizliIslemModalLabel').text('Aldım (+)');
+            $('#hizliIslemModalLabel').text('Aldım (-)');
             $('#hizliIslemModalDesc').text('Alınan tutar ve işlem detaylarını girin.');
-            $('#hizliIslemIconBg').removeClass('bg-danger-subtle').addClass('bg-success-subtle');
-            $('#hizliIslemIcon').removeClass('bx-minus-circle text-danger').addClass('bx-plus-circle text-success');
-            $('#hizli_islem_amt_label').text('Alınan Tutar');
-        } else {
-            $('#hizliIslemModalLabel').text('Verdim (-)');
-            $('#hizliIslemModalDesc').text('Yapılan ödeme ve işlem detaylarını girin.');
             $('#hizliIslemIconBg').removeClass('bg-success-subtle').addClass('bg-danger-subtle');
             $('#hizliIslemIcon').removeClass('bx-plus-circle text-success').addClass('bx-minus-circle text-danger');
+            $('#hizli_islem_amt_label').text('Alınan Tutar');
+        } else {
+            $('#hizliIslemModalLabel').text('Verdim (+)');
+            $('#hizliIslemModalDesc').text('Yapılan ödeme ve işlem detaylarını girin.');
+            $('#hizliIslemIconBg').removeClass('bg-danger-subtle').addClass('bg-success-subtle');
+            $('#hizliIslemIcon').removeClass('bx-minus-circle text-danger').addClass('bx-plus-circle text-success');
             $('#hizli_islem_amt_label').text('Verilen Tutar');
         }
         

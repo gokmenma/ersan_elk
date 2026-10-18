@@ -513,7 +513,7 @@ async function deleteSelectedMovement() {
                 class="m-amount"
                 :class="h.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ h.type === 'aldim' ? '+' : '-' }}{{ formatMoney(h.amount) }}
+                {{ h.type === 'aldim' ? '-' : '+' }}{{ formatMoney(h.amount) }}
               </span>
               <span
                 class="m-yuruyen"
@@ -563,8 +563,8 @@ async function deleteSelectedMovement() {
                   <ArrowDownLeft :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Aldım (+)</strong>
-                  <small>Giriş / Tahsilat</small>
+                  <strong>Aldım (-)</strong>
+                  <small>Borç Artışı / Giriş</small>
                 </div>
               </button>
 
@@ -578,8 +578,8 @@ async function deleteSelectedMovement() {
                   <ArrowUpRight :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Verdim (-)</strong>
-                  <small>Çıkış / Ödeme</small>
+                  <strong>Verdim (+)</strong>
+                  <small>Alacak Artışı / Çıkış</small>
                 </div>
               </button>
             </div>
@@ -873,7 +873,7 @@ async function deleteSelectedMovement() {
                 class="hero-amount-text"
                 :class="selectedMovement.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ selectedMovement.type === 'aldim' ? '+' : '-' }}{{ formatMoney(selectedMovement.amount) }}
+                {{ selectedMovement.type === 'aldim' ? '-' : '+' }}{{ formatMoney(selectedMovement.amount) }}
               </strong>
             </div>
 
@@ -1101,16 +1101,16 @@ async function deleteSelectedMovement() {
 }
 .summary-dot--debt,
 .summary-dot--borclu,
-.summary-dot--verdim { background: var(--ds-danger); }
+.summary-dot--aldim { background: var(--ds-danger); }
 .summary-dot--credit,
 .summary-dot--alacakli,
-.summary-dot--aldim { background: var(--ds-emerald); }
+.summary-dot--verdim { background: var(--ds-emerald); }
 .summary-dot--neutral { background: var(--ds-muted); }
 
 .text-aldim,
-.text-alacakli { color: var(--ds-emerald-ink) !important; }
-.text-verdim,
 .text-borclu { color: var(--ds-danger-ink) !important; }
+.text-verdim,
+.text-alacakli { color: var(--ds-emerald-ink) !important; }
 
 .mini-summary-item small {
   display: block;
@@ -1289,12 +1289,12 @@ async function deleteSelectedMovement() {
   flex-shrink: 0;
 }
 .type-debt,
-.type-verdim {
+.type-aldim {
   background: var(--ds-danger-soft);
   color: var(--ds-danger-ink);
 }
 .type-credit,
-.type-aldim {
+.type-verdim {
   background: var(--ds-emerald-soft);
   color: var(--ds-emerald-ink);
 }
@@ -1547,34 +1547,34 @@ async function deleteSelectedMovement() {
 
 /* Aktif Durumlar */
 .seg-btn--debt.is-active,
-.seg-btn--verdim.is-active {
+.seg-btn--aldim.is-active {
   background: var(--ds-danger-soft);
   border-color: var(--ds-danger);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
 }
 .seg-btn--debt.is-active .seg-icon-box,
-.seg-btn--verdim.is-active .seg-icon-box {
+.seg-btn--aldim.is-active .seg-icon-box {
   background: #ffffff;
   color: var(--ds-danger-ink);
 }
 .seg-btn--debt.is-active .seg-text strong,
-.seg-btn--verdim.is-active .seg-text strong {
+.seg-btn--aldim.is-active .seg-text strong {
   color: var(--ds-danger-ink);
 }
 
 .seg-btn--credit.is-active,
-.seg-btn--aldim.is-active {
+.seg-btn--verdim.is-active {
   background: var(--ds-emerald-soft);
   border-color: var(--ds-emerald);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
 }
 .seg-btn--credit.is-active .seg-icon-box,
-.seg-btn--aldim.is-active .seg-icon-box {
+.seg-btn--verdim.is-active .seg-icon-box {
   background: #ffffff;
   color: var(--ds-emerald-ink);
 }
 .seg-btn--credit.is-active .seg-text strong,
-.seg-btn--aldim.is-active .seg-text strong {
+.seg-btn--verdim.is-active .seg-text strong {
   color: var(--ds-emerald-ink);
 }
 

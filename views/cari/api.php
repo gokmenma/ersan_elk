@@ -293,8 +293,8 @@ if ($action == "hesap-hareketleri-ajax-list") {
                 "belge_no" => $belgeNoHtml,
                 "aciklama" => '<span class="fw-medium text-dark font-size-13" style="color: #0f172a;">' . htmlspecialchars($row->aciklama ?: '-', ENT_QUOTES, 'UTF-8') . '</span>',
                 "dosya" => $row->dosya ?: null,
-                "borc" => $row->borc > 0 ? '<span class="fw-bold font-size-13 text-success" style="color: #16a34a !important;">' . Helper::formattedMoney($row->borc) . '</span>' : '<span class="text-muted">-</span>',
-                "alacak" => $row->alacak > 0 ? '<span class="fw-bold font-size-13 text-danger" style="color: #dc2626 !important;">' . Helper::formattedMoney($row->alacak) . '</span>' : '<span class="text-muted">-</span>',
+                "borc" => $row->borc > 0 ? '<span class="fw-bold font-size-13 text-danger" style="color: #dc2626 !important;">' . Helper::formattedMoney($row->borc) . '</span>' : '<span class="text-muted">-</span>',
+                "alacak" => $row->alacak > 0 ? '<span class="fw-bold font-size-13 text-success" style="color: #16a34a !important;">' . Helper::formattedMoney($row->alacak) . '</span>' : '<span class="text-muted">-</span>',
                 "yuruyen_bakiye" => '<span class="fw-bold font-size-13 ' . ($row->yuruyen_bakiye < 0 ? 'text-danger' : ($row->yuruyen_bakiye > 0 ? 'text-success' : 'text-dark')) . '" style="' . ($row->yuruyen_bakiye < 0 ? 'color: #dc2626 !important;' : ($row->yuruyen_bakiye > 0 ? 'color: #16a34a !important;' : 'color: #0f172a !important;')) . '">' . 
                                     Helper::formattedMoney(abs($row->yuruyen_bakiye)) . 
                                     ($row->yuruyen_bakiye < 0 ? ' (B)' : ($row->yuruyen_bakiye > 0 ? ' (A)' : '')) . '</span>',

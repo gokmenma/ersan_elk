@@ -1,5 +1,19 @@
 # Progress
 
+## 2026-10-18 — Masaüstü ve Mobil: Cari Hareketleri Renk Standardı (Aldıklarım Kırmızı, Verdiklerim Yeşil)
+- [x] **1. Masaüstü Renk Eşitlemesi ([`hesap-hareketleri.php`](file:///opt/lampp/htdocs/ersan_elk/views/cari/hesap-hareketleri.php) & [`api.php`](file:///opt/lampp/htdocs/ersan_elk/views/cari/api.php))**:
+  - `TOPLAM GİRİŞ (ALD.")` özet kartı kırmızı (`bg-danger-subtle text-danger`, `Girişler (-)`) yapıldı.
+  - `TOPLAM ÇIKIŞ (VERD.")` özet kartı yeşil (`bg-success-subtle text-success`, `Çıkışlar (+)`) yapıldı.
+  - Üst aksiyon araç çubuğunda `Aldım (-)` butonu kırmızı (`btn-danger`), `Verdim (+)` butonu yeşil (`btn-success`) yapıldı.
+  - DataTables tablosunda GİRİŞ (ALD.) sütunundaki tutarlar kırmızı (`text-danger`), ÇIKIŞ (VERD.) sütunundaki tutarlar yeşil (`text-success`) yapıldı.
+  - Excel ihracı ve Hızlı İşlem modalı renkleri uyarlandı.
+- [x] **2. Mobil SPA Renk Eşitlemesi ([`CariDetailView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariDetailView.vue) & [`CariView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariView.vue))**:
+  - `TOP. ALDIM` mini özet kartı nokta ve tutarı **KIRMIZI** (`summary-dot--aldim`, `text-aldim`) yapıldı.
+  - `TOP. VERDİM` mini özet kartı nokta ve tutarı **YEŞİL** (`summary-dot--verdim`, `text-verdim`) yapıldı.
+  - Hareket listesinde `aldim` satırları kırmızı `-`, `verdim` satırları yeşil `+` olarak uyarlandı.
+  - Hızlı işlem modalında `Aldım (-)` kırmızı, `Verdim (+)` yeşil aktif stili uygulandı.
+  - Vite ile `npm run build` 0 hata ile tamamlandı.
+
 ## 2026-10-18 — Mobil SPA: Cari Hesap Hareketleri Masaüstü Uyumluluğu (Giriş/Aldım Yeşil, Çıkış/Verdim Kırmızı)
 - [x] **1. Özet Kartları Renkleri ve Etiketleri**:
   - `TOP. ALDIM` (GİRİŞ) kartı masaüstü standardına getirilerek **YEŞİL** yapıldı.

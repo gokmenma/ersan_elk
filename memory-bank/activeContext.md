@@ -1,5 +1,26 @@
 # Active Context
 
+## Masaüstü ve Mobil: Cari Hareketleri Renk Standardı (Aldıklarım Kırmızı, Verdiklerim Yeşil) (2026-10-18)
+- **Kullanıcı Talebi**: "aldıklarım kırmızı , verdiklerim yeşil olacak özet kartlarda da hem masaüstünde hem mobilde"
+- **Temel Mantık**:
+  - **Aldıklarım (Giriş / Borç / Alınan Fatura):** Borç doğuran, firmaya borç yükleyen işlem olduğundan **KIRMIZI** (`text-danger`, `bg-danger-subtle`, `-` işareti).
+  - **Verdiklerim (Çıkış / Alacak / Satış / Ödeme):** Alacak doğuran veya firmadan çıkan ödeme/tahsilat olduğundan **YEŞİL** (`text-success`, `bg-success-subtle`, `+` işareti).
+- **Uygulanan Değişiklikler**:
+  1. **Masaüstü ([`views/cari/hesap-hareketleri.php`](file:///opt/lampp/htdocs/ersan_elk/views/cari/hesap-hareketleri.php))**:
+     - `TOPLAM GİRİŞ (ALD.")` özet kartı: İkon, tutar, alt metin ve "Girişler (-)" filtresi **KIRMIZI** (`bg-danger-subtle`, `text-danger`, `btn-subtle-danger`) yapıldı.
+     - `TOPLAM ÇIKIŞ (VERD.")` özet kartı: İkon, tutar, alt metin ve "Çıkışlar (+)" filtresi **YEŞİL** (`bg-success-subtle`, `text-success`, `btn-subtle-success`) yapıldı.
+     - Üst butonlar: `Aldım (-)` butonu **Kırmızı** (`btn-danger`), `Verdim (+)` butonu **Yeşil** (`btn-success`) yapıldı.
+     - DataTables satırları ([`views/cari/api.php`](file:///opt/lampp/htdocs/ersan_elk/views/cari/api.php)): `borc` (Aldım) tutarları `text-danger` (kırmızı `#dc2626`), `alacak` (Verdim) tutarları `text-success` (yeşil `#16a34a`) yapıldı.
+     - Excel ihracı ([`views/cari/export-hareketler-excel.php`](file:///opt/lampp/htdocs/ersan_elk/views/cari/export-hareketler-excel.php)): Başlıklar `Aldım (-)` ve `Verdim (+)` olarak güncellendi; D sütunu (Aldım) kırmızı, E sütunu (Verdim) yeşil renklendirildi.
+     - Hızlı İşlem Modalı ([`views/cari/js/hareketler.js`](file:///opt/lampp/htdocs/ersan_elk/views/cari/js/hareketler.js)): `Aldım (-)` kırmızı, `Verdim (+)` yeşil temaya bağlandı.
+  2. **Mobil SPA ([`CariDetailView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariDetailView.vue) & [`CariView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariView.vue))**:
+     - Mini özet kartlarında: `TOP. ALDIM` nokta ve tutar **KIRMIZI** (`summary-dot--aldim`, `text-aldim`), `TOP. VERDİM` nokta ve tutar **YEŞİL** (`summary-dot--verdim`, `text-verdim`) yapıldı.
+     - Hareket listesi: `aldim` (Giriş) satırlarında ikon ve tutar **KIRMIZI (-)**, `verdim` (Çıkış) satırlarında ikon ve tutar **YEŞİL (+)** yapıldı.
+     - Hızlı işlem modalında `Aldım (-)` aktifken kırmızı, `Verdim (+)` aktifken yeşil segment buton stili uygulandı.
+     - Hareket detay modalında tutarlar `aldim` için kırmızı `-`, `verdim` için yeşil `+` olarak eşitlendi.
+  3. **Derleme**:
+     - `npm run build` ile Vite paketi 0 hata ile derlendi.
+
 ## Mobil SPA: Cari Hesap Hareketleri Masaüstü Uyumluluğu (Giriş/Aldım Yeşil, Çıkış/Verdim Kırmızı) (2026-10-18)
 - **Kullanıcı Talebi**: "hesap hareketlerinde galiba yine biri terslik var, masaüstü views/cari/hesap-hareketleri.php buradaki gibi olmalı" (Mobil ekran görüntüsünde Aldım'ın kırmızı `-`, Verdim'in yeşil `+` olarak ters görünmesi ve masaüstünde ise Giriş/Aldım'ın yeşil `+`, Çıkış/Verdim'in kırmızı `-` olması).
 - **Tespit Edilen Çelişki**:

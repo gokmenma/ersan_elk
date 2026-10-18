@@ -215,14 +215,15 @@ class CariHareketleriModel extends Model
             $islemTarihi = $faturaTarihi . ' ' . $saat;
             $unvan = trim((string)($fatura->alici_unvan ?? ''));
 
-            // Gelen faturada ALACAK, Giden faturada BORÇ
+            // Gelen fatura mal/hizmet alımıdır; bizim borcumuzu artırır (GİRİŞ/ALD. = borc)
+            // Giden fatura mal/hizmet satışıdır; bizim alacağımızı artırır (ÇIKIŞ/VERD. = alacak)
             if ($yon === 'GELEN') {
-                $borc = 0.00;
-                $alacak = $odenecekTutar;
-                $yonBaslik = 'Gelen e-Fatura';
-            } else {
                 $borc = $odenecekTutar;
                 $alacak = 0.00;
+                $yonBaslik = 'Gelen e-Fatura';
+            } else {
+                $borc = 0.00;
+                $alacak = $odenecekTutar;
                 $yonBaslik = 'Giden e-Fatura';
             }
 
@@ -350,7 +351,7 @@ class CariHareketleriModel extends Model
                 FROM $this->table 
                 WHERE cari_id = :cari_id 
                   AND DATE(islem_tarihi) = :tarih 
-                  AND ((:yon = 'GELEN' AND ABS(alacak - :tutar) < 0.01) OR (:yon = 'GIDEN' AND ABS(borc - :tutar) < 0.01))
+                  AND ((:yon = 'GELEN' AND ABS(borc - :tutar) < 0.01) OR (:yon = 'GIDEN' AND ABS(alacak - :tutar) < 0.01))
                   AND silinme_tarihi IS NULL
                   AND (fatura_id IS NULL OR fatura_id != :fatura_id)
             ";

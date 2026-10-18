@@ -66,14 +66,14 @@ $bakiye = (float)($ozet->bakiye ?? 0);
                 <i class="bx bx-arrow-back font-size-16"></i> <span class="d-none d-sm-inline">Listeye Dön</span>
             </a>
 
-            <!-- 2. Aldım (+) Butonu -->
-            <button type="button" class="btn btn-success top-action-btn shadow-sm text-white" id="btnAldimDesktop">
-                <i class="bx bx-plus-circle font-size-16"></i> Aldım (+)
+            <!-- 2. Aldım (-) Butonu (Kırmızı) -->
+            <button type="button" class="btn btn-danger top-action-btn shadow-sm text-white" id="btnAldimDesktop">
+                <i class="bx bx-minus-circle font-size-16"></i> Aldım (-)
             </button>
 
-            <!-- 3. Verdim (-) Butonu -->
-            <button type="button" class="btn btn-danger top-action-btn shadow-sm text-white" id="btnVerdimDesktop">
-                <i class="bx bx-minus-circle font-size-16"></i> Verdim (-)
+            <!-- 3. Verdim (+) Butonu (Yeşil) -->
+            <button type="button" class="btn btn-success top-action-btn shadow-sm text-white" id="btnVerdimDesktop">
+                <i class="bx bx-plus-circle font-size-16"></i> Verdim (+)
             </button>
 
             <!-- 4. İşlemler Dropdown -->
@@ -110,42 +110,42 @@ $bakiye = (float)($ozet->bakiye ?? 0);
 
     <!-- 2. 4 Adet Minimal Özet KPI Kartı (Fatura Formatı) -->
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
-        <!-- Kart 1: TOPLAM GİRİŞ (ALD.') -->
+        <!-- Kart 1: TOPLAM GİRİŞ (ALD.') - KIRMIZI -->
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">TOPLAM GİRİŞ (ALD.")</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                             <i class="bx bx-trending-down"></i>
                         </div>
                     </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="toplam_borc_kart"><?= number_format($toplam_borc, 2, ',', '.') ?> ₺</h3>
+                    <h3 class="summary-kpi-value my-1 text-danger" id="toplam_borc_kart"><?= number_format($toplam_borc, 2, ',', '.') ?> ₺</h3>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-success fw-semibold">Giriş Hareketleri</span>
-                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="aldim">
-                            <i class="bx bx-plus-circle"></i> Girişler (+)
+                        <span class="summary-kpi-subtext text-danger fw-semibold">Giriş Hareketleri</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="aldim">
+                            <i class="bx bx-minus-circle"></i> Girişler (-)
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Kart 2: TOPLAM ÇIKIŞ (VERD.') -->
+        <!-- Kart 2: TOPLAM ÇIKIŞ (VERD.') - YEŞİL -->
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-label">TOPLAM ÇIKIŞ (VERD.")</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-trending-up"></i>
                         </div>
                     </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="toplam_alacak_kart"><?= number_format($toplam_alacak, 2, ',', '.') ?> ₺</h3>
+                    <h3 class="summary-kpi-value my-1 text-success" id="toplam_alacak_kart"><?= number_format($toplam_alacak, 2, ',', '.') ?> ₺</h3>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-danger fw-semibold">Çıkış Hareketleri</span>
-                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="verdim">
-                            <i class="bx bx-minus-circle"></i> Çıkışlar (-)
+                        <span class="summary-kpi-subtext text-success fw-semibold">Çıkış Hareketleri</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="verdim">
+                            <i class="bx bx-plus-circle"></i> Çıkışlar (+)
                         </button>
                     </div>
                 </div>

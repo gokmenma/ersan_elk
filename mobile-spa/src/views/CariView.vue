@@ -707,8 +707,8 @@ async function deleteSelectedMovement() {
                   <ArrowDownLeft :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Aldım (+)</strong>
-                  <small>Giriş / Tahsilat</small>
+                  <strong>Aldım (-)</strong>
+                  <small>Borç Artışı / Giriş</small>
                 </div>
               </button>
 
@@ -722,8 +722,8 @@ async function deleteSelectedMovement() {
                   <ArrowUpRight :size="18" />
                 </div>
                 <div class="seg-text">
-                  <strong>Verdim (-)</strong>
-                  <small>Çıkış / Ödeme</small>
+                  <strong>Verdim (+)</strong>
+                  <small>Alacak Artışı / Çıkış</small>
                 </div>
               </button>
             </div>
@@ -1068,7 +1068,7 @@ async function deleteSelectedMovement() {
                     class="history-amount"
                     :class="item.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
                   >
-                    {{ item.type === 'aldim' ? '+' : '-' }}{{ formatMoney(item.amount) }}
+                    {{ item.type === 'aldim' ? '-' : '+' }}{{ formatMoney(item.amount) }}
                   </span>
                   <small class="history-type-label">{{ item.type_label }}</small>
                   <Paperclip v-if="item.has_file" :size="13" class="history-clip-icon" />
@@ -1106,7 +1106,7 @@ async function deleteSelectedMovement() {
                 class="hero-amount-text"
                 :class="selectedMovement.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ selectedMovement.type === 'aldim' ? '+' : '-' }}{{ formatMoney(selectedMovement.amount) }}
+                {{ selectedMovement.type === 'aldim' ? '-' : '+' }}{{ formatMoney(selectedMovement.amount) }}
               </strong>
             </div>
 
@@ -1476,9 +1476,9 @@ async function deleteSelectedMovement() {
 
 /* RENKLER */
 .text-debt,
-.text-verdim { color: var(--ds-danger-ink) !important; }
+.text-aldim { color: var(--ds-danger-ink) !important; }
 .text-credit,
-.text-aldim { color: var(--ds-emerald-ink) !important; }
+.text-verdim { color: var(--ds-emerald-ink) !important; }
 .text-neutral { color: var(--ds-slate) !important; }
 .text-emerald { color: #34d399 !important; }
 .text-sky { color: #38bdf8 !important; }
@@ -1898,23 +1898,35 @@ async function deleteSelectedMovement() {
   background: #ffffff;
   color: var(--ds-danger-ink);
 }
-.seg-btn--debt.is-active .seg-text strong,
-.seg-btn--verdim.is-active .seg-text strong {
+.seg-btn--debt.is-active,
+.seg-btn--aldim.is-active {
+  background: var(--ds-danger-soft);
+  border-color: var(--ds-danger);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+.seg-btn--debt.is-active .seg-icon-box,
+.seg-btn--aldim.is-active .seg-icon-box {
+  background: #ffffff;
   color: var(--ds-danger-ink);
 }
+.seg-btn--debt.is-active .seg-text strong,
+.seg-btn--aldim.is-active .seg-text strong {
+  color: var(--ds-danger-ink);
+}
+
 .seg-btn--credit.is-active,
-.seg-btn--aldim.is-active {
+.seg-btn--verdim.is-active {
   background: var(--ds-emerald-soft);
   border-color: var(--ds-emerald);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
 }
 .seg-btn--credit.is-active .seg-icon-box,
-.seg-btn--aldim.is-active .seg-icon-box {
+.seg-btn--verdim.is-active .seg-icon-box {
   background: #ffffff;
   color: var(--ds-emerald-ink);
 }
 .seg-btn--credit.is-active .seg-text strong,
-.seg-btn--aldim.is-active .seg-text strong {
+.seg-btn--verdim.is-active .seg-text strong {
   color: var(--ds-emerald-ink);
 }
 

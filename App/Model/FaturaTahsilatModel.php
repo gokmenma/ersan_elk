@@ -222,11 +222,17 @@ class FaturaTahsilatModel extends Model
             // 5. Cari Hareketi Ekle (Eğer faturaya bağlı cari varsa)
             $cariHareketId = null;
             if (!empty($invoice['cari_id'])) {
+                $invYon = strtoupper(trim((string)($invoice['yon'] ?? 'GIDEN')));
+                // Giden fatura tahsilatı (bize ödeme yapıldı): Aldım / Borç (carinin alacağımızı kapatması)
+                // Gelen fatura ödemesi (tedarikçiye ödeme yaptık): Verdim / Alacak (tedarikçiye olan borcumuzu kapatmamız)
+                $cariBorc = ($invYon === 'GIDEN') ? $tutar : 0.00;
+                $cariAlacak = ($invYon === 'GELEN') ? $tutar : 0.00;
+
                 $cariHrkStmt = $this->db->prepare("
                     INSERT INTO cari_hareketleri (
                         cari_id, islem_tarihi, belge_no, aciklama, borc, alacak, ekleyen_kullanici, fatura_id, kayit_tarihi
                     ) VALUES (
-                        :cari_id, :islem_tarihi, :belge_no, :aciklama, 0.00, :alacak, :ekleyen_kullanici, :fatura_id, NOW()
+                        :cari_id, :islem_tarihi, :belge_no, :aciklama, :borc, :alacak, :ekleyen_kullanici, :fatura_id, NOW()
                     )
                 ");
                 $cariHrkStmt->execute([
@@ -234,7 +240,8 @@ class FaturaTahsilatModel extends Model
                     'islem_tarihi' => $islemTarihi . ' ' . date('H:i:s'),
                     'belge_no' => $faturaNo,
                     'aciklama' => $aciklama,
-                    'alacak' => $tutar,
+                    'borc' => $cariBorc,
+                    'alacak' => $cariAlacak,
                     'ekleyen_kullanici' => $kullaniciId,
                     'fatura_id' => $faturaId
                 ]);

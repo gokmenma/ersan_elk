@@ -82,7 +82,7 @@ $sheet->setCellValue('B3', date('d.m.Y H:i'));
 $sheet->getStyle('A3')->getFont()->setBold(true);
 
 // Başlıklar (5. satırdan başla)
-$headers = ['Tarih', 'Belge No', 'Açıklama', 'Aldım (+)', 'Verdim (-)', 'Bakiye', 'Ekleyen'];
+$headers = ['Tarih', 'Belge No', 'Açıklama', 'Aldım (-)', 'Verdim (+)', 'Bakiye', 'Ekleyen'];
 $col = 'A';
 foreach ($headers as $header) {
     $sheet->setCellValue($col . '5', $header);
@@ -112,15 +112,23 @@ foreach ($data as $row) {
     // Para Formatları
     $sheet->getStyle('D' . $rowNum . ':F' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
     
+    // Renkler: Aldıklarım Kırmızı, Verdiklerim Yeşil
+    if ($row->borc > 0) {
+        $sheet->getStyle('D' . $rowNum)->getFont()->getColor()->setRGB('DC2626'); // Kırmızı
+    }
+    if ($row->alacak > 0) {
+        $sheet->getStyle('E' . $rowNum)->getFont()->getColor()->setRGB('16A34A'); // Yeşil
+    }
+
     // Bakiye türü için özel format (B/A)
     $yBakiye = (float)$row->yuruyen_bakiye;
     $bLabel = $yBakiye < 0 ? ' (B)' : ($yBakiye > 0 ? ' (A)' : '');
     $sheet->getStyle('F' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00"'. $bLabel .'"');
     
     if ($yBakiye < 0) {
-        $sheet->getStyle('F' . $rowNum)->getFont()->getColor()->setRGB('FF0000');
+        $sheet->getStyle('F' . $rowNum)->getFont()->getColor()->setRGB('DC2626');
     } elseif ($yBakiye > 0) {
-        $sheet->getStyle('F' . $rowNum)->getFont()->getColor()->setRGB('008000');
+        $sheet->getStyle('F' . $rowNum)->getFont()->getColor()->setRGB('16A34A');
     }
     
     $rowNum++;
