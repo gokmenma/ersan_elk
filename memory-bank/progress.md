@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-10-18 — Mobil SPA: Puantaj Fazla Mesai (FM) Girişi ve Manuel Saat Desteği
+- [x] **Saat Kesilme Sorunu Giderildi**: Eski akordeon yapısı kaldırıldı; yerine 4 sütunlu esnek ve tam görünür `.picker-fm-grid` ızgarası yerleştirildi (`1s`, `1.5s`, `2s`, `3s`, `4s (Standart)`, `5.5s`, `7.5s`).
+- [x] **Manuel Saat Girişi & Stepper Eklendi**: `[-]` (0.5s azalt), `[+]` (0.5s artır) step butonları ve doğrudan klavyeden sayı yazılabilen büyük numara kutusu ile mor `[ Kaydet / Güncelle ]` butonu eklendi.
+- [x] **Mevcut Mesai Rozeti ve Kaldır Butonu**: Seçili günde mesai varsa `+4s Mesai` mor hapı ve kırmızı `[ Kaldır ]` butonu ile anında silme desteği sağlandı.
+- [x] **Kesme Departmanı Uyarısı**: Kesme personelleri için kart içinde sarı uyarı kutusu gösterildi.
+- [x] **Ay Detay Takviminde "+FM" Damgalama**: `⚡ Fazla Mesai (+FM)` sekmesiyle saat seçip takvimdeki günlere dokunarak ardışık günlere tık tık mesai damgalama özelliği eklendi.
+- [x] **API Parametre Sırası Düzeltildi**: `PersonelFazlaMesaileriModel::saveMesai` ve `deleteMesai` çağrılarındaki parametre sırası düzeltildi.
+- [x] **Derleme & PWA Cache**: `npm run build` ile 0 hatayla derlendi, PWA service worker cache `v23`'e yükseltildi.
+
 ## 2026-10-18 — Mobil SPA: Cari Hareketlerini Düzenleme Desteği (Hareketi Düzenle Butonu ve Güncelleme Akışı)
 - [x] **1. Cari Detay Ekranı ([`CariDetailView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/CariDetailView.vue))**:
   - Hareket satırına basıldığında açılan detay penceresine birincil eylem butonu olarak **"Hareketi Düzenle"** (`.primary-edit-btn`) eklendi.
@@ -1246,7 +1255,10 @@
 - [x] Bordro regresyon paketi: 113 test, 867 doğrulama geçti; önceden mevcut 7 uyarı sürüyor.
 - [x] Mobil SPA Evrak Takip detayındaki `ee.yukleyen_kullanici_id` bilinmeyen kolon hatası giderildi; çoklu dosya/yükleyen migration'ı idempotent yapılıp aktif veritabanına uygulandı ve Model ek sorgusu doğrulandı. (2026-10-18)
 - [x] Mobil SPA Evrak formunda ofis/ilgili personel seçenekleri yalnız aktif kayıtlarla sınırlandı; plaka seçiminde tarih bazlı araç zimmetlisi otomatik olarak İlgili Personel alanına getirildi ve üretim SPA paketi yeniden oluşturuldu. (2026-10-18)
-- [x] Mobil SPA cari detayında hesap hareketi tutarlarının önündeki kafa karıştıran `+` / `-` işaretleri liste ve detay görünümünden kaldırıldı; yön renk ve ikonlarla gösterilmeye devam ediyor. (2026-10-18)
+- [x] Kullanıcı kararıyla mobil SPA cari hareket tutarlarında Aldım için `-`, Verdim için `+` işaretleri liste ve detay görünümüne geri eklendi. (2026-10-18)
 - [x] Cari hareket özetlerindeki Aldım/Verdim kartları mobil SPA ve masaüstü hesap hareketleri sayfasında ilgili hareketleri filtreleyecek şekilde etkinleştirildi; tekrar seçimle filtre temizleniyor. (2026-10-18)
 - [x] Mobil tekil cari Ekstre PDF bağlantısı alt dizin uyumlu API endpoint'iyle onarıldı; masaüstü ve mobil cari listelerine tüm aktif carilerin ayrı PDF'lerini ve CSV özetini tek ZIP içinde indiren yetki kontrollü toplu yedek eylemi eklendi. Gerçek 13 cariyle çıktı doğrulandı. (2026-10-18)
 - [x] Toplu cari ZIP çıktısının web sunucusunda mPDF geçici dizin yetkisi nedeniyle başarısız olması giderildi; web/CLI kullanıcılarına ayrılmış yazılabilir sistem geçici dizini uygulandı. (2026-10-18)
+- [x] Pazar günü kişi bazında varsayılan 10 okumayı geçen Okuma/Endeks Okuma personeline 23:45 endeks cron'u sonrasında otomatik HTÇ üretimi eklendi; pazartesi sabah telafisi, firma ayarları, legacy HT dönüşümü, soft delete ve manuel kod koruması uygulandı. (2026-10-18)
+- [x] Otomatik HTÇ'nin mobil/masaüstü puantajda başka koda veya kayıtsız `X` gününe çevrilmesinin sonraki cron tarafından ezilmesini önleyen kaynak ve otomasyon kilidi takibi eklendi. (2026-10-18)
+- [x] Otomatik HTÇ karar testleri ile ilgili bordro regresyonları geçti: 57 test / 601 doğrulama; önceden mevcut 7 uyarı devam ediyor. (2026-10-18)

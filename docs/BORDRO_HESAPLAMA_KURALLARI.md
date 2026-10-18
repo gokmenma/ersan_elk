@@ -215,6 +215,14 @@ Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşama
 HTÇ, personelin kendi gunluk ucretinden hesaplanir ve **sozlesme netinin uzerine eklenir**.
 Bu kural hem maasa dahil hem de maasa dahil olmayan personelde gecerlidir.
 
+Okuma personelinde pazar gunu HTÇ puantaji, firma ayarindaki kisi basi minimum
+okuma sayisi (varsayilan 10) saglandiginda endeks cron'u tarafindan otomatik
+uretilebilir. Varsayilan veya eski `HT` kaydi `HTÇ` olarak donusturulur; HT disinda
+manuel kod bulunan gun degistirilmez. Otomatik HTÇ kullanici tarafindan baska bir
+koda cevrildiginde manuel tercih kilitlenir ve sonraki cron tarafindan ezilmez.
+Bu uretim kurali yalniz puantaj gununu belirler; asagidaki HTÇ tutar ve odeme
+dagilimi formullerini degistirmez.
+
 Fazla mesai, hafta ici nobet, resmi tatil calismasi ve hafta tatili calismasinin
 muhasebeye bildirilecek resmi netleri ayri banka kalemidir. Personelin gercek ek
 calisma hakedisinin resmi net hedefini asan kismi, maasa dahil yardim kuralina gore

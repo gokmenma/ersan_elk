@@ -14,7 +14,9 @@ import {
   Clock,
   Filter,
   Layers,
+  Minus,
   MoreVertical,
+  Plus,
   RefreshCw,
   RotateCcw,
   Save,
@@ -22,6 +24,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Stethoscope,
+  Trash2,
   Undo2,
   UserCheck,
   UsersRound,
@@ -691,6 +694,21 @@ function toggleModalStamp(typeObj) {
   }
 }
 
+function selectFmStamp(hrs) {
+  const code = hrs > 0 ? `+${hrs}s FM` : 'FM Sil'
+  if (modalStampType.value && modalStampType.value.isFm && modalStampType.value.hours === hrs) {
+    modalStampType.value = null
+  } else {
+    modalStampType.value = {
+      isFm: true,
+      hours: hrs,
+      code,
+      name: hrs > 0 ? `${hrs} Saat Fazla Mesai` : 'Fazla Mesaiyi Kaldır',
+      color: hrs > 0 ? '#7c3aed' : '#dc2626',
+    }
+  }
+}
+
 function getCellTheme(code) {
   const uc = (code || 'X').toUpperCase()
   const map = {
@@ -794,9 +812,8 @@ function openDayStatusPicker(personel, dayObj) {
   pickerTargetPersonel.value = personel
   pickerTargetDay.value = dayObj
   pickerActiveTab.value = 'ucretli'
-  showPickerFmAccordion.value = false
   const currentOt = getEffectiveOvertime(personel.id, dayObj.dateStr, personel.overtimes)
-  customOvertimeInput.value = currentOt > 0 ? String(currentOt) : ''
+  customOvertimeInput.value = currentOt > 0 ? String(currentOt) : '4.0'
   showStatusPickerSheet.value = true
 }
 
@@ -805,7 +822,6 @@ function closeDayStatusPicker() {
   pickerTargetPersonel.value = null
   pickerTargetDay.value = null
   customOvertimeInput.value = ''
-  showPickerFmAccordion.value = false
 }
 
 const pickerCurrentOvertime = computed(() => {
@@ -822,12 +838,23 @@ function setPickerOvertime(saat) {
   const num = Math.max(0, parseFloat(saat) || 0)
   applyOvertimeToCell(pickerTargetPersonel.value.id, pickerTargetDay.value.dateStr, num)
   customOvertimeInput.value = num > 0 ? String(num) : ''
+  if (num > 0) {
+    showToast(`${pickerTargetPersonel.value.adi_soyadi} için ${num} saat fazla mesai eklendi.`, 'success')
+  } else {
+    showToast('Fazla mesai kaydı kaldırıldı.', 'info')
+  }
 }
 
 function applyCustomOvertime() {
   if (!pickerTargetPersonel.value || !pickerTargetDay.value) return
   const num = Math.max(0, parseFloat(customOvertimeInput.value) || 0)
-  applyOvertimeToCell(pickerTargetPersonel.value.id, pickerTargetDay.value.dateStr, num)
+  setPickerOvertime(num)
+}
+
+function stepOvertime(delta) {
+  let cur = parseFloat(customOvertimeInput.value) || 0
+  cur = Math.max(0, Math.min(24, Math.round((cur + delta) * 10) / 10))
+  customOvertimeInput.value = cur > 0 ? String(cur) : '0'
 }
 
 function selectStatusForDay(typeObj) {
@@ -960,13 +987,18 @@ function handleCellClick(cell) {
   if (cell.empty || !selectedPersonel.value) return
 
   if (modalStampType.value) {
-    // Damga modu aktif: Seçili türü doğrudan bu güne damgala!
-    applyStatusToCell(
-      selectedPersonel.value.id,
-      cell.dateStr,
-      modalStampType.value.id,
-      modalStampType.value.code,
-    )
+    if (modalStampType.value.isFm) {
+      // Fazla Mesai damgası aktif: Hücreye mesai saatini damgala!
+      applyOvertimeToCell(selectedPersonel.value.id, cell.dateStr, modalStampType.value.hours)
+    } else {
+      // İzin / Çalışma statüsü damgala!
+      applyStatusToCell(
+        selectedPersonel.value.id,
+        cell.dateStr,
+        modalStampType.value.id,
+        modalStampType.value.code,
+      )
+    }
   } else {
     // Damga modu kapalı: Hızlı statü & fazla mesai seçici sheet'ini aç
     const d = new Date(cell.dateStr)
@@ -1547,7 +1579,7 @@ onMounted(async () => {
                 </span>
               </div>
 
-              <!-- Ücretli / Ücretsiz Sekmeleri -->
+              <!-- Ücretli / Ücretsiz / Fazla Mesai Sekmeleri -->
               <div class="stamp-tabs">
                 <button
                   type="button"
@@ -1555,7 +1587,7 @@ onMounted(async () => {
                   :class="{ 'is-active': modalPaletteTab === 'ucretli' }"
                   @click="modalPaletteTab = 'ucretli'"
                 >
-                  Ücretli İzin & Çalışma
+                  Ücretli
                 </button>
                 <button
                   type="button"
@@ -1563,12 +1595,46 @@ onMounted(async () => {
                   :class="{ 'is-active': modalPaletteTab === 'ucretsiz' }"
                   @click="modalPaletteTab = 'ucretsiz'"
                 >
-                  Ücretsiz İzin & Rapor
+                  Ücretsiz
+                </button>
+                <button
+                  type="button"
+                  class="stamp-tab-btn"
+                  :class="{ 'is-active': modalPaletteTab === 'fm' }"
+                  @click="modalPaletteTab = 'fm'"
+                >
+                  ⚡ Fazla Mesai (+FM)
+                </button>
+              </div>
+
+              <!-- Fazla Mesai Saat Çipleri -->
+              <div v-if="modalPaletteTab === 'fm'" class="stamp-types-scroll hide-scrollbar">
+                <button
+                  v-for="hrs in quickOvertimeOptions"
+                  :key="`stamp-fm-${hrs}`"
+                  type="button"
+                  class="stamp-chip"
+                  :class="{ 'is-selected': modalStampType?.isFm && modalStampType?.hours === hrs }"
+                  style="background-color: #7c3aed;"
+                  @click="selectFmStamp(hrs)"
+                >
+                  <strong class="stamp-chip-code">+{{ hrs }}s</strong>
+                  <span class="stamp-chip-name">{{ hrs === 4 ? 'Standart' : 'Mesai' }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="stamp-chip"
+                  :class="{ 'is-selected': modalStampType?.isFm && modalStampType?.hours === 0 }"
+                  style="background-color: #dc2626;"
+                  @click="selectFmStamp(0)"
+                >
+                  <strong class="stamp-chip-code">0s</strong>
+                  <span class="stamp-chip-name">Mesai Sil</span>
                 </button>
               </div>
 
               <!-- Puantaj Türleri Çipleri (Scrollable Yatay Liste - Scrollbar Gizli) -->
-              <div class="stamp-types-scroll hide-scrollbar">
+              <div v-else class="stamp-types-scroll hide-scrollbar">
                 <button
                   v-for="t in availablePaletteList"
                   :key="t.code"
@@ -1589,7 +1655,7 @@ onMounted(async () => {
               <div v-if="modalStampType" class="stamp-selected-banner">
                 <div class="banner-text">
                   <CheckCircle2 :size="15" />
-                  <span>Damgalama Aktif: <strong>{{ modalStampType.code }} — {{ modalStampType.name }}</strong></span>
+                  <span>Damgalama Aktif: <strong>{{ modalStampType.name || modalStampType.code }}</strong></span>
                 </div>
                 <button type="button" class="banner-cancel-btn" @click="modalStampType = null">
                   İptal Et
@@ -1890,94 +1956,120 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- Kesme Departmanı Fazla Mesai Uyarısı -->
-            <div
-              v-if="isKesmeDepartment(pickerTargetPersonel.departman)"
-              class="picker-kesme-alert"
-            >
-              <AlertCircle :size="18" class="kesme-alert-icon" />
-              <div class="kesme-alert-text">
-                <strong>Kesme Departmanı Uyarısı</strong>
-                <p>Kesme personellerinin fazla mesaileri normal şartlarda Nöbet modülü üzerinden otomatik gelmektedir.</p>
-              </div>
-            </div>
-
-            <!-- Fazla Mesai (FM) Akordeon Bölümü (Varsayılan Kapalı) -->
-            <div class="picker-fm-box" :class="{ 'is-expanded': showPickerFmAccordion }">
-              <button
-                type="button"
-                class="picker-fm-accordion-trigger"
-                :aria-expanded="showPickerFmAccordion"
-                @click="showPickerFmAccordion = !showPickerFmAccordion"
-              >
-                <div class="picker-fm-title">
-                  <Clock :size="16" class="text-purple" />
-                  <strong>Fazla Mesai (FM)</strong>
+            <!-- FAZLA MESAİ (FM) GİRİŞ KARTI (Masaüstü Standartlarında Doğrudan Açık & Net) -->
+            <section class="picker-fm-card">
+              <div class="picker-fm-card-head">
+                <div class="picker-fm-head-left">
+                  <div class="picker-fm-icon-badge">
+                    <Clock :size="18" />
+                  </div>
+                  <div>
+                    <h4 class="picker-fm-card-title">Fazla Mesai Saati</h4>
+                    <p class="picker-fm-card-sub">Bu gün için fazla mesai süresini belirleyin</p>
+                  </div>
                 </div>
-                <div class="picker-fm-trigger-right">
+
+                <div class="picker-fm-head-right">
                   <span
                     v-if="pickerCurrentOvertime > 0"
-                    class="picker-fm-badge"
+                    class="picker-fm-active-badge"
                   >
-                    +{{ pickerCurrentOvertime }} Saat Mesai
+                    +{{ pickerCurrentOvertime }}s Mesai
                   </span>
-                  <span v-else class="picker-fm-empty">
-                    (Mesai Yok)
+                  <span v-else class="picker-fm-none-badge">
+                    Mesai Yok
                   </span>
-                  <ChevronDown
-                    :size="16"
-                    class="picker-fm-chevron"
-                    :class="{ 'rotate-180': showPickerFmAccordion }"
-                  />
+                  <button
+                    v-if="pickerCurrentOvertime > 0"
+                    type="button"
+                    class="picker-fm-remove-btn"
+                    title="Mesaiyi Kaldır"
+                    @click="setPickerOvertime(0)"
+                  >
+                    <Trash2 :size="13" />
+                    <span>Kaldır</span>
+                  </button>
                 </div>
-              </button>
+              </div>
 
-              <!-- Akordeon İçeriği (Yalnızca tıklandığında açılır) -->
-              <div v-if="showPickerFmAccordion" class="picker-fm-content">
-                <!-- Hızlı Saat Butonları (Clay Çipler) -->
-                <div class="picker-fm-chips hide-scrollbar">
+              <!-- Kesme Departmanı Fazla Mesai Uyarısı (Masaüstü Standartlarında Kart İçi) -->
+              <div
+                v-if="isKesmeDepartment(pickerTargetPersonel.departman)"
+                class="picker-kesme-alert"
+              >
+                <AlertCircle :size="18" class="kesme-alert-icon" />
+                <div class="kesme-alert-text">
+                  <strong>Kesme Departmanı Uyarısı</strong>
+                  <p>Kesme personellerinin fazla mesaileri normal şartlarda Nöbet modülü üzerinden otomatik gelmektedir.</p>
+                </div>
+              </div>
+
+              <!-- Hızlı Saat Seçimi (Tam Görünür 4 Sütunlu Grid - Kesilme Yok) -->
+              <div class="picker-fm-section">
+                <div class="picker-fm-section-title">HIZLI SAAT SEÇİMİ</div>
+                <div class="picker-fm-grid">
                   <button
                     v-for="hrs in quickOvertimeOptions"
                     :key="hrs"
                     type="button"
-                    class="picker-fm-chip"
+                    class="picker-fm-tile"
                     :class="{ 'is-selected': pickerCurrentOvertime === hrs }"
                     @click="setPickerOvertime(hrs)"
                   >
-                    {{ hrs }}s
-                  </button>
-                  <button
-                    v-if="pickerCurrentOvertime > 0"
-                    type="button"
-                    class="picker-fm-chip picker-fm-chip--clear"
-                    @click="setPickerOvertime(0)"
-                  >
-                    <X :size="12" /> Kaldır
-                  </button>
-                </div>
-
-                <!-- Özel Saat Girişi -->
-                <div class="picker-fm-custom-row">
-                  <input
-                    v-model="customOvertimeInput"
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="24"
-                    placeholder="Farklı saat (Örn: 2.5)"
-                    class="picker-fm-input"
-                    @keydown.enter.prevent="applyCustomOvertime"
-                  />
-                  <button
-                    type="button"
-                    class="picker-fm-apply-btn"
-                    @click="applyCustomOvertime"
-                  >
-                    Uygula
+                    <span class="picker-fm-tile-hours">{{ hrs }}s</span>
+                    <span v-if="hrs === 4" class="picker-fm-tile-tag">Standart</span>
                   </button>
                 </div>
               </div>
-            </div>
+
+              <!-- Manuel Saat Girişi (Büyük Sayı + Step Butonları + Kaydet) -->
+              <div class="picker-fm-section">
+                <div class="picker-fm-section-title">MANUEL SAAT GİRİŞİ</div>
+                <div class="picker-fm-manual-row">
+                  <div class="picker-fm-stepper">
+                    <button
+                      type="button"
+                      class="picker-fm-step-btn"
+                      aria-label="0.5 saat azalt"
+                      @click="stepOvertime(-0.5)"
+                    >
+                      <Minus :size="15" />
+                    </button>
+                    <div class="picker-fm-input-wrap">
+                      <input
+                        v-model="customOvertimeInput"
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="24"
+                        placeholder="4.0"
+                        class="picker-fm-stepper-input"
+                        @keydown.enter.prevent="applyCustomOvertime"
+                      />
+                      <span class="picker-fm-unit">Saat</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="picker-fm-step-btn"
+                      aria-label="0.5 saat arttır"
+                      @click="stepOvertime(0.5)"
+                    >
+                      <Plus :size="15" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="picker-fm-commit-btn"
+                    :disabled="!customOvertimeInput || parseFloat(customOvertimeInput) < 0"
+                    @click="applyCustomOvertime"
+                  >
+                    <Check :size="16" />
+                    <span>{{ pickerCurrentOvertime > 0 ? 'Güncelle' : 'Kaydet' }}</span>
+                  </button>
+                </div>
+              </div>
+            </section>
 
             <!-- Hızlı Seçenek: Normal Çalışılan Güne Döndür (X) -->
             <button
@@ -3617,176 +3709,279 @@ onMounted(async () => {
   margin: 0;
 }
 
-/* Fazla Mesai (FM) Akordeon Kartı */
-.picker-fm-box {
+/* Fazla Mesai (FM) Kartı (Masaüstü Standartlarında Açık & Net) */
+.picker-fm-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  margin-top: 10px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
-  overflow: hidden;
-  transition: all 0.2s ease;
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.picker-fm-box.is-expanded {
-  border-color: #d8b4fe;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.08);
-}
-
-.picker-fm-accordion-trigger {
-  width: 100%;
+.picker-fm-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  user-select: none;
-  transition: background-color 0.15s ease;
+  gap: 10px;
 }
 
-.picker-fm-accordion-trigger:active {
-  background: #f8fafc;
-}
-
-.picker-fm-title {
+.picker-fm-head-left {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #1e293b;
+  gap: 10px;
 }
 
-.picker-fm-title .text-purple {
-  color: #7c3aed;
-}
-
-.picker-fm-trigger-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.picker-fm-chevron {
-  color: #64748b;
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-}
-
-.picker-fm-chevron.rotate-180 {
-  transform: rotate(180deg);
-}
-
-.picker-fm-badge {
+.picker-fm-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
   background: #f3e8ff;
   color: #7c3aed;
   border: 1px solid #e9d5ff;
-  font-size: 11px;
-  font-weight: 800;
-  padding: 3px 8px;
-  border-radius: 12px;
-}
-
-.picker-fm-empty {
-  font-size: 11px;
-  font-weight: 600;
-  color: #94a3b8;
-}
-
-.picker-fm-content {
-  padding: 0 14px 14px;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 10px;
-}
-
-.picker-fm-chips {
   display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  margin-bottom: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.12);
 }
 
-.picker-fm-chip {
-  flex: 0 0 auto;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 6px 12px;
-  font-size: 12px;
+.picker-fm-card-title {
+  font-size: 13.5px;
   font-weight: 800;
-  color: #334155;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.picker-fm-card-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+
+.picker-fm-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.picker-fm-active-badge {
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: var(--ds-radius-pill);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+  white-space: nowrap;
+}
+
+.picker-fm-none-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-pill);
+  white-space: nowrap;
+}
+
+.picker-fm-remove-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  background: #fef2f2;
+  border: 1px solid #fecdd3;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.picker-fm-chip:active {
+.picker-fm-remove-btn:active {
+  transform: scale(0.94);
+  background: #fee2e2;
+}
+
+.picker-fm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.picker-fm-section-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+/* Hızlı Saatler: Kesilmesiz 4 Sütunlu Grid */
+.picker-fm-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.picker-fm-tile {
+  min-height: 42px;
+  padding: 6px 4px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.picker-fm-tile:active {
   transform: scale(0.95);
 }
 
-.picker-fm-chip.is-selected {
+.picker-fm-tile-hours {
+  font-size: 13px;
+  font-weight: 900;
+  color: #1e293b;
+  line-height: 1.1;
+}
+
+.picker-fm-tile-tag {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1;
+}
+
+.picker-fm-tile.is-selected {
   background: #7c3aed !important;
-  color: #ffffff !important;
   border-color: #6d28d9 !important;
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
 }
 
-.picker-fm-chip--clear {
-  background: #fef2f2;
-  border-color: #fecdd3;
-  color: #dc2626;
+.picker-fm-tile.is-selected .picker-fm-tile-hours {
+  color: #ffffff !important;
 }
 
-.picker-fm-chip--clear:hover {
-  background: #fee2e2;
+.picker-fm-tile.is-selected .picker-fm-tile-tag {
+  color: #e9d5ff !important;
 }
 
-.picker-fm-custom-row {
+/* Manuel Saat Girişi ve Stepper */
+.picker-fm-manual-row {
   display: flex;
-  gap: 8px;
   align-items: center;
-  margin-top: 4px;
+  gap: 8px;
+  width: 100%;
 }
 
-.picker-fm-input {
+.picker-fm-stepper {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
   background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1e293b;
-  outline: none;
-  transition: border-color 0.15s;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 14px;
+  overflow: hidden;
+  height: 44px;
+  box-sizing: border-box;
 }
 
-.picker-fm-input:focus {
-  border-color: #7c3aed;
+.picker-fm-step-btn {
+  width: 40px;
+  height: 100%;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
-}
-
-.picker-fm-apply-btn {
-  background: #191d24;
-  color: #ffffff;
   border: none;
-  border-radius: 12px;
-  padding: 8px 16px;
-  font-size: 12px;
-  font-weight: 800;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.12s;
+  flex-shrink: 0;
 }
 
-.picker-fm-apply-btn:hover {
-  background: #0f172a;
+.picker-fm-step-btn:active {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.picker-fm-input-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 6px;
+}
+
+.picker-fm-stepper-input {
+  width: 60px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-size: 17px;
+  font-weight: 900;
+  color: #1e293b;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.picker-fm-stepper-input::-webkit-outer-spin-button,
+.picker-fm-stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.picker-fm-unit {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.picker-fm-commit-btn {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.picker-fm-commit-btn:active {
+  transform: scale(0.96);
+  background: #6d28d9;
+}
+
+.picker-fm-commit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .picker-fm-apply-btn:active {

@@ -23,6 +23,7 @@ use App\Model\SystemLogModel;
 use App\Helper\Security;
 use App\Service\EndeskOkumaService;
 use App\Service\MailGonderService;
+use App\Service\OkumaHtcAutomationService;
 
 // CLI modunda mı çalışıyor?
 if (php_sapi_name() !== 'cli') {
@@ -153,6 +154,23 @@ try {
 
             $sonuc = sorgulamaEndeks($firmaBaslangic, $firmaBitis, $bugun, $firmaId, $Settings);
 
+            if (($sonuc['success'] ?? false) && $simdikiSaat === '23:45' && (int) date('w') === 0) {
+                runOkumaHtcAutomation($Settings, $firmaId, $bugun, 'gün sonu');
+            }
+
+            // Pazar verisi dış sistemde gecikmeli düzeltilebildiği için pazartesi sabahı
+            // önceki günü yeniden sorgula ve yalnız otomatik HTÇ kayıtlarını uzlaştır.
+            if ($simdikiSaat === '08:00' && (int) date('w') === 1) {
+                $oncekiPazar = date('Y-m-d', strtotime('-1 day'));
+                cronLog("Pazartesi HTÇ telafi sorgusu başlatılıyor: $oncekiPazar");
+                $telafiSonuc = sorgulamaEndeks($firmaBaslangic, $firmaBitis, $oncekiPazar, $firmaId, $Settings);
+                if ($telafiSonuc['success'] ?? false) {
+                    runOkumaHtcAutomation($Settings, $firmaId, $oncekiPazar, 'pazartesi telafi');
+                } else {
+                    cronLog('Pazartesi HTÇ telafisi, endeks sorgusu başarısız olduğu için uygulanmadı.');
+                }
+            }
+
             // Son çalıştırma zamanını güncelle
             $Settings->upsertSetting('online_sorgulama_endeks_son_calistirma', date('d.m.Y H:i:s'));
 
@@ -227,6 +245,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     $silinenKayit = 0;
     $atlanAnKayitlar = 0;
     $atlanAnListesi = [];
+    $basarili = false;
 
     try {
         $apiService = new EndeskOkumaService();
@@ -277,6 +296,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
         if (empty($apiData)) {
             return [
+                'success' => false,
                 'yeni_kayit' => 0,
                 'silinen_kayit' => 0,
                 'toplam_api' => 0,
@@ -514,6 +534,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             cronLog("$yeniKayit yeni kayıt eklendi.");
         }
         $EndeksOkuma->db->commit();
+        $basarili = true;
 
         if ($atlanAnKayitlar > 0) {
             cronLog("$atlanAnKayitlar kayıt personelsiz eklendi (ekip eşleşmedi/ataması yok).");
@@ -531,10 +552,40 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     $SystemLog->logAction(0, 'Cron - Online Endeks Sorgulama', "Firma $ilkFirma-$sonFirma, Tarih: $tarih. $silinenKayit eski silindi, $yeniKayit yeni eklendi.", SystemLogModel::LEVEL_IMPORTANT);
 
     return [
+        'success' => $basarili,
         'yeni_kayit' => $yeniKayit,
         'silinen_kayit' => $silinenKayit,
         'atlanAn' => $atlanAnKayitlar,
         'atlanAnListesi' => array_unique($atlanAnListesi),
         'toplam_api' => $toplamApiCount ?? 0
     ];
+}
+
+/** Firma ayarlarını kullanarak HTÇ uzlaştırmasını çalıştırır ve özetini cron loguna yazar. */
+function runOkumaHtcAutomation(SettingsModel $settings, int $firmaId, string $date, string $reason): void
+{
+    $allSettings = $settings->getAllSettingsAsKeyValue($firmaId);
+    $enabled = (string) ($allSettings['okuma_htc_otomatik_aktif'] ?? '1');
+    if (!in_array($enabled, ['1', 'on', 'true'], true)) {
+        cronLog("Otomatik HTÇ devre dışı; $reason kontrolü atlandı.");
+        return;
+    }
+
+    $minimum = max(1, (int) ($allSettings['okuma_htc_minimum_okuma'] ?? 10));
+    try {
+        $result = (new OkumaHtcAutomationService())->reconcile($firmaId, $date, $minimum);
+        cronLog(sprintf(
+            'HTÇ %s sonucu (%s, limit %d): %d oluşturuldu, %d HT dönüştürüldü, %d kaldırıldı, %d manuel kayıt nedeniyle atlandı, %d değişmedi.',
+            $reason,
+            $date,
+            $minimum,
+            $result['created'],
+            $result['converted_ht'],
+            $result['removed'],
+            $result['skipped_manual'],
+            $result['unchanged']
+        ));
+    } catch (Throwable $e) {
+        cronLog("HTÇ $reason hatası: " . $e->getMessage());
+    }
 }

@@ -10,6 +10,7 @@ use App\Model\PersonelFazlaMesaileriModel;
 use App\Helper\Security;
 use App\Helper\Date;
 use App\Helper\Helper;
+use App\Service\OkumaHtcAutomationService;
 
 header('Content-Type: application/json');
 
@@ -580,11 +581,14 @@ try {
         $Puantaj->db->beginTransaction();
 
         try {
+            $htcAutomation = new OkumaHtcAutomationService();
             // Excel'den yüklenen personellerin o aydaki TÜM kayıtlarını sil
             if (!empty($excelPersonnelIds)) {
                 $placeholders = implode(',', array_fill(0, count($excelPersonnelIds), '?'));
                 $deleteAllStmt = $Puantaj->db->prepare("
-                    DELETE FROM personel_izinleri 
+                    UPDATE personel_izinleri
+                    SET silinme_tarihi = NOW(), silen_kullanici = ?,
+                        silinme_aciklama = 'Puantaj Excel aktarımıyla değiştirildi.'
                     WHERE personel_id IN ($placeholders) 
                     AND silinme_tarihi IS NULL
                     AND (
@@ -593,13 +597,15 @@ try {
                         OR (baslangic_tarihi <= ? AND bitis_tarihi >= ?)
                     )
                 ");
-                $params = array_merge($excelPersonnelIds, [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate]);
+                $params = array_merge([$user_id], $excelPersonnelIds, [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate]);
                 $deleteAllStmt->execute($params);
             }
             // Prepared statements'ları bir kez hazırla ve tekrar kullan
             // Çakışan tüm izinleri sil (izin tipi fark etmez - aynı tarihte başka izin varsa silinir)
             $deleteStmt = $Puantaj->db->prepare("
-                DELETE FROM personel_izinleri 
+                UPDATE personel_izinleri
+                SET silinme_tarihi = NOW(), silen_kullanici = ?,
+                    silinme_aciklama = 'Puantaj ekranından manuel olarak değiştirildi.'
                 WHERE personel_id = ? 
                 AND silinme_tarihi IS NULL
                 AND (
@@ -611,8 +617,9 @@ try {
 
             $insertStmt = $Puantaj->db->prepare("
                 INSERT INTO personel_izinleri 
-                (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, onay_durumu, talep_tarihi) 
-                VALUES (?, ?, ?, ?, ?, 'Onaylandı', CURDATE())
+                (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, onay_durumu,
+                 talep_tarihi, kaynak, manuel_kilit) 
+                VALUES (?, ?, ?, ?, ?, 'Onaylandı', CURDATE(), 'manuel', 1)
             ");
 
             $onayStmt = $Puantaj->db->prepare("
@@ -637,6 +644,7 @@ try {
 
                 // Çakışan kayıtları sil (Her durumda sil, çünkü üzerine yazıyoruz veya siliyoruz)
                 $deleteStmt->execute([
+                    $user_id,
                     $p_id,
                     $baslangic,
                     $bitis,
@@ -645,6 +653,18 @@ try {
                     $baslangic,
                     $bitis
                 ]);
+
+                $kilitTarih = $baslangic;
+                while ($kilitTarih <= $bitis) {
+                    $htcAutomation->lockManualOverride(
+                        (int) $firma_id,
+                        (int) $p_id,
+                        $kilitTarih,
+                        (int) $user_id,
+                        $type_id ? (string) $type_id : 'X'
+                    );
+                    $kilitTarih = date('Y-m-d', strtotime($kilitTarih . ' +1 day'));
+                }
 
                 // Eğer type_id varsa yeni kayıt ekle
                 if ($type_id) {

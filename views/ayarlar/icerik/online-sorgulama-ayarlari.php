@@ -14,6 +14,8 @@ $online_sorgulama_aktif = ($allSettings['online_sorgulama_aktif'] ?? '0') === '1
 $online_sorgulama_endeks_saat = $allSettings['online_sorgulama_endeks_saat'] ?? '08:00';
 $online_sorgulama_puantaj_saat = $allSettings['online_sorgulama_puantaj_saat'] ?? '08:30';
 $online_sorgulama_sayac_degisim_saat = $allSettings['online_sorgulama_sayac_degisim_saat'] ?? '08:45';
+$okuma_htc_otomatik_aktif = ($allSettings['okuma_htc_otomatik_aktif'] ?? '1') === '1';
+$okuma_htc_minimum_okuma = max(1, (int) ($allSettings['okuma_htc_minimum_okuma'] ?? 10));
 
 // Çoklu saat değerlerini diziye çevir
 $endeks_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_endeks_saat)));
@@ -151,6 +153,31 @@ for ($saat = 0; $saat < 24; $saat++) {
                     <button type="button" id="btnManuelEndeksSorgula" class="btn btn-outline-primary btn-sm">
                         <i data-feather="play" class="me-1"></i> Manuel Sorgula (Test)
                     </button>
+                </div>
+            </div>
+            <hr class="my-4">
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-3">
+                    <div class="form-check form-switch form-switch-lg">
+                        <input class="form-check-input" type="checkbox" id="okuma_htc_otomatik_aktif"
+                            name="okuma_htc_otomatik_aktif" value="1" <?php echo $okuma_htc_otomatik_aktif ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="okuma_htc_otomatik_aktif">
+                            Pazar Okumalarından Otomatik HTÇ
+                        </label>
+                    </div>
+                    <div class="form-text">23:45 sorgusundan sonra uygun okuma personelinin HT kaydını HTÇ'ye dönüştürür.</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <?php echo Form::FormFloatInput(
+                        "number",
+                        "okuma_htc_minimum_okuma",
+                        $okuma_htc_minimum_okuma,
+                        "",
+                        "Kişi Başı Minimum Pazar Okuması",
+                        "check-circle",
+                        "form-control"
+                    ); ?>
+                    <div class="form-text">Varsayılan alt limit 10 okumadır; en az 1 olabilir.</div>
                 </div>
             </div>
         </div>

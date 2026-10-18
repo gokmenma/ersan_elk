@@ -575,7 +575,7 @@ async function deleteSelectedMovement() {
                 class="m-amount"
                 :class="h.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ formatMoney(h.amount) }}
+                {{ h.type === 'aldim' ? '-' : '+' }}{{ formatMoney(h.amount) }}
               </span>
               <span
                 class="m-yuruyen"
@@ -949,7 +949,7 @@ async function deleteSelectedMovement() {
                 class="hero-amount-text"
                 :class="selectedMovement.type === 'aldim' ? 'text-aldim' : 'text-verdim'"
               >
-                {{ formatMoney(selectedMovement.amount) }}
+                {{ selectedMovement.type === 'aldim' ? '-' : '+' }}{{ formatMoney(selectedMovement.amount) }}
               </strong>
             </div>
 

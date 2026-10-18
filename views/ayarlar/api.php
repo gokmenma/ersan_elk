@@ -69,6 +69,13 @@ switch ($action) {
             }
         }
 
+        if (isset($settingsToUpdate['okuma_htc_minimum_okuma'])) {
+            $settingsToUpdate['okuma_htc_minimum_okuma'] = (string) max(1, (int) $settingsToUpdate['okuma_htc_minimum_okuma']);
+            if (!isset($settingsToUpdate['okuma_htc_otomatik_aktif'])) {
+                $settingsToUpdate['okuma_htc_otomatik_aktif'] = '0';
+            }
+        }
+
         if (isset($settingsToUpdate['canli_destek_baslama_saati']) || isset($settingsToUpdate['canli_destek_bitis_saati']) || isset($settingsToUpdate['canli_destek_yetkili_kullanicilar'])) {
             if (!isset($settingsToUpdate['canli_destek_aktif'])) {
                 $settingsToUpdate['canli_destek_aktif'] = '0';

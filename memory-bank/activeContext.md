@@ -1,5 +1,26 @@
 # Active Context
 
+## Mobil SPA: Puantaj Fazla Mesai (FM) Girişi ve Manuel Saat Desteği (2026-10-18)
+- **Kullanıcı Talebi**:
+  - "masaüstü modülde fazla mesai giriş yaptık onu buraya da ekleyelim"
+  - "fazla mesai saatleri tam görünmüyor, ayrıca manuel saat de girebilmeliyiz" (`media_1792351050525_204a3b9c.png`)
+- **Kök Neden & İyileştirmeler**:
+  1. **Saat Kesilme Sorunu Giderildi**:
+     - Eski akordeon yapısı dar yükseklik ve taşma kısıtlaması nedeniyle saat butonlarının altını kesiyordu.
+     - Akordeon kaldırılarak yerine doğrudan açık, ferah 4 sütunlu ızgara (`.picker-fm-grid`) yerleştirildi (`1s`, `1.5s`, `2s`, `3s`, `4s (Standart)`, `5.5s`, `7.5s`). Mobilde kaydırmaya gerek kalmadan tüm butonlar tek bakışta tam olarak görünür.
+  2. **Manuel Saat Girişi (Stepper + Direct Input)**:
+     - Kart içinde büyük sayı kutusu (`picker-fm-stepper-input`), solunda `[-]` (0.5 saat azalt), sağında `[+]` (0.5 saat artır) butonları ve yanında mor renkli `[ Kaydet / Güncelle ]` butonu eklendi.
+     - Kullanıcı doğrudan sayı kutusuna dokunup klavyeden istediği herhangi bir saati (örn: 2.5, 6, 8) yazabilir veya step butonlarıyla değiştirebilir.
+  3. **Mevcut Mesai Rozeti ve Kaldır Butonu**:
+     - Seçili günde mesai varsa kart başlığında `+4s Mesai` mor canlı hapı ve kırmızı `[ Kaldır ]` butonu (çöp kutusu ikonu) görüntülenir.
+     - Kesme personelleri için masaüstündeki sarı uyarı kutusu kart içinde gösterilir.
+  4. **Ay Detay Takviminde "+FM (Fazla Mesai)" Damgalama Desteği**:
+     - Ay detay takviminde `Ücretli`, `Ücretsiz` sekmelerinin yanına `⚡ Fazla Mesai (+FM)` sekmesi eklendi. Kullanıcı saat seçip takvimdeki günlere dokunarak ardışık günlere tık tık mesai damgalayabilir.
+  5. **API Backend Parametre Sırası Düzeltmesi**:
+     - `mobile-spa/public/api/puantaj.php` & `dist/api/puantaj.php` içinde `PersonelFazlaMesaileriModel::saveMesai` ve `deleteMesai` çağrılarındaki parametre sırası (`$personelId`, `$tarih`, `$saat`, `$firmaId`, `$userId`) düzeltildi.
+  6. **Derleme & PWA Cache**:
+     - `npm run build` ile 0 hata ile derlendi (`index-NBipscto.js`, `index-D-TmB0pa.css`). Service worker cache adı `ersan-mobile-shell-v23` seviyesine yükseltildi.
+
 ## Mobil SPA: Cari Hareketlerini Düzenleme Desteği (Hareketi Düzenle Butonu ve Güncelleme Akışı) (2026-10-18)
 - **Kullanıcı Talebi**: "mobil-spa'da cari hareketine basınca düzenleyebilmek istiyorum, basınca sadece sil var şu anda"
 - **Uygulanan Mimari & Tasarım**:
@@ -2319,8 +2340,7 @@
 
 ## 2026-10-18 — Mobil SPA cari hareket tutarları
 
-- Cari detayındaki Hesap Hareketleri listesinde ve hareket detay penceresinde tutarların önündeki `+` / `-` işaretleri kaldırıldı.
-- İşlem yönünü anlatan renkler, ok ikonları ve Aldım/Verdim metinleri korunarak tutar sunumu sadeleştirildi.
+- Kullanıcı kararıyla cari detayındaki Hesap Hareketleri listesi ve hareket detay penceresinde yön işaretleri geri getirildi: Aldım `-`, Verdim `+` olarak gösteriliyor.
 - Mobil cari detayındaki `Top. Aldım` ve `Top. Verdim` özetleri dokunulabilir filtrelere dönüştürüldü; seçili özete yeniden dokunmak tüm hareketleri geri getiriyor.
 - Masaüstü cari hesap hareketlerinde de giriş/çıkış özet kartlarının tamamı DataTables sunucu filtresini çalıştırıyor; fare ve klavye etkileşimi ile aktif durum göstergesi eklendi.
 
@@ -2332,3 +2352,13 @@
 - Toplu çıktı tek ZIP içinde her aktif cari için ayrı PDF, `cari-ozet.csv` ve `BILGI.txt` üretir; mevcut `cari_hesap_hareketleri` yetkisi hem sunucu endpoint'inde hem buton görünürlüğünde uygulanır.
 - Gerçek 13 aktif cariyle 13 PDF ve yetkili ZIP endpoint çıktısı doğrulandı.
 - Web isteğinde toplu çıktının başarısız olmasının mPDF varsayılan `vendor/.../tmp/mpdf` dizini yazma yetkisi olduğu logdan doğrulandı. PDF servisi, işletim sistemi kullanıcısına özel `0700` sistem geçici dizini kullanacak şekilde düzeltildi.
+
+## 2026-10-18 — Okuma personeli için otomatik HTÇ
+
+- Pazar günü kişi bazında firma eşiğini (varsayılan 10) karşılayan Okuma/Endeks Okuma personeline HTÇ üreten merkezi `OkumaHtcAutomationService` eklendi.
+- Mevcut veya sanal HT, 23:45 endeks sorgusundan sonra HTÇ'ye dönüştürülüyor; pazartesi 08:00'de önceki pazar yeniden sorgulanıp yalnız otomatik kayıtlar uzlaştırılıyor.
+- Eski HT satırları dönüştürülebilir; geliştirme sonrasında masaüstü veya mobil puantajdan yapılan değişiklikler kaynak/kilit bilgisiyle korunuyor. Kayıtsız çalışma günü `X` seçimi de ayrı otomasyon kilidiyle sonraki crondan korunuyor.
+- HT dışındaki manuel kodlar değiştirilmez. Eşik altına düşen yalnız otomatik HTÇ soft delete edilir ve gün varsayılan HT görünümüne döner.
+- Firma ayarlarına otomasyonu açma/kapama ve minimum okuma alanları eklendi. Bordro HTÇ tutar hesabı değiştirilmedi; üretim kuralı bordro dokümanına işlendi.
+- Migration uygulanmadan özellik çalıştırılmamalıdır: `database/migrations/2026_10_18_add_okuma_htc_automation.sql`.
+- Yeni otomasyon karar testleri 4 test / 9 doğrulama geçti. İlgili bordro regresyonlarında 57 test / 601 doğrulama geçti; daha önce mevcut 7 uyarı sürüyor.

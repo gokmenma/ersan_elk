@@ -11,6 +11,7 @@ use App\Model\PuantajModel;
 use App\Model\SettingsModel;
 use App\Model\TanimlamalarModel;
 use App\Service\Gate;
+use App\Service\OkumaHtcAutomationService;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -500,8 +501,11 @@ try {
         $Puantaj->db->beginTransaction();
 
         try {
+            $htcAutomation = new OkumaHtcAutomationService();
             $deleteStmt = $Puantaj->db->prepare("
-                DELETE FROM personel_izinleri 
+                UPDATE personel_izinleri
+                SET silinme_tarihi = NOW(), silen_kullanici = ?,
+                    silinme_aciklama = 'Mobil puantaj ekranından manuel olarak değiştirildi.'
                 WHERE personel_id = ? 
                 AND silinme_tarihi IS NULL
                 AND (
@@ -513,8 +517,9 @@ try {
 
             $insertStmt = $Puantaj->db->prepare("
                 INSERT INTO personel_izinleri 
-                (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, onay_durumu, olusturan_id, olusturma_tarihi) 
-                VALUES (?, ?, ?, ?, ?, 'Onaylandı', ?, NOW())
+                (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, onay_durumu,
+                 olusturan_id, olusturma_tarihi, kaynak, manuel_kilit) 
+                VALUES (?, ?, ?, ?, ?, 'Onaylandı', ?, NOW(), 'manuel', 1)
             ");
 
             $savedCount = 0;
@@ -531,7 +536,8 @@ try {
                     }
 
                     // O günkü çakışan izinleri temizle
-                    $deleteStmt->execute([$personelId, $date, $date, $date, $date, $date, $date]);
+                    $deleteStmt->execute([$userId, $personelId, $date, $date, $date, $date, $date, $date]);
+                    $htcAutomation->lockManualOverride($firmaId, $personelId, $date, $userId, $code ?: 'X');
 
                     // Eğer code === 'X' ise sadece çakışan izin silindi, normal çalışılan güne döndü
                     if ($code === 'X') {
@@ -568,9 +574,9 @@ try {
 
                     if ($otPersonelId > 0 && !empty($otTarih)) {
                         if ($otSaat > 0) {
-                            $FazlaMesai->saveMesai($firmaId, $otPersonelId, $otTarih, $otSaat, null, $userId);
+                            $FazlaMesai->saveMesai($otPersonelId, $otTarih, $otSaat, $firmaId, $userId);
                         } else {
-                            $FazlaMesai->deleteMesai($firmaId, $otPersonelId, $otTarih);
+                            $FazlaMesai->deleteMesai($otPersonelId, $otTarih, $userId);
                         }
                         $savedCount++;
                     }
