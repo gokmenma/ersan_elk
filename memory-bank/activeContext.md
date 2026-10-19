@@ -1,5 +1,31 @@
 # Active Context
 
+## Mobil SPA: E-Fatura "Cariye İşle" (Sync to Cari) Entegrasyonu (2026-10-19)
+- **Kullanıcı Talebi**: "burada da masaüstündeki gibi cariye işle işlemi yapalım", "devam et"
+- **Uygulanan Mimari & Çözüm**:
+  1. **Backend API (`mobile-spa/public/api/fatura.php` & `dist/api/fatura.php`)**:
+     - `check_invoice_cari` (GET) endpoint'i eklendi: Faturanın alıcı/tedarikçi VKN/TCKN ve unvanı üzerinden cari kartının mevcut olup olmadığını sorgular; cari adı, işlem yönü (Borç/Alacak), tutar ve fatura bilgilerini döner.
+     - `sync_to_cari` (POST) endpoint'i eklendi: `CariHareketleriModel::checkSameDateAmount` ile mükerrer kontrolü yapar (`force=0` iken benzer hareket tespit edilirse `warning_duplicate` döner). Onay verildiğinde veya `force=1` iken `CariHareketleriModel::syncFaturaHareketi` çağrılarak faturanın cari hareketine borç/alacak kaydı işlenir, otomatik cari oluşturma desteklenir.
+     - Güvenlik: `Security::decrypt`, `Gate` yetki denetimi (`efatura/giden-list`, `efatura/gelen-list`, `cari_hesap_hareketleri`), CSRF koruması ve parametrik PDO hazırlandı.
+  2. **Servis Katmanı (`mobile-spa/src/services/fatura.js`)**:
+     - `checkInvoiceCari(invoiceId)` ve `syncToCari(invoiceId, force = false, csrfToken)` metotları `faturaApi` nesnesine eklendi.
+  3. **Arayüz Katmanı (`mobile-spa/src/views/FaturaView.vue`)**:
+     - Fatura kartlarında (`giden` ve `gelen`, taslak/iptal hariç):
+       - Henüz işlenmemişse `Cariye İşle` butonu (`ArrowLeftRight` ikonu, mavi soft stil) gösterilir.
+       - Cariye işlenmişse `✓ Cariye İşlendi` rozeti (`CheckCheck` ikonu, zümrüt yeşili soft stil) gösterilir.
+     - Fatura önizleme modalı başlığında:
+       - Cariye işlenmemiş faturalar için doğrudan `Cariye İşle` butonu sunulur.
+       - Cariye işlenmişse `✓ Cariye İşlendi` rozeti yer alır.
+     - **Ön Onay Modalı (Modal 3.1 - Soft Bento UI)**:
+       - Sistemde cari kart varsa cari adını ve faturanın hangi hesaba (Borç/Alacak) işleneceğini net biçimde gösterir.
+       - Sistemde cari kart yoksa kullanıcıyı "yeni cari kart otomatik oluşturulacaktır" şeklinde bilgilendirir.
+     - **Mükerrer/Benzer Hareket Uyarısı Modalı (Modal 3.2)**:
+       - Aynı tarihte aynı tutarda kayıtlı hareket tespit edildiğinde masaüstüyle birebir paritede amber uyarı modalı açılır; kullanıcıya detayları aktarıp "Evet, Yine de İşle" (`force = 1`) seçeneği sunar.
+     - İşlem tamamlandığında arayüzde kartlar ve önizleme anlık olarak reaktif güncellenir.
+  4. **Derleme & Doğrulama**:
+     - `npm run build` ile 0 hata ile derlendi.
+     - `/opt/lampp/bin/php -l` ile PHP sözdizimi doğrulandı.
+
 ## Puantaj Ay Sonu Snapshot ve Ayın 1–3'ü Mutabakatı (2026-10-18)
 - Okuma ve kesme/açma verileri için SHA-256 mühürlü, değişmez ay sonu snapshot altyapısı eklendi.
 - Kapanan ayı ayın 1, 2 ve 3'ünde saat 03:00'te gün gün/sayfalı sorgulayan idempotent CLI worker geliştirildi; ayın 3'ü final kontroldür.

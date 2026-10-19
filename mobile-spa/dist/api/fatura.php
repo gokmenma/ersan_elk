@@ -482,6 +482,132 @@ try {
         }
     }
 
+    // 15. FATURA CARİ BİLGİSİ SORGULA (Cariye İşle Öncesi Eşleşme Kontrolü)
+    if ($method === 'GET' && $action === 'check_invoice_cari') {
+        if (!Gate::allows('efatura/giden-list') && !Gate::allows('efatura/gelen-list') && !Gate::allows('cari_hesap_hareketleri') && !Gate::allows('cari_takibi')) {
+            faturaApiResponse(['success' => false, 'message' => 'Cari kontrol yetkiniz bulunmuyor.'], 403);
+        }
+
+        $encId = (string)($_GET['invoice_id'] ?? $_GET['id'] ?? '');
+        $rawId = Security::decrypt($encId);
+        $invoiceId = ($rawId && is_numeric($rawId)) ? (int)$rawId : 0;
+
+        if ($invoiceId <= 0) {
+            faturaApiResponse(['success' => false, 'message' => 'Geçersiz fatura kimliği.'], 400);
+        }
+
+        $cariHareketModel = new \App\Model\CariHareketleriModel();
+        $stmt = $cariHareketModel->db->prepare("
+            SELECT f.*, c.CariAdi AS cari_adi, c.firma AS cari_firma
+            FROM faturalar f
+            LEFT JOIN cari c ON c.id = f.cari_id AND c.silinme_tarihi IS NULL
+            WHERE f.id = :id AND f.firm_id = :firm_id
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+        $fatura = $stmt->fetch(PDO::FETCH_OBJ);
+
+        if (!$fatura) {
+            faturaApiResponse(['success' => false, 'message' => 'Fatura kaydı bulunamadı.'], 404);
+        }
+
+        $cariModel = new \App\Model\CariModel();
+        $cariName = null;
+        $cariExists = false;
+
+        if (!empty($fatura->cari_id) && (!empty($fatura->cari_adi) || !empty($fatura->cari_firma))) {
+            $cariName = !empty($fatura->cari_adi) ? $fatura->cari_adi : $fatura->cari_firma;
+            $cariExists = true;
+        } else {
+            $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
+            if ($matchedCari) {
+                $cariName = !empty($matchedCari->CariAdi) ? $matchedCari->CariAdi : $matchedCari->firma;
+                $cariExists = true;
+            }
+        }
+
+        $unvan = trim((string)($fatura->alici_unvan ?: ($fatura->alici_vkn_tckn ?: 'İsimsiz Müşteri/Tedarikçi')));
+        $yon = strtoupper(trim((string)($fatura->yon ?? 'GIDEN')));
+        $directionText = ($yon === 'GELEN') ? 'Alacak' : 'Borç';
+        $odenecekTutar = (float)($fatura->odenecek_tutar ?? 0);
+
+        faturaApiResponse([
+            'success'           => true,
+            'status'            => 'success',
+            'cari_exists'       => $cariExists,
+            'cari_name'         => $cariName ?: $unvan,
+            'counterparty_name' => $unvan,
+            'invoice_no'        => trim((string)($fatura->fatura_no ?: ($fatura->ettn ?: 'Fatura'))),
+            'fatura_tarihi'     => date('d.m.Y', strtotime($fatura->fatura_tarihi ?: date('Y-m-d'))),
+            'direction'         => $yon,
+            'direction_text'    => $directionText,
+            'odenecek_tutar'    => Helper::formattedMoney($odenecekTutar) . ' ₺',
+            'odenecek_tutar_raw'=> $odenecekTutar,
+        ]);
+    }
+
+    // 16. FATURAYI CARİYE İŞLE (Sync to Cari Movements)
+    if ($method === 'POST' && $action === 'sync_to_cari') {
+        verifyCsrfToken();
+        if (!Gate::allows('efatura/giden-list') && !Gate::allows('efatura/gelen-list') && !Gate::allows('cari_hesap_hareketleri') && !Gate::allows('cari_takibi')) {
+            faturaApiResponse(['success' => false, 'message' => 'Cariye işleme yetkiniz bulunmuyor.'], 403);
+        }
+
+        $payload = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+        $encId = (string)($payload['invoice_id'] ?? $payload['id'] ?? '');
+        $rawId = Security::decrypt($encId);
+        $invoiceId = ($rawId && is_numeric($rawId)) ? (int)$rawId : 0;
+        $force = !empty($payload['force']) && ($payload['force'] == 1 || $payload['force'] === 'true' || $payload['force'] === true || $payload['force'] === '1');
+
+        if ($invoiceId <= 0) {
+            faturaApiResponse(['success' => false, 'message' => 'Geçersiz fatura kimliği.'], 400);
+        }
+
+        $cariHareketModel = new \App\Model\CariHareketleriModel();
+
+        // Eğer zorlama (force) onayı gelmediyse aynı tarihte aynı tutarda mevcut hareket var mı kontrol et
+        if (!$force) {
+            $duplicateCheck = $cariHareketModel->checkSameDateAmount($invoiceId);
+            if ($duplicateCheck) {
+                faturaApiResponse([
+                    'success' => true,
+                    'status'  => 'warning_duplicate',
+                    'message' => "Bu cariye ait {$duplicateCheck['fatura_tarihi']} tarihinde {$duplicateCheck['tutar']} tutarında {$duplicateCheck['count']} adet mevcut hareket kaydı bulunmaktadır. Yine de bu faturayı cariye işlemek istiyor musunuz?",
+                    'data'    => $duplicateCheck
+                ]);
+            }
+        }
+
+        $movementId = $cariHareketModel->syncFaturaHareketi($invoiceId, $currentUserId, true);
+
+        if ($movementId) {
+            faturaApiResponse([
+                'success' => true,
+                'status'  => 'success',
+                'message' => 'Fatura cari hareketlerine başarıyla işlendi.',
+                'data'    => [
+                    'movement_id' => $movementId,
+                    'invoice_id'  => $invoiceId,
+                ]
+            ]);
+        } else {
+            $stmt = $cariHareketModel->db->prepare("SELECT cari_id, alici_unvan, alici_vkn_tckn, yon FROM faturalar WHERE id = :id AND firm_id = :firm_id");
+            $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+            $fat = $stmt->fetch(PDO::FETCH_OBJ);
+
+            $msg = 'Fatura cariye işlenemedi.';
+            if ($fat) {
+                $unvanVkn = trim(($fat->alici_unvan ?? '') . ' ' . ($fat->alici_vkn_tckn ?? ''));
+                $msg = "Fatura ile eşleşen bir cari kart bulunamadı ({$unvanVkn}). Lütfen önce cari kartı oluşturun veya VKN/TCKN bilgisini kontrol edin.";
+            }
+            faturaApiResponse([
+                'success' => false,
+                'status'  => 'error',
+                'message' => $msg
+            ], 422);
+        }
+    }
+
     faturaApiResponse(['success' => false, 'message' => 'Desteklenmeyen işlem veya HTTP yöntemi.'], 400);
 
 } catch (\Throwable $e) {

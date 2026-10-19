@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-10-19 — Mobil SPA: E-Fatura "Cariye İşle" (Sync to Cari) Entegrasyonu
+- [x] **Backend API ([`fatura.php`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/public/api/fatura.php))**:
+  - `check_invoice_cari` GET aksiyonu eklendi: Fatura alıcı/tedarikçi VKN/TCKN ve unvanı üzerinden cari eşleşmesini, işlem yönünü (Borç/Alacak), tutarı ve cari durumunu döner.
+  - `sync_to_cari` POST aksiyonu eklendi: `CariHareketleriModel::checkSameDateAmount` ile mükerrer kontrolü yapar (`warning_duplicate`), `force=1` veya onay durumunda `syncFaturaHareketi` ile cari hareketine aktarır. Otomatik cari kart oluşturma desteği sağlandı.
+  - `mobile-spa/dist/api/fatura.php` ile tam senkronizasyon sağlandı; PHP sözdizim kontrolleri `/opt/lampp/bin/php -l` ile doğrulandı.
+- [x] **Servis Katmanı ([`fatura.js`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/services/fatura.js))**:
+  - `checkInvoiceCari(invoiceId)` ve `syncToCari(invoiceId, force, csrfToken)` metotları eklendi.
+- [x] **Arayüz & Kartlar ([`FaturaView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/FaturaView.vue))**:
+  - Fatura kartlarına ve önizleme başlığına `cariye_islendi == 0` için `Cariye İşle` butonu eklendi.
+  - İşlenmiş faturalarda `✓ Cariye İşlendi` rozeti (`CheckCheck` ikonu) gösterildi.
+  - **Ön Onay Modalı (Modal 3.1)**: Faturanın hangi cari hesabına (Borç/Alacak) aktarılacağını veya otomatik cari kart açılacağını açıklayan Soft Bento sheet eklendi.
+  - **Mükerrer Hareket Modalı (Modal 3.2)**: Benzer hareket uyarısı tespit edildiğinde masaüstüyle birebir paritede uyarı gösterip "Evet, Yine de İşle" butonu sağlandı.
+  - İşlem sonrası fatura kartı ve önizleme anlık olarak reaktif güncellendi.
+- [x] **Derleme & Doğrulama**:
+  - `npm run build` ile 0 hata ile derlendi.
+
 ## 2026-10-18 — Puantaj Snapshot ve Ayın 3'üne Kadar Mutabakat
 - [x] Okuma/kesme ay sonu snapshot, manifest hash, çalışma checkpoint, staging ve fark tabloları için tekrarlanabilir SQL hazırlandı.
 - [x] Ayın 1–3'ü 03:00 worker'ı, günlük sayfalama, DB kilidi ve hata izolasyonu eklendi; kapsam Ekim 2026 ve sonrasıyla sınırlandı, geçmiş backfill kaldırıldı.

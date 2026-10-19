@@ -114,4 +114,14 @@ export const faturaApi = {
       csrfToken,
     })
   },
+  checkInvoiceCari(invoiceId) {
+    return request('check_invoice_cari', { params: { invoice_id: invoiceId } })
+  },
+  syncToCari(invoiceId, force = false, csrfToken) {
+    return request('sync_to_cari', {
+      method: 'POST',
+      body: { invoice_id: invoiceId, force: force ? 1 : 0 },
+      csrfToken,
+    })
+  },
 }

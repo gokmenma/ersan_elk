@@ -7,11 +7,13 @@ import {
   Archive,
   ArrowDownLeft,
   ArrowLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   BarChart3,
   Building2,
   Calendar,
   Check,
+  CheckCheck,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -117,6 +119,7 @@ const isPreviewOpen = ref(false)
 const previewLoading = ref(false)
 const previewTitle = ref('Fatura Önizleme')
 const previewEncId = ref('')
+const previewInvoice = ref(null)
 const previewHtmlContent = ref('')
 const previewIframeRef = ref(null)
 const viewerViewportRef = ref(null)
@@ -145,6 +148,18 @@ const responseInvoice = ref(null)
 const responseType = ref('KABUL') // KABUL, RED
 const responseReason = ref('')
 const responseSubmitting = ref(false)
+
+// 6.1. Cariye İşle Durumları & Modalları
+const syncingInvoiceId = ref(null)
+const isCariConfirmModalOpen = ref(false)
+const cariConfirmInfo = ref(null)
+const cariConfirmInvoice = ref(null)
+const cariCheckingLoading = ref(false)
+
+const isDuplicateModalOpen = ref(false)
+const duplicateWarningData = ref(null)
+const duplicatePendingInvoice = ref(null)
+const duplicateSubmitting = ref(false)
 
 // 7. Yeni Fatura Kes / Taslak Sihirbazı Modalı
 const isWizardOpen = ref(false)
@@ -601,7 +616,7 @@ function onWindowResize() {
   }
 }
 
-async function openPreview(encId, title = 'Fatura Önizleme') {
+async function openPreview(encId, title = 'Fatura Önizleme', invObj = null) {
   previewEncId.value = encId
   previewTitle.value = title
   previewHtmlContent.value = ''
@@ -610,6 +625,13 @@ async function openPreview(encId, title = 'Fatura Önizleme') {
   baseWidth.value = 820
   baseHeight.value = 1160
   zoomScale.value = 1
+
+  const found = invObj
+    || invoiceList.value.find(i => (i.encrypted_id || i.id) === encId)
+    || (dashData.value.recent_giden || []).find(i => (i.encrypted_id || i.id) === encId)
+    || (dashData.value.recent_gelen || []).find(i => (i.encrypted_id || i.id) === encId)
+    || null
+  previewInvoice.value = found ? { ...found } : null
 
   try {
     const res = await faturaApi.previewHtml(encId)
@@ -629,6 +651,7 @@ function closePreview() {
   isPreviewOpen.value = false
   previewHtmlContent.value = ''
   zoomScale.value = 1
+  previewInvoice.value = null
 }
 
 function printInvoice() {
@@ -774,6 +797,77 @@ async function deleteDraft(inv) {
     }
   } catch (err) {
     showToast(err.message || 'Taslak silinemedi.', 'error')
+  }
+}
+
+// ----------------------------------------------------
+// CARİYE İŞLE İŞLEMLERİ (DESKTOP İLE BİREBİR PARİTE)
+// ----------------------------------------------------
+async function openSyncToCariModal(inv) {
+  if (!inv || !inv.encrypted_id) return
+  cariConfirmInvoice.value = inv
+  cariConfirmInfo.value = null
+  cariCheckingLoading.value = true
+  isCariConfirmModalOpen.value = true
+
+  try {
+    const res = await faturaApi.checkInvoiceCari(inv.encrypted_id)
+    if (res.success && res.status === 'success') {
+      cariConfirmInfo.value = res
+    } else {
+      showToast(res.message || 'Cari bilgisi alınamadı.', 'error')
+      isCariConfirmModalOpen.value = false
+    }
+  } catch (err) {
+    showToast(err.message || 'Cari kontrol edilirken hata oluştu.', 'error')
+    isCariConfirmModalOpen.value = false
+  } finally {
+    cariCheckingLoading.value = false
+  }
+}
+
+async function confirmSyncToCari(force = false) {
+  const inv = force ? duplicatePendingInvoice.value : cariConfirmInvoice.value
+  if (!inv || !inv.encrypted_id) return
+
+  if (force) {
+    duplicateSubmitting.value = true
+  } else {
+    syncingInvoiceId.value = inv.encrypted_id
+  }
+
+  try {
+    const res = await faturaApi.syncToCari(inv.encrypted_id, force, auth.state.csrfToken)
+    if (res.status === 'warning_duplicate') {
+      isCariConfirmModalOpen.value = false
+      duplicatePendingInvoice.value = inv
+      duplicateWarningData.value = {
+        message: res.message,
+        data: res.data || {},
+      }
+      isDuplicateModalOpen.value = true
+    } else if (res.status === 'success' || res.success) {
+      showToast(res.message || 'Fatura cari hareketlerine başarıyla işlendi.', 'success')
+      inv.cariye_islendi = 1
+      if (previewInvoice.value && (previewInvoice.value.encrypted_id === inv.encrypted_id || previewInvoice.value.id === inv.id)) {
+        previewInvoice.value.cariye_islendi = 1
+      }
+      const inList = invoiceList.value.find(i => (i.encrypted_id || i.id) === (inv.encrypted_id || inv.id))
+      if (inList) {
+        inList.cariye_islendi = 1
+      }
+      isCariConfirmModalOpen.value = false
+      isDuplicateModalOpen.value = false
+      duplicatePendingInvoice.value = null
+      duplicateWarningData.value = null
+    } else {
+      showToast(res.message || 'İşlem gerçekleştirilemedi.', 'error')
+    }
+  } catch (err) {
+    showToast(err.message || 'Cariye işlenirken hata oluştu.', 'error')
+  } finally {
+    syncingInvoiceId.value = null
+    duplicateSubmitting.value = false
   }
 }
 
@@ -1502,7 +1596,7 @@ onBeforeUnmount(() => {
               v-for="rg in dashData.recent_gelen"
               :key="rg.encrypted_id || rg.id"
               class="fatura-row-card"
-              @click="openPreview(rg.encrypted_id, rg.fatura_no)"
+              @click="openPreview(rg.encrypted_id, rg.fatura_no, rg)"
             >
               <div class="fatura-row-card__header">
                 <div class="fatura-row-card__meta">
@@ -1552,7 +1646,7 @@ onBeforeUnmount(() => {
               v-for="rg in dashData.recent_giden"
               :key="rg.encrypted_id || rg.id"
               class="fatura-row-card"
-              @click="openPreview(rg.encrypted_id, rg.fatura_no)"
+              @click="openPreview(rg.encrypted_id, rg.fatura_no, rg)"
             >
               <div class="fatura-row-card__header">
                 <div class="fatura-row-card__meta">
@@ -1849,7 +1943,7 @@ onBeforeUnmount(() => {
           v-for="inv in invoiceList"
           :key="inv.encrypted_id || inv.id"
           class="fatura-card"
-          @click="openPreview(inv.encrypted_id, inv.fatura_no)"
+          @click="openPreview(inv.encrypted_id, inv.fatura_no, inv)"
         >
           <!-- Kart Üst Başlık (No, Belge Türü & Durum) -->
           <div class="fatura-card__header">
@@ -1973,8 +2067,33 @@ onBeforeUnmount(() => {
                 </button>
               </template>
 
-              <!-- Paylaş & Önizle Butonları (Giden ve Gelen faturalarda) -->
+              <!-- Paylaş, Cariye İşle & Önizle Butonları (Giden ve Gelen faturalarda) -->
               <template v-else>
+                <!-- Cariye İşle Butonu / Rozeti (Taslak/İptal hariç) -->
+                <template v-if="inv.entegrator_durum_kodu !== 'IPTAL'">
+                  <span
+                    v-if="inv.cariye_islendi == 1"
+                    class="fatura-cari-synced-pill"
+                    title="Cari hareketlerine işlendi"
+                  >
+                    <CheckCheck :size="12" />
+                    <span>Cariye İşlendi</span>
+                  </span>
+                  <button
+                    v-else
+                    type="button"
+                    class="fatura-action-btn fatura-action-btn--sync"
+                    :class="{ 'is-loading': syncingInvoiceId === inv.encrypted_id }"
+                    :disabled="syncingInvoiceId === inv.encrypted_id"
+                    title="Cariye İşle"
+                    @click="openSyncToCariModal(inv)"
+                  >
+                    <ArrowLeftRight v-if="syncingInvoiceId !== inv.encrypted_id" :size="13" />
+                    <RefreshCw v-else :size="13" class="is-spinning" />
+                    <span>Cariye İşle</span>
+                  </button>
+                </template>
+
                 <button
                   type="button"
                   class="fatura-icon-action-btn"
@@ -1990,7 +2109,7 @@ onBeforeUnmount(() => {
                 <button
                   type="button"
                   class="fatura-action-btn fatura-action-btn--view"
-                  @click="openPreview(inv.encrypted_id, inv.fatura_no)"
+                  @click="openPreview(inv.encrypted_id, inv.fatura_no, inv)"
                 >
                   <Eye :size="13" />
                   <span>Fatura Gör</span>
@@ -2015,6 +2134,31 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="fatura-preview-header__actions">
+              <!-- Cariye İşle Butonu / Rozeti (Önizleme Başlığı) -->
+              <template v-if="previewInvoice && previewInvoice.entegrator_durum_kodu !== 'TASLAK' && previewInvoice.entegrator_durum_kodu !== 'IPTAL'">
+                <span
+                  v-if="previewInvoice.cariye_islendi == 1"
+                  class="fatura-preview-synced-badge"
+                  title="Cari hareketlerine işlendi"
+                >
+                  <CheckCheck :size="14" />
+                  <span class="synced-text">Cariye İşlendi</span>
+                </span>
+                <button
+                  v-else
+                  type="button"
+                  class="fatura-icon-btn fatura-icon-btn--sync"
+                  :class="{ 'is-loading': syncingInvoiceId === previewInvoice.encrypted_id }"
+                  :disabled="syncingInvoiceId === previewInvoice.encrypted_id"
+                  title="Cariye İşle"
+                  aria-label="Cariye İşle"
+                  @click="openSyncToCariModal(previewInvoice)"
+                >
+                  <ArrowLeftRight v-if="syncingInvoiceId !== previewInvoice.encrypted_id" :size="17" />
+                  <RefreshCw v-else :size="15" class="is-spinning" />
+                </button>
+              </template>
+
               <button
                 type="button"
                 class="fatura-icon-btn"
@@ -2282,6 +2426,156 @@ onBeforeUnmount(() => {
               <Check :size="16" />
               <span>{{ responseSubmitting ? 'İletiliyor...' : 'Yanıtı Gönder' }}</span>
             </button>
+          </div>
+        </section>
+      </div>
+    </Transition>
+
+    <!-- ============================================================== -->
+    <!-- MODAL 3.1: CARİYE İŞLE ONAY MODALI -->
+    <!-- ============================================================== -->
+    <Transition name="sheet">
+      <div v-if="isCariConfirmModalOpen" class="fatura-modal-backdrop" @click.self="isCariConfirmModalOpen = false">
+        <section class="fatura-cari-sheet" role="dialog" aria-modal="true">
+          <header class="fatura-sheet-header">
+            <div class="fatura-sheet-header__title">
+              <ArrowLeftRight :size="18" class="text-primary" />
+              <h3>{{ cariConfirmInfo?.cari_exists ? 'Faturayı Cariye İşle' : 'Cari Kart Oluşturulup İşlenecek' }}</h3>
+            </div>
+            <button type="button" class="fatura-icon-btn" @click="isCariConfirmModalOpen = false">
+              <X :size="18" />
+            </button>
+          </header>
+
+          <div class="fatura-sheet-body">
+            <!-- Yükleniyor Göstergesi -->
+            <div v-if="cariCheckingLoading" class="fatura-preview-loading" style="padding: 32px 16px;">
+              <RefreshCw :size="28" class="is-spinning text-primary" />
+              <p>Cari bilgisi kontrol ediliyor...</p>
+            </div>
+
+            <template v-else-if="cariConfirmInfo">
+              <!-- Cari Durum Bildirimi -->
+              <div
+                class="fatura-cari-notice-box"
+                :class="cariConfirmInfo.cari_exists ? 'fatura-cari-notice-box--success' : 'fatura-cari-notice-box--info'"
+              >
+                <template v-if="cariConfirmInfo.cari_exists">
+                  <p style="margin: 0 0 6px; font-weight: 700; font-size: 13.5px; line-height: 1.45;">
+                    <strong>"{{ cariConfirmInfo.invoice_no }}"</strong> numaralı fatura, 
+                    <span class="text-primary" style="font-weight: 800;">"{{ cariConfirmInfo.cari_name }}"</span> isimli cari hesabına 
+                    <strong>({{ cariConfirmInfo.direction_text }})</strong> olarak işlenecektir.
+                  </p>
+                </template>
+                <template v-else>
+                  <p style="margin: 0 0 6px; color: #0284c7; font-weight: 700; font-size: 13.5px;">
+                    Sistemde <strong>"{{ cariConfirmInfo.counterparty_name }}"</strong> adına kayıtlı bir cari kart bulunamadı.
+                  </p>
+                  <p style="margin: 0; color: #475569; font-size: 12px; line-height: 1.4;">
+                    Yeni cari kart <strong>otomatik oluşturulacak</strong> ve fatura bu cari hesabına 
+                    <strong>({{ cariConfirmInfo.direction_text }})</strong> olarak aktarılacaktır.
+                  </p>
+                </template>
+              </div>
+
+              <!-- Detay Özet Kartları -->
+              <div class="fatura-cari-details-grid">
+                <div class="fatura-cari-detail-card">
+                  <span>Fatura No</span>
+                  <strong>{{ cariConfirmInfo.invoice_no }}</strong>
+                </div>
+                <div class="fatura-cari-detail-card">
+                  <span>Fatura Tarihi</span>
+                  <strong>{{ cariConfirmInfo.fatura_tarihi }}</strong>
+                </div>
+                <div class="fatura-cari-detail-card">
+                  <span>İşlem Yönü</span>
+                  <strong :class="cariConfirmInfo.direction === 'GELEN' ? 'text-amber' : 'text-primary'">
+                    {{ cariConfirmInfo.direction_text }}
+                  </strong>
+                </div>
+                <div class="fatura-cari-detail-card">
+                  <span>İşlenecek Tutar</span>
+                  <strong class="text-primary">{{ cariConfirmInfo.odenecek_tutar }}</strong>
+                </div>
+              </div>
+
+              <!-- Onay Aksiyon Butonları -->
+              <div class="fatura-sheet-actions mt-4">
+                <button
+                  type="button"
+                  class="fatura-secondary-btn flex-1"
+                  @click="isCariConfirmModalOpen = false"
+                >
+                  <span>Vazgeç</span>
+                </button>
+                <button
+                  type="button"
+                  class="fatura-primary-btn flex-2"
+                  :disabled="syncingInvoiceId === cariConfirmInvoice?.encrypted_id"
+                  @click="confirmSyncToCari(false)"
+                >
+                  <RefreshCw v-if="syncingInvoiceId === cariConfirmInvoice?.encrypted_id" :size="15" class="is-spinning" />
+                  <ArrowLeftRight v-else :size="15" />
+                  <span>{{ syncingInvoiceId === cariConfirmInvoice?.encrypted_id ? 'İşleniyor...' : 'Evet, Cariye İşle' }}</span>
+                </button>
+              </div>
+            </template>
+          </div>
+        </section>
+      </div>
+    </Transition>
+
+    <!-- ============================================================== -->
+    <!-- MODAL 3.2: MÜKERRER / BENZER HAREKET UYARISI MODALI -->
+    <!-- ============================================================== -->
+    <Transition name="sheet">
+      <div v-if="isDuplicateModalOpen" class="fatura-modal-backdrop" @click.self="isDuplicateModalOpen = false">
+        <section class="fatura-duplicate-sheet" role="dialog" aria-modal="true">
+          <header class="fatura-sheet-header">
+            <div class="fatura-sheet-header__title">
+              <AlertTriangle :size="18" class="text-warning" />
+              <h3>Benzer Hareket Uyarısı</h3>
+            </div>
+            <button type="button" class="fatura-icon-btn" @click="isDuplicateModalOpen = false">
+              <X :size="18" />
+            </button>
+          </header>
+
+          <div class="fatura-sheet-body">
+            <div class="fatura-cari-notice-box fatura-cari-notice-box--warning mb-3">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 700; color: #b45309;">
+                <AlertTriangle :size="16" />
+                <span>Aynı tarihte aynı tutarda hareket bulundu:</span>
+              </div>
+              <p style="font-size: 13px; line-height: 1.45; margin: 0 0 10px; color: #1e293b;">
+                {{ duplicateWarningData?.message }}
+              </p>
+              <div class="fatura-alert-warning-callout">
+                Bu fatura zaten cariye manuel veya farklı bir hareketle işlenmiş olabilir. Yine de devam etmek istiyor musunuz?
+              </div>
+            </div>
+
+            <!-- Onay Aksiyon Butonları -->
+            <div class="fatura-sheet-actions mt-4">
+              <button
+                type="button"
+                class="fatura-secondary-btn flex-1"
+                @click="isDuplicateModalOpen = false"
+              >
+                <span>Vazgeç</span>
+              </button>
+              <button
+                type="button"
+                class="fatura-primary-btn fatura-btn-warning flex-2"
+                :disabled="duplicateSubmitting"
+                @click="confirmSyncToCari(true)"
+              >
+                <RefreshCw v-if="duplicateSubmitting" :size="15" class="is-spinning" />
+                <Check v-else :size="15" />
+                <span>{{ duplicateSubmitting ? 'İşleniyor...' : 'Evet, Yine de İşle' }}</span>
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -4248,6 +4542,48 @@ onBeforeUnmount(() => {
   background: var(--ds-surface-subtle);
   border-color: rgba(0, 0, 0, 0.08);
 }
+.fatura-action-btn--sync {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  border-color: rgba(14, 165, 233, 0.3);
+}
+.fatura-action-btn--sync:active {
+  transform: scale(0.96);
+  background: rgba(14, 165, 233, 0.18);
+}
+.fatura-cari-synced-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  white-space: nowrap;
+}
+.fatura-icon-btn--sync {
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: #0284c7 !important;
+  border-color: rgba(14, 165, 233, 0.3) !important;
+}
+.fatura-preview-synced-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  white-space: nowrap;
+}
 
 .fatura-mini-btn {
   display: inline-flex;
@@ -5459,6 +5795,107 @@ onBeforeUnmount(() => {
 }
 .fatura-secondary-btn:active {
   background: #f1f5f9;
+}
+
+/* Cari ve Benzer Hareket Modalları */
+.fatura-cari-sheet,
+.fatura-duplicate-sheet {
+  height: auto;
+  max-height: min(85vh, 620px);
+  border-radius: 28px 28px 0 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ds-surface, #ffffff);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: ds-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fatura-cari-notice-box {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--ds-surface-subtle, #f8fafc);
+  border: 1px solid var(--ds-line, #e2e8f0);
+}
+
+.fatura-cari-notice-box--success {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #065f46;
+}
+
+.fatura-cari-notice-box--info {
+  background: rgba(14, 165, 233, 0.08);
+  border-color: rgba(14, 165, 233, 0.25);
+  color: #0369a1;
+}
+
+.fatura-cari-notice-box--warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.fatura-alert-warning-callout {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #b45309;
+}
+
+.fatura-cari-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.fatura-cari-detail-card {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--ds-canvas, #f1f5f9);
+  border: 1px solid var(--ds-line, #e2e8f0);
+}
+
+.fatura-cari-detail-card span {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ds-slate, #64748b);
+  margin-bottom: 2px;
+}
+
+.fatura-cari-detail-card strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ds-ink, #0f172a);
+}
+
+.fatura-sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fatura-btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
+}
+.fatura-btn-warning:active {
+  transform: scale(0.97);
+}
+
+.flex-1 {
+  flex: 1;
+}
+.flex-2 {
+  flex: 2;
 }
 
 /* Skeleton & Yükleme */
