@@ -33,6 +33,18 @@ if ($requestedAction === '') {
     exit;
 }
 
+if (!function_exists('invalidateDashboardOperationalStatsCache')) {
+    function invalidateDashboardOperationalStatsCache(int $firmaId): void
+    {
+        if ($firmaId <= 0) return;
+
+        $cachePath = dirname(__DIR__, 2) . '/cache/dashboard/data_' . $firmaId . '_operational_stats.json';
+        if (is_file($cachePath) && !@unlink($cachePath)) {
+            error_log('Dashboard operasyon cache dosyasi silinemedi: ' . $cachePath);
+        }
+    }
+}
+
 $permissionPolicy = new PermissionPolicyModel();
 if ($permissionPolicy->isReady()) {
     Gate::authorizeApiPolicy('puantaj/api', $requestedAction);
@@ -2021,6 +2033,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['atlanan_kayit'] = 0;
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
         $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";
+        invalidateDashboardOperationalStatsCache((int) $firmaId);
 
         unset($apiData);
         unset($insertBatch);
@@ -2676,6 +2689,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";
         if ($yeniKayit == 0 && $silinenKayit == 0)
             $response['message'] = "Veriler zaten güncel.";
+        invalidateDashboardOperationalStatsCache((int) $firmaId);
 
         // Belleği boşalt
         unset($apiData);
@@ -2997,6 +3011,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";
         if ($yeniKayit == 0 && $silinenKayit == 0)
             $response['message'] = "Veriler zaten güncel.";
+        invalidateDashboardOperationalStatsCache((int) $firmaId);
 
         // Belleği boşalt
         unset($apiData);

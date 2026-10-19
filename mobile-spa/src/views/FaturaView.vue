@@ -856,6 +856,14 @@ async function confirmSyncToCari(force = false) {
       if (inList) {
         inList.cariye_islendi = 1
       }
+      const inRecentGiden = (dashData.value.recent_giden || []).find(i => (i.encrypted_id || i.id) === (inv.encrypted_id || inv.id))
+      if (inRecentGiden) {
+        inRecentGiden.cariye_islendi = 1
+      }
+      const inRecentGelen = (dashData.value.recent_gelen || []).find(i => (i.encrypted_id || i.id) === (inv.encrypted_id || inv.id))
+      if (inRecentGelen) {
+        inRecentGelen.cariye_islendi = 1
+      }
       isCariConfirmModalOpen.value = false
       isDuplicateModalOpen.value = false
       duplicatePendingInvoice.value = null
@@ -1628,10 +1636,41 @@ onBeforeUnmount(() => {
                     {{ formatInvoiceMoney(rg.odenecek_tutar, rg.para_birimi) }}
                   </strong>
                 </div>
-                <div class="fatura-view-pill">
-                  <Eye :size="13" />
-                  <span>Fatura Gör</span>
-                  <ChevronRight :size="13" />
+                <div class="fatura-row-card__actions" @click.stop>
+                  <!-- Cariye İşle Butonu / Rozeti (Özet Kartı) -->
+                  <template v-if="rg.entegrator_durum_kodu !== 'IPTAL'">
+                    <span
+                      v-if="rg.cariye_islendi == 1"
+                      class="fatura-icon-action-btn fatura-icon-action-btn--synced"
+                      title="Cari hareketlerine işlendi"
+                    >
+                      <CheckCheck :size="15" />
+                    </span>
+                    <button
+                      v-else
+                      type="button"
+                      class="fatura-icon-action-btn fatura-icon-action-btn--sync"
+                      :class="{ 'is-loading': syncingInvoiceId === rg.encrypted_id }"
+                      :disabled="syncingInvoiceId === rg.encrypted_id"
+                      title="Cariye İşle"
+                      aria-label="Cariye İşle"
+                      @click="openSyncToCariModal(rg)"
+                    >
+                      <ArrowLeftRight v-if="syncingInvoiceId !== rg.encrypted_id" :size="15" />
+                      <RefreshCw v-else :size="14" class="is-spinning" />
+                    </button>
+                  </template>
+
+                  <!-- Fatura Gör (İkon Buton) -->
+                  <button
+                    type="button"
+                    class="fatura-icon-action-btn fatura-icon-action-btn--view"
+                    title="Faturayı Görüntüle"
+                    aria-label="Faturayı Görüntüle"
+                    @click="openPreview(rg.encrypted_id, rg.fatura_no, rg)"
+                  >
+                    <Eye :size="15" />
+                  </button>
                 </div>
               </div>
             </article>
@@ -1678,10 +1717,41 @@ onBeforeUnmount(() => {
                     {{ formatInvoiceMoney(rg.odenecek_tutar, rg.para_birimi) }}
                   </strong>
                 </div>
-                <div class="fatura-view-pill">
-                  <Eye :size="13" />
-                  <span>Fatura Gör</span>
-                  <ChevronRight :size="13" />
+                <div class="fatura-row-card__actions" @click.stop>
+                  <!-- Cariye İşle Butonu / Rozeti (Özet Kartı) -->
+                  <template v-if="rg.entegrator_durum_kodu !== 'IPTAL'">
+                    <span
+                      v-if="rg.cariye_islendi == 1"
+                      class="fatura-icon-action-btn fatura-icon-action-btn--synced"
+                      title="Cari hareketlerine işlendi"
+                    >
+                      <CheckCheck :size="15" />
+                    </span>
+                    <button
+                      v-else
+                      type="button"
+                      class="fatura-icon-action-btn fatura-icon-action-btn--sync"
+                      :class="{ 'is-loading': syncingInvoiceId === rg.encrypted_id }"
+                      :disabled="syncingInvoiceId === rg.encrypted_id"
+                      title="Cariye İşle"
+                      aria-label="Cariye İşle"
+                      @click="openSyncToCariModal(rg)"
+                    >
+                      <ArrowLeftRight v-if="syncingInvoiceId !== rg.encrypted_id" :size="15" />
+                      <RefreshCw v-else :size="14" class="is-spinning" />
+                    </button>
+                  </template>
+
+                  <!-- Fatura Gör (İkon Buton) -->
+                  <button
+                    type="button"
+                    class="fatura-icon-action-btn fatura-icon-action-btn--view"
+                    title="Faturayı Görüntüle"
+                    aria-label="Faturayı Görüntüle"
+                    @click="openPreview(rg.encrypted_id, rg.fatura_no, rg)"
+                  >
+                    <Eye :size="15" />
+                  </button>
                 </div>
               </div>
             </article>
@@ -2049,51 +2119,51 @@ onBeforeUnmount(() => {
                 </button>
                 <button
                   type="button"
-                  class="fatura-action-btn"
+                  class="fatura-icon-action-btn"
                   title="Taslağı Düzenle"
+                  aria-label="Taslağı Düzenle"
                   @click="openNewInvoiceWizard(inv)"
                 >
-                  <Edit3 :size="13" />
-                  <span>Düzenle</span>
+                  <Edit3 :size="15" />
                 </button>
                 <button
                   type="button"
-                  class="fatura-action-btn fatura-action-btn--primary"
+                  class="fatura-icon-action-btn fatura-icon-action-btn--primary"
                   title="GİB'e Gönder"
+                  aria-label="GİB'e Gönder"
                   @click="sendDraft(inv)"
                 >
-                  <Send :size="13" />
-                  <span>Gönder</span>
+                  <Send :size="14" />
                 </button>
               </template>
 
               <!-- Paylaş, Cariye İşle & Önizle Butonları (Giden ve Gelen faturalarda) -->
               <template v-else>
-                <!-- Cariye İşle Butonu / Rozeti (Taslak/İptal hariç) -->
+                <!-- Cariye İşle (İkon Buton / Rozet) -->
                 <template v-if="inv.entegrator_durum_kodu !== 'IPTAL'">
                   <span
                     v-if="inv.cariye_islendi == 1"
-                    class="fatura-cari-synced-pill"
+                    class="fatura-icon-action-btn fatura-icon-action-btn--synced"
                     title="Cari hareketlerine işlendi"
                   >
-                    <CheckCheck :size="12" />
-                    <span>Cariye İşlendi</span>
+                    <CheckCheck :size="15" />
                   </span>
                   <button
                     v-else
                     type="button"
-                    class="fatura-action-btn fatura-action-btn--sync"
+                    class="fatura-icon-action-btn fatura-icon-action-btn--sync"
                     :class="{ 'is-loading': syncingInvoiceId === inv.encrypted_id }"
                     :disabled="syncingInvoiceId === inv.encrypted_id"
                     title="Cariye İşle"
+                    aria-label="Cariye İşle"
                     @click="openSyncToCariModal(inv)"
                   >
-                    <ArrowLeftRight v-if="syncingInvoiceId !== inv.encrypted_id" :size="13" />
-                    <RefreshCw v-else :size="13" class="is-spinning" />
-                    <span>Cariye İşle</span>
+                    <ArrowLeftRight v-if="syncingInvoiceId !== inv.encrypted_id" :size="15" />
+                    <RefreshCw v-else :size="14" class="is-spinning" />
                   </button>
                 </template>
 
+                <!-- PDF Paylaş (İkon Buton) -->
                 <button
                   type="button"
                   class="fatura-icon-action-btn"
@@ -2106,13 +2176,16 @@ onBeforeUnmount(() => {
                   <Share2 v-if="sharingInvoiceId !== inv.encrypted_id" :size="15" />
                   <RefreshCw v-else :size="14" class="is-spinning" />
                 </button>
+
+                <!-- Fatura Gör (İkon Buton) -->
                 <button
                   type="button"
-                  class="fatura-action-btn fatura-action-btn--view"
+                  class="fatura-icon-action-btn fatura-icon-action-btn--view"
+                  title="Faturayı Görüntüle"
+                  aria-label="Faturayı Görüntüle"
                   @click="openPreview(inv.encrypted_id, inv.fatura_no, inv)"
                 >
-                  <Eye :size="13" />
-                  <span>Fatura Gör</span>
+                  <Eye :size="15" />
                 </button>
               </template>
             </div>
@@ -4606,22 +4679,59 @@ onBeforeUnmount(() => {
 .fatura-icon-action-btn {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--ds-line);
   border-radius: 50%;
   background: var(--ds-surface);
   color: var(--ds-slate);
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 .fatura-icon-action-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
+}
+.fatura-icon-action-btn--primary {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--ds-primary, #4338ca), #6366f1);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(67, 56, 202, 0.25);
 }
 .fatura-icon-action-btn--danger {
   color: var(--ds-danger-ink);
   background: var(--ds-danger-soft);
-  border-color: var(--ds-danger-soft);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+.fatura-icon-action-btn--sync {
+  color: #0284c7;
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.3);
+}
+.fatura-icon-action-btn--sync:active {
+  background: rgba(14, 165, 233, 0.2);
+}
+.fatura-icon-action-btn--synced {
+  color: #059669;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
+  cursor: default;
+}
+.fatura-icon-action-btn--view {
+  color: var(--ds-primary, #4338ca);
+  background: rgba(79, 70, 229, 0.08);
+  border-color: rgba(79, 70, 229, 0.22);
+}
+.fatura-icon-action-btn--view:active {
+  background: rgba(79, 70, 229, 0.16);
+}
+
+.fatura-row-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* Rozetler */
@@ -5801,7 +5911,7 @@ onBeforeUnmount(() => {
 .fatura-cari-sheet,
 .fatura-duplicate-sheet {
   height: auto;
-  max-height: min(85vh, 620px);
+  max-height: min(88vh, 680px);
   border-radius: 28px 28px 0 0;
   display: flex;
   flex-direction: column;
@@ -5811,8 +5921,14 @@ onBeforeUnmount(() => {
   animation: ds-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.fatura-cari-sheet .fatura-sheet-body,
+.fatura-duplicate-sheet .fatura-sheet-body {
+  padding: 20px 20px 40px;
+  padding-bottom: max(40px, calc(env(safe-area-inset-bottom, 24px) + 26px));
+}
+
 .fatura-cari-notice-box {
-  padding: 14px 16px;
+  padding: 15px 16px;
   border-radius: 16px;
   background: var(--ds-surface-subtle, #f8fafc);
   border: 1px solid var(--ds-line, #e2e8f0);
@@ -5849,12 +5965,13 @@ onBeforeUnmount(() => {
 .fatura-cari-details-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-top: 14px;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 24px;
 }
 
 .fatura-cari-detail-card {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 14px;
   background: var(--ds-canvas, #f1f5f9);
   border: 1px solid var(--ds-line, #e2e8f0);
@@ -5865,12 +5982,12 @@ onBeforeUnmount(() => {
   font-size: 10px;
   font-weight: 600;
   color: var(--ds-slate, #64748b);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .fatura-cari-detail-card strong {
   display: block;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--ds-ink, #0f172a);
 }
@@ -5878,7 +5995,9 @@ onBeforeUnmount(() => {
 .fatura-sheet-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 24px;
+  padding-bottom: 8px;
 }
 
 .fatura-btn-warning {

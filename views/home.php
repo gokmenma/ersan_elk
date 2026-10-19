@@ -642,11 +642,11 @@ if (Gate::allows("ana_sayfa")) {
                     <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                         SAYAÇ DEĞİŞİMİ</p>
                     <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                        data-daily="<?php echo (int)($dailyWorkStats->sayac_degisimi ?? 0); ?>"
-                        data-monthly="<?php echo (int)($monthlyWorkStats->sayac_degisimi ?? 0); ?>"
+                        data-daily="<?php echo (int)round((float)($sayacDailyStats->sayac_degisimi ?? 0)); ?>"
+                        data-monthly="<?php echo (int)round((float)($sayacMonthlyStats->sayac_degisimi ?? 0)); ?>"
                         data-label-daily="GÜNLÜK SAYAÇ DEĞİŞİMİ" data-label-monthly="AYLIK SAYAÇ DEĞİŞİMİ"
                         data-sub-daily="Bugün yapılan sayaç değişimi" data-sub-monthly="Bu ay yapılan sayaç değişimi">
-                        <?php echo (int)($dailyWorkStats->sayac_degisimi ?? 0); ?>
+                        <?php echo (int)round((float)($sayacDailyStats->sayac_degisimi ?? 0)); ?>
                     </h4>
                     <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan sayaç
                         değişimi</div>

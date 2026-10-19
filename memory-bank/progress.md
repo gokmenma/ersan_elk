@@ -1,18 +1,36 @@
 # Progress
 
-## 2026-10-19 — Mobil SPA: E-Fatura "Cariye İşle" (Sync to Cari) Entegrasyonu
-- [x] **Backend API ([`fatura.php`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/public/api/fatura.php))**:
-  - `check_invoice_cari` GET aksiyonu eklendi: Fatura alıcı/tedarikçi VKN/TCKN ve unvanı üzerinden cari eşleşmesini, işlem yönünü (Borç/Alacak), tutarı ve cari durumunu döner.
-  - `sync_to_cari` POST aksiyonu eklendi: `CariHareketleriModel::checkSameDateAmount` ile mükerrer kontrolü yapar (`warning_duplicate`), `force=1` veya onay durumunda `syncFaturaHareketi` ile cari hareketine aktarır. Otomatik cari kart oluşturma desteği sağlandı.
-  - `mobile-spa/dist/api/fatura.php` ile tam senkronizasyon sağlandı; PHP sözdizim kontrolleri `/opt/lampp/bin/php -l` ile doğrulandı.
-- [x] **Servis Katmanı ([`fatura.js`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/services/fatura.js))**:
-  - `checkInvoiceCari(invoiceId)` ve `syncToCari(invoiceId, force, csrfToken)` metotları eklendi.
-- [x] **Arayüz & Kartlar ([`FaturaView.vue`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/src/views/FaturaView.vue))**:
-  - Fatura kartlarına ve önizleme başlığına `cariye_islendi == 0` için `Cariye İşle` butonu eklendi.
-  - İşlenmiş faturalarda `✓ Cariye İşlendi` rozeti (`CheckCheck` ikonu) gösterildi.
-  - **Ön Onay Modalı (Modal 3.1)**: Faturanın hangi cari hesabına (Borç/Alacak) aktarılacağını veya otomatik cari kart açılacağını açıklayan Soft Bento sheet eklendi.
-  - **Mükerrer Hareket Modalı (Modal 3.2)**: Benzer hareket uyarısı tespit edildiğinde masaüstüyle birebir paritede uyarı gösterip "Evet, Yine de İşle" butonu sağlandı.
-  - İşlem sonrası fatura kartı ve önizleme anlık olarak reaktif güncellendi.
+## 2026-10-19: Mobil/Masaüstü Sayaç Değişimi Dashboard Senkronizasyonu
+- [x] Mobil ana sayfa sayaç kartı `sayac_degisim` tablosunu kullanan `SayacDegisimModel` istatistiklerine bağlandı.
+- [x] Masaüstü ana sayfa sayaç kartı aynı kanonik istatistik kaynağına bağlandı.
+- [x] Mobil toplu online sorguda alt endpoint hatalarının başarı gibi gösterilmesi engellendi.
+- [x] Başarılı toplu sorgudan sonra mobil dashboard verisinin yeniden çekilmesi korundu.
+- [x] `App/Model/MobileDashboardModel.php` ve `views/home.php` PHP lint kontrollerinden geçti.
+- [x] `npm --prefix mobile-spa run build` başarıyla tamamlandı; yeni production bundle üretildi.
+
+## 2026-10-19: Tüm Operasyon Kartlarında Mobil→Masaüstü Cache Senkronizasyonu
+- [x] Masaüstü operasyon kartlarının 5 dakikalık sunucu cache'i mobil sorgu sonrası eski veri gösterme nedeni olarak tespit edildi.
+- [x] Başarılı Endeks Okuma sorgusu sonrası firma operasyon cache'i geçersiz kılındı.
+- [x] Başarılı Kesme/Açma ve Mühürleme sorguları sonrası firma operasyon cache'i geçersiz kılındı.
+- [x] Başarılı Sayaç Değişimi sorgusu sonrası firma operasyon cache'i geçersiz kılındı.
+- [x] `views/puantaj/api.php` PHP lint kontrolünden geçti.
+
+## 2026-10-19 — Mobil SPA: E-Fatura "Cariye İşle" (Sync to Cari) Entegrasyonu & UI İyileştirmeleri
+- [x] **Backend Model & API ([`EInvoiceModel.php`](file:///opt/lampp/htdocs/ersan_elk/App/Model/EInvoiceModel.php) & [`fatura.php`](file:///opt/lampp/htdocs/ersan_elk/mobile-spa/public/api/fatura.php))**:
+  - `EInvoiceModel::getDashboardData` içindeki son gelen ve son giden fatura sorgularına `cariye_islendi` alt sorgusu eklendi.
+  - `check_invoice_cari` GET ve `sync_to_cari` POST aksiyonları hazırlandı, CSRF ve Gate yetkileriyle korundu.
+  - `mobile-spa/dist/api/fatura.php` ve `public/api/fatura.php` eşitlendi; PHP lint kontrolleri hatasız geçti.
+- [x] **İkon Buton Dönüşümü (Sayfaya Sığma & Taşma Çözümü)**:
+  - Fatura kartlarındaki `Cariye İşle` ve `Fatura Gör` butonları 32x32px dairesel ikon butonlara (`.fatura-icon-action-btn`) dönüştürüldü.
+  - Kart aksiyon alanındaki genişlik daraltıldı; butonların sağ kenardan taşması veya kesilmesi tamamen engellendi.
+- [x] **Cariye İşle Modalı Alt Boşluk & Padding Düzeltmesi**:
+  - Detay kartlarının altına `margin-bottom: 24px`, aksiyon butonlarının üstüne `margin-top: 24px` eklendi.
+  - Modal gövdesine safe-area uyumlu geniş alt dolgu (`padding-bottom: max(40px, ...)`) verilerek butonların modal tabanına yapışması önlendi.
+- [x] **Özet (Dashboard) Sekmesine Cariye İşle Entegrasyonu**:
+  - Özet sekmesindeki `Son Faturalar` kartlarına hem `Cariye İşle` (`ArrowLeftRight` / `CheckCheck`) hem de `Fatura Gör` (`Eye`) ikon butonları yerleştirildi.
+  - Özet ekranından yapılan işlem sonrası reaktif güncelleme sağlandı.
+- [x] **Derleme & Doğrulama**:
+  - `npm run build` ile 0 hata ile derlendi.
 - [x] **Derleme & Doğrulama**:
   - `npm run build` ile 0 hata ile derlendi.
 

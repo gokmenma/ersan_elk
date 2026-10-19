@@ -53,11 +53,18 @@ export async function syncDailyOperations() {
         credentials: 'same-origin',
         body: formData,
       })
-      const data = await res.json().catch(() => ({ status: 'error' }))
+      const data = await res.json().catch(() => ({ status: 'error', message: 'Sunucudan geçersiz yanıt alındı.' }))
       results.push({ item, res: data })
     } catch (e) {
       results.push({ item, error: e })
     }
+  }
+
+  const failed = results.filter(result => result.error || result.res?.status !== 'success')
+  if (failed.length) {
+    const firstFailure = failed[0]
+    const message = firstFailure.res?.message || firstFailure.error?.message || 'Günlük operasyon sorgusu tamamlanamadı.'
+    throw new Error(message)
   }
 
   const freshDashboard = await getDashboard()

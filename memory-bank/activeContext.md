@@ -1,30 +1,42 @@
 # Active Context
 
-## Mobil SPA: E-Fatura "Cariye İşle" (Sync to Cari) Entegrasyonu (2026-10-19)
-- **Kullanıcı Talebi**: "burada da masaüstündeki gibi cariye işle işlemi yapalım", "devam et"
+## Mobil/Masaüstü Dashboard: Sayaç Değişimi Kaynak Birliği (2026-10-19)
+- **Kullanıcı Talebi**: Mobil ana sayfadaki Sayaç Değişimi kartının `0` göstermesi ve mobil online sorgudan sonra masaüstü kartın yenilenmemesi düzeltildi.
+- **Kök Neden**: Online sayaç sorgusu veriyi `sayac_degisim` tablosuna yazarken dashboard kartları `PuantajModel` üzerinden `yapilan_isler` tablosundaki eski sayaç toplamını okuyordu. Mobil toplu sorgu ayrıca alt API aksiyonları hata döndürse bile başarı bildirimi veriyordu.
+- **Düzeltme**:
+  - `MobileDashboardModel::workOperations()` sayaç gün/ay değerlerini `SayacDegisimModel::getDailyStats()` ve `getMonthlyStats()` kaynağından okuyor.
+  - `views/home.php` masaüstü sayaç kartı zaten hazırlanan `$sayacDailyStats` / `$sayacMonthlyStats` değerlerini kullanıyor.
+  - Mobil `syncDailyOperations()` herhangi bir alt sorgu başarısızsa sahte başarı mesajı yerine API hata mesajını fırlatıyor; tümü başarılıysa dashboard yeniden okunuyor.
+- **Doğrulama**: PHP lint kontrolleri ve mobil Vite production build başarılı.
+
+## Mobil Sorgu Sonrası Masaüstü Operasyon Kartları Cache Geçersizleştirme (2026-10-19)
+- **Kapsam**: Endeks Okuma, Kesme/Açma, Mühürleme ve Sayaç Değişimi kartları.
+- **Kök Neden**: Masaüstü `views/home/api.php`, firma bazlı operasyon istatistiklerini `cache/dashboard/data_{firmaId}_operational_stats.json` dosyasında 5 dakika tutuyordu. Masaüstü sorgu akışı `force=true` ile bunu aşarken mobil sorgu sonrası masaüstü yenilemesi aynı eski cache dosyasını okuyordu.
+- **Düzeltme**: `views/puantaj/api.php` içindeki başarılı online sayaç, puantaj (kesme/mühürleme) ve endeks sorguları transaction tamamlandıktan sonra ilgili firmanın operasyon cache dosyasını siliyor. Böylece sorgu mobil veya masaüstü hangi istemciden başlatılırsa başlatılsın bir sonraki dashboard isteği DB'den güncel sayıları alıyor.
+- **Doğrulama**: `views/puantaj/api.php` PHP lint kontrolünden geçti.
+
+## Mobil SPA: E-Fatura "Cariye İşle" (Sync to Cari) Entegrasyonu & UI İyileştirmeleri (2026-10-19)
+- **Kullanıcı Talepleri**:
+  1. "fatura gör butonu sayfaya sığmıyor, cariye işle ikon olsun, fatura gör de ikon olsun"
+  2. "cariye işle modalinda alta biraz padding ekle buton çok yakın olmuş"
+  3. "ayrıca özet sayfasında da cariye işle butonu ekleyelim"
 - **Uygulanan Mimari & Çözüm**:
-  1. **Backend API (`mobile-spa/public/api/fatura.php` & `dist/api/fatura.php`)**:
-     - `check_invoice_cari` (GET) endpoint'i eklendi: Faturanın alıcı/tedarikçi VKN/TCKN ve unvanı üzerinden cari kartının mevcut olup olmadığını sorgular; cari adı, işlem yönü (Borç/Alacak), tutar ve fatura bilgilerini döner.
-     - `sync_to_cari` (POST) endpoint'i eklendi: `CariHareketleriModel::checkSameDateAmount` ile mükerrer kontrolü yapar (`force=0` iken benzer hareket tespit edilirse `warning_duplicate` döner). Onay verildiğinde veya `force=1` iken `CariHareketleriModel::syncFaturaHareketi` çağrılarak faturanın cari hareketine borç/alacak kaydı işlenir, otomatik cari oluşturma desteklenir.
-     - Güvenlik: `Security::decrypt`, `Gate` yetki denetimi (`efatura/giden-list`, `efatura/gelen-list`, `cari_hesap_hareketleri`), CSRF koruması ve parametrik PDO hazırlandı.
-  2. **Servis Katmanı (`mobile-spa/src/services/fatura.js`)**:
-     - `checkInvoiceCari(invoiceId)` ve `syncToCari(invoiceId, force = false, csrfToken)` metotları `faturaApi` nesnesine eklendi.
-  3. **Arayüz Katmanı (`mobile-spa/src/views/FaturaView.vue`)**:
-     - Fatura kartlarında (`giden` ve `gelen`, taslak/iptal hariç):
-       - Henüz işlenmemişse `Cariye İşle` butonu (`ArrowLeftRight` ikonu, mavi soft stil) gösterilir.
-       - Cariye işlenmişse `✓ Cariye İşlendi` rozeti (`CheckCheck` ikonu, zümrüt yeşili soft stil) gösterilir.
-     - Fatura önizleme modalı başlığında:
-       - Cariye işlenmemiş faturalar için doğrudan `Cariye İşle` butonu sunulur.
-       - Cariye işlenmişse `✓ Cariye İşlendi` rozeti yer alır.
-     - **Ön Onay Modalı (Modal 3.1 - Soft Bento UI)**:
-       - Sistemde cari kart varsa cari adını ve faturanın hangi hesaba (Borç/Alacak) işleneceğini net biçimde gösterir.
-       - Sistemde cari kart yoksa kullanıcıyı "yeni cari kart otomatik oluşturulacaktır" şeklinde bilgilendirir.
-     - **Mükerrer/Benzer Hareket Uyarısı Modalı (Modal 3.2)**:
-       - Aynı tarihte aynı tutarda kayıtlı hareket tespit edildiğinde masaüstüyle birebir paritede amber uyarı modalı açılır; kullanıcıya detayları aktarıp "Evet, Yine de İşle" (`force = 1`) seçeneği sunar.
-     - İşlem tamamlandığında arayüzde kartlar ve önizleme anlık olarak reaktif güncellenir.
+  1. **İkon Buton Dönüşümü & Taşma Çözümü**:
+     - `FaturaView.vue` kartlarındaki `Cariye İşle` ve `Fatura Gör` butonları 32x32px dairesel ikon butonlara (`fatura-icon-action-btn`) dönüştürüldü.
+     - `Cariye İşle` butonu: `ArrowLeftRight` ikonuyla mavi soft zemin; işlenmişse `CheckCheck` ikonuyla yeşil rozet olarak sunulur.
+     - `Fatura Gör` butonu: `Eye` ikonuyla mor soft zemin.
+     - Kart aksiyon satırındaki genişlik daraltıldı; en küçük ekranlarda bile butonların satır sonuna taşması veya kesilmesi engellendi.
+  2. **Cariye İşle Modalı Boşluk & Padding İyileştirmesi**:
+     - `.fatura-cari-sheet .fatura-sheet-body` için alt dolgu `padding-bottom: max(40px, calc(env(safe-area-inset-bottom, 24px) + 26px))` seviyesine çıkarıldı.
+     - `.fatura-cari-details-grid` altına `margin-bottom: 24px` eklendi; `.fatura-sheet-actions` üst boşluğu `margin-top: 24px` olarak ayarlandı.
+     - "Vazgeç" ve "Evet, Cariye İşle" butonları ile üstteki detay kutuları ve modalın alt sınırı arasında rahat, ergonomik ve ferah bir nefes payı sağlandı.
+  3. **Özet (Dashboard) Sayfasında "Cariye İşle" Butonu**:
+     - `App/Model/EInvoiceModel.php` içindeki `recentGidenStmt` ve `recentGelenStmt` sorgularına `cariye_islendi` alt sorgusu eklendi.
+     - Özet tabındaki `Son Faturalar` kartlarının sağ alt aksiyon alanına hem `Cariye İşle` ikon butonu (`ArrowLeftRight` / `CheckCheck`) hem de `Fatura Gör` (`Eye`) ikon butonu eklendi.
+     - Özet sayfasından cariye işleme yapıldığında anlık reaktif güncelleme sağlandı.
   4. **Derleme & Doğrulama**:
-     - `npm run build` ile 0 hata ile derlendi.
-     - `/opt/lampp/bin/php -l` ile PHP sözdizimi doğrulandı.
+     - `npm run build` ile 0 hata ile derlendi (`index-92lUsHNL.css`, `index-p1xl859n.js`).
+     - PHP sözdizimleri `/opt/lampp/bin/php -l` ile doğrulandı.
 
 ## Puantaj Ay Sonu Snapshot ve Ayın 1–3'ü Mutabakatı (2026-10-18)
 - Okuma ve kesme/açma verileri için SHA-256 mühürlü, değişmez ay sonu snapshot altyapısı eklendi.

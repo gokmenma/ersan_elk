@@ -1622,7 +1622,13 @@ class EInvoiceModel extends Model
             $recentGidenStmt = $this->db->prepare("
                 SELECT 
                     f.id, f.fatura_no, f.fatura_tarihi, f.alici_unvan, f.belge_turu, 
-                    f.odenecek_tutar, f.para_birimi, f.entegrator_durum_kodu, f.gib_durum_kodu
+                    f.odenecek_tutar, f.para_birimi, f.entegrator_durum_kodu, f.gib_durum_kodu,
+                    (
+                        SELECT COUNT(*)
+                        FROM cari_hareketleri ch
+                        WHERE (ch.fatura_id = f.id OR (ch.belge_no = f.fatura_no AND ch.belge_no IS NOT NULL AND ch.belge_no != ''))
+                          AND ch.silinme_tarihi IS NULL
+                    ) AS cariye_islendi
                 FROM faturalar f
                 WHERE f.firm_id = :firm_id
                   AND f.yon = 'GIDEN'
@@ -1636,6 +1642,7 @@ class EInvoiceModel extends Model
                 $rg['encrypted_id'] = Security::encrypt((string)$rg['id']);
                 $rg['fatura_tarihi_fmt'] = date('d.m.Y', strtotime($rg['fatura_tarihi']));
                 $rg['odenecek_tutar_fmt'] = number_format((float)$rg['odenecek_tutar'], 2, ',', '.') . ' ' . $rg['para_birimi'];
+                $rg['cariye_islendi'] = ((int)($rg['cariye_islendi'] ?? 0) > 0) ? 1 : 0;
             }
             unset($rg);
 
@@ -1643,7 +1650,13 @@ class EInvoiceModel extends Model
             $recentGelenStmt = $this->db->prepare("
                 SELECT 
                     f.id, f.fatura_no, f.fatura_tarihi, f.alici_unvan, f.belge_turu, 
-                    f.odenecek_tutar, f.para_birimi, f.ticari_yanit, f.gib_durum_kodu
+                    f.odenecek_tutar, f.para_birimi, f.ticari_yanit, f.gib_durum_kodu,
+                    (
+                        SELECT COUNT(*)
+                        FROM cari_hareketleri ch
+                        WHERE (ch.fatura_id = f.id OR (ch.belge_no = f.fatura_no AND ch.belge_no IS NOT NULL AND ch.belge_no != ''))
+                          AND ch.silinme_tarihi IS NULL
+                    ) AS cariye_islendi
                 FROM faturalar f
                 WHERE f.firm_id = :firm_id
                   AND f.yon = 'GELEN'
@@ -1657,6 +1670,7 @@ class EInvoiceModel extends Model
                 $rgl['encrypted_id'] = Security::encrypt((string)$rgl['id']);
                 $rgl['fatura_tarihi_fmt'] = date('d.m.Y', strtotime($rgl['fatura_tarihi']));
                 $rgl['odenecek_tutar_fmt'] = number_format((float)$rgl['odenecek_tutar'], 2, ',', '.') . ' ' . $rgl['para_birimi'];
+                $rgl['cariye_islendi'] = ((int)($rgl['cariye_islendi'] ?? 0) > 0) ? 1 : 0;
             }
             unset($rgl);
 

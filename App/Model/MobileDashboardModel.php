@@ -194,8 +194,11 @@ class MobileDashboardModel
     public function workOperations(): array
     {
         $model = new PuantajModel();
+        $meterModel = new SayacDegisimModel();
         $daily = $this->safely(fn() => $model->getDailyStats(), (object) []);
         $monthly = $this->safely(fn() => $model->getMonthlyStats(), (object) []);
+        $dailyMeter = $this->safely(fn() => $meterModel->getDailyStats(), (object) []);
+        $monthlyMeter = $this->safely(fn() => $meterModel->getMonthlyStats(), (object) []);
         $times = $this->operationalTimestamps();
 
         return [
@@ -212,8 +215,8 @@ class MobileDashboardModel
             [
                 'key' => 'meter_change',
                 'label' => 'Sayaç Değişimi',
-                'daily' => (int) ($daily->sayac_degisimi ?? 0),
-                'monthly' => (int) ($monthly->sayac_degisimi ?? 0),
+                'daily' => (int) round((float) ($dailyMeter->sayac_degisimi ?? 0)),
+                'monthly' => (int) round((float) ($monthlyMeter->sayac_degisimi ?? 0)),
                 'last_update' => $times['meter'] ?? null,
                 'api_action' => 'online-sayac-degisim-sorgula',
                 'api_tab' => 'sokme_takma',
