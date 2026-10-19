@@ -148,6 +148,40 @@ class NobetModel extends Model
     }
 
     /**
+     * Puantaj gösterimi için onaylı hafta içi nöbetlerin fazla mesai saatlerini döndürür.
+     * Bu değerler personel_fazla_mesaileri tablosuna yazılmaz; bordroda nöbet ödemesinin
+     * ikinci kez üretilmesini önlemek için yalnızca sunum/export katmanında kullanılır.
+     * Format: [personel_id => ['YYYY-MM-DD' => saat]]
+     */
+    public function getPuantajHaftaIciMesaileri(array $personelIds, string $baslangic, string $bitis, int $firmaId): array
+    {
+        $personelIds = array_values(array_unique(array_filter(array_map('intval', $personelIds))));
+        if ($firmaId <= 0 || empty($personelIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($personelIds), '?'));
+        $stmt = $this->db->prepare("SELECT personel_id, nobet_tarihi, COUNT(*) * 4 AS saat
+            FROM {$this->table}
+            WHERE firma_id = ?
+              AND personel_id IN ($placeholders)
+              AND nobet_tarihi BETWEEN ? AND ?
+              AND (nobet_tipi IS NULL OR nobet_tipi = 'standart')
+              AND yonetici_onayi = 1
+              AND silinme_tarihi IS NULL
+              AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi', 'iptal'))
+            GROUP BY personel_id, nobet_tarihi
+            ORDER BY nobet_tarihi");
+        $stmt->execute(array_merge([$firmaId], $personelIds, [$baslangic, $bitis]));
+
+        $result = [];
+        while ($row = $stmt->fetch(PDO::FETCH_OBJ)) {
+            $result[(int) $row->personel_id][(string) $row->nobet_tarihi] = (float) $row->saat;
+        }
+        return $result;
+    }
+
+    /**
      * Nöbet ekler
      */
     public function addNobet($data)

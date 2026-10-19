@@ -151,19 +151,20 @@ function isKesmeDepartment(dept) {
 }
 
 // Personel için geçerli fazla mesai saatini döndürür
-function getEffectiveOvertime(personelId, dateStr, serverOvertimes) {
+function getEffectiveOvertime(personelId, dateStr, serverOvertimes, shiftOvertimes = null) {
   const key = `${personelId}_${dateStr}`
+  const shiftHours = parseFloat(shiftOvertimes?.[dateStr]) || 0
   if (unsavedOvertimes.value[key] !== undefined) {
-    return parseFloat(unsavedOvertimes.value[key].saat) || 0
+    return (parseFloat(unsavedOvertimes.value[key].saat) || 0) + shiftHours
   }
   if (serverOvertimes && serverOvertimes[dateStr] !== undefined) {
     const val = serverOvertimes[dateStr]
     if (typeof val === 'object' && val !== null) {
-      return parseFloat(val.saat) || 0
+      return (parseFloat(val.saat) || 0) + shiftHours
     }
-    return parseFloat(val) || 0
+    return (parseFloat(val) || 0) + shiftHours
   }
-  return 0
+  return shiftHours
 }
 
 // Fazla mesai saati uygula
@@ -416,7 +417,7 @@ function getPersonelMonthStats(p) {
     } else if (code !== 'HT' && code !== '') {
       leave++
     }
-    const ot = getEffectiveOvertime(p.id, dateStr, p.overtimes)
+    const ot = getEffectiveOvertime(p.id, dateStr, p.overtimes, p.shift_overtimes)
     overtimeHours += ot
   }
 
@@ -796,7 +797,7 @@ function getPersonelWeekDayEntry(personel, dayObj) {
   const theme = getCellTheme(code)
   const unsavedKey = `${personel.id}_${dayObj.dateStr}`
   const isUnsaved = Boolean(unsavedChanges.value[unsavedKey]) || Boolean(unsavedOvertimes.value[unsavedKey])
-  const overtimeHours = getEffectiveOvertime(personel.id, dayObj.dateStr, personel.overtimes)
+  const overtimeHours = getEffectiveOvertime(personel.id, dayObj.dateStr, personel.overtimes, personel.shift_overtimes)
 
   return {
     ...entry,
@@ -961,7 +962,7 @@ const modalCalendarGridCells = computed(() => {
     const isSunday = dateObj.getDay() === 0
     const unsavedKey = `${selectedPersonel.value.id}_${dateStr}`
     const isUnsaved = Boolean(unsavedChanges.value[unsavedKey]) || Boolean(unsavedOvertimes.value[unsavedKey])
-    const overtimeHours = getEffectiveOvertime(selectedPersonel.value.id, dateStr, selectedPersonel.value.overtimes)
+    const overtimeHours = getEffectiveOvertime(selectedPersonel.value.id, dateStr, selectedPersonel.value.overtimes, selectedPersonel.value.shift_overtimes)
 
     cells.push({
       empty: false,
@@ -1440,7 +1441,7 @@ onMounted(async () => {
                   v-if="getPersonelWeekDayEntry(p, dayObj).hasOvertime"
                   class="weekly-overtime-pill"
                 >
-                  +{{ getPersonelWeekDayEntry(p, dayObj).overtimeHours }}s
+                  +{{ getPersonelWeekDayEntry(p, dayObj).overtimeHours }}S
                 </span>
 
                 <!-- Kaydedilmemiş Değişiklik Glow Noktası -->
@@ -1726,7 +1727,7 @@ onMounted(async () => {
                       v-if="cell.hasOvertime"
                       class="calendar-tile-overtime-pill"
                     >
-                      +{{ cell.overtimeHours }}s
+                      +{{ cell.overtimeHours }}S
                     </span>
                     <span v-if="cell.isUnsaved" class="tile-unsaved-dot"></span>
                   </button>

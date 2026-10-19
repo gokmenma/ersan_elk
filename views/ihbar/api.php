@@ -300,6 +300,9 @@ try {
         case 'create':
             ihbarYetkiKontrol('ihbar_duzenle');
 
+            $ihbarTuru = trim($_POST['ihbar_turu'] ?? '');
+            if (!in_array($ihbarTuru, IhbarModel::IHBAR_TURLERI, true)) throw new Exception('Geçerli bir ihbar türü seçiniz.');
+
             $ilce = trim($_POST['ilce'] ?? '');
             if ($ilce === '') {
                 throw new Exception('İlçe seçimi zorunludur.');
@@ -329,6 +332,7 @@ try {
             }
 
             $ihbarId = $IhbarModel->create([
+                'ihbar_turu' => $ihbarTuru,
                 'ilce' => $ilce,
                 'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
@@ -356,6 +360,9 @@ try {
         case 'update':
             ihbarYetkiKontrol('ihbar_duzenle');
 
+            $ihbarTuru = trim($_POST['ihbar_turu'] ?? '');
+            if (!in_array($ihbarTuru, IhbarModel::IHBAR_TURLERI, true)) throw new Exception('Geçerli bir ihbar türü seçiniz.');
+
             $id = ihbarResolveId($_POST['id'] ?? '');
             $ilce = trim($_POST['ilce'] ?? '');
             if ($ilce === '') {
@@ -382,6 +389,7 @@ try {
             }
 
             $IhbarModel->updateByYonetici($id, [
+                'ihbar_turu' => $ihbarTuru,
                 'ilce' => $ilce,
                 'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,

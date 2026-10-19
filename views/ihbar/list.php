@@ -121,6 +121,15 @@ $ihbarDurumFiltreleri = [
     'olumsuz' => 'Olumsuz',
 ];
 
+$ihbarTurFiltreleri = [
+    'all' => 'Tüm İhbar Türleri',
+    'Abonesiz' => 'Abonesiz',
+    'Kaçak' => 'Kaçak',
+    'Pasif' => 'Pasif',
+    'Usülsüz' => 'Usülsüz',
+];
+$ihbarTurFormOptions = ['' => 'Tür seçin...'] + array_combine(IhbarModel::IHBAR_TURLERI, IhbarModel::IHBAR_TURLERI);
+
 $personelPerformansFiltreOptions = ['all' => 'Tüm Personeller'];
 foreach ($bildirenPersoneller as $personelAdi) {
     $personelPerformansFiltreOptions[$personelAdi] = $personelAdi;
@@ -442,6 +451,9 @@ if (!empty($_GET['ihbar_id'])) {
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-xl-3">
                             <?= Form::FormFloatInput('date', 'ihbarFiltreSonucBitis', '', '', 'Sonuçlanma Bitiş', 'bx bx-calendar-check') ?>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-xl-3">
+                            <?= Form::FormSelect2('ihbarFiltreTur', $ihbarTurFiltreleri, 'all', 'İhbar Türü', 'bx bx-category', 'key', '', 'form-select select2', false, 'width:100%') ?>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-xl-3">
                             <?= Form::FormSelect2('ihbarFiltreIlce', $ilceFiltreOptions, 'all', 'İlçe', 'bx bx-map-pin', 'key', '', 'form-select select2', false, 'width:100%') ?>
@@ -830,6 +842,9 @@ if (!empty($_GET['ihbar_id'])) {
             <form id="formYeniIhbar">
                 <input type="hidden" name="id" id="ihbarFormId" value="">
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <?= Form::FormSelect2('ihbar_turu', $ihbarTurFormOptions, '', 'İhbar Türü *', 'bx bx-category', 'key', '', 'form-select select2', false, 'width:100%', '', 'ihbarTuru') ?>
+                    </div>
                     <div class="mb-3">
                         <?= Form::FormSelect2('ilce', $kahramanmarasIlceleri, '', 'İlçe *', 'bx bx-map', 'key', '', 'form-select select2', false, 'width:100%', '', 'ihbarIlce') ?>
                     </div>
@@ -1392,6 +1407,9 @@ if (!empty($_GET['ihbar_id'])) {
             width: '100%',
             placeholder: 'İlçe seçin...'
         });
+        $('#ihbarTuru').select2({
+            dropdownParent: $('#modalYeniIhbar'), width: '100%', placeholder: 'Tür seçin...'
+        });
         document.getElementById('formIhbarAyarlar')?.addEventListener('submit', function (event) {
             event.preventDefault();
             const data = new FormData(this); data.append('action', 'saveSettings');
@@ -1431,6 +1449,7 @@ if (!empty($_GET['ihbar_id'])) {
                         sonuc_bitis: $('#ihbarFiltreSonucBitis').val(),
                         ilce: $('#ihbarFiltreIlce').val(),
                         durum: $('#ihbarFiltreDurum').val(),
+                        tur: $('#ihbarFiltreTur').val(),
                         bildiren: $('#ihbarFiltreBildiren').val(),
                         atanan: $('#ihbarFiltreAtanan').val()
                     };
@@ -1456,7 +1475,7 @@ if (!empty($_GET['ihbar_id'])) {
         const ihbarTable = window.ihbarTable;
 
         // Select2 filtreleri başlat
-        $('#ihbarFiltreIlce, #ihbarFiltreDurum, #ihbarFiltreBildiren, #ihbarFiltreAtanan').select2({
+        $('#ihbarFiltreTur, #ihbarFiltreIlce, #ihbarFiltreDurum, #ihbarFiltreBildiren, #ihbarFiltreAtanan').select2({
             width: '100%'
         });
         $('#personelFiltrePersonel, #personelFiltreBasari').select2({
@@ -1528,7 +1547,7 @@ if (!empty($_GET['ihbar_id'])) {
             ihbarTable.draw();
         });
 
-        $('#ihbarFiltreIlce, #ihbarFiltreDurum, #ihbarFiltreBildiren, #ihbarFiltreAtanan').on('change', function () {
+        $('#ihbarFiltreTur, #ihbarFiltreIlce, #ihbarFiltreDurum, #ihbarFiltreBildiren, #ihbarFiltreAtanan').on('change', function () {
             ihbarTable.draw();
         });
 
@@ -1575,6 +1594,7 @@ if (!empty($_GET['ihbar_id'])) {
             $('#ihbarFiltreBitis').val('');
             $('#ihbarFiltreSonucBaslangic').val('');
             $('#ihbarFiltreSonucBitis').val('');
+            $('#ihbarFiltreTur').val('all').trigger('change.select2');
             $('#ihbarFiltreIlce').val('all').trigger('change.select2');
             $('#ihbarFiltreDurum').val('all').trigger('change.select2');
             $('#ihbarFiltreBildiren').val('all').trigger('change.select2');
@@ -1934,6 +1954,7 @@ if (!empty($_GET['ihbar_id'])) {
 
     function ihbarYeniAc() {
         document.getElementById('formYeniIhbar').reset();
+        $('#ihbarTuru').val('').trigger('change');
         $('#ihbarIlce').val('').trigger('change');
         document.getElementById('ihbarFormId').value = '';
         document.querySelector('#modalYeniIhbar .modal-title').innerHTML = '<i class="bx bx-error-circle me-2"></i>Yeni İhbar Ekle';
@@ -2029,6 +2050,7 @@ if (!empty($_GET['ihbar_id'])) {
         const form = document.getElementById('formYeniIhbar');
         form.reset();
         document.getElementById('ihbarFormId').value = detay.id;
+        $('#ihbarTuru').val(detay.ihbar_turu || '').trigger('change');
         $('#ihbarIlce').val(detay.ilce || '').trigger('change');
         form.querySelector('[name=mahalle]').value = detay.mahalle || '';
         form.querySelector('[name=telefon]').value = detay.telefon || '';

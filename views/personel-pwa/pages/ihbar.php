@@ -121,6 +121,13 @@
                     </select>
                 </div>
                 <div>
+                    <label class="block text-[11px] font-medium text-slate-500 mb-1">İhbar Türü</label>
+                    <select id="ihbar-tur-filter" onchange="onIhbarTurChange(this.value)"
+                        class="w-full px-2.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white">
+                        <option value="">Tüm Türler</option><option>Abonesiz</option><option>Kaçak</option><option>Pasif</option><option>Usülsüz</option>
+                    </select>
+                </div>
+                <div>
                     <label class="block text-[11px] font-medium text-slate-500 mb-1">Başlangıç Tarihi</label>
                     <input type="date" id="ihbar-bas-tarih" onchange="onIhbarDateChange()"
                         class="w-full px-2.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white">
@@ -403,6 +410,7 @@
     let filterSearch = '';
     let filterDurum = 'all';
     let filterIlce = '';
+    let filterTur = '';
     let filterBasTarih = '';
     let filterBitTarih = '';
     let isAdvancedFilterOpen = false;
@@ -448,6 +456,12 @@
         renderIhbarlar();
     }
 
+    function onIhbarTurChange(val) {
+        filterTur = val || '';
+        checkAdvancedFilterBadge();
+        renderIhbarlar();
+    }
+
     function onIhbarDateChange() {
         filterBasTarih = document.getElementById('ihbar-bas-tarih')?.value || '';
         filterBitTarih = document.getElementById('ihbar-bit-tarih')?.value || '';
@@ -457,7 +471,7 @@
 
     function checkAdvancedFilterBadge() {
         const badge = document.getElementById('ihbar-active-filter-badge');
-        const hasAdvanced = Boolean(filterIlce || filterBasTarih || filterBitTarih);
+        const hasAdvanced = Boolean(filterIlce || filterTur || filterBasTarih || filterBitTarih);
         if (badge) {
             badge.classList.toggle('hidden', !hasAdvanced);
         }
@@ -467,6 +481,7 @@
         filterSearch = '';
         filterDurum = 'all';
         filterIlce = '';
+        filterTur = '';
         filterBasTarih = '';
         filterBitTarih = '';
 
@@ -477,6 +492,8 @@
 
         const ilceSelect = document.getElementById('ihbar-ilce-filter');
         if (ilceSelect) ilceSelect.value = '';
+        const turSelect = document.getElementById('ihbar-tur-filter');
+        if (turSelect) turSelect.value = '';
 
         const basInput = document.getElementById('ihbar-bas-tarih');
         if (basInput) basInput.value = '';
@@ -531,10 +548,12 @@
             if (filterIlce && (item.ilce || '').toLocaleLowerCase('tr-TR') !== filterIlce.toLocaleLowerCase('tr-TR')) {
                 return false;
             }
+            if (filterTur && (item.ihbar_turu || '') !== filterTur) return false;
 
             if (filterSearch) {
                 const searchLower = filterSearch.toLocaleLowerCase('tr-TR');
                 const textPool = [
+                    item.ihbar_turu || '',
                     item.ilce || '',
                     item.mahalle || '',
                     item.aciklama || '',
@@ -573,7 +592,7 @@
 
         const countText = document.getElementById('ihbar-count-text');
         const clearAllLink = document.getElementById('ihbar-clear-all-link');
-        const hasActiveFilters = Boolean(filterSearch || (filterDurum !== 'all') || filterIlce || filterBasTarih || filterBitTarih);
+        const hasActiveFilters = Boolean(filterSearch || (filterDurum !== 'all') || filterIlce || filterTur || filterBasTarih || filterBitTarih);
 
         if (countText) {
             const rawCount = Array.isArray(rawData) ? rawData.length : 0;
@@ -619,6 +638,7 @@
         <div class="card p-4" onclick="showIhbarDetay(${ihbar.id}, '${currentIhbarTab}')">
             <div class="flex items-start justify-between gap-2">
                 <div class="flex-1 min-w-0">
+                    ${ihbar.ihbar_turu ? `<span class="inline-flex mb-1 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-[10px] font-bold border border-red-100 dark:border-red-900/50">${ihbar.ihbar_turu}</span>` : ''}
                     <p class="font-bold text-sm text-slate-900 dark:text-white">${ihbar.ilce || '-'} / ${ihbar.mahalle || '-'}</p>
                     <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">${ihbar.aciklama || ''}</p>
                 </div>
@@ -670,6 +690,13 @@
                     <p class="text-sm text-slate-500 mt-1 mb-6">${editData ? 'İhbar sonuçlandırılmadan önce bilgileri düzenleyebilirsiniz.' : 'Kaçak Su kullanımı ihbarınızı bildirin.'}</p>
 
                     <form id="ihbar-form" class="space-y-4">
+                        <div>
+                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">İhbar Türü <span class="text-rose-500">*</span></label>
+                            <select name="ihbar_turu" class="form-input" required>
+                                <option value="">Tür seçin...</option>
+                                ${['Abonesiz', 'Kaçak', 'Pasif', 'Usülsüz'].map(tur => `<option value="${tur}" ${editData?.ihbar_turu === tur ? 'selected' : ''}>${tur}</option>`).join('')}
+                            </select>
+                        </div>
                         <div>
                             <label class="form-label font-semibold text-slate-700 dark:text-slate-200">İlçe <span class="text-rose-500">*</span></label>
                             <select name="ilce" class="form-input" required>
@@ -1014,11 +1041,17 @@
         const isEdit = !!ihbarEditId;
 
         const ilceVal = form.querySelector('[name=ilce]')?.value?.trim() || '';
+        const turVal = form.querySelector('[name=ihbar_turu]')?.value?.trim() || '';
         const mahalleVal = form.querySelector('[name=mahalle]')?.value?.trim() || '';
         const aciklamaVal = form.querySelector('[name=aciklama]')?.value?.trim() || '';
         const latVal = form.querySelector('[name=konum_lat]')?.value?.trim() || '';
         const lngVal = form.querySelector('[name=konum_lng]')?.value?.trim() || '';
 
+        if (!turVal) {
+            Alert.warning('Eksik Bilgi', 'Lütfen ihbar türünü seçiniz.');
+            form.querySelector('[name=ihbar_turu]')?.focus();
+            return;
+        }
         if (!ilceVal) {
             Alert.warning('Eksik Bilgi', 'Lütfen ilçe seçiniz.');
             form.querySelector('[name=ilce]')?.focus();
@@ -1054,7 +1087,7 @@
         try {
             if (!window.OfflineQueue) throw new Error('Telefon kayıt altyapısı yüklenemedi. Sayfayı yeniden açın.');
             const alanlar = {
-                ilce: ilceVal, mahalle: mahalleVal, aciklama: aciklamaVal,
+                ihbar_turu: turVal, ilce: ilceVal, mahalle: mahalleVal, aciklama: aciklamaVal,
                 telefon: form.querySelector('[name=telefon]')?.value?.trim() || '',
                 komsu_abone_no: form.querySelector('[name=komsu_abone_no]')?.value?.trim() || '',
                 konum_lat: latVal, konum_lng: lngVal,

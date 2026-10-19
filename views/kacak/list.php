@@ -33,6 +33,12 @@ foreach (KacakKontrolModel::TURLER as $tur) {
     $turOptions[$tur] = $tur;
 }
 
+$sonucOptions = [
+    '' => 'Tüm Sonuçlar',
+    'olumlu' => 'Olumlu',
+    'olumsuz' => 'Olumsuz',
+];
+
 // Modal içindeki satır şablonu için (boş seçenek metinleri farklı)
 $ilceSatirOptions = ['' => 'İlçe Seçiniz'];
 foreach ($ilceler as $ilce) {
@@ -617,22 +623,25 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="row g-2 align-items-end mb-3">
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-xl">
                             <?= Form::FormDate('filtre_baslangic', Date::dmY($son30Gun), 'Başlangıç Tarihi') ?>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-xl">
                             <?= Form::FormDate('filtre_bitis', Date::dmY($bugun), 'Bitiş Tarihi') ?>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-xl">
                             <?= Form::FormSelect2('filtre_ilce', $ilceOptions, '', 'İlçe', 'map-pin') ?>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-xl">
                             <?= Form::FormSelect2('filtre_tur', $turOptions, '', 'Tür', 'tag') ?>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-xl">
+                            <?= Form::FormSelect2('filtre_sonuc', $sonucOptions, 'olumlu', 'Sonuç', 'check-circle') ?>
+                        </div>
+                        <div class="col-md-2 col-xl-2">
                             <?= Form::FormFloatInput('text', 'filtre_arama', '', 'Tutanak no, abone, sayaç...', 'Ara', 'search') ?>
                         </div>
-                        <div class="col-md-2 d-flex gap-2">
+                        <div class="col-md-2 col-xl-auto d-flex gap-2">
                             <button class="btn btn-primary flex-grow-1" id="btnFiltrele"><i
                                     class="bx bx-search me-1"></i>Filtrele</button>
                             <button class="btn btn-outline-success" id="btnKayitlarExcel" title="Excel İndir"><i
@@ -1873,9 +1882,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 end_date: toIsoDate($('#filtre_bitis').val()),
                 ilce: $('#filtre_ilce').val(),
                 tur: $('#filtre_tur').val(),
+                sonuc: $('#filtre_sonuc').val(),
                 arama: $('#filtre_arama').val(),
-                durum: 'aktif',
-                onay_durumu: 'onaylandi'
             };
         }
 

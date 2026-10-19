@@ -1585,13 +1585,7 @@ $title = 'Nöbet Planlama';
         // ============================================
         const searchInput = document.getElementById('personel-search');
         const defaultDept = 'Kesme Açma';
-        let selectedDept = localStorage.getItem('nobet_selected_dept') || defaultDept;
-
-        // Eski veya tireli kayıtları düzelt ('Kesme-Açma' -> 'Kesme Açma')
-        if (selectedDept === 'Kesme-Açma') {
-            selectedDept = 'Kesme Açma';
-            localStorage.setItem('nobet_selected_dept', selectedDept);
-        }
+        let selectedDept = defaultDept;
 
         function normalizeDept(name) {
             if (!name) return '';
@@ -1614,9 +1608,6 @@ $title = 'Nöbet Planlama';
                 this.classList.add('active');
 
                 selectedDept = this.dataset.dept;
-
-                // localStorage'a kaydet
-                localStorage.setItem('nobet_selected_dept', selectedDept);
 
                 // Buton Rengini Değiştir
                 const filterBtn = document.getElementById('dept-filter-btn');
@@ -1668,7 +1659,7 @@ $title = 'Nöbet Planlama';
             });
         });
 
-        // Sayfa açılışında kayıtlı/varsayılan departmanı ve durumu aktif yap
+        // Sayfa açılışında varsayılan departmanı ve kayıtlı personel durumunu aktif yap
         (function applyStoredDept() {
             let matched = false;
 
@@ -1683,7 +1674,7 @@ $title = 'Nöbet Planlama';
                 }
             });
 
-            // Eğer kayıtlı departman hiçbir seçenekte bulunamadıysa varsayılana ('Kesme Açma' veya 'all') dön
+            // Varsayılan departman hiçbir seçenekte bulunamadıysa tüm departmanlara dön
             if (!matched) {
                 selectedDept = defaultDept;
                 deptDropdownItems.forEach(i => {
@@ -1698,7 +1689,6 @@ $title = 'Nöbet Planlama';
                     const allItem = document.querySelector('#dept-filter-dropdown .dropdown-item[data-dept="all"]');
                     if (allItem) allItem.classList.add('active');
                 }
-                localStorage.setItem('nobet_selected_dept', selectedDept);
             }
 
             // Durum dropdown'ını işaretle

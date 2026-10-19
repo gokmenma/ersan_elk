@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-10-19: Personel PWA İhbar Türü
+- [x] İhbar türü sütunu, geriye dönük veri doldurma ve indeks için tekrarlanabilir SQL scripti oluşturuldu.
+- [x] PWA ihbar oluşturma/düzenleme formuna zorunlu tür seçimi eklendi.
+- [x] Offline kuyruk ve PWA API oluşturma/güncelleme akışları tür alanına bağlandı.
+- [x] PWA listesine tür rozeti ve gelişmiş tür filtresi eklendi.
+- [x] Masaüstü oluşturma/düzenleme formu ile Gelen İhbarlar filtresi gerçek tür sütununa geçirildi.
+
+## 2026-10-19: Kaçak Kontrol Olumlu/Olumsuz Filtresi
+- [x] Kayıtlar üst araç çubuğuna Tümü / Olumlu / Olumsuz sonuç filtresi eklendi.
+- [x] Olumlu ve olumsuz sonuç kuralları Model katmanında uygulandı.
+- [x] Server-side DataTables API ve Excel dışa aktarımı sonuç filtresine bağlandı.
+
+## 2026-10-19: Nöbet Personel Havuzu Varsayılan Departmanı
+- [x] Personel havuzu her sayfa açılışında Kesme Açma departmanıyla başlatıldı.
+- [x] Önceki tarayıcı departman seçiminin varsayılan filtreyi ezmesi kaldırıldı; sayfa içindeki departman değiştirme işlevi korundu.
+
+## 2026-10-19: Gelen İhbarlar Tür Filtresi
+- [x] Gelen İhbarlar üst filtre grubuna Abonesiz / Kaçak / Pasif / Usülsüz seçimi eklendi.
+- [x] Tür filtresi server-side DataTables parametrelerine bağlandı.
+- [x] Açıklama tabanlı tür eşlemesi `IhbarModel::ajaxList()` içinde parametrik PDO koşullarıyla uygulandı.
+- [x] Tür filtresi Select2 başlatma, canlı yenileme ve filtre sıfırlama akışlarına dahil edildi.
+
 ## 2026-10-19: Mobil/Masaüstü Sayaç Değişimi Dashboard Senkronizasyonu
 - [x] Mobil ana sayfa sayaç kartı `sayac_degisim` tablosunu kullanan `SayacDegisimModel` istatistiklerine bağlandı.
 - [x] Masaüstü ana sayfa sayaç kartı aynı kanonik istatistik kaynağına bağlandı.

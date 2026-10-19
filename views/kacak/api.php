@@ -567,6 +567,7 @@ try {
                 'tarih_bitis' => kacakTarih($_GET['end_date'] ?? '', date('Y-m-d')),
                 'ilce' => $_GET['ilce'] ?? '',
                 'tur' => $_GET['tur'] ?? '',
+                'sonuc' => $_GET['sonuc'] ?? '',
                 'durum' => $_GET['durum'] ?? '',
                 'onay_durumu' => $_GET['onay_durumu'] ?? '',
                 'kaynak' => $_GET['kaynak'] ?? '',

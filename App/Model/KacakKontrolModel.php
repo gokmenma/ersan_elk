@@ -203,6 +203,13 @@ class KacakKontrolModel extends Model
             $where[] = 'k.tur = ?';
             $params[] = $filters['tur'];
         }
+        if (($filters['sonuc'] ?? '') === 'olumlu') {
+            $where[] = "k.onay_durumu = 'onaylandi' AND k.durum = 'aktif'";
+        } elseif (($filters['sonuc'] ?? '') === 'olumsuz') {
+            $where[] = "(k.onay_durumu = 'reddedildi' OR k.durum = 'iptal')";
+        } elseif (array_key_exists('sonuc', $filters)) {
+            $where[] = "(k.onay_durumu IN ('onaylandi', 'reddedildi') OR k.durum = 'iptal')";
+        }
         if (!empty($filters['durum'])) {
             $where[] = 'k.durum = ?';
             $params[] = $filters['durum'];

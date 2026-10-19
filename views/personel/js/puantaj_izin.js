@@ -527,20 +527,24 @@ $(document).ready(function () {
 
                     // Fazla Mesai (Overtime) kontrolü
                     let otSaat = 0;
+                    const nobetOtSaat = parseFloat(p.shift_overtimes && p.shift_overtimes[dateStr]) || 0;
+                    let manuelOtSaat = 0;
                     let isUnsavedOt = false;
                     if (unsavedOvertimes[key] !== undefined) {
-                      otSaat = parseFloat(unsavedOvertimes[key].saat) || 0;
+                      manuelOtSaat = parseFloat(unsavedOvertimes[key].saat) || 0;
                       isUnsavedOt = true;
                     } else if (p.overtimes && p.overtimes[dateStr]) {
-                      otSaat = parseFloat(p.overtimes[dateStr].saat || p.overtimes[dateStr]) || 0;
+                      manuelOtSaat = parseFloat(p.overtimes[dateStr].saat || p.overtimes[dateStr]) || 0;
                     }
+                    otSaat = manuelOtSaat + nobetOtSaat;
                     if (!isDisabled && otSaat > 0) {
                       totalFmHours += otSaat;
                     }
                     let overtimeBadgeHtml = "";
                     if (otSaat > 0) {
                       const unsavedOtClass = isUnsavedOt ? "unsaved-ot" : "";
-                      overtimeBadgeHtml = `<span class="overtime-badge ${unsavedOtClass}" data-key="${key}" data-hours="${otSaat}" title="Fazla Mesai: ${otSaat} Saat">+${otSaat % 1 === 0 ? otSaat.toFixed(0) : otSaat.toFixed(1)}s</span>`;
+                      const otTitle = nobetOtSaat > 0 ? `Fazla Mesai: ${otSaat} Saat (Nöbet: ${nobetOtSaat} Saat)` : `Fazla Mesai: ${otSaat} Saat`;
+                      overtimeBadgeHtml = `<span class="overtime-badge ${unsavedOtClass}" data-key="${key}" data-hours="${otSaat}" data-manual-hours="${manuelOtSaat}" data-shift-hours="${nobetOtSaat}" title="${otTitle}">+${otSaat % 1 === 0 ? otSaat.toFixed(0) : otSaat.toFixed(1)}S</span>`;
                     }
 
                     // Excel'den yüklenen personel için mevcut kayıtları gizle, sadece unsaved göster
@@ -759,7 +763,7 @@ $(document).ready(function () {
           const defaultHours = parseFloat($("#fm-default-hours").val()) || 4.0;
 
           if (currentBadge) {
-            const existingHours = parseFloat(currentBadge.getAttribute("data-hours")) || 0;
+            const existingHours = parseFloat(currentBadge.getAttribute("data-manual-hours")) || 0;
             if (existingHours === defaultHours) {
               // Aynı saat zaten varsa tıklandığında kaldır
               applyOvertimeToCell(this, 0);
@@ -1096,11 +1100,13 @@ $(document).ready(function () {
     const date = cell.dataset.date;
     const key = `${pId}-${date}`;
 
-    // Varsa eski rozeti kaldır
     const oldBadge = cell.querySelector(".overtime-badge");
+    const shiftHours = oldBadge ? (parseFloat(oldBadge.getAttribute("data-shift-hours")) || 0) : 0;
+
+    // Varsa eski rozeti kaldır
     if (oldBadge) oldBadge.remove();
 
-    if (saat > 0) {
+    if (saat > 0 || shiftHours > 0) {
       unsavedOvertimes[key] = {
         personel_id: pId,
         date: date,
@@ -1109,9 +1115,12 @@ $(document).ready(function () {
       const badge = document.createElement("span");
       badge.className = "overtime-badge unsaved-ot";
       badge.setAttribute("data-key", key);
-      badge.setAttribute("data-hours", saat);
-      badge.setAttribute("title", `Fazla Mesai: ${saat} Saat`);
-      badge.textContent = `+${saat % 1 === 0 ? saat.toFixed(0) : saat.toFixed(1)}s`;
+      const totalHours = saat + shiftHours;
+      badge.setAttribute("data-hours", totalHours);
+      badge.setAttribute("data-manual-hours", saat);
+      badge.setAttribute("data-shift-hours", shiftHours);
+      badge.setAttribute("title", shiftHours > 0 ? `Fazla Mesai: ${totalHours} Saat (Nöbet: ${shiftHours} Saat)` : `Fazla Mesai: ${totalHours} Saat`);
+      badge.textContent = `+${totalHours % 1 === 0 ? totalHours.toFixed(0) : totalHours.toFixed(1)}S`;
       cell.appendChild(badge);
     } else {
       unsavedOvertimes[key] = {
@@ -1155,8 +1164,15 @@ $(document).ready(function () {
     }
 
     const currentBadge = cell.querySelector(".overtime-badge");
-    const existingHours = currentBadge ? parseFloat(currentBadge.getAttribute("data-hours")) || 0 : 0;
-    const initialHours = existingHours > 0 ? existingHours : (parseFloat($("#fm-default-hours").val()) || 4.0);
+    const existingHours = currentBadge ? parseFloat(currentBadge.getAttribute("data-manual-hours")) || 0 : 0;
+    const shiftHours = currentBadge ? parseFloat(currentBadge.getAttribute("data-shift-hours")) || 0 : 0;
+    const initialHours = existingHours > 0 ? existingHours : (shiftHours > 0 ? 0 : (parseFloat($("#fm-default-hours").val()) || 4.0));
+
+    if (shiftHours > 0) {
+      $("#modal-fm-nobet-alert").text(`Bu güne Nöbet Listesi'nden otomatik ${shiftHours} saat eklendi. Aşağıdaki alan yalnız ilave manuel mesai içindir.`).show();
+    } else {
+      $("#modal-fm-nobet-alert").hide().text("");
+    }
 
     $("#modal-fm-hours-input").val(initialHours);
 

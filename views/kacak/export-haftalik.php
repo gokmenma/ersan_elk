@@ -1047,8 +1047,7 @@ if ($tip === 'teslim') {
         'ilce' => $_GET['ilce'] ?? '',
         'tur' => $_GET['tur'] ?? '',
         'arama' => $_GET['arama'] ?? '',
-        'durum' => $_GET['durum'] ?? 'aktif',
-        'onay_durumu' => $_GET['onay_durumu'] ?? 'onaylandi',
+        'sonuc' => $_GET['sonuc'] ?? 'olumlu',
     ];
 
     $sheet->setTitle('Kaçak Kontrol Kayıtları');

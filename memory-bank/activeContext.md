@@ -1,5 +1,25 @@
 # Active Context
 
+## Personel PWA İhbar Türü ve Alan Bazlı Filtreleme (2026-10-19)
+- `ihbarlar.ihbar_turu` için Abonesiz / Kaçak / Pasif / Usülsüz değerlerini taşıyan ayrı SQL migration hazırlandı; mevcut kayıtlar açıklamadaki güvenli eşleşmelerle geriye dönük sınıflandırılıyor.
+- Personel PWA ihbar oluşturma ve düzenleme formunda tür zorunlu hale getirildi; offline/reliable transfer kuyruğu tür bilgisini de taşıyor ve API izinli değer listesini sunucu tarafında doğruluyor.
+- PWA listeleri tür bilgisini döndürüyor, kartta tür rozeti gösteriyor ve gelişmiş filtre panelinden tür bazında süzülebiliyor.
+- Masaüstü Gelen İhbarlar filtresi açıklama tahmini yerine doğrudan `ihbar_turu` sütununda parametrik sorgu yapıyor. Masaüstü oluşturma/düzenleme formu da aynı zorunlu alanı kullanıyor.
+
+## Kaçak Kontrol Kayıtları: Olumlu/Olumsuz Sonuç Filtresi (2026-10-19)
+- Kayıtlar sekmesinin üst filtre satırına FormSelect2 tabanlı `Sonuç` filtresi eklendi: Tüm Sonuçlar, Olumlu, Olumsuz.
+- Mevcut görünüm korunarak varsayılan `Olumlu` seçildi. Olumlu; onaylanmış ve aktif kayıtları, Olumsuz; reddedilmiş veya iptal edilmiş kayıtları getiriyor. Tümü onay bekleyenleri listeye karıştırmıyor.
+- Filtre API, `KacakKontrolModel` parametrik filtre akışı ve Kayıtlar Excel dışa aktarımıyla eşlendi.
+
+## Nöbet Planlama: Varsayılan Personel Havuzu Departmanı (2026-10-19)
+- `views/nobet/list.php` personel havuzu her sayfa açılışında `Kesme Açma` departmanıyla başlatılacak şekilde düzenlendi.
+- Önceki departman seçiminin `localStorage` üzerinden varsayılanı ezmesi kaldırıldı; kullanıcı mevcut sayfa oturumunda departman filtresini değiştirmeye devam edebilir.
+
+## İhbar Yönetimi: Gelen İhbarlar Tür Filtresi (2026-10-19)
+- Gelen İhbarlar sekmesinin üst filtre alanına FormSelect2 ile `Abonesiz`, `Kaçak`, `Pasif` ve `Usülsüz` seçenekleri eklendi.
+- `ihbarlar` tablosunda ayrı tür sütunu bulunmadığından mevcut kayıtlarla uyumluluk için sınıflandırma açıklama metnindeki yaygın karşılıklar üzerinden Model katmanında, parametrik PDO koşullarıyla yapılıyor.
+- Filtre DataTables sunucu tarafı isteğine dahil edildi; seçim değişikliği tabloyu yeniliyor ve “Filtreleri Sıfırla” işlemi türü de temizliyor.
+
 ## Mobil/Masaüstü Dashboard: Sayaç Değişimi Kaynak Birliği (2026-10-19)
 - **Kullanıcı Talebi**: Mobil ana sayfadaki Sayaç Değişimi kartının `0` göstermesi ve mobil online sorgudan sonra masaüstü kartın yenilenmemesi düzeltildi.
 - **Kök Neden**: Online sayaç sorgusu veriyi `sayac_degisim` tablosuna yazarken dashboard kartları `PuantajModel` üzerinden `yapilan_isler` tablosundaki eski sayaç toplamını okuyordu. Mobil toplu sorgu ayrıca alt API aksiyonları hata döndürse bile başarı bildirimi veriyordu.

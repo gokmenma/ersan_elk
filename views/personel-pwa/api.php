@@ -5729,6 +5729,8 @@ try {
                 'selected_file_count' => count($_FILES['fotograflar']['name'] ?? []),
             ]);
             $IhbarModel = new App\Model\IhbarModel();
+            $ihbarTuru = trim($_POST['ihbar_turu'] ?? '');
+            if (!in_array($ihbarTuru, App\Model\IhbarModel::IHBAR_TURLERI, true)) throw new Exception('Geçerli bir ihbar türü seçiniz.');
 
             $ilce = trim($_POST['ilce'] ?? '');
             if ($ilce === '') {
@@ -5757,6 +5759,7 @@ try {
             if (!isset($GLOBALS['pwaTransfer'])) $ihbarDb->beginTransaction();
 
             $ihbarId = $IhbarModel->create([
+                'ihbar_turu' => $ihbarTuru,
                 'ilce' => $ilce,
                 'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
@@ -5883,6 +5886,7 @@ try {
             $data = array_map(function ($item) {
                 return [
                     'id' => (int) $item->id,
+                    'ihbar_turu' => $item->ihbar_turu,
                     'ilce' => $item->ilce,
                     'mahalle' => $item->mahalle,
                     'telefon' => $item->telefon,
@@ -5906,6 +5910,9 @@ try {
             $IhbarModel = new App\Model\IhbarModel();
             $id = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
 
+            $ihbarTuru = trim($_POST['ihbar_turu'] ?? '');
+            if (!in_array($ihbarTuru, App\Model\IhbarModel::IHBAR_TURLERI, true)) throw new Exception('Geçerli bir ihbar türü seçiniz.');
+
             $ilce = trim($_POST['ilce'] ?? '');
             if ($ilce === '') {
                 throw new Exception('İlçe seçimi zorunludur.');
@@ -5926,6 +5933,7 @@ try {
             }
 
             $IhbarModel->updateByBildiren($id, (int) $personel_id, [
+                'ihbar_turu' => $ihbarTuru,
                 'ilce' => $ilce,
                 'mahalle' => $mahalle,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
@@ -5977,6 +5985,7 @@ try {
             $data = array_map(function ($item) {
                 return [
                     'id' => (int) $item->id,
+                    'ihbar_turu' => $item->ihbar_turu,
                     'ilce' => $item->ilce,
                     'mahalle' => $item->mahalle,
                     'aciklama' => $item->aciklama,
@@ -6019,6 +6028,7 @@ try {
 
             response(true, [
                 'id' => (int) $ihbar->id,
+                'ihbar_turu' => $ihbar->ihbar_turu,
                 'ilce' => $ihbar->ilce,
                 'mahalle' => $ihbar->mahalle,
                 'telefon' => $ihbar->telefon,

@@ -7,6 +7,7 @@ use App\Model\PersonelModel;
 use App\Model\PuantajModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelFazlaMesaileriModel;
+use App\Model\NobetModel;
 use App\Helper\Security;
 use App\Helper\Date;
 use App\Helper\Helper;
@@ -27,6 +28,7 @@ $Personel = new PersonelModel();
 $Puantaj = new PuantajModel();
 $PersonelIzinleri = new PersonelIzinleriModel();
 $FazlaMesai = new PersonelFazlaMesaileriModel();
+$Nobet = new NobetModel();
 
 /**
  * SGK rapor tarihlerini puantaj için normalize eder.
@@ -285,6 +287,7 @@ try {
         // Personellerin ay içindeki fazla mesailerini tek seferde çek
         $personelIdsAll = array_map(static fn($p) => (int) $p->id, $personel_list);
         $all_mesailer = $FazlaMesai->getPersonellerAyMesaileri($personelIdsAll, $startDate, $endDate, $firma_id);
+        $all_nobet_mesaileri = $Nobet->getPuantajHaftaIciMesaileri($personelIdsAll, $startDate, $endDate, $firma_id);
 
         $data = [];
 
@@ -310,6 +313,7 @@ try {
                 'calisma_donemleri' => $personelCalismaDonemleri,
                 'entries' => [],
                 'overtimes' => $all_mesailer[$p->id] ?? (object) []
+                ,'shift_overtimes' => $all_nobet_mesaileri[$p->id] ?? (object) []
             ];
 
             $izinler = $all_izinler[$p->id] ?? [];
@@ -1328,6 +1332,10 @@ try {
         $ucretliIds[] = $ht_tanim ? $ht_tanim->id : 0;
         $ucretliIds = array_unique(array_filter($ucretliIds));
 
+        $exportPersonelIds = array_map(static fn($p) => (int) $p->id, $personel_list);
+        $exportMesailer = $FazlaMesai->getPersonellerAyMesaileri($exportPersonelIds, $startDate, $endDate, $firma_id);
+        $exportNobetMesaileri = $Nobet->getPuantajHaftaIciMesaileri($exportPersonelIds, $startDate, $endDate, $firma_id);
+
         // PHPSpreadsheet
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -1481,7 +1489,14 @@ try {
                 ];
 
                 if (isset($dayData[$d])) {
-                    $sheet->setCellValue($cell, $dayData[$d]['code']);
+                    $dateStr = sprintf('%04d-%02d-%02d', (int) $yil, (int) $ay, $d);
+                    $manuelMesai = (float) ($exportMesailer[(int) $p->id][$dateStr]['saat'] ?? 0);
+                    $nobetMesaisi = (float) ($exportNobetMesaileri[(int) $p->id][$dateStr] ?? 0);
+                    $toplamMesai = $manuelMesai + $nobetMesaisi;
+                    $mesaiEtiketi = $toplamMesai > 0
+                        ? '+' . rtrim(rtrim(number_format($toplamMesai, 1, '.', ''), '0'), '.') . 'S'
+                        : '';
+                    $sheet->setCellValue($cell, $dayData[$d]['code'] . $mesaiEtiketi);
                     $color = trim($dayData[$d]['color']);
 
                     if (strlen($color) !== 6) {

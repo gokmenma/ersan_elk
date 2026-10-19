@@ -1915,6 +1915,7 @@ use App\Service\Gate;
                         <strong>Kesme Departmanı:</strong> Kesme personellerinin fazla mesaileri normal şartlarda Nöbet modülü üzerinden otomatik gelmektedir.
                     </div>
                 </div>
+                <div id="modal-fm-nobet-alert" class="alert alert-info py-2 px-3 font-size-12 mb-3" style="display: none; border-radius: 8px;"></div>
 
                 <div class="mb-3">
                     <label for="modal-fm-hours-input" class="form-label font-size-13 fw-semibold text-dark mb-1">Fazla Mesai Süresi (Saat)</label>

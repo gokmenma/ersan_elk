@@ -8,6 +8,8 @@ use PDO;
 
 class IhbarModel extends Model
 {
+    public const IHBAR_TURLERI = ['Abonesiz', 'Kaçak', 'Pasif', 'Usülsüz'];
+
     protected $table = 'ihbarlar';
 
     const UPLOAD_DIR = 'uploads/ihbar';
@@ -79,12 +81,16 @@ class IhbarModel extends Model
 
     public function create(array $data): int
     {
+        if (!in_array($data['ihbar_turu'] ?? '', self::IHBAR_TURLERI, true)) {
+            throw new \InvalidArgumentException('Geçerli bir ihbar türü seçilmelidir.');
+        }
         $stmt = $this->db->prepare("INSERT INTO ihbarlar
-            (firma_id, ilce, mahalle, telefon, komsu_abone_no, aciklama, konum_link, konum_lat, konum_lng, konum_dogruluk, durum, bildiren_personel_id, olusturan_user_id, created_at)
-            VALUES (:firma_id, :ilce, :mahalle, :telefon, :komsu_abone_no, :aciklama, :konum_link, :konum_lat, :konum_lng, :konum_dogruluk, 'yeni', :bildiren_personel_id, :olusturan_user_id, NOW())");
+            (firma_id, ihbar_turu, ilce, mahalle, telefon, komsu_abone_no, aciklama, konum_link, konum_lat, konum_lng, konum_dogruluk, durum, bildiren_personel_id, olusturan_user_id, created_at)
+            VALUES (:firma_id, :ihbar_turu, :ilce, :mahalle, :telefon, :komsu_abone_no, :aciklama, :konum_link, :konum_lat, :konum_lng, :konum_dogruluk, 'yeni', :bildiren_personel_id, :olusturan_user_id, NOW())");
 
         $stmt->execute([
             ':firma_id' => $this->firmaId(),
+            ':ihbar_turu' => $data['ihbar_turu'],
             ':ilce' => $data['ilce'] ?? null,
             ':mahalle' => $data['mahalle'] ?? null,
             ':telefon' => $data['telefon'] ?? null,
@@ -118,6 +124,9 @@ class IhbarModel extends Model
     /** Personelin kendi bildirdiği ihbarı sonuçlandırılana kadar günceller. */
     public function updateByBildiren(int $ihbarId, int $personelId, array $data): void
     {
+        if (!in_array($data['ihbar_turu'] ?? '', self::IHBAR_TURLERI, true)) {
+            throw new \InvalidArgumentException('Geçerli bir ihbar türü seçilmelidir.');
+        }
         $stmt = $this->db->prepare("SELECT durum, bildiren_personel_id FROM ihbarlar WHERE id = ? AND silinme_tarihi IS NULL");
         $stmt->execute([$ihbarId]);
         $row = $stmt->fetch(PDO::FETCH_OBJ);
@@ -134,8 +143,9 @@ class IhbarModel extends Model
             throw new \Exception('Sonuçlandırılmış ihbarlar güncellenemez.');
         }
 
-        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_link = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
+        $upd = $this->db->prepare("UPDATE ihbarlar SET ihbar_turu = ?, ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_link = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
         $upd->execute([
+            $data['ihbar_turu'],
             $data['ilce'] ?? null,
             $data['mahalle'] ?? null,
             $data['telefon'] ?? null,
@@ -156,14 +166,18 @@ class IhbarModel extends Model
      */
     public function updateByYonetici(int $ihbarId, array $data, int $userId): void
     {
+        if (!in_array($data['ihbar_turu'] ?? '', self::IHBAR_TURLERI, true)) {
+            throw new \InvalidArgumentException('Geçerli bir ihbar türü seçilmelidir.');
+        }
         $stmt = $this->db->prepare("SELECT id FROM ihbarlar WHERE id = ? AND silinme_tarihi IS NULL");
         $stmt->execute([$ihbarId]);
         if (!$stmt->fetch(PDO::FETCH_OBJ)) {
             throw new \Exception('Kayıt bulunamadı.');
         }
 
-        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_link = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
+        $upd = $this->db->prepare("UPDATE ihbarlar SET ihbar_turu = ?, ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_link = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
         $upd->execute([
+            $data['ihbar_turu'],
             $data['ilce'] ?? null,
             $data['mahalle'] ?? null,
             $data['telefon'] ?? null,
@@ -838,6 +852,11 @@ class IhbarModel extends Model
                 $where[] = $column . ' = :' . $key;
                 $bindings[':' . $key] = (string) $filters[$key];
             }
+        }
+        $tur = (string) ($filters['tur'] ?? 'all');
+        if ($tur !== 'all' && in_array($tur, self::IHBAR_TURLERI, true)) {
+            $where[] = 'i.ihbar_turu = :ihbar_turu';
+            $bindings[':ihbar_turu'] = $tur;
         }
         if (!empty($filters['bildiren']) && $filters['bildiren'] !== 'all') {
             $where[] = 'COALESCE(bp.adi_soyadi, ou.adi_soyadi) = :bildiren';
