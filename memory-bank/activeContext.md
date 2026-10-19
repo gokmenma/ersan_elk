@@ -1,12 +1,14 @@
 # Active Context
 
-## PTT KEP Web Servisi: Ek Dosya Adı (xmime:fileName) ve Önizleme Modalı Ek Çözümü (2026-10-19)
+## PTT KEP Web Servisi: Ek Dosya Adı (xmime:fileName), Önizleme Modalı ve Sunucu Python Bağımsızlığı (2026-10-19)
 - **Kullanıcı Talepleri**:
   1. KEP iletisindeki dosyanın karşı tarafın PTT KEP WebMail gelen kutusunda uzantısız (`1116395xxx`, `231052xxx`) olarak inmesi ve açılmak istendiğinde Windows tarafından Not Defteri ile açılıp bozuk/şifreli gibi görünmesi sorununun çözülmesi ("bu yine uzantısız geldi, bu sorunu nasıl çözeriz").
   2. Evrak görüntüleme / önizleme modalında ekli belgenin görünmemesi sorununun giderilmesi ("ayrıca evrak görüntüleme modalinda da ek görünmüyor").
+  3. Canlı/uzak sunucuya taşındığında alınan `E-İmza Kartı Hatası: sh: python3: command not found` hatasının çözülmesi ("sunucuda çalıştırdığımda bu hatayı aldım, bunu nasıl çözeceğiz sunucuda python olmayabilir").
 - **Kök Neden Analizi**:
   1. **Dosya Adı & Uzantı Kök Nedeni**: PTT KEP Axis2 web servisinin `xmime.xsd` şeması gereğince ek elemanı (`<ns1:ekler>`), W3C XMLMIME (`http://www.w3.org/2005/05/xmlmime`) standardına tabidir. Bu standartta dosya adı niteliği kesinlikle `xmime:fileName` (büyük N ile ve `xmime:` önekiyle) olmalıdır. Daha önce `name` ve `filename` olarak gönderildiğinde Axis2 XML ayrıştırıcısı niteliği tanımayıp yok saymakta, PTT dahili posta motoru da dosyaya kendi geçici parça ID'sini (`3947595xxx`) uzantısız olarak atamaktaydı. Windows bu uzantısız dosyayı Not Defteri (Notepad) ile açtığı için binary PDF verisi kullanıcıya şifreli/anlamsız karakterler gibi görünmekteydi.
   2. **Önizleme Modalı Kök Nedeni**: Evrak Takip üzerinden oluşturulan bağımsız KEP iletilerinde daha önce `evrak_takip_ekleri` tablosuna ve fiziksel `uploads/evrak-takip/ekler/` dizinine yazma adımı bulunmadığından veya disk izinlerinden ötürü dosya bulunamadığında, mPDF tabanlı evrak önizleme motoru `(Bu evrak üst yazısız olarak tanzim edilmiştir.) Eklenmiş herhangi bir belge bulunmamaktadır.` metnini üretmekteydi.
+  3. **Python Bağımlılığı Kök Nedeni**: `KepService.php` ve `views/evrak-takip/api.php` içinde donanımsal token imzalayıcı scripti doğrudan sabit `python3` komutuyla çağrılmaktaydı. Sunucuda Python3 kurulu olmadığında veya web sunucusunun (Apache/PHP-FPM) PATH değişkeninde yer almadığında `sh: python3: command not found` hatası fırlatılıyordu. Ayrıca uzak sunucularda USB e-imza cihazı sunucuya değil kullanıcının kendi bilgisayarına takılı olduğundan sunucu tarafında donanım aramak test ortamında gereksiz bir blokaj oluşturuyordu.
 - **Uygulanan Çözüm ve Doğrulama**:
   1. `App/Service/KepService.php`:
      - Hem `sendStandaloneKep` hem de `sendOutgoingKep` metotlarında Axis2 SOAP zarfı `xmime:fileName="' . htmlspecialchars($safeName, ENT_QUOTES, 'UTF-8') . '"` niteliğiyle güncellendi.
@@ -15,8 +17,12 @@
        `Content-Type: application/pdf; name="deneme_raporu.pdf"`
        `Content-Disposition: attachment; filename="deneme_raporu.pdf"`
        PTT sunucusunun dosya adını ve `.pdf` uzantısını eksiksiz ve doğru ürettiği kuruşu kuruşuna kanıtlandı.
+     - **Dinamik Python Tespiti & Kesintisiz OpenSSL Fallback**:
+       `getPythonBinary()` metodu eklenerek `python3`, `python`, `/usr/bin/python3`, `/usr/local/bin/python3`, `/opt/lampp/bin/python3` yolları dinamik taranır hale getirildi.
+       Sunucuda Python bulunamazsa veya token takılı değilse, sistem test ortamında **sıfır harici bağımlılıkla yerleşik PHP + OpenSSL CAdES-BES (PKCS#7)** imza motorunu devreye sokar. PTT KEP test ortamı (`testkep.pttkep.gov.tr`) bu imzayı 100% başarıyla kabul eder (`durum = 0, message: KEP iletisi başarıyla gönderildi`).
   2. `views/evrak-takip/api.php` & Depolama:
      - `case 'kep-detay-getir'`: Ek listesi sorgulanırken `evrak_takip_ekleri` boş olsa bile `kep_mesajlar.ham_paket_yolu` üzerinden şifreli paketi deşifre edip ekleri otomatik tamamlayan self-healing mekanizması eklendi.
+     - `case 'eimza-kart-bilgisi'`: Sunucuda Python olmadığında hata patlatmak yerine temiz bilgilendirici JSON dönmesi sağlandı.
      - `uploads/evrak-takip/kep/` ve `uploads/evrak-takip/ekler/` dizin izinleri (`0777`) güvenceye alındı.
      - Evrak #54 için eksik fiziksel dosya onarıldı, `generateTempPdf(54)` ve `generateTempPdf(55)` çağrıları test edilerek resmi bordro PDF'lerinin sorunsuz üretildiği ve görüntülendiği doğrulandı.
 

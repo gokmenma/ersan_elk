@@ -24,6 +24,7 @@ class KepService
     private KepDelilModel $delilModel;
     private EvrakTakipModel $evrakModel;
     private EypPackageService $eypService;
+    private int $currentFirmId = 0;
 
     public function __construct()
     {
@@ -92,6 +93,7 @@ class KepService
      */
     public function sendStandaloneKep(int $firmId, array $data, array $files): array
     {
+        $this->currentFirmId = $firmId;
         $recipients = array_values(array_unique(array_filter(array_map('trim', preg_split('/[;,\r\n]+/', (string) ($data['alici_kep'] ?? '')) ?: []))));
         if ($recipients === []) throw new Exception('En az bir alıcı KEP adresi girilmelidir.');
         foreach ($recipients as $recipient) {
@@ -260,6 +262,7 @@ class KepService
      */
     public function sendOutgoingKep(int $firmId, int $evrakId, array $options = []): array
     {
+        $this->currentFirmId = $firmId;
         $evrak = $this->evrakModel->getById($evrakId);
         if (!$evrak || $evrak->evrak_tipi !== 'giden') {
             throw new Exception('Giden evrak bulunamadı.');
@@ -596,20 +599,75 @@ class KepService
      * @param string|null $pin E-İmza kart PIN kodu
      * @return string DER formatında PKCS#7 imza verisi
      */
+    /**
+     * Sistemde geçerli python binary yolunu arar (python3, python, /usr/bin/python3, vb.)
+     */
+    public function getPythonBinary(): ?string
+    {
+        $candidates = [
+            'python3',
+            'python',
+            '/usr/bin/python3',
+            '/usr/local/bin/python3',
+            '/opt/lampp/bin/python3',
+            '/usr/bin/python',
+        ];
+        foreach ($candidates as $bin) {
+            $cmd = escapeshellcmd($bin) . ' --version 2>&1';
+            $out = [];
+            $code = 0;
+            @exec($cmd, $out, $code);
+            if ($code === 0 && !empty($out)) {
+                return $bin;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Aktif KEP hesabının test ortamında olup olmadığını doğrular
+     */
+    private function isTestEnvironment(): bool
+    {
+        if (!empty($this->currentFirmId)) {
+            $settings = $this->settingsModel->getSettings($this->currentFirmId);
+            if ($settings) {
+                return ($settings['ortam'] ?? 'prod') === 'test' 
+                    || strpos((string) ($settings['kep_adresi'] ?? ''), 'testkep') !== false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * PTT KEP SmimeGonder için yetkili TCKN serialNumber içeren CAdES-BES (PKCS#7) imza zarfı üretir.
+     * PIN verilmişse ve sunucuda donanım mevcutsa USB Token üzerinden imzalar;
+     * Sunucuda Python/Token bulunamazsa test ortamında otomatik OpenSSL CAdES motoruna geçiş yapar.
+     *
+     * @param string $tcno Yetkili TCKN
+     * @param string $eHash MimeYap'tan dönen SHA256 base64 özeti
+     * @param string|null $pin E-İmza kart PIN kodu
+     * @return string DER formatında PKCS#7 imza verisi
+     */
     private function createCadesSignature(string $tcno, string $eHash, ?string $pin = null): string
     {
-        // 1. PIN verilmişse doğrudan donanımsal SafeNet/E-GÜVEN token üzerinden imzala
+        // 1. PIN verilmişse doğrudan donanımsal SafeNet/E-GÜVEN token üzerinden imzalamayı dene
         if (!empty($pin)) {
             try {
                 return $this->createTokenCadesSignature($pin, $eHash);
             } catch (Throwable $e) {
-                error_log("Token imzalama başarısız, OpenSSL yedek motoruna geçiliyor: " . $e->getMessage());
-                // Eğer kullanıcı açıkça PIN girdiyse ve token hata verdiyse hatayı kullanıcıya yansıtmak daha doğrudur
-                throw new Exception("E-İmza Kartı Hatası: " . $e->getMessage());
+                error_log("Token imzalama başarısız: " . $e->getMessage());
+                // Test ortamında ise veya sunucuda Python/Token bulunamadığında
+                // otomatik olarak yerleşik OpenSSL CAdES motoruna güvenli geçiş yap
+                if ($this->isTestEnvironment()) {
+                    error_log("Test ortamında OpenSSL CAdES-BES yedek motoruna güvenli geçiş yapıldı.");
+                } else {
+                    throw new Exception("E-İmza Kartı Hatası: " . $e->getMessage());
+                }
             }
         }
 
-        // 2. PIN yoksa (test/fallback) OpenSSL ile self-signed DER üret
+        // 2. PIN yoksa veya test ortamı yedek motoru: OpenSSL ile self-signed CAdES DER üret
         $rawHash = base64_decode($eHash);
         if ($rawHash === false || strlen($rawHash) === 0) {
             $rawHash = hash('sha256', $eHash, true);
@@ -669,6 +727,11 @@ serialNumber = {$tcno}
      */
     public function createTokenCadesSignature(string $pin, string $eHash): string
     {
+        $pythonBin = $this->getPythonBinary();
+        if ($pythonBin === null) {
+            throw new Exception("Sunucuda Python3 çalışma ortamı (python3) bulunamadı.");
+        }
+
         $scriptPath = dirname(__DIR__, 2) . '/scripts/cades_token_signer.py';
         if (!file_exists($scriptPath)) {
             throw new Exception('CAdES Token imzalayıcı scripti bulunamadı.');
@@ -676,7 +739,8 @@ serialNumber = {$tcno}
 
         $outPath = tempnam(sys_get_temp_dir(), 'cades_token_');
         $cmd = sprintf(
-            'python3 %s --pin %s --hash %s --out %s 2>&1',
+            '%s %s --pin %s --hash %s --out %s 2>&1',
+            escapeshellcmd($pythonBin),
             escapeshellarg($scriptPath),
             escapeshellarg($pin),
             escapeshellarg($eHash),

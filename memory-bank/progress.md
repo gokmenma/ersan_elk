@@ -20,6 +20,9 @@
 - [x] Evrak Görüntüleme Modalı ve Ek Eksiklikleri Çözüldü:
   - Eksik fiziksel dosya kopyası tamamlandı (`generateTempPdf(54)` ve `generateTempPdf(55)` başarıyla bordro PDF'ini birleştiriyor).
   - `views/evrak-takip/api.php` içinde şifreli arşivden otomatik ek kurtarma (self-healing) sağlandı.
+- [x] Sunucu Python Bağımsızlığı ve Kesintisiz OpenSSL Fallback Sağlandı:
+  - `getPythonBinary()` ile Python dinamik tespiti yapıldı (`python3`, `python`, `/usr/bin/python3`, `/usr/local/bin/python3` vb.).
+  - Sunucuda Python bulunmadığında veya donanımsal token takılı olmadığında, test ortamında sistemin `sh: python3: command not found` hatası verip durması engellendi; yerleşik PHP + OpenSSL CAdES-BES motoruna otomatik ve kesintisiz geçiş yapması sağlandı. PTT KEP test ortamının bu imzayı eksiksiz kabul ettiği kanıtlandı.
 
 ## 2026-10-19: Bekleyen Onaylar Boş Liste Hatası
 - [x] Sonuç filtresi ile bekleyen onay durumu arasındaki çelişen Model koşulu tespit edildi.

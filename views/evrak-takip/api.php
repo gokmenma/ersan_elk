@@ -1588,10 +1588,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'eimza-kart-bilgisi':
+                $kepService = new KepService();
+                $pythonBin = $kepService->getPythonBinary();
+                if ($pythonBin === null) {
+                    echo json_encode([
+                        'status' => 'info',
+                        'message' => 'Sunucuda Python3 bulunamadı. Test ortamında imzalama yerleşik OpenSSL motoru ile otomatik gerçekleştirilir.',
+                        'python_available' => false,
+                    ], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
                 $scriptPath = dirname(__DIR__, 2) . '/scripts/cades_token_signer.py';
                 $output = [];
                 $returnCode = 0;
-                exec("python3 " . escapeshellarg($scriptPath) . " --detect 2>&1", $output, $returnCode);
+                exec(escapeshellcmd($pythonBin) . ' ' . escapeshellarg($scriptPath) . ' --detect 2>&1', $output, $returnCode);
                 $rawJson = implode("\n", $output);
                 $cardInfo = json_decode($rawJson, true);
                 if (!is_array($cardInfo)) {
