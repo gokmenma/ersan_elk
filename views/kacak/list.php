@@ -34,7 +34,7 @@ foreach (KacakKontrolModel::TURLER as $tur) {
 }
 
 $sonucOptions = [
-    '' => 'Tüm Sonuçlar',
+    'tumu' => 'Tüm Sonuçlar',
     'olumlu' => 'Olumlu',
     'olumsuz' => 'Olumsuz',
 ];

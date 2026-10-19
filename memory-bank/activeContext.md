@@ -1,5 +1,9 @@
 # Active Context
 
+## Kaçak Kontrol Bekleyen Onaylar Liste Düzeltmesi (2026-10-19)
+- Bekleyen rozeti kayıt sayısını gösterirken tablonun boş kalmasının nedeni, boş `sonuc` parametresinin Model tarafından sonuçlanmış kayıt filtresi gibi uygulanmasıydı.
+- Boş değer artık sonuç filtresi uygulanmadığı anlamına geliyor; Kayıtlar ekranındaki açık `Tüm Sonuçlar` seçimi ayrı `tumu` değeriyle taşınıyor. Böylece `onay_durumu = beklemede` sorgusu yeniden bekleyen kayıtları getiriyor.
+
 ## Personel PWA İhbar Türü ve Alan Bazlı Filtreleme (2026-10-19)
 - `ihbarlar.ihbar_turu` için Abonesiz / Kaçak / Pasif / Usülsüz değerlerini taşıyan ayrı SQL migration hazırlandı; mevcut kayıtlar açıklamadaki güvenli eşleşmelerle geriye dönük sınıflandırılıyor.
 - Personel PWA ihbar oluşturma ve düzenleme formunda tür zorunlu hale getirildi; offline/reliable transfer kuyruğu tür bilgisini de taşıyor ve API izinli değer listesini sunucu tarafında doğruluyor.

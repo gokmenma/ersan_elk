@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-10-19: Bekleyen Onaylar Boş Liste Hatası
+- [x] Sonuç filtresi ile bekleyen onay durumu arasındaki çelişen Model koşulu tespit edildi.
+- [x] Boş sonuç parametresi ile açık “Tüm Sonuçlar” seçimi ayrıştırıldı.
+- [x] Bekleyen onay sorgusunun sayaçla aynı kayıtları döndürmesi sağlandı.
+
 ## 2026-10-19: Personel PWA İhbar Türü
 - [x] İhbar türü sütunu, geriye dönük veri doldurma ve indeks için tekrarlanabilir SQL scripti oluşturuldu.
 - [x] PWA ihbar oluşturma/düzenleme formuna zorunlu tür seçimi eklendi.
