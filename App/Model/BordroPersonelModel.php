@@ -2380,15 +2380,10 @@ class BordroPersonelModel extends Model
                 if ($fazlaMesaiEklendi) {
                     continue;
                 }
-                $kayitliBankaPayi = (float) ($ekOdeme['tutar'] ?? 0);
-                if (abs($kayitliBankaPayi - $fazlaMesaiHedefNet) >= 0.01) {
-                    $duzeltilmisEkOdemeler[] = $ekOdeme;
-                    $fazlaMesaiEklendi = true;
-                    continue;
-                }
                 $ekOdeme['odeme_tutari'] = (float) ($ekOdeme['tutar'] ?? 0);
                 $ekOdeme['etiket'] = (string) ($muhasebeFazlaMesaiOzeti['etiket'] ?? 'Fazla Mesai Ücreti (Net)');
                 $ekOdeme['tutar'] = $fazlaMesaiHedefNet;
+                $ekOdeme['toplam_tutar'] = $fazlaMesaiHedefNet;
                 $ekOdeme['yemek_dahil_tutar'] = 0.0;
                 $duzeltilmisEkOdemeler[] = $ekOdeme;
                 $fazlaMesaiEklendi = true;

@@ -636,7 +636,14 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 
 - Mutabakat kapsamı `Endeks Okuma`, `Kesme/Açma İşlemleri`, `Sayaç Sökme-Takma` ve `Mühürleme` kaynaklarıdır ve Ekim 2026 dönemiyle başlar. Daha eski bordro dönemleri bu kontrol nedeniyle bloklanmaz.
 - Okuma ve kesme/açma hakediş kaynakları, ay sonu snapshot'ı ile takip eden ayın 1, 2 ve 3'ündeki dış servis sonuçları arasında mutabık olmalıdır.
-- Ayın 3'ündeki final tarama tamamlanmamışsa, eksik gün/API sayfası varsa veya açık fark bulunuyorsa bordro hesaplanamaz ve dönem kapatılamaz; bu blokaj `force_close` ile aşılamaz.
+- Bordro hesaplama ay içindeki taslak çalışma akışıdır; ay sonu snapshot'ı ve final mutabakat henüz oluşmadan da çalıştırılabilir. Bu hesaplama dönemi kesinleştirmez ve final mutabakat sonrasında veri değişmişse yeniden yapılır.
+- Ayın 3'ündeki final tarama tamamlanmamışsa, eksik gün/API sayfası varsa veya açık fark bulunuyorsa dönem kapatılamaz; bu blokaj `force_close` ile aşılamaz.
 - Yetkili tarafından güncel dış sistem verisi uygulandığında önceden hesaplanmış bordro snapshot'ı otomatik değiştirilmez. İlgili dönemdeki tüm personel bordroları yeniden hesaplanmadan dönem kapatılamaz.
 - Mutabakat snapshot'ı ve geçmiş fark/çözüm kayıtları geriye dönük değiştirilmez veya silinmez.
+
+# Fazla mesai ve hafta içi nöbet gösterim ayrımı
+
+- Sözleşme alacağı tarafında hafta içi nöbetin personel hakedişi ile puantajdan girilen manuel fazla mesai ayrı satırlarda gösterilir; biri diğerinin etiketi altında birleştirilmez.
+- Resmî alacak tarafında hafta içi nöbetin kanuni fazla mesai karşılığı ile puantaj fazla mesaisi tek `Fazla Mesai Ücreti (Net)` satırında birleştirilir; saat detayı iki kaynağın toplamını gösterir.
+- Bu sunum ayrımı kayıtlı snapshot tutarlarını veya ödeme kanallarını değiştirmez.
 

@@ -568,14 +568,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!$donem) {
                     throw new Exception('Dönem bulunamadı.');
                 }
-                $mutabakatBlok = (new PuantajMutabakatModel())->closureBlockReason(
-                    (int) ($_SESSION['firma_id'] ?? 0),
-                    (string) $donem->baslangic_tarihi,
-                    (string) $donem->bitis_tarihi
-                );
-                if ($mutabakatBlok !== null && !str_contains($mutabakatBlok, 'yeniden hesaplanmalıdır')) {
-                    throw new Exception($mutabakatBlok);
-                }
+                // Maaş hesaplama ay içindeki taslak çalışma akışıdır. Ay sonu
+                // snapshot'ı ve takip eden ayın 3'ündeki final mutabakat henüz
+                // oluşmamış olsa da hesaplama yapılabilir. Mutabakat şartı
+                // `donem-kapat` aksiyonunda sunucu tarafında zorunludur.
                 if ($donem) {
                     $stmt = $BordroPersonel->getDb()->prepare("SELECT id FROM bordro_personel WHERE donem_id = ? AND silinme_tarihi IS NULL");
                     $stmt->execute([$donem_id]);
@@ -1071,7 +1067,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false)) { continue; }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
-                    if (strpos($aciklama, '[Nöbet]') === 0) {
+                    if (strpos($aciklama, '[Nöbet]') === 0 && $odemeTurLower === 'hafta_ici_nobet') {
+                        $tur = 'hafta_ici_nobet';
+                        if (!isset($ekOdemelerNonPuantaj[$tur])) { $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0, 'items' => []]; }
+                        $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
+                        $ekOdemelerNonPuantaj[$tur]['adet'] += $parsedAdet;
+                        $ekOdemelerNonPuantaj[$tur]['kayit_sayisi']++;
+                        $ekOdemelerNonPuantaj[$tur]['items'][] = $odeme;
+                    } elseif (strpos($aciklama, '[Nöbet]') === 0) {
                         $nobetGosterim = clone $odeme;
                         $nobetGosterim->tutar = floatval($odeme->tutar);
                         $nobetOdemeler[] = $nobetGosterim;
@@ -2086,7 +2089,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false)) { continue; }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
-                    if (strpos($aciklama, '[Nöbet]') === 0) {
+                    if (strpos($aciklama, '[Nöbet]') === 0 && $odemeTurLower === 'hafta_ici_nobet') {
+                        $tur = 'hafta_ici_nobet';
+                        if (!isset($ekOdemelerNonPuantaj[$tur])) { $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0, 'items' => []]; }
+                        $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
+                        $ekOdemelerNonPuantaj[$tur]['adet'] += $parsedAdet;
+                        $ekOdemelerNonPuantaj[$tur]['kayit_sayisi']++;
+                        $ekOdemelerNonPuantaj[$tur]['items'][] = $odeme;
+                    } elseif (strpos($aciklama, '[Nöbet]') === 0) {
                         $nobetGosterim = clone $odeme;
                         $nobetGosterim->tutar = $snapshotEkOdemeNetleri[(int) ($odeme->id ?? 0)] ?? floatval($odeme->tutar);
                         $nobetOdemeler[] = $nobetGosterim;

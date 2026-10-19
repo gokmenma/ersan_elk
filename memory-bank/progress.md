@@ -64,6 +64,7 @@
 - [x] Yönetim DataTable sayfası, özet kartları, e-posta ayarı, CSV bildirim eki ve bordro hesaplama/kapanış blokajı eklendi.
 - [x] Mutabakat ve bordro kapanış doğrulamaları 10 test / 55 assertion ile geçti; ilgili PHP dosyalarının syntax kontrolleri başarılı.
 - [x] Sayaç Sökme-Takma ve Mühürleme ayrı mutabakat kaynakları olarak eklendi; rapor sayfasının üstüne sürekli görünür mutabakat kısayolu yerleştirildi.
+- [x] Açık ayda henüz üretilemeyen final mutabakatın maaş hesaplamasını engellemesi kaldırıldı; hesaplama taslak olarak serbest, dönem kapatma final mutabakata bağlı bırakıldı.
 
 ## 2026-10-18 — Mobil SPA: Puantaj Fazla Mesai (FM) Girişi ve 3'lü Sekme Mimarisi
 - [x] **3'lü Kompakt Sekme Yapısı**: Gün seçim modalı dikeyde gereksiz alan işgal etmemesi için `[ Ücretli İzin ]`, `[ Ücretsiz İzin ]`, `[ ⚡ Fazla Mesai ]` 3'lü sekmesine dönüştürüldü. Varsayılan olarak Ücretli İzin sekmesinde kompakt açılır.
@@ -1329,3 +1330,13 @@
 - [x] Otomatik HTÇ'nin mobil/masaüstü puantajda başka koda veya kayıtsız `X` gününe çevrilmesinin sonraki cron tarafından ezilmesini önleyen kaynak ve otomasyon kilidi takibi eklendi. (2026-10-18)
 - [x] Otomatik HTÇ karar testleri ile ilgili bordro regresyonları geçti: 57 test / 601 doğrulama; önceden mevcut 7 uyarı devam ediyor. (2026-10-18)
 - [x] Otomatik pazar HTÇ kapsamı kaçak personeli için 2, sökme-takma ve mühürleme personeli için 10 işlem eşiğiyle genişletildi; eşikler firma ayarına ve ilgili operasyon cronlarına bağlandı. (2026-10-18)
+# 2026-10-19 — Puantajda nöbet mesaisi gösterimi
+
+- [x] Onaylı hafta içi nöbetlerin 4 saatlik fazla mesaisi masaüstü ve mobil puantaj verisine eklendi.
+- [x] Manuel ve nöbet kaynaklı saatler günlük/aylık toplamda birleştirildi; manuel düzenleme nöbet saatini değiştirmiyor.
+- [x] Excel hücreleri `X+4S` biçiminde dışa aktarılıyor.
+- [x] PHP/JavaScript sözdizimi, gerçek Ekim 2026 nöbet verisi ve mobil üretim derlemesi doğrulandı.
+- [x] Modal `Kaydet` düğmesinin yalnız tarayıcıdaki puantaja uygulama yaptığı netleştirildi; kalıcı kayıt için üst `Kaydet` uyarısı eklendi. Eksik manuel kayıt tamamlanıp ilgili açık bordro yeniden hesaplandı ve snapshot okuyucusunda 12 saat / 2.246,04 TL doğrulandı.
+- [x] Bordro detayında hafta içi nöbet ve manuel fazla mesai sözleşme alacağı tarafında ayrıldı; resmî alacak dağılımı iki fazla çalışma kaynağını `Fazla Mesai Ücreti (Net)` etiketi altında birleştirecek şekilde düzeltildi.
+- [x] Masaüstü fazla mesai ekleme/kaldırma işlemleri doğrudan kalıcı API kaydına bağlandı. Test personelindeki manuel 4 saat soft-delete edilip bordro yeniden hesaplandı; 8 saat / 1.497,36 TL snapshot doğrulandı.
+- [x] Puantaj `Kaydet` API'sini fatal hatayla durduran HTÇ otomasyon model metot imzası çakışması giderildi; gerçek API ekle/sil regresyonu başarıyla doğrulandı.

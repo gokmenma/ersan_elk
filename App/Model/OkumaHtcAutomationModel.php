@@ -118,7 +118,7 @@ class OkumaHtcAutomationModel extends Model
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function softDelete(int $id, string $reason): void
+    public function softDeleteAutomatic(int $id, string $reason): void
     {
         $stmt = $this->db->prepare("UPDATE personel_izinleri SET silinme_tarihi = NOW(),
             silinme_aciklama = ?, silen_kullanici = 0 WHERE id = ? AND silinme_tarihi IS NULL");

@@ -992,7 +992,6 @@ $(document).ready(function () {
         if (!cell || !cell.length) return;
 
         applyOvertimeToCell(cell[0], 0);
-        showToast("Fazla mesai kaldırıldı.", "info");
         contextMenu.hide();
       });
 
@@ -1215,7 +1214,7 @@ $(document).ready(function () {
       bootstrap.Modal.getOrCreateInstance(modalEl).hide();
     }
     setOvertimeBadgeAndState(activeOvertimeCell, val);
-    showToast(`${val} saat fazla mesai eklendi.`, "success");
+    persistSingleOvertime(activeOvertimeCell, val);
   });
 
   $("#modal-fm-hours-input").off("keydown").on("keydown", function (e) {
@@ -1232,8 +1231,37 @@ $(document).ready(function () {
       bootstrap.Modal.getOrCreateInstance(modalEl).hide();
     }
     setOvertimeBadgeAndState(activeOvertimeCell, 0);
-    showToast("Fazla mesai kaldırıldı.", "info");
+    persistSingleOvertime(activeOvertimeCell, 0);
   });
+
+  function persistSingleOvertime(cell, saat) {
+    if (!cell) return;
+    const pId = cell.dataset.personelId;
+    const date = cell.dataset.date;
+    const key = `${pId}-${date}`;
+    const ay = $("#select-ay").val();
+    const yil = $("#select-yil").val();
+
+    $.post(API_URL, {
+      action: "save-bulk-entries",
+      data: "[]",
+      overtimes: JSON.stringify([{ personel_id: pId, date: date, saat: saat }]),
+      excelPersonnelIds: "[]",
+      ay: ay,
+      yil: yil,
+    }, function (res) {
+      if (res.status !== "success") {
+        showToast(res.message || "Fazla mesai kaydedilemedi.", "error");
+        return;
+      }
+      delete unsavedOvertimes[key];
+      const sonucMesaji = saat > 0 ? `${saat} saat fazla mesai kaydedildi.` : "Fazla mesai kaldırıldı.";
+      showToast(`${sonucMesaji} Açık dönem bordrosu varsa yeniden hesaplayın.`, "success");
+      renderTable();
+    }).fail(function () {
+      showToast("Fazla mesai kaydedilirken bağlantı hatası oluştu.", "error");
+    });
+  }
 
   function applyOvertimeToCell(cell, saat, onComplete) {
     saat = parseFloat(saat) || 0;
@@ -1241,12 +1269,13 @@ $(document).ready(function () {
     // Mesai kaldırılıyorsa doğrudan kaldır
     if (saat <= 0) {
       setOvertimeBadgeAndState(cell, 0);
+      persistSingleOvertime(cell, 0);
       if (typeof onComplete === "function") onComplete(0);
       return;
     }
 
     setOvertimeBadgeAndState(cell, saat);
-    showToast(`${saat} saat fazla mesai eklendi.`, "success");
+    persistSingleOvertime(cell, saat);
     if (typeof onComplete === "function") onComplete(saat);
   }
 

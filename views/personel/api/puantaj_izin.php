@@ -312,8 +312,8 @@ try {
                 'gg_toplam_gun' => $p->gg_toplam_gun,
                 'calisma_donemleri' => $personelCalismaDonemleri,
                 'entries' => [],
-                'overtimes' => $all_mesailer[$p->id] ?? (object) []
-                ,'shift_overtimes' => $all_nobet_mesaileri[$p->id] ?? (object) []
+                'overtimes' => $all_mesailer[$p->id] ?? (object) [],
+                'shift_overtimes' => $all_nobet_mesaileri[$p->id] ?? (object) [],
             ];
 
             $izinler = $all_izinler[$p->id] ?? [];
@@ -706,8 +706,8 @@ try {
         }
 
         $mesaj = $kayit_sayisi == 1
-            ? "1 kayıt başarıyla eklendi."
-            : "$kayit_sayisi kayıt başarıyla eklendi.";
+            ? "1 kayıt başarıyla kaydedildi."
+            : "$kayit_sayisi kayıt başarıyla kaydedildi.";
 
         echo json_encode(['status' => 'success', 'message' => $mesaj]);
     } elseif ($action === 'save-entry') {

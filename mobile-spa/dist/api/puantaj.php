@@ -7,6 +7,7 @@ use App\Model\MenuModel;
 use App\Model\PersonelFazlaMesaileriModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
+use App\Model\NobetModel;
 use App\Model\PuantajModel;
 use App\Model\SettingsModel;
 use App\Model\TanimlamalarModel;
@@ -351,6 +352,8 @@ try {
         // Fazla mesailer
         $personelIdsAll = array_map(static fn($p) => (int) $p->id, $personelList);
         $allMesailer = $FazlaMesai->getPersonellerAyMesaileri($personelIdsAll, $startDate, $endDate, $firmaId);
+        $Nobet = new NobetModel();
+        $allNobetMesaileri = $Nobet->getPuantajHaftaIciMesaileri($personelIdsAll, $startDate, $endDate, $firmaId);
 
         $data = [];
 
@@ -381,6 +384,7 @@ try {
                 'calisma_donemleri'  => $pCalismaDonemleri,
                 'entries'            => [],
                 'overtimes'          => $allMesailer[(int) $p->id] ?? (object) [],
+                'shift_overtimes'    => $allNobetMesaileri[(int) $p->id] ?? (object) [],
             ];
 
             $izinler = $allIzinler[$p->id] ?? [];

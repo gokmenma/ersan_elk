@@ -63,7 +63,7 @@
 - Kapanan ayı ayın 1, 2 ve 3'ünde saat 03:00'te gün gün/sayfalı sorgulayan idempotent CLI worker geliştirildi; ayın 3'ü final kontroldür.
 - Silinen, eklenen, miktarı artan/azalan ve alanı değişen işlemler ayrı fark kayıtları olarak tutulur; hata/eksik sayfa gerçek fark sayılmaz.
 - Yetkili yönetim ekranı, Gate politikaları, şifreli fark ID'leri, CSRF korumalı güncel veriyi uygulama akışı ve firma bazlı e-posta/CSV raporu eklendi.
-- Açık/eksik mutabakat bordro hesaplamasını ve dönem kapanışını bloklar; `force_close` aşamaz. Uygulanan fark mevcut bordro snapshot'ını değiştirmez ve yeniden hesaplama zorunluluğu doğurur.
+- Bordro hesaplama ay içindeki taslak çalışma olduğundan açık ayda mutabakat snapshot'ı aranmadan çalışabilir. Açık/eksik mutabakat yalnız dönem kapanışını bloklar ve `force_close` bunu aşamaz. Uygulanan fark mevcut bordro snapshot'ını değiştirmez ve kapanış öncesi yeniden hesaplama zorunluluğu doğurur.
 - Kapsam `Endeks Okuma`, `Kesme/Açma İşlemleri`, `Sayaç Sökme-Takma` ve `Mühürleme` sekmeleridir. Başlangıç dönemi Ekim 2026'dır; daha eski dönemler taranmaz ve bordro blokajına girmez.
 - Yönetici erişimi hem `Puantaj Yönetimi > Puantaj Mutabakatı` menüsünden hem rapor ekranındaki `İşlemler > Puantaj Mutabakatı` kısayolundan sağlanır.
 - Kurulum SQL'i: `sql/2026_10_18_puantaj_mutabakat.sql`; cron: `views/cron/puantaj_mutabakat_cron.php`.
@@ -2435,3 +2435,12 @@
 - Migration uygulanmadan özellik çalıştırılmamalıdır: `database/migrations/2026_10_18_add_okuma_htc_automation.sql`.
 - Yeni otomasyon karar testleri 4 test / 9 doğrulama geçti. İlgili bordro regresyonlarında 57 test / 601 doğrulama geçti; daha önce mevcut 7 uyarı sürüyor.
 - Kapsam kaçak (varsayılan kişi başı 2), sökme-takma (10) ve mühürleme (10) pazar işlemlerine genişletildi. Kişinin dört operasyon türünden en az birinin limitini sağlaması HTÇ için yeterli; her limit firma ayarından değiştirilebilir.
+# Puantajda hafta içi nöbet fazla mesaisi (2026-10-19)
+
+- Onaylı `standart` nöbetler, kaynak kayıt çoğaltılmadan masaüstü ve mobil puantajda gün başına 4 saat fazla mesai olarak gösteriliyor.
+- Manuel puantaj mesaisi ile nöbet mesaisi günlük ve aylık toplamda birleşiyor; örneğin aynı gün 4 saat nöbet + 4 saat manuel kayıt `X+8S`, ay içindeki başka 4 saatlik nöbetle aylık toplam 12 saat oluyor.
+- Puantaj Excel dışa aktarımında günlük kod ve toplam mesai aynı hücrede `X+4S` biçiminde yazılıyor. Nöbet silme/onay kaldırma/iptal işlemleri kaynak sorgudan otomatik yansıyor; bordroda çift ödeme yaratacak `personel_fazla_mesaileri` kopyası oluşturulmuyor.
+- Fazla mesai modalındaki işlem kalıcı kayıt sanılmasın diye `Puantaja Uygula` olarak adlandırıldı ve üst araç çubuğundaki `Kaydet` gereksinimi açık uyarıyla belirtildi. Ahmet Giray Uçar'ın 7 Ekim 2026 tarihli ek 4 saati onaylı kaydedilip açık Ekim bordrosu yeniden hesaplandı; snapshot özeti 12 saat / 2.246,04 TL net fazla mesai veriyor.
+- Bordro detay sınıflandırması düzeltildi: sözleşme alacağı tarafında hafta içi nöbet, hafta sonu nöbet ve manuel fazla mesai ayrı satırlarda; resmî tarafta hafta içi nöbetin kanuni karşılığı ile manuel mesai tek `Fazla Mesai Ücreti (Net)` satırında 12 saat / 2.246,04 TL olarak gösteriliyor. Kayıtlı snapshot ve ödeme kanalları değiştirilmedi.
+- Masaüstü puantajda fazla mesai ekleme/kaldırma artık modal veya hücre işleminden doğrudan API'ye kaydediliyor; ikinci bir üst `Kaydet` adımı gerekmiyor. İşlem sonrası açık bordronun yeniden hesaplanması gerektiği bildiriliyor. Ahmet Giray Uçar'ın 7 Ekim manuel 4 saat kaydı soft-delete edilip Ekim bordrosu yeniden hesaplandı; snapshot yeniden 8 saat / 1.497,36 TL ve banka 30.598,86 TL oldu.
+- Eski toplu `Kaydet` isteğinin sunucuda başarısız olmasının kök nedeni `OkumaHtcAutomationModel::softDelete()` metodunun ana Model imzasıyla uyumsuz override edilmesiydi. Özel işlem `softDeleteAutomatic()` olarak ayrıldı ve servis çağrıları güncellendi. Gerçek puantaj API'sinde 4 saat ekle → kaldır testi başarıyla geçti; kayıt soft-delete kaldı.

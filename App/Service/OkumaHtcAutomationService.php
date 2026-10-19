@@ -80,7 +80,7 @@ class OkumaHtcAutomationService
 
                 if (empty($qualified)) {
                     if ($autoHtc !== null) {
-                        $this->model->softDelete((int) $autoHtc['id'], 'Okuma sayısı firma HTÇ alt limitinin altına düştü.');
+                        $this->model->softDeleteAutomatic((int) $autoHtc['id'], 'Okuma sayısı firma HTÇ alt limitinin altına düştü.');
                         $result['removed']++;
                     }
                     continue;
@@ -109,7 +109,7 @@ class OkumaHtcAutomationService
                 }
 
                 foreach ($convertibleHt as $htRecord) {
-                    $this->model->softDelete((int) $htRecord['id'], 'Okuma HTÇ otomasyonu tarafından HTÇ koduna dönüştürüldü.');
+                    $this->model->softDeleteAutomatic((int) $htRecord['id'], 'Okuma HTÇ otomasyonu tarafından HTÇ koduna dönüştürüldü.');
                     $result['converted_ht']++;
                 }
 
