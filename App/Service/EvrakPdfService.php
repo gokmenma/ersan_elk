@@ -495,4 +495,114 @@ final class EvrakPdfService
 
         return null;
     }
+
+    /**
+     * Verilen evrak ID'sine ait üst yazı ve eklerin birleştirilmiş PDF'ini geçici dosya olarak üretir
+     *
+     * @param int $evrakId
+     * @return string Geçici PDF dosyasının tam dosya yolu
+     * @throws \Exception
+     */
+    public function generateTempPdf(int $evrakId): string
+    {
+        $evrakModel = new \App\Model\EvrakTakipModel();
+        $evrak = $evrakModel->getById($evrakId);
+        if (!$evrak) {
+            throw new \Exception("Evrak bulunamadı (ID: {$evrakId})");
+        }
+
+        $firmId = (int) ($evrak->firma_id ?? ($_SESSION['firma_id'] ?? 1));
+        $firma = (new \App\Model\FirmaModel())->find($firmId);
+        $settingsModel = new \App\Model\SettingsModel();
+        $settings = $settingsModel->getAllSettingsAsKeyValue($firmId);
+
+        $signerIds = json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: [];
+        $signingUsers = $evrakModel->getSigningUsersByIds($signerIds);
+        $userMap = [];
+        foreach ($signingUsers as $u) {
+            $userMap[(int) $u->id] = $u;
+        }
+
+        $kiminAdinaList = json_decode((string) ($evrak->imza_kimin_adina_json ?? '[]'), true) ?: [];
+        $orderedSigners = [];
+        foreach ($signerIds as $idx => $sId) {
+            if (isset($userMap[(int) $sId])) {
+                $uObj = clone $userMap[(int) $sId];
+                $uObj->kimin_adina = $kiminAdinaList[$idx] ?? '';
+                $orderedSigners[] = $uObj;
+            }
+        }
+
+        $firmaTel = (($firma->telefon ?? '') === '0') ? '' : trim((string) ($firma->telefon ?? ''));
+        $preparerId = !empty($evrak->olusturan_kullanici_id) ? (int) $evrak->olusturan_kullanici_id : 0;
+        $preparerUser = $preparerId > 0 ? (new \App\Model\UserModel())->find($preparerId) : null;
+        $preparerPhone = $firmaTel !== '' ? $firmaTel : trim((string) ($preparerUser->telefon ?? ''));
+
+        // Evrak ek dosyaları
+        $ekDosyaYollari = [];
+        $evrakEkleri = $evrakModel->getAttachments($evrakId);
+        foreach ($evrakEkleri as $att) {
+            if (!empty($att->dosya_yolu)) {
+                $fullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $att->dosya_yolu, '/');
+                if (file_exists($fullPath)) {
+                    $ekDosyaYollari[] = [
+                        'path' => $fullPath,
+                        'name' => $att->dosya_adi,
+                        'type' => $att->mime_tipi,
+                    ];
+                }
+            }
+        }
+
+        $solLogo = (string) ($settings['sol_logo_yolu'] ?? $firma->logo_yolu ?? '');
+        $sagLogo = (string) ($settings['sag_logo_yolu'] ?? '');
+
+        $pdfEvrak = (object) [
+            'id' => $evrak->id,
+            'evrak_tipi' => $evrak->evrak_tipi ?? 'giden',
+            'tarih' => $evrak->tarih,
+            'evrak_no' => $evrak->evrak_no,
+            'konu' => $evrak->konu,
+            'kurum_adi' => $evrak->kurum_adi,
+            'muhatap_alt_birim' => $evrak->muhatap_alt_birim ?? '',
+            'muhatap_adres' => $evrak->muhatap_adres ?? '',
+            'aciklama' => $evrak->aciklama ?? '',
+            'ust_yazi_gerekli_degil' => !empty($evrak->ust_yazi_gerekli_degil) ? 1 : 0,
+            'yazi_tipi' => $evrak->yazi_tipi ?? 'times_new_roman',
+            'ilgiler' => $evrak->ilgiler ?? '',
+            'ekler' => $evrak->ekler ?? '',
+            'imza_kisileri' => $orderedSigners,
+            'hazirlayan_kullanici' => [
+                'adi_soyadi' => $preparerUser->adi_soyadi ?? '',
+                'unvani' => trim(($preparerUser->unvani ?? '') ?: ($preparerUser->gorevi ?? '')),
+                'telefon' => $preparerPhone,
+            ],
+            'kurum_basligi' => trim((string) ($firma->firma_unvan ?? '')) ?: trim((string) ($firma->firma_adi ?? '')),
+            'firma_adres' => (($firma->adres ?? '') === '0') ? '' : (string) ($firma->adres ?? ''),
+            'firma_telefon' => $firmaTel,
+            'firma_web_sitesi' => (($firma->web_sitesi ?? '') === '0') ? '' : trim((string) ($firma->web_sitesi ?? '')),
+            'firma_kep_adresi' => (($firma->kep_adresi ?? '') === '0') ? '' : trim((string) ($firma->kep_adresi ?? '')),
+            'logo_path' => $solLogo !== '' ? dirname(__DIR__, 2) . '/' . ltrim($solLogo, '/') : '',
+            'sol_logo_path' => $solLogo !== '' ? dirname(__DIR__, 2) . '/' . ltrim($solLogo, '/') : '',
+            'sag_logo_path' => $sagLogo !== '' ? dirname(__DIR__, 2) . '/' . ltrim($sagLogo, '/') : '',
+            'evrak_antet_baslik_1' => trim((string) ($settings['evrak_antet_baslik_1'] ?? '')),
+            'evrak_antet_baslik_2' => trim((string) ($settings['evrak_antet_baslik_2'] ?? '')),
+            'evrak_antet_baslik_3' => trim((string) ($settings['evrak_antet_baslik_3'] ?? '')),
+            'evrak_antet_baslik_4' => trim((string) ($settings['evrak_antet_baslik_4'] ?? '')),
+            'evrak_alt_bilgi_1' => trim((string) ($settings['evrak_alt_bilgi_1'] ?? '')),
+            'evrak_alt_bilgi_2' => trim((string) ($settings['evrak_alt_bilgi_2'] ?? '')),
+            'evrak_alt_bilgi_3' => trim((string) ($settings['evrak_alt_bilgi_3'] ?? '')),
+            'evrak_alt_bilgi_4' => trim((string) ($settings['evrak_alt_bilgi_4'] ?? '')),
+            'evrak_eimza_goster' => (string) ($settings['evrak_eimza_goster'] ?? '1'),
+            'e_imza_belge_ozeti' => $evrak->e_imza_belge_ozeti ?? null,
+            'e_imza_onay_tarihi' => $evrak->e_imza_onay_tarihi ?? null,
+            'onay_durumu' => $evrak->onay_durumu ?? null,
+            'ek_dosya_yollari' => $ekDosyaYollari,
+        ];
+
+        $pdfContent = $this->render($pdfEvrak);
+        $tmpFile = sys_get_temp_dir() . '/evrak_' . $evrakId . '_' . bin2hex(random_bytes(6)) . '.pdf';
+        file_put_contents($tmpFile, $pdfContent);
+        return $tmpFile;
+    }
 }

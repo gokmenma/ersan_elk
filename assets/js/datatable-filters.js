@@ -994,6 +994,10 @@
 
     const searchFn = function (s, searchData, dataIndex, rowData) {
       if (s.sTableId !== tableId) return true;
+      // Server-side tablolarda filtreler column().search() ile API isteğine
+      // aktarılır; aynı filtreyi tarayıcıda tekrar uygulamak dönen sayfayı
+      // hatalı biçimde tamamen gizleyebilir.
+      if (s.oFeatures && s.oFeatures.bServerSide) return true;
       const dataToMatch = (searchData && searchData.length > 0) ? searchData : (rowData || []);
       for (let i = 0; i < filterCells.length; i++) {
         const cell = filterCells[i];

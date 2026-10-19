@@ -30,6 +30,13 @@ if ($encryptedId !== '') {
     }
 }
 
+$kepSettingsModel = new \App\Model\KepSettingsModel();
+$kepSettings = $kepSettingsModel->getSettings($firmaId);
+$kepMesajModel = new \App\Model\KepMesajModel();
+$kepMesaj = $record ? $kepMesajModel->getByEvrakId($firmaId, (int) $record->id) : null;
+$kepDelilModel = new \App\Model\KepDelilModel();
+$kepDelilleri = $kepMesaj ? $kepDelilModel->getDelillerByMesajId((int) $kepMesaj['id']) : [];
+
 $icraUstYazi = new IcraUstYaziService();
 $icraPersonelOptions = $icraUstYazi->icrasiOlanPersoneller();
 
@@ -153,6 +160,8 @@ if ($record) {
         ];
     }
 }
+$gonderimKanali = $record && (($record->gonderim_kanali ?? 'normal') === 'kep' || !empty($record->kep_mesaj_id) || !empty($kepMesaj)) ? 'kep' : 'normal';
+$kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', ''));
 ?>
 
 <div class="container-fluid">
@@ -209,6 +218,7 @@ if ($record) {
         <input type="hidden" name="yazi_tipi" value="times_new_roman">
         <input type="hidden" name="ek_duzen_json" id="ek_duzen_json" value="[]">
         <input type="hidden" name="silinen_ek_ids_json" id="silinen_ek_ids_json" value="[]">
+        <input type="hidden" name="gonderim_kanali" id="gonderim_kanali" value="<?php echo htmlspecialchars($gonderimKanali, ENT_QUOTES, 'UTF-8'); ?>">
 
         <div class="card border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
@@ -430,6 +440,95 @@ if ($record) {
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Akordeon 4: KEP / Gönderim Bilgileri -->
+                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none <?php echo $gonderimKanali === 'kep' || !empty($kepMesaj) ? '' : 'd-none'; ?>" id="accordionItemKep">
+                                    <h2 class="accordion-header" id="headingGidenKep">
+                                        <button class="accordion-button <?php echo !empty($record->kep_mesaj_id) || !empty($kepMesaj) ? '' : 'collapsed'; ?> py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGidenKep" aria-expanded="<?php echo !empty($record->kep_mesaj_id) ? 'true' : 'false'; ?>" aria-controls="collapseGidenKep">
+                                            <div class="d-flex align-items-center w-100">
+                                                <i class="bx bx-mail-send font-size-18 me-2 text-primary"></i>
+                                                <span class="small fw-bold text-uppercase text-muted">KEP / Gönderim Bilgileri</span>
+                                                <?php if (!empty($record->kep_mesaj_id) || !empty($kepMesaj)): ?>
+                                                    <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle fw-bold ms-auto me-2 px-2 py-0.5" style="font-size:9.5px;">KEP İLE SEVK EDİLDİ</span>
+                                                <?php else: ?>
+                                                    <span class="badge rounded-pill bg-light text-muted border fw-bold ms-auto me-2 px-2 py-0.5" style="font-size:9.5px;">İSTEĞE BAĞLI</span>
+                                                <?php endif; ?>
+                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon"></i>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseGidenKep" class="accordion-collapse collapse <?php echo !empty($record->kep_mesaj_id) || !empty($kepMesaj) ? 'show' : ''; ?>" aria-labelledby="headingGidenKep">
+                                        <div class="accordion-body p-3 pt-2 d-grid gap-2">
+                                            <!-- Firma KEP Durumu / Bakiye Başlığı -->
+                                            <div class="d-flex align-items-center justify-content-between p-2 rounded bg-light-subtle border mb-1">
+                                                <div class="d-flex align-items-center gap-1 font-size-12">
+                                                    <i class="bx bx-wallet text-primary font-size-15"></i>
+                                                    <?php if ($kepSettings && !empty($kepSettings['kep_adresi'])): ?>
+                                                        <span class="fw-semibold text-dark"><?php echo htmlspecialchars($kepSettings['kep_adresi'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-size-10 ms-1">
+                                                            <?php echo $kepSettings['bakiye_kontor'] !== null ? htmlspecialchars((string) $kepSettings['bakiye_kontor']) . ' ' . htmlspecialchars((string) ($kepSettings['bakiye_cins'] ?? 'Kontör')) : 'Bakiye: -'; ?>
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="text-danger fw-semibold" style="font-size:11px">Firma KEP ayarı eksik</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2" id="btnKepAyarlarModalAc" style="font-size:11px">
+                                                    <i class="bx bx-cog"></i> Ayarlar
+                                                </button>
+                                            </div>
+
+                                            <?php if (!empty($kepMesaj)): ?>
+                                                <!-- Gönderilmiş KEP İletisi Bilgi Kartı -->
+                                                <div class="p-2.5 rounded-3 border bg-success-subtle border-success-subtle">
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <span class="fw-bold font-size-12 text-success d-flex align-items-center">
+                                                            <i class="bx bx-check-circle me-1 font-size-15"></i> PTT KEP Sevk Kaydı
+                                                        </span>
+                                                        <span class="badge bg-success text-white font-size-10"><?php echo htmlspecialchars((string) $kepMesaj['durum']); ?></span>
+                                                    </div>
+                                                    <div class="font-size-11 text-dark mb-1">
+                                                        <strong>PTT Takip No:</strong>
+                                                        <span class="font-monospace text-primary fw-semibold"><?php echo htmlspecialchars((string) $kepMesaj['kep_id']); ?></span>
+                                                    </div>
+                                                    <div class="font-size-11 text-muted mb-1">
+                                                        <strong>Alıcı:</strong> <?php echo htmlspecialchars((string) $kepMesaj['alici_kep']); ?>
+                                                        &bull; <strong>Tarih:</strong> <?php echo date('d.m.Y H:i', strtotime((string) $kepMesaj['created_at'])); ?>
+                                                    </div>
+                                                    <div class="font-size-11 text-muted mb-2">
+                                                        <strong>Son Delil:</strong> <?php echo htmlspecialchars((string) ($kepMesaj['son_delil_durumu'] ?: 'Gönderildi')); ?>
+                                                    </div>
+
+                                                    <?php if (!empty($kepDelilleri)): ?>
+                                                        <div class="border-top pt-2 mt-1">
+                                                            <span class="fw-semibold font-size-11 text-dark d-block mb-1"><i class="bx bx-history me-1"></i> Yasal Delil Olayları (<?php echo count($kepDelilleri); ?>):</span>
+                                                            <div class="d-flex flex-column gap-1">
+                                                                <?php foreach ($kepDelilleri as $delil): ?>
+                                                                    <div class="d-flex align-items-center justify-content-between p-1.5 rounded bg-white border font-size-11">
+                                                                        <div style="max-width: 75%">
+                                                                            <span class="fw-semibold text-dark d-block text-truncate" title="<?php echo htmlspecialchars((string) $delil['delil_aciklama']); ?>"><?php echo htmlspecialchars((string) $delil['delil_aciklama']); ?></span>
+                                                                            <span class="text-muted" style="font-size:10px"><?php echo date('d.m.Y H:i', strtotime((string) $delil['olay_zamani'])); ?> &bull; <?php echo htmlspecialchars((string) ($delil['kephs'] ?: 'PTT')); ?></span>
+                                                                        </div>
+                                                                        <a href="views/evrak-takip/pdf.php?type=kep_delil&delil_id=<?php echo urlencode((string) $delil['delil_id']); ?>" class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1 py-0.5 px-2" title="Delil XML İndir" target="_blank" style="font-size:10.5px">
+                                                                            <i class="bx bx-download"></i> XML
+                                                                        </a>
+                                                                    </div>
+                                                                <?php endforeach; ?>
+                                                            </div>
+                                                        </div>
+                                                    <?php endif; ?>
+
+                                                    <div class="mt-2 text-end">
+                                                        <button type="button" class="btn btn-xs btn-outline-success py-1 px-2 font-size-11" id="btnKepDelilGuncelle" data-kep-id="<?php echo htmlspecialchars((string) $kepMesaj['kep_id']); ?>">
+                                                            <i class="bx bx-refresh me-1"></i> Delilleri Güncelle
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="small text-muted"><i class="bx bx-info-circle me-1"></i>KEP adres ve ileti alanları, KEP kanalı seçildiğinde sol tarafta açılır. Gönderimden sonra bu bölüm takip ve yasal delilleri gösterir.</div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -504,11 +603,22 @@ if ($record) {
                             <?php endif; ?>
                             <?php if ($record && $onayDurumu === 'onaylandi'): ?>
                                 <li><hr class="dropdown-divider"></li>
+                                <?php if ($gonderimKanali === 'kep' && empty($record->kep_mesaj_id) && empty($kepMesaj)): ?>
+                                    <li>
+                                        <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnGidenKepIslemlerGonder">
+                                            <i class="bx bx-mail-send font-size-18 text-info mt-1"></i>
+                                            <span>
+                                                <span class="d-block fw-semibold text-info">KEP İletisi Olarak Gönder</span>
+                                                <span class="d-block small text-muted">PTT KEP üzerinden muhatabın KEP adresine iletir</span>
+                                            </span>
+                                        </button>
+                                    </li>
+                                <?php endif; ?>
                                 <li>
                                     <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnUetsGonderModalAc">
                                         <i data-feather="upload-cloud" class="icon-xs text-primary mt-1"></i>
                                         <span>
-                                            <span class="d-block fw-semibold text-primary">UETS / KEP ile Gönder</span>
+                                            <span class="d-block fw-semibold text-primary">UETS ile Gönder</span>
                                             <span class="d-block small text-muted">E-Tebligat olarak alıcının UETS adresine iletir</span>
                                         </span>
                                     </button>
@@ -518,6 +628,15 @@ if ($record) {
                     </div>
                 <?php endif; ?>
                 <?php if ($record && $onayDurumu === 'onaylandi'): ?>
+                    <?php if (empty($record->kep_mesaj_id) && empty($kepMesaj)): ?>
+                        <button type="button" id="btnGidenKepHizliGonder" class="btn btn-info text-white px-4 me-2 <?php echo $gonderimKanali === 'kep' ? '' : 'd-none'; ?>">
+                            <i class="bx bx-mail-send font-size-16 align-middle me-1"></i> KEP ile Gönder
+                        </button>
+                    <?php else: ?>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 me-2 font-size-12 fw-semibold d-inline-flex align-items-center">
+                            <i class="bx bx-check-double font-size-16 me-1"></i> KEP Sevk Edildi
+                        </span>
+                    <?php endif; ?>
                     <button type="button" id="btnUetsHizliGonder" class="btn btn-success px-4 me-2">
                         <i data-feather="upload-cloud" class="icon-xs me-1"></i> UETS ile Gönder
                     </button>
@@ -560,6 +679,8 @@ window.gidenExistingAttachments = <?php echo json_encode($existingAttachments, J
 window.gidenGelenEvraklarMap = <?php echo json_encode($gelenEvrakMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenSigningUsersList = <?php echo json_encode($signingUsersList, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenInitialSelectedSigners = <?php echo json_encode($initialSelectedSigners, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+window.gidenKepSettings = <?php echo json_encode($kepSettings ? ['has_settings' => true, 'kep_adresi' => $kepSettings['kep_adresi']] : ['has_settings' => false], JSON_UNESCAPED_UNICODE); ?>;
+window.gidenKepMesaj = <?php echo json_encode($kepMesaj ? ['kep_id' => $kepMesaj['kep_id'], 'durum' => $kepMesaj['durum']] : null, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 
 <div class="modal fade" id="evrakSablonModal" tabindex="-1" aria-hidden="true">
@@ -729,5 +850,7 @@ window.gidenInitialSelectedSigners = <?php echo json_encode($initialSelectedSign
         </div>
     </div>
 </div>
+
+<?php include_once "modal/kep-settings-modal.php"; ?>
 
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/evrak-takip/js/giden-evrak.js'); ?>"></script>

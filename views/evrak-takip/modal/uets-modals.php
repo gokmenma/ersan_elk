@@ -1,5 +1,6 @@
 <?php
 use App\Helper\Form;
+$canManagePttKep = !empty($canSendKep);
 ?>
 <style>
 #modalUetsAyarlar .password-field-wrapper {
@@ -28,15 +29,31 @@ use App\Helper\Form;
 
 <!-- UETS / KEP Ayarları Modalı -->
 <div class="modal fade" id="modalUetsAyarlar" tabindex="-1" aria-labelledby="modalUetsAyarlarTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content shadow-lg border-0">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalUetsAyarlarTitle">
-                    <i class="bx bx-envelope-open me-2 fs-5"></i> UETS / KEP Entegrasyon Ayarları
+                    <i class="bx bx-cog me-2 fs-5"></i> UETS ve PTT KEP Entegrasyon Ayarları
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
             <div class="modal-body p-4">
+                <?php if ($canManagePttKep): ?>
+                <ul class="nav nav-tabs nav-tabs-custom mb-4" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#uetsSettingsPane" type="button" role="tab" aria-controls="uetsSettingsPane" aria-selected="true">
+                            <i class="bx bx-envelope-open me-1"></i> UETS / E-Tebligat
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pttKepSettingsPane" type="button" role="tab" aria-controls="pttKepSettingsPane" aria-selected="false">
+                            <i class="bx bx-mail-send me-1"></i> PTT KEP
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                <div class="tab-pane fade show active" id="uetsSettingsPane" role="tabpanel">
+                <?php endif; ?>
                 <form id="formUetsAyarlar">
                     <div class="alert alert-info d-flex align-items-center mb-3 py-2 font-size-12">
                         <i class="bx bx-info-circle fs-4 me-2 flex-shrink-0"></i>
@@ -138,6 +155,60 @@ use App\Helper\Form;
                         </div>
                     </div>
                 </form>
+                <?php if ($canManagePttKep): ?>
+                </div>
+                <div class="tab-pane fade" id="pttKepSettingsPane" role="tabpanel">
+                    <form id="formPttKepAyarlar">
+                        <div class="alert alert-info d-flex align-items-center mb-3 py-2 font-size-12">
+                            <i class="bx bx-info-circle fs-4 me-2 flex-shrink-0"></i>
+                            <div>PTT KEP web servis bilgileri, PTTKEP başvurusunda yetkilendirilen hesaba ait olmalıdır. TCKN, parola ve web servis şifresi şifreli saklanır.</div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <?php echo Form::FormFloatInput('text', 'ptt_kep_adresi', '', 'Örn: sirket@hs01.kep.tr', 'Kurumsal KEP Adresiniz *', 'bx bx-at', 'form-control font-monospace', true); ?>
+                                <small class="text-muted font-size-11 mt-1 d-block">PTT'den alınan kurumsal KEP adresiniz</small>
+                            </div>
+                            <div class="col-md-6">
+                                <?php echo Form::FormFloatInput('text', 'ptt_yetkili_tcno', '', 'Değiştirmek için 11 haneli TCKN girin', 'Yetkili T.C. Kimlik No', 'bx bx-id-card', 'form-control font-monospace', false, null, 'off', false, '', false, 11); ?>
+                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepTcHelpText">Kayıtlı bilgi değiştirilmeyecekse boş bırakın.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="password-field-wrapper position-relative">
+                                    <?php echo Form::FormFloatInput('password', 'ptt_parola', '', 'Değiştirmek için yeni parolayı girin', 'KEP Parolası', 'bx bx-lock-alt', 'form-control font-monospace pe-5', false, null, 'new-password'); ?>
+                                    <button type="button" class="btn-toggle-password" data-ptt-password-target="ptt_parola" tabindex="-1" title="Göster / Gizle"><i class="bx bx-show font-size-18"></i></button>
+                                </div>
+                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepParolaHelpText">Kayıtlı parola değiştirilmeyecekse boş bırakın.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="password-field-wrapper position-relative">
+                                    <?php echo Form::FormFloatInput('password', 'ptt_sifre', '', 'Değiştirmek için yeni şifreyi girin', 'Web Servis Şifresi', 'bx bx-key', 'form-control font-monospace pe-5', false, null, 'new-password'); ?>
+                                    <button type="button" class="btn-toggle-password" data-ptt-password-target="ptt_sifre" tabindex="-1" title="Göster / Gizle"><i class="bx bx-show font-size-18"></i></button>
+                                </div>
+                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepSifreHelpText">Kayıtlı şifre değiştirilmeyecekse boş bırakın.</small>
+                            </div>
+                            <div class="col-md-8">
+                                <?php echo Form::FormFloatInput('text', 'ptt_wsdl_url', 'https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl', 'WSDL bağlantı adresi', 'WSDL Web Servis Adresi', 'bx bx-link', 'form-control font-monospace font-size-12'); ?>
+                            </div>
+                            <div class="col-md-4">
+                                <?php echo Form::FormSelect2(name: 'ptt_ortam', options: ['prod' => 'Canlı Ortam', 'test' => 'Test Ortamı'], selectedValue: 'prod', label: 'Servis Ortamı', icon: 'bx bx-globe', valueField: 'key', textField: '', class: 'form-select select2', required: true, style: 'width:100%', attributes: '', id: 'ptt_ortam'); ?>
+                            </div>
+                            <div class="col-12 text-end mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnPttKepTestConnection"><i class="bx bx-check-circle me-1"></i> Bağlantıyı ve Girişi Test Et</button>
+                                <button type="button" class="btn btn-sm btn-outline-info ms-1" id="btnPttKepCheckBalance"><i class="bx bx-wallet me-1"></i> Bakiye / Kontör Sorgula</button>
+                            </div>
+                        </div>
+                        <div id="pttKepTestResult" class="mt-3 d-none"></div>
+                        <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center">
+                            <div class="font-size-12 text-muted"><span id="pttKepBakiyeText">Kayıtlı Kontör: -</span><span class="ms-2" id="pttKepSonSorguText"></span></div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Vazgeç</button>
+                                <button type="submit" class="btn btn-primary px-4" id="btnSavePttKepSettings"><i class="bx bx-save me-1"></i> KEP Ayarlarını Kaydet</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>

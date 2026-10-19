@@ -66,6 +66,146 @@ class EvrakTakipModel extends Model
     }
 
     /**
+     * DataTables sunucu taraflı evrak listesi.
+     * Arama, kolon filtreleri, sıralama ve sayfalama veritabanında uygulanır.
+     */
+    public function ajaxList(array $params, int $firmaId, int $userId): array
+    {
+        $draw = max(0, (int) ($params['draw'] ?? 0));
+        $start = max(0, (int) ($params['start'] ?? 0));
+        $length = min(100, max(10, (int) ($params['length'] ?? 10)));
+        $bindings = ['firma_id' => $firmaId];
+        $where = ['et.firma_id = :firma_id', 'et.silinme_tarihi IS NULL'];
+
+        $globalSearch = trim((string) ($params['search']['value'] ?? ''));
+        if ($globalSearch !== '') {
+            $where[] = '(et.evrak_no LIKE :global_search OR et.konu LIKE :global_search OR et.kurum_adi LIKE :global_search OR p1.adi_soyadi LIKE :global_search OR p2.adi_soyadi LIKE :global_search)';
+            $bindings['global_search'] = '%' . $globalSearch . '%';
+        }
+
+        $columnMap = [1 => 'et.evrak_tipi', 2 => 'et.tarih', 3 => 'et.konu', 4 => 'et.kurum_adi', 5 => 'p1.adi_soyadi', 6 => 'p2.adi_soyadi', 7 => 'et.cevap_verildi_mi', 8 => 'et.onay_durumu'];
+        foreach ((array) ($params['columns'] ?? []) as $index => $column) {
+            $rawValue = trim((string) ($column['search']['value'] ?? ''));
+            if ($rawValue === '' || !isset($columnMap[$index])) continue;
+            $mode = 'contains';
+            $value = $rawValue;
+            if (preg_match('/^([a-z_]+):(.*)$/s', $rawValue, $matches)) {
+                $mode = $matches[1];
+                $value = trim($matches[2]);
+            }
+            $key = 'column_' . $index;
+            if ($mode === 'multi' && in_array((int) $index, [1, 7, 8], true)) {
+                $values = array_values(array_filter(explode('|', $value), static fn(string $item): bool => $item !== ''));
+                if ($values === []) continue;
+                if ((int) $index === 7) {
+                    $replyClauses = [];
+                    if (in_array('EVET', $values, true)) $replyClauses[] = 'et.cevap_verildi_mi = 1';
+                    if (in_array('BEKLEMEDE', $values, true)) $replyClauses[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
+                    if ($replyClauses) $where[] = '(' . implode(' OR ', $replyClauses) . ')';
+                } else {
+                    $statusMap = ['ONAYLI' => 'onaylandi', 'ONAYDA' => 'onay_bekliyor', 'İMZANIZDA' => 'onay_bekliyor', 'TASLAK' => 'taslak'];
+                    if ((int) $index === 8) $values = array_values(array_unique(array_map(static fn(string $item): string => $statusMap[mb_strtoupper($item, 'UTF-8')] ?? $item, $values)));
+                    $placeholders = [];
+                    foreach ($values as $valueIndex => $selectedValue) {
+                        $bindingKey = $key . '_' . $valueIndex;
+                        $placeholders[] = ':' . $bindingKey;
+                        $bindings[$bindingKey] = $selectedValue;
+                    }
+                    $where[] = $columnMap[$index] . ' IN (' . implode(',', $placeholders) . ')';
+                }
+            } elseif ((int) $index === 2) {
+                $dateValues = explode('|', $value);
+                $normalizeDate = static function (string $date): string {
+                    $parts = preg_split('/[.\/\-]/', trim($date));
+                    return count($parts) === 3 && strlen((string) $parts[0]) <= 2
+                        ? sprintf('%04d-%02d-%02d', (int) $parts[2], (int) $parts[1], (int) $parts[0])
+                        : trim($date);
+                };
+                if ($mode === 'null' || $mode === 'not_null') {
+                    $where[] = $mode === 'null' ? 'et.tarih IS NULL' : 'et.tarih IS NOT NULL';
+                } elseif ($mode === 'between' && count($dateValues) === 2) {
+                    $where[] = 'et.tarih BETWEEN :' . $key . '_from AND :' . $key . '_to';
+                    $bindings[$key . '_from'] = $normalizeDate($dateValues[0]);
+                    $bindings[$key . '_to'] = $normalizeDate($dateValues[1]);
+                } else {
+                    $operator = $mode === 'before' ? '<' : ($mode === 'after' ? '>' : '=');
+                    $where[] = 'et.tarih ' . $operator . ' :' . $key;
+                    $bindings[$key] = $normalizeDate($value);
+                }
+            } elseif ((int) $index === 7) {
+                $where[] = $value === 'EVET' ? 'et.cevap_verildi_mi = 1' : '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
+            } elseif ((int) $index === 8) {
+                $statusMap = ['ONAYLI' => 'onaylandi', 'ONAYDA' => 'onay_bekliyor', 'İMZANIZDA' => 'onay_bekliyor', 'TASLAK' => 'taslak'];
+                $where[] = 'et.onay_durumu = :' . $key;
+                $bindings[$key] = $statusMap[mb_strtoupper($value, 'UTF-8')] ?? $value;
+            } else {
+                if ($mode === 'null' || $mode === 'not_null') {
+                    $where[] = $mode === 'null'
+                        ? '(' . $columnMap[$index] . " IS NULL OR " . $columnMap[$index] . " = '')"
+                        : '(' . $columnMap[$index] . " IS NOT NULL AND " . $columnMap[$index] . " <> '')";
+                } else {
+                    $operator = in_array($mode, ['not_contains', 'not_equals'], true) ? 'NOT LIKE' : 'LIKE';
+                    $where[] = $columnMap[$index] . ' ' . $operator . ' :' . $key;
+                    $bindings[$key] = match ($mode) {
+                        'equals', 'not_equals' => $value,
+                        'starts_with' => $value . '%',
+                        'ends_with' => '%' . $value,
+                        default => '%' . $value . '%',
+                    };
+                }
+            }
+        }
+
+        $quickFilter = (string) ($params['quick_filter'] ?? 'all');
+        if (in_array($quickFilter, ['gelen', 'giden'], true)) {
+            $where[] = 'et.evrak_tipi = :quick_type';
+            $bindings['quick_type'] = $quickFilter;
+        } elseif ($quickFilter === 'cevap_bekleyen') {
+            $where[] = "et.evrak_tipi = 'gelen' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)";
+        }
+        if (!empty($params['signature_only'])) {
+            $where[] = "EXISTS (SELECT 1 FROM evrak_takip_onaylari mine WHERE mine.evrak_id = et.id AND mine.firma_id = et.firma_id AND mine.kullanici_id = :current_user AND mine.durum = 'bekliyor' AND mine.sira = (SELECT MIN(next_o.sira) FROM evrak_takip_onaylari next_o WHERE next_o.evrak_id = et.id AND next_o.firma_id = et.firma_id AND next_o.durum = 'bekliyor'))";
+            $bindings['current_user'] = $userId;
+        }
+
+        $from = " FROM {$this->table} et
+            LEFT JOIN personel p1 ON p1.id = et.personel_id AND p1.firma_id = et.firma_id
+            LEFT JOIN personel p2 ON p2.id = et.ilgili_personel_id AND p2.firma_id = et.firma_id";
+        $whereSql = ' WHERE ' . implode(' AND ', $where);
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id AND silinme_tarihi IS NULL");
+        $totalStmt->execute(['firma_id' => $firmaId]);
+        $total = (int) $totalStmt->fetchColumn();
+        $filteredStmt = $this->db->prepare('SELECT COUNT(*)' . $from . $whereSql);
+        $filteredStmt->execute($bindings);
+        $filtered = (int) $filteredStmt->fetchColumn();
+
+        $orderColumn = (int) ($params['order'][0]['column'] ?? 2);
+        $orderDirection = strtolower((string) ($params['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $orderMap = [1 => 'et.evrak_tipi', 2 => 'et.tarih', 3 => 'et.konu', 4 => 'et.kurum_adi', 5 => 'p1.adi_soyadi', 6 => 'p2.adi_soyadi', 7 => 'et.cevap_verildi_mi', 8 => 'et.onay_durumu'];
+        $orderBy = $orderMap[$orderColumn] ?? 'et.tarih';
+        $sql = "SELECT et.*, p1.adi_soyadi AS personel_adi, p2.adi_soyadi AS ilgili_personel_adi" . $from . $whereSql
+            . " ORDER BY {$orderBy} {$orderDirection}, et.id DESC LIMIT :start, :length";
+        $stmt = $this->db->prepare($sql);
+        foreach ($bindings as $key => $value) $stmt->bindValue(':' . $key, $value);
+        $stmt->bindValue(':start', $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', $length, PDO::PARAM_INT);
+        $stmt->execute();
+        return ['draw' => $draw, 'recordsTotal' => $total, 'recordsFiltered' => $filtered, 'rows' => $stmt->fetchAll(PDO::FETCH_OBJ), 'start' => $start];
+    }
+
+    public function countPendingSignatureForUser(int $userId): int
+    {
+        $sql = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} et
+            WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL AND et.onay_durumu = 'onay_bekliyor'
+              AND EXISTS (SELECT 1 FROM evrak_takip_onaylari mine
+                WHERE mine.evrak_id = et.id AND mine.firma_id = et.firma_id AND mine.kullanici_id = :user_id
+                  AND mine.durum = 'bekliyor' AND mine.sira = (SELECT MIN(next_o.sira) FROM evrak_takip_onaylari next_o
+                    WHERE next_o.evrak_id = et.id AND next_o.firma_id = et.firma_id AND next_o.durum = 'bekliyor'))");
+        $sql->execute(['firma_id' => (int) $_SESSION['firma_id'], 'user_id' => $userId]);
+        return (int) $sql->fetchColumn();
+    }
+
+    /**
      * Tek evrak detayı
      */
     public function getById($id)
@@ -333,17 +473,19 @@ class EvrakTakipModel extends Model
         }
     }
 
-    public function getApprovalSummaryMap(int $userId): array
+    public function getApprovalSummaryMap(int $userId, array $evrakIds = []): array
     {
+        $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds))));
+        $idFilter = $evrakIds ? ' AND o.evrak_id IN (' . implode(',', array_fill(0, count($evrakIds), '?')) . ')' : '';
         $sql = $this->db->prepare("SELECT o.evrak_id,
                 COUNT(*) AS toplam,
                 SUM(o.durum = 'onaylandi') AS onaylanan,
                 MIN(CASE WHEN o.durum = 'bekliyor' THEN o.sira END) AS siradaki_sira,
-                MIN(CASE WHEN o.durum = 'bekliyor' AND o.kullanici_id = :kullanici_id THEN o.sira END) AS benim_sira
+                MIN(CASE WHEN o.durum = 'bekliyor' AND o.kullanici_id = ? THEN o.sira END) AS benim_sira
             FROM evrak_takip_onaylari o
-            WHERE o.firma_id = :firma_id
+            WHERE o.firma_id = ?{$idFilter}
             GROUP BY o.evrak_id");
-        $sql->execute(['kullanici_id' => $userId, 'firma_id' => $_SESSION['firma_id']]);
+        $sql->execute(array_merge([$userId, (int) $_SESSION['firma_id']], $evrakIds));
         $map = [];
         foreach ($sql->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $benimSira = $row['benim_sira'] !== null ? (int) $row['benim_sira'] : null;
@@ -359,9 +501,9 @@ class EvrakTakipModel extends Model
         $siradakiler = $this->db->prepare("SELECT o.evrak_id, o.sira, u.adi_soyadi
             FROM evrak_takip_onaylari o
             INNER JOIN users u ON u.id = o.kullanici_id
-            WHERE o.firma_id = :firma_id AND o.durum = 'bekliyor'
+            WHERE o.firma_id = ? AND o.durum = 'bekliyor'{$idFilter}
             ORDER BY o.evrak_id ASC, o.sira ASC, o.id ASC");
-        $siradakiler->execute(['firma_id' => $_SESSION['firma_id']]);
+        $siradakiler->execute(array_merge([(int) $_SESSION['firma_id']], $evrakIds));
         foreach ($siradakiler->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $evrakId = (int) $row['evrak_id'];
             if (isset($map[$evrakId]) && !isset($map[$evrakId]['siradaki_kisi'])) {
@@ -477,15 +619,17 @@ class EvrakTakipModel extends Model
         }
     }
 
-    public function getApprovalDetailMap(): array
+    public function getApprovalDetailMap(array $evrakIds = []): array
     {
+        $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds))));
+        $idFilter = $evrakIds ? ' AND o.evrak_id IN (' . implode(',', array_fill(0, count($evrakIds), '?')) . ')' : '';
         $sql = $this->db->prepare("SELECT o.evrak_id, o.kullanici_id, o.sira, o.durum, o.onay_tarihi, u.adi_soyadi,
                 COALESCE(NULLIF(u.unvani, ''), u.gorevi, '') AS imza_unvani
             FROM evrak_takip_onaylari o
             INNER JOIN users u ON u.id = o.kullanici_id
-            WHERE o.firma_id = :firma_id
+            WHERE o.firma_id = ?{$idFilter}
             ORDER BY o.evrak_id ASC, o.sira ASC, o.id ASC");
-        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $sql->execute(array_merge([(int) $_SESSION['firma_id']], $evrakIds));
         $map = [];
         foreach ($sql->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $map[(int) $row['evrak_id']][] = $row;
@@ -576,8 +720,10 @@ class EvrakTakipModel extends Model
      *
      * @return array<int, array<int, object>> Evrak ID'sine göre gruplanmış ekler
      */
-    public function getAttachmentMap(): array
+    public function getAttachmentMap(array $evrakIds = []): array
     {
+        $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds))));
+        $idFilter = $evrakIds ? ' AND ee.evrak_id IN (' . implode(',', array_fill(0, count($evrakIds), '?')) . ')' : '';
         $sql = $this->db->prepare("
             SELECT ee.evrak_id, ee.id, ee.dosya_adi, ee.dosya_yolu,
                    ee.mime_tipi, ee.dosya_boyutu, ee.sira
@@ -586,11 +732,12 @@ class EvrakTakipModel extends Model
                     ON et.id = ee.evrak_id
                    AND et.firma_id = ee.firma_id
                    AND et.silinme_tarihi IS NULL
-            WHERE ee.firma_id = :firma_id
+            WHERE ee.firma_id = ?
               AND ee.silinme_tarihi IS NULL
+              {$idFilter}
             ORDER BY ee.evrak_id ASC, ee.sira ASC, ee.id ASC
         ");
-        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $sql->execute(array_merge([(int) $_SESSION['firma_id']], $evrakIds));
 
         $attachmentMap = [];
         foreach ($sql->fetchAll(PDO::FETCH_OBJ) as $attachment) {
@@ -645,6 +792,37 @@ class EvrakTakipModel extends Model
             'dosya_yolu' => $data['dosya_yolu'] ?: null,
         ]);
 
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function createStandaloneKep(int $firmaId, int $userId, array $data): int
+    {
+        $evrakNo = !empty($data['evrak_no']) ? (string) $data['evrak_no'] : (string) $this->getMaxEvrakNo('giden');
+
+        $stmt = $this->db->prepare("
+            INSERT INTO evrak_takip
+                (firma_id, evrak_tipi, gonderim_kanali, kaynak_tipi, kep_mesaj_id, tarih, evrak_no, konu, kurum_adi,
+                 aciklama, ust_yazi_gerekli_degil, alici_kep, kep_alicilar, kep_paket_turu, kep_ileti_tipi,
+                 kep_ileti_detayi, kep_mesaj_metni, onay_durumu, e_imza_onay_tarihi, olusturan_kullanici_id, olusturma_tarihi)
+            VALUES
+                (:firma_id, 'giden', 'kep', 'kep', :kep_mesaj_id, CURDATE(), :evrak_no, :konu, :kurum_adi,
+                 :aciklama, 1, :alici_kep, :kep_alicilar, 'Standart', :kep_ileti_tipi,
+                 :kep_ileti_detayi, :kep_mesaj_metni, 'onaylandi', NOW(), :olusturan_kullanici_id, NOW())
+        ");
+        $stmt->execute([
+            'firma_id' => $firmaId,
+            'kep_mesaj_id' => (string) $data['kep_id'],
+            'evrak_no' => mb_substr($evrakNo, 0, 100),
+            'konu' => (string) $data['konu'],
+            'kurum_adi' => mb_substr((string) $data['alici_kep'], 0, 255),
+            'aciklama' => (string) $data['icerik'],
+            'alici_kep' => mb_substr((string) $data['alici_kep'], 0, 255),
+            'kep_alicilar' => (string) $data['alici_kep'],
+            'kep_ileti_tipi' => (string) ($data['ileti_tipi'] ?? 'standart'),
+            'kep_ileti_detayi' => mb_substr((string) ($data['ileti_detayi'] ?? ''), 0, 500),
+            'kep_mesaj_metni' => (string) $data['icerik'],
+            'olusturan_kullanici_id' => $userId ?: null,
+        ]);
         return (int) $this->db->lastInsertId();
     }
 

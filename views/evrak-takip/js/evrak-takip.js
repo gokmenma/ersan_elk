@@ -1,6 +1,10 @@
 $(document).ready(function () {
   const api_url = "views/evrak-takip/api.php";
 
+  function escapeEvrakHtml(value) {
+    return $("<div>").text(String(value ?? "")).html();
+  }
+
   // Modalı body'ye taşı (z-index ve stacking context/backdrop sorununu çözmek için)
   function ensureModalInBody() {
     const modalEl = $("#evrakModal");
@@ -349,7 +353,7 @@ $(document).ready(function () {
     if (($('input[name="ceza_hedef_tipi"]:checked').val() || "arac") !== "arac") return;
     const plaka = $("#plaka").val() || '';
     const tarih = $("input[name='tarih']").val() || '';
-    
+
     if (plaka.length >= 5 && tarih !== '') {
       $("#plakaFeedback").show().html('<span class="text-muted"><span class="spinner-border spinner-border-sm me-1" role="status"></span>Sorgulanıyor...</span>');
       
@@ -534,7 +538,7 @@ $(document).ready(function () {
         const data = response.data;
         $("#evrakModalLabel").text('Evrak Düzenle');
         $("#evrak_id").val(data.id);
-        
+
         if (data.evrak_tipi === "gelen") $("#tipGelen").prop("checked", true);
         else $("#tipGiden").prop("checked", true);
 
@@ -544,7 +548,7 @@ $(document).ready(function () {
         }
         $('input[name="evrak_no"]').val(data.evrak_no);
         $('input[name="kurum_adi"]').val(data.kurum_adi);
-        
+
         if (data.konu && $("#konu option[value='" + data.konu + "']").length === 0) {
             $("#konu").append(new Option(data.konu, data.konu));
         }
@@ -768,6 +772,7 @@ $(document).ready(function () {
 
   $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
     if (settings.nTable.id !== "evrakTable") return true;
+    if (settings.oFeatures && settings.oFeatures.bServerSide) return true;
     
     const row = $(settings.aoData[dataIndex].nTr);
 
@@ -796,12 +801,31 @@ $(document).ready(function () {
     const baseOptions = typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
     const dtOptions = typeof applyLengthStateSave === "function" ? applyLengthStateSave({
       ...baseOptions,
+      processing: true,
+      serverSide: true,
+      ajax: {
+        url: api_url,
+        type: "POST",
+        data: function (data) {
+          data.action = "evrak-listesi";
+          data.quick_filter = activeQuickFilter;
+          data.signature_only = imzaFiltresiAktif ? 1 : 0;
+        }
+      },
       order: [[2, "desc"]],
+      drawCallback: function () {
+        document.querySelectorAll("#evrakTable [data-onay-akis]").forEach(function (element) {
+          if (!bootstrap.Popover.getInstance(element)) new bootstrap.Popover(element, {container: "body", html: true, trigger: "hover focus", placement: "left", customClass: "onay-akis-popover", title: "E-İmza Onay Akışı", content: element.getAttribute("data-onay-akis")});
+        });
+      },
       columnDefs: [
         { targets: 2, type: "date" },
         { targets: [0, 1, 7, 8, 9, 10], orderable: false }
       ]
     }) : {
+      processing: true,
+      serverSide: true,
+      ajax: { url: api_url, type: "POST", data: function (data) { data.action = "evrak-listesi"; data.quick_filter = activeQuickFilter; data.signature_only = imzaFiltresiAktif ? 1 : 0; } },
       order: [[2, "desc"]],
       columnDefs: [
         { targets: 2, type: "date" },
@@ -1049,9 +1073,46 @@ $(document).ready(function () {
     });
   });
 
+  function pttKepFormData(action) {
+    return {
+      action: action,
+      kep_adresi: $("#ptt_kep_adresi").val() || "",
+      yetkili_tcno: $("#ptt_yetkili_tcno").val() || "",
+      parola: $("#ptt_parola").val() || "",
+      sifre: $("#ptt_sifre").val() || "",
+      wsdl_url: $("#ptt_wsdl_url").val() || "",
+      ortam: $("#ptt_ortam").val() || "prod",
+    };
+  }
+
+  function loadPttKepSettings() {
+    if (!$("#pttKepSettingsPane").length) return;
+    $("#pttKepTestResult").addClass("d-none").empty();
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "kep-ayarlari-getir" },
+      dataType: "json",
+    }).done(function (res) {
+      if (res.status !== "success" || !res.data) return;
+      const d = res.data;
+      $("#ptt_kep_adresi").val(d.kep_adresi || "");
+      // Maskeli TCKN hiçbir zaman yeniden sunucuya gönderilmez.
+      $("#ptt_yetkili_tcno, #ptt_parola, #ptt_sifre").val("");
+      $("#ptt_wsdl_url").val(d.wsdl_url || "https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl");
+      $("#ptt_ortam").val(d.ortam || "prod").trigger("change");
+      $("#pttKepTcHelpText").text(d.yetkili_tcno ? "Kayıtlı TCKN: " + d.yetkili_tcno + " — değiştirmeyecekseniz boş bırakın." : "Henüz yetkili TCKN kaydedilmemiş.");
+      $("#pttKepParolaHelpText").text(d.has_secrets ? "Kayıtlı parola mevcut; değiştirmeyecekseniz boş bırakın." : "Henüz parola kaydedilmemiş.");
+      $("#pttKepSifreHelpText").text(d.has_secrets ? "Kayıtlı web servis şifresi mevcut; değiştirmeyecekseniz boş bırakın." : "Henüz web servis şifresi kaydedilmemiş.");
+      $("#pttKepBakiyeText").text(d.bakiye_kontor !== null && d.bakiye_kontor !== undefined ? "Kayıtlı Bakiye: " + d.bakiye_kontor + " " + (d.bakiye_cins || "Kontör") : "Kayıtlı Kontör: -");
+      $("#pttKepSonSorguText").text(d.son_bakiye_sorgu ? "(Son: " + d.son_bakiye_sorgu + ")" : "");
+    });
+  }
+
   // 2. UETS Ayarları Modalı Açma
   $("#btnUetsSettings").on("click", function () {
     $("#uetsTestResult").addClass("d-none").html("");
+    loadPttKepSettings();
     $.ajax({
       url: "views/evrak-takip/api.php",
       type: "POST",
@@ -1089,6 +1150,9 @@ $(document).ready(function () {
         minimumResultsForSearch: -1,
       });
     }
+    if ($("#ptt_ortam").length && !$("#ptt_ortam").hasClass("select2-hidden-accessible")) {
+      $("#ptt_ortam").select2({ dropdownParent: $("#modalUetsAyarlar"), width: "100%", minimumResultsForSearch: -1 });
+    }
   });
 
   // Modal kapandığında şifre alanını gizli yap
@@ -1096,6 +1160,59 @@ $(document).ready(function () {
     const $input = $("#api_key").length ? $("#api_key") : $("#uets_api_key");
     $input.attr("type", "password");
     $("#btnToggleApiKeyVisibility").find("i").attr("class", "bx bx-show font-size-18");
+    $("[data-ptt-password-target]").each(function () {
+      $("#" + $(this).data("ptt-password-target")).attr("type", "password");
+      $(this).find("i").attr("class", "bx bx-show font-size-18");
+    });
+  });
+
+  $(document).on("click", "[data-ptt-password-target]", function () {
+    const $input = $("#" + $(this).data("ptt-password-target"));
+    const reveal = $input.attr("type") === "password";
+    $input.attr("type", reveal ? "text" : "password");
+    $(this).find("i").attr("class", reveal ? "bx bx-hide font-size-18" : "bx bx-show font-size-18");
+  });
+
+  $("#btnPttKepTestConnection").on("click", function () {
+    const $btn = $(this), original = $btn.html(), $result = $("#pttKepTestResult");
+    $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Test ediliyor...');
+    $result.removeClass("d-none alert-success alert-danger").addClass("alert alert-info").text("PTT KEP servisine bağlanılıyor...");
+    $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data: pttKepFormData("kep-baglanti-test"), dataType: "json" })
+      .done(function (res) {
+        const ok = res.status === "success";
+        $result.removeClass("alert-info alert-success alert-danger").addClass("alert " + (ok ? "alert-success" : "alert-danger")).text(ok ? (res.message || "PTT KEP bağlantısı başarılı.") : (res.message || "Giriş bilgileri doğrulanamadı."));
+      }).fail(function (xhr) {
+        $result.removeClass("alert-info alert-success").addClass("alert alert-danger").text(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "PTT KEP servisine erişilemedi.");
+      }).always(function () { $btn.prop("disabled", false).html(original); });
+  });
+
+  $("#btnPttKepCheckBalance").on("click", function () {
+    const $btn = $(this), original = $btn.html();
+    $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i>');
+    $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data: { action: "kep-bakiye-sorgula" }, dataType: "json" })
+      .done(function (res) {
+        if (res.status === "success") {
+          $("#pttKepBakiyeText").text("Kayıtlı Bakiye: " + res.miktar + " " + (res.cins || "Kontör"));
+          Swal.fire("KEP Bakiyesi", "Güncel bakiye: " + res.miktar + " " + (res.cins || "Kontör"), "info");
+        } else Swal.fire("Bakiye Sorgulama Hatası", res.message || "Bakiye sorgulanamadı.", "warning");
+      }).fail(function (xhr) {
+        Swal.fire("Hata", xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Bakiye servisine erişilemedi.", "error");
+      }).always(function () { $btn.prop("disabled", false).html(original); });
+  });
+
+  $("#formPttKepAyarlar").on("submit", function (e) {
+    e.preventDefault();
+    const $btn = $("#btnSavePttKepSettings");
+    $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Kaydediliyor...');
+    $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data: pttKepFormData("kep-ayarlari-kaydet"), dataType: "json" })
+      .done(function (res) {
+        if (res.status === "success") {
+          loadPttKepSettings();
+          Swal.fire({ icon: "success", title: "Başarılı", text: res.message || "KEP ayarları kaydedildi.", timer: 1800, showConfirmButton: false });
+        } else Swal.fire("Hata", res.message || "KEP ayarları kaydedilemedi.", "error");
+      }).fail(function (xhr) {
+        Swal.fire("Hata", xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "KEP ayarları kaydedilirken hata oluştu.", "error");
+      }).always(function () { $btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i> KEP Ayarlarını Kaydet'); });
   });
 
   // UETS Adresi 15 haneli girildiğinde tire ile formatla
@@ -1310,6 +1427,207 @@ $(document).ready(function () {
   });
 
   // ---------- Özet kartlarını gizle/göster (Standardized) ----------
+  const kepModal = $("#modalKepGonderisi");
+
+  function scanKepEimzaCard($badge, $sub) {
+    $badge.removeClass("bg-success-subtle text-success border-success-subtle bg-warning-subtle text-warning border-warning-subtle")
+      .addClass("bg-info-subtle text-info border-info-subtle")
+      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Taranıyor...');
+
+    $.ajax({ url: api_url, type: "POST", data: { action: "eimza-kart-bilgisi" }, dataType: "json" }).done(function (card) {
+      if (card && card.status === "success") {
+        $badge.removeClass("bg-info-subtle text-info border-info-subtle")
+          .addClass("bg-success-subtle text-success border-success-subtle")
+          .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(card.device_type || 'Akıllı Kart')} Takılı`);
+        $sub.html(`<strong>${escapeEvrakHtml(card.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(card.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
+      } else {
+        $badge.removeClass("bg-info-subtle text-info border-info-subtle")
+          .addClass("bg-warning-subtle text-warning border-warning-subtle")
+          .html('<i class="bx bx-error-circle me-1"></i> Cihaz Bulunamadı');
+        $sub.text(card?.message || 'Lütfen E-İmza USB cihazınızı takınız.');
+      }
+    }).fail(function (xhr) {
+      $badge.removeClass("bg-info-subtle text-info border-info-subtle")
+        .addClass("bg-warning-subtle text-warning border-warning-subtle")
+        .html('<i class="bx bx-error-circle me-1"></i> Cihaz Kontrol Edilemedi');
+      $sub.text(xhr.responseJSON?.message || "E-imza cihazı sorgulanamadı.");
+    });
+  }
+
+  function parseModalKepRecipients() {
+    return [...new Set(String($("#modal_kep_alicilar").val() || "").split(/[;,\n\r]+/).map(item => item.trim()).filter(Boolean))];
+  }
+
+  function formatKepBytes(bytes) {
+    if (!bytes) return "0 KB";
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+    return (bytes / 1024).toFixed(2) + " KB";
+  }
+
+  function loadKepAddressBook() {
+    const $select = $("#modal_kep_adres_defteri");
+    if (!$select.length) return;
+    $.ajax({ url: api_url, type: "POST", data: { action: "kep-adres-defteri-listele" }, dataType: "json" }).done(function (res) {
+      const current = $select.val();
+      $select.empty().append(new Option("Kayıtlı KEP adresi seçin", "", true, false));
+      if (res.status === "success") {
+        (res.data || []).forEach(item => $select.append(new Option(item.kep_adresi, item.kep_adresi, false, item.kep_adresi === current)));
+      }
+      $select.trigger("change.select2");
+    });
+  }
+
+  $("#btnYeniKepGonderisi").on("click", function () {
+    const form = $("#formKepGonderisi")[0];
+    if (!form) return;
+    form.reset();
+    $("#modalKepDogrulamaSonuc").empty();
+    $("#modalKepEkOzeti").text("0 dosya · 0 KB");
+    $("#modal_kep_ileti_tipi").val("standart");
+    $("#kepTipStandart").prop("checked", true);
+    loadKepAddressBook();
+    if ($.fn.summernote) {
+      if (!$("#modal_kep_icerik").next(".note-editor").length) {
+        $("#modal_kep_icerik").summernote({ height: 180, lang: "tr-TR", placeholder: "İleti metnini yazınız...", toolbar: [["style", ["bold", "italic", "underline", "clear"]], ["para", ["ul", "ol", "paragraph"]], ["insert", ["link"]], ["view", ["codeview"]]] });
+      } else {
+        $("#modal_kep_icerik").summernote("code", "");
+      }
+    }
+    kepModal.modal("show");
+    const balanceBadge = $("#modalKepBalanceBadge");
+    const sendButton = $("#btnModalKepGonder").prop("disabled", true).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
+    if (sendButton.data("settings-ready") === 1 || String(sendButton.data("settings-ready")) === "1") {
+      balanceBadge.removeClass("bg-success-subtle text-success bg-danger-subtle text-danger bg-secondary-subtle text-secondary").addClass("bg-info-subtle text-info").html('<i class="bx bx-loader-alt bx-spin me-1"></i>Bağlantı kontrol ediliyor');
+      $.post(api_url, { action: "kep-bakiye-sorgula" }, function (response) {
+        if (response.status === "success") {
+          balanceBadge.removeClass("bg-info-subtle text-info bg-danger-subtle text-danger").addClass("bg-success-subtle text-success").text(response.miktar + " " + (response.cins || "Kontör")).attr("title", "Canlı PTT KEP sorgusu başarılı");
+          sendButton.prop("disabled", false);
+        } else {
+          balanceBadge.removeClass("bg-info-subtle text-info bg-success-subtle text-success").addClass("bg-danger-subtle text-danger").text("Bağlantı hatası").attr("title", response.message || "PTT KEP kimlik doğrulaması başarısız");
+          $("#modalKepDogrulamaSonuc").html('<div class="alert alert-danger py-2 mb-0"><i class="bx bx-lock-alt me-1"></i>' + $("<div>").text(response.message || "PTT KEP kimlik bilgileri geçersiz.").html() + ' Ayarlardan parola ve şifreyi yeniden kaydedin.</div>');
+        }
+      }, "json").fail(function (xhr) {
+        balanceBadge.removeClass("bg-info-subtle text-info").addClass("bg-danger-subtle text-danger").text("Bağlantı hatası");
+        $("#modalKepDogrulamaSonuc").html('<div class="alert alert-danger py-2 mb-0">' + $("<div>").text(xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı.").html() + '</div>');
+      });
+    }
+  });
+
+  kepModal.on("shown.bs.modal", function () {
+    const addressBook = $("#modal_kep_adres_defteri");
+    if (addressBook.length && !addressBook.data("select2")) addressBook.select2({ width: "100%", dropdownParent: kepModal, placeholder: "Kayıtlı KEP adresi seçin", allowClear: true });
+  });
+
+  $("input[name='modal_kep_ileti_tipi_secim']").on("change", function () {
+    $("#modal_kep_ileti_tipi").val(this.value);
+  });
+
+  $("#modal_kep_adres_defteri").on("change", function () {
+    const selected = String($(this).val() || "").trim();
+    if (!selected) return;
+    const addresses = parseModalKepRecipients();
+    if (!addresses.includes(selected)) addresses.push(selected);
+    $("#modal_kep_alicilar").val(addresses.join("; "));
+    $(this).val("").trigger("change.select2");
+  });
+
+  $("#modal_kep_ekler").on("change", function () {
+    const files = Array.from(this.files || []);
+    const total = files.reduce((sum, file) => sum + file.size, 0);
+    $("#modalKepEkOzeti").text(files.length + " dosya · " + formatKepBytes(total));
+  });
+
+  $("#btnModalKepAliciDogrula").on("click", function () {
+    const addresses = parseModalKepRecipients();
+    const result = $("#modalKepDogrulamaSonuc").empty();
+    if (!addresses.length) return result.html('<span class="text-danger">En az bir KEP adresi giriniz.</span>');
+    const button = $(this).prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i> Doğrulanıyor');
+    const requests = addresses.map(address => new Promise(resolve => {
+      $.ajax({
+        url: api_url,
+        type: "POST",
+        data: { action: "kep-alici-dogrula", alici_kep: address },
+        dataType: "json",
+      }).done(response => resolve({ address, response }))
+        .fail(xhr => resolve({
+          address,
+          response: {
+            status: "error",
+            message: xhr.responseJSON?.message || "PTT KEP rehber servisine ulaşılamadı.",
+          },
+        }));
+    }));
+    Promise.all(requests).then(function (items) {
+      items.forEach(item => {
+        const ok = item.response?.status === "success" && item.response?.exist && item.response?.suitable;
+        const row = $("<div>").addClass(ok ? "text-success" : "text-warning");
+        $("<i>").addClass("bx me-1 " + (ok ? "bx-check-circle" : "bx-error-circle")).appendTo(row);
+        $("<span>").addClass("font-monospace").text(item.address).appendTo(row);
+        row.append(document.createTextNode(" — " + (ok ? "Doğrulandı" : (item.response?.message || "Rehberde bulunamadı"))));
+        result.append(row);
+      });
+      if (items.some(item => item.response?.adres_defterine_kaydedildi)) loadKepAddressBook();
+      button.prop("disabled", false).html('<i class="bx bx-search"></i> Doğrula');
+    }).catch(function () {
+      result.html('<span class="text-danger">PTT KEP rehber sorgusu tamamlanamadı.</span>');
+      button.prop("disabled", false).html('<i class="bx bx-search"></i> Doğrula');
+    });
+  });
+
+  $("#formKepGonderisi").on("submit", function (event) {
+    event.preventDefault();
+    const addresses = parseModalKepRecipients();
+    const subject = $("#modal_kep_konu").val().trim();
+    const content = $.fn.summernote && $("#modal_kep_icerik").next(".note-editor").length ? $("#modal_kep_icerik").summernote("code") : $("#modal_kep_icerik").val();
+    if (!addresses.length || addresses.some(address => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))) return Swal.fire("Eksik Bilgi", "Geçerli bir alıcı KEP adresi giriniz.", "warning");
+    if (!subject) return Swal.fire("Eksik Bilgi", "İleti konusunu giriniz.", "warning");
+    if (!String(content).replace(/<[^>]*>/g, "").trim()) return Swal.fire("Eksik Bilgi", "İleti metnini giriniz.", "warning");
+
+    Swal.fire({
+      target: document.getElementById("modalKepGonderisi"),
+      title: "E-İmza ile Gönder",
+      html: '<div class="text-start"><div class="small text-muted mb-2">Alıcı: <span class="font-monospace">' + escapeEvrakHtml(addresses.join(", ")) + '</span></div><div class="d-flex align-items-center justify-content-between gap-2 p-2 rounded bg-light mb-3"><span id="kepSignCardText" class="small text-muted">E-imza cihazı taranıyor...</span><span id="kepSignCardBadge" class="badge bg-info-subtle text-info"><i class="bx bx-loader-alt bx-spin me-1"></i> Taranıyor</span></div><label for="kepSignPin" class="form-label fw-semibold">E-İmza Kart PIN Kodu</label><input type="password" id="kepSignPin" class="form-control" maxlength="20" autocomplete="off" placeholder="PIN kodunuzu giriniz"><div class="small text-muted mt-2">PIN kaydedilmez; yalnızca bu imzalama işlemi için kullanılır.</div></div>',
+      showCancelButton: true,
+      confirmButtonText: '<i class="bx bx-shield-quarter me-1"></i> PIN ile İmzala ve Gönder',
+      cancelButtonText: "Vazgeç",
+      confirmButtonColor: "#34c38f",
+      focusConfirm: false,
+      didOpen: function () {
+        scanKepEimzaCard($("#kepSignCardBadge"), $("#kepSignCardText"));
+        $("#kepSignPin").trigger("focus");
+      },
+      preConfirm: function () {
+        const pin = String($("#kepSignPin").val() || "").trim();
+        if (!pin) { Swal.showValidationMessage("E-imza PIN kodunu giriniz."); return false; }
+        return pin;
+      },
+    }).then(answer => {
+      if (!answer.isConfirmed) return;
+      const data = new FormData();
+      data.append("action", "kep-dogrudan-gonder"); data.append("kep_alicilar", addresses.join(";")); data.append("kep_konu", subject); data.append("kep_icerik", content);
+      data.append("kep_ileti_tipi", $("#modal_kep_ileti_tipi").val() || "standart"); data.append("kep_ileti_detayi", $("#modal_kep_ileti_detayi").val() || ""); data.append("kep_paket_turu", "Standart");
+      data.append("eimza_pin", answer.value || "");
+      Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => data.append("kep_ekler[]", file, file.name));
+      const sendButton = $("#btnModalKepGonder").prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span>Gönderiliyor');
+      $.ajax({ url: api_url, type: "POST", data, contentType: false, processData: false, dataType: "json" })
+        .done(response => {
+          if (response.status !== "success") return Swal.fire("Gönderim Hatası", response.message || "KEP gönderilemedi.", "error");
+          const trackingCode = String(response.kep_id || response.takip_kodu || "").trim();
+          kepModal.modal("hide");
+          Swal.fire({
+            title: "Gönderildi",
+            icon: "success",
+            html: trackingCode
+              ? '<div class="text-muted mb-2">PTT Takip Kodu</div><code class="d-block p-2 bg-light rounded text-primary text-break">' + escapeEvrakHtml(trackingCode) + "</code>"
+              : '<div class="text-warning">Gönderim tamamlandı; takip kodu kayda işlendi.</div>',
+            confirmButtonText: "Tamam",
+          }).then(() => location.reload());
+        })
+        .fail(xhr => Swal.fire("Gönderim Hatası", xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı.", "error"))
+        .always(() => sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder'));
+    });
+  });
+
   const SUMMARY_STATE_KEY = "evrak_summary_cards_state";
 
   function setSummaryCardsVisibility(visible) {
@@ -1336,4 +1654,217 @@ $(document).ready(function () {
     const isHidden = localStorage.getItem(SUMMARY_STATE_KEY) === "hidden";
     setSummaryCardsVisibility(!isHidden);
   })();
+
+  // --- KEP İletisi ve Delil Önizleme Modalı ---
+  function ensureKepPreviewModalInBody() {
+    const modalEl = $("#modalKepOnizleme");
+    if (modalEl.length > 0 && modalEl.parent().prop("tagName") !== "BODY") {
+      modalEl.appendTo("body");
+    }
+  }
+  ensureKepPreviewModalInBody();
+
+  let activeKepPreviewEvrakId = null;
+  let activeKepPreviewKepId = null;
+
+  function formatFileSize(bytes) {
+    if (!bytes || isNaN(bytes)) return "";
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+    return (bytes / 1024).toFixed(1) + " KB";
+  }
+
+  function renderKepPreview(data) {
+    activeKepPreviewEvrakId = data.evrak_id || null;
+    activeKepPreviewKepId = data.kep_id || null;
+
+    // Üst Başlık & Rozet
+    const badge = data.durum_rozeti || { ad: data.durum || "Gönderildi", badge: "bg-primary-subtle text-primary border-primary-subtle" };
+    $("#kepPreviewDurumBadge").attr("class", "badge px-3 py-1 font-size-12 rounded-pill fw-semibold border " + badge.badge).text(badge.ad);
+
+    // Üst Bilgiler
+    $("#kepPreviewGonderen").text(data.gonderen_kep || "-");
+
+    // Alıcılar
+    const alicilarEl = $("#kepPreviewAlicilar").empty();
+    if (Array.isArray(data.alici_listesi) && data.alici_listesi.length > 0) {
+      data.alici_listesi.forEach(addr => {
+        alicilarEl.append($("<span>").addClass("badge bg-info-subtle text-info border border-info-subtle font-monospace font-size-11").text(addr));
+      });
+    } else if (data.alici_kep) {
+      alicilarEl.append($("<span>").addClass("badge bg-info-subtle text-info border border-info-subtle font-monospace font-size-11").text(data.alici_kep));
+    } else {
+      alicilarEl.text("-");
+    }
+
+    $("#kepPreviewKepId").text(data.kep_id || "-").attr("title", data.kep_id || "");
+    $("#kepPreviewTarih").text(data.tarih || "-");
+    $("#kepPreviewPaketTuru").text(data.paket_turu || "Standart");
+
+    // İleti Sekmesi
+    $("#kepPreviewKonu").text(data.konu || "-");
+    const icerikHtml = data.icerik ? String(data.icerik) : "<div class='text-muted fst-italic'>İleti metni bulunmuyor.</div>";
+    $("#kepPreviewIcerik").html(icerikHtml);
+
+    // Ekler
+    const eklerWrapper = $("#kepPreviewEklerWrapper");
+    const eklerListesi = $("#kepPreviewEklerListesi").empty();
+    if (Array.isArray(data.ekler) && data.ekler.length > 0) {
+      $("#kepPreviewEkSayisi").text(data.ekler.length);
+      data.ekler.forEach(file => {
+        const sizeStr = file.boyut ? formatFileSize(file.boyut) : "";
+        const col = $("<div>").addClass("col-md-6 col-12");
+        const card = $("<div>").addClass("border rounded-3 p-2 bg-light d-flex align-items-center justify-content-between gap-2");
+        const fileInfo = $("<div>").addClass("d-flex align-items-center gap-2 min-w-0");
+        fileInfo.append($("<span>").addClass("badge bg-primary-subtle text-primary p-2 rounded-circle flex-shrink-0").append($("<i>").addClass("bx bx-file font-size-16")));
+        const textWrapper = $("<div>").addClass("min-w-0");
+        textWrapper.append($("<div>").addClass("fw-bold font-size-12 text-truncate").text(file.dosya_adi));
+        if (sizeStr) textWrapper.append($("<div>").addClass("text-muted font-size-11").text(sizeStr));
+        fileInfo.append(textWrapper);
+        const actionBtn = $("<a>").addClass("btn btn-sm btn-subtle-primary flex-shrink-0")
+          .attr({ href: file.dosya_yolu, target: "_blank", title: "Dosyayı İndir" })
+          .append($("<i>").addClass("bx bx-download"));
+        card.append(fileInfo, actionBtn).appendTo(col);
+        eklerListesi.append(col);
+      });
+      eklerWrapper.removeClass("d-none");
+    } else {
+      eklerWrapper.addClass("d-none");
+    }
+
+    // Deliller Sekmesi
+    const deliller = Array.isArray(data.deliller) ? data.deliller : [];
+    $("#kepPreviewDelilSayisiBadge").text(deliller.length);
+    const delilListEl = $("#kepPreviewDelillerListesi").empty();
+
+    if (deliller.length === 0) {
+      delilListEl.html('<div class="text-center py-4 text-muted font-size-13"><i class="bx bx-info-circle me-1"></i> Henüz kayıtlı delil bulunmuyor. Yukarıdaki "PTT\'den Delilleri Güncelle" butonuna tıklayarak PTT sistemini sorgulayabilirsiniz.</div>');
+    } else {
+      deliller.forEach(delil => {
+        const itemCard = $("<div>").addClass("card border rounded-3 p-3 shadow-none bg-white mb-2");
+        const headerRow = $("<div>").addClass("d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2");
+
+        const titleGroup = $("<div>").addClass("d-flex align-items-center gap-2");
+        titleGroup.append($("<span>").addClass("badge rounded-circle p-2 " + (delil.badge || "bg-primary-subtle text-primary")).append($("<i>").addClass((delil.icon || "bx bx-check") + " font-size-16")));
+        titleGroup.append($("<div>").append($("<strong>").addClass("font-size-13 text-dark").text(delil.tur_adi || "PTT Delili"), $("<div>").addClass("text-muted font-size-11").text("Sunucu: " + (delil.kephs || "PTT KEPHS") + " • Zaman: " + (delil.olay_zamani || "-"))));
+
+        const actionGroup = $("<div>").addClass("d-flex align-items-center gap-1");
+        const downloadXmlUrl = "views/evrak-takip/api.php?action=kep-delil-indir&delil_id=" + encodeURIComponent(delil.delil_id) + "&download=1";
+        actionGroup.append($("<a>").addClass("btn btn-sm btn-outline-primary font-size-11 px-2 py-1").attr({ href: downloadXmlUrl, target: "_blank", title: "ETSI REM Resmi Delil XML Dosyasını İndir" }).append($("<i>").addClass("bx bx-download me-1"), "XML Delili İndir"));
+
+        headerRow.append(titleGroup, actionGroup);
+        itemCard.append(headerRow);
+
+        if (delil.aciklama) {
+          itemCard.append($("<div>").addClass("font-size-12 text-muted bg-light p-2 rounded border").append($("<span>").addClass("fw-semibold text-dark").text("Açıklama: "), $("<span>").text(delil.aciklama)));
+        }
+
+        itemCard.append($("<div>").addClass("font-size-11 text-muted font-monospace mt-2 text-truncate").text("Delil ID: " + delil.delil_id));
+        delilListEl.append(itemCard);
+      });
+    }
+
+    // Footer
+    if (data.evrak_no && data.evrak_no !== "-") {
+      $("#kepPreviewFooterEvrakNo").text("Resmi Evrak Kayıt No: #" + data.evrak_no);
+    } else {
+      $("#kepPreviewFooterEvrakNo").text("");
+    }
+
+    if (data.encrypted_id) {
+      $("#btnKepPreviewPdf").removeClass("d-none").data("id", data.encrypted_id);
+    } else {
+      $("#btnKepPreviewPdf").addClass("d-none");
+    }
+
+    $("#kepPreviewLoader").addClass("d-none");
+    $("#kepPreviewContent").removeClass("d-none");
+  }
+
+  function openKepPreviewModal(evrakId, kepId) {
+    ensureKepPreviewModalInBody();
+    const modal = $("#modalKepOnizleme");
+    $("#kepPreviewLoader").removeClass("d-none");
+    $("#kepPreviewContent").addClass("d-none");
+    $("#tabKepIleti-tab").tab("show");
+    modal.modal("show");
+
+    $.ajax({
+      url: api_url,
+      type: "POST",
+      data: { action: "kep-detay-getir", id: evrakId, kep_id: kepId },
+      dataType: "json"
+    }).done(function (res) {
+      if (res.status !== "success" || !res.data) {
+        modal.modal("hide");
+        return Swal.fire("Hata", res.message || "KEP iletisi detayları yüklenemedi.", "error");
+      }
+      renderKepPreview(res.data);
+    }).fail(function (xhr) {
+      modal.modal("hide");
+      Swal.fire("Hata", xhr.responseJSON?.message || "Sunucu ile iletişim kurulamadı.", "error");
+    });
+  }
+
+  // KEP Önizleme Butonu Tıklaması
+  $(document).on("click", ".btn-kep-onizle", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = $(this).data("id");
+    const kepId = $(this).data("kep-id") || "";
+    openKepPreviewModal(id, kepId);
+  });
+
+  // PTT'den Delilleri Canlı Yenileme
+  $(document).on("click", "#btnKepDelilYenile", function () {
+    const btn = $(this);
+    const originalHtml = btn.html();
+    btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> PTT Sorgulanıyor...');
+
+    $.ajax({
+      url: api_url,
+      type: "POST",
+      data: { action: "kep-detay-getir", id: activeKepPreviewEvrakId, kep_id: activeKepPreviewKepId },
+      dataType: "json"
+    }).done(function (res) {
+      if (res.status === "success" && res.data) {
+        renderKepPreview(res.data);
+        $("#tabKepDeliller-tab").tab("show");
+        Swal.fire({ toast: true, position: "top-end", icon: "success", title: "PTT delil kayıtları güncellendi", showConfirmButton: false, timer: 2000 });
+      } else {
+        Swal.fire("Uyarı", res.message || "Delil güncellemesi yapılamadı.", "warning");
+      }
+    }).fail(function () {
+      Swal.fire("Hata", "PTT KEP servisine ulaşılamadı.", "error");
+    }).always(function () {
+      btn.prop("disabled", false).html(originalHtml);
+    });
+  });
+
+  // Kep Takip Kodu Kopyalama
+  $(document).on("click", "#btnCopyKepId", function () {
+    const text = $("#kepPreviewKepId").text().trim();
+    if (text && text !== "-") {
+      navigator.clipboard.writeText(text).then(function () {
+        Swal.fire({ toast: true, position: "top-end", icon: "success", title: "PTT KEP Takip Kodu kopyalandı", showConfirmButton: false, timer: 1500 });
+      });
+    }
+  });
+
+  // KEP Modalından Resmi Evrak PDF'ini Açma
+  $(document).on("click", "#btnKepPreviewPdf", function () {
+    const id = $(this).data("id");
+    if (id) {
+      showPdfFromRequest({ type: "GET", data: { id: id } });
+    }
+  });
+
+  // Tablo Satırı Tıklaması KEP Koruma
+  $("#evrakTable tbody").on("click", "tr", function (e) {
+    if ($(e.target).closest("a, button, input, .dropdown, .popover, .action-btn-group").length) return;
+    const kepBtn = $(this).find(".btn-kep-onizle");
+    if (kepBtn.length) {
+      e.preventDefault();
+      kepBtn.first().trigger("click");
+    }
+  });
 });

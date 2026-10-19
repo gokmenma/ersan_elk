@@ -119,6 +119,28 @@ try {
         exit;
     }
 
+    // PTT KEP Yasal Delil XML İndirme
+    if ($downloadType === 'kep_delil') {
+        $delilId = trim((string) ($_GET['delil_id'] ?? ''));
+        if ($delilId === '') {
+            throw new RuntimeException('KEP Delil ID belirtilmedi.');
+        }
+
+        $kepService = new \App\Service\KepService();
+        $delilRes = $kepService->downloadEvidenceXml($firmaId, $delilId);
+        $xmlData = $delilRes['xml'] ?? '';
+
+        if (empty($xmlData)) {
+            throw new RuntimeException('Delil içeriği boş veya indirilemedi.');
+        }
+
+        header('Content-Type: application/xml; charset=utf-8');
+        header('Content-Disposition: attachment; filename="kep_delil_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $delilId) . '.xml"');
+        header('Content-Length: ' . strlen($xmlData));
+        echo $xmlData;
+        exit;
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $personelId = (int) ($_POST['personel_id'] ?? 0);
         $ilgiliPersonelId = (int) ($_POST['ilgili_personel_id'] ?? 0);

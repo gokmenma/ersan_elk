@@ -3,28 +3,25 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Helper\Helper;
 use App\Helper\Security;
+use App\Helper\Form;
 use App\Model\EvrakTakipModel;
 use App\Model\PersonelModel;
+use App\Service\Gate;
 
 $Evrak = new EvrakTakipModel();
 $Personel = new PersonelModel();
 
-$evraklar = $Evrak->all();
-$evrakEkleriMap = $Evrak->getAttachmentMap();
+$evraklar = [];
+$evrakEkleriMap = [];
 $personeller = $Personel->all(false, 'all_with_external');
 $stats = $Evrak->getStats();
 $gelen_evraklar = $Evrak->getGelenEvraklar();
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
-$Evrak->ensureApprovalRowsForDrafts();
-$onayMap = $Evrak->getApprovalSummaryMap($currentUserId);
-$imzamiBekleyenSayisi = 0;
-foreach ($evraklar as $evrakSayim) {
-    if (($evrakSayim->onay_durumu ?? 'taslak') === 'onay_bekliyor' && !empty($onayMap[(int) $evrakSayim->id]['sira_bende'])) {
-        $imzamiBekleyenSayisi++;
-    }
-}
-$onayDetayMap = $Evrak->getApprovalDetailMap();
+$canSendKep = Gate::allows('evrak-takip/kep');
+$onayMap = [];
+$imzamiBekleyenSayisi = $Evrak->countPendingSignatureForUser($currentUserId);
+$onayDetayMap = [];
 
 $onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
     $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -101,17 +98,28 @@ $title = "Evrak Listesi";
         </div>
         
         <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
-            <!-- 1. Yeni Gelen Evrak Ekle Butonu -->
-            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnYeniEvrak">
-                <i class="bx bx-plus font-size-16"></i> Yeni Gelen Evrak
-            </button>
+            <!-- 1. Yeni Kayıt Menüsü -->
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-primary top-action-btn dropdown-toggle shadow-sm text-white" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bx bx-plus font-size-16"></i> Yeni
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" style="min-width:250px">
+                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnYeniEvrak">
+                        <i class="bx bx-down-arrow-circle text-success font-size-20 mt-1"></i><span><strong class="d-block">Gelen Evrak</strong><small class="text-muted">Kuruma ulaşan evrakı kaydedin</small></span>
+                    </button>
+                    <a href="index?p=evrak-takip/giden-evrak" class="dropdown-item d-flex align-items-start gap-2 py-2">
+                        <i class="bx bx-up-arrow-circle text-warning font-size-20 mt-1"></i><span><strong class="d-block">Giden Evrak</strong><small class="text-muted">Resmî üst yazı hazırlayın</small></span>
+                    </a>
+                    <?php if ($canSendKep): ?>
+                    <div class="dropdown-divider"></div>
+                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnYeniKepGonderisi">
+                        <i class="bx bx-mail-send text-info font-size-20 mt-1"></i><span><strong class="d-block">KEP Gönderisi</strong><small class="text-muted">PTT KEP üzerinden doğrudan gönderin</small></span>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </div>
 
-            <!-- 2. Yeni Giden Evrak Ekle Butonu -->
-            <a href="index?p=evrak-takip/giden-evrak" class="btn btn-warning top-action-btn shadow-sm text-white">
-                <i class="bx bx-send font-size-16"></i> Yeni Giden Evrak
-            </a>
-
-            <!-- 3. İşlemler Dropdown -->
+            <!-- 2. İşlemler Dropdown -->
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
@@ -327,6 +335,13 @@ $title = "Evrak Listesi";
                                             </span>
                                         </div>
                                     <?php endif; ?>
+                                    <?php if (($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id)): ?>
+                                        <div class="mt-1">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 font-size-10 fw-semibold" title="PTT KEP İletisi">
+                                                <i class="bx bx-mail-send"></i> KEP
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <?php
                                 $tarihRaw = !empty($evrak->tarih) ? (string) $evrak->tarih : '1970-01-01';
@@ -520,6 +535,12 @@ $title = "Evrak Listesi";
                                             </button>
                                         <?php endif; ?>
 
+                                        <?php if (!empty($evrak->kep_mesaj_id)): ?>
+                                            <a href="index?p=evrak-takip/giden-evrak&id=<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>#collapseGidenKep" class="btn btn-subtle-primary table-action-btn" title="KEP Sevk ve Yasal Delilleri">
+                                                <i class="bx bx-mail-send"></i>
+                                            </a>
+                                        <?php endif; ?>
+
                                         <?php if ($siraBende): ?>
                                             <button type="button" class="btn btn-subtle-success table-action-btn evrak-e-imza-onayla" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="E-İmza ile Onayla">
                                                 <i class="bx bx-check"></i>
@@ -669,5 +690,7 @@ $title = "Evrak Listesi";
 
 <?php include_once "modal/evrak-modal.php"; ?>
 <?php include_once "modal/uets-modals.php"; ?>
+<?php if ($canSendKep) include_once "modal/kep-send-modal.php"; ?>
+<?php include_once "modal/kep-preview-modal.php"; ?>
 
 <script src="<?= Helper::assetVersion('views/evrak-takip/js/evrak-takip.js'); ?>"></script>

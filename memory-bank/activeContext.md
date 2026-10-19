@@ -1,8 +1,34 @@
 # Active Context
 
-## Kaçak Kontrol Bekleyen Onaylar Liste Düzeltmesi (2026-10-19)
-- Bekleyen rozeti kayıt sayısını gösterirken tablonun boş kalmasının nedeni, boş `sonuc` parametresinin Model tarafından sonuçlanmış kayıt filtresi gibi uygulanmasıydı.
-- Boş değer artık sonuç filtresi uygulanmadığı anlamına geliyor; Kayıtlar ekranındaki açık `Tüm Sonuçlar` seçimi ayrı `tumu` değeriyle taşınıyor. Böylece `onay_durumu = beklemede` sorgusu yeniden bekleyen kayıtları getiriyor.
+## PTT KEP Web Servisi: Ek Dosya Adı (xmime:fileName) ve Önizleme Modalı Ek Çözümü (2026-10-19)
+- **Kullanıcı Talepleri**:
+  1. KEP iletisindeki dosyanın karşı tarafın PTT KEP WebMail gelen kutusunda uzantısız (`1116395xxx`, `231052xxx`) olarak inmesi ve açılmak istendiğinde Windows tarafından Not Defteri ile açılıp bozuk/şifreli gibi görünmesi sorununun çözülmesi ("bu yine uzantısız geldi, bu sorunu nasıl çözeriz").
+  2. Evrak görüntüleme / önizleme modalında ekli belgenin görünmemesi sorununun giderilmesi ("ayrıca evrak görüntüleme modalinda da ek görünmüyor").
+- **Kök Neden Analizi**:
+  1. **Dosya Adı & Uzantı Kök Nedeni**: PTT KEP Axis2 web servisinin `xmime.xsd` şeması gereğince ek elemanı (`<ns1:ekler>`), W3C XMLMIME (`http://www.w3.org/2005/05/xmlmime`) standardına tabidir. Bu standartta dosya adı niteliği kesinlikle `xmime:fileName` (büyük N ile ve `xmime:` önekiyle) olmalıdır. Daha önce `name` ve `filename` olarak gönderildiğinde Axis2 XML ayrıştırıcısı niteliği tanımayıp yok saymakta, PTT dahili posta motoru da dosyaya kendi geçici parça ID'sini (`3947595xxx`) uzantısız olarak atamaktaydı. Windows bu uzantısız dosyayı Not Defteri (Notepad) ile açtığı için binary PDF verisi kullanıcıya şifreli/anlamsız karakterler gibi görünmekteydi.
+  2. **Önizleme Modalı Kök Nedeni**: Evrak Takip üzerinden oluşturulan bağımsız KEP iletilerinde daha önce `evrak_takip_ekleri` tablosuna ve fiziksel `uploads/evrak-takip/ekler/` dizinine yazma adımı bulunmadığından veya disk izinlerinden ötürü dosya bulunamadığında, mPDF tabanlı evrak önizleme motoru `(Bu evrak üst yazısız olarak tanzim edilmiştir.) Eklenmiş herhangi bir belge bulunmamaktadır.` metnini üretmekteydi.
+- **Uygulanan Çözüm ve Doğrulama**:
+  1. `App/Service/KepService.php`:
+     - Hem `sendStandaloneKep` hem de `sendOutgoingKep` metotlarında Axis2 SOAP zarfı `xmime:fileName="' . htmlspecialchars($safeName, ENT_QUOTES, 'UTF-8') . '"` niteliğiyle güncellendi.
+     - `normalizeKepAttachmentName()` metodu Türkçe karakterleri dönüştürerek dosya adının sonuna `.pdf`, `.xlsx` uzantısını mutlak surette ekleyecek biçimde korundu.
+     - **Canlı Test ve Kanıtlama**: SafeNet e-Token ile canlı imzalı sevk gerçekleştirildi. PTT KEP `INBOX.Sent` kutusundan `Indir` API'si ile çekilen resmi MIME paketi (`.eml`) incelendi:
+       `Content-Type: application/pdf; name="deneme_raporu.pdf"`
+       `Content-Disposition: attachment; filename="deneme_raporu.pdf"`
+       PTT sunucusunun dosya adını ve `.pdf` uzantısını eksiksiz ve doğru ürettiği kuruşu kuruşuna kanıtlandı.
+  2. `views/evrak-takip/api.php` & Depolama:
+     - `case 'kep-detay-getir'`: Ek listesi sorgulanırken `evrak_takip_ekleri` boş olsa bile `kep_mesajlar.ham_paket_yolu` üzerinden şifreli paketi deşifre edip ekleri otomatik tamamlayan self-healing mekanizması eklendi.
+     - `uploads/evrak-takip/kep/` ve `uploads/evrak-takip/ekler/` dizin izinleri (`0777`) güvenceye alındı.
+     - Evrak #54 için eksik fiziksel dosya onarıldı, `generateTempPdf(54)` ve `generateTempPdf(55)` çağrıları test edilerek resmi bordro PDF'lerinin sorunsuz üretildiği ve görüntülendiği doğrulandı.
+
+## PTT KEP (Kayıtlı Elektronik Posta) Web Servisi, E-İmza ve Özel KEP Önizleme Modalı (2026-10-19)
+- **Kapsam**: PTT KEP WSDL (`https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl`) ve `files/wsdl_doc.pdf` (v1.3.2) doğrultusunda Evrak Takip modülünde KEP gönderimi ve KEP'e özel zengin Önizleme & Delil Modalı entegrasyonu.
+- **Kullanıcı Talebi**: "buraya basınca önceki sistemde giden ve gelen evrak için yaptığımız için giden evrak sayfasına gidiyor, kep için ayrı önzileme olsun"
+- **Gerçekleştirilen Çözüm**:
+  - `views/evrak-takip/modal/kep-preview-modal.php`: KEP iletilerine özel modal hazırlandı (`#modalKepOnizleme`).
+  - `views/evrak-takip/api.php`: `case 'evrak-listesi'`, `case 'kep-detay-getir'`, `case 'kep-delil-indir'` eklendi.
+  - `views/evrak-takip/js/evrak-takip.js`: Modal açılış ve render mantığı bağlandı.
+  - E-İmza (SafeNet eToken 5110 / E-GÜVEN / MEHMET ALİ GÖKMEN) ile donanımsal CAdES-BES imzası ve PTT gönderimi tamamlandı.
+  - PTT KEP'ten deliller (`delilTurId = 10, 40, 60`) ve ETSI XML delili çekildi.
 
 ## Personel PWA İhbar Türü ve Alan Bazlı Filtreleme (2026-10-19)
 - `ihbarlar.ihbar_turu` için Abonesiz / Kaçak / Pasif / Usülsüz değerlerini taşıyan ayrı SQL migration hazırlandı; mevcut kayıtlar açıklamadaki güvenli eşleşmelerle geriye dönük sınıflandırılıyor.
@@ -2453,3 +2479,30 @@
 - Onaylı hafta sonu nöbeti masaüstü ve mobil puantajda ayrıca fiziksel izin kaydı oluşturmadan kilitli `HTÇ` olarak gösteriliyor. Aynı güne manuel HTÇ gönderimi sunucu tarafında reddediliyor; Excel çıktısı da nöbet kaynaklı günü `HTÇ` gösteriyor. Nöbet silinir/onayı kaldırılırsa türetilmiş HTÇ otomatik kayboluyor.
 - Bordro detayının sözleşme alacağı tarafında hafta içi ve hafta sonu nöbet hakedişleri tek `Nöbet Ödemeleri` satırında birleştirildi. Açılır detay hafta içini `gün × birim tutar`, hafta sonunu `adet × birim tutar` olarak ayrı gösteriyor; teknik `4 Saat` ibaresi ve manuel fazla mesai bu gruba dahil edilmiyor.
 - 2026-10-19: Evrak Takip'te eski ana dosya (`evrak_takip.dosya_yolu`) ile yeni çoklu ekler birlikte gösterilecek şekilde liste ve düzenleme akışı düzeltildi. İkinci belge eklendiğinde ana belge artık görünümden düşmüyor; aynı yol iki kaynakta varsa mükerrer gösterilmiyor.
+- 2026-10-19: Evrak Takip masaüstü listesi server-side DataTables yapısına geçirildi. İlk açılışta tüm evrak/ek/onay HTML'i üretilmiyor; sayfalama, genel arama, kolon filtreleri, sıralama, KPI hızlı filtreleri ve “imzamda” filtresi PDO sorgularıyla sunucuda uygulanıyor. Sayfadaki kayıtların ek ve onayları toplu sorgulanıyor. Liste indeks migration'ı aktif veritabanına uygulandı.
+- 2026-10-19: Evrak server-side liste geçişinde merkezi gelişmiş filtre modülü, sunucudan gelen satırlara aynı filtreyi istemcide tekrar uyguladığı için kayıtları gizliyordu. Server-side tablolarda istemci eşleştirmesi kapatıldı; `equals:`, tarih aralığı, metin modu ve çoklu seçim protokolü `ajaxList()` içinde çözümleniyor. Kayıtlı `06.08.2026` filtresi gerçek API yanıtında 2 satırla doğrulandı.
+## Giden Evrak Dinamik Gönderim Kanalı (2026-10-19)
+- Giden Evrak tek sayfasına `normal` ve `kep` seçenekli kart tabanlı gönderim kanalı eklendi; resmî üst yazı / yalnızca ek tercihi kanaldan bağımsız bırakıldı.
+- KEP seçildiğinde geniş oluşturma panelinde çoklu alıcı, PTT rehber doğrulaması, ileti/paket türü, ileti detayı, mesaj metni ve dosya özeti gösteriliyor. Sağ panel yalnızca firma KEP durumu, sevk kaydı ve yasal deliller için kullanılıyor.
+- KEP taslağı veritabanında saklanıyor; sevk API'si istemciden konu/içerik kabul etmek yerine kayıtlı ve onaylanmış evrak snapshot'ını kullanıyor. Yetki, firma ayarı, kanal, tekrar gönderim, alıcı, paket türü ve belge biçimi sunucuda doğrulanıyor.
+- `sql/2026_10_19_add_giden_evrak_gonderim_kanali.sql` aktif geliştirme veritabanına uygulandı. Eski kayıtlar normal, önceden KEP sevk edilmiş kayıtlar KEP kanalı olarak ele alınıyor.
+
+## Evrak Takip Bağımsız KEP Gönderisi Modalı (2026-10-19)
+- Kullanıcı geri bildirimiyle KEP oluşturma, resmî üst yazılı Giden Evrak formundan ayrıldı. Araç çubuğundaki tek `Yeni` menüsü Gelen Evrak, Giden Evrak ve yetkiye bağlı KEP Gönderisi seçeneklerini sunuyor; KEP seçeneği PTT arayüzüne benzer geniş modal açıyor.
+- Modal; çoklu alıcı, PTT rehber doğrulaması, konu, ileti tipi/detayı, zengin ileti metni, çoklu ek ve ek boyutu özeti sunuyor. Gönderim `kep-dogrudan-gonder` politikasıyla sunucuda ayrıca korunuyor.
+- Başarılı bağımsız KEP gönderisi `kep_mesajlar` yanında `evrak_takip` içine `kaynak_tipi=kep` olan kilitli/onaylı bir giden kayıt oluşturuyor; böylece listede KEP rozetiyle izleniyor ve mevcut detay/delil görünümünü kullanıyor.
+- Yeni Giden Evrak ekranındaki kanal kartları ve KEP oluşturma paneli kaldırıldı; ekran tekrar yalnızca resmî üst yazı ve ek akışına odaklandı. Eski KEP kayıtlarının takip/delil görünümü korundu.
+- KEP modal include dosyasının ana sayfadaki `Form` alias'ını devralmaması nedeniyle oluşan fatal render hatası, helper çağrıları tam `\App\Helper\Form` namespace'iyle yapılarak giderildi. Modal CLI render testiyle doğrulandı; sayfanın yarıda kesilip DataTables verilerinin gelmemesi engellendi.
+- KEP modalındaki form sarmalayıcısının Bootstrap scrollable modal flex hiyerarşisini bozması giderildi. Dialog viewport yüksekliğine sınırlandı; form flex-column, modal body bağımsız `overflow-y:auto`, header/footer sabit olacak şekilde düzenlendi ve editör yüksekliği azaltılarak Ekler alanı ile gönderim aksiyonlarına kaydırarak erişim sağlandı.
+- PTT `KontorSorgula` servisinin kimlik hatasını `miktar=0`, `cins=Şifre veya Parola Yanlış` biçiminde döndürmesi artık başarı sayılmıyor. KEP gönderi modalı açılışta canlı bağlantı/bakiye kontrolü yapıyor; kayıtlı eski bakiye `Son bakiye` olarak ayrıştırılıyor ve canlı kimlik doğrulaması başarısızsa gönderim butonu kapatılıp açık hata gösteriliyor.
+- Evrak Takip'teki `UETS / KEP Ayarları` penceresi UETS ve PTT KEP sekmelerine ayrıldı. Yetkili kullanıcı PTT KEP sekmesinden kurumsal adres, yetkili TCKN, parola, web servis şifresi, WSDL ve ortam ayarlarını yönetebiliyor; bağlantı ve bakiye testlerini aynı pencerede yapabiliyor. Maskeli TCKN forma geri yazılmadığı için yanlışlıkla kaydedilmiyor, boş bırakılan gizli bilgiler mevcut değerlerini koruyor.
+- KEP gönderi modalındaki alıcı doğrulaması jQuery çoklu Deferred birleştirmesi yerine açık JSON yanıtlı `Promise.all` akışına geçirildi. Tek veya çoklu adres sonuçları aynı biçimde işleniyor ve HTTP/API hata mesajı artık genel `Doğrulanamadı` metni altında kaybolmuyor. `ersan.2@testkep.pttkep.gov.tr` canlı PTT testinde kayıtlı ve iletiye uygun olarak doğrulandı.
+- Rehber doğrulama API case'inin sonundaki eksik `break` nedeniyle başarılı KEP rehber JSON'una e-imza kart sorgusu yanıtı ekleniyordu. Switch fall-through giderildi; `kep-alici-dogrula` artık yalnız kendi JSON yanıtını döndürüyor.
+- Bağımsız KEP modalında e-imza kartı ve PIN alanı ilk açılışta gizlendi. Form doğrulamaları geçtikten sonra ilk `İmzala ve Gönder` tıklaması imza adımını açıp kart taramasını POST isteğiyle başlatıyor; PIN girilerek ikinci adımda gönderim onaylanıyor.
+- KEP alıcıları için firma bazlı adres defteri eklendi. PTT rehberinde başarıyla doğrulanan adres otomatik ve tekilleştirilerek kaydediliyor; KEP oluşturma modalındaki Select2 alanından sonraki gönderimlerde alıcılara eklenebiliyor. Başarılı gönderimde son kullanım zamanı güncelleniyor.
+- E-imza/PIN alanı ana KEP formundan tamamen kaldırıldı. `İmzala ve Gönder` tıklaması kart durumunu, alıcı özetini ve PIN alanını içeren tek SweetAlert onay penceresi açıyor; PIN yalnız bu işlem için kullanılıyor. KEP yetkisine `eimza-kart-bilgisi` API politikası bağlandı.
+- PIN onay penceresini durduran tanımsız global `escapeHtml` çağrısı, `evrak-takip.js` içindeki yerel `escapeEvrakHtml` yardımcısıyla giderildi; alıcı ve kart bilgileri HTML'e güvenli biçimde yazılıyor.
+- Bootstrap KEP modalının focus trap mekanizmasının SweetAlert PIN alanına klavye odağını engellemesi giderildi. E-imza onay penceresi artık `modalKepGonderisi` içine hedefleniyor ve PIN alanı aynı modal odak kapsamı içinde çalışıyor.
+- PTT KepId değerleri `<EYWS...>` biçiminde açılı ayraçla geldiği için SweetAlert kısa kullanımında HTML etiketi gibi yorumlanıp görünmüyordu. Başarı penceresi takip kodunu kaçırılmış `<code>` metni olarak gösteriyor; servis yanıtına `takip_kodu` uyumluluk alanı da eklendi.
+- KEP oluşturma modalı kullanıcı dostu kart düzenine geçirildi: gönderen/bakiye şeridi, Alıcılar–İleti–Ekler–İmzala adım göstergesi, ayrı alıcı/ileti/editör kartları, kompakt editör, belirgin ek alanı ve gölgeli sabit aksiyon çubuğu eklendi. Adım göstergesi ek seçimi ve imza penceresiyle dinamik güncelleniyor; mobil yerleşim korunuyor.
+- Kullanıcı geri bildirimiyle KEP modalı yeniden minimalleştirildi: stepper kaldırıldı, gönderen KEP ve canlı bakiye modal başlığına taşındı, alıcı girişi ile adres defteri aynı satıra alındı ve ileti tipi Select2 yerine Standart/Resmî segmentli radio kontrolü oldu. Ağır kart arka planları/gölgeleri sade bölüm ayraçlarına dönüştürüldü.
