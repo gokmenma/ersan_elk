@@ -456,11 +456,18 @@ $title = "Evrak Listesi";
                                 <td class="text-center">
                                     <?php
                                     $evrakEkleri = $evrakEkleriMap[(int) $evrak->id] ?? [];
-                                    if ($evrakEkleri === [] && !empty($evrak->dosya_yolu)) {
-                                        $evrakEkleri[] = (object) [
-                                            'dosya_adi' => basename((string) $evrak->dosya_yolu),
-                                            'dosya_yolu' => $evrak->dosya_yolu,
-                                        ];
+                                    if (!empty($evrak->dosya_yolu)) {
+                                        $anaDosyaYolu = ltrim((string) $evrak->dosya_yolu, '/');
+                                        $anaDosyaListede = array_filter(
+                                            $evrakEkleri,
+                                            static fn(object $ek): bool => ltrim((string) $ek->dosya_yolu, '/') === $anaDosyaYolu
+                                        );
+                                        if ($anaDosyaListede === []) {
+                                            array_unshift($evrakEkleri, (object) [
+                                                'dosya_adi' => basename((string) $evrak->dosya_yolu),
+                                                'dosya_yolu' => $evrak->dosya_yolu,
+                                            ]);
+                                        }
                                     }
                                     ?>
                                     <?php if ($evrakEkleri !== []): ?>

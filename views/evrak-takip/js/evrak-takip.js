@@ -24,7 +24,7 @@ $(document).ready(function () {
   }
 
   function gelenDosyaAlanlariniGuncelle() {
-    const order = gelenDosyalar.map(item => item.type === "existing"
+    const order = gelenDosyalar.filter(item => item.type !== "primary").map(item => item.type === "existing"
       ? { type: "existing", id: item.id }
       : { type: "new", key: item.key });
     $("#gelen_ek_duzen_json").val(JSON.stringify(order));
@@ -39,23 +39,24 @@ $(document).ready(function () {
         .append($("<i>").addClass("bx bx-file font-size-16"));
       const info = $("<div>").addClass("flex-grow-1 min-w-0");
       $("<div>").addClass("fw-bold small text-truncate").text(item.name).appendTo(info);
-      const detail = item.type === "existing"
+      const detail = item.type === "existing" || item.type === "primary"
         ? [item.date ? new Date(item.date.replace(" ", "T")).toLocaleString("tr-TR") : "", item.user || "Bilinmeyen Kullanıcı"]
         : ["Henüz kaydedilmedi", "Ekleyen: siz"];
       $("<div>").addClass("text-muted").css("font-size", "11px")
         .text(detail.filter(Boolean).join(" • ") + " • " + formatGelenDosyaBoyutu(item.size)).appendTo(info);
       const actions = $("<div>").addClass("d-flex gap-1 flex-shrink-0");
-      if (item.type === "existing" && item.path) {
+      if ((item.type === "existing" || item.type === "primary") && item.path) {
         $("<a>").addClass("btn btn-sm btn-subtle-info").attr({href: item.path, target: "_blank", title: "Görüntüle"})
           .append($("<i>").addClass("bx bx-show font-size-14")).appendTo(actions);
       }
-      $("<button type='button'>").addClass("btn btn-sm btn-subtle-danger").attr("title", "Listeden kaldır")
+      const removeButton = $("<button type='button'>").addClass("btn btn-sm btn-subtle-danger").attr("title", "Listeden kaldır")
         .append($("<i>").addClass("bx bx-trash font-size-14"))
         .on("click", function () {
           if (item.type === "existing") silinenGelenDosyaIds.push(item.id);
           gelenDosyalar.splice(index, 1);
           gelenDosyalariGoster();
-        }).appendTo(actions);
+        });
+      if (item.type !== "primary") removeButton.appendTo(actions);
       card.append(icon, info, actions).appendTo(list);
     });
     gelenDosyaAlanlariniGuncelle();
@@ -578,7 +579,7 @@ $(document).ready(function () {
         checkSectionVisibility();
         
         setEvrakContent(data.aciklama);
-        gelenDosyalar = (data.dosyalar || []).map(item => ({...item, type: "existing"}));
+        gelenDosyalar = (data.dosyalar || []).map(item => ({...item, type: item.type || "existing"}));
         silinenGelenDosyaIds = [];
         gelenDosyalariGoster();
         if (data.dosya_yolu && gelenDosyalar.length === 0) $("#mevcutDosya").show().find("a").attr("href", data.dosya_yolu);

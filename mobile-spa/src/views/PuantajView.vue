@@ -810,6 +810,11 @@ function getPersonelWeekDayEntry(personel, dayObj) {
 }
 
 function openDayStatusPicker(personel, dayObj) {
+  const entry = getEffectiveEntry(personel.id, dayObj.dateStr, personel.entries?.[dayObj.dateStr])
+  if (entry.locked || entry.type === 'nobet_htc') {
+    showToast('Bu HTÇ onaylı hafta sonu nöbetinden otomatik gelir ve puantajdan değiştirilemez.', 'info')
+    return
+  }
   pickerTargetPersonel.value = personel
   pickerTargetDay.value = dayObj
   pickerActiveTab.value = 'ucretli'
@@ -976,6 +981,7 @@ const modalCalendarGridCells = computed(() => {
       isUnsaved,
       overtimeHours,
       hasOvertime: overtimeHours > 0,
+      locked: Boolean(entry.locked || entry.type === 'nobet_htc'),
       key: dateStr,
     })
   }
@@ -986,6 +992,10 @@ const modalCalendarGridCells = computed(() => {
 // Takvim Hücresine Dokunulduğunda Damgalama veya Hızlı Seçici
 function handleCellClick(cell) {
   if (cell.empty || !selectedPersonel.value) return
+  if (cell.locked) {
+    showToast('Bu HTÇ onaylı hafta sonu nöbetinden otomatik gelir ve puantajdan değiştirilemez.', 'info')
+    return
+  }
 
   if (modalStampType.value) {
     if (modalStampType.value.isFm) {

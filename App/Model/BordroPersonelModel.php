@@ -2647,6 +2647,7 @@ class BordroPersonelModel extends Model
 
         if ($this->ozelCalismaCache === null) {
             $this->ozelCalismaCache = [];
+            $ozelCalismaTarihleri = [];
             $ocQuery = $this->db->prepare("
                 SELECT pi.personel_id, pi.baslangic_tarihi, pi.bitis_tarihi,
                        t.resmi_tatil_calismasi, t.hafta_tatili_calismasi
@@ -2674,11 +2675,33 @@ class BordroPersonelModel extends Model
                     $kesisimBas = max($bas, $donemBasDt);
                     $kesisimBit = min($bit, $donemBitDt);
                     if ($kesisimBas <= $kesisimBit) {
-                        $gun = $kesisimBas->diff($kesisimBit)->days + 1;
-                        if ($row->resmi_tatil_calismasi) $this->ozelCalismaCache[$pid]['rtc'] += $gun;
-                        if ($row->hafta_tatili_calismasi) $this->ozelCalismaCache[$pid]['htc'] += $gun;
+                        $cursor = clone $kesisimBas;
+                        while ($cursor <= $kesisimBit) {
+                            $tarih = $cursor->format('Y-m-d');
+                            if ($row->resmi_tatil_calismasi) $ozelCalismaTarihleri[$pid]['rtc'][$tarih] = true;
+                            if ($row->hafta_tatili_calismasi) $ozelCalismaTarihleri[$pid]['htc'][$tarih] = true;
+                            $cursor->modify('+1 day');
+                        }
                     }
                 } catch (\Exception $e) {}
+            }
+            $nobetHtcQuery = $this->db->prepare("SELECT DISTINCT personel_id, nobet_tarihi
+                FROM nobetler
+                WHERE firma_id = ? AND nobet_tarihi BETWEEN ? AND ?
+                  AND nobet_tipi = 'hafta_sonu' AND yonetici_onayi = 1
+                  AND silinme_tarihi IS NULL
+                  AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi', 'iptal'))");
+            $nobetHtcQuery->execute([$firma_id, $donemBaslangic, $donemBitis]);
+            foreach ($nobetHtcQuery->fetchAll(PDO::FETCH_OBJ) as $row) {
+                $pid = (int) $row->personel_id;
+                $ozelCalismaTarihleri[$pid]['htc'][(string) $row->nobet_tarihi] = true;
+            }
+            foreach ($ozelCalismaTarihleri as $pid => $turTarihleri) {
+                if (!isset($this->ozelCalismaCache[$pid])) {
+                    $this->ozelCalismaCache[$pid] = ['rtc' => 0, 'htc' => 0];
+                }
+                $this->ozelCalismaCache[$pid]['rtc'] = count($turTarihleri['rtc'] ?? []);
+                $this->ozelCalismaCache[$pid]['htc'] = count($turTarihleri['htc'] ?? []);
             }
             // Sorgu personel filtresi içermez; bu aralık için cache tamdır.
             // Cache'te olmayan personelin RTÇ/HTÇ günü sıfırdır, tekrar sorgulanmaz.
@@ -5693,6 +5716,9 @@ class BordroPersonelModel extends Model
      */
     public function getOzelCalismaGunSayisi(int $personel_id, string $donem_baslangic, string $donem_bitis, string $flagKolonu): int
     {
+        if (!in_array($flagKolonu, ['resmi_tatil_calismasi', 'hafta_tatili_calismasi'], true)) {
+            throw new \InvalidArgumentException('Geçersiz özel çalışma türü.');
+        }
         $sql = $this->db->prepare("
             SELECT pi.baslangic_tarihi, pi.bitis_tarihi
             FROM personel_izinleri pi
@@ -5707,7 +5733,7 @@ class BordroPersonelModel extends Model
         $sql->execute([$personel_id, $donem_bitis, $donem_baslangic]);
         $kayitlar = $sql->fetchAll(PDO::FETCH_OBJ);
 
-        $toplamGun = 0;
+        $tarihler = [];
         $donemBas = new \DateTime($donem_baslangic);
         $donemBit = new \DateTime($donem_bitis);
 
@@ -5717,10 +5743,28 @@ class BordroPersonelModel extends Model
             $kesisimBas = max($bas, $donemBas);
             $kesisimBit = min($bit, $donemBit);
             if ($kesisimBas <= $kesisimBit) {
-                $toplamGun += $kesisimBas->diff($kesisimBit)->days + 1;
+                $cursor = clone $kesisimBas;
+                while ($cursor <= $kesisimBit) {
+                    $tarihler[$cursor->format('Y-m-d')] = true;
+                    $cursor->modify('+1 day');
+                }
             }
         }
-        return $toplamGun;
+
+        if ($flagKolonu === 'hafta_tatili_calismasi') {
+            $nobetStmt = $this->db->prepare("SELECT DISTINCT nobet_tarihi
+                FROM nobetler
+                WHERE personel_id = ? AND nobet_tarihi BETWEEN ? AND ?
+                  AND nobet_tipi = 'hafta_sonu' AND yonetici_onayi = 1
+                  AND silinme_tarihi IS NULL
+                  AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi', 'iptal'))");
+            $nobetStmt->execute([$personel_id, $donem_baslangic, $donem_bitis]);
+            foreach ($nobetStmt->fetchAll(PDO::FETCH_COLUMN) as $nobetTarihi) {
+                $tarihler[(string) $nobetTarihi] = true;
+            }
+        }
+
+        return count($tarihler);
     }
 
     /**

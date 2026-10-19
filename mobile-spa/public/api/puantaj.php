@@ -111,6 +111,7 @@ $Personel = new PersonelModel();
 $Puantaj = new PuantajModel();
 $PersonelIzinleri = new PersonelIzinleriModel();
 $FazlaMesai = new PersonelFazlaMesaileriModel();
+$Nobet = new NobetModel();
 
 try {
     // 1. TANIMLAMALAR (Definitions)
@@ -352,8 +353,12 @@ try {
         // Fazla mesailer
         $personelIdsAll = array_map(static fn($p) => (int) $p->id, $personelList);
         $allMesailer = $FazlaMesai->getPersonellerAyMesaileri($personelIdsAll, $startDate, $endDate, $firmaId);
-        $Nobet = new NobetModel();
         $allNobetMesaileri = $Nobet->getPuantajHaftaIciMesaileri($personelIdsAll, $startDate, $endDate, $firmaId);
+        $allNobetHtc = $Nobet->getOnayliHaftaSonuNobetTarihleri($personelIdsAll, $startDate, $endDate, $firmaId);
+
+        $htcStmt = $Tanimlar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod IN ('HTÇ','HTC') OR hafta_tatili_calismasi = 1) AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $htcStmt->execute([$firmaId]);
+        $htcTanim = $htcStmt->fetch(PDO::FETCH_OBJ);
 
         $data = [];
 
@@ -452,6 +457,16 @@ try {
                 $cur = strtotime('+1 day', $cur);
             }
 
+            if ($htcTanim) {
+                foreach (array_keys($allNobetHtc[(int) $p->id] ?? []) as $nobetHtcTarihi) {
+                    $pInfo['entries'][$nobetHtcTarihi] = [[
+                        'type' => 'nobet_htc', 'id' => 0, 'tip_id' => (int) $htcTanim->id,
+                        'name' => 'Hafta Sonu Nöbeti (Otomatik HTÇ)', 'kisa_kod' => 'HTÇ',
+                        'color' => resolveStatusColor('HTÇ', $htcTanim->renk ?: '#7367f0'), 'locked' => true,
+                    ]];
+                }
+            }
+
             $data[] = $pInfo;
         }
 
@@ -537,6 +552,13 @@ try {
 
                     if ($personelId <= 0 || empty($date)) {
                         continue;
+                    }
+
+                    if ($code === 'HTÇ' || $code === 'HTC') {
+                        $nobetHtc = $Nobet->getOnayliHaftaSonuNobetTarihleri([$personelId], $date, $date, $firmaId);
+                        if (!empty($nobetHtc[$personelId])) {
+                            throw new RuntimeException('Onaylı hafta sonu nöbeti bulunan güne ayrıca HTÇ girilemez. HTÇ nöbetten otomatik gösterilir.');
+                        }
                     }
 
                     // O günkü çakışan izinleri temizle

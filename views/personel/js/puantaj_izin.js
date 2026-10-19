@@ -586,9 +586,10 @@ $(document).ready(function () {
                       if (!isDisabled && typeId && ucretliIzinIds.has(typeId)) paidCount++;
                       
                       hasEntryClass = "has-entry";
+                      if (entry.type === "nobet_htc" || entry.locked) hasEntryClass += " nobet-htc-locked";
 
                       let deleteBtn = "";
-                      if (entry.type !== "default") {
+                      if (entry.type !== "default" && entry.type !== "nobet_htc" && !entry.locked) {
                         deleteBtn = `<span class="btn-delete-cell" onclick="deleteEntry(${entry.id}, event)">×</span>`;
                       }
 
@@ -756,6 +757,10 @@ $(document).ready(function () {
       .off("click")
       .on("click", function (e) {
         if ($(this).hasClass("disabled")) return;
+        if ($(this).hasClass("nobet-htc-locked")) {
+          showToast("Bu HTÇ onaylı hafta sonu nöbetinden otomatik gelir ve puantajdan değiştirilemez.", "info");
+          return;
+        }
 
         // Fazla Mesai Modu Aktifse:
         if (isFmModeActive) {

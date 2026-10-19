@@ -181,6 +181,23 @@ class NobetModel extends Model
         return $result;
     }
 
+    /** Format: [personel_id => ['YYYY-MM-DD' => true]] */
+    public function getOnayliHaftaSonuNobetTarihleri(array $personelIds, string $baslangic, string $bitis, int $firmaId): array
+    {
+        $personelIds = array_values(array_unique(array_filter(array_map('intval', $personelIds))));
+        if ($firmaId <= 0 || empty($personelIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($personelIds), '?'));
+        $stmt = $this->db->prepare("SELECT DISTINCT personel_id, nobet_tarihi FROM {$this->table}
+            WHERE firma_id = ? AND personel_id IN ($placeholders) AND nobet_tarihi BETWEEN ? AND ?
+              AND nobet_tipi = 'hafta_sonu' AND yonetici_onayi = 1 AND silinme_tarihi IS NULL
+              AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi', 'iptal'))");
+        $stmt->execute(array_merge([$firmaId], $personelIds, [$baslangic, $bitis]));
+        $result = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $result[(int) $row->personel_id][(string) $row->nobet_tarihi] = true;
+        }
+        return $result;
+    }
     /**
      * Nöbet ekler
      */

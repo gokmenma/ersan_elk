@@ -1340,3 +1340,8 @@
 - [x] Bordro detayında hafta içi nöbet ve manuel fazla mesai sözleşme alacağı tarafında ayrıldı; resmî alacak dağılımı iki fazla çalışma kaynağını `Fazla Mesai Ücreti (Net)` etiketi altında birleştirecek şekilde düzeltildi.
 - [x] Masaüstü fazla mesai ekleme/kaldırma işlemleri doğrudan kalıcı API kaydına bağlandı. Test personelindeki manuel 4 saat soft-delete edilip bordro yeniden hesaplandı; 8 saat / 1.497,36 TL snapshot doğrulandı.
 - [x] Puantaj `Kaydet` API'sini fatal hatayla durduran HTÇ otomasyon model metot imzası çakışması giderildi; gerçek API ekle/sil regresyonu başarıyla doğrulandı.
+- [x] Sözleşme alacağındaki hafta içi nöbet detayı `gün × sözleşme nöbet tutarı` formatına çevrildi; teknik `4 Saat` ibaresi kaldırıldı.
+- [x] Onaylı hafta sonu nöbetleri HTÇ gün kaynağına eklendi; aynı tarihli puantaj HTÇ ile çift sayım engellendi. Doğrudan/cache gün testi ve yeniden hesaplanan snapshot'ta 1 gün / 935,85 TL doğrulandı.
+- [x] Nöbet kaynaklı HTÇ masaüstü/mobil puantaj ve Excel'de kilitli/türetilmiş statü olarak gösterildi; mükerrer manuel HTÇ hem UI hem API katmanında engellendi. Gerçek Ekim API yanıtı ve reddetme regresyonu doğrulandı.
+- [x] Sözleşme alacağındaki hafta içi ve hafta sonu nöbetleri tek açılır `Nöbet Ödemeleri` başlığında toplandı; detaylarda sırasıyla `gün × tutar` ve `adet × tutar` gösterimi doğrulandı.
+- [x] Evrak Takip'te ikinci belge eklenince eski ana belgenin kaybolmuş görünmesine yol açan ana dosya/ek tablosu ayrımı giderildi; liste ve düzenleme modalı iki kaynağı birlikte ve tekilleştirerek gösteriyor. PHP/JavaScript sözdizimi doğrulandı. (2026-10-19)

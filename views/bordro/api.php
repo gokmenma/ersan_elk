@@ -1067,14 +1067,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false)) { continue; }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
-                    if (strpos($aciklama, '[Nöbet]') === 0 && $odemeTurLower === 'hafta_ici_nobet') {
-                        $tur = 'hafta_ici_nobet';
-                        if (!isset($ekOdemelerNonPuantaj[$tur])) { $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0, 'items' => []]; }
-                        $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
-                        $ekOdemelerNonPuantaj[$tur]['adet'] += $parsedAdet;
-                        $ekOdemelerNonPuantaj[$tur]['kayit_sayisi']++;
-                        $ekOdemelerNonPuantaj[$tur]['items'][] = $odeme;
-                    } elseif (strpos($aciklama, '[Nöbet]') === 0) {
+                    if (strpos($aciklama, '[Nöbet]') === 0) {
                         $nobetGosterim = clone $odeme;
                         $nobetGosterim->tutar = floatval($odeme->tutar);
                         $nobetOdemeler[] = $nobetGosterim;
@@ -1183,8 +1176,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $detayMetin = trim($matches[2]);
                         }
                         
-                        $adet = 0; $birimFiyat = '';
-                        if (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                        $adet = 0; $birimFiyat = ''; $birimEtiket = 'Adet';
+                        if (preg_match('/(\d+)\s*Gün\s*x\s*\d+(?:[\.,]\d+)?\s*Saat\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                            $adet = intval($detayMatch[1]);
+                            $birimFiyat = trim($detayMatch[2]);
+                            $birimEtiket = 'Gün';
+                        } elseif (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
                             $adet = intval($detayMatch[1]); 
                             $birimFiyat = trim($detayMatch[2]);
                         } elseif (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $aciklama, $detayMatch)) {
@@ -1207,9 +1204,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $gruplanmis[$groupKey]['adet'] += $adet;
                         $gruplanmis[$groupKey]['tutar'] += floatval($odeme->tutar);
                         
-                        $fiyatKey = $birimFiyat !== '' ? $birimFiyat : '__unknown__';
+                        $fiyatKey = $birimEtiket . '|' . ($birimFiyat !== '' ? $birimFiyat : '__unknown__');
                         if (!isset($gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey])) {
-                            $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey] = ['birim_fiyat' => $birimFiyat, 'adet' => 0, 'tutar' => 0];
+                            $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey] = ['birim_fiyat' => $birimFiyat, 'birim_etiket' => $birimEtiket, 'adet' => 0, 'tutar' => 0];
                         }
                         $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey]['adet'] += $adet;
                         $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey]['tutar'] += floatval($odeme->tutar);
@@ -1438,7 +1435,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($isPrimUsulu && !empty($puantajGruplu)) {
                     foreach ($puantajGruplu as $grup) {
                         foreach ($grup['fiyat_kirilim'] as $kirilim) {
-                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' ' . ($kirilim['birim_etiket'] ?? 'Adet') : '';
                             $birim = $kirilim['birim_fiyat'] !== '' ? ' × ' . $kirilim['birim_fiyat'] . ' ₺' : '';
                             $puantajIslemSatirlariHtml .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana'], ENT_QUOTES, 'UTF-8') . ' <small class="text-muted">' . htmlspecialchars($detStr . $birim, ENT_QUOTES, 'UTF-8') . '</small></td>
@@ -1545,7 +1542,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               </tr>';
                     foreach ($puantajGruplu as $grup) {
                         foreach ($grup['fiyat_kirilim'] as $kirilim) {
-                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' ' . ($kirilim['birim_etiket'] ?? 'Adet') : '';
                             $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
                             $html .= '<tr class="child-row collapse ' . $collId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
@@ -1563,7 +1560,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               </tr>';
                     foreach ($nobetGruplu as $grup) {
                         foreach ($grup['fiyat_kirilim'] as $kirilim) {
-                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' ' . ($kirilim['birim_etiket'] ?? 'Adet') : '';
                             $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
                             $html .= '<tr class="child-row collapse ' . $collId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
@@ -1581,7 +1578,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               </tr>';
                     foreach ($kacakGruplu as $grup) {
                         foreach ($grup['fiyat_kirilim'] as $kirilim) {
-                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' ' . ($kirilim['birim_etiket'] ?? 'Adet') : '';
                             $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
                             $html .= '<tr class="child-row collapse ' . $collId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
@@ -1604,8 +1601,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <td class="text-end text-success fw-bold">+' . number_format($edata['toplam'], 2, ',', '.') . ' ₺</td>
                               </tr>';
                     foreach ($edata['items'] as $it) {
+                         $detayAciklama = (string) ($it->aciklama ?? '');
+                         if ((string) $tur === 'hafta_ici_nobet'
+                             && preg_match('/(\d+)\s*Gün\s*x\s*\d+\s*Saat\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayAciklama, $nobetDetayEslesme)) {
+                             $detayAciklama = intval($nobetDetayEslesme[1]) . ' Gün × ' . trim($nobetDetayEslesme[2]) . ' ₺';
+                         }
                          $html .= '<tr class="child-row collapse ' . $cId . '">
-                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($it->aciklama) . '</td>
+                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($detayAciklama, ENT_QUOTES, 'UTF-8') . '</td>
                                     <td class="text-end pe-4">+' . number_format($it->tutar, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     }
@@ -2089,16 +2091,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false)) { continue; }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
-                    if (strpos($aciklama, '[Nöbet]') === 0 && $odemeTurLower === 'hafta_ici_nobet') {
-                        $tur = 'hafta_ici_nobet';
-                        if (!isset($ekOdemelerNonPuantaj[$tur])) { $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0, 'items' => []]; }
-                        $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
-                        $ekOdemelerNonPuantaj[$tur]['adet'] += $parsedAdet;
-                        $ekOdemelerNonPuantaj[$tur]['kayit_sayisi']++;
-                        $ekOdemelerNonPuantaj[$tur]['items'][] = $odeme;
-                    } elseif (strpos($aciklama, '[Nöbet]') === 0) {
+                    if (strpos($aciklama, '[Nöbet]') === 0) {
                         $nobetGosterim = clone $odeme;
-                        $nobetGosterim->tutar = $snapshotEkOdemeNetleri[(int) ($odeme->id ?? 0)] ?? floatval($odeme->tutar);
+                        // Sözleşme tarafında kayıtlı nöbet hakedişi korunur; resmî net etki
+                        // ayrı hesapta gösterilir ve bu tutarın üzerine yazılamaz.
+                        $nobetGosterim->tutar = floatval($odeme->tutar);
                         $nobetOdemeler[] = $nobetGosterim;
                         $toplamNobetTutar += floatval($nobetGosterim->tutar);
                     } elseif (strpos($aciklama, '[Kaçak Kontrol]') === 0) {
@@ -2205,8 +2202,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $detayMetin = trim($matches[2]);
                         }
                         
-                        $adet = 0; $birimFiyat = '';
-                        if (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                        $adet = 0; $birimFiyat = ''; $birimEtiket = 'Adet';
+                        if (preg_match('/(\d+)\s*Gün\s*x\s*\d+(?:[\.,]\d+)?\s*Saat\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                            $adet = intval($detayMatch[1]);
+                            $birimFiyat = trim($detayMatch[2]);
+                            $birimEtiket = 'Gün';
+                        } elseif (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
                             $adet = intval($detayMatch[1]); 
                             $birimFiyat = trim($detayMatch[2]);
                         } elseif (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $aciklama, $detayMatch)) {
@@ -2229,9 +2230,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $gruplanmis[$groupKey]['adet'] += $adet;
                         $gruplanmis[$groupKey]['tutar'] += floatval($odeme->tutar);
                         
-                        $fiyatKey = $birimFiyat !== '' ? $birimFiyat : '__unknown__';
+                        $fiyatKey = $birimEtiket . '|' . ($birimFiyat !== '' ? $birimFiyat : '__unknown__');
                         if (!isset($gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey])) {
-                            $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey] = ['birim_fiyat' => $birimFiyat, 'adet' => 0, 'tutar' => 0];
+                            $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey] = ['birim_fiyat' => $birimFiyat, 'birim_etiket' => $birimEtiket, 'adet' => 0, 'tutar' => 0];
                         }
                         $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey]['adet'] += $adet;
                         $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey]['tutar'] += floatval($odeme->tutar);
@@ -2536,7 +2537,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     $popHtml = '<div class="ref-popover-content">';
                     foreach ($grupluArray as $grup) {
                         foreach ($grup['fiyat_kirilim'] as $kirilim) {
-                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' ' . ($kirilim['birim_etiket'] ?? 'Adet') : '';
                             $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
                             $popHtml .= '<div style="margin-bottom:6px; display:flex; justify-content:space-between; gap:20px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;">';
                             $popHtml .= '<span style="color:#cbd5e1;">' . htmlspecialchars($grup['ana']) . ' <small style="color:#94a3b8;">(' . $detStr . $birim . ')</small></span>';

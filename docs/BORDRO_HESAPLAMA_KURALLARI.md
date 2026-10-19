@@ -29,6 +29,8 @@ Bu kurallar bordro/list ekranindaki gosterim, detay modalı, Excel export ve maa
 - Sözleşme ve resmî alacak ana panellerinin açık/kapalı durumları birbirinden bağımsız olarak `localStorage` içinde saklanır. Detay yeniden açıldığında son durumlar geri yüklenir; puantaj ve diğer panel içi alt kırılımların geçici collapse durumu bu tercihe dahil edilmez.
 - Eski detayın sözleşme kazanç satırlarında teknik ek ödeme kodu (`aylik_arac_kirasi`, `kacak_ihbar_primi` vb.) kullanıcıya gösterilmez; bordro döneminde geçerli `bordro_parametreleri.etiket` değeri kullanılır.
 - Kendi alacağı hesabında sözleşme günlük ücreti, maaş hesap günü, sözleşme üzerine eklenen tam HTÇ hakedişi ve diğer kazançlar ayrı gösterilir. Prim usulü **Puantaj Hakedişi** akordeon başlığında puantaj kaynaklarından hesaplanan toplam işlem/adet rozeti gösterilir; akordeon açıldığında işlem adı, adet, birim fiyat ve tutar kırılımları doğrudan bu satırın altında listelenir. Bu açıklayıcı görünüm hakediş veya ödeme toplamını değiştirmez.
+- Sözleşme alacağı tarafındaki **Hafta İçi Nöbet** detayı yalnız `gün × sözleşme nöbet tutarı` biçiminde (ör. `2 Gün × 500,00 ₺`) gösterilir. Bordro kaynağındaki teknik `4 Saat` bilgisi bu sözleşme detayına yazılmaz; saat bilgisi yalnız resmî **Fazla Mesai Ücreti (Net)** hesabında kullanılır.
+- Sözleşme alacağı tarafında hafta içi ve hafta sonu nöbet hakedişleri tek **Nöbet Ödemeleri** açılır başlığında toplanır. Başlık toplam nöbet tutarını; açılım hafta içi için `gün × birim tutar`, hafta sonu için `adet × birim tutar` kırılımını ayrı satırlarda gösterir. Puantajdan girilen manuel fazla mesai bu gruba katılmaz.
 - Resmî alacak hesabında günlük net asgari ücret × banka günü, yemek, eş yardımı ve diğer resmî eklemeler gösterilir ve panel kesinti öncesi resmî alacakla tamamlanır. Banka kesintileri sağdaki **Kesintiler** kartında kırmızı eksi kalemler olarak, net banka ödemesi ise alt ödeme sonucunda gösterilir.
 - Resmî banka matrahı kayıtlı kalemlere ayrılırken Muhasebe Excel'iyle aynı öncelik uygulanır: asgari/normal ücret ve eş yardımından sonra kayıtlı resmî RTÇ, HTÇ, fazla mesai ve resmî prim kalemleri ayrılır; yemek yardımı kalan resmî matrahla sınırlandırılır. Böylece yemek havuzuna kaynak olan HTÇ gibi bir resmî kalem detayda kaybolmaz ve resmî kart kalemleri toplamı kayıtlı banka matrahını aşmaz.
 - Bu öncelik sırası yalnız `BordroPersonelModel::getMuhasebeResmiKalemDagilimi()` metodunda tanımlanır. Bordro detay modalı ve Muhasebe Excel'i bu metodun sonucunu kullanır; görünüm dosyalarında ikinci bir resmî dağıtım hesabı kurulamaz.
@@ -214,6 +216,12 @@ Kural: `yuvarlamaFarki` dışında banka limit matrahı sözleşme netini aşama
 
 HTÇ, personelin kendi gunluk ucretinden hesaplanir ve **sozlesme netinin uzerine eklenir**.
 Bu kural hem maasa dahil hem de maasa dahil olmayan personelde gecerlidir.
+
+Nöbet modülündeki onaylı `hafta_sonu` nöbeti aynı tarih için bir HTÇ günü kaynağıdır.
+Aynı gün puantajda ayrıca HTÇ kodu bulunuyorsa gün yalnız bir kez sayılır. Silinmiş,
+iptal/reddedilmiş, talep aşamasındaki veya yönetici onayı bulunmayan hafta sonu nöbeti
+HTÇ üretmez. Hafta sonu nöbetinin sözleşme nöbet ödemesi ile HTÇ hakedişi ayrı
+kalemlerdir; liste, detay, Excel ve bordro snapshot hesabı aynı birleşik gün kümesini kullanır.
 
 Okuma personelinde pazar gunu HTÇ puantaji, firma ayarindaki kisi basi minimum
 okuma sayisi (varsayilan 10) saglandiginda endeks cron'u tarafindan otomatik

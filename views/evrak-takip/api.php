@@ -906,6 +906,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $evrak->dosyalar = array_map(static function ($attachment) {
                     return [
                         'id' => Security::encrypt((int) $attachment->id),
+                        'type' => 'existing',
                         'name' => $attachment->dosya_adi,
                         'path' => $attachment->dosya_yolu,
                         'size' => (int) $attachment->dosya_boyutu,
@@ -913,6 +914,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'user' => $attachment->yukleyen_kullanici,
                     ];
                 }, $Model->getAttachments($id));
+                if (!empty($evrak->dosya_yolu)) {
+                    $primaryPath = ltrim((string) $evrak->dosya_yolu, '/');
+                    $primaryAlreadyListed = array_filter(
+                        $evrak->dosyalar,
+                        static fn(array $file): bool => ltrim((string) ($file['path'] ?? ''), '/') === $primaryPath
+                    );
+                    if ($primaryAlreadyListed === []) {
+                        $primaryFullPath = dirname(__DIR__, 2) . '/' . $primaryPath;
+                        array_unshift($evrak->dosyalar, [
+                            'id' => null,
+                            'type' => 'primary',
+                            'name' => basename($primaryPath),
+                            'path' => (string) $evrak->dosya_yolu,
+                            'size' => is_file($primaryFullPath) ? (int) filesize($primaryFullPath) : 0,
+                            'date' => $evrak->olusturma_tarihi ?? null,
+                            'user' => 'Ana evrak dosyası',
+                        ]);
+                    }
+                }
                 echo json_encode(['status' => 'success', 'data' => $evrak]);
                 break;
 

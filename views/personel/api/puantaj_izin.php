@@ -259,6 +259,10 @@ try {
         $varsayilan_HT->execute([$firma_id]);
         $ht_tanim = $varsayilan_HT->fetch(PDO::FETCH_OBJ);
 
+        $varsayilan_HTC = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'HTÇ' OR kisa_kod = 'HTC' OR hafta_tatili_calismasi = 1) AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $varsayilan_HTC->execute([$firma_id]);
+        $htc_tanim = $varsayilan_HTC->fetch(PDO::FETCH_OBJ);
+
         // Puantaj ve İzin verilerini getir
         // 1. Tüm personellerin izinlerini tek seferde çek
         $izin_stmt = $PersonelIzinleri->db->prepare("
@@ -288,6 +292,7 @@ try {
         $personelIdsAll = array_map(static fn($p) => (int) $p->id, $personel_list);
         $all_mesailer = $FazlaMesai->getPersonellerAyMesaileri($personelIdsAll, $startDate, $endDate, $firma_id);
         $all_nobet_mesaileri = $Nobet->getPuantajHaftaIciMesaileri($personelIdsAll, $startDate, $endDate, $firma_id);
+        $all_nobet_htc = $Nobet->getOnayliHaftaSonuNobetTarihleri($personelIdsAll, $startDate, $endDate, $firma_id);
 
         $data = [];
 
@@ -378,6 +383,16 @@ try {
                     }
                 }
                 $cur = strtotime("+1 day", $cur);
+            }
+
+            if ($htc_tanim) {
+                foreach (array_keys($all_nobet_htc[(int) $p->id] ?? []) as $nobetHtcTarihi) {
+                    $p_info['entries'][$nobetHtcTarihi] = [[
+                        'type' => 'nobet_htc', 'id' => 0, 'tip_id' => $htc_tanim->id,
+                        'name' => 'Hafta Sonu Nöbeti (Otomatik HTÇ)', 'kisa_kod' => 'HTÇ',
+                        'color' => $htc_tanim->renk ?: '#7367f0', 'locked' => true,
+                    ]];
+                }
             }
 
             $data[] = $p_info;
@@ -639,6 +654,17 @@ try {
 
                 if (!$baslangic || !$bitis) {
                     continue;
+                }
+
+                if ($type_id) {
+                    $htcKontrol = $Tanimlamalar->db->prepare("SELECT hafta_tatili_calismasi FROM tanimlamalar WHERE id = ? AND silinme_tarihi IS NULL");
+                    $htcKontrol->execute([$type_id]);
+                    if ((int) $htcKontrol->fetchColumn() === 1) {
+                        $nobetHtc = $Nobet->getOnayliHaftaSonuNobetTarihleri([(int) $p_id], $baslangic, $bitis, $firma_id);
+                        if (!empty($nobetHtc[(int) $p_id])) {
+                            throw new Exception('Onaylı hafta sonu nöbeti bulunan güne ayrıca HTÇ girilemez. HTÇ nöbetten otomatik gösterilir.');
+                        }
+                    }
                 }
 
                 // Toplam gün hesapla
@@ -1335,6 +1361,10 @@ try {
         $exportPersonelIds = array_map(static fn($p) => (int) $p->id, $personel_list);
         $exportMesailer = $FazlaMesai->getPersonellerAyMesaileri($exportPersonelIds, $startDate, $endDate, $firma_id);
         $exportNobetMesaileri = $Nobet->getPuantajHaftaIciMesaileri($exportPersonelIds, $startDate, $endDate, $firma_id);
+        $exportNobetHtc = $Nobet->getOnayliHaftaSonuNobetTarihleri($exportPersonelIds, $startDate, $endDate, $firma_id);
+        $exportHtcStmt = $Tanimlamalar->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod IN ('HTÇ','HTC') OR hafta_tatili_calismasi = 1) AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $exportHtcStmt->execute([$firma_id]);
+        $exportHtcId = (int) $exportHtcStmt->fetchColumn();
 
         // PHPSpreadsheet
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -1466,6 +1496,12 @@ try {
                     }
                 }
                 $cur = strtotime("+1 day", $cur);
+            }
+
+            foreach (array_keys($exportNobetHtc[(int) $p->id] ?? []) as $nobetHtcTarihi) {
+                $dayData[(int) date('j', strtotime($nobetHtcTarihi))] = [
+                    'code' => 'HTÇ', 'color' => 'EDE9FE', 'tip_id' => $exportHtcId, 'is_default' => false,
+                ];
             }
 
             $paidCount = 0;
