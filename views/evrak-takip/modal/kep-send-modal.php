@@ -98,7 +98,7 @@
                             <i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Kontrol Ediliyor...
                         </span>
                         <span id="modalKepAgentDetails" class="small text-muted font-size-11 d-none d-sm-inline"></span>
-                        <a href="downloads/ErsanEImza.jar?v=1.1.2" download="ErsanEImza.jar" class="btn btn-sm btn-outline-primary py-0 px-2 font-size-11 rounded-pill" id="btnDownloadAgentDirect" title="Java E-İmza Uygulamasını İndir">
+                        <a href="downloads/ErsanEImza.jar?v=1.1.3" download="ErsanEImza.jar" class="btn btn-sm btn-outline-primary py-0 px-2 font-size-11 rounded-pill" id="btnDownloadAgentDirect" title="Java E-İmza Uygulamasını İndir">
                             <i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)
                         </a>
                         <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 font-size-11 rounded-pill" id="btnAgentHelpModal" title="Yardım">
@@ -135,7 +135,7 @@
                 </div>
 
                 <div class="text-center my-3">
-                    <a href="downloads/ErsanEImza.jar?v=1.1.2" download="ErsanEImza.jar" class="btn btn-primary btn-lg w-100 shadow-sm py-2">
+                    <a href="downloads/ErsanEImza.jar?v=1.1.3" download="ErsanEImza.jar" class="btn btn-primary btn-lg w-100 shadow-sm py-2">
                         <i class="bx bxs-download me-2 fs-5 align-middle"></i><strong>Ersan E-İmza Java Uygulamasını İndir</strong>
                         <div class="font-size-11 opacity-75 mt-1">ErsanEImza.jar (Çift tıklayarak çalıştırın)</div>
                     </a>

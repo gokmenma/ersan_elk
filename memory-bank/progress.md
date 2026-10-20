@@ -1424,6 +1424,7 @@
 - [x] Java 8 uyumlu ajan yeniden derlendi; JAR kaynak içeriği, otomatik çıkarma, dosya hash'leri ve Windows executable çalışması doğrulandı.
 - [x] Windows'ta imza anında native PKCS#11 sürücüsünün Java ajanını düşürmesini önlemek için imzalama gömülü OpenSC alt sürecine izole edildi; 9191 servisinin sürücü hatasından etkilenmemesi sağlandı.
 - [x] Çok nesneli e-imza kartlarında özel anahtar–sertifika CKA_ID eşleştirmesi eklendi; sertifika okuma ve imza komutları aynı nesne ID'sine sabitlendi, araç hata çıktıları kullanıcıya güvenli ve sınırlı biçimde taşındı.
+- [x] PTT tarafından bozuk S/MIME olarak reddedilen CMS çıktısındaki primitive sertifika kümesi etiketi doğru constructed `[0]` etiketiyle değiştirildi; `1.1.3` ajanı derlendi ve detached içerik üzerinde OpenSSL ile yapısal ve kriptografik doğrulama başarılı oldu.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

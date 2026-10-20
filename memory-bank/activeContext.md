@@ -2540,6 +2540,7 @@
 - LGPL-2.1 lisans metni ve kaynak bildirimi pakete dahil edildi; ajan sürümü `1.1.0 (Portable OpenSC)` olarak güncellendi.
 - Windows kart sürücüsünün aynı JVM içindeki SunPKCS11 imzasında ajanı tamamen düşürme riski giderildi. Windows imzası gömülü `pkcs11-tool.exe` alt sürecine izole edildi ve ajan sürümü `1.1.1` yapıldı.
 - Kartta birden fazla sertifika/anahtar bulunduğunda oluşan `Karttan sertifika okunamadı` hatası giderildi. Ajan PIN ile nesneleri listeliyor, özel imza anahtarıyla aynı CKA_ID değerine sahip sertifikayı seçiyor ve her iki işlemde bu ID'yi kullanıyor; sürüm `1.1.2` oldu.
+- PTT KEP'in `S/MIME formatı geçersiz veya bozuk` reddinin nedeni, CMS `CertificateSet [0] IMPLICIT` alanının primitive `0x80` yerine constructed `0xA0` olması gerekirken yanlış kodlanmasıydı. DER etiketi düzeltildi ve ajan `1.1.3` olarak paketlendi. Üretilen detached CAdES-BES örneği OpenSSL CMS doğrulamasından başarıyla geçti.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

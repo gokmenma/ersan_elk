@@ -229,7 +229,9 @@ public class Asn1Der {
         byte[] digestAlg = sequence(oid(OID_SHA256), nullVal());
         byte[] digestAlgs = set(digestAlg);
         byte[] encapContent = sequence(oid(OID_ID_DATA));
-        byte[] certificates = context(0, certDer, false);
+        // CertificateSet, SignedData icinde [0] IMPLICIT ve CONSTRUCTED alandir.
+        // 0x80 primitive etiketi DER/CMS yapisini gecersiz kilar; dogru etiket A0'dir.
+        byte[] certificates = encodeTlv(0xA0, certDer);
 
         byte[] sid = sequence(ci.issuerDer, ci.serialDer);
         byte[] sigAlg = sequence(oid(OID_RSA_ENCRYPTION), nullVal());
