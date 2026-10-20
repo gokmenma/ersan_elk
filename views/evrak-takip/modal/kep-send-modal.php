@@ -95,11 +95,14 @@
                 <div class="modal-footer border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div id="modalKepAgentStatusWrapper" class="d-flex align-items-center gap-2">
                         <span id="modalKepAgentBadge" class="badge bg-secondary-subtle text-secondary border font-size-11 py-1 px-2">
-                            <i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Ajanı Kontrol Ediliyor...
+                            <i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Kontrol Ediliyor...
                         </span>
                         <span id="modalKepAgentDetails" class="small text-muted font-size-11 d-none d-sm-inline"></span>
-                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 font-size-11 rounded-pill" id="btnAgentHelpModal" style="display:none;">
-                            <i class="bx bx-help-circle me-1"></i>Ajanı Başlat
+                        <a href="downloads/ErsanEImza.jar" download class="btn btn-sm btn-outline-primary py-0 px-2 font-size-11 rounded-pill" id="btnDownloadAgentDirect" title="Java E-İmza Uygulamasını İndir">
+                            <i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 font-size-11 rounded-pill" id="btnAgentHelpModal" title="Yardım">
+                            <i class="bx bx-help-circle"></i>
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2 ms-auto">

@@ -1457,35 +1457,66 @@ $(document).ready(function () {
       });
   }
 
+  function syncAgentFooter(status, text, detailsHtml, isConnected) {
+    const $badge = $("#modalKepAgentBadge");
+    const $details = $("#modalKepAgentDetails");
+
+    $badge.removeClass("bg-success-subtle text-success bg-warning-subtle text-warning bg-secondary-subtle text-secondary border-success-subtle border-warning-subtle");
+    if (isConnected) {
+      $badge.addClass("bg-success-subtle text-success border-success-subtle").html('<i class="bx bx-check-circle me-1"></i> ' + escapeEvrakHtml(status));
+    } else {
+      $badge.addClass("bg-secondary-subtle text-secondary border").html('<i class="bx bx-unlink me-1"></i> ' + escapeEvrakHtml(status));
+    }
+    if (detailsHtml) $details.html(detailsHtml);
+  }
+
   function updateKepAgentUI() {
     const $badge = $("#modalKepAgentBadge");
     const $details = $("#modalKepAgentDetails");
-    const $btnHelp = $("#btnAgentHelpModal");
 
     $badge.removeClass("bg-success-subtle text-success bg-warning-subtle text-warning bg-secondary-subtle text-secondary border-success-subtle border-warning-subtle")
       .addClass("bg-secondary-subtle text-secondary border")
-      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Ajanı Kontrol Ediliyor...');
+      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Kontrol Ediliyor...');
 
+    // 1. Önce yerel ajana (127.0.0.1:9191) bak
     checkLocalEimzaAgent(state => {
       if (state.available && state.cardDetected) {
-        $badge.removeClass("bg-secondary-subtle text-secondary bg-warning-subtle text-warning")
-          .addClass("bg-success-subtle text-success border-success-subtle")
-          .html('<i class="bx bx-check-circle me-1"></i> E-İmza Ajanı Aktif');
-        $details.html(`<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')})</span>`);
-        $btnHelp.hide();
-      } else if (state.available && !state.cardDetected) {
-        $badge.removeClass("bg-secondary-subtle text-secondary bg-success-subtle text-success")
-          .addClass("bg-warning-subtle text-warning border-warning-subtle")
-          .html('<i class="bx bx-error-circle me-1"></i> Kart Algılanmadı');
-        $details.text(state.data?.message || 'USB E-İmza kartınızı bilgisayarınıza takınız.');
-        $btnHelp.hide();
-      } else {
-        $badge.removeClass("bg-success-subtle text-success bg-warning-subtle text-warning border-success-subtle border-warning-subtle")
-          .addClass("bg-secondary-subtle text-secondary border")
-          .html('<i class="bx bx-unlink me-1"></i> Yerel Ajan Bağlı Değil');
-        $details.text('Bilgisayarınızda yerel köprü bekleniyor.');
-        $btnHelp.show();
+        syncAgentFooter(
+          "E-İmza Aktif",
+          null,
+          `<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')})</span>`,
+          true
+        );
+        return;
       }
+
+      // 2. Yerel ajanda yoksa sunucudaki takılı donanımı kontrol et
+      $.ajax({ url: api_url, type: "POST", data: { action: "eimza-kart-bilgisi" }, dataType: "json" })
+        .done(function (card) {
+          if (card && card.status === "success") {
+            syncAgentFooter(
+              "E-İmza Hazır",
+              null,
+              `<strong>${escapeEvrakHtml(card.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(card.device_type || 'Akıllı Kart')})</span>`,
+              true
+            );
+          } else {
+            syncAgentFooter(
+              "E-İmza Bekleniyor",
+              null,
+              state.available ? (state.data?.message || 'USB kartınızı takınız.') : 'Uygulama veya USB kart bekleniyor.',
+              false
+            );
+          }
+        })
+        .fail(function () {
+          syncAgentFooter(
+            "E-İmza Bekleniyor",
+            null,
+            'Bilgisayarınızda yerel uygulama bekleniyor.',
+            false
+          );
+        });
     });
   }
 
@@ -1517,6 +1548,12 @@ $(document).ready(function () {
           .addClass("bg-success-subtle text-success border-success-subtle")
           .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')} (Yerel)`);
         $sub.html(`<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(state.data.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
+        syncAgentFooter(
+          "E-İmza Aktif",
+          null,
+          `<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')})</span>`,
+          true
+        );
         return;
       }
 
@@ -1527,6 +1564,12 @@ $(document).ready(function () {
             .addClass("bg-success-subtle text-success border-success-subtle")
             .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(card.device_type || 'Akıllı Kart')} Takılı`);
           $sub.html(`<strong>${escapeEvrakHtml(card.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(card.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
+          syncAgentFooter(
+            "E-İmza Hazır",
+            null,
+            `<strong>${escapeEvrakHtml(card.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(card.device_type || 'Akıllı Kart')})</span>`,
+            true
+          );
         } else {
           $badge.removeClass("bg-info-subtle text-info border-info-subtle")
             .addClass("bg-warning-subtle text-warning border-warning-subtle")
@@ -1534,11 +1577,12 @@ $(document).ready(function () {
           if (state.available) {
             $sub.text(state.data?.message || 'Lütfen USB E-İmza cihazınızı bilgisayarınıza takınız.');
           } else {
-            $sub.html('Yerel E-İmza Ajanı (127.0.0.1:9191) bulunamadı. <a href="javascript:void(0)" id="linkOpenAgentHelpInSwal" class="text-primary fw-semibold">Nasıl başlatılır?</a>');
+            $sub.html('E-İmza cihazı bulunamadı. <a href="downloads/ErsanEImza.jar" download class="text-primary fw-semibold"><i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)</a> veya <a href="javascript:void(0)" id="linkOpenAgentHelpInSwal" class="text-primary fw-semibold">Nasıl başlatılır?</a>');
             $("#linkOpenAgentHelpInSwal").on("click", function () {
               $("#modalEimzaAgentHelp").modal("show");
             });
           }
+          syncAgentFooter("E-İmza Bekleniyor", null, "USB kartınızı takınız.", false);
         }
       }).fail(function (xhr) {
         $badge.removeClass("bg-info-subtle text-info border-info-subtle")

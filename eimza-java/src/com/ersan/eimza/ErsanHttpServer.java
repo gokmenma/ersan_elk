@@ -43,8 +43,9 @@ public class ErsanHttpServer {
             Headers respHeaders = exchange.getResponseHeaders();
             respHeaders.set("Access-Control-Allow-Origin", "*");
             respHeaders.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            respHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+            respHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Cache-Control");
             respHeaders.set("Access-Control-Allow-Private-Network", "true");
+            respHeaders.set("Access-Control-Max-Age", "86400");
             respHeaders.set("Content-Type", "application/json; charset=UTF-8");
             respHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate");
 
@@ -52,7 +53,7 @@ public class ErsanHttpServer {
             String path = exchange.getRequestURI().getPath();
 
             if ("OPTIONS".equals(method)) {
-                exchange.sendResponseHeaders(200, -1);
+                exchange.sendResponseHeaders(204, -1);
                 return;
             }
 

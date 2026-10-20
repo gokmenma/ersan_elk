@@ -12,6 +12,15 @@ import java.util.regex.Pattern;
 
 public class TokenManager {
 
+    private static TokenStatus cachedStatus = null;
+    private static long lastCacheTime = 0;
+    private static final long CACHE_DURATION_MS = 3000; // 3 saniye
+
+    public static synchronized void clearCache() {
+        cachedStatus = null;
+        lastCacheTime = 0;
+    }
+
     public static class TokenStatus {
         public boolean success;
         public String modulePath;
@@ -106,7 +115,12 @@ public class TokenManager {
         }
     }
 
-    public static TokenStatus detectActiveToken() {
+    public static synchronized TokenStatus detectActiveToken() {
+        long now = System.currentTimeMillis();
+        if (cachedStatus != null && cachedStatus.success && (now - lastCacheTime < CACHE_DURATION_MS)) {
+            return cachedStatus;
+        }
+
         TokenStatus status = new TokenStatus();
         List<String> modules = getCandidateModules();
         String pkcsTool = getPkcs11ToolBin();
@@ -153,6 +167,8 @@ public class TokenManager {
                     status.ownerName = owner.isEmpty() ? "E-İmza Kartı Takılı" : owner;
                     status.tcno = tc;
                     status.subject = fullSub;
+                    cachedStatus = status;
+                    lastCacheTime = now;
                     return status;
                 }
             } catch (Throwable ignored) {}
@@ -170,12 +186,16 @@ public class TokenManager {
                 status.ownerName = "E-İmza Kartı Takılı";
                 status.tcno = "";
                 status.subject = "";
+                cachedStatus = status;
+                lastCacheTime = now;
                 return status;
             } catch (Throwable ignored) {}
         }
 
         status.success = false;
         status.message = "Sistemde takılı aktif bir e-imza cihazı bulunamadı. Lütfen USB kartınızı takınız.";
+        cachedStatus = null;
+        lastCacheTime = 0;
         return status;
     }
 
