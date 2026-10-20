@@ -2569,3 +2569,9 @@
 - Evrak Takip KEP ayar API'si yalnız oturumdaki kullanıcının maskeli TCKN ve kimlik durumu bilgisini döndürüyor. Başka kullanıcı aynı KEP adresini görse de gizli alanları devralmıyor ve ilk kayıtta üç kimlik alanını da girmek zorunda.
 - Tüm KEP servis çağrıları mevcut oturum kullanıcısına ait şifreli kimlikleri kullanıyor. Eski tekil kimlik, geçişten sonra KEP ekranını ilk kullanan yetkili hesaba atomik olarak taşınıyor; sonraki kullanıcılar için paylaşılmıyor.
 - `sql/2026_10_20_add_multi_user_kep_credentials.sql` aktif geliştirme veritabanına uygulandı. PHP/JavaScript sözdizimi, migration varlığı ve iki kullanıcı arasındaki kimlik izolasyonu rollback'li model testiyle doğrulandı.
+
+# 2026-10-20 — Evrak listesinde işlem yapan personel
+
+- Evrak Takip server-side listesine `İşlem Yapan Personel` kolonu eklendi. Gelen evrakta kaydı oluşturan, giden/KEP evrakında işlemi başlatan uygulama kullanıcısının adı gösteriliyor; ad yoksa kullanıcı adı kullanılıyor.
+- Otomatik alınmış ve kullanıcı bağı bulunmayan UETS evrakları `Sistem / UETS` olarak etiketleniyor.
+- Yeni kolon genel arama, canlı kolon filtresi ve sunucu taraflı sıralamaya dahil edildi; DataTables kolon indeksleri güncellendi. PHP/JavaScript sözdizimi ve gerçek veride 10 satırlık Model yanıtı doğrulandı.

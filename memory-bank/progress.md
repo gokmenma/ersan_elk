@@ -1449,3 +1449,9 @@
 - [x] KEP ayar görüntüleme, kayıt, bağlantı, bakiye, rehber ve gönderim akışları oturum kullanıcısının kimliğine izole edildi.
 - [x] Eski tekil KEP kimliği ilk yetkili kullanıcıya tek seferlik taşınırken diğer kullanıcıların bu kimliği kullanması engellendi.
 - [x] Migration aktif veritabanına uygulandı; sözdizimi, şema ve çoklu kullanıcı izolasyon testi geçti.
+
+# 2026-10-20 — Evrak işlem yapan personel görünümü
+
+- [x] Evrak Takip listesine gelen kaydını oluşturan veya giden evrak işlemini yapan kullanıcıyı gösteren kolon eklendi.
+- [x] İşlem yapan kişi alanı global arama, kolon filtresi ve sıralamaya bağlandı; otomatik UETS kayıtlarına sistem etiketi eklendi.
+- [x] Server-side DataTables kolon eşleşmeleri ile PHP/JavaScript sözdizimi ve gerçek Model yanıtı doğrulandı.

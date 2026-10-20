@@ -291,6 +291,7 @@ $title = "Evrak Listesi";
                             <th style="width: 100px;" data-filter="date">TARİH</th>
                             <th data-filter="string">KONU / EVRAK NO</th>
                             <th data-filter="string">GELEN/GİDEN KURUM</th>
+                            <th data-filter="string">İŞLEM YAPAN PERSONEL</th>
                             <th data-filter="string">ZİMMETLİ (OFİS)</th>
                             <th data-filter="string">İLGİLİ PERSONEL</th>
                             <th class="text-center" style="width: 85px;" data-filter="select">CEVAP</th>

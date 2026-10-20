@@ -79,11 +79,11 @@ class EvrakTakipModel extends Model
 
         $globalSearch = trim((string) ($params['search']['value'] ?? ''));
         if ($globalSearch !== '') {
-            $where[] = '(et.evrak_no LIKE :global_search OR et.konu LIKE :global_search OR et.kurum_adi LIKE :global_search OR p1.adi_soyadi LIKE :global_search OR p2.adi_soyadi LIKE :global_search)';
+            $where[] = '(et.evrak_no LIKE :global_search OR et.konu LIKE :global_search OR et.kurum_adi LIKE :global_search OR p1.adi_soyadi LIKE :global_search OR p2.adi_soyadi LIKE :global_search OR u.adi_soyadi LIKE :global_search OR u.user_name LIKE :global_search)';
             $bindings['global_search'] = '%' . $globalSearch . '%';
         }
 
-        $columnMap = [1 => 'et.evrak_tipi', 2 => 'et.tarih', 3 => 'et.konu', 4 => 'et.kurum_adi', 5 => 'p1.adi_soyadi', 6 => 'p2.adi_soyadi', 7 => 'et.cevap_verildi_mi', 8 => 'et.onay_durumu'];
+        $columnMap = [1 => 'et.evrak_tipi', 2 => 'et.tarih', 3 => 'et.konu', 4 => 'et.kurum_adi', 5 => "COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name)", 6 => 'p1.adi_soyadi', 7 => 'p2.adi_soyadi', 8 => 'et.cevap_verildi_mi', 9 => 'et.onay_durumu'];
         foreach ((array) ($params['columns'] ?? []) as $index => $column) {
             $rawValue = trim((string) ($column['search']['value'] ?? ''));
             if ($rawValue === '' || !isset($columnMap[$index])) continue;
@@ -94,17 +94,17 @@ class EvrakTakipModel extends Model
                 $value = trim($matches[2]);
             }
             $key = 'column_' . $index;
-            if ($mode === 'multi' && in_array((int) $index, [1, 7, 8], true)) {
+            if ($mode === 'multi' && in_array((int) $index, [1, 8, 9], true)) {
                 $values = array_values(array_filter(explode('|', $value), static fn(string $item): bool => $item !== ''));
                 if ($values === []) continue;
-                if ((int) $index === 7) {
+                if ((int) $index === 8) {
                     $replyClauses = [];
                     if (in_array('EVET', $values, true)) $replyClauses[] = 'et.cevap_verildi_mi = 1';
                     if (in_array('BEKLEMEDE', $values, true)) $replyClauses[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
                     if ($replyClauses) $where[] = '(' . implode(' OR ', $replyClauses) . ')';
                 } else {
                     $statusMap = ['ONAYLI' => 'onaylandi', 'ONAYDA' => 'onay_bekliyor', 'İMZANIZDA' => 'onay_bekliyor', 'TASLAK' => 'taslak'];
-                    if ((int) $index === 8) $values = array_values(array_unique(array_map(static fn(string $item): string => $statusMap[mb_strtoupper($item, 'UTF-8')] ?? $item, $values)));
+                    if ((int) $index === 9) $values = array_values(array_unique(array_map(static fn(string $item): string => $statusMap[mb_strtoupper($item, 'UTF-8')] ?? $item, $values)));
                     $placeholders = [];
                     foreach ($values as $valueIndex => $selectedValue) {
                         $bindingKey = $key . '_' . $valueIndex;
@@ -132,9 +132,9 @@ class EvrakTakipModel extends Model
                     $where[] = 'et.tarih ' . $operator . ' :' . $key;
                     $bindings[$key] = $normalizeDate($value);
                 }
-            } elseif ((int) $index === 7) {
-                $where[] = $value === 'EVET' ? 'et.cevap_verildi_mi = 1' : '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
             } elseif ((int) $index === 8) {
+                $where[] = $value === 'EVET' ? 'et.cevap_verildi_mi = 1' : '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
+            } elseif ((int) $index === 9) {
                 $statusMap = ['ONAYLI' => 'onaylandi', 'ONAYDA' => 'onay_bekliyor', 'İMZANIZDA' => 'onay_bekliyor', 'TASLAK' => 'taslak'];
                 $where[] = 'et.onay_durumu = :' . $key;
                 $bindings[$key] = $statusMap[mb_strtoupper($value, 'UTF-8')] ?? $value;
@@ -170,7 +170,8 @@ class EvrakTakipModel extends Model
 
         $from = " FROM {$this->table} et
             LEFT JOIN personel p1 ON p1.id = et.personel_id AND p1.firma_id = et.firma_id
-            LEFT JOIN personel p2 ON p2.id = et.ilgili_personel_id AND p2.firma_id = et.firma_id";
+            LEFT JOIN personel p2 ON p2.id = et.ilgili_personel_id AND p2.firma_id = et.firma_id
+            LEFT JOIN users u ON u.id = et.olusturan_kullanici_id AND u.silinme_tarihi IS NULL";
         $whereSql = ' WHERE ' . implode(' AND ', $where);
         $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id AND silinme_tarihi IS NULL");
         $totalStmt->execute(['firma_id' => $firmaId]);
@@ -181,9 +182,10 @@ class EvrakTakipModel extends Model
 
         $orderColumn = (int) ($params['order'][0]['column'] ?? 2);
         $orderDirection = strtolower((string) ($params['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
-        $orderMap = [1 => 'et.evrak_tipi', 2 => 'et.tarih', 3 => 'et.konu', 4 => 'et.kurum_adi', 5 => 'p1.adi_soyadi', 6 => 'p2.adi_soyadi', 7 => 'et.cevap_verildi_mi', 8 => 'et.onay_durumu'];
+        $orderMap = [1 => 'et.evrak_tipi', 2 => 'et.tarih', 3 => 'et.konu', 4 => 'et.kurum_adi', 5 => "COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name)", 6 => 'p1.adi_soyadi', 7 => 'p2.adi_soyadi', 8 => 'et.cevap_verildi_mi', 9 => 'et.onay_durumu'];
         $orderBy = $orderMap[$orderColumn] ?? 'et.tarih';
-        $sql = "SELECT et.*, p1.adi_soyadi AS personel_adi, p2.adi_soyadi AS ilgili_personel_adi" . $from . $whereSql
+        $sql = "SELECT et.*, p1.adi_soyadi AS personel_adi, p2.adi_soyadi AS ilgili_personel_adi,
+                    COALESCE(NULLIF(u.adi_soyadi, ''), NULLIF(u.user_name, '')) AS islem_yapan_adi" . $from . $whereSql
             . " ORDER BY {$orderBy} {$orderDirection}, et.id DESC LIMIT :start, :length";
         $stmt = $this->db->prepare($sql);
         foreach ($bindings as $key => $value) $stmt->bindValue(':' . $key, $value);

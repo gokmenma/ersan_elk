@@ -1060,10 +1060,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (!$locked && !$isKep) $actions .= '<button type="button" class="btn btn-subtle-danger table-action-btn evrak-sil" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i></button>';
                     $actions .= '</div>';
                     $createdTime = !empty($evrak->olusturma_tarihi) ? date('H:i', strtotime((string) $evrak->olusturma_tarihi)) : '-';
+                    $operatorName = trim((string) ($evrak->islem_yapan_adi ?? ''));
+                    if ($operatorName === '' && (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id))) {
+                        $operatorName = 'Sistem / UETS';
+                    }
+                    $operatorHtml = $operatorName !== ''
+                        ? '<div class="d-flex align-items-center gap-2"><span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary flex-shrink-0" style="width:26px;height:26px"><i class="bx bx-user"></i></span><span class="fw-semibold text-dark font-size-12">' . $esc($operatorName) . '</span></div>'
+                        : '<span class="text-muted small">-</span>';
                     $dataRows[] = [
                         '<span class="fw-bold text-muted">' . ($result['start'] + $offset + 1) . '</span>', $typeHtml,
                         '<div class="d-flex flex-column"><span class="fw-semibold text-dark font-size-12">' . date('d.m.Y', strtotime((string) $evrak->tarih)) . '</span><span class="text-muted font-size-11">' . $createdTime . '</span></div>',
-                        $subjectHtml, '<span class="fw-semibold text-dark font-size-12">' . $esc($evrak->kurum_adi ?: '-') . '</span>',
+                        $subjectHtml, '<span class="fw-semibold text-dark font-size-12">' . $esc($evrak->kurum_adi ?: '-') . '</span>', $operatorHtml,
                         $personHtml($evrak->personel_adi, $evrak->personel_id, 'personel', $evrak->son_bildirim_tarihi_personel ?? '', $encryptedId, $esc),
                         $personHtml($evrak->ilgili_personel_adi, $evrak->ilgili_personel_id, 'ilgili', $evrak->son_bildirim_tarihi_ilgili ?? '', $encryptedId, $esc),
                         $replyHtml, $approvalHtml, $fileHtml, $actions,
