@@ -4,6 +4,7 @@ import java.io.*;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.*;
@@ -12,9 +13,13 @@ import java.util.regex.Pattern;
 
 public class TokenManager {
 
+    private static final String BUNDLED_OPENSC_VERSION = "0.27.1";
+    private static final String BUNDLED_OPENSC_RESOURCE_ROOT = "/native/windows-x64/";
+    private static final Map<String, String> BUNDLED_OPENSC_FILES = createBundledOpenScFiles();
+
     private static TokenStatus cachedStatus = null;
     private static long lastCacheTime = 0;
-    private static final long CACHE_DURATION_MS = 3000; // 3 saniye
+    private static final long CACHE_DURATION_MS = 10000; // 10 saniye cache
 
     public static synchronized void clearCache() {
         cachedStatus = null;
@@ -69,14 +74,17 @@ public class TokenManager {
     }
 
     public static String getPkcs11ToolBin() {
+        String bundledTool = extractBundledOpenScRuntime();
         String[] candidates = {
-                "pkcs11-tool",
+                bundledTool,
                 "C:\\Program Files\\OpenSC Project\\OpenSC\\tools\\pkcs11-tool.exe",
                 "C:\\Program Files (x86)\\OpenSC Project\\OpenSC\\tools\\pkcs11-tool.exe",
                 "/usr/bin/pkcs11-tool",
-                "/usr/local/bin/pkcs11-tool"
+                "/usr/local/bin/pkcs11-tool",
+                "pkcs11-tool"
         };
         for (String c : candidates) {
+            if (c == null || c.isEmpty()) continue;
             File f = new File(c);
             if (f.isAbsolute()) {
                 if (f.exists()) return c;
@@ -88,7 +96,62 @@ public class TokenManager {
                 } catch (Throwable ignored) {}
             }
         }
-        return "pkcs11-tool";
+        return null;
+    }
+
+    private static Map<String, String> createBundledOpenScFiles() {
+        Map<String, String> files = new LinkedHashMap<>();
+        files.put("pkcs11-tool.exe", "cd5c6df2679d0bce69695bdabd977bbb7cfe4e25b8d7eefb397799b7f5a7bef6");
+        files.put("opensc.dll", "b2f256bbdfda59fe97f899200e215097d243e89e28adeae85e35497347063332");
+        files.put("LICENSE-OpenSC-LGPL-2.1.txt", "376b54d4c5f4aa99421823fa4da93e3ab73096fce2400e89858632aa7da24a14");
+        return Collections.unmodifiableMap(files);
+    }
+
+    private static String extractBundledOpenScRuntime() {
+        if (!System.getProperty("os.name", "").toLowerCase().contains("win")) return null;
+
+        String localAppData = System.getenv("LOCALAPPDATA");
+        File runtimeDir = localAppData != null && !localAppData.trim().isEmpty()
+                ? new File(localAppData, "ErsanEImza\\runtime\\opensc-" + BUNDLED_OPENSC_VERSION + "-x64")
+                : new File(System.getProperty("user.home", "."), ".ersan-eimza/runtime/opensc-" + BUNDLED_OPENSC_VERSION + "-x64");
+
+        try {
+            if (!runtimeDir.isDirectory() && !runtimeDir.mkdirs()) return null;
+            for (Map.Entry<String, String> bundledFile : BUNDLED_OPENSC_FILES.entrySet()) {
+                File target = new File(runtimeDir, bundledFile.getKey());
+                if (target.isFile() && bundledFile.getValue().equalsIgnoreCase(sha256(target))) continue;
+
+                try (InputStream input = TokenManager.class.getResourceAsStream(BUNDLED_OPENSC_RESOURCE_ROOT + bundledFile.getKey())) {
+                    if (input == null) return null;
+                    File temporary = File.createTempFile("ersan-eimza-", ".tmp", runtimeDir);
+                    try {
+                        Files.copy(input, temporary.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        if (!bundledFile.getValue().equalsIgnoreCase(sha256(temporary))) return null;
+                        Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    } finally {
+                        if (temporary.exists()) temporary.delete();
+                    }
+                }
+            }
+            File tool = new File(runtimeDir, "pkcs11-tool.exe");
+            return tool.isFile() ? tool.getAbsolutePath() : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static String sha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream input = new BufferedInputStream(new FileInputStream(file))) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) >= 0) {
+                if (read > 0) digest.update(buffer, 0, read);
+            }
+        }
+        StringBuilder value = new StringBuilder();
+        for (byte item : digest.digest()) value.append(String.format("%02x", item & 0xff));
+        return value.toString();
     }
 
     public static Provider createSunPKCS11(String name, String modulePath) throws Exception {
@@ -137,7 +200,7 @@ public class TokenManager {
             else if (mLow.contains("opensc")) devType = "OpenSC Akıllı Kart";
 
             // YÖNTEM A: pkcs11-tool ile nesneleri sorgula (hızlı ve PIN sormaz)
-            try {
+            if (pkcsTool != null) try {
                 Process p = Runtime.getRuntime().exec(new String[]{pkcsTool, "--module", mod, "-O"});
                 BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8));
                 String line;
@@ -255,6 +318,9 @@ public class TokenManager {
 
     private static byte[] signWithPkcs11Tool(String pin, byte[] rawDigest, String modulePath) throws Exception {
         String toolBin = getPkcs11ToolBin();
+        if (toolBin == null) {
+            throw new RuntimeException("Taşınabilir OpenSC imza motoru hazırlanamadı. E-İmza uygulamasını yeniden indirip çalıştırınız.");
+        }
         File certFile = File.createTempFile("cert_", ".der");
         certFile.deleteOnExit();
 

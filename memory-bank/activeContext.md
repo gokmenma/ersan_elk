@@ -2522,3 +2522,14 @@
 - PTT KepId değerleri `<EYWS...>` biçiminde açılı ayraçla geldiği için SweetAlert kısa kullanımında HTML etiketi gibi yorumlanıp görünmüyordu. Başarı penceresi takip kodunu kaçırılmış `<code>` metni olarak gösteriyor; servis yanıtına `takip_kodu` uyumluluk alanı da eklendi.
 - KEP oluşturma modalı kullanıcı dostu kart düzenine geçirildi: gönderen/bakiye şeridi, Alıcılar–İleti–Ekler–İmzala adım göstergesi, ayrı alıcı/ileti/editör kartları, kompakt editör, belirgin ek alanı ve gölgeli sabit aksiyon çubuğu eklendi. Adım göstergesi ek seçimi ve imza penceresiyle dinamik güncelleniyor; mobil yerleşim korunuyor.
 - Kullanıcı geri bildirimiyle KEP modalı yeniden minimalleştirildi: stepper kaldırıldı, gönderen KEP ve canlı bakiye modal başlığına taşındı, alıcı girişi ile adres defteri aynı satıra alındı ve ileti tipi Select2 yerine Standart/Resmî segmentli radio kontrolü oldu. Ağır kart arka planları/gölgeleri sade bölüm ayraçlarına dönüştürüldü.
+
+# 2026-10-20 — KEP yerel e-imza politika tamamlama
+
+- Yerel e-imza akışında MIME hazırlama ve imzalı S/MIME sevk aksiyonlarının `permission_policies` kayıtlarının hiç oluşturulmadığı belirlendi.
+- İki POST aksiyonu mevcut `evrak-takip/kep` yetkisine bağlayan tekrarlanabilir `sql/2026_10_20_add_kep_local_eimza_permission_policies.sql` migration'ı eklendi.
+
+# 2026-10-20 — Taşınabilir OpenSC içeren e-imza ajanı
+
+- Windows kullanıcısının ayrıca OpenSC kurmasına gerek bırakmamak için resmi OpenSC 0.27.1 Light x64 `pkcs11-tool.exe` ve `opensc.dll` dosyaları ajan JAR'ına gömüldü.
+- Ajan dosyaları ilk kullanımda `%LOCALAPPDATA%\\ErsanEImza\\runtime\\opensc-0.27.1-x64` dizinine çıkarıyor, SHA-256 bütünlüğünü doğruluyor ve sistem PATH'i ya da yönetici yetkisi gerektirmeden kullanıyor.
+- LGPL-2.1 lisans metni ve kaynak bildirimi pakete dahil edildi; ajan sürümü `1.1.0 (Portable OpenSC)` olarak güncellendi.

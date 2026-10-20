@@ -1577,7 +1577,7 @@ $(document).ready(function () {
           if (state.available) {
             $sub.text(state.data?.message || 'Lütfen USB E-İmza cihazınızı bilgisayarınıza takınız.');
           } else {
-            $sub.html('E-İmza cihazı bulunamadı. <a href="downloads/ErsanEImza.jar" download class="text-primary fw-semibold"><i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)</a> veya <a href="javascript:void(0)" id="linkOpenAgentHelpInSwal" class="text-primary fw-semibold">Nasıl başlatılır?</a>');
+            $sub.html('E-İmza cihazı bulunamadı. <a href="downloads/ErsanEImza.jar?v=1.1.0" download="ErsanEImza.jar" class="text-primary fw-semibold"><i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)</a> veya <a href="javascript:void(0)" id="linkOpenAgentHelpInSwal" class="text-primary fw-semibold">Nasıl başlatılır?</a>');
             $("#linkOpenAgentHelpInSwal").on("click", function () {
               $("#modalEimzaAgentHelp").modal("show");
             });

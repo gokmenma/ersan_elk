@@ -1407,3 +1407,12 @@
 - [x] Açılı ayraçlı PTT KepId'nin başarı penceresinde HTML etiketi sanılıp boş görünmesi giderildi; takip kodu güvenli kod bloğunda gösteriliyor ve API uyumluluk alanı eklendi.
 - [x] KEP ileti oluşturma modalı bölüm kartları, dinamik dört adımlı akış, kompakt editör ve sabit aksiyon alanıyla görsel/ergonomik olarak yenilendi; masaüstü ve mobil kaydırma davranışı korundu.
 - [x] KEP modalı minimal tasarıma revize edildi: stepper kaldırıldı, gönderen/bakiye başlığa taşındı, alıcı ve adres defteri tek satırda birleştirildi, ileti tipi segmentli radio seçimine çevrildi ve ağır kart stili azaltıldı.
+
+# 2026-10-20 — KEP yerel e-imza politika tamamlama
+
+- [x] Yerel e-imzalı KEP gönderiminde 403 üreten eksik `kep-mime-hazirla` ve `kep-smime-sevk` API politikaları mevcut KEP yetkisine bağlanan tekrarlanabilir SQL migration'ıyla tamamlandı.
+
+# 2026-10-20 — Taşınabilir OpenSC içeren e-imza ajanı
+
+- [x] OpenSC 0.27.1 x64 çalışma dosyaları lisans ve SHA-256 doğrulamasıyla JAR içine alındı; kullanıcı tarafında ek OpenSC kurulumu ve yönetici yetkisi ihtiyacı kaldırıldı.
+- [x] Java 8 uyumlu ajan yeniden derlendi; JAR kaynak içeriği, otomatik çıkarma, dosya hash'leri ve Windows executable çalışması doğrulandı.
