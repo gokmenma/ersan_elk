@@ -161,7 +161,7 @@ $canManagePttKep = !empty($canSendKep);
                     <form id="formPttKepAyarlar">
                         <div class="alert alert-info d-flex align-items-center mb-3 py-2 font-size-12">
                             <i class="bx bx-info-circle fs-4 me-2 flex-shrink-0"></i>
-                            <div>PTT KEP web servis bilgileri, PTTKEP başvurusunda yetkilendirilen hesaba ait olmalıdır. TCKN, parola ve web servis şifresi şifreli saklanır.</div>
+                            <div>Kurumsal KEP adresi ortak kullanılabilir. TCKN, parola ve web servis şifresi yalnızca oturum açmış kullanıcıya özel ve şifreli saklanır; diğer yetkili kullanıcılar kendi bilgilerini girmelidir.</div>
                         </div>
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -170,21 +170,21 @@ $canManagePttKep = !empty($canSendKep);
                             </div>
                             <div class="col-md-6">
                                 <?php echo Form::FormFloatInput('text', 'ptt_yetkili_tcno', '', 'Değiştirmek için 11 haneli TCKN girin', 'Yetkili T.C. Kimlik No', 'bx bx-id-card', 'form-control font-monospace', false, null, 'off', false, '', false, 11); ?>
-                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepTcHelpText">Kayıtlı bilgi değiştirilmeyecekse boş bırakın.</small>
+                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepTcHelpText">Bu kullanıcıya ait kayıtlı bilgi değiştirilmeyecekse boş bırakın.</small>
                             </div>
                             <div class="col-md-6">
                                 <div class="password-field-wrapper position-relative">
                                     <?php echo Form::FormFloatInput('password', 'ptt_parola', '', 'Değiştirmek için yeni parolayı girin', 'KEP Parolası', 'bx bx-lock-alt', 'form-control font-monospace pe-5', false, null, 'new-password'); ?>
                                     <button type="button" class="btn-toggle-password" data-ptt-password-target="ptt_parola" tabindex="-1" title="Göster / Gizle"><i class="bx bx-show font-size-18"></i></button>
                                 </div>
-                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepParolaHelpText">Kayıtlı parola değiştirilmeyecekse boş bırakın.</small>
+                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepParolaHelpText">Bu kullanıcıya ait kayıtlı parola değiştirilmeyecekse boş bırakın.</small>
                             </div>
                             <div class="col-md-6">
                                 <div class="password-field-wrapper position-relative">
                                     <?php echo Form::FormFloatInput('password', 'ptt_sifre', '', 'Değiştirmek için yeni şifreyi girin', 'Web Servis Şifresi', 'bx bx-key', 'form-control font-monospace pe-5', false, null, 'new-password'); ?>
                                     <button type="button" class="btn-toggle-password" data-ptt-password-target="ptt_sifre" tabindex="-1" title="Göster / Gizle"><i class="bx bx-show font-size-18"></i></button>
                                 </div>
-                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepSifreHelpText">Kayıtlı şifre değiştirilmeyecekse boş bırakın.</small>
+                                <small class="text-muted font-size-11 mt-1 d-block" id="pttKepSifreHelpText">Bu kullanıcıya ait kayıtlı şifre değiştirilmeyecekse boş bırakın.</small>
                             </div>
                             <div class="col-md-8">
                                 <?php echo Form::FormFloatInput('text', 'ptt_wsdl_url', 'https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl', 'WSDL bağlantı adresi', 'WSDL Web Servis Adresi', 'bx bx-link', 'form-control font-monospace font-size-12'); ?>

@@ -1,5 +1,17 @@
 # Active Context
 
+## Mobil SPA Ana Sayfa — Personel & Araç Metrik Kutularının Çerçevelenmesi ve Hizalanması (2026-10-20)
+- **Kullanıcı Talebi**: Mobil SPA ana sayfasındaki "Personel Durumu" ve "Araç & Filo" kartları altındaki 3'erli metrik verilerinin (Sahada, İzinli, Geç Kalan ve Sahada, Serviste, Boşta) çerçeve içine alınması ve içeriklerinin (etiket, durum noktası ve sayısal değer) ortalanması.
+- **Uygulanan Değişiklikler**:
+  1. `mobile-spa/src/design-system.css`:
+     - `.personnel-minimal-stats` ve `.personnel-stat-col`: Koyu Obsidian kart zeminine uyumlu, `rgba(255, 255, 255, 0.05)` zemin, `1px solid rgba(255, 255, 255, 0.1)` çerçeve, `16px` köşe kavisli ve `inset` derinlikli 3 ayrı bağımsız kutuya dönüştürüldü. Etiket ve sayısal değer `align-items: center; justify-content: center; text-align: center;` ile yatay/dikey olarak tam ortalandı.
+     - `.bento-team-metrics` ve `.bento-team-metrics > div`: Sağ kenar ayırıcı çizgisi kaldırılarak beyaz Bento kartına uyumlu `var(--ds-surface-subtle)` zemin, `1px solid var(--ds-border-subtle)` çerçeve, `16px` köşe kavisli 3 ayrı bağımsız kutuya kavuşturuldu.
+     - `.bento-card .segmented-track`: Alt metrik kutularıyla arasındaki dikey ritim `12px` olarak dengelendi.
+     - Renk sistemine `.ds-dot--emerald` ve `.ds-dot--amber` durum noktaları eklendi.
+  2. `mobile-spa/src/views/HomeView.vue`:
+     - "Araç & Filo" alt metriklerine segment çubuğu renkleriyle (`emerald`, `coral`, `amber`) birebir eşleşen durum noktaları (`ds-dot`) eklenerek Personel kartı ile tam tasarım uyumu sağlandı.
+  3. `npm run build` çalıştırılarak üretim paketi (`mobile-spa/dist`) derlendi.
+
 ## Fatura Listelerinde Filtre–Özet Kartı Senkronizasyonu (2026-10-20)
 - Gelen, giden ve taslak fatura listelerinde özet kartları artık DataTables listesinin sayfalama öncesi birebir filtre koşullarından hesaplanıyor.
 - Kolon filtreleri, genel arama, ürün/kalem araması, tarih aralığı ve hızlı durum/belge filtreleri hem satırları hem kartlardaki adet/tutarları birlikte güncelliyor.
@@ -2550,3 +2562,10 @@
 - Hesap Hareketleri sayfasındaki iki Excel aksiyonunun yalnız `window.open()` kullanan JavaScript olayına bağlı olması nedeniyle sunucuya hiç istek gitmediği tespit edildi.
 - Dropdown ve tablo başlığı Excel aksiyonları doğrudan export endpoint'ine bağlı gerçek bağlantılara dönüştürüldü; JavaScript aktif filtre ve genel aramayı bağlantı adresine eklemeye devam ediyor.
 - Excel verisi doğrudan view içinde sorgulanmak yerine parametrik PDO kullanan `CariHareketleriModel::getEkstreHareketleri()` üzerinden alınacak şekilde düzenlendi.
+
+# 2026-10-20 — PTT KEP çoklu yetkili kullanıcı hesapları
+
+- Firma başına tek satırda tutulan PTT KEP TCKN/parola/web servis şifresi ayrıştırıldı. Ortak KEP adresi, WSDL, ortam ve bakiye `kep_ayarlar` üzerinde; kullanıcı kimlikleri `kep_kullanici_hesaplari` üzerinde firma + uygulama kullanıcısı izolasyonuyla tutuluyor.
+- Evrak Takip KEP ayar API'si yalnız oturumdaki kullanıcının maskeli TCKN ve kimlik durumu bilgisini döndürüyor. Başka kullanıcı aynı KEP adresini görse de gizli alanları devralmıyor ve ilk kayıtta üç kimlik alanını da girmek zorunda.
+- Tüm KEP servis çağrıları mevcut oturum kullanıcısına ait şifreli kimlikleri kullanıyor. Eski tekil kimlik, geçişten sonra KEP ekranını ilk kullanan yetkili hesaba atomik olarak taşınıyor; sonraki kullanıcılar için paylaşılmıyor.
+- `sql/2026_10_20_add_multi_user_kep_credentials.sql` aktif geliştirme veritabanına uygulandı. PHP/JavaScript sözdizimi, migration varlığı ve iki kullanıcı arasındaki kimlik izolasyonu rollback'li model testiyle doğrulandı.

@@ -1922,16 +1922,54 @@
 .bento-team-heading > strong { font-size: 28px; font-weight: 600; letter-spacing: -.04em; }
 .bento-team-heading small { margin-left: 4px; font-weight: 500; color: var(--ds-muted); }
 .segmented-track { padding: 0; height: 10px; gap: 4px; margin-bottom: 20px; background: var(--ds-surface-subtle); }
+.bento-card .segmented-track { margin-bottom: 12px; }
 .seg-pill { min-width: 0; flex-shrink: 1; }
-.bento-team-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.bento-team-metrics > div { min-width: 0; border-right: 1px solid var(--ds-border-subtle); }
-.bento-team-metrics > div:last-child { border-right: 0; }
-.bento-team-metrics span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ds-muted); }
-.bento-team-metrics strong { display: block; margin-top: 6px; font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
-.ds-dot { width: 6px; height: 6px; border-radius: 50%; }
-.ds-dot--blue { background: var(--ds-blue); }
-.ds-dot--yellow { background: var(--ds-yellow); }
-.ds-dot--coral { background: var(--ds-coral); }
+.bento-team-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+.bento-team-metrics > div {
+  min-width: 0;
+  border-right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 6px 9px;
+  border-radius: 16px;
+  background: var(--ds-surface-subtle, #f8fafc);
+  border: 1px solid var(--ds-border-subtle, rgba(15, 23, 42, 0.08));
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+.bento-team-metrics span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-muted);
+  line-height: 1.2;
+}
+.bento-team-metrics strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ds-ink, #0f172a);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-align: center;
+}
+.ds-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.ds-dot--blue { background: var(--ds-blue, #0284c7); }
+.ds-dot--yellow { background: var(--ds-yellow, #f59e0b); }
+.ds-dot--coral { background: var(--ds-coral, #f43f5e); }
+.ds-dot--emerald { background: var(--ds-emerald, #10b981); }
+.ds-dot--amber { background: var(--ds-amber, #f59e0b); }
 .bento-fleet-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
 .bento-fleet-heading > div { flex: 1; }
 .bento-fleet-heading strong, .bento-fleet-heading span { display: block; }
@@ -2385,29 +2423,44 @@
 .personnel-minimal-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 8px;
+  padding-top: 0;
+  border-top: 0;
+  margin-top: 10px;
 }
 
 .personnel-stat-col {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 6px 9px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .personnel-stat-col span {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1.2;
 }
 
 .personnel-stat-col strong {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: #ffffff;
-  margin-top: 1px;
+  margin-top: 4px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-align: center;
 }
 
 /* En Üst Buton Şeklinde "Kartları Düzenle" */

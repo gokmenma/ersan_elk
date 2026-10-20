@@ -1018,10 +1018,10 @@ onMounted(() => {
                 <span class="seg-pill seg-pill--coral" :style="{ width: vehicleSegments.service }"></span>
                 <span class="seg-pill seg-pill--amber" :style="{ width: vehicleSegments.idle }"></span>
               </div>
-              <div class="bento-team-metrics mt-2">
-                <div><span>Sahada</span><strong>{{ vehicles.field }}</strong></div>
-                <div><span>Serviste</span><strong>{{ vehicles.service }}</strong></div>
-                <div><span>Boşta</span><strong>{{ vehicles.idle }}</strong></div>
+              <div class="bento-team-metrics">
+                <div><span><i class="ds-dot ds-dot--emerald"></i>Sahada</span><strong>{{ vehicles.field }}</strong></div>
+                <div><span><i class="ds-dot ds-dot--coral"></i>Serviste</span><strong>{{ vehicles.service }}</strong></div>
+                <div><span><i class="ds-dot ds-dot--amber"></i>Boşta</span><strong>{{ vehicles.idle }}</strong></div>
               </div>
             </section>
 

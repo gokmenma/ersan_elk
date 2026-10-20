@@ -1477,7 +1477,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'kep-ayarlari-getir':
                 $firmaId = (int) $_SESSION['firma_id'];
                 $kepSettingsModel = new KepSettingsModel();
-                $kepSettings = $kepSettingsModel->getSettings($firmaId);
+                $kepSettings = $kepSettingsModel->getSettings($firmaId, $currentUserId);
                 $hasSecrets = !empty($kepSettings['sifre_decrypted']);
                 $maskedTc = '';
                 if (!empty($kepSettings['yetkili_tcno_decrypted'])) {
@@ -1491,6 +1491,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'kep_adresi' => $kepSettings['kep_adresi'] ?? '',
                         'yetkili_tcno' => $maskedTc,
                         'has_secrets' => $hasSecrets,
+                        'credentials_owner' => 'current_user',
                         'wsdl_url' => $kepSettings['wsdl_url'] ?? KepClientService::DEFAULT_WSDL,
                         'ortam' => $kepSettings['ortam'] ?? 'prod',
                         'bakiye_kontor' => $kepSettings['bakiye_kontor'] ?? null,
@@ -1528,7 +1529,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $saveData['sifre'] = trim((string) $_POST['sifre']);
                 }
 
-                $saved = $kepSettingsModel->saveSettings($firmaId, $saveData);
+                $currentSettings = $kepSettingsModel->getSettings($firmaId, $currentUserId);
+                $hasCurrentCredentials = !empty($currentSettings['has_user_credentials']);
+                if (!$hasCurrentCredentials && (empty($saveData['yetkili_tcno']) || empty($saveData['parola']) || empty($saveData['sifre']))) {
+                    throw new Exception('Bu kullanıcı için T.C. No, KEP parolası ve web servis şifresi eksiksiz girilmelidir.');
+                }
+
+                $saved = $kepSettingsModel->saveSettings($firmaId, $saveData, $currentUserId);
                 if (!$saved) {
                     throw new Exception('KEP ayarları kaydedilemedi.');
                 }
@@ -1538,7 +1545,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'kep-baglanti-test':
                 $firmaId = (int) $_SESSION['firma_id'];
-                $kepSettings = (new KepSettingsModel())->getSettings($firmaId);
+                $kepSettings = (new KepSettingsModel())->getSettings($firmaId, $currentUserId);
                 $testData = [
                     'kep_adresi' => !empty($_POST['kep_adresi']) ? trim((string) $_POST['kep_adresi']) : ($kepSettings['kep_adresi'] ?? ''),
                     'yetkili_tcno' => !empty($_POST['yetkili_tcno']) ? trim((string) $_POST['yetkili_tcno']) : ($kepSettings['yetkili_tcno_decrypted'] ?? ''),

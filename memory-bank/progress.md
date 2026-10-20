@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-10-20: Mobil SPA Ana Sayfa — Personel & Araç Metrik Kutularının Çerçevelenmesi ve Hizalanması
+- [x] Personel Durumu (Koyu Bento Kartı) altındaki Sahada, İzinli ve Geç Kalan metrikleri için saydam koyu cam zeminli (`rgba(255, 255, 255, 0.05)`), `1px solid rgba(255, 255, 255, 0.1)` çerçeveli ve `16px` kavisli bağımsız kutular oluşturuldu.
+- [x] Araç & Filo (Beyaz Bento Kartı) altındaki Sahada, Serviste ve Boşta metrikleri için açık zeminli (`var(--ds-surface-subtle)`), `1px solid var(--ds-border-subtle)` çerçeveli ve `16px` kavisli bağımsız kutular oluşturuldu; sağ kenarlık sütun ayırıcıları kaldırıldı.
+- [x] Her iki karttaki tüm metrik kutularında durum noktaları, etiketler ve sayısal değerler `align-items: center; justify-content: center; text-align: center;` ile yatay ve dikey eksende tam ortalandı.
+- [x] Araç & Filo metriklerine segment çubuğu renkleriyle eşleşen durum noktaları (`ds-dot--emerald`, `ds-dot--coral`, `ds-dot--amber`) eklenerek tasarım bütünlüğü sağlandı.
+- [x] `mobile-spa` üzerinde `npm run build` çalıştırılarak üretim paketi (`dist`) güncellendi.
+
 ## 2026-10-20: Fatura Listelerinde Filtrelenmiş Özet Kartları
 - [x] `EInvoiceModel::ajaxList()` gelen, giden ve taslak listelerinde aynı parametrik filtre sorgusundan özet üretecek şekilde ortaklaştırıldı.
 - [x] Gelen ve taslak sayfalarındaki bağımsız/filtrelerden habersiz özet istekleri kaldırıldı; kartlar DataTables yanıtındaki `summary` verisine bağlandı.
@@ -1435,3 +1442,10 @@
 - [x] Aktif Aldım/Verdim filtresi ve DataTables genel araması Excel isteğine aktarılmaya devam edecek şekilde korundu.
 - [x] Excel veri sorgusu Model katmanına taşındı ve tüm dinamik değerler PDO parametrik binding ile bağlandı.
 - [x] İlgili PHP dosyaları, JavaScript ve diff kontrolleri geçti; örnek cari için Model sorgusu 45 satırla başarıyla çalıştı.
+
+# 2026-10-20 — PTT KEP çoklu kullanıcı kimlikleri
+
+- [x] Aynı kurumsal KEP adresi için her uygulama kullanıcısının kendi PTT TCKN, parola ve web servis şifresini şifreli saklayacağı kullanıcı hesap tablosu eklendi.
+- [x] KEP ayar görüntüleme, kayıt, bağlantı, bakiye, rehber ve gönderim akışları oturum kullanıcısının kimliğine izole edildi.
+- [x] Eski tekil KEP kimliği ilk yetkili kullanıcıya tek seferlik taşınırken diğer kullanıcıların bu kimliği kullanması engellendi.
+- [x] Migration aktif veritabanına uygulandı; sözdizimi, şema ve çoklu kullanıcı izolasyon testi geçti.

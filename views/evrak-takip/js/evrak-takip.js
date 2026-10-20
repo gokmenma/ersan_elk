@@ -1101,9 +1101,9 @@ $(document).ready(function () {
       $("#ptt_yetkili_tcno, #ptt_parola, #ptt_sifre").val("");
       $("#ptt_wsdl_url").val(d.wsdl_url || "https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl");
       $("#ptt_ortam").val(d.ortam || "prod").trigger("change");
-      $("#pttKepTcHelpText").text(d.yetkili_tcno ? "Kayıtlı TCKN: " + d.yetkili_tcno + " — değiştirmeyecekseniz boş bırakın." : "Henüz yetkili TCKN kaydedilmemiş.");
-      $("#pttKepParolaHelpText").text(d.has_secrets ? "Kayıtlı parola mevcut; değiştirmeyecekseniz boş bırakın." : "Henüz parola kaydedilmemiş.");
-      $("#pttKepSifreHelpText").text(d.has_secrets ? "Kayıtlı web servis şifresi mevcut; değiştirmeyecekseniz boş bırakın." : "Henüz web servis şifresi kaydedilmemiş.");
+      $("#pttKepTcHelpText").text(d.yetkili_tcno ? "Bu kullanıcı için kayıtlı TCKN: " + d.yetkili_tcno + " — değiştirmeyecekseniz boş bırakın." : "Bu kullanıcı için henüz yetkili TCKN kaydedilmemiş.");
+      $("#pttKepParolaHelpText").text(d.has_secrets ? "Bu kullanıcıya ait parola kayıtlı; değiştirmeyecekseniz boş bırakın." : "Bu kullanıcı için henüz parola kaydedilmemiş.");
+      $("#pttKepSifreHelpText").text(d.has_secrets ? "Bu kullanıcıya ait web servis şifresi kayıtlı; değiştirmeyecekseniz boş bırakın." : "Bu kullanıcı için henüz web servis şifresi kaydedilmemiş.");
       $("#pttKepBakiyeText").text(d.bakiye_kontor !== null && d.bakiye_kontor !== undefined ? "Kayıtlı Bakiye: " + d.bakiye_kontor + " " + (d.bakiye_cins || "Kontör") : "Kayıtlı Kontör: -");
       $("#pttKepSonSorguText").text(d.son_bakiye_sorgu ? "(Son: " + d.son_bakiye_sorgu + ")" : "");
     });
