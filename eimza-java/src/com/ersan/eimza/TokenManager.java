@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.*;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -307,6 +308,8 @@ public class TokenManager {
                 rsa.update(signedAttrsDer);
                 byte[] rsaSigBytes = rsa.sign();
 
+                verifyCardSignature(certDer, signedAttrsDer, rsaSigBytes);
+
                 return Asn1Der.buildCmsSignedData(rawDigest, certDer, signedAttrsDer, rsaSigBytes);
             }
         } catch (Throwable t) {
@@ -377,7 +380,22 @@ public class TokenManager {
         byte[] rsaSigBytes = Files.readAllBytes(outData.toPath());
         outData.delete();
 
+        verifyCardSignature(certDer, signedAttrsDer, rsaSigBytes);
+
         return Asn1Der.buildCmsSignedData(rawDigest, certDer, signedAttrsDer, rsaSigBytes);
+    }
+
+    private static void verifyCardSignature(byte[] certDer, byte[] signedAttrsDer, byte[] rsaSigBytes) throws Exception {
+        CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        X509Certificate certificate = (X509Certificate) factory.generateCertificate(
+                new ByteArrayInputStream(certDer)
+        );
+        Signature verifier = Signature.getInstance("SHA256withRSA");
+        verifier.initVerify(certificate.getPublicKey());
+        verifier.update(signedAttrsDer);
+        if (!verifier.verify(rsaSigBytes)) {
+            throw new RuntimeException("Kartın ürettiği elektronik imza doğrulanamadı. Lütfen kartı çıkarıp yeniden takınız.");
+        }
     }
 
     private static String findSigningObjectId(String toolBin, String modulePath, String pin) throws Exception {

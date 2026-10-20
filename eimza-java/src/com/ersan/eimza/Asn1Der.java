@@ -226,7 +226,10 @@ public class Asn1Der {
     public static byte[] buildCmsSignedData(byte[] rawDigest, byte[] certDer, byte[] signedAttrsDer, byte[] rsaSigBytes) throws Exception {
         CertInfo ci = extractCertInfo(certDer);
 
-        byte[] digestAlg = sequence(oid(OID_SHA256), nullVal());
+        // RFC 5754: SHA-256 AlgorithmIdentifier parametreleri MUST be absent.
+        // OpenSSL bunu <ABSENT> olarak üretir; bazı KEP/CMS doğrulayıcıları NULL
+        // parametresini kabul etmez.
+        byte[] digestAlg = sequence(oid(OID_SHA256));
         byte[] digestAlgs = set(digestAlg);
         byte[] encapContent = sequence(oid(OID_ID_DATA));
         // CertificateSet, SignedData icinde [0] IMPLICIT ve CONSTRUCTED alandir.

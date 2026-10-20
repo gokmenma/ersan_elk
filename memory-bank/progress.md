@@ -1425,6 +1425,7 @@
 - [x] Windows'ta imza anında native PKCS#11 sürücüsünün Java ajanını düşürmesini önlemek için imzalama gömülü OpenSC alt sürecine izole edildi; 9191 servisinin sürücü hatasından etkilenmemesi sağlandı.
 - [x] Çok nesneli e-imza kartlarında özel anahtar–sertifika CKA_ID eşleştirmesi eklendi; sertifika okuma ve imza komutları aynı nesne ID'sine sabitlendi, araç hata çıktıları kullanıcıya güvenli ve sınırlı biçimde taşındı.
 - [x] PTT tarafından bozuk S/MIME olarak reddedilen CMS çıktısındaki primitive sertifika kümesi etiketi doğru constructed `[0]` etiketiyle değiştirildi; `1.1.3` ajanı derlendi ve detached içerik üzerinde OpenSSL ile yapısal ve kriptografik doğrulama başarılı oldu.
+- [x] Sağlanan PTT WSDL dokümanına göre `MimeYap eHash → detached CAdES-BES → SmimeGonder` akışı teyit edildi; SHA-256 algoritma parametresi strict CMS uyumu için absent kodlandı ve donanımsal RSA çıktısına ajan içi doğrulama eklendi. `1.1.4` paketi OpenSSL detached CMS doğrulamasından geçti.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 
