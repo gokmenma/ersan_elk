@@ -37,7 +37,6 @@ $(document).ready(function() {
                 }
                 updatePeriodLabelToCustom();
                 table.ajax.reload();
-                loadStats();
             }
         });
     }
@@ -56,7 +55,6 @@ $(document).ready(function() {
                 }
                 updatePeriodLabelToCustom();
                 table.ajax.reload();
-                loadStats();
             }
         });
     }
@@ -144,7 +142,6 @@ $(document).ready(function() {
         }
 
         table.ajax.reload();
-        loadStats();
     });
 
     // Başlangıç Tarihi Temizle Butonu
@@ -158,7 +155,6 @@ $(document).ready(function() {
         $(this).hide();
         updatePeriodLabelToCustom();
         table.ajax.reload();
-        loadStats();
     });
 
     // Bitiş Tarihi Temizle Butonu
@@ -172,7 +168,6 @@ $(document).ready(function() {
         $(this).hide();
         updatePeriodLabelToCustom();
         table.ajax.reload();
-        loadStats();
     });
 
     function updateProductSearchUI(isSearching) {
@@ -196,7 +191,6 @@ $(document).ready(function() {
         clearTimeout(gelenProductSearchTimer);
         gelenProductSearchTimer = setTimeout(function() {
             table.ajax.reload();
-            loadStats();
         }, 350);
     });
 
@@ -205,47 +199,21 @@ $(document).ready(function() {
         $('#filterProductSearch').val('');
         updateProductSearchUI(false);
         table.ajax.reload();
-        loadStats();
     });
 
-    // 2. İstatistikleri Yükle
-    function loadStats() {
-        let url = 'api/efatura-api.php?action=summary_stats&list_type=gelen';
-        const prodSearch = $('#filterProductSearch').val() ? $('#filterProductSearch').val().trim() : '';
-        if (!prodSearch) {
-            if (currentStartDate) url += `&baslangic_tarihi=${currentStartDate}`;
-            if (currentEndDate) url += `&bitis_tarihi=${currentEndDate}`;
-        }
-        fetch(url)
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === 'success' && res.data) {
-                    const d = res.data;
-                    const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
-                    
-                    if (document.getElementById('stat_toplam_adet')) {
-                        document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
-                    }
-                    if (document.getElementById('stat_bu_ay_adet_text')) {
-                        document.getElementById('stat_bu_ay_adet_text').textContent = `Bu Ay: ${d.bu_ay_adet || 0} Adet`;
-                    }
-                    if (document.getElementById('stat_kabul_adet')) {
-                        document.getElementById('stat_kabul_adet').textContent = d.kabul_adet || 0;
-                    }
-                    if (document.getElementById('stat_bekleyen_adet')) {
-                        document.getElementById('stat_bekleyen_adet').textContent = d.bekleyen_adet || 0;
-                    }
-                    if (document.getElementById('stat_toplam_tutar')) {
-                        document.getElementById('stat_toplam_tutar').textContent = formatMoney(d.toplam_tutar);
-                    }
-                    if (document.getElementById('stat_bu_ay_tutar')) {
-                        document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
-                    }
-                }
-            })
-            .catch(err => console.error("Gelen summary stats error:", err));
+    // Kartlar, DataTables yanıtındaki filtrelenmiş özetten beslenir.
+    function renderStats(d) {
+        const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+
+        if (document.getElementById('stat_toplam_adet')) document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
+        if (document.getElementById('stat_bu_ay_adet_text')) document.getElementById('stat_bu_ay_adet_text').textContent = `Bu Ay: ${d.bu_ay_adet || 0} Adet`;
+        if (document.getElementById('stat_kabul_adet')) document.getElementById('stat_kabul_adet').textContent = d.kabul_adet || 0;
+        if (document.getElementById('stat_bekleyen_adet')) document.getElementById('stat_bekleyen_adet').textContent = d.bekleyen_adet || 0;
+        if (document.getElementById('stat_toplam_tutar')) document.getElementById('stat_toplam_tutar').textContent = formatMoney(d.toplam_tutar);
+        if (document.getElementById('stat_bu_ay_tutar')) document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
     }
-    loadStats();
+
+    let latestSummaryDraw = 0;
 
     // 3. DataTables Tablosunu Başlat (AGENTS.md getDatatableOptions() ve applyLengthStateSave())
     const baseOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
@@ -270,6 +238,7 @@ $(document).ready(function() {
             url: 'api/efatura-api.php?action=list_invoices&list_type=gelen',
             type: 'GET',
             data: function(d) {
+                latestSummaryDraw = Number(d.draw);
                 if (currentYanitFilter) {
                     d.durum_filtre = currentYanitFilter;
                 }
@@ -287,6 +256,7 @@ $(document).ready(function() {
                 }
             },
             dataSrc: function(json) {
+                if (json?.summary && Number(json.draw) === latestSummaryDraw) renderStats(json.summary);
                 return (json && Array.isArray(json.data)) ? json.data : [];
             },
             error: function(xhr, error, thrown) {
@@ -615,7 +585,7 @@ $(document).ready(function() {
     const backgroundSync = window.efaturaBackgroundSync({
         listCard: '#faturaListCard', buttonSelector: '#btnSyncIncoming',
         storageKey: 'efatura_gelen_sync_dismissed_result', listType: 'gelen',
-        onRefresh: () => { table.ajax.reload(null, false); loadStats(); }
+        onRefresh: () => { table.ajax.reload(null, false); }
     });
 
     $('#btnSyncIncoming').on('click', function() {
@@ -787,7 +757,6 @@ $(document).ready(function() {
                         text: res.message || 'Ticari yanıt başarıyla iletildi.'
                     }).then(() => {
                         table.ajax.reload(null, false);
-                        loadStats();
                     });
                 } else {
                     Swal.fire('Hata', res.message || 'Ticari yanıt iletilemedi.', 'error');

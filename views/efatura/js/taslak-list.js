@@ -36,7 +36,6 @@ $(document).ready(function() {
                 }
                 updatePeriodLabelToCustom();
                 table.ajax.reload();
-                loadStats();
             }
         });
     }
@@ -55,7 +54,6 @@ $(document).ready(function() {
                 }
                 updatePeriodLabelToCustom();
                 table.ajax.reload();
-                loadStats();
             }
         });
     }
@@ -135,7 +133,6 @@ $(document).ready(function() {
         }
 
         table.ajax.reload();
-        loadStats();
     });
 
     // Başlangıç Tarihi Temizle Butonu
@@ -149,7 +146,6 @@ $(document).ready(function() {
         $(this).hide();
         updatePeriodLabelToCustom();
         table.ajax.reload();
-        loadStats();
     });
 
     // Bitiş Tarihi Temizle Butonu
@@ -163,7 +159,6 @@ $(document).ready(function() {
         $(this).hide();
         updatePeriodLabelToCustom();
         table.ajax.reload();
-        loadStats();
     });
 
     function updateProductSearchUI(isSearching) {
@@ -187,7 +182,6 @@ $(document).ready(function() {
         clearTimeout(taslakProductSearchTimer);
         taslakProductSearchTimer = setTimeout(function() {
             table.ajax.reload();
-            loadStats();
         }, 350);
     });
 
@@ -196,47 +190,21 @@ $(document).ready(function() {
         $('#filterProductSearch').val('');
         updateProductSearchUI(false);
         table.ajax.reload();
-        loadStats();
     });
 
-    // 2. İstatistikleri Yükle
-    function loadStats() {
-        let url = 'api/efatura-api.php?action=summary_stats&list_type=taslak';
-        const prodSearch = $('#filterProductSearch').val() ? $('#filterProductSearch').val().trim() : '';
-        if (!prodSearch) {
-            if (currentStartDate) url += `&baslangic_tarihi=${currentStartDate}`;
-            if (currentEndDate) url += `&bitis_tarihi=${currentEndDate}`;
-        }
-        fetch(url)
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === 'success' && res.data) {
-                    const d = res.data;
-                    const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+    // Kartlar, DataTables yanıtındaki filtrelenmiş özetten beslenir.
+    function renderStats(d) {
+        const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
 
-                    if (document.getElementById('stat_toplam_adet')) {
-                        document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
-                    }
-                    if (document.getElementById('stat_sub_efatura_earsiv')) {
-                        document.getElementById('stat_sub_efatura_earsiv').textContent = `E-Fatura: ${d.efatura_adet || 0} | E-Arşiv: ${d.earsiv_adet || 0}`;
-                    }
-                    if (document.getElementById('stat_efatura_adet')) {
-                        document.getElementById('stat_efatura_adet').textContent = d.efatura_adet || 0;
-                    }
-                    if (document.getElementById('stat_earsiv_adet')) {
-                        document.getElementById('stat_earsiv_adet').textContent = d.earsiv_adet || 0;
-                    }
-                    if (document.getElementById('stat_toplam_tutar')) {
-                        document.getElementById('stat_toplam_tutar').textContent = formatMoney(d.toplam_tutar);
-                    }
-                    if (document.getElementById('stat_bu_ay_tutar')) {
-                        document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
-                    }
-                }
-            })
-            .catch(err => console.error("Taslak summary stats error:", err));
+        if (document.getElementById('stat_toplam_adet')) document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
+        if (document.getElementById('stat_sub_efatura_earsiv')) document.getElementById('stat_sub_efatura_earsiv').textContent = `E-Fatura: ${d.efatura_adet || 0} | E-Arşiv: ${d.earsiv_adet || 0}`;
+        if (document.getElementById('stat_efatura_adet')) document.getElementById('stat_efatura_adet').textContent = d.efatura_adet || 0;
+        if (document.getElementById('stat_earsiv_adet')) document.getElementById('stat_earsiv_adet').textContent = d.earsiv_adet || 0;
+        if (document.getElementById('stat_toplam_tutar')) document.getElementById('stat_toplam_tutar').textContent = formatMoney(d.toplam_tutar);
+        if (document.getElementById('stat_bu_ay_tutar')) document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
     }
-    loadStats();
+
+    let latestSummaryDraw = 0;
 
     // 3. DataTables Tablosunu Başlat (AGENTS.md getDatatableOptions() ve applyLengthStateSave())
     const baseOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
@@ -262,6 +230,7 @@ $(document).ready(function() {
             url: 'api/efatura-api.php?action=list_invoices&list_type=taslak',
             type: 'GET',
             data: function(d) {
+                latestSummaryDraw = Number(d.draw);
                 if (currentBelgeFilter) {
                     d.belge_turu_filtre = currentBelgeFilter;
                 }
@@ -279,6 +248,7 @@ $(document).ready(function() {
                 }
             },
             dataSrc: function(json) {
+                if (json?.summary && Number(json.draw) === latestSummaryDraw) renderStats(json.summary);
                 return (json && Array.isArray(json.data)) ? json.data : [];
             },
             error: function(xhr, error, thrown) {
@@ -517,14 +487,13 @@ $(document).ready(function() {
     // Header Butonları
     $('#btnHeaderRefresh').on('click', function() {
         table.ajax.reload(null, false);
-        loadStats();
     });
 
     // EDM'den Taslakları / Faturaları Çek
     const backgroundSync = window.efaturaBackgroundSync({
         listCard: '#faturaListCard', buttonSelector: '#btnSyncDrafts, #btnDropdownSyncDrafts',
         storageKey: 'efatura_taslak_sync_dismissed_result', listType: 'taslak',
-        onRefresh: () => { table.ajax.reload(null, false); loadStats(); }
+        onRefresh: () => { table.ajax.reload(null, false); }
     });
 
     $('#btnSyncDrafts, #btnDropdownSyncDrafts').on('click', function() {
@@ -800,7 +769,6 @@ $(document).ready(function() {
                                 confirmButtonText: 'Tamam'
                             }).then(() => {
                                 table.ajax.reload(null, false);
-                                loadStats();
                             });
                         } else {
                             Swal.fire({
@@ -870,7 +838,6 @@ $(document).ready(function() {
                                 $('#checkAll').prop('checked', false);
                                 updateSelectedBulkCount();
                                 table.ajax.reload(null, false);
-                                loadStats();
                             });
                         } else {
                             Swal.fire({
@@ -879,7 +846,6 @@ $(document).ready(function() {
                                 html: `${res.message}<br><small class="text-danger">${(res.errors || []).join('<br>')}</small>`
                             }).then(() => {
                                 table.ajax.reload(null, false);
-                                loadStats();
                             });
                         }
                     },
@@ -924,7 +890,6 @@ $(document).ready(function() {
                                 showConfirmButton: false
                             });
                             table.ajax.reload(null, false);
-                            loadStats();
                         } else {
                             Swal.fire('Hata', res.message || 'Silme işlemi başarısız.', 'error');
                         }
@@ -959,7 +924,6 @@ $(document).ready(function() {
                         showConfirmButton: false
                     });
                     table.ajax.reload(null, false);
-                    loadStats();
                 } else {
                     Swal.fire('Hata', res.message || 'Durum sorgulanamadı.', 'error');
                 }
@@ -1090,7 +1054,6 @@ $(document).ready(function() {
         if (id) {
             window.efaturaOpenTahsilatModal(id, () => {
                 table.ajax.reload(null, false);
-                loadStats();
             });
         }
     });

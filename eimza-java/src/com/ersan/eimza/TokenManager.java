@@ -328,15 +328,18 @@ public class TokenManager {
         if (toolBin == null) {
             throw new RuntimeException("Taşınabilir OpenSC imza motoru hazırlanamadı. E-İmza uygulamasını yeniden indirip çalıştırınız.");
         }
+        String signingObjectId = findSigningObjectId(toolBin, modulePath, pin);
         File certFile = File.createTempFile("cert_", ".der");
         certFile.deleteOnExit();
 
-        // 1. Sertifikayı oku
-        Process pCert = Runtime.getRuntime().exec(new String[]{
-                toolBin, "--module", modulePath, "--read-object", "--type", "cert", "--output-file", certFile.getAbsolutePath()
+        // 1. Imza anahtariyla ayni CKA_ID degerine sahip sertifikayi oku.
+        ToolResult certResult = runTool(new String[]{
+                toolBin, "--module", modulePath, "--login", "--pin", pin,
+                "--read-object", "--type", "cert", "--id", signingObjectId,
+                "--output-file", certFile.getAbsolutePath()
         });
-        if (pCert.waitFor() != 0) {
-            throw new RuntimeException("Karttan sertifika okunamadı.");
+        if (certResult.exitCode != 0 || !certFile.isFile() || certFile.length() == 0) {
+            throw new RuntimeException("Karttan imza sertifikası okunamadı: " + summarizeToolError(certResult.output));
         }
         byte[] certDer = Files.readAllBytes(certFile.toPath());
         certFile.delete();
@@ -352,34 +355,105 @@ public class TokenManager {
         Files.write(inData.toPath(), signedAttrsDer);
 
         // 3. İmzala
-        Process pSign = Runtime.getRuntime().exec(new String[]{
+        ToolResult signResult = runTool(new String[]{
                 toolBin, "--module", modulePath, "--login", "--pin", pin,
-                "--sign", "-m", "SHA256-RSA-PKCS",
+                "--sign", "--id", signingObjectId, "-m", "SHA256-RSA-PKCS",
                 "--input-file", inData.getAbsolutePath(),
                 "--output-file", outData.getAbsolutePath()
         });
 
-        int code = pSign.waitFor();
         inData.delete();
 
-        if (code != 0) {
-            BufferedReader r = new BufferedReader(new InputStreamReader(pSign.getErrorStream(), StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            String l;
-            while ((l = r.readLine()) != null) sb.append(l).append(" ");
-            String err = sb.toString();
+        if (signResult.exitCode != 0) {
+            String err = signResult.output;
             if (err.contains("PIN_INCORRECT") || err.contains("CKR_PIN_INCORRECT")) {
                 throw new RuntimeException("Girdiğiniz e-imza PIN kodu hatalıdır.");
             } else if (err.contains("PIN_LOCKED") || err.contains("CKR_PIN_LOCKED")) {
                 throw new RuntimeException("E-İmza kartınız hatalı denemeler nedeniyle kilitlenmiştir.");
             }
-            throw new RuntimeException("Token imzalama hatası: " + err);
+            throw new RuntimeException("Token imzalama hatası: " + summarizeToolError(err));
         }
 
         byte[] rsaSigBytes = Files.readAllBytes(outData.toPath());
         outData.delete();
 
         return Asn1Der.buildCmsSignedData(rawDigest, certDer, signedAttrsDer, rsaSigBytes);
+    }
+
+    private static String findSigningObjectId(String toolBin, String modulePath, String pin) throws Exception {
+        ToolResult listResult = runTool(new String[]{
+                toolBin, "--module", modulePath, "--login", "--pin", pin, "--list-objects"
+        });
+        String output = listResult.output != null ? listResult.output : "";
+        if (listResult.exitCode != 0) {
+            String upper = output.toUpperCase(Locale.ROOT);
+            if (upper.contains("CKR_PIN_INCORRECT") || upper.contains("PIN_INCORRECT")) {
+                throw new RuntimeException("Girdiğiniz e-imza PIN kodu hatalıdır.");
+            }
+            if (upper.contains("CKR_PIN_LOCKED") || upper.contains("PIN_LOCKED")) {
+                throw new RuntimeException("E-İmza kartınız hatalı denemeler nedeniyle kilitlenmiştir.");
+            }
+            throw new RuntimeException("Kart nesneleri okunamadı: " + summarizeToolError(output));
+        }
+
+        Set<String> certificateIds = extractObjectIds(output, "Certificate Object");
+        Set<String> privateKeyIds = extractObjectIds(output, "Private Key Object");
+        for (String privateKeyId : privateKeyIds) {
+            if (certificateIds.contains(privateKeyId)) return privateKeyId;
+        }
+        if (!certificateIds.isEmpty() && privateKeyIds.isEmpty()) return certificateIds.iterator().next();
+        throw new RuntimeException("Kartta özel imza anahtarıyla eşleşen sertifika bulunamadı.");
+    }
+
+    private static Set<String> extractObjectIds(String output, String objectHeading) {
+        Set<String> ids = new LinkedHashSet<>();
+        boolean matchingObject = false;
+        Pattern idPattern = Pattern.compile("^ID\\s*:\\s*([0-9a-fA-F ]+)$", Pattern.CASE_INSENSITIVE);
+        for (String rawLine : output.split("\\r?\\n")) {
+            String line = rawLine.trim();
+            if (line.toLowerCase(Locale.ROOT).contains(" object")) {
+                matchingObject = line.toLowerCase(Locale.ROOT).startsWith(objectHeading.toLowerCase(Locale.ROOT));
+                continue;
+            }
+            if (!matchingObject) continue;
+            Matcher idMatcher = idPattern.matcher(line);
+            if (!idMatcher.matches()) continue;
+            String id = idMatcher.group(1).replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+            if (!id.isEmpty()) ids.add(id);
+        }
+        return ids;
+    }
+
+    private static ToolResult runTool(String[] command) throws Exception {
+        ProcessBuilder builder = new ProcessBuilder(command);
+        builder.redirectErrorStream(true);
+        Process process = builder.start();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (InputStream input = process.getInputStream()) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = input.read(buffer)) >= 0) {
+                if (read > 0) output.write(buffer, 0, read);
+            }
+        }
+        int exitCode = process.waitFor();
+        return new ToolResult(exitCode, new String(output.toByteArray(), StandardCharsets.UTF_8));
+    }
+
+    private static String summarizeToolError(String output) {
+        String message = output == null ? "" : output.replaceAll("[\\r\\n]+", " ").trim();
+        if (message.length() > 300) message = message.substring(0, 300) + "…";
+        return message.isEmpty() ? "Bilinmeyen kart hatası" : message;
+    }
+
+    private static class ToolResult {
+        final int exitCode;
+        final String output;
+
+        ToolResult(int exitCode, String output) {
+            this.exitCode = exitCode;
+            this.output = output;
+        }
     }
 
     private static String cleanTurkishChars(String s) {

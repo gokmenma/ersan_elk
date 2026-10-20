@@ -694,7 +694,10 @@ class EInvoiceModel extends Model
         }
 
         if (!empty($params['durum_filtre']) && $params['durum_filtre'] !== 'all') {
-            if ($listType === 'giden' && in_array($params['durum_filtre'], ['ONAYLANDI', 'GIB_ONAYLI', 'GONDERILDI'], true)) {
+            if ($listType === 'gelen' && in_array($params['durum_filtre'], ['KABUL', 'RED', 'BEKLIYOR'], true)) {
+                $where .= " AND f.ticari_yanit = :durum_filtre";
+                $bind['durum_filtre'] = $params['durum_filtre'];
+            } elseif ($listType === 'giden' && in_array($params['durum_filtre'], ['ONAYLANDI', 'GIB_ONAYLI', 'GONDERILDI'], true)) {
                 $where .= " AND f.entegrator_durum_kodu IN ('ONAYLANDI', 'GONDERILDI')";
             } elseif ($listType === 'giden' && in_array($params['durum_filtre'], ['BEKLIYOR', 'BEKLEYEN', 'KUYRUKTA', 'BEKLEYEN_ILETILEN'], true)) {
                 $where .= " AND f.entegrator_durum_kodu IN ('KUYRUKTA', 'BEKLIYOR')";
@@ -1058,10 +1061,28 @@ class EInvoiceModel extends Model
         $recordsTotal = (int)$totalStmt->fetchColumn();
 
         // Filtrelenmiş Kayıt Sayısı
-        $summary = null;
-        if ($listType === 'giden') {
-            // Aggregate using the exact WHERE/bind set used by the table, before pagination.
-            $filteredStmt = $this->db->prepare("SELECT
+        // Kartlar, sayfalama öncesinde tablonun kullandığı koşulların birebir
+        // aynısıyla hesaplanır. Böylece genel arama, kolon, tarih, ürün ve hızlı
+        // durum filtreleri liste ile özet kartlarında daima aynı sonucu verir.
+        if ($listType === 'taslak') {
+            $summarySelect = "
+                COUNT(*) AS toplam_adet,
+                COALESCE(SUM(f.odenecek_tutar), 0) AS toplam_tutar,
+                COUNT(CASE WHEN f.belge_turu = 'EFATURA' THEN 1 END) AS efatura_adet,
+                COUNT(CASE WHEN f.belge_turu = 'EARSIV' THEN 1 END) AS earsiv_adet,
+                COUNT(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN 1 END) AS bu_ay_adet,
+                COALESCE(SUM(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN f.odenecek_tutar ELSE 0 END), 0) AS bu_ay_tutar";
+        } elseif ($listType === 'gelen') {
+            $summarySelect = "
+                COUNT(*) AS toplam_adet,
+                COALESCE(SUM(f.odenecek_tutar), 0) AS toplam_tutar,
+                COUNT(CASE WHEN f.ticari_yanit = 'KABUL' THEN 1 END) AS kabul_adet,
+                COUNT(CASE WHEN f.ticari_yanit = 'RED' THEN 1 END) AS red_adet,
+                COUNT(CASE WHEN f.ticari_yanit = 'BEKLIYOR' THEN 1 END) AS bekleyen_adet,
+                COUNT(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN 1 END) AS bu_ay_adet,
+                COALESCE(SUM(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN f.odenecek_tutar ELSE 0 END), 0) AS bu_ay_tutar";
+        } else {
+            $summarySelect = "
                 COUNT(*) AS toplam_adet,
                 COALESCE(SUM(f.odenecek_tutar), 0) AS toplam_tutar,
                 COUNT(CASE WHEN f.belge_turu = 'EFATURA' THEN 1 END) AS efatura_adet,
@@ -1073,16 +1094,24 @@ class EInvoiceModel extends Model
                 COUNT(CASE WHEN f.entegrator_durum_kodu = 'IPTAL' THEN 1 END) AS iptal_adet,
                 COALESCE(SUM(CASE WHEN f.entegrator_durum_kodu = 'IPTAL' THEN f.odenecek_tutar ELSE 0 END), 0) AS iptal_tutar,
                 COUNT(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN 1 END) AS bu_ay_adet,
-                COALESCE(SUM(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN f.odenecek_tutar ELSE 0 END), 0) AS bu_ay_tutar
-                FROM faturalar f WHERE $where");
-            $filteredStmt->execute($bind + ['summary_month_start' => date('Y-m-01'), 'summary_month_end' => date('Y-m-t')]);
-            $summary = $filteredStmt->fetch(PDO::FETCH_ASSOC);
-            $recordsFiltered = (int)$summary['toplam_adet'];
-        } else {
-            $filteredStmt = $this->db->prepare("SELECT COUNT(*) FROM faturalar f WHERE $where");
-            $filteredStmt->execute($bind);
-            $recordsFiltered = (int)$filteredStmt->fetchColumn();
+                COALESCE(SUM(CASE WHEN f.fatura_tarihi BETWEEN :summary_month_start AND :summary_month_end THEN f.odenecek_tutar ELSE 0 END), 0) AS bu_ay_tutar";
         }
+
+        $filteredStmt = $this->db->prepare("SELECT {$summarySelect}
+            FROM faturalar f
+            LEFT JOIN (
+                SELECT fatura_id, SUM(tutar) AS toplam_tahsilat, COUNT(*) AS tahsilat_adedi
+                FROM fatura_tahsilatlari
+                WHERE deleted_at IS NULL AND is_active = 1
+                GROUP BY fatura_id
+            ) t ON t.fatura_id = f.id
+            WHERE $where");
+        $filteredStmt->execute($bind + [
+            'summary_month_start' => date('Y-m-01'),
+            'summary_month_end' => date('Y-m-t')
+        ]);
+        $summary = $filteredStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $recordsFiltered = (int)($summary['toplam_adet'] ?? 0);
 
         // Veri Listesi Sıralama
         $orderCol = 'f.fatura_tarihi';
@@ -1210,8 +1239,9 @@ class EInvoiceModel extends Model
             'draw'            => $draw,
             'recordsTotal'    => $recordsTotal,
             'recordsFiltered' => $recordsFiltered,
-            'data'            => $data
-        ] + ($summary !== null ? ['summary' => $summary] : []);
+            'data'            => $data,
+            'summary'         => $summary
+        ];
     }
 
     /**

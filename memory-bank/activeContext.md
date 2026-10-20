@@ -1,5 +1,10 @@
 # Active Context
 
+## Fatura Listelerinde Filtre–Özet Kartı Senkronizasyonu (2026-10-20)
+- Gelen, giden ve taslak fatura listelerinde özet kartları artık DataTables listesinin sayfalama öncesi birebir filtre koşullarından hesaplanıyor.
+- Kolon filtreleri, genel arama, ürün/kalem araması, tarih aralığı ve hızlı durum/belge filtreleri hem satırları hem kartlardaki adet/tutarları birlikte güncelliyor.
+- Gelen faturaların hızlı KABUL/RED/BEKLIYOR filtresi `ticari_yanit` alanına bağlandı.
+
 ## Mobil SPA Kasa Takibi — Tüm Zamanlar Filtresi (2026-10-20)
 - Kasa Takibi yıl seçicisine `Tüm Zamanlar` seçeneği eklendi; boş yıl değeri mevcut API akışında tarih kısıtı olmadan liste ve özet verilerini getiriyor.
 - `Tüm Zamanlar` seçildiğinde çelişkili ay filtresi otomatik temizleniyor; ay seçicisinin varsayılan etiketi `Tüm Aylar` olarak düzeltildi.
@@ -2534,6 +2539,7 @@
 - Ajan dosyaları ilk kullanımda `%LOCALAPPDATA%\\ErsanEImza\\runtime\\opensc-0.27.1-x64` dizinine çıkarıyor, SHA-256 bütünlüğünü doğruluyor ve sistem PATH'i ya da yönetici yetkisi gerektirmeden kullanıyor.
 - LGPL-2.1 lisans metni ve kaynak bildirimi pakete dahil edildi; ajan sürümü `1.1.0 (Portable OpenSC)` olarak güncellendi.
 - Windows kart sürücüsünün aynı JVM içindeki SunPKCS11 imzasında ajanı tamamen düşürme riski giderildi. Windows imzası gömülü `pkcs11-tool.exe` alt sürecine izole edildi ve ajan sürümü `1.1.1` yapıldı.
+- Kartta birden fazla sertifika/anahtar bulunduğunda oluşan `Karttan sertifika okunamadı` hatası giderildi. Ajan PIN ile nesneleri listeliyor, özel imza anahtarıyla aynı CKA_ID değerine sahip sertifikayı seçiyor ve her iki işlemde bu ID'yi kullanıyor; sürüm `1.1.2` oldu.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

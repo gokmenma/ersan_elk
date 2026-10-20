@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-10-20: Fatura Listelerinde Filtrelenmiş Özet Kartları
+- [x] `EInvoiceModel::ajaxList()` gelen, giden ve taslak listelerinde aynı parametrik filtre sorgusundan özet üretecek şekilde ortaklaştırıldı.
+- [x] Gelen ve taslak sayfalarındaki bağımsız/filtrelerden habersiz özet istekleri kaldırıldı; kartlar DataTables yanıtındaki `summary` verisine bağlandı.
+- [x] Kolon, genel, ürün, tarih ve hızlı filtrelerin kart adet/tutarlarına yansıması sağlandı.
+- [x] Gelen fatura hızlı yanıt filtresi `ticari_yanit` alanına düzeltildi; PHP ve JavaScript sözdizimi kontrolleri geçti.
+
 ## 2026-10-19: PTT KEP Entegrasyonu (Donanımsal E-İmza, Özel KEP Modalı ve Ek Dosya Adı / Uzantı Çözümü)
 - [x] PTT KEP WSDL ve Geliştirici Kılavuzu (v1.3.2) analiz edildi; canlı MTOM/XOP yanıt formatı tespit edildi.
 - [x] `App/Service/MtomSoapClient.php` geliştirilerek MTOM multipart yanıtlarından SOAP XML zarfının ayıklanması ve `<xop:Include>` binary parçalarının otomatik olarak base64Binary inline edilmesi sağlandı.
@@ -1417,6 +1423,7 @@
 - [x] OpenSC 0.27.1 x64 çalışma dosyaları lisans ve SHA-256 doğrulamasıyla JAR içine alındı; kullanıcı tarafında ek OpenSC kurulumu ve yönetici yetkisi ihtiyacı kaldırıldı.
 - [x] Java 8 uyumlu ajan yeniden derlendi; JAR kaynak içeriği, otomatik çıkarma, dosya hash'leri ve Windows executable çalışması doğrulandı.
 - [x] Windows'ta imza anında native PKCS#11 sürücüsünün Java ajanını düşürmesini önlemek için imzalama gömülü OpenSC alt sürecine izole edildi; 9191 servisinin sürücü hatasından etkilenmemesi sağlandı.
+- [x] Çok nesneli e-imza kartlarında özel anahtar–sertifika CKA_ID eşleştirmesi eklendi; sertifika okuma ve imza komutları aynı nesne ID'sine sabitlendi, araç hata çıktıları kullanıcıya güvenli ve sınırlı biçimde taşındı.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

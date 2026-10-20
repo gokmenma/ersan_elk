@@ -1731,7 +1731,21 @@ $(document).ready(function () {
     Swal.fire({
       target: document.getElementById("modalKepGonderisi"),
       title: "E-İmza ile Gönder",
-      html: '<div class="text-start"><div class="small text-muted mb-2">Alıcı: <span class="font-monospace">' + escapeEvrakHtml(addresses.join(", ")) + '</span></div><div class="d-flex align-items-center justify-content-between gap-2 p-2 rounded bg-light mb-3"><span id="kepSignCardText" class="small text-muted">E-imza cihazı taranıyor...</span><span id="kepSignCardBadge" class="badge bg-info-subtle text-info"><i class="bx bx-loader-alt bx-spin me-1"></i> Taranıyor</span></div><label for="kepSignPin" class="form-label fw-semibold">E-İmza Kart PIN Kodu</label><input type="password" id="kepSignPin" class="form-control" maxlength="20" autocomplete="off" placeholder="PIN kodunuzu giriniz"><div class="small text-muted mt-2">PIN kaydedilmez; yalnızca bu imzalama işlemi için kullanılır.</div></div>',
+      html: '<div class="text-start">' +
+              '<div class="small text-muted mb-2">Alıcı: <span class="font-monospace">' + escapeEvrakHtml(addresses.join(", ")) + '</span></div>' +
+              '<div class="d-flex align-items-center justify-content-between gap-2 p-2 rounded bg-light mb-3">' +
+                '<span id="kepSignCardText" class="small text-muted">E-imza cihazı taranıyor...</span>' +
+                '<span id="kepSignCardBadge" class="badge bg-info-subtle text-info"><i class="bx bx-loader-alt bx-spin me-1"></i> Taranıyor</span>' +
+              '</div>' +
+              '<label for="kepSignPin" class="form-label fw-semibold">E-İmza Kart PIN Kodu</label>' +
+              '<input type="password" id="kepSignPin" class="form-control" maxlength="20" autocomplete="off" placeholder="PIN kodunuzu giriniz">' +
+              '<div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">' +
+                '<span class="small text-muted"><i class="bx bx-shield-check text-success me-1"></i>PIN kaydedilmez.</span>' +
+                '<a href="downloads/ErsanEImza.jar" download class="text-primary font-size-11 fw-semibold text-decoration-none" title="Java E-İmza Uygulamasını İndir">' +
+                  '<i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)' +
+                '</a>' +
+              '</div>' +
+            '</div>',
       showCancelButton: true,
       confirmButtonText: '<i class="bx bx-shield-quarter me-1"></i> PIN ile İmzala ve Gönder',
       cancelButtonText: "Vazgeç",
