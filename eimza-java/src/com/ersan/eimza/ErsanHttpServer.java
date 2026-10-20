@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public class ErsanHttpServer {
 
     public static final int PORT = 9191;
-    public static final String VERSION = "1.1.6 (Portable OpenSC)";
+    public static final String VERSION = "1.2.0 (PAdES + Portable OpenSC)";
 
     private HttpServer server;
 
@@ -131,6 +131,36 @@ public class ErsanHttpServer {
                     sendResponse(exchange, 200, sb.toString());
                 } catch (Throwable e) {
                     String msg = e.getMessage() != null ? e.getMessage() : "İmza oluşturulamadı.";
+                    sendResponse(exchange, 400, "{\"status\":\"error\",\"message\":" + jsonEscape(msg) + "}");
+                }
+                return;
+            }
+
+            if ("POST".equals(method) && "/sign-pdf".equals(path)) {
+                String body = readStream(exchange.getRequestBody());
+                String pdfB64 = extractJsonValue(body, "pdf");
+                String pin = extractJsonValue(body, "pin");
+                String signerName = extractJsonValue(body, "signer_name");
+                String reason = extractJsonValue(body, "reason");
+                String location = extractJsonValue(body, "location");
+                if (pdfB64 == null || pdfB64.isEmpty() || pin == null || pin.isEmpty()) {
+                    sendResponse(exchange, 400, "{\"status\":\"error\",\"message\":\"PDF ve PIN zorunludur.\"}");
+                    return;
+                }
+                try {
+                    byte[] sourcePdf = Base64.getDecoder().decode(pdfB64);
+                    byte[] signedPdf = PadesPdfSigner.sign(sourcePdf, pin, signerName,
+                            reason.isEmpty() ? "Evrak onayı" : reason, location);
+                    TokenManager.TokenStatus ts = TokenManager.detectActiveToken();
+                    StringBuilder sb = new StringBuilder("{");
+                    sb.append("\"status\":\"success\",");
+                    sb.append("\"signed_pdf\":").append(jsonEscape(Base64.getEncoder().encodeToString(signedPdf))).append(",");
+                    sb.append("\"signer_name\":").append(jsonEscape(ts.success ? ts.ownerName : signerName)).append(",");
+                    sb.append("\"signer_tcno\":").append(jsonEscape(ts.success ? ts.tcno : ""));
+                    sb.append("}");
+                    sendResponse(exchange, 200, sb.toString());
+                } catch (Throwable e) {
+                    String msg = e.getMessage() != null ? e.getMessage() : "PAdES imzası oluşturulamadı.";
                     sendResponse(exchange, 400, "{\"status\":\"error\",\"message\":" + jsonEscape(msg) + "}");
                 }
                 return;

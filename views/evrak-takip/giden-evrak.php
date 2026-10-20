@@ -164,6 +164,10 @@ if ($record) {
 }
 $gonderimKanali = $record && (($record->gonderim_kanali ?? 'normal') === 'kep' || !empty($record->kep_mesaj_id) || !empty($kepMesaj)) ? 'kep' : 'normal';
 $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', ''));
+$gonderimTuruOptions = ['normal' => 'Normal Gönderim'];
+if ($canSendKep || $gonderimKanali === 'kep') {
+    $gonderimTuruOptions['kep'] = 'Kayıtlı Elektronik Posta (KEP)';
+}
 ?>
 
 <div class="container-fluid">
@@ -320,6 +324,14 @@ $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', 
                                     <?php echo Form::FormFloatInput('text', 'evrak_no', $defaultEvrakNo, 'Sayı', 'Sayı / Evrak No', 'hash', 'form-control', true); ?>
                                     <?php echo Form::FormFloatInput('text', 'konu', $value('konu'), 'Konu', 'Konu', 'type', 'form-control', true); ?>
                                     <?php echo Form::FormFloatInput('text', 'kurum_adi', $value('kurum_adi'), 'Muhatap', 'Muhatap Kurum / Kişi', 'home', 'form-control', true); ?>
+                                    <?php echo Form::FormSelect2('gonderim_turu_secimi', $gonderimTuruOptions, $gonderimKanali, 'Evrak Gönderim Türü', 'send', 'key', '', 'form-select giden-select2'); ?>
+                                    <div id="gidenKepAliciPanel" class="<?php echo $gonderimKanali === 'kep' ? '' : 'd-none'; ?>">
+                                        <?php echo Form::FormFloatTextarea('kep_alicilar', $kepAlicilarValue, 'kurum@hs01.kep.tr', 'Alıcı KEP Adresi', 'at-sign', 'form-control font-monospace', false, '74px', 2); ?>
+                                        <div class="d-flex align-items-center justify-content-between mt-1 gap-2">
+                                            <div id="gidenKepDogrulamaSonuc" class="small text-muted">KEP seçildiğinde alıcı adresi zorunludur.</div>
+                                            <button type="button" id="btnGidenKepDogrula" class="btn btn-sm btn-outline-info flex-shrink-0" <?php echo $kilitli ? 'disabled' : ''; ?>><i class="bx bx-search"></i> Doğrula</button>
+                                        </div>
+                                    </div>
                                     <?php echo Form::FormFloatInput('text', 'muhatap_alt_birim', $value('muhatap_alt_birim'), 'Muhatap Alt Birimi', 'Alt Birim / Bölüm', 'layers'); ?>
                                     <?php echo Form::FormFloatTextarea('muhatap_adres', $value('muhatap_adres'), 'Muhatap Adresi', 'Muhatap Adresi', 'map-pin', 'form-control', false, '90px'); ?>
                                 </div>
@@ -443,94 +455,6 @@ $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', 
                                     </div>
                                 </div>
 
-                                <!-- Akordeon 4: KEP / Gönderim Bilgileri -->
-                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none <?php echo $gonderimKanali === 'kep' || !empty($kepMesaj) ? '' : 'd-none'; ?>" id="accordionItemKep">
-                                    <h2 class="accordion-header" id="headingGidenKep">
-                                        <button class="accordion-button <?php echo !empty($record->kep_mesaj_id) || !empty($kepMesaj) ? '' : 'collapsed'; ?> py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGidenKep" aria-expanded="<?php echo !empty($record->kep_mesaj_id) ? 'true' : 'false'; ?>" aria-controls="collapseGidenKep">
-                                            <div class="d-flex align-items-center w-100">
-                                                <i class="bx bx-mail-send font-size-18 me-2 text-primary"></i>
-                                                <span class="small fw-bold text-uppercase text-muted">KEP / Gönderim Bilgileri</span>
-                                                <?php if (!empty($record->kep_mesaj_id) || !empty($kepMesaj)): ?>
-                                                    <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle fw-bold ms-auto me-2 px-2 py-0.5" style="font-size:9.5px;">KEP İLE SEVK EDİLDİ</span>
-                                                <?php else: ?>
-                                                    <span class="badge rounded-pill bg-light text-muted border fw-bold ms-auto me-2 px-2 py-0.5" style="font-size:9.5px;">İSTEĞE BAĞLI</span>
-                                                <?php endif; ?>
-                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon"></i>
-                                            </div>
-                                        </button>
-                                    </h2>
-                                    <div id="collapseGidenKep" class="accordion-collapse collapse <?php echo !empty($record->kep_mesaj_id) || !empty($kepMesaj) ? 'show' : ''; ?>" aria-labelledby="headingGidenKep">
-                                        <div class="accordion-body p-3 pt-2 d-grid gap-2">
-                                            <!-- Firma KEP Durumu / Bakiye Başlığı -->
-                                            <div class="d-flex align-items-center justify-content-between p-2 rounded bg-light-subtle border mb-1">
-                                                <div class="d-flex align-items-center gap-1 font-size-12">
-                                                    <i class="bx bx-wallet text-primary font-size-15"></i>
-                                                    <?php if ($kepSettings && !empty($kepSettings['kep_adresi'])): ?>
-                                                        <span class="fw-semibold text-dark"><?php echo htmlspecialchars($kepSettings['kep_adresi'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-size-10 ms-1">
-                                                            <?php echo $kepSettings['bakiye_kontor'] !== null ? htmlspecialchars((string) $kepSettings['bakiye_kontor']) . ' ' . htmlspecialchars((string) ($kepSettings['bakiye_cins'] ?? 'Kontör')) : 'Bakiye: -'; ?>
-                                                        </span>
-                                                    <?php else: ?>
-                                                        <span class="text-danger fw-semibold" style="font-size:11px">Firma KEP ayarı eksik</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <button type="button" class="btn btn-xs btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2" id="btnKepAyarlarModalAc" style="font-size:11px">
-                                                    <i class="bx bx-cog"></i> Ayarlar
-                                                </button>
-                                            </div>
-
-                                            <?php if (!empty($kepMesaj)): ?>
-                                                <!-- Gönderilmiş KEP İletisi Bilgi Kartı -->
-                                                <div class="p-2.5 rounded-3 border bg-success-subtle border-success-subtle">
-                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                        <span class="fw-bold font-size-12 text-success d-flex align-items-center">
-                                                            <i class="bx bx-check-circle me-1 font-size-15"></i> PTT KEP Sevk Kaydı
-                                                        </span>
-                                                        <span class="badge bg-success text-white font-size-10"><?php echo htmlspecialchars((string) $kepMesaj['durum']); ?></span>
-                                                    </div>
-                                                    <div class="font-size-11 text-dark mb-1">
-                                                        <strong>PTT Takip No:</strong>
-                                                        <span class="font-monospace text-primary fw-semibold"><?php echo htmlspecialchars((string) $kepMesaj['kep_id']); ?></span>
-                                                    </div>
-                                                    <div class="font-size-11 text-muted mb-1">
-                                                        <strong>Alıcı:</strong> <?php echo htmlspecialchars((string) $kepMesaj['alici_kep']); ?>
-                                                        &bull; <strong>Tarih:</strong> <?php echo date('d.m.Y H:i', strtotime((string) $kepMesaj['created_at'])); ?>
-                                                    </div>
-                                                    <div class="font-size-11 text-muted mb-2">
-                                                        <strong>Son Delil:</strong> <?php echo htmlspecialchars((string) ($kepMesaj['son_delil_durumu'] ?: 'Gönderildi')); ?>
-                                                    </div>
-
-                                                    <?php if (!empty($kepDelilleri)): ?>
-                                                        <div class="border-top pt-2 mt-1">
-                                                            <span class="fw-semibold font-size-11 text-dark d-block mb-1"><i class="bx bx-history me-1"></i> Yasal Delil Olayları (<?php echo count($kepDelilleri); ?>):</span>
-                                                            <div class="d-flex flex-column gap-1">
-                                                                <?php foreach ($kepDelilleri as $delil): ?>
-                                                                    <div class="d-flex align-items-center justify-content-between p-1.5 rounded bg-white border font-size-11">
-                                                                        <div style="max-width: 75%">
-                                                                            <span class="fw-semibold text-dark d-block text-truncate" title="<?php echo htmlspecialchars((string) $delil['delil_aciklama']); ?>"><?php echo htmlspecialchars((string) $delil['delil_aciklama']); ?></span>
-                                                                            <span class="text-muted" style="font-size:10px"><?php echo date('d.m.Y H:i', strtotime((string) $delil['olay_zamani'])); ?> &bull; <?php echo htmlspecialchars((string) ($delil['kephs'] ?: 'PTT')); ?></span>
-                                                                        </div>
-                                                                        <a href="views/evrak-takip/pdf.php?type=kep_delil&delil_id=<?php echo urlencode((string) $delil['delil_id']); ?>" class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1 py-0.5 px-2" title="Delil XML İndir" target="_blank" style="font-size:10.5px">
-                                                                            <i class="bx bx-download"></i> XML
-                                                                        </a>
-                                                                    </div>
-                                                                <?php endforeach; ?>
-                                                            </div>
-                                                        </div>
-                                                    <?php endif; ?>
-
-                                                    <div class="mt-2 text-end">
-                                                        <button type="button" class="btn btn-xs btn-outline-success py-1 px-2 font-size-11" id="btnKepDelilGuncelle" data-kep-id="<?php echo htmlspecialchars((string) $kepMesaj['kep_id']); ?>">
-                                                            <i class="bx bx-refresh me-1"></i> Delilleri Güncelle
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="small text-muted"><i class="bx bx-info-circle me-1"></i>KEP adres ve ileti alanları, KEP kanalı seçildiğinde sol tarafta açılır. Gönderimden sonra bu bölüm takip ve yasal delilleri gösterir.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>

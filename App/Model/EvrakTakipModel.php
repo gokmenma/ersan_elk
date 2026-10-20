@@ -40,6 +40,9 @@ class EvrakTakipModel extends Model
             if (!in_array('ust_yazi_gerekli_degil', $cols)) {
                 $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN ust_yazi_gerekli_degil tinyint(1) NOT NULL DEFAULT 0 AFTER aciklama");
             }
+            if (!in_array('son_tarih', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN son_tarih date DEFAULT NULL AFTER tarih");
+            }
         } catch (\Exception $e) {
             // Silent catch to prevent errors on strict environments
         }
@@ -397,6 +400,11 @@ class EvrakTakipModel extends Model
 
     public function approveWithWorkflow(int $evrakId, int $userId, string $ipAddress): array
     {
+        throw new \RuntimeException('Sanal onay devre dışıdır. Evrak akıllı kart ile PAdES olarak imzalanmalıdır.');
+    }
+
+    public function approveWithPades(int $evrakId, int $userId, string $ipAddress, string $pdfPath, string $pdfSha256, array $certificate): array
+    {
         $this->db->beginTransaction();
         try {
             $lock = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id AND firma_id = :firma_id AND silinme_tarihi IS NULL FOR UPDATE");
@@ -418,8 +426,18 @@ class EvrakTakipModel extends Model
             if ((int) $sirada->kullanici_id !== $userId) {
                 throw new \RuntimeException('İmza sırası sizde değil. Sırada ' . $sirada->adi_soyadi . ' bulunuyor.');
             }
-            $approve = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'onaylandi', onay_tarihi = NOW(), ip_adresi = :ip WHERE evrak_id = :evrak_id AND firma_id = :firma_id AND kullanici_id = :kullanici_id AND durum = 'bekliyor'");
-            $approve->execute(['ip' => mb_substr($ipAddress, 0, 45), 'evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id'], 'kullanici_id' => $userId]);
+            $approve = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'onaylandi', onay_tarihi = NOW(), ip_adresi = :ip,
+                imza_turu = 'PAdES-BES', sertifika_ozne = :subject, sertifika_veren = :issuer,
+                sertifika_seri_no = :serial, sertifika_parmak_izi = :fingerprint,
+                sertifika_gecerlilik_baslangic = :valid_from, sertifika_gecerlilik_bitis = :valid_to,
+                imzali_pdf_sha256 = :pdf_sha256, imza_dogrulama_durumu = 'dogrulandi'
+                WHERE evrak_id = :evrak_id AND firma_id = :firma_id AND kullanici_id = :kullanici_id AND durum = 'bekliyor'");
+            $approve->execute([
+                'ip' => mb_substr($ipAddress, 0, 45), 'subject' => $certificate['subject'], 'issuer' => $certificate['issuer'],
+                'serial' => $certificate['serial'], 'fingerprint' => $certificate['fingerprint'],
+                'valid_from' => $certificate['valid_from'], 'valid_to' => $certificate['valid_to'], 'pdf_sha256' => $pdfSha256,
+                'evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id'], 'kullanici_id' => $userId,
+            ]);
             if ($approve->rowCount() !== 1) {
                 throw new \RuntimeException('Bu evrak için bekleyen imza yetkiniz bulunmuyor.');
             }
@@ -427,11 +445,16 @@ class EvrakTakipModel extends Model
             $count->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
             $state = $count->fetch(PDO::FETCH_ASSOC);
             $completed = (int) $state['toplam'] > 0 && (int) $state['toplam'] === (int) $state['onaylanan'];
-            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = IF(:tamamlandi, NOW(), NULL), e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
+            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum,
+                e_imza_onay_tarihi = IF(:tamamlandi, NOW(), NULL), e_imza_belge_ozeti = :ozet,
+                pades_pdf_yolu = :pdf_yolu, pades_pdf_sha256 = :pdf_sha256
+                WHERE id = :id AND firma_id = :firma_id");
             $update->execute([
                 'durum' => $completed ? 'onaylandi' : 'onay_bekliyor',
                 'tamamlandi' => $completed ? 1 : 0,
                 'ozet' => self::belgeOzeti($evrak),
+                'pdf_yolu' => $pdfPath,
+                'pdf_sha256' => $pdfSha256,
                 'id' => $evrakId,
                 'firma_id' => $_SESSION['firma_id'],
             ]);
@@ -542,37 +565,12 @@ class EvrakTakipModel extends Model
             $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = 'onay_bekliyor', e_imza_onay_tarihi = NULL, e_imza_belge_ozeti = NULL, e_imza_iade_gerekcesi = NULL, e_imza_iade_kullanici_id = NULL, e_imza_iade_tarihi = NULL WHERE id = :id AND firma_id = :firma_id");
             $update->execute(['id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
 
-            $olusturanId = (int) ($evrak->olusturan_kullanici_id ?? 0);
-            $otomatikImza = $userId > 0
-                && $olusturanId === $userId
-                && (int) $signers[0]->id === $userId;
-            $tamamlandi = false;
-
-            if ($otomatikImza) {
-                $imzala = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'onaylandi', onay_tarihi = NOW(), ip_adresi = :ip WHERE evrak_id = :evrak_id AND firma_id = :firma_id AND kullanici_id = :kullanici_id");
-                $imzala->execute([
-                    'ip' => mb_substr($ipAddress, 0, 45),
-                    'evrak_id' => $evrakId,
-                    'firma_id' => $_SESSION['firma_id'],
-                    'kullanici_id' => $userId,
-                ]);
-                $tamamlandi = count($signers) === 1;
-                $tamamla = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = IF(:tamamlandi, NOW(), NULL), e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
-                $tamamla->execute([
-                    'durum' => $tamamlandi ? 'onaylandi' : 'onay_bekliyor',
-                    'tamamlandi' => $tamamlandi ? 1 : 0,
-                    'ozet' => self::belgeOzeti($evrak),
-                    'id' => $evrakId,
-                    'firma_id' => $_SESSION['firma_id'],
-                ]);
-            }
-
             $this->db->commit();
             return [
                 'total' => count($signers),
                 'signers' => array_map(fn($signer) => (string) $signer->adi_soyadi, $signers),
-                'otomatik_imza' => $otomatikImza,
-                'completed' => $tamamlandi,
+                'otomatik_imza' => false,
+                'completed' => false,
             ];
         } catch (\Throwable $e) {
             $this->db->rollBack();
@@ -601,10 +599,15 @@ class EvrakTakipModel extends Model
             if (!$sirada || (int) $sirada->kullanici_id !== $userId) {
                 throw new \RuntimeException('Bu evrakı iade etme yetkiniz bulunmuyor.');
             }
-            $reset = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'bekliyor', onay_tarihi = NULL, ip_adresi = NULL WHERE evrak_id = :evrak_id AND firma_id = :firma_id");
+            $reset = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'bekliyor', onay_tarihi = NULL, ip_adresi = NULL,
+                imza_turu = NULL, sertifika_ozne = NULL, sertifika_veren = NULL, sertifika_seri_no = NULL,
+                sertifika_parmak_izi = NULL, sertifika_gecerlilik_baslangic = NULL, sertifika_gecerlilik_bitis = NULL,
+                imzali_pdf_sha256 = NULL, imza_dogrulama_durumu = NULL
+                WHERE evrak_id = :evrak_id AND firma_id = :firma_id");
             $reset->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
             $update = $this->db->prepare("UPDATE {$this->table}
                 SET onay_durumu = 'taslak', e_imza_onay_tarihi = NULL, e_imza_belge_ozeti = NULL,
+                    pades_pdf_yolu = NULL, pades_pdf_sha256 = NULL,
                     e_imza_iade_gerekcesi = :gerekce, e_imza_iade_kullanici_id = :kullanici_id, e_imza_iade_tarihi = NOW()
                 WHERE id = :id AND firma_id = :firma_id");
             $update->execute([
@@ -625,7 +628,9 @@ class EvrakTakipModel extends Model
     {
         $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds))));
         $idFilter = $evrakIds ? ' AND o.evrak_id IN (' . implode(',', array_fill(0, count($evrakIds), '?')) . ')' : '';
-        $sql = $this->db->prepare("SELECT o.evrak_id, o.kullanici_id, o.sira, o.durum, o.onay_tarihi, u.adi_soyadi,
+        $sql = $this->db->prepare("SELECT o.evrak_id, o.kullanici_id, o.sira, o.durum, o.olusturma_tarihi, o.onay_tarihi,
+                o.imza_turu, o.sertifika_ozne, o.sertifika_veren, o.sertifika_seri_no,
+                o.sertifika_parmak_izi, o.imza_dogrulama_durumu, u.adi_soyadi,
                 COALESCE(NULLIF(u.unvani, ''), u.gorevi, '') AS imza_unvani
             FROM evrak_takip_onaylari o
             INNER JOIN users u ON u.id = o.kullanici_id
@@ -678,9 +683,15 @@ class EvrakTakipModel extends Model
             if (!$this->canRevokeApproval($evrak, $userId)) {
                 throw new \RuntimeException('Evrakı yalnızca onu oluşturan kullanıcı geri alabilir.');
             }
-            $reset = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'bekliyor', onay_tarihi = NULL, ip_adresi = NULL WHERE evrak_id = :evrak_id AND firma_id = :firma_id");
+            $reset = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'bekliyor', onay_tarihi = NULL, ip_adresi = NULL,
+                imza_turu = NULL, sertifika_ozne = NULL, sertifika_veren = NULL, sertifika_seri_no = NULL,
+                sertifika_parmak_izi = NULL, sertifika_gecerlilik_baslangic = NULL, sertifika_gecerlilik_bitis = NULL,
+                imzali_pdf_sha256 = NULL, imza_dogrulama_durumu = NULL
+                WHERE evrak_id = :evrak_id AND firma_id = :firma_id");
             $reset->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
-            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = 'taslak', e_imza_onay_tarihi = NULL, e_imza_belge_ozeti = NULL WHERE id = :id AND firma_id = :firma_id");
+            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = 'taslak', e_imza_onay_tarihi = NULL,
+                e_imza_belge_ozeti = NULL, pades_pdf_yolu = NULL, pades_pdf_sha256 = NULL
+                WHERE id = :id AND firma_id = :firma_id");
             $update->execute(['id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
             $this->db->commit();
         } catch (\Throwable $e) {
@@ -982,5 +993,36 @@ class EvrakTakipModel extends Model
             'id' => $id,
             'firma_id' => $_SESSION['firma_id']
         ]);
+    }
+
+    /**
+     * Takvim ve dashboard alarmları için son tarihi olan gelen evrakları getirir
+     */
+    public function getTakvimEvraklar(int $firmaId, ?string $baslangic = null, ?string $bitis = null): array
+    {
+        $sql = "SELECT et.id, et.evrak_no, et.konu, et.kurum_adi, et.tarih, et.son_tarih, et.cevap_verildi_mi,
+                       p.adi_soyadi as personel_adi
+                FROM {$this->table} et
+                LEFT JOIN personel p ON et.personel_id = p.id
+                WHERE et.firma_id = :firma_id 
+                  AND et.silinme_tarihi IS NULL 
+                  AND et.evrak_tipi = 'gelen'
+                  AND et.son_tarih IS NOT NULL";
+        
+        $params = [':firma_id' => $firmaId];
+        
+        if ($baslangic && $bitis) {
+            $sql .= " AND et.son_tarih BETWEEN :baslangic AND :bitis";
+            $params[':baslangic'] = $baslangic;
+            $params[':bitis'] = $bitis;
+        } elseif ($baslangic) {
+            $sql .= " AND et.son_tarih >= :baslangic";
+            $params[':baslangic'] = $baslangic;
+        }
+        
+        $sql .= " ORDER BY et.son_tarih ASC, et.id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 }

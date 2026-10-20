@@ -370,4 +370,36 @@ class GorevModel extends Model
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([':id' => $gorevId]);
     }
+
+    /**
+     * Takvim ve dashboard alarmları için görevleri döner
+     */
+    public function getTakvimGorevler(int $firmaId, ?int $userId = null, ?string $baslangic = null, ?string $bitis = null): array
+    {
+        $userFilter = $userId ? " AND (g.olusturan_id = :user_id OR FIND_IN_SET(:user_id, g.gorev_kullanicilari))" : "";
+        $sql = "SELECT g.id, g.baslik, g.aciklama, g.tarih, g.saat, g.tamamlandi, gl.baslik as liste_adi, gl.renk as liste_renk
+                FROM gorevler g
+                JOIN gorev_listeleri gl ON g.liste_id = gl.id
+                WHERE g.firma_id = :firma_id
+                  AND g.tamamlandi = 0
+                  AND g.tarih IS NOT NULL
+                  AND g.ana_sayfa_goster = 1 $userFilter";
+        
+        $params = [':firma_id' => $firmaId];
+        if ($userId) $params[':user_id'] = $userId;
+        
+        if ($baslangic && $bitis) {
+            $sql .= " AND g.tarih BETWEEN :baslangic AND :bitis";
+            $params[':baslangic'] = $baslangic;
+            $params[':bitis'] = $bitis;
+        } elseif ($baslangic) {
+            $sql .= " AND g.tarih >= :baslangic";
+            $params[':baslangic'] = $baslangic;
+        }
+        
+        $sql .= " ORDER BY g.tarih ASC, g.saat ASC, g.id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }

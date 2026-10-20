@@ -45,6 +45,10 @@ $araclar_list = $Evrak->getActiveVehicles();
                             </div>
 
                             <div class="mb-3">
+                                <?php echo Form::FormFloatInput('text', 'son_tarih', '', 'Son Tarih / Termin (Opsiyonel)', 'Son Tarih / Cevap Süresi', 'calendar', 'form-control flatpickr'); ?>
+                            </div>
+
+                            <div class="mb-3">
                                 <?php echo Form::FormFloatInput('text', 'evrak_no', '', 'Evrak Numarası', 'Evrak No / Kayıt No', 'hash'); ?>
                             </div>
 
@@ -245,11 +249,52 @@ $araclar_list = $Evrak->getActiveVehicles();
                     <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" data-bs-dismiss="modal" title="Kapat"><i class="bx bx-x fs-5"></i> <span>Kapat</span></button>
                 </div>
             </div>
-            <div class="modal-body p-0 position-relative" style="min-height: 72vh;">
-                <div id="evrakPdfLoader" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="z-index:2;">
-                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div>
+            <div class="modal-body p-0" style="min-height: 72vh;">
+                <div class="d-flex evrak-pdf-layout">
+                    <div id="evrakPdfArea" class="position-relative flex-grow-1" style="min-width:0; min-height:72vh;">
+                        <div id="evrakPdfLoader" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="z-index:2;">
+                            <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div>
+                        </div>
+                        <iframe id="evrakPdfFrame" title="Evrak PDF Önizleme" class="w-100 border-0" style="height:72vh; display:none;"></iframe>
+                    </div>
+                    <aside id="evrakImzaPanel" class="d-none border-start bg-light flex-column" style="width:360px; min-width:320px; height:72vh; overflow:hidden;">
+                        <div class="p-3 border-bottom bg-white flex-shrink-0">
+                            <div class="text-uppercase text-muted fw-semibold font-size-10 mb-1">E-İmza Süreci</div>
+                            <div id="evrakImzaBelgeBaslik" class="fw-bold text-dark">İmza bilgileri yükleniyor</div>
+                            <div id="evrakImzaBelgeMeta" class="text-muted font-size-11 mt-1"></div>
+                        </div>
+                        <div id="evrakImzaPanelLoader" class="py-5 text-center"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                        <div id="evrakImzaPanelContent" class="d-none p-3 flex-grow-1" style="min-height:0; overflow-y:auto;">
+                            <h6 class="text-uppercase text-muted fw-bold font-size-10 mb-3">İmza Sırası</h6>
+                            <div id="evrakImzaSignerList"></div>
+                            <h6 class="text-uppercase text-muted fw-bold font-size-10 mt-4 mb-3">İşlem Tarihçesi</h6>
+                            <div id="evrakImzaTimeline"></div>
+                        </div>
+                        <div id="evrakImzaOnayAction" class="d-none flex-shrink-0 p-3 border-top bg-white shadow-sm">
+                            <div class="mb-2">
+                                <?= Form::FormFloatInput('password', 'modal_eimza_pin', '', 'E-İmza PIN kodu', 'E-İmza PIN Kodu', 'bx bx-key', 'form-control', false, 32, 'new-password'); ?>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" id="btnModalImzaIade" class="btn btn-outline-warning evrak-e-imza-iade d-flex align-items-center justify-content-center gap-1" data-id="" title="Düzeltilmek üzere iade et">
+                                    <i class="bx bx-undo"></i><span>İade Et</span>
+                                </button>
+                                <button type="button" id="btnModalPadesImzala" class="btn btn-success d-flex align-items-center justify-content-center gap-2" data-id="">
+                                    <i class="bx bx-pen"></i><span>E-İmza ile İmzala</span>
+                                </button>
+                            </div>
+                            <div id="modalPadesProgress" class="d-none mt-3">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span id="modalPadesProgressText" class="fw-semibold text-dark" style="font-size:11px;">İşlem hazırlanıyor</span>
+                                    <span id="modalPadesProgressPercent" class="text-muted" style="font-size:10px;">0%</span>
+                                </div>
+                                <div class="progress" style="height:6px;">
+                                    <div id="modalPadesProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width:0%" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+                                </div>
+                                <div id="modalPadesProgressDetail" class="text-muted mt-2" style="font-size:10px;"></div>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
-                <iframe id="evrakPdfFrame" title="Evrak PDF Önizleme" class="w-100 border-0" style="height:72vh; display:none;"></iframe>
             </div>
         </div>
     </div>

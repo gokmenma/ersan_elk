@@ -375,7 +375,18 @@ try {
     $logoPath = (string) ($firma->logo_yolu ?? '');
     $evrak->logo_path = $logoPath !== '' ? dirname(__DIR__, 2) . '/' . ltrim($logoPath, '/') : '';
 
-    $pdf = (new EvrakPdfService())->render($evrak);
+    if (!empty($evrak->pades_pdf_yolu)) {
+        $signedPath = dirname(__DIR__, 2) . '/' . ltrim((string) $evrak->pades_pdf_yolu, '/');
+        if (!is_file($signedPath)) {
+            throw new RuntimeException('İmzalı PAdES PDF dosyası bulunamadı.');
+        }
+        $pdf = Security::decryptFile((string) file_get_contents($signedPath));
+        if (!empty($evrak->pades_pdf_sha256) && !hash_equals((string) $evrak->pades_pdf_sha256, hash('sha256', $pdf))) {
+            throw new RuntimeException('İmzalı PAdES PDF bütünlük kontrolünden geçemedi.');
+        }
+    } else {
+        $pdf = (new EvrakPdfService())->render($evrak);
+    }
     header('Content-Type: application/pdf');
     header('Content-Disposition: inline; filename="evrak-onizleme.pdf"');
     header('Content-Length: ' . strlen($pdf));

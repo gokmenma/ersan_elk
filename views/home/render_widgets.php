@@ -126,6 +126,280 @@ function renderWidget(string $widgetId, array $data = []) {
             <?php
             break;
 
+        case 'widget-takvim-alarmlar':
+        case 'widget-gorev-evrak-takvimi':
+            $targetYear = !empty($secili_yil) ? (int)$secili_yil : (int)date('Y');
+            $targetMonth = !empty($secili_ay) ? (int)$secili_ay : (int)date('n');
+            
+            $aylarTr = [
+                1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran',
+                7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'
+            ];
+            $aylarKisaTr = [
+                1 => 'Oca', 2 => 'Şub', 3 => 'Mar', 4 => 'Nis', 5 => 'May', 6 => 'Haz',
+                7 => 'Tem', 8 => 'Ağu', 9 => 'Eyl', 10 => 'Eki', 11 => 'Kas', 12 => 'Ara'
+            ];
+            
+            $monthTitle = ($aylarTr[$targetMonth] ?? '') . ' ' . $targetYear;
+            $firstDayTimestamp = mktime(0, 0, 0, $targetMonth, 1, $targetYear);
+            $totalDays = (int)date('t', $firstDayTimestamp);
+            $startDayOfWeek = (int)date('N', $firstDayTimestamp); // 1 (Mon) - 7 (Sun)
+            
+            $alarmsList = $takvim_alarmlar ?? [];
+            $alarmsByDay = [];
+            foreach ($alarmsList as $item) {
+                $dayNum = (int)date('j', strtotime($item['tarih']));
+                if (!isset($alarmsByDay[$dayNum])) {
+                    $alarmsByDay[$dayNum] = [];
+                }
+                $alarmsByDay[$dayNum][] = $item;
+            }
+            $totalAlarmCount = count($alarmsList);
+            $todayY = (int)date('Y');
+            $todayM = (int)date('n');
+            $todayD = (int)date('j');
+            ?>
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card cal-alarm-card" style="border-radius: 14px; background: #fff; overflow: hidden;">
+                    <div class="card-body p-3 p-md-3 d-flex flex-column h-100">
+                        <div class="row g-2 g-md-3 h-100 align-items-stretch">
+                            <!-- Sol Kolon: Minimalist Takvim -->
+                            <div class="col-7 cal-left-col d-flex flex-column">
+                                <div class="cal-mini-header d-flex align-items-center justify-content-between px-3 py-2 text-white rounded-3 shadow-xs" style="background: #1c2430;">
+                                    <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none cal-nav-btn" onclick="navigateHomeCalendar(<?php echo $targetYear; ?>, <?php echo $targetMonth - 1; ?>)" title="Önceki Ay">
+                                        <i class="bx bx-chevron-left fs-5"></i>
+                                    </button>
+                                    <span class="fw-bold cal-month-title" style="font-size: 0.95rem; letter-spacing: -0.01em;"><?php echo $monthTitle; ?></span>
+                                    <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none cal-nav-btn" onclick="navigateHomeCalendar(<?php echo $targetYear; ?>, <?php echo $targetMonth + 1; ?>)" title="Sonraki Ay">
+                                        <i class="bx bx-chevron-right fs-5"></i>
+                                    </button>
+                                </div>
+
+                                <div class="cal-weekdays-grid mt-2 mb-1">
+                                    <span>P</span><span>S</span><span>Ç</span><span>P</span><span>C</span><span>C</span><span>P</span>
+                                </div>
+
+                                <div class="cal-days-grid flex-grow-1">
+                                    <?php
+                                    // Önceki aydan boşluklar
+                                    for ($i = 1; $i < $startDayOfWeek; $i++) {
+                                        echo '<div class="cal-day-cell cal-empty"></div>';
+                                    }
+
+                                    // Günler
+                                    for ($day = 1; $day <= $totalDays; $day++) {
+                                        $hasAlarm = isset($alarmsByDay[$day]);
+                                        $isToday = ($targetYear === $todayY && $targetMonth === $todayM && $day === $todayD);
+                                        $alarmCountDay = $hasAlarm ? count($alarmsByDay[$day]) : 0;
+                                        
+                                        $classes = ['cal-day-cell'];
+                                        if ($hasAlarm) $classes[] = 'has-alarm';
+                                        if ($isToday) $classes[] = 'is-today';
+                                        
+                                        $dayStr = sprintf('%04d-%02d-%02d', $targetYear, $targetMonth, $day);
+                                        $titleTip = $isToday ? 'Bugün' : '';
+                                        if ($hasAlarm) {
+                                            $titleTip = ($titleTip ? $titleTip . ' | ' : '') . $alarmCountDay . ' Alarm (Görev/Evrak)';
+                                        }
+                                        
+                                        echo '<div class="' . implode(' ', $classes) . '" data-day="' . $day . '" data-date="' . $dayStr . '" title="' . htmlspecialchars($titleTip, ENT_QUOTES, 'UTF-8') . '" onclick="selectHomeCalendarDay(' . $day . ')">';
+                                        echo '<span class="cal-day-num">' . $day . '</span>';
+                                        echo '</div>';
+                                    }
+                                    ?>
+                                </div>
+                            </div>
+
+                            <!-- Sağ Kolon: Alarmlar Paneli -->
+                            <div class="col-5 cal-right-col d-flex flex-column border-start ps-2 ps-md-3">
+                                <div class="d-flex flex-column align-items-center mb-2 cal-alarm-header">
+                                    <div class="cal-bell-icon-wrapper mb-1">
+                                        <svg width="22" height="24" viewBox="0 0 24 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="12" cy="3" r="2" fill="#bd6b5c"/>
+                                            <path d="M12 5V7M7 16H17C18.1046 16 19 15.1046 19 14V11.5C19 8.46243 16.5376 6 13.5 6H10.5C7.46243 6 5 8.46243 5 11.5V14C5 15.1046 5.89543 16 7 16Z" stroke="#bd6b5c" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M10 18C10 19.1046 10.8954 20 12 20C13.1046 20 14 19.1046 14 18" stroke="#bd6b5c" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="cal-alarm-count-badge fw-bold" id="calAlarmCountTitle"><?php echo $totalAlarmCount; ?> ALARM</span>
+                                        <button type="button" class="btn btn-link btn-sm p-0 text-muted cal-reset-filter-btn d-none" id="btnCalResetFilter" onclick="resetHomeCalendarDayFilter()" title="Tümünü Göster">
+                                            <i class="bx bx-x-circle fs-6"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="cal-alarm-items-list flex-grow-1 overflow-auto" id="calAlarmItemsList" style="max-height: 220px;">
+                                    <?php if (empty($alarmsList)): ?>
+                                        <div class="text-center py-4 text-muted" style="font-size: 0.8rem;">
+                                            <i class="bx bx-calendar-check text-muted opacity-50 fs-2 d-block mb-1"></i>
+                                            <span>Bu ayda bekleyen alarm bulunmuyor.</span>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php foreach ($alarmsList as $alarm): ?>
+                                            <?php
+                                            $aDay = (int)date('j', strtotime($alarm['tarih']));
+                                            $aMonth = (int)date('n', strtotime($alarm['tarih']));
+                                            $tarihKisa = $aDay . ' ' . ($aylarKisaTr[$aMonth] ?? '');
+                                            $isGorev = ($alarm['tur'] ?? '') === 'gorev';
+                                            $badgeClass = $isGorev ? 'bg-primary-subtle text-primary' : 'bg-warning-subtle text-warning-emphasis';
+                                            $badgeText = $isGorev ? 'Görev' : 'Gelen Evrak';
+                                            $url = $alarm['url'] ?? '#';
+                                            ?>
+                                            <a href="<?php echo htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>" class="cal-alarm-item d-block text-decoration-none mb-2" data-day="<?php echo $aDay; ?>" title="<?php echo htmlspecialchars($alarm['baslik'] . ' (' . $badgeText . ')', ENT_QUOTES, 'UTF-8'); ?>">
+                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                    <span class="cal-alarm-date fw-bold"><?php echo $tarihKisa; ?></span>
+                                                    <span class="badge <?php echo $badgeClass; ?> cal-mini-pill"><?php echo $badgeText; ?></span>
+                                                </div>
+                                                <div class="cal-alarm-text text-truncate fw-semibold text-dark"><?php echo htmlspecialchars($alarm['baslik'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .cal-alarm-card {
+                    font-family: inherit;
+                    min-height: 275px;
+                }
+                .cal-mini-header {
+                    user-select: none;
+                }
+                .cal-mini-header .cal-nav-btn {
+                    line-height: 1;
+                    opacity: 0.75;
+                    transition: opacity .2s;
+                }
+                .cal-mini-header .cal-nav-btn:hover {
+                    opacity: 1;
+                }
+                .cal-weekdays-grid {
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                    text-align: center;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #8c97a8;
+                }
+                .cal-days-grid {
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                    grid-auto-rows: 28px;
+                    gap: 3px 1px;
+                    align-items: center;
+                    justify-items: center;
+                }
+                .cal-day-cell {
+                    width: 27px;
+                    height: 27px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    font-size: 12px;
+                    font-weight: 500;
+                    color: #334155;
+                    cursor: pointer;
+                    transition: all .18s ease-in-out;
+                    user-select: none;
+                }
+                .cal-day-cell:hover:not(.cal-empty) {
+                    background: rgba(0, 0, 0, 0.05);
+                }
+                .cal-day-cell.cal-empty {
+                    cursor: default;
+                }
+                /* Alarmlı Gün (Terrakota Daire - Görsel 1) */
+                .cal-day-cell.has-alarm {
+                    background-color: #bd6b5c !important;
+                    color: #ffffff !important;
+                    font-weight: 700;
+                    box-shadow: 0 2px 4px rgba(189, 107, 92, 0.35);
+                }
+                .cal-day-cell.has-alarm:hover {
+                    transform: scale(1.1);
+                    filter: brightness(1.05);
+                }
+                /* Bugünün Tarihi (Turkuaz/Yeşil Halka - Görsel 1) */
+                .cal-day-cell.is-today {
+                    border: 2px solid #288e89 !important;
+                    font-weight: 700;
+                }
+                .cal-day-cell.is-today:not(.has-alarm) {
+                    color: #1e2530;
+                }
+                /* Seçili Gün */
+                .cal-day-cell.is-selected {
+                    outline: 2px solid #3b82f6;
+                    outline-offset: 1px;
+                }
+                /* Sağ Alarm Paneli */
+                .cal-alarm-count-badge {
+                    color: #bd6b5c;
+                    font-size: 11px;
+                    letter-spacing: 1.2px;
+                    text-transform: uppercase;
+                }
+                .cal-alarm-item {
+                    border: 1px solid #ebd5d0;
+                    background: #fffcfb;
+                    border-radius: 7px;
+                    padding: 6px 9px;
+                    transition: all .2s ease;
+                }
+                .cal-alarm-item:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 3px 8px rgba(189, 107, 92, 0.15);
+                    border-color: #bd6b5c;
+                }
+                .cal-alarm-date {
+                    color: #bd6b5c;
+                    font-size: 11px;
+                    font-family: monospace, sans-serif;
+                }
+                .cal-alarm-text {
+                    font-size: 12px;
+                    line-height: 1.25;
+                }
+                .cal-mini-pill {
+                    font-size: 9px;
+                    padding: 2px 5px;
+                    font-weight: 600;
+                }
+                /* Koyu Tema Uyumu */
+                [data-bs-theme="dark"] .cal-alarm-card {
+                    background: #111827 !important;
+                }
+                [data-bs-theme="dark"] .cal-mini-header {
+                    background: #0f172a !important;
+                }
+                [data-bs-theme="dark"] .cal-day-cell {
+                    color: #cbd5e1;
+                }
+                [data-bs-theme="dark"] .cal-day-cell:hover:not(.cal-empty) {
+                    background: rgba(255, 255, 255, 0.08);
+                }
+                [data-bs-theme="dark"] .cal-day-cell.is-today:not(.has-alarm) {
+                    color: #5eead4;
+                }
+                [data-bs-theme="dark"] .cal-alarm-item {
+                    background: #1e2530;
+                    border-color: rgba(189, 107, 92, 0.35);
+                }
+                [data-bs-theme="dark"] .cal-alarm-text {
+                    color: #f1f5f9 !important;
+                }
+                [data-bs-theme="dark"] .cal-right-col {
+                    border-color: #334155 !important;
+                }
+            </style>
+            <?php
+            break;
+
         case 'widget-arac-ozeti':
         case 'widget-arac-ozet':
             ?>

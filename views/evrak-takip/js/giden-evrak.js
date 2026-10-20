@@ -737,7 +737,6 @@ $(document).ready(function () {
     $(".gonderim-channel-card").removeClass("active").filter(`[data-channel="${channel}"]`).addClass("active");
     $("#kepComposerPanel").toggleClass("d-none", channel !== "kep");
     $("#btnGidenKepHizliGonder").toggleClass("d-none", channel !== "kep" && !window.gidenKepCanSendApproved);
-    if (!window.gidenKepMesaj) $("#accordionItemKep").toggleClass("d-none", channel !== "kep");
     updateKepPackageSummary();
     adjustGidenEvrakLayout();
   }
@@ -745,7 +744,13 @@ $(document).ready(function () {
   $(document).on("click", ".gonderim-channel-card:not(:disabled)", function () {
     applyDeliveryChannel($(this).data("channel"));
   });
+  $(document).on("change", "#gonderim_turu_secimi", function () {
+    const channel = $(this).val() === "kep" ? "kep" : "normal";
+    applyDeliveryChannel(channel);
+    $("#gidenKepAliciPanel").toggleClass("d-none", channel !== "kep");
+  });
   applyDeliveryChannel($("#gonderim_kanali").val());
+  $("#gidenKepAliciPanel").toggleClass("d-none", $("#gonderim_kanali").val() !== "kep");
 
   function moveAttachment(index, direction) {
     const target = index + direction;
@@ -1096,15 +1101,140 @@ $(document).ready(function () {
     });
   }
 
-  $("#btnEImzaOnayla").on("click", function () {
-    eImzaIstek("evrak-e-imza-onayla", {
-      title: "E-İmza ile Onayla",
-      html: "Evrakı elektronik imza ile onaylıyorsunuz.<br><b>Tüm imzacılar onayladığında evrak elektronik imzalı hâle gelir ve içeriği bir daha değiştirilemez.</b>",
-      icon: "question",
-      color: "#22c55e",
-      confirmText: "Evet, Onayla",
-      buttonSelector: "#btnEImzaOnayla"
+  function otomatikKepGonder(completed, evrakId, pin) {
+    const autoKep = completed?.data?.auto_kep;
+    if (!completed?.data?.completed || !autoKep) return Promise.resolve(null);
+    if (!autoKep.enabled) {
+      const error = new Error(autoKep.error || "Otomatik KEP gönderim bilgileri eksik.");
+      error.code = "PADES_OK_KEP_FAILED";
+      throw error;
+    }
+    Swal.update({ title: "Son imza tamamlandı, KEP paketi hazırlanıyor..." });
+    return $.post("views/evrak-takip/api.php", {
+      action: "kep-mime-hazirla", evrak_id: evrakId,
+      alici_kep: autoKep.alici_kep, paket_turu: autoKep.paket_turu || "Standart"
+    }).then(mime => {
+      if (mime.status !== "success" || !mime.eHash || !mime.temp_id) {
+        const error = new Error(mime.message || "KEP paketi hazırlanamadı.");
+        error.code = "PADES_OK_KEP_FAILED";
+        throw error;
+      }
+      Swal.update({ title: "KEP paketi aynı kartla imzalanıyor..." });
+      return fetch("http://127.0.0.1:9191/sign", {
+        method: "POST", mode: "cors", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash: mime.eHash, pin: pin })
+      }).then(response => response.json()).then(signature => ({ mime, signature }));
+    }).then(({ mime, signature }) => {
+      if (!signature || signature.status !== "success" || !signature.signature) {
+        const error = new Error(signature?.message || "KEP CAdES imzası üretilemedi.");
+        error.code = "PADES_OK_KEP_FAILED";
+        throw error;
+      }
+      Swal.update({ title: "İmzalı evrak PTT KEP sistemine gönderiliyor..." });
+      return $.post("views/evrak-takip/api.php", {
+        action: "kep-smime-sevk", temp_id: mime.temp_id,
+        mesajid: mime.mesajid, signature: signature.signature
+      });
+    }).then(sent => {
+      if (sent.status !== "success") {
+        const error = new Error(sent.message || "PTT KEP gönderimi tamamlanamadı.");
+        error.code = "PADES_OK_KEP_FAILED";
+        throw error;
+      }
+      return sent;
     });
+  }
+
+  $("#btnEImzaOnayla").on("click", function () {
+    const button = $(this);
+    fetch("http://127.0.0.1:9191/status", { method: "GET", mode: "cors" })
+      .then(response => response.json())
+      .then(agent => {
+        if (!agent || agent.status !== "success") {
+          throw new Error((agent && agent.message) || "E-imza cihazı bulunamadı. Güncel Ersan E-İmza uygulamasını çalıştırınız.");
+        }
+        if (!String(agent.agent_version || "").startsWith("1.2.")) {
+          const versionError = new Error("PAdES için Ersan E-İmza v1.2.0 gereklidir.");
+          versionError.code = "EIMZA_AGENT_UPDATE_REQUIRED";
+          throw versionError;
+        }
+        return Swal.fire({
+          title: "E-İmza ile İmzala",
+          html: `<div class="text-start small mb-2"><b>${$('<div>').text(agent.owner_name || 'Akıllı kart').html()}</b><br>İmza, PDF içine doğrulanabilir PAdES olarak işlenecektir.</div>`,
+          input: "password",
+          inputLabel: "E-İmza PIN kodu",
+          inputPlaceholder: "PIN kodunuzu giriniz",
+          inputAttributes: { autocomplete: "off", maxlength: 32 },
+          showCancelButton: true,
+          confirmButtonColor: "#22c55e",
+          confirmButtonText: "Kart ile İmzala",
+          cancelButtonText: "Vazgeç",
+          inputValidator: value => !value ? "E-imza PIN kodu zorunludur." : undefined
+        }).then(result => ({ result, agent }));
+      })
+      .then(({ result, agent }) => {
+        if (!result.isConfirmed) return;
+        button.prop("disabled", true);
+        Swal.fire({ title: "İmzalanacak PDF hazırlanıyor...", allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+        return $.post("views/evrak-takip/api.php", {
+          action: "evrak-pades-hazirla", id: button.data("id")
+        }).then(prepared => {
+          if (prepared.status !== "success" || !prepared.data || !prepared.data.pdf || !prepared.data.temp_id) {
+            throw new Error(prepared.message || "PDF hazırlanamadı.");
+          }
+          Swal.update({ title: "Akıllı kart ile PAdES imzası üretiliyor..." });
+          return fetch("http://127.0.0.1:9191/sign-pdf", {
+            method: "POST", mode: "cors", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pdf: prepared.data.pdf, pin: result.value,
+              signer_name: prepared.data.signer_name,
+              reason: prepared.data.reason, location: prepared.data.location
+            })
+          }).then(response => response.json()).then(signed => ({ signed, tempId: prepared.data.temp_id }));
+        }).then(signed => {
+          if (!signed || !signed.signed || signed.signed.status !== "success" || !signed.signed.signed_pdf) {
+            throw new Error((signed && signed.signed && signed.signed.message) || "Kart PAdES imzası üretemedi.");
+          }
+          Swal.update({ title: "PAdES imzası sunucuda doğrulanıyor..." });
+          return $.post("views/evrak-takip/api.php", {
+            action: "evrak-pades-tamamla", id: button.data("id"), temp_id: signed.tempId, signed_pdf: signed.signed.signed_pdf
+          });
+        }).then(completed => {
+          if (completed.status !== "success") throw new Error(completed.message || "PAdES imzası kabul edilmedi.");
+          return otomatikKepGonder(completed, button.data("id"), result.value).then(sent => ({ completed, sent }));
+        }).then(({ completed, sent }) => {
+          const title = sent ? "İmzalandı ve KEP ile Gönderildi" : "İmza Doğrulandı";
+          const message = sent ? `${completed.message}<br><br><b>PTT Takip Kodu:</b><br>${$('<div>').text(sent.kep_id || '').html()}` : completed.message;
+          return Swal.fire({ icon: "success", title: title, html: message }).then(() => location.reload());
+        }).catch(error => {
+          button.prop("disabled", false);
+          if (error && error.code === "PADES_OK_KEP_FAILED") {
+            Swal.fire("İmza Tamamlandı, KEP Gönderilemedi", `${error.message}<br><br>Evrak imzalı olarak kaydedildi. KEP gönderimini evrak listesinden tekrar başlatabilirsiniz.`, "warning")
+              .then(() => location.reload());
+          } else {
+            Swal.fire("PAdES İmza Hatası", error.message || "E-imza işlemi tamamlanamadı.", "error");
+          }
+        });
+      })
+      .catch(error => {
+        if (error && error.code === "EIMZA_AGENT_UPDATE_REQUIRED") {
+          Swal.fire({
+            icon: "warning",
+            title: "E-İmza Uygulamasını Güncelleyin",
+            html: `
+              <p class="mb-3">PAdES için <b>Ersan E-İmza v1.2.0</b> gereklidir.</p>
+              <a href="downloads/ErsanEImza.jar?v=1.2.0" download="ErsanEImza.jar"
+                 class="btn btn-primary px-4 py-2">
+                <i class="bx bxs-download me-1"></i> E-İmza v1.2.0 İndir
+              </a>
+              <div class="small text-muted mt-3">Eski uygulamayı tamamen kapatın, ardından indirdiğiniz dosyayı çalıştırın.</div>`,
+            showConfirmButton: true,
+            confirmButtonText: "Kapat"
+          });
+          return;
+        }
+        Swal.fire("E-İmza Uygulaması", error.message, "error");
+      });
   });
 
   $("#btnEImzaGeriAl").on("click", function () {
@@ -1160,7 +1290,7 @@ $(document).ready(function () {
     }
     Swal.fire({
       title: "E-İmza ile Onaya Sun",
-      html: "Evrak önce kaydedilecek, ardından imzacıların onayına sunulacak.<br>İmza sırasında ilk sırada siz varsanız imzanız otomatik atılır.<br><b>Onaya sunulan evrakın içeriği, imza süreci tamamlanana kadar değiştirilemez.</b>",
+      html: "Evrak önce kaydedilecek, ardından imzacıların onayına sunulacak.<br>Her imzacı akıllı kartı ve PIN koduyla PAdES imzası atacaktır.<br><b>KEP seçildiyse son imzadan sonra evrak aynı kartla otomatik gönderilir.</b><br>Onaya sunulan evrakın içeriği süreç boyunca değiştirilemez.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#556ee6",
@@ -1182,11 +1312,11 @@ $(document).ready(function () {
           $.post("views/evrak-takip/api.php", { action: "evrak-e-imza-onaya-sun", id: kayit.id }, function (response) {
             if (response.status === "success") {
               Swal.fire("Onaya Sunuldu", response.message, "success")
-                .then(() => location.href = "index?p=evrak-takip/giden-evrak&id=" + encodeURIComponent(kayit.id));
+                .then(() => location.href = "index?p=evrak-takip/list");
             } else {
               serbestBirak();
               Swal.fire("Evrak Kaydedildi, Onaya Sunulamadı", response.message, "warning")
-                .then(() => location.href = "index?p=evrak-takip/giden-evrak&id=" + encodeURIComponent(kayit.id));
+                .then(() => location.href = "index?p=evrak-takip/list");
             }
           }).fail(() => {
             serbestBirak();
@@ -1803,6 +1933,9 @@ $(document).ready(function () {
   adjustGidenEvrakLayout();
   window.setTimeout(adjustGidenEvrakLayout, 100);
   window.setTimeout(adjustGidenEvrakLayout, 500);
+  if (new URLSearchParams(window.location.search).get("islem") === "imzala" && $("#btnEImzaOnayla").length) {
+    window.setTimeout(() => $("#btnEImzaOnayla").trigger("click"), 350);
+  }
   $(window).on("resize orientationchange", adjustGidenEvrakLayout);
   $("#gidenEvrakTabs button").on("shown.bs.tab", adjustGidenEvrakLayout);
 });

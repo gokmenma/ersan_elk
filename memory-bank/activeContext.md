@@ -1,5 +1,35 @@
 # Active Context
 
+## Ana Sayfa (views/home) — Görev & Evrak Takvimi & Alarmlar Mini Kartı (2026-10-20)
+- **Kullanıcı Talebi**: Ana sayfada kullanıcının görevler sayfasından girdiği görevler veya evrak takip sayfasında gelen evrak eklerken son tarih (termin) olarak girdiği tarihi uyarı ve takvim olarak gösteren, personel kartı boyutunda (`col-md-4 col-xl-4`) mini kart yapılması (referans görseller: `media_1792521434125_852df864.png` takvim tasarımı ve `media_1792521677052_3234947f.png` dashboard kart boyutu/düzeni).
+- **Uygulanan Değişiklikler**:
+  1. **Veritabanı ve Model**:
+     - `sql/2026_10_20_add_son_tarih_to_evrak_takip.sql` ile `evrak_takip` tablosuna `son_tarih DATE NULL` sütunu eklendi ve çalıştırıldı.
+     - `App/Model/EvrakTakipModel.php`:
+       - `checkSchema()` metoduna `son_tarih` kontrolü eklendi.
+       - `getTakvimEvraklar(int $firmaId, ?string $baslangic, ?string $bitis)` metodu yazıldı.
+     - `App/Model/GorevModel.php`:
+       - `getTakvimGorevler(int $firmaId, ?int $userId, ?string $baslangic, ?string $bitis)` metodu yazıldı (aktif ve tarihi olan görevleri döndürür).
+  2. **Gelen Evrak Ekleme / Düzenleme Entegrasyonu**:
+     - `views/evrak-takip/modal/evrak-modal.php`: "Evrak Tarihi" altına "Son Tarih / Termin (Opsiyonel)" inputu (`son_tarih`) eklendi.
+     - `views/evrak-takip/api.php`: `evrak-kaydet` aksiyonunda `son_tarih` parametrik bağlama ile formatlanıp kaydedildi.
+     - `views/evrak-takip/js/evrak-takip.js`: Evrak düzenleme modalı açıldığında `son_tarih` alanının doldurulması sağlandı.
+     - `views/evrak-takip/list.php`: Tabloda `son_tarih` değeri olan gelen evraklara tarih sütunu altına kırmızı termin badge'i eklendi.
+  3. **Ana Sayfa (views/home) Widget Entegrasyonu**:
+     - `views/home/render_widgets.php`:
+       - `case 'widget-takvim-alarmlar':` bloğu Görsel 1'deki minimalist takvim & alarm kutucukları tasarımına birebir uygun olarak kodlandı.
+       - Sol tarafta: `#1c2430` koyu lacivert başlık (Ay Yıl ve gezinme okları), `P S Ç P C C P` günleri, alarmlı günlerde terrakota yuvarlak rozet (`#bd6b5c`), bugünün gününde turkuaz halka (`#288e89`). Günlere tıklandığında sağdaki listede sadece o günün alarmlarını filtreleme imkanı.
+       - Sağ tarafta: Terrakota asılı çan ikonu ve "X ALARM" sayacı, altında terrakota bordürlü şık alarm kutucukları (tarih, "Görev" / "Gelen Evrak" tür etiketi, başlık/kurum adı ve doğrudan ilgili sayfaya yönlendiren bağlantı).
+     - `views/home/api.php`:
+       - `batch-load-all` case'inde `widget-takvim-alarmlar` için ilgili ayın görev ve evrak alarmlarının toplanıp birleştirilmesi sağlandı.
+       - `get-calendar-alarms` AJAX action'ı eklendi (kullanıcı takvimde önceki/sonraki aya tıkladığında anlık olarak ay verilerini yükler).
+       - `sql/2026_10_20_add_calendar_alarms_policy.sql` ile `permission_policies` kaydı eklendi.
+     - `views/home.php`:
+       - `$widgets['widget-takvim-alarmlar']` lazy load tanımı yapıldı (`col-md-4 col-xl-4`).
+       - `initMacControls()` içine `'widget-takvim-alarmlar': 'Görev & Evrak Takvimi'` başlığı bağlandı.
+       - "Dashboard Ayarları" görünürlük listesine "Görev & Evrak Takvimi" eklendi.
+       - JS tarafında `selectHomeCalendarDay()`, `resetHomeCalendarDayFilter()` ve `navigateHomeCalendar()` fonksiyonları tanımlandı.
+
 ## Mobil SPA Evrak Takip — KEP Gönderisi Belirteçleri ve Giden KEP Önizlemesi (2026-10-20)
 - **Kullanıcı Talebi**: Mobil SPA evrak takip listesinde evrakın KEP gönderisi olduğunun belirgin olması ve "Önizle" butonuna tıklandığında resmi evrak PDF'i yerine masaüstündeki gibi Giden KEP Önizlemesinin (ileti metni, alıcı/gönderen bilgileri, PTT takip kodu ve PTT resmi delilleri) açılması.
 - **Uygulanan Çözüm**:
@@ -2606,3 +2636,31 @@
 - PHP/JavaScript sözdizimi, onaysız evrak engeli ve önceden KEP gönderilmiş evrakın tekrar sevk engeli gerçek veride doğrulandı.
 - Onaylı evrak modalından ilk gönderim denemesinde oluşan `strlen(): SoapVar given` hatasının, KEP boyut sınırı kontrolünde SOAP ek nesnelerine `strlen()` uygulanmasından kaynaklandığı doğrulandı. Hem yerel ajan MIME hazırlama hem sunucu fallback yolunda toplam artık PDF/EYP/ek dosyalarının ham byte içerikleri üzerinden hesaplanıyor; okunamayan dosyalar açıklayıcı hatayla durduruluyor.
 - Onaylı giden evrakın yazı içeriğinin KEP ileti gövdesine tekrar basılması kaldırıldı. Onaylı PDF zaten ek olarak gönderildiği için hem yerel ajan hem sunucu fallback yolunda KEP gövdesi sunucu tarafında değiştirilemez biçimde `İlgili yazı ektedir.` standart metnine sabitlendi; yeni KEP kayıtlarında konu ve bu standart gövde ayrıca saklanıyor.
+
+# 2026-10-20 — Giden evrak gerçek PAdES e-imza akışı
+
+- Veritabanında onay veren sanal e-imza kaldırıldı. Sıradaki kullanıcı artık yerel ajan v1.2.0, akıllı kartı ve PIN'i ile PDF'i artımlı PAdES-BES olarak imzalamadan onay kaydı oluşturamıyor; evrakı hazırlayan ilk imzacının otomatik imzalanması da kaldırıldı.
+- Sunucu değişmez PDF sürümünü hazırlıyor, her sonraki imzacı mevcut imzalı revizyonu imzalıyor. Gelen PDF'in önceki sürümle byte düzeyinde aynı başlangıca sahip olduğu, son `ByteRange` yapısı ve detached CMS imzası OpenSSL ile sunucuda doğrulanıyor.
+- Sertifika öznesi, veren makam, seri numarası, SHA-256 parmak izi, geçerlilik tarihleri, PDF özeti ve doğrulama sonucu her onay satırında saklanıyor. İlk kullanılan sertifika kullanıcıya bağlanıyor; farklı sertifika yetkili değişiklik olmadan kabul edilmiyor.
+- İmzalı PDF'ler uygulama dosya şifrelemesiyle hash bazlı revizyon dosyalarında tutuluyor. Önizleme ve KEP eki yeniden üretilmiş belge yerine gerçek PAdES PDF'i kullanıyor; eski sanal onaylı kayıtlara artık güvenli e-imza ibaresi basılmıyor.
+- PDFBox 3.0.8 içeren Java 8 uyumlu ajan v1.2.0 üretildi. Şema ve API politika SQL'leri aktif geliştirme veritabanına uygulandı.
+- Eski ajan sürümü algılandığında gösterilen uyarıya doğrudan `E-İmza v1.2.0 İndir` bağlantısı eklendi; kullanıcı KEP modalını açmadan güncel JAR'a ulaşabiliyor.
+- İlk PAdES denemesinde sunucunun hazırlama ve tamamlama isteklerinde mPDF'i iki kez üretmesi nedeniyle görsel olarak aynı belgenin iç nesne/tarih byte'ları değişiyor ve kaynak eşleşmesi reddediliyordu. Hazırlanan PDF artık kullanıcı/firma/evrak bağlı, SHA-256 kontrollü ve 15 dakika geçerli şifreli bir imza oturumunda sabitleniyor; tamamlamada yeniden PDF üretmek yerine tam olarak bu kaynak doğrulanıyor.
+- PDFBox çıktısında `ByteRange` dışındaki bölüm yalnız `<CMS hex>` değerini içerdiği, `/Contents` anahtarı ilk imzalı aralıkta kaldığı için sunucu CMS'i bulamıyordu. PAdES ayrıştırıcısı hem yalnız hex değerli PDFBox yerleşimini hem `/Contents <...>` yerleşimini destekleyecek şekilde düzeltildi.
+- PAdES imzalama kopyasının PDF alt bilgisine kırmızı çerçeveli görünür e-imza doğrulama bandı eklendi. Bant güvenli elektronik imza ibaresi, deterministik belge doğrulama kodu, takip adresi ve elektronik imzacı adlarını içeriyor; ayrıca mevcut gri e-imza dipnotu korunuyor.
+- Giden Evrak formuna `Normal Gönderim` ve `Kayıtlı Elektronik Posta (KEP)` seçenekli Evrak Gönderim Türü alanı geri eklendi. KEP seçildiğinde alıcı KEP adresi alanı açılıyor ve hem istemci hem sunucu tarafında zorunlu/geçerli e-posta biçiminde doğrulanıyor; KEP yetkisi ve oturum kullanıcısına ait KEP kimlikleri zorunlu kalıyor.
+- PAdES zincirinin son imzası tamamlandığında API kayıtlı KEP alıcısını tarayıcıya bildiriyor. Tarayıcı aynı PIN oturumu içinde PTT MIME paketini hazırlatıyor, yerel karttan CAdES imzasını alıyor ve `SmimeGonder` ile otomatik sevk ediyor. KEP sevki hata verirse tamamlanmış PAdES imzası geri alınmıyor; evrak imzalı kalıyor ve manuel tekrar sevke uygun açıklayıcı uyarı gösteriliyor.
+- Firma 1'de eski `evrak_eimza_goster=0` ayarının gerçek PAdES imzalama kopyasındaki görünür doğrulama bandını da kapattığı tespit edildi. PAdES imzalama kopyasında görünür imza alanı zorunlu hale getirildi; eski ayar yalnız eski/sanal PDF gösterimi için dikkate alınıyor.
+- Giden evrak `E-İmza ile Onaya Sun` işlemi başarı veya kayıt-sonrası onaya sunma hatası sonucunda detay sayfasında kalmak yerine Evrak Takip listesine dönüyor.
+- Evrak listesindeki ayrı ikon butonları tek `İşlemler` dropdown menüsünde toplandı. Tüm eylemlere açık `title` ve görünür metin verildiği için global sağ tık menüsündeki `İşlem 2` gibi belirsiz fallback etiketleri kaldırıldı. `PAdES ile İmzala` liste/sağ-tık eylemi evrak detayını açıp gerçek kart imza penceresini otomatik başlatıyor; eski sanal onay endpoint'ine gitmiyor.
+- Evrak listesindeki e-imza durum rozeti artık PDF önizleme modalını açıyor. Modalın sağ panelinde sıralı imzacılar, bekleyen/mevcut imza aşaması, PAdES sertifika doğrulama bilgisi ve oluşturma–onaya sunma–imza–tamamlanma/iade tarihçesi gösteriliyor.
+- Giden evrakın sistem tarafından üretilen üst yazısı fiziksel ek kaydından bağımsız olarak Dosya sütununa `Üst Yazı.pdf` adıyla eklendi; böylece onaylı evraklarda ek bulunmasa bile dosya hücresi boş görünmüyor ve PDF doğrudan önizlenebiliyor.
+- PAdES görünür bilgileri kurumsal evrak alt bilgisini yeniden tasarlamayacak şekilde ayrıştırıldı: mevcut adres ve `Bilgi için` bloğu aynen korunuyor; yalnız üstüne ince doğrulama kutusu, altına gri güvenli e-imza notu ekleniyor. Üretilen A4 örneği görsel ve metinsel olarak doğrulandı.
+- KEP satırlarında e-imza durum rozetine tıklamanın satır geneli KEP önizleme olayını da tetiklemesi engellendi. E-imza rozeti yalnız evrak PDF + imza tarihçesi modalını, KEP önizleme aksiyonu ise yalnız KEP detay modalını açıyor.
+- KEP kanallı giden evrakların ayrı `GİDEN` ve `KEP` rozetleri tek mor `GİDEN / KEP` rozeti olarak birleştirildi. Normal giden ve gelen KEP gösterimleri değiştirilmedi.
+- Giden Evrak formunun altındaki mükerrer `KEP / Gönderim Bilgileri` akordeonu kaldırıldı. Gönderim türü ve zorunlu alıcı KEP adresi üstteki evrak bilgileri alanında kalmaya devam ediyor.
+- Evrak/imza önizleme modalında imza sırası oturum kullanıcısındaysa `E-İmza ile İmzala` butonu gösteriliyor. Buton gerçek yerel ajan + akıllı kart + PIN ile PAdES akışını çalıştırıyor; son imzada kayıtlı KEP otomatik sevk zinciri de korunuyor.
+- İmza modalının işlem alanı sağ alt köşede sabitlendi; sıra kullanıcıdaysa `İade Et` ve `E-İmza ile İmzala` butonları birlikte gösteriliyor. Liste İşlemler menüsündeki `PAdES ile İmzala` etiketi de `E-İmza ile İmzala` olarak sadeleştirildi.
+- E-imza PIN girişi ayrı uyarı penceresinden kaldırılarak imza modalının sağ alt işlem alanına alındı. İmzalama başlayınca PIN ve işlem butonları kilitleniyor; ajan kontrolü, PDF hazırlama, PAdES imzalama, sunucu doğrulaması ve varsa KEP sevki yüzde ilerleme çubuğu ile aynı panelde gösteriliyor.
+- PDF alt bilgisindeki e-imza doğrulama alanının dört taraflı kırmızı çerçevesi kaldırıldı; yalnız alt kenarda 0,6 mm kalın kırmızı ayraç çizgisi bırakıldı.
+- E-imza alt bilgi satırı referans düzene uyarlandı: solda `Belge Doğrulama Kodu` ile deterministik 5 haneli `PIN Kodu`, sağda `Belge Takip Adresi` gösteriliyor. `Elektronik İmzalayan` alanı kaldırıldı.

@@ -107,6 +107,67 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo safeJsonEncode(['status' => $ok ? 'success' : 'error']);
                 exit;
 
+            case 'get-calendar-alarms':
+                $year = (int)($_POST['year'] ?? date('Y'));
+                $month = (int)($_POST['month'] ?? date('n'));
+                if ($month < 1) {
+                    $month = 12;
+                    $year--;
+                } elseif ($month > 12) {
+                    $month = 1;
+                    $year++;
+                }
+
+                $startDate = sprintf('%04d-%02d-01', $year, $month);
+                $endDate = date('Y-m-t', strtotime($startDate));
+
+                $gorevModel = new \App\Model\GorevModel();
+                $evrakModel = new \App\Model\EvrakTakipModel();
+                $takvimGorevler = $gorevModel->getTakvimGorevler($firmaId, $userId, $startDate, $endDate);
+                $takvimEvraklar = $evrakModel->getTakvimEvraklar($firmaId, $startDate, $endDate);
+
+                $takvimAlarmlar = [];
+                foreach ($takvimGorevler as $g) {
+                    $takvimAlarmlar[] = [
+                        'tur' => 'gorev',
+                        'id' => $g->id,
+                        'tarih' => $g->tarih,
+                        'saat' => $g->saat,
+                        'baslik' => $g->baslik,
+                        'liste_adi' => $g->liste_adi,
+                        'url' => 'index.php?p=gorevler/list&task_id=' . $g->id,
+                    ];
+                }
+                foreach ($takvimEvraklar as $e) {
+                    $takvimAlarmlar[] = [
+                        'tur' => 'evrak',
+                        'id' => $e->id,
+                        'tarih' => $e->son_tarih,
+                        'saat' => null,
+                        'baslik' => (!empty($e->kurum_adi) ? $e->kurum_adi : $e->konu) . (!empty($e->evrak_no) ? ' (' . $e->evrak_no . ')' : ''),
+                        'liste_adi' => $e->konu,
+                        'url' => 'index.php?p=evrak-takip/list',
+                    ];
+                }
+                usort($takvimAlarmlar, function($a, $b) {
+                    return strcmp($a['tarih'], $b['tarih']);
+                });
+
+                $html = renderWidget('widget-takvim-alarmlar', [
+                    'takvim_alarmlar' => $takvimAlarmlar,
+                    'secili_yil' => $year,
+                    'secili_ay' => $month
+                ]);
+
+                echo safeJsonEncode([
+                    'status' => 'success',
+                    'html' => $html,
+                    'year' => $year,
+                    'month' => $month,
+                    'count' => count($takvimAlarmlar)
+                ]);
+                exit;
+
             case 'batch-load-all':
                 $widgetIds = $_POST['widgets'] ?? [];
                 $widths = $_POST['widths'] ?? [];
@@ -183,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $hareketModel = new \App\Model\PersonelHareketleriModel();
 
                 foreach ($widgetIds as $index => $widgetId) {
-                    $cacheHtml = ($force || $widgetId === 'widget-bildirimler') ? null : $getWidgetCache($widgetId);
+                    $cacheHtml = ($force || $widgetId === 'widget-bildirimler' || $widgetId === 'widget-takvim-alarmlar' || $widgetId === 'widget-gorev-evrak-takvimi') ? null : $getWidgetCache($widgetId);
                     if ($cacheHtml) { $response['results'][$widgetId] = $cacheHtml; continue; }
 
                     $data = []; $data['width'] = $widths[$index] ?? null;
@@ -224,6 +285,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $data['personel_talep_sayisi'] = $avansSayisi + (int)$izinModel->getBekleyenIzinSayisi() + (int)$talepModel->getBekleyenTalepSayisi() + $degisim_c + $mazeret_c + $talep_c;
                         } elseif ($widgetId == 'widget-nobetciler') {
                             $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
+                        } elseif ($widgetId == 'widget-takvim-alarmlar' || $widgetId == 'widget-gorev-evrak-takvimi') {
+                            $targetYear = (int)date('Y');
+                            $targetMonth = (int)date('n');
+                            $startDate = sprintf('%04d-%02d-01', $targetYear, $targetMonth);
+                            $endDate = date('Y-m-t', strtotime($startDate));
+                            
+                            $evrakModel = new \App\Model\EvrakTakipModel();
+                            $takvimGorevler = $gorevModel->getTakvimGorevler($firmaId, $userId, $startDate, $endDate);
+                            $takvimEvraklar = $evrakModel->getTakvimEvraklar($firmaId, $startDate, $endDate);
+                            
+                            $takvimAlarmlar = [];
+                            foreach ($takvimGorevler as $g) {
+                                $takvimAlarmlar[] = [
+                                    'tur' => 'gorev',
+                                    'id' => $g->id,
+                                    'tarih' => $g->tarih,
+                                    'saat' => $g->saat,
+                                    'baslik' => $g->baslik,
+                                    'liste_adi' => $g->liste_adi,
+                                    'url' => 'index.php?p=gorevler/list&task_id=' . $g->id,
+                                ];
+                            }
+                            foreach ($takvimEvraklar as $e) {
+                                $takvimAlarmlar[] = [
+                                    'tur' => 'evrak',
+                                    'id' => $e->id,
+                                    'tarih' => $e->son_tarih,
+                                    'saat' => null,
+                                    'baslik' => (!empty($e->kurum_adi) ? $e->kurum_adi : $e->konu) . (!empty($e->evrak_no) ? ' (' . $e->evrak_no . ')' : ''),
+                                    'liste_adi' => $e->konu,
+                                    'url' => 'index.php?p=evrak-takip/list',
+                                ];
+                            }
+                            usort($takvimAlarmlar, function($a, $b) {
+                                return strcmp($a['tarih'], $b['tarih']);
+                            });
+                            
+                            $data['takvim_alarmlar'] = $takvimAlarmlar;
+                            $data['secili_yil'] = $targetYear;
+                            $data['secili_ay'] = $targetMonth;
                         } elseif ($widgetId == 'widget-gorevler' || $widgetId == 'widget-yaklasan-gorevler') {
                             $data['yaklasan_gorevler'] = $gorevModel->getYaklasanGorevler($firmaId, $userId, 10);
                         } elseif ($widgetId == 'widget-bildirimler') {

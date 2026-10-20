@@ -546,6 +546,12 @@ $(document).ready(function () {
           const d = data.tarih.split("-");
           $('input[name="tarih"]').val(d[2] + "." + d[1] + "." + d[0]);
         }
+        if (data.son_tarih && data.son_tarih !== '0000-00-00') {
+          const d_son = data.son_tarih.split("-");
+          $('input[name="son_tarih"]').val(d_son[2] + "." + d_son[1] + "." + d_son[0]);
+        } else {
+          $('input[name="son_tarih"]').val('');
+        }
         $('input[name="evrak_no"]').val(data.evrak_no);
         $('input[name="kurum_adi"]').val(data.kurum_adi);
 
@@ -675,29 +681,119 @@ $(document).ready(function () {
     });
   });
 
-  // E-İmza Onayla
-  $(document).on("click", ".evrak-e-imza-onayla", function () {
-    const id = $(this).data("id");
-    Swal.fire({
-        title: 'E-İmza ile Onayla',
-        html: "Evrakı elektronik imza ile onaylıyorsunuz.<br><b>Tüm imzacılar onayladığında evrak elektronik imzalı hâle gelir ve içeriği bir daha değiştirilemez.</b>",
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#22c55e',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: 'Evet, Onayla',
-        cancelButtonText: 'Vazgeç'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post(api_url, { action: "evrak-e-imza-onayla", id: id }, function (response) {
-                if (response.status === "success") {
-                    Swal.fire('Onaylandı!', response.message, 'success').then(() => location.reload());
-                } else {
-                    Swal.fire('Hata!', response.message, 'error');
-                }
-            }).fail(() => Swal.fire('Hata!', "Sunucu ile iletişim kurulamadı.", 'error'));
-        }
+  function updateModalPadesProgress(percent, text, detail, state) {
+    const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+    const $bar = $("#modalPadesProgressBar");
+    $("#modalPadesProgress").removeClass("d-none");
+    $("#modalPadesProgressText").text(text || "İşlem sürüyor");
+    $("#modalPadesProgressPercent").text(safePercent + "%");
+    $("#modalPadesProgressDetail").text(detail || "");
+    $bar.css("width", safePercent + "%").attr("aria-valuenow", safePercent)
+      .toggleClass("progress-bar-animated progress-bar-striped", state !== "success" && state !== "error")
+      .toggleClass("bg-success", state !== "error").toggleClass("bg-danger", state === "error");
+  }
+
+  function modalPadesOtomatikKep(completed, evrakId, pin) {
+    const autoKep = completed?.data?.auto_kep;
+    if (!completed?.data?.completed || !autoKep) return Promise.resolve(null);
+    if (!autoKep.enabled) {
+      const error = new Error(autoKep.error || "Otomatik KEP gönderim bilgileri eksik.");
+      error.code = "PADES_OK_KEP_FAILED";
+      throw error;
+    }
+    updateModalPadesProgress(75, "KEP paketi hazırlanıyor", "Son imza tamamlandı. KEP gönderim paketi oluşturuluyor.");
+    return $.post(api_url, {
+      action: "kep-mime-hazirla", evrak_id: evrakId,
+      alici_kep: autoKep.alici_kep, paket_turu: autoKep.paket_turu || "Standart"
+    }).then(mime => {
+      if (mime.status !== "success" || !mime.eHash || !mime.temp_id) throw new Error(mime.message || "KEP paketi hazırlanamadı.");
+      updateModalPadesProgress(84, "KEP paketi imzalanıyor", "Paket aynı akıllı kartla CAdES olarak imzalanıyor.");
+      return fetch("http://127.0.0.1:9191/sign", {
+        method: "POST", mode: "cors", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash: mime.eHash, pin: pin })
+      }).then(response => response.json()).then(signature => ({ mime, signature }));
+    }).then(({ mime, signature }) => {
+      if (!signature || signature.status !== "success" || !signature.signature) throw new Error(signature?.message || "KEP CAdES imzası üretilemedi.");
+      updateModalPadesProgress(93, "PTT KEP sistemine gönderiliyor", "İmzalı ileti güvenli kanaldan sevk ediliyor.");
+      return $.post(api_url, { action: "kep-smime-sevk", temp_id: mime.temp_id, mesajid: mime.mesajid, signature: signature.signature });
+    }).then(sent => {
+      if (sent.status !== "success") throw new Error(sent.message || "PTT KEP gönderimi tamamlanamadı.");
+      return sent;
+    }).catch(error => {
+      error.code = "PADES_OK_KEP_FAILED";
+      throw error;
     });
+  }
+
+  function startModalPadesSignature(id, button) {
+    const pin = String($("#modal_eimza_pin").val() || "").trim();
+    if (!pin) {
+      $("#modal_eimza_pin").trigger("focus").addClass("is-invalid");
+      updateModalPadesProgress(0, "PIN kodu gerekli", "İmzalama işlemine başlamak için E-İmza PIN kodunuzu giriniz.", "error");
+      return;
+    }
+    $("#modal_eimza_pin").removeClass("is-invalid").prop("disabled", true);
+    $("#btnModalPadesImzala, #btnModalImzaIade").prop("disabled", true);
+    button.prop("disabled", true);
+    updateModalPadesProgress(8, "E-İmza uygulaması kontrol ediliyor", "Akıllı kart ve yerel imza uygulaması aranıyor.");
+    fetch("http://127.0.0.1:9191/status", { method: "GET", mode: "cors" })
+      .then(response => response.json())
+      .then(agent => {
+        if (!agent || agent.status !== "success") throw new Error((agent && agent.message) || "E-imza uygulaması çalışmıyor.");
+        if (!String(agent.agent_version || "").startsWith("1.2.")) {
+          const error = new Error("PAdES için Ersan E-İmza v1.2.0 gereklidir.");
+          error.code = "EIMZA_AGENT_UPDATE_REQUIRED";
+          throw error;
+        }
+        updateModalPadesProgress(20, "Akıllı kart hazır", (agent.owner_name || "Sertifika sahibi") + " adına imzalama başlatılıyor.");
+        updateModalPadesProgress(30, "İmzalanacak PDF hazırlanıyor", "Sunucu değişmez evrak sürümünü hazırlıyor.");
+        return $.post(api_url, { action: "evrak-pades-hazirla", id: id }).then(prepared => {
+          if (prepared.status !== "success" || !prepared.data?.pdf || !prepared.data?.temp_id) throw new Error(prepared.message || "PDF hazırlanamadı.");
+          updateModalPadesProgress(48, "PAdES imzası oluşturuluyor", "PDF akıllı kart ile güvenli elektronik olarak imzalanıyor.");
+          return fetch("http://127.0.0.1:9191/sign-pdf", {
+            method: "POST", mode: "cors", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pdf: prepared.data.pdf, pin: pin, signer_name: prepared.data.signer_name, reason: prepared.data.reason, location: prepared.data.location })
+          }).then(response => response.json()).then(signed => ({ signed, tempId: prepared.data.temp_id, pin }));
+        });
+      }).then(payload => {
+        if (!payload.signed || payload.signed.status !== "success" || !payload.signed.signed_pdf) throw new Error(payload.signed?.message || "Kart PAdES imzası üretemedi.");
+        updateModalPadesProgress(65, "İmza doğrulanıyor", "PAdES imzası ve sertifika bilgileri sunucuda kontrol ediliyor.");
+        return $.post(api_url, { action: "evrak-pades-tamamla", id: id, temp_id: payload.tempId, signed_pdf: payload.signed.signed_pdf })
+          .then(completed => {
+            if (completed.status !== "success") throw new Error(completed.message || "PAdES imzası kabul edilmedi.");
+            return modalPadesOtomatikKep(completed, id, payload.pin).then(sent => ({ completed, sent }));
+          });
+      }).then(result => {
+        const detail = result.sent ? "İmza doğrulandı. PTT Takip Kodu: " + (result.sent.kep_id || "-") : result.completed.message;
+        updateModalPadesProgress(100, result.sent ? "İmzalandı ve KEP ile gönderildi" : "E-İmza tamamlandı", detail, "success");
+        $("#modal_eimza_pin").val("");
+        setTimeout(() => location.reload(), 1800);
+      }).catch(error => {
+        const signatureAlreadyCompleted = error?.code === "PADES_OK_KEP_FAILED";
+        if (!signatureAlreadyCompleted) {
+          $("#modal_eimza_pin, #btnModalPadesImzala, #btnModalImzaIade").prop("disabled", false);
+          $("#modal_eimza_pin").val("").trigger("focus");
+        }
+        if (error?.code === "EIMZA_AGENT_UPDATE_REQUIRED") {
+          updateModalPadesProgress(0, "E-İmza uygulamasını güncelleyin", "PAdES için Ersan E-İmza v1.2.0 gereklidir.", "error");
+        } else if (error?.code === "PADES_OK_KEP_FAILED") {
+          updateModalPadesProgress(100, "İmza tamamlandı, KEP gönderilemedi", error.message + " Evrak imzalı olarak kaydedildi.", "error");
+          setTimeout(() => location.reload(), 2500);
+        } else {
+          updateModalPadesProgress(0, "E-İmza işlemi tamamlanamadı", error.message || "Bilinmeyen imza hatası.", "error");
+        }
+      });
+  }
+
+  $(document).on("click", ".evrak-e-imza-onayla, #btnModalPadesImzala", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.id !== "btnModalPadesImzala") {
+      const $previewBadge = $(this).closest("tr").find(".evrak-imza-onizle").first();
+      if ($previewBadge.length) $previewBadge.trigger("click");
+      return;
+    }
+    startModalPadesSignature($(this).data("id"), $(this));
   });
 
   // E-İmza Geri Al
@@ -740,12 +836,13 @@ $(document).ready(function () {
         cancelButtonColor: '#64748b',
         confirmButtonText: 'İade Et',
         cancelButtonText: 'Vazgeç',
-        inputValidator: value => (!value || value.trim().length < 5) ? 'Gerekçeyi en az 5 karakter olacak şekilde yazınız.' : undefined
+        inputValidator: value => (!value || value.trim().length < 5) ? 'Gerekçeyi en az 5 karakter olacak şekilde yazınız.' : undefined,
+        didOpen: () => $(".swal2-container").css("z-index", 20000)
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.post(api_url, { action: "evrak-e-imza-iade", id: button.data("id"), gerekce: result.value }, function (response) {
             if (response.status === "success") {
-                Swal.fire('İade Edildi', response.message, 'success').then(() => location.reload());
+                Swal.fire({icon: 'success', title: 'İade Edildi', text: response.message, didOpen: () => $(".swal2-container").css("z-index", 20000)}).then(() => location.reload());
             } else {
                 Swal.fire('Hata!', response.message, 'error');
             }
@@ -887,8 +984,64 @@ $(document).ready(function () {
   });
 
   // PDF Önizleme İşlemleri
-  function showPdfFromRequest(request) {
+  function formatImzaTarihi(value) {
+    if (!value) return "";
+    const parsed = new Date(String(value).replace(" ", "T"));
+    return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString("tr-TR");
+  }
+
+  function renderImzaPanel(evrak) {
+    const signatures = Array.isArray(evrak.imza_akisi) ? evrak.imza_akisi : [];
+    const signedCount = signatures.filter(item => item.durum === "onaylandi").length;
+    $("#evrakImzaBelgeBaslik").text(evrak.konu || "Resmî yazı");
+    $("#evrakImzaBelgeMeta").text("Evrak No: " + (evrak.evrak_no || "-") + " • " + signedCount + "/" + signatures.length + " imza");
+
+    const signerHtml = signatures.map((item, index) => {
+      const signed = item.durum === "onaylandi";
+      const isCurrent = !signed && signatures.slice(0, index).every(previous => previous.durum === "onaylandi");
+      const iconBoxClass = signed ? "bg-success text-white" : (isCurrent ? "bg-warning text-dark" : "bg-secondary-subtle text-secondary");
+      const iconClass = signed ? "bx-check" : (isCurrent ? "bx-time-five" : "bx-user");
+      const state = signed ? "İmzalandı" : (isCurrent && evrak.onay_durumu === "onay_bekliyor" ? "İmza bekleniyor" : "Sırasını bekliyor");
+      const certificate = signed && item.sertifika_ozne
+        ? '<div class="text-muted mt-1 text-break" style="font-size:10px" title="' + escapeEvrakHtml(item.sertifika_ozne) + '">Sertifika doğrulandı · ' + escapeEvrakHtml(item.imza_turu || "PAdES") + '</div>'
+        : "";
+      return '<div class="d-flex gap-2 mb-3"><span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0 ' + iconBoxClass + '" style="width:30px;height:30px"><i class="bx ' + iconClass + '"></i></span>'
+        + '<div class="min-w-0"><div class="fw-semibold text-dark font-size-12">' + escapeEvrakHtml(item.sira + ". " + item.adi_soyadi) + '</div>'
+        + (item.unvan ? '<div class="text-muted font-size-11">' + escapeEvrakHtml(item.unvan) + '</div>' : '')
+        + '<div class="' + (signed ? 'text-success' : (isCurrent ? 'text-warning' : 'text-muted')) + ' font-size-11">' + state
+        + (item.onay_tarihi ? ' · ' + escapeEvrakHtml(formatImzaTarihi(item.onay_tarihi)) : '') + '</div>' + certificate + '</div></div>';
+    }).join("") || '<div class="text-muted font-size-12">İmzacı kaydı bulunamadı.</div>';
+
+    const events = [];
+    if (evrak.olusturma_tarihi) events.push({label: "Evrak oluşturuldu", date: evrak.olusturma_tarihi, color: "primary"});
+    if (signatures[0] && signatures[0].akisa_eklenme_tarihi) events.push({label: "E-imza onayına sunuldu", date: signatures[0].akisa_eklenme_tarihi, color: "info"});
+    signatures.filter(item => item.onay_tarihi).forEach(item => events.push({label: item.sira + ". imza tamamlandı — " + item.adi_soyadi, date: item.onay_tarihi, color: "success"}));
+    if (evrak.e_imza_iade_tarihi) events.push({label: "Evrak düzeltme için iade edildi" + (evrak.e_imza_iade_gerekcesi ? ": " + evrak.e_imza_iade_gerekcesi : ""), date: evrak.e_imza_iade_tarihi, color: "danger"});
+    if (evrak.e_imza_onay_tarihi) events.push({label: "Tüm elektronik imzalar tamamlandı", date: evrak.e_imza_onay_tarihi, color: "success"});
+    events.sort((a, b) => new Date(String(a.date).replace(" ", "T")) - new Date(String(b.date).replace(" ", "T")));
+    const timelineHtml = events.map(event => '<div class="d-flex gap-2 mb-3"><span class="rounded-circle bg-' + event.color + ' flex-shrink-0 mt-1" style="width:9px;height:9px"></span><div><div class="text-dark font-size-11">' + escapeEvrakHtml(event.label) + '</div><div class="text-muted" style="font-size:10px">' + escapeEvrakHtml(formatImzaTarihi(event.date)) + '</div></div></div>').join("");
+    $("#evrakImzaSignerList").html(signerHtml);
+    $("#evrakImzaTimeline").html(timelineHtml || '<div class="text-muted font-size-12">İşlem tarihçesi bulunamadı.</div>');
+    $("#evrakImzaOnayAction").toggleClass("d-none", !evrak.imza_sirasi_bende);
+    $("#modal_eimza_pin").val("").removeClass("is-invalid").prop("disabled", false);
+    $("#modalPadesProgress").addClass("d-none");
+    updateModalPadesProgress(0, "İşlem hazırlanıyor", "");
+    $("#modalPadesProgress").addClass("d-none");
+    $("#btnModalPadesImzala").data("id", evrak.id || "").attr("data-id", evrak.id || "").prop("disabled", false);
+    $("#btnModalImzaIade").data("id", evrak.id || "").attr("data-id", evrak.id || "").prop("disabled", false);
+    $("#evrakImzaPanelLoader").addClass("d-none");
+    $("#evrakImzaPanelContent").removeClass("d-none");
+  }
+
+  function showPdfFromRequest(request, withSignaturePanel) {
     clearPdfObjectUrl();
+    $("#evrakImzaPanel").toggleClass("d-none", !withSignaturePanel).toggleClass("evrak-imza-panel-visible", !!withSignaturePanel);
+    $("#evrakImzaPanelLoader").toggleClass("d-none", !withSignaturePanel);
+    $("#evrakImzaPanelContent").addClass("d-none");
+    if (withSignaturePanel) {
+      $("#evrakImzaBelgeBaslik").text("İmza bilgileri yükleniyor");
+      $("#evrakImzaBelgeMeta").empty();
+    }
     $("#evrakPdfLoader").removeClass("d-none");
     if ($("body > #evrakPdfModal").length > 1) {
       $("body > #evrakPdfModal").not(":last").remove();
@@ -923,7 +1076,25 @@ $(document).ready(function () {
   }
 
   $(document).on("click", ".evrak-pdf-goruntule", function () {
-    showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } });
+    showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } }, false);
+  });
+
+  $(document).on("click", ".evrak-imza-onizle", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = $(this).data("id");
+    const popover = bootstrap.Popover.getInstance(this);
+    if (popover) popover.hide();
+    showPdfFromRequest({ type: "GET", data: { id: id } }, true);
+    $.post(api_url, { action: "evrak-detay", id: id }, function (response) {
+      if (response.status === "success") renderImzaPanel(response.data || {});
+      else throw new Error(response.message || "İmza bilgileri alınamadı.");
+    }, "json").fail(function () {
+      $("#evrakImzaPanelLoader").addClass("d-none");
+      $("#evrakImzaSignerList").html('<div class="alert alert-danger font-size-12 mb-0">İmza bilgileri yüklenemedi.</div>');
+      $("#evrakImzaTimeline").empty();
+      $("#evrakImzaPanelContent").removeClass("d-none");
+    });
   });
 
   $(document).on("click", "#btnPdfTamEkran", function () {
@@ -948,6 +1119,13 @@ $(document).ready(function () {
     $dialog.removeClass("modal-fullscreen").addClass("modal-xl modal-dialog-centered");
     $("#evrakPdfFrame").css("height", "72vh");
     $("#btnPdfTamEkran").html('<i class="bx bx-fullscreen"></i> <span>Tam Ekran</span>');
+    $("#evrakImzaPanel").addClass("d-none").removeClass("evrak-imza-panel-visible");
+    $("#evrakImzaPanelContent").addClass("d-none");
+    $("#evrakImzaOnayAction").addClass("d-none");
+    $("#btnModalPadesImzala").data("id", "").attr("data-id", "").prop("disabled", false);
+    $("#btnModalImzaIade").data("id", "").attr("data-id", "").prop("disabled", false);
+    $("#modal_eimza_pin").val("").removeClass("is-invalid").prop("disabled", false);
+    $("#modalPadesProgress").addClass("d-none");
   }
 
   $(document).on("hidden.bs.modal", "#evrakPdfModal", resetPdfModalState);
@@ -2202,7 +2380,7 @@ $(document).ready(function () {
 
   // Tablo Satırı Tıklaması KEP Koruma
   $("#evrakTable tbody").on("click", "tr", function (e) {
-    if ($(e.target).closest("a, button, input, .dropdown, .popover, .action-btn-group").length) return;
+    if ($(e.target).closest("a, button, input, .dropdown, .popover, .action-btn-group, .evrak-imza-onizle, .e-imza-rozet").length) return;
     const kepBtn = $(this).find(".btn-kep-onizle");
     if (kepBtn.length) {
       e.preventDefault();

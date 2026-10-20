@@ -152,13 +152,47 @@ final class EvrakPdfService
               (!empty($preparer->telefon) ? '<div>' . $escape($preparer->telefon) . '</div>' : '')
             : '';
 
-        $showEimzaInfo = !isset($data['evrak_eimza_goster']) || (string) $data['evrak_eimza_goster'] === '1' || $data['evrak_eimza_goster'] === true || $data['evrak_eimza_goster'] === 1;
-        $eImzaOnayli = (($data['onay_durumu'] ?? 'taslak') === 'onaylandi') && $showEimzaInfo;
-        $eImzaNotu = 'Bu belge güvenli elektronik imza ile imzalanmıştır';
+        $isPadesSigningCopy = !empty($data['pades_imzalama_kopyasi']);
+        // Gerçek PAdES belgesindeki görünür doğrulama alanı kapatılamaz. Eski
+        // `evrak_eimza_goster` ayarı yalnız sanal/eski PDF gösterimini yönetir.
+        $showEimzaInfo = $isPadesSigningCopy
+            || !isset($data['evrak_eimza_goster'])
+            || (string) $data['evrak_eimza_goster'] === '1'
+            || $data['evrak_eimza_goster'] === true
+            || $data['evrak_eimza_goster'] === 1;
+        $eImzaOnayli = (($data['onay_durumu'] ?? 'taslak') === 'onaylandi')
+            && (!empty($data['pades_pdf_sha256']) || $isPadesSigningCopy)
+            && $showEimzaInfo;
+        $eImzaNotu = 'Bu belge, güvenli elektronik imza ile imzalanmıştır.';
+        $verificationSeed = implode('|', [
+            (string) ($data['firma_id'] ?? ''),
+            (string) ($data['id'] ?? ''),
+            (string) ($data['evrak_no'] ?? ''),
+            (string) ($data['tarih'] ?? ''),
+        ]);
+        $verificationCode = 'EVR-' . strtoupper(substr(hash('sha256', $verificationSeed), 0, 16));
+        $verificationPin = str_pad((string) (hexdec(substr(hash('sha256', $verificationSeed . '|pin'), 0, 8)) % 100000), 5, '0', STR_PAD_LEFT);
+        $trackingHost = trim((string) ($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com'), " \t\n\r\0\x0B\"'");
+        $trackingHost = preg_replace('#^https?://#i', '', $trackingHost);
+        $trackingAddress = 'https://' . rtrim((string) $trackingHost, '/');
+        $visibleSignatureInfo = $eImzaOnayli
+            ? '<div class="footer-eimza-panel">'
+                . '<div class="footer-eimza-title">' . $escape($eImzaNotu) . '</div>'
+                . '<table class="footer-eimza-meta"><tr>'
+                . '<td><strong>Belge Doğrulama Kodu:</strong> ' . $escape($verificationCode)
+                . ' <strong>PIN Kodu:</strong> ' . $escape($verificationPin) . '</td>'
+                . '<td class="footer-eimza-tracking"><strong>Belge Takip Adresi:</strong> ' . $escape($trackingAddress) . '</td>'
+                . '</tr></table>'
+                . '</div>'
+            : '';
 
-        $footerHtml = ($eImzaOnayli ? '<div class="footer-eimza">' . $eImzaNotu . '</div>' : '')
-            . '<div class="footer"><table class="footer-table"><tr><td class="footer-left">' . $contact . '</td><td class="footer-right">' . $contactPersonHtml . '</td></tr></table></div>'
-            . ($eImzaOnayli ? '<div class="footer-eimza-alt">' . $eImzaNotu . '</div>' : '');
+        // Kurumsal alt bilgi şablonu değişmeden kalır; elektronik imza bilgileri
+        // yalnızca mevcut bloğun önüne ve sonuna eklenir.
+        $corporateFooterHtml = '<div class="footer"><table class="footer-table"><tr><td class="footer-left">'
+            . $contact . '</td><td class="footer-right">' . $contactPersonHtml . '</td></tr></table></div>';
+        $footerHtml = $visibleSignatureInfo
+            . $corporateFooterHtml
+            . ($eImzaOnayli ? '<div class="footer-eimza-alt">' . $escape($eImzaNotu) . '</div>' : '');
 
         $evrakNoVal = trim((string) ($data['evrak_no'] ?? ''));
         $recordInfoText = 'Evrak Tarih ve Sayısı: ' . $escape($date) . ($evrakNoVal !== '' ? '-' . $escape($evrakNoVal) : '');
@@ -176,7 +210,9 @@ final class EvrakPdfService
             .content h1,.content h2,.content h3,.content h4{font-size:12pt;margin:3mm 0;font-weight:bold}
             .signatures{width:100%;border-collapse:collapse;margin-top:14mm}.signatures td{border:0;text-align:center;vertical-align:top;line-height:1.25}.signature-name{font-weight:normal}.attachments{margin-top:8mm}
             .record-info{font-size:10pt;line-height:1.2;margin-bottom:4mm}.footer,.footer td,.footer div,.footer span{font-size:10px!important;line-height:1.2}.footer{border-top:0.2mm solid #e53935;padding-top:1.2mm}
-            .footer-eimza{font-size:8.5px;color:#e53935;text-align:center;line-height:1.2;padding-bottom:1.2mm}
+            .footer-eimza-panel{border:0;border-bottom:0.6mm solid #e53935;padding:1.2mm 2mm 1.5mm;margin-bottom:1.5mm;color:#111;background:#fff}
+            .footer-eimza-title{font-size:9px!important;color:#e53935;text-align:center;font-weight:bold;line-height:1.2;padding-bottom:1mm}
+            .footer-eimza-meta{width:100%;border-collapse:collapse;table-layout:fixed}.footer-eimza-meta td{border:0;font-size:8px!important;line-height:1.2;padding:.4mm 0;vertical-align:top}.footer-eimza-tracking{text-align:right}
             .footer-eimza-alt{font-size:12px;color:#a0a0a0;text-align:left;line-height:1.2;padding-top:1.2mm}.footer-table{width:100%;table-layout:fixed;border-collapse:collapse}.footer-table td{width:50%;border:0;vertical-align:top;overflow-wrap:break-word}.footer-left{text-align:left;padding-right:4mm}.footer-right{text-align:right;padding-left:4mm}
         </style></head><body>
         ' . $recordInfoHtml . '
@@ -503,12 +539,25 @@ final class EvrakPdfService
      * @return string Geçici PDF dosyasının tam dosya yolu
      * @throws \Exception
      */
-    public function generateTempPdf(int $evrakId): string
+    public function generateTempPdf(int $evrakId, bool $padesSigningCopy = false): string
     {
         $evrakModel = new \App\Model\EvrakTakipModel();
         $evrak = $evrakModel->getById($evrakId);
         if (!$evrak) {
             throw new \Exception("Evrak bulunamadı (ID: {$evrakId})");
+        }
+        if (!$padesSigningCopy && !empty($evrak->pades_pdf_yolu)) {
+            $signedPath = dirname(__DIR__, 2) . '/' . ltrim((string) $evrak->pades_pdf_yolu, '/');
+            if (!is_file($signedPath)) {
+                throw new \Exception('İmzalı PAdES PDF dosyası bulunamadı.');
+            }
+            $signedPdf = \App\Helper\Security::decryptFile((string) file_get_contents($signedPath));
+            if (!empty($evrak->pades_pdf_sha256) && !hash_equals((string) $evrak->pades_pdf_sha256, hash('sha256', $signedPdf))) {
+                throw new \Exception('İmzalı PAdES PDF bütünlük kontrolünden geçemedi.');
+            }
+            $tmpSigned = sys_get_temp_dir() . '/evrak_pades_' . $evrakId . '_' . bin2hex(random_bytes(6)) . '.pdf';
+            file_put_contents($tmpSigned, $signedPdf, LOCK_EX);
+            return $tmpSigned;
         }
 
         $firmId = (int) ($evrak->firma_id ?? ($_SESSION['firma_id'] ?? 1));
@@ -559,6 +608,7 @@ final class EvrakPdfService
 
         $pdfEvrak = (object) [
             'id' => $evrak->id,
+            'firma_id' => $firmId,
             'evrak_tipi' => $evrak->evrak_tipi ?? 'giden',
             'tarih' => $evrak->tarih,
             'evrak_no' => $evrak->evrak_no,
@@ -596,7 +646,9 @@ final class EvrakPdfService
             'evrak_eimza_goster' => (string) ($settings['evrak_eimza_goster'] ?? '1'),
             'e_imza_belge_ozeti' => $evrak->e_imza_belge_ozeti ?? null,
             'e_imza_onay_tarihi' => $evrak->e_imza_onay_tarihi ?? null,
-            'onay_durumu' => $evrak->onay_durumu ?? null,
+            'onay_durumu' => $padesSigningCopy ? 'onaylandi' : ($evrak->onay_durumu ?? null),
+            'pades_pdf_sha256' => $evrak->pades_pdf_sha256 ?? null,
+            'pades_imzalama_kopyasi' => $padesSigningCopy ? 1 : 0,
             'ek_dosya_yollari' => $ekDosyaYollari,
         ];
 

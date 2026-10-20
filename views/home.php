@@ -435,6 +435,9 @@ if (Gate::allows("ana_sayfa")) {
         $widgets['widget-arac-ozet'] = renderSkeleton('widget-arac-ozet', 'col-md-4 col-xl-4', '260px');
     }
 
+    // Görev ve Gelen Evrak Takvimi & Alarmlar Mini Kartı (Görsel 1 & 2 Standardı)
+    $widgets['widget-takvim-alarmlar'] = renderSkeleton('widget-takvim-alarmlar', getWidgetWidth('widget-takvim-alarmlar', 'col-md-4 col-xl-4'), '275px');
+
     if (\App\Service\Gate::allows("talepler")) {
         $widgets['widget-bekleyen-talepler'] = renderSkeleton('widget-bekleyen-talepler', 'col-6 col-md-2', '140px');
     }
@@ -1749,6 +1752,12 @@ if (Gate::allows("ana_sayfa")) {
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-arac-ozet" checked>
                                             <span style="font-size: 13px;">Araç Durumu</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-takvim-alarmlar" checked>
+                                            <strong style="font-size: 13px;">Görev & Evrak Takvimi</strong>
                                         </label>
                                     </li>
                                     <li>
@@ -4758,6 +4767,8 @@ if (Gate::allows("ana_sayfa")) {
                             'widget-personel-ozet'           : 'Personel Durumu',
                             'widget-arac-ozeti'              : 'Araç Durumu',
                             'widget-arac-ozet'               : 'Araç Durumu',
+                            'widget-takvim-alarmlar'         : 'Görev & Evrak Takvimi',
+                            'widget-gorev-evrak-takvimi'     : 'Görev & Evrak Takvimi',
                             'widget-bekleyen-talepler'       : 'Bekleyen Talepler',
                             'widget-gec-kalanlar'            : 'Geç Kalanlar',
                             'widget-nobetciler'              : 'Bugünkü Nöbetçiler',
@@ -5316,7 +5327,7 @@ if (Gate::allows("ana_sayfa")) {
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_v2_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v3_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {
@@ -6315,6 +6326,81 @@ if (Gate::allows("ana_sayfa")) {
                         }
                     <?php endif; ?>
                 })();
+
+                // Takvim & Alarmlar Widget Etkileşim Fonksiyonları
+                window.selectHomeCalendarDay = function(day) {
+                    const $card = $('#widget-takvim-alarmlar');
+                    if (!$card.length) return;
+                    
+                    const $clickedCell = $card.find('.cal-day-cell[data-day="' + day + '"]');
+                    if ($clickedCell.hasClass('is-selected')) {
+                        resetHomeCalendarDayFilter();
+                        return;
+                    }
+
+                    $card.find('.cal-day-cell').removeClass('is-selected');
+                    $clickedCell.addClass('is-selected');
+
+                    const $items = $card.find('.cal-alarm-item');
+                    let visibleCount = 0;
+                    $items.each(function() {
+                        const itemDay = parseInt($(this).data('day'), 10);
+                        if (itemDay === day) {
+                            $(this).removeClass('d-none');
+                            visibleCount++;
+                        } else {
+                            $(this).addClass('d-none');
+                        }
+                    });
+
+                    $card.find('#calAlarmCountTitle').text(visibleCount + ' ALARM');
+                    $card.find('#btnCalResetFilter').removeClass('d-none');
+                };
+
+                window.resetHomeCalendarDayFilter = function() {
+                    const $card = $('#widget-takvim-alarmlar');
+                    if (!$card.length) return;
+
+                    $card.find('.cal-day-cell').removeClass('is-selected');
+                    const $items = $card.find('.cal-alarm-item');
+                    $items.removeClass('d-none');
+                    $card.find('#calAlarmCountTitle').text($items.length + ' ALARM');
+                    $card.find('#btnCalResetFilter').addClass('d-none');
+                };
+
+                window.navigateHomeCalendar = function(year, month) {
+                    if (month < 1) {
+                        month = 12;
+                        year--;
+                    } else if (month > 12) {
+                        month = 1;
+                        year++;
+                    }
+
+                    const $widget = $('#widget-takvim-alarmlar');
+                    $widget.css('opacity', '0.6');
+
+                    $.ajax({
+                        url: 'views/home/api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'get-calendar-alarms',
+                            year: year,
+                            month: month
+                        },
+                        dataType: 'json'
+                    }).done(function(res) {
+                        if (res.status === 'success' && res.html) {
+                            const $newEl = $(res.html);
+                            $widget.replaceWith($newEl);
+                            if (typeof initMacControls === 'function') {
+                                initMacControls();
+                            }
+                        }
+                    }).always(function() {
+                        $('#widget-takvim-alarmlar').css('opacity', '1');
+                    });
+                };
 
                 // Initialize everything on load
                 $(document).ready(function() {

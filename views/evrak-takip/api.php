@@ -32,6 +32,7 @@ use App\Model\KepDelilModel;
 use App\Model\KepAdresDefteriModel;
 use App\Service\KepClientService;
 use App\Service\KepService;
+use App\Service\PadesEImzaService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -173,6 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['action'], 
                     $data['ek_duzen_json'], 
                     $data['silinen_ek_ids_json'],
+                    $data['gonderim_turu_secimi'],
                     $data['kimin_adina_1'],
                     $data['kimin_adina_2'],
                     $data['kimin_adina_3']
@@ -280,6 +282,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['tarih'] = Date::Ymd($data['tarih']);
                 } else {
                     $data['tarih'] = date('Y-m-d');
+                }
+
+                if (!empty($data['son_tarih'])) {
+                    $data['son_tarih'] = Date::Ymd($data['son_tarih']);
+                } else {
+                    $data['son_tarih'] = null;
                 }
 
                 // Dosya yükleme işlemi
@@ -871,22 +879,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode(['status' => 'success', 'message' => 'Evrak başarıyla silindi.']);
                 break;
 
-            case 'evrak-e-imza-onayla':
+            case 'evrak-pades-hazirla':
                 $id = $decryptId($_POST['id'] ?? '');
                 if ($id <= 0) {
                     throw new Exception('Geçersiz evrak ID.');
                 }
-                $approval = $Model->approveWithWorkflow($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                $prepared = (new PadesEImzaService())->prepare($id, $currentUserId);
+                echo json_encode(['status' => 'success', 'data' => $prepared], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+
+            case 'evrak-pades-tamamla':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) throw new Exception('Geçersiz evrak ID.');
+                $signedPdf = (string) ($_POST['signed_pdf'] ?? '');
+                if ($signedPdf === '') throw new Exception('İmzalı PDF alınamadı.');
+                $tempId = (string) ($_POST['temp_id'] ?? '');
+                if ($tempId === '') throw new Exception('PAdES imza oturumu bulunamadı.');
+                $approval = (new PadesEImzaService())->accept(
+                    $id, $currentUserId, $tempId, $signedPdf, (string) ($_SERVER['REMOTE_ADDR'] ?? '')
+                );
                 (new SystemLogModel())->logAction(
                     $currentUserId,
-                    'Evrak E-İmza Onayı',
-                    "Evrak ID: {$id} elektronik imza ile onaylandı ({$approval['approved']}/{$approval['total']} imza).",
+                    'Evrak PAdES E-İmza Onayı',
+                    "Evrak ID: {$id} doğrulanmış PAdES imzası ile onaylandı ({$approval['approved']}/{$approval['total']} imza).",
                     SystemLogModel::LEVEL_IMPORTANT
                 );
                 $onayBildirim = new EvrakOnayBildirimService();
                 $onaylananEvrak = $Model->getById($id);
+                $autoKep = null;
                 if ($approval['completed']) {
                     $onayBildirim->onayTamamlandi($onaylananEvrak);
+                    if (($onaylananEvrak->gonderim_kanali ?? 'normal') === 'kep') {
+                        $kepAlicilar = trim((string) ($onaylananEvrak->kep_alicilar ?: $onaylananEvrak->alici_kep));
+                        $autoKep = $kepAlicilar !== '' ? [
+                            'enabled' => true, 'alici_kep' => $kepAlicilar,
+                            'paket_turu' => (string) ($onaylananEvrak->kep_paket_turu ?: 'Standart'),
+                        ] : ['enabled' => false, 'error' => 'Kayıtlı alıcı KEP adresi bulunamadı.'];
+                    }
                 } else {
                     $siradaki = $Model->getNextPendingSigner($id);
                     if ($siradaki) {
@@ -896,11 +925,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode([
                     'status' => 'success',
                     'message' => $approval['completed']
-                        ? 'Tüm imzalar tamamlandı. Evrak elektronik onaylı olarak kilitlendi.'
-                        : 'Onayınız kaydedildi. Evrak diğer imzacıların onayını bekliyor.',
-                    'data' => $approval,
+                        ? 'Tüm PAdES imzaları doğrulandı. Evrak elektronik imzalı olarak kilitlendi.'
+                        : 'PAdES imzanız doğrulandı. Evrak diğer imzacıların imzasını bekliyor.',
+                    'data' => array_merge($approval, ['auto_kep' => $autoKep]),
                 ], JSON_UNESCAPED_UNICODE);
                 break;
+
+            case 'evrak-e-imza-onayla':
+                throw new Exception('Sanal onay kaldırıldı. Güncel e-imza uygulamasıyla PAdES imzası kullanınız.');
 
             case 'evrak-e-imza-iade':
                 $id = $decryptId($_POST['id'] ?? '');
@@ -956,6 +988,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception("Evrak bulunamadı.");
                 }
 
+                $imzaAkisi = $Model->getApprovalDetailMap([$id])[$id] ?? [];
+                $imzaOzeti = $Model->getApprovalSummaryMap($currentUserId, [$id])[$id] ?? [];
+                $evrak->imza_sirasi_bende = ($evrak->onay_durumu ?? '') === 'onay_bekliyor'
+                    && !empty($imzaOzeti['sira_bende']);
+                $evrak->imza_akisi = array_map(static function (array $imza): array {
+                    return [
+                        'sira' => (int) $imza['sira'],
+                        'adi_soyadi' => (string) $imza['adi_soyadi'],
+                        'unvan' => (string) $imza['imza_unvani'],
+                        'durum' => (string) $imza['durum'],
+                        'akisa_eklenme_tarihi' => $imza['olusturma_tarihi'],
+                        'onay_tarihi' => $imza['onay_tarihi'],
+                        'imza_turu' => (string) ($imza['imza_turu'] ?? ''),
+                        'sertifika_ozne' => (string) ($imza['sertifika_ozne'] ?? ''),
+                        'sertifika_veren' => (string) ($imza['sertifika_veren'] ?? ''),
+                        'sertifika_seri_no' => (string) ($imza['sertifika_seri_no'] ?? ''),
+                        'sertifika_parmak_izi' => (string) ($imza['sertifika_parmak_izi'] ?? ''),
+                        'imza_dogrulama_durumu' => (string) ($imza['imza_dogrulama_durumu'] ?? ''),
+                    ];
+                }, $imzaAkisi);
                 $evrak->id = $encryptedId;
                 if (!empty($evrak->ilgili_evrak_id)) {
                     $evrak->ilgili_evrak_id = Security::encrypt($evrak->ilgili_evrak_id);
@@ -1012,12 +1064,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $myTurn = $approvalStatus === 'onay_bekliyor' && !empty($approval['sira_bende']);
                     $locked = $approvalStatus !== 'taslak';
                     $reply = $type === 'gelen' ? (!empty($evrak->cevap_verildi_mi) ? 'EVET' : 'BEKLEMEDE') : '-';
+                    $isKep = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id) || ($evrak->gonderim_kanali ?? '') === 'kep';
                     $typeHtml = $type === 'gelen'
                         ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-down-arrow-alt"></i> GELEN</span>'
-                        : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-up-arrow-alt"></i> GİDEN</span>';
-                    $isKep = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id) || ($evrak->gonderim_kanali ?? '') === 'kep';
+                        : ($isKep
+                            ? '<span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="KEP ile gönderilen evrak"><i class="bx bx-mail-send"></i> GİDEN / KEP</span>'
+                            : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-up-arrow-alt"></i> GİDEN</span>');
                     if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) $typeHtml .= '<div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 font-size-10"><i class="bx bx-envelope"></i> UETS</span></div>';
-                    if ($isKep) $typeHtml .= '<div class="mt-1"><span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 font-size-10"><i class="bx bx-mail-send"></i> KEP</span></div>';
+                    if ($type === 'gelen' && $isKep) $typeHtml .= '<div class="mt-1"><span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 font-size-10"><i class="bx bx-mail-send"></i> KEP</span></div>';
                     $detailUrl = ($type === 'gelen' || $isKep) ? 'javascript:void(0);' : 'index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId);
                     $detailClass = $isKep ? ' btn-kep-onizle' : ($type === 'gelen' ? ' evrak-duzenle' : '');
                     $subjectHtml = '<div class="d-flex flex-column"><a href="' . $detailUrl . '" class="fw-bold text-dark font-size-13 text-decoration-none evrak-konu-text' . $detailClass . '" data-id="' . $esc($encryptedId) . '">' . $esc($evrak->konu ?: '-') . '</a><span class="text-muted font-size-11"><i class="bx bx-hash"></i> ' . $esc($evrak->evrak_no ?: '-') . '</span></div>';
@@ -1032,37 +1086,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     $flowAttr = $flowItems !== '' ? ' tabindex="0" role="button" data-onay-akis="' . $esc('<ul class="list-unstyled mb-0">' . $flowItems . '</ul>') . '"' : '';
                     if ($type !== 'giden' || (int) $approval['toplam'] === 0) $approvalHtml = '<span class="text-muted small">-</span>';
-                    elseif ($approvalStatus === 'onaylandi') $approvalHtml = '<span class="badge bg-success-subtle text-success border rounded-pill px-2 py-1 font-size-11 fw-semibold"' . $flowAttr . '><i class="bx bx-check-double"></i> ONAYLI</span>';
-                    elseif ($approvalStatus === 'onay_bekliyor') $approvalHtml = '<span class="badge ' . ($myTurn ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning border') . ' rounded-pill px-2 py-1 font-size-11 fw-semibold"' . $flowAttr . '><i class="bx bx-time-five"></i> ' . ($myTurn ? 'İMZANIZDA' : 'ONAYDA') . ' ' . (int) $approval['onaylanan'] . '/' . (int) $approval['toplam'] . '</span>';
-                    else $approvalHtml = '<span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2 py-1 font-size-11 fw-semibold"' . $flowAttr . '>TASLAK</span>';
+                    elseif ($approvalStatus === 'onaylandi') $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle bg-success-subtle text-success border rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="Evrakı ve imza tarihçesini görüntüle"' . $flowAttr . '><i class="bx bx-check-double"></i> ONAYLI</span>';
+                    elseif ($approvalStatus === 'onay_bekliyor') $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle ' . ($myTurn ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning border') . ' rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="Evrakı ve imza tarihçesini görüntüle"' . $flowAttr . '><i class="bx bx-time-five"></i> ' . ($myTurn ? 'İMZANIZDA' : 'ONAYDA') . ' ' . (int) $approval['onaylanan'] . '/' . (int) $approval['toplam'] . '</span>';
+                    else $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle bg-secondary-subtle text-secondary border rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="Evrakı ve imza tarihçesini görüntüle"' . $flowAttr . '>TASLAK</span>';
 
                     $files = $attachmentMap[(int) $evrak->id] ?? [];
                     if (!empty($evrak->dosya_yolu) && !array_filter($files, static fn(object $file): bool => ltrim((string) $file->dosya_yolu, '/') === ltrim((string) $evrak->dosya_yolu, '/'))) array_unshift($files, (object) ['dosya_adi' => basename((string) $evrak->dosya_yolu), 'dosya_yolu' => $evrak->dosya_yolu]);
+                    $hasUpperDocument = $type === 'giden' && empty($evrak->ust_yazi_gerekli_degil);
                     $fileHtml = '<span class="text-muted small">-</span>';
-                    if ($files) {
+                    if ($files || $hasUpperDocument) {
                         $items = '';
+                        if ($hasUpperDocument) $items .= '<li><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '"><i class="bx bx-file-blank text-danger"></i><span class="text-truncate">Üst Yazı.pdf</span></button></li>';
                         foreach ($files as $index => $file) $items .= '<li><a class="dropdown-item d-flex align-items-center gap-2" href="' . $esc($file->dosya_yolu) . '" target="_blank"><i class="bx bx-file"></i><span class="text-truncate">' . ($index + 1) . '. ' . $esc($file->dosya_adi) . '</span></a></li>';
-                        $fileHtml = '<div class="dropdown d-inline-block"><button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-1 font-size-11 fw-semibold dropdown-toggle" data-bs-toggle="dropdown"><i class="bx bx-paperclip"></i> ' . count($files) . ' DOSYA</button><ul class="dropdown-menu dropdown-menu-end evrak-dosya-menu shadow-lg border-0">' . $items . '</ul></div>';
+                        $fileHtml = '<div class="dropdown d-inline-block"><button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-1 font-size-11 fw-semibold dropdown-toggle" data-bs-toggle="dropdown"><i class="bx bx-paperclip"></i> ' . (count($files) + ($hasUpperDocument ? 1 : 0)) . ' DOSYA</button><ul class="dropdown-menu dropdown-menu-end evrak-dosya-menu shadow-lg border-0">' . $items . '</ul></div>';
                     }
-                    $actions = '<div class="action-btn-group d-flex align-items-center justify-content-center gap-1">';
+                    $actionItems = '';
                     if ($isKep) {
                         if (!empty($evrak->dosya_yolu)) {
-                            $actions .= '<button type="button" class="btn btn-subtle-info table-action-btn evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '" title="PDF Önizleme"><i class="bx bx-file-blank"></i></button>';
+                            $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '" title="PDF Önizleme"><i class="bx bx-file-blank text-info"></i><span>PDF Önizleme</span></button>';
                         }
-                        $actions .= '<button type="button" class="btn btn-subtle-primary table-action-btn btn-kep-onizle" data-id="' . $esc($encryptedId) . '" title="KEP İletisi ve Delil Önizleme"><i class="bx bx-mail-send"></i></button>';
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-kep-onizle" data-id="' . $esc($encryptedId) . '" title="KEP İletisi ve Delil Önizleme"><i class="bx bx-mail-send text-primary"></i><span>KEP İletisi ve Delil Önizleme</span></button>';
                     } elseif ($type === 'giden') {
-                        $actions .= '<button type="button" class="btn btn-subtle-info table-action-btn evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '" title="PDF Önizleme"><i class="bx bx-file-blank"></i></button><a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '" class="btn ' . ($locked ? 'btn-subtle-secondary' : 'btn-subtle-warning') . ' table-action-btn"><i class="bx ' . ($locked ? 'bx-show' : 'bx-edit-alt') . '"></i></a>';
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '" title="PDF Önizleme"><i class="bx bx-file-blank text-info"></i><span>PDF Önizleme</span></button>';
+                        $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '" class="dropdown-item d-flex align-items-center gap-2" title="' . ($locked ? 'Evrakı Görüntüle' : 'Düzenle') . '"><i class="bx ' . ($locked ? 'bx-show text-secondary' : 'bx-edit-alt text-warning') . '"></i><span>' . ($locked ? 'Evrakı Görüntüle' : 'Düzenle') . '</span></a>';
                         if ($canSendKep && $approvalStatus === 'onaylandi' && empty($evrak->kep_mesaj_id)) {
-                            $actions .= '<button type="button" class="btn btn-subtle-primary table-action-btn btn-approved-kep-send" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu ?: 'Resmî Yazı') . '" title="Onaylı Evrakı KEP ile Gönder"><i class="bx bx-mail-send"></i></button>';
+                            $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-approved-kep-send" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu ?: 'Resmî Yazı') . '" title="Onaylı Evrakı KEP ile Gönder"><i class="bx bx-mail-send text-primary"></i><span>Onaylı Evrakı KEP ile Gönder</span></button>';
                         }
                     } else {
-                        $actions .= '<button type="button" class="btn btn-subtle-primary table-action-btn evrak-duzenle" data-id="' . $esc($encryptedId) . '" title="Düzenle"><i class="bx bx-edit-alt"></i></button>';
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-duzenle" data-id="' . $esc($encryptedId) . '" title="Düzenle"><i class="bx bx-edit-alt text-primary"></i><span>Düzenle</span></button>';
                     }
-                    if (!empty($evrak->uets_mesaj_id)) $actions .= '<button type="button" class="btn btn-subtle-info table-action-btn btn-uets-deliller" data-uets-id="' . $esc($evrak->uets_mesaj_id) . '"><i class="bx bx-shield-quarter"></i></button>';
-                    if ($myTurn) $actions .= '<button type="button" class="btn btn-subtle-success table-action-btn evrak-e-imza-onayla" data-id="' . $esc($encryptedId) . '"><i class="bx bx-check"></i></button><button type="button" class="btn btn-subtle-warning table-action-btn evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '"><i class="bx bx-undo"></i></button>';
-                    if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actions .= '<button type="button" class="btn btn-subtle-info table-action-btn evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision"></i></button>';
-                    if (!$locked && !$isKep) $actions .= '<button type="button" class="btn btn-subtle-danger table-action-btn evrak-sil" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i></button>';
-                    $actions .= '</div>';
+                    if (!empty($evrak->uets_mesaj_id)) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-deliller" data-uets-id="' . $esc($evrak->uets_mesaj_id) . '" title="UETS Delillerini Görüntüle"><i class="bx bx-shield-quarter text-info"></i><span>UETS Delillerini Görüntüle</span></button>';
+                    if ($myTurn) $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="E-İmza ile İmzala"><i class="bx bx-check text-success"></i><span>E-İmza ile İmzala</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
+                    if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision text-info"></i><span>Evrakı Üzerime Geri Al</span></button>';
+                    if (!$locked && !$isKep) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
+                    $actions = '<div class="action-btn-group d-flex align-items-center justify-content-center"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary bg-white dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="İşlemler"><i class="bx bx-cog me-1"></i> İşlemler</button><div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1">' . $actionItems . '</div></div></div>';
                     $createdTime = !empty($evrak->olusturma_tarihi) ? date('H:i', strtotime((string) $evrak->olusturma_tarihi)) : '-';
                     $operatorName = trim((string) ($evrak->islem_yapan_adi ?? ''));
                     if ($operatorName === '' && (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id))) {

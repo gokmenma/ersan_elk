@@ -320,9 +320,14 @@ $title = "Evrak Listesi";
                                     <span class="fw-bold text-muted"><?= $i++; ?></span>
                                 </td>
                                 <td class="text-center">
+                                    <?php $isKepEvrak = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id) || ($evrak->gonderim_kanali ?? '') === 'kep'; ?>
                                     <?php if ($evrakTipi === 'gelen'): ?>
                                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">
                                             <i class="bx bx-down-arrow-alt"></i> GELEN
+                                        </span>
+                                    <?php elseif ($isKepEvrak): ?>
+                                        <span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="KEP ile gönderilen evrak">
+                                            <i class="bx bx-mail-send"></i> GİDEN / KEP
                                         </span>
                                     <?php else: ?>
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">
@@ -336,7 +341,7 @@ $title = "Evrak Listesi";
                                             </span>
                                         </div>
                                     <?php endif; ?>
-                                    <?php if (($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id)): ?>
+                                    <?php if ($evrakTipi === 'gelen' && $isKepEvrak): ?>
                                         <div class="mt-1">
                                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 font-size-10 fw-semibold" title="PTT KEP İletisi">
                                                 <i class="bx bx-mail-send"></i> KEP
@@ -358,6 +363,11 @@ $title = "Evrak Listesi";
                                     <div class="d-flex flex-column">
                                         <span class="fw-semibold text-dark font-size-12"><?= !empty($evrak->tarih) ? date('d.m.Y', strtotime((string) $evrak->tarih)) : '-'; ?></span>
                                         <span class="text-muted font-size-11"><?= htmlspecialchars($saatGosterim !== '' ? $saatGosterim : '-', ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <?php if (!empty($evrak->son_tarih)): ?>
+                                            <span class="badge bg-danger-subtle text-danger font-size-10 px-1 py-0.5 mt-1" title="Son Tarih / Termin">
+                                                <i class="bx bx-time-five me-1"></i>Son: <?= date('d.m.Y', strtotime((string)$evrak->son_tarih)); ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                                 <td>
@@ -456,15 +466,15 @@ $title = "Evrak Listesi";
                                     <?php if ($evrakTipi !== 'giden' || $onayBilgisi['toplam'] === 0): ?>
                                         <span class="text-muted small">-</span>
                                     <?php elseif ($onayDurumu === 'onaylandi'): ?>
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold e-imza-rozet"<?= $akisAttr; ?>>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold e-imza-rozet evrak-imza-onizle" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Evrakı ve imza tarihçesini görüntüle"<?= $akisAttr; ?>>
                                             <i class="bx bx-check-double me-0.5"></i> ONAYLI
                                         </span>
                                     <?php elseif ($onayDurumu === 'onay_bekliyor'): ?>
-                                        <span class="badge <?= $siraBende ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning border border-warning-subtle'; ?> rounded-pill px-2 py-1 font-size-11 fw-semibold e-imza-rozet"<?= $akisAttr; ?>>
+                                        <span class="badge <?= $siraBende ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning border border-warning-subtle'; ?> rounded-pill px-2 py-1 font-size-11 fw-semibold e-imza-rozet evrak-imza-onizle" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Evrakı ve imza tarihçesini görüntüle"<?= $akisAttr; ?>>
                                             <i class="bx bx-time-five me-0.5"></i> <?= $siraBende ? 'İMZANIZDA' : 'ONAYDA'; ?> <?= $onayBilgisi['onaylanan'] . '/' . $onayBilgisi['toplam']; ?>
                                         </span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold e-imza-rozet"<?= $akisAttr; ?>>
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold e-imza-rozet evrak-imza-onizle" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Evrakı ve imza tarihçesini görüntüle"<?= $akisAttr; ?>>
                                             TASLAK
                                         </span>
                                     <?php endif; ?>
@@ -485,17 +495,26 @@ $title = "Evrak Listesi";
                                             ]);
                                         }
                                     }
+                                    $ustYaziDosyasiVar = $evrakTipi === 'giden' && empty($evrak->ust_yazi_gerekli_degil);
                                     ?>
-                                    <?php if ($evrakEkleri !== []): ?>
+                                    <?php if ($evrakEkleri !== [] || $ustYaziDosyasiVar): ?>
                                         <div class="dropdown d-inline-block">
                                             <button type="button"
                                                 class="btn btn-sm btn-subtle-info rounded-pill px-2 py-1 font-size-11 fw-semibold d-inline-flex align-items-center gap-1 dropdown-toggle shadow-xs"
                                                 data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false"
                                                 title="Evraka ait dosyaları görüntüle">
                                                 <i class="bx bx-paperclip"></i>
-                                                <?= count($evrakEkleri); ?> DOSYA
+                                                <?= count($evrakEkleri) + ($ustYaziDosyasiVar ? 1 : 0); ?> DOSYA
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end evrak-dosya-menu shadow-lg border-0">
+                                                <?php if ($ustYaziDosyasiVar): ?>
+                                                    <li>
+                                                        <button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-pdf-goruntule" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <i class="bx bx-file-blank text-danger flex-shrink-0 font-size-16"></i>
+                                                            <span class="text-truncate">Üst Yazı.pdf</span>
+                                                        </button>
+                                                    </li>
+                                                <?php endif; ?>
                                                 <?php foreach ($evrakEkleri as $ekIndex => $ek): ?>
                                                     <li>
                                                         <a class="dropdown-item d-flex align-items-center gap-2"
@@ -543,7 +562,7 @@ $title = "Evrak Listesi";
                                         <?php endif; ?>
 
                                         <?php if ($siraBende): ?>
-                                            <button type="button" class="btn btn-subtle-success table-action-btn evrak-e-imza-onayla" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="E-İmza ile Onayla">
+                                            <button type="button" class="btn btn-subtle-success table-action-btn evrak-e-imza-onayla" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="E-İmza ile İmzala">
                                                 <i class="bx bx-check"></i>
                                             </button>
                                             <button type="button" class="btn btn-subtle-warning table-action-btn evrak-e-imza-iade" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Düzeltilmek Üzere İade Et">
@@ -621,7 +640,14 @@ $title = "Evrak Listesi";
 }
 
 .e-imza-rozet[data-onay-akis] {
-    cursor: help;
+    cursor: pointer;
+}
+
+#evrakImzaPanel.evrak-imza-panel-visible { display: flex !important; }
+
+@media (max-width: 991.98px) {
+    .evrak-pdf-layout { flex-direction: column; }
+    #evrakImzaPanel { width: 100% !important; min-width: 0 !important; max-height: 42vh !important; border-left: 0 !important; border-top: 1px solid var(--bs-border-color); }
 }
 
 .onay-akis-popover {
